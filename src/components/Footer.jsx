@@ -1,9 +1,9 @@
 import React from "react";
-import "../styles/Footer.css";
+import styles from "../styles/Footer.module.css";
 
 export default function Footer() {
   return (
-    <footer className="footer">
+    <footer className={styles.footer}>
       <small>
         Erebus Portal made by{" "}
         <a href="https://miketsak.gr" target="_blank" rel="noreferrer">

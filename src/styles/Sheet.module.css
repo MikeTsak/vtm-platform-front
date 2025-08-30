@@ -1,0 +1,513 @@
+/* ===== Sheet.module.css — CSS Modules, fully scoped ===== */
+/* Wrap your component with <div className={styles.sheetRoot}> … </div> */
+
+.sheetRoot {
+  /* Theme variables */
+  --bg-color: #121212;
+  --surface-color: #1e1e1e;
+  --surface-lighter: #2a2a2a;
+  --border-color: #383838;
+  --text-color: #e0e0e0;
+  --text-muted: #8e8e8e;
+  --primary-color: #8a0f1a;
+  --primary-hover: #a4131f;
+  --font-body: system-ui, -apple-system, Segoe UI, Inter, Roboto, Arial, sans-serif;
+  --font-title: ui-serif, Georgia, "Times New Roman", serif;
+  --radius: 6px;
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+
+  /* Atmosphere baseline (used to live on <body>) */
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  padding: 2rem 1rem;
+}
+
+/* --- Page Layout & Atmosphere --- */
+.sheetPage {
+  position: relative;
+  max-width: 1200px;
+  margin: 0 auto;
+  overflow: hidden; /* Contains the atmospheric elements */
+}
+
+.vignette {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  box-shadow: inset 0 0 200px rgba(0,0,0,0.8);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Clan-colored skyline effect */
+.skyline {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 300px;
+  background-image:
+    linear-gradient(to top, var(--tint, var(--primary-color)) -20%, transparent 60%);
+  background-size: 100%;
+  opacity: 0.15;
+  mix-blend-mode: screen;
+  pointer-events: none;
+  z-index: 0;
+  transition: --tint 0.5s ease;
+}
+
+/* --- Main Card Structure --- */
+.sheetCard {
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 2rem;
+  box-shadow: var(--shadow);
+  position: relative;
+  z-index: 1;
+}
+
+.sheetWide {
+  max-width: 100%; /* Allows it to take full width of .sheetPage */
+}
+
+.bleedEdge {
+  border-left: none;
+  border-right: none;
+  border-radius: 0;
+}
+
+.bleedSoft {
+  padding: 1.25rem;
+}
+
+.cardIsh {
+  background: var(--surface-lighter);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 1rem;
+}
+
+/* --- Typography & Sectioning --- */
+.cardTitle {
+  font-family: var(--font-title);
+  color: var(--primary-color);
+  margin-top: 0;
+  font-size: 2.25rem;
+  text-align: center;
+  letter-spacing: 1px;
+}
+
+.sectionTitle {
+  font-family: var(--font-title);
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.75rem;
+  margin: 2rem 0;
+  font-weight: 700;
+}
+
+.sectionSub {
+  font-family: var(--font-title);
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+  color: var(--text-muted);
+}
+
+.muted {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.smallFlavor {
+  font-style: italic;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+/* --- Interactive Elements: Buttons & Inputs --- */
+.cta {
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+.cta:hover:not(:disabled) {
+  background-color: var(--primary-hover);
+  transform: translateY(-2px);
+}
+.cta:disabled {
+  background-color: #444;
+  color: #888;
+  cursor: not-allowed;
+}
+
+.ghostBtn {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+.ghostBtn:hover:not(:disabled) {
+  background-color: var(--surface-lighter);
+  color: var(--text-color);
+  border-color: var(--primary-color);
+}
+.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Custom Checkbox & Radio (scoped under sheetRoot) */
+.sheetRoot input[type="checkbox"],
+.sheetRoot input[type="radio"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  width: 1.25em;
+  height: 1.25em;
+  border: 2px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--bg-color);
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+.sheetRoot input[type="radio"] { border-radius: 50%; }
+.sheetRoot input[type="checkbox"]:checked,
+.sheetRoot input[type="radio"]:checked {
+  background-color: var(--primary-color);
+  border-color: var(--primary-hover);
+}
+.sheetRoot input[type="checkbox"]:checked::after {
+  content: '✔';
+  position: absolute;
+  color: white;
+  font-size: 1em;
+  top: -0.1em;
+  left: 0.15em;
+}
+.sheetRoot input[type="radio"]:checked::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 0.6em; height: 0.6em;
+  border-radius: 50%;
+  background: white;
+}
+.sheetRoot input[type="checkbox"]:disabled,
+.sheetRoot input[type="radio"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Inputs */
+.input,
+.sheetRoot select,
+.sheetRoot textarea {
+  width: 100%;
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  color: var(--text-color);
+  font-family: var(--font-body);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.input:focus,
+.sheetRoot select:focus,
+.sheetRoot textarea:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(138, 15, 26, 0.5);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.fieldLabel {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+/* --- Layout Grids --- */
+.grid2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+.grid3 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+.attrSkillGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+/* --- Stepper --- */
+.stepper {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 2rem 0;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+.step {
+  background: var(--surface-lighter);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+}
+.num {
+  display: inline-block;
+  width: 1.25rem;
+  height: 1.25rem;
+  line-height: 1.25rem;
+  border-radius: 50%;
+  background: var(--border-color);
+  color: var(--bg-color);
+  margin-right: 0.5rem;
+  font-weight: bold;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+.done { color: var(--text-color); }
+.done .num { background: var(--text-muted); }
+.active {
+  color: white;
+  background: var(--primary-color);
+  border-color: var(--primary-hover);
+}
+.active .num {
+  background: white;
+  color: var(--primary-color);
+}
+
+/* --- Clan Picker --- */
+.clanGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}
+.clanCard {
+  position: relative;
+  border: 2px solid transparent;
+  border-radius: var(--radius);
+  color: white;
+  padding: 1rem;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+  overflow: hidden;
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.clanCard:hover {
+  transform: scale(1.03);
+  border-color: rgba(255,255,255,0.7);
+}
+.clanCard.active {
+  border-color: white;
+  box-shadow: 0 0 15px rgba(255,255,255,0.5);
+}
+.clanLogoWrap { width: 80px; flex-shrink: 0; }
+.clanLogo {
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.7));
+}
+.clanMeta { flex-grow: 1; }
+.clanName {
+  font-family: var(--font-title);
+  font-size: 1.5rem;
+}
+.clanBlurb {
+  font-size: 0.85rem;
+  opacity: 0.8;
+  margin-bottom: 0.5rem;
+}
+.clanDiscs {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  opacity: 0.9;
+}
+.clanTextLogo {
+  position: absolute;
+  bottom: -20px;
+  right: -10px;
+  opacity: 0.1;
+  width: 150px;
+  pointer-events: none;
+}
+.clanTextLogo img { width: 100%; }
+
+/* --- Discipline Cards --- */
+.discCard { transition: all 0.2s ease; }
+.discCard.picked {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(138, 15, 26, 0.5);
+}
+.favRow {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+}
+.beads { display: flex; gap: 4px; }
+.bead {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--border-color);
+  transition: background-color 0.3s;
+}
+.on { background: var(--primary-color); }
+
+/* --- Dot Controls (Attributes/Skills) --- */
+.dotControls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.dotControls button {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  line-height: 30px;
+  text-align: center;
+  font-size: 1.5rem;
+}
+.dotbox {
+  width: 40px;
+  height: 30px;
+  line-height: 30px;
+  text-align: center;
+  font-size: 1.2rem;
+  font-weight: bold;
+  border-radius: var(--radius);
+  background: var(--bg-color);
+}
+.vitae { color: var(--primary-color); }
+
+/* --- Quota Bar --- */
+.quotaBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  margin: 1.5rem 0;
+}
+.quotaHead { font-weight: 600; }
+.quotaPills { display: flex; gap: 0.5rem; }
+.pill {
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.8rem;
+  transition: all 0.3s ease;
+}
+.pill.done {
+  background: var(--primary-color);
+  border-color: var(--primary-hover);
+  color: white;
+}
+.pill b { margin-left: 0.25rem; font-weight: 600; }
+.quotaOk { color: #4caf50; font-weight: bold; }
+
+/* --- Misc --- */
+.flexRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+.navRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 2rem;
+  border-top: 1px solid var(--border-color);
+  padding-top: 1.5rem;
+}
+.alert {
+  background-color: #4d1a20;
+  border: 1px solid #882e3a;
+  color: #ffcdd2;
+  padding: 1rem;
+  border-radius: var(--radius);
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.alertDot {
+  width: 10px;
+  height: 10px;
+  background-color: var(--primary-hover);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.reviewCrest {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding: 1rem;
+}
+.reviewCrest img:first-child {
+  width: 100px;
+  filter: drop-shadow(0 0 10px var(--primary-color));
+}
+.reviewCrest img:last-child {
+  width: 200px;
+  opacity: 0.5;
+}
+
+.pkgCard {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+/* --- Scrollbars (scoped) --- */
+.sheetPage *::-webkit-scrollbar{ width:10px; height:10px; }
+.sheetPage *::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.12); border-radius:20px; border:2px solid rgba(0,0,0,.2); }
+.sheetPage *::-webkit-scrollbar-track{ background:rgba(255,255,255,.02); }
+
+/* --- Responsive tweaks --- */
+@media (max-width: 680px){
+  .sheetRoot { padding: 1.25rem .75rem; }
+  .attrSkillGrid { grid-template-columns: 1fr; }
+}

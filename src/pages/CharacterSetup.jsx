@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import api from '../api';
-import '../styles/Sheet.css';
+import styles from '../styles/Sheet.module.css';
 
 /* ---------- Config ---------- */
 const CLANS = [
@@ -70,7 +70,7 @@ const CLAN_DISCIPLINES = {
   'Thin-blood': ['Thin-blood Alchemy']
 };
 
-// Attributes / Skills / Predator Types
+// Attributes / Skills
 const ATTRS = {
   Physical: ['Strength','Dexterity','Stamina'],
   Social:   ['Charisma','Manipulation','Composure'],
@@ -81,33 +81,300 @@ const SKILLS = {
   Social:   ['Animal Ken','Etiquette','Insight','Intimidation','Leadership','Performance','Persuasion','Streetwise','Subterfuge'],
   Mental:   ['Academics','Awareness','Finance','Investigation','Medicine','Occult','Politics','Science','Technology'],
 };
-const PREDATOR_TYPES = [
-  'Alleycat','Sandman','Siren','Osiris','Farmer','Bagger','Scene Queen','Consensualist','Extortionist','Blood Leech',
+
+// --- Predator Types (with choices & effects) ---
+const PREDATORS = {
+  Alleycat: {
+    desc: 'Violent taker. Feeds by force, intimidation, or ambush.',
+    rolls: 'Strength + Brawl • Wits + Streetwise',
+    picks: {
+      specialty: ['Intimidation (Stickups)','Brawl (Grappling)'],
+      discipline: () => ['Celerity','Potence'],
+    },
+    effects: {
+      humanity: -1,
+      backgrounds: [{ name:'Contacts (Criminals)', dots:3 }],
+    },
+  },
+
+  Bagger: {
+    desc: 'Feeds from bags/corpses via Iron Gullet; hospitals/black market.',
+    rolls: 'Intelligence + Streetwise',
+    restrict: (sheet) => sheet.clan === 'Ventrue' ? 'Ventrue cannot pick Bagger' : null,
+    picks: {
+      specialty: ['Larceny (Lock Picking)','Streetwise (Black Market)'],
+      discipline: (clan) => {
+        const opts = ['Obfuscate'];
+        if (clan==='Tremere' || clan==='Banu Haqim') opts.unshift('Blood Sorcery');
+        if (clan==='Hecata') opts.unshift('Oblivion');
+        return opts;
+      },
+    },
+    effects: {
+      merits: [{ name:'Iron Gullet', dots:3 }],
+      flaws: [{ name:'Enemy', dots:2 }],
+    },
+  },
+
+  'Blood Leech': {
+    desc: 'Feeds on Kindred (taboo); coercion or ambush.',
+    rolls: '— (not abstracted)',
+    picks: {
+      specialty: ['Brawl (Kindred)','Stealth (Against Kindred)'],
+      discipline: () => ['Celerity','Protean'],
+      flawChoice: ['Dark Secret: Diablerist (••)','Shunned (••)'],
+    },
+    effects: {
+      humanity: -1,
+      bloodPotency: +1,
+      feedingFlaws: [{ name:'Prey Exclusion (Mortals)', dots:2 }],
+    },
+  },
+
+  Cleaver: {
+    desc: 'Feeds from close ties/family; covert and risky.',
+    rolls: 'Manipulation + Subterfuge',
+    picks: {
+      specialty: ['Persuasion (Gaslighting)','Subterfuge (Coverups)'],
+      discipline: () => ['Dominate','Animalism'],
+    },
+    effects: {
+      flaws: [{ name:'Dark Secret: Cleaver', dots:1 }],
+      backgrounds: [{ name:'Herd', dots:2 }],
+    },
+  },
+
+  Consensualist: {
+    desc: 'Feeds with consent (drive/kink/confession).',
+    rolls: 'Manipulation + Persuasion',
+    picks: {
+      specialty: ['Medicine (Phlebotomy)','Persuasion (Vessels)'],
+      discipline: () => ['Auspex','Fortitude'],
+    },
+    effects: {
+      humanity: +1,
+      flaws: [
+        { name:'Dark Secret: Masquerade Breacher', dots:1 },
+        { name:'Feeding Flaw: Prey Exclusion (Non-consenting)', dots:1 },
+      ],
+    },
+  },
+
+  Farmer: {
+    desc: 'Feeds from animals only; difficult hunger.',
+    rolls: 'Composure + Animal Ken',
+    restrict: (sheet) => {
+      if (sheet.clan==='Ventrue') return 'Ventrue cannot pick Farmer';
+      if ((sheet.bloodPotency ?? 1) >= 3) return 'Farmer requires Blood Potency < 3';
+      return null;
+    },
+    picks: {
+      specialty: ['Animal Ken (specific animal)','Survival (Hunting)'],
+      discipline: () => ['Animalism','Protean'],
+    },
+    effects: {
+      humanity: +1,
+      feedingFlaws: [{ name:'Feeding Flaw: Farmer', dots:2 }],
+    },
+  },
+
+  Osiris: {
+    desc: 'Celebrity/cult leader feeding from fans.',
+    rolls: 'Manipulation + Subterfuge or Intimidation (+ Fame)',
+    picks: {
+      specialty: ['Occult (specific tradition)','Performance (specific field)'],
+      discipline: (clan) => {
+        const opts = ['Presence'];
+        if (clan==='Tremere' || clan==='Banu Haqim') opts.unshift('Blood Sorcery');
+        return opts;
+      },
+      backgroundPool: [{ total:3, options:['Fame','Herd'] }],
+      flawPool: [{ total:2, options:['Enemies','Mythic Flaws'] }],
+    },
+    effects: {},
+  },
+
+  Sandman: {
+    desc: 'Feeds on sleeping victims; stealthy break-ins.',
+    rolls: 'Dexterity + Stealth',
+    picks: {
+      specialty: ['Medicine (Anesthetics)','Stealth (Break-in)'],
+      discipline: () => ['Auspex','Obfuscate'],
+    },
+    effects: {
+      backgrounds: [{ name:'Resources', dots:1 }],
+    },
+  },
+
+  'Scene Queen': {
+    desc: 'Subculture darling; adored inside, disliked outside.',
+    rolls: 'Manipulation + Persuasion',
+    picks: {
+      specialty: [
+        'Etiquette (specific scene)',
+        'Leadership (specific scene)',
+        'Streetwise (specific scene)',
+      ],
+      discipline: () => ['Dominate','Potence'],
+      flawChoice: [
+        'Influence Flaw: Disliked (•)',
+        'Feeding Flaw: Prey Exclusion (different subculture)',
+      ],
+    },
+    effects: {
+      backgrounds: [{ name:'Fame', dots:1 },{ name:'Contacts', dots:1 }],
+    },
+  },
+
+  Siren: {
+    desc: 'Feeding through seduction & sex.',
+    rolls: 'Charisma + Subterfuge',
+    picks: {
+      specialty: ['Persuasion (Seduction)','Subterfuge (Seduction)'],
+      discipline: () => ['Fortitude','Presence'],
+    },
+    effects: {
+      merits: [{ name:'Looks: Beautiful', dots:2 }],
+      flaws: [{ name:'Enemy (spurned lover/jealous partner)', dots:1 }],
+    },
+  },
+
+  Extortionist: {
+    desc: '“Protection” racket; blood for services.',
+    rolls: 'Strength/Manipulation + Intimidation',
+    picks: {
+      specialty: ['Intimidation (Coercion)','Larceny (Security)'],
+      discipline: () => ['Dominate','Potence'],
+      backgroundPool: [{ total:3, options:['Contacts','Resources'] }],
+    },
+    effects: {
+      flaws: [{ name:'Enemy (Police or escaped victim)', dots:2 }],
+    },
+  },
+
+  Graverobber: {
+    desc: 'Cults of the Blood God. Blood from corpses/mourners.',
+    rolls: 'Resolve + Medicine • Manipulation + Insight',
+    picks: {
+      specialty: ['Occult (Grave Rituals)','Medicine (Cadavers)'],
+      discipline: () => ['Fortitude','Oblivion'],
+    },
+    effects: {
+      merits: [{ name:'Iron Gullet', dots:3 }],
+      backgrounds: [{ name:'Haven', dots:1 }],
+      feedingFlaws: [{ name:'Herd Flaw: Obvious Predator', dots:2 }],
+    },
+  },
+
+  'Roadside Killer': {
+    desc: 'Let the Streets Run Red. Hunts travelers along roads.',
+    rolls: 'Dex/Cha + Drive',
+    picks: {
+      specialty: ['Survival (the road)','Investigation (vampire cant)'],
+      discipline: () => ['Fortitude','Protean'],
+    },
+    effects: {
+      backgrounds: [{ name:'Herd (migrating)', dots:2 }],
+      feedingFlaws: [{ name:'Prey Exclusion (locals)', dots:1 }],
+    },
+  },
+
+  'Grim Reaper': {
+    desc: 'Hospice/assisted living feeding; taste for diseases.',
+    rolls: 'Intelligence + Awareness/Medicine',
+    picks: {
+      specialty: ['Awareness (Death)','Larceny (Forgery)'],
+      discipline: () => ['Auspex','Oblivion'],
+      backgroundChoice: ['Allies (Medical)','Influence (Medical)'],
+    },
+    effects: {
+      humanity: +1,
+      feedingFlaws: [{ name:'Prey Exclusion (Healthy Mortals)', dots:1 }],
+    },
+  },
+
+  Montero: {
+    desc: 'Aristocratic hunt with retainers; long cons & stakeouts.',
+    rolls: 'Int + Stealth • Resolve + Stealth',
+    picks: {
+      specialty: ['Leadership (Hunting Pack)','Stealth (Stakeout)'],
+      discipline: () => ['Dominate','Obfuscate'],
+    },
+    effects: {
+      backgrounds: [{ name:'Retainers', dots:2 }],
+      humanity: -1,
+    },
+  },
+
+  Pursuer: {
+    desc: 'Stalks victims, profiles, and strikes at the right time.',
+    rolls: 'Int + Investigation • Stamina + Stealth',
+    picks: {
+      specialty: ['Investigation (Profiling)','Stealth (Shadowing)'],
+      discipline: () => ['Animalism','Auspex'],
+    },
+    effects: {
+      merits: [{ name:'Bloodhound', dots:1 }],
+      backgrounds: [{ name:'Contacts (local underbelly)', dots:1 }],
+      humanity: -1,
+    },
+  },
+
+  Trapdoor: {
+    desc: 'Lures prey into a lair/den and feeds there.',
+    rolls: 'Cha + Stealth • Dex + Stealth • Wits + Awareness + Haven',
+    picks: {
+      specialty: ['Persuasion (Marketing)','Stealth (Ambushes or Traps)'],
+      discipline: () => ['Protean','Obfuscate'],
+      backgroundChoice: ['Retainers +1','Herd +1','Haven +1 (second dot)'],
+      havenFlawChoice: ['Haven Flaw: Creepy (•)','Haven Flaw: Haunted (•)'],
+    },
+    effects: {
+      backgrounds: [{ name:'Haven', dots:1 }],
+    },
+  },
+
+  'Tithe Collector': {
+    desc: 'Kindred pay tribute in vessels; authority & domain.',
+    rolls: '—',
+    picks: {
+      specialty: ['Intimidation (Kindred)','Leadership (Kindred)'],
+      discipline: () => ['Dominate','Presence'],
+      backgroundPool: [{ total:3, options:['Domain','Status'] }],
+    },
+    effects: {
+      flaws: [{ name:'Adversary', dots:2 }],
+    },
+  },
+};
+
+// Render order for predators
+const PREDATOR_NAMES = [
+  'Alleycat','Bagger','Blood Leech','Cleaver','Consensualist','Farmer','Osiris','Sandman',
+  'Scene Queen','Siren','Extortionist','Graverobber','Roadside Killer','Grim Reaper',
+  'Montero','Pursuer','Trapdoor','Tithe Collector'
 ];
 
 // V5-ish rules applied as requested
 const RULES = {
   attributes: {
     min: 1, max: 4,
+    // exactly: 1× at 1, 4× at 2, 3× at 3, 1× at 4
     pattern: { 1:1, 2:4, 3:3, 4:1 }
   },
+  // Skills packages
   skillPackages: {
     'Jack of All Trades': { '3':1, '2':8, '1':10, max:4 },
     'Balanced':           { '3':3, '2':5, '1':7,  max:4 },
     'Specialist':         { '4':1, '3':3, '2':3, '1':3, max:4 },
   },
-  disciplines: { twoPick: true },
+  disciplines: { twoPick: true }, // 2 chosen: one counts as 2, one as 1
   advantages: { meritsBudget: 7, minFlaws: 2 },
   humanity: 7, bloodPotency: 1
 };
 
 /* ---------- Utils ---------- */
 const flat = (obj) => Object.values(obj).flat();
-const countValues = (arrOrObj) => {
-  const counts = {};
-  Object.values(arrOrObj).forEach(v => { counts[v] = (counts[v]||0)+1; });
-  return counts;
-};
 
 /* ---------- Component ---------- */
 export default function CharacterSetup({ onDone }) {
@@ -129,7 +396,24 @@ export default function CharacterSetup({ onDone }) {
 
   // Sire & Predator
   const [sire, setSire] = useState('');
-  const [predatorType, setPredatorType] = useState(PREDATOR_TYPES[0]);
+  const [predatorType, setPredatorType] = useState('Alleycat');
+  const [predatorPicks, setPredatorPicks] = useState({
+    specialty: '',
+    discipline: '',
+    flawChoice: '',
+    backgroundChoice: '',
+    havenFlawChoice: '',
+    pools: {}, // e.g. { 'Pool-0-3': { Fame:2, Herd:1 } }
+  });
+  const updatePool = (poolKey, option, value) => {
+    setPredatorPicks(p => ({
+      ...p,
+      pools: {
+        ...p.pools,
+        [poolKey]: { ...(p.pools?.[poolKey]||{}), [option]: Math.max(0, Number(value)||0) }
+      }
+    }));
+  };
 
   // Attributes
   const baseAttrs = useMemo(() => {
@@ -145,7 +429,7 @@ export default function CharacterSetup({ onDone }) {
   const [skillPackage, setSkillPackage] = useState('Balanced');
   const [specialties, setSpecialties] = useState(['']);
 
-  // Disciplines
+  // Disciplines selection (2 picks, one favored at 2)
   const [selectedDiscs, setSelectedDiscs] = useState([]);
   const [favoredDisc, setFavoredDisc] = useState(null);
   const derivedDisciplineDots = useMemo(() => {
@@ -181,7 +465,6 @@ export default function CharacterSetup({ onDone }) {
     if (v >= RULES.attributes.max) return false;
     const next = v + 1;
     const req = RULES.attributes.pattern;
-    // don’t allow increasing to a tier that is already full
     if ((attrCounts[next] || 0) >= (req[next] || 0)) return false;
     return true;
   };
@@ -189,7 +472,6 @@ export default function CharacterSetup({ onDone }) {
     const v = attrDots[k] ?? RULES.attributes.min;
     if (v <= RULES.attributes.min) return false;
     const req = RULES.attributes.pattern;
-    // don’t allow decreasing a tier below its required minimum
     if ((attrCounts[v] || 0) <= (req[v] || 0)) return false;
     return true;
   };
@@ -209,21 +491,20 @@ export default function CharacterSetup({ onDone }) {
       const have = Number(skillCounts[Number(dot)] || 0);
       out[dot] = Math.max(0, need - have);
     });
-    return out; // { '1': n, '2': n, '3': n, '4': n }
+    return out;
   }, [skillReq, skillCounts]);
 
   const canIncSkill = (k) => {
     const v = skillDots[k] || 0;
     const next = v + 1;
     if (next > (skillReq.max || 5)) return false;
-    // next dot must be part of the package quota and still available
     if (!(String(next) in skillReq)) return false;
     if ((skillCounts[next] || 0) >= (skillReq[String(next)] || 0)) return false;
     return true;
   };
   const canDecSkill = (k) => {
     const v = skillDots[k] || 0;
-    return v > 0; // allow reallocation freely down to 0
+    return v > 0;
   };
 
   /* ---------- Handlers ---------- */
@@ -262,12 +543,11 @@ export default function CharacterSetup({ onDone }) {
     const req = RULES.attributes.pattern;
     return [1,2,3,4].every(k => (attrCounts[k] || 0) === (req[k]||0));
   }, [attrCounts]);
+
   const skillOk = useMemo(() => {
-    // exact match to selected package
     const req = RULES.skillPackages[skillPackage];
     const dotKeys = Object.keys(req).filter(k => k !== 'max');
     const exact = dotKeys.every(dot => (skillCounts[Number(dot)] || 0) === req[dot]);
-    // and nothing over max
     const maxOk = Object.values(skillDots).every(v => v <= req.max);
     return exact && maxOk;
   }, [skillCounts, skillDots, skillPackage]);
@@ -277,13 +557,36 @@ export default function CharacterSetup({ onDone }) {
     [selectedDiscs, favoredDisc]
   );
 
+  // Predator selections validation
+  const predatorOk = useMemo(() => {
+    const P = PREDATORS[predatorType] || {};
+    const restrictMsg = P.restrict ? P.restrict({ clan, bloodPotency }) : null;
+    if (restrictMsg) return false;
+    if (P.picks?.specialty && !predatorPicks.specialty) return false;
+    if (P.picks?.discipline && !predatorPicks.discipline) return false;
+    if (P.picks?.flawChoice && !predatorPicks.flawChoice) return false;
+    if (P.picks?.backgroundChoice && !predatorPicks.backgroundChoice) return false;
+    if (P.picks?.havenFlawChoice && !predatorPicks.havenFlawChoice) return false;
+    // pools exact sum
+    const pools = [...(P.picks?.backgroundPool||[]), ...(P.picks?.flawPool||[])];
+    for (let i=0;i<pools.length;i++){
+      const kind = i < (P.picks?.backgroundPool||[]).length ? 'Pool' : 'FlawPool';
+      const key = `${kind}-${i}-${pools[i].total}`;
+      const target = pools[i].total;
+      const vals = predatorPicks.pools?.[key] || {};
+      const sum = Object.values(vals).reduce((a,b)=>a+(Number(b)||0),0);
+      if (sum !== target) return false;
+    }
+    return true;
+  }, [predatorType, predatorPicks, clan, bloodPotency]);
+
   const meritsSpent = merits.reduce((a,m)=>a+(Number(m.dots)||0),0);
   const flawsTaken = flaws.reduce((a,f)=>a+(Number(f.dots)||0),0);
   const advOk = meritsSpent <= RULES.advantages.meritsBudget && flawsTaken >= RULES.advantages.minFlaws;
 
   const canSubmit = () =>
     name.trim().length && clan &&
-    attrOk && skillOk && discOk &&
+    attrOk && skillOk && discOk && predatorOk &&
     advOk && humanity >= 1 && humanity <= 10;
 
   const save = async () => {
@@ -291,7 +594,13 @@ export default function CharacterSetup({ onDone }) {
     try {
       const payload = {
         name, concept, chronicle, ambition, desire,
-        clan, sire, predatorType,
+        clan, sire,
+        predator: {
+          type: predatorType,
+          picks: predatorPicks,
+          suggestedEffects: PREDATORS[predatorType]?.effects || {}
+        },
+        predatorType, // keep legacy field if API expects it
         attributes: attrDots,
         skills: skillDots,
         specialties: specialties.filter(Boolean),
@@ -309,393 +618,559 @@ export default function CharacterSetup({ onDone }) {
 
   if (existing) {
     return (
-      <div className="sheet-card">
-        <h3 className="card-title">Your Character</h3>
+      <div className={styles.sheetCard}>
+        <h3 className={styles.cardTitle}>Your Character</h3>
         <p>Character: <b>{existing.name}</b> ({existing.clan})</p>
       </div>
     );
   }
 
   const tint = clan ? CLAN_COLORS[clan][0] : '#8a0f1a';
+  const currentPred = PREDATORS[predatorType] || {};
 
   return (
-    <div className="sheet-page" data-clan={clan || '—'}>
-      <div className="vignette" aria-hidden="true" />
-      <div className="skyline" style={{'--tint': tint}} aria-hidden="true" />
-      <div className="sheet-card sheet-wide bleed-edge">
-        <h2 className="card-title">Create Your Character</h2>
-        {err && <div className="alert"><span className="alert-dot" />{err}</div>}
+    <div className={styles.sheetRoot}>
+      <div className={styles.sheetPage} data-clan={clan || '—'}>
+        <div className={styles.vignette} aria-hidden="true" />
+        <div className={styles.skyline} style={{'--tint': tint}} aria-hidden="true" />
+        <div className={`${styles.sheetCard} ${styles.sheetWide} ${styles.bleedEdge}`}>
+          <h2 className={styles.cardTitle}>Create Your Character</h2>
+          {err && <div className={styles.alert}><span className={styles.alertDot} />{err}</div>}
 
-        <Stepper step={step} setStep={setStep} labels={['Clan','Identity','Predator & Disciplines','Attributes','Skills','Advantages','Morality','Review']} />
+          <Stepper
+            step={step}
+            setStep={setStep}
+            labels={['Clan','Identity','Predator & Disciplines','Attributes','Skills','Advantages','Morality','Review']}
+          />
 
-        {/* STEP 1: Clan Picker */}
-        {step === 1 && (
-          <section>
-            <h3 className="section-title">Choose Your Clan</h3>
-            <p className="muted small-flavor">Blood remembers. Choose the lineage that will shape your curse.</p>
-            <div className="clan-grid">
-              {CLANS.map(c => {
-                const active = clan === c;
-                return (
-                  <button
-                    key={c}
-                    type="button"
-                    className={`clan-card ${active ? 'active' : ''}`}
-                    style={{ background: `linear-gradient(180deg, ${CLAN_COLORS[c][0]}, ${CLAN_COLORS[c][1]})` }}
-                    onClick={()=>setClan(c)}
-                    title={CLAN_BLURBS[c]}
-                  >
-                    <div className="clan-logo-wrap">
-                      <img src={symlogo(c)} alt={`${c} symbol`} className="clan-logo" />
-                    </div>
-                    <div className="clan-meta">
-                      <div className="clan-name">{c}</div>
-                      <div className="clan-blurb">{CLAN_BLURBS[c]}</div>
-                      <div className="clan-discs">{(CLAN_DISCIPLINES[c]||[]).join(' • ')}</div>
-
-                      {active && (
-                        <div className="clan-text-logo">
-                          <img src={textlogo(c)} alt={`${c} text logo`} />
-                        </div>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="nav-row">
-              <span />
-              <button className="cta" type="button" disabled={!clan} onClick={()=>setStep(2)}>Next</button>
-            </div>
-          </section>
-        )}
-
-        {/* STEP 2: Identity */}
-        {step === 2 && (
-          <section>
-            <h3 className="section-title">Identity</h3>
-            <p className="muted small-flavor">A mask for the living, a name for the dead. Etch who you were—and what you seek.</p>
-            <div className="grid-2">
-              <Field label="Name">
-                <input className="input" value={name} onChange={e=>setName(e.target.value)}
-                  placeholder="e.g., Telemachos Daskalakis" required />
-              </Field>
-              <Field label="Chronicle">
-                <input className="input" value={chronicle} onChange={e=>setChronicle(e.target.value)}
-                  placeholder="Erebus Eternal — Athens Court" />
-              </Field>
-              <Field label="Concept">
-                <input className="input" value={concept} onChange={e=>setConcept(e.target.value)}
-                  placeholder="Haunted Prince • Fixer • Street Artist • Dragonborn whisperer…" />
-              </Field>
-              <Field label="Ambition (long-term)">
-                <input className="input" value={ambition} onChange={e=>setAmbition(e.target.value)}
-                  placeholder="Rule a district, master Oblivion, redeem a name…" />
-              </Field>
-              <Field label="Desire (short-term)">
-                <input className="input" value={desire} onChange={e=>setDesire(e.target.value)}
-                  placeholder="Tonight’s hunger: a relic, a secret, a rival’s ruin…" />
-              </Field>
-              <Field label="Sire (the Story theller will tell you)">
-                <input className="input" value={sire} onChange={e=>setSire(e.target.value)} placeholder="Leave blank for now" />
-              </Field>
-            </div>
-            <div className="nav-row">
-              <button className="ghost-btn" type="button" onClick={()=>setStep(1)}>Back</button>
-              <button className="cta" type="button" onClick={()=>setStep(3)}>Next</button>
-            </div>
-          </section>
-        )}
-
-        {/* STEP 3: Predator & Disciplines */}
-        {step === 3 && (
-          <section>
-            <h3 className="section-title">Predator & Disciplines</h3>
-            <p className="muted small-flavor">How you hunt, how you thrive. Choose your habits; choose your gifts.</p>
-            <div className="grid-2">
-              <Field label="Predator Type">
-                <select className="input" value={predatorType} onChange={e=>setPredatorType(e.target.value)}>
-                  {PREDATOR_TYPES.map(p => <option key={p}>{p}</option>)}
-                </select>
-              </Field>
-              <Field label="Clan Disciplines">
-                <div className="muted">{(clanDiscs||[]).join(' • ')}</div>
-              </Field>
-            </div>
-
-            <p className="muted" style={{marginTop:8}}>
-              Select <b>two</b> of your clan Disciplines. Choose which one starts at <b>2 dots</b>; the other will start at <b>1 dot</b>.
-            </p>
-
-            <div className="grid-3">
-              {(clanDiscs.includes('Choose Any')
-                ? [...new Set(Object.values(CLAN_DISCIPLINES).flat())]
-                : clanDiscs
-              ).map(d => {
-                const picked = selectedDiscs.includes(d);
-                return (
-                  <div key={d} className={`card-ish disc-card ${picked ? 'picked' : ''}`}>
-                    <label className="flex-row" style={{justifyContent:'space-between'}}>
-                      <span>{d}</span>
-                      <input type="checkbox" checked={picked} onChange={()=>toggleDisc(d)} />
-                    </label>
-                    <div className="fav-row">
-                      <label className="flex-row" style={{justifyContent:'space-between', opacity: picked ? 1 : .5}}>
-                        <span>Make this the 2-dot Discipline</span>
-                        <input
-                          type="radio"
-                          name="favoredDisc"
-                          disabled={!picked}
-                          checked={favoredDisc === d}
-                          onChange={()=>setFavoredDisc(d)}
-                        />
-                      </label>
-                      <div className="beads">
-                        <span className={`bead ${favoredDisc===d ? 'on' : ''}`} />
-                        <span className={`bead ${picked ? 'on' : ''}`} />
+          {/* STEP 1: Clan Picker */}
+          {step === 1 && (
+            <section>
+              <h3 className={styles.sectionTitle}>Choose Your Clan</h3>
+              <p className={`${styles.muted} ${styles.smallFlavor}`}>
+                Blood remembers. Choose the lineage that will shape your curse.
+              </p>
+              <div className={styles.clanGrid}>
+                {CLANS.map(c => {
+                  const active = clan === c;
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      className={`${styles.clanCard} ${active ? styles.active : ''}`}
+                      style={{ background: `linear-gradient(180deg, ${CLAN_COLORS[c][0]}, ${CLAN_COLORS[c][1]})` }}
+                      onClick={()=>setClan(c)}
+                      title={CLAN_BLURBS[c]}
+                    >
+                      <div className={styles.clanLogoWrap}>
+                        <img src={symlogo(c)} alt={`${c} symbol`} className={styles.clanLogo} />
                       </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                      <div className={styles.clanMeta}>
+                        <div className={styles.clanName}>{c}</div>
+                        <div className={styles.clanBlurb}>{CLAN_BLURBS[c]}</div>
+                        <div className={styles.clanDiscs}>{(CLAN_DISCIPLINES[c]||[]).join(' • ')}</div>
+                        {active && (
+                          <div className={styles.clanTextLogo}>
+                            <img src={textlogo(c)} alt={`${c} text logo`} />
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className={styles.navRow}>
+                <span />
+                <button className={styles.cta} type="button" disabled={!clan} onClick={()=>setStep(2)}>Next</button>
+              </div>
+            </section>
+          )}
 
-            <p className="muted">Selection: {selectedDiscs.join(' & ') || '—'} {discOk ? '✅' : '❌'}</p>
-            <div className="nav-row">
-              <button className="ghost-btn" type="button" onClick={()=>setStep(2)}>Back</button>
-              <button className="cta" type="button" onClick={()=>setStep(4)} disabled={!discOk}>Next</button>
-            </div>
-          </section>
-        )}
+          {/* STEP 2: Identity */}
+          {step === 2 && (
+            <section>
+              <h3 className={styles.sectionTitle}>Identity</h3>
+              <p className={`${styles.muted} ${styles.smallFlavor}`}>
+                A mask for the living, a name for the dead. Etch who you were—and what you seek.
+              </p>
+              <div className={styles.grid2}>
+                <Field label="Name">
+                  <input className={styles.input} value={name} onChange={e=>setName(e.target.value)}
+                    placeholder="e.g., Telemachos Daskalakis" required />
+                </Field>
+                <Field label="Chronicle">
+                  <input className={styles.input} value={chronicle} onChange={e=>setChronicle(e.target.value)}
+                    placeholder="Athens Thought-Time (S1)" />
+                </Field>
+                <Field label="Concept">
+                  <input className={styles.input} value={concept} onChange={e=>setConcept(e.target.value)}
+                    placeholder="Haunted Prince • Fixer • Street Artist…" />
+                </Field>
+                <Field label="Ambition (long-term)">
+                  <input className={styles.input} value={ambition} onChange={e=>setAmbition(e.target.value)}
+                    placeholder="Rule a district, master Oblivion, redeem a name…" />
+                </Field>
+                <Field label="Desire (short-term)">
+                  <input className={styles.input} value={desire} onChange={e=>setDesire(e.target.value)}
+                    placeholder="Tonight’s hunger: a relic, a secret, a rival’s ruin…" />
+                </Field>
+                <Field label="Sire (the Story theller will tell you)">
+                  <input className={styles.input} value={sire} onChange={e=>setSire(e.target.value)} placeholder="Leave blank for now" />
+                </Field>
+              </div>
+              <div className={styles.navRow}>
+                <button className={styles.ghostBtn} type="button" onClick={()=>setStep(1)}>Back</button>
+                <button className={styles.cta} type="button" onClick={()=>setStep(3)}>Next</button>
+              </div>
+            </section>
+          )}
 
-        {/* STEP 4: Attributes */}
-        {step === 4 && (
-          <section>
-            <h3 className="section-title">Attributes</h3>
-            <p className="muted">
-              Pattern required: <b>1× at 1</b>, <b>4× at 2</b>, <b>3× at 3</b>, <b>1× at 4</b>.
-            </p>
+          {/* STEP 3: Predator & Disciplines */}
+          {step === 3 && (
+            <section>
+              <h3 className={styles.sectionTitle}>Predator & Disciplines</h3>
+              <p className={`${styles.muted} ${styles.smallFlavor}`}>
+                How you hunt, how you thrive. Choose your habits; choose your gifts.
+              </p>
 
-            <QuotaBar
-              label="Remaining"
-              quotas={{
-                1: Math.max(0, RULES.attributes.pattern[1] - (attrCounts[1]||0)),
-                2: Math.max(0, RULES.attributes.pattern[2] - (attrCounts[2]||0)),
-                3: Math.max(0, RULES.attributes.pattern[3] - (attrCounts[3]||0)),
-                4: Math.max(0, RULES.attributes.pattern[4] - (attrCounts[4]||0)),
-              }}
-            />
+              {/* Predator cards */}
+              <div className={styles.clanGrid}>
+                {PREDATOR_NAMES.map(p => {
+                  const P = PREDATORS[p];
+                  const active = predatorType === p;
+                  let restrictMsg = null;
+                  try {
+                    restrictMsg = P.restrict ? P.restrict({ clan, bloodPotency }) : null;
+                  } catch { /* noop */ }
+                  return (
+                    <button
+                      key={p}
+                      type="button"
+                      className={`${styles.clanCard} ${active ? styles.active : ''}`}
+                      style={{ background:'linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02))' }}
+                      onClick={()=>setPredatorType(p)}
+                      title={P.desc}
+                    >
+                      <div className={styles.clanMeta} style={{textAlign:'left'}}>
+                        <div className={styles.clanName}>{p}</div>
+                        <div className={styles.clanBlurb}>{P.desc}</div>
+                        {P.rolls && <div className={styles.clanDiscs}>{P.rolls}</div>}
+                        {restrictMsg && <div className={styles.alert} style={{marginTop:8}}><span className={styles.alertDot}/>{restrictMsg}</div>}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
 
-            <div className="attr-skill-grid">
-              {Object.entries(ATTRS).map(([group, list]) => (
-                <div key={group} className="card-ish bleed-soft">
-                  <h4>{group}</h4>
-                  {list.map(a => {
-                    const plusDisabled = !canIncAttr(a);
-                    const minusDisabled = !canDecAttr(a);
+              {/* Dynamic predator choices */}
+              <div className={styles.grid2} style={{marginTop:12}}>
+                {/* Specialty pick */}
+                {currentPred.picks?.specialty && (
+                  <Field label="Predator Specialty">
+                    <select
+                      className={styles.input}
+                      value={predatorPicks.specialty}
+                      onChange={e=>setPredatorPicks(s=>({...s, specialty:e.target.value}))}
+                    >
+                      <option value="">— choose —</option>
+                      {currentPred.picks.specialty.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                    </select>
+                  </Field>
+                )}
+
+                {/* Discipline pick */}
+                {(() => {
+                  const allowedDisc = (currentPred.picks?.discipline ? currentPred.picks.discipline(clan) : []) || [];
+                  return allowedDisc.length ? (
+                    <Field label="Predator Discipline Dot">
+                      <select
+                        className={styles.input}
+                        value={predatorPicks.discipline}
+                        onChange={e=>setPredatorPicks(s=>({...s, discipline:e.target.value}))}
+                      >
+                        <option value="">— choose —</option>
+                        {allowedDisc.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                      </select>
+                    </Field>
+                  ) : null;
+                })()}
+
+                {/* Single-choice picks */}
+                {currentPred.picks?.flawChoice && (
+                  <Field label="Pick a Flaw">
+                    <select
+                      className={styles.input}
+                      value={predatorPicks.flawChoice}
+                      onChange={e=>setPredatorPicks(s=>({...s, flawChoice:e.target.value}))}
+                    >
+                      <option value="">— choose —</option>
+                      {currentPred.picks.flawChoice.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                    </select>
+                  </Field>
+                )}
+
+                {currentPred.picks?.backgroundChoice && (
+                  <Field label="Pick a Background">
+                    <select
+                      className={styles.input}
+                      value={predatorPicks.backgroundChoice}
+                      onChange={e=>setPredatorPicks(s=>({...s, backgroundChoice:e.target.value}))}
+                    >
+                      <option value="">— choose —</option>
+                      {currentPred.picks.backgroundChoice.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                    </select>
+                  </Field>
+                )}
+
+                {currentPred.picks?.havenFlawChoice && (
+                  <Field label="Pick a Haven Flaw">
+                    <select
+                      className={styles.input}
+                      value={predatorPicks.havenFlawChoice}
+                      onChange={e=>setPredatorPicks(s=>({...s, havenFlawChoice:e.target.value}))}
+                    >
+                      <option value="">— choose —</option>
+                      {currentPred.picks.havenFlawChoice.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                    </select>
+                  </Field>
+                )}
+              </div>
+
+              {/* Pools (allocate dots) */}
+              {(currentPred.picks?.backgroundPool || currentPred.picks?.flawPool) && (
+                <div className={styles.cardIsh} style={{marginTop:12}}>
+                  <h4 className={styles.sectionSub}>Allocate Dots</h4>
+                  {(currentPred.picks.backgroundPool || []).map((pool, idx) => {
+                    const key = `Pool-${idx}-${pool.total}`;
+                    const values = predatorPicks.pools?.[key] || {};
+                    const remaining = pool.total - Object.values(values).reduce((a,b)=>a+(Number(b)||0),0);
                     return (
-                      <div key={a} className="flex-row">
-                        <span style={{minWidth:140}}>{a}</span>
-                        <div className="dot-controls">
-                          <button
-                            type="button"
-                            className={`ghost-btn ${minusDisabled?'disabled':''}`}
-                            disabled={minusDisabled}
-                            onClick={()=>incAttr(a,-1)}
-                          >−</button>
-                          <div className="dotbox vitae">{attrDots[a]}</div>
-                          <button
-                            type="button"
-                            className={`ghost-btn ${plusDisabled?'disabled':''}`}
-                            disabled={plusDisabled}
-                            onClick={()=>incAttr(a,1)}
-                          >+</button>
-                        </div>
+                      <div key={key} className={styles.flexRow} style={{alignItems:'center', gap:12, marginBottom:8}}>
+                        <span>Backgrounds ({pool.total} total):</span>
+                        {pool.options.map(opt => (
+                          <label key={opt} className={styles.flexRow} style={{gap:6}}>
+                            <span>{opt}</span>
+                            <input
+                              className={styles.input}
+                              type="number"
+                              min={0}
+                              value={values[opt] ?? 0}
+                              onChange={e=>updatePool(key, opt, e.target.value)}
+                              style={{width:70}}
+                            />
+                          </label>
+                        ))}
+                        <span className={styles.muted}>Remaining: {Math.max(0, remaining)}</span>
+                      </div>
+                    );
+                  })}
+                  {(currentPred.picks.flawPool || []).map((pool, idx) => {
+                    const key = `FlawPool-${idx}-${pool.total}`;
+                    const values = predatorPicks.pools?.[key] || {};
+                    const remaining = pool.total - Object.values(values).reduce((a,b)=>a+(Number(b)||0),0);
+                    return (
+                      <div key={key} className={styles.flexRow} style={{alignItems:'center', gap:12, marginBottom:8}}>
+                        <span>Flaws ({pool.total} total):</span>
+                        {pool.options.map(opt => (
+                          <label key={opt} className={styles.flexRow} style={{gap:6}}>
+                            <span>{opt}</span>
+                            <input
+                              className={styles.input}
+                              type="number"
+                              min={0}
+                              value={values[opt] ?? 0}
+                              onChange={e=>updatePool(key, opt, e.target.value)}
+                              style={{width:70}}
+                            />
+                          </label>
+                        ))}
+                        <span className={styles.muted}>Remaining: {Math.max(0, remaining)}</span>
                       </div>
                     );
                   })}
                 </div>
-              ))}
-            </div>
+              )}
 
-            <p className="muted">Validation: {attrOk ? '✅' : '❌'}</p>
-            <div className="nav-row">
-              <button className="ghost-btn" type="button" onClick={()=>setStep(3)}>Back</button>
-              <button className="cta" type="button" onClick={()=>setStep(5)} disabled={!attrOk}>Next</button>
-            </div>
-          </section>
-        )}
-
-        {/* STEP 5: Skills */}
-        {step === 5 && (
-          <section>
-            <h3 className="section-title">Skills</h3>
-            <p className="muted">Choose a distribution package, then allocate dots. Controls lock as each tier fills.</p>
-
-            <div className="grid-3">
-              <Field label="Distribution">
-                <select
-                  className="input"
-                  value={skillPackage}
-                  onChange={e=>{
-                    const pkg = e.target.value;
-                    setSkillPackage(pkg);
-                    // Optional: don’t reset user choices automatically; they can re-allocate.
-                  }}
-                >
-                  {Object.keys(RULES.skillPackages).map(k => <option key={k}>{k}</option>)}
-                </select>
-              </Field>
-
-              <div className="card-ish pkg-card">
-                <small className="muted">
-                  {Object.entries(RULES.skillPackages[skillPackage])
-                    .filter(([k])=>k!=='max')
-                    .sort((a,b)=>Number(b[0])-Number(a[0]))
-                    .map(([dots, n]) => `${n}× at ${dots}`).join(' • ')} (max {RULES.skillPackages[skillPackage].max})
-                </small>
+              {/* Clan disciplines selection */}
+              <h4 className={styles.sectionSub} style={{marginTop:16}}>Clan Discipline Dots</h4>
+              <p className={styles.muted}>
+                Select <b>two</b> clan Disciplines. Pick which starts at <b>2 dots</b>; the other at <b>1 dot</b>.
+              </p>
+              <div className={styles.grid3}>
+                {(clanDiscs.includes('Choose Any')
+                  ? [...new Set(Object.values(CLAN_DISCIPLINES).flat())]
+                  : clanDiscs
+                ).map(d => {
+                  const picked = selectedDiscs.includes(d);
+                  return (
+                    <div key={d} className={`${styles.cardIsh} ${styles.discCard} ${picked ? styles.picked : ''}`}>
+                      <label className={styles.flexRow} style={{justifyContent:'space-between'}}>
+                        <span>{d}</span>
+                        <input type="checkbox" checked={picked} onChange={()=>toggleDisc(d)} />
+                      </label>
+                      <div className={styles.favRow}>
+                        <label className={styles.flexRow} style={{justifyContent:'space-between', opacity: picked ? 1 : .5}}>
+                          <span>Make this the 2-dot Discipline</span>
+                          <input
+                            type="radio"
+                            name="favoredDisc"
+                            disabled={!picked}
+                            checked={favoredDisc === d}
+                            onChange={()=>setFavoredDisc(d)}
+                          />
+                        </label>
+                        <div className={styles.beads}>
+                          <span className={`${styles.bead} ${favoredDisc===d ? styles.on : ''}`} />
+                          <span className={`${styles.bead} ${picked ? styles.on : ''}`} />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
+
+              <p className={styles.muted}>
+                Predator selection: {predatorOk ? '✅' : '❌'} &nbsp;&nbsp; Discipline selection: {(selectedDiscs.length===2 && favoredDisc) ? '✅' : '❌'}
+              </p>
+              <div className={styles.navRow}>
+                <button className={styles.ghostBtn} type="button" onClick={()=>setStep(2)}>Back</button>
+                <button
+                  className={styles.cta}
+                  type="button"
+                  onClick={()=>setStep(4)}
+                  disabled={!predatorOk || !(selectedDiscs.length===2 && favoredDisc)}
+                >
+                  Next
+                </button>
+              </div>
+            </section>
+          )}
+
+          {/* STEP 4: Attributes */}
+          {step === 4 && (
+            <section>
+              <h3 className={styles.sectionTitle}>Attributes</h3>
+              <p className={styles.muted}>
+                Pattern required: <b>1× at 1</b>, <b>4× at 2</b>, <b>3× at 3</b>, <b>1× at 4</b>.
+              </p>
 
               <QuotaBar
-                label="Remaining Dots"
-                quotas={remainingSkillSlots}
+                label="Remaining"
+                quotas={{
+                  1: Math.max(0, RULES.attributes.pattern[1] - (attrCounts[1]||0)),
+                  2: Math.max(0, RULES.attributes.pattern[2] - (attrCounts[2]||0)),
+                  3: Math.max(0, RULES.attributes.pattern[3] - (attrCounts[3]||0)),
+                  4: Math.max(0, RULES.attributes.pattern[4] - (attrCounts[4]||0)),
+                }}
               />
-            </div>
 
-            <div className="attr-skill-grid">
-              {Object.entries(SKILLS).map(([group, list]) => (
-                <div key={group} className="card-ish bleed-soft">
-                  <h4>{group}</h4>
-                  {list.map(s => {
-                    const plusDisabled = !canIncSkill(s);
-                    const minusDisabled = !canDecSkill(s);
-                    return (
-                      <div key={s} className="flex-row">
-                        <span style={{minWidth:160}}>{s}</span>
-                        <div className="dot-controls">
-                          <button
-                            type="button"
-                            className={`ghost-btn ${minusDisabled?'disabled':''}`}
-                            disabled={minusDisabled}
-                            onClick={()=>incSkill(s,-1)}
-                          >−</button>
-                          <div className="dotbox vitae">{skillDots[s]}</div>
-                          <button
-                            type="button"
-                            className={`ghost-btn ${plusDisabled?'disabled':''}`}
-                            disabled={plusDisabled}
-                            onClick={()=>incSkill(s,1)}
-                          >+</button>
+              <div className={styles.attrSkillGrid}>
+                {Object.entries(ATTRS).map(([group, list]) => (
+                  <div key={group} className={`${styles.cardIsh} ${styles.bleedSoft}`}>
+                    <h4>{group}</h4>
+                    {list.map(a => {
+                      const plusDisabled = !canIncAttr(a);
+                      const minusDisabled = !canDecAttr(a);
+                      return (
+                        <div key={a} className={styles.flexRow}>
+                          <span style={{minWidth:140}}>{a}</span>
+                          <div className={styles.dotControls}>
+                            <button
+                              type="button"
+                              className={`${styles.ghostBtn} ${minusDisabled ? styles.disabled : ''}`}
+                              disabled={minusDisabled}
+                              onClick={()=>incAttr(a,-1)}
+                            >−</button>
+                            <div className={`${styles.dotbox} ${styles.vitae}`}>{attrDots[a]}</div>
+                            <button
+                              type="button"
+                              className={`${styles.ghostBtn} ${plusDisabled ? styles.disabled : ''}`}
+                              disabled={plusDisabled}
+                              onClick={()=>incAttr(a,1)}
+                            >+</button>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-
-            <h4 className="section-sub">Specialties</h4>
-            <SpecialtiesBlock
-              skillDots={skillDots}
-              specialties={specialties}
-              setSpecialties={setSpecialties}
-            />
-
-            <p className="muted">Validation: {skillOk ? '✅' : '❌'}</p>
-            <div className="nav-row">
-              <button className="ghost-btn" type="button" onClick={()=>setStep(4)}>Back</button>
-              <button className="cta" type="button" onClick={()=>setStep(6)} disabled={!skillOk}>Next</button>
-            </div>
-          </section>
-        )}
-
-        {/* STEP 6: Advantages */}
-        {step === 6 && (
-          <section>
-            <h3 className="section-title">Advantages (Merits & Flaws)</h3>
-            <p className="muted small-flavor">Every boon bears a price. Balance the ledger.</p>
-            <p className="muted">Spend up to {RULES.advantages.meritsBudget} Merit dots; take at least {RULES.advantages.minFlaws} Flaw dots.</p>
-            <AdvTable label="Merits" rows={merits} setRows={setMerits} cap={RULES.advantages.meritsBudget} />
-            <AdvTable label="Flaws" rows={flaws} setRows={setFlaws} />
-            <p className="muted">Validation: {advOk ? '✅' : '❌'}</p>
-            <div className="nav-row">
-              <button className="ghost-btn" type="button" onClick={()=>setStep(5)}>Back</button>
-              <button className="cta" type="button" onClick={()=>setStep(7)}>Next</button>
-            </div>
-          </section>
-        )}
-
-        {/* STEP 7: Morality */}
-        {step === 7 && (
-          <section>
-            <h3 className="section-title">Morality & Touchstones</h3>
-            <p className="muted small-flavor">Remember what keeps the Beast at bay.</p>
-            <div className="grid-2">
-              <Field label="Chronicle Tenets">
-                <textarea className="input" rows={3} value={tenets} onChange={e=>setTenets(e.target.value)} placeholder="List your chronicle’s tenets…" />
-              </Field>
-              <Field label="Humanity">
-                <input className="input" type="number" min={1} max={10} value={humanity} onChange={e=>setHumanity(Number(e.target.value)||RULES.humanity)} />
-              </Field>
-              <Field label="Convictions">
-                {convictions.map((c,i)=>(
-                  <div key={i} className="flex-row">
-                    <input className="input" value={c} onChange={e=>setConvictions(p=>p.map((x,idx)=>idx===i?e.target.value:x))} placeholder="e.g., Never harm children" />
-                    <button className="ghost-btn" type="button" onClick={()=>setConvictions(p=>p.filter((_,idx)=>idx!==i))}>Remove</button>
+                      );
+                    })}
                   </div>
                 ))}
-                <button className="ghost-btn" type="button" onClick={()=>setConvictions(p=>[...p,''])}>+ Add Conviction</button>
-              </Field>
-              <Field label="Touchstones">
-                {touchstones.map((t,i)=>(
-                  <div key={i} className="flex-row">
-                    <input className="input" value={t} onChange={e=>setTouchstones(p=>p.map((x,idx)=>idx===i?e.target.value:x))} placeholder="A mortal tied to a conviction" />
-                    <button className="ghost-btn" type="button" onClick={()=>setTouchstones(p=>p.filter((_,idx)=>idx!==i))}>Remove</button>
-                  </div>
-                ))}
-                <button className="ghost-btn" type="button" onClick={()=>setTouchstones(p=>[...p,''])}>+ Add Touchstone</button>
-              </Field>
-              <Field label="Blood Potency">
-                <input className="input" type="number" min={0} max={6} value={bloodPotency} onChange={e=>setBloodPotency(Number(e.target.value)||RULES.bloodPotency)} />
-              </Field>
-            </div>
-            <div className="nav-row">
-              <button className="ghost-btn" type="button" onClick={()=>setStep(6)}>Back</button>
-              <button className="cta" type="button" onClick={()=>setStep(8)}>Next</button>
-            </div>
-          </section>
-        )}
-
-        {/* STEP 8: Review */}
-        {step === 8 && (
-          <section>
-            <h3 className="section-title">Review & Save</h3>
-
-            {clan && (
-              <div className="card-ish review-crest">
-                <img src={symlogo(clan)} alt={`${clan} symbol`} />
-                <img src={textlogo(clan)} alt={`${clan} text logo`} />
               </div>
-            )}
 
-            <ul className="muted" style={{lineHeight:1.6}}>
-              <li><b>Name:</b> {name || '—'} <b>Clan:</b> {clan || '—'}</li>
-              <li><b>Concept:</b> {concept || '—'}  <b>Chronicle:</b> {chronicle}</li>
-              <li><b>Ambition:</b> {ambition || '—'}  <b>Desire:</b> {desire || '—'}</li>
-              <li><b>Sire:</b> {sire || '—'}  <b>Predator:</b> {predatorType}</li>
-              <li><b>Disciplines:</b> {Object.entries(derivedDisciplineDots).map(([k,v])=>`${k} ${'•'.repeat(v)}`).join(' , ') || '—'}</li>
-              <li><b>Attributes ok:</b> {attrOk ? '✅' : '❌'}  <b>Skills ok:</b> {skillOk ? '✅' : '❌'}</li>
-              <li><b>Merits/Flaws ok:</b> {advOk ? '✅' : '❌'}</li>
-            </ul>
+              <p className={styles.muted}>Validation: {attrOk ? '✅' : '❌'}</p>
+              <div className={styles.navRow}>
+                <button className={styles.ghostBtn} type="button" onClick={()=>setStep(3)}>Back</button>
+                <button className={styles.cta} type="button" onClick={()=>setStep(5)} disabled={!attrOk}>Next</button>
+              </div>
+            </section>
+          )}
 
-            <div className="nav-row">
-              <button className="ghost-btn" type="button" onClick={()=>setStep(1)}>Start Over</button>
-              <button className="cta" disabled={!canSubmit() || saving} onClick={save}>
-                {saving ? 'Saving…' : 'Save Character'}
-              </button>
-            </div>
-          </section>
-        )}
+          {/* STEP 5: Skills */}
+          {step === 5 && (
+            <section>
+              <h3 className={styles.sectionTitle}>Skills</h3>
+              <p className={styles.muted}>Choose a distribution package, then allocate dots. Controls lock as each tier fills.</p>
+
+              <div className={styles.grid3}>
+                <Field label="Distribution">
+                  <select
+                    className={styles.input}
+                    value={skillPackage}
+                    onChange={e=>setSkillPackage(e.target.value)}
+                  >
+                    {Object.keys(RULES.skillPackages).map(k => <option key={k}>{k}</option>)}
+                  </select>
+                </Field>
+
+                <div className={`${styles.cardIsh} ${styles.pkgCard}`}>
+                  <small className={styles.muted}>
+                    {Object.entries(RULES.skillPackages[skillPackage])
+                      .filter(([k])=>k!=='max')
+                      .sort((a,b)=>Number(b[0])-Number(a[0]))
+                      .map(([dots, n]) => `${n}× at ${dots}`).join(' • ')} (max {RULES.skillPackages[skillPackage].max})
+                  </small>
+                </div>
+
+                <QuotaBar
+                  label="Remaining Dots"
+                  quotas={remainingSkillSlots}
+                />
+              </div>
+
+              <div className={styles.attrSkillGrid}>
+                {Object.entries(SKILLS).map(([group, list]) => (
+                  <div key={group} className={`${styles.cardIsh} ${styles.bleedSoft}`}>
+                    <h4>{group}</h4>
+                    {list.map(s => {
+                      const plusDisabled = !canIncSkill(s);
+                      const minusDisabled = !canDecSkill(s);
+                      return (
+                        <div key={s} className={styles.flexRow}>
+                          <span style={{minWidth:160}}>{s}</span>
+                          <div className={styles.dotControls}>
+                            <button
+                              type="button"
+                              className={`${styles.ghostBtn} ${minusDisabled?styles.disabled:''}`}
+                              disabled={minusDisabled}
+                              onClick={()=>incSkill(s,-1)}
+                            >−</button>
+                            <div className={`${styles.dotbox} ${styles.vitae}`}>{skillDots[s]}</div>
+                            <button
+                              type="button"
+                              className={`${styles.ghostBtn} ${plusDisabled?styles.disabled:''}`}
+                              disabled={plusDisabled}
+                              onClick={()=>incSkill(s,1)}
+                            >+</button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+
+              <h4 className={styles.sectionSub}>Specialties</h4>
+              <SpecialtiesBlock
+                skillDots={skillDots}
+                specialties={specialties}
+                setSpecialties={setSpecialties}
+              />
+
+              <p className={styles.muted}>Validation: {skillOk ? '✅' : '❌'}</p>
+              <div className={styles.navRow}>
+                <button className={styles.ghostBtn} type="button" onClick={()=>setStep(4)}>Back</button>
+                <button className={styles.cta} type="button" onClick={()=>setStep(6)} disabled={!skillOk}>Next</button>
+              </div>
+            </section>
+          )}
+
+          {/* STEP 6: Advantages */}
+          {step === 6 && (
+            <section>
+              <h3 className={styles.sectionTitle}>Advantages (Merits & Flaws)</h3>
+              <p className={`${styles.muted} ${styles.smallFlavor}`}>Every boon bears a price. Balance the ledger.</p>
+              <p className={styles.muted}>Spend up to {RULES.advantages.meritsBudget} Merit dots; take at least {RULES.advantages.minFlaws} Flaw dots.</p>
+              <AdvTable label="Merits" rows={merits} setRows={setMerits} cap={RULES.advantages.meritsBudget} />
+              <AdvTable label="Flaws" rows={flaws} setRows={setFlaws} />
+              <p className={styles.muted}>Validation: {advOk ? '✅' : '❌'}</p>
+              <div className={styles.navRow}>
+                <button className={styles.ghostBtn} type="button" onClick={()=>setStep(5)}>Back</button>
+                <button className={styles.cta} type="button" onClick={()=>setStep(7)}>Next</button>
+              </div>
+            </section>
+          )}
+
+          {/* STEP 7: Morality */}
+          {step === 7 && (
+            <section>
+              <h3 className={styles.sectionTitle}>Morality & Touchstones</h3>
+              <p className={`${styles.muted} ${styles.smallFlavor}`}>Remember what keeps the Beast at bay.</p>
+              <div className={styles.grid2}>
+                <Field label="Chronicle Tenets">
+                  <textarea className={styles.input} rows={3} value={tenets} onChange={e=>setTenets(e.target.value)} placeholder="List your chronicle’s tenets…" />
+                </Field>
+                <Field label="Humanity">
+                  <input className={styles.input} type="number" min={1} max={10} value={humanity} onChange={e=>setHumanity(Number(e.target.value)||RULES.humanity)} />
+                </Field>
+                <Field label="Convictions">
+                  {convictions.map((c,i)=>(
+                    <div key={i} className={styles.flexRow}>
+                      <input className={styles.input} value={c} onChange={e=>setConvictions(p=>p.map((x,idx)=>idx===i?e.target.value:x))} placeholder="e.g., Never harm children" />
+                      <button className={styles.ghostBtn} type="button" onClick={()=>setConvictions(p=>p.filter((_,idx)=>idx!==i))}>Remove</button>
+                    </div>
+                  ))}
+                  <button className={styles.ghostBtn} type="button" onClick={()=>setConvictions(p=>[...p,''])}>+ Add Conviction</button>
+                </Field>
+                <Field label="Touchstones">
+                  {touchstones.map((t,i)=>(
+                    <div key={i} className={styles.flexRow}>
+                      <input className={styles.input} value={t} onChange={e=>setTouchstones(p=>p.map((x,idx)=>idx===i?e.target.value:x))} placeholder="A mortal tied to a conviction" />
+                      <button className={styles.ghostBtn} type="button" onClick={()=>setTouchstones(p=>p.filter((_,idx)=>idx!==i))}>Remove</button>
+                    </div>
+                  ))}
+                  <button className={styles.ghostBtn} type="button" onClick={()=>setTouchstones(p=>[...p,''])}>+ Add Touchstone</button>
+                </Field>
+                <Field label="Blood Potency">
+                  <input className={styles.input} type="number" min={0} max={6} value={bloodPotency} onChange={e=>setBloodPotency(Number(e.target.value)||RULES.bloodPotency)} />
+                </Field>
+              </div>
+              <div className={styles.navRow}>
+                <button className={styles.ghostBtn} type="button" onClick={()=>setStep(6)}>Back</button>
+                <button className={styles.cta} type="button" onClick={()=>setStep(8)}>Next</button>
+              </div>
+            </section>
+          )}
+
+          {/* STEP 8: Review */}
+          {step === 8 && (
+            <section>
+              <h3 className={styles.sectionTitle}>Review & Save</h3>
+
+              {clan && (
+                <div className={`${styles.cardIsh} ${styles.reviewCrest}`}>
+                  <img src={symlogo(clan)} alt={`${clan} symbol`} />
+                  <img src={textlogo(clan)} alt={`${clan} text logo`} />
+                </div>
+              )}
+
+              <ul className={styles.muted} style={{lineHeight:1.6}}>
+                <li><b>Name:</b> {name || '—'} <b>Clan:</b> {clan || '—'}</li>
+                <li><b>Concept:</b> {concept || '—'}  <b>Chronicle:</b> {chronicle}</li>
+                <li><b>Ambition:</b> {ambition || '—'}  <b>Desire:</b> {desire || '—'}</li>
+                <li><b>Sire:</b> {sire || '—'}  <b>Predator:</b> {predatorType}</li>
+                <li><b>Disciplines:</b> {Object.entries(derivedDisciplineDots).map(([k,v])=>`${k} ${'•'.repeat(v)}`).join(' , ') || '—'}</li>
+                <li><b>Attributes ok:</b> {attrOk ? '✅' : '❌'}  <b>Skills ok:</b> {skillOk ? '✅' : '❌'}</li>
+                <li><b>Predator ok:</b> {predatorOk ? '✅' : '❌'}  <b>Merits/Flaws ok:</b> {advOk ? '✅' : '❌'}</li>
+              </ul>
+
+              <div className={styles.navRow}>
+                <button className={styles.ghostBtn} type="button" onClick={()=>setStep(1)}>Start Over</button>
+                <button className={styles.cta} disabled={!canSubmit() || saving} onClick={save}>
+                  {saving ? 'Saving…' : 'Save Character'}
+                </button>
+              </div>
+            </section>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -704,17 +1179,17 @@ export default function CharacterSetup({ onDone }) {
 /* ---------- Small components ---------- */
 function Stepper({ step, setStep, labels }) {
   return (
-    <div className="stepper">
+    <div className={styles.stepper}>
       {labels.map((label, i) => {
         const n = i+1, active = n===step, done = n<step;
         return (
           <button
             key={label}
             type="button"
-            className={`step ${active?'active':''} ${done?'done':''}`}
+            className={`${styles.step} ${active?styles.active:''} ${done?styles.done:''}`}
             onClick={()=>setStep(n)}
           >
-            <span className="num">{n}</span> {label}
+            <span className={styles.num}>{n}</span> {label}
           </button>
         );
       })}
@@ -724,8 +1199,8 @@ function Stepper({ step, setStep, labels }) {
 
 function Field({ label, children }) {
   return (
-    <label className="field">
-      <span className="field-label">{label}</span>
+    <label className={styles.field}>
+      <span className={styles.fieldLabel}>{label}</span>
       {children}
     </label>
   );
@@ -735,17 +1210,17 @@ function AdvTable({ label, rows, setRows, cap }) {
   const spent = rows.reduce((a,r)=>a+(Number(r.dots)||0),0);
   return (
     <>
-      <h4 className="section-sub">{label} {cap!=null && <>(spent: {spent}/{cap})</>}</h4>
+      <h4 className={styles.sectionSub}>{label} {cap!=null && <>(spent: {spent}/{cap})</>}</h4>
       {rows.map((r,i)=>(
-        <div key={i} className="flex-row">
-          <input className="input" style={{flex:2}} placeholder={label.slice(0,-1)} value={r.name}
+        <div key={i} className={styles.flexRow}>
+          <input className={styles.input} style={{flex:2}} placeholder={label.slice(0,-1)} value={r.name}
             onChange={e=>setRows(prev=>prev.map((x,idx)=>idx===i?{...x, name:e.target.value}:x))}/>
-          <input className="input" type="number" min={0} style={{width:90}} value={r.dots}
+          <input className={styles.input} type="number" min={0} style={{width:90}} value={r.dots}
             onChange={e=>setRows(prev=>prev.map((x,idx)=>idx===i?{...x, dots:Number(e.target.value)||0}:x))}/>
-          <button className="ghost-btn" type="button" onClick={()=>setRows(rows.filter((_,idx)=>idx!==i))}>Remove</button>
+          <button className={styles.ghostBtn} type="button" onClick={()=>setRows(rows.filter((_,idx)=>idx!==i))}>Remove</button>
         </div>
       ))}
-      <button className="ghost-btn" type="button" onClick={()=>setRows([...rows,{name:'',dots:0}])}>+ Add {label.slice(0,-1)}</button>
+      <button className={styles.ghostBtn} type="button" onClick={()=>setRows([...rows,{name:'',dots:0}])}>+ Add {label.slice(0,-1)}</button>
     </>
   );
 }
@@ -769,15 +1244,15 @@ function SpecialtiesBlock({ skillDots, specialties, setSpecialties }) {
 
   return (
     <>
-      <p className="muted">
+      <p className={styles.muted}>
         Free specialties: one in each of <b>Academics, Craft, Performance, Science</b> (if you have dots), plus <b>one extra</b> anywhere.
         If Predator type grants a specialty in a Skill with 0 dots, convert it to the first dot instead.
       </p>
-      <div className="grid-3">
+      <div className={styles.grid3}>
         {specialties.map((sp,i)=>(
           <Field key={i} label={`Specialty ${i+1}`}>
             <input
-              className="input"
+              className={styles.input}
               value={sp}
               onChange={e=>setSpecialties(prev=>prev.map((v,idx)=>idx===i?e.target.value:v))}
               placeholder="e.g., Melee: Knives / Persuasion: Bargaining"
@@ -785,7 +1260,7 @@ function SpecialtiesBlock({ skillDots, specialties, setSpecialties }) {
           </Field>
         ))}
       </div>
-      <small className="muted">
+      <small className={styles.muted}>
         Needed: {totalNeeded}. {tooMany ? 'Trim a specialty.' : 'OK'}
       </small>
     </>
@@ -794,20 +1269,19 @@ function SpecialtiesBlock({ skillDots, specialties, setSpecialties }) {
 
 /* A tiny quota bar used in Attributes & Skills */
 function QuotaBar({ label, quotas }) {
-  // quotas: { '1': n, '2': n, '3': n, '4': n } (numbers ok too)
   const keys = Object.keys(quotas).sort((a,b)=>Number(a)-Number(b));
   const allZero = keys.every(k => (quotas[k] || 0) === 0);
   return (
-    <div className="quota-bar card-ish">
-      <div className="quota-head">{label}</div>
-      <div className="quota-pills">
+    <div className={`${styles.quotaBar} ${styles.cardIsh}`}>
+      <div className={styles.quotaHead}>{label}</div>
+      <div className={styles.quotaPills}>
         {keys.map(k => (
-          <span key={k} className={`pill ${quotas[k]===0 ? 'done' : ''}`}>
+          <span key={k} className={`${styles.pill} ${quotas[k]===0 ? styles.done : ''}`}>
             {k} <b>× {quotas[k]}</b>
           </span>
         ))}
       </div>
-      {allZero && <div className="quota-ok">All set</div>}
+      {allZero && <div className={styles.quotaOk}>All set</div>}
     </div>
   );
 }
