@@ -1,0 +1,27 @@
+/* ===== Universal Footer Styles ===== */
+.footer {
+  text-align: center;
+  padding: 18px 12px;
+  font-size: 0.85rem;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0.95));
+  color: #d9d7d0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  position: relative;
+}
+
+.footer small {
+  display: block;
+  line-height: 1.4;
+}
+
+.footer a {
+  color: #b51221; /* crimson */
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease, text-shadow 0.2s ease;
+}
+
+.footer a:hover {
+  color: #cf3141;
+  text-shadow: 0 0 6px rgba(207, 49, 65, 0.6);
+}
