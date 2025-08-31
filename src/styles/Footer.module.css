@@ -1,27 +1,109 @@
-/* ===== Universal Footer Styles ===== */
 .footer {
-  text-align: center;
-  padding: 18px 12px;
-  font-size: 0.85rem;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0.95));
-  color: #d9d7d0;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  position: relative;
+  --bg: #0f0f0f;
+  --surface: #171717;
+  --border: #2a2a2a;
+  --muted: #9a9a9a;
+  --text: #e7e7e7;
+  --primary: #8a0f1a;
+
+  background:
+    radial-gradient(900px 140px at 10% 0%, color-mix(in oklab, var(--primary) 14%, transparent), transparent 60%),
+    radial-gradient(700px 120px at 84% 0%, color-mix(in oklab, var(--primary) 10%, transparent), transparent 60%),
+    linear-gradient(180deg, var(--surface), #111);
+  border-top: 1px solid var(--border);
+  color: var(--text);
+  padding: 18px clamp(16px, 3vw, 28px);
+  box-shadow: 0 -12px 28px rgba(0,0,0,.45) inset;
 }
 
-.footer small {
-  display: block;
-  line-height: 1.4;
+.row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: clamp(12px, 2vw, 20px);
+  align-items: center;
 }
 
-.footer a {
-  color: #b51221; /* crimson */
+.brandBlock {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.attLogo {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,.6));
+  background: #0b0b0b;
+  border: 1px solid var(--border);
+  padding: 4px;
+}
+
+.brandText { display: grid; gap: 4px; }
+.title { font-weight: 700; letter-spacing: .2px; }
+.byline { color: var(--muted); font-size: .95rem; }
+.byline a { color: #e9e9e9; text-decoration: underline dotted; }
+
+/* Logos block for Dark Pack + Cerebral Productions */
+.logosBlock {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.partnerLogo {
+  height: 42px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,.6));
+  transition: transform .12s ease;
+}
+.partnerLink:hover .partnerLogo {
+  transform: translateY(-1px);
+}
+
+.darkPackLogo {
+  height: 42px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,.6));
+  transition: transform .12s ease;
+}
+.dpLink:hover .darkPackLogo {
+  transform: translateY(-1px);
+}
+
+.legalLines { display: grid; gap: 3px; margin-top: 12px; }
+.legal {
+  font-size: .86rem;
+  line-height: 1.25;
+}
+.legalMuted {
+  color: var(--muted);
+  font-size: .84rem;
+  line-height: 1.25;
+}
+
+.linksRow {
+  display: flex;
+  gap: 14px;
+  margin-top: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+.footerLink {
+  color: #e9e9e9;
   text-decoration: none;
-  font-weight: 500;
-  transition: color 0.2s ease, text-shadow 0.2s ease;
+  font-size: .95rem;
+  opacity: .9;
 }
+.footerLink:hover { text-decoration: underline; opacity: 1; }
 
-.footer a:hover {
-  color: #cf3141;
-  text-shadow: 0 0 6px rgba(207, 49, 65, 0.6);
+/* Mobile adjustments */
+@media (max-width: 740px) {
+  .row { grid-template-columns: 1fr; align-items: start; }
+  .logosBlock { justify-content: flex-start; gap: 16px; margin-top: 8px; }
+  .partnerLogo, .darkPackLogo { height: 48px; }
 }
