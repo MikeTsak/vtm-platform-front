@@ -13,6 +13,11 @@ import Admin from './pages/Admin';
 import Footer from './components/Footer';
 import styles from './styles/Nav.module.css';
 import DiceRoller from './components/DiceRoller';
+import Terms from './pages/Terms';
+import Legal from './pages/Legal';
+import Privacy from './pages/Privacy';
+
+
 
 function Private({ children }) {
   const { user } = useContext(AuthCtx);
@@ -116,6 +121,9 @@ export default function App() {
               <Route path="/admin" element={<AdminOnly><Admin/></AdminOnly>} />
               <Route path="/login" element={<Login/>} />
               <Route path="/register" element={<Register/>} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/legal" element={<Legal />} />
+              <Route path="/privacy" element={<Privacy />} />
             </Routes>
           </div>
           <DiceRoller />

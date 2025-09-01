@@ -76,7 +76,15 @@ export default function Footer() {
       </div>
 
       <div className={styles.linksRow}>
-        <Link to="/legal" className={styles.footerLink}>Legal & Credits</Link>
+        <Link to="/terms" className={styles.footerLink}>
+          Terms &amp; Conditions
+        </Link>
+        <Link to="/privacy" className={styles.footerLink}>
+          Privacy Policy
+        </Link>
+        <Link to="/legal" className={styles.footerLink}>
+          Legal &amp; Credits
+        </Link>
         <a
           href="https://www.paradoxinteractive.com/games/world-of-darkness/community/dark-pack-agreement"
           target="_blank"
@@ -86,6 +94,7 @@ export default function Footer() {
           Dark Pack Agreement
         </a>
       </div>
+
     </footer>
   );
 }

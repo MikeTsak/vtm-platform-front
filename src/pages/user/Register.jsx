@@ -136,7 +136,7 @@ export default function Register() {
           </div>
           
           <div className={styles['captcha-and-terms']}>
-            <div className="g-recaptcha" data-sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMHEx-W-g_PN9lE9"></div>
+            <div className="g-recaptcha" data-sitekey="6LfBhGwUAAAAAE0AHoSQn3Mdg6LlZjfi4JeYbUJH"></div>
             
             <label className={styles['terms-checkbox']}>
               <input
@@ -145,7 +145,16 @@ export default function Register() {
                 onChange={(e) => setAgreedToTerms(e.target.checked)}
                 required
               />
-              <span>I agree to the <Link to="/terms" className={styles.link}>terms and conditions</Link>.</span>
+              <span className={styles.consentText}>
+                I agree to the{" "}
+                <Link to="/terms" className={styles.link}>
+                  Terms &amp; Conditions
+                </Link>{" "}
+                and{" "}
+                <Link to="/privacy" className={styles.link}>
+                  Privacy Policy
+                </Link>.
+              </span>
             </label>
           </div>
 
