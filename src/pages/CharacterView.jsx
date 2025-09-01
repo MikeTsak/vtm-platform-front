@@ -3,7 +3,7 @@ import api from '../api';
 import { DISCIPLINES, ALL_DISCIPLINE_NAMES } from '../data/disciplines';
 import styles from '../styles/CharacterView.module.css';
 
-/* Optional: a subtle tint per clan */
+/* ---------- Clan tint colors ---------- */
 const CLAN_COLORS = {
   Brujah: '#b40f1f',
   Gangrel: '#2f7a3a',
@@ -32,6 +32,107 @@ const SKILLS = {
   Mental: ['Academics','Awareness','Finance','Investigation','Medicine','Occult','Politics','Science','Technology'],
 };
 
+/* ===========================
+   Normalization helpers
+   =========================== */
+
+/** true if the provided sheet looks like a flat sheet (skills are numbers, camelCase keys etc.) */
+function looksLikeFlatSheet(s) {
+  if (!s || typeof s !== 'object') return false;
+  if (s.skills && typeof s.skills === 'object') {
+    const vals = Object.values(s.skills);
+    if (vals.length && vals.some(v => typeof v === 'number')) return true;
+  }
+  // markers commonly found in flat payloads
+  if ('bloodPotency' in s) return true;
+  if ('predatorType' in s) return true;
+  return false;
+}
+
+/** true if the provided sheet matches the structured shape the UI expects */
+function isStructuredSheet(s) {
+  if (!s || typeof s !== 'object') return false;
+  if (!s.skills || typeof s.skills !== 'object') return false;
+
+  const vals = Object.values(s.skills);
+  if (!vals.length) return false;
+
+  // If any value is a number, it's flat.
+  if (vals.some(v => typeof v === 'number')) return false;
+
+  // Consider it structured only if at least one entry has a {dots} key.
+  return vals.some(v => v && typeof v === 'object' && 'dots' in v);
+}
+
+/** Build a structured sheet from a flat source (either top-level flat object or flat sheet inside it) */
+function normalizeFromFlatAny(source) {
+  const flat = source?.sheet && looksLikeFlatSheet(source.sheet) ? source.sheet : source;
+  const sheet = {};
+
+  // Attributes
+  sheet.attributes = { ...(flat.attributes || {}) };
+
+  // Skills -> { dots, specialties[] }
+  const skills = {};
+  Object.entries(flat.skills || {}).forEach(([name, dots]) => {
+    skills[name] = { dots: Number(dots || 0), specialties: [] };
+  });
+  (flat.specialties || []).forEach((s) => {
+    const [rawSkill, ...rest] = String(s).split(':');
+    const skill = (rawSkill || '').trim();
+    const spec = rest.join(':').trim();
+    if (!skill) return;
+    if (!skills[skill]) skills[skill] = { dots: 0, specialties: [] };
+    if (spec) skills[skill].specialties.push(spec);
+  });
+  sheet.skills = skills;
+
+  // Disciplines and powers
+  sheet.disciplines = { ...(flat.disciplines || {}) };
+  sheet.disciplinePowers = { ...(flat.disciplinePowers || {}) };
+
+  // Narrative bits
+  sheet.predator_type = flat.predatorType || flat.predator?.type || '';
+  sheet.sire = flat.sire || '';
+  sheet.ambition = flat.ambition || '';
+  sheet.desire = flat.desire || '';
+
+  // Advantages (keep merits/flaws separate)
+  sheet.advantages = {
+    merits: Array.isArray(flat.advantages?.merits) ? flat.advantages.merits : [],
+    flaws: Array.isArray(flat.advantages?.flaws) ? flat.advantages.flaws : [],
+  };
+
+  // Humanity / morality
+  sheet.morality = flat.morality || {};
+  sheet.humanity = flat.morality?.humanity ?? undefined;
+
+  // Blood potency (rename)
+  sheet.blood_potency = Number(flat.bloodPotency ?? 1);
+
+  // Optional totals
+  sheet.health_current = flat.health_current;
+  sheet.health_max = flat.health_max;
+  sheet.willpower_current = flat.willpower_current;
+  sheet.willpower_max = flat.willpower_max;
+  sheet.resonances = flat.resonances || [];
+
+  return sheet;
+}
+
+/** Ensure we always return a character with a structured sheet */
+function attachStructured(raw) {
+  if (!raw) return raw;
+  if (isStructuredSheet(raw.sheet)) return raw;
+  if (looksLikeFlatSheet(raw.sheet)) return { ...raw, sheet: normalizeFromFlatAny(raw) };
+  // no sheet at all or unknown shape -> derive from top-level flat object
+  return { ...raw, sheet: normalizeFromFlatAny(raw) };
+}
+
+/* ===========================
+   Component
+   =========================== */
+
 export default function CharacterView() {
   const [ch, setCh] = useState(null);
   const [err, setErr] = useState('');
@@ -48,13 +149,18 @@ export default function CharacterView() {
   const shopRef = useRef(null);
 
   useEffect(() => {
-    api.get('/characters/me').then(r => setCh(r.data.character));
+    api.get('/characters/me').then(r => {
+      const raw = r.data.character;
+      console.log('Loaded raw sheet', raw);
+      const normalized = attachStructured(raw);
+      setCh(normalized);
+      // console.log('Normalized sheet preview', normalized.sheet);
+    });
   }, []);
 
   const tint = useMemo(() => (ch ? CLAN_COLORS[ch.clan] || '#8a0f1a' : '#8a0f1a'), [ch]);
 
   const sheet = ch?.sheet || {};
-
   const disciplinesMap = useMemo(
     () => (sheet?.disciplines && typeof sheet.disciplines === 'object' ? sheet.disciplines : {}),
     [sheet]
@@ -64,7 +170,7 @@ export default function CharacterView() {
     setErr(''); setMsg('');
     try {
       const { data } = await api.post('/characters/xp/spend', payload);
-      setCh(data.character);
+      setCh(attachStructured(data.character));
       setMsg(`Spent ${data.spent} XP.`);
     } catch (e) {
       setErr(e.response?.data?.error || 'Failed to spend XP');
@@ -151,9 +257,9 @@ export default function CharacterView() {
         });
       }
 
-      // refresh character to keep local state in sync
+      // refresh character to keep local state in sync (and normalize if flat)
       const r = await api.get('/characters/me');
-      setCh(r.data.character);
+      setCh(attachStructured(r.data.character));
 
       setModalOpen(false);
       setModalCfg(null);
@@ -184,14 +290,14 @@ export default function CharacterView() {
   if (!ch) return null;
 
   return (
-    <div className={styles.root} style={{ '--tint': tint }}>
+    <div className={styles.root} style={{ '--tint': (ch && (CLAN_COLORS[ch.clan] || '#8a0f1a')) }}>
       <div className={styles.skyline} aria-hidden="true" />
       <div className={styles.wrap}>
         <header className={styles.head}>
           <h2 className={styles.title}>
             {ch.name} <span className={styles.muted}>({ch.clan})</span> — XP: <b>{ch.xp ?? 0}</b>
           </h2>
-          <div className={styles.row} style={{ gap: 8, flexWrap: 'wrap' }}>
+          <div className={styles.row} style={{ gap: 8 }}>
             <span className={styles.muted}>Predator: {sheet?.predator_type || '—'}</span>
             <span className={styles.muted}>Sire: {sheet?.sire || '—'}</span>
             <span className={styles.muted}>Ambition: {sheet?.ambition || '—'}</span>
@@ -216,24 +322,22 @@ export default function CharacterView() {
 
           {/* Top line stats */}
           <div className={styles.card} style={{ display:'grid', gap:12 }}>
-            <div className={styles.row} style={{ gap:16, flexWrap:'wrap' }}>
+            <div className={styles.row} style={{ gap:16 }}>
               <Pill label="Blood Potency" value={sheet?.blood_potency ?? 1} />
+              <Pill label="Humanity" value={sheet?.humanity ?? '—'} />
               <Pill label="Health" value={`${sheet?.health_current ?? '—'} / ${sheet?.health_max ?? '—'}`} />
               <Pill label="Willpower" value={`${sheet?.willpower_current ?? '—'} / ${sheet?.willpower_max ?? '—'}`} />
-              {Array.isArray(sheet?.resonances) && sheet.resonances.length > 0 && (
-                <Pill label="Preferred Resonance" value={sheet.resonances.join(', ')} />
-              )}
             </div>
           </div>
 
           {/* Attributes */}
           <Card>
             <div className={styles.cardHead}><b>Attributes</b></div>
-            <div className={styles.grid} style={{ display:'grid', gridTemplateColumns:'repeat(3,minmax(0,1fr))', gap:12 }}>
+            <div className={styles.grid} style={{ gridTemplateColumns:'repeat(3,minmax(0,1fr))' }}>
               {ATTRS.map((col, i) => (
-                <div key={i} style={{ display:'grid', gap:8 }}>
+                <div key={i} className={styles.grid}>
                   {col.map(name => (
-                    <DotRow key={name} label={name} value={Number(sheet?.attributes?.[name] || 1)} max={5} />
+                    <DotRow key={name} label={name} value={Number(sheet?.attributes?.[name] ?? 1)} max={5} />
                   ))}
                 </div>
               ))}
@@ -243,14 +347,26 @@ export default function CharacterView() {
           {/* Skills */}
           <Card>
             <div className={styles.cardHead}><b>Skills</b></div>
-            <div className={styles.grid} style={{ display:'grid', gridTemplateColumns:'repeat(3,minmax(0,1fr))', gap:12 }}>
+            <div className={styles.grid} style={{ gridTemplateColumns:'repeat(3,minmax(0,1fr))' }}>
               {Object.entries(SKILLS).map(([group, list]) => (
-                <div key={group} style={{ display:'grid', gap:8 }}>
+                <div key={group} className={styles.grid}>
                   <div className={styles.muted} style={{ fontWeight:600 }}>{group}</div>
-                  {list.map(name => (
-                    <DotRow key={name} label={name} value={Number(sheet?.skills?.[name]?.dots || 0)} max={5}
-                      rightExtra={renderSpecs(sheet?.skills?.[name]?.specialties)} />
-                  ))}
+                  {list.map(name => {
+                    // Defensive coerce: accept both structured {dots,specialties[]} and flat numeric
+                    const raw = sheet?.skills?.[name];
+                    const node = (raw && typeof raw === 'object' && 'dots' in raw)
+                      ? raw
+                      : { dots: Number(raw || 0), specialties: [] };
+                    return (
+                      <DotRow
+                        key={name}
+                        label={name}
+                        value={Number(node.dots || 0)}
+                        max={5}
+                        rightExtra={renderSpecs(node.specialties)}
+                      />
+                    );
+                  })}
                 </div>
               ))}
             </div>
@@ -259,20 +375,20 @@ export default function CharacterView() {
           {/* Disciplines */}
           <Card>
             <div className={styles.cardHead}><b>Disciplines</b></div>
-            <div style={{ display:'grid', gap:10 }}>
+            <div className={styles.grid}>
               {Object.keys(disciplinesMap).sort().map(dName => {
                 const dots = Number(disciplinesMap[dName] || 0);
                 const powerList = (sheet?.disciplinePowers?.[dName] || []).slice().sort((a,b)=>a.level-b.level);
                 return (
-                  <div key={dName} style={{ display:'grid', gap:6 }}>
+                  <div key={dName} className={styles.grid}>
                     <DotRow label={dName} value={dots} max={5}
                       rightExtra={pendingBadgeFor(dName, dots, powerList)} />
                     {dots > 0 && (
-                      <div style={{ display:'grid', gap:6, paddingLeft:8 }}>
+                      <div className={styles.grid} style={{ paddingLeft:8 }}>
                         {Array.from({ length: dots }, (_, i) => i+1).map(lvl => {
                           const item = powerList.find(p => Number(p.level) === lvl);
                           return (
-                            <div key={lvl} className={styles.row} style={{ gap:8, alignItems:'center', flexWrap:'wrap' }}>
+                            <div key={lvl} className={styles.row} style={{ gap:8, alignItems:'center' }}>
                               <span className={styles.dim} style={{ minWidth:52 }}>Lvl {lvl}:</span>
                               <span className={styles.tag} style={{ border:'1px solid var(--border-color,#333)', padding:'2px 8px', borderRadius:6 }}>
                                 {item?.name || '— (choose)'}
@@ -308,30 +424,15 @@ export default function CharacterView() {
             </div>
           </Card>
 
-          {/* Advantages / Flaws */}
-          <Card>
-            <div className={styles.cardHead}><b>Advantages & Backgrounds</b></div>
-            <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-              {Array.isArray(sheet?.advantages) && sheet.advantages.length
-                ? sheet.advantages.map((a, i) => (
-                    <span key={i} className={styles.tag} style={{ border:'1px solid var(--border-color,#333)', borderRadius:6, padding:'2px 8px' }}>
-                      {a.name} {a.dots ? `(${a.dots})` : ''}
-                    </span>
-                  ))
-                : <span className={styles.muted}>—</span>
-              }
-            </div>
-          </Card>
-
-          {/* Rituals / Thin-blood Formulae */}
-          <div className={styles.grid} style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))', gap:12 }}>
+          {/* Merits & Flaws */}
+          <div className={styles.grid} style={{ gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))' }}>
             <Card>
-              <div className={styles.cardHead}><b>Blood Sorcery Rituals</b></div>
-              <ListBadges items={sheet?.rituals} emptyNote="—" />
+              <div className={styles.cardHead}><b>Merits</b></div>
+              <ListBadges items={sheet?.advantages?.merits?.map(m => ({ name: m.name, level: m.dots }))} emptyNote="—" />
             </Card>
             <Card>
-              <div className={styles.cardHead}><b>Thin-blood Formulae</b></div>
-              <ListBadges items={sheet?.thin_blood_formulae} emptyNote="—" />
+              <div className={styles.cardHead}><b>Flaws</b></div>
+              <ListBadges items={sheet?.advantages?.flaws?.map(f => ({ name: f.name, level: f.dots }))} emptyNote="—" />
             </Card>
           </div>
         </section>
@@ -489,11 +590,9 @@ function ListBadges({ items, emptyNote='—' }) {
   );
 }
 
-/* ---------- Subcomponents (kept from your code) ---------- */
+/* ---------- Subcomponents ---------- */
 
-function Card({ children }) {
-  return <div className={styles.card}>{children}</div>;
-}
+function Card({ children }) { return <div className={styles.card}>{children}</div>; }
 
 function BuyRow({ label, hint, options, onBuy }) {
   const [target, setTarget] = useState(options[0]);
@@ -504,7 +603,7 @@ function BuyRow({ label, hint, options, onBuy }) {
       <div className={styles.cardHead}>
         <b>{label}</b> <small className={styles.muted}>— {hint}</small>
       </div>
-      <div className={styles.row}>
+      <div className={styles.rowForm ?? styles.row}>
         <select className={styles.input} value={target} onChange={e=>setTarget(e.target.value)}>
           {options.map(o=><option key={o}>{o}</option>)}
         </select>
@@ -525,7 +624,7 @@ function BuySimple({ label, hint, options, onBuy }) {
       <div className={styles.cardHead}>
         <b>{label}</b> <small className={styles.muted}>— {hint}</small>
       </div>
-      <div className={styles.row}>
+      <div className={styles.rowForm ?? styles.row}>
         <input className={styles.input} value={target} onChange={e=>setTarget(e.target.value)} list="specs"/>
         <datalist id="specs">
           {options.map(o=><option key={o} value={o}/>)}
@@ -538,7 +637,7 @@ function BuySimple({ label, hint, options, onBuy }) {
 
 // This one triggers the modal instead of spending XP immediately
 function BuyDiscipline({ getCurrent, onPick }) {
-  const [name, setName] = useState('Auspex');
+  const [name, setName] = useState(ALL_DISCIPLINE_NAMES[0] || 'Auspex');
   const [kind, setKind] = useState('clan'); // 'clan' | 'other' | 'caitiff'
   const current = getCurrent ? getCurrent(name) : 0;
   const [next, setNext] = useState(current + 1);
@@ -550,7 +649,7 @@ function BuyDiscipline({ getCurrent, onPick }) {
       <div className={styles.cardHead}>
         <b>Discipline</b> <small className={styles.muted}>— Clan: new×5 • Other: new×7 • Caitiff: new×6</small>
       </div>
-      <div className={styles.row}>
+      <div className={styles.rowForm ?? styles.row}>
         <select className={styles.input} value={name} onChange={(e)=>setName(e.target.value)}>
           {ALL_DISCIPLINE_NAMES.map(n => <option key={n}>{n}</option>)}
         </select>
@@ -582,7 +681,7 @@ function BuyRitual({ onBuy }) {
   return (
     <div className={styles.card}>
       <div className={styles.cardHead}><b>Blood Sorcery Ritual</b> <small className={styles.muted}>— level×3</small></div>
-      <div className={styles.row}>
+      <div className={styles.rowForm ?? styles.row}>
         <span className={styles.dim}>Level:</span>
         <input className={styles.input} type="number" value={lvl} min={1} max={5} onChange={e=>setLvl(Number(e.target.value)||1)}/>
         <button className={styles.cta} onClick={()=>onBuy(lvl)}>Buy</button>
@@ -596,7 +695,7 @@ function BuyThinFormula({ onBuy }) {
   return (
     <div className={styles.card}>
       <div className={styles.cardHead}><b>Thin-blood Formula</b> <small className={styles.muted}>— level×3</small></div>
-      <div className={styles.row}>
+      <div className={styles.rowForm ?? styles.row}>
         <span className={styles.dim}>Level:</span>
         <input className={styles.input} type="number" value={lvl} min={1} max={5} onChange={e=>setLvl(Number(e.target.value)||1)}/>
         <button className={styles.cta} onClick={()=>onBuy(lvl)}>Buy</button>
@@ -611,7 +710,7 @@ function BuyDots({ label, hint, onBuy }) {
   return (
     <div className={styles.card}>
       <div className={styles.cardHead}><b>{label}</b> <small className={styles.muted}>— {hint}</small></div>
-      <div className={styles.row}>
+      <div className={styles.rowForm ?? styles.row}>
         <span className={styles.dim}>Name:</span>
         <input className={styles.input} value={name} onChange={e=>setName(e.target.value)}/>
         <span className={styles.dim}>Dots:</span>
@@ -628,7 +727,7 @@ function BuyLevel({ label, hint, onBuy }) {
   return (
     <div className={styles.card}>
       <div className={styles.cardHead}><b>{label}</b> <small className={styles.muted}>— {hint}</small></div>
-      <div className={styles.row}>
+      <div className={styles.rowForm ?? styles.row}>
         <span className={styles.dim}>Current:</span>
         <input className={styles.input} type="number" value={curr} min={0} max={10} onChange={e=>setCurr(Number(e.target.value)||0)}/>
         <span className={styles.dim}>New:</span>

@@ -55,6 +55,13 @@ export default function Home() {
   if (!ch) {
     return (
       <div className={styles.homePage}>
+          <div className={styles.skyline} style={{ '--tint': tint }} />
+          <div className={styles.bloodFx} aria-hidden="true">
+            <div className={styles.dripsSlow} />
+            <div className={styles.dripsFast} />
+            <div className={styles.splatters} />
+            <div className={styles.pool} />
+          </div>
         <div className={styles.skyline} style={{ '--tint': tint }} />
         <div className={styles.card}>
           <div className={styles.heroHead}>
@@ -71,6 +78,13 @@ export default function Home() {
   // --- Has character state (dashboard) ---
   return (
     <div className={styles.homePage}>
+        <div className={styles.skyline} style={{ '--tint': tint }} />
+        <div className={styles.bloodFx} aria-hidden="true">
+          <div className={styles.dripsSlow} />
+          <div className={styles.dripsFast} />
+          <div className={styles.splatters} />
+          <div className={styles.pool} />
+        </div>
       <div className={styles.skyline} style={{ '--tint': tint }} />
       <header className={styles.card}>
         <div className={styles.identity}>

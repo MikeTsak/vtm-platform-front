@@ -1,0 +1,44 @@
+.wrap {
+  width: 100%;
+  height: calc(100vh - 140px);
+  max-width: 1200px;
+  margin: 1.25rem auto;
+  padding: 0 12px;
+}
+
+.map {
+  width: 100%;
+  height: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0,0,0,.14);
+}
+
+/* clean, centered division badge */
+.divisionLabel {
+  background: rgba(20,20,20,.55);
+  color: #fff;
+  font-weight: 700;
+  border: 0;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 12px;
+  line-height: 1.2;
+  letter-spacing: .25px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.2);
+  pointer-events: none;
+}
+
+/* pointer cursor on polygons */
+:global(.leaflet-interactive) {
+  cursor: pointer;
+}
+/* Make only the raster tiles grayscale; keep overlays/labels normal */
+.map :global(.leaflet-tile-pane) {
+  filter: grayscale(1) saturate(0) contrast(1.05) brightness(0.96);
+}
+
+.map :global(.leaflet-overlay-pane),
+.map :global(.leaflet-tooltip-pane) {
+  filter: none;
+}

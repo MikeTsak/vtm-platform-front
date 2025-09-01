@@ -24,7 +24,7 @@ export default function Register() {
   };
 
   return (
-    <div className={styles['login-page']}>
+    <div className={`${styles['login-page']} ${styles['vamp-bg']}`}>
       <div className={styles.vignette} aria-hidden="true" />
       <header className={styles['login-header']} aria-label="App header">
         <img
@@ -63,7 +63,7 @@ export default function Register() {
             <span className={styles['field-label']}>Display Name</span>
             <input
               className={styles.input}
-              placeholder="Prince Telemachos"
+              placeholder="Your Name not of your Kindred"
               value={display_name}
               onChange={(e) => setDisplayName(e.target.value)}
               type="text"

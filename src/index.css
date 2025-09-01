@@ -5,3 +5,90 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* --------------------------- */
+/* ---   Navigation Styles   --- */
+/* --------------------------- */
+
+.navBar {
+  display: flex;
+  gap: 1.5rem;
+  padding: 1rem 2rem;
+  background: rgba(18, 18, 18, 0.85);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border-color);
+  align-items: center;
+  font-family: var(--font-body);
+  position: sticky;
+  top: 0;
+  z-index: 999;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+}
+
+.navLink {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 1rem;
+  font-family: var(--font-title);
+  letter-spacing: .5px;
+  padding-bottom: 6px;
+  position: relative;
+  transition: color 0.3s ease;
+}
+
+/* Creates the underline effect */
+.navLink::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 1px;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--tint);
+  transition: width 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.navLink:hover {
+  color: var(--text-color);
+}
+
+.navLink:hover::after {
+  width: 100%;
+}
+
+/* Style for the currently active link */
+.navLinkActive {
+  color: var(--tint);
+  text-shadow: 0 0 5px var(--tint);
+}
+
+.navLinkActive::after {
+  width: 100%;
+}
+
+.userInfo {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: var(--text-muted);
+}
+
+.logoutBtn {
+  font-family: var(--font-body);
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+  border-radius: var(--radius);
+  transition: all 0.2s ease;
+}
+
+.logoutBtn:hover {
+  color: var(--text-color);
+  border-color: var(--tint);
+  background: color-mix(in srgb, var(--tint) 15%, transparent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--tint) 50%, transparent);
+}

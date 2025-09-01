@@ -1,26 +1,81 @@
-import React, { useEffect, useState } from 'react';
-import api from '../api';
+import React, { useMemo } from 'react';
+import L from 'leaflet';
+import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+
+import styles from '../styles/Domains.module.css';
+import domainsRaw from '../data/Domains.json';
 
 export default function Domains() {
-  const [list, setList] = useState([]);
+  // Tag each feature with a division index so we can label it without names/owners
+  const data = useMemo(
+    () => ({
+      ...domainsRaw,
+      features: domainsRaw.features.map((f, i) => ({
+        ...f,
+        properties: { ...f.properties, __division: i + 1 },
+      })),
+    }),
+    []
+  );
 
-  useEffect(() => {
-    api.get('/domains').then(r => setList(r.data.domains || []));
-  }, []);
+  const bounds = useMemo(() => {
+    const layer = L.geoJSON(data);
+    return layer.getBounds();
+  }, [data]);
+
+  const numOr = (v, fallback) => {
+    const n = parseFloat(v);
+    return Number.isFinite(n) ? n : fallback;
+  };
+
+  const style = (feature) => ({
+    color: feature?.properties?.stroke || '#222',
+    weight: numOr(feature?.properties?.['stroke-width'], 1.2) + 0.5,
+    opacity: numOr(feature?.properties?.['stroke-opacity'], 1),
+    fillColor: feature?.properties?.fill || '#888',
+    fillOpacity: numOr(feature?.properties?.['fill-opacity'], 0.3),
+  });
+
+  const onEach = (feature, layer) => {
+    // Permanent center label with just the division number
+    const n = feature?.properties?.__division;
+    if (n != null) {
+      layer.bindTooltip(String(n), {
+        permanent: true,
+        direction: 'center',
+        className: styles.divisionLabel,
+        opacity: 0.9,
+      });
+    }
+
+    // subtle hover + click zoom (no popups with names/owners)
+    const base = style(feature);
+    layer.on({
+      mouseover: () => layer.setStyle({ fillOpacity: Math.min(base.fillOpacity + 0.15, 0.85) }),
+      mouseout: () => layer.setStyle({ fillOpacity: base.fillOpacity }),
+      click: () => {
+        const map = layer._map;
+        if (map) map.fitBounds(layer.getBounds(), { padding: [16, 16], maxZoom: 15 });
+      },
+    });
+  };
 
   return (
-    <div style={{ maxWidth: 800, margin:'2rem auto' }}>
-      <h2>Domains</h2>
-      {!list.length && <i>No domains yet.</i>}
-      {list.map(d => (
-        <div key={d.id} style={{ border:'1px solid #444', padding:8, margin:'8px 0' }}>
-          <b>{d.name}</b>
-          {d.description && <div><small>{d.description}</small></div>}
-          <div style={{ marginTop:6 }}>
-            <b>Members:</b> {d.members?.length ? d.members.map(m => `${m.name} (${m.clan})`).join(', ') : '—'}
-          </div>
-        </div>
-      ))}
+    <div className={styles.wrap}>
+      <MapContainer
+        bounds={bounds}
+        className={styles.map}
+        scrollWheelZoom
+        preferCanvas
+        minZoom={11}
+      >
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution="&copy; OpenStreetMap contributors"
+        />
+        <GeoJSON data={data} style={style} onEachFeature={onEach} />
+      </MapContainer>
     </div>
   );
 }
