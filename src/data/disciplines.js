@@ -1,13 +1,26 @@
 // src/data/disciplines.js
-// Minimal scaffold. Fill out as you gather real data.
-// Icons should live at: /img/disciplines/<Name>-rombo.png (e.g., Auspex-rombo.png)
 
 export const ALL_DISCIPLINE_NAMES = [
   'Animalism','Auspex','Blood Sorcery','Celerity','Dominate','Fortitude',
   'Obfuscate','Oblivion','Potence','Presence','Protean','Thin-blood Alchemy'
 ];
 
-export const iconPath = (name) => `/img/disciplines/${name.replace(/\s+/g,'_')}-rombo.png`;
+export const iconPath = (name) => {
+  // Normalize and handle known exceptions by lowercase key
+  const key = String(name || '').trim().toLowerCase();
+
+  // Explicit file overrides (keep exact casing of filenames)
+  const OVERRIDES = {
+    'blood sorcery': 'Blood-Sorcery-rombo.png',
+    'thin-blood alchemy': 'Thin-blood-Alchemy-rombo.png',
+    'thaumaturgy': 'Thaumaturgy-rombo.png',               // if you ever use this label
+    'blood sorcery (thaumaturgy)': 'Thaumaturgy-rombo.png' // safety alias
+  };
+
+  const file = OVERRIDES[key] || `${name.replace(/\s+/g, '-')}-rombo.png`;
+  return `/img/disciplines/${file}`;
+};
+
 
 export const DISCIPLINES = {
   // ==== Example fully wired with a few canonical powers ====

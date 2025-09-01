@@ -51,6 +51,12 @@ export default function Home() {
 
   if (loading || !me) return null;
 
+  // 🔹 If admin, skip character setup/dashboard and go straight to Admin page
+if (me.role === 'admin') {
+  nav('/admin');
+  return null;
+}
+
   // --- No character state (call to action) ---
   if (!ch) {
     return (

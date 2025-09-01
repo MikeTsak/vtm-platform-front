@@ -1,0 +1,232 @@
+/* src/styles/Admin.module.css */
+
+/* ---------- layout ---------- */
+.container {
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 0 12px;
+  color: #eaeaea;
+}
+
+/* ---------- alerts ---------- */
+.notice {
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin: 8px 0 12px;
+  border: 1px solid transparent;
+  font-size: 0.95rem;
+}
+.notice.info {
+  background: #0f2f14;
+  border-color: #1d6f36;
+}
+.notice.error {
+  background: #3a1010;
+  border-color: #80202a;
+}
+
+/* ---------- tabs ---------- */
+.tabBar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  align-items: center;
+}
+.tabButton {
+  padding: 8px 12px;
+  border: 1px solid #3b3b3b;
+  background: #121212;
+  color: #eaeaea;
+  cursor: pointer;
+  border-radius: 10px 10px 0 0;
+  font-weight: 500;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+.tabButton:hover {
+  background: #1a1a1a;
+  border-color: #555;
+}
+.activeTab {
+  background: #1f1f1f;
+  border-color: #8a0f1a;
+  color: #fff;
+  font-weight: 700;
+}
+.refreshButton {
+  margin-left: auto;
+  padding: 8px 12px;
+  border: 1px solid #3b3b3b;
+  background: #121212;
+  color: #eaeaea;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.refreshButton:hover {
+  background: #1a1a1a;
+}
+
+/* ---------- sections ---------- */
+.section {
+  margin: 16px 0 28px;
+}
+.sectionTitle {
+  margin: 0 0 10px;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+/* ---------- cards ---------- */
+.card {
+  border: 1px solid #353535;
+  background: #141414;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.metaText {
+  opacity: 0.75;
+  font-size: 0.9rem;
+}
+
+/* ---------- forms ---------- */
+.input, .select, .textarea {
+  width: 100%;
+  background: #0e0e0e;
+  color: #eaeaea;
+  border: 1px solid #3b3b3b;
+  border-radius: 8px;
+  padding: 8px 10px;
+  outline: none;
+}
+.input:focus, .select:focus, .textarea:focus {
+  border-color: #8a0f1a;
+  box-shadow: 0 0 0 3px rgba(138, 15, 26, 0.25);
+}
+.textarea {
+  resize: vertical;
+  min-height: 120px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  line-height: 1.35;
+}
+.sheetTextarea {
+  composes: textarea;
+  min-height: 180px;
+}
+
+.formLabel {
+  display: inline-block;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+/* ---------- controls ---------- */
+.controlGroup {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.ghostBtn, .cta {
+  border: 1px solid #3b3b3b;
+  background: #141414;
+  color: #eaeaea;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.ghostBtn:hover {
+  background: #1b1b1b;
+}
+.cta {
+  background: #8a0f1a;
+  border-color: #8a0f1a;
+}
+.cta:hover {
+  filter: brightness(1.1);
+}
+
+/* ---------- grids & tables ---------- */
+.gridUsers {
+  display: grid;
+  grid-template-columns: 2fr 2fr 1fr 2fr 160px;
+  gap: 8px;
+  align-items: center;
+}
+.grid3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: start;
+}
+.fullWidth {
+  grid-column: 1 / -1;
+}
+
+/* ---------- specific (domains & claims) ---------- */
+.memberList {
+  margin: 6px 0 0 16px;
+  padding: 0;
+}
+.noDomains {
+  opacity: 0.75;
+}
+
+.colorPreview {
+  width: 26px;
+  height: 26px;
+  border: 1px solid #333;
+  border-radius: 6px;
+}
+
+.swatchSmall {
+  width: 18px;
+  height: 18px;
+  border: 1px solid #333;
+  border-radius: 4px;
+}
+
+/* ---------- utilities ---------- */
+.dim {
+  opacity: 0.7;
+}
+.hint {
+  margin-top: 8px;
+  opacity: 0.7;
+  font-size: 0.92rem;
+}
+
+/* ---------- buttons in tables ---------- */
+.tableBtn {
+  border: 1px solid #3b3b3b;
+  background: #151515;
+  color: #eaeaea;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+.tableBtn:hover {
+  background: #1b1b1b;
+}
+.tableBtnDanger {
+  composes: tableBtn;
+  border-color: #6d1a1a;
+  background: #2a1212;
+}
+.tableBtnDanger:hover {
+  filter: brightness(1.05);
+}

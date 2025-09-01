@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { AuthCtx } from '../../AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import styles from '../../styles/Login.module.css';
@@ -7,20 +7,56 @@ export default function Login() {
   const { login } = useContext(AuthCtx);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [remember, setRemember] = useState(false);
   const [err, setErr] = useState('');
   const [showPwd, setShowPwd] = useState(false);
   const nav = useNavigate();
 
-  const submit = async (e) => {
-    e.preventDefault();
-    setErr('');
+  // Prefill from localStorage if user chose "Remember me"
+  useEffect(() => {
     try {
-      await login(email, password);
-      nav('/');
-    } catch (e) {
-      setErr(e?.response?.data?.error || 'Login failed');
+      const savedRemember = localStorage.getItem('rememberMe') === '1';
+      const savedEmail = localStorage.getItem('rememberEmail') || '';
+      if (savedRemember) {
+        setRemember(true);
+        if (savedEmail) setEmail(savedEmail);
+      }
+    } catch (_) {
+      /* ignore storage errors */
     }
-  };
+  }, []);
+
+const submit = async (e) => {
+  e.preventDefault();
+  setErr('');
+  try {
+    // login should return the logged-in user object (with role)
+    const u = await login(email, password, { remember });
+
+    // Persist the preference + email for next time
+    try {
+      if (remember) {
+        localStorage.setItem('rememberMe', '1');
+        localStorage.setItem('rememberEmail', email);
+      } else {
+        localStorage.removeItem('rememberMe');
+        localStorage.removeItem('rememberEmail');
+      }
+    } catch {
+      /* ignore storage errors */
+    }
+
+    // Redirect based on role
+    if (u?.role === 'admin') {
+      nav('/admin');
+    } else {
+      nav('/');
+    }
+  } catch (e) {
+    setErr(e?.response?.data?.error || 'Login failed');
+  }
+};
+
 
   return (
     <div className={`${styles['login-page']} ${styles['vamp-bg']}`}>
@@ -88,11 +124,27 @@ export default function Login() {
                   </svg>
                 )}
               </button>
-
             </div>
           </label>
 
-          <button className={styles.cta} type="submit">Enter the Court</button>
+          {/* Remember me row */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginTop: '0.25rem' }}>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={remember}
+                onChange={(e) => setRemember(e.target.checked)}
+              />
+              <span className={styles.muted}>Remember me</span>
+            </label>
+
+            {/* Optional forgot password route, if you add it later */}
+            {/* <Link to="/forgot" className={styles.link}>Forgot password?</Link> */}
+          </div>
+
+          <button className={styles.cta} type="submit" style={{ marginTop: '0.75rem' }}>
+            Enter the Court
+          </button>
 
           <p className={styles.muted}>
             No account? <Link to="/register" className={styles.link}>Request Embrace</Link>

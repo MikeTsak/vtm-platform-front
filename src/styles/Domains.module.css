@@ -42,3 +42,13 @@
 .map :global(.leaflet-tooltip-pane) {
   filter: none;
 }
+.wrap { display:flex; flex-direction:column; gap:8px; }
+.map { height: 70vh; border-radius: 8px; overflow: hidden; }
+.divisionLabel { background: transparent; border: 0; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.8); font-weight: 700; }
+.claimBar { display:flex; flex-direction:column; gap:8px; }
+.claimForm { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.input { padding:6px 8px; border:1px solid #ccc; border-radius:6px; }
+.cta { padding:6px 12px; border:0; background:#222; color:#fff; border-radius:6px; cursor:pointer; }
+.alertOk { color:#0a6116; }
+.alertError { color:#b00020; }
+.helpText { font-size: .9rem; color:#555; margin-top:6px; }
