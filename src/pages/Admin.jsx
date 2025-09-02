@@ -1,21 +1,21 @@
 // src/pages/Admin.jsx
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import api from '../api';
+import styles from '../styles/Admin.module.css';
+import 'leaflet/dist/leaflet.css';
+
+import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+
+import domainsRaw from '../data/Domains.json';
+
 
 /* ---------------- UI bits ---------------- */
 function TabButton({ active, onClick, children }) {
   return (
     <button
       onClick={onClick}
-      style={{
-        padding: '8px 12px',
-        border: '1px solid #444',
-        borderBottom: active ? '2px solid #fff' : '1px solid #444',
-        background: active ? '#222' : '#111',
-        color: '#eee',
-        cursor: 'pointer',
-        fontWeight: active ? 700 : 400,
-      }}
+      className={`${styles.tab} ${active ? styles.tabActive : ''}`}
     >
       {children}
     </button>
@@ -24,11 +24,9 @@ function TabButton({ active, onClick, children }) {
 
 /* ---------------- Main ---------------- */
 export default function Admin() {
-  const [tab, setTab] = useState('users'); // users | characters | downtimes | domains | claims | xp
+  const [tab, setTab] = useState('users'); // users | characters | claims | xp
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState([]);
-  const [dts, setDts] = useState([]);
-  const [domains, setDomains] = useState([]);
   const [claims, setClaims] = useState([]);
   const [charIndex, setCharIndex] = useState({});
   const [msg, setMsg] = useState('');
@@ -38,10 +36,9 @@ export default function Admin() {
     setLoading(true); setErr(''); setMsg('');
     try {
       const u = await api.get('/admin/users');
-      const d = await api.get('/admin/downtimes');
       setUsers(u.data.users || []);
-      setDts(d.data.downtimes || []);
-      // Build character index
+
+      // Build character index from users
       const idx = {};
       (u.data.users || []).forEach(u => {
         if (u.character_id) {
@@ -58,11 +55,7 @@ export default function Admin() {
         }
       });
       setCharIndex(idx);
-      // Domains (player endpoint lists all with members)
-      try {
-        const dom = await api.get('/domains');
-        setDomains(dom.data.domains || []);
-      } catch {}
+
       // Claims
       try {
         const cl = await api.get('/domain-claims');
@@ -120,62 +113,6 @@ export default function Admin() {
     }
   }
 
-  // ========= Downtimes =========
-  async function updateDt(d, patch) {
-    setErr(''); setMsg('');
-    try {
-      await api.patch(`/admin/downtimes/${d.id}`, patch);
-      setMsg(`Downtime #${d.id} updated`);
-      load();
-    } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to update downtime');
-    }
-  }
-
-  // ========= Domains =========
-  async function createDomain(name, description) {
-    if (!name) return;
-    setErr(''); setMsg('');
-    try {
-      await api.post(`/admin/domains`, { name, description });
-      setMsg('Domain created');
-      load();
-    } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to create domain');
-    }
-  }
-  async function deleteDomain(id) {
-    setErr(''); setMsg('');
-    try {
-      await api.delete(`/admin/domains/${id}`);
-      setMsg('Domain deleted');
-      load();
-    } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to delete domain');
-    }
-  }
-  async function addDomainMember(domain_id, character_id) {
-    if (!character_id) return;
-    setErr(''); setMsg('');
-    try {
-      await api.post(`/admin/domains/${domain_id}/members`, { character_id: Number(character_id) });
-      setMsg('Member added');
-      load();
-    } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to add domain member');
-    }
-  }
-  async function removeDomainMember(domain_id, character_id) {
-    setErr(''); setMsg('');
-    try {
-      await api.delete(`/admin/domains/${domain_id}/members/${character_id}`);
-      setMsg('Member removed');
-      load();
-    } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to remove domain member');
-    }
-  }
-
   // ========= Claims =========
   async function saveClaim(division, patch) {
     setErr(''); setMsg('');
@@ -199,49 +136,37 @@ export default function Admin() {
   }
 
   return (
-    <div style={{ maxWidth: 1200, margin:'2rem auto', padding:'0 12px', color:'#eee' }}>
-      <h2>Admin Console</h2>
-      {loading && <div style={{ margin:'8px 0' }}>Loading…</div>}
-      {err && <div style={{ background:'#3a1010', border:'1px solid #802', padding:8, margin:'8px 0' }}>{err}</div>}
-      {msg && <div style={{ background:'#0f2f14', border:'1px solid #1d6f36', padding:8, margin:'8px 0' }}>{msg}</div>}
+    <div className={styles.adminRoot}>
+      <div className={styles.container}>
+        <h2 className={styles.title}>Admin Console</h2>
+        {loading && (
+          <div className={styles.loading}>
+            <span className={styles.spinner} /> Loading…
+          </div>
+        )}
+        {err && <div className={`${styles.alert} ${styles.alertError}`}>{err}</div>}
+        {msg && <div className={`${styles.alert} ${styles.alertInfo}`}>{msg}</div>}
 
-      <div style={{ display:'flex', gap:8, marginBottom:12 }}>
-        <TabButton active={tab==='users'} onClick={()=>setTab('users')}>Users</TabButton>
-        <TabButton active={tab==='characters'} onClick={()=>setTab('characters')}>Characters</TabButton>
-        <TabButton active={tab==='downtimes'} onClick={()=>setTab('downtimes')}>Downtimes</TabButton>
-        <TabButton active={tab==='domains'} onClick={()=>setTab('domains')}>Domains</TabButton>
-        <TabButton active={tab==='claims'} onClick={()=>setTab('claims')}>Claims</TabButton>
-        <TabButton active={tab==='xp'} onClick={()=>setTab('xp')}>XP Tools</TabButton>
-        <button onClick={load} style={{ marginLeft:'auto' }}>Reload</button>
+        <div className={styles.toolbar}>
+          <TabButton active={tab==='users'} onClick={()=>setTab('users')}>Users</TabButton>
+          <TabButton active={tab==='characters'} onClick={()=>setTab('characters')}>Characters</TabButton>
+          <TabButton active={tab==='claims'} onClick={()=>setTab('claims')}>Claims</TabButton>
+          <TabButton active={tab==='xp'} onClick={()=>setTab('xp')}>XP Tools</TabButton>
+          <button className={`${styles.btn} ${styles.btnGhost} ${styles.rowEnd}`} onClick={load}>Reload</button>
+        </div>
+
+        {tab === 'users' && <UsersTab users={users} onSave={saveUser} />}
+        {tab === 'characters' && <CharactersTab users={users} onSave={saveCharacter} />}
+        {tab === 'claims' && (
+          <ClaimsTab
+            claims={claims}
+            characters={charIndex}
+            onSave={saveClaim}
+            onDelete={deleteClaim}
+          />
+        )}
+        {tab === 'xp' && <XPTools users={users} onGrant={grantXP} />}
       </div>
-
-      {tab === 'users' && <UsersTab users={users} onSave={saveUser} />}
-
-      {tab === 'characters' && <CharactersTab users={users} onSave={saveCharacter} />}
-
-      {tab === 'downtimes' && <DowntimesTab dts={dts} onUpdate={updateDt} />}
-
-      {tab === 'domains' && (
-        <DomainsTab
-          domains={domains}
-          characters={charIndex}
-          onCreate={createDomain}
-          onDelete={deleteDomain}
-          onAddMember={addDomainMember}
-          onRemoveMember={removeDomainMember}
-        />
-      )}
-
-      {tab === 'claims' && (
-        <ClaimsTab
-          claims={claims}
-          characters={charIndex}
-          onSave={saveClaim}
-          onDelete={deleteClaim}
-        />
-      )}
-
-      {tab === 'xp' && <XPTools users={users} onGrant={grantXP} />}
     </div>
   );
 }
@@ -259,9 +184,9 @@ function UsersTab({ users, onSave }) {
   }
 
   return (
-    <div>
+    <div className="stack12">
       <h3>Users</h3>
-      <div style={{ display:'grid', gridTemplateColumns:'2fr 2fr 1fr 2fr 180px', gap:8, alignItems:'center' }}>
+      <div className={styles.usersGrid}>
         <b>Display Name</b>
         <b>Email</b>
         <b>Role</b>
@@ -275,15 +200,15 @@ function UsersTab({ users, onSave }) {
               <option value="user">user</option>
               <option value="admin">admin</option>
             </select>
-            <div>{u.char_name ? `${u.char_name} (${u.clan})` : '—'}</div>
+            <div className={styles.subtle}>{u.char_name ? `${u.char_name} (${u.clan})` : '—'}</div>
             <div>
-              <button onClick={()=>onSave({ id: u.id, ...getRow(u) })}>Save</button>
+              <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={()=>onSave({ id: u.id, ...getRow(u) })}>Save</button>
             </div>
           </React.Fragment>
         ))}
       </div>
-      <p style={{ marginTop:8, opacity:.7 }}>
-        Tip: Saving here uses <code>PATCH /admin/users/:id</code> (optional). If you haven’t added that route yet, you’ll see a warning.
+      <p className={styles.subtle} style={{marginTop:8}}>
+        Tip: Saving here uses <code className={styles.kbd}>PATCH /admin/users/:id</code> (optional).
       </p>
     </div>
   );
@@ -307,120 +232,43 @@ function CharactersTab({ users, onSave }) {
   function setRow(c, patch) { setEdits(prev => ({ ...prev, [c.id]: { ...getRow(c), ...patch } })); }
 
   return (
-    <div>
+    <div className="stack12">
       <h3>Characters</h3>
-      {!chars.length && <div>No characters yet.</div>}
+      {!chars.length && <div className={styles.subtle}>No characters yet.</div>}
       {chars.map(c => (
-        <div key={c.id} style={{ border:'1px solid #444', padding:12, marginBottom:10 }}>
-          <div style={{ display:'flex', gap:12 }}>
-            <div style={{ flex:1 }}>
-              <div><b>Owner:</b> {c.owner}</div>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8, marginTop:8 }}>
-                <label>Name <input value={getRow(c).name} onChange={e=>setRow(c, { name: e.target.value })}/></label>
-                <label>Clan <input value={getRow(c).clan} onChange={e=>setRow(c, { clan: e.target.value })}/></label>
-                <label>XP <input value={c.xp} readOnly/></label>
-              </div>
+        <div key={c.id} className={`${styles.card} ${styles.cardElev}`}>
+          <div className={styles.stack12}>
+            <div><b>Owner:</b> {c.owner}</div>
+            <div className={styles.characters3}>
+              <label>Name <input value={getRow(c).name} onChange={e=>setRow(c, { name: e.target.value })}/></label>
+              <label>Clan <input value={getRow(c).clan} onChange={e=>setRow(c, { clan: e.target.value })}/></label>
+              <label>XP <input value={c.xp} readOnly/></label>
             </div>
           </div>
-          <div style={{ marginTop:8 }}>
+          <div className="stack12" style={{marginTop:8}}>
             <label>Sheet (JSON)</label>
             <textarea
               value={getRow(c).sheet}
               onChange={e=>setRow(c, { sheet: e.target.value })}
               rows={8}
-              style={{ width:'100%', fontFamily:'monospace' }}
+              style={{ fontFamily:'JetBrains Mono, ui-monospace, monospace' }}
             />
           </div>
-          <div style={{ marginTop:8, display:'flex', gap:8 }}>
-            <button onClick={()=>{
-              let parsed = null;
-              try { parsed = JSON.parse(getRow(c).sheet || '{}'); }
-              catch { alert('Invalid JSON in sheet'); return; }
-              onSave({ id: c.id, name: getRow(c).name, clan: getRow(c).clan, sheet: parsed });
-            }}>Save Character</button>
-          </div>
-          <div style={{ marginTop:6, opacity:.7 }}>
-            Saving uses <code>PATCH /admin/characters/:id</code> (optional). If not present, add that route to backend.
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/* ==================== DOWNTIMES ==================== */
-
-function DowntimesTab({ dts, onUpdate }) {
-  const [edit, setEdit] = useState({}); // id -> { status, gm_notes, gm_resolution }
-
-  function getRow(d) {
-    return edit[d.id] ?? {
-      status: d.status,
-      gm_notes: d.gm_notes || '',
-      gm_resolution: d.gm_resolution || ''
-    };
-  }
-  function setRow(d, patch) {
-    setEdit(prev => ({ ...prev, [d.id]: { ...getRow(d), ...patch } }));
-  }
-
-  return (
-    <div>
-      <h3>Downtimes</h3>
-      {dts.map(d => (
-        <div key={d.id} style={{ border:'1px solid #444', padding:12, marginBottom:10 }}>
-          <div style={{ display:'flex', justifyContent:'space-between', gap:12 }}>
-            <div>
-              <div><b>Title:</b> {d.title}</div>
-              <div><b>Character:</b> {d.char_name} ({d.clan}) • by {d.player_name} &lt;{d.email}&gt;</div>
-              <div style={{ marginTop:6, whiteSpace:'pre-wrap' }}>{d.body}</div>
-            </div>
-            <div style={{ minWidth:220 }}>
-              <label>Status
-                <select
-                  value={getRow(d).status}
-                  onChange={e=>setRow(d, { status: e.target.value })}
-                  style={{ width:'100%' }}
-                >
-                  <option value="submitted">submitted</option>
-                  <option value="approved">approved</option>
-                  <option value="rejected">rejected</option>
-                  <option value="resolved">resolved</option>
-                </select>
-              </label>
-            </div>
-          </div>
-
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginTop:10 }}>
-            <label>GM Notes
-              <textarea
-                rows={4}
-                value={getRow(d).gm_notes}
-                onChange={e=>setRow(d, { gm_notes: e.target.value })}
-                style={{ width:'100%' }}
-              />
-            </label>
-            <label>Resolution
-              <textarea
-                rows={4}
-                value={getRow(d).gm_resolution}
-                onChange={e=>setRow(d, { gm_resolution: e.target.value })}
-                style={{ width:'100%' }}
-              />
-            </label>
-          </div>
-
-          <div style={{ marginTop:8, display:'flex', gap:8 }}>
-            <button onClick={()=>onUpdate(d, { status: getRow(d).status, gm_notes: getRow(d).gm_notes, gm_resolution: getRow(d).gm_resolution })}>
-              Save
+          <div className={styles.row} style={{ marginTop:8 }}>
+            <button
+              className={`${styles.btn} ${styles.btnPrimary}`}
+              onClick={()=>{
+                let parsed = null;
+                try { parsed = JSON.parse(getRow(c).sheet || '{}'); }
+                catch { alert('Invalid JSON in sheet'); return; }
+                onSave({ id: c.id, name: getRow(c).name, clan: getRow(c).clan, sheet: parsed });
+              }}
+            >
+              Save Character
             </button>
-            <button onClick={()=>onUpdate(d, { status: 'approved' })}>Approve</button>
-            <button onClick={()=>onUpdate(d, { status: 'rejected' })}>Reject</button>
-            <button onClick={()=>onUpdate(d, { status: 'resolved', gm_resolution: getRow(d).gm_resolution })}>Resolve</button>
           </div>
-
-          <div style={{ marginTop:6, opacity:.7 }}>
-            Uses <code>PATCH /admin/downtimes/:id</code> (supports status, gm_notes, gm_resolution).
+          <div className={styles.subtle} style={{ marginTop:6 }}>
+            Saving uses <code className={styles.kbd}>PATCH /admin/characters/:id</code>.
           </div>
         </div>
       ))}
@@ -428,250 +276,538 @@ function DowntimesTab({ dts, onUpdate }) {
   );
 }
 
-/* ==================== DOMAINS ==================== */
-
-function DomainsTab({ domains, characters, onCreate, onDelete, onAddMember, onRemoveMember }) {
-  const [newDom, setNewDom] = useState({ name:'', description:'' });
-  const characterOptions = Object.entries(characters).map(([cid, info]) => ({ id: cid, label: `${cid} — ${info.char_name} (${info.display_name})` }));
-
-  return (
-    <div>
-      <h3>Domains</h3>
-
-      <div style={{ display:'flex', gap:8, marginBottom:12 }}>
-        <input placeholder="Name" value={newDom.name} onChange={e=>setNewDom(v=>({...v, name: e.target.value}))}/>
-        <input placeholder="Description" value={newDom.description} onChange={e=>setNewDom(v=>({...v, description: e.target.value}))}/>
-        <button onClick={()=>onCreate(newDom.name, newDom.description)}>Create</button>
-      </div>
-
-      {domains.map(d => (
-        <div key={d.id} style={{ border:'1px solid #444', padding:12, marginBottom:10 }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-            <div>
-              <b>{d.name}</b>{' '}
-              <span style={{ opacity:.7 }}>{d.description || ''}</span>
-            </div>
-            <button onClick={()=>onDelete(d.id)}>Delete</button>
-          </div>
-
-          <div style={{ marginTop:8 }}>
-            <b>Members</b>
-            <ul style={{ marginTop:6 }}>
-              {(d.members || []).map(m => {
-                const charId = Object.entries(characters).find(([,i]) => i.char_name === m.name)?.[0];
-                return (
-                  <li key={`${d.id}-${m.name}`} style={{ display:'flex', alignItems:'center', gap:8 }}>
-                    <span>{m.name} ({m.clan})</span>
-                    {charId && (
-                      <button onClick={()=>onRemoveMember(d.id, charId)}>Remove</button>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-
-          <AddMemberRow domain={d} characterOptions={characterOptions} onAdd={onAddMember} />
-          <div style={{ marginTop:6, opacity:.7 }}>
-            Uses <code>/admin/domains</code> (POST/DELETE) and <code>/admin/domains/:id/members</code> (POST/DELETE).
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function AddMemberRow({ domain, characterOptions, onAdd }) {
-  const [cid, setCid] = useState('');
-  return (
-    <div style={{ display:'flex', gap:8, alignItems:'center', marginTop:6 }}>
-      <select value={cid} onChange={e=>setCid(e.target.value)}>
-        <option value="">— Select Character —</option>
-        {characterOptions.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
-      </select>
-      <button disabled={!cid} onClick={()=>onAdd(domain.id, cid)}>Add Member</button>
-    </div>
-  );
-}
-
-/* ==================== CLAIMS (with color picker) ==================== */
+/* ==================== CLAIMS — Split View + MAP (local GeoJSON) ==================== */
 
 function ClaimsTab({ claims, characters, onSave, onDelete }) {
+  // Sidebar & filters
+  const [filter, setFilter] = useState('');
+  const [onlyUnowned, setOnlyUnowned] = useState(false);
+  const [sortAsc, setSortAsc] = useState(true);
+
+  // Selection & editing
+  const [selected, setSelected] = useState(null); // number | 'new' | null
   const [edits, setEdits] = useState({}); // division -> { owner_name, color, owner_character_id }
 
-  function getRow(c) {
-    return edits[c.division] ?? {
-      owner_name: c.owner_name || '',
-      color: c.color || '#888888',
-      owner_character_id: c.owner_character_id ?? ''
-    };
-  }
-  function setRow(c, patch) {
-    setEdits(prev => ({ ...prev, [c.division]: { ...getRow(c), ...patch } }));
-  }
+  // "New" draft
+  const [newDraft, setNewDraft] = useState({
+    division: '',
+    color: '#8a0f1a',
+    owner_name: '',
+    owner_character_id: '',
+  });
 
-  const characterOptions = Object.entries(characters).map(([cid, info]) => ({
-    id: Number(cid),
-    label: `${cid} — ${info.char_name} (${info.display_name})`
-  }));
+  // Use local GeoJSON (Domains.json)
+  const divisionsGeo = useMemo(() => {
+    const raw = domainsRaw;
+    if (!raw) return null;
+    if (raw.type === 'FeatureCollection') return raw;
+    if (Array.isArray(raw)) return { type: 'FeatureCollection', features: raw };
+    if (raw.features) return { type: 'FeatureCollection', features: raw.features };
+    return null;
+  }, []);
+  const mapError = useMemo(
+    () => (divisionsGeo ? '' : 'Map data not available. Provide a FeatureCollection in /src/data/Domains.json with properties.division.'),
+    [divisionsGeo]
+  );
 
-  // Create / override
-  const [newDiv, setNewDiv] = useState('');
-  const [newColor, setNewColor] = useState('#8a0f1a');
-  const [newOwnerName, setNewOwnerName] = useState('');
-  const [newOwnerChar, setNewOwnerChar] = useState('');
+  const characterOptions = useMemo(
+    () =>
+      Object.entries(characters).map(([cid, info]) => ({
+        id: Number(cid),
+        label: `${cid} — ${info.char_name} (${info.display_name})`,
+      })),
+    [characters]
+  );
 
   function validateHex(h) {
     return /^#([0-9a-fA-F]{6})$/.test(String(h).trim());
   }
 
-  return (
-    <div>
-      <h3>Claims</h3>
+  function getRow(c) {
+    return edits[c.division] ?? {
+      owner_name: c.owner_name || '',
+      color: c.color || '#888888',
+      owner_character_id: c.owner_character_id ?? '',
+    };
+  }
+  function setRow(c, patch) {
+    setEdits(prev => ({ ...prev, [c.division]: { ...getRow(c), ...patch } }));
+  }
+  function resetRow(div) {
+    setEdits(prev => {
+      const next = { ...prev };
+      delete next[div];
+      return next;
+    });
+  }
 
-      <div style={{ border:'1px solid #333', padding:12, marginBottom:12 }}>
-        <b>Create / Override Claim</b>
-        <div style={{ display:'grid', gridTemplateColumns:'110px 80px 120px 1fr 260px 120px', gap:8, marginTop:8, alignItems:'center' }}>
-          <label>Division #
-            <input value={newDiv} onChange={e=>setNewDiv(e.target.value)} placeholder="e.g., 12" />
-          </label>
+  const filtered = useMemo(() => {
+    const q = filter.trim().toLowerCase();
+    let arr = [...claims];
+    if (q) {
+      arr = arr.filter(c =>
+        String(c.division).includes(q) ||
+        (c.owner_name || '').toLowerCase().includes(q) ||
+        (characters[c.owner_character_id]?.char_name || '').toLowerCase().includes(q)
+      );
+    }
+    if (onlyUnowned) arr = arr.filter(c => !c.owner_name && !c.owner_character_id);
+    arr.sort((a, b) => (sortAsc ? a.division - b.division : b.division - a.division));
+    return arr;
+  }, [claims, filter, onlyUnowned, sortAsc, characters]);
 
-          {/* Color picker */}
-          <label style={{ display:'flex', alignItems:'center', gap:6 }}>
-            <span>Color</span>
-            <input
-              type="color"
-              value={newColor}
-              onChange={e=>setNewColor(e.target.value)}
-              style={{ width: 36, height: 36, padding: 0, border: 0, background: 'transparent' }}
-              title="Pick color"
-            />
-          </label>
+  // quick lookup by division
+  const claimByDiv = useMemo(() => {
+    const m = new Map();
+    claims.forEach(c => m.set(c.division, c));
+    return m;
+  }, [claims]);
 
-          {/* Hex text (synced) */}
-          <label>Hex
-            <input
-              value={newColor}
-              onChange={e=>setNewColor(e.target.value)}
-              placeholder="#8a0f1a"
-              style={{ fontFamily:'monospace' }}
-            />
-          </label>
+  // live color (respect unsaved edits)
+  const colorForDivision = useCallback(
+    (division) => {
+      const edit = edits[division];
+      if (edit?.color) return edit.color;
+      const base = claimByDiv.get(division)?.color;
+      return base || '#454545';
+    },
+    [edits, claimByDiv]
+  );
 
-          <label>Owner Name
-            <input value={newOwnerName} onChange={e=>setNewOwnerName(e.target.value)} placeholder="e.g., FirstName Last Name" />
-          </label>
+  // Right panel helpers
+  const selectedClaim = typeof selected === 'number'
+    ? claims.find(c => c.division === selected)
+    : null;
 
-          <label>Owner Character (optional)
-            <select value={newOwnerChar} onChange={e=>setNewOwnerChar(e.target.value)}>
-              <option value="">— none —</option>
-              {characterOptions.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
-            </select>
-          </label>
-
-          <div>
-            <button onClick={()=>{
-              const div = Number(newDiv);
-              if (!Number.isInteger(div)) return alert('Division must be an integer');
-              if (!validateHex(newColor)) return alert('Hex must be like #ff0066');
-              const patch = {
-                owner_name: newOwnerName || 'Admin Set',
-                color: newColor
-              };
-              if (newOwnerChar === '') patch.owner_character_id = null;
-              else patch.owner_character_id = Number(newOwnerChar);
-              onSave(div, patch);
-              setNewDiv(''); setNewOwnerName(''); setNewOwnerChar('');
-            }}>Save</button>
-          </div>
-        </div>
-        <div style={{ marginTop:6, opacity:.7 }}>
-          Uses <code>PATCH /api/admin/domain-claims/:division</code> (upsert). Color must be a 6-digit hex.
-        </div>
-      </div>
-
-      <div style={{ display:'grid', gridTemplateColumns:'100px 80px 120px 160px 1fr 260px 160px', gap:8, alignItems:'center' }}>
-        <b>Division</b>
-        <b>Swatch</b>
-        <b>Current Hex</b>
-        <b>Character</b>
-        <b>Owner Name</b>
-        <b>Update</b>
-        <b>Actions</b>
-
-        {claims.sort((a,b)=>a.division-b.division).map(c => (
-          <React.Fragment key={c.division}>
-            <div>#{c.division}</div>
-
-            <div>
-              <div style={{ width:18, height:18, background:c.color, border:'1px solid #333' }} />
-            </div>
-
-            <code style={{ alignSelf:'center' }}>{c.color}</code>
-
-            <div>
-              {c.owner_character_id
-                ? `${c.owner_character_id} — ${characters[c.owner_character_id]?.char_name || 'unknown'}`
-                : '—'}
-            </div>
-
-            <div>{c.owner_name}</div>
-
-            <div style={{ display:'grid', gridTemplateColumns:'70px 120px 1fr 200px', gap:6 }}>
-              {/* Color picker + hex (synced) */}
-              <input
-                type="color"
-                value={getRow(c).color}
-                onChange={e=>setRow(c, { color: e.target.value })}
-                style={{ width: 36, height: 36, padding: 0, border: 0, background: 'transparent' }}
-                title="Pick color"
-              />
-              <input
-                value={getRow(c).color}
-                onChange={e=>setRow(c, { color: e.target.value })}
-                placeholder="#RRGGBB"
-                style={{ fontFamily:'monospace' }}
-                title="Edit hex"
-              />
-              <input
-                placeholder="Owner Name"
-                value={getRow(c).owner_name}
-                onChange={e=>setRow(c, { owner_name: e.target.value })}
-              />
-              <select
-                value={getRow(c).owner_character_id}
-                onChange={e=>setRow(c, { owner_character_id: e.target.value })}
-              >
-                <option value="">— none —</option>
-                {characterOptions.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
-              </select>
-            </div>
-
-            <div style={{ display:'flex', gap:6 }}>
-              <button onClick={()=>{
-                const patch = {};
-                if (getRow(c).owner_name) patch.owner_name = getRow(c).owner_name;
-                if (validateHex(getRow(c).color)) patch.color = getRow(c).color;
-                else return alert('Hex must be like #ff0066');
-                const oc = getRow(c).owner_character_id;
-                if (oc === '') patch.owner_character_id = null;
-                else patch.owner_character_id = Number(oc);
-                onSave(c.division, patch);
-              }}>Save</button>
-              <button onClick={()=>onDelete(c.division)}>Unclaim</button>
-            </div>
-          </React.Fragment>
+  // Color shortcuts
+  const COLOR_SHORTCUTS = [
+    { name: 'Blue',  hex: '#2563eb' },
+    { name: 'Green', hex: '#16a34a' },
+    { name: 'Red',   hex: '#dc2626' },
+  ];
+  function ShortcutButtons({ onPick }) {
+    return (
+      <div className={styles.shortcutRow}>
+        {COLOR_SHORTCUTS.map(c => (
+          <button
+            key={c.hex}
+            type="button"
+            className={styles.colorShortcut}
+            title={c.name}
+            onClick={() => onPick(c.hex)}
+            style={{ background: c.hex }}
+          />
         ))}
       </div>
+    );
+  }
 
-      {!claims.length && (
-        <div style={{ marginTop:12, opacity:.7 }}>
-          No claims yet. Create one above (division + color + optional character).
+  return (
+    <div className={styles.claimsLayout}>
+      {/* Left: Map + list */}
+      <aside className={styles.sidePanel}>
+        <div className={styles.mapCard}>
+          {divisionsGeo ? (
+            <ClaimsMap
+              geo={divisionsGeo}
+              selected={selected}
+              onSelect={setSelected}
+              colorForDivision={colorForDivision}
+            />
+          ) : (
+            <div className={styles.mapFallback}>
+              <span className={styles.subtle}>{mapError}</span>
+            </div>
+          )}
         </div>
-      )}
+
+        <div className={styles.sideHeader} style={{ marginTop: 8 }}>
+          <input
+            className={styles.inputSearch}
+            placeholder="Search #division / owner / character…"
+            value={filter}
+            onChange={e => setFilter(e.target.value)}
+          />
+          <button className={styles.btn} onClick={() => setSortAsc(s => !s)}>
+            Sort {sortAsc ? '↓' : '↑'}
+          </button>
+        </div>
+
+        <div className={styles.sideFilters}>
+          <label className={styles.row} style={{ gap: 8 }}>
+            <input
+              type="checkbox"
+              checked={onlyUnowned}
+              onChange={e => setOnlyUnowned(e.target.checked)}
+            />
+            <span className={styles.subtle}>Only unowned</span>
+          </label>
+          <button
+            className={`${styles.btn} ${styles.btnPrimary}`}
+            onClick={() => setSelected('new')}
+          >
+            + New claim
+          </button>
+        </div>
+
+        <div className={styles.claimList}>
+          {filtered.map(c => {
+            const isActive = selected === c.division;
+            return (
+              <button
+                key={c.division}
+                className={`${styles.claimItem} ${isActive ? styles.claimItemActive : ''}`}
+                onClick={() => setSelected(c.division)}
+                title={`Division #${c.division}`}
+              >
+                <span className={styles.claimBadge}>#{c.division}</span>
+                <span className={styles.claimText}>
+                  <b>{c.owner_name || '—'}</b>
+                  <small className={styles.subtle}>
+                    {c.owner_character_id
+                      ? characters[c.owner_character_id]?.char_name || 'unknown'
+                      : 'no character'}
+                  </small>
+                </span>
+                <span className={styles.claimSwatch} style={{ background: colorForDivision(c.division) }} />
+              </button>
+            );
+          })}
+
+          {!filtered.length && (
+            <div className={styles.emptyNote}>
+              No claims match your filters.
+            </div>
+          )}
+        </div>
+      </aside>
+
+      {/* Right: Editor */}
+      <section className={styles.detailPanel}>
+        {/* New claim editor */}
+        {selected === 'new' && (
+          <div className={`${styles.card} ${styles.stack12}`}>
+            <div className={styles.detailHeader}>
+              <h3>Create Claim</h3>
+            </div>
+
+            <div className={styles.formRow2}>
+              <label>Division #
+                <input
+                  value={newDraft.division}
+                  onChange={e => setNewDraft(d => ({ ...d, division: e.target.value }))}
+                  placeholder="e.g., 12"
+                />
+              </label>
+              <label>Owner Name
+                <input
+                  value={newDraft.owner_name}
+                  onChange={e => setNewDraft(d => ({ ...d, owner_name: e.target.value }))}
+                  placeholder="FirstName LastName"
+                />
+              </label>
+            </div>
+
+            <div className={styles.formRow3}>
+              <label>Color
+                <input
+                  type="color"
+                  value={newDraft.color}
+                  onChange={e => setNewDraft(d => ({ ...d, color: e.target.value }))}
+                  className={styles.colorBox}
+                  title="Pick color"
+                />
+              </label>
+              <label>Hex
+                <input
+                  value={newDraft.color}
+                  onChange={e => setNewDraft(d => ({ ...d, color: e.target.value }))}
+                  className={`${styles.inputMono} ${validateHex(newDraft.color) ? '' : styles.inputError}`}
+                  placeholder="#8a0f1a"
+                />
+              </label>
+              <label>Owner Character (optional)
+                <select
+                  value={newDraft.owner_character_id}
+                  onChange={e => setNewDraft(d => ({ ...d, owner_character_id: e.target.value }))}
+                >
+                  <option value="">— none —</option>
+                  {characterOptions.map(o => (
+                    <option key={o.id} value={o.id}>{o.label}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <ShortcutButtons onPick={(hex) => setNewDraft(d => ({ ...d, color: hex }))} />
+
+            <div className={styles.row} style={{ gap: 8 }}>
+              <button
+                className={`${styles.btn} ${styles.btnPrimary}`}
+                onClick={() => {
+                  const div = Number(newDraft.division);
+                  if (!Number.isInteger(div)) return alert('Division must be an integer');
+                  if (!validateHex(newDraft.color)) return alert('Hex must be like #ff0066');
+                  const patch = {
+                    owner_name: newDraft.owner_name || 'Admin Set',
+                    color: newDraft.color,
+                    owner_character_id:
+                      newDraft.owner_character_id === '' ? null : Number(newDraft.owner_character_id),
+                  };
+                  onSave(div, patch);
+                  setNewDraft({ division: '', color: '#8a0f1a', owner_name: '', owner_character_id: '' });
+                  setSelected(div);
+                }}
+              >
+                Save
+              </button>
+              <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setSelected(null)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Existing claim editor */}
+        {selectedClaim && (
+          <div className={`${styles.card} ${styles.stack12}`}>
+            <div className={styles.detailHeader}>
+              <div className={styles.detailSwatch} style={{ background: getRow(selectedClaim).color }} />
+              <div>
+                <h3>Division #{selectedClaim.division}</h3>
+                <div className={styles.subtle}>
+                  {selectedClaim.owner_character_id
+                    ? <>Char ID {selectedClaim.owner_character_id} · {characters[selectedClaim.owner_character_id]?.char_name || 'unknown'}</>
+                    : 'No character linked'}
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.formRow2}>
+              <label>Owner Name
+                <input
+                  value={getRow(selectedClaim).owner_name}
+                  onChange={e => setRow(selectedClaim, { owner_name: e.target.value })}
+                />
+              </label>
+              <label>Owner Character
+                <select
+                  value={getRow(selectedClaim).owner_character_id}
+                  onChange={e => setRow(selectedClaim, { owner_character_id: e.target.value })}
+                >
+                  <option value="">— none —</option>
+                  {characterOptions.map(o => (
+                    <option key={o.id} value={o.id}>{o.label}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className={styles.formRow3}>
+              <label>Color
+                <input
+                  type="color"
+                  value={getRow(selectedClaim).color}
+                  onChange={e => setRow(selectedClaim, { color: e.target.value })}
+                  className={styles.colorBox}
+                  title="Pick color"
+                />
+              </label>
+              <label>Hex
+                <input
+                  value={getRow(selectedClaim).color}
+                  onChange={e => setRow(selectedClaim, { color: e.target.value })}
+                  className={`${styles.inputMono} ${validateHex(getRow(selectedClaim).color) ? '' : styles.inputError}`}
+                  placeholder="#RRGGBB"
+                />
+              </label>
+              <div />
+            </div>
+
+            <ShortcutButtons onPick={(hex) => setRow(selectedClaim, { color: hex })} />
+
+            <div className={styles.row} style={{ gap: 8 }}>
+              <button
+                className={`${styles.btn} ${styles.btnPrimary}`}
+                onClick={() => {
+                  const row = getRow(selectedClaim);
+                  if (!validateHex(row.color)) return alert('Hex must be like #ff0066');
+                  const patch = {
+                    owner_name: row.owner_name || 'Admin Set',
+                    color: row.color,
+                    owner_character_id: row.owner_character_id === '' ? null : Number(row.owner_character_id),
+                  };
+                  onSave(selectedClaim.division, patch);
+                  resetRow(selectedClaim.division);
+                }}
+              >
+                Save
+              </button>
+              <button
+                className={`${styles.btn} ${styles.btnGhost}`}
+                onClick={() => resetRow(selectedClaim.division)}
+              >
+                Reset
+              </button>
+              <button
+                className={`${styles.btn} ${styles.btnDanger}`}
+                onClick={() => {
+                  onDelete(selectedClaim.division);
+                  setSelected(null);
+                }}
+              >
+                Unclaim
+              </button>
+            </div>
+          </div>
+        )}
+
+        {!selected && selected !== 'new' && (
+          <div className={styles.placeholderCard}>
+            <div className={styles.placeholderDot} />
+            <div>
+              <h3>Select a claim</h3>
+              <p className={styles.subtle}>Click a division on the map (left), or create a new claim.</p>
+            </div>
+          </div>
+        )}
+      </section>
     </div>
   );
+
+  /* ---------- Inner map component so this snippet is self-contained ---------- */
+  function ClaimsMap({ geo, selected, onSelect, colorForDivision }) {
+    const mapRef = useRef(null);
+    const geoRef = useRef(null);
+    const featureLayersRef = useRef(new Map());
+
+    // Fit bounds when data loads
+    useEffect(() => {
+      if (!geoRef.current || !mapRef.current) return;
+      const b = geoRef.current.getBounds?.();
+      if (b && b.isValid()) {
+        mapRef.current.fitBounds(b, { padding: [16, 16] });
+      }
+    }, [geo]);
+
+    // Restyle on selection or color changes
+    useEffect(() => {
+      featureLayersRef.current.forEach((layer, div) => {
+        const isSel = selected === div;
+        layer.setStyle({
+          color: isSel ? '#ffffff' : '#1f2937',
+          weight: isSel ? 3 : 1.5,
+          fillColor: colorForDivision(div),
+          fillOpacity: 0.55,
+        });
+      });
+    }, [selected, colorForDivision]);
+
+    return (
+      <MapContainer
+        className={styles.mapCanvas}
+        center={[37.975, 23.735]} // default center
+        zoom={12}
+        scrollWheelZoom
+        whenCreated={(m) => { mapRef.current = m; }}
+      >
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution="&copy; OpenStreetMap"
+        />
+        <GeoJSON
+          data={geo}
+          ref={geoRef}
+          style={(feature) => {
+            const div = Number(feature?.properties?.division);
+            const isSel = selected === div;
+            return {
+              color: isSel ? '#ffffff' : '#1f2937',
+              weight: isSel ? 3 : 1.5,
+              fillColor: colorForDivision(div),
+              fillOpacity: 0.55,
+            };
+          }}
+          onEachFeature={(feature, layer) => {
+            const div = Number(feature?.properties?.division);
+            if (!div) return;
+            featureLayersRef.current.set(div, layer);
+            layer.on({
+              click: () => onSelect(div),
+              mouseover: (e) => e.target.setStyle({ weight: 3, color: '#ffffff' }),
+              mouseout: (e) => {
+                const isSel = selected === div;
+                e.target.setStyle({ weight: isSel ? 3 : 1.5, color: isSel ? '#ffffff' : '#1f2937' });
+              },
+            });
+            layer.bindTooltip(`#${div}`, { sticky: true, direction: 'auto', opacity: 0.9 });
+          }}
+        />
+      </MapContainer>
+    );
+  }
 }
+
+
+/* ---- Map component (inside same file) ---- */
+function ClaimsMap({ geo, selected, onSelect, colorForDivision }) {
+  const mapRef = useRef(null);
+
+  // fit bounds once when data loads
+  useEffect(() => {
+    if (!geo || !mapRef.current) return;
+    try {
+      const map = mapRef.current;
+      // Using leaflet's built-in to compute bounds:
+      // react-leaflet exposes when container is ready via whenCreated
+      // We compute bounds with a hidden L.geoJSON:
+    } catch {}
+  }, [geo]);
+
+  return (
+    <MapContainer
+      className={styles.mapCanvas}
+      center={[37.975, 23.735]} // Athens-ish default; adjust as needed
+      zoom={12}
+      scrollWheelZoom
+      whenCreated={(m) => { mapRef.current = m; }}
+    >
+      <TileLayer
+        // any provider you prefer
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution="&copy; OpenStreetMap"
+      />
+      {geo && (
+        <GeoJSON
+          data={geo}
+          style={(feature) => {
+            const div = feature?.properties?.division;
+            const fill = colorForDivision(div);
+            const isSel = selected === div;
+            return {
+              color: isSel ? '#ffffff' : '#1f2937',  // stroke
+              weight: isSel ? 3 : 1.5,
+              fillColor: fill,
+              fillOpacity: 0.55,
+            };
+          }}
+          onEachFeature={(feature, layer) => {
+            const div = feature?.properties?.division;
+            if (!div) return;
+            layer.on({
+              click: () => onSelect(div),
+              mouseover: (e) => e.target.setStyle({ weight: 3, color: '#ffffff' }),
+              mouseout: (e) => e.target.setStyle({ weight: selected === div ? 3 : 1.5, color: selected === div ? '#ffffff' : '#1f2937' }),
+            });
+            layer.bindTooltip(`#${div}`, { sticky: true, direction: 'auto', opacity: 0.9 });
+          }}
+        />
+      )}
+    </MapContainer>
+  );
+}
+
+
 
 /* ==================== XP TOOLS ==================== */
 
@@ -687,31 +823,31 @@ function XPTools({ users, onGrant }) {
   const [grants, setGrants] = useState({}); // char_id -> delta
 
   return (
-    <div>
+    <div className="stack12">
       <h3>XP Tools</h3>
-      {!characters.length && <div>No characters to grant XP to yet.</div>}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr 160px', gap:8, alignItems:'center' }}>
+      {!characters.length && <div className={styles.subtle}>No characters to grant XP to yet.</div>}
+      <div className={styles.xpGrid}>
         <b>Character</b><b>Clan</b><b>Owner</b><b>Current XP</b><span />
         {characters.map(c => (
           <React.Fragment key={c.id}>
             <div>{c.name}</div>
-            <div>{c.clan}</div>
-            <div>{c.owner}</div>
+            <div className={styles.subtle}>{c.clan}</div>
+            <div className={styles.subtle}>{c.owner}</div>
             <div>{c.xp}</div>
-            <div style={{ display:'flex', gap:6 }}>
+            <div className={styles.row} style={{ gap:6 }}>
               <input
                 placeholder="+/- XP"
                 value={grants[c.id] ?? ''}
                 onChange={e=>setGrants(prev => ({ ...prev, [c.id]: e.target.value }))}
                 style={{ width:90 }}
               />
-              <button onClick={()=>onGrant(c.id, grants[c.id])}>Apply</button>
+              <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={()=>onGrant(c.id, grants[c.id])}>Apply</button>
             </div>
           </React.Fragment>
         ))}
       </div>
-      <p style={{ marginTop:8, opacity:.7 }}>
-        Uses <code>PATCH /admin/characters/:id/xp</code>.
+      <p className={styles.subtle} style={{ marginTop:8 }}>
+        Uses <code className={styles.kbd}>PATCH /admin/characters/:id/xp</code>.
       </p>
     </div>
   );
