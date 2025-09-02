@@ -164,9 +164,6 @@ export default function Register() {
           </div>
         </form>
       </main>
-      <footer className={styles['login-footer']} aria-label="App footer">
-        &copy; {new Date().getFullYear()} By Mycroft
-      </footer>
     </div>
   );
 }
