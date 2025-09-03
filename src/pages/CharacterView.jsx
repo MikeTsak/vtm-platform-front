@@ -47,6 +47,44 @@ function looksLikeFlatSheet(s) {
   if ('predatorType' in s) return true;
   return false;
 }
+function SpecialtyAdder({ xp, onAdd }) {
+  const [skill, setSkill] = useState('Academics');
+  const [spec, setSpec] = useState('');
+  const cost = 3;
+  const afford = xp >= cost;
+
+  return (
+    <div className={styles.rowForm}>
+      <select
+        className={styles.input}
+        value={skill}
+        onChange={e => setSkill(e.target.value)}
+      >
+        {Object.values(SKILLS).flat().map(name => (
+          <option key={name} value={name}>{name}</option>
+        ))}
+      </select>
+
+      <input
+        className={styles.input}
+        placeholder="e.g., Technology (Firmware)"
+        value={spec}
+        onChange={e => setSpec(e.target.value)}
+      />
+
+      <span className={styles.costText}>Cost: <b>{cost}</b></span>
+
+      <button
+        className={styles.cta}
+        disabled={!afford || !spec.trim()}
+        onClick={() => onAdd(skill, spec.trim())}
+      >
+        Add Specialty
+      </button>
+    </div>
+  );
+}
+
 
 function isStructuredSheet(s) {
   if (!s || typeof s !== 'object') return false;
@@ -195,10 +233,10 @@ export default function CharacterView() {
   }, []);
 
   useEffect(() => {
-  if (ch) {
-    api.get('/characters/xp/total').then(r => setXpTotals(r.data));
-  }
-}, [ch]);
+    if (ch) {
+      api.get('/characters/xp/total').then(r => setXpTotals(r.data));
+    }
+  }, [ch]);
 
   const tint = useMemo(() => (ch ? CLAN_COLORS[ch.clan] || '#8a0f1a' : '#8a0f1a'), [ch]);
   const sheet = ch?.sheet || {};
@@ -315,6 +353,14 @@ export default function CharacterView() {
     ...(sheet.rituals?.blood_sorcery || []).map(r => r.id),
     ...(sheet.rituals?.oblivion || []).map(r => r.id),
   ]);
+
+  // derive known ritual names (for prereq strings that use names)
+  const knownRitualNames = useMemo(() => {
+    const bs = Object.values(RITUALS.blood_sorcery.levels || {}).flat();
+    const ob = Object.values(RITUALS.oblivion?.levels || {}).flat();
+    const byId = new Map([...bs, ...ob].map(r => [r.id, r.name]));
+    return Array.from(knownRitualIds).map(id => byId.get(id)).filter(Boolean);
+  }, [knownRitualIds]);
 
   function canLearnRitual(level) {
     const bsLevel = Number(sheet.disciplines?.['Blood Sorcery'] || 0);
@@ -649,14 +695,14 @@ export default function CharacterView() {
               </div>
             </Drawer>
           </Card>
+
           {/* Rituals & Ceremonies — drawer, closed by default */}
           <Card>
             <Drawer title="Blood Sorcery Rituals & Oblivion Ceremonies" defaultOpen={false}>
-              {/* Nested drawers */}
               <div className={styles.grid} style={{ gap: 12 }}>
-                {/* Blood Sorcery drawer */}
+                {/* Blood Sorcery */}
                 <Drawer title="Blood Sorcery Rituals" defaultOpen={false}>
-                  <div className={styles.grid}>
+                  <div className={styles.grid} style={{ gap: 12 }}>
                     {Object.entries(RITUALS.blood_sorcery.levels).map(([lvlStr, list]) => {
                       const level = Number(lvlStr);
                       return list.map(rit => {
@@ -664,14 +710,17 @@ export default function CharacterView() {
                         const allowed = canLearnRitual(level);
                         const cost = XP_RULES.ritual(level);
                         const afford = xp >= cost;
+                        const { unmet } = ritualPrereqStatus(rit, knownRitualIds, knownRitualNames);
                         return (
-                          <ShopRow
+                          <RitualRow
                             key={rit.id}
-                            title={rit.name}
-                            subtitle={`Level ${level}`}
+                            item={rit}
+                            level={level}
                             cost={cost}
-                            disabled={owned || !allowed || !afford}
-                            hint={owned ? 'Known' : (!allowed ? 'Requires Blood Sorcery ' + level : (!afford ? 'Not enough XP' : ''))}
+                            owned={owned}
+                            allowed={allowed}
+                            afford={afford}
+                            prereqUnmet={unmet}
                             onBuy={() => buyRitual(rit, level, cost)}
                           />
                         );
@@ -680,9 +729,9 @@ export default function CharacterView() {
                   </div>
                 </Drawer>
 
-                {/* Oblivion drawer */}
+                {/* Oblivion */}
                 <Drawer title="Oblivion Ceremonies" defaultOpen={false}>
-                  <div className={styles.grid}>
+                  <div className={styles.grid} style={{ gap: 12 }}>
                     {Object.entries((RITUALS.oblivion?.levels || {})).map(([lvlStr, list]) => {
                       const level = Number(lvlStr);
                       return list.map(cer => {
@@ -690,14 +739,17 @@ export default function CharacterView() {
                         const allowed = canLearnCeremony(level);
                         const cost = XP_RULES.ceremony(level);
                         const afford = xp >= cost;
+                        const { unmet } = ritualPrereqStatus(cer, knownRitualIds, knownRitualNames);
                         return (
-                          <ShopRow
+                          <RitualRow
                             key={cer.id}
-                            title={cer.name}
-                            subtitle={`Level ${level}`}
+                            item={cer}
+                            level={level}
                             cost={cost}
-                            disabled={owned || !allowed || !afford}
-                            hint={owned ? 'Known' : (!allowed ? 'Requires Oblivion ' + level : (!afford ? 'Not enough XP' : ''))}
+                            owned={owned}
+                            allowed={allowed}
+                            afford={afford}
+                            prereqUnmet={unmet}
                             onBuy={() => buyCeremony(cer, level, cost)}
                           />
                         );
@@ -818,14 +870,41 @@ function DisciplineRow({ name, level = 0, powers = [] }) {
   );
 }
 
+function ConfirmModal({ title = 'Confirm Purchase', children, onConfirm, onCancel, busy = false }) {
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', display: 'grid', placeItems: 'center', zIndex: 50 }}>
+      <div className={styles.card} style={{ maxWidth: 520, width: 'min(92vw,520px)' }}>
+        <div className={styles.cardHead}><b>{title}</b></div>
+        <div className={styles.grid} style={{ gap: 12 }}>{children}</div>
+        <div className={styles.rowForm} style={{ justifyContent: 'flex-end' }}>
+          <button className={styles.ghostBtn} onClick={onCancel} disabled={busy}>No</button>
+          <button className={styles.cta} onClick={onConfirm} disabled={busy}>{busy ? 'Working…' : 'Yes'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, leftIcon }) {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [working, setWorking] = useState(false);
+
+  async function handleConfirm() {
+    setWorking(true);
+    try {
+      await onBuy?.();
+      setConfirmOpen(false);
+    } finally {
+      setWorking(false);
+    }
+  }
+
   return (
     <div className={styles.rowForm} style={{ justifyContent: 'space-between' }}>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', minWidth: 0 }}>
         {leftIcon && <img src={leftIcon} alt="" width={26} height={26} style={{ borderRadius: 6, opacity: .9 }} />}
         <div style={{ display: 'grid', minWidth: 0 }}>
-          <div style={{ fontWeight: 600, opacity: disabled ? 0.6 : 1 }}>{title}</div>
+          <div style={{ fontWeight: 600, opacity: (disabled && !confirmOpen) ? 0.6 : 1 }}>{title}</div>
           <div className={styles.muted} style={{ fontSize: 13 }}>
             {subtitle}{hint ? ` • ${hint}` : ''}
           </div>
@@ -834,89 +913,440 @@ function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, leftIcon }
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <span className={styles.costText}>Cost: <b>{cost}</b></span>
-        <button className={styles.cta} disabled={disabled} onClick={onBuy}>Buy</button>
+        <button
+          className={styles.cta}
+          disabled={disabled || working}
+          onClick={() => setConfirmOpen(true)}
+          aria-haspopup="dialog"
+        >
+          Buy
+        </button>
       </div>
+
+      {confirmOpen && (
+        <ConfirmModal
+          title="Confirm Purchase"
+          onCancel={() => setConfirmOpen(false)}
+          onConfirm={handleConfirm}
+          busy={working}
+        >
+          <p>
+            Are you sure you want to buy <b>{title}</b>
+            {subtitle ? <> — {subtitle}</> : null} for <b>{cost}</b> XP?
+          </p>
+        </ConfirmModal>
+      )}
     </div>
   );
 }
 
-function SpecialtyAdder({ xp, onAdd }) {
-  const [skill, setSkill] = useState('Academics');
-  const [spec, setSpec] = useState('');
-  const cost = 3;
-  const afford = xp >= cost;
+/* ---------- Ritual/Ceremony row with prereq/recall info ---------- */
+
+function RitualRow({ item, level, cost, owned, allowed, afford, prereqUnmet = [], onBuy }) {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [working, setWorking] = useState(false);
+
+  const disabled = owned || !allowed || !afford || prereqUnmet.length > 0;
+
+  async function handleConfirm() {
+    setWorking(true);
+    try {
+      await onBuy?.();
+      setConfirmOpen(false);
+    } finally {
+      setWorking(false);
+    }
+  }
 
   return (
-    <div className={styles.rowForm}>
-      <select className={styles.input} value={skill} onChange={e => setSkill(e.target.value)}>
-        {Object.values(SKILLS).flat().map(name => (
-          <option key={name} value={name}>{name}</option>
-        ))}
-      </select>
-      <input
-        className={styles.input}
-        placeholder="e.g., Technology (Firmware)"
-        value={spec}
-        onChange={e => setSpec(e.target.value)}
-      />
-      <span className={styles.costText}>Cost: <b>{cost}</b></span>
-      <button className={styles.cta} disabled={!afford || !spec.trim()} onClick={() => onAdd(skill, spec.trim())}>
-        Add Specialty
-      </button>
+    <div className={styles.paneCard} style={{ padding: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'start' }}>
+        <div style={{ display: 'grid', gap: 4 }}>
+          <div style={{ fontWeight: 700 }}>{item.name}</div>
+          <div className={styles.muted} style={{ fontSize: 13 }}>
+            Level {level}{item.source ? ` • Source: ${item.source}` : ''}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {owned && <span className={`${styles.powerBadgeMuted} badge-owned`}>Known</span>}
+          {!allowed && <span className={`${styles.powerBadgeMuted} badge-warn`}>Requires Discipline {level}</span>}
+          {prereqUnmet.length > 0 && (
+            <span className={`${styles.powerBadgeMuted} badge-warn`}>Conditions not met: {prereqUnmet.join(', ')}</span>
+          )}
+          {!afford && <span className={`${styles.powerBadgeMuted} badge-warn`}>Not enough XP</span>}
+        </div>
+      </div>
+
+      <div className={styles.detailTags} style={{ marginTop: 8 }}>
+        <span className={styles.powerTag}><b>Level:</b> {level}</span>
+        <span className={styles.powerTag}><b>Cost:</b> {item.cost || '—'}</span>
+        {item.dice_pool && <span className={styles.powerTag}><b>Dice Pool:</b> {item.dice_pool}</span>}
+        {item.difficulty && <span className={styles.powerTag}><b>Difficulty:</b> {item.difficulty}</span>}
+        {item.prereq && <span className={styles.powerTag}><b>Prereq:</b> {item.prereq}</span>}
+      </div>
+
+      {item.effect && (
+        <div className={styles.powerNotes} style={{ marginTop: 8 }}>
+          <b>Effect:</b> {item.effect}
+        </div>
+      )}
+      {item.notes && (
+        <div className={styles.powerNotes} style={{ marginTop: 8 }}>
+          {item.notes}
+        </div>
+      )}
+
+      <div className={styles.modalFooter} style={{ borderTop: 'none', padding: 0, marginTop: 10 }}>
+        <div className={styles.muted} style={{ marginRight: 'auto' }}>
+          XP Cost: <b>{cost}</b>
+        </div>
+        <button
+          className={styles.cta}
+          disabled={disabled || working}
+          onClick={() => setConfirmOpen(true)}
+        >
+          Buy
+        </button>
+      </div>
+
+      {confirmOpen && (
+        <ConfirmModal
+          title="Confirm Purchase"
+          onCancel={() => setConfirmOpen(false)}
+          onConfirm={handleConfirm}
+          busy={working}
+        >
+          <p>Buy <b>{item.name}</b> (Level {level}) for <b>{cost}</b> XP?</p>
+          {prereqUnmet.length > 0 && (
+            <p className={styles.muted} style={{ marginTop: 6 }}>
+              Conditions not met: {prereqUnmet.join(', ')}
+            </p>
+          )}
+        </ConfirmModal>
+      )}
     </div>
   );
 }
 
-/* ===== Minimal “pick a power for level N” modal ===== */
+/* ---------- Prereq check for rituals/ceremonies by name or id ---------- */
+
+const _norm = (v) => String(v ?? '').trim().toLowerCase();
+
+function ritualPrereqStatus(rit, knownRitualIds, knownRitualNames) {
+  const unmet = [];
+  const prereq = rit?.prereq;
+  if (!prereq) return { unmet };
+
+  const parts = String(prereq)
+    .split(/(?:,|&|\+|and)/i)
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  if (!parts.length) return { unmet };
+
+  const knownIdSet = new Set(Array.from(knownRitualIds || []));
+  const knownNameSet = new Set((knownRitualNames || []).map(_norm));
+
+  for (const p of parts) {
+    const hasById = knownIdSet.has(p);
+    const hasByName = knownNameSet.has(_norm(p));
+    if (!hasById && !hasByName) unmet.push(p);
+  }
+  return { unmet };
+}
+
+/* ===== Pick a power (≤ level N), gray-out owned & unmet amalgams, sort by level; closes after success ===== */
 function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
-  const { name, next, assignOnly } = cfg;
-  const available = (DISCIPLINES?.[name]?.levels?.[next] || []);
-  const [selected, setSelected] = useState(available[0]?.id || '');
-  const selectedName = available.find(p => p.id === selected)?.name || '';
+  const { name, next, assignOnly, ownedPowerIds = [], ownedPowerNames = [], ownedPowers = [], disciplineDots = {} } = cfg;
+
+  // ---------- build pool up to 'next' & sort by level then name ----------
+  const fullPool = useMemo(() => {
+    const out = [];
+    const levels = DISCIPLINES?.[name]?.levels || {};
+    const cap = Number(next || 0);
+    for (let lvl = 1; lvl <= cap; lvl++) {
+      for (const p of (levels[lvl] || [])) out.push({ ...p, __level: lvl });
+    }
+    out.sort((a, b) => (a.__level - b.__level) || String(a.name).localeCompare(String(b.name)));
+    return out;
+  }, [name, next]);
+
+  // ---------- normalization helpers ----------
+  const norm = (v) => String(v ?? '').trim().toLowerCase();
+  const normDisc = (s) => norm(s).replace(/\s+/g, ' ');
+
+  // Accept IDs, names, slugs, keys, codes, numbers
+  const ownedCanon = useMemo(() => {
+    const ids = ownedPowerIds.map(norm);
+    const names = ownedPowerNames.map(norm);
+    const objs = ownedPowers.flatMap(p => [norm(p?.id), norm(p?.name), norm(p?.slug), norm(p?.key), norm(p?.code), norm(p?.power_id)]);
+    return new Set([...ids, ...names, ...objs].filter(Boolean));
+  }, [ownedPowerIds, ownedPowerNames, ownedPowers]);
+
+  // Case-insensitive discipline dots for amalgam checks
+  const dotsByDisc = useMemo(() => {
+    const m = new Map();
+    Object.entries(disciplineDots || {}).forEach(([k, v]) => m.set(normDisc(k), Number(v) || 0));
+    return m;
+  }, [disciplineDots]);
+
+  // Parse amalgam like "Potence ●●", "Potence 2", "Potence 2 & Fortitude 1"
+  const countDots = (s = '') => {
+    const bullets = (s.match(/[•●○]/g) || []).length;
+    const digits = parseInt((s.match(/\b(\d+)\b/) || [,'0'])[1], 10) || 0;
+    return Math.max(bullets, digits || 1);
+  };
+  const parseAmalgam = (s = '') =>
+    s.split(/(?:,|&|\+|and)/i)
+     .map(part => part.trim())
+     .filter(Boolean)
+     .map(part => {
+       const nameMatch = part.match(/^[^\d•●○]+/);
+       const discName = (nameMatch ? nameMatch[0] : part).trim().replace(/[:.-]+$/,'');
+       return { disc: discName, dots: countDots(part) };
+     });
+
+  // ---------- annotate availability (owned/unmet amalgams) ----------
+  const annotated = useMemo(() => {
+    return fullPool.map(p => {
+      const candidates = [
+        norm(p?.id), norm(p?.name), norm(p?.slug), norm(p?.key), norm(p?.code), norm(p?.power_id)
+      ].filter(Boolean);
+      const owned = candidates.some(c => ownedCanon.has(c));
+
+      const unmet = [];
+      if (p.amalgam) {
+        const reqs = parseAmalgam(String(p.amalgam));
+        for (const req of reqs) {
+          const have = dotsByDisc.get(normDisc(req.disc)) || 0;
+          if (have < (req.dots || 1)) {
+            unmet.push(`${req.disc} ${'•'.repeat(req.dots || 1)}`);
+          }
+        }
+      }
+
+      return {
+        ...p,
+        __flags: { owned, unmet },
+        __available: !owned && unmet.length === 0,
+      };
+    });
+  }, [fullPool, ownedCanon, dotsByDisc]);
+
+  // ---------- search/filter (keeps disabled visible) ----------
+  const [query, setQuery] = useState('');
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return annotated;
+    return annotated.filter(p =>
+      p.name?.toLowerCase().includes(q) ||
+      p.notes?.toLowerCase().includes(q) ||
+      p.source?.toLowerCase().includes(q) ||
+      String(p.__level).includes(q)
+    );
+  }, [annotated, query]);
+
+  // ---------- selection lifecycle ----------
+  const firstAvailable = useMemo(() => filtered.find(p => p.__available)?.id || '', [filtered]);
+  const [selectedId, setSelectedId] = useState(firstAvailable);
+  useEffect(() => {
+    if (!filtered.length) return setSelectedId('');
+    if (!filtered.some(p => p.id === selectedId)) {
+      setSelectedId(filtered.find(p => p.__available)?.id || filtered[0].id);
+    }
+  }, [filtered, selectedId]);
+
+  const sel = useMemo(
+    () => filtered.find(p => p.id === selectedId) || annotated.find(p => p.id === selectedId),
+    [filtered, annotated, selectedId]
+  );
+
+  // ---------- save flow (await API, close on success) ----------
+  const [saving, setSaving] = useState(false);
+  const [saveErr, setSaveErr] = useState('');
+  const confirm = async () => {
+    if (!sel || !sel.__available) return;
+    setSaving(true);
+    setSaveErr('');
+    try {
+      const maybe = onConfirm?.({
+        selectedPowerId: sel.id,
+        selectedPowerName: sel.name,
+        selectedPowerLevel: sel.__level
+      });
+      if (maybe && typeof maybe.then === 'function') await maybe;
+      onClose?.();
+    } catch (e) {
+      setSaveErr(e?.response?.data?.error || e?.message || 'Failed to assign power.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ---------- render helpers ----------
+  const labelize = (k) => String(k).replace(/_/g, ' ').replace(/\b\w/g, m => m.toUpperCase());
+
+  // Build list rows with simple level headers
+  const rows = [];
+  let lastLevel = null;
+  for (const p of filtered) {
+    if (p.__level !== lastLevel) {
+      rows.push({ __type: 'hdr', level: p.__level, key: `hdr-${p.__level}` });
+      lastLevel = p.__level;
+    }
+    rows.push({ __type: 'item', power: p, key: p.id });
+  }
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)',
-      display: 'grid', placeItems: 'center', zIndex: 40
-    }}>
-      <div className={styles.card} style={{ maxWidth: 560, width: 'min(92vw, 560px)', animation: 'modalEnter .15s ease' }}>
-        <div className={styles.cardHead}>
-          <b>{assignOnly ? 'Select Missing Power' : 'Choose New Power'}</b>
-          <div className={styles.muted}>Discipline: <b>{name}</b> • Level <b>{next}</b></div>
+    <div
+      className={styles.modalOverlay}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="powerModalTitle"
+      onClick={(e) => { if (!saving && e.target === e.currentTarget) onClose?.(); }}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape' && !saving) onClose?.();
+        if (e.key === 'Enter' && !saving && sel?.__available) confirm();
+      }}
+    >
+      <div className={`${styles.card} ${styles.modalCard}`} style={{ width:'min(92vw, 800px)' }}>
+        {/* Header */}
+        <div className={styles.modalHeader}>
+          <div>
+            <h3 id="powerModalTitle" className={styles.modalTitle}>
+              {assignOnly ? 'Select Missing Power' : 'Choose New Power'}
+            </h3>
+            <div className={styles.muted}>
+              Discipline: <b>{name}</b> • Level <b>{next}</b>
+            </div>
+          </div>
+          {/* <button className={styles.closeBtn} onClick={onClose} disabled={saving} aria-label="Close">×</button> */}
         </div>
 
-        {!available.length && (
-          <div className={styles.alertWarning}>
-            No power data found for {name} level {next}. You can still buy the dot; pick later.
+        <div className={styles.muted} role="note" style={{ padding: '8px 16px 0' }}>
+          Each dot in a discipline grants <b>one power</b> of its level or below. Choose any <b>level ≤ {next}</b> you don’t already have.
+        </div>
+
+        {!annotated.length ? (
+          <div className={styles.alertWarning} style={{ margin: '10px 16px 0' }}>
+            No power data found up to level <b>{next}</b> for <b>{name}</b>. You can still buy the dot; pick later.
           </div>
-        )}
+        ) : (
+          <div className={styles.modalGrid}>
+            {/* LEFT PANE (equal-height card) */}
+            <div className={styles.paneCard}>
+              <aside className={styles.powerListPane}>
+                <input
+                  className={styles.input}
+                  placeholder="Search powers… (name, notes, source, level)"
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  disabled={saving}
+                />
+                <div className={styles.powerList} role="listbox" aria-label="Available powers">
+                  {rows.map(row => {
+                    if (row.__type === 'hdr') {
+                      return <div key={row.key} className={styles.levelHeader}>Level {row.level}</div>;
+                    }
+                    const p = row.power;
+                    const active = p.id === selectedId;
+                    const disabled = !p.__available;
+                    const reason = p.__flags.owned
+                      ? 'Owned'
+                      : (p.__flags.unmet.length ? `Conditions not met: ${p.__flags.unmet.join(', ')}` : '');
 
-        {!!available.length && (
-          <div className={styles.grid}>
-            <select className={styles.input} value={selected} onChange={e => setSelected(e.target.value)}>
-              {available.map(p => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
+                    return (
+                      <button
+                        key={row.key}
+                        className={
+                          `${styles.powerItem} ` +
+                          `${active ? styles.powerItemActive : ''} ` +
+                          `${disabled ? styles.powerItemDisabled : ''}`
+                        }
+                        onClick={() => setSelectedId(p.id)}
+                        onDoubleClick={() => !saving && p.__available && confirm()}
+                        role="option"
+                        aria-selected={active}
+                        title={p.name}
+                        aria-disabled={disabled || undefined}
+                        disabled={saving}
+                      >
+                        <div className={styles.powerItemTitle}>
+                          {p.name}
+                          {!p.__available && (
+                            <span className={`${styles.powerBadgeMuted} ${p.__flags.owned ? 'badge-owned' : 'badge-warn'}`}>
+                              {reason}
+                            </span>
+                          )}
+                        </div>
+                        <div className={styles.powerItemMeta}>
+                          <span className={styles.powerTag}><b>Level:</b> {p.__level}</span>
+                          {p.cost && <span className={styles.powerTag}><b>Cost:</b> {p.cost}</span>}
+                          {p.duration && <span className={styles.powerTag}><b>Duration:</b> {p.duration}</span>}
+                          {p.dice_pool && <span className={styles.powerTag}><b>Dice:</b> {p.dice_pool}</span>}
+                        </div>
+                      </button>
+                    );
+                  })}
+                  {!rows.length && <div className={styles.emptyNote}>No powers match “{query}”.</div>}
+                </div>
+              </aside>
+            </div>
 
-            <div className={styles.powerDetailGrid}>
-              {['cost','duration','dice_pool','opposing_pool','notes','source','amalgam','prerequisite'].map(k => {
-                const v = available.find(p => p.id === selected)?.[k];
-                if (!v) return null;
-                return <span key={k} className={styles.powerTag}><b>{labelize(k)}:</b> {v}</span>;
-              })}
+            {/* RIGHT PANE (equal-height card) */}
+            <div className={styles.paneCard}>
+              <section className={styles.powerDetailPane}>
+                {sel ? (
+                  <>
+                    <div className={styles.detailHeader}>
+                      <div className={styles.detailTitle}>
+                        {sel.name}
+                        {!sel.__available && (
+                          <span className={`${styles.powerBadgeMuted} ${sel.__flags.owned ? 'badge-owned' : 'badge-warn'}`} style={{ marginLeft: 8 }}>
+                            {sel.__flags.owned ? 'Owned' : `Conditions not met: ${sel.__flags.unmet.join(', ')}`}
+                          </span>
+                        )}
+                      </div>
+                      <div className={styles.muted}>
+                        Level {sel.__level}{sel.source ? ` • Source: ${sel.source}` : ''}
+                      </div>
+                    </div>
+
+                    {/* Scrollable detail content */}
+                    <div className={styles.detailScroll}>
+                      <div className={styles.detailTags}>
+                        {['cost','duration','dice_pool','opposing_pool','amalgam','prerequisite'].map(k => {
+                          const v = sel?.[k];
+                          if (!v) return null;
+                          return <span key={k} className={styles.powerTag}><b>{labelize(k)}:</b> {v}</span>;
+                        })}
+                      </div>
+
+                      {sel.notes && (
+                        <div className={styles.powerNotes}>
+                          {sel.notes}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div className={styles.emptyNote}>Select a power to see details.</div>
+                )}
+              </section>
             </div>
           </div>
         )}
 
-        <div className={styles.rowForm} style={{ justifyContent: 'flex-end' }}>
-          <button className={styles.ghostBtn} onClick={onClose}>Cancel</button>
+        {/* Footer */}
+        <div className={styles.modalFooter}>
+          {saveErr && <div className={styles.alert} style={{ marginRight: 'auto' }}>{saveErr}</div>}
+          {/* <button className={styles.ghostBtn} onClick={onClose} disabled={saving}>Cancel</button> */}
           <button
             className={styles.cta}
-            onClick={() => onConfirm({ selectedPowerId: selected, selectedPowerName: selectedName })}
-            disabled={!selected && !!available.length}
+            onClick={confirm}
+            disabled={saving || !sel || !sel.__available}
           >
-            Confirm
+            {saving ? 'Saving…' : 'Select Power'}
           </button>
         </div>
       </div>
@@ -927,3 +1357,5 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
 function labelize(k) {
   return k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
+
+

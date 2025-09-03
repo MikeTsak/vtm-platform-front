@@ -23,7 +23,7 @@ const CLAN_COLORS = {
 // Asset helpers (works with your existing file scheme)
 const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim' };
 const symlogo = (c) => (c ? `/img/clans/330px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g, '_')}_symbol.png` : '');
-const textlogo = (c) => (c ? `/img/clans/text/300px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g, '_')}_Logo.png` : '');
+const textlogo = (c) => (c ? `/img/clans/text/300px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g, '_')}_logo.png` : '');
 
 export default function Home() {
   const [me, setMe] = useState(null);

@@ -9,7 +9,6 @@ import 'leaflet/dist/leaflet.css';
 
 import domainsRaw from '../data/Domains.json';
 
-
 /* ---------------- UI bits ---------------- */
 function TabButton({ active, onClick, children }) {
   return (
@@ -24,11 +23,12 @@ function TabButton({ active, onClick, children }) {
 
 /* ---------------- Main ---------------- */
 export default function Admin() {
-  const [tab, setTab] = useState('users'); // users | characters | claims | xp
+  const [tab, setTab] = useState('users'); // users | characters | claims | downtimes | xp
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState([]);
   const [claims, setClaims] = useState([]);
   const [charIndex, setCharIndex] = useState({});
+  const [downtimes, setDowntimes] = useState([]);
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
 
@@ -60,6 +60,12 @@ export default function Admin() {
       try {
         const cl = await api.get('/domain-claims');
         setClaims(cl.data.claims || []);
+      } catch {}
+
+      // Downtimes (admin view)
+      try {
+        const dts = await api.get('/admin/downtimes');
+        setDowntimes(dts.data.downtimes || []);
       } catch {}
     } catch (e) {
       setErr(e.response?.data?.error || 'Failed to load admin data');
@@ -135,6 +141,18 @@ export default function Admin() {
     }
   }
 
+  // ========= Downtimes (Admin) =========
+  async function saveDowntime(id, patch) {
+    setErr(''); setMsg('');
+    try {
+      await api.patch(`/admin/downtimes/${id}`, patch);
+      setMsg(`Downtime #${id} saved`);
+      load();
+    } catch (e) {
+      setErr(e.response?.data?.error || 'Failed to save downtime');
+    }
+  }
+
   return (
     <div className={styles.adminRoot}>
       <div className={styles.container}>
@@ -151,6 +169,7 @@ export default function Admin() {
           <TabButton active={tab==='users'} onClick={()=>setTab('users')}>Users</TabButton>
           <TabButton active={tab==='characters'} onClick={()=>setTab('characters')}>Characters</TabButton>
           <TabButton active={tab==='claims'} onClick={()=>setTab('claims')}>Claims</TabButton>
+          <TabButton active={tab==='downtimes'} onClick={()=>setTab('downtimes')}>Downtimes</TabButton>
           <TabButton active={tab==='xp'} onClick={()=>setTab('xp')}>XP Tools</TabButton>
           <button className={`${styles.btn} ${styles.btnGhost} ${styles.rowEnd}`} onClick={load}>Reload</button>
         </div>
@@ -163,6 +182,12 @@ export default function Admin() {
             characters={charIndex}
             onSave={saveClaim}
             onDelete={deleteClaim}
+          />
+        )}
+        {tab === 'downtimes' && (
+          <DowntimesTab
+            rows={downtimes}
+            onSave={saveDowntime}
           />
         )}
         {tab === 'xp' && <XPTools users={users} onGrant={grantXP} />}
@@ -522,7 +547,7 @@ function ClaimsTab({ claims, characters, onSave, onDelete }) {
                 <input
                   value={newDraft.color}
                   onChange={e => setNewDraft(d => ({ ...d, color: e.target.value }))}
-                  className={`${styles.inputMono} ${validateHex(newDraft.color) ? '' : styles.inputError}`}
+                  className={`${styles.inputMono} ${/^#([0-9a-fA-F]{6})$/.test(newDraft.color) ? '' : styles.inputError}`}
                   placeholder="#8a0f1a"
                 />
               </label>
@@ -532,14 +557,12 @@ function ClaimsTab({ claims, characters, onSave, onDelete }) {
                   onChange={e => setNewDraft(d => ({ ...d, owner_character_id: e.target.value }))}
                 >
                   <option value="">— none —</option>
-                  {characterOptions.map(o => (
-                    <option key={o.id} value={o.id}>{o.label}</option>
+                  {Object.entries(characters).map(([cid, info]) => (
+                    <option key={cid} value={cid}>{`${cid} — ${info.char_name} (${info.display_name})`}</option>
                   ))}
                 </select>
               </label>
             </div>
-
-            <ShortcutButtons onPick={(hex) => setNewDraft(d => ({ ...d, color: hex }))} />
 
             <div className={styles.row} style={{ gap: 8 }}>
               <button
@@ -547,7 +570,7 @@ function ClaimsTab({ claims, characters, onSave, onDelete }) {
                 onClick={() => {
                   const div = Number(newDraft.division);
                   if (!Number.isInteger(div)) return alert('Division must be an integer');
-                  if (!validateHex(newDraft.color)) return alert('Hex must be like #ff0066');
+                  if (!/^#([0-9a-fA-F]{6})$/.test(newDraft.color)) return alert('Hex must be like #ff0066');
                   const patch = {
                     owner_name: newDraft.owner_name || 'Admin Set',
                     color: newDraft.color,
@@ -569,100 +592,23 @@ function ClaimsTab({ claims, characters, onSave, onDelete }) {
         )}
 
         {/* Existing claim editor */}
-        {selectedClaim && (
-          <div className={`${styles.card} ${styles.stack12}`}>
-            <div className={styles.detailHeader}>
-              <div className={styles.detailSwatch} style={{ background: getRow(selectedClaim).color }} />
-              <div>
-                <h3>Division #{selectedClaim.division}</h3>
-                <div className={styles.subtle}>
-                  {selectedClaim.owner_character_id
-                    ? <>Char ID {selectedClaim.owner_character_id} · {characters[selectedClaim.owner_character_id]?.char_name || 'unknown'}</>
-                    : 'No character linked'}
-                </div>
-              </div>
-            </div>
-
-            <div className={styles.formRow2}>
-              <label>Owner Name
-                <input
-                  value={getRow(selectedClaim).owner_name}
-                  onChange={e => setRow(selectedClaim, { owner_name: e.target.value })}
-                />
-              </label>
-              <label>Owner Character
-                <select
-                  value={getRow(selectedClaim).owner_character_id}
-                  onChange={e => setRow(selectedClaim, { owner_character_id: e.target.value })}
-                >
-                  <option value="">— none —</option>
-                  {characterOptions.map(o => (
-                    <option key={o.id} value={o.id}>{o.label}</option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            <div className={styles.formRow3}>
-              <label>Color
-                <input
-                  type="color"
-                  value={getRow(selectedClaim).color}
-                  onChange={e => setRow(selectedClaim, { color: e.target.value })}
-                  className={styles.colorBox}
-                  title="Pick color"
-                />
-              </label>
-              <label>Hex
-                <input
-                  value={getRow(selectedClaim).color}
-                  onChange={e => setRow(selectedClaim, { color: e.target.value })}
-                  className={`${styles.inputMono} ${validateHex(getRow(selectedClaim).color) ? '' : styles.inputError}`}
-                  placeholder="#RRGGBB"
-                />
-              </label>
-              <div />
-            </div>
-
-            <ShortcutButtons onPick={(hex) => setRow(selectedClaim, { color: hex })} />
-
-            <div className={styles.row} style={{ gap: 8 }}>
-              <button
-                className={`${styles.btn} ${styles.btnPrimary}`}
-                onClick={() => {
-                  const row = getRow(selectedClaim);
-                  if (!validateHex(row.color)) return alert('Hex must be like #ff0066');
-                  const patch = {
-                    owner_name: row.owner_name || 'Admin Set',
-                    color: row.color,
-                    owner_character_id: row.owner_character_id === '' ? null : Number(row.owner_character_id),
-                  };
-                  onSave(selectedClaim.division, patch);
-                  resetRow(selectedClaim.division);
-                }}
-              >
-                Save
-              </button>
-              <button
-                className={`${styles.btn} ${styles.btnGhost}`}
-                onClick={() => resetRow(selectedClaim.division)}
-              >
-                Reset
-              </button>
-              <button
-                className={`${styles.btn} ${styles.btnDanger}`}
-                onClick={() => {
-                  onDelete(selectedClaim.division);
-                  setSelected(null);
-                }}
-              >
-                Unclaim
-              </button>
-            </div>
-          </div>
+        {typeof selected === 'number' && (
+          <ExistingClaimEditor
+            selected={selected}
+            claims={claims}
+            characters={characters}
+            getRow={(c) => (edits[c.division] ?? {
+              owner_name: c.owner_name || '',
+              color: c.color || '#888888',
+              owner_character_id: c.owner_character_id ?? '',
+            })}
+            setRow={(c, patch) => setEdits(prev => ({ ...prev, [c.division]: { ...(prev[c.division] ?? {}), ...patch } }))}
+            resetRow={(div) => resetRow(div)}
+            onSave={(div, patch) => onSave(div, patch)}
+          />
         )}
 
-        {!selected && selected !== 'new' && (
+        {selected === null && (
           <div className={styles.placeholderCard}>
             <div className={styles.placeholderDot} />
             <div>
@@ -706,7 +652,7 @@ function ClaimsTab({ claims, characters, onSave, onDelete }) {
     return (
       <MapContainer
         className={styles.mapCanvas}
-        center={[37.975, 23.735]} // default center
+        center={[37.975, 23.735]}
         zoom={12}
         scrollWheelZoom
         whenCreated={(m) => { mapRef.current = m; }}
@@ -748,66 +694,203 @@ function ClaimsTab({ claims, characters, onSave, onDelete }) {
   }
 }
 
-
-/* ---- Map component (inside same file) ---- */
-function ClaimsMap({ geo, selected, onSelect, colorForDivision }) {
-  const mapRef = useRef(null);
-
-  // fit bounds once when data loads
-  useEffect(() => {
-    if (!geo || !mapRef.current) return;
-    try {
-      const map = mapRef.current;
-      // Using leaflet's built-in to compute bounds:
-      // react-leaflet exposes when container is ready via whenCreated
-      // We compute bounds with a hidden L.geoJSON:
-    } catch {}
-  }, [geo]);
+function ExistingClaimEditor({ selected, claims, characters, getRow, setRow, resetRow, onSave }) {
+  const selectedClaim = claims.find(c => c.division === selected);
+  if (!selectedClaim) return null;
 
   return (
-    <MapContainer
-      className={styles.mapCanvas}
-      center={[37.975, 23.735]} // Athens-ish default; adjust as needed
-      zoom={12}
-      scrollWheelZoom
-      whenCreated={(m) => { mapRef.current = m; }}
-    >
-      <TileLayer
-        // any provider you prefer
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution="&copy; OpenStreetMap"
-      />
-      {geo && (
-        <GeoJSON
-          data={geo}
-          style={(feature) => {
-            const div = feature?.properties?.division;
-            const fill = colorForDivision(div);
-            const isSel = selected === div;
-            return {
-              color: isSel ? '#ffffff' : '#1f2937',  // stroke
-              weight: isSel ? 3 : 1.5,
-              fillColor: fill,
-              fillOpacity: 0.55,
+    <div className={`${styles.card} ${styles.stack12}`}>
+      <div className={styles.detailHeader}>
+        <div className={styles.detailSwatch} style={{ background: getRow(selectedClaim).color }} />
+        <div>
+          <h3>Division #{selectedClaim.division}</h3>
+          <div className={styles.subtle}>
+            {selectedClaim.owner_character_id
+              ? <>Char ID {selectedClaim.owner_character_id} · {characters[selectedClaim.owner_character_id]?.char_name || 'unknown'}</>
+              : 'No character linked'}
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.formRow2}>
+        <label>Owner Name
+          <input
+            value={getRow(selectedClaim).owner_name}
+            onChange={e => setRow(selectedClaim, { owner_name: e.target.value })}
+          />
+        </label>
+        <label>Owner Character
+          <select
+            value={getRow(selectedClaim).owner_character_id}
+            onChange={e => setRow(selectedClaim, { owner_character_id: e.target.value })}
+          >
+            <option value="">— none —</option>
+            {Object.entries(characters).map(([cid, info]) => (
+              <option key={cid} value={cid}>{`${cid} — ${info.char_name} (${info.display_name})`}</option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <div className={styles.formRow3}>
+        <label>Color
+          <input
+            type="color"
+            value={getRow(selectedClaim).color}
+            onChange={e => setRow(selectedClaim, { color: e.target.value })}
+            className={styles.colorBox}
+            title="Pick color"
+          />
+        </label>
+        <label>Hex
+          <input
+            value={getRow(selectedClaim).color}
+            onChange={e => setRow(selectedClaim, { color: e.target.value })}
+            className={`${styles.inputMono} ${/^#([0-9a-fA-F]{6})$/.test(getRow(selectedClaim).color) ? '' : styles.inputError}`}
+            placeholder="#RRGGBB"
+          />
+        </label>
+        <div />
+      </div>
+
+      <div className={styles.row} style={{ gap: 8 }}>
+        <button
+          className={`${styles.btn} ${styles.btnPrimary}`}
+          onClick={() => {
+            const row = getRow(selectedClaim);
+            if (!/^#([0-9a-fA-F]{6})$/.test(row.color)) return alert('Hex must be like #ff0066');
+            const patch = {
+              owner_name: row.owner_name || 'Admin Set',
+              color: row.color,
+              owner_character_id: row.owner_character_id === '' ? null : Number(row.owner_character_id),
             };
+            onSave(selectedClaim.division, patch);
+            resetRow(selectedClaim.division);
           }}
-          onEachFeature={(feature, layer) => {
-            const div = feature?.properties?.division;
-            if (!div) return;
-            layer.on({
-              click: () => onSelect(div),
-              mouseover: (e) => e.target.setStyle({ weight: 3, color: '#ffffff' }),
-              mouseout: (e) => e.target.setStyle({ weight: selected === div ? 3 : 1.5, color: selected === div ? '#ffffff' : '#1f2937' }),
-            });
-            layer.bindTooltip(`#${div}`, { sticky: true, direction: 'auto', opacity: 0.9 });
-          }}
-        />
-      )}
-    </MapContainer>
+        >
+          Save
+        </button>
+        <button
+          className={`${styles.btn} ${styles.btnGhost}`}
+          onClick={() => resetRow(selectedClaim.division)}
+        >
+          Reset
+        </button>
+      </div>
+    </div>
   );
 }
 
+/* ==================== DOWNTIMES (ADMIN) ==================== */
 
+function DowntimesTab({ rows, onSave }) {
+  const [filter, setFilter] = useState('');
+  const [edits, setEdits] = useState({}); // id -> { status, gm_notes, gm_resolution }
+
+  const filtered = useMemo(() => {
+    const q = filter.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter(d =>
+      String(d.id).includes(q) ||
+      (d.title || '').toLowerCase().includes(q) ||
+      (d.player_name || '').toLowerCase().includes(q) ||
+      (d.char_name || '').toLowerCase().includes(q) ||
+      (d.clan || '').toLowerCase().includes(q) ||
+      (d.status || '').toLowerCase().includes(q)
+    );
+  }, [rows, filter]);
+
+  function getRow(d) {
+    return edits[d.id] ?? {
+      status: d.status || 'submitted',
+      gm_notes: d.gm_notes || '',
+      gm_resolution: d.gm_resolution || '',
+    };
+  }
+  function setRow(d, patch) {
+    setEdits(prev => ({ ...prev, [d.id]: { ...getRow(d), ...patch } }));
+  }
+  function save(d, extraPatch = {}) {
+    const payload = { ...getRow(d), ...extraPatch };
+    onSave(d.id, payload);
+  }
+
+  const statuses = ['submitted','approved','rejected','resolved'];
+
+  return (
+    <div className="stack12">
+      <h3>Downtimes</h3>
+
+      <div className={styles.sideHeader} style={{ marginBottom: 8 }}>
+        <input
+          className={styles.inputSearch}
+          placeholder="Search by #id / title / player / character / status…"
+          value={filter}
+          onChange={e=>setFilter(e.target.value)}
+        />
+      </div>
+
+      {!filtered.length && <div className={styles.subtle}>No downtimes found.</div>}
+
+      {filtered.map(d => (
+        <div key={d.id} className={`${styles.card} ${styles.cardElev}`}>
+          <div className={styles.row} style={{ justifyContent:'space-between', alignItems:'flex-start' }}>
+            <div>
+              <div><b>#{d.id}</b> — <b>{d.title}</b></div>
+              <div className={styles.subtle}>
+                By {d.player_name} &middot; Character: {d.char_name} ({d.clan}) &middot; Created: {new Date(d.created_at).toLocaleString()}
+                {d.resolved_at && <> &middot; Resolved: {new Date(d.resolved_at).toLocaleString()}</>}
+              </div>
+              {d.feeding_type && <div className={styles.subtle}>Feeding: {d.feeding_type}</div>}
+            </div>
+
+            <div className={styles.row} style={{ gap:8 }}>
+              <select
+                value={getRow(d).status}
+                onChange={e=>setRow(d, { status: e.target.value })}
+              >
+                {statuses.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <button className={styles.btn} onClick={()=>save(d)}>Save</button>
+              <button className={styles.btn} onClick={()=>save(d, { status:'approved' })}>Approve</button>
+              <button className={styles.btn} onClick={()=>save(d, { status:'rejected' })}>Reject</button>
+              <button className={styles.btnPrimary} onClick={()=>save(d, { status:'resolved' })}>Resolve</button>
+            </div>
+          </div>
+
+          <div className="stack12" style={{ marginTop:8 }}>
+            <label>Player Submission</label>
+            <textarea value={d.body} readOnly rows={4} />
+          </div>
+
+          <div className="stack12" style={{ marginTop:8 }}>
+            <label>GM Notes</label>
+            <textarea
+              value={getRow(d).gm_notes}
+              onChange={e=>setRow(d, { gm_notes: e.target.value })}
+              rows={3}
+              placeholder="Private notes for tracking/rulings…"
+            />
+          </div>
+
+          <div className="stack12" style={{ marginTop:8 }}>
+            <label>GM Resolution (visible to player)</label>
+            <textarea
+              value={getRow(d).gm_resolution}
+              onChange={e=>setRow(d, { gm_resolution: e.target.value })}
+              rows={4}
+              placeholder="What happened as a result of this downtime…"
+            />
+          </div>
+        </div>
+      ))}
+
+      <p className={styles.subtle} style={{ marginTop:8 }}>
+        Uses <code className={styles.kbd}>GET /admin/downtimes</code> and <code className={styles.kbd}>PATCH /admin/downtimes/:id</code>.
+      </p>
+    </div>
+  );
+}
 
 /* ==================== XP TOOLS ==================== */
 

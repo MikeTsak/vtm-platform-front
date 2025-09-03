@@ -393,3 +393,280 @@
 @media (max-width: 640px) {
   .powerName { max-width: 18ch; }
 }
+/* ===== THEME TWEAKS ===== */
+:root {
+  --bg: #0a0a0d;                 /* page bg behind overlay */
+  --overlay: rgba(5,6,10,.62);
+  --card: rgba(16,18,24,.72);    /* glassy card */
+  --card-solid: #111318;
+  --border: #262b36;
+  --muted: #a6a9b3;
+  --text: #e8eaf0;
+  --accent: #6ea8ff;             /* primary accent */
+  --accent-2: #8b76ff;           /* subtle secondary */
+  --success: #1faa70;
+  --warning: #e1b64a;
+  --danger: #f25f5c;
+
+  --shadow-xl: 0 12px 50px rgba(0,0,0,.55);
+  --ring: 0 0 0 2px #2a3350, 0 0 0 4px color-mix(in oklab, var(--accent) 40%, transparent);
+}
+
+/* ===== OVERLAY + CARD ===== */
+.modalOverlay {
+  position: fixed; inset: 0;
+  background: var(--overlay);
+  backdrop-filter: blur(6px);
+  display: grid; place-items: center;
+  z-index: 60;
+  animation: modalFade .18s ease-out;
+}
+@keyframes modalFade { from { opacity: 0 } to { opacity: 1 } }
+
+.modalCard {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-xl);
+  max-height: min(86vh, 860px);
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  overflow: hidden;
+  color: var(--text);
+  animation: modalLift .18s cubic-bezier(.2,.8,.2,1);
+  display: grid;
+  grid-template-rows: auto auto 1fr auto; /* header, note, BODY, footer */
+}
+@keyframes modalLift { from { transform: translateY(8px); opacity: .7 } to { transform: translateY(0); opacity: 1 } }
+
+/* ===== HEADER / FOOTER ===== */
+.modalHeader {
+  display: flex; align-items: start; justify-content: space-between;
+  gap: 12px; padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(255,255,255,.02), transparent);
+}
+.modalTitle { margin: 0; font-size: 18px; letter-spacing: .2px; }
+.closeBtn {
+  inline-size: 36px; block-size: 36px;
+  border-radius: 12px; border: 1px solid var(--border);
+  background: #0e1118; color: var(--muted); cursor: pointer;
+}
+.closeBtn:hover { color: #fff; background: #111622; border-color: #334; }
+
+.modalFooter {
+  display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+  padding: 12px 16px; border-top: 1px solid var(--border);
+  background: linear-gradient(0deg, rgba(255,255,255,.02), transparent);
+}
+
+/* The two-column grid fills all available height */
+.modalGrid {
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) 1fr;
+  gap: 12px;
+  padding: 12px 14px 16px;
+  min-height: 420px;
+  height: 100%;               /* NEW: fill the row (1fr) */
+  align-items: stretch;        /* ensure equal height columns */
+}
+
+@media (max-width: 780px) { .modalGrid { grid-template-columns: 1fr; } }
+
+/* ===== LEFT PANE ===== */
+.powerListPane { display: grid; gap: 10px; }
+
+.input {
+  width: 100%;
+  background: #0f1219;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  color: var(--text);
+}
+.input:focus { outline: none; box-shadow: var(--ring); border-color: #2f3a58; }
+
+.powerList {
+  overflow: auto; max-height: 58vh;
+  display: grid; gap: 8px; padding-right: 4px;
+  scrollbar-width: thin;
+}
+.powerList::-webkit-scrollbar { width: 10px; }
+.powerList::-webkit-scrollbar-thumb {
+  background: #1a2030; border: 2px solid transparent; background-clip: padding-box; border-radius: 10px;
+}
+
+.levelHeader {
+  margin-top: 2px; padding: 6px 8px 4px;
+  font-size: 12px; color: var(--muted);
+  border-top: 1px dashed var(--border);
+}
+
+/* Each item has a subtle left accent that lights up on active */
+.powerItem {
+  text-align: left; padding: 10px 12px; border-radius: 12px;
+  background: #0e1219; border: 1px solid var(--border);
+  cursor: pointer; transition: border-color .15s, background .15s, transform .06s;
+  position: relative;
+}
+.powerItem::before {
+  content: ""; position: absolute; inset: 0 0 0 0;
+  border-left: 3px solid transparent; border-radius: 12px;
+}
+.powerItem:hover { background: #121827; border-color: #2a3246; }
+.powerItemActive {
+  background: linear-gradient(180deg, #141b2b, #0f1523);
+  border-color: color-mix(in oklab, var(--accent) 35%, #2a3246);
+}
+.powerItemActive::before {
+  border-left-color: var(--accent);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent) 22%, transparent) inset;
+}
+.powerItemDisabled {
+  opacity: .55; filter: grayscale(.1); cursor: default;
+}
+.powerItemTitle {
+  font-weight: 600; display: flex; align-items: center; gap: 8px;
+}
+.powerItemMeta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 3px; }
+
+.powerBadgeMuted {
+  font-size: 11px; padding: 2px 6px;
+  border: 1px solid var(--border); color: var(--muted);
+  background: #10131b; border-radius: 999px;
+}
+
+/* Tag chips */
+.powerTag {
+  display: inline-flex; gap: 6px; align-items: center;
+  font-size: 12px; padding: 2px 8px; border-radius: 999px;
+  border: 1px solid var(--border); background: #101420; color: #cfd4e3;
+}
+.powerTag b { color: #dfe4f4; font-weight: 600; }
+
+/* ===== RIGHT PANE ===== */
+.powerDetailPane {
+  overflow: auto; max-height: 60vh; padding: 6px;
+  display: grid; gap: 12px;
+}
+.detailHeader { display: grid; gap: 4px; }
+.detailTitle { font-weight: 700; font-size: 18px; letter-spacing: .2px; }
+
+.detailTags { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.powerNotes {
+  white-space: pre-wrap; line-height: 1.5;
+  color: var(--text);
+  background: #0d1320;
+  border: 1px solid #20283a;
+  padding: 12px; border-radius: 12px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.02);
+}
+
+/* ===== UTILITIES (reuse with existing buttons) ===== */
+.muted { color: var(--muted); }
+
+.ghostBtn {
+  background: transparent; color: var(--muted);
+  border: 1px solid var(--border); border-radius: 12px;
+  padding: 9px 12px; cursor: pointer;
+}
+.ghostBtn:hover { color: #fff; background: #101522; border-color: #33405e; }
+
+.cta {
+  background: linear-gradient(180deg, color-mix(in oklab, var(--accent) 85%, #000), color-mix(in oklab, var(--accent) 60%, #000));
+  border: 1px solid color-mix(in oklab, var(--accent) 60%, #000);
+  color: #fff; border-radius: 12px; padding: 10px 14px; cursor: pointer;
+  box-shadow: 0 4px 18px color-mix(in oklab, var(--accent) 22%, transparent);
+}
+.cta:hover { filter: brightness(1.06); }
+.cta:disabled {
+  opacity: .65; cursor: not-allowed;
+  box-shadow: none; filter: grayscale(.2) brightness(.9);
+}
+
+/* Alert slot (reuses your existing .alert if present) */
+.alert {
+  background: #171925; border: 1px solid #343c57;
+  color: #e7eaff; padding: 8px 10px; border-radius: 10px;
+}
+
+/* Optional: subtle colored badges for conditions/owned */
+.badge-owned   { color: #cbd1dd; border-color: #313948; background: #0f1420; }
+.badge-warn    { color: #f1e2b2; border-color: #463b1d; background: #1c160b; }
+.badge-danger  { color: #ffd4d3; border-color: #5a2a2a; background: #231012; }
+
+/* Make the body area of the modal grow */
+.modalCard {
+  /* you likely already have this, ensure rows include a 1fr */
+  display: grid;
+  grid-template-rows: auto auto 1fr auto; /* header, note, BODY, footer */
+}
+
+/* The two-column grid fills all available height */
+.modalGrid {
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) 1fr;
+  gap: 12px;
+  padding: 12px 14px 16px;
+  min-height: 420px;
+  height: 100%;               /* NEW: fill the row (1fr) */
+  align-items: stretch;        /* ensure equal height columns */
+}
+
+/* A card wrapper for each pane (left/right) that fills height */
+.paneCard {
+  background: #0e1118;         /* or var(--card-solid) */
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  display: flex;               /* vertical stack inside */
+  flex-direction: column;
+  min-height: 0;               /* critical for children overflow */
+  overflow: hidden;
+}
+
+/* Left pane content column */
+.powerListPane {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  gap: 10px;
+  min-height: 0;               /* allow inner scroll area to size */
+}
+
+/* Search input at top; list scrolls and fills */
+.powerList {
+  flex: 1 1 auto;              /* fill remaining height */
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  gap: 8px;
+  padding-right: 4px;
+}
+
+/* Right pane content column */
+.powerDetailPane {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  gap: 12px;
+  min-height: 0;
+}
+
+/* Inside right pane, make the scrolling area grow */
+.detailScroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  gap: 12px;
+}
+
+/* optional: move the level headers inside the pane card nicely */
+.levelHeader {
+  margin: 4px 2px 0;
+  padding: 6px 8px 4px;
+  border-top: 1px dashed var(--border);
+  color: var(--muted);
+  font-size: 12px;
+}

@@ -5,7 +5,8 @@ import styles from '../styles/Sheet.module.css';
 /* ---------- Config ---------- */
 const CLANS = [
   'Brujah','Gangrel','Malkavian','Nosferatu','Toreador','Tremere','Ventrue',
-  'Banu Haqim','Hecata','Lasombra','The Ministry','Caitiff','Thin-blood'
+  'Hecata', 'The Ministry',
+  // 'Caitiff','Thin-blood','Banu Haqim','Lasombra'
 ];
 
 // Flavor-only blurbs

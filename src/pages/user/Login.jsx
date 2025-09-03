@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import { AuthCtx } from '../../AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import styles from '../../styles/Login.module.css';
@@ -12,6 +12,8 @@ export default function Login() {
   const [showPwd, setShowPwd] = useState(false);
   const nav = useNavigate();
 
+  const pwdRef = useRef(null);
+
   // Prefill from localStorage if user chose "Remember me"
   useEffect(() => {
     try {
@@ -21,42 +23,52 @@ export default function Login() {
         setRemember(true);
         if (savedEmail) setEmail(savedEmail);
       }
-    } catch (_) {
-      /* ignore storage errors */
-    }
+    } catch (_) { /* ignore storage errors */ }
   }, []);
 
-const submit = async (e) => {
-  e.preventDefault();
-  setErr('');
-  try {
-    // login should return the logged-in user object (with role)
-    const u = await login(email, password, { remember });
+  const toggleShowPwd = () => {
+    // preserve caret/selection and focus while toggling
+    const el = pwdRef.current;
+    const sel = el
+      ? { start: el.selectionStart, end: el.selectionEnd }
+      : null;
 
-    // Persist the preference + email for next time
+    setShowPwd((prev) => !prev);
+
+    // restore focus + selection on next frame
+    requestAnimationFrame(() => {
+      if (!el) return;
+      el.focus({ preventScroll: true });
+      try {
+        if (sel && sel.start != null && sel.end != null) {
+          el.setSelectionRange(sel.start, sel.end);
+        }
+      } catch { /* some browsers may block setSelectionRange on type=password */ }
+    });
+  };
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setErr('');
     try {
-      if (remember) {
-        localStorage.setItem('rememberMe', '1');
-        localStorage.setItem('rememberEmail', email);
-      } else {
-        localStorage.removeItem('rememberMe');
-        localStorage.removeItem('rememberEmail');
-      }
-    } catch {
-      /* ignore storage errors */
-    }
+      const u = await login(email, password, { remember });
 
-    // Redirect based on role
-    if (u?.role === 'admin') {
-      nav('/admin');
-    } else {
-      nav('/');
-    }
-  } catch (e) {
-    setErr(e?.response?.data?.error || 'Login failed');
-  }
-};
+      try {
+        if (remember) {
+          localStorage.setItem('rememberMe', '1');
+          localStorage.setItem('rememberEmail', email);
+        } else {
+          localStorage.removeItem('rememberMe');
+          localStorage.removeItem('rememberEmail');
+        }
+      } catch {}
 
+      if (u?.role === 'admin') nav('/admin');
+      else nav('/');
+    } catch (e) {
+      setErr(e?.response?.data?.error || 'Login failed');
+    }
+  };
 
   return (
     <div className={`${styles['login-page']} ${styles['vamp-bg']}`}>
@@ -98,6 +110,8 @@ const submit = async (e) => {
             <span className={styles['field-label']}>Password</span>
             <div className={styles['input-group']}>
               <input
+                ref={pwdRef}
+                id="password"
                 className={`${styles.input} ${styles['input-has-button']}`}
                 placeholder="••••••••"
                 value={password}
@@ -110,24 +124,27 @@ const submit = async (e) => {
               <button
                 type="button"
                 className={`${styles['ghost-btn']} ${styles['eye-btn']}`}
-                onClick={() => setShowPwd(s => !s)}
+                onMouseDown={(e) => e.preventDefault()}  // keep focus in input
+                onClick={toggleShowPwd}
                 aria-label={showPwd ? 'Hide password' : 'Show password'}
+                aria-pressed={showPwd}
+                aria-controls="password"
               >
                 {showPwd ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                    <path d="M12 5C7 5 2.73 8.11 1 12c.73 1.68 1.88 3.15 3.29 4.32L2 19.59 3.41 21l18-18L20.59 2 16.85 5.74C15.28 5.27 13.67 5 12 5zm0 2c1.29 0 2.53.22 3.69.62l-1.66 1.66A4.985 4.985 0 0 0 12 8c-2.76 0-5 2.24-5 5 0 .85.21 1.64.58 2.34l-1.5 1.5C4.72 15.42 3.88 14.26 3.34 13c1.46-3.27 4.92-6 8.66-6zm0 4c.46 0 .9.1 1.29.29L10.29 14.3A2.992 2.992 0 0 1 9 13c0-1.65 1.35-3 3-3zm0 8c-1.29 0-2.53-.22-3.69-.62l1.66-1.66c.55.22 1.15.34 1.78.34 2.76 0 5-2.24 5-5 0-.63-.12-1.23-.34-1.78l1.5-1.5C19.28 8.58 20.12 9.74 20.66 11c-1.46 3.27-4.92 6-8.66 6z"/>
+                  /* Eye-off icon */
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+                    <path d="M2.1 3.51 3.5 2.1l18.4 18.39-1.41 1.42-2.77-2.78A12.35 12.35 0 0 1 12 20C5.5 20 1 12 1 12a21.55 21.55 0 0 1 5.36-6.93L2.1 3.5zM12 7a5 5 0 0 1 5 5c0 .63-.12 1.23-.34 1.78l-6.44-6.44C10.77 7.12 11.37 7 12 7zM7 12a5 5 0 0 1 5-5c.16 0 .33 0 .49.02l-2.2-2.2C9.8 4.6 8.92 4.5 8 4.5 1.5 4.5-3 12-3 12s4.5 7.5 11 7.5c1 0 1.96-.12 2.88-.33l-2.4-2.4A5.01 5.01 0 0 1 7 12z"/>
                   </svg>
                 ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                    <path d="M12 5c-7 0-11 7-11 7s4 7 11 7 11-7 11-7-4-7-11-7zm0 12c-2.76 0-5-2.24-5-5s2.24-5 
-                    5-5 5 2.24 5 5-2.24 5-5 5zm0-8a3 3 0 1 0 .001 6.001A3 3 0 0 0 12 9z"/>
+                  /* Eye icon */
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+                    <path d="M12 4.5C5.5 4.5 1 12 1 12s4.5 7.5 11 7.5S23 12 23 12 18.5 4.5 12 4.5zm0 12a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"/>
                   </svg>
                 )}
               </button>
             </div>
           </label>
 
-          {/* Remember me row */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginTop: '0.25rem' }}>
             <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
               <input
@@ -137,9 +154,6 @@ const submit = async (e) => {
               />
               <span className={styles.muted}>Remember me</span>
             </label>
-
-            {/* Optional forgot password route, if you add it later */}
-            {/* <Link to="/forgot" className={styles.link}>Forgot password?</Link> */}
           </div>
 
           <button className={styles.cta} type="submit" style={{ marginTop: '0.75rem' }}>
