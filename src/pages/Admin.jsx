@@ -4,9 +4,11 @@ import api from '../api';
 import styles from '../styles/Admin.module.css';
 import 'leaflet/dist/leaflet.css';
 
-
 import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+
+import CharacterSetup from './CharacterSetup';
+import CharacterView from './CharacterView';
 
 import domainsRaw from '../data/Domains.json';
 
@@ -24,12 +26,15 @@ function TabButton({ active, onClick, children }) {
 
 /* ---------------- Main ---------------- */
 export default function Admin() {
-  const [tab, setTab] = useState('users'); // users | characters | claims | downtimes | xp
+  const [tab, setTab] = useState('users'); // users | characters | claims | downtimes | xp | npcs
   const [loading, setLoading] = useState(false);
+
   const [users, setUsers] = useState([]);
   const [claims, setClaims] = useState([]);
   const [charIndex, setCharIndex] = useState({});
   const [downtimes, setDowntimes] = useState([]);
+  const [npcs, setNPCs] = useState([]);
+
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
 
@@ -67,6 +72,12 @@ export default function Admin() {
       try {
         const dts = await api.get('/admin/downtimes');
         setDowntimes(dts.data.downtimes || []);
+      } catch {}
+
+      // NPCs
+      try {
+        const np = await api.get('/admin/npcs');
+        setNPCs(np.data.npcs || []);
       } catch {}
     } catch (e) {
       setErr(e.response?.data?.error || 'Failed to load admin data');
@@ -154,6 +165,18 @@ export default function Admin() {
     }
   }
 
+  // ========= NPCs (Admin) =========
+  async function deleteNPC(id) {
+    setErr(''); setMsg('');
+    try {
+      await api.delete(`/admin/npcs/${id}`);
+      setMsg(`NPC #${id} deleted`);
+      load();
+    } catch (e) {
+      setErr(e.response?.data?.error || 'Failed to delete NPC');
+    }
+  }
+
   return (
     <div className={styles.adminRoot}>
       <div className={styles.container}>
@@ -172,6 +195,7 @@ export default function Admin() {
           <TabButton active={tab==='claims'} onClick={()=>setTab('claims')}>Claims</TabButton>
           <TabButton active={tab==='downtimes'} onClick={()=>setTab('downtimes')}>Downtimes</TabButton>
           <TabButton active={tab==='xp'} onClick={()=>setTab('xp')}>XP Tools</TabButton>
+          <TabButton active={tab==='npcs'} onClick={()=>setTab('npcs')}>NPCs</TabButton>
           <button className={`${styles.btn} ${styles.btnGhost} ${styles.rowEnd}`} onClick={load}>Reload</button>
         </div>
 
@@ -192,6 +216,13 @@ export default function Admin() {
           />
         )}
         {tab === 'xp' && <XPTools users={users} onGrant={grantXP} />}
+        {tab === 'npcs' && (
+          <NPCsTab
+            npcs={npcs}
+            onReload={load}
+            onDelete={deleteNPC}
+          />
+        )}
       </div>
     </div>
   );
@@ -695,6 +726,7 @@ function ClaimsTab({ claims, characters, onSave, onDelete }) {
   }
 }
 
+/* Small editor used above */
 function ExistingClaimEditor({ selected, claims, characters, getRow, setRow, resetRow, onSave }) {
   const selectedClaim = claims.find(c => c.division === selected);
   if (!selectedClaim) return null;
@@ -933,6 +965,80 @@ function XPTools({ users, onGrant }) {
       <p className={styles.subtle} style={{ marginTop:8 }}>
         Uses <code className={styles.kbd}>PATCH /admin/characters/:id/xp</code>.
       </p>
+    </div>
+  );
+}
+
+/* ==================== NPCs (ADMIN) ==================== */
+
+function NPCsTab({ npcs, onReload, onDelete }) {
+  const [mode, setMode] = useState('list'); // list | create | view
+  const [viewId, setViewId] = useState(null);
+  const [err, setErr] = useState('');
+  const [msg, setMsg] = useState('');
+
+  return (
+    <div className="stack12">
+      <h3>NPCs</h3>
+      {err && <div className={`${styles.alert} ${styles.alertError}`}>{err}</div>}
+      {msg && <div className={`${styles.alert} ${styles.alertInfo}`}>{msg}</div>}
+
+      {mode === 'list' && (
+        <>
+          <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={()=>setMode('create')}>+ New NPC</button>
+          <table className={styles.table} style={{ marginTop:12 }}>
+            <thead>
+              <tr>
+                <th>ID</th><th>Name</th><th>Clan</th><th>XP</th><th>Created</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {npcs.map(n => (
+                <tr key={n.id}>
+                  <td>{n.id}</td>
+                  <td>{n.name}</td>
+                  <td>{n.clan}</td>
+                  <td>{n.xp}</td>
+                  <td>{new Date(n.created_at).toLocaleString()}</td>
+                  <td>
+                    <button className={styles.btn} onClick={()=>{ setViewId(n.id); setMode('view'); }}>View</button>{' '}
+                    <button className={styles.btn} onClick={()=>onDelete(n.id)}>Delete</button>
+                  </td>
+                </tr>
+              ))}
+              {!npcs.length && (
+                <tr><td colSpan="6" className={styles.subtle}>No NPCs yet.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </>
+      )}
+
+      {mode === 'create' && (
+        <div className={styles.card} style={{ marginTop:12 }}>
+          <h4>Create NPC</h4>
+          <CharacterSetup
+            forNPC
+            onDone={async ()=>{ await onReload(); setMode('list'); }}
+          />
+          <div style={{ marginTop:8 }}>
+            <button className={styles.btn} onClick={()=>setMode('list')}>Back</button>
+          </div>
+        </div>
+      )}
+
+      {mode === 'view' && viewId && (
+        <div className={styles.card} style={{ marginTop:12 }}>
+          <h4>View NPC #{viewId}</h4>
+          <CharacterView
+            loadPath={`/admin/npcs/${viewId}`}
+            xpSpendPath={`/admin/npcs/${viewId}/xp/spend`}
+          />
+          <div style={{ marginTop:8 }}>
+            <button className={styles.btn} onClick={()=>setMode('list')}>Back</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
