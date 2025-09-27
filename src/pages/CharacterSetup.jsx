@@ -454,28 +454,29 @@ export default function CharacterSetup({ onDone }) {
     api.get('/characters/me').then(r => setExisting(r.data.character)).catch(()=>{});
   }, []);
 
-  /* ---------- Derived: Attribute quotas ---------- */
-  const attrCounts = useMemo(() => {
-    const c = {1:0,2:0,3:0,4:0};
-    Object.values(attrDots).forEach(v => { c[v] = (c[v]||0)+1; });
-    return c;
-  }, [attrDots]);
+/* ---------- Derived: Attribute quotas ---------- */
+const attrCounts = useMemo(() => {
+  const c = {1:0,2:0,3:0,4:0};
+  Object.values(attrDots).forEach(v => { c[v] = (c[v]||0)+1; });
+  return c;
+}, [attrDots]);
 
-  const canIncAttr = (k) => {
-    const v = attrDots[k] ?? RULES.attributes.min;
-    if (v >= RULES.attributes.max) return false;
-    const next = v + 1;
-    const req = RULES.attributes.pattern;
-    if ((attrCounts[next] || 0) >= (req[next] || 0)) return false;
-    return true;
-  };
-  const canDecAttr = (k) => {
-    const v = attrDots[k] ?? RULES.attributes.min;
-    if (v <= RULES.attributes.min) return false;
-    const req = RULES.attributes.pattern;
-    if ((attrCounts[v] || 0) <= (req[v] || 0)) return false;
-    return true;
-  };
+const canIncAttr = (k) => {
+  const v = attrDots[k] ?? RULES.attributes.min;
+  if (v >= RULES.attributes.max) return false;
+  const next = v + 1;
+  const req = RULES.attributes.pattern;
+  // still enforce “can’t exceed” for increments
+  if ((attrCounts[next] || 0) >= (req[next] || 0)) return false;
+  return true;
+};
+
+// ✅ allow free reallocation: only enforce min on decrements
+const canDecAttr = (k) => {
+  const v = attrDots[k] ?? RULES.attributes.min;
+  return v > RULES.attributes.min;
+};
+
 
   /* ---------- Derived: Skill quotas ---------- */
   const skillReq = RULES.skillPackages[skillPackage];
@@ -503,20 +504,21 @@ export default function CharacterSetup({ onDone }) {
     if ((skillCounts[next] || 0) >= (skillReq[String(next)] || 0)) return false;
     return true;
   };
-  const canDecSkill = (k) => {
-    const v = skillDots[k] || 0;
-    return v > 0;
-  };
+/* Skills: leave as-is; decrements are already always allowed */
+const canDecSkill = (k) => {
+  const v = skillDots[k] || 0;
+  return v > 0; // free reallocation down to 0
+};
 
   /* ---------- Handlers ---------- */
-  const incAttr = (k, d) =>
-    setAttrDots(p => {
-      const v = p[k] ?? RULES.attributes.min;
-      const next = v + d;
-      if (d > 0 && !canIncAttr(k)) return p;
-      if (d < 0 && !canDecAttr(k)) return p;
-      return {...p, [k]: Math.max(RULES.attributes.min, Math.min(RULES.attributes.max, next))};
-    });
+const incAttr = (k, d) =>
+  setAttrDots(p => {
+    const v = p[k] ?? RULES.attributes.min;
+    const next = v + d;
+    if (d > 0 && !canIncAttr(k)) return p;
+    if (d < 0 && !canDecAttr(k)) return p;
+    return { ...p, [k]: Math.max(RULES.attributes.min, Math.min(RULES.attributes.max, next)) };
+  });
 
   const incSkill = (k, d) =>
     setSkillDots(p => {

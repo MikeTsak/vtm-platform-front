@@ -670,3 +670,39 @@
   color: var(--muted);
   font-size: 12px;
 }
+/* --- Loading spinner --- */
+.loadingWrap {
+  min-height: 50vh;
+  display: grid;
+  place-items: center;
+  gap: 10px;
+}
+.spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.15);
+  border-top-color: var(--tint, #8a0f1a);
+  animation: cv_spin 0.8s linear infinite;
+}
+@keyframes cv_spin { to { transform: rotate(360deg); } }
+.loadingText {
+  color: #bbb;
+  font-size: 14px;
+}
+
+/* --- Empty state --- */
+.emptyWrap {
+  min-height: 60vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+.emptyCard {
+  width: min(680px, 92vw);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+}

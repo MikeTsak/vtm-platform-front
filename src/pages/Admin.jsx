@@ -864,7 +864,7 @@ function DowntimesTab({ rows, onSave }) {
           </div>
 
           <div className="stack12" style={{ marginTop:8 }}>
-            <label>GM Notes</label>
+            <label>GM Resolution (visible to player)</label>
             <textarea
               value={getRow(d).gm_notes}
               onChange={e=>setRow(d, { gm_notes: e.target.value })}
@@ -874,7 +874,7 @@ function DowntimesTab({ rows, onSave }) {
           </div>
 
           <div className="stack12" style={{ marginTop:8 }}>
-            <label>GM Resolution (visible to player)</label>
+            <label>GM Notes</label>
             <textarea
               value={getRow(d).gm_resolution}
               onChange={e=>setRow(d, { gm_resolution: e.target.value })}
