@@ -3,6 +3,7 @@ import api from '../api';
 import { DISCIPLINES, ALL_DISCIPLINE_NAMES, iconPath } from '../data/disciplines';
 import { RITUALS } from '../data/rituals';
 import styles from '../styles/CharacterView.module.css';
+import CharacterSetup from './CharacterSetup';
 
 /* ---------- Clan tint colors ---------- */
 const CLAN_COLORS = {
@@ -216,6 +217,7 @@ function Drawer({ title, subtitle, defaultOpen = false, children }) {
    Component
    =========================== */
 export default function CharacterView() {
+  const [showSetup, setShowSetup] = useState(false);
   const [ch, setCh] = useState(null);
   const [err, setErr] = useState('');
   const [msg, setMsg] = useState('');
@@ -388,7 +390,55 @@ export default function CharacterView() {
     await spendXP({ type: 'ceremony', target: cer.id, ritualLevel: level, patchSheet: nextSheet });
   }
 
-  if (!ch) return <div className={styles.loading}>Loading character…</div>;
+// put this state near your other useState calls at the top of CharacterView
+// const [showSetup, setShowSetup] = useState(false);
+
+if (!ch) {
+  return (
+    <div className={styles.emptyWrap} style={{ '--tint': tint }}>
+      {(err || msg) && (
+        <div className={err ? styles.alertError : styles.alertOk}>
+          {err || msg}
+        </div>
+      )}
+
+      <div className={styles.loadingSwap}>
+        {/* Phase 1: visible immediately */}
+        <div className={styles.loadingPhase}>
+          <div className={styles.spinner} aria-label="Loading" />
+          <div className={styles.loadingText}>Loading character…</div>
+        </div>
+
+        {/* Phase 2: appears after 3s */}
+        <div className={styles.emptyPhase}>
+          <h2 className={styles.cardHead}>No character found</h2>
+          <p className={styles.muted}>Create your character to continue.</p>
+          <button className={styles.cta} onClick={() => setShowSetup(true)}>
+            Create Character
+          </button>
+        </div>
+      </div>
+
+      {/* Fullscreen overlay with CharacterSetup */}
+      {showSetup && (
+        <div className={styles.setupOverlay} role="dialog" aria-modal="true">
+          <button
+            className={styles.setupClose}
+            aria-label="Close"
+            onClick={() => setShowSetup(false)}
+          >
+            ×
+          </button>
+          <div className={styles.setupOverlayInner}>
+            {/* Not a link; builder renders fullscreen */}
+            <CharacterSetup onDone={() => window.location.reload()} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 
   // ===== Discipline grouping for the XP Shop (in-clan first, out-of-clan in drawer)
   const inClanDisciplines = ALL_DISCIPLINE_NAMES.filter(n => disciplineKindFor(ch, n) === 'clan');

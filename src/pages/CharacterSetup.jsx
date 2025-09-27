@@ -378,7 +378,7 @@ const RULES = {
 const flat = (obj) => Object.values(obj).flat();
 
 /* ---------- Component ---------- */
-export default function CharacterSetup({ onDone }) {
+export default function CharacterSetup({ onDone, forNPC = false  }) {
   const [existing, setExisting] = useState(null);
   const [step, setStep] = useState(1);
   const [err, setErr] = useState('');
@@ -450,9 +450,11 @@ export default function CharacterSetup({ onDone }) {
   const [humanity, setHumanity] = useState(RULES.humanity);
   const [bloodPotency, setBloodPotency] = useState(RULES.bloodPotency);
 
-  useEffect(() => {
+    useEffect(() => {
+    if (forNPC) return; // NPCs don't use /characters/me
     api.get('/characters/me').then(r => setExisting(r.data.character)).catch(()=>{});
-  }, []);
+  }, [forNPC]);
+  
 
 /* ---------- Derived: Attribute quotas ---------- */
 const attrCounts = useMemo(() => {
@@ -592,32 +594,52 @@ const incAttr = (k, d) =>
     attrOk && skillOk && discOk && predatorOk &&
     advOk && humanity >= 1 && humanity <= 10;
 
-  const save = async () => {
-    setSaving(true); setErr('');
-    try {
-      const payload = {
-        name, concept, chronicle, ambition, desire,
-        clan, sire,
-        predator: {
-          type: predatorType,
-          picks: predatorPicks,
-          suggestedEffects: PREDATORS[predatorType]?.effects || {}
-        },
-        predatorType, // keep legacy field if API expects it
-        attributes: attrDots,
-        skills: skillDots,
-        specialties: specialties.filter(Boolean),
-        disciplines: derivedDisciplineDots,
-        advantages: { merits, flaws },
-        morality: { tenets, convictions: convictions.filter(Boolean), touchstones: touchstones.filter(Boolean), humanity },
-        bloodPotency
-      };
-      await api.post('/characters', { name, clan, sheet: payload });
-      onDone?.();
-    } catch (e) {
-      setErr(e?.response?.data?.error || 'Failed to save character');
-    } finally { setSaving(false); }
-  };
+// inside CharacterSetup component
+const save = async () => {
+  setSaving(true); setErr('');
+  try {
+    // Safe guards in case these aren’t defined in this file
+    const picks = Array.isArray(typeof predatorPicks !== 'undefined' ? predatorPicks : [])
+      ? predatorPicks
+      : [];
+    const predatorEffects =
+      (typeof PREDATORS === 'object' && PREDATORS?.[predatorType]?.effects) || {};
+
+    const payload = {
+      name, concept, chronicle, ambition, desire,
+      clan, sire,
+      predator: {
+        type: predatorType || null,
+        picks,
+        suggestedEffects: predatorEffects
+      },
+      predatorType, // keep legacy field; backend uses this for feeding defaults
+      attributes: attrDots,
+      skills: skillDots,
+      specialties: (specialties || []).filter(Boolean),
+      disciplines: derivedDisciplineDots,
+      advantages: { merits, flaws },
+      morality: {
+        tenets,
+        convictions: (convictions || []).filter(Boolean),
+        touchstones: (touchstones || []).filter(Boolean),
+        humanity
+      },
+      bloodPotency
+    };
+
+    // Choose endpoint based on whether we’re creating an NPC or a player character
+    const endpoint = forNPC ? '/admin/npcs' : '/characters';
+    await api.post(endpoint, { name, clan, sheet: payload });
+
+    onDone?.();
+  } catch (e) {
+    setErr(e?.response?.data?.error || 'Failed to save character');
+  } finally {
+    setSaving(false);
+  }
+};
+  /* ---------- Render ---------- */
 
   if (existing) {
     return (
