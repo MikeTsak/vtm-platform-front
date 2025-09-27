@@ -216,7 +216,7 @@ function Drawer({ title, subtitle, defaultOpen = false, children }) {
 /* ===========================
    Component
    =========================== */
-export default function CharacterView() {
+export default function CharacterView({ loadPath = '/characters/me', xpSpendPath = '/characters/xp/spend' }) {
   const [showSetup, setShowSetup] = useState(false);
   const [ch, setCh] = useState(null);
   const [err, setErr] = useState('');
@@ -226,6 +226,25 @@ export default function CharacterView() {
   const [pendingFixes, setPendingFixes] = useState([]);
   const shopRef = useRef(null);
   const [xpTotals, setXpTotals] = useState(null);
+
+  useEffect(() => {
+    api.get(loadPath).then(r => {
+      // accept either { character } or { npc }
+      setCh(r.data.character || r.data.npc || null);
+    }).catch(()=>{});
+  }, [loadPath]);
+
+  async function spendXP(payload) {
+    setErr(''); setMsg('');
+    try {
+      const { data } = await api.post(xpSpendPath, payload);
+      setCh(data.character || data.npc);
+      setMsg(`Spent ${data.spent} XP.`);
+    } catch (e) {
+      setErr(e.response?.data?.error || 'Failed to spend XP');
+      throw e;
+    }
+  }
 
   useEffect(() => {
     api.get('/characters/me').then(r => {

@@ -16,6 +16,7 @@ import DiceRoller from './components/DiceRoller';
 import Terms from './pages/Terms';
 import Legal from './pages/Legal';
 import Privacy from './pages/Privacy';
+import NPCs from './pages/NPCs';
 
 
 
@@ -84,7 +85,10 @@ function Nav() {
           </>
         )}
         {user?.role === 'admin' && (
+          <>
           <NavLink to="/admin" className={getNavLinkClass}>Admin</NavLink>
+          <NavLink to="/admin/npcs" caseSensitive>NPCs</NavLink>
+          </>
         )}
       </div>
 
@@ -119,6 +123,7 @@ export default function App() {
               <Route path="/downtimes" element={<Private><DownTimes/></Private>} />
               <Route path="/comms" element={<Private><Comms/></Private>} />
               <Route path="/admin" element={<AdminOnly><Admin/></AdminOnly>} />
+              <Route path="/admin/npcs" element={<AdminOnly><NPCs/></AdminOnly>} />
               <Route path="/login" element={<Login/>} />
               <Route path="/register" element={<Register/>} />
               <Route path="/terms" element={<Terms />} />
