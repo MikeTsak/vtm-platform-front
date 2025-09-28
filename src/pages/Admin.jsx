@@ -11,6 +11,7 @@ import CharacterSetup from './CharacterSetup';
 import CharacterView from './CharacterView';
 
 import domainsRaw from '../data/Domains.json';
+import { Link } from 'react-router-dom';
 
 /* ---------------- UI bits ---------------- */
 function TabButton({ active, onClick, children }) {
@@ -1001,7 +1002,7 @@ function NPCsTab({ npcs, onReload, onDelete }) {
                   <td>{n.xp}</td>
                   <td>{new Date(n.created_at).toLocaleString()}</td>
                   <td>
-                    <button className={styles.btn} onClick={()=>{ setViewId(n.id); setMode('view'); }}>View</button>{' '}
+                    <Link className={styles.btn} to={`/admin/npcs/${n.id}`}>View</Link>
                     <button className={styles.btn} onClick={()=>onDelete(n.id)}>Delete</button>
                   </td>
                 </tr>

@@ -1,3 +1,4 @@
+// src/pages/CharacterView.jsx
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import api from '../api';
 import { DISCIPLINES, ALL_DISCIPLINE_NAMES, iconPath } from '../data/disciplines';
@@ -35,9 +36,8 @@ const SKILLS = {
 };
 
 /* ===========================
-   Normalization helpers
+   Sheet normalization helpers
    =========================== */
-
 function looksLikeFlatSheet(s) {
   if (!s || typeof s !== 'object') return false;
   if (s.skills && typeof s.skills === 'object') {
@@ -48,44 +48,6 @@ function looksLikeFlatSheet(s) {
   if ('predatorType' in s) return true;
   return false;
 }
-function SpecialtyAdder({ xp, onAdd }) {
-  const [skill, setSkill] = useState('Academics');
-  const [spec, setSpec] = useState('');
-  const cost = 3;
-  const afford = xp >= cost;
-
-  return (
-    <div className={styles.rowForm}>
-      <select
-        className={styles.input}
-        value={skill}
-        onChange={e => setSkill(e.target.value)}
-      >
-        {Object.values(SKILLS).flat().map(name => (
-          <option key={name} value={name}>{name}</option>
-        ))}
-      </select>
-
-      <input
-        className={styles.input}
-        placeholder="e.g., Technology (Firmware)"
-        value={spec}
-        onChange={e => setSpec(e.target.value)}
-      />
-
-      <span className={styles.costText}>Cost: <b>{cost}</b></span>
-
-      <button
-        className={styles.cta}
-        disabled={!afford || !spec.trim()}
-        onClick={() => onAdd(skill, spec.trim())}
-      >
-        Add Specialty
-      </button>
-    </div>
-  );
-}
-
 
 function isStructuredSheet(s) {
   if (!s || typeof s !== 'object') return false;
@@ -131,7 +93,6 @@ function normalizeFromFlatAny(source) {
 
   sheet.morality = flat.morality || {};
   sheet.humanity = flat.morality?.humanity ?? undefined;
-
   sheet.blood_potency = Number(flat.bloodPotency ?? 1);
 
   sheet.health_current = flat.health_current;
@@ -216,7 +177,28 @@ function Drawer({ title, subtitle, defaultOpen = false, children }) {
 /* ===========================
    Component
    =========================== */
-export default function CharacterView({ loadPath = '/characters/me', xpSpendPath = '/characters/xp/spend' }) {
+export default function CharacterView({
+  adminNPCId = null,
+  loadPath,
+  xpSpendPath,
+}) {
+  const paths = useMemo(() => {
+    if (adminNPCId) {
+      return {
+        load: `/admin/npcs/${adminNPCId}`,
+        spend: `/admin/npcs/${adminNPCId}/xp/spend`,
+        totals: null, // no NPC totals endpoint by default
+        pickFrom: 'npc',
+      };
+    }
+    return {
+      load: loadPath || '/characters/me',
+      spend: xpSpendPath || '/characters/xp/spend',
+      totals: '/characters/xp/total',
+      pickFrom: 'character',
+    };
+  }, [adminNPCId, loadPath, xpSpendPath]);
+
   const [showSetup, setShowSetup] = useState(false);
   const [ch, setCh] = useState(null);
   const [err, setErr] = useState('');
@@ -224,40 +206,49 @@ export default function CharacterView({ loadPath = '/characters/me', xpSpendPath
   const [modalOpen, setModalOpen] = useState(false);
   const [modalCfg, setModalCfg] = useState(null);
   const [pendingFixes, setPendingFixes] = useState([]);
-  const shopRef = useRef(null);
   const [xpTotals, setXpTotals] = useState(null);
+  const shopRef = useRef(null);
 
+  // Load character/NPC
   useEffect(() => {
-    api.get(loadPath).then(r => {
-      // accept either { character } or { npc }
-      setCh(r.data.character || r.data.npc || null);
-    }).catch(()=>{});
-  }, [loadPath]);
+    let mounted = true;
+    api.get(paths.load)
+      .then(r => {
+        const obj = r.data[paths.pickFrom] || r.data.character || r.data.npc || null;
+        if (!mounted) return;
+        setCh(attachStructured(obj));
+      })
+      .catch(e => {
+        if (!mounted) return;
+        setErr(e?.response?.data?.error || 'Failed to load character');
+      });
+    return () => { mounted = false; };
+  }, [paths]);
+
+  // Optional: fetch XP totals (players only, unless you add an NPC totals endpoint)
+  useEffect(() => {
+    if (!paths.totals || !ch) return;
+    api.get(paths.totals)
+      .then(r => setXpTotals(r.data))
+      .catch(() => {});
+  }, [paths.totals, ch]);
 
   async function spendXP(payload) {
     setErr(''); setMsg('');
     try {
-      const { data } = await api.post(xpSpendPath, payload);
-      setCh(data.character || data.npc);
+      const { data } = await api.post(paths.spend, payload);
+      const obj = data.character || data.npc || null;
+      setCh(attachStructured(obj));
       setMsg(`Spent ${data.spent} XP.`);
+      // Refresh totals for player
+      if (paths.totals) {
+        try { const t = await api.get(paths.totals); setXpTotals(t.data); } catch {}
+      }
     } catch (e) {
       setErr(e.response?.data?.error || 'Failed to spend XP');
       throw e;
     }
   }
-
-  useEffect(() => {
-    api.get('/characters/me').then(r => {
-      const normalized = attachStructured(r.data.character);
-      setCh(normalized);
-    });
-  }, []);
-
-  useEffect(() => {
-    if (ch) {
-      api.get('/characters/xp/total').then(r => setXpTotals(r.data));
-    }
-  }, [ch]);
 
   const tint = useMemo(() => (ch ? CLAN_COLORS[ch.clan] || '#8a0f1a' : '#8a0f1a'), [ch]);
   const sheet = ch?.sheet || {};
@@ -268,18 +259,7 @@ export default function CharacterView({ loadPath = '/characters/me', xpSpendPath
     [sheet]
   );
 
-  async function spendXP(payload) {
-    setErr(''); setMsg('');
-    try {
-      const { data } = await api.post('/characters/xp/spend', payload);
-      setCh(attachStructured(data.character));
-      setMsg(`Spent ${data.spent} XP.`);
-    } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to spend XP');
-      throw e;
-    }
-  }
-
+  // Compute missing power selections (for current dots)
   const computeMissingPicks = useCallback(() => {
     const dots = sheet.disciplines || {};
     const picks = sheet.disciplinePowers || {};
@@ -294,6 +274,7 @@ export default function CharacterView({ loadPath = '/characters/me', xpSpendPath
     return q;
   }, [sheet]);
 
+  // When character loads/updates, prompt for any missing power selections
   useEffect(() => {
     if (!ch) return;
     const q = computeMissingPicks();
@@ -311,6 +292,7 @@ export default function CharacterView({ loadPath = '/characters/me', xpSpendPath
     }
   }, [ch, computeMissingPicks, modalOpen]);
 
+  // Discipline power confirm flow (assignment free if no dot increase)
   async function confirmDisciplinePurchase({ name, selectedPowerId, selectedPowerName, current, next, kind, assignOnly }) {
     const nextSheet = JSON.parse(JSON.stringify(sheet));
     nextSheet.disciplines = nextSheet.disciplines || {};
@@ -325,7 +307,8 @@ export default function CharacterView({ loadPath = '/characters/me', xpSpendPath
 
     try {
       if (assignOnly) {
-        await api.post('/characters/xp/spend', {
+        // Free: assignment only
+        await api.post(paths.spend, {
           type: 'discipline',
           disciplineKind: 'select',
           target: name,
@@ -336,7 +319,7 @@ export default function CharacterView({ loadPath = '/characters/me', xpSpendPath
       } else {
         await spendXP({
           type: 'discipline',
-          disciplineKind: kind,
+          disciplineKind: kind, // 'clan' | 'other' | 'caitiff'
           target: name,
           currentLevel: current,
           newLevel: next,
@@ -344,11 +327,15 @@ export default function CharacterView({ loadPath = '/characters/me', xpSpendPath
         });
       }
 
-      const r = await api.get('/characters/me');
-      setCh(attachStructured(r.data.character));
+      // Refresh character after change
+      const r = await api.get(paths.load);
+      const obj = r.data[paths.pickFrom] || r.data.character || r.data.npc || null;
+      setCh(attachStructured(obj));
+
       setModalOpen(false);
       setModalCfg(null);
 
+      // Continue auto-assign queue if we were fixing missing powers
       if (assignOnly) {
         const rest = computeMissingPicks();
         setPendingFixes(rest);
@@ -362,7 +349,9 @@ export default function CharacterView({ loadPath = '/characters/me', xpSpendPath
             assignOnly: true
           });
           setModalOpen(true);
-        } else setMsg('All discipline powers are now specified.');
+        } else {
+          setMsg('All discipline powers are now specified.');
+        }
       }
     } catch (e) {
       setErr(e.response?.data?.error || 'Failed to save selection');
@@ -375,7 +364,6 @@ export default function CharacterView({ loadPath = '/characters/me', xpSpendPath
     ...(sheet.rituals?.oblivion || []).map(r => r.id),
   ]);
 
-  // derive known ritual names (for prereq strings that use names)
   const knownRitualNames = useMemo(() => {
     const bs = Object.values(RITUALS.blood_sorcery.levels || {}).flat();
     const ob = Object.values(RITUALS.oblivion?.levels || {}).flat();
@@ -409,55 +397,53 @@ export default function CharacterView({ loadPath = '/characters/me', xpSpendPath
     await spendXP({ type: 'ceremony', target: cer.id, ritualLevel: level, patchSheet: nextSheet });
   }
 
-// put this state near your other useState calls at the top of CharacterView
-// const [showSetup, setShowSetup] = useState(false);
-
-if (!ch) {
-  return (
-    <div className={styles.emptyWrap} style={{ '--tint': tint }}>
-      {(err || msg) && (
-        <div className={err ? styles.alertError : styles.alertOk}>
-          {err || msg}
-        </div>
-      )}
-
-      <div className={styles.loadingSwap}>
-        {/* Phase 1: visible immediately */}
-        <div className={styles.loadingPhase}>
-          <div className={styles.spinner} aria-label="Loading" />
-          <div className={styles.loadingText}>Loading character…</div>
-        </div>
-
-        {/* Phase 2: appears after 3s */}
-        <div className={styles.emptyPhase}>
-          <h2 className={styles.cardHead}>No character found</h2>
-          <p className={styles.muted}>Create your character to continue.</p>
-          <button className={styles.cta} onClick={() => setShowSetup(true)}>
-            Create Character
-          </button>
-        </div>
-      </div>
-
-      {/* Fullscreen overlay with CharacterSetup */}
-      {showSetup && (
-        <div className={styles.setupOverlay} role="dialog" aria-modal="true">
-          <button
-            className={styles.setupClose}
-            aria-label="Close"
-            onClick={() => setShowSetup(false)}
-          >
-            ×
-          </button>
-          <div className={styles.setupOverlayInner}>
-            {/* Not a link; builder renders fullscreen */}
-            <CharacterSetup onDone={() => window.location.reload()} />
+  // ===== Empty / loading & builder overlay (players only) =====
+  if (!ch) {
+    return (
+      <div className={styles.emptyWrap} style={{ '--tint': tint }}>
+        {(err || msg) && (
+          <div className={err ? styles.alertError : styles.alertOk}>
+            {err || msg}
           </div>
-        </div>
-      )}
-    </div>
-  );
-}
+        )}
 
+        <div className={styles.loadingSwap}>
+          {/* Phase 1: visible immediately */}
+          <div className={styles.loadingPhase}>
+            <div className={styles.spinner} aria-label="Loading" />
+            <div className={styles.loadingText}>Loading character…</div>
+          </div>
+
+          {/* Phase 2: if no data (only for players, not admin NPC) */}
+          {!adminNPCId && (
+            <div className={styles.emptyPhase}>
+              <h2 className={styles.cardHead}>No character found</h2>
+              <p className={styles.muted}>Create your character to continue.</p>
+              <button className={styles.cta} onClick={() => setShowSetup(true)}>
+                Create Character
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Fullscreen overlay with CharacterSetup (players only) */}
+        {!adminNPCId && showSetup && (
+          <div className={styles.setupOverlay} role="dialog" aria-modal="true">
+            <button
+              className={styles.setupClose}
+              aria-label="Close"
+              onClick={() => setShowSetup(false)}
+            >
+              ×
+            </button>
+            <div className={styles.setupOverlayInner}>
+              <CharacterSetup onDone={() => window.location.reload()} />
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   // ===== Discipline grouping for the XP Shop (in-clan first, out-of-clan in drawer)
   const inClanDisciplines = ALL_DISCIPLINE_NAMES.filter(n => disciplineKindFor(ch, n) === 'clan');
@@ -466,35 +452,34 @@ if (!ch) {
   return (
     <div className={styles.root} style={{ '--tint': tint }}>
       <div className={styles.wrap}>
-      <header className={styles.head}>
-        <div className={styles.headerTop}>
-          <h2 className={styles.title}>
-            {ch.name} <span className={styles.clanTag}>({ch.clan})</span>
-          </h2>
-          <div className={styles.xpBadge}>
-            XP: <b>{xp}</b>
+        <header className={styles.head}>
+          <div className={styles.headerTop}>
+            <h2 className={styles.title}>
+              {ch.name} <span className={styles.clanTag}>({ch.clan})</span>
+            </h2>
+            <div className={styles.xpBadge}>
+              XP: <b>{xp}</b>
+            </div>
           </div>
-        </div>
 
-        {xpTotals && (
-          <div className={styles.xpTotals}>
-            <span>Granted: <b>{xpTotals.granted}</b></span>
-            <span>Spent: <b>{xpTotals.spent}</b></span>
-            <span>Remaining: <b>{xpTotals.remaining}</b></span>
+          {paths.totals && xpTotals && (
+            <div className={styles.xpTotals}>
+              <span>Granted: <b>{xpTotals.granted}</b></span>
+              <span>Spent: <b>{xpTotals.spent}</b></span>
+              <span>Remaining: <b>{xpTotals.remaining}</b></span>
+            </div>
+          )}
+
+          <div className={styles.metaRow}>
+            <span>Predator: <b>{sheet?.predator_type || '—'}</b></span>
+            <span>Sire: <b>{sheet?.sire || '—'}</b></span>
+            <span>Ambition: <b>{sheet?.ambition || '—'}</b></span>
+            <span>Desire: <b>{sheet?.desire || '—'}</b></span>
           </div>
-        )}
 
-        <div className={styles.metaRow}>
-          <span>Predator: <b>{sheet?.predator_type || '—'}</b></span>
-          <span>Sire: <b>{sheet?.sire || '—'}</b></span>
-          <span>Ambition: <b>{sheet?.ambition || '—'}</b></span>
-          <span>Desire: <b>{sheet?.desire || '—'}</b></span>
-        </div>
-
-        {err && <div className={styles.alertError}>{err}</div>}
-        {msg && <div className={styles.alertOk}>{msg}</div>}
-      </header>
-
+          {err && <div className={styles.alertError}>{err}</div>}
+          {msg && <div className={styles.alertOk}>{msg}</div>}
+        </header>
 
         {/* ===== Overview ===== */}
         <section className={styles.section}>
@@ -559,7 +544,6 @@ if (!ch) {
               {Object.keys(disciplinesMap).sort().map(name => (
                 <DisciplineRow
                   key={name}
-                  ch={ch}
                   name={name}
                   level={Number(disciplinesMap[name] || 0)}
                   powers={sheet.disciplinePowers?.[name] || []}
@@ -576,7 +560,7 @@ if (!ch) {
             <span className={styles.muted}>You have <b>{xp}</b> XP</span>
           </div>
 
-          {/* Attributes shop */}
+          {/* Attributes */}
           <Card>
             <div className={styles.cardHead}><b>Attributes</b></div>
             <div className={styles.grid3Col}>
@@ -611,7 +595,7 @@ if (!ch) {
             </div>
           </Card>
 
-          {/* Skills shop */}
+          {/* Skills */}
           <Card>
             <div className={styles.cardHead}><b>Skills</b></div>
             <div className={styles.grid3Col}>
@@ -677,11 +661,11 @@ if (!ch) {
             />
           </Card>
 
-          {/* Disciplines shop — split into in-clan and out-of-clan (drawer) */}
+          {/* Disciplines (in-clan visible, out-of-clan in drawer) */}
           <Card>
             <div className={styles.cardHead}><b>Disciplines</b></div>
 
-            {/* In-clan (always visible) */}
+            {/* In-clan */}
             <div className={styles.subhead}>In-Clan</div>
             <div className={styles.grid}>
               {inClanDisciplines.length === 0 && (
@@ -705,6 +689,7 @@ if (!ch) {
                     disabled={!canRaise || !afford}
                     hint={!canRaise ? 'Max 5' : (!afford ? 'Not enough XP' : '')}
                     onBuy={async () => {
+                      // Buy/raise the dot first; modal will open to select a power afterwards if missing
                       const nextSheet = JSON.parse(JSON.stringify(sheet));
                       nextSheet.disciplines = { ...(nextSheet.disciplines || {}), [name]: next };
                       await spendXP({
@@ -715,18 +700,15 @@ if (!ch) {
                         newLevel: next,
                         patchSheet: nextSheet,
                       });
+                      // After this, computeMissingPicks() will detect a missing power and prompt
                     }}
                   />
                 );
               })}
             </div>
 
-            {/* Out-of-clan (drawer, closed by default) */}
-            <Drawer
-              title="Out-of-Clan"
-              subtitle="check with your ST before spending XP"
-              defaultOpen={false}
-            >
+            {/* Out-of-clan */}
+            <Drawer title="Out-of-Clan" subtitle="check with your ST before spending XP" defaultOpen={false}>
               <div className={styles.grid}>
                 {outOfClanDisciplines.map(name => {
                   const current = Number(sheet.disciplines?.[name] || 0);
@@ -765,7 +747,7 @@ if (!ch) {
             </Drawer>
           </Card>
 
-          {/* Rituals & Ceremonies — drawer, closed by default */}
+          {/* Rituals & Ceremonies */}
           <Card>
             <Drawer title="Blood Sorcery Rituals & Oblivion Ceremonies" defaultOpen={false}>
               <div className={styles.grid} style={{ gap: 12 }}>
@@ -836,7 +818,6 @@ if (!ch) {
       {/* ----- Discipline Power Modal ----- */}
       {modalOpen && modalCfg && (
         <DisciplinePowerModal
-          ch={ch}
           cfg={modalCfg}
           onClose={() => { setModalOpen(false); setModalCfg(null); }}
           onConfirm={(sel) => confirmDisciplinePurchase({ ...modalCfg, ...sel })}
@@ -884,13 +865,7 @@ function renderSpecs(specs = []) {
 
 function DisciplineRow({ name, level = 0, powers = [] }) {
   const icon = iconPath(name);
-
-  // Map picked powers by their level for O(1) lookups
-  const byLevel = new Map(
-    (powers || []).map(p => [Number(p.level), { id: p.id, name: p.name }])
-  );
-
-  // Show up to the highest relevant level (current dots or chosen power max), capped at 5
+  const byLevel = new Map((powers || []).map(p => [Number(p.level), { id: p.id, name: p.name }]));
   const maxPicked = Math.max(0, ...Array.from(byLevel.keys()));
   const displayMax = Math.min(5, Math.max(level || 0, maxPicked || 0) || 0) || level || 0 || 0;
 
@@ -915,7 +890,6 @@ function DisciplineRow({ name, level = 0, powers = [] }) {
         </div>
       </div>
 
-      {/* Power list by level */}
       <ul className={styles.powerList}>
         {Array.from({ length: Math.max(displayMax, level || 0) || 0 }).map((_, i) => {
           const L = i + 1;
@@ -1010,7 +984,6 @@ function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, leftIcon }
 }
 
 /* ---------- Ritual/Ceremony row with prereq/recall info ---------- */
-
 function RitualRow({ item, level, cost, owned, allowed, afford, prereqUnmet = [], onBuy }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [working, setWorking] = useState(false);
@@ -1097,8 +1070,7 @@ function RitualRow({ item, level, cost, owned, allowed, afford, prereqUnmet = []
   );
 }
 
-/* ---------- Prereq check for rituals/ceremonies by name or id ---------- */
-
+/* ---------- Ritual/Ceremony prereq helper ---------- */
 const _norm = (v) => String(v ?? '').trim().toLowerCase();
 
 function ritualPrereqStatus(rit, knownRitualIds, knownRitualNames) {
@@ -1124,11 +1096,11 @@ function ritualPrereqStatus(rit, knownRitualIds, knownRitualNames) {
   return { unmet };
 }
 
-/* ===== Pick a power (≤ level N), gray-out owned & unmet amalgams, sort by level; closes after success ===== */
+/* ===== Discipline power picker modal ===== */
 function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
   const { name, next, assignOnly, ownedPowerIds = [], ownedPowerNames = [], ownedPowers = [], disciplineDots = {} } = cfg;
 
-  // ---------- build pool up to 'next' & sort by level then name ----------
+  // Build pool up to 'next' & sort
   const fullPool = useMemo(() => {
     const out = [];
     const levels = DISCIPLINES?.[name]?.levels || {};
@@ -1140,11 +1112,9 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
     return out;
   }, [name, next]);
 
-  // ---------- normalization helpers ----------
   const norm = (v) => String(v ?? '').trim().toLowerCase();
   const normDisc = (s) => norm(s).replace(/\s+/g, ' ');
 
-  // Accept IDs, names, slugs, keys, codes, numbers
   const ownedCanon = useMemo(() => {
     const ids = ownedPowerIds.map(norm);
     const names = ownedPowerNames.map(norm);
@@ -1152,14 +1122,12 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
     return new Set([...ids, ...names, ...objs].filter(Boolean));
   }, [ownedPowerIds, ownedPowerNames, ownedPowers]);
 
-  // Case-insensitive discipline dots for amalgam checks
   const dotsByDisc = useMemo(() => {
     const m = new Map();
     Object.entries(disciplineDots || {}).forEach(([k, v]) => m.set(normDisc(k), Number(v) || 0));
     return m;
   }, [disciplineDots]);
 
-  // Parse amalgam like "Potence ●●", "Potence 2", "Potence 2 & Fortitude 1"
   const countDots = (s = '') => {
     const bullets = (s.match(/[•●○]/g) || []).length;
     const digits = parseInt((s.match(/\b(\d+)\b/) || [,'0'])[1], 10) || 0;
@@ -1175,7 +1143,6 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
        return { disc: discName, dots: countDots(part) };
      });
 
-  // ---------- annotate availability (owned/unmet amalgams) ----------
   const annotated = useMemo(() => {
     return fullPool.map(p => {
       const candidates = [
@@ -1202,7 +1169,6 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
     });
   }, [fullPool, ownedCanon, dotsByDisc]);
 
-  // ---------- search/filter (keeps disabled visible) ----------
   const [query, setQuery] = useState('');
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -1215,7 +1181,6 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
     );
   }, [annotated, query]);
 
-  // ---------- selection lifecycle ----------
   const firstAvailable = useMemo(() => filtered.find(p => p.__available)?.id || '', [filtered]);
   const [selectedId, setSelectedId] = useState(firstAvailable);
   useEffect(() => {
@@ -1230,7 +1195,6 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
     [filtered, annotated, selectedId]
   );
 
-  // ---------- save flow (await API, close on success) ----------
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState('');
   const confirm = async () => {
@@ -1252,10 +1216,6 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
     }
   };
 
-  // ---------- render helpers ----------
-  const labelize = (k) => String(k).replace(/_/g, ' ').replace(/\b\w/g, m => m.toUpperCase());
-
-  // Build list rows with simple level headers
   const rows = [];
   let lastLevel = null;
   for (const p of filtered) {
@@ -1279,7 +1239,6 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
       }}
     >
       <div className={`${styles.card} ${styles.modalCard}`} style={{ width:'min(92vw, 800px)' }}>
-        {/* Header */}
         <div className={styles.modalHeader}>
           <div>
             <h3 id="powerModalTitle" className={styles.modalTitle}>
@@ -1289,7 +1248,6 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
               Discipline: <b>{name}</b> • Level <b>{next}</b>
             </div>
           </div>
-          {/* <button className={styles.closeBtn} onClick={onClose} disabled={saving} aria-label="Close">×</button> */}
         </div>
 
         <div className={styles.muted} role="note" style={{ padding: '8px 16px 0' }}>
@@ -1302,7 +1260,7 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
           </div>
         ) : (
           <div className={styles.modalGrid}>
-            {/* LEFT PANE (equal-height card) */}
+            {/* LEFT PANE */}
             <div className={styles.paneCard}>
               <aside className={styles.powerListPane}>
                 <input
@@ -1362,7 +1320,7 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
               </aside>
             </div>
 
-            {/* RIGHT PANE (equal-height card) */}
+            {/* RIGHT PANE */}
             <div className={styles.paneCard}>
               <section className={styles.powerDetailPane}>
                 {sel ? (
@@ -1381,7 +1339,6 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
                       </div>
                     </div>
 
-                    {/* Scrollable detail content */}
                     <div className={styles.detailScroll}>
                       <div className={styles.detailTags}>
                         {['cost','duration','dice_pool','opposing_pool','amalgam','prerequisite'].map(k => {
@@ -1390,12 +1347,7 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
                           return <span key={k} className={styles.powerTag}><b>{labelize(k)}:</b> {v}</span>;
                         })}
                       </div>
-
-                      {sel.notes && (
-                        <div className={styles.powerNotes}>
-                          {sel.notes}
-                        </div>
-                      )}
+                      {sel.notes && <div className={styles.powerNotes}>{sel.notes}</div>}
                     </div>
                   </>
                 ) : (
@@ -1406,10 +1358,8 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
           </div>
         )}
 
-        {/* Footer */}
         <div className={styles.modalFooter}>
           {saveErr && <div className={styles.alert} style={{ marginRight: 'auto' }}>{saveErr}</div>}
-          {/* <button className={styles.ghostBtn} onClick={onClose} disabled={saving}>Cancel</button> */}
           <button
             className={styles.cta}
             onClick={confirm}
@@ -1423,8 +1373,46 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
   );
 }
 
+/* ---------- Misc helpers ---------- */
 function labelize(k) {
   return k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
+/* ---------- Specialty adder ---------- */
+function SpecialtyAdder({ xp, onAdd }) {
+  const [skill, setSkill] = useState('Academics');
+  const [spec, setSpec] = useState('');
+  const cost = 3;
+  const afford = xp >= cost;
 
+  return (
+    <div className={styles.rowForm}>
+      <select
+        className={styles.input}
+        value={skill}
+        onChange={e => setSkill(e.target.value)}
+      >
+        {Object.values(SKILLS).flat().map(name => (
+          <option key={name} value={name}>{name}</option>
+        ))}
+      </select>
+
+      <input
+        className={styles.input}
+        placeholder="e.g., Technology (Firmware)"
+        value={spec}
+        onChange={e => setSpec(e.target.value)}
+      />
+
+      <span className={styles.costText}>Cost: <b>{cost}</b></span>
+
+      <button
+        className={styles.cta}
+        disabled={!afford || !spec.trim()}
+        onClick={() => onAdd(skill, spec.trim())}
+      >
+        Add Specialty
+      </button>
+    </div>
+  );
+}
