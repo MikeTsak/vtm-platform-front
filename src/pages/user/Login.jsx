@@ -145,16 +145,19 @@ export default function Login() {
             </div>
           </label>
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginTop: '0.25rem' }}>
-            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={remember}
-                onChange={(e) => setRemember(e.target.checked)}
-              />
-              <span className={styles.muted}>Remember me</span>
-            </label>
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginTop: '0.25rem' }}>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+            />
+            <span className={styles.muted}>Remember me</span>
+          </label>
+
+          <Link to="/forgot" className={styles.link}>Forgot your password?</Link>
+        </div>
+
 
           <button className={styles.cta} type="submit" style={{ marginTop: '0.75rem' }}>
             Enter the Court

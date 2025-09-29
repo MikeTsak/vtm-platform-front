@@ -1,384 +1,512 @@
-/* /src/styles/Admin.module.css */
+/* ==========================================================================
+   1. Design Tokens (Variables)
+   ========================================================================== */
 
-/* ---------- Theme tokens ---------- */
 :root {
-  --bg-0: #0d0d0f;
-  --bg-1: #131318;
-  --bg-2: #1a1b22;
-  --bg-3: #23242c;
+  /* Colors */
+  --color-primary: #4f46e5;         /* Indigo */
+  --color-primary-hover: #6366f1;
+  --color-bg: #111827;              /* Gray 900 */
+  --color-surface-1: #1f2937;       /* Gray 800 */
+  --color-surface-2: #374151;       /* Gray 700 */
+  --color-border: #4b5563;          /* Gray 600 */
+  --color-text-primary: #f9fafb;    /* Gray 50 */
+  --color-text-secondary: #9ca3af;  /* Gray 400 */
+  --color-error: #ef4444;           /* Red 500 */
+  --color-info: #3b82f6;            /* Blue 500 */
+  --color-white: #ffffff;
+  --color-black: #000000;
 
-  --text-0: #e9e9ee;
-  --text-1: #b8bcc7;
-  --muted:  #8b90a1;
+  /* Typography */
+  --font-family-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  --font-family-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 
-  --brand:  #8a0f1a;      /* vampy-red accent */
-  --brand-2:#b31724;
-  --ok:     #10b981;
-  --warn:   #f59e0b;
-  --err:    #ef4444;
+  /* Spacing */
+  --space-1: 0.25rem; /* 4px */
+  --space-2: 0.5rem;  /* 8px */
+  --space-3: 0.75rem; /* 12px */
+  --space-4: 1rem;    /* 16px */
+  --space-6: 1.5rem;  /* 24px */
 
-  --bd:     #2b2d39;
-  --bd-2:   #3a3d4a;
-
-  --radius: 14px;
-  --shadow: 0 6px 18px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.03);
+  /* Borders & Shadows */
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --focus-ring: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-primary);
 }
 
-/* ---------- Page shell ---------- */
+/* ==========================================================================
+   2. Base & Layout
+   ========================================================================== */
+
 .adminRoot {
-  color: var(--text-0);
-  background: radial-gradient(1200px 800px at 20% -10%, rgba(138,15,26,.18), transparent 55%),
-              linear-gradient(180deg, var(--bg-0), var(--bg-1));
-  min-height: 100dvh;
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: var(--font-family-sans);
+  min-height: 100vh;
+  padding: var(--space-6) var(--space-4);
 }
 
 .container {
-  width: min(1200px, 100%);
+  max-width: 1200px;
   margin-inline: auto;
-  padding: clamp(12px, 2.4vw, 24px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
 }
 
 .title {
-  font-size: clamp(20px, 2.2vw, 28px);
-  font-weight: 800;
-  letter-spacing: .2px;
-  margin: 4px 0 14px;
+  font-size: 1.875rem; /* 30px */
+  font-weight: 700;
+  color: var(--color-white);
+  margin-bottom: 0;
 }
 
-/* ---------- Loading & alerts ---------- */
-.loading {
-  display: flex; align-items: center; gap: 10px;
-  background: var(--bg-2); border: 1px solid var(--bd); padding: 10px 12px;
-  border-radius: var(--radius);
+.subtle {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem; /* 14px */
 }
-.spinner {
-  width: 16px; height: 16px; border-radius: 50%;
-  border: 2px solid var(--bd-2); border-top-color: var(--brand);
-  animation: spin .8s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg) } }
 
-.alert {
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--bd);
-  background: var(--bg-2);
-  margin: 10px 0;
-}
-.alertInfo { border-left: 4px solid var(--brand-2) }
-.alertError { border-left: 4px solid var(--err) }
+/* ==========================================================================
+   3. Generic Components (Buttons, Inputs, Cards)
+   ========================================================================== */
 
-/* ---------- Toolbar & tabs ---------- */
-.toolbar {
-  display: flex; gap: 8px; align-items: center;
-  padding: 6px;
-  border: 1px solid var(--bd);
-  background: var(--bg-2);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  overflow-x: auto;
-  scrollbar-width: thin;
-}
-.rowEnd { margin-left: auto; }
-
-.tab {
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: linear-gradient(180deg, var(--bg-3), var(--bg-2));
-  border: 1px solid var(--bd);
-  color: var(--text-0);
+/* --- Buttons --- */
+.btn, .tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface-2);
+  color: var(--color-text-primary);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease;
   white-space: nowrap;
-  transition: transform .12s ease, background .12s ease, border-color .12s ease;
-}
-.tab:hover { transform: translateY(-1px); border-color: var(--bd-2); }
-.tabActive {
-  background: linear-gradient(180deg, rgba(138,15,26,.25), rgba(138,15,26,.10));
-  border-color: color-mix(in oklab, var(--brand), white 20%);
 }
 
-/* ---------- Buttons ---------- */
-.btn {
-  --pad-x: 12px;
-  --pad-y: 8px;
-  padding: var(--pad-y) var(--pad-x);
-  background: var(--bg-3);
-  border: 1px solid var(--bd);
-  color: var(--text-0);
-  border-radius: 12px;
-  transition: transform .12s ease, border-color .12s ease, background .12s ease, opacity .12s ease;
+.btn:hover, .tab:hover {
+  background-color: var(--color-border);
 }
-.btn:hover { transform: translateY(-1px); border-color: var(--bd-2); }
-.btn:active { transform: translateY(0) scale(.99); }
+
+.btn:focus-visible, .tab:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
 
 .btnPrimary {
-  background: linear-gradient(180deg, var(--brand-2), var(--brand));
-  border-color: color-mix(in oklab, var(--brand), black 20%);
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-white);
 }
+
+.btnPrimary:hover {
+  background-color: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+
 .btnGhost {
-  background: transparent;
-  border-color: var(--bd);
-  color: var(--text-1);
+  background-color: transparent;
+  border-color: var(--color-border);
+}
+.btnGhost:hover {
+  background-color: var(--color-surface-1);
 }
 
-/* ---------- Inputs ---------- */
-input, select, textarea {
+/* --- Inputs --- */
+.input, input, select, textarea {
+  display: block;
   width: 100%;
-  background: var(--bg-3);
-  color: var(--text-0);
-  border: 1px solid var(--bd);
-  border-radius: 10px;
-  padding: 8px 10px;
+  background-color: var(--color-surface-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-text-primary);
+  font-size: 1rem;
+  transition: border-color 150ms ease;
+}
+
+input:focus-visible, select:focus-visible, textarea:focus-visible {
   outline: none;
-}
-textarea { resize: vertical; }
-input:focus, select:focus, textarea:focus { border-color: var(--bd-2); box-shadow: 0 0 0 3px rgba(138,15,26,.18); }
-.inputError { border-color: var(--err) !important; }
-.inputMono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
-
-/* keyboard chip */
-.kbd {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
-  background: var(--bg-3);
-  border: 1px solid var(--bd);
-  border-bottom-width: 2px;
-  border-radius: 8px;
-  padding: 1px 6px;
-  color: var(--text-1);
-  font-size: .92em;
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring);
 }
 
-.subtle { color: var(--text-1) }
+textarea {
+  font-family: var(--font-family-sans);
+  min-height: 80px;
+  resize: vertical;
+}
 
-/* ---------- Cards & simple stacks ---------- */
+label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.inputSearch {
+  background-color: var(--color-surface-1);
+}
+.inputMono {
+  font-family: var(--font-family-mono);
+}
+.inputError {
+  border-color: var(--color-error);
+}
+
+/* --- Cards --- */
 .card {
-  background: linear-gradient(180deg, var(--bg-2), var(--bg-3));
-  border: 1px solid var(--bd);
-  border-radius: var(--radius);
-  padding: 12px;
+  background-color: var(--color-surface-1);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
 }
-.cardElev { box-shadow: var(--shadow); }
-
-.stack12 { /* local version */
-  display: grid; gap: 12px;
+.cardElev {
+  box-shadow: var(--shadow-md);
 }
-/* you used plain "stack12" in JSX; make it work via global */
-:global(.stack12) { display: grid; gap: 12px; }
 
-/* a local flex row helper (you also use styles.row in JSX) */
-.row { display: flex; align-items: center; gap: 10px; }
 
-/* ---------- USERS grid ---------- */
-.usersGrid {
-  display: grid;
-  grid-template-columns: 1.2fr 1.5fr .9fr 1.3fr auto;
-  gap: 10px;
+/* --- Alerts & Loading --- */
+.alert {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  font-weight: 500;
+}
+.alertError {
+  background-color: var(--color-error);
+  color: var(--color-white);
+}
+.alertInfo {
+  background-color: var(--color-info);
+  color: var(--color-white);
+}
+
+.loading {
+  display: flex;
   align-items: center;
-  border: 1px solid var(--bd);
-  border-radius: var(--radius);
-  padding: 12px;
-  background: var(--bg-2);
+  gap: var(--space-2);
+  color: var(--color-text-secondary);
 }
-.usersGrid > b { color: var(--muted); font-weight: 700; }
-
-/* Mobile: collapse to single column */
-@media (max-width: 900px) {
-  .usersGrid {
-    grid-template-columns: 1fr;
-  }
-  .usersGrid > b { display: none; }
-  .usersGrid > * { grid-column: 1 / -1; }
-  .usersGrid input, .usersGrid select { width: 100%; }
-  .usersGrid div > .btn { width: 100%; }
+.spinner {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
-/* ---------- CHARACTERS small grids ---------- */
+
+/* --- Misc --- */
+.kbd {
+  font-family: var(--font-family-mono);
+  background-color: var(--color-surface-2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.8em;
+  border: 1px solid var(--color-border);
+}
+.row {
+  display: flex;
+  align-items: center;
+}
+.rowEnd {
+  margin-left: auto;
+}
+
+/* ==========================================================================
+   4. Tab-Specific Styles
+   ========================================================================== */
+
+/* --- Toolbar --- */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: var(--space-2);
+}
+.tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding-block: var(--space-2);
+  color: var(--color-text-secondary);
+}
+.tab:hover {
+  background: none;
+  color: var(--color-text-primary);
+}
+.tabActive {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  font-weight: 600;
+}
+.tabActive:hover {
+  color: var(--color-primary);
+}
+
+/* --- Users & Characters & XP --- */
+.usersGrid, .xpGrid {
+  display: grid;
+  grid-template-columns: 1.5fr 2fr 1fr 1.5fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 800px; /* Force a min-width to ensure scrolling works well */
+}
+
+.xpGrid {
+  grid-template-columns: 1.5fr 1fr 2fr 1fr auto;
+}
+
+.usersGrid > b, .xpGrid > b {
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  text-transform: uppercase;
+}
+
 .characters3 {
-  display: grid; gap: 10px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-@media (max-width: 800px) {
-  .characters3 { grid-template-columns: 1fr; }
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
 }
 
-/* ---------- CLAIMS layout (split) ---------- */
+/* --- Claims --- */
 .claimsLayout {
-  display: grid; gap: 12px;
-  grid-template-columns: 360px 1fr;
-  align-items: start;
-  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: var(--space-4);
+  align-items: flex-start;
 }
-@media (max-width: 1100px) {
-  .claimsLayout { grid-template-columns: 1fr; }
+.sidePanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  position: sticky;
+  top: var(--space-4);
 }
-
-.sidePanel { display: grid; gap: 10px; }
+.detailPanel {
+  min-height: 600px;
+}
 .mapCard {
-  border: 1px solid var(--bd);
-  border-radius: var(--radius);
-  background: var(--bg-2);
+  height: 300px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: var(--shadow);
+  background-color: var(--color-surface-1);
 }
 .mapCanvas {
-  height: clamp(220px, 42vh, 420px);
+  width: 100%;
+  height: 100%;
 }
 .mapFallback {
-  padding: 16px; color: var(--text-1);
+  display: grid;
+  place-content: center;
+  height: 100%;
+  text-align: center;
+  padding: var(--space-4);
 }
-
-.sideHeader {
-  display: flex; gap: 8px; align-items: center;
-}
-.inputSearch {
-  flex: 1;
-  background: var(--bg-3);
-}
-
-.sideFilters {
-  display: flex; align-items: center; gap: 10px;
-  flex-wrap: wrap;
-}
-
-.claimList {
-  display: grid; gap: 6px;
-  max-height: 52vh;
-  overflow: auto;
-  padding-right: 4px;
-}
-@media (max-width: 1100px) {
-  .claimList { max-height: none; }
-}
-
-.claimItem {
-  display: grid; grid-template-columns: auto 1fr 22px;
-  align-items: center; gap: 10px;
-  padding: 8px 10px;
-  border: 1px solid var(--bd);
-  border-radius: 12px;
-  background: var(--bg-3);
-  text-align: left;
-  transition: background .12s ease, border-color .12s ease, transform .12s ease;
-}
-.claimItem:hover { border-color: var(--bd-2); transform: translateY(-1px); }
-.claimItemActive {
-  background: linear-gradient(180deg, rgba(138,15,26,.22), rgba(138,15,26,.08));
-  border-color: color-mix(in oklab, var(--brand), white 18%);
-}
-
-.claimBadge {
-  font-variant-numeric: tabular-nums;
-  font-weight: 700; color: var(--text-1);
-  background: var(--bg-2);
-  border: 1px solid var(--bd);
-  padding: 2px 8px; border-radius: 999px;
-}
-.claimText { display: grid; }
-.claimText small { color: var(--text-1); }
-.claimSwatch {
-  width: 18px; height: 18px; border-radius: 5px; border: 1px solid var(--bd);
-}
-
-.detailPanel { display: grid; gap: 10px; align-content: start; }
-
-.shortcutRow { display: flex; gap: 8px; }
-.colorShortcut {
-  width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--bd);
-}
-
-.placeholderCard {
-  display: grid; grid-template-columns: 18px 1fr; gap: 10px;
+.sideHeader, .sideFilters {
+  display: flex;
+  gap: var(--space-2);
   align-items: center;
-  padding: 12px;
-  background: var(--bg-2);
-  border: 1px dashed var(--bd);
-  border-radius: var(--radius);
 }
-.placeholderDot {
-  width: 10px; height: 10px; border-radius: 50%;
-  background: var(--brand);
+.claimList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 400px;
+  overflow-y: auto;
 }
-
-/* Claim editor header */
+.claimItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  border: none;
+  background-color: var(--color-surface-1);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+.claimItem:hover {
+  background-color: var(--color-surface-2);
+}
+.claimItemActive {
+  background-color: var(--color-primary);
+  color: var(--color-white);
+}
+.claimItemActive:hover {
+  background-color: var(--color-primary);
+}
+.claimItemActive .subtle {
+  color: rgba(255, 255, 255, 0.7);
+}
+.claimBadge {
+  font-family: var(--font-family-mono);
+  font-size: 0.8rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background-color: var(--color-surface-2);
+}
+.claimItemActive .claimBadge {
+  background-color: rgba(0, 0, 0, 0.2);
+}
+.claimText {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+.claimSwatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--color-white);
+  flex-shrink: 0;
+}
 .detailHeader {
-  display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: center;
-  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
 }
 .detailSwatch {
-  width: 24px; height: 24px; border-radius: 6px; border: 1px solid var(--bd);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid var(--color-border);
 }
-
-/* Form rows */
 .formRow2, .formRow3 {
-  display: grid; gap: 10px;
+  display: grid;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
 }
-.formRow2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.formRow3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-@media (max-width: 900px) {
-  .formRow2, .formRow3 { grid-template-columns: 1fr; }
-}
+.formRow2 { grid-template-columns: repeat(2, 1fr); }
+.formRow3 { grid-template-columns: 80px 1fr 1.5fr; align-items: flex-end; }
+
 .colorBox {
+  width: 100%;
   height: 38px;
-  padding: 0;
-  border-radius: 8px;
-  background: transparent;
+  padding: 4px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
 }
-
-/* ---------- XP grid ---------- */
-.xpGrid {
-  display: grid; gap: 10px;
-  grid-template-columns: 1.1fr .7fr 1.3fr .6fr auto;
-  border: 1px solid var(--bd);
-  border-radius: var(--radius);
-  background: var(--bg-2);
-  padding: 12px;
+.placeholderCard {
+  border: 2px dashed var(--color-border);
+  background-color: transparent;
+  height: 100%;
+  display: flex;
   align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: var(--space-4);
 }
-.xpGrid > b { color: var(--muted); }
-
-@media (max-width: 920px) {
-  .xpGrid {
-    grid-template-columns: 1fr;
-  }
-  .xpGrid > b { display: none; }
-  .xpGrid > * { grid-column: 1/-1; }
+.placeholderDot {
+  width: 48px;
+  height: 48px;
+  background: var(--color-surface-2);
+  border-radius: 50%;
 }
 
-/* ---------- Table (NPCs list) ---------- */
+/* --- NPCs (Table) --- */
 .table {
   width: 100%;
   border-collapse: collapse;
-  background: var(--bg-2);
-  border: 1px solid var(--bd);
-  border-radius: var(--radius);
-  overflow: hidden;
-  display: block;          /* allow horizontal scroll on narrow */
-  overflow-x: auto;
-  white-space: nowrap;
+  margin-top: var(--space-4);
 }
-.table thead { background: var(--bg-3); }
 .table th, .table td {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--bd);
+  padding: var(--space-3) var(--space-4);
   text-align: left;
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap; /* Prevent ugly wrapping in table cells */
 }
-.table tr:last-child td { border-bottom: none; }
+.table th {
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+}
+.table td {
+  vertical-align: middle;
+}
+.table td:last-child {
+  display: flex;
+  gap: var(--space-2);
+}
 
-/* ---------- Accessibility niceties ---------- */
-:where(button, .btn, .tab):focus-visible {
-  outline: 3px solid color-mix(in oklab, var(--brand), white 25%);
-  outline-offset: 2px;
-  border-radius: 12px;
+/* ==========================================================================
+   5. Responsive Styles
+   ========================================================================== */
+
+/* Apply horizontal scroll to wide grids and tables on smaller screens */
+.usersGrid, .xpGrid, .table {
+  display: block;
+  overflow-x: auto;
 }
 
-/* ---------- Leaflet tweaks (scoped) ---------- */
-:global(.leaflet-container) {
-  font-family: inherit;
-  background: var(--bg-1);
+@media (max-width: 768px) {
+  .adminRoot {
+    padding: var(--space-4) var(--space-2);
+  }
+  .title {
+    font-size: 1.5rem; /* 24px */
+  }
+  .toolbar {
+    flex-wrap: wrap; /* Allow tabs to wrap if needed */
+  }
+
+  /* --- Claims Tab --- */
+  .claimsLayout {
+    grid-template-columns: 1fr; /* Stack map/list and editor */
+  }
+  .sidePanel {
+    position: static;
+    top: auto;
+  }
+  .mapCard {
+    height: 250px;
+  }
+  .detailPanel {
+    min-height: auto;
+  }
+
+  /* --- Form Grids --- */
+  .characters3,
+  .formRow2,
+  .formRow3 {
+    grid-template-columns: 1fr;
+  }
+  .formRow3 {
+    align-items: stretch; /* Reset alignment for vertical stacking */
+  }
+
+  /* --- Tables and Complex Grids --- */
+  /* The horizontal scroll is handled above. */
+  /* This ensures functionality without complex CSS transformations. */
 }
-:global(.leaflet-control-attribution) {
-  background: rgba(0,0,0,.4);
-  color: var(--text-1);
-  border-radius: 6px;
-  padding: 0 6px !important;
-  backdrop-filter: blur(2px);
+
+@media (max-width: 480px) {
+  /* Further adjustments for very small screens */
+  .adminRoot {
+    padding: var(--space-3) var(--space-2);
+  }
+  .sideFilters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .sideHeader {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }

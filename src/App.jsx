@@ -1,3 +1,4 @@
+// src/App.jsx
 import React, { useContext, useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link, Navigate, NavLink, useLocation } from 'react-router-dom';
 import AuthProvider, { AuthCtx } from './AuthContext';
@@ -17,9 +18,9 @@ import Terms from './pages/Terms';
 import Legal from './pages/Legal';
 import Privacy from './pages/Privacy';
 import NPCs from './pages/NPCs';
-import AdminNPCView from './pages/AdminNPCView';
-import AdminNPC from './pages/AdminNPCView';
-
+import AdminNPCView from './pages/AdminNPCView'; // ✅ single import
+import ForgotPassword from './pages/user/ForgotPassword';
+import ResetPassword from './pages/user/ResetPassword';
 
 function Private({ children }) {
   const { user } = useContext(AuthCtx);
@@ -42,10 +43,8 @@ function Nav() {
   const toggleMenu = () => setIsMenuOpen(v => !v);
   const closeMenu = () => setIsMenuOpen(false);
 
-  // Close the menu on route change
   useEffect(() => { closeMenu(); }, [location.pathname]);
 
-  // Optional: prevent body scroll when mobile menu open
   useEffect(() => {
     if (isMenuOpen) document.documentElement.style.overflow = 'hidden';
     else document.documentElement.style.overflow = '';
@@ -87,8 +86,8 @@ function Nav() {
         )}
         {user?.role === 'admin' && (
           <>
-          <NavLink to="/admin" className={getNavLinkClass}>Admin</NavLink>
-          {/* <NavLink to="/admin/npcs" caseSensitive>NPCs</NavLink> */}
+            <NavLink to="/admin" className={getNavLinkClass}>Admin</NavLink>
+            {/* <NavLink to="/admin/npcs" className={getNavLinkClass} caseSensitive>NPCs</NavLink> */}
           </>
         )}
       </div>
@@ -125,7 +124,9 @@ export default function App() {
               <Route path="/comms" element={<Private><Comms/></Private>} />
               <Route path="/admin" element={<AdminOnly><Admin/></AdminOnly>} />
               <Route path="/admin/npcs" element={<AdminOnly><NPCs/></AdminOnly>} />
-              <Route path="/admin/npcs/:id" element={<AdminNPC />} />
+              <Route path="/forgot" element={<ForgotPassword />} />
+              <Route path="/reset" element={<ResetPassword />} /> 
+              <Route path="/admin/npcs/:id" element={<AdminOnly><AdminNPCView/></AdminOnly>} />
               <Route path="/login" element={<Login/>} />
               <Route path="/register" element={<Register/>} />
               <Route path="/terms" element={<Terms />} />

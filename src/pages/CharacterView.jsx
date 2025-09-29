@@ -1,7 +1,14 @@
 // src/pages/CharacterView.jsx
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import api from '../api';
+// If '../data/disciplines' does not export these names, adjust accordingly.
+// For example, if it exports a default object:
+import disciplinesData from '../data/disciplines';
+// const { DISCIPLINES, ALL_DISCIPLINE_NAMES, iconPath } = disciplinesData;
+
+// Or, if only some are exported:
 import { DISCIPLINES, ALL_DISCIPLINE_NAMES, iconPath } from '../data/disciplines';
+// Make sure these are actually exported from the module.
 import { RITUALS } from '../data/rituals';
 import styles from '../styles/CharacterView.module.css';
 import CharacterSetup from './CharacterSetup';
@@ -182,22 +189,23 @@ export default function CharacterView({
   loadPath,
   xpSpendPath,
 }) {
-  const paths = useMemo(() => {
-    if (adminNPCId) {
-      return {
-        load: `/admin/npcs/${adminNPCId}`,
-        spend: `/admin/npcs/${adminNPCId}/xp/spend`,
-        totals: null, // no NPC totals endpoint by default
-        pickFrom: 'npc',
-      };
-    }
+const paths = useMemo(() => {
+  if (adminNPCId) {
     return {
-      load: loadPath || '/characters/me',
-      spend: xpSpendPath || '/characters/xp/spend',
-      totals: '/characters/xp/total',
-      pickFrom: 'character',
+      load: `/admin/npcs/${adminNPCId}`,
+      spend: `/admin/npcs/${adminNPCId}/xp/spend`,
+      totals: null,
+      pickFrom: 'npc',
     };
-  }, [adminNPCId, loadPath, xpSpendPath]);
+  }
+  return {
+    load: `/characters/me`,
+    spend: `/characters/xp/spend`,
+    totals: `/characters/xp/total`,
+    pickFrom: 'character',
+  };
+}, [adminNPCId]);
+
 
   const [showSetup, setShowSetup] = useState(false);
   const [ch, setCh] = useState(null);
@@ -214,7 +222,13 @@ export default function CharacterView({
     let mounted = true;
     api.get(paths.load)
       .then(r => {
-        const obj = r.data[paths.pickFrom] || r.data.character || r.data.npc || null;
+        // For admin NPC, expect { npc: ... }, for player, { character: ... }
+        let obj = null;
+        if (adminNPCId) {
+          obj = r.data.npc || null;
+        } else {
+          obj = r.data.character || r.data.npc || r.data[paths.pickFrom] || null;
+        }
         if (!mounted) return;
         setCh(attachStructured(obj));
       })
