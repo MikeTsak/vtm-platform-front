@@ -189,22 +189,32 @@ export default function CharacterView({
   loadPath,
   xpSpendPath,
 }) {
-const paths = useMemo(() => {
-  if (adminNPCId) {
+  const paths = useMemo(() => {
+    if (adminNPCId) {
+      return {
+        load: `/admin/npcs/${adminNPCId}`,
+        spend: `/admin/npcs/${adminNPCId}/xp/spend`,
+        totals: null,
+        pickFrom: 'npc',
+      };
+    }
+    // If we're passed a direct path (e.g., from an inline view), use it.
+    if (loadPath) {
+      return {
+        load: loadPath,
+        spend: xpSpendPath,
+        totals: null,
+        pickFrom: 'npc' // Assume it's an NPC if a direct load path is given
+      };
+    }
+    // Default to the logged-in user's character.
     return {
-      load: `/admin/npcs/${adminNPCId}`,
-      spend: `/admin/npcs/${adminNPCId}/xp/spend`,
-      totals: null,
-      pickFrom: 'npc',
+      load: `/characters/me`,
+      spend: `/characters/xp/spend`,
+      totals: `/characters/xp/total`,
+      pickFrom: 'character',
     };
-  }
-  return {
-    load: `/characters/me`,
-    spend: `/characters/xp/spend`,
-    totals: `/characters/xp/total`,
-    pickFrom: 'character',
-  };
-}, [adminNPCId]);
+  }, [adminNPCId, loadPath, xpSpendPath]);
 
 
   const [showSetup, setShowSetup] = useState(false);
@@ -222,12 +232,13 @@ const paths = useMemo(() => {
     let mounted = true;
     api.get(paths.load)
       .then(r => {
-        // For admin NPC, expect { npc: ... }, for player, { character: ... }
         let obj = null;
-        if (adminNPCId) {
+        // If we are loading an NPC via ID or direct path, look for the 'npc' key from the API response.
+        if (adminNPCId || loadPath) {
           obj = r.data.npc || null;
         } else {
-          obj = r.data.character || r.data.npc || r.data[paths.pickFrom] || null;
+          // Otherwise, it's a player character.
+          obj = r.data.character || r.data[paths.pickFrom] || null;
         }
         if (!mounted) return;
         setCh(attachStructured(obj));
@@ -237,7 +248,7 @@ const paths = useMemo(() => {
         setErr(e?.response?.data?.error || 'Failed to load character');
       });
     return () => { mounted = false; };
-  }, [paths]);
+  }, [paths, adminNPCId, loadPath]);
 
   // Optional: fetch XP totals (players only, unless you add an NPC totals endpoint)
   useEffect(() => {
@@ -429,7 +440,7 @@ const paths = useMemo(() => {
           </div>
 
           {/* Phase 2: if no data (only for players, not admin NPC) */}
-          {!adminNPCId && (
+          {!adminNPCId && !loadPath && (
             <div className={styles.emptyPhase}>
               <h2 className={styles.cardHead}>No character found</h2>
               <p className={styles.muted}>Create your character to continue.</p>
@@ -441,7 +452,7 @@ const paths = useMemo(() => {
         </div>
 
         {/* Fullscreen overlay with CharacterSetup (players only) */}
-        {!adminNPCId && showSetup && (
+        {!adminNPCId && !loadPath && showSetup && (
           <div className={styles.setupOverlay} role="dialog" aria-modal="true">
             <button
               className={styles.setupClose}

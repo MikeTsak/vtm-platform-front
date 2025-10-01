@@ -973,16 +973,11 @@ function XPTools({ users, onGrant }) {
 /* ==================== NPCs (ADMIN) ==================== */
 
 function NPCsTab({ npcs, onReload, onDelete }) {
-  const [mode, setMode] = useState('list'); // list | create | view
-  const [viewId, setViewId] = useState(null);
-  const [err, setErr] = useState('');
-  const [msg, setMsg] = useState('');
+  const [mode, setMode] = useState('list'); // list | create
 
   return (
     <div className="stack12">
       <h3>NPCs</h3>
-      {err && <div className={`${styles.alert} ${styles.alertError}`}>{err}</div>}
-      {msg && <div className={`${styles.alert} ${styles.alertInfo}`}>{msg}</div>}
 
       {mode === 'list' && (
         <>
@@ -1021,19 +1016,6 @@ function NPCsTab({ npcs, onReload, onDelete }) {
           <CharacterSetup
             forNPC
             onDone={async ()=>{ await onReload(); setMode('list'); }}
-          />
-          <div style={{ marginTop:8 }}>
-            <button className={styles.btn} onClick={()=>setMode('list')}>Back</button>
-          </div>
-        </div>
-      )}
-
-      {mode === 'view' && viewId && (
-        <div className={styles.card} style={{ marginTop:12 }}>
-          <h4>View NPC #{viewId}</h4>
-          <CharacterView
-            loadPath={`/admin/npcs/${viewId}`}
-            xpSpendPath={`/admin/npcs/${viewId}/xp/spend`}
           />
           <div style={{ marginTop:8 }}>
             <button className={styles.btn} onClick={()=>setMode('list')}>Back</button>

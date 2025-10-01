@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api';
 import CharacterSetup from './CharacterSetup';
-import CharacterView from './CharacterView';
+import { Link } from 'react-router-dom';
 
 export default function NPCs() {
   const [list, setList] = useState([]);
-  const [mode, setMode] = useState('list'); // list | create | view
-  const [viewId, setViewId] = useState(null);
+  const [mode, setMode] = useState('list'); // list | create
   const [err, setErr] = useState('');
   const [msg, setMsg] = useState('');
 
@@ -28,7 +27,6 @@ export default function NPCs() {
       await api.delete(`/admin/npcs/${id}`);
       setMsg('NPC deleted');
       await load();
-      setMode('list');
     } catch (e) {
       setErr(e.response?.data?.error || 'Failed to delete NPC');
     }
@@ -40,7 +38,7 @@ export default function NPCs() {
       {err && <div style={{ color:'#b91c1c', marginBottom:8 }}>{err}</div>}
       {msg && <div style={{ color:'#065f46', marginBottom:8 }}>{msg}</div>}
 
-      {mode === 'list' && (
+      {mode === 'list' ? (
         <>
           <button onClick={()=>setMode('create')}>+ New NPC</button>
           <table border="1" cellPadding="6" style={{ marginTop:12, width:'100%', borderCollapse:'collapse' }}>
@@ -58,7 +56,7 @@ export default function NPCs() {
                   <td>{n.xp}</td>
                   <td>{new Date(n.created_at).toLocaleString()}</td>
                   <td>
-                    <button onClick={()=>{ setViewId(n.id); setMode('view'); }}>View</button>{' '}
+                    <Link to={`/admin/npcs/${n.id}`}><button>View</button></Link>{' '}
                     <button onClick={()=>remove(n.id)}>Delete</button>
                   </td>
                 </tr>
@@ -69,28 +67,10 @@ export default function NPCs() {
             </tbody>
           </table>
         </>
-      )}
-
-      {mode === 'create' && (
+      ) : ( // mode === 'create'
         <div style={{ marginTop:12 }}>
           <h3>Create NPC</h3>
-          <CharacterSetup
-            forNPC
-            onDone={async ()=>{ await load(); setMode('list'); }}
-          />
-          <div style={{ marginTop:8 }}>
-            <button onClick={()=>setMode('list')}>Back</button>
-          </div>
-        </div>
-      )}
-
-      {mode === 'view' && viewId && (
-        <div style={{ marginTop:12 }}>
-          <h3>View NPC #{viewId}</h3>
-          <CharacterView
-            loadPath={`/admin/npcs/${viewId}`}
-            xpSpendPath={`/admin/npcs/${viewId}/xp/spend`}
-          />
+          <CharacterSetup forNPC onDone={async ()=>{ await load(); setMode('list'); }} />
           <div style={{ marginTop:8 }}>
             <button onClick={()=>setMode('list')}>Back</button>
           </div>
