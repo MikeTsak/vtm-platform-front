@@ -510,3 +510,124 @@ label {
     align-items: stretch;
   }
 }
+
+/* ==========================================================================
+   1. Design Tokens (Variables)
+   ========================================================================== */
+
+:root {
+  /* Colors */
+  --color-primary: #4f46e5;         /* Indigo */
+  --color-primary-hover: #6366f1;
+  --color-bg: #111827;              /* Gray 900 */
+  --color-surface-1: #1f2937;       /* Gray 800 */
+  --color-surface-2: #374151;       /* Gray 700 */
+  --color-border: #4b5563;          /* Gray 600 */
+  --color-text-primary: #f9fafb;    /* Gray 50 */
+  --color-text-secondary: #9ca3af;  /* Gray 400 */
+  --color-error: #ef4444;           /* Red 500 */
+  --color-info: #3b82f6;            /* Blue 500 */
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  /* Typography */
+  --font-family-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  --font-family-mono: 'Jet...'; /* Truncated from original snippet */
+}
+
+/* ... existing styles for tables and responsiveness ... */
+
+/* ==========================================================================
+   5. Responsive Styles
+   ========================================================================== */
+
+/* Apply horizontal scroll to wide grids and tables on smaller screens */
+.usersGrid, .xpGrid, .table {
+  display: block;
+  overflow-x: auto;
+}
+
+@media (max-width: 768px) {
+  .adminRoot {
+    padding: var(--space-4) var(--space-2);
+  }
+  .title {
+    font-size: 1.5rem; /* 24px */
+  }
+  .toolbar {
+    flex-wrap: wrap; /* Allow tabs to wrap if needed */
+  }
+
+  /* --- Claims Tab --- */
+  .claimsLayout {
+    grid-template-columns: 1fr; /* Stack map/list and editor */
+  }
+  .sidePanel {
+    position: static;
+    top: auto;
+  }
+  .mapCard {
+    height: 250px;
+  }
+  .detailPanel {
+    min-height: auto;
+  }
+
+  /* --- Form Grids --- */
+  .characters3,
+  .formRow2,
+  .formRow3 {
+    grid-template-columns: 1fr;
+  }
+  .formRow3 {
+    align-items: stretch; /* Reset alignment for vertical stacking */
+  }
+
+  /* --- Tables and Complex Grids --- */
+  /* The... (rest of old snippet) */
+}
+
+/* ==========================================================================
+   6. New Chat Admin Styles (for organization)
+   ========================================================================== */
+
+/* Style for message cell: truncates long text, provides full text on hover (via 'title' attribute) */
+.messageCell {
+  max-width: 300px; /* Limit width */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  line-height: 1.5;
+  /* Multi-line ellipsis clamp */
+  display: -webkit-box;
+  -webkit-line-clamp: 3; /* Limit to 3 lines */
+  -webkit-box-orient: vertical;
+}
+
+/* Style for sortable header buttons */
+.sortableHeader {
+  background: none;
+  border: none;
+  color: inherit;
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.sortableHeader:hover {
+  color: var(--color-primary);
+}
+
+.groupedRow td {
+    padding-left: 20px !important; /* Visual indentation */
+    background-color: color-mix(in srgb, var(--color-surface-1) 80%, transparent) !important;
+}
+
+/* Fix for table to ensure group headers work well */
+.table tbody tr:first-child td {
+    border-top: none; 
+}

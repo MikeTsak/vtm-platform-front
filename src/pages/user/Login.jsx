@@ -27,7 +27,7 @@ export default function Login() {
   }, []);
 
   const toggleShowPwd = () => {
-    // preserve caret/selection and focus while toggling
+    // Save caret/selection and focus before toggling type
     const el = pwdRef.current;
     const sel = el
       ? { start: el.selectionStart, end: el.selectionEnd }
@@ -35,15 +35,16 @@ export default function Login() {
 
     setShowPwd((prev) => !prev);
 
-    // restore focus + selection on next frame
+    // Restore focus + selection on next frame after React updates the DOM (and thus the input type)
     requestAnimationFrame(() => {
       if (!el) return;
       el.focus({ preventScroll: true });
       try {
         if (sel && sel.start != null && sel.end != null) {
+          // This ensures the cursor position is preserved after type change
           el.setSelectionRange(sel.start, sel.end);
         }
-      } catch { /* some browsers may block setSelectionRange on type=password */ }
+      } catch { /* some browsers may block setSelectionRange on type=password, which is fine */ }
     });
   };
 
@@ -124,21 +125,21 @@ export default function Login() {
               <button
                 type="button"
                 className={`${styles['ghost-btn']} ${styles['eye-btn']}`}
-                onMouseDown={(e) => e.preventDefault()}  // keep focus in input
+                onMouseDown={(e) => e.preventDefault()}  // prevent input blur
                 onClick={toggleShowPwd}
                 aria-label={showPwd ? 'Hide password' : 'Show password'}
                 aria-pressed={showPwd}
                 aria-controls="password"
               >
                 {showPwd ? (
-                  /* Eye-off icon */
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
-                    <path d="M2.1 3.51 3.5 2.1l18.4 18.39-1.41 1.42-2.77-2.78A12.35 12.35 0 0 1 12 20C5.5 20 1 12 1 12a21.55 21.55 0 0 1 5.36-6.93L2.1 3.5zM12 7a5 5 0 0 1 5 5c0 .63-.12 1.23-.34 1.78l-6.44-6.44C10.77 7.12 11.37 7 12 7zM7 12a5 5 0 0 1 5-5c.16 0 .33 0 .49.02l-2.2-2.2C9.8 4.6 8.92 4.5 8 4.5 1.5 4.5-3 12-3 12s4.5 7.5 11 7.5c1 0 1.96-.12 2.88-.33l-2.4-2.4A5.01 5.01 0 0 1 7 12z"/>
+                  /* Eye-off icon (standard path) */
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.12 13.12 0 0 0 2 12s3 7 10 7a9.75 9.75 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/>
                   </svg>
                 ) : (
-                  /* Eye icon */
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
-                    <path d="M12 4.5C5.5 4.5 1 12 1 12s4.5 7.5 11 7.5S23 12 23 12 18.5 4.5 12 4.5zm0 12a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"/>
+                  /* Eye icon (standard path) */
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
                   </svg>
                 )}
               </button>

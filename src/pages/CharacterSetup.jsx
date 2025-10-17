@@ -1,6 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import api from '../api';
 import styles from '../styles/Sheet.module.css';
+import MeritsFlawsPicker from '../components/MeritsFlawsPicker';
+import { useNavigate } from 'react-router-dom';
+
+
 
 /* ---------- Config ---------- */
 const CLANS = [
@@ -383,6 +387,9 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
   const [step, setStep] = useState(1);
   const [err, setErr] = useState('');
   const [saving, setSaving] = useState(false);
+  const navigate = useNavigate();
+  const [successOpen, setSuccessOpen] = useState(false);
+
 
   // Identity + meta
   const [name, setName] = useState('');
@@ -498,12 +505,20 @@ const canDecAttr = (k) => {
     return out;
   }, [skillReq, skillCounts]);
 
+/* Skills: leave as-is; decrements are already always allowed */
+// This block is what needs modification
   const canIncSkill = (k) => {
     const v = skillDots[k] || 0;
     const next = v + 1;
+    // Original logic:
+    // if (next > (skillReq.max || 5)) return false;
+    // if (!(String(next) in skillReq)) return false;
+    // if ((skillCounts[next] || 0) >= (skillReq[String(next)] || 0)) return false;
+    // return true;
+
+    // Modified logic: Only restrict by the max dots allowed in a single skill.
+    // The final quota validation (skillOk) will be the sole gate for progression.
     if (next > (skillReq.max || 5)) return false;
-    if (!(String(next) in skillReq)) return false;
-    if ((skillCounts[next] || 0) >= (skillReq[String(next)] || 0)) return false;
     return true;
   };
 /* Skills: leave as-is; decrements are already always allowed */
@@ -598,47 +613,37 @@ const incAttr = (k, d) =>
 const save = async () => {
   setSaving(true); setErr('');
   try {
-    // Safe guards in case these aren’t defined in this file
-    const picks = Array.isArray(typeof predatorPicks !== 'undefined' ? predatorPicks : [])
-      ? predatorPicks
-      : [];
-    const predatorEffects =
-      (typeof PREDATORS === 'object' && PREDATORS?.[predatorType]?.effects) || {};
-
     const payload = {
       name, concept, chronicle, ambition, desire,
-      clan, sire,
-      predator: {
-        type: predatorType || null,
-        picks,
-        suggestedEffects: predatorEffects
-      },
-      predatorType, // keep legacy field; backend uses this for feeding defaults
+      clan, sire, predatorType,
       attributes: attrDots,
       skills: skillDots,
-      specialties: (specialties || []).filter(Boolean),
+      specialties: specialties.filter(Boolean),
       disciplines: derivedDisciplineDots,
       advantages: { merits, flaws },
       morality: {
         tenets,
-        convictions: (convictions || []).filter(Boolean),
-        touchstones: (touchstones || []).filter(Boolean),
+        convictions: convictions.filter(Boolean),
+        touchstones: touchstones.filter(Boolean),
         humanity
       },
       bloodPotency
     };
 
-    // Choose endpoint based on whether we’re creating an NPC or a player character
-    const endpoint = forNPC ? '/admin/npcs' : '/characters';
-    await api.post(endpoint, { name, clan, sheet: payload });
+    await api.post('/characters', { name, clan, sheet: payload });
 
+    // optional callback
     onDone?.();
+
+    // ✅ show success modal instead of navigating immediately
+    setSuccessOpen(true);
   } catch (e) {
     setErr(e?.response?.data?.error || 'Failed to save character');
   } finally {
     setSaving(false);
   }
 };
+
   /* ---------- Render ---------- */
 
   if (existing) {
@@ -1108,21 +1113,42 @@ const save = async () => {
             </section>
           )}
 
-          {/* STEP 6: Advantages */}
-          {step === 6 && (
-            <section>
-              <h3 className={styles.sectionTitle}>Advantages (Merits & Flaws)</h3>
-              <p className={`${styles.muted} ${styles.smallFlavor}`}>Every boon bears a price. Balance the ledger.</p>
-              <p className={styles.muted}>Spend up to {RULES.advantages.meritsBudget} Merit dots; take at least {RULES.advantages.minFlaws} Flaw dots.</p>
-              <AdvTable label="Merits" rows={merits} setRows={setMerits} cap={RULES.advantages.meritsBudget} />
-              <AdvTable label="Flaws" rows={flaws} setRows={setFlaws} />
-              <p className={styles.muted}>Validation: {advOk ? '✅' : '❌'}</p>
-              <div className={styles.navRow}>
-                <button className={styles.ghostBtn} type="button" onClick={()=>setStep(5)}>Back</button>
-                <button className={styles.cta} type="button" onClick={()=>setStep(7)}>Next</button>
-              </div>
-            </section>
-          )}
+            {/* STEP 6: Advantages */}
+            {step === 6 && (
+              <section>
+                <h3 className={styles.sectionTitle}>Advantages (Merits & Flaws)</h3>
+                <p className={`${styles.muted} ${styles.smallFlavor}`}>Every boon bears a price. Balance the ledger.</p>
+                <p className={styles.muted}>
+                  Spend up to {RULES.advantages.meritsBudget} Merit dots; take <b>exactly 2</b> Flaw dots.
+                </p>
+
+                <MeritsFlawsPicker
+                  clan={clan}
+                  merits={merits}
+                  setMerits={setMerits}
+                  flaws={flaws}
+                  setFlaws={setFlaws}
+                  meritBudget={RULES.advantages.meritsBudget}
+                />
+
+                {(() => {
+                  const meritsSpent = merits.reduce((a,m)=> a + (Number(m.dots)||0), 0);
+                  const flawDots    = flaws.reduce((a,f)=> a + (Number(f.dots)||0), 0);
+                  const ok = meritsSpent <= RULES.advantages.meritsBudget && flawDots === 2;
+                  return (
+                    <>
+                      <p className={styles.muted}>Validation: {ok ? '✅' : '❌'}</p>
+                      <div className={styles.navRow}>
+                        <button className={styles.ghostBtn} type="button" onClick={()=>setStep(5)}>Back</button>
+                        <button className={styles.cta} type="button" onClick={()=>setStep(7)} disabled={!ok}>Next</button>
+                      </div>
+                    </>
+                  );
+                })()}
+              </section>
+            )}
+
+
 
           {/* STEP 7: Morality */}
           {step === 7 && (
@@ -1197,6 +1223,43 @@ const save = async () => {
           )}
         </div>
       </div>
+      {successOpen && (
+  <div
+    className={styles.modalBackdrop}
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="createSuccessTitle"
+    onClick={(e) => {
+      // allow clicking the dim backdrop to close
+      if (e.target === e.currentTarget) setSuccessOpen(false);
+    }}
+  >
+    <div className={styles.modalCard}>
+      <h3 id="createSuccessTitle" className={styles.modalTitle}>
+        Character created successfully
+      </h3>
+      <p className={styles.modalBody}>
+        Now see your character, select Discipline powers, and spend your first XP.
+      </p>
+      <div className={styles.modalActions}>
+        <button
+          className={styles.cta}
+          onClick={() => navigate('/character', { replace: true })}
+          autoFocus
+        >
+          Go to Character
+        </button>
+        <button
+          className={styles.ghostBtn}
+          onClick={() => navigate('/', { replace: true })}
+        >
+          Go to Home
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
     </div>
   );
 }

@@ -1,0 +1,213 @@
+.picker {
+  --accent: #8a0f1a;
+  border-radius: 14px;
+  background:
+    radial-gradient(900px 140px at 10% -10%, color-mix(in oklab, var(--accent) 12%, transparent), transparent 60%),
+    linear-gradient(180deg, #1d1d1d, #181818);
+  border: 1px solid #2e2e2e;
+  box-shadow: 0 22px 60px rgba(0,0,0,.55);
+  padding: 12px;
+}
+
+/* header with tabs + filters */
+.header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 8px;
+}
+.tabs {
+  display: inline-flex;
+  gap: 8px;
+}
+.tab {
+  border-radius: 10px;
+  border: 1px solid #323232;
+  padding: 8px 12px;
+  background: #242424;
+  color: #e6e6e6;
+  transition: filter .15s ease, transform .08s ease, border-color .2s ease;
+}
+.tab:hover { filter: brightness(1.06); }
+.active {
+  color: #fff;
+  border-color: color-mix(in oklab, var(--accent) 55%, #222);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent) 25%, transparent) inset;
+  background:
+    linear-gradient(180deg,
+      color-mix(in oklab, var(--accent) 14%, #262626),
+      #222);
+}
+
+.controls {
+  display: inline-grid;
+  grid-auto-flow: column;
+  gap: 8px;
+}
+.select, .search {
+  min-width: 180px;
+}
+
+/* summary row */
+.summaryRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 8px 0 12px;
+}
+.summaryCard {
+  background: #1f1f1f;
+  border: 1px solid #2f2f2f;
+  border-radius: 12px;
+  padding: 10px;
+}
+.summaryHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.counter {
+  margin-left: auto;
+  font-weight: 700;
+  font-size: .9rem;
+  color: #fff;
+  background: linear-gradient(180deg,
+    color-mix(in oklab, var(--accent) 70%, #000),
+    color-mix(in oklab, var(--accent) 52%, #000));
+  border: 1px solid color-mix(in oklab, var(--accent) 72%, #000);
+  padding: 4px 8px;
+  border-radius: 999px;
+  box-shadow: 0 3px 12px color-mix(in oklab, var(--accent) 25%, transparent);
+}
+
+.pillList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.pillItem {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  gap: 8px;
+  align-items: center;
+  background: #232323;
+  border: 1px solid #303030;
+  border-radius: 10px;
+  padding: 6px 8px;
+}
+.pillName { font-weight: 600; }
+.pillDots { color: #ffe1a3; letter-spacing: .5px; }
+.remove { margin-left: auto; }
+
+/* catalog */
+.catalog {
+  display: grid;
+  gap: 10px;
+}
+.card {
+  background: #1e1e1e;
+  border: 1px solid #2c2c2c;
+  border-radius: 12px;
+  padding: 10px;
+  box-shadow: 0 10px 24px rgba(0,0,0,.35);
+  transition: border-color .2s ease, transform .08s ease;
+}
+.card:hover {
+  border-color: color-mix(in oklab, var(--accent) 35%, #2c2c2c);
+}
+
+.item { display: grid; gap: 8px; }
+.itemHead {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+  align-items: baseline;
+}
+.itemTitle {
+  font-weight: 700;
+  letter-spacing: .2px;
+}
+.itemCat {
+  color: #9b9b9b;
+  font-size: .9rem;
+}
+.desc {
+  color: #c8c8c8;
+  font-size: .95rem;
+  line-height: 1.25;
+}
+
+.dotRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+.dotChoices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.dot {
+  min-width: 44px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid #333;
+  background: #262626;
+  color: #f0e4c5;
+  font-weight: 700;
+  letter-spacing: .4px;
+  cursor: pointer;
+  transition: transform .08s ease, border-color .2s ease, filter .15s ease;
+}
+.dot:hover { filter: brightness(1.06); }
+.on {
+  border-color: color-mix(in oklab, var(--accent) 55%, #333);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent) 25%, transparent) inset;
+  background:
+    linear-gradient(180deg,
+      color-mix(in oklab, var(--accent) 16%, #262626),
+      #242424);
+  transform: translateY(-1px);
+}
+
+.addBtn {
+  white-space: nowrap;
+  padding-inline: 12px;
+}
+
+.warn {
+  margin-top: 6px;
+  font-size: .9rem;
+  color: #e9c07b;
+}
+
+/* responsive */
+@media (max-width: 860px) {
+  .header { grid-template-columns: 1fr; }
+  .controls { justify-self: start; grid-auto-flow: row; }
+  .select, .search { min-width: 100%; }
+  .summaryRow { grid-template-columns: 1fr; }
+}
+@media (max-width: 520px) {
+  .dot { min-width: 40px; padding: 6px 8px; }
+  .pillItem { grid-template-columns: 1fr auto auto; }
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip {
+  font-size: .82rem;
+  color: #e9e9e9;
+  background: #2a2a2a;
+  border: 1px solid #333;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
