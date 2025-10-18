@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import api from '../api';
 import { Link, useNavigate } from 'react-router-dom';
-import styles from '../styles/Home.module.css'; // ⬅️ use the module
+import styles from '../styles/Home.module.css';
 
-/* Optional tinting by clan (reuse palettes from builder, lighter variant) */
+/* Clan tints */
 const CLAN_COLORS = {
   Brujah: '#b40f1f',
   Gangrel: '#2f7a3a',
@@ -20,10 +20,12 @@ const CLAN_COLORS = {
   'Thin-blood': '#6e6e2b',
 };
 
-// Asset helpers (works with your existing file scheme)
+// EXACT same overrides used elsewhere
 const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim' };
-const symlogo = (c) => (c ? `/img/clans/330px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g, '_')}_symbol.png` : '');
-const textlogo = (c) => (c ? `/img/clans/text/300px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g, '_')}_logo.png` : '');
+const fileify = (c) => (NAME_OVERRIDES[c] || c).replace(/\s+/g, '_');
+
+const symlogo = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.png` : '');
+const textlogo = (c) => (c ? `/img/clans/text/300px-${fileify(c)}_Logo.png` : ''); // capital L
 
 export default function Home() {
   const [me, setMe] = useState(null);
@@ -51,24 +53,24 @@ export default function Home() {
 
   if (loading || !me) return null;
 
-  // 🔹 If admin, skip character setup/dashboard and go straight to Admin page
-if (me.role === 'admin') {
-  nav('/admin');
-  return null;
-}
+  // If admin, go to admin dashboard
+  if (me.role === 'admin') {
+    nav('/admin');
+    return null;
+  }
 
-  // --- No character state (call to action) ---
+  // No character yet
   if (!ch) {
     return (
       <div className={styles.homePage}>
-          <div className={styles.skyline} style={{ '--tint': tint }} />
-          <div className={styles.bloodFx} aria-hidden="true">
-            <div className={styles.dripsSlow} />
-            <div className={styles.dripsFast} />
-            <div className={styles.splatters} />
-            <div className={styles.pool} />
-          </div>
         <div className={styles.skyline} style={{ '--tint': tint }} />
+        <div className={styles.bloodFx} aria-hidden="true">
+          <div className={styles.dripsSlow} />
+          <div className={styles.dripsFast} />
+          <div className={styles.splatters} />
+          <div className={styles.pool} />
+        </div>
+
         <div className={styles.card}>
           <div className={styles.heroHead}>
             <img src="/img/ATT-logo(1).png" alt="ATT LARP" className={styles.logo} />
@@ -81,21 +83,25 @@ if (me.role === 'admin') {
     );
   }
 
-  // --- Has character state (dashboard) ---
+  // Has character
   return (
     <div className={styles.homePage}>
-        <div className={styles.skyline} style={{ '--tint': tint }} />
-        <div className={styles.bloodFx} aria-hidden="true">
-          <div className={styles.dripsSlow} />
-          <div className={styles.dripsFast} />
-          <div className={styles.splatters} />
-          <div className={styles.pool} />
-        </div>
       <div className={styles.skyline} style={{ '--tint': tint }} />
+      <div className={styles.bloodFx} aria-hidden="true">
+        <div className={styles.dripsSlow} />
+        <div className={styles.dripsFast} />
+        <div className={styles.splatters} />
+        <div className={styles.pool} />
+      </div>
+
       <header className={styles.card}>
         <div className={styles.identity}>
           <div className={styles.clanBadge}>
-            <img src={symlogo(ch.clan)} alt={`${ch.clan} symbol`} />
+            <img
+              src={symlogo(ch.clan)}
+              alt={`${ch.clan} symbol`}
+              onError={(e)=>{ e.currentTarget.style.display='none'; }}
+            />
           </div>
           <div className={styles.idText}>
             <h2 className={styles.title}>Hello, {me.display_name}</h2>
@@ -103,7 +109,11 @@ if (me.role === 'admin') {
               Active Character: <b>{ch.name}</b> ({ch.clan}) — XP: <b>{ch.xp ?? 0}</b>
             </p>
             <div className={styles.textLogo}>
-              <img src={textlogo(ch.clan)} alt={`${ch.clan} logo`} />
+              <img
+                src={textlogo(ch.clan)}
+                alt={`${ch.clan} logo`}
+                onError={(e)=>{ e.currentTarget.style.display='none'; }}
+              />
             </div>
           </div>
         </div>

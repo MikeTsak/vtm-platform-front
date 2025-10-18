@@ -3,7 +3,7 @@ import api from '../api';
 import { AuthCtx } from '../AuthContext';
 import styles from '../styles/Comms.module.css';
 
-/* --- Clan assets & colors (reuse across app) --- */
+/* --- Clan assets & colors --- */
 const CLAN_COLORS = {
   Brujah: '#b40f1f',
   Gangrel: '#2f7a3a',
@@ -19,84 +19,159 @@ const CLAN_COLORS = {
   Caitiff: '#636363',
   'Thin-blood': '#6e6e2b',
 };
+const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim', 'Thin-blood': 'Thinblood' };
+const symlogo = (c) => (c ? `/img/clans/330px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g, '_')}_symbol.png` : '');
 
-// FIX: Name overrides must match Home.jsx to ensure correct logo file paths.
-const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim' };
-
-const symlogo = (c) =>
-  c ? `/img/clans/330px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g, '_')}_symbol.png` : '';
+/* Contact shapes */
+const asUserContact = (u) => ({ type: 'user', id: u.id, display_name: u.display_name, char_name: u.char_name, clan: u.clan });
+const asNpcContact  = (n) => ({ type: 'npc',  id: n.id, name: n.name, clan: n.clan });
 
 export default function Comms() {
   const { user: currentUser } = useContext(AuthCtx);
-  const [users, setUsers] = useState([]);
+  const isAdmin = currentUser?.role === 'admin';
+
+  const [users, setUsers] = useState([]);     // player contacts
+  const [npcs, setNpcs] = useState([]);       // npc contacts
   const [filter, setFilter] = useState('');
-  const [selectedUser, setSelectedUser] = useState(null);
+
+  // selection:
+  // - if contact.type==='user' → normal DM between players
+  // - if contact.type==='npc':
+  //   - player: talk to that NPC
+  //   - admin: must also pick a player (selectedPlayerId) to talk to on behalf of the NPC
+  const [selectedContact, setSelectedContact] = useState(null);
+  const [selectedPlayerId, setSelectedPlayerId] = useState(null); // only used by admin when contact is NPC
+
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const messagesEndRef = useRef(null);
-  const pollIntervalRef = useRef(null);
 
-  // Smooth scroll to bottom
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  };
+  const messagesEndRef = useRef(null);
+  const pollRef = useRef(null);
+
+  /* Smooth scroll on new messages */
+  const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   useEffect(scrollToBottom, [messages]);
 
-  // Fetch contacts
+  /* Load contacts (players + npcs) */
   useEffect(() => {
-    api.get('/chat/users')
-      .then(res => setUsers(res.data.users || []))
-      .catch(() => setError('Could not load users.'))
-      .finally(() => setLoading(false));
+    (async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const [{ data: u }, { data: n }] = await Promise.all([
+          api.get('/chat/users'),
+          api.get('/chat/npcs')
+        ]);
+        setUsers((u.users || []).map(asUserContact));
+        setNpcs((n.npcs || []).map(asNpcContact));
+      } catch {
+        setError('Could not load contacts.');
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
 
-  // Poll messages for active conversation
+  /* Fetch messages (polling every 3s) depending on mode */
   useEffect(() => {
-    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-    if (!selectedUser) return;
+    if (pollRef.current) clearInterval(pollRef.current);
+    if (!selectedContact) return;
 
     const fetchMessages = async () => {
       try {
-        const res = await api.get(`/chat/history/${selectedUser.id}`);
-        setMessages(res.data.messages || []);
+        if (selectedContact.type === 'user') {
+          const res = await api.get(`/chat/history/${selectedContact.id}`);
+          setMessages(res.data.messages || []);
+          // mark read best-effort
+          await api.post('/chat/read', { sender_id: selectedContact.id }).catch(()=>{});
+        } else {
+          // NPC conversation
+          if (isAdmin) {
+            if (!selectedPlayerId) { setMessages([]); return; }
+            const res = await api.get(`/admin/chat/npc/history`, {
+              params: { npc_id: selectedContact.id, user_id: selectedPlayerId }
+            });
+            // normalize fields to match UI expectations
+            const msgs = (res.data.messages || []).map(m => ({
+              id: m.id,
+              body: m.body,
+              created_at: m.created_at,
+              sender_id: m.from_side === 'npc' ? 'npc' : selectedPlayerId, // not used for admin coloring, but keeps left/right consistent
+              _from: m.from_side, // 'npc' | 'user'
+            }));
+            setMessages(msgs);
+          } else {
+            const res = await api.get(`/chat/npc-history/${selectedContact.id}`);
+            const msgs = (res.data.messages || []).map(m => ({
+              id: m.id,
+              body: m.body,
+              created_at: m.created_at,
+              sender_id: m.from_side === 'user' ? currentUser.id : 'npc',
+              _from: m.from_side,
+            }));
+            setMessages(msgs);
+          }
+        }
       } catch {
-        setError(`Could not load messages with ${selectedUser.display_name}.`);
+        setError('Could not load messages.');
       }
     };
 
     fetchMessages();
-    pollIntervalRef.current = setInterval(fetchMessages, 3000);
+    pollRef.current = setInterval(fetchMessages, 3000);
+    return () => pollRef.current && clearInterval(pollRef.current);
+  }, [selectedContact, selectedPlayerId, isAdmin, currentUser?.id]);
 
-    // mark read (best-effort)
-    api.post('/chat/read', { sender_id: selectedUser.id }).catch(() => {});
-
-    return () => {
-      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-    };
-  }, [selectedUser]);
-
-  const handleSelectUser = (user) => {
-    setSelectedUser(user);
-    setMessages([]);
-    setError('');
-    // On small screens, scroll chat to top when switching
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
+  /* Send message according to mode */
   const handleSendMessage = async (e) => {
     e?.preventDefault?.();
     const body = newMessage.trim();
-    if (!body || !selectedUser) return;
+    if (!body || !selectedContact) return;
+
     try {
-      const { data } = await api.post('/chat/messages', {
-        recipient_id: selectedUser.id,
-        body
-      });
-      setMessages(prev => [...prev, data.message]);
+      if (selectedContact.type === 'user') {
+        const { data } = await api.post('/chat/messages', {
+          recipient_id: selectedContact.id,
+          body
+        });
+        setMessages(prev => [...prev, data.message]);
+      } else {
+        if (isAdmin) {
+          if (!selectedPlayerId) return;
+          const { data } = await api.post('/admin/chat/npc/messages', {
+            npc_id: selectedContact.id,
+            user_id: selectedPlayerId,
+            body
+          });
+          // server already returns normalized fields
+          setMessages(prev => [...prev, {
+            id: data.message.id,
+            body: data.message.body,
+            created_at: data.message.created_at,
+            sender_id: 'npc',
+            _from: 'npc'
+          }]);
+        } else {
+          const { data } = await api.post('/chat/npc/messages', {
+            npc_id: selectedContact.id,
+            body
+          });
+          setMessages(prev => [...prev, {
+            id: data.message.id,
+            body: data.message.body,
+            created_at: data.message.created_at,
+            sender_id: currentUser.id,
+            _from: 'user'
+          }]);
+        }
+      }
       setNewMessage('');
-      api.post('/chat/read', { sender_id: selectedUser.id }).catch(() => {});
+      // players: mark read (best-effort)
+      if (selectedContact.type === 'user') {
+        api.post('/chat/read', { sender_id: selectedContact.id }).catch(()=>{});
+      }
     } catch {
       setError('Failed to send message.');
     }
@@ -117,7 +192,7 @@ export default function Comms() {
     return d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
   };
 
-  // Group messages by day
+  // group messages by day
   const groups = useMemo(() => {
     const g = [];
     let lastDay = '';
@@ -132,18 +207,48 @@ export default function Comms() {
     return g;
   }, [messages]);
 
+  // Filter contacts
   const filteredUsers = useMemo(() => {
     const q = filter.trim().toLowerCase();
-    if (!q) return users;
-    return users.filter(u =>
+    const list = users || [];
+    if (!q) return list;
+    return list.filter(u =>
       (u.display_name || '').toLowerCase().includes(q) ||
       (u.char_name || '').toLowerCase().includes(q)
     );
   }, [users, filter]);
 
-  if (loading) return <div className={styles.loading}>Loading users…</div>;
+  const filteredNPCs = useMemo(() => {
+    const q = filter.trim().toLowerCase();
+    const list = npcs || [];
+    if (!q) return list;
+    return list.filter(n =>
+      (n.name || '').toLowerCase().includes(q) ||
+      (n.clan || '').toLowerCase().includes(q)
+    );
+  }, [npcs, filter]);
 
-  const currentAccent = selectedUser ? (CLAN_COLORS[selectedUser.clan] || '#8a0f1a') : '#8a0f1a';
+  if (loading) return <div className={styles.loading}>Loading contacts…</div>;
+
+  // Accent color by active counterpart (players → their clan; NPC → npc clan)
+  const currentAccent = (() => {
+    if (!selectedContact) return '#8a0f1a';
+    if (selectedContact.type === 'user') return CLAN_COLORS[selectedContact.clan] || '#8a0f1a';
+    return CLAN_COLORS[selectedContact.clan] || '#8a0f1a';
+  })();
+
+  // Header text (who are we chatting with?)
+  const headerLabel = (() => {
+    if (!selectedContact) return '';
+    if (selectedContact.type === 'user') return selectedContact.char_name || selectedContact.display_name;
+    if (isAdmin) {
+      const selUser = users.find(u => u.id === selectedPlayerId);
+      return selUser
+        ? `${selectedContact.name} ➜ ${selUser.char_name || selUser.display_name}`
+        : selectedContact.name;
+    }
+    return selectedContact.name;
+  })();
 
   return (
     <div className={styles.commsContainer} style={{ '--accent': currentAccent }}>
@@ -154,46 +259,34 @@ export default function Comms() {
           <div className={styles.searchWrap}>
             <input
               className={styles.search}
-              placeholder="Search by name or character…"
+              placeholder="Search players & NPCs…"
               value={filter}
               onChange={(e)=>setFilter(e.target.value)}
-              aria-label="Search contacts"
+              aria-label="Search"
             />
           </div>
         </div>
 
         <div className={styles.usersScroll}>
+          {/* Players */}
+          <div className={styles.sectionLabel}>Players</div>
           {filteredUsers.map(u => {
-            const active = selectedUser?.id === u.id;
-            const initials = (u.display_name || '?')
-              .split(' ')
-              .map(p => p[0])
-              .slice(0, 2)
-              .join('')
-              .toUpperCase();
+            const active = selectedContact?.type === 'user' && selectedContact?.id === u.id;
+            const crest = symlogo(u.clan);
+            const initials = (u.display_name || '?').split(' ').map(p => p[0]).slice(0,2).join('').toUpperCase();
             const tint = CLAN_COLORS[u.clan] || '#8a0f1a';
-            const hasClan = !!u.clan; // New check for clan existence
-
             return (
               <button
                 type="button"
-                key={u.id}
+                key={`u-${u.id}`}
                 className={`${styles.userCard} ${active ? styles.selected : ''}`}
-                onClick={() => handleSelectUser(u)}
+                onClick={() => { setSelectedContact(u); setSelectedPlayerId(null); setError(''); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                 style={{ '--accent': tint }}
               >
-                <span 
-                  className={styles.avatar} 
-                  aria-hidden="true"
-                  // NEW: Set white background if there is a clan logo
-                  style={hasClan ? { backgroundColor: 'white' } : {}}
-                >
-                  {/* NEW: Conditional render - either logo OR initials */}
-                  {hasClan ? (
-                    <img className={styles.avatarImg} src={symlogo(u.clan)} alt={`${u.clan} crest`} />
-                  ) : (
-                    <span className={styles.initials}>{initials}</span>
-                  )}
+                <span className={styles.avatar} aria-hidden="true">
+                  {crest
+                    ? <img className={styles.avatarImg} src={crest} alt={`${u.clan || 'Unknown'} crest`} />
+                    : <span className={styles.initials}>{initials}</span>}
                 </span>
                 <span className={styles.userMeta}>
                   <span className={styles.userName}>
@@ -205,34 +298,79 @@ export default function Comms() {
               </button>
             );
           })}
+
+          {/* NPCs */}
+          <div className={styles.sectionLabel}>NPCs</div>
+          {filteredNPCs.map(n => {
+            const active = selectedContact?.type === 'npc' && selectedContact?.id === n.id;
+            const crest = symlogo(n.clan);
+            const tint = CLAN_COLORS[n.clan] || '#8a0f1a';
+            return (
+              <button
+                type="button"
+                key={`n-${n.id}`}
+                className={`${styles.userCard} ${active ? styles.selected : ''}`}
+                onClick={() => { setSelectedContact(n); setError(''); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                style={{ '--accent': tint }}
+              >
+                <span className={styles.avatar} aria-hidden="true">
+                  {crest
+                    ? <img className={styles.avatarImg} src={crest} alt={`${n.clan || 'Unknown'} crest`} />
+                    : <span className={styles.initials}>{(n.name || '?').slice(0,2).toUpperCase()}</span>}
+                </span>
+                <span className={styles.userMeta}>
+                  <span className={styles.userName}>
+                    {n.name}
+                    {n.clan && <span className={styles.clanChip} style={{ '--chip': tint }}>{n.clan}</span>}
+                  </span>
+                  <span className={styles.charName}>NPC</span>
+                </span>
+              </button>
+            );
+          })}
         </div>
       </aside>
 
       {/* Chat pane */}
       <main className={styles.chatWindow}>
-        {selectedUser ? (
+        {selectedContact ? (
           <>
             <header className={styles.chatHeader} style={{ '--accent': currentAccent }}>
               <div className={styles.chatWith}>
                 <span className={styles.chatDot} aria-hidden="true" />
-                {/* UPDATED TEXT HERE: Now you are chatting with [Char Name], of the player [Player Name] */}
-                Now you are chatting with <b>{selectedUser.char_name}</b>, of the player <b>{selectedUser.display_name}</b>
-                {selectedUser.clan && (
-                  <span className={styles.charTag} style={{ borderColor: 'color-mix(in oklab, var(--accent) 45%, #2a2a2f)' }}>
-                    {selectedUser.clan}
-                  </span>
+                Chat with <b>{headerLabel}</b>
+                {selectedContact.type === 'npc' && selectedContact.clan && (
+                  <span className={styles.charTag}>{selectedContact.clan}</span>
                 )}
+
+                {/* Quick jump back to contacts on mobile */}
                 <button
                   type="button"
                   className={styles.mobileContactsBtn}
-                  onClick={() => {
-                    const el = document.getElementById('comms-contacts');
-                    el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }}
+                  onClick={() => document.getElementById('comms-contacts')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
                 >
                   Contacts
                 </button>
               </div>
+
+              {/* Admin-only: pick target player when talking as an NPC */}
+              {isAdmin && selectedContact.type === 'npc' && (
+                <div className={styles.adminTargetRow}>
+                  <label className={styles.adminTargetLabel}>Reply to player:</label>
+                  <select
+                    className={styles.adminTargetSelect}
+                    value={selectedPlayerId || ''}
+                    onChange={(e)=>setSelectedPlayerId(e.target.value ? Number(e.target.value) : null)}
+                  >
+                    <option value="">— Select Player —</option>
+                    {users.map(u => (
+                      <option key={u.id} value={u.id}>
+                        {u.char_name || u.display_name} ({u.display_name})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </header>
 
             <div className={styles.messageList} id="chat-scroll-region">
@@ -244,7 +382,15 @@ export default function Comms() {
                     </div>
                   );
                 }
-                const mine = item.sender_id === currentUser.id;
+                const mine = (() => {
+                  if (selectedContact.type === 'user') {
+                    return item.sender_id === currentUser.id;
+                  }
+                  // npc thread:
+                  if (isAdmin) return item._from === 'npc'; // admin speaks as npc
+                  return item._from === 'user'; // player → user's own messages are "mine"
+                })();
+
                 return (
                   <div
                     key={item.id}
@@ -265,6 +411,11 @@ export default function Comms() {
             </div>
 
             <form className={styles.messageInputForm} onSubmit={handleSendMessage}>
+              {isAdmin && selectedContact.type === 'npc' && !selectedPlayerId && (
+                <div className={styles.errorBanner} style={{ marginBottom: 8 }}>
+                  Select a player to reply to as this NPC.
+                </div>
+              )}
               <input
                 type="text"
                 value={newMessage}
@@ -273,11 +424,12 @@ export default function Comms() {
                 className={styles.messageInput}
                 onKeyDown={onInputKeyDown}
                 aria-label="Message"
+                disabled={isAdmin && selectedContact.type === 'npc' && !selectedPlayerId}
               />
               <button
                 type="submit"
                 className={styles.sendButton}
-                disabled={!newMessage.trim()}
+                disabled={!newMessage.trim() || (isAdmin && selectedContact.type === 'npc' && !selectedPlayerId)}
                 aria-label="Send message"
                 style={{ '--accent': currentAccent }}
               >
@@ -287,7 +439,7 @@ export default function Comms() {
           </>
         ) : (
           <div className={styles.placeholder}>
-            Select a user to start a conversation
+            Select a contact to start a conversation
           </div>
         )}
 
