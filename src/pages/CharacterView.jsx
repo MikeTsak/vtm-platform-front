@@ -12,6 +12,8 @@ import { DISCIPLINES, ALL_DISCIPLINE_NAMES, iconPath } from '../data/disciplines
 import { RITUALS } from '../data/rituals';
 import styles from '../styles/CharacterView.module.css';
 import CharacterSetup from './CharacterSetup';
+import { MERITS_AND_FLAWS } from '../data/merits_flaws';
+
 
 /* ---------- Clan tint colors ---------- */
 const CLAN_COLORS = {
@@ -469,6 +471,50 @@ export default function CharacterView({
       </div>
     );
   }
+
+  /* ---------- Merits helpers (reuse from setup) ---------- */
+function bulletCount(s=''){ const m = String(s).match(/•/g); return m? m.length : 0; }
+/** Parse dot specs like "•", "•••", "• - •••", "•• or ••••", "• +" */
+function parseDotSpec(spec='') {
+  const src = String(spec).trim();
+  if (!src) return [];
+  if (/\bor\b/i.test(src)) {
+    const opts = src.split(/\bor\b/i).map(s => bulletCount(s)).filter(n => n>0);
+    return Array.from(new Set(opts)).sort((a,b)=>a-b);
+  }
+  if (src.includes('-')) {
+    const [lo, hi] = src.split('-').map(s => bulletCount(s));
+    if (lo>0 && hi>=lo) { const out=[]; for(let i=lo;i<=hi;i++) out.push(i); return out; }
+  }
+  if (src.includes('+')) { const min = bulletCount(src); return min>0 ? [min] : []; }
+  const n = bulletCount(src);
+  return n>0 ? [n] : [];
+}
+function glyph(n){ return '•'.repeat(Math.max(0, Number(n)||0)); }
+
+/** Flatten merits only (exclude Caitiff/Thin-blood/Ghouls/Cults families) */
+function allSelectableMerits(){
+  const out=[];
+  for (const [cat, payload] of Object.entries(MERITS_AND_FLAWS)){
+    if (['Caitiff','Thin-blood','Ghouls','Cults'].includes(cat)) continue;
+    const pushIt = (item, category) => {
+      const allowed = parseDotSpec(item.dots);
+      if (!allowed.length) return; // not buyable here
+      out.push({ id:item.id, name:item.name, dotsSpec:item.dots, description:item.description, category, allowed });
+    };
+    (payload.merits||[]).forEach(m => pushIt(m, cat));
+    if (payload.groups){
+      for (const [sub, grp] of Object.entries(payload.groups)){
+        (grp.merits||[]).forEach(m => pushIt(m, `${cat} / ${sub}`));
+      }
+    }
+  }
+  // de-dup by id just in case
+  const seen=new Set(); return out.filter(m=> (seen.has(m.id)?false: (seen.add(m.id), true)));
+}
+
+
+
 
   // ===== Discipline grouping for the XP Shop (in-clan first, out-of-clan in drawer)
   const inClanDisciplines = ALL_DISCIPLINE_NAMES.filter(n => disciplineKindFor(ch, n) === 'clan');
