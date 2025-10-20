@@ -18,9 +18,10 @@ import Terms from './pages/Terms';
 import Legal from './pages/Legal';
 import Privacy from './pages/Privacy';
 import NPCs from './pages/NPCs';
-import AdminNPCView from './pages/AdminNPCView'; // ✅ single import
+import AdminNPCView from './pages/AdminNPCView'; 
 import ForgotPassword from './pages/user/ForgotPassword';
 import ResetPassword from './pages/user/ResetPassword';
+import Boons from './pages/Boons';
 
 function Private({ children }) {
   const { user } = useContext(AuthCtx);
@@ -81,7 +82,10 @@ function Nav() {
             <NavLink to="/character" className={getNavLinkClass}>Character</NavLink>
             <NavLink to="/domains" className={getNavLinkClass}>Domains</NavLink>
             <NavLink to="/downtimes" className={getNavLinkClass}>Downtimes</NavLink>
+            <NavLink to="/boons" className={getNavLinkClass}>Boons</NavLink>
             <NavLink to="/comms" className={getNavLinkClass}>Comms</NavLink>
+            {/* You may want to add a NavLink for Boons here */}
+            {/* <NavLink to="/boons" className={getNavLinkClass}>Boons</NavLink> */}
           </>
         )}
         {user?.role === 'admin' && (
@@ -121,6 +125,7 @@ export default function App() {
               <Route path="/make" element={<Private><CharacterSetup/></Private>} />
               <Route path="/domains" element={<Private><Domains/></Private>} />
               <Route path="/downtimes" element={<Private><DownTimes/></Private>} />
+              <Route path="/boons" element={<Private><Boons /></Private>} />
               <Route path="/comms" element={<Private><Comms/></Private>} />
               <Route path="/admin" element={<AdminOnly><Admin/></AdminOnly>} />
               <Route path="/admin/npcs" element={<AdminOnly><NPCs/></AdminOnly>} />

@@ -148,10 +148,45 @@ function normalizeFromFlatAny(source) {
   // normalized BP key
   sheet.blood_potency = Number(flat.bloodPotency ?? flat.blood_potency ?? 1);
 
-  sheet.health_current = flat.health_current;
-  sheet.health_max = flat.health_max;
-  sheet.willpower_current = flat.willpower_current;
-  sheet.willpower_max = flat.willpower_max;
+  // ----- Health (max only) -----
+  // Recompute only the maximum: Stamina + 3
+  {
+    const stamina =
+      Number(sheet.attributes?.['Stamina'] ?? flat.attributes?.Stamina ?? 1);
+    sheet.health_max = stamina + 3;
+
+    // Do NOT touch sheet.health_current here — keep whatever the save already has.
+    // (If you want to initialize once when absent, uncomment the 2 lines below.)
+    // if (typeof sheet.health_current === 'undefined' && typeof flat.health_current !== 'undefined') {
+    //   sheet.health_current = Number(flat.health_current);
+    // }
+  }
+
+  // ----- Willpower (derived) -----
+  // Max Willpower = Composure + Resolve
+  const comp = Number(sheet.attributes?.['Composure'] ?? flat.attributes?.Composure ?? 1);
+  const reso = Number(sheet.attributes?.['Resolve']   ?? flat.attributes?.Resolve   ?? 1);
+  sheet.willpower_max = comp + reso;
+
+  // Optional structured willpower damage support (like Health)
+  const wpSuperficial = Number(flat?.willpower?.superficial ?? 0);
+  const wpAggravated  = Number(flat?.willpower?.aggravated  ?? 0);
+
+  // Legacy numeric "current" support
+  const legacyWpCurrent = Number(flat?.willpower_current);
+
+  // Compute current: clamp legacy if present; else max minus recorded damage (if any)
+  if (Number.isFinite(legacyWpCurrent)) {
+    sheet.willpower_current = Math.max(0, Math.min(sheet.willpower_max, Number(sheet.willpower_current || 0)));
+  } else {
+    const wpDmg = Math.max(0, Math.min(sheet.willpower_max, wpSuperficial + wpAggravated));
+    sheet.willpower_current = sheet.willpower_max - wpDmg;
+  }
+
+  // Keep a structured node for future use (non-breaking if unused elsewhere)
+  sheet.willpower = { superficial: wpSuperficial, aggravated: wpAggravated };
+
+
   sheet.resonances = flat.resonances || [];
 
   sheet.rituals = {
@@ -429,8 +464,8 @@ export default function CharacterView({
   ]);
 
   const knownRitualNames = useMemo(() => {
-    const bs = Object.values(RITUALS.blood_sorcery.levels || {}).flat();
-    const ob = Object.values(RITUALS.oblivion?.levels || {}).flat();
+    const bs = Object.values(RITUALS?.blood_sorcery?.levels || {}).flat();
+    const ob = Object.values(RITUALS?.oblivion?.levels || {}).flat();
     const byId = new Map([...bs, ...ob].map(r => [r.id, r.name]));
     return Array.from(knownRitualIds).map(id => byId.get(id)).filter(Boolean);
   }, [knownRitualIds]);
@@ -557,8 +592,17 @@ export default function CharacterView({
             <div className={styles.rowForm} style={{ gap: 12, flexWrap: 'wrap' }}>
               <Pill label="Blood Potency" value={sheet?.blood_potency ?? 1} />
               <Pill label="Humanity" value={sheet?.humanity ?? '—'} />
-              <Pill label="Health" value={`${sheet?.health_current ?? '—'} / ${sheet?.health_max ?? '—'}`} />
-              <Pill label="Willpower" value={`${sheet?.willpower_current ?? '—'} / ${sheet?.willpower_max ?? '—'}`} />
+              <Pill
+                label="Health"
+                value={`${sheet?.health_current ?? '—'} / ${sheet?.health_max ?? '—'}`}
+              />
+
+
+              <Pill
+                label="Willpower"
+                value={`${sheet?.willpower_current ?? '—'} / ${sheet?.willpower_max ?? '—'}${Number(sheet?.willpower_current) <= 0 ? ' (Depleted)' : ''}`}
+              />
+
             </div>
           </div>
 
@@ -737,26 +781,31 @@ export default function CharacterView({
           {/* Specialties */}
           <Card>
             <div className={styles.cardHead}><b>Skill Specialties</b></div>
-            <SpecialtyAdder
-              xp={xp}
-              onAdd={async (skillName, specName) => {
-                const cost = XP_RULES.specialty();
-                if (xp < cost) return;
-                const nextSheet = JSON.parse(JSON.stringify(sheet));
-                nextSheet.skills = nextSheet.skills || {};
-                const node = (nextSheet.skills[skillName] && typeof nextSheet.skills[skillName] === 'object')
-                  ? { ...nextSheet.skills[skillName] }
-                  : { dots: Number(nextSheet.skills[skillName] || 0), specialties: [] };
-                node.specialties = Array.from(new Set([...(node.specialties || []), specName].filter(Boolean)));
-                nextSheet.skills[skillName] = node;
-                await spendXP({
-                  type: 'specialty',
-                  target: skillName,
-                  dots: 1,
-                  patchSheet: nextSheet,
-                });
-              }}
-            />
+          <SpecialtyAdder
+            xp={xp}
+            onAdd={async (skillName, spec) => {
+              const cost = XP_RULES.specialty(); // 3 XP
+              if (xp < cost) return;
+
+              const nextSheet = JSON.parse(JSON.stringify(sheet));
+              nextSheet.skills = nextSheet.skills || {};
+              const node = (nextSheet.skills[skillName] && typeof nextSheet.skills[skillName] === 'object')
+                ? { ...nextSheet.skills[skillName] }
+                : { dots: Number(nextSheet.skills[skillName] || 0), specialties: [] };
+
+              node.specialties = Array.isArray(node.specialties) ? node.specialties : [];
+              if (!node.specialties.includes(spec)) node.specialties.push(spec);
+              nextSheet.skills[skillName] = node;
+
+              await spendXP({
+                type: 'specialty',
+                target: skillName,
+                specialty: spec,
+                patchSheet: nextSheet,
+              });
+            }}
+          />
+
           </Card>
 
           {/* Disciplines */}
@@ -848,34 +897,106 @@ export default function CharacterView({
             <div className={styles.cardHead}><b>Merits</b></div>
             <MeritAdder
               xp={xp}
-              existing={Array.isArray(sheet?.advantages?.merits) ? sheet.advantages.merits : []}
-              onAdd={async (merit, dots) => {
-                const cost = XP_RULES.advantageDot(dots);
-                if (xp < cost) return;
+              existing={[
+                ...(Array.isArray(sheet?.advantages?.merits) ? sheet.advantages.merits : []),
+                ...(Array.isArray(sheet?.backgrounds)
+                    ? sheet.backgrounds.map(b => ({ id: b.id, name: b.name, dots: b.dots }))
+                    : [])
+              ]}
+onAdd={async (merit, targetDots, options = {}) => {
+  const separate = !!options.separate; // add as separate instance?
+  const nextSheet = JSON.parse(JSON.stringify(sheet));
 
-                const nextSheet = JSON.parse(JSON.stringify(sheet));
-                nextSheet.advantages = nextSheet.advantages || { merits: [], flaws: [] };
-                nextSheet.advantages.merits = Array.isArray(nextSheet.advantages.merits) ? nextSheet.advantages.merits : [];
+  // Ensure containers exist
+  nextSheet.advantages = nextSheet.advantages || { merits: [], flaws: [] };
+  nextSheet.advantages.merits = Array.isArray(nextSheet.advantages.merits) ? nextSheet.advantages.merits : [];
+  nextSheet.backgrounds = Array.isArray(nextSheet.backgrounds) ? nextSheet.backgrounds : [];
 
-                // prevent exact duplicate (same id and dots)
-                const key = `${merit.id}:${dots}`;
-                const present = new Set(nextSheet.advantages.merits.map(m => `${m.id}:${m.dots}`));
-                if (!present.has(key)) {
-                  nextSheet.advantages.merits.push({
-                    id: merit.id,
-                    name: merit.name,
-                    dots,
-                    from: 'xp_shop',
-                  });
-                }
+  const meritsArr = nextSheet.advantages.merits;
+  const bgsArr    = nextSheet.backgrounds;
 
-                await spendXP({
-                  type: 'advantage',
-                  target: merit.id,
-                  dots,
-                  patchSheet: nextSheet,
-                });
-              }}
+  // All existing entries with this id, across BOTH containers
+  const sameMerits = meritsArr.filter(m => m.id === merit.id);
+  const sameBgs    = bgsArr.filter(b => b.id === merit.id);
+  const currentDots = [...sameMerits, ...sameBgs].reduce(
+    (max, e) => Math.max(max, Number(e.dots || 0)), 0
+  );
+
+  // If the character already has this as a BACKGROUND, prefer to keep modifying backgrounds.
+  const preferBackgrounds = sameBgs.length > 0;
+
+  if (separate) {
+    // FULL cost for a new, separate instance (e.g., another Haven • = 3 XP)
+    const cost = XP_RULES.advantageDot(Number(targetDots) || 0);
+    if (xp < cost) return;
+
+    const instance = sameMerits.length + sameBgs.length + 1; // optional marker
+    const newEntry = {
+      id: merit.id,
+      name: merit.name,
+      dots: Number(targetDots),
+      from: 'xp_shop',
+      instance,
+    };
+
+    if (preferBackgrounds) bgsArr.push(newEntry);
+    else meritsArr.push(newEntry);
+
+    await spendXP({
+      type: 'advantage',
+      target: merit.id,
+      dots: Number(targetDots),
+      patchSheet: nextSheet,
+    });
+    return;
+  }
+
+  // UPGRADE existing: pay only the delta (e.g., Haven • -> Haven •• costs 3 XP)
+  const delta = Math.max(0, Number(targetDots) - currentDots);
+  const cost = XP_RULES.advantageDot(delta);
+  if (delta <= 0 || xp < cost) return;
+
+  let upgraded = false;
+
+  // Try to upgrade in the preferred container first
+  const tryUpgradeIn = (arr) => {
+    for (let i = 0; i < arr.length; i++) {
+      const entry = arr[i];
+      if (entry.id === merit.id && Number(entry.dots || 0) === currentDots) {
+        arr[i] = { ...entry, dots: Number(targetDots) };
+        return true;
+      }
+    }
+    return false;
+  };
+
+  upgraded = preferBackgrounds ? tryUpgradeIn(bgsArr) : tryUpgradeIn(meritsArr);
+  if (!upgraded) {
+    // Try the other container
+    upgraded = preferBackgrounds ? tryUpgradeIn(meritsArr) : tryUpgradeIn(bgsArr);
+  }
+
+  // Safety: if nothing matched (shouldn't happen), add as a new merits entry
+  if (!upgraded) {
+    meritsArr.push({
+      id: merit.id,
+      name: merit.name,
+      dots: Number(targetDots),
+      from: 'xp_shop',
+      instance: sameMerits.length + sameBgs.length + 1,
+    });
+  }
+
+  await spendXP({
+    type: 'advantage',
+    target: merit.id,
+    dots: delta,           // pay only the increase
+    patchSheet: nextSheet, // now reflects the new TOTAL rating
+  });
+}}
+
+
+
             />
             {Array.isArray(sheet?.advantages?.merits) && sheet.advantages.merits.length > 0 && (
               <div className={styles.grid} style={{ marginTop: 10 }}>
@@ -899,7 +1020,7 @@ export default function CharacterView({
                 {/* Blood Sorcery */}
                 <Drawer title="Blood Sorcery Rituals" defaultOpen={false}>
                   <div className={styles.grid} style={{ gap: 12 }}>
-                    {Object.entries(RITUALS.blood_sorcery.levels).map(([lvlStr, list]) => {
+                    {Object.entries(RITUALS?.blood_sorcery?.levels || {}).map(([lvlStr, list]) => {
                       const level = Number(lvlStr);
                       return list.map(rit => {
                         const owned = knownRitualIds.has(rit.id);
@@ -1465,12 +1586,64 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
               </aside>
             </div>
 
-            {/* RIGHT PANE */}
-            <div className={styles.paneCard}>
-              <section className={styles.powerDetailPane}>
-                {/* details could go here if needed */}
-              </section>
-            </div>
+        {/* RIGHT PANE */}
+        <div className={styles.paneCard}>
+          <section className={styles.powerDetailPane}>
+            {!sel ? (
+              <div className={styles.emptyNote}>Select a power on the left to see details.</div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: 8 }}>
+                  <div>
+                    <div style={{ fontSize: 18, fontWeight: 700 }}>{sel.name}</div>
+                    <div className={styles.muted} style={{ fontSize: 13 }}>
+                      Level {sel.__level}{sel.source ? ` • Source: ${sel.source}` : ''}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {sel.__flags?.owned && (
+                      <span className={`${styles.powerBadgeMuted} badge-owned`}>Owned</span>
+                    )}
+                    {Array.isArray(sel.__flags?.unmet) && sel.__flags.unmet.length > 0 && (
+                      <span className={`${styles.powerBadgeMuted} badge-warn`}>
+                        Needs: {sel.__flags.unmet.join(', ')}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className={styles.detailTags} style={{ marginTop: 10 }}>
+                  {sel.cost && (
+                    <span className={styles.powerTag}><b>Cost:</b> {sel.cost}</span>
+                  )}
+                  {sel.duration && (
+                    <span className={styles.powerTag}><b>Duration:</b> {sel.duration}</span>
+                  )}
+                  {sel.dice_pool && (
+                    <span className={styles.powerTag}><b>Dice Pool:</b> {sel.dice_pool}</span>
+                  )}
+                  {sel.opposing_pool && (
+                    <span className={styles.powerTag}><b>Opposing Pool:</b> {sel.opposing_pool}</span>
+                  )}
+                  {sel.prerequisite && (
+                    <span className={styles.powerTag}><b>Prerequisite:</b> {sel.prerequisite}</span>
+                  )}
+                  {sel.amalgam && (
+                    <span className={styles.powerTag}><b>Amalgam:</b> {sel.amalgam}</span>
+                  )}
+                </div>
+
+                {sel.notes && (
+                  <div className={styles.powerNotes} style={{ marginTop: 10 }}>
+                    <b>Notes:</b> {sel.notes}
+                  </div>
+                )}
+              </>
+            )}
+          </section>
+        </div>
+
           </div>
         )}
 
@@ -1537,6 +1710,7 @@ function SpecialtyAdder({ xp, onAdd }) {
 function MeritAdder({ xp, existing = [], onAdd }) {
   const all = useMemo(() => allSelectableMerits(), []);
   const [q, setQ] = useState('');
+  const [addSeparate, setAddSeparate] = useState(false); // toggle: add as another instance
   const [selId, setSelId] = useState(all[0]?.id || '');
   const sel = useMemo(() => all.find(m => m.id === selId) || null, [all, selId]);
 
@@ -1552,14 +1726,35 @@ function MeritAdder({ xp, existing = [], onAdd }) {
 
   const dotsOptions = sel?.allowed || [];
   const [dots, setDots] = useState(dotsOptions[0] || 1);
+
+  const idOrName = (sel?.id || sel?.name || '').toLowerCase();
+  // Allow duplicates at least for Haven & Retainers; extend if you like (Allies, Contacts, etc.)
+  const allowMulti = /^(haven|retainer|retainers)$/.test(idOrName);
+
+
+  const currentOwnedForSel = useMemo(() => {
+    if (!sel) return 0;
+    return existing
+      .filter(m => m.id === sel.id)
+      .reduce((max, m) => Math.max(max, Number(m.dots || 0)), 0);
+  }, [sel, existing]);
+
   useEffect(() => {
-    setDots(sel?.allowed?.[0] || 1);
-  }, [selId]); // eslint-disable-line react-hooks/exhaustive-deps
+    const allowed = sel?.allowed || [1];
+    // pick the first allowed value greater than what you own; otherwise pick the largest allowed
+    const nextAllowed = allowed.find(n => n > currentOwnedForSel) ?? allowed[allowed.length - 1];
+    setDots(nextAllowed || 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selId, existing]); // reset when merit or owned list changes
 
-  const cost = dots * 3;
+  const delta = Math.max(0, Number(dots || 0) - currentOwnedForSel);
+  const cost = addSeparate
+    ? XP_RULES.advantageDot(Number(dots || 0)) // full cost for new instance
+    : XP_RULES.advantageDot(delta);            // delta cost for upgrade
   const afford = xp >= cost;
+  const blocked = !sel || (addSeparate ? Number(dots || 0) <= 0 : delta <= 0) || !afford;
 
-  const wouldDuplicate = sel ? ownedKeys.has(`${sel.id}:${dots}`) : false;
+
 
   return (
     <div className={styles.grid} style={{ gap: 12 }}>
@@ -1599,12 +1794,42 @@ function MeritAdder({ xp, existing = [], onAdd }) {
 
         <button
           className={styles.cta}
-          disabled={!sel || !afford || wouldDuplicate}
-          onClick={() => onAdd(sel, dots)}
-          title={wouldDuplicate ? 'You already own this merit at that rating' : ''}
+          disabled={blocked}
+          onClick={() => onAdd(sel, dots, { separate: addSeparate })}
+          title={
+            addSeparate
+              ? (Number(dots || 0) <= 0 ? 'Pick a dot rating' : '')
+              : (delta <= 0 ? 'You already have this rating (or higher)' : '')
+          }
         >
-          Add Merit
+          {addSeparate
+            ? `Add another (${dots} dot${Number(dots) === 1 ? '' : 's'})`
+            : (currentOwnedForSel > 0
+                ? `Upgrade to ${dots} dot${Number(dots) === 1 ? '' : 's'}`
+                : `Add ${dots} dot${Number(dots) === 1 ? '' : 's'}`)}
         </button>
+        
+        {allowMulti && sel && (
+          <label className={styles.checkboxRow} style={{ display:'flex', gap:8, alignItems:'center', marginTop:8 }}>
+            <input
+              type="checkbox"
+              checked={addSeparate}
+              onChange={e => setAddSeparate(e.target.checked)}
+            />
+            <span>Add as another instance (don’t upgrade)</span>
+          </label>
+        )}
+
+        {sel && (
+            <div className={styles.muted}>
+              Owned instances: <b>{existing.filter(m => m.id === (sel.id || '')).length}</b>
+              {' • '}Highest rating: <b>{currentOwnedForSel || '—'}</b>
+              {' • '}Mode: <b>{addSeparate ? 'Add another' : 'Upgrade'}</b>
+              {' • '}Cost: <b>{cost}</b> XP
+            </div>
+          )}
+
+
       </div>
 
       {sel && (

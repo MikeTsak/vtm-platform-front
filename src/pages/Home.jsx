@@ -85,7 +85,7 @@ export default function Home() {
 
   // Has character
   return (
-    <div className={styles.homePage}>
+    <main className={styles.homePage}>
       <div className={styles.skyline} style={{ '--tint': tint }} />
       <div className={styles.bloodFx} aria-hidden="true">
         <div className={styles.dripsSlow} />
@@ -119,7 +119,7 @@ export default function Home() {
         </div>
       </header>
 
-      <main className={styles.grid}>
+      <div className={styles.grid}>
         <Link className={styles.cardLink} to="/character">
           <div className={styles.cardTitle}>Character</div>
           <div className={styles.cardSub}>View & spend XP</div>
@@ -137,11 +137,16 @@ export default function Home() {
           </div>
         </Link>
 
+        <Link className={styles.cardLink} to="/boons">
+          <div className={styles.cardTitle}>Boons</div>
+          <div className={styles.cardSub}>View boon registry</div>
+        </Link>
+
         <Link className={styles.cardLink} to="/comms">
           <div className={styles.cardTitle}>Communications</div>
           <div className={styles.cardSub}>Letters, rumors & court</div>
         </Link>
-      </main>
-    </div>
+      </div>
+    </main>
   );
 }

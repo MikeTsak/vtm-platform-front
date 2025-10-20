@@ -351,26 +351,150 @@ const incAttr = (k, d) =>
     attrOk && skillOk && discOk && predatorOk &&
     advOk && humanity >= 1 && humanity <= 10;
 
-// inside CharacterSetup component
+  // inside CharacterSetup component
+  // --- Predator helpers (parsers + merge) ---
+  // "Skill (Specialty)" -> { skill, spec }
+  const parsePredatorSpecialty = (s) => {
+    const m = String(s || '').match(/^(.+?)\s*\((.+?)\)\s*$/);
+    return m ? { skill: m[1].trim(), spec: m[2].trim() } : null;
+  };
+
+  // "Haven Flaw: Creepy (••)" -> dots=2, "Retainers +1" -> 1
+  const parseDotsFromText = (s, fallback = 1) => {
+    if (!s) return fallback;
+    const bullets = String(s).match(/•+/);
+    if (bullets) return bullets[0].length;
+    const n = String(s).match(/([+-]?\d+)/);
+    if (n) return Math.abs(parseInt(n[1], 10) || fallback);
+    return fallback;
+  };
+
+  // Strip "(…)" and "+N" suffixes -> name only
+  const stripName = (s) =>
+    String(s || '').replace(/\(.*?\)/g, '').replace(/\+\d+.*/g, '').trim();
+
+  // Coalesce advantages by name (sum dots), drop empties
+  const coalesceAdv = (list) => {
+    const by = {};
+    (list || []).forEach((r) => {
+      const name = (r?.name || r?.id || '').trim();
+      const dots = Number(r?.dots || r?.rating || 0);
+      if (!name || dots <= 0) return;
+      by[name] = (by[name] || 0) + dots;
+    });
+    return Object.entries(by).map(([name, dots]) => ({ name, dots }));
+  };
+
+
 const save = async () => {
   setSaving(true); setErr('');
   try {
-    const payload = {
-      name, concept, chronicle, ambition, desire,
-      clan, sire, predatorType,
-      attributes: attrDots,
-      skills: skillDots,
-      specialties: specialties.filter(Boolean),
-      disciplines: derivedDisciplineDots,
-      advantages: { merits, flaws },
-      morality: {
-        tenets,
-        convictions: convictions.filter(Boolean),
-        touchstones: touchstones.filter(Boolean),
-        humanity
-      },
-      bloodPotency
-    };
+  // Start from current selections
+  let skillDotsOut = { ...skillDots };
+  let discMap = { ...derivedDisciplineDots };
+  let extraSpecialties = [];
+  let meritsOut = (merits || []).filter(m => (m.name || m.id || '').trim() && Number(m.dots || 0) > 0);
+  let flawsOut  = (flaws  || []).filter(f => (f.name || f.id || '').trim() && Number(f.dots  || 0) > 0);
+
+  let humanityOut = humanity;
+  let bloodPotencyOut = bloodPotency;
+
+  // Current predator data
+  const P = PREDATOR_TYPES[predatorType] || {};
+
+  // 1) Specialty pick: add "Skill: Spec", and if that skill had 0 dots, raise to 1
+  if (P.picks?.specialty && predatorPicks.specialty) {
+    const parsed = parsePredatorSpecialty(predatorPicks.specialty);
+    if (parsed) {
+      if ((skillDotsOut[parsed.skill] || 0) === 0) {
+        skillDotsOut = { ...skillDotsOut, [parsed.skill]: 1 };
+      }
+      extraSpecialties.push(`${parsed.skill}: ${parsed.spec}`);
+    } else {
+      // fallback: if user changed text shape, keep as-is
+      extraSpecialties.push(predatorPicks.specialty);
+    }
+  }
+
+  // 2) Discipline pick: +1 dot in chosen discipline
+  if (P.picks?.discipline && predatorPicks.discipline) {
+    const k = predatorPicks.discipline;
+    discMap[k] = (discMap[k] || 0) + 1;
+  }
+
+  // 3) Single choices from Predator
+  if (P.picks?.backgroundChoice && predatorPicks.backgroundChoice) {
+    const nm = stripName(predatorPicks.backgroundChoice);
+    const dots = parseDotsFromText(predatorPicks.backgroundChoice, 1);
+    meritsOut.push({ name: nm, dots });
+  }
+
+  if (P.picks?.havenFlawChoice && predatorPicks.havenFlawChoice) {
+    const nm = stripName(predatorPicks.havenFlawChoice);
+    const dots = parseDotsFromText(predatorPicks.havenFlawChoice, 1);
+    flawsOut.push({ name: nm, dots });
+  }
+
+  if (P.picks?.flawChoice && predatorPicks.flawChoice) {
+    const nm = stripName(predatorPicks.flawChoice);
+    const dots = parseDotsFromText(predatorPicks.flawChoice, 1);
+    flawsOut.push({ name: nm, dots });
+  }
+
+  // 4) Pools: backgroundPool & flawPool
+  for (const [i, pool] of (P.picks?.backgroundPool || []).entries()) {
+    const key = `Pool-${i}-${pool.total}`;
+    const vals = predatorPicks.pools?.[key] || {};
+    Object.entries(vals).forEach(([nm, v]) => {
+      const dots = Number(v) || 0;
+      if (dots > 0) meritsOut.push({ name: nm, dots });
+    });
+  }
+
+  for (const [i, pool] of (P.picks?.flawPool || []).entries()) {
+    const key = `FlawPool-${i}-${pool.total}`;
+    const vals = predatorPicks.pools?.[key] || {};
+    Object.entries(vals).forEach(([nm, v]) => {
+      const dots = Number(v) || 0;
+      if (dots > 0) flawsOut.push({ name: nm, dots });
+    });
+  }
+
+  // 5) Static effects from Predator
+  if (P.effects?.merits)        meritsOut.push(...P.effects.merits);
+  if (P.effects?.backgrounds)   meritsOut.push(...P.effects.backgrounds);
+  if (P.effects?.flaws)         flawsOut.push(...P.effects.flaws);
+  if (P.effects?.feedingFlaws)  flawsOut.push(...P.effects.feedingFlaws);
+
+  if (typeof P.effects?.humanity === 'number') {
+    humanityOut = Math.max(1, Math.min(10, humanityOut + P.effects.humanity));
+  }
+  if (typeof P.effects?.bloodPotency === 'number') {
+    bloodPotencyOut = Math.max(0, Math.min(10, (bloodPotencyOut || 0) + P.effects.bloodPotency));
+  }
+
+  // 6) Coalesce duplicate advantages by name (sum dots)
+  meritsOut = coalesceAdv(meritsOut);
+  flawsOut  = coalesceAdv(flawsOut);
+
+  // 7) Final payload (include predator freebies)
+  const payload = {
+    name, concept, chronicle, ambition, desire,
+    clan, sire, predatorType,
+    attributes: attrDots,
+    skills: skillDotsOut,
+    specialties: [...(specialties || []).filter(Boolean), ...extraSpecialties],
+    disciplines: discMap,
+    advantages: { merits: meritsOut, flaws: flawsOut },
+    morality: {
+      tenets,
+      convictions: (convictions || []).filter(Boolean),
+      touchstones: (touchstones || []).filter(Boolean),
+      humanity: humanityOut
+    },
+    bloodPotency: bloodPotencyOut
+  };
+
 
     await api.post('/characters', { name, clan, sheet: payload });
 

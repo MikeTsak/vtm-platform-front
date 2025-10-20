@@ -1,0 +1,268 @@
+/* src/styles/Boons.module.css */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;500;600;700&display=swap');
+
+.boonsPage {
+  --bg1: #0a0a0c;
+  --bg2: #1a1218;
+  --card-bg: #141418;
+  --border: rgba(255, 255, 255, 0.1);
+  --accent: #b01423;
+  --text: #e7e2ea;
+  --muted: #9a8d9c;
+  --radius: 8px;
+  
+  --green: #2f7a3a;
+  --blue: #1b4c8c;
+  --yellow: #865f12;
+  --grey: #636363;
+
+  background: linear-gradient(180deg, var(--bg1), var(--bg2));
+  color: var(--text);
+  min-height: 100%;
+  padding: 16px 0;
+}
+
+.container {
+  width: min(95vw, 1100px);
+  margin: 0 auto;
+  font-family: "Inter", sans-serif;
+}
+
+/* --- Static Content --- */
+.staticContent {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 24px;
+  line-height: 1.6;
+}
+.staticContent h1,
+.staticContent h2,
+.staticContent h3 {
+  font-family: "Cinzel", serif;
+  font-weight: 700;
+  color: #f3dde1;
+  margin-top: 1.2em;
+  margin-bottom: 0.5em;
+}
+.staticContent h1 { font-size: 2rem; }
+.staticContent h2 { font-size: 1.5rem; }
+.staticContent h3 { font-size: 1.2rem; }
+.staticContent p {
+  color: var(--muted);
+  margin-bottom: 1em;
+}
+.staticContent ul {
+  list-style: disc;
+  padding-left: 20px;
+  color: var(--muted);
+}
+
+.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 24px 0;
+}
+
+/* --- Boon Tracker --- */
+.boonTracker {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 24px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.header h2 {
+  font-family: "Cinzel", serif;
+  font-size: 1.5rem;
+  color: #f3dde1;
+  margin: 0;
+}
+
+/* --- Boon List --- */
+.boonList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.boonCard {
+  background: var(--bg1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+}
+
+.boonHeader {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.boonBody {
+  padding: 12px;
+  flex-grow: 1;
+}
+.boonFooter {
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+}
+
+.boonParty {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.boonParty strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.boonDesc {
+  font-size: 0.95rem;
+  margin: 12px 0 0;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.boonActions {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+}
+.boonActions button {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+.boonActions button:hover {
+  color: var(--accent);
+}
+
+.badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+  text-transform: uppercase;
+  color: white;
+}
+/* Levels */
+.trivial { background: var(--grey); }
+.minor   { background: var(--blue); }
+.major   { background: var(--yellow); }
+.life    { background: var(--accent); }
+/* Status */
+.owed     { border: 1px solid var(--accent); color: var(--accent); }
+.paid     { border: 1px solid var(--green); color: var(--green); }
+.excused  { border: 1px solid var(--muted); color: var(--muted); }
+
+/* --- Boon Form --- */
+.boonForm {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  padding: 16px;
+  border-radius: var(--radius);
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.boonForm h3 {
+  font-family: "Cinzel", serif;
+  margin: 0 0 8px;
+}
+.formGrid {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 12px;
+  align-items: center;
+}
+.boonForm label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.boonForm input,
+.boonForm select,
+.boonForm textarea {
+  width: 100%;
+  background: var(--bg1);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px;
+  border-radius: 4px;
+  font-family: "Inter", sans-serif;
+}
+.boonForm textarea {
+  resize: vertical;
+}
+.manualInput {
+  margin-top: 8px;
+}
+.formActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* --- Utility --- */
+.subtle {
+  color: var(--muted);
+  font-style: italic;
+  text-align: center;
+  padding: 20px;
+}
+.alertError {
+  background: #4d151c;
+  border: 1px solid var(--accent);
+  color: #ffcad3;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+}
+
+/* Buttons */
+.btnPrimary {
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  border: none;
+  font-weight: 600;
+  font-family: "Inter", sans-serif;
+  background: linear-gradient(180deg, #ff2c52, var(--accent));
+  color: white;
+  cursor: pointer;
+  transition: transform .12s ease;
+}
+.btnPrimary:hover {
+  transform: translateY(-1px);
+}
+.btnGhost {
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  font-weight: 600;
+  font-family: "Inter", sans-serif;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.btnGhost:hover {
+  border-color: var(--muted);
+  color: var(--text);
+}
+
+@media (max-width: 600px) {
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+}

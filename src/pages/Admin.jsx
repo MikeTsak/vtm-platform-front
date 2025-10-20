@@ -113,6 +113,300 @@ export default function Admin() {
     }
   }
 
+// ========= Characters: Generate PDF (client-side, from JSON sheet) =========
+  async function handleGeneratePDF(character) {
+    try {
+      const { jsPDF } = await import('jspdf');
+
+      // --- 1. FONT SETUP ---
+      // IMPORTANT: You must provide the Base64-encoded .ttf files for the fonts.
+      // 1. Get your .ttf font files (e.g., from Google Fonts)
+      // 2. Use an online converter (search "ttf to base64") to get the string
+      // 3. Paste that string (it's very long) to replace the "..."
+      const CinzelRegular_Base64 = "..."; // <--- PASTE Cinzel-Regular.ttf BASE64 HERE
+      const CinzelBold_Base64 = "..."; // <--- PASTE Cinzel-Bold.ttf BASE64 HERE
+
+      const FONT_REGULAR = 'Cinzel';
+      const FONT_BOLD = 'Cinzel-Bold';
+
+      // --- 2. STYLES & LAYOUT ---
+      const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const M = 36; // margin
+      const usableW = pageW - M * 2;
+      let y = M; // Current Y-position cursor
+
+      const COLOR_RED = '#8a0303'; // Dark blood red
+      const COLOR_DARK = '#333333';
+      const COLOR_LIGHT = '#aaaaaa';
+      const COLOR_FILL = '#333333';
+      const DOT_SIZE = 6;
+      const DOT_GAP = 4;
+      
+      // Add fonts to the virtual file system
+      if (CinzelRegular_Base64 !== "...") {
+        doc.addFileToVFS('Cinzel-Regular.ttf', CinzelRegular_Base64);
+        doc.addFont('Cinzel-Regular.ttf', FONT_REGULAR, 'normal');
+      }
+      if (CinzelBold_Base64 !== "...") {
+        doc.addFileToVFS('Cinzel-Bold.ttf', CinzelBold_Base64);
+        doc.addFont('Cinzel-Bold.ttf', FONT_BOLD, 'normal');
+      }
+      // Set default font
+      doc.setFont(FONT_REGULAR);
+
+
+      // --- 3. PDF HELPER FUNCTIONS ---
+
+      // Ensures there is enough space for the next element, adds a page if not
+      const ensure = (extraH = 20) => {
+        if (y + extraH > pageH - M) {
+          doc.addPage();
+          y = M;
+        }
+      };
+      
+      // Splits long text
+      const split = (t, w = usableW) => doc.splitTextToSize(String(t ?? ''), w);
+      
+      // Draws a styled section header
+      const section = (title) => {
+        ensure(30);
+        y += 10; // Extra space before section
+        doc.setFont(FONT_BOLD).setFontSize(14).setTextColor(COLOR_RED);
+        doc.text(title.toUpperCase(), M, y);
+        y += 6;
+        doc.setDrawColor(COLOR_RED).setLineWidth(1).line(M, y, M + usableW, y);
+        y += 20;
+        doc.setFont(FONT_REGULAR).setFontSize(10).setTextColor(COLOR_DARK);
+      };
+
+      // Draws a label and a series of "dots" (circles)
+      const drawDots = (label, value, max = 5) => {
+        ensure(18);
+        const val = Number(value) || 0;
+        const maxVal = Number(max) || 5;
+        const x = M + 120; // X-position for dots
+
+        // Draw Label
+        doc.setFont(FONT_REGULAR).setFontSize(10).setTextColor(COLOR_DARK);
+        doc.text(label, M, y + DOT_SIZE - 1);
+        
+        // Draw Dots
+        doc.setLineWidth(1);
+        for (let i = 1; i <= maxVal; i++) {
+          const dotX = x + (i * (DOT_SIZE + DOT_GAP));
+          const isFilled = i <= val;
+          doc.setFillColor(isFilled ? COLOR_FILL : '#ffffff');
+          doc.setDrawColor(isFilled ? COLOR_FILL : COLOR_LIGHT);
+          doc.circle(dotX, y + (DOT_SIZE / 2), DOT_SIZE / 2, 'FD');
+        }
+        y += DOT_SIZE + DOT_GAP + 6;
+      };
+
+      // Draws a label and a series of "tracker" boxes (for Health, WP)
+      const drawTracker = (label, value, max = 10, xStart = M) => {
+        ensure(22);
+        const val = Number(value) || 0;
+        const BOX_SIZE = 10;
+        const BOX_GAP = 3;
+
+        // Draw Label
+        doc.setFont(FONT_BOLD).setFontSize(10).setTextColor(COLOR_DARK);
+        doc.text(label.toUpperCase(), xStart, y + BOX_SIZE - 1);
+        
+        // Draw Boxes
+        doc.setLineWidth(1).setDrawColor(COLOR_DARK);
+        for (let i = 1; i <= max; i++) {
+          const boxX = xStart + 80 + (i * (BOX_SIZE + BOX_GAP));
+          const isFilled = i <= val;
+          doc.setFillColor(isFilled ? COLOR_FILL : '#ffffff');
+          doc.rect(boxX, y, BOX_SIZE, BOX_SIZE, 'FD');
+        }
+        y += BOX_SIZE + BOX_GAP + 6;
+      };
+
+      // --- 4. PARSE CHARACTER DATA ---
+      let sheet = {};
+      try {
+        sheet = typeof character.sheet === 'string'
+          ? JSON.parse(character.sheet)
+          : (character.sheet || {});
+      } catch (e) {
+        console.error('Invalid sheet JSON', e);
+        alert('Invalid JSON sheet. Please fix the sheet and try again.');
+        return;
+      }
+
+      // Data accessors
+      const name = character.name || sheet.name || 'Unnamed';
+      const clan = character.clan || sheet.clan || '—';
+      const owner = character.owner || character.owner_name || '—';
+      const id = character.id ?? '—';
+
+      const attrs = sheet.attributes || {};
+      const getAttr = (k) => Number(attrs[k] ?? 0);
+      const healthMax = getAttr('Stamina') + 3;
+      const willMax = getAttr('Composure') + getAttr('Resolve');
+
+      // --- 5. BUILD THE PDF DOCUMENT ---
+
+      // == HEADER ==
+      doc.setFont(FONT_BOLD).setFontSize(24).setTextColor(COLOR_RED);
+      doc.text(name.toUpperCase(), M, y);
+      y += 24;
+
+      doc.setFont(FONT_REGULAR).setFontSize(11).setTextColor(COLOR_DARK);
+      const colW = usableW / 3;
+      doc.text(`Clan: ${clan}`, M, y);
+      doc.text(`Predator: ${sheet.predatorType || '—'}`, M + colW, y);
+      doc.text(`Sire: ${sheet.sire || '—'}`, M + colW * 2, y);
+      y += 16;
+      doc.text(`Ambition: ${sheet.ambition || '—'}`, M, y);
+      doc.text(`Desire: ${sheet.desire || '—'}`, M + colW, y);
+      y += 14;
+      doc.setDrawColor(COLOR_LIGHT).setLineWidth(0.5).line(M, y, M + usableW, y);
+      y += 10;
+
+      // == TRACKERS ==
+      drawTracker('Health', sheet.health_current ?? healthMax, healthMax);
+      drawTracker('Willpower', sheet.willpower_current ?? willMax, willMax);
+      drawTracker('Humanity', sheet.humanity ?? 7, 10);
+
+      // == ATTRIBUTES ==
+      section('Attributes');
+      doc.setFontSize(9).setTextColor(COLOR_LIGHT).text('Physical', M + 120, y - 8);
+      drawDots('Strength', getAttr('Strength'));
+      drawDots('Dexterity', getAttr('Dexterity'));
+      drawDots('Stamina', getAttr('Stamina'));
+      
+      y += 6;
+      doc.setFontSize(9).setTextColor(COLOR_LIGHT).text('Social', M + 120, y - 8);
+      drawDots('Charisma', getAttr('Charisma'));
+      drawDots('Manipulation', getAttr('Manipulation'));
+      drawDots('Composure', getAttr('Composure'));
+      
+      y += 6;
+      doc.setFontSize(9).setTextColor(COLOR_LIGHT).text('Mental', M + 120, y - 8);
+      drawDots('Intelligence', getAttr('Intelligence'));
+      drawDots('Wits', getAttr('Wits'));
+      drawDots('Resolve', getAttr('Resolve'));
+
+      // == SKILLS ==
+      section('Skills');
+      const skills = sheet.skills || {};
+      const skillKeys = Object.keys(skills).sort();
+      if (!skillKeys.length) {
+        doc.text('No skills defined.', M, y); y += 14;
+      }
+      skillKeys.forEach((k) => {
+        const s = skills[k] || {};
+        const dots = Number(s.dots || 0);
+        const specs = (Array.isArray(s.specialties) ? s.specialties : []).join(', ');
+        const label = specs ? `${k} (${specs})` : k;
+        drawDots(label, dots);
+      });
+
+      // == DISCIPLINES & POWERS ==
+      section('Disciplines');
+      const disc = sheet.disciplines || {};
+      const powers = sheet.disciplinePowers || {};
+      const discKeys = Object.keys(disc).sort();
+      if (!discKeys.length) {
+        doc.text('No disciplines defined.', M, y); y += 14;
+      }
+      discKeys.forEach((k) => {
+        ensure(30);
+        drawDots(k, disc[k]);
+        const powerList = powers[k] || [];
+        if (powerList.length) {
+          y -= 6; // Move up to tuck under the dots
+          powerList.forEach((p) => {
+            const ln = `• [Lvl ${p.level}] ${p.name || p.id || '—'}`;
+            const lines = split(ln, usableW - 140); // Indent
+            lines.forEach((l2) => {
+              ensure(14);
+              doc.text(l2, M + 140, y);
+              y += 12;
+            });
+          });
+          y += 6; // Add space after
+        }
+      });
+
+      // == ADVANTAGES (MERITS & FLAWS) ==
+      section('Advantages');
+      const merits = (sheet.advantages && sheet.advantages.merits) || [];
+      const flaws = (sheet.advantages && sheet.advantages.flaws) || [];
+      
+      doc.setFont(FONT_BOLD).setFontSize(11).text('Merits', M, y); y += 14;
+      if (!merits.length) {
+        doc.setFont(FONT_REGULAR).setFontSize(10).text('• None', M + 12, y); y += 14;
+      }
+      merits.filter(Boolean).forEach((m) => {
+        const nm = m.name || m.id || '—';
+        const dt = (m.dots ?? m.rating ?? '—');
+        const ln = `• ${nm} (${dt} dots)${m.description ? `: ${m.description}` : ''}`;
+        split(ln).forEach((l) => { ensure(14); doc.text(l, M + 12, y); y += 14; });
+      });
+      
+      y += 10;
+      doc.setFont(FONT_BOLD).setFontSize(11).text('Flaws', M, y); y += 14;
+      if (!flaws.length) {
+        doc.setFont(FONT_REGULAR).setFontSize(10).text('• None', M + 12, y); y += 14;
+      }
+      flaws.filter(Boolean).forEach((m) => {
+        const nm = m.name || m.id || '—';
+        const dt = (m.dots ?? m.rating ?? '—');
+        const ln = `• ${nm} (${dt} dots)${m.description ? `: ${m.description}` : ''}`;
+        split(ln).forEach((l) => { ensure(14); doc.text(l, M + 12, y); y += 14; });
+      });
+
+      // == MORALITY ==
+      section('Morality');
+      const mor = sheet.morality || {};
+      if (mor.tenets) {
+        doc.setFont(FONT_BOLD).text('Tenets', M, y); y += 14;
+        split(mor.tenets).forEach((ln) => { ensure(14); doc.text(ln, M + 12, y); y += 14; });
+      }
+      if (Array.isArray(mor.convictions) && mor.convictions.length) {
+        y += 10;
+        doc.setFont(FONT_BOLD).text('Convictions', M, y); y += 14;
+        mor.convictions.forEach(c => {
+          split(`• ${c}`).forEach(ln => { ensure(14); doc.text(ln, M + 12, y); y += 14; });
+        });
+      }
+      if (Array.isArray(mor.touchstones) && mor.touchstones.length) {
+        y += 10;
+        doc.setFont(FONT_BOLD).text('Touchstones', M, y); y += 14;
+        mor.touchstones.forEach(t => {
+          split(`• ${t}`).forEach(ln => { ensure(14); doc.text(ln, M + 12, y); y += 14; });
+        });
+      }
+
+      // == FOOTER ==
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFont(FONT_REGULAR).setFontSize(9).setTextColor(COLOR_LIGHT);
+        doc.setDrawColor(COLOR_LIGHT).setLineWidth(0.5).line(M, pageH - M + 10, pageW - M, pageH - M + 10);
+        doc.text(`Character ${id} | ${name}`, M, pageH - M + 22);
+        doc.text(`Page ${i} of ${pageCount}`, pageW - M - 50, pageH - M + 22);
+        doc.text(`Generated ${new Date().toLocaleString()}`, pageW / 2, pageH - M + 22, { align: 'center' });
+      }
+
+      // --- 6. SAVE THE PDF ---
+      doc.save(`${(name || 'character').replace(/\s+/g, '_')}-${id}-sheet.pdf`);
+
+    } catch (e) {
+      console.error('Client PDF generation failed', e);
+      alert('Could not generate the PDF in the browser. Check console for details.');
+    }
+  }
+
+
+
   // ========= Characters =========
   async function saveCharacter(c) {
     setErr(''); setMsg('');
@@ -140,6 +434,19 @@ export default function Admin() {
       setErr(e.response?.data?.error || 'Failed to adjust XP');
     }
   }
+
+  // ========= Characters: Delete =========
+  async function deleteCharacter(id) {
+    setErr(''); setMsg('');
+    try {
+      await api.delete(`/admin/characters/${id}`);
+      setMsg(`Character #${id} deleted`);
+      load();
+    } catch (e) {
+      setErr(e.response?.data?.error || 'Failed to delete character');
+    }
+  }
+
 
   // ========= Claims =========
   async function saveClaim(division, patch) {
@@ -211,7 +518,15 @@ export default function Admin() {
         </div>
 
         {tab === 'users' && <UsersTab users={users} onSave={saveUser} />}
-        {tab === 'characters' && <CharactersTab users={users} onSave={saveCharacter} />}
+        {tab === 'characters' && (
+          <CharactersTab
+            users={users}
+            onSave={saveCharacter}
+            onDelete={deleteCharacter}
+            onGeneratePDF={handleGeneratePDF}
+          />
+        )}
+
         {tab === 'claims' && (
           <ClaimsTab
             claims={claims}
@@ -267,6 +582,7 @@ function UsersTab({ users, onSave }) {
             <input value={getRow(u).email} onChange={e=>setRow(u, { email: e.target.value })}/>
             <select value={getRow(u).role} onChange={e=>setRow(u, { role: e.target.value })}>
               <option value="user">user</option>
+              <option value="courtuser">courtuser</option>
               <option value="admin">admin</option>
             </select>
             <div className={styles.subtle}>{u.char_name ? `${u.char_name} (${u.clan})` : '—'}</div>
@@ -285,7 +601,7 @@ function UsersTab({ users, onSave }) {
 
 /* ==================== CHARACTERS ==================== */
 
-function CharactersTab({ users, onSave }) {
+function CharactersTab({ users, onSave, onDelete, onGeneratePDF }) {
   const chars = useMemo(() => users.filter(u => u.character_id).map(u => ({
     id: u.character_id,
     user_id: u.id,
@@ -339,23 +655,26 @@ function CharactersTab({ users, onSave }) {
             {/* --- NEW BUTTON --- */}
             <button
               className={styles.btn}
-              onClick={() => {
-                let parsedSheet;
-                try { parsedSheet = JSON.parse(getRow(c).sheet || '{}'); }
-                catch { alert('Invalid JSON. Cannot generate PDF.'); return; }
-                
-                const charDataForPDF = {
-                  name: getRow(c).name,
-                  clan: getRow(c).clan,
-                  xp: c.xp,
-                  owner: c.owner,
-                  ...parsedSheet // Spread the *edited* sheet
-                };
-                handleGeneratePDF(charDataForPDF);
-              }}
+              onClick={() => onGeneratePDF(c)}
             >
               Download PDF
             </button>
+
+
+                        <button
+              className={styles.btn}
+              style={{ background: '#b91c1c', color: '#fff' }} // danger style
+              onClick={() => {
+                const confirmText = window.prompt(
+                  `Type DELETE to permanently remove character "${c.name}" (#${c.id}). This cannot be undone.`
+                );
+                if (confirmText !== 'DELETE') return;
+                onDelete(c.id);
+              }}
+            >
+              Delete Character
+            </button>
+
             {/* --- END NEW BUTTON --- */}
 
           </div>
