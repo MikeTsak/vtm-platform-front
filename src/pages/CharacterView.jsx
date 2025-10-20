@@ -1,19 +1,11 @@
 // src/pages/CharacterView.jsx
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import api from '../api';
-// If '../data/disciplines' does not export these names, adjust accordingly.
-// For example, if it exports a default object:
-import disciplinesData from '../data/disciplines';
-// const { DISCIPLINES, ALL_DISCIPLINE_NAMES, iconPath } = disciplinesData;
-
-// Or, if only some are exported:
 import { DISCIPLINES, ALL_DISCIPLINE_NAMES, iconPath } from '../data/disciplines';
-// Make sure these are actually exported from the module.
 import { RITUALS } from '../data/rituals';
 import styles from '../styles/CharacterView.module.css';
 import CharacterSetup from './CharacterSetup';
 import { MERITS_AND_FLAWS } from '../data/merits_flaws';
-
 
 /* ---------- Clan tint colors ---------- */
 const CLAN_COLORS = {
@@ -43,6 +35,56 @@ const SKILLS = {
   Social: ['Animal Ken','Etiquette','Insight','Intimidation','Leadership','Performance','Persuasion','Streetwise','Subterfuge'],
   Mental: ['Academics','Awareness','Finance','Investigation','Medicine','Occult','Politics','Science','Technology'],
 };
+
+/* ======================================================
+   MERITS HELPERS (module-scope so MeritAdder can use them)
+   ====================================================== */
+function bulletCount(s = '') {
+  const m = String(s).match(/•/g);
+  return m ? m.length : 0;
+}
+/** Parse dot specs like "•", "•••", "• - •••", "•• or ••••", "• +" */
+function parseDotSpec(spec = '') {
+  const src = String(spec).trim();
+  if (!src) return [];
+  if (/\bor\b/i.test(src)) {
+    const opts = src.split(/\bor\b/i).map(s => bulletCount(s)).filter(n => n > 0);
+    return Array.from(new Set(opts)).sort((a, b) => a - b);
+  }
+  if (src.includes('-')) {
+    const [lo, hi] = src.split('-').map(s => bulletCount(s));
+    if (lo > 0 && hi >= lo) { const out = []; for (let i = lo; i <= hi; i++) out.push(i); return out; }
+  }
+  if (src.includes('+')) {
+    const min = bulletCount(src);
+    return min > 0 ? [min] : [];
+  }
+  const n = bulletCount(src);
+  return n > 0 ? [n] : [];
+}
+function glyph(n) {
+  return '•'.repeat(Math.max(0, Number(n) || 0));
+}
+/** Flatten merits only (exclude Caitiff/Thin-blood/Ghouls/Cults families) */
+function allSelectableMerits() {
+  const out = [];
+  for (const [cat, payload] of Object.entries(MERITS_AND_FLAWS)) {
+    if (['Caitiff', 'Thin-blood', 'Ghouls', 'Cults'].includes(cat)) continue;
+    const pushIt = (item, category) => {
+      const allowed = parseDotSpec(item.dots);
+      if (!allowed.length) return; // not buyable here
+      out.push({ id: item.id, name: item.name, dotsSpec: item.dots, description: item.description, category, allowed });
+    };
+    (payload.merits || []).forEach(m => pushIt(m, cat));
+    if (payload.groups) {
+      for (const [sub, grp] of Object.entries(payload.groups)) {
+        (grp.merits || []).forEach(m => pushIt(m, `${cat} / ${sub}`));
+      }
+    }
+  }
+  const seen = new Set();
+  return out.filter(m => (seen.has(m.id) ? false : (seen.add(m.id), true)));
+}
 
 /* ===========================
    Sheet normalization helpers
@@ -102,7 +144,9 @@ function normalizeFromFlatAny(source) {
 
   sheet.morality = flat.morality || {};
   sheet.humanity = flat.morality?.humanity ?? undefined;
-  sheet.blood_potency = Number(flat.bloodPotency ?? 1);
+
+  // normalized BP key
+  sheet.blood_potency = Number(flat.bloodPotency ?? flat.blood_potency ?? 1);
 
   sheet.health_current = flat.health_current;
   sheet.health_max = flat.health_max;
@@ -125,6 +169,8 @@ function attachStructured(raw) {
     sheet.rituals = sheet.rituals || { blood_sorcery: [], oblivion: [] };
     sheet.rituals.blood_sorcery = sheet.rituals.blood_sorcery || [];
     sheet.rituals.oblivion = sheet.rituals.oblivion || [];
+    // default BP
+    if (sheet.blood_potency == null) sheet.blood_potency = 1;
     return { ...raw, sheet };
   }
   if (looksLikeFlatSheet(raw.sheet)) return { ...raw, sheet: normalizeFromFlatAny(raw) };
@@ -144,6 +190,7 @@ const XP_RULES = {
   disciplineCaitiff: newLevel => newLevel * 6,
   ritual: lvl => lvl * 3,
   ceremony: lvl => lvl * 3,
+  bloodPotency: newLevel => newLevel * 10, // BP costs 10 × new level
 };
 
 function disciplineKindFor(ch, name) {
@@ -200,16 +247,14 @@ export default function CharacterView({
         pickFrom: 'npc',
       };
     }
-    // If we're passed a direct path (e.g., from an inline view), use it.
     if (loadPath) {
       return {
         load: loadPath,
         spend: xpSpendPath,
         totals: null,
-        pickFrom: 'npc' // Assume it's an NPC if a direct load path is given
+        pickFrom: 'npc',
       };
     }
-    // Default to the logged-in user's character.
     return {
       load: `/characters/me`,
       spend: `/characters/xp/spend`,
@@ -217,7 +262,6 @@ export default function CharacterView({
       pickFrom: 'character',
     };
   }, [adminNPCId, loadPath, xpSpendPath]);
-
 
   const [showSetup, setShowSetup] = useState(false);
   const [ch, setCh] = useState(null);
@@ -235,13 +279,8 @@ export default function CharacterView({
     api.get(paths.load)
       .then(r => {
         let obj = null;
-        // If we are loading an NPC via ID or direct path, look for the 'npc' key from the API response.
-        if (adminNPCId || loadPath) {
-          obj = r.data.npc || null;
-        } else {
-          // Otherwise, it's a player character.
-          obj = r.data.character || r.data[paths.pickFrom] || null;
-        }
+        if (adminNPCId || loadPath) obj = r.data.npc || r.data.character || r.data[paths.pickFrom] || null;
+        else obj = r.data.character || r.data[paths.pickFrom] || r.data.npc || null;
         if (!mounted) return;
         setCh(attachStructured(obj));
       })
@@ -252,7 +291,7 @@ export default function CharacterView({
     return () => { mounted = false; };
   }, [paths, adminNPCId, loadPath]);
 
-  // Optional: fetch XP totals (players only, unless you add an NPC totals endpoint)
+  // Optional: fetch XP totals (players only)
   useEffect(() => {
     if (!paths.totals || !ch) return;
     api.get(paths.totals)
@@ -267,7 +306,6 @@ export default function CharacterView({
       const obj = data.character || data.npc || null;
       setCh(attachStructured(obj));
       setMsg(`Spent ${data.spent} XP.`);
-      // Refresh totals for player
       if (paths.totals) {
         try { const t = await api.get(paths.totals); setXpTotals(t.data); } catch {}
       }
@@ -319,7 +357,7 @@ export default function CharacterView({
     }
   }, [ch, computeMissingPicks, modalOpen]);
 
-  // Discipline power confirm flow (assignment free if no dot increase)
+  // Discipline power confirm flow
   async function confirmDisciplinePurchase({ name, selectedPowerId, selectedPowerName, current, next, kind, assignOnly }) {
     const nextSheet = JSON.parse(JSON.stringify(sheet));
     nextSheet.disciplines = nextSheet.disciplines || {};
@@ -334,7 +372,6 @@ export default function CharacterView({
 
     try {
       if (assignOnly) {
-        // Free: assignment only
         await api.post(paths.spend, {
           type: 'discipline',
           disciplineKind: 'select',
@@ -435,13 +472,13 @@ export default function CharacterView({
         )}
 
         <div className={styles.loadingSwap}>
-          {/* Phase 1: visible immediately */}
+          {/* Phase 1 */}
           <div className={styles.loadingPhase}>
             <div className={styles.spinner} aria-label="Loading" />
             <div className={styles.loadingText}>Loading character…</div>
           </div>
 
-          {/* Phase 2: if no data (only for players, not admin NPC) */}
+          {/* Phase 2: only for players */}
           {!adminNPCId && !loadPath && (
             <div className={styles.emptyPhase}>
               <h2 className={styles.cardHead}>No character found</h2>
@@ -453,7 +490,7 @@ export default function CharacterView({
           )}
         </div>
 
-        {/* Fullscreen overlay with CharacterSetup (players only) */}
+        {/* Setup overlay */}
         {!adminNPCId && !loadPath && showSetup && (
           <div className={styles.setupOverlay} role="dialog" aria-modal="true">
             <button
@@ -472,51 +509,6 @@ export default function CharacterView({
     );
   }
 
-  /* ---------- Merits helpers (reuse from setup) ---------- */
-function bulletCount(s=''){ const m = String(s).match(/•/g); return m? m.length : 0; }
-/** Parse dot specs like "•", "•••", "• - •••", "•• or ••••", "• +" */
-function parseDotSpec(spec='') {
-  const src = String(spec).trim();
-  if (!src) return [];
-  if (/\bor\b/i.test(src)) {
-    const opts = src.split(/\bor\b/i).map(s => bulletCount(s)).filter(n => n>0);
-    return Array.from(new Set(opts)).sort((a,b)=>a-b);
-  }
-  if (src.includes('-')) {
-    const [lo, hi] = src.split('-').map(s => bulletCount(s));
-    if (lo>0 && hi>=lo) { const out=[]; for(let i=lo;i<=hi;i++) out.push(i); return out; }
-  }
-  if (src.includes('+')) { const min = bulletCount(src); return min>0 ? [min] : []; }
-  const n = bulletCount(src);
-  return n>0 ? [n] : [];
-}
-function glyph(n){ return '•'.repeat(Math.max(0, Number(n)||0)); }
-
-/** Flatten merits only (exclude Caitiff/Thin-blood/Ghouls/Cults families) */
-function allSelectableMerits(){
-  const out=[];
-  for (const [cat, payload] of Object.entries(MERITS_AND_FLAWS)){
-    if (['Caitiff','Thin-blood','Ghouls','Cults'].includes(cat)) continue;
-    const pushIt = (item, category) => {
-      const allowed = parseDotSpec(item.dots);
-      if (!allowed.length) return; // not buyable here
-      out.push({ id:item.id, name:item.name, dotsSpec:item.dots, description:item.description, category, allowed });
-    };
-    (payload.merits||[]).forEach(m => pushIt(m, cat));
-    if (payload.groups){
-      for (const [sub, grp] of Object.entries(payload.groups)){
-        (grp.merits||[]).forEach(m => pushIt(m, `${cat} / ${sub}`));
-      }
-    }
-  }
-  // de-dup by id just in case
-  const seen=new Set(); return out.filter(m=> (seen.has(m.id)?false: (seen.add(m.id), true)));
-}
-
-
-
-
-  // ===== Discipline grouping for the XP Shop (in-clan first, out-of-clan in drawer)
   const inClanDisciplines = ALL_DISCIPLINE_NAMES.filter(n => disciplineKindFor(ch, n) === 'clan');
   const outOfClanDisciplines = ALL_DISCIPLINE_NAMES.filter(n => disciplineKindFor(ch, n) !== 'clan');
 
@@ -631,6 +623,41 @@ function allSelectableMerits(){
             <span className={styles.muted}>You have <b>{xp}</b> XP</span>
           </div>
 
+          {/* Blood Potency */}
+          <Card>
+            <div className={styles.cardHead}><b>Blood Potency</b></div>
+            <div className={styles.grid}>
+              {(() => {
+                const current = Number(sheet.blood_potency ?? 1);
+                const max = 10; // hard cap
+                const next = Math.min(current + 1, max);
+                const canRaise = current < max;
+                const cost = XP_RULES.bloodPotency(next);
+                const afford = xp >= cost;
+                return (
+                  <ShopRow
+                    title={`Blood Potency (${current})`}
+                    subtitle={canRaise ? `Raise to ${next}` : 'Max reached'}
+                    cost={cost}
+                    disabled={!canRaise || !afford}
+                    hint={!canRaise ? `Max ${max}` : (!afford ? 'Not enough XP' : '')}
+                    onBuy={async () => {
+                      const nextSheet = JSON.parse(JSON.stringify(sheet));
+                      nextSheet.blood_potency = next;
+                      await spendXP({
+                        type: 'blood_potency',
+                        target: 'Blood Potency',
+                        currentLevel: current,
+                        newLevel: next,
+                        patchSheet: nextSheet,
+                      });
+                    }}
+                  />
+                );
+              })()}
+            </div>
+          </Card>
+
           {/* Attributes */}
           <Card>
             <div className={styles.cardHead}><b>Attributes</b></div>
@@ -732,7 +759,7 @@ function allSelectableMerits(){
             />
           </Card>
 
-          {/* Disciplines (in-clan visible, out-of-clan in drawer) */}
+          {/* Disciplines */}
           <Card>
             <div className={styles.cardHead}><b>Disciplines</b></div>
 
@@ -760,7 +787,6 @@ function allSelectableMerits(){
                     disabled={!canRaise || !afford}
                     hint={!canRaise ? 'Max 5' : (!afford ? 'Not enough XP' : '')}
                     onBuy={async () => {
-                      // Buy/raise the dot first; modal will open to select a power afterwards if missing
                       const nextSheet = JSON.parse(JSON.stringify(sheet));
                       nextSheet.disciplines = { ...(nextSheet.disciplines || {}), [name]: next };
                       await spendXP({
@@ -771,7 +797,6 @@ function allSelectableMerits(){
                         newLevel: next,
                         patchSheet: nextSheet,
                       });
-                      // After this, computeMissingPicks() will detect a missing power and prompt
                     }}
                   />
                 );
@@ -816,6 +841,55 @@ function allSelectableMerits(){
                 })}
               </div>
             </Drawer>
+          </Card>
+
+          {/* Merits (Advantages) */}
+          <Card>
+            <div className={styles.cardHead}><b>Merits</b></div>
+            <MeritAdder
+              xp={xp}
+              existing={Array.isArray(sheet?.advantages?.merits) ? sheet.advantages.merits : []}
+              onAdd={async (merit, dots) => {
+                const cost = XP_RULES.advantageDot(dots);
+                if (xp < cost) return;
+
+                const nextSheet = JSON.parse(JSON.stringify(sheet));
+                nextSheet.advantages = nextSheet.advantages || { merits: [], flaws: [] };
+                nextSheet.advantages.merits = Array.isArray(nextSheet.advantages.merits) ? nextSheet.advantages.merits : [];
+
+                // prevent exact duplicate (same id and dots)
+                const key = `${merit.id}:${dots}`;
+                const present = new Set(nextSheet.advantages.merits.map(m => `${m.id}:${m.dots}`));
+                if (!present.has(key)) {
+                  nextSheet.advantages.merits.push({
+                    id: merit.id,
+                    name: merit.name,
+                    dots,
+                    from: 'xp_shop',
+                  });
+                }
+
+                await spendXP({
+                  type: 'advantage',
+                  target: merit.id,
+                  dots,
+                  patchSheet: nextSheet,
+                });
+              }}
+            />
+            {Array.isArray(sheet?.advantages?.merits) && sheet.advantages.merits.length > 0 && (
+              <div className={styles.grid} style={{ marginTop: 10 }}>
+                <div className={styles.subhead}>Owned Merits</div>
+                <ul className={styles.powerList}>
+                  {sheet.advantages.merits.map((m, i) => (
+                    <li key={`${m.id || m.name}-${i}`} className={styles.powerPill}>
+                      <span className={styles.levelBadge}>{glyph(m.dots || 0)}</span>
+                      <span className={styles.powerName}>{m.name || m.id}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </Card>
 
           {/* Rituals & Ceremonies */}
@@ -1206,13 +1280,13 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
   };
   const parseAmalgam = (s = '') =>
     s.split(/(?:,|&|\+|and)/i)
-     .map(part => part.trim())
-     .filter(Boolean)
-     .map(part => {
-       const nameMatch = part.match(/^[^\d•●○]+/);
-       const discName = (nameMatch ? nameMatch[0] : part).trim().replace(/[:.-]+$/,'');
-       return { disc: discName, dots: countDots(part) };
-     });
+      .map(part => part.trim())
+      .filter(Boolean)
+      .map(part => {
+        const nameMatch = part.match(/^[^\d•●○]+/);
+        const discName = (nameMatch ? nameMatch[0] : part).trim().replace(/[:.-]+$/, '');
+        return { disc: discName, dots: countDots(part) };
+      });
 
   const annotated = useMemo(() => {
     return fullPool.map(p => {
@@ -1394,36 +1468,7 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
             {/* RIGHT PANE */}
             <div className={styles.paneCard}>
               <section className={styles.powerDetailPane}>
-                {sel ? (
-                  <>
-                    <div className={styles.detailHeader}>
-                      <div className={styles.detailTitle}>
-                        {sel.name}
-                        {!sel.__available && (
-                          <span className={`${styles.powerBadgeMuted} ${sel.__flags.owned ? 'badge-owned' : 'badge-warn'}`} style={{ marginLeft: 8 }}>
-                            {sel.__flags.owned ? 'Owned' : `Conditions not met: ${sel.__flags.unmet.join(', ')}`}
-                          </span>
-                        )}
-                      </div>
-                      <div className={styles.muted}>
-                        Level {sel.__level}{sel.source ? ` • Source: ${sel.source}` : ''}
-                      </div>
-                    </div>
-
-                    <div className={styles.detailScroll}>
-                      <div className={styles.detailTags}>
-                        {['cost','duration','dice_pool','opposing_pool','amalgam','prerequisite'].map(k => {
-                          const v = sel?.[k];
-                          if (!v) return null;
-                          return <span key={k} className={styles.powerTag}><b>{labelize(k)}:</b> {v}</span>;
-                        })}
-                      </div>
-                      {sel.notes && <div className={styles.powerNotes}>{sel.notes}</div>}
-                    </div>
-                  </>
-                ) : (
-                  <div className={styles.emptyNote}>Select a power to see details.</div>
-                )}
+                {/* details could go here if needed */}
               </section>
             </div>
           </div>
@@ -1484,6 +1529,90 @@ function SpecialtyAdder({ xp, onAdd }) {
       >
         Add Specialty
       </button>
+    </div>
+  );
+}
+
+/* ---------- Merit adder (XP Shop) ---------- */
+function MeritAdder({ xp, existing = [], onAdd }) {
+  const all = useMemo(() => allSelectableMerits(), []);
+  const [q, setQ] = useState('');
+  const [selId, setSelId] = useState(all[0]?.id || '');
+  const sel = useMemo(() => all.find(m => m.id === selId) || null, [all, selId]);
+
+  const ownedKeys = useMemo(() => new Set((existing || []).map(m => `${m.id}:${m.dots}`)), [existing]);
+  const filtered = useMemo(() => {
+    const qq = q.trim().toLowerCase();
+    if (!qq) return all;
+    return all.filter(m =>
+      m.name.toLowerCase().includes(qq) ||
+      (m.category || '').toLowerCase().includes(qq)
+    );
+  }, [q, all]);
+
+  const dotsOptions = sel?.allowed || [];
+  const [dots, setDots] = useState(dotsOptions[0] || 1);
+  useEffect(() => {
+    setDots(sel?.allowed?.[0] || 1);
+  }, [selId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const cost = dots * 3;
+  const afford = xp >= cost;
+
+  const wouldDuplicate = sel ? ownedKeys.has(`${sel.id}:${dots}`) : false;
+
+  return (
+    <div className={styles.grid} style={{ gap: 12 }}>
+      <div className={styles.rowForm}>
+        <input
+          className={styles.input}
+          placeholder="Search merits… (name or category)"
+          value={q}
+          onChange={e => setQ(e.target.value)}
+          style={{ flex: 1 }}
+        />
+        <span className={styles.muted}>Cost: <b>{cost}</b> XP</span>
+      </div>
+
+      <div className={styles.rowForm}>
+        <select
+          className={styles.input}
+          value={selId}
+          onChange={e => setSelId(e.target.value)}
+          style={{ flex: 2, minWidth: 220 }}
+        >
+          {filtered.map(m => (
+            <option key={m.id} value={m.id}>
+              {m.name} {m.category ? `— ${m.category}` : ''} ({m.dotsSpec})
+            </option>
+          ))}
+        </select>
+
+        <select
+          className={styles.input}
+          value={dots}
+          onChange={e => setDots(Number(e.target.value))}
+          style={{ width: 120 }}
+        >
+          {dotsOptions.map(n => <option key={n} value={n}>{glyph(n)} ({n})</option>)}
+        </select>
+
+        <button
+          className={styles.cta}
+          disabled={!sel || !afford || wouldDuplicate}
+          onClick={() => onAdd(sel, dots)}
+          title={wouldDuplicate ? 'You already own this merit at that rating' : ''}
+        >
+          Add Merit
+        </button>
+      </div>
+
+      {sel && (
+        <div className={styles.muted} style={{ lineHeight: 1.4 }}>
+          <b>{sel.name}</b>{sel.category ? ` — ${sel.category}` : ''}<br/>
+          {sel.description || 'No description available.'}
+        </div>
+      )}
     </div>
   );
 }

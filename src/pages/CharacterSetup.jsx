@@ -320,16 +320,25 @@ const incAttr = (k, d) =>
     if (P.picks?.flawChoice && !predatorPicks.flawChoice) return false;
     if (P.picks?.backgroundChoice && !predatorPicks.backgroundChoice) return false;
     if (P.picks?.havenFlawChoice && !predatorPicks.havenFlawChoice) return false;
-    // pools exact sum
-    const pools = [...(P.picks?.backgroundPool||[]), ...(P.picks?.flawPool||[])];
-    for (let i=0;i<pools.length;i++){
-      const kind = i < (P.picks?.backgroundPool||[]).length ? 'Pool' : 'FlawPool';
-      const key = `${kind}-${i}-${pools[i].total}`;
-      const target = pools[i].total;
+// pools exact sum (match render indexes exactly)
+    const bgPools = P.picks?.backgroundPool || [];
+    for (let i = 0; i < bgPools.length; i++) {
+      const pool = bgPools[i];
+      const key = `Pool-${i}-${pool.total}`;
       const vals = predatorPicks.pools?.[key] || {};
       const sum = Object.values(vals).reduce((a,b)=>a+(Number(b)||0),0);
-      if (sum !== target) return false;
+      if (sum !== pool.total) return false;
     }
+
+    const flawPools = P.picks?.flawPool || [];
+    for (let j = 0; j < flawPools.length; j++) {
+      const pool = flawPools[j];
+      const key = `FlawPool-${j}-${pool.total}`;
+      const vals = predatorPicks.pools?.[key] || {};
+      const sum = Object.values(vals).reduce((a,b)=>a+(Number(b)||0),0);
+      if (sum !== pool.total) return false;
+    }
+
     return true;
   }, [predatorType, predatorPicks, clan, bloodPotency]);
 
