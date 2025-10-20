@@ -13,6 +13,11 @@ import CharacterView from './CharacterView';
 import domainsRaw from '../data/Domains.json';
 import { Link } from 'react-router-dom';
 
+// PDF Generation
+import pdfMake from 'pdfmake/build/pdfmake';
+import pdfFonts from 'pdfmake/build/vfs_fonts';
+pdfMake.vfs = pdfFonts.vfs; // Initialize fonts
+
 /* ---------------- UI bits ---------------- */
 function TabButton({ active, onClick, children }) {
   return (
@@ -24,6 +29,298 @@ function TabButton({ active, onClick, children }) {
     </button>
   );
 }
+
+/* ---------------- PDF Generation ---------------- */
+
+/**
+ * Renders dots (e.g., •••◦◦)
+ * @param {number} dots - Number of filled dots
+ * @param {number} [max=5] - Maximum dots
+ */
+const renderDots = (dots, max = 5) => {
+  const filled = '•'.repeat(dots);
+  const empty = '◦'.repeat(Math.max(0, max - dots));
+  return filled + empty;
+};
+
+// pdfmake color definitions (using hex for consistent styling)
+const DARK_GREY = '#1e1e1e';
+const TEXT_COLOR = '#000000';
+const WHITE = '#FFFFFF';
+const LIGHT_GREY = '#EEEEEE';
+
+/**
+ * Helper to generate a styled section header for pdfmake
+ * @param {string} title - The header text
+ */
+const getSectionHeader = (title) => ({
+  text: title.toUpperCase(),
+  fontSize: 12,
+  bold: true,
+  color: WHITE,
+  background: DARK_GREY,
+  margin: [0, 10, 0, 5], // top, right, bottom, left
+  alignment: 'left',
+  padding: [2, 4], // vertical, horizontal padding (simulated with margin)
+});
+
+
+/**
+ * Main PDF generation function using pdfmake
+ * @param {object} char - The combined character object (including sheet data)
+ */
+const handleGeneratePDF = (char) => {
+  
+  // --- Data Preparation ---
+  const attrBody = [
+    // Physical
+    ['Strength', renderDots(char.attributes?.Strength || 0)],
+    ['Dexterity', renderDots(char.attributes?.Dexterity || 0)],
+    ['Stamina', renderDots(char.attributes?.Stamina || 0)],
+  ];
+  const attrBody2 = [
+    // Social
+    ['Charisma', renderDots(char.attributes?.Charisma || 0)],
+    ['Manipulation', renderDots(char.attributes?.Manipulation || 0)],
+    ['Composure', renderDots(char.attributes?.Composure || 0)],
+  ];
+  const attrBody3 = [
+    // Mental
+    ['Intelligence', renderDots(char.attributes?.Intelligence || 0)],
+    ['Wits', renderDots(char.attributes?.Wits || 0)],
+    ['Resolve', renderDots(char.attributes?.Resolve || 0)],
+  ];
+
+  const getSkillBody = (keys) => {
+    return keys.map(key => {
+      const skill = char.skills?.[key] || { dots: 0, specialties: [] };
+      const specs = (skill.specialties || []).join(', ');
+      return [
+        { text: key, bold: true }, // Skill Name
+        renderDots(skill.dots),      // Dots
+        { text: specs, fontSize: 8 }  // Specialties
+      ];
+    });
+  };
+
+  const physSkills = ['Athletics', 'Brawl', 'Craft', 'Drive', 'Firearms', 'Larceny', 'Melee', 'Stealth', 'Survival'];
+  const socSkills = ['Animal Ken', 'Etiquette', 'Insight', 'Intimidation', 'Leadership', 'Performance', 'Persuasion', 'Streetwise', 'Subterfuge'];
+  const menSkills = ['Academics', 'Awareness', 'Finance', 'Investigation', 'Medicine', 'Occult', 'Politics', 'Science', 'Technology'];
+  
+  const merits = (char.advantages?.merits || []).filter(m => m.dots > 0);
+  const flaws = (char.advantages?.flaws || []).filter(f => f.dots > 0);
+  
+  // --- Document Definition ---
+  const docDefinition = {
+    // Default styles for the entire document
+    defaultStyle: {
+      font: 'Roboto',
+      fontSize: 10,
+    },
+    // Custom styles
+    styles: {
+      header: {
+        fontSize: 24,
+        bold: true,
+        margin: [0, 0, 0, 8] // [left, top, right, bottom]
+      },
+      subheader: {
+        fontSize: 11,
+        color: '#444444',
+        margin: [0, 0, 0, 6]
+      },
+      tableHeader: {
+          bold: true,
+          fontSize: 10,
+          color: TEXT_COLOR,
+          fillColor: LIGHT_GREY
+      },
+    },
+    
+    content: [
+      // --- Header ---
+      { text: char.name || 'Unnamed Character', style: 'header' },
+      
+      {
+        columns: [
+          { text: `Clan: ${char.clan || 'Unknown'}`, style: 'subheader', width: '*' },
+          { text: `Predator: ${char.predator_type || 'Unknown'}`, style: 'subheader', width: '*' },
+          { text: `Blood Potency: ${char.blood_potency || 1}`, style: 'subheader', width: '*' },
+        ],
+        columnGap: 10
+      },
+      
+      { text: `Ambition: ${char.ambition || '...'}`, style: 'subheader' },
+      { text: `Desire: ${char.desire || '...'}`, style: 'subheader', margin: [0, 0, 0, 10] },
+
+      // --- Attributes ---
+      getSectionHeader('Attributes'),
+      {
+        columns: [
+          // Column 1: Physical
+          {
+            width: '33%',
+            table: {
+              widths: ['*', 'auto'],
+              body: attrBody,
+            },
+            layout: 'noBorders'
+          },
+          // Column 2: Social
+          {
+            width: '33%',
+            table: {
+              widths: ['*', 'auto'],
+              body: attrBody2,
+            },
+            layout: 'noBorders'
+          },
+          // Column 3: Mental
+          {
+            width: '33%',
+            table: {
+              widths: ['*', 'auto'],
+              body: attrBody3,
+            },
+            layout: 'noBorders'
+          },
+        ],
+        columnGap: 10,
+        margin: [0, 0, 0, 10]
+      },
+      
+      // --- Skills ---
+      getSectionHeader('Skills'),
+      {
+        columns: [
+          // Column 1: Physical Skills
+          {
+            width: '33%',
+            table: {
+              headerRows: 1,
+              widths: ['auto', 'auto', '*'],
+              body: [
+                [{ text: 'Skill', style: 'tableHeader' }, { text: 'Dots', style: 'tableHeader' }, { text: 'Specialties', style: 'tableHeader' }],
+                ...getSkillBody(physSkills)
+              ]
+            },
+            layout: 'lightHorizontalLines'
+          },
+          // Column 2: Social Skills
+          {
+            width: '33%',
+            table: {
+              headerRows: 1,
+              widths: ['auto', 'auto', '*'],
+              body: [
+                [{ text: 'Skill', style: 'tableHeader' }, { text: 'Dots', style: 'tableHeader' }, { text: 'Specialties', style: 'tableHeader' }],
+                ...getSkillBody(socSkills)
+              ]
+            },
+            layout: 'lightHorizontalLines'
+          },
+          // Column 3: Mental Skills
+          {
+            width: '33%',
+            table: {
+              headerRows: 1,
+              widths: ['auto', 'auto', '*'],
+              body: [
+                [{ text: 'Skill', style: 'tableHeader' }, { text: 'Dots', style: 'tableHeader' }, { text: 'Specialties', style: 'tableHeader' }],
+                ...getSkillBody(menSkills)
+              ]
+            },
+            layout: 'lightHorizontalLines'
+          },
+        ],
+        columnGap: 10,
+        margin: [0, 0, 0, 10]
+      },
+      
+      // --- Disciplines ---
+      getSectionHeader('Disciplines & Powers'),
+      ...Object.entries(char.disciplines || {}).flatMap(([discName, dots]) => [
+          { 
+              text: `${discName} ${renderDots(dots)}`, 
+              bold: true, 
+              margin: [0, 5, 0, 0] 
+          },
+          ...(char.disciplinePowers?.[discName] || []).map(power => ({
+              text: `  Lvl ${power.level}: ${power.name}`, 
+              margin: [10, 0, 0, 2]
+          }))
+      ]),
+      
+      // --- Advantages & Flaws ---
+      getSectionHeader('Advantages & Flaws'),
+      {
+        columns: [
+          // Merits
+          {
+            width: '50%',
+            table: {
+              headerRows: 1,
+              widths: ['*', 'auto'],
+              body: [
+                [{ text: 'Merits', style: 'tableHeader' }, { text: 'Value', style: 'tableHeader' }],
+                ...(merits.length ? merits.map(m => [`${m.name} (${m.dots})`, m.description || '']) : [['—', '']])
+              ]
+            },
+            layout: 'headerLineOnly',
+            margin: [0, 0, 5, 0]
+          },
+          // Flaws
+          {
+            width: '50%',
+            table: {
+              headerRows: 1,
+              widths: ['*', 'auto'],
+              body: [
+                [{ text: 'Flaws', style: 'tableHeader' }, { text: 'Value', style: 'tableHeader' }],
+                ...(flaws.length ? flaws.map(f => [`${f.name} (${f.dots})`, f.description || '']) : [['—', '']])
+              ]
+            },
+            layout: 'headerLineOnly',
+            margin: [5, 0, 0, 0]
+          },
+        ],
+        columnGap: 10,
+        margin: [0, 0, 0, 10]
+      },
+      
+      // --- Morality ---
+      getSectionHeader('Morality'),
+      { text: `Humanity: ${renderDots(char.morality?.humanity || 7, 10)}`, margin: [0, 0, 0, 8] },
+      {
+        columns: [
+          // Convictions
+          {
+            width: '50%',
+            stack: [
+              { text: 'Convictions', bold: true, margin: [0, 0, 0, 3] },
+              ...(char.morality?.convictions || []).map(c => ({ text: `• ${c}`, margin: [5, 0, 0, 2] })),
+              ...(!char.morality?.convictions?.length ? [{ text: '• None', margin: [5, 0, 0, 2] }] : [])
+            ]
+          },
+          // Touchstones
+          {
+            width: '50%',
+            stack: [
+              { text: 'Touchstones', bold: true, margin: [0, 0, 0, 3] },
+              ...(char.morality?.touchstones || []).map(t => ({ text: `• ${t}`, margin: [5, 0, 0, 2] })),
+              ...(!char.morality?.touchstones?.length ? [{ text: '• None', margin: [5, 0, 0, 2] }] : [])
+            ]
+          }
+        ],
+        columnGap: 10
+      }
+    ],
+  };
+
+  // --- Save ---
+  pdfMake.createPdf(docDefinition).download(`${char.name || 'character'}_sheet.pdf`);
+};
+
 
 /* ---------------- Main ---------------- */
 export default function Admin() {
@@ -323,7 +620,7 @@ function CharactersTab({ users, onSave }) {
               style={{ fontFamily:'JetBrains Mono, ui-monospace, monospace' }}
             />
           </div>
-          <div className={styles.row} style={{ marginTop:8 }}>
+          <div className={styles.row} style={{ marginTop:8, gap: 8 }}>
             <button
               className={`${styles.btn} ${styles.btnPrimary}`}
               onClick={()=>{
@@ -335,9 +632,33 @@ function CharactersTab({ users, onSave }) {
             >
               Save Character
             </button>
+            
+            {/* --- NEW BUTTON --- */}
+            <button
+              className={styles.btn}
+              onClick={() => {
+                let parsedSheet;
+                try { parsedSheet = JSON.parse(getRow(c).sheet || '{}'); }
+                catch { alert('Invalid JSON. Cannot generate PDF.'); return; }
+                
+                const charDataForPDF = {
+                  name: getRow(c).name,
+                  clan: getRow(c).clan,
+                  xp: c.xp,
+                  owner: c.owner,
+                  ...parsedSheet // Spread the *edited* sheet
+                };
+                handleGeneratePDF(charDataForPDF);
+              }}
+            >
+              Download PDF
+            </button>
+            {/* --- END NEW BUTTON --- */}
+
           </div>
           <div className={styles.subtle} style={{ marginTop:6 }}>
             Saving uses <code className={styles.kbd}>PATCH /admin/characters/:id</code>.
+            PDF generation requires <code className={styles.kbd}>jspdf</code> and <code className={styles.kbd}>jspdf-autotable</code>.
           </div>
         </div>
       ))}
@@ -1272,4 +1593,3 @@ function NPCsTab({ npcs, onReload, onDelete }) {
     </div>
   );
 }
-

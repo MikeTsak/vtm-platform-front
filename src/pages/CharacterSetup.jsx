@@ -3,7 +3,8 @@ import api from '../api';
 import styles from '../styles/Sheet.module.css';
 import MeritsFlawsPicker from '../components/MeritsFlawsPicker';
 import { useNavigate } from 'react-router-dom';
-
+// Import the new predator data
+import { PREDATOR_TYPES, PREDATOR_TYPE_NAMES } from '../data/predator_types'; 
 
 
 /* ---------- Config ---------- */
@@ -87,278 +88,9 @@ const SKILLS = {
   Mental:   ['Academics','Awareness','Finance','Investigation','Medicine','Occult','Politics','Science','Technology'],
 };
 
-// --- Predator Types (with choices & effects) ---
-const PREDATORS = {
-  Alleycat: {
-    desc: 'Violent taker. Feeds by force, intimidation, or ambush.',
-    rolls: 'Strength + Brawl • Wits + Streetwise',
-    picks: {
-      specialty: ['Intimidation (Stickups)','Brawl (Grappling)'],
-      discipline: () => ['Celerity','Potence'],
-    },
-    effects: {
-      humanity: -1,
-      backgrounds: [{ name:'Contacts (Criminals)', dots:3 }],
-    },
-  },
+// --- Predator Types ---
+// This section has been removed and is now imported from ../data/predator_types
 
-  Bagger: {
-    desc: 'Feeds from bags/corpses via Iron Gullet; hospitals/black market.',
-    rolls: 'Intelligence + Streetwise',
-    restrict: (sheet) => sheet.clan === 'Ventrue' ? 'Ventrue cannot pick Bagger' : null,
-    picks: {
-      specialty: ['Larceny (Lock Picking)','Streetwise (Black Market)'],
-      discipline: (clan) => {
-        const opts = ['Obfuscate'];
-        if (clan==='Tremere' || clan==='Banu Haqim') opts.unshift('Blood Sorcery');
-        if (clan==='Hecata') opts.unshift('Oblivion');
-        return opts;
-      },
-    },
-    effects: {
-      merits: [{ name:'Iron Gullet', dots:3 }],
-      flaws: [{ name:'Enemy', dots:2 }],
-    },
-  },
-
-  'Blood Leech': {
-    desc: 'Feeds on Kindred (taboo); coercion or ambush.',
-    rolls: '— (not abstracted)',
-    picks: {
-      specialty: ['Brawl (Kindred)','Stealth (Against Kindred)'],
-      discipline: () => ['Celerity','Protean'],
-      flawChoice: ['Dark Secret: Diablerist (••)','Shunned (••)'],
-    },
-    effects: {
-      humanity: -1,
-      bloodPotency: +1,
-      feedingFlaws: [{ name:'Prey Exclusion (Mortals)', dots:2 }],
-    },
-  },
-
-  Cleaver: {
-    desc: 'Feeds from close ties/family; covert and risky.',
-    rolls: 'Manipulation + Subterfuge',
-    picks: {
-      specialty: ['Persuasion (Gaslighting)','Subterfuge (Coverups)'],
-      discipline: () => ['Dominate','Animalism'],
-    },
-    effects: {
-      flaws: [{ name:'Dark Secret: Cleaver', dots:1 }],
-      backgrounds: [{ name:'Herd', dots:2 }],
-    },
-  },
-
-  Consensualist: {
-    desc: 'Feeds with consent (drive/kink/confession).',
-    rolls: 'Manipulation + Persuasion',
-    picks: {
-      specialty: ['Medicine (Phlebotomy)','Persuasion (Vessels)'],
-      discipline: () => ['Auspex','Fortitude'],
-    },
-    effects: {
-      humanity: +1,
-      flaws: [
-        { name:'Dark Secret: Masquerade Breacher', dots:1 },
-        { name:'Feeding Flaw: Prey Exclusion (Non-consenting)', dots:1 },
-      ],
-    },
-  },
-
-  Farmer: {
-    desc: 'Feeds from animals only; difficult hunger.',
-    rolls: 'Composure + Animal Ken',
-    restrict: (sheet) => {
-      if (sheet.clan==='Ventrue') return 'Ventrue cannot pick Farmer';
-      if ((sheet.bloodPotency ?? 1) >= 3) return 'Farmer requires Blood Potency < 3';
-      return null;
-    },
-    picks: {
-      specialty: ['Animal Ken (specific animal)','Survival (Hunting)'],
-      discipline: () => ['Animalism','Protean'],
-    },
-    effects: {
-      humanity: +1,
-      feedingFlaws: [{ name:'Feeding Flaw: Farmer', dots:2 }],
-    },
-  },
-
-  Osiris: {
-    desc: 'Celebrity/cult leader feeding from fans.',
-    rolls: 'Manipulation + Subterfuge or Intimidation (+ Fame)',
-    picks: {
-      specialty: ['Occult (specific tradition)','Performance (specific field)'],
-      discipline: (clan) => {
-        const opts = ['Presence'];
-        if (clan==='Tremere' || clan==='Banu Haqim') opts.unshift('Blood Sorcery');
-        return opts;
-      },
-      backgroundPool: [{ total:3, options:['Fame','Herd'] }],
-      flawPool: [{ total:2, options:['Enemies','Mythic Flaws'] }],
-    },
-    effects: {},
-  },
-
-  Sandman: {
-    desc: 'Feeds on sleeping victims; stealthy break-ins.',
-    rolls: 'Dexterity + Stealth',
-    picks: {
-      specialty: ['Medicine (Anesthetics)','Stealth (Break-in)'],
-      discipline: () => ['Auspex','Obfuscate'],
-    },
-    effects: {
-      backgrounds: [{ name:'Resources', dots:1 }],
-    },
-  },
-
-  'Scene Queen': {
-    desc: 'Subculture darling; adored inside, disliked outside.',
-    rolls: 'Manipulation + Persuasion',
-    picks: {
-      specialty: [
-        'Etiquette (specific scene)',
-        'Leadership (specific scene)',
-        'Streetwise (specific scene)',
-      ],
-      discipline: () => ['Dominate','Potence'],
-      flawChoice: [
-        'Influence Flaw: Disliked (•)',
-        'Feeding Flaw: Prey Exclusion (different subculture)',
-      ],
-    },
-    effects: {
-      backgrounds: [{ name:'Fame', dots:1 },{ name:'Contacts', dots:1 }],
-    },
-  },
-
-  Siren: {
-    desc: 'Feeding through seduction & sex.',
-    rolls: 'Charisma + Subterfuge',
-    picks: {
-      specialty: ['Persuasion (Seduction)','Subterfuge (Seduction)'],
-      discipline: () => ['Fortitude','Presence'],
-    },
-    effects: {
-      merits: [{ name:'Looks: Beautiful', dots:2 }],
-      flaws: [{ name:'Enemy (spurned lover/jealous partner)', dots:1 }],
-    },
-  },
-
-  Extortionist: {
-    desc: '“Protection” racket; blood for services.',
-    rolls: 'Strength/Manipulation + Intimidation',
-    picks: {
-      specialty: ['Intimidation (Coercion)','Larceny (Security)'],
-      discipline: () => ['Dominate','Potence'],
-      backgroundPool: [{ total:3, options:['Contacts','Resources'] }],
-    },
-    effects: {
-      flaws: [{ name:'Enemy (Police or escaped victim)', dots:2 }],
-    },
-  },
-
-  Graverobber: {
-    desc: 'Cults of the Blood God. Blood from corpses/mourners.',
-    rolls: 'Resolve + Medicine • Manipulation + Insight',
-    picks: {
-      specialty: ['Occult (Grave Rituals)','Medicine (Cadavers)'],
-      discipline: () => ['Fortitude','Oblivion'],
-    },
-    effects: {
-      merits: [{ name:'Iron Gullet', dots:3 }],
-      backgrounds: [{ name:'Haven', dots:1 }],
-      feedingFlaws: [{ name:'Herd Flaw: Obvious Predator', dots:2 }],
-    },
-  },
-
-  'Roadside Killer': {
-    desc: 'Let the Streets Run Red. Hunts travelers along roads.',
-    rolls: 'Dex/Cha + Drive',
-    picks: {
-      specialty: ['Survival (the road)','Investigation (vampire cant)'],
-      discipline: () => ['Fortitude','Protean'],
-    },
-    effects: {
-      backgrounds: [{ name:'Herd (migrating)', dots:2 }],
-      feedingFlaws: [{ name:'Prey Exclusion (locals)', dots:1 }],
-    },
-  },
-
-  'Grim Reaper': {
-    desc: 'Hospice/assisted living feeding; taste for diseases.',
-    rolls: 'Intelligence + Awareness/Medicine',
-    picks: {
-      specialty: ['Awareness (Death)','Larceny (Forgery)'],
-      discipline: () => ['Auspex','Oblivion'],
-      backgroundChoice: ['Allies (Medical)','Influence (Medical)'],
-    },
-    effects: {
-      humanity: +1,
-      feedingFlaws: [{ name:'Prey Exclusion (Healthy Mortals)', dots:1 }],
-    },
-  },
-
-  Montero: {
-    desc: 'Aristocratic hunt with retainers; long cons & stakeouts.',
-    rolls: 'Int + Stealth • Resolve + Stealth',
-    picks: {
-      specialty: ['Leadership (Hunting Pack)','Stealth (Stakeout)'],
-      discipline: () => ['Dominate','Obfuscate'],
-    },
-    effects: {
-      backgrounds: [{ name:'Retainers', dots:2 }],
-      humanity: -1,
-    },
-  },
-
-  Pursuer: {
-    desc: 'Stalks victims, profiles, and strikes at the right time.',
-    rolls: 'Int + Investigation • Stamina + Stealth',
-    picks: {
-      specialty: ['Investigation (Profiling)','Stealth (Shadowing)'],
-      discipline: () => ['Animalism','Auspex'],
-    },
-    effects: {
-      merits: [{ name:'Bloodhound', dots:1 }],
-      backgrounds: [{ name:'Contacts (local underbelly)', dots:1 }],
-      humanity: -1,
-    },
-  },
-
-  Trapdoor: {
-    desc: 'Lures prey into a lair/den and feeds there.',
-    rolls: 'Cha + Stealth • Dex + Stealth • Wits + Awareness + Haven',
-    picks: {
-      specialty: ['Persuasion (Marketing)','Stealth (Ambushes or Traps)'],
-      discipline: () => ['Protean','Obfuscate'],
-      backgroundChoice: ['Retainers +1','Herd +1','Haven +1 (second dot)'],
-      havenFlawChoice: ['Haven Flaw: Creepy (•)','Haven Flaw: Haunted (•)'],
-    },
-    effects: {
-      backgrounds: [{ name:'Haven', dots:1 }],
-    },
-  },
-
-  'Tithe Collector': {
-    desc: 'Kindred pay tribute in vessels; authority & domain.',
-    rolls: '—',
-    picks: {
-      specialty: ['Intimidation (Kindred)','Leadership (Kindred)'],
-      discipline: () => ['Dominate','Presence'],
-      backgroundPool: [{ total:3, options:['Domain','Status'] }],
-    },
-    effects: {
-      flaws: [{ name:'Adversary', dots:2 }],
-    },
-  },
-};
-
-// Render order for predators
-const PREDATOR_NAMES = [
-  'Alleycat','Bagger','Blood Leech','Cleaver','Consensualist','Farmer','Osiris','Sandman',
-  'Scene Queen','Siren','Extortionist','Graverobber','Roadside Killer','Grim Reaper',
-  'Montero','Pursuer','Trapdoor','Tithe Collector'
-];
 
 // V5-ish rules applied as requested
 const RULES = {
@@ -413,6 +145,18 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
     havenFlawChoice: '',
     pools: {}, // e.g. { 'Pool-0-3': { Fame:2, Herd:1 } }
   });
+  // Reset predator-specific choices when predator type changes
+    useEffect(() => {
+      setPredatorPicks({
+        specialty: '',
+        discipline: '',
+        flawChoice: '',
+        backgroundChoice: '',
+        havenFlawChoice: '',
+        pools: {}
+      });
+    }, [predatorType]);
+
   const updatePool = (poolKey, option, value) => {
     setPredatorPicks(p => ({
       ...p,
@@ -579,7 +323,8 @@ const incAttr = (k, d) =>
 
   // Predator selections validation
   const predatorOk = useMemo(() => {
-    const P = PREDATORS[predatorType] || {};
+    // Use imported PREDATOR_TYPES
+    const P = PREDATOR_TYPES[predatorType] || {}; 
     const restrictMsg = P.restrict ? P.restrict({ clan, bloodPotency }) : null;
     if (restrictMsg) return false;
     if (P.picks?.specialty && !predatorPicks.specialty) return false;
@@ -587,16 +332,26 @@ const incAttr = (k, d) =>
     if (P.picks?.flawChoice && !predatorPicks.flawChoice) return false;
     if (P.picks?.backgroundChoice && !predatorPicks.backgroundChoice) return false;
     if (P.picks?.havenFlawChoice && !predatorPicks.havenFlawChoice) return false;
-    // pools exact sum
-    const pools = [...(P.picks?.backgroundPool||[]), ...(P.picks?.flawPool||[])];
-    for (let i=0;i<pools.length;i++){
-      const kind = i < (P.picks?.backgroundPool||[]).length ? 'Pool' : 'FlawPool';
-      const key = `${kind}-${i}-${pools[i].total}`;
-      const target = pools[i].total;
-      const vals = predatorPicks.pools?.[key] || {};
-      const sum = Object.values(vals).reduce((a,b)=>a+(Number(b)||0),0);
-      if (sum !== target) return false;
-    }
+
+    // pools exact sum (match render indexes exactly)
+      const bgPools = P.picks?.backgroundPool || [];
+      for (let i = 0; i < bgPools.length; i++) {
+        const pool = bgPools[i];
+        const key = `Pool-${i}-${pool.total}`;
+        const vals = predatorPicks.pools?.[key] || {};
+        const sum = Object.values(vals).reduce((a,b)=>a+(Number(b)||0),0);
+        if (sum !== pool.total) return false;
+      }
+
+      const flawPools = P.picks?.flawPool || [];
+      for (let j = 0; j < flawPools.length; j++) {
+        const pool = flawPools[j];
+        const key = `FlawPool-${j}-${pool.total}`;
+        const vals = predatorPicks.pools?.[key] || {};
+        const sum = Object.values(vals).reduce((a,b)=>a+(Number(b)||0),0);
+        if (sum !== pool.total) return false;
+      }
+
     return true;
   }, [predatorType, predatorPicks, clan, bloodPotency]);
 
@@ -656,7 +411,8 @@ const save = async () => {
   }
 
   const tint = clan ? CLAN_COLORS[clan][0] : '#8a0f1a';
-  const currentPred = PREDATORS[predatorType] || {};
+  // Use imported PREDATOR_TYPES
+  const currentPred = PREDATOR_TYPES[predatorType] || {}; 
 
   return (
     <div className={styles.sheetRoot}>
@@ -763,10 +519,10 @@ const save = async () => {
                 How you hunt, how you thrive. Choose your habits; choose your gifts.
               </p>
 
-              {/* Predator cards */}
+              {/* Predator cards: Use imported PREDATOR_TYPE_NAMES and PREDATOR_TYPES */}
               <div className={styles.clanGrid}>
-                {PREDATOR_NAMES.map(p => {
-                  const P = PREDATORS[p];
+                {PREDATOR_TYPE_NAMES.map(p => {
+                  const P = PREDATOR_TYPES[p];
                   const active = predatorType === p;
                   let restrictMsg = null;
                   try {
