@@ -495,8 +495,8 @@ const save = async () => {
     bloodPotency: bloodPotencyOut
   };
 
-
-    await api.post('/characters', { name, clan, sheet: payload });
+    const url = forNPC ? '/admin/npcs' : '/characters';
+    await api.post(url, { name, clan, sheet: payload });
 
     // optional callback
     onDone?.();

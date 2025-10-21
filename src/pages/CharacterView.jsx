@@ -197,20 +197,103 @@ function normalizeFromFlatAny(source) {
   return sheet;
 }
 
+
+
 function attachStructured(raw) {
   if (!raw) return raw;
-  if (isStructuredSheet(raw.sheet)) {
-    const sheet = { ...raw.sheet };
-    sheet.rituals = sheet.rituals || { blood_sorcery: [], oblivion: [] };
-    sheet.rituals.blood_sorcery = sheet.rituals.blood_sorcery || [];
-    sheet.rituals.oblivion = sheet.rituals.oblivion || [];
-    // default BP
-    if (sheet.blood_potency == null) sheet.blood_potency = 1;
-    return { ...raw, sheet };
+
+  // --- local helpers --------------------------------------------------------
+  function buildDisciplineIndex() {
+    const map = {};
+    for (const [disc, data] of Object.entries((typeof DISCIPLINES !== 'undefined' && DISCIPLINES) || {})) {
+      const byId = new Map();
+      const byName = new Map();
+      const levels = data?.levels || {};
+      for (const [lvlStr, arr] of Object.entries(levels)) {
+        const lvl = Number(lvlStr);
+        (arr || []).forEach(p => {
+          if (!p) return;
+          if (p.id)   byId.set(String(p.id).toLowerCase(), lvl);
+          if (p.slug) byId.set(String(p.slug).toLowerCase(), lvl);
+          if (p.key)  byId.set(String(p.key).toLowerCase(), lvl);
+          if (p.name) byName.set(String(p.name).toLowerCase(), lvl);
+        });
+      }
+      map[disc] = { byId, byName };
+    }
+    return map;
   }
-  if (looksLikeFlatSheet(raw.sheet)) return { ...raw, sheet: normalizeFromFlatAny(raw) };
-  return { ...raw, sheet: normalizeFromFlatAny(raw) };
+
+  function ensureDisciplinePicksHaveLevels(sheet) {
+    const idx = buildDisciplineIndex();
+    const out = { ...sheet, disciplinePowers: sheet.disciplinePowers || {} };
+
+    for (const [disc, picks] of Object.entries(out.disciplinePowers)) {
+      const index = idx[disc];
+      const next = [];
+      const seenLevel = new Set();
+
+      (Array.isArray(picks) ? picks : []).forEach(rawPick => {
+        const p = typeof rawPick === 'string' ? { id: rawPick } : { ...rawPick };
+        let level = Number(p.level);
+
+        if (!Number.isInteger(level) || level <= 0) {
+          const keys = [p.id, p.slug, p.key, p.code, p.power_id, p.name]
+            .filter(Boolean)
+            .map(s => String(s).toLowerCase());
+          if (index) {
+            for (const k of keys) {
+              const guessed = index.byId.get(k) ?? index.byName.get(k);
+              if (Number.isInteger(guessed) && guessed > 0) {
+                level = guessed;
+                break;
+              }
+            }
+          }
+        }
+
+        if (Number.isInteger(level) && level > 0) {
+          if (!seenLevel.has(level)) {
+            seenLevel.add(level);
+            next.push({ ...p, level });
+          }
+          // duplicates for the same level are ignored (keep first)
+        } else {
+          // keep unknowns so we don't destroy data
+          next.push(p);
+        }
+      });
+
+      next.sort((a, b) => Number(a.level || 99) - Number(b.level || 99));
+      out.disciplinePowers[disc] = next;
+    }
+
+    return out;
+  }
+  // --------------------------------------------------------------------------
+
+  let sheet;
+  if (isStructuredSheet(raw.sheet)) {
+    sheet = { ...raw.sheet };
+  } else if (looksLikeFlatSheet(raw.sheet)) {
+    sheet = normalizeFromFlatAny(raw);
+  } else {
+    sheet = normalizeFromFlatAny(raw);
+  }
+
+  // defaults
+  sheet.rituals = sheet.rituals || { blood_sorcery: [], oblivion: [] };
+  sheet.rituals.blood_sorcery = sheet.rituals.blood_sorcery || [];
+  sheet.rituals.oblivion = sheet.rituals.oblivion || [];
+  if (sheet.blood_potency == null) sheet.blood_potency = 1;
+  sheet.disciplinePowers = sheet.disciplinePowers || {};
+
+  // normalize legacy picks (infer levels, de-dup per level, sort)
+  sheet = ensureDisciplinePicksHaveLevels(sheet);
+
+  return { ...raw, sheet };
 }
+
 
 /* ===========================
    XP rules (keep in sync with backend)
@@ -495,6 +578,8 @@ export default function CharacterView({
     nextSheet.rituals.oblivion.push({ id: cer.id, name: cer.name, level });
     await spendXP({ type: 'ceremony', target: cer.id, ritualLevel: level, patchSheet: nextSheet });
   }
+
+  
 
   // ===== Empty / loading & builder overlay (players only) =====
   if (!ch) {

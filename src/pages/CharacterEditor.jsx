@@ -5,7 +5,20 @@ import styles from '../styles/Admin.module.css';
 
 // Data libs
 import { MERITS_AND_FLAWS } from '../data/merits_flaws';
-let ALL_DISCIPLINE_NAMES = [];
+import * as D from '../data/disciplines';
+
+let ALL_DISCIPLINE_NAMES =
+   (Array.isArray(D.ALL_DISCIPLINE_NAMES) && D.ALL_DISCIPLINE_NAMES.length)
+     ? D.ALL_DISCIPLINE_NAMES
+     : (D.DISCIPLINES ? Object.keys(D.DISCIPLINES) : []);
+ if (!ALL_DISCIPLINE_NAMES.length) {
+   // final safety fallback (keep in sync with your data file)
+   ALL_DISCIPLINE_NAMES = [
+     'Animalism','Auspex','Blood Sorcery','Celerity','Dominate','Fortitude',
+     'Obfuscate','Oblivion','Potence','Presence','Protean','Thin-blood Alchemy'
+   ];
+}
+
 try {
   // if your disciplines.js exports NAMES or a map, fill from there
   // eslint-disable-next-line global-require
@@ -19,6 +32,12 @@ if (!ALL_DISCIPLINE_NAMES?.length) {
     'Obfuscate','Oblivion','Potence','Presence','Protean'
   ];
 }
+const FALLBACK_DISC_NAMES = [
+  'Animalism','Auspex','Blood Sorcery','Celerity','Dominate','Fortitude',
+  'Obfuscate','Oblivion','Potence','Presence','Protean','Thin-blood Alchemy'
+];
+
+
 
 // ---------- helpers ----------
 const ATTR_KEYS = [
