@@ -9,6 +9,7 @@ import 'leaflet/dist/leaflet.css';
 
 import CharacterSetup from './CharacterSetup';
 import CharacterView from './CharacterView';
+import AdminLogs from './AdminLogs.jsx';
 
 import domainsRaw from '../data/Domains.json';
 import { Link } from 'react-router-dom';
@@ -114,296 +115,409 @@ export default function Admin() {
   }
 
 // ========= Characters: Generate PDF (client-side, from JSON sheet) =========
-  async function handleGeneratePDF(character) {
+async function handleGeneratePDF(character) {
     try {
-      const { jsPDF } = await import('jspdf');
+        // --- 0. Setup ---
+        const { jsPDF } = await import('jspdf');
 
-      // --- 1. FONT SETUP ---
-      // IMPORTANT: You must provide the Base64-encoded .ttf files for the fonts.
-      // 1. Get your .ttf font files (e.g., from Google Fonts)
-      // 2. Use an online converter (search "ttf to base64") to get the string
-      // 3. Paste that string (it's very long) to replace the "..."
-      const CinzelRegular_Base64 = "..."; // <--- PASTE Cinzel-Regular.ttf BASE64 HERE
-      const CinzelBold_Base64 = "..."; // <--- PASTE Cinzel-Bold.ttf BASE64 HERE
+        // --- 1. FONT SETUP: CRITICAL FOR GREEK/LATIN SUPPORT ---
+        // 🚨 IMPORTANT: You MUST generate and paste the Base64-encoded TTF strings here.
+        // Use a font that supports both Greek and Latin, like Noto Sans or Roboto.
+        const NotoSansRegular_Base64 = "..."; // <--- PASTE NotoSans-Regular.ttf BASE64 HERE (Required for Greek)
+        const NotoSansBold_Base64 = "...";    // <--- PASTE NotoSans-Bold.ttf BASE64 HERE (Required for Greek)
 
-      const FONT_REGULAR = 'Cinzel';
-      const FONT_BOLD = 'Cinzel-Bold';
+        const FONT_REGULAR = 'NotoSans';
+        const FONT_BOLD = 'NotoSans-Bold';
+        const FALLBACK_FONT = 'Helvetica'; // Basic font if custom load fails
 
-      // --- 2. STYLES & LAYOUT ---
-      const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-      const pageW = doc.internal.pageSize.getWidth();
-      const pageH = doc.internal.pageSize.getHeight();
-      const M = 36; // margin
-      const usableW = pageW - M * 2;
-      let y = M; // Current Y-position cursor
+        // --- 2. STYLES & LAYOUT ---
+        const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+        const pageW = doc.internal.pageSize.getWidth();
+        const pageH = doc.internal.pageSize.getHeight();
+        const M = 36; // margin
+        const usableW = pageW - M * 2;
+        let y = M; // Current Y-position cursor
 
-      const COLOR_RED = '#8a0303'; // Dark blood red
-      const COLOR_DARK = '#333333';
-      const COLOR_LIGHT = '#aaaaaa';
-      const COLOR_FILL = '#333333';
-      const DOT_SIZE = 6;
-      const DOT_GAP = 4;
-      
-      // Add fonts to the virtual file system
-      if (CinzelRegular_Base64 !== "...") {
-        doc.addFileToVFS('Cinzel-Regular.ttf', CinzelRegular_Base64);
-        doc.addFont('Cinzel-Regular.ttf', FONT_REGULAR, 'normal');
-      }
-      if (CinzelBold_Base64 !== "...") {
-        doc.addFileToVFS('Cinzel-Bold.ttf', CinzelBold_Base64);
-        doc.addFont('Cinzel-Bold.ttf', FONT_BOLD, 'normal');
-      }
-      // Set default font
-      doc.setFont(FONT_REGULAR);
+        const COLOR_RED = '#8a0303'; // Dark blood red
+        const COLOR_DARK = '#333333';
+        const COLOR_LIGHT = '#aaaaaa';
+        const COLOR_FILL = '#8a0303'; // Red fill for dots/boxes
+        const DOT_SIZE = 6;
+        const DOT_GAP = 4;
+        const LINE_HEIGHT = 14;
 
+        let currentFont = FALLBACK_FONT;
 
-      // --- 3. PDF HELPER FUNCTIONS ---
-
-      // Ensures there is enough space for the next element, adds a page if not
-      const ensure = (extraH = 20) => {
-        if (y + extraH > pageH - M) {
-          doc.addPage();
-          y = M;
+        // Force Font Loading
+        if (NotoSansRegular_Base64.length > 50 && NotoSansBold_Base64.length > 50) {
+            try {
+                // Ensure font data is properly registered
+                doc.addFileToVFS('NotoSans-Regular.ttf', NotoSansRegular_Base64);
+                doc.addFont('NotoSans-Regular.ttf', FONT_REGULAR, 'normal');
+                doc.addFileToVFS('NotoSans-Bold.ttf', NotoSansBold_Base64);
+                doc.addFont('NotoSans-Bold.ttf', FONT_BOLD, 'normal');
+                currentFont = FONT_REGULAR;
+                doc.setFont(currentFont, 'normal'); // Set the new font as default
+            } catch (e) {
+                console.error("Custom Noto Sans font loading failed.", e);
+                doc.setFont(FALLBACK_FONT, 'normal');
+            }
+        } else {
+             doc.setFont(FALLBACK_FONT, 'normal');
+             console.warn("Noto Sans Base64 data missing or too short. Using fallback font (Helvetica). Greek characters may not display.");
         }
-      };
-      
-      // Splits long text
-      const split = (t, w = usableW) => doc.splitTextToSize(String(t ?? ''), w);
-      
-      // Draws a styled section header
-      const section = (title) => {
-        ensure(30);
-        y += 10; // Extra space before section
-        doc.setFont(FONT_BOLD).setFontSize(14).setTextColor(COLOR_RED);
-        doc.text(title.toUpperCase(), M, y);
-        y += 6;
-        doc.setDrawColor(COLOR_RED).setLineWidth(1).line(M, y, M + usableW, y);
-        y += 20;
-        doc.setFont(FONT_REGULAR).setFontSize(10).setTextColor(COLOR_DARK);
-      };
 
-      // Draws a label and a series of "dots" (circles)
-      const drawDots = (label, value, max = 5) => {
-        ensure(18);
-        const val = Number(value) || 0;
-        const maxVal = Number(max) || 5;
-        const x = M + 120; // X-position for dots
 
-        // Draw Label
-        doc.setFont(FONT_REGULAR).setFontSize(10).setTextColor(COLOR_DARK);
-        doc.text(label, M, y + DOT_SIZE - 1);
+        // --- 3. PDF HELPER FUNCTIONS ---
+
+        const ensure = (extraH = LINE_HEIGHT) => {
+            if (y + extraH > pageH - M) {
+                doc.addPage();
+                y = M;
+            }
+        };
+
+        const split = (t, w = usableW) => doc.splitTextToSize(String(t ?? ''), w);
+
+        const section = (title) => {
+            ensure(30);
+            y += 10;
+            doc.setFont(currentFont, 'bold').setFontSize(14).setTextColor(COLOR_RED);
+            doc.text(title.toUpperCase(), M, y);
+            y += 6;
+            doc.setDrawColor(COLOR_RED).setLineWidth(1).line(M, y, M + usableW, y);
+            y += 20;
+            doc.setFont(currentFont, 'normal').setFontSize(10).setTextColor(COLOR_DARK);
+        };
+
+        const drawDots = (label, value, max = 5, xStart = M, labelWidth = 120) => {
+            ensure(DOT_SIZE + DOT_GAP + 6);
+            const val = Number(value) || 0;
+            const maxVal = Number(max) || 5;
+            const x = xStart + labelWidth;
+
+            doc.setFont(currentFont, 'normal').setFontSize(10).setTextColor(COLOR_DARK);
+            const labelLines = split(label, labelWidth);
+            doc.text(labelLines[0], xStart, y + DOT_SIZE - 1); // Only draw the first line
+            
+            doc.setLineWidth(1);
+            for (let i = 1; i <= maxVal; i++) {
+                const dotX = x + (i * (DOT_SIZE + DOT_GAP));
+                const isFilled = i <= val;
+                doc.setFillColor(isFilled ? COLOR_FILL : '#ffffff');
+                doc.setDrawColor(isFilled ? COLOR_FILL : COLOR_LIGHT);
+                doc.circle(dotX, y + (DOT_SIZE / 2), DOT_SIZE / 2, 'FD');
+            }
+            y += DOT_SIZE + DOT_GAP + 6;
+        };
+
+        const drawTracker = (label, value, max = 10, xStart = M, boxCount = 10, labelSpace = 60) => {
+            ensure(22);
+            const val = Number(value) || 0;
+            const BOX_SIZE = 10;
+            const BOX_GAP = 3;
+
+            doc.setFont(currentFont, 'bold').setFontSize(10).setTextColor(COLOR_DARK);
+            doc.text(label.toUpperCase(), xStart, y + BOX_SIZE - 1);
+            
+            doc.setLineWidth(1).setDrawColor(COLOR_DARK);
+            for (let i = 1; i <= boxCount; i++) {
+                const boxX = xStart + labelSpace + (i * (BOX_SIZE + BOX_GAP));
+                const isCurrent = i <= val;
+                
+                doc.setFillColor(isCurrent ? COLOR_FILL : '#ffffff');
+                doc.rect(boxX, y, BOX_SIZE, BOX_SIZE, 'FD');
+            }
+            y += BOX_SIZE + BOX_GAP + 6;
+        };
+
+        // --- 4. PARSE CHARACTER DATA ---
+        let sheet = {};
+        // ... (JSON parsing remains the same)
+        try {
+            sheet = typeof character.sheet === 'string'
+                ? JSON.parse(character.sheet)
+                : (character.sheet || {});
+        } catch (e) {
+            console.error('Invalid sheet JSON', e);
+            alert('Invalid JSON sheet. Please fix the sheet and try again.');
+            return;
+        }
+
+        const name = character.name || sheet.name || 'Unnamed';
+        const attrs = sheet.attributes || {};
+        const getAttr = (k) => Number(attrs[k] ?? 0);
+        const healthMax = getAttr('Stamina') + 3;
+        const willMax = getAttr('Composure') + getAttr('Resolve');
+        const hunger = sheet.hunger || 0;
+        const id = character.id ?? '—';
+        // ... (other data accessors remain the same)
+
+        // --- 5. BUILD THE PDF DOCUMENT ---
+
+        // == HEADER & TRACKERS ==
+        // ... (Header and Tracker sections remain the same, ensure drawTracker is used)
         
-        // Draw Dots
-        doc.setLineWidth(1);
-        for (let i = 1; i <= maxVal; i++) {
-          const dotX = x + (i * (DOT_SIZE + DOT_GAP));
-          const isFilled = i <= val;
-          doc.setFillColor(isFilled ? COLOR_FILL : '#ffffff');
-          doc.setDrawColor(isFilled ? COLOR_FILL : COLOR_LIGHT);
-          doc.circle(dotX, y + (DOT_SIZE / 2), DOT_SIZE / 2, 'FD');
-        }
-        y += DOT_SIZE + DOT_GAP + 6;
-      };
+        // == HEADER ==
+        doc.setFont(currentFont, 'bold').setFontSize(24).setTextColor(COLOR_RED);
+        doc.text(name.toUpperCase(), M, y);
+        y += 24;
 
-      // Draws a label and a series of "tracker" boxes (for Health, WP)
-      const drawTracker = (label, value, max = 10, xStart = M) => {
-        ensure(22);
-        const val = Number(value) || 0;
-        const BOX_SIZE = 10;
-        const BOX_GAP = 3;
+        doc.setFont(currentFont, 'normal').setFontSize(11).setTextColor(COLOR_DARK);
+        const colW = usableW / 3;
+        doc.text(`Clan: ${character.clan || sheet.clan || '—'}`, M, y);
+        doc.text(`Predator: ${sheet.predatorType || '—'}`, M + colW, y);
+        doc.text(`Sire: ${sheet.sire || '—'}`, M + colW * 2, y);
+        y += 16;
+        doc.text(`Ambition: ${sheet.ambition || '—'}`, M, y);
+        doc.text(`Desire: ${sheet.desire || '—'}`, M + colW, y);
+        y += 14;
+        doc.setDrawColor(COLOR_LIGHT).setLineWidth(0.5).line(M, y, M + usableW, y);
+        y += 10;
 
-        // Draw Label
-        doc.setFont(FONT_BOLD).setFontSize(10).setTextColor(COLOR_DARK);
-        doc.text(label.toUpperCase(), xStart, y + BOX_SIZE - 1);
+        // == TRACKERS (Two Columns) ==
+        const trackerColW = usableW / 2;
+        const trackerYStart = y;
+        let yCol1End, yCol2End;
+
+        // Column 1
+        drawTracker('Health', sheet.health_current ?? healthMax, healthMax, M, healthMax, 60);
+        drawTracker('Humanity', sheet.humanity ?? 7, 10, M, 10, 60);
+        yCol1End = y;
         
-        // Draw Boxes
-        doc.setLineWidth(1).setDrawColor(COLOR_DARK);
-        for (let i = 1; i <= max; i++) {
-          const boxX = xStart + 80 + (i * (BOX_SIZE + BOX_GAP));
-          const isFilled = i <= val;
-          doc.setFillColor(isFilled ? COLOR_FILL : '#ffffff');
-          doc.rect(boxX, y, BOX_SIZE, BOX_SIZE, 'FD');
-        }
-        y += BOX_SIZE + BOX_GAP + 6;
-      };
+        // Reset y to draw in the second column
+        y = trackerYStart; 
 
-      // --- 4. PARSE CHARACTER DATA ---
-      let sheet = {};
-      try {
-        sheet = typeof character.sheet === 'string'
-          ? JSON.parse(character.sheet)
-          : (character.sheet || {});
-      } catch (e) {
-        console.error('Invalid sheet JSON', e);
-        alert('Invalid JSON sheet. Please fix the sheet and try again.');
-        return;
-      }
+        // Column 2
+        drawTracker('Willpower', sheet.willpower_current ?? willMax, willMax, M + trackerColW, willMax, 60);
+        drawTracker('Hunger', hunger, 5, M + trackerColW, 5, 60);
+        yCol2End = y;
+        
+        y = Math.max(yCol1End, yCol2End);
+        y += 10;
 
-      // Data accessors
-      const name = character.name || sheet.name || 'Unnamed';
-      const clan = character.clan || sheet.clan || '—';
-      const owner = character.owner || character.owner_name || '—';
-      const id = character.id ?? '—';
+        // == ATTRIBUTES (3 LINES, 3 COLUMNS) ==
+        section('Attributes');
+        const ATTR_COL_W = usableW / 3;
+        const ATTR_DOT_LABEL_W = 70; // Smaller label width for 3 columns
 
-      const attrs = sheet.attributes || {};
-      const getAttr = (k) => Number(attrs[k] ?? 0);
-      const healthMax = getAttr('Stamina') + 3;
-      const willMax = getAttr('Composure') + getAttr('Resolve');
+        const ATTR_LIST = [
+            { type: 'Physical', keys: ['Strength', 'Dexterity', 'Stamina'] },
+            { type: 'Social', keys: ['Charisma', 'Manipulation', 'Composure'] },
+            { type: 'Mental', keys: ['Intelligence', 'Wits', 'Resolve'] },
+        ];
+        
+        // Draw Attributes in three columns (Physical, Social, Mental)
+        let yAttrGroup = y;
 
-      // --- 5. BUILD THE PDF DOCUMENT ---
-
-      // == HEADER ==
-      doc.setFont(FONT_BOLD).setFontSize(24).setTextColor(COLOR_RED);
-      doc.text(name.toUpperCase(), M, y);
-      y += 24;
-
-      doc.setFont(FONT_REGULAR).setFontSize(11).setTextColor(COLOR_DARK);
-      const colW = usableW / 3;
-      doc.text(`Clan: ${clan}`, M, y);
-      doc.text(`Predator: ${sheet.predatorType || '—'}`, M + colW, y);
-      doc.text(`Sire: ${sheet.sire || '—'}`, M + colW * 2, y);
-      y += 16;
-      doc.text(`Ambition: ${sheet.ambition || '—'}`, M, y);
-      doc.text(`Desire: ${sheet.desire || '—'}`, M + colW, y);
-      y += 14;
-      doc.setDrawColor(COLOR_LIGHT).setLineWidth(0.5).line(M, y, M + usableW, y);
-      y += 10;
-
-      // == TRACKERS ==
-      drawTracker('Health', sheet.health_current ?? healthMax, healthMax);
-      drawTracker('Willpower', sheet.willpower_current ?? willMax, willMax);
-      drawTracker('Humanity', sheet.humanity ?? 7, 10);
-
-      // == ATTRIBUTES ==
-      section('Attributes');
-      doc.setFontSize(9).setTextColor(COLOR_LIGHT).text('Physical', M + 120, y - 8);
-      drawDots('Strength', getAttr('Strength'));
-      drawDots('Dexterity', getAttr('Dexterity'));
-      drawDots('Stamina', getAttr('Stamina'));
-      
-      y += 6;
-      doc.setFontSize(9).setTextColor(COLOR_LIGHT).text('Social', M + 120, y - 8);
-      drawDots('Charisma', getAttr('Charisma'));
-      drawDots('Manipulation', getAttr('Manipulation'));
-      drawDots('Composure', getAttr('Composure'));
-      
-      y += 6;
-      doc.setFontSize(9).setTextColor(COLOR_LIGHT).text('Mental', M + 120, y - 8);
-      drawDots('Intelligence', getAttr('Intelligence'));
-      drawDots('Wits', getAttr('Wits'));
-      drawDots('Resolve', getAttr('Resolve'));
-
-      // == SKILLS ==
-      section('Skills');
-      const skills = sheet.skills || {};
-      const skillKeys = Object.keys(skills).sort();
-      if (!skillKeys.length) {
-        doc.text('No skills defined.', M, y); y += 14;
-      }
-      skillKeys.forEach((k) => {
-        const s = skills[k] || {};
-        const dots = Number(s.dots || 0);
-        const specs = (Array.isArray(s.specialties) ? s.specialties : []).join(', ');
-        const label = specs ? `${k} (${specs})` : k;
-        drawDots(label, dots);
-      });
-
-      // == DISCIPLINES & POWERS ==
-      section('Disciplines');
-      const disc = sheet.disciplines || {};
-      const powers = sheet.disciplinePowers || {};
-      const discKeys = Object.keys(disc).sort();
-      if (!discKeys.length) {
-        doc.text('No disciplines defined.', M, y); y += 14;
-      }
-      discKeys.forEach((k) => {
-        ensure(30);
-        drawDots(k, disc[k]);
-        const powerList = powers[k] || [];
-        if (powerList.length) {
-          y -= 6; // Move up to tuck under the dots
-          powerList.forEach((p) => {
-            const ln = `• [Lvl ${p.level}] ${p.name || p.id || '—'}`;
-            const lines = split(ln, usableW - 140); // Indent
-            lines.forEach((l2) => {
-              ensure(14);
-              doc.text(l2, M + 140, y);
-              y += 12;
+        ATTR_LIST.forEach((group, index) => {
+            const xGroupStart = M + (index * ATTR_COL_W);
+            
+            // Draw Group Header
+            doc.setFontSize(9).setTextColor(COLOR_LIGHT).text(group.type, xGroupStart, yAttrGroup - 8);
+            
+            let yCursor = yAttrGroup;
+            group.keys.forEach(k => {
+                // Temporarily update global y to yCursor for the drawDots function
+                y = yCursor; 
+                drawDots(k, getAttr(k), 5, xGroupStart, ATTR_DOT_LABEL_W);
+                yCursor = y;
             });
-          });
-          y += 6; // Add space after
+            // Update the main y cursor to the longest section
+            yAttrGroup = Math.max(yAttrGroup, yCursor);
+        });
+        
+        y = yAttrGroup;
+        y += 10; // Space after Attributes
+
+        // == SKILLS (3 LINES, 3 COLUMNS) ==
+        section('Skills');
+        const SKILL_COL_W = usableW / 3;
+        const SKILL_DOT_LABEL_W = 70;
+
+        const skills = sheet.skills || {};
+        const getSkill = (k) => Number(skills[k]?.dots ?? 0);
+        const getSpecs = (k) => (Array.isArray(skills[k]?.specialties) ? skills[k].specialties : []).join(', ');
+
+        const SKILL_GROUPS = [
+            { type: 'Physical', keys: ['Athletics', 'Brawl', 'Drive', 'Firearms', 'Larceny', 'Melee', 'Stealth', 'Survival'] },
+            { type: 'Social', keys: ['Animal Ken', 'Etiquette', 'Insight', 'Intimidation', 'Leadership', 'Performance', 'Persuasion', 'Streetwise', 'Subterfuge'] },
+            { type: 'Mental', keys: ['Academics', 'Awareness', 'Finance', 'Investigation', 'Medicine', 'Occult', 'Politics', 'Science', 'Technology'] },
+        ];
+        
+        // Draw Skills in three columns (Physical, Social, Mental)
+        let ySkillGroup = y;
+
+        SKILL_GROUPS.forEach((group, index) => {
+            const xGroupStart = M + (index * SKILL_COL_W);
+            
+            // Draw Group Header
+            doc.setFontSize(9).setTextColor(COLOR_LIGHT).text(group.type, xGroupStart, ySkillGroup - 8);
+            
+            let yCursor = ySkillGroup;
+            group.keys.forEach(k => {
+                // Temporarily update global y to yCursor for the drawDots function
+                y = yCursor; 
+                
+                // Construct label with specialties
+                const specs = getSpecs(k);
+                const label = specs ? `${k} (${specs})` : k;
+                
+                drawDots(label, getSkill(k), 5, xGroupStart, SKILL_DOT_LABEL_W);
+                yCursor = y;
+            });
+            // Update the main y cursor to the longest section
+            ySkillGroup = Math.max(ySkillGroup, yCursor);
+        });
+        
+        y = ySkillGroup;
+        y += 10; // Space after Skills
+
+
+        // == DISCIPLINES & POWERS (Full Width) ==
+        // ... (This section remains the same as it uses full width for powers list)
+        section('Disciplines & Powers');
+        const disc = sheet.disciplines || {};
+        const powers = sheet.disciplinePowers || {};
+        const discKeys = Object.keys(disc).sort();
+        
+        if (!discKeys.length) {
+            doc.text('No disciplines defined.', M, y); y += LINE_HEIGHT;
+        } else {
+            const DISC_LABEL_WIDTH = 100;
+            discKeys.forEach((k) => {
+                ensure(30);
+                drawDots(k, disc[k], 5, M, DISC_LABEL_WIDTH);
+                
+                const powerList = powers[k] || [];
+                if (powerList.length) {
+                    y -= 6;
+                    powerList.forEach((p) => {
+                        const ln = `• [Lvl ${p.level}] ${p.name || p.id || '—'}`;
+                        const lines = split(ln, usableW - DISC_LABEL_WIDTH - 20);
+                        
+                        lines.forEach((l2) => {
+                            ensure(LINE_HEIGHT - 2);
+                            doc.text(l2, M + DISC_LABEL_WIDTH + 20, y);
+                            y += LINE_HEIGHT - 2;
+                        });
+                    });
+                    y += 6;
+                }
+            });
         }
-      });
 
-      // == ADVANTAGES (MERITS & FLAWS) ==
-      section('Advantages');
-      const merits = (sheet.advantages && sheet.advantages.merits) || [];
-      const flaws = (sheet.advantages && sheet.advantages.flaws) || [];
-      
-      doc.setFont(FONT_BOLD).setFontSize(11).text('Merits', M, y); y += 14;
-      if (!merits.length) {
-        doc.setFont(FONT_REGULAR).setFontSize(10).text('• None', M + 12, y); y += 14;
-      }
-      merits.filter(Boolean).forEach((m) => {
-        const nm = m.name || m.id || '—';
-        const dt = (m.dots ?? m.rating ?? '—');
-        const ln = `• ${nm} (${dt} dots)${m.description ? `: ${m.description}` : ''}`;
-        split(ln).forEach((l) => { ensure(14); doc.text(l, M + 12, y); y += 14; });
-      });
-      
-      y += 10;
-      doc.setFont(FONT_BOLD).setFontSize(11).text('Flaws', M, y); y += 14;
-      if (!flaws.length) {
-        doc.setFont(FONT_REGULAR).setFontSize(10).text('• None', M + 12, y); y += 14;
-      }
-      flaws.filter(Boolean).forEach((m) => {
-        const nm = m.name || m.id || '—';
-        const dt = (m.dots ?? m.rating ?? '—');
-        const ln = `• ${nm} (${dt} dots)${m.description ? `: ${m.description}` : ''}`;
-        split(ln).forEach((l) => { ensure(14); doc.text(l, M + 12, y); y += 14; });
-      });
+        // == ADVANTAGES (MERITS & FLAWS - Two Columns) ==
+        // ... (This section remains the same, using two columns)
+        section('Advantages (Merits & Flaws)');
+        const merits = (sheet.advantages && sheet.advantages.merits) || [];
+        const flaws = (sheet.advantages && sheet.advantages.flaws) || [];
+        
+        const advColW = usableW / 2;
+        let yMerits = y;
+        let yFlaws = y;
 
-      // == MORALITY ==
-      section('Morality');
-      const mor = sheet.morality || {};
-      if (mor.tenets) {
-        doc.setFont(FONT_BOLD).text('Tenets', M, y); y += 14;
-        split(mor.tenets).forEach((ln) => { ensure(14); doc.text(ln, M + 12, y); y += 14; });
-      }
-      if (Array.isArray(mor.convictions) && mor.convictions.length) {
-        y += 10;
-        doc.setFont(FONT_BOLD).text('Convictions', M, y); y += 14;
-        mor.convictions.forEach(c => {
-          split(`• ${c}`).forEach(ln => { ensure(14); doc.text(ln, M + 12, y); y += 14; });
+        // Merits (Column 1)
+        y = yMerits; ensure(30); yMerits = y;
+        doc.setFont(currentFont, 'bold').setFontSize(11).text('Merits', M, yMerits); yMerits += LINE_HEIGHT;
+        doc.setFont(currentFont, 'normal').setFontSize(10);
+        if (!merits.length) {
+            doc.text('• None', M + 12, yMerits); yMerits += LINE_HEIGHT;
+        }
+        merits.filter(Boolean).forEach((m) => {
+            const nm = m.name || m.id || '—';
+            const dt = (m.dots ?? m.rating ?? '—');
+            const ln = `• ${nm} (${dt} dots)${m.description ? `: ${m.description}` : ''}`;
+            split(ln, advColW - 12).forEach((l) => { 
+                y = yMerits; ensure(LINE_HEIGHT); yMerits = y; 
+                doc.text(l, M + 12, yMerits); yMerits += LINE_HEIGHT; 
+            });
         });
-      }
-      if (Array.isArray(mor.touchstones) && mor.touchstones.length) {
-        y += 10;
-        doc.setFont(FONT_BOLD).text('Touchstones', M, y); y += 14;
-        mor.touchstones.forEach(t => {
-          split(`• ${t}`).forEach(ln => { ensure(14); doc.text(ln, M + 12, y); y += 14; });
+        
+        // Flaws (Column 2)
+        const flawsColX = M + advColW;
+        y = yFlaws; ensure(30); yFlaws = y;
+        doc.setFont(currentFont, 'bold').setFontSize(11).text('Flaws', flawsColX, yFlaws); yFlaws += LINE_HEIGHT;
+        doc.setFont(currentFont, 'normal').setFontSize(10);
+        if (!flaws.length) {
+            doc.text('• None', flawsColX + 12, yFlaws); yFlaws += LINE_HEIGHT;
+        }
+        flaws.filter(Boolean).forEach((m) => {
+            const nm = m.name || m.id || '—';
+            const dt = (m.dots ?? m.rating ?? '—');
+            const ln = `• ${nm} (${dt} dots)${m.description ? `: ${m.description}` : ''}`;
+            split(ln, advColW - 12).forEach((l) => { 
+                y = yFlaws; ensure(LINE_HEIGHT); yFlaws = y;
+                doc.text(l, flawsColX + 12, yFlaws); yFlaws += LINE_HEIGHT; 
+            });
         });
-      }
+        
+        y = Math.max(yMerits, yFlaws);
+        y += 10;
 
-      // == FOOTER ==
-      const pageCount = doc.internal.getNumberOfPages();
-      for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-        doc.setFont(FONT_REGULAR).setFontSize(9).setTextColor(COLOR_LIGHT);
-        doc.setDrawColor(COLOR_LIGHT).setLineWidth(0.5).line(M, pageH - M + 10, pageW - M, pageH - M + 10);
-        doc.text(`Character ${id} | ${name}`, M, pageH - M + 22);
-        doc.text(`Page ${i} of ${pageCount}`, pageW - M - 50, pageH - M + 22);
-        doc.text(`Generated ${new Date().toLocaleString()}`, pageW / 2, pageH - M + 22, { align: 'center' });
-      }
+        // == MORALITY (Two Columns) ==
+        // ... (This section remains the same, using two columns)
+        section('Morality');
+        const mor = sheet.morality || {};
+        
+        // Tenets (Full Width)
+        if (mor.tenets) {
+            doc.setFont(currentFont, 'bold').text('Tenets', M, y); y += LINE_HEIGHT;
+            doc.setFont(currentFont, 'normal');
+            split(mor.tenets).forEach((ln) => { ensure(LINE_HEIGHT); doc.text(ln, M + 12, y); y += LINE_HEIGHT; });
+        }
+        
+        const morColW = usableW / 2;
+        let yConv = y;
+        let yTouch = y;
+        
+        // Convictions (Column 1)
+        if (Array.isArray(mor.convictions) && mor.convictions.length) {
+            y = yConv; ensure(30); yConv = y;
+            doc.setFont(currentFont, 'bold').text('Convictions', M, yConv); yConv += LINE_HEIGHT;
+            doc.setFont(currentFont, 'normal');
+            mor.convictions.forEach(c => {
+                split(`• ${c}`, morColW - 12).forEach(ln => { ensure(LINE_HEIGHT); y = yConv; yConv = y; doc.text(ln, M + 12, yConv); yConv += LINE_HEIGHT; });
+            });
+        }
 
-      // --- 6. SAVE THE PDF ---
-      doc.save(`${(name || 'character').replace(/\s+/g, '_')}-${id}-sheet.pdf`);
+        // Touchstones (Column 2)
+        if (Array.isArray(mor.touchstones) && mor.touchstones.length) {
+            y = yTouch; ensure(30); yTouch = y;
+            const touchColX = M + morColW;
+            doc.setFont(currentFont, 'bold').text('Touchstones', touchColX, yTouch); yTouch += LINE_HEIGHT;
+            doc.setFont(currentFont, 'normal');
+            mor.touchstones.forEach(t => {
+                split(`• ${t}`, morColW - 12).forEach(ln => { ensure(LINE_HEIGHT); y = yTouch; yTouch = y; doc.text(ln, touchColX + 12, yTouch); yTouch += LINE_HEIGHT; });
+            });
+        }
+        
+        y = Math.max(yConv, yTouch);
+
+        // == FOOTER (Loop through pages to add footer) ==
+        const pageCount = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            // Use the fallback font for the footer for maximum robustness
+            doc.setFont(FALLBACK_FONT, 'normal').setFontSize(9).setTextColor(COLOR_LIGHT);
+            doc.setDrawColor(COLOR_LIGHT).setLineWidth(0.5).line(M, pageH - M + 10, pageW - M, pageH - M + 10);
+            
+            const centerX = pageW / 2;
+            const rightX = pageW - M;
+            
+            doc.text(`Character ${id} | ${name}`, M, pageH - M + 22);
+            doc.text(`Generated ${new Date().toLocaleString()}`, centerX, pageH - M + 22, { align: 'center' });
+            doc.text(`Page ${i} of ${pageCount}`, rightX, pageH - M + 22, { align: 'right' });
+        }
+
+        // --- 6. SAVE THE PDF ---
+        doc.save(`${(name || 'character').replace(/\s+/g, '_')}-${id}-sheet.pdf`);
 
     } catch (e) {
-      console.error('Client PDF generation failed', e);
-      alert('Could not generate the PDF in the browser. Check console for details.');
+        console.error('Client PDF generation failed', e);
+        alert('Could not generate the PDF in the browser. Check console for details. Ensure jsPDF is installed and the Noto Sans Base64 data is correct.');
     }
-  }
+}
 
 
 
@@ -514,10 +628,12 @@ export default function Admin() {
           <TabButton active={tab==='xp'} onClick={()=>setTab('xp')}>XP Tools</TabButton>
           <TabButton active={tab==='npcs'} onClick={()=>setTab('npcs')}>NPCs</TabButton>
           <TabButton active={tab==='chat'} onClick={()=>setTab('chat')}>Chat Logs</TabButton>
+          <TabButton active={tab==='logs'} onClick={()=>setTab('logs')}>Logs</TabButton>
           <button className={`${styles.btn} ${styles.btnGhost} ${styles.rowEnd}`} onClick={load}>Reload</button>
         </div>
 
         {tab === 'users' && <UsersTab users={users} onSave={saveUser} />}
+        {tab==='logs' && <AdminLogs />}
         {tab === 'characters' && (
           <CharactersTab
             users={users}
