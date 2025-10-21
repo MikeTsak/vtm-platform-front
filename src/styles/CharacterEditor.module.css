@@ -1,0 +1,200 @@
+/* --- Admin.module.css --- */
+
+:root {
+  /* Color Palette - Dark Theme */
+  --color-primary: #a11; /* A deep, characteristic red */
+  --color-text: #ddd;
+  --color-background: #1e1e1e;
+  --color-card-bg: #282828;
+  --color-border: #444;
+  --color-subtle-text: #999;
+  --color-alert-error: #e57373;
+  --color-alert-info: #64b5f6;
+
+  /* Button Colors */
+  --btn-bg: #383838;
+  --btn-fg: var(--color-text);
+  --btn-hover-bg: #4c4c4c;
+
+  --btnPrimaryBg: var(--color-primary);
+  --btnPrimaryFg: #fff;
+  --btnPrimaryHoverBg: #c11;
+
+  /* Form Elements */
+  --input-bg: #333;
+  --input-border: #555;
+}
+
+/* Global resets for the component context */
+.modalBackdrop * {
+  box-sizing: border-box;
+}
+
+/* --- Layouts & Containers --- */
+
+.modalBackdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modalCard {
+  background-color: var(--color-background);
+  color: var(--color-text);
+  max-height: 90vh;
+  overflow-y: auto;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.card {
+  padding: 16px;
+  background-color: var(--color-card-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+
+.cardElev {
+  /* The main modal card styling */
+  padding: 20px;
+}
+
+.row {
+  display: flex;
+  align-items: stretch;
+}
+
+/* --- Typography --- */
+
+h3, h4 {
+  color: var(--color-primary);
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+h3 {
+  font-size: 1.5em;
+}
+
+h4 {
+  font-size: 1.1em;
+}
+
+.subtle {
+  color: var(--color-subtle-text);
+  font-size: 0.9em;
+}
+
+/* --- Form Elements (Inputs, Selects, Textareas) --- */
+
+input[type="text"],
+input[type="number"],
+textarea,
+select {
+  padding: 8px 10px;
+  border: 1px solid var(--input-border);
+  border-radius: 4px;
+  background-color: var(--input-bg);
+  color: var(--color-text);
+  font-size: 1em;
+  transition: border-color 0.2s, background-color 0.2s;
+  min-height: 38px; /* Standardize height */
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--color-primary);
+  outline: none;
+  background-color: #383838;
+}
+
+textarea {
+  resize: vertical;
+}
+
+/* --- Buttons --- */
+
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.2s, color 0.2s;
+  min-height: 38px; /* Match input height */
+
+  background-color: var(--btn-bg);
+  color: var(--btn-fg);
+}
+
+.btn:hover:not(:disabled) {
+  background-color: var(--btn-hover-bg);
+}
+
+.btnPrimary {
+  background-color: var(--btnPrimaryBg);
+  color: var(--btnPrimaryFg);
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background-color: var(--btnPrimaryHoverBg);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* --- Alerts and Messages --- */
+
+.alert {
+  padding: 10px 15px;
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+.alertError {
+  background-color: #4b2a2a;
+  border: 1px solid var(--color-alert-error);
+  color: var(--color-alert-error);
+}
+
+.alertInfo {
+  background-color: #2a3b4b;
+  border: 1px solid var(--color-alert-info);
+  color: var(--color-alert-info);
+}
+
+/* --- Utility/Framework Classes --- */
+
+/* Used for stacking elements with a gap, like in the skill groups */
+.stack8 > *, .stack12 > * {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+.stack8 > * + * {
+  margin-top: 8px;
+}
+.stack12 > * + * {
+  margin-top: 12px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .row {
+    flex-wrap: wrap;
+  }
+  .modalCard {
+    width: 100vw;
+    border-radius: 0;
+  }
+}

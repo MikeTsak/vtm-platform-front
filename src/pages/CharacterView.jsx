@@ -1013,6 +1013,27 @@ onAdd={async (merit, targetDots, options = {}) => {
             )}
           </Card>
 
+          {/* Flaws */}
+          <Card>
+            <div className={styles.cardHead}><b>Flaws</b></div>
+            {Array.isArray(sheet?.advantages?.flaws) && sheet.advantages.flaws.length > 0 ? (
+              <div className={styles.grid} style={{ marginTop: 10 }}>
+                <div className={styles.subhead}>Known Flaws</div>
+                <ul className={styles.powerList}>
+                  {sheet.advantages.flaws.map((f, i) => (
+                    <li key={`${f.id || f.name}-${i}`} className={styles.powerPill}>
+                      <span className={styles.levelBadge}>{'•'.repeat(Number(f.dots || 0))}</span>
+                      <span className={styles.powerName}>{f.name || f.id}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <div className={styles.muted}>No recorded flaws.</div>
+            )}
+          </Card>
+
+
           {/* Rituals & Ceremonies */}
           <Card>
             <Drawer title="Blood Sorcery Rituals & Oblivion Ceremonies" defaultOpen={false}>

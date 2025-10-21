@@ -9,7 +9,8 @@ import 'leaflet/dist/leaflet.css';
 
 import CharacterSetup from './CharacterSetup';
 import CharacterView from './CharacterView';
-import AdminLogs from './AdminLogs.jsx';
+import CharacterEditor from './CharacterEditor.jsx';
+import AdminLogs from '../components/AdminLogs.jsx';
 
 import domainsRaw from '../data/Domains.json';
 import { Link } from 'react-router-dom';
@@ -37,7 +38,7 @@ export default function Admin() {
   const [downtimes, setDowntimes] = useState([]);
   const [npcs, setNPCs] = useState([]);
   const [allMessages, setAllMessages] = useState([]);
-
+  const [editorTarget, setEditorTarget] = useState(null); 
 
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
@@ -122,10 +123,13 @@ async function handleGeneratePDF(character) {
 
         // --- 1. FONT SETUP: CRITICAL FOR GREEK/LATIN SUPPORT ---
         // 🚨 IMPORTANT: You MUST generate and paste the Base64-encoded TTF strings here.
-        // Use a font that supports both Greek and Latin, like Noto Sans or Roboto.
+        // Use a font that supports both Greek and Latin, like Noto Sans, Roboto, or Arial Unicode MS.
+        // Note: For Greek/Unicode support, 'Arial' is often too limited; Noto Sans is preferred.
+        // Assuming Noto Sans is used as in the original code.
         const NotoSansRegular_Base64 = "..."; // <--- PASTE NotoSans-Regular.ttf BASE64 HERE (Required for Greek)
-        const NotoSansBold_Base64 = "...";    // <--- PASTE NotoSans-Bold.ttf BASE64 HERE (Required for Greek)
+        const NotoSansBold_Base64 = "...";    // <--- PASTE NotoSans-Bold.ttf BASE64 HERE (Required for Greek)
 
+        // Use distinct names for the registered font families
         const FONT_REGULAR = 'NotoSans';
         const FONT_BOLD = 'NotoSans-Bold';
         const FALLBACK_FONT = 'Helvetica'; // Basic font if custom load fails
@@ -146,29 +150,43 @@ async function handleGeneratePDF(character) {
         const DOT_GAP = 4;
         const LINE_HEIGHT = 14;
 
-        let currentFont = FALLBACK_FONT;
+        let currentFontFamily = FALLBACK_FONT; // Renamed for clarity
 
         // Force Font Loading
         if (NotoSansRegular_Base64.length > 50 && NotoSansBold_Base64.length > 50) {
             try {
-                // Ensure font data is properly registered
+                // Register both custom fonts. Note: The style is set to 'normal' for both
+                // because we will switch by the font family name (FONT_REGULAR/FONT_BOLD).
                 doc.addFileToVFS('NotoSans-Regular.ttf', NotoSansRegular_Base64);
                 doc.addFont('NotoSans-Regular.ttf', FONT_REGULAR, 'normal');
                 doc.addFileToVFS('NotoSans-Bold.ttf', NotoSansBold_Base64);
                 doc.addFont('NotoSans-Bold.ttf', FONT_BOLD, 'normal');
-                currentFont = FONT_REGULAR;
-                doc.setFont(currentFont, 'normal'); // Set the new font as default
+                
+                currentFontFamily = FONT_REGULAR;
+                doc.setFont(currentFontFamily, 'normal'); // Set the regular font as default
             } catch (e) {
                 console.error("Custom Noto Sans font loading failed.", e);
                 doc.setFont(FALLBACK_FONT, 'normal');
             }
         } else {
-             doc.setFont(FALLBACK_FONT, 'normal');
-             console.warn("Noto Sans Base64 data missing or too short. Using fallback font (Helvetica). Greek characters may not display.");
+            doc.setFont(FALLBACK_FONT, 'normal');
+            console.warn("Noto Sans Base64 data missing or too short. Using fallback font (Helvetica). Greek characters may not display.");
         }
 
+        // Helper function to get the correct font and style based on the global state
+        const getFont = (style) => {
+            if (currentFontFamily === FALLBACK_FONT) {
+                // If fallback (Helvetica), rely on built-in styles
+                return { family: FALLBACK_FONT, style: style };
+            }
+            // If custom font is loaded, explicitly choose the registered family
+            return { 
+                family: style === 'bold' ? FONT_BOLD : FONT_REGULAR, 
+                style: 'normal' // Custom fonts are always registered with 'normal' style
+            };
+        };
 
-        // --- 3. PDF HELPER FUNCTIONS ---
+        // --- 3. PDF HELPER FUNCTIONS (UPDATED) ---
 
         const ensure = (extraH = LINE_HEIGHT) => {
             if (y + extraH > pageH - M) {
@@ -182,12 +200,19 @@ async function handleGeneratePDF(character) {
         const section = (title) => {
             ensure(30);
             y += 10;
-            doc.setFont(currentFont, 'bold').setFontSize(14).setTextColor(COLOR_RED);
+            
+            const bold = getFont('bold');
+            const regular = getFont('normal');
+
+            // Use explicit BOLD font family
+            doc.setFont(bold.family, bold.style).setFontSize(14).setTextColor(COLOR_RED);
             doc.text(title.toUpperCase(), M, y);
             y += 6;
             doc.setDrawColor(COLOR_RED).setLineWidth(1).line(M, y, M + usableW, y);
             y += 20;
-            doc.setFont(currentFont, 'normal').setFontSize(10).setTextColor(COLOR_DARK);
+            
+            // Reset to explicit REGULAR font family
+            doc.setFont(regular.family, regular.style).setFontSize(10).setTextColor(COLOR_DARK);
         };
 
         const drawDots = (label, value, max = 5, xStart = M, labelWidth = 120) => {
@@ -196,9 +221,12 @@ async function handleGeneratePDF(character) {
             const maxVal = Number(max) || 5;
             const x = xStart + labelWidth;
 
-            doc.setFont(currentFont, 'normal').setFontSize(10).setTextColor(COLOR_DARK);
+            const regular = getFont('normal');
+
+            // Use explicit REGULAR font family
+            doc.setFont(regular.family, regular.style).setFontSize(10).setTextColor(COLOR_DARK);
             const labelLines = split(label, labelWidth);
-            doc.text(labelLines[0], xStart, y + DOT_SIZE - 1); // Only draw the first line
+            doc.text(labelLines[0], xStart, y + DOT_SIZE - 1); 
             
             doc.setLineWidth(1);
             for (let i = 1; i <= maxVal; i++) {
@@ -217,7 +245,10 @@ async function handleGeneratePDF(character) {
             const BOX_SIZE = 10;
             const BOX_GAP = 3;
 
-            doc.setFont(currentFont, 'bold').setFontSize(10).setTextColor(COLOR_DARK);
+            const bold = getFont('bold');
+
+            // Use explicit BOLD font family
+            doc.setFont(bold.family, bold.style).setFontSize(10).setTextColor(COLOR_DARK);
             doc.text(label.toUpperCase(), xStart, y + BOX_SIZE - 1);
             
             doc.setLineWidth(1).setDrawColor(COLOR_DARK);
@@ -233,7 +264,6 @@ async function handleGeneratePDF(character) {
 
         // --- 4. PARSE CHARACTER DATA ---
         let sheet = {};
-        // ... (JSON parsing remains the same)
         try {
             sheet = typeof character.sheet === 'string'
                 ? JSON.parse(character.sheet)
@@ -251,19 +281,18 @@ async function handleGeneratePDF(character) {
         const willMax = getAttr('Composure') + getAttr('Resolve');
         const hunger = sheet.hunger || 0;
         const id = character.id ?? '—';
-        // ... (other data accessors remain the same)
 
         // --- 5. BUILD THE PDF DOCUMENT ---
-
-        // == HEADER & TRACKERS ==
-        // ... (Header and Tracker sections remain the same, ensure drawTracker is used)
         
+        const bold = getFont('bold');
+        const regular = getFont('normal');
+
         // == HEADER ==
-        doc.setFont(currentFont, 'bold').setFontSize(24).setTextColor(COLOR_RED);
+        doc.setFont(bold.family, bold.style).setFontSize(24).setTextColor(COLOR_RED);
         doc.text(name.toUpperCase(), M, y);
         y += 24;
 
-        doc.setFont(currentFont, 'normal').setFontSize(11).setTextColor(COLOR_DARK);
+        doc.setFont(regular.family, regular.style).setFontSize(11).setTextColor(COLOR_DARK);
         const colW = usableW / 3;
         doc.text(`Clan: ${character.clan || sheet.clan || '—'}`, M, y);
         doc.text(`Predator: ${sheet.predatorType || '—'}`, M + colW, y);
@@ -276,6 +305,7 @@ async function handleGeneratePDF(character) {
         y += 10;
 
         // == TRACKERS (Two Columns) ==
+        // drawTracker uses the fixed function above, so this block is fine.
         const trackerColW = usableW / 2;
         const trackerYStart = y;
         let yCol1End, yCol2End;
@@ -299,7 +329,7 @@ async function handleGeneratePDF(character) {
         // == ATTRIBUTES (3 LINES, 3 COLUMNS) ==
         section('Attributes');
         const ATTR_COL_W = usableW / 3;
-        const ATTR_DOT_LABEL_W = 70; // Smaller label width for 3 columns
+        const ATTR_DOT_LABEL_W = 70; 
 
         const ATTR_LIST = [
             { type: 'Physical', keys: ['Strength', 'Dexterity', 'Stamina'] },
@@ -307,28 +337,25 @@ async function handleGeneratePDF(character) {
             { type: 'Mental', keys: ['Intelligence', 'Wits', 'Resolve'] },
         ];
         
-        // Draw Attributes in three columns (Physical, Social, Mental)
         let yAttrGroup = y;
 
         ATTR_LIST.forEach((group, index) => {
             const xGroupStart = M + (index * ATTR_COL_W);
             
-            // Draw Group Header
-            doc.setFontSize(9).setTextColor(COLOR_LIGHT).text(group.type, xGroupStart, yAttrGroup - 8);
+            // Use explicit regular font for light gray text (Group Header)
+            doc.setFont(regular.family, regular.style).setFontSize(9).setTextColor(COLOR_LIGHT).text(group.type, xGroupStart, yAttrGroup - 8);
             
             let yCursor = yAttrGroup;
             group.keys.forEach(k => {
-                // Temporarily update global y to yCursor for the drawDots function
                 y = yCursor; 
-                drawDots(k, getAttr(k), 5, xGroupStart, ATTR_DOT_LABEL_W);
+                drawDots(k, getAttr(k), 5, xGroupStart, ATTR_DOT_LABEL_W); // drawDots uses the fixed font selection
                 yCursor = y;
             });
-            // Update the main y cursor to the longest section
             yAttrGroup = Math.max(yAttrGroup, yCursor);
         });
         
         y = yAttrGroup;
-        y += 10; // Space after Attributes
+        y += 10; 
 
         // == SKILLS (3 LINES, 3 COLUMNS) ==
         section('Skills');
@@ -345,49 +372,47 @@ async function handleGeneratePDF(character) {
             { type: 'Mental', keys: ['Academics', 'Awareness', 'Finance', 'Investigation', 'Medicine', 'Occult', 'Politics', 'Science', 'Technology'] },
         ];
         
-        // Draw Skills in three columns (Physical, Social, Mental)
         let ySkillGroup = y;
 
         SKILL_GROUPS.forEach((group, index) => {
             const xGroupStart = M + (index * SKILL_COL_W);
             
-            // Draw Group Header
-            doc.setFontSize(9).setTextColor(COLOR_LIGHT).text(group.type, xGroupStart, ySkillGroup - 8);
+            // Use explicit regular font for light gray text (Group Header)
+            doc.setFont(regular.family, regular.style).setFontSize(9).setTextColor(COLOR_LIGHT).text(group.type, xGroupStart, ySkillGroup - 8);
             
             let yCursor = ySkillGroup;
             group.keys.forEach(k => {
-                // Temporarily update global y to yCursor for the drawDots function
                 y = yCursor; 
                 
-                // Construct label with specialties
                 const specs = getSpecs(k);
                 const label = specs ? `${k} (${specs})` : k;
                 
-                drawDots(label, getSkill(k), 5, xGroupStart, SKILL_DOT_LABEL_W);
+                drawDots(label, getSkill(k), 5, xGroupStart, SKILL_DOT_LABEL_W); // drawDots uses the fixed font selection
                 yCursor = y;
             });
-            // Update the main y cursor to the longest section
             ySkillGroup = Math.max(ySkillGroup, yCursor);
         });
         
         y = ySkillGroup;
-        y += 10; // Space after Skills
+        y += 10; 
 
 
         // == DISCIPLINES & POWERS (Full Width) ==
-        // ... (This section remains the same as it uses full width for powers list)
         section('Disciplines & Powers');
         const disc = sheet.disciplines || {};
         const powers = sheet.disciplinePowers || {};
         const discKeys = Object.keys(disc).sort();
         
+        // Ensure regular font is active before text starts
+        doc.setFont(regular.family, regular.style).setFontSize(10).setTextColor(COLOR_DARK);
+
         if (!discKeys.length) {
             doc.text('No disciplines defined.', M, y); y += LINE_HEIGHT;
         } else {
             const DISC_LABEL_WIDTH = 100;
             discKeys.forEach((k) => {
                 ensure(30);
-                drawDots(k, disc[k], 5, M, DISC_LABEL_WIDTH);
+                drawDots(k, disc[k], 5, M, DISC_LABEL_WIDTH); // drawDots uses the fixed font selection
                 
                 const powerList = powers[k] || [];
                 if (powerList.length) {
@@ -408,7 +433,6 @@ async function handleGeneratePDF(character) {
         }
 
         // == ADVANTAGES (MERITS & FLAWS - Two Columns) ==
-        // ... (This section remains the same, using two columns)
         section('Advantages (Merits & Flaws)');
         const merits = (sheet.advantages && sheet.advantages.merits) || [];
         const flaws = (sheet.advantages && sheet.advantages.flaws) || [];
@@ -419,8 +443,8 @@ async function handleGeneratePDF(character) {
 
         // Merits (Column 1)
         y = yMerits; ensure(30); yMerits = y;
-        doc.setFont(currentFont, 'bold').setFontSize(11).text('Merits', M, yMerits); yMerits += LINE_HEIGHT;
-        doc.setFont(currentFont, 'normal').setFontSize(10);
+        doc.setFont(bold.family, bold.style).setFontSize(11).text('Merits', M, yMerits); yMerits += LINE_HEIGHT;
+        doc.setFont(regular.family, regular.style).setFontSize(10); // Reset to regular for content
         if (!merits.length) {
             doc.text('• None', M + 12, yMerits); yMerits += LINE_HEIGHT;
         }
@@ -437,8 +461,8 @@ async function handleGeneratePDF(character) {
         // Flaws (Column 2)
         const flawsColX = M + advColW;
         y = yFlaws; ensure(30); yFlaws = y;
-        doc.setFont(currentFont, 'bold').setFontSize(11).text('Flaws', flawsColX, yFlaws); yFlaws += LINE_HEIGHT;
-        doc.setFont(currentFont, 'normal').setFontSize(10);
+        doc.setFont(bold.family, bold.style).setFontSize(11).text('Flaws', flawsColX, yFlaws); yFlaws += LINE_HEIGHT;
+        doc.setFont(regular.family, regular.style).setFontSize(10); // Reset to regular for content
         if (!flaws.length) {
             doc.text('• None', flawsColX + 12, yFlaws); yFlaws += LINE_HEIGHT;
         }
@@ -456,14 +480,13 @@ async function handleGeneratePDF(character) {
         y += 10;
 
         // == MORALITY (Two Columns) ==
-        // ... (This section remains the same, using two columns)
         section('Morality');
         const mor = sheet.morality || {};
         
         // Tenets (Full Width)
         if (mor.tenets) {
-            doc.setFont(currentFont, 'bold').text('Tenets', M, y); y += LINE_HEIGHT;
-            doc.setFont(currentFont, 'normal');
+            doc.setFont(bold.family, bold.style).text('Tenets', M, y); y += LINE_HEIGHT;
+            doc.setFont(regular.family, regular.style);
             split(mor.tenets).forEach((ln) => { ensure(LINE_HEIGHT); doc.text(ln, M + 12, y); y += LINE_HEIGHT; });
         }
         
@@ -474,8 +497,8 @@ async function handleGeneratePDF(character) {
         // Convictions (Column 1)
         if (Array.isArray(mor.convictions) && mor.convictions.length) {
             y = yConv; ensure(30); yConv = y;
-            doc.setFont(currentFont, 'bold').text('Convictions', M, yConv); yConv += LINE_HEIGHT;
-            doc.setFont(currentFont, 'normal');
+            doc.setFont(bold.family, bold.style).text('Convictions', M, yConv); yConv += LINE_HEIGHT;
+            doc.setFont(regular.family, regular.style);
             mor.convictions.forEach(c => {
                 split(`• ${c}`, morColW - 12).forEach(ln => { ensure(LINE_HEIGHT); y = yConv; yConv = y; doc.text(ln, M + 12, yConv); yConv += LINE_HEIGHT; });
             });
@@ -485,8 +508,8 @@ async function handleGeneratePDF(character) {
         if (Array.isArray(mor.touchstones) && mor.touchstones.length) {
             y = yTouch; ensure(30); yTouch = y;
             const touchColX = M + morColW;
-            doc.setFont(currentFont, 'bold').text('Touchstones', touchColX, yTouch); yTouch += LINE_HEIGHT;
-            doc.setFont(currentFont, 'normal');
+            doc.setFont(bold.family, bold.style).text('Touchstones', touchColX, yTouch); yTouch += LINE_HEIGHT;
+            doc.setFont(regular.family, regular.style);
             mor.touchstones.forEach(t => {
                 split(`• ${t}`, morColW - 12).forEach(ln => { ensure(LINE_HEIGHT); y = yTouch; yTouch = y; doc.text(ln, touchColX + 12, yTouch); yTouch += LINE_HEIGHT; });
             });
@@ -640,6 +663,7 @@ async function handleGeneratePDF(character) {
             onSave={saveCharacter}
             onDelete={deleteCharacter}
             onGeneratePDF={handleGeneratePDF}
+            onOpenEditor={c => setEditorTarget(c)}
           />
         )}
 
@@ -666,6 +690,13 @@ async function handleGeneratePDF(character) {
           />
         )}
         {tab === 'chat' && <ChatLogsTab messages={allMessages} />}
+        {editorTarget && (
+         <CharacterEditor
+            character={editorTarget}
+            onClose={() => setEditorTarget(null)}
+            onSaved={load}
+          />
+        )}
       </div>
     </div>
   );
@@ -717,7 +748,7 @@ function UsersTab({ users, onSave }) {
 
 /* ==================== CHARACTERS ==================== */
 
-function CharactersTab({ users, onSave, onDelete, onGeneratePDF }) {
+function CharactersTab({ users, onSave, onDelete, onGeneratePDF, onOpenEditor }) {
   const chars = useMemo(() => users.filter(u => u.character_id).map(u => ({
     id: u.character_id,
     user_id: u.id,
@@ -766,6 +797,13 @@ function CharactersTab({ users, onSave, onDelete, onGeneratePDF }) {
               }}
             >
               Save Character
+            </button>
+            <button
+              className={styles.btn}
+              onClick={() => onOpenEditor(c)}
+              title="Open the rich editor (with XP auto-refund/charge)"
+            >
+              Open Editor
             </button>
             
             {/* --- NEW BUTTON --- */}

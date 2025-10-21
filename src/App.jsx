@@ -18,7 +18,7 @@ import Terms from './pages/Terms';
 import Legal from './pages/Legal';
 import Privacy from './pages/Privacy';
 import NPCs from './pages/NPCs';
-import AdminNPCView from './pages/AdminNPCView'; 
+import AdminNPCView from './components/AdminNPCView.jsx'; 
 import ForgotPassword from './pages/user/ForgotPassword';
 import ResetPassword from './pages/user/ResetPassword';
 import Boons from './pages/Boons';

@@ -582,3 +582,9 @@
   background-color: #2e2e2e;
   border-color: #484848;
 }
+
+.modalBackdrop{
+  position:fixed; inset:0; background:rgba(0,0,0,.55);
+  display:grid; place-items:center; z-index:1000;
+}
+.modalCard{ max-height:92vh; overflow:auto; }

@@ -1,7 +1,7 @@
 // src/pages/AdminNPCView.jsx 
 import React from 'react';
 import { useParams, Navigate } from 'react-router-dom';
-import CharacterView from './CharacterView';
+import CharacterView from '../pages/CharacterView';
 import { AuthCtx } from '../AuthContext';
 
 export default function AdminNPCView() {
