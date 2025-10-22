@@ -48,7 +48,7 @@ export default function Comms() {
   const [npcs, setNpcs] = useState([]);       // npc contacts
   const [filter, setFilter] = useState('');
 
-  // NEW: drawer toggle for "No Character" users
+  // Drawer toggle for "No Character" users (preserved)
   const [noCharOpen, setNoCharOpen] = useState(false);
 
   // selection
@@ -65,6 +65,69 @@ export default function Comms() {
 
   const messagesEndRef = useRef(null);
   const pollRef = useRef(null);
+
+  /* ---------------- Notifications (added) ---------------- */
+  const [notifOn, setNotifOn] = useState(() => localStorage.getItem('comms_notifs') === '1');
+  const notifSupported = typeof window !== 'undefined' && 'Notification' in window;
+
+  useEffect(() => {
+    localStorage.setItem('comms_notifs', notifOn ? '1' : '0');
+  }, [notifOn]);
+
+  // Request permission once when turning on
+  useEffect(() => {
+    if (notifOn && notifSupported && Notification.permission === 'default') {
+      Notification.requestPermission().then((p) => {
+        if (p !== 'granted') setNotifOn(false);
+      });
+    }
+  }, [notifOn, notifSupported]);
+
+  // Track page visibility so we only notify when you’re away
+  const pageVisibleRef = useRef(!document.hidden);
+  useEffect(() => {
+    const onVis = () => { pageVisibleRef.current = !document.hidden; };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, []);
+
+  // Build a key for the active thread (so first sync never pings)
+  const threadKey = useMemo(() => {
+    if (!selectedContact) return 'none';
+    if (selectedContact.type === 'user') return `u-${selectedContact.id}`;
+    return isAdmin ? `n-${selectedContact.id}-p-${selectedPlayerId || 'none'}` : `n-${selectedContact.id}`;
+  }, [selectedContact, selectedPlayerId, isAdmin]);
+
+  const lastTsRef = useRef(0);
+  const initialSyncRef = useRef(true);
+  useEffect(() => {
+    initialSyncRef.current = true;
+    lastTsRef.current = 0;
+  }, [threadKey]);
+
+  const isInbound = (m) => {
+    if (!selectedContact) return false;
+    if (selectedContact.type === 'user') return m.sender_id !== currentUser?.id;
+    // NPC threads: admin sees inbound from player; player sees inbound from NPC
+    return isAdmin ? m.sender_id !== 'npc' : m.sender_id === 'npc';
+  };
+
+  const notify = (title, body, icon) => {
+    try {
+      if (!notifOn || !notifSupported) return;
+      if (Notification.permission === 'denied') return;
+
+      const opts = { body, icon, badge: icon, tag: `comms-${threadKey}` };
+      if (Notification.permission === 'granted') {
+        new Notification(title, opts);
+      } else {
+        Notification.requestPermission().then((p) => {
+          if (p === 'granted') new Notification(title, opts);
+        });
+      }
+    } catch {/* noop */}
+  };
+  /* -------------- end Notifications (added) -------------- */
 
   /* --------------- JWT header & 401 interceptor ---------------- */
   useEffect(() => {
@@ -144,7 +207,7 @@ export default function Comms() {
     return () => { cancelled = true; };
   }, [isAdmin, selectedContact, hasAuthHeader]);
 
-  /* Load & poll messages for the active thread */
+  /* Load & poll messages for the active thread (enhanced with notifications) */
   useEffect(() => {
     if (pollRef.current) {
       clearInterval(pollRef.current);
@@ -156,15 +219,15 @@ export default function Comms() {
     const load = async () => {
       if (!selectedContact) return;
       try {
+        let msgs = [];
         if (selectedContact.type === 'user') {
           const res = await api.get(`/chat/history/${selectedContact.id}`);
-          const msgs = (res.data.messages || []).map(m => ({
+          msgs = (res.data.messages || []).map(m => ({
             id: m.id,
             body: m.body,
             created_at: m.created_at,
             sender_id: m.sender_id,
           }));
-          setMessages(msgs);
         } else {
           if (isAdmin) {
             if (!selectedPlayerId || !hasAuthHeader) { setMessages([]); return; }
@@ -176,26 +239,58 @@ export default function Comms() {
             } catch {
               res = await api.get(`/admin/chat/npc-history/${selectedContact.id}/${selectedPlayerId}`);
             }
-            const msgs = (res.data.messages || []).map(m => ({
+            msgs = (res.data.messages || []).map(m => ({
               id: m.id,
               body: m.body,
               created_at: m.created_at,
               sender_id: m.from_side === 'npc' ? 'npc' : selectedPlayerId,
               _from: m.from_side,
             }));
-            setMessages(msgs);
           } else {
             const res = await api.get(`/chat/npc-history/${selectedContact.id}`);
-            const msgs = (res.data.messages || []).map(m => ({
+            msgs = (res.data.messages || []).map(m => ({
               id: m.id,
               body: m.body,
               created_at: m.created_at,
               sender_id: m.from_side === 'user' ? currentUser.id : 'npc',
               _from: m.from_side,
             }));
-            setMessages(msgs);
           }
         }
+
+        // Sort (just in case)
+        msgs.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+        // ---- Notification check (added) ----
+        const newestTs = msgs.reduce((t, m) => Math.max(t, new Date(m.created_at).getTime()), 0);
+        if (!initialSyncRef.current && newestTs > lastTsRef.current) {
+          const inboundNew = msgs.filter(
+            m => new Date(m.created_at).getTime() > lastTsRef.current && isInbound(m)
+          );
+
+          if (inboundNew.length && (document.hidden || !pageVisibleRef.current)) {
+            const latest = inboundNew[inboundNew.length - 1];
+            const title =
+              selectedContact.type === 'user'
+                ? (selectedContact.char_name || selectedContact.display_name || 'New message')
+                : (isAdmin && selectedPlayerId
+                    ? `${selectedContact.name} ↔ ${users.find(u => u.id === selectedPlayerId)?.char_name || 'Player'}`
+                    : selectedContact.name || 'New message');
+            const icon = symlogo(
+              selectedContact.type === 'user'
+                ? selectedContact.clan
+                : selectedContact.clan
+            ) || '/img/ATT-logo(1).png';
+
+            notify(title, latest.body || 'New message', icon);
+          }
+        }
+        // Advance refs for next poll
+        initialSyncRef.current = false;
+        lastTsRef.current = Math.max(lastTsRef.current, newestTs);
+        // ---- end Notification check ----
+
+        setMessages(msgs);
       } catch (e) {
         setError(e?.response?.status === 401 ? 'Your session expired. Please log in again.' : 'Could not load messages.');
       }
@@ -204,9 +299,9 @@ export default function Comms() {
     load();
     pollRef.current = setInterval(load, 6000);
     return () => clearInterval(pollRef.current);
-  }, [selectedContact, selectedPlayerId, isAdmin, hasAuthHeader, currentUser?.id]);
+  }, [selectedContact, selectedPlayerId, isAdmin, hasAuthHeader, currentUser?.id, users, threadKey]); // threadKey/users included for accurate titles
 
-  /* Send message according to mode */
+  /* Send message according to mode (unchanged) */
   const handleSendMessage = async (e) => {
     e?.preventDefault?.();
     const body = newMessage.trim();
@@ -456,7 +551,7 @@ export default function Comms() {
         </div>
       </aside>
 
-      {/* Chat pane (unchanged) */}
+      {/* Chat pane */}
       <main className={styles.chatWindow}>
         {selectedContact ? (
           <>
@@ -467,6 +562,7 @@ export default function Comms() {
                 {selectedContact.type === 'npc' && selectedContact.clan && (
                   <span className={styles.charTag}>{selectedContact.clan}</span>
                 )}
+                {/* Quick jump back to contacts on mobile */}
                 <button
                   type="button"
                   className={styles.mobileContactsBtn}
@@ -474,6 +570,26 @@ export default function Comms() {
                 >
                   Contacts
                 </button>
+
+                {/* Notifications toggle (added) */}
+                <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                  <button
+                    type="button"
+                    className={`${styles?.notifBtn || ''} ${notifOn ? styles?.notifOn || '' : ''}`}
+                    onClick={() => {
+                      if (!notifSupported) { alert('Notifications are not supported in this browser.'); return; }
+                      if (!notifOn) {
+                        if (Notification.permission === 'granted') setNotifOn(true);
+                        else Notification.requestPermission().then(p => setNotifOn(p === 'granted'));
+                      } else {
+                        setNotifOn(false);
+                      }
+                    }}
+                    title={notifSupported ? (notifOn ? 'Notifications on' : 'Notifications off') : 'Not supported'}
+                  >
+                    {notifOn ? '🔔 Notifications On' : '🔕 Notifications Off'}
+                  </button>
+                </div>
               </div>
 
               {/* Admin roster (recent/all) */}
