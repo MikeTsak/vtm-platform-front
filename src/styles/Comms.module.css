@@ -402,3 +402,171 @@
 @media (hover: none) {
   .userCard:hover { background-color: transparent; }
 }
+
+/* --- Admin NPC roster panel --- */
+.adminRosterWrap {
+  margin-top: 10px;
+  background-color: #262626;
+  border: 1px solid #333;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.adminRosterHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  margin-bottom: 8px;
+}
+
+.adminRosterTabs {
+  display: inline-flex;
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.rosterTab {
+  background: transparent;
+  color: #bbb;
+  border: none;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.rosterTab:hover { background: #2a2a2a; color: #fff; }
+.rosterTab.active { background: var(--accent); color: #fff; }
+
+.rosterSearchWrap { margin-left: auto; min-width: 220px; }
+.rosterSearch {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #444;
+  background: #1e1e1e;
+  color: #fff;
+}
+.rosterSearch::placeholder { color: #aaa; }
+
+.replyingTo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  color: #ddd;
+}
+.clearTargetBtn {
+  background: #444;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.clearTargetBtn:hover { background: #666; }
+.replyHint { color: #aaa; }
+
+.adminRosterList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+  max-height: 220px;
+  overflow: auto;
+  padding: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) #262626;
+}
+.adminRosterList::-webkit-scrollbar { height: 8px; width: 8px; }
+.adminRosterList::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+.adminRosterList:hover::-webkit-scrollbar-thumb { background: var(--accent); }
+
+.rosterItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  width: 100%;
+  border: 1px solid #333;
+  border-radius: 10px;
+  background: #1f1f1f;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.2s, background 0.2s;
+}
+.rosterItem:hover { background: #242424; border-color: var(--accent); }
+.rosterItem.selected { border-color: var(--accent); background: #2a2a2a; }
+
+.rosterAvatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: #fff;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.rosterAvatarImg { width: 80%; height: 80%; object-fit: contain; }
+.rosterInitials { font-weight: 700; color: #242424; }
+
+.rosterMeta { display: grid; align-items: baseline; gap: 2px; min-width: 0; }
+.rosterName {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-weight: 600; color: #fff;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rosterSub { font-size: 0.8rem; color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rosterTime {
+  font-size: 0.72rem; color: #bbb;
+}
+.rosterEmpty {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: #aaa;
+  padding: 12px 0;
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+  .adminRosterList { max-height: 40vh; }
+  .replyingTo { width: 100%; order: 3; justify-content: space-between; }
+  .rosterSearchWrap { width: 100%; order: 2; min-width: 0; }
+  .adminRosterTabs { order: 1; }
+}
+
+/* Drawer header for "No Character" */
+.drawerHeader {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 15px;
+  background: #1d1d1d;
+  border: none;
+  border-top: 1px solid #333;
+  border-bottom: 1px solid #333;
+  color: #eaeaea;
+  cursor: pointer;
+  font-weight: 600;
+  text-align: left;
+}
+.drawerHeader:hover { background: #232323; }
+
+.caret {
+  display: inline-block;
+  transform: rotate(0deg);
+  transition: transform 0.15s ease;
+}
+.caret[data-open="1"] { transform: rotate(90deg); }
+
+.countBubble {
+  margin-left: auto;
+  padding: 2px 8px;
+  background: #333;
+  color: #ccc;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+

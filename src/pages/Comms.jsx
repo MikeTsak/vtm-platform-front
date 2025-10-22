@@ -22,9 +22,23 @@ const CLAN_COLORS = {
 const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim', 'Thin-blood': 'Thinblood' };
 const symlogo = (c) => (c ? `/img/clans/330px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g, '_')}_symbol.png` : '');
 
-/* Contact shapes */
-const asUserContact = (u) => ({ type: 'user', id: u.id, display_name: u.display_name, char_name: u.char_name, clan: u.clan });
-const asNpcContact  = (n) => ({ type: 'npc',  id: n.id, name: n.name, clan: n.clan });
+/* Contact shapes (preserve admin hints coming from backend) */
+const asUserContact = (u) => ({
+  type: 'user',
+  id: u.id,
+  display_name: u.display_name,
+  char_name: u.char_name,
+  clan: u.clan,
+  role: u.role,
+  permission_level: u.permission_level,
+  is_admin: typeof u.is_admin !== 'undefined' ? !!u.is_admin : (u.role === 'admin' || u.permission_level === 'admin'),
+  char_id: u.char_id ?? null,
+});
+const asNpcContact  = (n) => ({ type: 'npc', id: n.id, name: n.name, clan: n.clan });
+
+/* Helper to detect admin users in lists */
+const isContactAdmin = (u) =>
+  u?.role === 'admin' || u?.permission_level === 'admin' || !!u?.is_admin;
 
 export default function Comms() {
   const { user: currentUser } = useContext(AuthCtx);
@@ -34,13 +48,15 @@ export default function Comms() {
   const [npcs, setNpcs] = useState([]);       // npc contacts
   const [filter, setFilter] = useState('');
 
-  // selection:
-  // - if contact.type==='user' → normal DM between players
-  // - if contact.type==='npc':
-  //   - player: talk to that NPC
-  //   - admin: must also pick a player (selectedPlayerId) to talk to on behalf of the NPC
+  // NEW: drawer toggle for "No Character" users
+  const [noCharOpen, setNoCharOpen] = useState(false);
+
+  // selection
   const [selectedContact, setSelectedContact] = useState(null);
-  const [selectedPlayerId, setSelectedPlayerId] = useState(null); // only used by admin when contact is NPC
+  const [selectedPlayerId, setSelectedPlayerId] = useState(null); // admin when NPC
+  const [npcConvos, setNpcConvos] = useState([]);
+  const [adminPlayerTab, setAdminPlayerTab] = useState('recent');
+  const [adminPlayerFilter, setAdminPlayerFilter] = useState('');
 
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
@@ -49,6 +65,25 @@ export default function Comms() {
 
   const messagesEndRef = useRef(null);
   const pollRef = useRef(null);
+
+  /* --------------- JWT header & 401 interceptor ---------------- */
+  useEffect(() => {
+    const t = localStorage.getItem('token');
+    if (t) api.defaults.headers.common['Authorization'] = `Bearer ${t}`;
+
+    const id = api.interceptors.response.use(
+      (res) => res,
+      (err) => {
+        if (err?.response?.status === 401) {
+          setError('Your session expired. Please log in again.');
+        }
+        return Promise.reject(err);
+      }
+    );
+    return () => api.interceptors.response.eject(id);
+  }, []);
+
+  const hasAuthHeader = !!api?.defaults?.headers?.common?.Authorization;
 
   /* Smooth scroll on new messages */
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -64,42 +99,89 @@ export default function Comms() {
           api.get('/chat/users'),
           api.get('/chat/npcs')
         ]);
-        setUsers((u.users || []).map(asUserContact));
-        setNpcs((n.npcs || []).map(asNpcContact));
-      } catch {
-        setError('Could not load contacts.');
+        const userList = Array.isArray(u) ? u : (u.users || []);
+        const npcList  = Array.isArray(n) ? n : (n.npcs || []);
+        setUsers(userList.map(asUserContact));
+        setNpcs(npcList.map(asNpcContact));
+      } catch (e) {
+        setError(e?.response?.status === 401 ? 'Your session expired. Please log in again.' : 'Could not load contacts.');
       } finally {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [currentUser]);
 
-  /* Fetch messages (polling every 3s) depending on mode */
+  /* Load recent conversations for the selected NPC (admin) */
   useEffect(() => {
-    if (pollRef.current) clearInterval(pollRef.current);
-    if (!selectedContact) return;
+    if (!isAdmin || !selectedContact || selectedContact.type !== 'npc' || !hasAuthHeader) {
+      setNpcConvos([]);
+      return;
+    }
+    let cancelled = false;
+    const load = async () => {
+      try {
+        let res;
+        try {
+          res = await api.get('/admin/chat/npc/conversations', { params: { npc_id: selectedContact.id } });
+        } catch {
+          res = await api.get(`/admin/chat/npc-conversations/${selectedContact.id}`);
+        }
+        if (cancelled) return;
+        const rows = (res.data?.conversations || []).map(r => ({
+          user_id: r.user_id,
+          display_name: r.display_name || '',
+          char_name: r.char_name || '',
+          last_message_at: r.last_message_at || null,
+        }));
+        rows.sort((a, b) => new Date(b.last_message_at || 0) - new Date(a.last_message_at || 0));
+        setNpcConvos(rows);
+      } catch (e) {
+        if (e?.response?.status === 401) setError('Your session expired. Please log in again.');
+        setNpcConvos([]);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [isAdmin, selectedContact, hasAuthHeader]);
 
-    const fetchMessages = async () => {
+  /* Load & poll messages for the active thread */
+  useEffect(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+    setMessages([]);
+    setError('');
+
+    const load = async () => {
+      if (!selectedContact) return;
       try {
         if (selectedContact.type === 'user') {
           const res = await api.get(`/chat/history/${selectedContact.id}`);
-          setMessages(res.data.messages || []);
-          // mark read best-effort
-          await api.post('/chat/read', { sender_id: selectedContact.id }).catch(()=>{});
+          const msgs = (res.data.messages || []).map(m => ({
+            id: m.id,
+            body: m.body,
+            created_at: m.created_at,
+            sender_id: m.sender_id,
+          }));
+          setMessages(msgs);
         } else {
-          // NPC conversation
           if (isAdmin) {
-            if (!selectedPlayerId) { setMessages([]); return; }
-            const res = await api.get(`/admin/chat/npc/history`, {
-              params: { npc_id: selectedContact.id, user_id: selectedPlayerId }
-            });
-            // normalize fields to match UI expectations
+            if (!selectedPlayerId || !hasAuthHeader) { setMessages([]); return; }
+            let res;
+            try {
+              res = await api.get(`/admin/chat/npc/history`, {
+                params: { npc_id: selectedContact.id, user_id: selectedPlayerId }
+              });
+            } catch {
+              res = await api.get(`/admin/chat/npc-history/${selectedContact.id}/${selectedPlayerId}`);
+            }
             const msgs = (res.data.messages || []).map(m => ({
               id: m.id,
               body: m.body,
               created_at: m.created_at,
-              sender_id: m.from_side === 'npc' ? 'npc' : selectedPlayerId, // not used for admin coloring, but keeps left/right consistent
-              _from: m.from_side, // 'npc' | 'user'
+              sender_id: m.from_side === 'npc' ? 'npc' : selectedPlayerId,
+              _from: m.from_side,
             }));
             setMessages(msgs);
           } else {
@@ -114,15 +196,15 @@ export default function Comms() {
             setMessages(msgs);
           }
         }
-      } catch {
-        setError('Could not load messages.');
+      } catch (e) {
+        setError(e?.response?.status === 401 ? 'Your session expired. Please log in again.' : 'Could not load messages.');
       }
     };
 
-    fetchMessages();
-    pollRef.current = setInterval(fetchMessages, 3000);
-    return () => pollRef.current && clearInterval(pollRef.current);
-  }, [selectedContact, selectedPlayerId, isAdmin, currentUser?.id]);
+    load();
+    pollRef.current = setInterval(load, 6000);
+    return () => clearInterval(pollRef.current);
+  }, [selectedContact, selectedPlayerId, isAdmin, hasAuthHeader, currentUser?.id]);
 
   /* Send message according to mode */
   const handleSendMessage = async (e) => {
@@ -139,13 +221,12 @@ export default function Comms() {
         setMessages(prev => [...prev, data.message]);
       } else {
         if (isAdmin) {
-          if (!selectedPlayerId) return;
+          if (!selectedPlayerId || !hasAuthHeader) return;
           const { data } = await api.post('/admin/chat/npc/messages', {
             npc_id: selectedContact.id,
             user_id: selectedPlayerId,
             body
           });
-          // server already returns normalized fields
           setMessages(prev => [...prev, {
             id: data.message.id,
             body: data.message.body,
@@ -168,12 +249,11 @@ export default function Comms() {
         }
       }
       setNewMessage('');
-      // players: mark read (best-effort)
       if (selectedContact.type === 'user') {
         api.post('/chat/read', { sender_id: selectedContact.id }).catch(()=>{});
       }
-    } catch {
-      setError('Failed to send message.');
+    } catch (err) {
+      setError(err?.response?.status === 401 ? 'Your session expired. Please log in again.' : 'Failed to send message.');
     }
   };
 
@@ -185,21 +265,20 @@ export default function Comms() {
 
   const formatTime = (ts) => {
     const d = new Date(ts);
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
   const formatDay = (ts) => {
     const d = new Date(ts);
     return d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
   };
 
-  // group messages by day
-  const groups = useMemo(() => {
+  const grouped = useMemo(() => {
     const g = [];
     let lastDay = '';
     for (const m of messages) {
       const day = formatDay(m.created_at);
       if (day !== lastDay) {
-        g.push({ type: 'day', id: `day-${day}-${m.id}`, day });
+        g.push({ type: 'day', id: `day-${day}-${g.length}`, day });
         lastDay = day;
       }
       g.push({ type: 'msg', ...m });
@@ -207,7 +286,7 @@ export default function Comms() {
     return g;
   }, [messages]);
 
-  // Filter contacts
+  // Filter contacts, then split into drawers
   const filteredUsers = useMemo(() => {
     const q = filter.trim().toLowerCase();
     const list = users || [];
@@ -218,26 +297,45 @@ export default function Comms() {
     );
   }, [users, filter]);
 
-  const filteredNPCs = useMemo(() => {
-    const q = filter.trim().toLowerCase();
-    const list = npcs || [];
+  const usersNoChar = useMemo(
+    () => (filteredUsers || []).filter(u => !u.char_id || Number(u.char_id) === 1),
+    [filteredUsers]
+  );
+  const usersWithChar = useMemo(
+    () => (filteredUsers || []).filter(u => u.char_id && Number(u.char_id) !== 1),
+    [filteredUsers]
+  );
+
+  // Admin roster helpers (unchanged)
+  const adminAllPlayersFiltered = useMemo(() => {
+    const q = adminPlayerFilter.trim().toLowerCase();
+    const list = users || [];
     if (!q) return list;
-    return list.filter(n =>
-      (n.name || '').toLowerCase().includes(q) ||
-      (n.clan || '').toLowerCase().includes(q)
+    return list.filter(u =>
+      (u.char_name || '').toLowerCase().includes(q) ||
+      (u.display_name || '').toLowerCase().includes(q)
     );
-  }, [npcs, filter]);
+  }, [users, adminPlayerFilter]);
+
+  const adminRecentPlayers = useMemo(() => {
+    const byId = new Map((users || []).map(u => [u.id, u]));
+    return (npcConvos || []).map(r => {
+      const u = byId.get(r.user_id);
+      return u
+        ? { ...u, last_message_at: r.last_message_at }
+        : { type: 'user', id: r.user_id, display_name: r.display_name, char_name: r.char_name, clan: undefined, last_message_at: r.last_message_at };
+    });
+  }, [npcConvos, users]);
 
   if (loading) return <div className={styles.loading}>Loading contacts…</div>;
 
-  // Accent color by active counterpart (players → their clan; NPC → npc clan)
+  // Accent color by active counterpart
   const currentAccent = (() => {
     if (!selectedContact) return '#8a0f1a';
     if (selectedContact.type === 'user') return CLAN_COLORS[selectedContact.clan] || '#8a0f1a';
     return CLAN_COLORS[selectedContact.clan] || '#8a0f1a';
   })();
 
-  // Header text (who are we chatting with?)
   const headerLabel = (() => {
     if (!selectedContact) return '';
     if (selectedContact.type === 'user') return selectedContact.char_name || selectedContact.display_name;
@@ -250,58 +348,85 @@ export default function Comms() {
     return selectedContact.name;
   })();
 
+  const renderUserRow = (u, keyPrefix = 'u') => {
+    const active = selectedContact?.type === 'user' && selectedContact?.id === u.id;
+    const showAdminIcon = isContactAdmin(u);
+    const crest = showAdminIcon ? '/img/dice/MessyCrit.png' : symlogo(u.clan);
+    const initials = (u.display_name || '?').split(' ').map(p => p[0]).slice(0,2).join('').toUpperCase();
+    const tint = CLAN_COLORS[u.clan] || '#8a0f1a';
+    return (
+      <button
+        type="button"
+        key={`${keyPrefix}-${u.id}`}
+        className={`${styles.userCard} ${active ? styles.selected : ''}`}
+        onClick={() => { setSelectedContact(u); setSelectedPlayerId(null); setError(''); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+        style={{ '--accent': tint }}
+      >
+        <span className={styles.avatar} aria-hidden="true">
+          {crest
+            ? <img className={styles.avatarImg} src={crest} alt={showAdminIcon ? 'Admin' : `${u.clan || 'Unknown'} crest`} />
+            : <span className={styles.initials}>{initials}</span>}
+        </span>
+        <span className={styles.userMeta}>
+          <span className={styles.userName}>
+            {u.char_name || 'No character'}
+            {u.clan && <span className={styles.clanChip} style={{ '--chip': tint }}>{u.clan}</span>}
+          </span>
+          <span className={styles.charName}>
+            {u.display_name}{showAdminIcon ? ' • Admin' : ''}
+          </span>
+        </span>
+      </button>
+    );
+  };
+
   return (
     <div className={styles.commsContainer} style={{ '--accent': currentAccent }}>
-      {/* Contact list */}
+      {/* Contacts list */}
       <aside className={styles.userList} id="comms-contacts">
         <div className={styles.listHeader}>
           <div className={styles.listTitle}>Contacts</div>
           <div className={styles.searchWrap}>
             <input
+              type="text"
               className={styles.search}
               placeholder="Search players & NPCs…"
               value={filter}
-              onChange={(e)=>setFilter(e.target.value)}
+              onChange={(e) => setFilter(e.target.value)}
               aria-label="Search"
             />
           </div>
         </div>
 
         <div className={styles.usersScroll}>
-          {/* Players */}
+          {/* Players with characters */}
           <div className={styles.sectionLabel}>Players</div>
-          {filteredUsers.map(u => {
-            const active = selectedContact?.type === 'user' && selectedContact?.id === u.id;
-            const crest = symlogo(u.clan);
-            const initials = (u.display_name || '?').split(' ').map(p => p[0]).slice(0,2).join('').toUpperCase();
-            const tint = CLAN_COLORS[u.clan] || '#8a0f1a';
-            return (
-              <button
-                type="button"
-                key={`u-${u.id}`}
-                className={`${styles.userCard} ${active ? styles.selected : ''}`}
-                onClick={() => { setSelectedContact(u); setSelectedPlayerId(null); setError(''); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                style={{ '--accent': tint }}
-              >
-                <span className={styles.avatar} aria-hidden="true">
-                  {crest
-                    ? <img className={styles.avatarImg} src={crest} alt={`${u.clan || 'Unknown'} crest`} />
-                    : <span className={styles.initials}>{initials}</span>}
-                </span>
-                <span className={styles.userMeta}>
-                  <span className={styles.userName}>
-                    {u.char_name || 'No character'}
-                    {u.clan && <span className={styles.clanChip} style={{ '--chip': tint }}>{u.clan}</span>}
-                  </span>
-                  <span className={styles.charName}>{u.display_name}</span>
-                </span>
-              </button>
-            );
-          })}
+          {usersWithChar.map(u => renderUserRow(u, 'wch'))}
+
+          {/* Drawer for 'No Character' (includes char_id === 1) */}
+          <button
+            type="button"
+            className={styles.drawerHeader}
+            onClick={() => setNoCharOpen(v => !v)}
+            aria-expanded={noCharOpen}
+            aria-controls="nochar-list"
+          >
+            <span className={styles.caret} data-open={noCharOpen ? '1' : '0'} aria-hidden="true">▸</span>
+            <span>No Character</span>
+            <span className={styles.countBubble}>{usersNoChar.length}</span>
+          </button>
+          {noCharOpen && (
+            <div id="nochar-list">
+              {usersNoChar.map(u => renderUserRow(u, 'nch'))}
+              {usersNoChar.length === 0 && (
+                <div className={styles.rosterEmpty}>No users here.</div>
+              )}
+            </div>
+          )}
 
           {/* NPCs */}
           <div className={styles.sectionLabel}>NPCs</div>
-          {filteredNPCs.map(n => {
+          {npcs.map(n => {
             const active = selectedContact?.type === 'npc' && selectedContact?.id === n.id;
             const crest = symlogo(n.clan);
             const tint = CLAN_COLORS[n.clan] || '#8a0f1a';
@@ -331,7 +456,7 @@ export default function Comms() {
         </div>
       </aside>
 
-      {/* Chat pane */}
+      {/* Chat pane (unchanged) */}
       <main className={styles.chatWindow}>
         {selectedContact ? (
           <>
@@ -342,8 +467,6 @@ export default function Comms() {
                 {selectedContact.type === 'npc' && selectedContact.clan && (
                   <span className={styles.charTag}>{selectedContact.clan}</span>
                 )}
-
-                {/* Quick jump back to contacts on mobile */}
                 <button
                   type="button"
                   className={styles.mobileContactsBtn}
@@ -353,49 +476,125 @@ export default function Comms() {
                 </button>
               </div>
 
-              {/* Admin-only: pick target player when talking as an NPC */}
+              {/* Admin roster (recent/all) */}
               {isAdmin && selectedContact.type === 'npc' && (
-                <div className={styles.adminTargetRow}>
-                  <label className={styles.adminTargetLabel}>Reply to player:</label>
-                  <select
-                    className={styles.adminTargetSelect}
-                    value={selectedPlayerId || ''}
-                    onChange={(e)=>setSelectedPlayerId(e.target.value ? Number(e.target.value) : null)}
-                  >
-                    <option value="">— Select Player —</option>
-                    {users.map(u => (
-                      <option key={u.id} value={u.id}>
-                        {u.char_name || u.display_name} ({u.display_name})
-                      </option>
-                    ))}
-                  </select>
+                <div className={styles.adminRosterWrap}>
+                  <div className={styles.adminRosterHeader}>
+                    <div className={styles.adminRosterTabs}>
+                      <button
+                        type="button"
+                        className={`${styles.rosterTab} ${adminPlayerTab === 'recent' ? styles.active : ''}`}
+                        onClick={() => setAdminPlayerTab('recent')}
+                      >
+                        Recent
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.rosterTab} ${adminPlayerTab === 'all' ? styles.active : ''}`}
+                        onClick={() => setAdminPlayerTab('all')}
+                      >
+                        All Players
+                      </button>
+                    </div>
+
+                    {adminPlayerTab === 'all' && (
+                      <div className={styles.rosterSearchWrap}>
+                        <input
+                          className={styles.rosterSearch}
+                          placeholder="Search players…"
+                          value={adminPlayerFilter}
+                          onChange={(e)=>setAdminPlayerFilter(e.target.value)}
+                          aria-label="Search players"
+                        />
+                      </div>
+                    )}
+
+                    <div className={styles.replyingTo}>
+                      {selectedPlayerId
+                        ? <><span>Replying to: </span><b>{users.find(u => u.id === selectedPlayerId)?.char_name || users.find(u => u.id === selectedPlayerId)?.display_name || 'Unknown'}</b>
+                            <button
+                              type="button"
+                              className={styles.clearTargetBtn}
+                              onClick={() => setSelectedPlayerId(null)}
+                              title="Clear selected player"
+                            >
+                              Clear
+                            </button>
+                          </>
+                        : <span className={styles.replyHint}>Pick a player to reply as <b>{selectedContact.name}</b></span>
+                      }
+                    </div>
+                  </div>
+
+                  <div className={styles.adminRosterList}>
+                    {(adminPlayerTab === 'recent' ? adminRecentPlayers : adminAllPlayersFiltered).map(u => {
+                      const showAdminIcon = isContactAdmin(u);
+                      const crest = showAdminIcon ? '/img/dice/MessyCrit.png' : symlogo(u.clan);
+                      const initials = (u.display_name || '?').split(' ').map(p => p[0]).slice(0,2).join('').toUpperCase();
+                      const tint = CLAN_COLORS[u.clan] || '#8a0f1a';
+                      const active = selectedPlayerId === u.id;
+                      return (
+                        <button
+                          type="button"
+                          key={`sel-${u.id}`}
+                          className={`${styles.rosterItem} ${active ? styles.selected : ''}`}
+                          onClick={() => setSelectedPlayerId(u.id)}
+                          style={{ '--accent': tint }}
+                          title={u.char_name || u.display_name}
+                        >
+                          <span className={styles.rosterAvatar} aria-hidden="true">
+                            {crest
+                              ? <img className={styles.rosterAvatarImg} src={crest} alt={showAdminIcon ? 'Admin' : `${u.clan || 'Unknown'} crest`} />
+                              : <span className={styles.rosterInitials}>{initials}</span>}
+                          </span>
+                          <span className={styles.rosterMeta}>
+                            <span className={styles.rosterName}>
+                              {u.char_name || 'No character'}
+                              {u.clan && <span className={styles.clanChip} style={{ '--chip': tint }}>{u.clan}</span>}
+                            </span>
+                            <span className={styles.rosterSub}>
+                              {u.display_name}{showAdminIcon ? ' • Admin' : ''}
+                            </span>
+                            {u.last_message_at && (
+                              <span className={styles.rosterTime}>
+                                {new Date(u.last_message_at).toLocaleString([], { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' })}
+                              </span>
+                            )}
+                          </span>
+                        </button>
+                      );
+                    })}
+
+                    {(adminPlayerTab === 'recent' && adminRecentPlayers.length === 0) && (
+                      <div className={styles.rosterEmpty}>No conversations yet for this NPC.</div>
+                    )}
+                    {(adminPlayerTab === 'all' && adminAllPlayersFiltered.length === 0) && (
+                      <div className={styles.rosterEmpty}>No players match your search.</div>
+                    )}
+                  </div>
                 </div>
               )}
             </header>
 
-            <div className={styles.messageList} id="chat-scroll-region">
-              {groups.map(item => {
+            {/* Messages */}
+            <div className={styles.messageList}>
+              {grouped.map(item => {
                 if (item.type === 'day') {
                   return (
-                    <div key={item.id} className={styles.dayDivider}>
-                      <span>{item.day}</span>
-                    </div>
+                    <div key={item.id} className={styles.dayDivider}><span>{item.day}</span></div>
                   );
                 }
                 const mine = (() => {
                   if (selectedContact.type === 'user') {
                     return item.sender_id === currentUser.id;
+                  } else {
+                    if (isAdmin) return item.sender_id === 'npc';
+                    return item.sender_id === currentUser.id;
                   }
-                  // npc thread:
-                  if (isAdmin) return item._from === 'npc'; // admin speaks as npc
-                  return item._from === 'user'; // player → user's own messages are "mine"
                 })();
 
                 return (
-                  <div
-                    key={item.id}
-                    className={`${styles.messageRow} ${mine ? styles.right : styles.left}`}
-                  >
+                  <div key={item.id} className={`${styles.messageRow} ${mine ? styles.right : styles.left}`}>
                     <div
                       className={`${styles.messageBubble} ${mine ? styles.sent : styles.received}`}
                       style={mine ? { '--accent': currentAccent } : undefined}
@@ -410,6 +609,7 @@ export default function Comms() {
               <div ref={messagesEndRef} />
             </div>
 
+            {/* Input */}
             <form className={styles.messageInputForm} onSubmit={handleSendMessage}>
               {isAdmin && selectedContact.type === 'npc' && !selectedPlayerId && (
                 <div className={styles.errorBanner} style={{ marginBottom: 8 }}>
@@ -430,8 +630,6 @@ export default function Comms() {
                 type="submit"
                 className={styles.sendButton}
                 disabled={!newMessage.trim() || (isAdmin && selectedContact.type === 'npc' && !selectedPlayerId)}
-                aria-label="Send message"
-                style={{ '--accent': currentAccent }}
               >
                 Send
               </button>
