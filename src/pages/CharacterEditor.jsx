@@ -1,43 +1,26 @@
-// src/components/CharacterEditor.jsx
+// src/pages/CharacterEditor.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import api from '../api';
 import styles from '../styles/Admin.module.css';
 
-// Data libs
+// --- Data libraries (must stay at top!) ---
+import * as DiscDataNS from '../data/disciplines';
 import { MERITS_AND_FLAWS } from '../data/merits_flaws';
-import * as D from '../data/disciplines';
 
+// --- Discipline names fallback logic ---
 let ALL_DISCIPLINE_NAMES =
-   (Array.isArray(D.ALL_DISCIPLINE_NAMES) && D.ALL_DISCIPLINE_NAMES.length)
-     ? D.ALL_DISCIPLINE_NAMES
-     : (D.DISCIPLINES ? Object.keys(D.DISCIPLINES) : []);
- if (!ALL_DISCIPLINE_NAMES.length) {
-   // final safety fallback (keep in sync with your data file)
-   ALL_DISCIPLINE_NAMES = [
-     'Animalism','Auspex','Blood Sorcery','Celerity','Dominate','Fortitude',
-     'Obfuscate','Oblivion','Potence','Presence','Protean','Thin-blood Alchemy'
-   ];
-}
+  Array.isArray(DiscDataNS.ALL_DISCIPLINE_NAMES) && DiscDataNS.ALL_DISCIPLINE_NAMES.length
+    ? DiscDataNS.ALL_DISCIPLINE_NAMES
+    : DiscDataNS.DISCIPLINES
+      ? Object.keys(DiscDataNS.DISCIPLINES)
+      : [];
 
-try {
-  // if your disciplines.js exports NAMES or a map, fill from there
-  // eslint-disable-next-line global-require
-  const maybe = require('../data/disciplines');
-  if (maybe?.DISCIPLINE_NAMES) ALL_DISCIPLINE_NAMES = maybe.DISCIPLINE_NAMES;
-  else if (maybe && typeof maybe === 'object') ALL_DISCIPLINE_NAMES = Object.keys(maybe);
-} catch { /* fallback below */ }
-if (!ALL_DISCIPLINE_NAMES?.length) {
+if (!ALL_DISCIPLINE_NAMES || ALL_DISCIPLINE_NAMES.length === 0) {
   ALL_DISCIPLINE_NAMES = [
     'Animalism','Auspex','Blood Sorcery','Celerity','Dominate','Fortitude',
-    'Obfuscate','Oblivion','Potence','Presence','Protean'
+    'Obfuscate','Oblivion','Potence','Presence','Protean','Thin-blood Alchemy'
   ];
 }
-const FALLBACK_DISC_NAMES = [
-  'Animalism','Auspex','Blood Sorcery','Celerity','Dominate','Fortitude',
-  'Obfuscate','Oblivion','Potence','Presence','Protean','Thin-blood Alchemy'
-];
-
-
 
 // ---------- helpers ----------
 const ATTR_KEYS = [
@@ -63,36 +46,11 @@ const COST = {
   skill:     lvl => lvl * 3,
   specialty: ()  => 3,
   discipline: (lvl, kind='other') => (kind==='clan'? lvl*5 : kind==='caitiff'? lvl*6 : lvl*7),
-  meritDot:  ()  => 3,     // per-dot cost for Merits post-creation
-  flawDot:   ()  => -3,    // per-dot effect for Flaws post-creation (adds XP on take; costs XP to remove)
+  meritDot:  ()  => 3,
+  flawDot:   ()  => -3,
 };
 
 function deepClone(x) { try { return structuredClone(x); } catch { return JSON.parse(JSON.stringify(x || {})); } }
-
-function AddAnyRow({ placeholder, onAdd }) {
-  const [v, setV] = React.useState('');
-  return (
-    <div className={styles.row} style={{ marginTop:8, gap:8 }}>
-      <input
-        placeholder={placeholder}
-        value={v}
-        onChange={e => setV(e.target.value)}
-        style={{ flex:1 }}
-      />
-      <button
-        className={styles.btn}
-        onClick={() => {
-          if (v.trim()) onAdd(v.trim());
-          setV('');
-        }}
-      >
-        Add
-      </button>
-    </div>
-  );
-}
-
-
 function sumStepCost(oldV, newV, stepFn) {
   let t = 0;
   if (Number(newV) > Number(oldV)) {
@@ -102,20 +60,18 @@ function sumStepCost(oldV, newV, stepFn) {
   }
   return t;
 }
-
 function bulletCount(s) { return (s || '').split('').filter(ch => ch === '•').length; }
 
+// ----- Merits/Flaws catalog flatten -----
 function flattenMF() {
   const out = [];
   Object.entries(MERITS_AND_FLAWS).forEach(([cat, payload]) => {
-    // normal cat
     if (payload?.merits?.length) {
       payload.merits.forEach(m => out.push({ ...m, type:'merit', category:cat, dotsText:m.dots ?? '' }));
     }
     if (payload?.flaws?.length) {
       payload.flaws.forEach(f => out.push({ ...f, type:'flaw', category:cat, dotsText:f.dots ?? '' }));
     }
-    // grouped cults etc
     if (payload?.groups) {
       Object.entries(payload.groups).forEach(([groupName, g]) => {
         g.merits?.forEach(m => out.push({ ...m, type:'merit', category:`${cat} / ${groupName}`, dotsText:m.dots ?? '' }));
@@ -125,31 +81,35 @@ function flattenMF() {
   });
   return out;
 }
-
 const MF_CATALOG = flattenMF();
-
 function normalizeDotsInput(v) {
   const n = Number(v);
   if (Number.isFinite(n) && n > 0) return Math.min(5, Math.max(1, n));
-  // if user types bullets like "•••"
   const bc = bulletCount(String(v));
   return bc > 0 ? Math.min(5, bc) : 1;
 }
 
 // ---------- Component ----------
 export default function CharacterEditor({ character, onClose, onSaved }) {
+  // Parse original structured sheet
   const originalSheet = useMemo(() => {
     try {
       if (!character?.sheet) return {};
-      return typeof character.sheet === 'string' ? JSON.parse(character.sheet) : character.sheet;
+      const parsed = typeof character.sheet === 'string' ? JSON.parse(character.sheet) : character.sheet;
+      return normalizeSheet(parsed);
     } catch { return {}; }
   }, [character]);
 
+  // Local editable sheet
   const [sheet, setSheet] = useState(() => deepClone(originalSheet));
   const [jsonText, setJsonText] = useState(() => JSON.stringify(originalSheet ?? {}, null, 2));
   const [jsonValid, setJsonValid] = useState(true);
 
-  // Discipline “kind” for XP math (editable per discipline)
+  // Character top-level meta (editable too)
+  const [charName, setCharName] = useState(character?.name || '');
+  const [charClan, setCharClan] = useState(character?.clan || '');
+
+  // Discipline kind for XP math (per discipline)
   const initialKinds = useMemo(() => {
     const m = {};
     Object.keys(originalSheet?.disciplines || {}).forEach(k => { m[k] = 'other'; });
@@ -169,7 +129,7 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
   // Keep JSON and structured in sync
   useEffect(() => {
     try {
-      const parsed = JSON.parse(jsonText);
+      const parsed = normalizeSheet(JSON.parse(jsonText));
       setSheet(parsed);
       setJsonValid(true);
       setErr('');
@@ -178,9 +138,25 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
     }
   }, [jsonText]);
 
-  const writeSheet = (next) => {
+  // Normalize incoming weird shapes once on mount
+  useEffect(() => {
+    const normalized = normalizeSheet(sheet);
+    if (JSON.stringify(normalized) !== JSON.stringify(sheet)) {
+      writeSheet(normalized);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function writeSheet(next) {
     setSheet(next);
     setJsonText(JSON.stringify(next, null, 2));
+  }
+
+  // ------ identity / bio helpers ------
+  const setStrField = (key, val) => {
+    const next = deepClone(sheet);
+    next[key] = val;
+    writeSheet(next);
   };
 
   // ------ attribute editing ------
@@ -252,6 +228,49 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
     });
   };
 
+  // ------ convictions ------
+  const convictions = Array.isArray(sheet.convictions) ? sheet.convictions : [];
+  const setConvictions = (arr) => writeSheet({ ...sheet, convictions: arr });
+  const addConviction = (text) => {
+    if (!text.trim()) return;
+    setConvictions([...(convictions || []), text.trim()]);
+  };
+  const updateConviction = (i, text) => {
+    const arr = [...(convictions || [])];
+    arr[i] = text;
+    setConvictions(arr);
+  };
+  const removeConviction = (i) => {
+    const arr = [...(convictions || [])];
+    arr.splice(i, 1);
+    setConvictions(arr);
+  };
+  const moveConviction = (i, dir) => {
+    const j = i + dir;
+    if (j < 0 || j >= convictions.length) return;
+    const arr = [...convictions];
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+    setConvictions(arr);
+  };
+
+  // ------ touchstones ------
+  const touchstones = Array.isArray(sheet.touchstones) ? sheet.touchstones : [];
+  const setTouchstones = (arr) => writeSheet({ ...sheet, touchstones: arr });
+  const addTouchstone = (name, conviction='') => {
+    if (!String(name).trim()) return;
+    setTouchstones([...(touchstones || []), { name: String(name).trim(), conviction: String(conviction||'').trim() }]);
+  };
+  const updateTouchstone = (i, patch) => {
+    const arr = [...(touchstones || [])];
+    arr[i] = { ...arr[i], ...patch };
+    setTouchstones(arr);
+  };
+  const removeTouchstone = (i) => {
+    const arr = [...(touchstones || [])];
+    arr.splice(i, 1);
+    setTouchstones(arr);
+  };
+
   // ------ merits / flaws ------
   function currentMF(kind) {
     const arr = sheet?.advantages?.[kind] || [];
@@ -263,10 +282,7 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
     next.advantages[kind] = nextArr;
     writeSheet(next);
   };
-  const addMF = (kind, item) => {
-    const arr = currentMF(kind);
-    setMF(kind, [...arr, item]);
-  };
+  const addMF = (kind, item) => setMF(kind, [...currentMF(kind), item]);
   const updateMF = (kind, idx, patch) => {
     const arr = currentMF(kind);
     const next = [...arr];
@@ -281,6 +297,12 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
   };
 
   // ------ rituals ------
+  const setRituals = (path, nextArr) => {
+    const next = deepClone(sheet);
+    next.rituals = next.rituals || { blood_sorcery: [], oblivion: [] };
+    next.rituals[path] = Array.isArray(nextArr) ? nextArr : [];
+    writeSheet(next);
+  };
   const ensureRituals = () => {
     const next = deepClone(sheet);
     next.rituals = next.rituals || { blood_sorcery: [], oblivion: [] };
@@ -289,19 +311,21 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
     writeSheet(next);
   };
   const addRitual = (path, value) => {
-    const v = value.trim();
+    const v = String(value || '').trim();
     if (!v) return;
-    const next = deepClone(sheet);
-    next.rituals = next.rituals || {};
-    const arr = (next.rituals[path] = Array.isArray(next.rituals[path]) ? next.rituals[path] : []);
+    const arr = Array.isArray(sheet?.rituals?.[path]) ? [...sheet.rituals[path]] : [];
     arr.push(v);
-    writeSheet(next);
+    setRituals(path, arr);
+  };
+  const updateRitual = (path, i, value) => {
+    const arr = Array.isArray(sheet?.rituals?.[path]) ? [...sheet.rituals[path]] : [];
+    arr[i] = value;
+    setRituals(path, arr);
   };
   const removeRitual = (path, i) => {
-    const next = deepClone(sheet);
-    const arr = next?.rituals?.[path];
-    if (Array.isArray(arr)) arr.splice(i, 1);
-    writeSheet(next);
+    const arr = Array.isArray(sheet?.rituals?.[path]) ? [...sheet.rituals[path]] : [];
+    arr.splice(i, 1);
+    setRituals(path, arr);
   };
 
   // ======= XP IMPACT =======
@@ -335,7 +359,7 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
       delta -= rems * COST.specialty();
     });
 
-    // Disciplines
+    // Disciplines (per-kind)
     const oD = originalSheet.disciplines || {};
     const nD = sheet.disciplines || {};
     const dKeys = Array.from(new Set([...Object.keys(oD), ...Object.keys(nD)]));
@@ -346,7 +370,7 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
       delta += sumStepCost(a, b, l => COST.discipline(l, kind));
     });
 
-    // Merits & Flaws (per-dot 3 XP; flaws negative)
+    // Merits & Flaws
     const oMer = (originalSheet?.advantages?.merits || []);
     const nMer = (sheet?.advantages?.merits || []);
     const oFlw = (originalSheet?.advantages?.flaws || []);
@@ -361,22 +385,19 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
       return m;
     }
 
-    // Merits
+    // Merits delta
     {
       const oldMap = indexByIdName(oMer);
       const newMap = indexByIdName(nMer);
-      // updates & removals
       oldMap.forEach(({ item:oldItem }, key) => {
         const oDots = Number(oldItem?.dots ?? 0);
         if (newMap.has(key)) {
           const nDots = Number(newMap.get(key).item?.dots ?? 0);
           delta += (nDots - oDots) * COST.meritDot();
         } else {
-          // removed merit -> refund prior spend
           delta -= oDots * COST.meritDot();
         }
       });
-      // additions
       newMap.forEach(({ item:newItem }, key) => {
         if (!oldMap.has(key)) {
           const nDots = Number(newItem?.dots ?? 0);
@@ -385,23 +406,19 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
       });
     }
 
-    // Flaws
+    // Flaws delta
     {
       const oldMap = indexByIdName(oFlw);
       const newMap = indexByIdName(nFlw);
-      // updates & removals
       oldMap.forEach(({ item:oldItem }, key) => {
         const oDots = Number(oldItem?.dots ?? 0);
         if (newMap.has(key)) {
           const nDots = Number(newMap.get(key).item?.dots ?? 0);
-          // flaws: each dot is -3 xp (refund on add), so change is (n-o)*(-3)
           delta += (nDots - oDots) * COST.flawDot();
         } else {
-          // removed flaw => costs XP (undo the refund): reverse the sign
-          delta -= oDots * COST.flawDot(); // subtracting (-3*o) equals +3*o cost
+          delta -= oDots * COST.flawDot();
         }
       });
-      // additions
       newMap.forEach(({ item:newItem }, key) => {
         if (!oldMap.has(key)) {
           const nDots = Number(newItem?.dots ?? 0);
@@ -416,10 +433,9 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
   // Apply mode
   const xpImpact = useMemo(() => {
     if (xpMode === 'free') return 0;
-    if (xpMode === 'refund') return Math.min(0, xpImpactRaw); // clamp to refunds only
+    if (xpMode === 'refund') return Math.min(0, xpImpactRaw);
     return xpImpactRaw;
   }, [xpMode, xpImpactRaw]);
-
   const deltaSign = xpImpact === 0 ? '' : (xpImpact > 0 ? 'Spend' : 'Refund');
   const deltaAbs = Math.abs(xpImpact);
 
@@ -431,15 +447,17 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
     try {
       setSaving(true);
 
-      // 1) XP delta (admin endpoint adds 'delta' directly)
+      // 1) XP delta
       if (xpImpact !== 0) {
-        // We computed xpImpact where + = spend, - = refund
-        // API wants "delta" to adjust player's XP: spend -> -xp, refund -> +xp
         await api.patch(`/admin/characters/${character.id}/xp`, { delta: -xpImpact });
       }
 
-      // 2) Save sheet
-      await api.patch(`/admin/characters/${character.id}`, { sheet });
+      // 2) Save sheet + name/clan updates
+      await api.patch(`/admin/characters/${character.id}`, {
+        name: charName,
+        clan: charClan,
+        sheet
+      });
 
       setMsg(`Saved. ${deltaSign ? `${deltaSign} ${deltaAbs} XP.` : 'No XP change.'}`);
       onSaved?.();
@@ -466,6 +484,8 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
   }
 
   // ======= render =======
+  const dlId = `discNames-${character?.id || 'x'}`;
+
   return (
     <div className={styles.modalBackdrop}>
       <div className={`${styles.modalCard} ${styles.card} ${styles.cardElev}`} style={{ width: 'min(1180px, 96vw)' }}>
@@ -510,8 +530,79 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
           </div>
         </div>
 
-        {/* BODY: long page */}
+        {/* BODY */}
         <div className="stack12" style={{ display:'grid', gap:12, marginTop:12 }}>
+          {/* Identity / Background */}
+          <section className={styles.card}>
+            <SectionHeader title="Identity & Background" hint="Edit non-XP fields (name, clan, sire, etc.)" />
+            <div className="grid" style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(240px,1fr))', gap:8 }}>
+              <LabeledInput label="Name" value={charName} onChange={setCharName} />
+              <LabeledInput label="Clan" value={charClan} onChange={setCharClan} />
+              <LabeledInput label="Sire" value={sheet.sire || ''} onChange={v=>setStrField('sire', v)} />
+              <LabeledInput label="Generation" type="number" value={sheet.generation || ''} onChange={v=>setStrField('generation', Number(v)||'' )} />
+              <LabeledInput label="Concept" value={sheet.concept || ''} onChange={v=>setStrField('concept', v)} />
+              <LabeledInput label="Chronicle" value={sheet.chronicle || ''} onChange={v=>setStrField('chronicle', v)} />
+              <LabeledInput label="Coterie" value={sheet.coterie || ''} onChange={v=>setStrField('coterie', v)} />
+              <LabeledInput label="Ambition" value={sheet.ambition || ''} onChange={v=>setStrField('ambition', v)} />
+              <LabeledInput label="Desire" value={sheet.desire || ''} onChange={v=>setStrField('desire', v)} />
+              <LabeledInput label="Predator Type" value={sheet.predator_type || ''} onChange={v=>setStrField('predator_type', v)} />
+            </div>
+          </section>
+
+          {/* Convictions & Touchstones */}
+          <section className={styles.card}>
+            <SectionHeader title="Convictions & Touchstones" hint="ST can edit all entries" />
+            <div className={styles.row} style={{ gap:12, alignItems:'flex-start', flexWrap:'wrap' }}>
+              {/* Convictions */}
+              <div style={{ flex:'1 1 360px' }}>
+                <h4 style={{marginBottom:8}}>Convictions</h4>
+                {(convictions.length === 0) && <div className={styles.subtle}>None</div>}
+                {convictions.map((c, i) => (
+                  <div key={`conv_${i}`} className={styles.row} style={{ gap:8, alignItems:'center', marginBottom:6, flexWrap:'wrap' }}>
+                    <input
+                      style={{ flex:'1 1 360px' }}
+                      value={c}
+                      onChange={e=>updateConviction(i, e.target.value)}
+                      placeholder="Conviction text"
+                    />
+                    <div className={styles.row} style={{ gap:6 }}>
+                      <button className={styles.btn} onClick={()=>moveConviction(i,-1)} title="Move up">↑</button>
+                      <button className={styles.btn} onClick={()=>moveConviction(i, 1)} title="Move down">↓</button>
+                      <button className={styles.btn} onClick={()=>removeConviction(i)}>Remove</button>
+                    </div>
+                  </div>
+                ))}
+                <AddAnyRow placeholder="Add a conviction…" onAdd={addConviction} />
+              </div>
+
+              {/* Touchstones */}
+              <div style={{ flex:'1 1 360px' }}>
+                <h4 style={{marginBottom:8}}>Touchstones</h4>
+                {(touchstones.length === 0) && <div className={styles.subtle}>None</div>}
+                {touchstones.map((t, i) => (
+                  <div key={`ts_${i}`} className={styles.row} style={{ gap:8, alignItems:'center', marginBottom:6, flexWrap:'wrap' }}>
+                    <input
+                      style={{ flex:'2 1 260px' }}
+                      value={t?.name || ''}
+                      onChange={e=>updateTouchstone(i, { name: e.target.value })}
+                      placeholder="Name (mortal/anchor)"
+                    />
+                    <select
+                      value={t?.conviction || ''}
+                      onChange={e=>updateTouchstone(i, { conviction: e.target.value })}
+                      style={{ flex:'2 1 260px' }}
+                    >
+                      <option value="">— Linked conviction (optional) —</option>
+                      {convictions.map((c, idx) => <option key={`copt_${idx}`} value={c}>{c}</option>)}
+                    </select>
+                    <button className={styles.btn} onClick={()=>removeTouchstone(i)}>Remove</button>
+                  </div>
+                ))}
+                <AddTouchstoneRow convictions={convictions} onAdd={addTouchstone} />
+              </div>
+            </div>
+          </section>
+
           {/* Attributes */}
           <section className={styles.card}>
             <SectionHeader title="Attributes" hint="new level × 5" />
@@ -572,7 +663,7 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
             <div className="stack8" style={{ display:'grid', gap:8 }}>
               {Object.keys(sheet.disciplines || {}).sort().map(name => (
                 <div key={name} className={styles.row} style={{ gap:8, alignItems:'center', flexWrap:'wrap' }}>
-                  <b style={{minWidth:140}}>{name}</b>
+                  <b style={{minWidth:160}}>{name}</b>
                   <input type="number" min={0} value={Number(sheet.disciplines?.[name] ?? 0)} onChange={e=>setDiscipline(name, e.target.value)} style={{ width:90 }} />
                   <select value={discKinds[name] || 'other'} onChange={e=>setDiscKinds(p=>({ ...p, [name]:e.target.value }))}>
                     {DISC_KINDS.map(k => <option key={k.key} value={k.key}>{k.label}</option>)}
@@ -582,15 +673,18 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
               ))}
             </div>
             <div className={styles.row} style={{ gap:8, marginTop:8, flexWrap:'wrap' }}>
-              <input list="discNames" placeholder="Add discipline…" onKeyDown={e=>{ if (e.key==='Enter') addNewDiscipline(e.currentTarget.value); }} />
+              <input list={dlId} placeholder="Add discipline…" onKeyDown={e=>{ if (e.key==='Enter') addNewDiscipline(e.currentTarget.value); }} />
               <button className={styles.btn} onClick={()=>{
-                const el = document.querySelector('input[list="discNames"]');
+                const el = document.querySelector(`input[list="${dlId}"]`);
                 if (el) { addNewDiscipline(el.value); el.value=''; }
               }}>Add</button>
-              <datalist id="discNames">
+              <datalist id={dlId}>
                 {ALL_DISCIPLINE_NAMES.map(n => <option key={n} value={n} />)}
               </datalist>
             </div>
+            {(!ALL_DISCIPLINE_NAMES || ALL_DISCIPLINE_NAMES.length === 0) && (
+              <div className={styles.alert} style={{marginTop:8}}>Discipline list not found; using fallback names. Check your <code>disciplines.js</code> exports.</div>
+            )}
           </section>
 
           {/* Merits & Flaws */}
@@ -648,6 +742,7 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
               title="Blood Sorcery"
               items={sheet?.rituals?.blood_sorcery || []}
               onAdd={(v)=>addRitual('blood_sorcery', v)}
+              onEdit={(i,v)=>updateRitual('blood_sorcery', i, v)}
               onRemove={(i)=>removeRitual('blood_sorcery', i)}
             />
             <div style={{ height:8 }} />
@@ -655,6 +750,7 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
               title="Oblivion"
               items={sheet?.rituals?.oblivion || []}
               onAdd={(v)=>addRitual('oblivion', v)}
+              onEdit={(i,v)=>updateRitual('oblivion', i, v)}
               onRemove={(i)=>removeRitual('oblivion', i)}
             />
           </section>
@@ -720,6 +816,21 @@ function SectionHeader({ title, hint }) {
       <h4>{title}</h4>
       <span className={styles.subtle}>{hint}</span>
     </div>
+  );
+}
+
+function LabeledInput({ label, value, onChange, type='text' }) {
+  return (
+    <label className={styles.row} style={{ gap:8, alignItems:'center' }}>
+      <span style={{minWidth:140}}>{label}</span>
+      <input
+        type={type}
+        value={value ?? ''}
+        onChange={e => onChange(type==='number' ? e.target.value : e.target.value)}
+        style={{ flex:1 }}
+        placeholder={label}
+      />
+    </label>
   );
 }
 
@@ -796,7 +907,6 @@ function MFPicker({ kind, onPick }) {
           const found = MF_CATALOG.find(x => x.id === id);
           setSel(found || null);
           if (found) {
-            // guess dots from catalog text if exact (fallback 1)
             const once = bulletCount(found.dotsText);
             setDots(Math.max(1, once || 1));
           }
@@ -820,18 +930,17 @@ function MFPicker({ kind, onPick }) {
   );
 }
 
-function RitualSection({ title, items, onAdd, onRemove }) {
+function RitualSection({ title, items, onAdd, onEdit, onRemove }) {
   const [v, setV] = useState('');
+  const list = Array.isArray(items) ? items : [];
   return (
     <div>
       <div className={styles.row} style={{ justifyContent:'space-between', alignItems:'center' }}>
         <h4>{title}</h4>
       </div>
-      {(items?.length ? items : []).map((r, i) => (
+      {list.map((r, i) => (
         <div key={`${r}_${i}`} className={styles.row} style={{ gap:8, alignItems:'center', marginBottom:6 }}>
-          <input value={r} onChange={e=>{
-            const arr = [...items]; arr[i] = e.target.value; onAdd('@@replace', arr); // hack not used; replaced below
-          }} style={{ flex:1 }} readOnly />
+          <input value={r} onChange={e=>onEdit(i, e.target.value)} style={{ flex:1 }} />
           <button className={styles.btn} onClick={()=>onRemove(i)}>Remove</button>
         </div>
       ))}
@@ -841,4 +950,90 @@ function RitualSection({ title, items, onAdd, onRemove }) {
       </div>
     </div>
   );
+}
+
+function AddAnyRow({ placeholder, onAdd }) {
+  const [v, setV] = React.useState('');
+  return (
+    <div className={styles.row} style={{ marginTop:8, gap:8 }}>
+      <input
+        placeholder={placeholder}
+        value={v}
+        onChange={e => setV(e.target.value)}
+        style={{ flex:1 }}
+      />
+      <button
+        className={styles.btn}
+        onClick={() => {
+          if (v.trim()) onAdd(v.trim());
+          setV('');
+        }}
+      >
+        Add
+      </button>
+    </div>
+  );
+}
+
+function AddTouchstoneRow({ convictions, onAdd }) {
+  const [name, setName] = useState('');
+  const [cv, setCv] = useState('');
+  return (
+    <div className={styles.row} style={{ marginTop:8, gap:8, flexWrap:'wrap' }}>
+      <input placeholder="Touchstone name…" value={name} onChange={e=>setName(e.target.value)} style={{ flex:'2 1 260px' }} />
+      <select value={cv} onChange={e=>setCv(e.target.value)} style={{ flex:'2 1 260px' }}>
+        <option value="">— Link conviction (optional) —</option>
+        {convictions.map((c, idx) => <option key={`cv_${idx}`} value={c}>{c}</option>)}
+      </select>
+      <button className={styles.btn} onClick={()=>{ onAdd(name, cv); setName(''); setCv(''); }}>Add Touchstone</button>
+    </div>
+  );
+}
+
+/* ---------- normalization ---------- */
+function normalizeSheet(s) {
+  const sheet = deepClone(s || {});
+  // attributes
+  sheet.attributes = sheet.attributes && typeof sheet.attributes === 'object' ? sheet.attributes : {};
+  // skills
+  if (Array.isArray(sheet.skills)) {
+    // convert array of {name,dots,specialties?} into object
+    const obj = {};
+    sheet.skills.forEach(x => {
+      if (x && x.name) obj[x.name] = { dots: Number(x.dots||0), specialties: Array.isArray(x.specialties) ? x.specialties : [] };
+    });
+    sheet.skills = obj;
+  } else {
+    sheet.skills = sheet.skills && typeof sheet.skills === 'object' ? sheet.skills : {};
+  }
+  // disciplines (handle arrays or weird maps)
+  if (Array.isArray(sheet.disciplines)) {
+    const obj = {};
+    sheet.disciplines.forEach(x => {
+      if (!x) return;
+      if (typeof x === 'string') obj[x] = 0;
+      else if (x.name) obj[x.name] = Number(x.level || x.dots || x.value || 0);
+    });
+    sheet.disciplines = obj;
+  } else if (sheet.disciplines && typeof sheet.disciplines === 'object') {
+    // normalize values to numbers
+    const obj = {};
+    Object.entries(sheet.disciplines).forEach(([k, v]) => {
+      if (v && typeof v === 'object') obj[k] = Number(v.level || v.dots || v.value || 0);
+      else obj[k] = Number(v || 0);
+    });
+    sheet.disciplines = obj;
+  } else {
+    sheet.disciplines = {};
+  }
+  // rituals
+  sheet.rituals = sheet.rituals || { blood_sorcery: [], oblivion: [] };
+  sheet.rituals.blood_sorcery = Array.isArray(sheet.rituals.blood_sorcery) ? sheet.rituals.blood_sorcery : [];
+  sheet.rituals.oblivion = Array.isArray(sheet.rituals.oblivion) ? sheet.rituals.oblivion : [];
+  // convictions / touchstones
+  sheet.convictions = Array.isArray(sheet.convictions) ? sheet.convictions : [];
+  sheet.touchstones = Array.isArray(sheet.touchstones) ? sheet.touchstones : [];
+  // default BP
+  if (sheet.blood_potency == null) sheet.blood_potency = 1;
+  return sheet;
 }
