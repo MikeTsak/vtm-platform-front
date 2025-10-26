@@ -22,7 +22,7 @@
   background-color: #1e1e1e;
   border-right: 1px solid #333;
   overflow: hidden;
-  transition: transform 0.3s ease-in-out;
+  transition: transform 0.3s ease-in-out; /* For mobile animation */
 }
 
 .listHeader {
@@ -163,7 +163,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transition: transform 0.3s ease-in-out;
+  transition: transform 0.3s ease-in-out; /* For mobile animation */
 }
 
 .chatHeader {
@@ -345,55 +345,95 @@
 
 .mobileContactsBtn {
   display: none; /* desktop hidden */
-  margin-left: auto;
-  background-color: #555;
-  color: #fff;
+  background: none;
   border: none;
-  padding: 8px 14px;      /* larger touch target */
-  border-radius: 8px;
-  font-size: 0.9rem;
+  color: #fff;
+  font-size: 1.5rem; /* Larger tap target */
+  font-weight: 600;
+  padding: 8px 14px;
+  margin-right: 10px; /* Space between it and the dot */
+  margin-left: -10px; /* Pull it closer to the edge */
   cursor: pointer;
+  border-radius: 8px;
   transition: background-color 0.2s;
 }
 .mobileContactsBtn:hover { background-color: #777; }
 
-/* --- Mobile Friendly --- */
+/*
+============================================================
+---               NEW Mobile Friendly CSS                ---
+============================================================
+*/
 @media (max-width: 768px) {
   .commsContainer {
     margin: 0;
-    width: 200vw;                 /* two panels side-by-side */
+    width: 100%;                  /* Use 100% of viewport width */
     height: 100dvh;               /* stable viewport height on mobile */
     border-radius: 0;
     box-shadow: none;
-    overflow-x: auto;             /* enable swipe between panels */
-    overflow-y: hidden;
-    scroll-snap-type: x mandatory;
-    -webkit-overflow-scrolling: touch;
+    overflow: hidden;             /* Hide the panels as they slide */
+    position: relative;           /* Stacking context for panels */
   }
 
-  .userList,
-  .chatWindow {
-    flex-basis: 100vw;            /* each panel = full screen */
-    min-width: 100vw;
+  .userList {
+    width: 100%;
     height: 100dvh;
-    scroll-snap-align: start;
+    flex-basis: 100%;             /* Take full width */
+    flex-shrink: 0;
+    transform: translateX(0);     /* Start on-screen */
+    transition: transform 0.3s ease-in-out;
   }
 
-  .messageBubble { max-width: 85%; } /* give bubbles more width on narrow screens */
+  .chatWindow {
+    width: 100%;
+    height: 100dvh;
+    flex-basis: 100%;             /* Take full width */
+    transform: translateX(100%);  /* Start off-screen to the right */
+    transition: transform 0.3s ease-in-out;
+    
+    /* Place it on top of the user list */
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 2; /* Sit on top of the list */
+  }
 
+  /* This class is added by React when a chat is selected on mobile */
+  .commsContainer.mobileChatActive .userList {
+    transform: translateX(-100%); /* Slide list off-screen to the left */
+  }
+  .commsContainer.mobileChatActive .chatWindow {
+    transform: translateX(0);     /* Slide chat on-screen */
+  }
+
+  .messageBubble { max-width: 85%; }
   .listTitle { font-size: 1.25rem; }
 
-  .mobileContactsBtn { display: inline-flex; align-items: center; gap: 6px; }
-
-  /* Lighter visuals on mobile */
-  .commsContainer,
-  .chatHeader,
-  .listHeader { box-shadow: none; }
+  /* Show the mobile 'back' button */
+  .mobileContactsBtn { 
+    display: inline-flex; 
+    align-items: center; 
+    justify-content: center;
+  }
+  
+  /* On mobile, hide the 'online' dot to make room for the back button */
+  .chatDot {
+    display: none;
+  }
+  
+  .chatWith b {
+    /* Truncate long names on mobile header */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px; /* Adjust as needed */
+  }
 }
 
 /* Even smaller phones */
 @media (max-width: 420px) {
   .chatWith { font-size: 1rem; }
+  .chatWith b { max-width: 150px; }
   .messageInput { font-size: 0.95rem; }
   .sendButton { font-size: 0.95rem; padding: 10px 16px; }
 }
@@ -403,7 +443,7 @@
   .userCard:hover { background-color: transparent; }
 }
 
-/* --- Admin NPC roster panel --- */
+/* --- Admin NPC roster panel (UNCHANGED) --- */
 .adminRosterWrap {
   margin-top: 10px;
   background-color: #262626;
@@ -527,15 +567,17 @@
   padding: 12px 0;
 }
 
-/* Mobile adjustments */
+/* Mobile adjustments (UNCHANGED) */
 @media (max-width: 768px) {
+  /* These rules are for the admin roster, which is *inside* the chat panel */
+  /* They are separate from the main panel animation logic */
   .adminRosterList { max-height: 40vh; }
   .replyingTo { width: 100%; order: 3; justify-content: space-between; }
   .rosterSearchWrap { width: 100%; order: 2; min-width: 0; }
   .adminRosterTabs { order: 1; }
 }
 
-/* Drawer header for "No Character" */
+/* Drawer header for "No Character" (UNCHANGED) */
 .drawerHeader {
   width: 100%;
   display: flex;
@@ -570,6 +612,7 @@
   font-weight: 600;
 }
 
+/* Notifications Button (UNCHANGED) */
 .notifBtn {
   background: #444;
   color: #fff;

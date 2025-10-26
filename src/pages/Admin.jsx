@@ -8,7 +8,7 @@ import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 
 import CharacterSetup from './CharacterSetup';
-import CharacterView from './CharacterView';
+import CharacterView from './CharacterView'; //δεν ξερω γιατι το εβαλα, δεν το χρησιμοποιω, αλλα αν το βγαλω πεταει error
 import CharacterEditor from './CharacterEditor.jsx';
 import AdminLogs from '../components/AdminLogs.jsx';
 

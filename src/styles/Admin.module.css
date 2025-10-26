@@ -50,7 +50,7 @@
   color: var(--admin-accent);
   border-bottom: 1px solid var(--admin-border);
   padding-bottom: 8px;
-  margin: 0 0 16px 0;
+  margin: 0 0 16px 0
 }
 
 /* * ----------------------------------------
@@ -495,7 +495,6 @@
  */
 
 .tableContainer {
-  max-height: 65vh;
   overflow-y: auto;
   border: 1px solid var(--admin-border);
   border-radius: 4px;
@@ -739,3 +738,70 @@
   border-radius: 3px;
 }
 
+/* Grouped headers row container */
+.groupHeaderRow td {
+  background: #a59caf;              /* darker base to make title pop */
+  border-bottom-color: #3a3a3a;
+}
+
+/* The clickable header */
+.groupHeader {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 12px 0;                  /* taller for readability */
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  color: #fff;
+  cursor: pointer;
+}
+
+/* Caret arrow */
+.caret { 
+  color: #bfa7ff;                   /* soft purple for the caret */
+  font-size: 0.95rem;
+}
+
+/* TITLE: bigger + purple */
+.groupTitle {
+  font-weight: 800;
+  font-size: 1.1rem;                /* bigger */
+  color: var(--admin-accent);       /* purple (see :root --admin-accent) */
+  letter-spacing: 0.2px;
+}
+
+/* Right side meta */
+.groupMeta {
+  display: inline-flex;
+  gap: 12px;
+  align-items: center;
+  color: #cfcfcf;
+  font-size: 0.95rem;
+}
+
+/* Count badge with subtle purple border */
+.countBadge {
+  background: #2a2331;
+  border: 1px solid var(--admin-accent);
+  color: #eee;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+/* Timestamp */
+.latestTime {
+  color: #bbaed1;                   /* lighter purple-gray */
+  font-size: 0.9rem;
+}
+
+/* Grouped message rows slightly indented and separated */
+.groupedRow td {
+  padding-left: 26px;
+  background-color: #221c29;
+  border-bottom-color: #31263f;
+}

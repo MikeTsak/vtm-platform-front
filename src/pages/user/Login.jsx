@@ -125,7 +125,7 @@ export default function Login() {
               <button
                 type="button"
                 className={`${styles['ghost-btn']} ${styles['eye-btn']}`}
-                onMouseDown={(e) => e.preventDefault()}  // prevent input blur
+                onMouseDown={(e) => e.preventDefault()} // prevent input blur
                 onClick={toggleShowPwd}
                 aria-label={showPwd ? 'Hide password' : 'Show password'}
                 aria-pressed={showPwd}
