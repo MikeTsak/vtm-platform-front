@@ -1,9 +1,10 @@
+// src/pages/Comms.jsx
 import React, { useState, useEffect, useContext, useRef, useMemo } from 'react';
 import api from '../api';
 import { AuthCtx } from '../AuthContext';
-import styles from '../styles/Comms.module.css'; // This will be our updated CSS
+import styles from '../styles/Comms.module.css';
 
-/* --- Clan assets & colors (unchanged) --- */
+/* --- Clan assets & colors --- */
 const CLAN_COLORS = {
   Brujah: '#b40f1f',
   Gangrel: '#2f7a3a',
@@ -20,9 +21,74 @@ const CLAN_COLORS = {
   'Thin-blood': '#6e6e2b',
 };
 const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim', 'Thin-blood': 'Thinblood' };
-const symlogo = (c) => (c ? `/img/clans/330px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g, '_')}_symbol.png` : '');
+const symlogo = (c) =>
+  (c ? `/img/clans/330px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g, '_')}_symbol.png` : '');
 
-/* Contact shapes (unchanged) */
+/* --- PUSH HELPERS (Web Push + SW) --- */
+const VAPID_PUBLIC_KEY =
+  (window.__VAPID_PUBLIC_KEY__ ||
+    (document.querySelector('meta[name="vapid-public-key"]')?.content) ||
+    process.env.REACT_APP_VAPID_PUBLIC_KEY ||
+    '').trim();
+
+const urlBase64ToUint8Array = (base64String) => {
+  if (!base64String) return new Uint8Array();
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  const output = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; ++i) output[i] = raw.charCodeAt(i);
+  return output;
+};
+
+async function ensureServiceWorker() {
+  if (!('serviceWorker' in navigator)) return null;
+  try {
+    // Try common filenames; adjust if your SW is elsewhere
+    const reg = await navigator.serviceWorker.register('/sw.js')
+      .catch(() => navigator.serviceWorker.register('/service-worker.js'));
+    return reg || null;
+  } catch {
+    return null;
+  }
+}
+
+async function subscribePush() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
+  if (!VAPID_PUBLIC_KEY) return null;
+
+  const reg = await ensureServiceWorker();
+  if (!reg) return null;
+
+  let sub = await reg.pushManager.getSubscription();
+  if (!sub) {
+    sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    });
+  }
+  try {
+    await api.post('/api/push/subscribe', { subscription: sub });
+  } catch { /* ignore */ }
+  return sub;
+}
+
+async function unsubscribePush() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
+  const reg = await navigator.serviceWorker.getRegistration();
+  const sub = await reg?.pushManager.getSubscription();
+  if (sub) {
+    const endpoint = sub.endpoint;
+    try { await sub.unsubscribe(); } catch {}
+    try { await api.post('/api/push/unsubscribe', { endpoint }); } catch {}
+    return true;
+  }
+  return false;
+}
+
+/* --- END PUSH HELPERS --- */
+
+/* Contact shapes */
 const asUserContact = (u) => ({
   type: 'user',
   id: u.id,
@@ -34,9 +100,9 @@ const asUserContact = (u) => ({
   is_admin: typeof u.is_admin !== 'undefined' ? !!u.is_admin : (u.role === 'admin' || u.permission_level === 'admin'),
   char_id: u.char_id ?? null,
 });
-const asNpcContact  = (n) => ({ type: 'npc', id: n.id, name: n.name, clan: n.clan });
+const asNpcContact = (n) => ({ type: 'npc', id: n.id, name: n.name, clan: n.clan });
 
-/* Helper to detect admin users (unchanged) */
+/* Helper to detect admin users */
 const isContactAdmin = (u) =>
   u?.role === 'admin' || u?.permission_level === 'admin' || !!u?.is_admin;
 
@@ -59,60 +125,170 @@ export default function Comms() {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
-  const messagesEndRef = useRef(null);
   const pollRef = useRef(null);
-  
+
   const [drafts, setDrafts] = useState({});
   const sendingRef = useRef(false);
 
   const [notifOn, setNotifOn] = useState(() => localStorage.getItem('comms_notifs') === '1');
   const notifSupported = typeof window !== 'undefined' && 'Notification' in window;
+  const [notifDenied, setNotifDenied] = useState(false);
+  const canPush = () => ('serviceWorker' in navigator) && ('PushManager' in window);
 
-  /* --- NEW: Mobile View State --- */
+  /* --- Mobile detection --- */
   const [isMobile, setIsMobile] = useState(false);
-  const containerRef = useRef(null); // Ref for the main container
+  const containerRef = useRef(null);
 
+  /* --- Scroll logic: delayed auto-scroll after user scrolls up --- */
+  const messagesEndRef = useRef(null);
+  const messagesListRef = useRef(null);
+  const autoScrollTimeout = useRef(null);
+  const userScrollingRef = useRef(false);
+
+  const isNearBottom = (el, pad = 120) => {
+    if (!el) return true;
+    const { scrollTop, scrollHeight, clientHeight } = el;
+    return scrollHeight - scrollTop - clientHeight < pad;
+  };
+
+  const scrollToBottom = (smooth = true) => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({
+        behavior: smooth ? 'smooth' : 'auto',
+        block: 'end',
+      });
+    }
+  };
+
+  // User scroll listener: mark when user leaves bottom; schedule gentle snap after ~2.5s
   useEffect(() => {
-    // Check screen size on mount and on resize
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth <= 768);
+    const el = messagesListRef.current;
+    if (!el) return;
+
+    const onScroll = () => {
+      const away = !isNearBottom(el);
+      userScrollingRef.current = away;
+
+      clearTimeout(autoScrollTimeout.current);
+      if (away) {
+        autoScrollTimeout.current = setTimeout(() => {
+          userScrollingRef.current = false;
+          scrollToBottom(true);
+        }, 2500);
+      }
     };
 
-    checkMobile(); // Initial check
+    el.addEventListener('scroll', onScroll);
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
 
-    // Use ResizeObserver for more reliable updates
+  // On new messages: if near bottom → snap now; else → wait ~2.5s then snap
+  useEffect(() => {
+    const el = messagesListRef.current;
+    if (!el) return;
+
+    clearTimeout(autoScrollTimeout.current);
+
+    if (isNearBottom(el)) {
+      scrollToBottom(false);
+      userScrollingRef.current = false;
+    } else {
+      userScrollingRef.current = true;
+      autoScrollTimeout.current = setTimeout(() => {
+        userScrollingRef.current = false;
+        scrollToBottom(true);
+      }, 2500);
+    }
+
+    return () => clearTimeout(autoScrollTimeout.current);
+  }, [messages]);
+
+  /* --- Screen resize handling --- */
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth <= 768);
+    checkMobile();
+
     let observer;
     const currentContainer = containerRef.current;
-    if (currentContainer) {
+    if (currentContainer && 'ResizeObserver' in window) {
       observer = new ResizeObserver(checkMobile);
       observer.observe(currentContainer);
     } else {
-      // Fallback for older browsers
       window.addEventListener('resize', checkMobile);
     }
 
     return () => {
-      if (observer) {
-        observer.disconnect();
-      } else {
-        window.removeEventListener('resize', checkMobile);
-      }
+      if (observer) observer.disconnect();
+      else window.removeEventListener('resize', checkMobile);
     };
-  }, []); // Empty dependency array, runs once on mount
+  }, []);
 
-  /* --- Notification Hooks (unchanged) --- */
+  /* --- Notifications (state & persistence) --- */
   useEffect(() => {
     localStorage.setItem('comms_notifs', notifOn ? '1' : '0');
   }, [notifOn]);
 
+  // Auto ensure push subscription if notifOn is true
   useEffect(() => {
-    if (notifOn && notifSupported && Notification.permission === 'default') {
-      Notification.requestPermission().then((p) => {
-        if (p !== 'granted') setNotifOn(false);
-      });
+    let mounted = true;
+    (async () => {
+      if (!notifOn) return;
+      if (!canPush()) return;
+      if (Notification.permission !== 'granted') return;
+      try {
+        const reg = await ensureServiceWorker();
+        if (!mounted || !reg) return;
+        const sub = await reg.pushManager.getSubscription();
+        if (!sub) await subscribePush();
+      } catch { /* ignore */ }
+    })();
+    return () => { mounted = false; };
+  }, [notifOn]);
+
+const toggleNotifications = async () => {
+  if (!notifSupported) return;
+
+  if (!notifOn) {
+    let perm = Notification.permission;
+    if (perm === 'default') {
+      try { perm = await Notification.requestPermission(); } catch { perm = 'denied'; }
     }
-  }, [notifOn, notifSupported]);
+
+    if (perm !== 'granted') {
+      setNotifDenied(true);
+      setNotifOn(false);
+      return;
+    }
+
+    try {
+      // Register SW + subscribe + save to API
+      if (canPush() && VAPID_PUBLIC_KEY) {
+        const sub = await subscribePush();
+        if (sub) {
+          // QUICK SELF-TEST: immediately fire a push to me
+          try { await api.post('/api/push/test'); } catch {}
+        }
+      }
+    } catch { /* ignore */ }
+
+    setNotifDenied(false);
+    setNotifOn(true);
+  } else {
+    try {
+      // If we can read endpoint, remove server-side too
+      const reg = await navigator.serviceWorker.getRegistration();
+      const sub = await reg?.pushManager.getSubscription();
+      const endpoint = sub?.endpoint;
+      try { await unsubscribePush(); } catch {}
+      if (endpoint) {
+        try { await api.post('/api/push/unsubscribe', { endpoint }); } catch {}
+      }
+    } catch {}
+    setNotifOn(false);
+    setNotifDenied(false);
+  }
+};
+
 
   const pageVisibleRef = useRef(!document.hidden);
   useEffect(() => {
@@ -120,9 +296,8 @@ export default function Comms() {
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
   }, []);
-  /* --- End Notification Hooks --- */
 
-  /* --- Thread Key & Draft Logic (unchanged) --- */
+  /* --- Thread key & drafts --- */
   const threadKey = useMemo(() => {
     if (!selectedContact) return 'none';
     if (selectedContact.type === 'user') return `u-${selectedContact.id}`;
@@ -155,24 +330,19 @@ export default function Comms() {
     return m.sender_id === 'npc';
   };
 
-  const notify = (title, body, icon) => { /* ... notification logic (unchanged) ... */ 
+  const notify = (title, body, icon) => {
     try {
-      if (!notifOn || !notifSupported) return;
-      if (Notification.permission === 'denied') return;
+      // in-tab notifications (when hidden or not focused)
+      if (!notifSupported) return;
+      if (!notifOn) return;
+      if (Notification.permission !== 'granted') return;
 
       const opts = { body, icon, badge: icon, tag: `comms-${threadKey}` };
-      if (Notification.permission === 'granted') {
-        new Notification(title, opts);
-      } else {
-        Notification.requestPermission().then((p) => {
-          if (p === 'granted') new Notification(title, opts);
-        });
-      }
-    } catch {/* noop */}
+      new Notification(title, opts);
+    } catch { /* noop */ }
   };
-  /* --- End Thread Key & Draft Logic --- */
 
-  /* --- API and Data Hooks (unchanged) --- */
+  /* --- API & data --- */
   useEffect(() => {
     const t = localStorage.getItem('token');
     if (t) api.defaults.headers.common['Authorization'] = `Bearer ${t}`;
@@ -191,10 +361,7 @@ export default function Comms() {
 
   const hasAuthHeader = !!api?.defaults?.headers?.common?.Authorization;
 
-  const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  useEffect(scrollToBottom, [messages]);
-
-  useEffect(() => { /* Load contacts (unchanged) */
+  useEffect(() => {
     (async () => {
       setLoading(true);
       setError('');
@@ -215,7 +382,7 @@ export default function Comms() {
     })();
   }, [currentUser]);
 
-  useEffect(() => { /* Load recent conversations (unchanged) */
+  useEffect(() => {
     if (!isAdmin || !selectedContact || selectedContact.type !== 'npc' || !hasAuthHeader) {
       setNpcConvos([]);
       return;
@@ -247,7 +414,7 @@ export default function Comms() {
     return () => { cancelled = true; };
   }, [isAdmin, selectedContact, hasAuthHeader]);
 
-  useEffect(() => { /* Load & poll messages (unchanged) */
+  useEffect(() => {
     if (pollRef.current) {
       clearInterval(pollRef.current);
       pollRef.current = null;
@@ -313,9 +480,7 @@ export default function Comms() {
                 : (isAdmin && selectedPlayerId
                     ? `${selectedContact.name} ↔ ${users.find(u => u.id === selectedPlayerId)?.char_name || 'Player'}`
                     : selectedContact.name || 'New message');
-            const icon =
-              symlogo(selectedContact.clan) || '/img/ATT-logo(1).png';
-
+            const icon = symlogo(selectedContact.clan) || '/img/ATT-logo(1).png';
             notify(title, latest.body || 'New message', icon);
           }
         }
@@ -334,7 +499,7 @@ export default function Comms() {
     return () => clearInterval(pollRef.current);
   }, [selectedContact, selectedPlayerId, isAdmin, hasAuthHeader, currentUser?.id, users, threadKey]);
 
-  const handleSendMessage = async (e) => { /* ... Send message logic (unchanged) ... */ 
+  const handleSendMessage = async (e) => {
     e?.preventDefault?.();
     const body = newMessage.trim();
     if (!body || !selectedContact) return;
@@ -390,9 +555,8 @@ export default function Comms() {
       sendingRef.current = false;
     }
   };
-  /* --- End API and Data Hooks --- */
 
-  /* --- Formatting and Memoization (unchanged) --- */
+  /* --- Formatting & memoization --- */
   const formatTime = (ts) => {
     const d = new Date(ts);
     return d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -454,7 +618,6 @@ export default function Comms() {
         : { type: 'user', id: r.user_id, display_name: r.display_name, char_name: r.char_name, clan: undefined, last_message_at: r.last_message_at };
     });
   }, [npcConvos, users]);
-  /* --- End Formatting and Memoization --- */
 
   if (loading) return <div className={styles.loading}>Loading contacts…</div>;
 
@@ -476,7 +639,7 @@ export default function Comms() {
     return selectedContact.name;
   })();
 
-  /* --- Updated Selection Handlers --- */
+  /* --- Selection handlers --- */
   const buildThreadKey = (contact, selPlayerId) => {
     if (!contact) return 'none';
     if (contact.type === 'user') return `u-${contact.id}`;
@@ -491,11 +654,8 @@ export default function Comms() {
     const nextKey = buildThreadKey(contact, isAdmin && contact?.type === 'npc' ? selectedPlayerId : null);
     setNewMessage(drafts[nextKey] || '');
     setError('');
-    
-    // We only need the desktop scroll-to-top now
-    if (!isMobile) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+
+    if (!isMobile) window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const selectAdminTarget = (userId) => {
@@ -504,7 +664,6 @@ export default function Comms() {
     const nextKey = buildThreadKey(selectedContact, userId);
     setNewMessage(drafts[nextKey] || '');
   };
-  /* --- End Updated Selection Handlers --- */
 
   const renderUserRow = (u, keyPrefix = 'u') => {
     const active = selectedContact?.type === 'user' && selectedContact?.id === u.id;
@@ -538,15 +697,14 @@ export default function Comms() {
     );
   };
 
-  // ** NEW: Conditionally add a class to the container **
   const containerClasses = [
     styles.commsContainer,
     isMobile && selectedContact ? styles.mobileChatActive : ''
   ].filter(Boolean).join(' ');
 
   return (
-    <div 
-      ref={containerRef} // Attach ref for resize observer
+    <div
+      ref={containerRef}
       className={containerClasses}
       style={{ '--accent': currentAccent }}
     >
@@ -579,17 +737,9 @@ export default function Comms() {
             aria-controls="nochar-list"
             className={styles.drawerHeader}
           >
-            <span 
-              aria-hidden="true" 
-              className={styles.caret} 
-              data-open={noCharOpen ? "1" : "0"}
-            >
-              ▸
-            </span>
+            <span aria-hidden="true" className={styles.caret} data-open={noCharOpen ? '1' : '0'}>▸</span>
             <span>No Character</span>
-            <span className={styles.countBubble}>
-              {usersNoChar.length}
-            </span>
+            <span className={styles.countBubble}>{usersNoChar.length}</span>
           </button>
           {noCharOpen && (
             <div id="nochar-list">
@@ -638,35 +788,27 @@ export default function Comms() {
           <>
             <header className={styles.chatHeader} style={{ '--accent': currentAccent }}>
               <div className={styles.chatWith}>
-                {/* ** UPDATED "Back" button for mobile ** */}
+                {/* Mobile back */}
                 <button
                   type="button"
                   className={styles.mobileContactsBtn}
-                  onClick={() => setSelectedContact(null)} // NEW onClick
+                  onClick={() => setSelectedContact(null)}
                 >
                   {'<'}
                 </button>
-              
+
                 <span className={styles.chatDot} aria-hidden="true" />
                 Chat with <b>{headerLabel}</b>
                 {selectedContact.type === 'npc' && selectedContact.clan && (
                   <span className={styles.charTag}>{selectedContact.clan}</span>
                 )}
 
-                {/* Notifications toggle (top-right) */}
+                {/* Notifications toggle */}
                 <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
                   <button
                     type="button"
                     className={`${styles.notifBtn} ${notifOn ? styles.notifOn : ''}`}
-                    onClick={() => {
-                      if (!notifSupported) { alert('Notifications are not supported in this browser.'); return; }
-                      if (!notifOn) {
-                        if (Notification.permission === 'granted') setNotifOn(true);
-                        else Notification.requestPermission().then(p => setNotifOn(p === 'granted'));
-                      } else {
-                        setNotifOn(false);
-                      }
-                    }}
+                    onClick={toggleNotifications}
                     title={notifSupported ? (notifOn ? 'Notifications on' : 'Notifications off') : 'Not supported'}
                   >
                     {notifOn ? '🔔 Notifications On' : '🔕 Notifications Off'}
@@ -674,7 +816,33 @@ export default function Comms() {
                 </div>
               </div>
 
-              {/* Admin-only: roster for replying as an NPC (unchanged) */}
+              {/* Inline banner if notifications are blocked */}
+              {notifDenied && (
+                <div className={styles.errorBanner} style={{ margin:'8px 0 0' }}>
+                  Notifications are blocked by the browser.
+                  <div style={{ marginTop:6, display:'flex', gap:8, flexWrap:'wrap' }}>
+                    <button
+                      type="button"
+                      className={styles.notifBtn}
+                      onClick={async () => {
+                        setNotifDenied(false);
+                        await toggleNotifications();
+                      }}
+                    >
+                      Try again
+                    </button>
+                    <span style={{ opacity:0.85 }}>
+                      Tip: Allow notifications in your browser settings, then click “Try again”.
+                      <span style={{ display:'block', fontSize:12, marginTop:4 }}>
+                        Chrome: Site info (🔒) → Notifications → <b>Allow</b> •
+                        Firefox: Site info (🔒) → Permissions → <b>Send notifications</b>
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Admin-only roster to reply as NPC */}
               {isAdmin && selectedContact.type === 'npc' && (
                 <div className={styles.adminRosterWrap}>
                   <div className={styles.adminRosterHeader}>
@@ -709,7 +877,14 @@ export default function Comms() {
 
                     <div className={styles.replyingTo}>
                       {selectedPlayerId
-                        ? <><span>Replying to: </span><b>{users.find(u => u.id === selectedPlayerId)?.char_name || users.find(u => u.id === selectedPlayerId)?.display_name || 'Unknown'}</b>
+                        ? (
+                          <>
+                            <span>Replying to: </span>
+                            <b>
+                              {users.find(u => u.id === selectedPlayerId)?.char_name
+                                || users.find(u => u.id === selectedPlayerId)?.display_name
+                                || 'Unknown'}
+                            </b>
                             <button
                               type="button"
                               className={styles.clearTargetBtn}
@@ -719,6 +894,7 @@ export default function Comms() {
                               Clear
                             </button>
                           </>
+                        )
                         : <span className={styles.replyHint}>Pick a player to reply as <b>{selectedContact.name}</b></span>
                       }
                     </div>
@@ -774,12 +950,14 @@ export default function Comms() {
               )}
             </header>
 
-            {/* Messages (unchanged) */}
-            <div className={styles.messageList}>
+            {/* Messages */}
+            <div className={styles.messageList} ref={messagesListRef}>
               {grouped.map(item => {
                 if (item.type === 'day') {
                   return (
-                    <div key={item.id} className={styles.dayDivider}><span>{item.day}</span></div>
+                    <div key={item.id} className={styles.dayDivider}>
+                      <span>{item.day}</span>
+                    </div>
                   );
                 }
                 const mine = (() => {
@@ -807,7 +985,7 @@ export default function Comms() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Input (unchanged) */}
+            {/* Input */}
             <form className={styles.messageInputForm} onSubmit={handleSendMessage}>
               {isAdmin && selectedContact.type === 'npc' && !selectedPlayerId && (
                 <div className={styles.errorBanner} style={{ marginBottom: 8 }}>

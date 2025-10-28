@@ -92,7 +92,7 @@ export default function Terms() {
           <h2>Return and Refund Policy</h2>
           <p>Thanks for shopping at Erebus Portal. We appreciate the fact that you like to buy the stuff we build. We also want to make sure you have a rewarding experience while you’re exploring, evaluating, and purchasing our products.</p>
           <p>As with any shopping experience, there are terms and conditions that apply to transactions at Erebus Portal. We’ll be as brief as our attorneys will allow. The main thing to remember is that by placing an order or making a purchase at Erebus Portal, you agree to the terms along with Erebus Portal’s Privacy Policy.</p>
-          <p>If, for any reason, you are not completely satisfied with any good or service that we provide, don’t hesitate to contact us and we will discuss any of the issues you are going through with our product.</p>
+          <p>If, for any reason, you are not completely satisfied with any good or service that we provide, don’t hesitate to contact us and we will discuss any of the issues you are going Through with our product.</p>
         </section>
 
         <section id="suggestions">
@@ -203,7 +203,7 @@ export default function Terms() {
 
         <section id="notice">
           <h2>Notice of Dispute</h2>
-          <p>Send any Notice of Dispute via email to <a href="mailto:legal@erebus-portal.example">legal@erebus-portal.example</a>. We’ll attempt to resolve disputes through informal negotiation within sixty (60) days from the date the notice is sent.</p>
+          <p>Send any Notice of Dispute via email to <a href="mailto:legal@erebus-portal.example">legal@erebus-portal.example</a>. We’ll attempt to resolve disputes Through informal negotiation within sixty (60) days from the date the notice is sent.</p>
         </section>
 
         <section id="binding-arb">

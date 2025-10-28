@@ -5,12 +5,13 @@ import styles from '../styles/Admin.module.css';
 import 'leaflet/dist/leaflet.css';
 
 import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
+// Note: 'leaflet/dist/leaflet.css' is imported twice, this is fine but redundant.
 
 import CharacterSetup from './CharacterSetup';
-import CharacterView from './CharacterView'; //δεν ξερω γιατι το εβαλα, δεν το χρησιμοποιω, αλλα αν το βγαλω πεταει error
+import CharacterView from './CharacterView'; // As per your comment, kept for dependency reasons
 import CharacterEditor from './CharacterEditor.jsx';
 import AdminLogs from '../components/AdminLogs.jsx';
+import ChatStatsTab from '../components/ChatStatsTab.jsx'; // *** ADDED THIS IMPORT ***
 
 import domainsRaw from '../data/Domains.json';
 import { Link } from 'react-router-dom';
@@ -27,6 +28,56 @@ function TabButton({ active, onClick, children }) {
   );
 }
 
+/* ==================== CHAT LOGS HELPERS (MOVED OUTSIDE) ==================== */
+
+// --- Helper: Debounce Hook ---
+const useDebouncedValue = (value, ms = 250) => {
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setV(value), ms);
+    return () => clearTimeout(t);
+  }, [value, ms]);
+  return v;
+};
+
+// --- Helper: Format Timestamp ---
+const formatTimestamp = (ts, includeDate = true) => {
+  if (!ts) return '—';
+  const date = new Date(ts);
+  // Define options directly inside for clarity
+  const optionsDate = { month: 'short', day: 'numeric' };
+  const optionsTime = { hour: '2-digit', minute: '2-digit' };
+  try {
+      return includeDate
+        ? date.toLocaleString([], { ...optionsDate, ...optionsTime })
+        : date.toLocaleTimeString([], optionsTime);
+  } catch (e) {
+      console.error("Error formatting date:", e, "Timestamp:", ts);
+      // Fallback format
+      return includeDate ? date.toLocaleDateString() + ' ' + date.toLocaleTimeString() : date.toLocaleTimeString();
+  }
+};
+
+// --- Helper: Highlight Search Terms ---
+const Highlight = ({ text, query }) => {
+  const q = String(query || '').trim().toLowerCase(); // Ensure query is a string
+  const txt = String(text || ''); // Ensure text is a string
+  if (!q) return <>{txt}</>;
+  const lowerText = txt.toLowerCase();
+  const parts = [];
+  let lastIndex = 0;
+  let matchIndex;
+
+  while ((matchIndex = lowerText.indexOf(q, lastIndex)) !== -1) {
+    if (matchIndex > lastIndex) { parts.push(<span key={lastIndex}>{txt.substring(lastIndex, matchIndex)}</span>); }
+    const matchedText = txt.substring(matchIndex, matchIndex + q.length);
+    parts.push(<mark key={matchIndex} className={styles.hl}>{matchedText}</mark>);
+    lastIndex = matchIndex + q.length;
+  }
+  if (lastIndex < txt.length) { parts.push(<span key={lastIndex}>{txt.substring(lastIndex)}</span>); }
+  return <>{parts}</>;
+};
+
 /* ---------------- Main ---------------- */
 export default function Admin() {
   const [tab, setTab] = useState('users'); // users | characters | claims | downtimes | xp | npcs | chat
@@ -37,6 +88,7 @@ export default function Admin() {
   const [charIndex, setCharIndex] = useState({});
   const [downtimes, setDowntimes] = useState([]);
   const [npcs, setNPCs] = useState([]);
+  const [allNpcMessages, setAllNpcMessages] = useState([]);
   const [allMessages, setAllMessages] = useState([]);
   const [editorTarget, setEditorTarget] = useState(null); 
 
@@ -50,7 +102,7 @@ export default function Admin() {
       setUsers(u.data.users || []);
 
       // Build character index from users
-      const idx = {};
+      const idx = {}; 
       (u.data.users || []).forEach(u => {
         if (u.character_id) {
           idx[u.character_id] = {
@@ -69,7 +121,7 @@ export default function Admin() {
 
       // Claims
       try {
-        const cl = await api.get('/domain-claims');
+        const cl = await api.get('/domain-claims'); // Using /domain-claims, ensure this endpoint exists
         setClaims(cl.data.claims || []);
       } catch {}
 
@@ -87,7 +139,7 @@ export default function Admin() {
 
       // All chat messages (for admin)
       try {
-          const msgs = await api.get('/admin/chat/all');
+          const msgs = await api.get('/admin/chat/all'); // Ensure this endpoint exists
           setAllMessages(msgs.data.messages || []);
       } catch {}
 
@@ -517,7 +569,7 @@ async function handleGeneratePDF(character) {
         
         y = Math.max(yConv, yTouch);
 
-        // == FOOTER (Loop through pages to add footer) ==
+        // == FOOTER (Loop Through pages to add footer) ==
         const pageCount = doc.internal.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
             doc.setPage(i);
@@ -541,7 +593,6 @@ async function handleGeneratePDF(character) {
         alert('Could not generate the PDF in the browser. Check console for details. Ensure jsPDF is installed and the Noto Sans Base64 data is correct.');
     }
 }
-
 
 
   // ========= Characters =========
@@ -651,6 +702,10 @@ async function handleGeneratePDF(character) {
           <TabButton active={tab==='xp'} onClick={()=>setTab('xp')}>XP Tools</TabButton>
           <TabButton active={tab==='npcs'} onClick={()=>setTab('npcs')}>NPCs</TabButton>
           <TabButton active={tab==='chat'} onClick={()=>setTab('chat')}>Chat Logs</TabButton>
+          
+          {/* *** ADDED THIS BUTTON *** */}
+          <TabButton active={tab==='stats'} onClick={()=>setTab('stats')}>Chat Stats</TabButton>
+
           <TabButton active={tab==='logs'} onClick={()=>setTab('logs')}>Logs</TabButton>
           <button className={`${styles.btn} ${styles.btnGhost} ${styles.rowEnd}`} onClick={load}>Reload</button>
         </div>
@@ -663,10 +718,9 @@ async function handleGeneratePDF(character) {
             onSave={saveCharacter}
             onDelete={deleteCharacter}
             onGeneratePDF={handleGeneratePDF}
-            onOpenEditor={c => setEditorTarget(c)}
+            onOpenEditor={setEditorTarget} // Pass setter
           />
         )}
-
         {tab === 'claims' && (
           <ClaimsTab
             claims={claims}
@@ -681,7 +735,8 @@ async function handleGeneratePDF(character) {
             onSave={saveDowntime}
           />
         )}
-        {tab === 'xp' && <XPTools users={users} onGrant={grantXP} />}
+        {/* Make sure XPTools receives grant state props if you've implemented that */ }
+        {tab === 'xp' && <XPTools users={users} onGrant={grantXP} />} 
         {tab === 'npcs' && (
           <NPCsTab
             npcs={npcs}
@@ -689,12 +744,23 @@ async function handleGeneratePDF(character) {
             onDelete={deleteNPC}
           />
         )}
-        {tab === 'chat' && <ChatLogsTab messages={allMessages} />}
+        {tab === 'chat' && <ChatLogsTab messages={allMessages} charIndex={charIndex} />}
+
+        {/* *** ADDED THIS RENDER *** */}
+        {tab === 'stats' && (
+          <ChatStatsTab 
+            directMessages={allMessages} 
+            npcMessages={allNpcMessages} 
+            npcs={npcs} 
+            users={users} 
+          />
+        )}
+
         {editorTarget && (
          <CharacterEditor
             character={editorTarget}
             onClose={() => setEditorTarget(null)}
-            onSaved={load}
+            onSaved={() => { setEditorTarget(null); load(); }} // Close and reload
           />
         )}
       </div>
@@ -832,7 +898,7 @@ function CharactersTab({ users, onSave, onDelete, onGeneratePDF, onOpenEditor })
             {/* --- END NEW BUTTON --- */}
 
           </div>
-          <div className={styles.subtle} style={{ marginTop:6 }}>
+          <div className={styles.subtle} style={{ marginTop: 6 }}>
             Saving uses <code className={styles.kbd}>PATCH /admin/characters/:id</code>.
             PDF generation requires <code className={styles.kbd}>jspdf</code> and <code className={styles.kbd}>jspdf-autotable</code>.
           </div>
@@ -1478,529 +1544,556 @@ function XPTools({ users, onGrant }) {
   );
 }
 
-/* ==================== CHAT LOGS (ADMIN) - FIXED & ORGANIZED ==================== */
+/* ==================== CHAT LOGS ==================== */
 
-function ChatLogsTab({ messages }) {
-  // ======= shared UI state =======
+// --- Main Chat Logs Component ---
+function ChatLogsTab({ messages, charIndex }) {
   const [viewMode, setViewMode] = useState('direct'); // 'direct' | 'npc'
 
-  // ======= DIRECT (existing) =======
-  const [filter, setFilter] = useState('');
-  const [sortColumn, setSortColumn] = useState('created_at');
-  const [sortDirection, setSortDirection] = useState('desc'); // 'asc' | 'desc'
-  const [groupByUser, setGroupByUser] = useState(false);
-  const [collapsed, setCollapsed] = useState({}); // groupKey -> boolean
+  // --- Direct Message State ---
+  const [directSearch, setDirectSearch] = useState('');
+  const debouncedDirectSearch = useDebouncedValue(directSearch);
+  const [selectedConversationKey, setSelectedConversationKey] = useState(null); // e.g., "user1-user2"
+  const [currentMessages, setCurrentMessages] = useState([]);
+  const [currentParticipants, setCurrentParticipants] = useState({ 
+    user1: 'User 1', user2: 'User 2', 
+    user1Char: '—', user2Char: '—', // Added character names
+  });
 
-  // small debounce
-  const useDebouncedValue = (value, ms = 200) => {
-    const [v, setV] = useState(value);
-    useEffect(() => { const t = setTimeout(() => setV(value), ms); return () => clearTimeout(t); }, [value, ms]);
-    return v;
-  };
-  const debouncedFilter = useDebouncedValue(filter, 200);
-
-  const tokenize = (q) => q.toLowerCase().split(/\s+/).filter(Boolean);
-  const tokens = useMemo(() => tokenize(debouncedFilter), [debouncedFilter]);
-
-  const formatTimestamp = (ts) =>
-    ts ? new Date(ts).toLocaleString([], { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
-
-  const stableSort = (arr, cmp) => arr.map((v, i) => [v, i]).sort((a, b) => cmp(a[0], b[0]) || a[1] - b[1]).map(x => x[0]);
-
-  const compare = (a, b) => {
-    let valA, valB;
-    if (sortColumn === 'created_at') {
-      valA = new Date(a.created_at).getTime(); valB = new Date(b.created_at).getTime();
-    } else if (sortColumn === 'sender_name') {
-      valA = (a.sender_name || '').toLowerCase(); valB = (b.sender_name || '').toLowerCase();
-    } else if (sortColumn === 'recipient_name') {
-      valA = (a.recipient_name || '').toLowerCase(); valB = (b.recipient_name || '').toLowerCase();
-    } else {
-      valA = new Date(a.created_at).getTime(); valB = new Date(b.created_at).getTime();
-    }
-    if (typeof valA === 'number' && typeof valB === 'number') return sortDirection === 'asc' ? valA - valB : valB - valA;
-    return sortDirection === 'asc' ? String(valA).localeCompare(String(valB)) : String(valB).localeCompare(String(valA));
-  };
-
-  const handleSort = (col) => {
-    if (sortColumn === col) setSortDirection(d => (d === 'asc' ? 'desc' : 'asc'));
-    else { setSortColumn(col); setSortDirection(col === 'created_at' ? 'desc' : 'asc'); }
-  };
-
-  const processedDirect = useMemo(() => {
-    const hay = (m) => `${m.body || ''}\n${m.sender_name || ''}\n${m.recipient_name || ''}`.toLowerCase();
-    let base = !tokens.length ? messages : messages.filter(m => {
-      const h = hay(m); return tokens.every(t => h.includes(t));
-    });
-
-    if (!groupByUser) return stableSort(base.slice(), compare);
-
-    // group by pair (A-B == B-A)
-    const groups = new Map();
-    for (const msg of base) {
-      const ids = [msg.sender_id, msg.recipient_id].map(Number).sort((a, b) => a - b);
-      const key = ids.join('-');
-      if (!groups.has(key)) {
-        const names = [msg.sender_name || '', msg.recipient_name || ''].sort((a, b) => a.localeCompare(b));
-        groups.set(key, { key, users: `${names[0]} & ${names[1]}`, messages: [], latest_timestamp: msg.created_at });
-      }
-      const g = groups.get(key);
-      g.messages.push(msg);
-      if (new Date(msg.created_at) > new Date(g.latest_timestamp)) g.latest_timestamp = msg.created_at;
-    }
-
-    const arr = Array.from(groups.values()).sort((a, b) =>
-      new Date(b.latest_timestamp) - new Date(a.latest_timestamp)
-    );
-    arr.forEach(g => g.messages.sort((a, b) => new Date(a.created_at) - new Date(b.created_at)));
-    return arr;
-  }, [messages, tokens, groupByUser, sortColumn, sortDirection]);
-
-  const Highlight = ({ text }) => {
-    if (!tokens.length) return <>{text}</>;
-    const lower = String(text || '').toLowerCase();
-    let parts = [{ s: String(text || ''), l: lower, hit: false }];
-    tokens.forEach(t => {
-      const next = [];
-      parts.forEach(p => {
-        if (p.hit) return next.push(p);
-        const idx = p.l.indexOf(t);
-        if (idx === -1) return next.push(p);
-        next.push(
-          { s: p.s.slice(0, idx), l: p.l.slice(0, idx), hit: false },
-          { s: p.s.slice(idx, idx + t.length), l: p.l.slice(idx, idx + t.length), hit: true },
-          { s: p.s.slice(idx + t.length), l: p.l.slice(idx + t.length), hit: false },
-        );
-      });
-      parts = next;
-    });
-    return (
-      <>
-        {parts.map((p, i) => p.hit ? <mark key={i} className={styles.hl}>{p.s}</mark> : <span key={i}>{p.s}</span>)}
-      </>
-    );
-  };
-
-  const SortArrow = ({ column }) => sortColumn === column ? (
-    <span className={styles.sortArrow}>{sortDirection === 'asc' ? '▲' : '▼'}</span>
-  ) : null;
-
-  // ======= NPC CHATS (table-based) =======
+  // --- NPC Message State ---
   const [npcList, setNpcList] = useState([]);
-  const [npcListLoading, setNpcListLoading] = useState(false);
-  const [npcListError, setNpcListError] = useState('');
   const [npcSearch, setNpcSearch] = useState('');
-  const [selectedNpcId, setSelectedNpcId] = useState(null);
+  const debouncedNpcSearch = useDebouncedValue(npcSearch);
+  const [selectedNpc, setSelectedNpc] = useState(null); // { id, name }
 
-  const [convos, setConvos] = useState([]); // rows: {user_id, char_name, display_name, last_message_at}
-  const [convosLoading, setConvosLoading] = useState(false);
-  const [convosError, setConvosError] = useState('');
-  const [convosSearch, setConvosSearch] = useState('');
-  const [convosSort, setConvosSort] = useState({ col: 'last_message_at', dir: 'desc' }); // 'char', 'player', 'last_message_at'
+  const [convos, setConvos] = useState([]); // Conversations for the selected NPC
+  const [npcConvoSearch, setNpcConvoSearch] = useState('');
+  const debouncedNpcConvoSearch = useDebouncedValue(npcConvoSearch);
+  const [selectedNpcConversation, setSelectedNpcConversation] = useState(null); // { userId, userName, charName }
 
-  const [thread, setThread] = useState([]);
-  const [threadLoading, setThreadLoading] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState(null);
+  const [currentThread, setCurrentThread] = useState([]);
+  const [loading, setLoading] = useState({ npcs: false, convos: false, thread: false });
+  const [error, setError] = useState('');
 
-  // load npc list when switching to npc mode
+  // Helper to find char info from user ID
+  const getCharInfoByUserId = useCallback((userId) => {
+    // We need to iterate over charIndex values to find the entry matching the user_id
+    const charEntry = Object.values(charIndex).find(c => c.user_id === Number(userId));
+    return charEntry ? { 
+        name: charEntry.char_name, 
+        clan: charEntry.clan 
+    } : { name: '—', clan: '—' };
+  }, [charIndex]);
+
+
+  // --- Process Direct Messages into Conversations (UPDATED) ---
+  const directConversations = useMemo(() => {
+    const groups = new Map();
+    for (const msg of messages) {
+      // Ensure IDs are numbers for consistent sorting
+      const id1 = Number(msg.sender_id);
+      const id2 = Number(msg.recipient_id);
+      if (!id1 || !id2) continue; // Skip messages without valid numeric IDs
+
+      const ids = [id1, id2].sort((a, b) => a - b);
+      const key = ids.join('-');
+      const msgTimestamp = new Date(msg.created_at).getTime();
+
+      if (!groups.has(key)) {
+        // Find Character Info
+        const char1Info = getCharInfoByUserId(ids[0]);
+        const char2Info = getCharInfoByUserId(ids[1]);
+
+        groups.set(key, {
+          key,
+          user1Id: ids[0],
+          user2Id: ids[1],
+          user1Name: ids[0] === id1 ? msg.sender_name : msg.recipient_name,
+          user2Name: ids[1] === id1 ? msg.sender_name : msg.recipient_name,
+          user1CharName: char1Info.name,
+          user2CharName: char2Info.name,
+          messages: [],
+          latestTimestamp: 0,
+          latestSnippet: '',
+        });
+      }
+      const group = groups.get(key);
+      group.messages.push(msg);
+      if (msgTimestamp > group.latestTimestamp) {
+        group.latestTimestamp = msgTimestamp;
+        group.latestSnippet = msg.body;
+      }
+    }
+    // Sort messages within each group and the groups themselves
+    groups.forEach(group => group.messages.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
+    return Array.from(groups.values()).sort((a, b) => b.latestTimestamp - a.latestTimestamp);
+  }, [messages, getCharInfoByUserId]); // Added getCharInfoByUserId dependency
+
+  // --- Filter Direct Conversations (UPDATED to include character name search) ---
+  const filteredDirectConversations = useMemo(() => {
+    const q = debouncedDirectSearch.toLowerCase();
+    if (!q) return directConversations;
+    return directConversations.filter(convo =>
+      (convo.user1Name || '').toLowerCase().includes(q) ||
+      (convo.user2Name || '').toLowerCase().includes(q) ||
+      (convo.user1CharName || '').toLowerCase().includes(q) ||
+      (convo.user2CharName || '').toLowerCase().includes(q) ||
+      convo.messages.some(msg => (msg.body || '').toLowerCase().includes(q)) // Search snippets too
+    );
+  }, [directConversations, debouncedDirectSearch]);
+
+  // --- Handle Selecting Direct Conversation (UPDATED) ---
+  useEffect(() => {
+    if (viewMode !== 'direct' || !selectedConversationKey) {
+      setCurrentMessages([]);
+      return;
+    }
+    const convo = directConversations.find(c => c.key === selectedConversationKey);
+    if (convo) {
+      setCurrentMessages(convo.messages);
+      setCurrentParticipants({ 
+        user1: convo.user1Name, 
+        user2: convo.user2Name, 
+        user1Char: convo.user1CharName, // Added char name
+        user2Char: convo.user2CharName, // Added char name
+      });
+    } else {
+      setCurrentMessages([]); // Clear if key is somehow invalid
+    }
+  }, [selectedConversationKey, directConversations, viewMode]);
+
+
+  // --- Load NPCs on Mode Switch ---
   useEffect(() => {
     if (viewMode !== 'npc') return;
     let cancelled = false;
-    const load = async () => {
-      setNpcListLoading(true); setNpcListError('');
+    const loadNpcs = async () => {
+      setLoading(prev => ({ ...prev, npcs: true })); setError('');
       try {
         let res;
         try { res = await api.get('/admin/npcs'); }
-        catch { res = await api.get('/chat/npcs'); }
+        catch { res = await api.get('/chat/npcs'); } // Fallback
         if (cancelled) return;
         const list = Array.isArray(res.data) ? res.data : (res.data?.npcs || []);
-        setNpcList(list.map(n => ({ id: n.id, name: n.name, clan: n.clan })));
+        setNpcList(list.map(n => ({ id: n.id, name: n.name, clan: n.clan })).sort((a, b) => a.name.localeCompare(b.name)));
       } catch {
-        if (!cancelled) setNpcListError('Failed to load NPCs.');
+        if (!cancelled) setError('Failed to load NPCs.');
       } finally {
-        if (!cancelled) setNpcListLoading(false);
+        if (!cancelled) setLoading(prev => ({ ...prev, npcs: false }));
       }
     };
-    load();
+    loadNpcs();
     return () => { cancelled = true; };
   }, [viewMode]);
 
-  // load conversations for selected NPC
+  // --- Filter NPCs ---
+  const filteredNpcs = useMemo(() => {
+    const q = debouncedNpcSearch.toLowerCase();
+    if (!q) return npcList;
+    return npcList.filter(n => (n.name || '').toLowerCase().includes(q) || (n.clan || '').toLowerCase().includes(q));
+  }, [npcList, debouncedNpcSearch]);
+
+  // --- Load Convos for Selected NPC ---
   useEffect(() => {
-    if (viewMode !== 'npc' || !selectedNpcId) { setConvos([]); setSelectedUserId(null); setThread([]); return; }
+    if (viewMode !== 'npc' || !selectedNpc?.id) {
+      setConvos([]);
+      setSelectedNpcConversation(null); // Clear convo selection when NPC changes
+      return;
+    }
     let cancelled = false;
     const loadConvos = async () => {
-      setConvosLoading(true); setConvosError('');
+      setLoading(prev => ({ ...prev, convos: true })); setError('');
       try {
         let res;
-        try {
-          res = await api.get('/admin/chat/npc/conversations', { params: { npc_id: selectedNpcId } });
-        } catch {
-          res = await api.get(`/admin/chat/npc-conversations/${selectedNpcId}`);
-        }
+        try { res = await api.get('/admin/chat/npc/conversations', { params: { npc_id: selectedNpc.id } }); }
+        catch { res = await api.get(`/admin/chat/npc-conversations/${selectedNpc.id}`); } // Fallback
         if (cancelled) return;
         const rows = (res.data?.conversations || []).map(r => ({
-          user_id: r.user_id,
-          char_name: r.char_name || '',
-          display_name: r.display_name || '',
-          last_message_at: r.last_message_at || null,
+          userId: r.user_id,
+          charName: r.char_name || '',
+          userName: r.display_name || `User ${r.user_id}`,
+          lastMessageAt: r.last_message_at || null,
         }));
+        rows.sort((a, b) => new Date(b.lastMessageAt || 0).getTime() - new Date(a.lastMessageAt || 0).getTime());
         setConvos(rows);
       } catch {
-        if (!cancelled) { setConvosError('Failed to load conversations.'); setConvos([]); }
+        if (!cancelled) { setError('Failed to load conversations for NPC.'); setConvos([]); }
       } finally {
-        if (!cancelled) setConvosLoading(false);
+        if (!cancelled) setLoading(prev => ({ ...prev, convos: false }));
       }
     };
     loadConvos();
     return () => { cancelled = true; };
-  }, [viewMode, selectedNpcId]);
+  }, [viewMode, selectedNpc]); // Depend only on selectedNpc
 
-  // load thread for selected conversation
+  // --- Filter NPC Convos ---
+  const filteredNpcConvos = useMemo(() => {
+    const q = debouncedNpcConvoSearch.toLowerCase();
+    if (!q) return convos;
+    return convos.filter(c =>
+      (c.charName || '').toLowerCase().includes(q) ||
+      (c.userName || '').toLowerCase().includes(q)
+    );
+  }, [convos, debouncedNpcConvoSearch]);
+
+  // --- Load Thread for Selected NPC Conversation ---
   useEffect(() => {
-    if (viewMode !== 'npc' || !selectedNpcId || !selectedUserId) { setThread([]); return; }
+    if (viewMode !== 'npc' || !selectedNpc?.id || !selectedNpcConversation?.userId) {
+      setCurrentThread([]);
+      return;
+    }
     let cancelled = false;
     const loadThread = async () => {
-      setThreadLoading(true);
+      setLoading(prev => ({ ...prev, thread: true })); setError('');
       try {
         let res;
-        try {
-          res = await api.get('/admin/chat/npc/history', { params: { npc_id: selectedNpcId, user_id: selectedUserId } });
-        } catch {
-          res = await api.get(`/admin/chat/npc-history/${selectedNpcId}/${selectedUserId}`);
-        }
+        try { res = await api.get('/admin/chat/npc/history', { params: { npc_id: selectedNpc.id, user_id: selectedNpcConversation.userId } }); }
+        catch { res = await api.get(`/admin/chat/npc-history/${selectedNpc.id}/${selectedNpcConversation.userId}`); } // Fallback
         if (cancelled) return;
         const msgs = (res.data?.messages || []).map(m => ({
-          id: m.id, body: m.body, created_at: m.created_at, from: m.from_side // 'npc' | 'user'
+          id: m.id,
+          body: m.body,
+          created_at: m.created_at,
+          from: m.from_side // 'npc' | 'user'
         }));
-        msgs.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-        setThread(msgs);
+        msgs.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        setCurrentThread(msgs);
       } catch {
-        if (!cancelled) setThread([]);
+        if (!cancelled) { setError('Failed to load message thread.'); setCurrentThread([]); }
       } finally {
-        if (!cancelled) setThreadLoading(false);
+        if (!cancelled) setLoading(prev => ({ ...prev, thread: false }));
       }
     };
     loadThread();
     return () => { cancelled = true; };
-  }, [viewMode, selectedNpcId, selectedUserId]);
+  }, [viewMode, selectedNpc, selectedNpcConversation]); // Depend on both selections
 
-  // filters/sorts
-  const filteredNpcs = useMemo(() => {
-    const q = npcSearch.trim().toLowerCase();
-    if (!q) return npcList;
-    return npcList.filter(n => (n.name || '').toLowerCase().includes(q) || (n.clan || '').toLowerCase().includes(q));
-  }, [npcSearch, npcList]);
+  // --- Handle Mode Change ---
+  const handleModeChange = (mode) => {
+    setViewMode(mode);
+    // Reset selections and data specific to the *other* mode
+    if (mode === 'direct') {
+      setSelectedNpc(null);
+      setSelectedNpcConversation(null);
+      setConvos([]);
+      setCurrentThread([]);
+      setNpcSearch('');
+      setNpcConvoSearch('');
+    } else { // mode === 'npc'
+      setSelectedConversationKey(null);
+      setCurrentMessages([]);
+      setDirectSearch('');
+    }
+    setError('');
+  };
 
-  const processedConvos = useMemo(() => {
-    const q = convosSearch.trim().toLowerCase();
-    let arr = !q ? convos : convos.filter(r =>
-      (r.char_name || '').toLowerCase().includes(q) || (r.display_name || '').toLowerCase().includes(q)
-    );
-    const { col, dir } = convosSort;
-    const cmp = (a, b) => {
-      let va, vb;
-      if (col === 'char') { va = (a.char_name || '').toLowerCase(); vb = (b.char_name || '').toLowerCase(); }
-      else if (col === 'player') { va = (a.display_name || '').toLowerCase(); vb = (b.display_name || '').toLowerCase(); }
-      else { va = new Date(a.last_message_at || 0).getTime(); vb = new Date(b.last_message_at || 0).getTime(); }
-      if (typeof va === 'number') return dir === 'asc' ? va - vb : vb - va;
-      return dir === 'asc' ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
-    };
-    return stableSort(arr.slice(), cmp);
-  }, [convos, convosSearch, convosSort]);
-
-  const sortConvosBy = (col) => setConvosSort(s => s.col === col ? { col, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { col, dir: col === 'last_message_at' ? 'desc' : 'asc' });
-
-  // ======= UI =======
   return (
-    <div className="stack12">
-      <h3>Chat Logs</h3>
-
-      {/* Top toolbar */}
-      <div className={styles.logsToolbar}>
-        {/* Left side: mode switch + search (direct mode) */}
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <div className={styles.sortBtns}>
+    <div className={styles.logsContainer} data-mode={viewMode}>
+      {/* --- Column 1: Conversation/NPC List --- */}
+      <aside className={styles.sidebar}>
+        <div className={styles.sidebarHeader}>
+          {/* Mode Switcher */}
+          <div className={styles.modeSwitcher}>
             <button
-              className={`${styles.sortableHeader} ${viewMode === 'direct' ? styles.active : ''}`}
-              onClick={() => setViewMode('direct')}
-              type="button"
+              onClick={() => handleModeChange('direct')}
+              className={viewMode === 'direct' ? styles.active : ''}
             >
-              All Messages
+              Direct Messages
             </button>
             <button
-              className={`${styles.sortableHeader} ${viewMode === 'npc' ? styles.active : ''}`}
-              onClick={() => setViewMode('npc')}
-              type="button"
+              onClick={() => handleModeChange('npc')}
+              className={viewMode === 'npc' ? styles.active : ''}
             >
               NPC Chats
             </button>
           </div>
+          {/* Search Input */}
+          <input
+            type="search"
+            placeholder={viewMode === 'direct' ? "Search conversations..." : "Search NPCs..."}
+            value={viewMode === 'direct' ? directSearch : npcSearch}
+            onChange={e => viewMode === 'direct' ? setDirectSearch(e.target.value) : setNpcSearch(e.target.value)}
+            className={styles.searchInput}
+          />
+        </div>
 
+        {/* List Area */}
+        <div className={styles.sidebarList}>
           {viewMode === 'direct' && (
-            <input
-              className={styles.inputSearch}
-              placeholder="Search sender, recipient, or message…"
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              style={{ minWidth: 320 }}
+            <ConversationList
+              conversations={filteredDirectConversations}
+              selectedKey={selectedConversationKey}
+              onSelect={setSelectedConversationKey}
+              searchQuery={debouncedDirectSearch}
+            />
+          )}
+          {viewMode === 'npc' && (
+            <NpcList
+              npcs={filteredNpcs}
+              selectedId={selectedNpc?.id}
+              onSelect={setSelectedNpc}
+              searchQuery={debouncedNpcSearch}
+              loading={loading.npcs}
+              error={error && !loading.npcs ? error : ''} // Show error only if not loading
             />
           )}
         </div>
+      </aside>
 
-        {/* Right side: controls per mode */}
-        <div className={styles.toolbarRight}>
-          {viewMode === 'direct' ? (
-            <>
-              <button
-                type="button"
-                className={styles.groupToggle}
-                onClick={() => setGroupByUser(p => !p)}
-                title={groupByUser ? 'Show flat list' : 'Group by conversation'}
-              >
-                {groupByUser ? 'Ungroup' : 'Group by Conversation'}
-              </button>
-
-              {!groupByUser && (
-                <div className={styles.sortBtns}>
-                  <button className={`${styles.sortableHeader} ${sortColumn === 'created_at' ? styles.active : ''}`} onClick={() => handleSort('created_at')}>Time <SortArrow column="created_at" /></button>
-                  <button className={`${styles.sortableHeader} ${sortColumn === 'sender_name' ? styles.active : ''}`} onClick={() => handleSort('sender_name')}>From <SortArrow column="sender_name" /></button>
-                  <button className={`${styles.sortableHeader} ${sortColumn === 'recipient_name' ? styles.active : ''}`} onClick={() => handleSort('recipient_name')}>To <SortArrow column="recipient_name" /></button>
-                </div>
-              )}
-
-              {groupByUser && (
-                <>
-                  <button className={styles.btnMini} onClick={() => {
-                    const all = {}; processedDirect.forEach(g => (all[g.key] = false)); setCollapsed(all);
-                  }}>Expand all</button>
-                  <button className={styles.btnMini} onClick={() => {
-                    const all = {}; processedDirect.forEach(g => (all[g.key] = true)); setCollapsed(all);
-                  }}>Collapse all</button>
-                </>
-              )}
-            </>
-          ) : (
-            // NPC mode right side: NPC picker & convos search
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <input
-                className={styles.inputSearch}
-                placeholder="Search NPCs…"
-                value={npcSearch}
-                onChange={(e) => setNpcSearch(e.target.value)}
-                style={{ minWidth: 220 }}
-              />
-              <select
-                className={styles.groupToggle}
-                value={selectedNpcId || ''}
-                onChange={(e) => { setSelectedNpcId(e.target.value ? Number(e.target.value) : null); }}
-                title="Choose NPC"
-              >
-                <option value="">{npcListLoading ? 'Loading NPCs…' : (npcListError || 'Select NPC')}</option>
-                {filteredNpcs.map(n => (
-                  <option key={n.id} value={n.id}>{n.name}{n.clan ? ` (${n.clan})` : ''}</option>
-                ))}
-              </select>
-
-              <input
-                className={styles.inputSearch}
-                placeholder="Search players in this NPC’s convos…"
-                value={convosSearch}
-                onChange={(e) => setConvosSearch(e.target.value)}
-                disabled={!selectedNpcId}
-                style={{ minWidth: 260 }}
-              />
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ======= DIRECT MODE TABLES ======= */}
-      {viewMode === 'direct' && (
-        <div className={`${styles.tableContainer} ${styles.isStickyHead}`}>
-          <table className={`${styles.table} ${styles.zebra}`}>
-            <thead>
-              {!groupByUser && (
-                <tr>
-                  <th className={styles.colId}>ID</th>
-                  <th className={styles.colTime}>
-                    <button className={styles.sortableHeader} onClick={() => handleSort('created_at')} type="button">
-                      Timestamp <SortArrow column="created_at" />
-                    </button>
-                  </th>
-                  <th className={styles.colFrom}>
-                    <button className={styles.sortableHeader} onClick={() => handleSort('sender_name')} type="button">
-                      From <SortArrow column="sender_name" />
-                    </button>
-                  </th>
-                  <th className={styles.colTo}>
-                    <button className={styles.sortableHeader} onClick={() => handleSort('recipient_name')} type="button">
-                      To <SortArrow column="recipient_name" />
-                    </button>
-                  </th>
-                  <th className={styles.colMsg}>Message</th>
-                </tr>
-              )}
-            </thead>
-
-            <tbody>
-              {!groupByUser &&
-                processedDirect.map(msg => (
-                  <tr key={msg.id}>
-                    <td className={styles.mono}>{msg.id}</td>
-                    <td className={styles.nowrap}>{formatTimestamp(msg.created_at)}</td>
-                    <td className={styles.ellipsis} title={msg.sender_name}><Highlight text={msg.sender_name} /></td>
-                    <td className={styles.ellipsis} title={msg.recipient_name}><Highlight text={msg.recipient_name} /></td>
-                    <td className={styles.messageCell} title={msg.body}>
-                      <span className={styles.msgText}><Highlight text={msg.body} /></span>
-                      <button className={styles.copyBtn} onClick={() => navigator.clipboard?.writeText?.(msg.body || '')}>Copy</button>
-                    </td>
-                  </tr>
-                ))}
-
-              {groupByUser &&
-                processedDirect.map(group => {
-                  const isCollapsed = !!collapsed[group.key];
-                  return (
-                    <React.Fragment key={group.key}>
-                      <tr className={styles.groupHeaderRow}>
-                        <td colSpan={5}>
-                          <button
-                            type="button"
-                            className={styles.groupHeader}
-                            onClick={() => setCollapsed(c => ({ ...c, [group.key]: !c[group.key] }))}
-                            aria-expanded={!isCollapsed}
-                          >
-                            <span className={styles.caret}>{isCollapsed ? '▶' : '▼'}</span>
-                            <span className={styles.groupTitle}>{group.users}</span>
-                            <span className={styles.groupMeta}>
-                              <span className={styles.countBadge}>{group.messages.length}</span>
-                              <span className={styles.latestTime}>Last: {formatTimestamp(group.latest_timestamp)}</span>
-                            </span>
-                          </button>
-                        </td>
-                      </tr>
-                      {!isCollapsed && group.messages.map(msg => (
-                        <tr key={msg.id} className={styles.groupedRow}>
-                          <td className={styles.mono}>{msg.id}</td>
-                          <td className={styles.nowrap}>{formatTimestamp(msg.created_at)}</td>
-                          <td className={styles.ellipsis} title={msg.sender_name}><Highlight text={msg.sender_name} /></td>
-                          <td className={styles.ellipsis} title={msg.recipient_name}><Highlight text={msg.recipient_name} /></td>
-                          <td className={styles.messageCell} title={msg.body}>
-                            <span className={styles.msgText}><Highlight text={msg.body} /></span>
-                            <button className={styles.copyBtn} onClick={() => navigator.clipboard?.writeText?.(msg.body || '')}>Copy</button>
-                          </td>
-                        </tr>
-                      ))}
-                    </React.Fragment>
-                  );
-                })}
-
-              {!processedDirect.length && (
-                <tr><td colSpan={5} className={styles.subtle}>No messages found.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* ======= NPC MODE TABLES ======= */}
+      {/* --- Column 2: NPC Conversation List (NPC Mode Only) --- */}
       {viewMode === 'npc' && (
-        <>
-          {/* Conversations table */}
-          <div className={`${styles.tableContainer} ${styles.isStickyHead}`} style={{ marginTop: 10 }}>
-            <table className={`${styles.table} ${styles.zebra}`}>
-              <thead>
-                <tr>
-                  <th style={{ width: 220 }}>
-                    <button className={styles.sortableHeader} onClick={() => sortConvosBy('char')} type="button">
-                      Player Character {convosSort.col === 'char' && <span className={styles.sortArrow}>{convosSort.dir === 'asc' ? '▲' : '▼'}</span>}
-                    </button>
-                  </th>
-                  <th style={{ width: 220 }}>
-                    <button className={styles.sortableHeader} onClick={() => sortConvosBy('player')} type="button">
-                      Player {convosSort.col === 'player' && <span className={styles.sortArrow}>{convosSort.dir === 'asc' ? '▲' : '▼'}</span>}
-                    </button>
-                  </th>
-                  <th style={{ width: 160 }}>
-                    <button className={styles.sortableHeader} onClick={() => sortConvosBy('last_message_at')} type="button">
-                      Last Message {convosSort.col === 'last_message_at' && <span className={styles.sortArrow}>{convosSort.dir === 'asc' ? '▲' : '▼'}</span>}
-                    </button>
-                  </th>
-                  <th>Open</th>
-                </tr>
-              </thead>
-              <tbody>
-                {!selectedNpcId && (
-                  <tr><td colSpan={4} className={styles.subtle}>{npcListLoading ? 'Loading NPCs…' : (npcListError || 'Select an NPC to view conversations.')}</td></tr>
-                )}
-                {selectedNpcId && convosLoading && (
-                  <tr><td colSpan={4} className={styles.subtle}>Loading conversations…</td></tr>
-                )}
-                {selectedNpcId && !convosLoading && !processedConvos.length && (
-                  <tr><td colSpan={4} className={styles.subtle}>No conversations for this NPC.</td></tr>
-                )}
-                {selectedNpcId && processedConvos.map(r => (
-                  <tr key={r.user_id} className={selectedUserId === r.user_id ? styles.groupedRow : undefined}>
-                    <td className={styles.ellipsis} title={r.char_name}>{r.char_name || '—'}</td>
-                    <td className={styles.ellipsis} title={r.display_name}>{r.display_name || '—'}</td>
-                    <td className={styles.nowrap}>{r.last_message_at ? formatTimestamp(r.last_message_at) : '—'}</td>
-                    <td>
-                      <button
-                        className={styles.groupToggle}
-                        onClick={() => setSelectedUserId(prev => prev === r.user_id ? null : r.user_id)}
-                      >
-                        {selectedUserId === r.user_id ? 'Close' : 'Open'}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <aside className={styles.conversationList}>
+          <div className={styles.sidebarHeader}> {/* Reuse header style */}
+            <input
+              type="search"
+              placeholder={selectedNpc ? `Search convos for ${selectedNpc.name}...` : "Select NPC first"}
+              value={npcConvoSearch}
+              onChange={e => setNpcConvoSearch(e.target.value)}
+              className={styles.searchInput}
+              disabled={!selectedNpc}
+            />
           </div>
-
-          {/* Thread table */}
-          {selectedNpcId && selectedUserId && (
-            <div className={`${styles.tableContainer} ${styles.isStickyHead}`} style={{ marginTop: 12 }}>
-              <table className={`${styles.table} ${styles.zebra}`}>
-                <thead>
-                  <tr>
-                    <th className={styles.colId}>ID</th>
-                    <th className={styles.colTime}>Timestamp</th>
-                    <th style={{ width: 140 }}>From</th>
-                    <th className={styles.colMsg}>Message</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {threadLoading && (
-                    <tr><td colSpan={4} className={styles.subtle}>Loading thread…</td></tr>
-                  )}
-                  {!threadLoading && !thread.length && (
-                    <tr><td colSpan={4} className={styles.subtle}>No messages yet.</td></tr>
-                  )}
-                  {!threadLoading && thread.map(m => (
-                    <tr key={m.id}>
-                      <td className={styles.mono}>{m.id}</td>
-                      <td className={styles.nowrap}>{formatTimestamp(m.created_at)}</td>
-                      <td className={styles.nowrap}>{m.from === 'npc' ? 'NPC' : 'Player'}</td>
-                      <td className={styles.messageCell} title={m.body}>
-                        <span className={styles.msgText}>{m.body}</span>
-                        <button className={styles.copyBtn} onClick={() => navigator.clipboard?.writeText?.(m.body || '')}>Copy</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </>
+          <div className={styles.sidebarList}>
+            <NpcConversationList
+              conversations={filteredNpcConvos}
+              selectedUserId={selectedNpcConversation?.userId}
+              onSelect={setSelectedNpcConversation}
+              searchQuery={debouncedNpcConvoSearch}
+              loading={loading.convos}
+              error={error && loading.npcs ? '' : error} // Show error only if NPC loaded
+              npcSelected={!!selectedNpc}
+            />
+          </div>
+        </aside>
       )}
+
+      {/* --- Column 3: Message Panel --- */}
+      <main className={styles.messagePanel}>
+        {viewMode === 'direct' && selectedConversationKey && (
+          <MessagePanel
+            messages={currentMessages}
+            participants={currentParticipants}
+            loading={false} // Loading handled by useEffect setting messages
+            error={error}
+            mode="direct"
+          />
+        )}
+        {viewMode === 'npc' && selectedNpcConversation && selectedNpc && (
+          <MessagePanel
+            messages={currentThread}
+            participants={{ npc: selectedNpc.name, user: selectedNpcConversation.charName || selectedNpcConversation.userName }}
+            loading={loading.thread}
+            error={error}
+            mode="npc"
+          />
+        )}
+        {/* Placeholders */}
+        {viewMode === 'direct' && !selectedConversationKey && (
+          <div className={styles.placeholder}>Select a conversation to view messages.</div>
+        )}
+        {viewMode === 'npc' && !selectedNpc && (
+          <div className={styles.placeholder}>Select an NPC from the list.</div>
+        )}
+        {viewMode === 'npc' && selectedNpc && !selectedNpcConversation && (
+          <div className={styles.placeholder}>Select a conversation from the middle panel.</div>
+        )}
+      </main>
     </div>
   );
 }
 
+// --- Component: List of Direct Conversations (UPDATED) ---
+function ConversationList({ conversations, selectedKey, onSelect, searchQuery }) {
+  if (!conversations.length && !searchQuery) {
+    return <div className={styles.placeholder}>No direct messages found.</div>;
+  }
+  if (!conversations.length && searchQuery) {
+    return <div className={styles.placeholder}>No conversations match "{searchQuery}".</div>;
+  }
+
+  const formatName = (user, char) => {
+    if (char && char !== '—') {
+        return `${char} (${user})`;
+    }
+    return user;
+  };
+
+  return conversations.map(convo => (
+    <button
+      key={convo.key}
+      className={`${styles.listItem} ${convo.key === selectedKey ? styles.active : ''}`}
+      onClick={() => onSelect(convo.key)}
+    >
+      <div className={styles.listItemText}>
+        <Highlight 
+          text={`${formatName(convo.user1Name, convo.user1CharName)} & ${formatName(convo.user2Name, convo.user2CharName)}`} 
+          query={searchQuery} 
+        />
+      </div>
+      <div className={styles.listItemMeta}>
+        <span className={styles.snippet}><Highlight text={convo.latestSnippet} query={searchQuery} /></span>
+        <span className={styles.timestamp}>{formatTimestamp(convo.latestTimestamp, false)}</span>
+      </div>
+    </button>
+  ));
+}
+
+// --- Component: List of NPCs ---
+function NpcList({ npcs, selectedId, onSelect, searchQuery, loading, error }) {
+  if (loading) return <div className={styles.placeholder}>Loading NPCs...</div>;
+  if (error) return <div className={`${styles.placeholder} ${styles.errorText}`}>{error}</div>;
+  if (!npcs.length && !searchQuery) {
+    return <div className={styles.placeholder}>No NPCs found.</div>;
+  }
+  if (!npcs.length && searchQuery) {
+    return <div className={styles.placeholder}>No NPCs match "{searchQuery}".</div>;
+  }
+
+  return npcs.map(npc => (
+    <button
+      key={npc.id}
+      className={`${styles.listItem} ${npc.id === selectedId ? styles.active : ''}`}
+      onClick={() => onSelect(npc)} // Pass the whole NPC object
+    >
+      <div className={styles.listItemText}>
+        <Highlight text={npc.name} query={searchQuery} />
+        {npc.clan && <span className={styles.clanChip}><Highlight text={npc.clan} query={searchQuery} /></span>}
+      </div>
+    </button>
+  ));
+}
+
+// --- Component: List of Conversations for an NPC ---
+function NpcConversationList({ conversations, selectedUserId, onSelect, searchQuery, loading, error, npcSelected }) {
+  if (!npcSelected) return <div className={styles.placeholder}>Select an NPC first.</div>;
+  if (loading) return <div className={styles.placeholder}>Loading conversations...</div>;
+  if (error) return <div className={`${styles.placeholder} ${styles.errorText}`}>{error}</div>;
+  if (!conversations.length && !searchQuery) {
+    return <div className={styles.placeholder}>No conversations found for this NPC.</div>;
+  }
+  if (!conversations.length && searchQuery) {
+    return <div className={styles.placeholder}>No conversations match "{searchQuery}".</div>;
+  }
+
+  return conversations.map(convo => (
+    <button
+      key={convo.userId}
+      className={`${styles.listItem} ${convo.userId === selectedUserId ? styles.active : ''}`}
+      onClick={() => onSelect(convo)} // Pass the whole conversation object
+    >
+      <div className={styles.listItemText}>
+        <Highlight text={convo.charName || convo.userName} query={searchQuery} />
+      </div>
+      <div className={styles.listItemMeta}>
+        {convo.charName && <span className={styles.snippet}><Highlight text={convo.userName} query={searchQuery} /></span>}
+        <span className={styles.timestamp}>{formatTimestamp(convo.lastMessageAt, true)}</span>
+      </div>
+    </button>
+  ));
+}
 
 
+// --- Component: Message Display Panel (UPDATED) ---
+function MessagePanel({ messages, participants, loading, error, mode }) {
+  const messagesEndRef = useRef(null);
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const getParticipantName = (idOrRole) => {
+    if (mode === 'direct') {
+      // In the direct view, we don't have sender_id available here, 
+      // but we do have sender_name. We'll rely on the MessageBubble to determine the correct display name.
+      return idOrRole; // This won't be used directly but kept for compatibility
+    } else { // mode === 'npc'
+      // participants = { npc: 'NPC Name', user: 'Player Name' }
+      return idOrRole === 'npc' ? participants.npc : participants.user;
+    }
+  };
+
+  // UPDATED: Show display name + character name
+  const getParticipantsDisplay = () => {
+    if (mode === 'direct') {
+      const name1 = participants.user1Char && participants.user1Char !== '—' ? `${participants.user1Char} (${participants.user1})` : participants.user1;
+      const name2 = participants.user2Char && participants.user2Char !== '—' ? `${participants.user2Char} (${participants.user2})` : participants.user2;
+      return `${name1} ↔ ${name2}`;
+    } else {
+      return `${participants.npc} ↔ ${participants.user}`;
+    }
+  };
+
+  const getBubbleSenderName = (message) => {
+    if (mode === 'direct') {
+      // For direct messages, we use the char name if available, falling back to display name
+      const isUser1 = message.sender_name === participants.user1;
+      const charName = isUser1 ? participants.user1Char : participants.user2Char;
+      const displayName = isUser1 ? participants.user1 : participants.user2;
+      
+      return charName && charName !== '—' ? charName : displayName;
+    } else { // mode === 'npc'
+      return message.from === 'npc' ? participants.npc : participants.user;
+    }
+  }
+
+
+  return (
+    <>
+      <div className={styles.messagePanelHeader}>
+        {getParticipantsDisplay()}
+      </div>
+      <div className={styles.messageList}>
+        {loading && <div className={styles.placeholder}>Loading messages...</div>}
+        {error && !loading && <div className={`${styles.placeholder} ${styles.errorText}`}>{error}</div>}
+        {!loading && !error && messages.map((msg, index) => {
+          // Determine if the message is "sent" (from perspective of admin looking at NPC chat, or user1 in direct)
+          let isSent;
+          if (mode === 'direct') {
+             // Heuristic: Assume the first participant listed is 'self' for styling
+             isSent = msg.sender_name === participants.user1;
+          } else { // mode === 'npc'
+             isSent = msg.from === 'npc'; // Messages *from* the NPC are styled as 'sent'
+          }
+          
+          // Check if sender changed from previous message to add sender label
+          const prevSender = messages[index-1] ? (mode === 'direct' ? messages[index-1].sender_name : messages[index-1].from) : null;
+          const currentSender = mode === 'direct' ? msg.sender_name : msg.from;
+          const showSender = index === 0 || prevSender !== currentSender;
+          const senderName = getBubbleSenderName(msg);
+
+          return (
+             <MessageBubble
+                key={msg.id || index}
+                message={msg}
+                isSent={isSent}
+                senderName={senderName}
+                showSender={showSender}
+             />
+          );
+        })}
+         {!loading && !error && messages.length === 0 && (
+           <div className={styles.placeholder}>No messages in this conversation yet.</div>
+         )}
+        <div ref={messagesEndRef} /> {/* Anchor for scrolling */}
+      </div>
+    </>
+  );
+}
+
+// --- Component: Single Message Bubble ---
+function MessageBubble({ message, isSent, senderName, showSender }) {
+   return (
+      <div className={`${styles.messageRow} ${isSent ? styles.sentRow : styles.receivedRow}`}>
+         <div className={styles.messageBubble} title={formatTimestamp(message.created_at, true)}>
+           {/* Only show sender name if they are the receiver (receivedRow) AND showSender is true */}
+           {showSender && !isSent && <div className={styles.senderName}>{senderName}</div>}
+           {message.body}
+           <div className={styles.messageTime}>{formatTimestamp(message.created_at, false)}</div>
+         </div>
+      </div>
+   );
+ }
 
 
 /* ==================== NPCs (ADMIN) ==================== */

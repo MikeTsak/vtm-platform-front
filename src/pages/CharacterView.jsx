@@ -553,6 +553,25 @@ export default function CharacterView({
     return Array.from(knownRitualIds).map(id => byId.get(id)).filter(Boolean);
   }, [knownRitualIds]);
 
+  // ===== START FIX (1/3) =====
+  // Create a Set of all known discipline powers (by ID and Name)
+  // This is needed to check Oblivion Ceremony prerequisites.
+  const knownPowerNamesAndIds = useMemo(() => {
+    const powers = sheet.disciplinePowers || {};
+    const known = new Set();
+    const norm = (v) => String(v ?? '').trim().toLowerCase();
+  
+    Object.values(powers).flat().forEach(p => {
+      if (p?.id) known.add(norm(p.id));
+      if (p?.name) known.add(norm(p.name));
+      if (p?.slug) known.add(norm(p.slug));
+      if (p?.key) known.add(norm(p.key));
+    });
+    return known;
+  }, [sheet.disciplinePowers]);
+  // ===== END FIX (1/3) =====
+
+
   function canLearnRitual(level) {
     const bsLevel = Number(sheet.disciplines?.['Blood Sorcery'] || 0);
     return level <= bsLevel;
@@ -1133,7 +1152,10 @@ onAdd={async (merit, targetDots, options = {}) => {
                         const allowed = canLearnRitual(level);
                         const cost = XP_RULES.ritual(level);
                         const afford = xp >= cost;
-                        const { unmet } = ritualPrereqStatus(rit, knownRitualIds, knownRitualNames);
+                        // ===== START FIX (2/3) =====
+                        // Pass the correct set of known powers, not known rituals
+                        const { unmet } = ritualPrereqStatus(rit, knownPowerNamesAndIds);
+                        // ===== END FIX (2/3) =====
                         return (
                           <RitualRow
                             key={rit.id}
@@ -1162,7 +1184,10 @@ onAdd={async (merit, targetDots, options = {}) => {
                         const allowed = canLearnCeremony(level);
                         const cost = XP_RULES.ceremony(level);
                         const afford = xp >= cost;
-                        const { unmet } = ritualPrereqStatus(cer, knownRitualIds, knownRitualNames);
+                        // ===== START FIX (3/3) =====
+                        // Pass the correct set of known powers, not known rituals
+                        const { unmet } = ritualPrereqStatus(cer, knownPowerNamesAndIds);
+                        // ===== END FIX (3/3) =====
                         return (
                           <RitualRow
                             key={cer.id}
@@ -1385,7 +1410,7 @@ function RitualRow({ item, level, cost, owned, allowed, afford, prereqUnmet = []
           {owned && <span className={`${styles.powerBadgeMuted} badge-owned`}>Known</span>}
           {!allowed && <span className={`${styles.powerBadgeMuted} badge-warn`}>Requires Discipline {level}</span>}
           {prereqUnmet.length > 0 && (
-            <span className={`${styles.powerBadgeMuted} badge-warn`}>Conditions not met: {prereqUnmet.join(', ')}</span>
+            <span className={`${styles.powerBadgeMuted} badge-warn`}>Needs: {prereqUnmet.join(', ')}</span>
           )}
           {!afford && <span className={`${styles.powerBadgeMuted} badge-warn`}>Not enough XP</span>}
         </div>
@@ -1433,7 +1458,7 @@ function RitualRow({ item, level, cost, owned, allowed, afford, prereqUnmet = []
           <p>Buy <b>{item.name}</b> (Level {level}) for <b>{cost}</b> XP?</p>
           {prereqUnmet.length > 0 && (
             <p className={styles.muted} style={{ marginTop: 6 }}>
-              Conditions not met: {prereqUnmet.join(', ')}
+              Needs: {prereqUnmet.join(', ')}
             </p>
           )}
         </ConfirmModal>
@@ -1442,31 +1467,49 @@ function RitualRow({ item, level, cost, owned, allowed, afford, prereqUnmet = []
   );
 }
 
+/* ===== START: REPLACED FUNCTION ===== */
 /* ---------- Ritual/Ceremony prereq helper ---------- */
+// This function now checks against known *discipline powers*, not known rituals.
 const _norm = (v) => String(v ?? '').trim().toLowerCase();
 
-function ritualPrereqStatus(rit, knownRitualIds, knownRitualNames) {
-  const unmet = [];
+function ritualPrereqStatus(rit, knownPowerSet) {
   const prereq = rit?.prereq;
-  if (!prereq) return { unmet };
+  // No prerequisite
+  if (!prereq || prereq === '—') return { unmet: [] };
 
-  const parts = String(prereq)
-    .split(/(?:,|&|\+|and)/i)
-    .map(s => s.trim())
-    .filter(Boolean);
+  // Helper to normalize power names, e.g., "Binding Fetter (Errata)" -> "binding fetter"
+  const norm = (s) => _norm(s.replace(/\s+\(Errata\)$/i, ''));
+  const unmetList = [];
 
-  if (!parts.length) return { unmet };
-
-  const knownIdSet = new Set(Array.from(knownRitualIds || []));
-  const knownNameSet = new Set((knownRitualNames || []).map(_norm));
-
-  for (const p of parts) {
-    const hasById = knownIdSet.has(p);
-    const hasByName = knownNameSet.has(_norm(p));
-    if (!hasById && !hasByName) unmet.push(p);
+  if (prereq.includes(' or ')) {
+    // Handle 'OR' logic, e.g., "Ashes to Ashes or Oblivion's Sight"
+    const parts = prereq.split(/\s+or\s+/i);
+    const met = parts.some(part => knownPowerSet.has(norm(part)));
+    if (!met) {
+      // If none are met, the unmet req is the whole original string
+      unmetList.push(prereq);
+    }
+  } else if (prereq.includes(';')) {
+    // Handle 'AND' logic (using ';'), e.g., "Ashes to Ashes; Binding Fetter (Errata)"
+    const parts = prereq.split(';');
+    for (const part of parts) {
+      const p = part.trim();
+      if (p && !knownPowerSet.has(norm(p))) {
+        unmetList.push(p.replace(/\s+\(Errata\)$/i, '')); // Add the clean name to the unmet list
+      }
+    }
+  } else {
+    // Handle single requirement, e.g., "Ashes to Ashes"
+    const p = prereq.trim();
+    if (p && !knownPowerSet.has(norm(p))) {
+      unmetList.push(p);
+    }
   }
-  return { unmet };
+  
+  return { unmet: unmetList };
 }
+/* ===== END: REPLACED FUNCTION ===== */
+
 
 /* ===== Discipline power picker modal ===== */
 function DisciplinePowerModal({ cfg, onClose, onConfirm }) {

@@ -18,7 +18,7 @@ const CLANS = [
 const CLAN_BLURBS = {
   Brujah: 'Rebels & firebrands who turn conviction into force.',
   Gangrel: 'Feral survivors close to the Beast and the wild.',
-  Malkavian: 'Cursed seers who glimpse truth through cracks.',
+  Malkavian: 'Cursed seers who glimpse truth Through cracks.',
   Nosferatu: 'Monstrous spies and info-brokers of the underbelly.',
   Toreador: 'Aesthetic predators intoxicated by beauty.',
   Tremere: 'Blood sorcerers obsessed with occult mastery.',
@@ -126,7 +126,7 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
   // Identity + meta
   const [name, setName] = useState('');
   const [concept, setConcept] = useState('');
-  const [chronicle, setChronicle] = useState('Athens Thought-Time (S1)');
+  const [chronicle, setChronicle] = useState('Athens Through-Time (S1)');
   const [ambition, setAmbition] = useState('');
   const [desire, setDesire] = useState('');
 
@@ -597,7 +597,7 @@ const save = async () => {
                 </Field>
                 <Field label="Chronicle">
                   <input className={styles.input} value={chronicle} onChange={e=>setChronicle(e.target.value)}
-                    placeholder="Athens Thought-Time (S1)" />
+                    placeholder="Athens Through-Time (S1)" />
                 </Field>
                 <Field label="Concept">
                   <input className={styles.input} value={concept} onChange={e=>setConcept(e.target.value)}

@@ -31,7 +31,7 @@ export const PREDATOR_TYPES = {
   },
 
   Bagger: {
-    desc: "Sometimes the best blood doesn't come from a live body. Baggers are kindred who take an approach most are unable to with their ability to consume preserved, defractionated or rancid blood through (•••) Iron Gullet, allowing them to feed from unusual sources such as blood bags or corpses. Perhaps they work in a hospital or blood bank or they might even have enough knowledge about the black market to obtain their blood. Ventrue are unable to pick this Predator type. [3] Intelligence + Streetwise can be used to find, gain access and purchase the goods. [2]",
+    desc: "Sometimes the best blood doesn't come from a live body. Baggers are kindred who take an approach most are unable to with their ability to consume preserved, defractionated or rancid blood Through (•••) Iron Gullet, allowing them to feed from unusual sources such as blood bags or corpses. Perhaps they work in a hospital or blood bank or they might even have enough knowledge about the black market to obtain their blood. Ventrue are unable to pick this Predator type. [3] Intelligence + Streetwise can be used to find, gain access and purchase the goods. [2]",
     rolls: 'Intelligence + Streetwise',
     restrict: (sheet) => sheet.clan === 'Ventrue' ? 'Ventrue cannot pick Bagger' : null,
     picks: {
@@ -51,7 +51,7 @@ export const PREDATOR_TYPES = {
   },
 
   'Blood Leech': {
-    desc: "Some Kindred might see feeding from mortals as inherently wrong or disgusting regardless of others' rationale. Blood Leech is a feeding style that is not looked upon kindly by many vampires making it risky unless the Kindred has a position of power and can keep their little secret secure. Regardless, with their rejection of mortal blood, they instead feed upon the vitae of other vampires through hunting those weaker than them, coercion, or taking Blood as payment. [3]",
+    desc: "Some Kindred might see feeding from mortals as inherently wrong or disgusting regardless of others' rationale. Blood Leech is a feeding style that is not looked upon kindly by many vampires making it risky unless the Kindred has a position of power and can keep their little secret secure. Regardless, with their rejection of mortal blood, they instead feed upon the vitae of other vampires Through hunting those weaker than them, coercion, or taking Blood as payment. [3]",
     rolls: '— (not abstracted)', // Confirmed by new text [2]
     picks: {
       specialty: ['Brawl (Kindred)','Stealth (Against Kindred)'],
@@ -162,7 +162,7 @@ export const PREDATOR_TYPES = {
   },
 
   Siren: {
-    desc: "Everyone knows that sex sells and the Siren uses this to their advantage. Almost exclusively feeding while feigning sex or sexual interest, they utilize Disciplines and seduction to lure away a possible meal. Moving through clubs and one-night stands are skills they've mastered and regardless of how sexy they feel, deep in their darkest moments, they realize at best they are problematic and at worst a serial sexual assaulter. In life, they might have been a scriptwriter, a small time actor who never reached the big screen, a well-known kinkster or even a virgin looking to make up for the lost time. [9]",
+    desc: "Everyone knows that sex sells and the Siren uses this to their advantage. Almost exclusively feeding while feigning sex or sexual interest, they utilize Disciplines and seduction to lure away a possible meal. Moving Through clubs and one-night stands are skills they've mastered and regardless of how sexy they feel, deep in their darkest moments, they realize at best they are problematic and at worst a serial sexual assaulter. In life, they might have been a scriptwriter, a small time actor who never reached the big screen, a well-known kinkster or even a virgin looking to make up for the lost time. [9]",
     rolls: 'Charisma + Subterfuge', // Confirmed by new text [8]
     picks: {
       specialty: ['Persuasion (Seduction)','Subterfuge (Seduction)'],

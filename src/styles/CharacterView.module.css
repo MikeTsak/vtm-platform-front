@@ -208,7 +208,7 @@
     background: repeating-linear-gradient(45deg, var(--surface-color), var(--surface-color) 10px, var(--surface-lighter) 10px, var(--surface-lighter) 20px);
 }
 .disabled .cta { pointer-events: none; }
-.disabled .cardHead small { text-decoration: line-through; }
+.disabled .cardHead small { text-decoration: line-Through; }
 
 /* Modal (from original, slightly restyled for consistency) */
 /* ... (Keep your modal styles, they are good) ... */

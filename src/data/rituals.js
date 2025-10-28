@@ -252,7 +252,7 @@ export const RITUALS = {
           name: 'Eyes of the Nighthawk',
           origin: 'None',
           cost: '1 Rouse',
-          effect: 'Possess a carnivorous bird; use most non-physical Disciplines through it.',
+          effect: 'Possess a carnivorous bird; use most non-physical Disciplines Through it.',
           dice_pool: 'Intelligence + Blood Sorcery',
           difficulty: 'Level + 1',
           notes: '',

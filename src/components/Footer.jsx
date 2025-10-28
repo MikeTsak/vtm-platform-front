@@ -18,7 +18,7 @@ export default function Footer() {
             <div className={styles.title}>Erebus Portal</div>
             <div className={styles.byline}>
               made by <a href="https://miketsak.gr" target="_blank" rel="noreferrer">MikeTsak</a> for the
-              {' '}Athens Thought-Time LARP — Powered by{' '}
+              {' '}Athens Through-Time LARP — Powered by{' '}
               <a href="https://cerebralproductions.eu/" target="_blank" rel="noreferrer">Cerebral Productions</a>
             </div>
           </div>

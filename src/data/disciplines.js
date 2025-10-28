@@ -98,7 +98,7 @@ export const DISCIPLINES = {
           duration: 'As Animal Messenger.',
           dice_pool: 'As Compel or Mesmerize',
           opposing_pool: 'As Compel or Mesmerize',
-          notes: 'Dominate rating used through Famulus cannot exceed your Animalism rating.',
+          notes: 'Dominate rating used Through Famulus cannot exceed your Animalism rating.',
           source: 'Players Guide p.69',
         },
         {
@@ -324,7 +324,7 @@ export const DISCIPLINES = {
           duration: 'One scene',
           dice_pool: 'Resolve + Animalism (per errata)',
           opposing_pool: '—',
-          notes: 'Share senses with animals; works through groups (errata).',
+          notes: 'Share senses with animals; works Through groups (errata).',
           source: 'Fall of London p.30 (Errata)',
         },
         {
@@ -410,7 +410,7 @@ export const DISCIPLINES = {
           duration: 'Until ended',
           dice_pool: 'Resolve + Auspex',
           opposing_pool: 'Resolve + Intelligence',
-          notes: 'Possess a mortal; does not grant target’s thoughts/skills/impersonation.',
+          notes: 'Possess a mortal; does not grant target’s Throughs/skills/impersonation.',
           source: 'Corebook p.251',
         },
         {
@@ -420,7 +420,7 @@ export const DISCIPLINES = {
           duration: '1 minute per Rouse (full scene if consenting)',
           dice_pool: 'Resolve + Auspex',
           opposing_pool: 'Wits + Subterfuge',
-          notes: 'Read minds; projecting thoughts to others requires no roll.',
+          notes: 'Read minds; projecting Throughs to others requires no roll.',
           source: 'Corebook p.252',
         },
         {
@@ -485,7 +485,7 @@ export const DISCIPLINES = {
           duration: 'One scene; can be renewed',
           dice_pool: 'Resolve + Blood Sorcery',
           opposing_pool: 'Wits/Resolve + Obfuscate',
-          notes: 'Attune with and sense through one element (e.g., Water). May be taken multiple times for other elements.',
+          notes: 'Attune with and sense Through one element (e.g., Water). May be taken multiple times for other elements.',
           source: 'Blood Sigils p.61',
         },
       ],
@@ -549,7 +549,7 @@ export const DISCIPLINES = {
           duration: '—',
           dice_pool: '—',
           opposing_pool: '—',
-          notes: 'Extends blood bond properties through vitae. Originated with Tremere; resurfaced in Sabbat.',
+          notes: 'Extends blood bond properties Through vitae. Originated with Tremere; resurfaced in Sabbat.',
           source: 'Sabbat p.49',
         },
         {
@@ -571,7 +571,7 @@ export const DISCIPLINES = {
           duration: 'One feeding',
           dice_pool: 'Wits + Blood Sorcery',
           opposing_pool: 'Wits + Occult',
-          notes: 'Pull blood through the air to feed. Victim experiences the Kiss.',
+          notes: 'Pull blood Through the air to feed. Victim experiences the Kiss.',
           source: 'Corebook p.274',
         },
         {
@@ -1355,7 +1355,7 @@ export const DISCIPLINES = {
           duration: 'As the Obfuscate power used',
           dice_pool: '—',
           opposing_pool: '—',
-          notes: 'Your Obfuscate carries through live video; recordings later appear blurred/hard to ID.',
+          notes: 'Your Obfuscate carries Through live video; recordings later appear blurred/hard to ID.',
           source: 'Corebook p.262',
         },
         {
@@ -1399,7 +1399,7 @@ export const DISCIPLINES = {
           duration: 'One scene',
           dice_pool: 'Intelligence + Obfuscate',
           opposing_pool: '—',
-          notes: 'Hide/replace emotions & thoughts from supernatural readers; higher complexity raises Difficulty.',
+          notes: 'Hide/replace emotions & Throughs from supernatural readers; higher complexity raises Difficulty.',
           source: 'Players Guide p.78',
         },
         {
@@ -1693,7 +1693,7 @@ export const DISCIPLINES = {
           duration: 'One scene or until ended',
           dice_pool: '—',
           opposing_pool: '—',
-          notes: 'Become living shadow; move over any surface/through small gaps; only sunlight/fire harm you.',
+          notes: 'Become living shadow; move over any surface/Through small gaps; only sunlight/fire harm you.',
           source: 'Chicago by Night p.295; Players Guide p.91',
         },
         {
@@ -1997,7 +1997,7 @@ export const DISCIPLINES = {
           duration: 'Passive',
           dice_pool: '—',
           opposing_pool: '—',
-          notes: 'Your voice alone suffices to use Dominate. Does not function through technology.',
+          notes: 'Your voice alone suffices to use Dominate. Does not function Through technology.',
           source: 'Corebook p.268',
         },
         {
@@ -2060,7 +2060,7 @@ export const DISCIPLINES = {
           duration: 'As power used',
           dice_pool: '—',
           opposing_pool: '—',
-          notes: 'Transmit Presence through live-feed technology (not recordings). When using Entrancement, speak the target’s name clearly.',
+          notes: 'Transmit Presence Through live-feed technology (not recordings). When using Entrancement, speak the target’s name clearly.',
           source: 'Corebook p.269',
         },
       ],
