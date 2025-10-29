@@ -22,6 +22,7 @@ import AdminNPCView from './components/AdminNPCView.jsx';
 import ForgotPassword from './pages/user/ForgotPassword';
 import ResetPassword from './pages/user/ResetPassword';
 import Boons from './pages/Boons';
+import Coteries from './pages/Coteries';
 
 function Private({ children }) {
   const { user } = useContext(AuthCtx);
@@ -83,6 +84,7 @@ function Nav() {
             <NavLink to="/domains" className={getNavLinkClass}>Domains</NavLink>
             <NavLink to="/downtimes" className={getNavLinkClass}>Downtimes</NavLink>
             <NavLink to="/boons" className={getNavLinkClass}>Boons</NavLink>
+            <NavLink to="/coteries" className={getNavLinkClass}>Coteries</NavLink>
             <NavLink to="/comms" className={getNavLinkClass}>Comms</NavLink>
             {/* You may want to add a NavLink for Boons here */}
             {/* <NavLink to="/boons" className={getNavLinkClass}>Boons</NavLink> */}
@@ -137,6 +139,7 @@ export default function App() {
               <Route path="/terms" element={<Terms />} />
               <Route path="/legal" element={<Legal />} />
               <Route path="/privacy" element={<Privacy />} />
+               <Route path="/coteries" element={<Private><Coteries/></Private>} />
             </Routes>
           </div>
           <DiceRoller />

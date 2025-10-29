@@ -22,6 +22,28 @@ if (!ALL_DISCIPLINE_NAMES || ALL_DISCIPLINE_NAMES.length === 0) {
   ];
 }
 
+/* ---------- VTM Lookups (as requested) ---------- */
+const CLAN_COLORS = {
+  Brujah: '#b40f1f',
+  Gangrel: '#2f7a3a',
+  Malkavian: '#713c8b',
+  Nosferatu: '#6a4b2b',
+  Toreador: '#b8236b',
+  Tremere: '#7b1113',
+  Ventrue: '#1b4c8c',
+  'Banu Haqim': '#7a2f57',
+  Hecata: '#2b6b6b',
+  Lasombra: '#191a5a',
+  'The Ministry': '#865f12',
+  Caitiff: '#636363',
+  'Thin-blood': '#6e6e2b',
+};
+const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim' };
+const fileify = (c) => (NAME_OVERRIDES[c] || c).replace(/\s+/g, '_');
+const symlogo = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.png` : '');
+/* -------------------------------------------------- */
+
+
 // ---------- helpers ----------
 const ATTR_KEYS = [
   'Strength','Dexterity','Stamina',
@@ -70,7 +92,7 @@ function flattenMF() {
       payload.merits.forEach(m => out.push({ ...m, type:'merit', category:cat, dotsText:m.dots ?? '' }));
     }
     if (payload?.flaws?.length) {
-      payload.flaws.forEach(f => out.push({ ...f, type:'flaw', category:cat, dotsText:f.dots ?? '' }));
+      payload.flaws.forEach(f => out.push({ ...f, type: 'flaw', category: cat, dotsText: f.dots ?? '' }));
     }
     if (payload?.groups) {
       Object.entries(payload.groups).forEach(([groupName, g]) => {
@@ -102,7 +124,7 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
 
   // Local editable sheet
   const [sheet, setSheet] = useState(() => deepClone(originalSheet));
-  const [jsonText, setJsonText] = useState(() => JSON.stringify(originalSheet ?? {}, null, 2));
+  const [jsonText, setJsonText] =useState(() => JSON.stringify(originalSheet ?? {}, null, 2));
   const [jsonValid, setJsonValid] = useState(true);
 
   // Character top-level meta (editable too)
@@ -111,7 +133,7 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
 
   // Discipline kind for XP math (per discipline)
   const initialKinds = useMemo(() => {
-    const m = {};
+    const m = {}; // <--- BUG FIX 1
     Object.keys(originalSheet?.disciplines || {}).forEach(k => { m[k] = 'other'; });
     return m;
   }, [originalSheet]);
@@ -125,6 +147,10 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
   const [msg, setMsg] = useState('');
 
   const [manualXp, setManualXp] = useState(0);
+  
+  // VTM styling data
+  const clanColor = CLAN_COLORS[character.clan] || 'var(--text-secondary)';
+  const clanLogoUrl = symlogo(character.clan);
 
   // Keep JSON and structured in sync
   useEffect(() => {
@@ -488,54 +514,67 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
 
   return (
     <div className={styles.modalBackdrop}>
-      <div className={`${styles.modalCard} ${styles.card} ${styles.cardElev}`} style={{ width: 'min(1180px, 96vw)' }}>
+      <div 
+        className={styles.modalCard}
+        style={{
+          '--clan-color': clanColor,
+          '--clan-logo-url': clanLogoUrl ? `url(${clanLogoUrl})` : 'none'
+        }}
+      >
         {/* Header */}
-        <div className={styles.row} style={{ justifyContent:'space-between', alignItems:'center', gap:12 }}>
-          <div>
+        <div className={styles.modalHeader}>
+          <div className={styles.modalHeaderContent}>
             <h3>Character Editor</h3>
             <div className={styles.subtle}>
-              #{character.id} — <b>{character.name}</b> ({character.clan || '—'}) · XP: {character.xp}
+              #{character.id} — 
+              <b style={{ color: 'var(--clan-color)' }}> {character.name} </b> 
+              ({character.clan || '—'}) · XP: {character.xp}
             </div>
           </div>
-          <div className={styles.row} style={{ gap:8, flexWrap:'wrap' }}>
+          {clanLogoUrl && <div className={styles.modalClanLogo}></div>}
+          <div className={styles.modalHeaderActions}>
             <ModeButton active={xpMode==='xp'}     onClick={()=>setXpMode('xp')}>XP Mode</ModeButton>
             <ModeButton active={xpMode==='refund'} onClick={()=>setXpMode('refund')}>Refund Mode</ModeButton>
             <ModeButton active={xpMode==='free'}   onClick={()=>setXpMode('free')}>Free Edit</ModeButton>
-            <button className={styles.btn} onClick={onClose}>Close</button>
+            <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={onClose}>Close</button>
           </div>
         </div>
 
-        {err && <div className={`${styles.alert} ${styles.alertError}`} style={{marginTop:8}}>{err}</div>}
-        {msg && <div className={`${styles.alert} ${styles.alertInfo}`} style={{marginTop:8}}>{msg}</div>}
+        {err && <div className={`${styles.alert} ${styles.alertError}`}>{err}</div>}
+        {msg && <div className={`${styles.alert} ${styles.alertInfo}`}>{msg}</div>}
 
         {/* XP preview + manual controls */}
-        <div className={styles.card} style={{ marginTop:12 }}>
-          <div className={styles.row} style={{ justifyContent:'space-between', alignItems:'center', gap:12 }}>
-            <div className={styles.subtle}>
-              XP impact: {xpMode==='free'
-                ? '— (Free Edit)'
-                : (xpImpact === 0 ? '—' : (xpImpact > 0 ? `Spend ${xpImpact} XP` : `Refund ${Math.abs(xpImpact)} XP`))}
-            </div>
-            <div className={styles.row} style={{ gap:8, flexWrap:'wrap' }}>
-              <input
-                type="number"
-                value={manualXp}
-                onChange={e=>setManualXp(e.target.value)}
-                placeholder="Amount"
-                style={{ width:120 }}
-              />
-              <button className={styles.btn} onClick={()=>applyManualXp('add')}>Add XP</button>
-              <button className={styles.btn} onClick={()=>applyManualXp('remove')}>Remove XP</button>
-            </div>
+        <div className={styles.xpPanel}>
+          <div className={styles.xpImpact}>
+            XP Impact: {xpMode==='free'
+              ? <span>— (Free Edit)</span>
+              : (xpImpact === 0 ? <span>—</span> : (
+                  <span style={{ color: xpImpact > 0 ? 'var(--color-error)' : 'var(--color-success)'}}>
+                    {xpImpact > 0 ? `Spend ${xpImpact} XP` : `Refund ${Math.abs(xpImpact)} XP`}
+                  </span>
+                ))
+            }
+          </div>
+          <div className={styles.row} style={{ gap:8, flexWrap:'wrap' }}>
+            <input
+              type="number"
+              className={styles.input}
+              value={manualXp}
+              onChange={e=>setManualXp(e.target.value)}
+              placeholder="Amount"
+              style={{ width:100 }}
+            />
+            <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={()=>applyManualXp('add')}>Add XP</button>
+            <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={()=>applyManualXp('remove')}>Remove XP</button>
           </div>
         </div>
 
         {/* BODY */}
-        <div className="stack12" style={{ display:'grid', gap:12, marginTop:12 }}>
+        <div className={styles.modalBody}>
           {/* Identity / Background */}
-          <section className={styles.card}>
+          <section className={styles.editorSection}>
             <SectionHeader title="Identity & Background" hint="Edit non-XP fields (name, clan, sire, etc.)" />
-            <div className="grid" style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(240px,1fr))', gap:8 }}>
+            <div className={styles.formGrid} style={{ gridTemplateColumns:'repeat(auto-fit,minmax(240px,1fr))' }}>
               <LabeledInput label="Name" value={charName} onChange={setCharName} />
               <LabeledInput label="Clan" value={charClan} onChange={setCharClan} />
               <LabeledInput label="Sire" value={sheet.sire || ''} onChange={v=>setStrField('sire', v)} />
@@ -550,25 +589,26 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
           </section>
 
           {/* Convictions & Touchstones */}
-          <section className={styles.card}>
+          <section className={styles.editorSection}>
             <SectionHeader title="Convictions & Touchstones" hint="ST can edit all entries" />
-            <div className={styles.row} style={{ gap:12, alignItems:'flex-start', flexWrap:'wrap' }}>
+            <div className={styles.twoColGrid}>
               {/* Convictions */}
-              <div style={{ flex:'1 1 360px' }}>
-                <h4 style={{marginBottom:8}}>Convictions</h4>
+              <div className={styles.stack12}>
+                <h4 className={styles.sectionSubhead}>Convictions</h4>
                 {(convictions.length === 0) && <div className={styles.subtle}>None</div>}
                 {convictions.map((c, i) => (
-                  <div key={`conv_${i}`} className={styles.row} style={{ gap:8, alignItems:'center', marginBottom:6, flexWrap:'wrap' }}>
+                  <div key={`conv_${i}`} className={styles.row} style={{ gap:8, alignItems:'center', flexWrap:'nowrap' }}>
                     <input
-                      style={{ flex:'1 1 360px' }}
+                      className={styles.input}
+                      style={{ flex: 1 }}
                       value={c}
                       onChange={e=>updateConviction(i, e.target.value)}
                       placeholder="Conviction text"
                     />
                     <div className={styles.row} style={{ gap:6 }}>
-                      <button className={styles.btn} onClick={()=>moveConviction(i,-1)} title="Move up">↑</button>
-                      <button className={styles.btn} onClick={()=>moveConviction(i, 1)} title="Move down">↓</button>
-                      <button className={styles.btn} onClick={()=>removeConviction(i)}>Remove</button>
+                      <button className={`${styles.btn} ${styles.btnIcon}`} onClick={()=>moveConviction(i,-1)} title="Move up">↑</button>
+                      <button className={`${styles.btn} ${styles.btnIcon}`} onClick={()=>moveConviction(i, 1)} title="Move down">↓</button>
+                      <button className={`${styles.btn} ${styles.btnIcon}`} onClick={()=>removeConviction(i)} title="Remove">×</button>
                     </div>
                   </div>
                 ))}
@@ -576,26 +616,28 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
               </div>
 
               {/* Touchstones */}
-              <div style={{ flex:'1 1 360px' }}>
-                <h4 style={{marginBottom:8}}>Touchstones</h4>
+              <div className={styles.stack12}>
+                <h4 className={styles.sectionSubhead}>Touchstones</h4>
                 {(touchstones.length === 0) && <div className={styles.subtle}>None</div>}
                 {touchstones.map((t, i) => (
-                  <div key={`ts_${i}`} className={styles.row} style={{ gap:8, alignItems:'center', marginBottom:6, flexWrap:'wrap' }}>
+                  <div key={`ts_${i}`} className={styles.row} style={{ gap:8, alignItems:'center', flexWrap:'nowrap' }}>
                     <input
-                      style={{ flex:'2 1 260px' }}
+                      className={styles.input}
+                      style={{ flex:'1 1 50%' }}
                       value={t?.name || ''}
                       onChange={e=>updateTouchstone(i, { name: e.target.value })}
                       placeholder="Name (mortal/anchor)"
                     />
                     <select
+                      className={styles.select}
                       value={t?.conviction || ''}
                       onChange={e=>updateTouchstone(i, { conviction: e.target.value })}
-                      style={{ flex:'2 1 260px' }}
+                      style={{ flex:'1 1 50%' }}
                     >
-                      <option value="">— Linked conviction (optional) —</option>
+                      <option value="">— Link conviction —</option>
                       {convictions.map((c, idx) => <option key={`copt_${idx}`} value={c}>{c}</option>)}
                     </select>
-                    <button className={styles.btn} onClick={()=>removeTouchstone(i)}>Remove</button>
+                    <button className={`${styles.btn} ${styles.btnIcon}`} onClick={()=>removeTouchstone(i)} title="Remove">×</button>
                   </div>
                 ))}
                 <AddTouchstoneRow convictions={convictions} onAdd={addTouchstone} />
@@ -604,25 +646,25 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
           </section>
 
           {/* Attributes */}
-          <section className={styles.card}>
+          <section className={styles.editorSection}>
             <SectionHeader title="Attributes" hint="new level × 5" />
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
+            <div className={styles.formGrid} style={{ gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))' }}>
               {ATTR_KEYS.map(k => (
-                <label key={k} className={styles.row} style={{ gap:8, alignItems:'center' }}>
-                  <span style={{minWidth:120}}>{k}</span>
-                  <input type="number" min={0} value={Number(sheet.attributes?.[k] ?? 0)} onChange={e=>setAttr(k, e.target.value)} style={{ width:90 }} />
+                <label key={k} className={styles.labeledInput}>
+                  <span>{k}</span>
+                  <input type="number" min={0} className={styles.input} value={Number(sheet.attributes?.[k] ?? 0)} onChange={e=>setAttr(k, e.target.value)} style={{ width:90 }} />
                 </label>
               ))}
             </div>
           </section>
 
           {/* Skills */}
-          <section className={styles.card}>
+          <section className={styles.editorSection}>
             <SectionHeader title="Skills" hint="new level × 3; specialties ±3" />
             {Object.entries(SKILL_GROUPS).map(([group, keys]) => (
-              <div key={group} style={{marginTop:8}}>
-                <div className={styles.subtle} style={{marginBottom:6}}>{group}</div>
-                <div className="stack8" style={{ display:'grid', gap:8 }}>
+              <div key={group} style={{marginTop: '1rem'}}>
+                <h4 className={styles.sectionSubhead}>{group}</h4>
+                <div className={styles.stack12}>
                   {keys.map(k => (
                     <SkillRow
                       key={k}
@@ -637,9 +679,9 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
             ))}
             {/* Custom skills */}
             {Object.keys(sheet.skills || {}).filter(k => !Object.values(SKILL_GROUPS).flat().includes(k)).length > 0 && (
-              <div style={{marginTop:8}}>
-                <div className={styles.subtle} style={{marginBottom:6}}>Custom</div>
-                <div className="stack8" style={{ display:'grid', gap:8 }}>
+              <div style={{marginTop: '1rem'}}>
+                <h4 className={styles.sectionSubhead}>Custom</h4>
+                <div className={styles.stack12}>
                   {Object.keys(sheet.skills || {}).filter(k => !Object.values(SKILL_GROUPS).flat().includes(k)).map(k => (
                     <SkillRow
                       key={k}
@@ -658,23 +700,29 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
           </section>
 
           {/* Disciplines */}
-          <section className={styles.card}>
+          <section className={styles.editorSection}>
             <SectionHeader title="Disciplines" hint="per dot: Clan×5 / Caitiff×6 / Out×7" />
-            <div className="stack8" style={{ display:'grid', gap:8 }}>
+            <div className={styles.stack12}>
               {Object.keys(sheet.disciplines || {}).sort().map(name => (
                 <div key={name} className={styles.row} style={{ gap:8, alignItems:'center', flexWrap:'wrap' }}>
-                  <b style={{minWidth:160}}>{name}</b>
-                  <input type="number" min={0} value={Number(sheet.disciplines?.[name] ?? 0)} onChange={e=>setDiscipline(name, e.target.value)} style={{ width:90 }} />
-                  <select value={discKinds[name] || 'other'} onChange={e=>setDiscKinds(p=>({ ...p, [name]:e.target.value }))}>
+                  <b style={{minWidth:160, flex: '0 0 160px'}}>{name}</b>
+                  <input type="number" min={0} className={styles.input} value={Number(sheet.disciplines?.[name] ?? 0)} onChange={e=>setDiscipline(name, e.target.value)} style={{ width:90 }} />
+                  <select className={styles.select} value={discKinds[name] || 'other'} onChange={e=>setDiscKinds(p=>({ ...p, [name]:e.target.value }))} style={{ flex: '1 1 150px'}}>
                     {DISC_KINDS.map(k => <option key={k.key} value={k.key}>{k.label}</option>)}
                   </select>
-                  <button className={styles.btn} onClick={()=>removeDiscipline(name)}>Remove</button>
+                  <button className={`${styles.btn} ${styles.btnIcon}`} onClick={()=>removeDiscipline(name)} title="Remove">×</button>
                 </div>
               ))}
             </div>
-            <div className={styles.row} style={{ gap:8, marginTop:8, flexWrap:'wrap' }}>
-              <input list={dlId} placeholder="Add discipline…" onKeyDown={e=>{ if (e.key==='Enter') addNewDiscipline(e.currentTarget.value); }} />
-              <button className={styles.btn} onClick={()=>{
+            <div className={styles.row} style={{ gap:8, marginTop:12, flexWrap:'wrap' }}>
+              <input 
+                list={dlId} 
+                className={styles.input} 
+                placeholder="Add discipline…" 
+                onKeyDown={e=>{ if (e.key==='Enter') addNewDiscipline(e.currentTarget.value); }} 
+                style={{ flex: 1 }}
+              />
+              <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={()=>{
                 const el = document.querySelector(`input[list="${dlId}"]`);
                 if (el) { addNewDiscipline(el.value); el.value=''; }
               }}>Add</button>
@@ -683,17 +731,17 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
               </datalist>
             </div>
             {(!ALL_DISCIPLINE_NAMES || ALL_DISCIPLINE_NAMES.length === 0) && (
-              <div className={styles.alert} style={{marginTop:8}}>Discipline list not found; using fallback names. Check your <code>disciplines.js</code> exports.</div>
+              <div className={`${styles.alert} ${styles.alertError}`} style={{marginTop:8}}>Discipline list not found; using fallback names. Check your <code>disciplines.js</code> exports.</div>
             )}
           </section>
 
           {/* Merits & Flaws */}
-          <section className={styles.card}>
+          <section className={styles.editorSection}>
             <SectionHeader title="Merits & Flaws" hint="Merits: +3 XP per dot; Flaws: −3 XP per dot" />
-            <div className={styles.row} style={{ gap:12, alignItems:'flex-start', flexWrap:'wrap' }}>
+            <div className={styles.twoColGrid}>
               {/* Current Merits */}
-              <div style={{ flex:'1 1 360px' }}>
-                <h4 style={{marginBottom:8}}>Merits</h4>
+              <div className={styles.stack12}>
+                <h4 className={styles.sectionSubhead}>Merits</h4>
                 <CurrentMFList
                   items={currentMF('merits')}
                   kind="merits"
@@ -712,8 +760,8 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
               </div>
 
               {/* Current Flaws */}
-              <div style={{ flex:'1 1 360px' }}>
-                <h4 style={{marginBottom:8}}>Flaws</h4>
+              <div className={styles.stack12}>
+                <h4 className={styles.sectionSubhead}>Flaws</h4>
                 <CurrentMFList
                   items={currentMF('flaws')}
                   kind="flaws"
@@ -734,55 +782,62 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
           </section>
 
           {/* Rituals */}
-          <section className={styles.card}>
+          <section className={styles.editorSection}>
             <SectionHeader title="Rituals" hint="Edit Blood Sorcery & Oblivion lists" />
-            <button className={styles.btn} onClick={ensureRituals} style={{ marginBottom:8 }}>Ensure Rituals Section</button>
+            <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={ensureRituals} style={{ marginBottom:12, alignSelf: 'flex-start' }}>
+              Ensure Rituals Section
+            </button>
 
-            <RitualSection
-              title="Blood Sorcery"
-              items={sheet?.rituals?.blood_sorcery || []}
-              onAdd={(v)=>addRitual('blood_sorcery', v)}
-              onEdit={(i,v)=>updateRitual('blood_sorcery', i, v)}
-              onRemove={(i)=>removeRitual('blood_sorcery', i)}
-            />
-            <div style={{ height:8 }} />
-            <RitualSection
-              title="Oblivion"
-              items={sheet?.rituals?.oblivion || []}
-              onAdd={(v)=>addRitual('oblivion', v)}
-              onEdit={(i,v)=>updateRitual('oblivion', i, v)}
-              onRemove={(i)=>removeRitual('oblivion', i)}
-            />
+            <div className={styles.twoColGrid}>
+              <RitualSection
+                title="Blood Sorcery"
+                items={sheet?.rituals?.blood_sorcery || []}
+                onAdd={(v)=>addRitual('blood_sorcery', v)}
+                onEdit={(i,v)=>updateRitual('blood_sorcery', i, v)}
+                onRemove={(i)=>removeRitual('blood_sorcery', i)}
+              />
+              <RitualSection
+                title="Oblivion"
+                items={sheet?.rituals?.oblivion || []}
+                onAdd={(v)=>addRitual('oblivion', v)}
+                onEdit={(i,v)=>updateRitual('oblivion', i, v)}
+                onRemove={(i)=>removeRitual('oblivion', i)}
+              />
+            </div>
           </section>
 
           {/* Raw JSON */}
-          <section className={styles.card}>
-            <div className={styles.row} style={{ justifyContent:'space-between', alignItems:'center' }}>
-              <h4>Raw Sheet JSON</h4>
-              {!jsonValid ? <span className={styles.alertError} style={{padding:'2px 8px', borderRadius:6}}>Invalid JSON</span> : <span className={styles.subtle}>editable</span>}
+          <section className={styles.editorSection}>
+            <div className={styles.row} style={{ justifyContent:'space-between', alignItems:'center', marginBottom: '0.5rem' }}>
+              <h4 className={styles.sectionSubhead}>Raw Sheet JSON</h4>
+              {!jsonValid ? <span className={styles.jsonError}>Invalid JSON</span> : <span className={styles.subtle}>editable</span>}
             </div>
             <textarea
               rows={26}
               value={jsonText}
               onChange={e=>setJsonText(e.target.value)}
-              style={{ fontFamily:'JetBrains Mono, ui-monospace, monospace', width:'100%' }}
+              className={`${styles.input} ${styles.inputMono}`}
             />
-            <div className={styles.subtle} style={{marginTop:6}}>
+            <div className={styles.subtle} style={{marginTop: '0.5rem', fontSize: '0.85rem'}}>
               Tip: You can add/remove anything here (powers, predator types, backgrounds, custom fields). UI stays in sync.
             </div>
           </section>
         </div>
 
         {/* Footer */}
-        <div className={styles.row} style={{ justifyContent:'space-between', alignItems:'center', marginTop:12 }}>
+        <div className={styles.modalFooter}>
           <div className={styles.subtle}>
             Mode: <b>{xpMode==='free' ? 'Free Edit' : xpMode==='refund' ? 'Refund Only' : 'XP Mode'}</b> ·
             {' '}Impact: {xpMode==='free'
               ? '—'
-              : (xpImpact === 0 ? '—' : (xpImpact > 0 ? `Spend ${xpImpact}` : `Refund ${Math.abs(xpImpact)}`))} XP
+              : (xpImpact === 0 ? '—' : (
+                  <span style={{ color: xpImpact > 0 ? 'var(--color-error)' : 'var(--color-success)', fontWeight: 600}}>
+                    {xpImpact > 0 ? `Spend ${xpImpact}` : `Refund ${Math.abs(xpImpact)}`}
+                  </span>
+                ))} XP
           </div>
           <div className={styles.row} style={{ gap:8 }}>
-            <button className={styles.btn} onClick={onClose} disabled={saving}>Cancel</button>
+            <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={onClose} disabled={saving}>Cancel</button>
             <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={handleSave} disabled={saving || !jsonValid}>
               {saving ? 'Saving…' : 'Save & Apply XP'}
             </button>
@@ -798,11 +853,7 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
 function ModeButton({ active, onClick, children }) {
   return (
     <button
-      className={styles.btn}
-      style={{
-        background: active ? 'var(--btnPrimaryBg, #111)' : undefined,
-        color: active ? 'var(--btnPrimaryFg, #fff)' : undefined
-      }}
+      className={`${styles.btn} ${styles.btnToggle} ${active ? styles.active : ''}`}
       onClick={onClick}
     >
       {children}
@@ -812,7 +863,7 @@ function ModeButton({ active, onClick, children }) {
 
 function SectionHeader({ title, hint }) {
   return (
-    <div className={styles.row} style={{ justifyContent:'space-between', alignItems:'baseline' }}>
+    <div className={styles.sectionHeader}>
       <h4>{title}</h4>
       <span className={styles.subtle}>{hint}</span>
     </div>
@@ -821,13 +872,13 @@ function SectionHeader({ title, hint }) {
 
 function LabeledInput({ label, value, onChange, type='text' }) {
   return (
-    <label className={styles.row} style={{ gap:8, alignItems:'center' }}>
-      <span style={{minWidth:140}}>{label}</span>
+    <label className={styles.labeledInput}>
+      <span>{label}</span>
       <input
         type={type}
         value={value ?? ''}
         onChange={e => onChange(type==='number' ? e.target.value : e.target.value)}
-        style={{ flex:1 }}
+        className={styles.input}
         placeholder={label}
       />
     </label>
@@ -838,10 +889,10 @@ function SkillRow({ name, data, onDots, onSpecs, removable=false, onRemove }) {
   const csv = Array.isArray(data?.specialties) ? data.specialties.join(', ') : '';
   return (
     <div className={styles.row} style={{ gap:8, alignItems:'center' }}>
-      <span style={{minWidth:150}}>{name}</span>
-      <input type="number" min={0} value={Number(data?.dots ?? 0)} onChange={e=>onDots(e.target.value)} style={{ width:90 }} />
-      <input placeholder="specialties (comma separated)" value={csv} onChange={e=>onSpecs(e.target.value)} style={{ flex:1 }} />
-      {removable && <button className={styles.btn} onClick={onRemove}>Remove</button>}
+      <span style={{minWidth:150, flex: '0 0 150px'}}>{name}</span>
+      <input type="number" min={0} className={styles.input} value={Number(data?.dots ?? 0)} onChange={e=>onDots(e.target.value)} style={{ width: 90, flex: '0 0 90px' }} />
+      <input placeholder="specialties (comma separated)" className={styles.input} value={csv} onChange={e=>onSpecs(e.target.value)} style={{ flex:1 }} />
+      {removable && <button className={`${styles.btn} ${styles.btnIcon}`} onClick={onRemove} title="Remove">×</button>}
     </div>
   );
 }
@@ -849,20 +900,22 @@ function SkillRow({ name, data, onDots, onSpecs, removable=false, onRemove }) {
 function CurrentMFList({ items, kind, onChange, onRemove }) {
   const empty = !items?.length;
   return (
-    <div>
+    <div className={styles.stack12}>
       {empty && <div className={styles.subtle}>None</div>}
       {!empty && (
-        <div className="stack8" style={{ display:'grid', gap:8 }}>
+        <div className={styles.stack12}>
           {items.map((it, i) => (
-            <div key={`${it.id || it.name || 'x'}_${i}`} className={styles.row} style={{ gap:8, alignItems:'center', flexWrap:'wrap' }}>
+            <div key={`${it.id || it.name || 'x'}_${i}`} className={styles.mfRow}>
               <input
-                style={{ minWidth:180, flex:'1 1 220px' }}
+                className={styles.input}
+                style={{ flex:'1 1 150px' }}
                 value={it.name || ''}
                 onChange={e=>onChange(i, { name:e.target.value })}
                 placeholder={kind==='merits' ? 'Merit name' : 'Flaw name'}
               />
               <input
-                style={{ flex:'2 1 320px' }}
+                className={styles.input}
+                style={{ flex:'2 1 200px' }}
                 value={it.description || ''}
                 onChange={e=>onChange(i, { description:e.target.value })}
                 placeholder="Description (optional)"
@@ -871,12 +924,13 @@ function CurrentMFList({ items, kind, onChange, onRemove }) {
                 type="number"
                 min={1}
                 max={5}
-                style={{ width:90 }}
+                className={styles.input}
+                style={{ width: 70, flex: '0 0 70px' }}
                 value={Number(it.dots ?? 1)}
                 onChange={e=>onChange(i, { dots: normalizeDotsInput(e.target.value) })}
                 title="Dots"
               />
-              <button className={styles.btn} onClick={()=>onRemove(i)}>Remove</button>
+              <button className={`${styles.btn} ${styles.btnIcon}`} onClick={()=>onRemove(i)} title="Remove">×</button>
             </div>
           ))}
         </div>
@@ -899,10 +953,16 @@ function MFPicker({ kind, onPick }) {
   }, [q, kind]);
 
   return (
-    <div className={styles.card} style={{ marginTop:12 }}>
+    <div className={styles.mfPicker}>
       <div className={styles.row} style={{ gap:8, alignItems:'center', flexWrap:'wrap' }}>
-        <input placeholder={`Search ${kind === 'merit' ? 'merits' : 'flaws'}…`} value={q} onChange={e=>setQ(e.target.value)} style={{ flex:'2 1 300px' }} />
-        <select value={sel?.id || ''} onChange={e=>{
+        <input 
+          className={styles.input} 
+          placeholder={`Search ${kind === 'merit' ? 'merits' : 'flaws'}…`} 
+          value={q} 
+          onChange={e=>setQ(e.target.value)} 
+          style={{ flex:'1 1 150px' }} 
+        />
+        <select className={styles.select} value={sel?.id || ''} onChange={e=>{
           const id = e.target.value;
           const found = MF_CATALOG.find(x => x.id === id);
           setSel(found || null);
@@ -910,19 +970,28 @@ function MFPicker({ kind, onPick }) {
             const once = bulletCount(found.dotsText);
             setDots(Math.max(1, once || 1));
           }
-        }} style={{ flex:'2 1 360px' }}>
-          <option value="">Choose…</option>
+        }} style={{ flex:'2 1 200px' }}>
+          <option value="">Choose from catalog…</option>
           {filtered.map(e => (
             <option key={e.id || e.name} value={e.id}>{e.name} — {e.category} ({e.dotsText || '•?'})</option>
           ))}
         </select>
-        <input type="number" min={1} max={5} value={dots} onChange={e=>setDots(normalizeDotsInput(e.target.value))} style={{ width:90 }} title="Dots" />
-        <button className={styles.btn} onClick={() => { onPick?.(sel || { id:'', name:q }, dots); setQ(''); setSel(null); setDots(1); }}>
-          Add {kind === 'merit' ? 'Merit' : 'Flaw'}
+        <input 
+          type="number" 
+          min={1} 
+          max={5} 
+          className={styles.input}
+          value={dots} 
+          onChange={e=>setDots(normalizeDotsInput(e.target.value))} 
+          style={{ width: 70 }} 
+          title="Dots" 
+        />
+        <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => { onPick?.(sel || { id:'', name:q }, dots); setQ(''); setSel(null); setDots(1); }}>
+          Add
         </button>
       </div>
       {sel && (
-        <div className={styles.subtle} style={{ marginTop:6 }}>
+        <div className={styles.subtle} style={{ marginTop: '0.5rem', fontSize: '0.85rem' }}>
           <b>{sel.name}</b> · {sel.category} · {sel.dotsText || '•?'} — {sel.description}
         </div>
       )}
@@ -934,36 +1003,41 @@ function RitualSection({ title, items, onAdd, onEdit, onRemove }) {
   const [v, setV] = useState('');
   const list = Array.isArray(items) ? items : [];
   return (
-    <div>
-      <div className={styles.row} style={{ justifyContent:'space-between', alignItems:'center' }}>
-        <h4>{title}</h4>
-      </div>
+    <div className={styles.stack12}>
+      <h4 className={styles.sectionSubhead}>{title}</h4>
       {list.map((r, i) => (
-        <div key={`${r}_${i}`} className={styles.row} style={{ gap:8, alignItems:'center', marginBottom:6 }}>
-          <input value={r} onChange={e=>onEdit(i, e.target.value)} style={{ flex:1 }} />
-          <button className={styles.btn} onClick={()=>onRemove(i)}>Remove</button>
+        <div key={`${r}_${i}`} className={styles.row} style={{ gap:8, alignItems:'center' }}>
+          <input className={styles.input} value={r} onChange={e=>onEdit(i, e.target.value)} style={{ flex:1 }} />
+          <button className={`${styles.btn} ${styles.btnIcon}`} onClick={()=>onRemove(i)} title="Remove">×</button>
         </div>
       ))}
       <div className={styles.row} style={{ gap:8 }}>
-        <input placeholder={`Add ${title}…`} value={v} onChange={e=>setV(e.target.value)} style={{ flex:1 }} />
-        <button className={styles.btn} onClick={()=>{ onAdd(v); setV(''); }}>Add</button>
+        <input className={styles.input} placeholder={`Add ${title}…`} value={v} onChange={e=>setV(e.target.value)} style={{ flex:1 }} />
+        <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={()=>{ onAdd(v); setV(''); }}>Add</button>
       </div>
     </div>
   );
 }
 
 function AddAnyRow({ placeholder, onAdd }) {
-  const [v, setV] = React.useState('');
+  const [v, setV] = React.useState(''); // <--- BUG FIX 2
   return (
     <div className={styles.row} style={{ marginTop:8, gap:8 }}>
       <input
         placeholder={placeholder}
+        className={styles.input}
         value={v}
         onChange={e => setV(e.target.value)}
         style={{ flex:1 }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            if (v.trim()) onAdd(v.trim());
+            setV('');
+          }
+        }}
       />
       <button
-        className={styles.btn}
+        className={`${styles.btn} ${styles.btnSecondary}`}
         onClick={() => {
           if (v.trim()) onAdd(v.trim());
           setV('');
@@ -980,12 +1054,24 @@ function AddTouchstoneRow({ convictions, onAdd }) {
   const [cv, setCv] = useState('');
   return (
     <div className={styles.row} style={{ marginTop:8, gap:8, flexWrap:'wrap' }}>
-      <input placeholder="Touchstone name…" value={name} onChange={e=>setName(e.target.value)} style={{ flex:'2 1 260px' }} />
-      <select value={cv} onChange={e=>setCv(e.target.value)} style={{ flex:'2 1 260px' }}>
+      <input 
+        placeholder="Touchstone name…" 
+        className={styles.input} 
+        value={name} onChange={e=>setName(e.target.value)} 
+        style={{ flex:'1 1 40%' }} 
+      />
+      <select 
+        className={styles.select}
+        value={cv} 
+        onChange={e=>setCv(e.target.value)} 
+        style={{ flex:'1 1 40%' }}
+      >
         <option value="">— Link conviction (optional) —</option>
         {convictions.map((c, idx) => <option key={`cv_${idx}`} value={c}>{c}</option>)}
       </select>
-      <button className={styles.btn} onClick={()=>{ onAdd(name, cv); setName(''); setCv(''); }}>Add Touchstone</button>
+      <button className={`${styles.btn} ${styles.btnSecondary}`} style={{flex: '1 1 100px'}} onClick={()=>{ onAdd(name, cv); setName(''); setCv(''); }}>
+        Add Touchstone
+      </button>
     </div>
   );
 }

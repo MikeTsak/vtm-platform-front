@@ -1,6 +1,6 @@
 // src/pages/AdminLogs.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import api from "../api";
+import api from "../../api";
 
 /** Match server-side emojis/categories from logger.js */
 const EMO = {

@@ -1,5 +1,28 @@
+// src/components/ChatStatsTab.jsx
 import React, { useState, useMemo } from 'react';
-import styles from '../styles/Admin.module.css'; // We'll reuse the admin styles
+import styles from '../../styles/Admin.module.css';
+
+/* ---------- VTM Lookups (as requested) ---------- */
+const CLAN_COLORS = {
+  Brujah: '#b40f1f',
+  Gangrel: '#2f7a3a',
+  Malkavian: '#713c8b',
+  Nosferatu: '#6a4b2b',
+  Toreador: '#b8236b',
+  Tremere: '#7b1113',
+  Ventrue: '#1b4c8c',
+  'Banu Haqim': '#7a2f57',
+  Hecata: '#2b6b6b',
+  Lasombra: '#191a5a',
+  'The Ministry': '#865f12',
+  Caitiff: '#636363',
+  'Thin-blood': '#6e6e2b',
+};
+const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim' };
+const fileify = (c) => (NAME_OVERRIDES[c] || c).replace(/\s+/g, '_');
+const symlogo = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.png` : '');
+/* -------------------------------------------------- */
+
 
 // --- Helper Component: StatCard ---
 function StatCard({ title, value, subtext }) {
@@ -15,18 +38,37 @@ function StatCard({ title, value, subtext }) {
 // --- Helper Component: StatList ---
 function StatList({ title, items, isLoading }) {
   return (
-    <div className={`${styles.card} ${styles.stack12}`}>
+    <div className={`${styles.statListCard}`}> {/* Removed .card, added new class */}
       <h3 className={styles.statListTitle}>{title}</h3>
-      {isLoading && <div className={styles.subtle}>Calculating...</div>}
-      {!isLoading && items.length === 0 && <div className={styles.subtle}>No data for this period.</div>}
-      <ol className={styles.statList}>
-        {items.map((item, index) => (
-          <li key={item.id || index}>
-            <span className={styles.statListItemName}>{item.name}</span>
-            <span className={styles.statListItemCount}>{item.count} msgs</span>
-          </li>
-        ))}
-      </ol>
+      <div className={styles.statListBody}>
+        {isLoading && <div className={styles.subtle}>Calculating...</div>}
+        {!isLoading && items.length === 0 && <div className={styles.subtle}>No data for this period.</div>}
+        <ol className={styles.statList}>
+          {items.map((item, index) => {
+            const clanColor = CLAN_COLORS[item.clan] || 'var(--text-secondary)';
+            const clanLogoUrl = symlogo(item.clan);
+            return (
+              <li 
+                key={item.id || index}
+                style={{ '--clan-color': clanColor }}
+                className={clanLogoUrl ? styles.hasAvatar : ''}
+              >
+                {clanLogoUrl && (
+                  <img src={clanLogoUrl} alt={item.clan} className={styles.statListAvatar} />
+                )}
+                {!clanLogoUrl && (
+                  <span className={styles.statListRank}>{index + 1}</span>
+                )}
+                <div className={styles.statListItemInfo}>
+                  <span className={styles.statListItemName}>{item.name}</span>
+                  {item.subname && <span className={styles.statListItemSubname}>{item.subname}</span>}
+                </div>
+                <span className={styles.statListItemCount}>{item.count.toLocaleString()} msgs</span>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
     </div>
   );
 }
@@ -38,16 +80,23 @@ export default function ChatStatsTab({ directMessages, npcMessages, npcs, users 
   const [startDate, setStartDate] = useState(today); // Default to today
   const [endDate, setEndDate] = useState(today);     // Default to today
 
-  // --- Memoized Lookup Maps ---
+  // --- Memoized Lookup Maps (Updated to include clan) ---
   const userMap = useMemo(() => {
     const map = new Map();
-    users.forEach(u => map.set(u.id, u.display_name || u.email || `User ${u.id}`));
+    users.forEach(u => map.set(u.id, {
+      name: u.display_name || u.email || `User ${u.id}`,
+      clan: u.clan || null,
+      char_name: u.char_name || null
+    }));
     return map;
   }, [users]);
 
   const npcMap = useMemo(() => {
     const map = new Map();
-    npcs.forEach(n => map.set(n.id, n.name || `NPC ${n.id}`));
+    npcs.forEach(n => map.set(n.id, {
+      name: n.name || `NPC ${n.id}`,
+      clan: n.clan || null
+    }));
     return map;
   }, [npcs]);
 
@@ -88,7 +137,7 @@ export default function ChatStatsTab({ directMessages, npcMessages, npcs, users 
     return { filteredDirect, filteredNpc };
   }, [directMessages, npcMessages, startDate, endDate]);
 
-  // --- Memoized Period Stats Calculation ---
+  // --- Memoized Period Stats Calculation (Updated to use new map structure) ---
   const periodStats = useMemo(() => {
     const { filteredDirect, filteredNpc } = filteredData;
 
@@ -115,18 +164,25 @@ export default function ChatStatsTab({ directMessages, npcMessages, npcs, users 
         senderCounts.set(senderId, (senderCounts.get(senderId) || 0) + 1);
         npcReceiverCounts.set(receiverId, (npcReceiverCounts.get(receiverId) || 0) + 1);
       }
-      // Note: We don't count NPC->Player as "receiving" for this stat,
-      // but you could add a `npcSenderCounts` map here if needed.
     }
 
-    // Helper to sort maps into top lists
+    // Helper to sort maps into top lists (Updated)
     const getTop = (countMap, nameMap, limit = 10) => {
       return Array.from(countMap.entries())
-        .map(([id, count]) => ({
-          id,
-          name: nameMap.get(id) || `ID ${id}`,
-          count
-        }))
+        .map(([id, count]) => {
+          const info = nameMap.get(id);
+          if (info) {
+            return {
+              id,
+              name: info.char_name || info.name, // Use char_name if user, else npc name
+              subname: info.char_name ? info.name : null, // User's display_name
+              clan: info.clan,
+              count
+            };
+          }
+          // Fallback for missing user/npc
+          return { id, name: `ID ${id}`, subname: null, clan: null, count };
+        })
         .sort((a, b) => b.count - a.count)
         .slice(0, limit);
     };
@@ -141,13 +197,13 @@ export default function ChatStatsTab({ directMessages, npcMessages, npcs, users 
   }, [filteredData, userMap, npcMap]);
 
   return (
-    <div className={`${styles.card} ${styles.stack12}`}>
+    <div className={styles.stack12}> {/* Removed .card */}
       <h3>Chat Statistics</h3>
 
       {/* --- Date Filters --- */}
       <div className={styles.dateFilters}>
-        <label>
-          Start Date
+        <label className={styles.labeledInput}>
+          <span>Start Date</span>
           <input 
             type="date" 
             value={startDate} 
@@ -155,8 +211,8 @@ export default function ChatStatsTab({ directMessages, npcMessages, npcs, users 
             className={styles.input}
           />
         </label>
-        <label>
-          End Date
+        <label className={styles.labeledInput}>
+          <span>End Date</span>
           <input 
             type="date" 
             value={endDate} 
@@ -164,27 +220,29 @@ export default function ChatStatsTab({ directMessages, npcMessages, npcs, users 
             className={styles.input}
           />
         </label>
-        <button
-          className={styles.btn}
-          onClick={() => {
-            const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-            setStartDate(weekAgo);
-            setEndDate(today);
-          }}
-        >
-          Last 7 Days
-        </button>
-        <button
-          className={styles.btn}
-          onClick={() => {
-            const monthAgo = new Date();
-            monthAgo.setDate(monthAgo.getDate() - 30);
-            setStartDate(monthAgo.toISOString().split('T')[0]);
-            setEndDate(today);
-          }}
-        >
-          Last 30 Days
-        </button>
+        <div className={styles.dateFilterButtons}>
+          <button
+            className={`${styles.btn} ${styles.btnSecondary}`}
+            onClick={() => {
+              const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+              setStartDate(weekAgo);
+              setEndDate(today);
+            }}
+          >
+            Last 7 Days
+          </button>
+          <button
+            className={`${styles.btn} ${styles.btnSecondary}`}
+            onClick={() => {
+              const monthAgo = new Date();
+              monthAgo.setDate(monthAgo.getDate() - 30);
+              setStartDate(monthAgo.toISOString().split('T')[0]);
+              setEndDate(today);
+            }}
+          >
+            Last 30 Days
+          </button>
+        </div>
       </div>
 
       {/* --- Stat Cards Grid --- */}
