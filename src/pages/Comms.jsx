@@ -467,28 +467,42 @@ const toggleNotifications = async () => {
         msgs.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
         const newestTs = msgs.reduce((t, m) => Math.max(t, new Date(m.created_at).getTime()), 0);
-        if (!initialSyncRef.current && newestTs > lastTsRef.current) {
-          const inboundNew = msgs.filter(
-            m => new Date(m.created_at).getTime() > lastTsRef.current && isInbound(m)
-          );
 
-          if (inboundNew.length && (document.hidden || !pageVisibleRef.current)) {
-            const latest = inboundNew[inboundNew.length - 1];
-            const title =
-              selectedContact.type === 'user'
-                ? (selectedContact.char_name || selectedContact.display_name || 'New message')
-                : (isAdmin && selectedPlayerId
-                    ? `${selectedContact.name} ↔ ${users.find(u => u.id === selectedPlayerId)?.char_name || 'Player'}`
-                    : selectedContact.name || 'New message');
-            const icon = symlogo(selectedContact.clan) || '/img/ATT-logo(1).png';
-            notify(title, latest.body || 'New message', icon);
+        // --- MODIFICATION: Only update state if new data exists ---
+        const hasNewMessages = newestTs > lastTsRef.current;
+        const isInitialLoad = initialSyncRef.current;
+
+        if (isInitialLoad || hasNewMessages) {
+          // This is a new load or new messages have arrived.
+          
+          // Check for notifications (only if it's *not* the initial load)
+          if (hasNewMessages && !isInitialLoad) {
+            const inboundNew = msgs.filter(
+              m => new Date(m.created_at).getTime() > lastTsRef.current && isInbound(m)
+            );
+
+            if (inboundNew.length && (document.hidden || !pageVisibleRef.current)) {
+              const latest = inboundNew[inboundNew.length - 1];
+              const title =
+                selectedContact.type === 'user'
+                  ? (selectedContact.char_name || selectedContact.display_name || 'New message')
+                  : (isAdmin && selectedPlayerId
+                      ? `${selectedContact.name} ↔ ${users.find(u => u.id === selectedPlayerId)?.char_name || 'Player'}`
+                      : selectedContact.name || 'New message');
+              const icon = symlogo(selectedContact.clan) || '/img/ATT-logo(1).png';
+              notify(title, latest.body || 'New message', icon);
+            }
           }
+          
+          // Update the last timestamp and set the messages
+          lastTsRef.current = Math.max(lastTsRef.current, newestTs);
+          setMessages(msgs);
         }
-
+        
+        // Always mark initial sync as done after first attempt
         initialSyncRef.current = false;
-        lastTsRef.current = Math.max(lastTsRef.current, newestTs);
+        // --- END MODIFICATION ---
 
-        setMessages(msgs);
       } catch (e) {
         setError(e?.response?.status === 401 ? 'Your session expired. Please log in again.' : 'Could not load messages.');
       }
@@ -497,7 +511,7 @@ const toggleNotifications = async () => {
     load();
     pollRef.current = setInterval(load, 6000);
     return () => clearInterval(pollRef.current);
-  }, [selectedContact, selectedPlayerId, isAdmin, hasAuthHeader, currentUser?.id, users, threadKey]);
+  }, [selectedContact, selectedPlayerId, isAdmin, hasAuthHeader, currentUser?.id, users, threadKey]); // Dependencies are correct
 
   const handleSendMessage = async (e) => {
     e?.preventDefault?.();

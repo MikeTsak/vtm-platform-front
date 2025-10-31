@@ -2479,3 +2479,214 @@
   .statListTitle { font-size: 1.1rem; }
   .statListItemCount { font-size: 1rem; }
 }
+
+/* ---------- Downtimes Tab (Grouped) ---------- */
+
+/* Grid for the new Player Groups */
+.downtimeGroupGrid {
+  display: grid;
+  gap: 1.5rem;
+}
+
+/* Card for each player's group of downtimes */
+.playerDowntimeGroup {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  /* Clan color is used for the header */
+  border-top: 4px solid var(--clan-color);
+  animation: fadeIn 0.5s ease-out;
+}
+
+.playerGroupHeader {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  background-color: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
+  position: relative;
+}
+
+/* Watermark in the header */
+.playerGroupHeader::after {
+  content: '';
+  position: absolute;
+  top: 5px;
+  right: 10px;
+  width: 60px;
+  height: 60px;
+  background-image: var(--clan-logo-url);
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 0.05;
+  pointer-events: none;
+}
+
+.playerGroupBadge {
+  width: 45px;
+  height: 45px;
+  min-width: 45px;
+  border-radius: 50%;
+  background-color: #ffffff; /* White background for logo */
+  border: 2px solid var(--clan-color);
+  padding: 4px;
+  box-shadow: 0 0 10px var(--clan-color);
+  background-image: var(--clan-logo-url);
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.playerGroupInfo {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+  min-width: 0; /* Prevent overflow */
+}
+
+.playerCharName {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--clan-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.playerDisplayName {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-family: 'Fira Code', monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* List container for compact rows */
+.downtimeCompactList {
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem;
+  gap: 0.25rem;
+}
+
+/* Compact Row Style */
+.downtimeCompactRow {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  transition: all 0.2s ease-in-out;
+}
+.downtimeCompactRow:hover {
+  background-color: var(--bg-tertiary);
+  border-color: var(--border-color);
+}
+/* Dim resolved downtimes */
+.downtimeCompactRow[data-status="resolved"] {
+  opacity: 0.7;
+}
+.downtimeCompactRow[data-status="resolved"]:hover {
+  opacity: 1;
+}
+
+
+.compactTitle {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.compactTitle b {
+  font-family: 'Fira Code', monospace;
+  color: var(--accent-purple);
+  font-weight: 600;
+}
+
+.compactStatus {
+  /* Aligns with date */
+}
+
+/* Status Badge */
+.statusBadge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  text-transform: capitalize;
+  border: 1px solid;
+  white-space: nowrap;
+}
+.statusBadge[data-status="submitted"] { color: var(--text-secondary); border-color: var(--border-color); }
+.statusBadge[data-status="approved"] { color: var(--color-success); border-color: var(--color-success); }
+.statusBadge[data-status="rejected"] { color: var(--color-error); border-color: var(--color-error); }
+.statusBadge[data-status="resolved"] { color: var(--accent-purple); border-color: var(--accent-purple); }
+
+
+.compactDate {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* Small Button Variant */
+.btnSmall {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+}
+
+/* Mini Alerts (re-use from previous) */
+.alertMini {
+  composes: alert;
+  padding: 0.5rem 1rem;
+  margin: 0;
+  font-size: 0.9rem;
+  flex: 1; /* Allow to take space in flex row */
+}
+
+/* ---------- Downtime Filter Toggles ---------- */
+.filterToggleGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.5rem 1rem; /* row, column */
+  padding: 0.75rem 0.5rem;
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  margin-top: 1rem;
+}
+
+/* Style the custom checkbox for status toggles */
+.statusToggle {
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+/* Color-code the toggles to match their status */
+.statusToggle[data-status="submitted"] .checkmark { border-color: var(--text-secondary); }
+.statusToggle[data-status="approved"] .checkmark { border-color: var(--color-success); }
+.statusToggle[data-status="rejected"] .checkmark { border-color: var(--color-error); }
+.statusToggle[data-status="resolved"] .checkmark { border-color: var(--accent-purple); }
+
+.statusToggle[data-status="submitted"] input:checked ~ .checkmark { background-color: var(--text-secondary); }
+.statusToggle[data-status="approved"] input:checked ~ .checkmark { background-color: var(--color-success); }
+.statusToggle[data-status="rejected"] input:checked ~ .checkmark { background-color: var(--color-error); }
+.statusToggle[data-status="resolved"] input:checked ~ .checkmark { background-color: var(--accent-purple); }
+
+.statusToggle[data-status="submitted"] span { color: var(--text-secondary); }
+.statusToggle[data-status="approved"] span { color: var(--color-success); }
+.statusToggle[data-status="rejected"] span { color: var(--color-error); }
+.statusToggle[data-status="resolved"] span { color: var(--accent-purple); }
+
+.statusToggle input:checked ~ span {
+  opacity: 0.6;
+  text-decoration: line-through;
+}
