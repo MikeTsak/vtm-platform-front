@@ -1,0 +1,137 @@
+/* Fullscreen container for the transition */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  overflow: hidden;
+  /* faint vignette + subtle impact glow */
+  background:
+    radial-gradient(600px circle at var(--click-x) var(--click-y),
+      rgba(255,255,255,0.06), transparent 60%),
+    radial-gradient(1200px circle at 50% 50%, rgba(0,0,0,0.18), transparent 70%);
+}
+
+/* Impact cracks radiating from the click point (pure CSS) */
+.impact {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  background:
+    radial-gradient(100px 100px at var(--click-x) var(--click-y), rgba(255,255,255,0.25), transparent 60%),
+    radial-gradient(220px 220px at var(--click-x) var(--click-y), rgba(255,255,255,0.12), transparent 75%),
+    /* fine spokes */
+    conic-gradient(from 0deg at var(--click-x) var(--click-y),
+      rgba(255,255,255,0.18) 0.25deg, transparent 0.8deg,
+      transparent 10deg,
+      rgba(255,255,255,0.18) 10.25deg, transparent 10.8deg,
+      transparent 30deg,
+      rgba(255,255,255,0.16) 30.3deg, transparent 31deg,
+      transparent 60deg,
+      rgba(255,255,255,0.15) 60.4deg, transparent 61deg,
+      transparent 90deg,
+      rgba(255,255,255,0.14) 90.3deg, transparent 91deg,
+      transparent 120deg,
+      rgba(255,255,255,0.13) 120.4deg, transparent 121deg,
+      transparent 150deg,
+      rgba(255,255,255,0.12) 150.4deg, transparent 151deg,
+      transparent 180deg,
+      rgba(255,255,255,0.11) 180.4deg, transparent 181deg,
+      transparent 210deg,
+      rgba(255,255,255,0.10) 210.4deg, transparent 211deg,
+      transparent 240deg,
+      rgba(255,255,255,0.09) 240.3deg, transparent 241deg,
+      transparent 270deg,
+      rgba(255,255,255,0.08) 270.2deg, transparent 271deg,
+      transparent 300deg,
+      rgba(255,255,255,0.08) 300.2deg, transparent 301deg,
+      transparent 330deg,
+      rgba(255,255,255,0.07) 330.2deg, transparent 331deg,
+      transparent);
+  filter: blur(0.2px);
+}
+
+/* Each shard: we animate a holder and put the actual polygon inside .shape */
+.shard {
+  position: absolute;
+  inset: 0;
+  animation: shard-fly 1.1s cubic-bezier(.25,.8,.3,1) forwards;
+  animation-delay: var(--delay);
+  will-change: transform, opacity;
+  transform-origin: center;
+}
+
+/* The visible shard shape with “glass” look */
+.shape {
+  position: absolute;
+  inset: 0;
+  /* Shard fill has faint tint + internal shine; the --tint is set per-shard */
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03)),
+    radial-gradient(380px circle at var(--click-x) var(--click-y), rgba(255,255,255,0.03), transparent 70%);
+  background-blend-mode: screen, normal;
+  /* subtle greenish glass tint variation */
+  box-shadow:
+    inset 0 0 14px var(--tint, rgba(170,255,240,0.06)),
+    0 2px 8px rgba(0,0,0,0.28);
+  backdrop-filter: blur(2px) saturate(115%);
+  -webkit-backdrop-filter: blur(2px) saturate(115%);
+  pointer-events: none;
+}
+
+/* Thin bright edge + slight chromatic aberration */
+.shape::before,
+.shape::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  filter: blur(0.3px);
+  border: 1px solid transparent;
+  /* Use layered shadows to fake refractions along the edges */
+  box-shadow:
+    0 0 0 1px var(--edge, rgba(220,240,255,0.42)),
+    0 0 8px rgba(255,255,255,0.18),
+    0 0 20px rgba(180,255,245,0.08);
+  clip-path: inherit; /* match the parent polygon */
+}
+/* Slight RGB split for sparkle */
+.shape::before { transform: translateX(0.4px); opacity: .85; }
+.shape::after  { transform: translateY(-0.4px); opacity: .65; }
+
+/* Motion path uses CSS custom properties calculated in JS */
+@keyframes shard-fly {
+  0% {
+    transform: translate(0,0) scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  80% {
+    transform:
+      translate(var(--y)) translate(var(--x))
+      scale(var(--scale)) rotate(var(--rotate));
+    opacity: 0.9;
+  }
+  100% {
+    transform:
+      translate(calc(var(--y) * 1.25)) translate(calc(var(--x) * 1.25))
+      scale(calc(var(--scale) * 1.03)) rotate(var(--rotate));
+    opacity: 0;
+  }
+}
+
+/* Blur the page very slightly while breaking */
+.page-is-shattering #root,
+.page-is-shattering main,
+.page-is-shattering header {
+  transition: filter .28s ease, opacity .28s ease;
+  filter: blur(1px) saturate(108%);
+  opacity: .88;
+}
+
+/* Reduced motion: JS navigates immediately */
+@media (prefers-reduced-motion: reduce) {
+  .shard { animation: none; opacity: 0; }
+  .impact { display: none; }
+}

@@ -1,3 +1,4 @@
+
 /* -------------------------------------- */
 /* Erebus Portal — Home (Enhanced Gothic) */
 /* -------------------------------------- */
@@ -18,6 +19,10 @@
   --card-bg-opaque: #141016; /* Opaque version */
   --hover-border: rgba(255, 44, 82, 0.6); /* Accent glow color for border */
   --hover-shadow: rgba(255, 44, 82, 0.4); /* Accent glow color for shadow */
+  
+  /* ADDED FOR MALKAVIAN */
+  --malk-color: #713c8b;
+  --malk-glow: color-mix(in srgb, var(--malk-color) 40%, transparent);
 }
 
 /* ---------- Keyframe Animations ---------- */
@@ -66,7 +71,13 @@
 }
 
 /* Loading Screen */
-.loadingScreen { /* ... (unchanged) ... */ }
+.loadingScreen {
+  display: grid;
+  place-items: center;
+  min-height: 80vh;
+  font-size: 1.2rem;
+  color: var(--muted);
+}
 
 /* ---------- Header Card ---------- */
 .card {
@@ -102,6 +113,8 @@
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 .sub { font-size: 0.9rem; color: var(--muted); margin: 0; line-height: 1.4; }
+.sub b { color: var(--text); font-weight: 700; }
+
 
 /* Identity block */
 .identity { display: flex; align-items: center; gap: 1rem; flex-grow: 1; min-width: 250px; }
@@ -116,7 +129,6 @@
 .idText { flex: 1; min-width: 0; }
 .textLogo { margin-top: 4px; }
 .textLogo img { max-width: 180px; height: auto; opacity: 0.8; filter: brightness(1.1); } /* Slightly brighter */
-.idText b { color: var(--text); font-weight: 700; }
 
 /* ---------- Grid of tiles ---------- */
 /* Grid of tiles (MODIFIED) */
@@ -279,3 +291,62 @@
   .identity { gap: 10px; }
   .clanBadge img { width: 50px; height: 50px; }
 }
+
+/* --- NEW MALKAVIAN BUTTON STYLES --- */
+.malkavianGrid {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 3rem 1rem;
+  margin-top: 1.5rem;
+}
+
+.giantButton {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: clamp(280px, 60vw, 400px);
+  height: clamp(280px, 60vw, 400px);
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--malk-color) 30%, #111 80%), #000);
+  border: 2px solid var(--malk-color);
+  color: #fff;
+  text-decoration: none;
+  font-family: "Cinzel", serif;
+  text-align: center;
+  box-shadow: 0 0 20px var(--malk-glow), inset 0 0 15px var(--malk-glow);
+  transition: all 0.3s ease;
+  animation: pulseMalkavian 2.5s infinite ease-in-out;
+}
+.giantButton span {
+  font-size: clamp(2rem, 6vw, 3.5rem);
+  font-weight: 600;
+  text-shadow: 0 0 10px var(--malk-glow), 0 0 20px #000;
+  line-height: 1.1;
+}
+.giantButton small {
+  font-size: clamp(0.9rem, 2vw, 1.1rem);
+  color: var(--muted);
+  font-family: "Inter", sans-serif;
+  margin-top: 0.5rem;
+  letter-spacing: 0.5px;
+}
+
+.giantButton:hover {
+  transform: scale(1.02);
+  box-shadow: 0 0 35px var(--malk-glow), inset 0 0 25px var(--malk-glow);
+  animation-play-state: paused;
+}
+
+@keyframes pulseMalkavian {
+  0%, 100% {
+    box-shadow: 0 0 20px var(--malk-glow), inset 0 0 15px var(--malk-glow);
+    border-color: var(--malk-color);
+  }
+  50% {
+    box-shadow: 0 0 30px var(--malk-glow), inset 0 0 20px var(--malk-glow);
+    border-color: color-mix(in srgb, var(--malk-color) 70%, #fff);
+  }
+}
+

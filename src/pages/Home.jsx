@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import api from '../api';
 import { Link, useNavigate } from 'react-router-dom';
 import styles from '../styles/Home.module.css';
+import ShatterLink from '../components/ShatterLink'; // --- IMPORT SHATTER COMPONENT ---
 
 /* Clan Lookups */
 const CLAN_COLORS = {
@@ -189,6 +190,12 @@ export default function Home() {
 
       {fetchError && <div className={`${styles.card} ${styles.errorCard}`}>{fetchError}</div>}
 
+      {/* --- MALKAVIAN GIANT BUTTON (IF APPLICABLE) --- */}
+      {ch?.clan === 'Malkavian' && (
+        <ShatterLink />
+      )}
+      
+      {/* --- STANDARD GRID (ALWAYS SHOWS) --- */}
       <div className={styles.grid}>
         <Link className={`${styles.cardLink} ${styles.animatedItem}`} style={{ animationDelay: '0.2s' }} to="/character">
           <div className={styles.cardTitle}>Character</div>
@@ -217,6 +224,8 @@ export default function Home() {
           <div className={styles.cardSub}>Letters, rumors & court</div>
         </Link>
       </div>
+      {/* --- END STANDARD GRID --- */}
+
 
       <div className={styles.feedGrid}>
         {/* Recent Activity */}
@@ -269,3 +278,4 @@ export default function Home() {
     </main>
   );
 }
+

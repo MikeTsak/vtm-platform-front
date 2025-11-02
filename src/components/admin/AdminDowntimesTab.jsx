@@ -162,7 +162,7 @@ export default function AdminDowntimesTab() {
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase();
     return rows.filter(r => {
-      const rowStatus = String(r.status || 'submitted').toLowerCase();
+      const rowStatus = String(r.status || 'submitted');
 
       // 1) dropdown filter
       const dropdownOk = statusFilter === 'all' || rowStatus === statusFilter;

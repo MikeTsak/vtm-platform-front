@@ -2,6 +2,7 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link, Navigate, NavLink, useLocation } from 'react-router-dom';
 import AuthProvider, { AuthCtx } from './AuthContext';
+import api from './api'; // Import api
 import Login from './pages/user/Login';
 import Register from './pages/user/Register';
 import Home from './pages/Home';
@@ -23,6 +24,7 @@ import ForgotPassword from './pages/user/ForgotPassword';
 import ResetPassword from './pages/user/ResetPassword';
 import Boons from './pages/Boons';
 import Coteries from './pages/Coteries';
+import Premonitions from './pages/Premonitions'; // Import the new page
 
 function Private({ children }) {
   const { user } = useContext(AuthCtx);
@@ -36,6 +38,65 @@ function AdminOnly({ children }) {
   if (user.role !== 'admin') return <Navigate to="/" replace />;
   return children;
 }
+
+// --- NEW: Wrapper for Malkavians or Admins ---
+function MalkavianOrAdminOnly({ children }) {
+  const { user } = useContext(AuthCtx);
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const location = useLocation();
+
+  useEffect(() => {
+    // Reset authorization state on user or location change
+    setIsLoading(true);
+    setIsAuthorized(false);
+
+    if (!user) {
+      setIsLoading(false);
+      return; // Not logged in, will be caught by redirect
+    }
+
+    // 1. Admins are always authorized
+    if (user.role === 'admin') {
+      setIsAuthorized(true);
+      setIsLoading(false);
+      return;
+    }
+
+    // 2. Check character clan for non-admins
+    let isMounted = true;
+    api.get('/characters/me')
+      .then(({ data }) => {
+        if (!isMounted) return;
+        if (data.character && data.character.clan === 'Malkavian') {
+          setIsAuthorized(true);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to check character clan", err);
+        // Silently fail to false
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
+    
+    return () => { isMounted = false; };
+
+  }, [user, location.pathname]); // Re-check if user changes or if we navigate here
+
+  if (isLoading) {
+    return <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--muted)' }}>Checking access...</div>;
+  }
+
+  if (!isAuthorized) {
+    // Not an admin, not a Malkavian, or check failed
+    return <Navigate to="/" replace />;
+  }
+  
+  // Authorized!
+  return children;
+}
+
 
 function Nav() {
   const { user, logout } = useContext(AuthCtx);
@@ -86,8 +147,10 @@ function Nav() {
             <NavLink to="/boons" className={getNavLinkClass}>Boons</NavLink>
             <NavLink to="/coteries" className={getNavLinkClass}>Coteries</NavLink>
             <NavLink to="/comms" className={getNavLinkClass}>Comms</NavLink>
-            {/* You may want to add a NavLink for Boons here */}
-            {/* <NavLink to="/boons" className={getNavLinkClass}>Boons</NavLink> */}
+            {/* Note: We don't add Premonitions here because this Nav component
+              doesn't know the character's clan, only the user's role.
+              The link is correctly placed on the Home page.
+            */}
           </>
         )}
         {user?.role === 'admin' && (
@@ -139,7 +202,13 @@ export default function App() {
               <Route path="/terms" element={<Terms />} />
               <Route path="/legal" element={<Legal />} />
               <Route path="/privacy" element={<Privacy />} />
-               <Route path="/coteries" element={<Private><Coteries/></Private>} />
+              <Route path="/coteries" element={<Private><Coteries/></Private>} />
+
+              {/* --- NEW PREMONITIONS ROUTE --- */}
+              <Route 
+                path="/premonitions" 
+                element={<MalkavianOrAdminOnly><Premonitions/></MalkavianOrAdminOnly>} 
+              />
             </Routes>
           </div>
           <DiceRoller />
@@ -149,3 +218,4 @@ export default function App() {
     </AuthProvider>
   );
 }
+

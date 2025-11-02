@@ -1,0 +1,72 @@
+/* src/styles/Premonitions.module.css */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600&family=Inter:wght@400;500;600&display=swap');
+
+:root {
+  --bg: #111214;
+  --surface: #17181b;
+  --surface-2: #1e1f24;
+  --border: #2c2e34;
+  --text: #e7e7ea;
+  --muted: #9aa0a6;
+  --malkavian-purple: #713c8b;
+  --radius: 12px;
+  --shadow: 0 8px 28px rgba(0,0,0,.55);
+  --font-title: 'Cinzel', serif;
+  --font-body: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+.page {
+  color: var(--text);
+  background:
+    radial-gradient(120% 90% at 50% -10%, color-mix(in srgb, var(--malkavian-purple) 18%, transparent) 0%, transparent 60%),
+    linear-gradient(180deg, #0c0d0f, #121316);
+  min-height: 100%;
+  padding: clamp(16px, 3vw, 28px);
+  font-family: var(--font-body);
+}
+
+.header {
+  margin: 0 auto clamp(18px, 2.6vw, 26px);
+  max-width: 980px;
+  text-align: center;
+}
+.title {
+  font-family: var(--font-title);
+  font-size: clamp(24px, 4vw, 36px);
+  margin: 0 0 4px 0;
+  color: color-mix(in srgb, var(--malkavian-purple) 85%, #fff 15%);
+  text-shadow: 0 0 14px color-mix(in srgb, var(--malkavian-purple) 45%, transparent);
+}
+.subtitle { color: var(--muted); margin: 0; }
+
+.card {
+  max-width: 980px;
+  margin: 0 auto clamp(18px, 2.6vw, 28px);
+  background: linear-gradient(180deg, var(--surface-2), #141519);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: clamp(14px, 2vw, 20px);
+}
+
+.cardTitle {
+  font-family: var(--font-title);
+  font-weight: 600;
+  font-size: 1.25rem;
+  color: var(--malkavian-purple);
+  margin: 0 0 1rem 0;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.5rem;
+}
+
+.whisper {
+  font-family: 'Times New Roman', Times, serif;
+  font-style: italic;
+  font-size: 1.1rem;
+  color: var(--muted);
+  border-left: 3px solid var(--malkavian-purple);
+  padding-left: 1rem;
+  margin-bottom: 1rem;
+  opacity: 0.8;
+}
+
