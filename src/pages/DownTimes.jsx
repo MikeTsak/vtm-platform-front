@@ -82,7 +82,10 @@ function CountdownDisplay({ title, countdown, pastText, futureText }) {
 
 
 // --- Helper: treat "resolved" as past (Unchanged) ---
-const statusIsPast = (s) => String(s || '').toLowerCase() === 'resolved';
+const statusIsPast = (s) => {
+  const status = String(s || '').toLowerCase();
+  return status === 'resolved' || status === 'rejected' || status === 'resolved in scene';
+};
 
 // --- Format for display (Unchanged) ---
 function niceDate(d) {
@@ -200,41 +203,49 @@ function SubmitCard({ quota, onDowntimeCreated, deadline }) {
   );
 }
 
-// --- List Item Component (Unchanged) ---
+// --- List Item Component (FIXED to show GM Resolution) ---
 function DowntimeItem({ dt }) {
-    const status = (dt.status || 'submitted').toLowerCase();
-    let badgeClass = styles.badgePending;
-    if (status === 'approved') badgeClass = styles.badgeApproved;
-    if (status === 'rejected') badgeClass = styles.badgeRejected;
-    if (status === 'resolved') badgeClass = styles.badgeReview;
+  const status = (dt.status || 'submitted').toLowerCase();
+  let badgeClass = styles.badgePending;
+  if (status === 'approved') badgeClass = styles.badgeApproved;
+  if (status === 'needs a scene') badgeClass = styles.badgeNeedsScene;
+  if (status === 'rejected') badgeClass = styles.badgeRejected;
+  if (status === 'resolved' || status === 'resolved in scene') badgeClass = styles.badgeReview;
 
-    return (
-        <article className={styles.item}>
-             <header className={styles.itemHead}>
-                <h3 className={styles.itemTitle}>{dt.title || '(no title)'}</h3>
-                <span className={`${styles.badge} ${badgeClass}`}>{dt.status}</span>
-             </header>
-             <div className={styles.itemMeta}>
-                Submitted: {niceDate(dt.created_at)}
-                {dt.resolved_at && ` • Resolved: ${niceDate(dt.resolved_at)}`}
-             </div>
-             
-             {dt.feeding_type && (
-                <div className={styles.itemMeta} style={{marginTop: '4px'}}>
-                    Feeding: <b>{dt.feeding_type}</b>
-                </div>
-             )}
+  return (
+    <article className={styles.item}>
+      <header className={styles.itemHead}>
+        <h3 className={styles.itemTitle}>{dt.title || '(no title)'}</h3>
+        <span className={`${styles.badge} ${badgeClass}`}>{dt.status}</span>
+      </header>
+      <div className={styles.itemMeta}>
+        Submitted: {niceDate(dt.created_at)}
+        {dt.resolved_at && ` • Resolved: ${niceDate(dt.resolved_at)}`}
+      </div>
+      
+      {dt.feeding_type && (
+        <div className={styles.itemMeta} style={{marginTop: '4px'}}>
+          Feeding: <b>{dt.feeding_type}</b>
+        </div>
+      )}
 
-             <p className={styles.itemBody}>{dt.body || '(No action description)'}</p>
-             
-             {dt.gm_notes && (
-                <div className={styles.itemNotes}>
-                    <div className={styles.itemNotesLabel}>Result</div>
-                    <p className={styles.itemNotesBody}>{dt.gm_notes}</p>
-                </div>
-             )}
-        </article>
-    );
+      <p className={styles.itemBody}>{dt.body || '(No action description)'}</p>
+      
+      {/* {dt.gm_notes && (
+        <div className={styles.itemNotes}>
+          <div className={styles.itemNotesLabel}>Result</div>
+          <p className={styles.itemNotesBody}>{dt.gm_notes}</p>
+        </div>
+      )} */}
+
+      {dt.gm_resolution && (
+        <div className={styles.itemNotes}>
+          <div className={styles.itemNotesLabel}>Resolution</div>
+          <p className={styles.itemNotesBody}>{dt.gm_resolution}</p>
+        </div>
+      )}
+    </article>
+  );
 }
 
 // --- Main Component (MODIFIED) ---
@@ -315,14 +326,15 @@ export default function DownTimes() {
   const past   = useMemo(() => mine.filter(d => statusIsPast(d.status)), [mine]);
   
   const list = useMemo(() => {
-      const source = (filter === 'past') ? past : active;
-      const qq = q.trim().toLowerCase();
-      if (!qq) return source;
-      return source.filter(dt => 
-        (dt.title || '').toLowerCase().includes(qq) ||
-        (dt.body || '').toLowerCase().includes(qq) ||
-        (dt.gm_notes || '').toLowerCase().includes(qq)
-      );
+    const source = (filter === 'past') ? past : active;
+    const qq = q.trim().toLowerCase();
+    if (!qq) return source;
+    return source.filter(dt => 
+      (dt.title || '').toLowerCase().includes(qq) ||
+      (dt.body || '').toLowerCase().includes(qq) ||
+      (dt.gm_notes || '').toLowerCase().includes(qq) ||
+      (dt.gm_resolution || '').toLowerCase().includes(qq)
+    );
   }, [active, past, filter, q]);
 
   const activeCount = active.length;
@@ -370,49 +382,49 @@ export default function DownTimes() {
       {/* Controls: Filter + Search */}
       <section className={styles.controls}>
         <div className={styles.filters}>
-            <label className={styles.filterLabel}>Filter by Status</label>
-            <div className={styles.chips}>
-                <button 
-                    className={`${styles.chip} ${filter === 'active' ? styles.chipActive : ''}`}
-                    onClick={() => setFilter('active')}
-                >
-                    Active <span className={styles.chipCount}>{activeCount}</span>
-                </button>
-                 <button 
-                    className={`${styles.chip} ${filter === 'past' ? styles.chipActive : ''}`}
-                    onClick={() => setFilter('past')}
-                 >
-                    Past <span className={styles.chipCount}>{pastCount}</span>
-                </button>
-            </div>
+          <label className={styles.filterLabel}>Filter by Status</label>
+          <div className={styles.chips}>
+            <button 
+              className={`${styles.chip} ${filter === 'active' ? styles.chipActive : ''}`}
+              onClick={() => setFilter('active')}
+            >
+              Active <span className={styles.chipCount}>{activeCount}</span>
+            </button>
+            <button 
+              className={`${styles.chip} ${filter === 'past' ? styles.chipActive : ''}`}
+              onClick={() => setFilter('past')}
+            >
+              Past <span className={styles.chipCount}>{pastCount}</span>
+            </button>
+          </div>
         </div>
         <div className={styles.searchWrap}>
-             <label className={styles.filterLabel}>Search {filter} downtimes</label>
-             <input
-                className={styles.search}
-                type="text"
-                placeholder="Search by title, body, or result..."
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-             />
+          <label className={styles.filterLabel}>Search {filter} downtimes</label>
+          <input
+            className={styles.search}
+            type="text"
+            placeholder="Search by title, body, or result..."
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
         </div>
       </section>
 
       {/* List */}
       <section className={styles.list}>
         {loading && (
-            <div className={`${styles.item} ${styles.skeleton}`}></div>
+          <div className={`${styles.item} ${styles.skeleton}`}></div>
         )}
         {!loading && list.length === 0 && (
-            <div className={styles.empty}>
-                <div className={styles.emptyIcon}>☾</div>
-                <div className={styles.emptyText}>
-                    {q ? `No ${filter} downtimes match your search.` : `You have no ${filter} downtimes.`}
-                </div>
+          <div className={styles.empty}>
+            <div className={styles.emptyIcon}>☾</div>
+            <div className={styles.emptyText}>
+              {q ? `No ${filter} downtimes match your search.` : `You have no ${filter} downtimes.`}
             </div>
+          </div>
         )}
         {!loading && list.map(dt => (
-            <DowntimeItem key={dt.id} dt={dt} />
+          <DowntimeItem key={dt.id} dt={dt} />
         ))}
       </section>
     </main>

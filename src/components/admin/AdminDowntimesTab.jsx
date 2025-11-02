@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import api from "../../api";
 import styles from '../../styles/Admin.module.css';
 
-/* ---------- VTM Lookups (as requested) ---------- */
+/* ---------- VTM Lookups ---------- */
 const CLAN_COLORS = {
   Brujah: '#b40f1f',
   Gangrel: '#2f7a3a',
@@ -22,7 +22,7 @@ const CLAN_COLORS = {
 const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim' };
 const fileify = (c) => (NAME_OVERRIDES[c] || c).replace(/\s+/g, '_');
 const symlogo = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.png` : '');
-/* -------------------------------------------------- */
+/* ---------------------------------- */
 
 function niceDate(d) {
   if (!d) return '—';
@@ -45,17 +45,13 @@ function ymd(d) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-const STATUS = ['submitted', 'approved', 'rejected', 'resolved'];
+const STATUS = ['submitted', 'approved', 'Needs a Scene', 'rejected', 'resolved', 'Resolved in scene'];
 
 // --- Helper Component for Toggles ---
 function StatusToggle({ status, checked, onChange }) {
   return (
     <label className={`${styles.customCheckbox} ${styles.statusToggle}`} data-status={status}>
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={onChange}
-      />
+      <input type="checkbox" checked={checked} onChange={onChange} />
       <span className={styles.checkmark}></span>
       <span>Hide {status}</span>
     </label>
@@ -79,25 +75,29 @@ export default function AdminDowntimesTab() {
   // --- UI: search / filters
   const [q, setQ] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  // NEW State for toggles
+
+  // Toggles to hide statuses (kept from your version)
   const [hideStatus, setHideStatus] = useState({
     submitted: false,
     approved: false,
     rejected: true,
-    resolved: true, 
+    'Needs a Scene': false,
+    resolved: true,
+    'Resolved in scene': true,
   });
 
-  // --- Per-row edit buffers
-  const [buffer, setBuffer] = useState({}); // id -> { ... }
+  // --- Per-row edit buffers (id -> {...})
+  const [buffer, setBuffer] = useState({});
 
-  // Load config on mount
+  /* =================== Load Config =================== */
   useEffect(() => {
     let mounted = true;
     (async () => {
       setCfgLoading(true);
       setCfgErr(''); setCfgInfo('');
       try {
-        const { data } = await api.get('/downtimes/config');
+        // baseURL is '/api', so no leading slash
+        const { data } = await api.get('downtimes/config');
         if (!mounted) return;
         setDeadline(ymd(data?.downtime_deadline || ''));
         setOpening(ymd(data?.downtime_opening || ''));
@@ -111,12 +111,11 @@ export default function AdminDowntimesTab() {
     return () => { mounted = false; };
   }, []);
 
-  // Save config
   async function onSaveConfig() {
     setCfgSaving(true);
     setCfgErr(''); setCfgInfo('');
     try {
-      const { data } = await api.post('/admin/downtimes/config', {
+      const { data } = await api.post('admin/downtimes/config', {
         downtime_deadline: deadline || null,
         downtime_opening: opening || null,
       });
@@ -134,7 +133,7 @@ export default function AdminDowntimesTab() {
   function onReloadConfig() {
     setCfgLoading(true);
     setCfgErr(''); setCfgInfo('');
-    api.get('/downtimes/config')
+    api.get('downtimes/config')
       .then(({ data }) => {
         setDeadline(ymd(data?.downtime_deadline || ''));
         setOpening(ymd(data?.downtime_opening || ''));
@@ -143,12 +142,12 @@ export default function AdminDowntimesTab() {
       .finally(() => setCfgLoading(false));
   }
 
-  // Load admin list
+  /* =================== Load Admin List =================== */
   async function loadList() {
     setListLoading(true);
     setListErr('');
     try {
-      const { data } = await api.get('/admin/downtimes');
+      const { data } = await api.get('admin/downtimes');
       setRows((data?.downtimes || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
     } catch (e) {
       console.error(e);
@@ -159,20 +158,20 @@ export default function AdminDowntimesTab() {
   }
   useEffect(() => { loadList(); }, []);
 
-  // Derived filtered view (UPDATED with hideStatus)
+  /* =================== Filtering / Grouping =================== */
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase();
     return rows.filter(r => {
       const rowStatus = String(r.status || 'submitted').toLowerCase();
-      
-      // 1. Check dropdown filter
+
+      // 1) dropdown filter
       const dropdownOk = statusFilter === 'all' || rowStatus === statusFilter;
       if (!dropdownOk) return false;
-      
-      // 2. Check hide toggles
-      if (hideStatus[rowStatus]) return false; // If the toggle for this status is checked, hide it.
 
-      // 3. Check search query
+      // 2) hide toggles
+      if (hideStatus[rowStatus]) return false;
+
+      // 3) search
       if (!qq) return true;
       const hay =
         `${r.title || ''} ${r.body || ''} ${r.gm_notes || ''} ${r.gm_resolution || ''} ${r.player_name || ''} ${r.char_name || ''} ${r.clan || ''}`
@@ -181,43 +180,38 @@ export default function AdminDowntimesTab() {
     });
   }, [rows, q, statusFilter, hideStatus]);
 
-  // NEW: Memo to group the filtered list
   const groupedAndFiltered = useMemo(() => {
     const groups = new Map();
-    for (const r of filtered) { // Use the already filtered flat list
-        const key = r.player_name || r.email || 'Unknown Player';
-        if (!groups.has(key)) {
-            groups.set(key, {
-                player_name: key,
-                char_name: r.char_name, // Store the first char_name/clan for the header
-                clan: r.clan,
-                downtimes: []
-            });
-        }
-        groups.get(key).downtimes.push(r);
+    for (const r of filtered) {
+      const key = r.player_name || r.email || 'Unknown Player';
+      if (!groups.has(key)) {
+        groups.set(key, {
+          player_name: key,
+          char_name: r.char_name,
+          clan: r.clan,
+          downtimes: []
+        });
+      }
+      groups.get(key).downtimes.push(r);
     }
-    // Convert Map to array. Groups are already sorted by most recent DT because the `filtered` list is sorted.
     return Array.from(groups.values());
   }, [filtered]);
 
-  // NEW Handler for toggles
   function toggleHideStatus(status) {
-    setHideStatus(prev => ({
-      ...prev,
-      [status]: !prev[status]
-    }));
+    setHideStatus(prev => ({ ...prev, [status]: !prev[status] }));
   }
 
-  // Editing helpers
+  /* =================== Editing Helpers =================== */
   function openBuf(r) {
-    setBuffer({
+    setBuffer(prev => prev[r.id] ? prev : ({
+      ...prev,
       [r.id]: {
         status: r.status || 'submitted',
         gm_notes: r.gm_notes || '',
         gm_resolution: r.gm_resolution || '',
         saving: false, error: '', info: ''
       }
-    });
+    }));
   }
   function updBuf(id, key, val) {
     setBuffer(prev => ({
@@ -225,35 +219,59 @@ export default function AdminDowntimesTab() {
       [id]: { ...(prev[id] || {}), [key]: val }
     }));
   }
-  async function saveRow(id) {
-    const b = buffer[id];
-    if (!b) return;
+
+  // ✅ FIX: saveRow accepts a patch so quick actions don't race React state
+  async function saveRow(id, patch = {}) {
+    const merged = { ...(buffer[id] || {}), ...patch };
+    if (!buffer[id]) {
+      // if user clicked quick action straight from compact view, open buffer first
+      openBuf(rows.find(x => x.id === id));
+    }
+
+    // optimistic UI: reflect changes immediately in buffer
+    if (patch.status !== undefined) updBuf(id, 'status', patch.status);
+    if (patch.gm_notes !== undefined) updBuf(id, 'gm_notes', patch.gm_notes);
+    if (patch.gm_resolution !== undefined) updBuf(id, 'gm_resolution', patch.gm_resolution);
+
     updBuf(id, 'saving', true);
     updBuf(id, 'error', ''); updBuf(id, 'info', '');
+
     try {
-      const payload = { status: b.status, gm_notes: b.gm_notes, gm_resolution: b.gm_resolution };
-      const { data } = await api.patch(`/admin/downtimes/${id}`, payload);
-      setRows(prev => prev.map(x => (x.id === id ? { ...x, ...data.downtime } : x)));
+      const payload = {
+        status: merged.status,
+        gm_notes: merged.gm_notes,
+        gm_resolution: merged.gm_resolution
+      };
+      const { data } = await api.patch(`admin/downtimes/${id}`, payload);
+      const updated = data?.downtime ? data.downtime : { ...rows.find(x => x.id === id), ...payload };
+
+      setRows(prev => prev.map(x => (x.id === id ? { ...x, ...updated } : x)));
       updBuf(id, 'info', 'Saved.');
-      setTimeout(() => setBuffer(prev => {
-          const next = {...prev};
+
+      // auto-close editor after a short delay
+      setTimeout(() => {
+        setBuffer(prev => {
+          const next = { ...prev };
           delete next[id];
           return next;
-      }), 1000);
+        });
+      }, 800);
     } catch (e) {
       console.error(e);
       updBuf(id, 'error', e?.response?.data?.error || 'Save failed');
       updBuf(id, 'saving', false);
     }
   }
+
   function cancelRow(id) {
     setBuffer(prev => {
-        const next = {...prev};
-        delete next[id];
-        return next;
+      const next = { ...prev };
+      delete next[id];
+      return next;
     });
   }
 
+  /* =================== Render =================== */
   return (
     <div className={styles.stack12}>
       <h3>Downtimes</h3>
@@ -313,7 +331,7 @@ export default function AdminDowntimesTab() {
           <div className={styles.subtle}>Search, filter, and resolve player downtimes.</div>
         </div>
 
-        {/* --- Search & Filter Dropdown --- */}
+        {/* Search + dropdown filter */}
         <div className={styles.twoColGrid} style={{ alignItems: 'end' }}>
           <label className={styles.labeledInput}>
             <span>Search</span>
@@ -337,12 +355,14 @@ export default function AdminDowntimesTab() {
           </label>
         </div>
 
-        {/* --- NEW Status Toggles --- */}
+        {/* Hide-status toggles */}
         <div className={styles.filterToggleGrid}>
-            <StatusToggle status="submitted" checked={hideStatus.submitted} onChange={() => toggleHideStatus('submitted')} />
-            <StatusToggle status="approved" checked={hideStatus.approved} onChange={() => toggleHideStatus('approved')} />
-            <StatusToggle status="rejected" checked={hideStatus.rejected} onChange={() => toggleHideStatus('rejected')} />
-            <StatusToggle status="resolved" checked={hideStatus.resolved} onChange={() => toggleHideStatus('resolved')} />
+          <StatusToggle status="submitted" checked={hideStatus.submitted} onChange={() => toggleHideStatus('submitted')} />
+          <StatusToggle status="approved"  checked={hideStatus.approved}  onChange={() => toggleHideStatus('approved')} />
+          <StatusToggle status="Needs a Scene"  checked={hideStatus['Needs a Scene']}  onChange={() => toggleHideStatus('Needs a Scene')} />
+          <StatusToggle status="rejected"  checked={hideStatus.rejected}  onChange={() => toggleHideStatus('rejected')} />
+          <StatusToggle status="resolved"  checked={hideStatus.resolved}  onChange={() => toggleHideStatus('resolved')} />
+          <StatusToggle status="Resolved in scene"  checked={hideStatus['Resolved in scene']}  onChange={() => toggleHideStatus('Resolved in scene')} />
         </div>
 
         <div className={styles.row} style={{ gap: '0.5rem', marginTop: '0.5rem' }}>
@@ -361,7 +381,7 @@ export default function AdminDowntimesTab() {
           </div>
         )}
 
-        {/* --- Grouped Render Logic --- */}
+        {/* Grouped render */}
         {!listLoading && (
           <div className={styles.downtimeGroupGrid} style={{ marginTop: '1rem' }}>
             {groupedAndFiltered.length === 0 && (
@@ -375,8 +395,8 @@ export default function AdminDowntimesTab() {
               const clanColor = CLAN_COLORS[group.clan] || 'var(--border-color)';
               const clanLogoUrl = symlogo(group.clan);
               return (
-                <div 
-                  key={group.player_name} 
+                <div
+                  key={group.player_name}
                   className={styles.playerDowntimeGroup}
                   style={{
                     '--clan-color': clanColor,
@@ -386,10 +406,11 @@ export default function AdminDowntimesTab() {
                   <header className={styles.playerGroupHeader}>
                     <div className={styles.playerGroupBadge}></div>
                     <div className={styles.playerGroupInfo}>
-                        <span className={styles.playerCharName}>{group.char_name || '(No Character)'}</span>
-                        <span className={styles.playerDisplayName}>{group.player_name}</span>
+                      <span className={styles.playerCharName}>{group.char_name || '(No Character)'}</span>
+                      <span className={styles.playerDisplayName}>{group.player_name}</span>
                     </div>
                   </header>
+
                   <div className={styles.downtimeCompactList}>
                     {group.downtimes.map(r => (
                       <DowntimeEditorRow
@@ -413,8 +434,7 @@ export default function AdminDowntimesTab() {
   );
 }
 
-
-/* --- NEW Sub-Component for Compact Row / Full Editor --- */
+/* --- Sub-Component for Compact Row / Full Editor --- */
 function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel }) {
   const editing = !!editBuffer;
 
@@ -429,8 +449,8 @@ function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel }
           <span className={styles.statusBadge} data-status={r.status}>{r.status}</span>
         </div>
         <div className={styles.compactDate}>{niceDate(r.created_at)}</div>
-        <button 
-          className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSmall}`} 
+        <button
+          className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSmall}`}
           onClick={() => onOpen(r)}
         >
           View
@@ -443,9 +463,9 @@ function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel }
   const b = editBuffer;
   return (
     <article
-      className={styles.downtimeCard} // Re-use the full card style for editing
+      className={styles.downtimeCard}
       data-status={b.status}
-      style={{ margin: '0.5rem 0', borderLeftWidth: '2px', animation: 'fadeIn 0.3s ease-out' }} // Use 0 margin on x-axis
+      style={{ margin: '0.5rem 0', borderLeftWidth: '2px', animation: 'fadeIn 0.3s ease-out' }}
     >
       <header className={styles.downtimeHeader} style={{ padding: '0.75rem 1rem' }}>
         <div className={styles.downtimeInfo}>
@@ -505,29 +525,44 @@ function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel }
               {STATUS.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </label>
+
           <div className={styles.labeledInput}>
             <span>Quick Actions</span>
             <div className={styles.row} style={{ gap: 8, flexWrap: 'wrap' }}>
               <button
                 className={`${styles.btn} ${styles.btnSuccess}`}
-                onClick={() => { onUpdate(r.id, 'status', 'approved'); onSave(r.id); }}
                 type="button"
+                onClick={() => onSave(r.id, { status: 'approved' })}
               >
-                Approve
+                Mark Approved
+              </button>
+              <button
+                className={`${styles.btn} ${styles.btnInfo}`} /* You may need to add btnInfo to your CSS */
+                type="button"
+                onClick={() => onSave(r.id, { status: 'Needs a Scene' })}
+              >
+                Needs Scene
               </button>
               <button
                 className={`${styles.btn} ${styles.btnDanger}`}
-                onClick={() => { onUpdate(r.id, 'status', 'rejected'); onSave(r.id); }}
                 type="button"
+                onClick={() => onSave(r.id, { status: 'rejected' })}
               >
                 Reject
               </button>
               <button
                 className={`${styles.btn} ${styles.btnPrimary}`}
-                onClick={() => { onUpdate(r.id, 'status', 'resolved'); onSave(r.id); }}
                 type="button"
+                onClick={() => onSave(r.id, { status: 'resolved' })}
               >
                 Resolve
+              </button>
+              <button
+                className={`${styles.btn} ${styles.btnPrimary}`} /* Assuming 'Resolve' and 'Resolved in scene' can share a style */
+                type="button"
+                onClick={() => onSave(r.id, { status: 'Resolved in scene' })}
+              >
+                Resolved in Scene
               </button>
             </div>
           </div>
