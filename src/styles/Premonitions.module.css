@@ -1,72 +1,454 @@
 /* src/styles/Premonitions.module.css */
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600&family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600&family=Inter:wght@400;500;600&family=Special+Elite&display=swap');
 
+/* --- The Constants of this Reality --- */
 :root {
-  --bg: #111214;
-  --surface: #17181b;
-  --surface-2: #1e1f24;
-  --border: #2c2e34;
-  --text: #e7e7ea;
-  --muted: #9aa0a6;
+  --bg: #0a0a0c;
+  --surface: #131115;
+  --surface-2: #161418;
+  --border: #332a38;
+  --text: #e2dce6;
+  --muted: #8a8092;
   --malkavian-purple: #713c8b;
-  --radius: 12px;
+  --malkavian-purple-glow: #9d54c4;
+  --malkavian-error: #ff4545;
+  --radius: 8px;
   --shadow: 0 8px 28px rgba(0,0,0,.55);
   --font-title: 'Cinzel', serif;
-  --font-body: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-vision: 'Special Elite', 'Times New Roman', serif;
 }
 
+/* --- The Canvas for the Madness --- */
 .page {
   color: var(--text);
-  background:
-    radial-gradient(120% 90% at 50% -10%, color-mix(in srgb, var(--malkavian-purple) 18%, transparent) 0%, transparent 60%),
-    linear-gradient(180deg, #0c0d0f, #121316);
-  min-height: 100%;
+  background: var(--bg);
+  min-height: 100vh;
   padding: clamp(16px, 3vw, 28px);
   font-family: var(--font-body);
+  max-width: 1000px;
+  margin: 0 auto;
+  overflow: hidden; /* Contain the madness */
+  position: relative;
+  
+  /* NEW: The entire page now glitches */
+  animation: page-glitch 5s cubic-bezier(.25,1,.5,1) infinite;
 }
 
+/* --- A static, fractured overlay --- */
+.page::before {
+  content: "";
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  background-image:
+    /* NEW: Added a scanline overlay */
+    linear-gradient(0deg, transparent 50%, rgba(255, 0, 100, 0.1) 51%, transparent 100%),
+    radial-gradient(ellipse at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0.3) 60%, rgba(0,0,0,0.8) 100%),
+    url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="1.2" numOctaves="4" stitchTiles="stitch"/></filter><rect width="100" height="100" filter="url(%23n)" opacity="0.15"/></svg>');
+  
+  /* NEW: Scanline animation */
+  background-size: 100% 4px, 100% 100%, auto;
+  animation: 
+    static-flicker 1.5s linear infinite,
+    scanlines 0.2s linear infinite;
+  z-index: 10;
+}
+
+/* --- The pulsing, breathing, CRAWLING, SHIFTING background --- */
+.page::after {
+  content: "";
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  
+  background-image:
+    url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg stroke='%23713c8b' stroke-width='1' stroke-opacity='0.2'%3E%3Cpath d='M40 0v80M0 40h80M20 20l40 40M20 60L60 20M20 0l40 40M0 20l40 40M0 60l40-40M20 80l40-40'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"),
+    radial-gradient(120% 90% at 50% -10%, color-mix(in srgb, var(--malkavian-purple) 18%, transparent) 0%, transparent 60%),
+    radial-gradient(circle at 10% 10%, color-mix(in srgb, var(--malkavian-purple-glow) 10%, transparent) 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, color-mix(in srgb, var(--malkavian-purple) 15%, transparent) 0%, transparent 50%);
+  
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat;
+  background-size: 80px 80px, auto, auto, auto;
+  
+  /* Set static positions for gradients */
+  background-position: 0 0, 50% -10%, 10% 10%, 90% 80%;
+
+  /* REMOVED 'gradient-breathe' from the animation list */
+  animation: 
+    background-opacity 15s ease-in-out infinite, 
+    symbol-crawl 10s linear infinite,
+    color-madness 20s linear infinite; 
+  z-index: -1;
+}
+
+/* --- Sanity (for Admins) --- */
+.adminPage {
+  color: var(--text);
+  background: var(--bg);
+  padding: clamp(16px, 3vw, 28px);
+  font-family: var(--font-body);
+  max-width: 1000px;
+  margin: 0 auto;
+}
+.checkboxGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+.checkboxLabel:hover {
+  background: var(--surface-2);
+}
+.checkboxLabel.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+
+/* --- Player View --- */
 .header {
   margin: 0 auto clamp(18px, 2.6vw, 26px);
   max-width: 980px;
   text-align: center;
+  position: relative;
+  z-index: 2;
+  animation: text-reveal 1s ease-out;
 }
 .title {
   font-family: var(--font-title);
-  font-size: clamp(24px, 4vw, 36px);
+  font-size: clamp(28px, 4.5vw, 42px);
   margin: 0 0 4px 0;
-  color: color-mix(in srgb, var(--malkavian-purple) 85%, #fff 15%);
-  text-shadow: 0 0 14px color-mix(in srgb, var(--malkavian-purple) 45%, transparent);
+  color: color-mix(in srgb, var(--malkavian-purple-glow) 85%, #fff 15%);
+  text-shadow:
+    0 0 14px color-mix(in srgb, var(--malkavian-purple-glow) 70%, transparent),
+    0 0 4px #fff;
+  letter-spacing: 0.1em;
 }
-.subtitle { color: var(--muted); margin: 0; }
+.subtitle {
+  color: var(--muted);
+  margin: 0 0 16px 0;
+  font-family: var(--font-vision);
+  font-size: 1.1rem;
+  animation: glitch-sub 8s 2s linear infinite;
+}
 
-.card {
-  max-width: 980px;
-  margin: 0 auto clamp(18px, 2.6vw, 28px);
-  background: linear-gradient(180deg, var(--surface-2), #141519);
+.refreshButton {
+  font-family: var(--font-title);
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.refreshButton:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--text);
+  border-color: var(--malkavian-purple);
+  box-shadow: 0 0 10px var(--malkavian-purple);
+}
+.refreshButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.errorBox, .loadingBox {
+  position: relative;
+  z-index: 2;
+  padding: 12px;
+  border: 1px dashed var(--border);
+  background: var(--surface-2);
+  border-radius: 8px;
+  margin-bottom: 12px;
+  text-align: center;
+  font-family: var(--font-vision);
+}
+.errorBox {
+  border-color: var(--malkavian-error);
+  color: var(--malkavian-error);
+  background: color-mix(in srgb, var(--malkavian-error) 10%, var(--surface));
+  text-shadow: 0 0 5px var(--malkavian-error);
+}
+
+.visionGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  position: relative;
+  z-index: 2;
+  perspective: 1500px;
+}
+
+.visionCard {
+  background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: clamp(14px, 2vw, 20px);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+  animation: text-reveal 0.5s ease-out backwards;
+  /* Stagger the appearance */
+  animation-delay: calc(var(--n, 0) * 50ms);
+}
+/* Staggering and slight, maddening tilt */
+.visionGrid > *:nth-child(1) { --n: 1; transform: rotate(0.5deg); }
+.visionGrid > *:nth-child(2) { --n: 2; transform: rotate(-0.8deg); }
+.visionGrid > *:nth-child(3) { --n: 3; transform: rotate(0.2deg); }
+.visionGrid > *:nth-child(4) { --n: 4; transform: rotate(-0.4deg); }
+.visionGrid > *:nth-child(5) { --n: 5; transform: rotate(0.7deg); }
+.visionGrid > *:nth-child(6) { --n: 6; transform: rotate(-1deg); }
+
+.visionCard:hover {
+  transform: scale(1.05) rotate(0deg) !important;
+  box-shadow: 0 0 25px var(--malkavian-purple), 0 0 10px var(--malkavian-purple-glow);
+  border-color: var(--malkavian-purple-glow);
+  z-index: 10;
 }
 
-.cardTitle {
-  font-family: var(--font-title);
-  font-weight: 600;
-  font-size: 1.25rem;
-  color: var(--malkavian-purple);
-  margin: 0 0 1rem 0;
+.visionHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
   border-bottom: 1px solid var(--border);
-  padding-bottom: 0.5rem;
+}
+.visionTag {
+  font-family: var(--font-title);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  padding: 3px 6px;
+  border-radius: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--malkavian-purple-glow);
+  text-shadow: 0 0 4px var(--malkavian-purple);
+}
+.visionTime {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--muted);
+  font-family: monospace;
 }
 
-.whisper {
-  font-family: 'Times New Roman', Times, serif;
+.visionBody {
+  padding: 1rem;
+}
+.visionText {
+  white-space: pre-wrap;
+  font-family: var(--font-vision);
   font-style: italic;
   font-size: 1.1rem;
   color: var(--muted);
   border-left: 3px solid var(--malkavian-purple);
   padding-left: 1rem;
-  margin-bottom: 1rem;
-  opacity: 0.8;
+  margin: 0;
+  text-shadow: 0 0 8px color-mix(in srgb, var(--malkavian-purple) 30%, transparent);
+}
+.visionText p {
+  margin: 0 0 0.5rem 0;
+  line-height: 1.6;
+}
+
+.mediaContainer {
+  display: grid;
+  place-items: center;
+  background: #000;
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+  min-height: 180px;
+  position: relative; /* <<<<<<<< LOOK HERE */
+
+  /* The container now does the REVEAL */
+  opacity: 0;
+  animation: container-reveal 0.8s 0.1s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+/* * NEW: The "BURNED" effect
+ * It's an overlay that pulses, like a hot ember
+ */
+.mediaContainer::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  /* Start the burn... */
+  animation: burn-pulse 5s ease-in-out infinite;
+}
+
+/* The great reveal! (NOW on the content) */
+.mediaContent {
+  width: 100%;
+  height: auto;
+  display: block;
+  background: #000;
+  
+  /* * NEW: The "MADNESS" effect
+   * Constant, subtle shaking and filter corruption
+   */
+  animation: 
+    filter-madness 8s ease-in-out infinite, /* Sped up */
+    violent-shake 0.2s linear infinite; /* Not subtle anymore */
+}
+
+.mediaLoading, .mediaError {
+  padding: 12px;
+  font-size: 13px;
+  font-family: var(--font-vision);
+}
+.mediaLoading {
+  color: var(--malkavian-purple-glow);
+  text-shadow: 0 0 8px var(--malkavian-purple-glow);
+  animation: pulse-text 1.5s infinite;
+}
+.mediaError {
+  color: var(--malkavian-error);
+  text-shadow: 0 0 5px var(--malkavian-error);
+}
+
+.externalLink {
+  font-family: var(--font-vision);
+  font-size: 13px;
+  color: var(--malkavian-purple-glow);
+  text-decoration: none;
+  border-bottom: 1px dashed var(--malkavian-purple);
+  transition: all 0.2s;
+}
+.externalLink:hover {
+  color: var(--text);
+  border-bottom-color: var(--text);
+  text-shadow: 0 0 8px var(--malkavian-purple-glow);
+}
+
+/* --- The Animations of the Web --- */
+
+/* NEW: More violent static */
+@keyframes static-flicker {
+  0%   { opacity: 0.1; }
+  2%   { opacity: 0.3; }
+  4%   { opacity: 0.05; }
+  5%   { opacity: 0.2; }
+  10%  { opacity: 0.4; }
+  12%  { opacity: 0.1; }
+  14%  { opacity: 0.05; }
+  15%  { opacity: 0.3; }
+  40%  { opacity: 0.1; }
+  50%  { opacity: 0.5; }
+  52%  { opacity: 0.1; }
+  54%  { opacity: 0.3; }
+  70%  { opacity: 0.1; }
+  80%  { opacity: 0.4; }
+  82%  { opacity: 0.05; }
+  83%  { opacity: 0.2; }
+  100% { opacity: 0.1; }
+}
+
+/* NEW: Scanline movement */
+@keyframes scanlines {
+  from { background-position: 0 0, 0 0, 0 0; }
+  to   { background-position: 0 4px, 0 0, 0 0; }
+}
+
+/* NEW: Animation for the opacity */
+@keyframes background-opacity {
+  0%   { opacity: 0.3; }
+  25%  { opacity: 0.6; }
+  50%  { opacity: 0.4; }
+  75%  { opacity: 0.7; }
+  100% { opacity: 0.3; }
+}
+
+/* NEW: Animation to scroll the symbols (layer 0) */
+@keyframes symbol-crawl {
+  from { background-position: 0 0, 50% -10%, 10% 10%, 90% 80%; }
+  to   { background-position: 160px 320px, 50% -10%, 10% 10%, 90% 80%; }
+}
+
+/* REMOVED @keyframes gradient-breathe */
+
+/*
+ * NEW: The hue-rotate for trippy colors
+ * This animates the 'filter' property on the ::after
+ */
+@keyframes color-madness {
+  0%   { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+
+@keyframes text-reveal {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* NEW: The container's reveal (simpler) */
+@keyframes container-reveal {
+  from {
+    opacity: 0;
+    clip-path: inset(45% 45% 45% 45%);
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0% 0% 0% 0%);
+    transform: scale(1);
+  }
+}
+
+/* NEW: The filter corruption */
+@keyframes filter-madness {
+  0%   { filter: brightness(1) contrast(1) saturate(1) blur(0.1px); }
+  20%  { filter: brightness(1.2) contrast(1.5) saturate(0.8) blur(0.2px) sepia(0.2); }
+  40%  { filter: brightness(0.9) contrast(1) saturate(1.2) blur(0.1px); }
+  60%  { filter: brightness(1.1) contrast(1.8) saturate(1.1) blur(0.3px) hue-rotate(10deg); }
+  80%  { filter: brightness(1) contrast(1.2) saturate(0.9) blur(0.1px); }
+  100% { filter: brightness(1) contrast(1) saturate(1) blur(0.1px); }
+}
+
+/* NEW: The VIOLENT shake */
+@keyframes violent-shake {
+  0%   { transform: translate(1px, 1px) rotate(0.2deg); }
+  25%  { transform: translate(-2px, -1px) rotate(-0.3deg); }
+  50%  { transform: translate(2px, 2px) rotate(0.1deg); }
+  75%  { transform: translate(-1px, 2px) rotate(0.2deg); }
+  100% { transform: translate(1px, -1px) rotate(-0.1deg); }
+}
+
+/* NEW: The burn */
+@keyframes burn-pulse {
+  0%   { box-shadow: inset 0 0 15px 8px rgba(0,0,0,0.7), inset 0 0 5px 2px color-mix(in srgb, var(--malkavian-error) 20%, #000 50%); }
+  50%  { box-shadow: inset 0 0 25px 15px rgba(0,0,0,0.9), inset 0 0 10px 4px color-mix(in srgb, var(--malkavian-error) 40%, #000 50%); }
+  100% { box-shadow: inset 0 0 15px 8px rgba(0,0,0,0.7), inset 0 0 5px 2px color-mix(in srgb, var(--malkavian-error) 20%, #000 50%); }
+}
+
+@keyframes pulse-text {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+@keyframes glitch-sub {
+  2% { content: 'Listen to the static...'; transform: translate(-2px, 1px); }
+  4% { content: 'Listen to the static...'; transform: translate(2px, -1px); }
+  6% { content: 'Listen to the... static...'; transform: translate(1px, -2px); }
+  8% { content: 'Listen to the static...'; transform: translate(-1px, 2px); }
+  10%, 100% { content: 'Listen to the static...'; transform: translate(0, 0); }
 }
 

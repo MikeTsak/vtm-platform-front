@@ -2,7 +2,7 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link, Navigate, NavLink, useLocation } from 'react-router-dom';
 import AuthProvider, { AuthCtx } from './AuthContext';
-import api from './api'; // Import api
+import api from './api';
 import Login from './pages/user/Login';
 import Register from './pages/user/Register';
 import Home from './pages/Home';
@@ -19,12 +19,12 @@ import Terms from './pages/Terms';
 import Legal from './pages/Legal';
 import Privacy from './pages/Privacy';
 import NPCs from './pages/NPCs';
-import AdminNPCView from './components/AdminNPCView.jsx'; 
+import AdminNPCView from './components/AdminNPCView.jsx';
 import ForgotPassword from './pages/user/ForgotPassword';
 import ResetPassword from './pages/user/ResetPassword';
 import Boons from './pages/Boons';
 import Coteries from './pages/Coteries';
-import Premonitions from './pages/Premonitions'; // Import the new page
+import Premonitions from './pages/Premonitions';
 
 function Private({ children }) {
   const { user } = useContext(AuthCtx);
@@ -39,7 +39,7 @@ function AdminOnly({ children }) {
   return children;
 }
 
-// --- NEW: Wrapper for Malkavians or Admins ---
+// Wrapper for Malkavians or Admins
 function MalkavianOrAdminOnly({ children }) {
   const { user } = useContext(AuthCtx);
   const [isAuthorized, setIsAuthorized] = useState(false);
@@ -47,65 +47,44 @@ function MalkavianOrAdminOnly({ children }) {
   const location = useLocation();
 
   useEffect(() => {
-    // Reset authorization state on user or location change
     setIsLoading(true);
     setIsAuthorized(false);
+    if (!user) { setIsLoading(false); return; }
 
-    if (!user) {
-      setIsLoading(false);
-      return; // Not logged in, will be caught by redirect
-    }
-
-    // 1. Admins are always authorized
-    if (user.role === 'admin') {
+    if (user.role === 'admin') { // admins always allowed
       setIsAuthorized(true);
       setIsLoading(false);
       return;
     }
 
-    // 2. Check character clan for non-admins
-    let isMounted = true;
+    let live = true;
     api.get('/characters/me')
       .then(({ data }) => {
-        if (!isMounted) return;
-        if (data.character && data.character.clan === 'Malkavian') {
-          setIsAuthorized(true);
-        }
+        if (!live) return;
+        const clan = data?.character?.clan;
+        setIsAuthorized(clan === 'Malkavian');
       })
-      .catch((err) => {
-        console.error("Failed to check character clan", err);
-        // Silently fail to false
-      })
-      .finally(() => {
-        if (isMounted) setIsLoading(false);
-      });
-    
-    return () => { isMounted = false; };
-
-  }, [user, location.pathname]); // Re-check if user changes or if we navigate here
+      .catch(() => { /* deny by default */ })
+      .finally(() => live && setIsLoading(false));
+    return () => { live = false; };
+  }, [user, location.pathname]);
 
   if (isLoading) {
     return <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--muted)' }}>Checking access...</div>;
   }
-
-  if (!isAuthorized) {
-    // Not an admin, not a Malkavian, or check failed
-    return <Navigate to="/" replace />;
-  }
-  
-  // Authorized!
+  if (!isAuthorized) return <Navigate to="/" replace />;
   return children;
 }
-
 
 function Nav() {
   const { user, logout } = useContext(AuthCtx);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [canSeePremonitions, setCanSeePremonitions] = useState(false);
+  const [checkingPremo, setCheckingPremo] = useState(false);
   const location = useLocation();
 
   const toggleMenu = () => setIsMenuOpen(v => !v);
   const closeMenu = () => setIsMenuOpen(false);
-
   useEffect(() => { closeMenu(); }, [location.pathname]);
 
   useEffect(() => {
@@ -113,6 +92,34 @@ function Nav() {
     else document.documentElement.style.overflow = '';
     return () => { document.documentElement.style.overflow = ''; };
   }, [isMenuOpen]);
+
+  // ✅ Detect if user is admin OR has a Malkavian character, to show the Premonitions link
+  useEffect(() => {
+    let live = true;
+    setCheckingPremo(true);
+    setCanSeePremonitions(false);
+
+    if (!user) {
+      setCheckingPremo(false);
+      return;
+    }
+    if (user.role === 'admin') {
+      setCanSeePremonitions(true);
+      setCheckingPremo(false);
+      return;
+    }
+
+    api.get('/characters/me')
+      .then(({ data }) => {
+        if (!live) return;
+        const clan = data?.character?.clan;
+        setCanSeePremonitions(clan === 'Malkavian');
+      })
+      .catch(() => { /* ignore; default false */ })
+      .finally(() => { if (live) setCheckingPremo(false); });
+
+    return () => { live = false; };
+  }, [user]);
 
   const getNavLinkClass = ({ isActive }) =>
     `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`;
@@ -147,10 +154,13 @@ function Nav() {
             <NavLink to="/boons" className={getNavLinkClass}>Boons</NavLink>
             <NavLink to="/coteries" className={getNavLinkClass}>Coteries</NavLink>
             <NavLink to="/comms" className={getNavLinkClass}>Comms</NavLink>
-            {/* Note: We don't add Premonitions here because this Nav component
-              doesn't know the character's clan, only the user's role.
-              The link is correctly placed on the Home page.
-            */}
+
+            {/* 🔮 Premonitions link: only for Admins or Malkavian players */}
+            {canSeePremonitions && (
+              <NavLink to="/premonitions" className={getNavLinkClass} title="Premonitions">
+                Premonitions
+              </NavLink>
+            )}
           </>
         )}
         {user?.role === 'admin' && (
@@ -195,7 +205,7 @@ export default function App() {
               <Route path="/admin" element={<AdminOnly><Admin/></AdminOnly>} />
               <Route path="/admin/npcs" element={<AdminOnly><NPCs/></AdminOnly>} />
               <Route path="/forgot" element={<ForgotPassword />} />
-              <Route path="/reset" element={<ResetPassword />} /> 
+              <Route path="/reset" element={<ResetPassword />} />
               <Route path="/admin/npcs/:id" element={<AdminOnly><AdminNPCView/></AdminOnly>} />
               <Route path="/login" element={<Login/>} />
               <Route path="/register" element={<Register/>} />
@@ -203,11 +213,9 @@ export default function App() {
               <Route path="/legal" element={<Legal />} />
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/coteries" element={<Private><Coteries/></Private>} />
-
-              {/* --- NEW PREMONITIONS ROUTE --- */}
-              <Route 
-                path="/premonitions" 
-                element={<MalkavianOrAdminOnly><Premonitions/></MalkavianOrAdminOnly>} 
+              <Route
+                path="/premonitions"
+                element={<MalkavianOrAdminOnly><Premonitions/></MalkavianOrAdminOnly>}
               />
             </Routes>
           </div>
@@ -218,4 +226,3 @@ export default function App() {
     </AuthProvider>
   );
 }
-
