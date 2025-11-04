@@ -1,14 +1,43 @@
 // src/pages/AdminPremonitionsTab.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
-/** API base: dev defaults to :3001 unless REACT_APP_API_BASE is set */
-const devDefault = window.location.port === "3000" ? "http://localhost:3001" : "";
-const API_BASE = (process.env.REACT_APP_API_BASE || devDefault).replace(/\/$/, "");
+/**
+ * API base:
+ * - prefer Vite envs
+ * - then CRA envs
+ * - then dev fallback
+ */
+const DEV_FALLBACK = (typeof window !== "undefined" && window.location.port === "3000")
+  ? "http://localhost:3001"
+  : "";
+
+const RAW_BASE =
+  (typeof import.meta !== "undefined" &&
+    import.meta.env &&
+    (import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_URL)) ||
+  process.env.REACT_APP_API_BASE ||
+  process.env.REACT_APP_API_URL ||
+  DEV_FALLBACK;
+
+// normalize (remove trailing slashes)
+const API_BASE = RAW_BASE ? RAW_BASE.replace(/\/+$/, "") : "";
 const AUTH_TOKEN_KEY = "token";
 
+// join helper that avoids /api/api/...
+function apiJoin(path) {
+  if (!API_BASE) return path; // relative fetch
+  if (API_BASE.endsWith("/api") && path.startsWith("/api/")) {
+    return `${API_BASE}${path.slice(4)}`; // cut the second /api
+  }
+  return `${API_BASE}${path}`;
+}
+
 export default function AdminPremonitionsTab() {
-  const token = useMemo(() => localStorage.getItem(AUTH_TOKEN_KEY) || "", []);
-  const headersObj = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
+  const token = useMemo(() => (typeof window !== "undefined" ? localStorage.getItem(AUTH_TOKEN_KEY) || "" : ""), []);
+  const headersObj = useMemo(
+    () => (token ? { Authorization: `Bearer ${token}` } : {}),
+    [token]
+  );
 
   const [list, setList] = useState([]);         // Malkavians
   const [loading, setLoading] = useState(false);
@@ -37,7 +66,7 @@ export default function AdminPremonitionsTab() {
     (async () => {
       setLoading(true); setErr("");
       try {
-        const r = await fetch(`${API_BASE}/api/admin/premonitions/malkavians`, { headers: headersObj });
+        const r = await fetch(apiJoin("/api/admin/premonitions/malkavians"), { headers: headersObj });
         const j = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(j?.error || `HTTP ${r.status}`);
         setList(Array.isArray(j.malkavians) ? j.malkavians : []);
@@ -91,8 +120,8 @@ export default function AdminPremonitionsTab() {
 
     const xhr = new XMLHttpRequest();
     xhrRef.current = xhr;
-    xhr.open("POST", `${API_BASE}/api/admin/premonitions/upload`, true);
-    xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    xhr.open("POST", apiJoin("/api/admin/premonitions/upload"), true);
+    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
 
     startedAtRef.current = performance.now();
     setIsUploading(true);
@@ -107,7 +136,7 @@ export default function AdminPremonitionsTab() {
         const p = total > 0 ? Math.round((loaded / total) * 100) : 0;
         setPct(p);
 
-        // speed & ETA (basic)
+        // speed & ETA
         const dt = (performance.now() - startedAtRef.current) / 1000; // s
         if (dt > 0) {
           const bps = loaded / dt;
@@ -162,8 +191,8 @@ export default function AdminPremonitionsTab() {
       const user_ids = allMalks ? ["all_malkavians"] : Array.from(selected);
       if (!user_ids.length) throw new Error("Select recipients or use 'All Malkavians'.");
 
-      // 3) Send the premonition (quick call; no upload here)
-      const r = await fetch(`${API_BASE}/api/admin/premonitions/send`, {
+      // 3) Send the premonition
+      const r = await fetch(apiJoin("/api/admin/premonitions/send"), {
         method: "POST",
         headers: { ...headersObj, "Content-Type": "application/json" },
         body: JSON.stringify({ content_type, content_text, content_url, user_ids }),
