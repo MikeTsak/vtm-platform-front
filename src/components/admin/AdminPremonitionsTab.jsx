@@ -1,5 +1,7 @@
 // src/pages/AdminPremonitionsTab.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
+// CHANGED: Import the CSS module
+import s from "../../styles/AdminPremonitionsTab.module.css";
 
 /**
  * API base:
@@ -33,17 +35,22 @@ function apiJoin(path) {
 }
 
 export default function AdminPremonitionsTab() {
-  const token = useMemo(() => (typeof window !== "undefined" ? localStorage.getItem(AUTH_TOKEN_KEY) || "" : ""), []);
+  const token = useMemo(
+    () => (typeof window !== "undefined" ? localStorage.getItem(AUTH_TOKEN_KEY) || "" : ""),
+    []
+  );
   const headersObj = useMemo(
     () => (token ? { Authorization: `Bearer ${token}` } : {}),
     [token]
   );
 
-  const [list, setList] = useState([]);         // Malkavians
+  // LEFT: Malkavians list / recipients
+  const [list, setList] = useState([]); // Malkavians
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
-  const [mode, setMode] = useState("text");     // 'text' | 'image' | 'video'
+  // Compose mode & payload
+  const [mode, setMode] = useState("text"); // 'text' | 'image' | 'video'
   const [text, setText] = useState("");
   const [file, setFile] = useState(null);
 
@@ -62,9 +69,26 @@ export default function AdminPremonitionsTab() {
 
   const fileInputRef = useRef();
 
+  // NEW: Admin History state
+  const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyErr, setHistoryErr] = useState("");
+
+  // NEW: secure object URL cache for media preview/open
+  const objectUrlCache = useRef(new Map());
+  const createdUrls = useRef([]);
+  useEffect(() => {
+    return () => {
+      // revoke created object URLs on unmount
+      createdUrls.current.forEach((u) => URL.revokeObjectURL(u));
+    };
+  }, []);
+
+  // Load Malkavians
   useEffect(() => {
     (async () => {
-      setLoading(true); setErr("");
+      setLoading(true);
+      setErr("");
       try {
         const r = await fetch(apiJoin("/api/admin/premonitions/malkavians"), { headers: headersObj });
         const j = await r.json().catch(() => ({}));
@@ -78,10 +102,32 @@ export default function AdminPremonitionsTab() {
     })();
   }, [headersObj]);
 
+  // NEW: Load Admin History
+  const fetchHistory = async () => {
+    setHistoryLoading(true);
+    setHistoryErr("");
+    try {
+      const r = await fetch(apiJoin("/api/admin/premonitions"), { headers: headersObj });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+      setHistory(Array.isArray(j.premonitions) ? j.premonitions : []);
+    } catch (e) {
+      setHistoryErr(e.message || "Failed to load history");
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHistory();
+  }, [headersObj]);
+
+  // Helpers
   const toggleOne = (id) => {
-    setSelected(prev => {
+    setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
@@ -93,7 +139,6 @@ export default function AdminPremonitionsTab() {
     setSelected(new Set());
     setAllMalks(false);
     resetProgress();
-    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const resetProgress = () => {
@@ -108,75 +153,84 @@ export default function AdminPremonitionsTab() {
   };
 
   const abortUpload = () => {
-    try { xhrRef.current?.abort(); } catch {}
+    try {
+      xhrRef.current?.abort();
+    } catch {}
     resetProgress();
     setErr("Upload cancelled");
   };
 
   // Upload with progress using XHR (fetch doesn't support upload progress)
-  const uploadWithProgress = (file) => new Promise((resolve, reject) => {
-    const fd = new FormData();
-    fd.append("file", file);
+  const uploadWithProgress = (file) =>
+    new Promise((resolve, reject) => {
+      const fd = new FormData();
+      fd.append("file", file);
 
-    const xhr = new XMLHttpRequest();
-    xhrRef.current = xhr;
-    xhr.open("POST", apiJoin("/api/admin/premonitions/upload"), true);
-    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+      const xhr = new XMLHttpRequest();
+      xhrRef.current = xhr;
+      xhr.open("POST", apiJoin("/api/admin/premonitions/upload"), true);
+      if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
 
-    startedAtRef.current = performance.now();
-    setIsUploading(true);
-    setErr("");
+      startedAtRef.current = performance.now();
+      setIsUploading(true);
+      setErr("");
 
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable) {
-        const loaded = e.loaded;
-        const total = e.total || file.size || 0;
-        setSentBytes(loaded);
-        setTotalBytes(total);
-        const p = total > 0 ? Math.round((loaded / total) * 100) : 0;
-        setPct(p);
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const loaded = e.loaded;
+          const total = e.total || file.size || 0;
+          setSentBytes(loaded);
+          setTotalBytes(total);
+          const p = total > 0 ? Math.round((loaded / total) * 100) : 0;
+          setPct(p);
 
-        // speed & ETA
-        const dt = (performance.now() - startedAtRef.current) / 1000; // s
-        if (dt > 0) {
-          const bps = loaded / dt;
-          setSpeedBps(bps);
-          const remain = Math.max(0, total - loaded);
-          setEtaSec(bps > 0 ? Math.round(remain / bps) : null);
+          // speed & ETA
+          const dt = (performance.now() - startedAtRef.current) / 1000; // s
+          if (dt > 0) {
+            const bps = loaded / dt;
+            setSpeedBps(bps);
+            const remain = Math.max(0, total - loaded);
+            setEtaSec(bps > 0 ? Math.round(remain / bps) : null);
+          }
         }
-      }
-    };
+      };
 
-    xhr.onreadystatechange = () => {
-      if (xhr.readyState !== 4) return;
-      setIsUploading(false);
-      try {
-        const body = xhr.responseText || "{}";
-        const j = JSON.parse(body);
-        if (xhr.status >= 200 && xhr.status < 300) {
-          resolve(j); // { media_id, media_mime, media_stream_url }
-        } else {
-          reject(new Error(j?.error || `Upload failed (HTTP ${xhr.status})`));
+      xhr.onreadystatechange = () => {
+        if (xhr.readyState !== 4) return;
+        setIsUploading(false);
+        try {
+          const body = xhr.responseText || "{}";
+          const j = JSON.parse(body);
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve(j); // { media_id, media_mime, media_stream_url }
+          } else {
+            reject(new Error(j?.error || `Upload failed (HTTP ${xhr.status})`));
+          }
+        } catch {
+          reject(new Error("Upload failed: invalid JSON response"));
         }
-      } catch {
-        reject(new Error("Upload failed: invalid JSON response"));
-      }
-    };
+      };
 
-    xhr.onerror = () => { setIsUploading(false); reject(new Error("Network error during upload")); };
-    xhr.onabort  = () => { setIsUploading(false); reject(new Error("Upload aborted")); };
+      xhr.onerror = () => {
+        setIsUploading(false);
+        reject(new Error("Network error during upload"));
+      };
+      xhr.onabort = () => {
+        setIsUploading(false);
+        reject(new Error("Upload aborted"));
+      };
 
-    xhr.send(fd);
-  });
+      xhr.send(fd);
+    });
 
   const doSend = async () => {
     try {
       setErr("");
 
       // 1) Resolve content (either text OR upload to get a stream URL)
-      let content_type = mode;           // 'text' | 'image' | 'video'
+      let content_type = mode; // 'text' | 'image' | 'video'
       let content_text = null;
-      let content_url  = null;
+      let content_url = null;
 
       if (mode === "text") {
         if (!text.trim()) throw new Error("Write something first.");
@@ -184,7 +238,7 @@ export default function AdminPremonitionsTab() {
       } else {
         if (!file) throw new Error("Choose a file first.");
         const up = await uploadWithProgress(file); // progress shown
-        content_url = up.media_stream_url;         // e.g. /api/premonitions/media/123
+        content_url = up.media_stream_url; // e.g. /api/premonitions/media/123
       }
 
       // 2) Who receives?
@@ -202,43 +256,68 @@ export default function AdminPremonitionsTab() {
 
       alert(`✅ Sent! (${j.count} recipients)`);
       clear();
+      // NEW: refresh history so the new item appears
+      fetchHistory();
     } catch (e) {
       setErr(e.message || "Send failed");
     }
   };
 
+  // NEW: open protected media with bearer auth
+  async function openMediaWithAuth(url) {
+    try {
+      const abs = apiJoin(url);
+      if (objectUrlCache.current.has(abs)) {
+        window.open(objectUrlCache.current.get(abs), "_blank", "noopener");
+        return;
+      }
+      const r = await fetch(abs, { headers: headersObj });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const blob = await r.blob();
+      const obj = URL.createObjectURL(blob);
+      objectUrlCache.current.set(abs, obj);
+      createdUrls.current.push(obj);
+      window.open(obj, "_blank", "noopener");
+    } catch (e) {
+      alert(`Unable to open media: ${e.message}`);
+    }
+  }
+
   const prettyBytes = (n) => {
     if (!Number.isFinite(n)) return "0 B";
-    const u = ["B","KB","MB","GB","TB"];
+    const u = ["B", "KB", "MB", "GB", "TB"];
     let i = 0;
-    while (n >= 1024 && i < u.length-1) { n /= 1024; i++; }
+    while (n >= 1024 && i < u.length - 1) {
+      n /= 1024;
+      i++;
+    }
     return `${n.toFixed(n >= 10 || i === 0 ? 0 : 1)} ${u[i]}`;
   };
 
+  // CHANGED: Replaced all `style` attributes with `className`
   return (
-    <section style={{ display: "grid", gridTemplateColumns: "320px 1fr", gap: 16 }}>
+    <section className={s.adminGrid}>
       {/* Left: recipients */}
-      <div style={{ border: "1px solid #2a2a2f", borderRadius: 12, padding: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+      <div className={`${s.panel} ${s.recipientsPanel}`}>
+        <div className={s.recipientsHeader}>
           <strong>Recipients</strong>
-          <label style={{ marginLeft: "auto", fontSize: 13 }}>
+          <label className={s.allMalksLabel}>
             <input
               type="checkbox"
               checked={allMalks}
               onChange={(e) => setAllMalks(e.target.checked)}
-              style={{ marginRight: 6 }}
             />
             All Malkavians
           </label>
         </div>
 
-        {loading && <div style={{ color: "#bbb" }}>Loading…</div>}
-        {err && <div style={{ color: "#f88", marginBottom: 10 }}>⚠️ {err}</div>}
+        {loading && <div className={s.loading}>Loading…</div>}
+        {err && <div className={s.error}>⚠️ {err}</div>}
 
         {!loading && !err && (
-          <ul style={{ listStyle: "none", padding: 0, margin: 0, maxHeight: 420, overflow: "auto" }}>
-            {list.map(u => (
-              <li key={u.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 4px" }}>
+          <ul className={s.recipientsList}>
+            {list.map((u) => (
+              <li key={u.id} className={s.recipientItem}>
                 <input
                   type="checkbox"
                   disabled={allMalks}
@@ -246,8 +325,10 @@ export default function AdminPremonitionsTab() {
                   onChange={() => toggleOne(u.id)}
                 />
                 <div>
-                  <div style={{ fontWeight: 600 }}>{u.display_name}</div>
-                  <div style={{ fontSize: 12, color: "#aab" }}>{u.char_name || "(no character)"}</div>
+                  <div className={s.recipientName}>{u.display_name}</div>
+                  <div className={s.recipientChar}>
+                    {u.char_name || "(no character)"}
+                  </div>
                 </div>
               </li>
             ))}
@@ -255,103 +336,197 @@ export default function AdminPremonitionsTab() {
         )}
       </div>
 
-      {/* Right: composer */}
-      <div style={{ border: "1px solid #2a2a2f", borderRadius: 12, padding: 12 }}>
-        <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-          <button onClick={() => setMode("text")}  style={btn(mode === "text")}  type="button">✍️ Text</button>
-          <button onClick={() => setMode("image")} style={btn(mode === "image")} type="button">🖼️ Image</button>
-          <button onClick={() => setMode("video")} style={btn(mode === "video")} type="button">🎞️ Video</button>
-
-          <button onClick={doSend} style={{ marginLeft: "auto", ...btnPrimary, opacity: isUploading ? 0.6 : 1 }} type="button" disabled={isUploading}>
-            {isUploading ? "Uploading…" : "Send"}
+      {/* Right: composer + NEW: history */}
+      <div className={`${s.panel} ${s.composerPanel}`}>
+        {/* Mode switch */}
+        <div className={s.modeSwitch}>
+          <button
+            type="button"
+            onClick={() => setMode("text")}
+            className={`${s.btn} ${mode === "text" ? s.active : ""}`}
+          >
+            Text
           </button>
+          <button
+            type="button"
+            onClick={() => setMode("image")}
+            className={`${s.btn} ${mode === "image" ? s.active : ""}`}
+          >
+            Image
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("video")}
+            className={`${s.btn} ${mode === "video" ? s.active : ""}`}
+          >
+            Video
+          </button>
+          <div className={s.sendClearButtons}>
+            <button
+              type="button"
+              onClick={doSend}
+              className={`${s.btn} ${s.btnPrimary}`}
+              disabled={isUploading}
+            >
+              Send
+            </button>
+            <button
+              type="button"
+              onClick={clear}
+              className={`${s.btn} ${s.btnSecondary}`}
+              disabled={isUploading}
+            >
+              Clear
+            </button>
+          </div>
         </div>
 
-        {mode === "text" && (
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Write the premonition text…"
-            rows={12}
-            style={{
-              width: "100%",
-              resize: "vertical",
-              borderRadius: 10,
-              border: "1px solid #333",
-              background: "#0f0f12",
-              color: "#eee",
-              padding: 10,
-              lineHeight: 1.4
-            }}
-          />
-        )}
-
-        {(mode === "image" || mode === "video") && (
-          <div style={{ display: "grid", gap: 8 }}>
+        {/* Content inputs */}
+        {mode === "text" ? (
+          <div className={s.composerInputArea}>
+            <textarea
+              rows={6}
+              className={s.textarea}
+              placeholder="Write the premonition text…"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+            />
+          </div>
+        ) : (
+          <div className={s.composerInputArea}>
             <input
               ref={fileInputRef}
               type="file"
-              accept={mode === "image" ? "image/*" : "video/*"}
+              accept={mode === "image" ? "image/*" : mode === "video" ? "video/*" : "*/*"}
               onChange={(e) => setFile(e.target.files?.[0] || null)}
-              disabled={isUploading}
             />
             {file && (
-              <div style={{ fontSize: 13, color: "#aab" }}>
-                Selected: <strong>{file.name}</strong> ({file.type || "unknown"}, {prettyBytes(file.size)})
+              <div className={s.fileInputInfo}>
+                Selected: <strong>{file.name}</strong> ({file.type || "unknown"},{" "}
+                {prettyBytes(file.size)})
               </div>
             )}
 
             {/* Progress UI */}
             {isUploading && (
-              <div aria-live="polite" style={{ display: "grid", gap: 6 }}>
-                <div style={{ height: 10, background: "#0f0f12", border: "1px solid #333", borderRadius: 8, overflow: "hidden" }}>
+              <div aria-live="polite" className={s.progressArea}>
+                <div className={s.progressBar}>
                   <div
-                    style={{
-                      width: `${pct}%`,
-                      height: "100%",
-                      background: "linear-gradient(90deg,#2dbf6a,#5ed28a)",
-                      transition: "width .12s linear"
-                    }}
+                    className={s.progressInner}
+                    style={{ width: `${pct}%` }} // This is the only inline style left, as it's dynamic
                   />
                 </div>
-                <div style={{ display: "flex", fontSize: 12, color: "#aab" }}>
+                <div className={s.progressStats}>
                   <span>{pct}%</span>
-                  <span style={{ marginLeft: 10 }}>{prettyBytes(sentBytes)} / {prettyBytes(totalBytes)}</span>
-                  {speedBps != null && <span style={{ marginLeft: "auto" }}>{prettyBytes(speedBps)}/s{etaSec != null ? ` · ~${etaSec}s left` : ""}</span>}
+                  <span>
+                    {prettyBytes(sentBytes)} / {prettyBytes(totalBytes)}
+                  </span>
+                  {speedBps != null && (
+                    <span>
+                      {prettyBytes(speedBps)}/s
+                      {etaSec != null ? ` · ~${etaSec}s left` : ""}
+                    </span>
+                  )}
                 </div>
                 <div>
-                  <button type="button" onClick={abortUpload} style={btnDanger}>Cancel upload</button>
+                  <button
+                    type="button"
+                    onClick={abortUpload}
+                    className={`${s.btn} ${s.btnDanger}`}
+                  >
+                    Cancel upload
+                  </button>
                 </div>
               </div>
             )}
           </div>
         )}
+
+        {/* NEW: History panel */}
+        <div className={s.historyPanel}>
+          <div className={s.historyHeader}>
+            <strong>History</strong>
+            <button
+              type="button"
+              onClick={fetchHistory}
+              className={s.btn}
+              disabled={historyLoading}
+            >
+              Refresh
+            </button>
+            <span className={s.historyMeta}>{history.length} items</span>
+          </div>
+
+          {historyErr && <div className={s.error}>⚠️ {historyErr}</div>}
+          {historyLoading && <div className={s.loading}>Loading…</div>}
+
+          {!historyLoading && !historyErr && (
+            <ul className={s.historyList}>
+              {history.map((h) => (
+                <li key={h.id} className={s.historyItem}>
+                  <div className={s.historyItemHeader}>
+                    <span className={s.historyItemType}>{h.content_type}</span>
+                    <time className={s.historyItemTime}>
+                      {h.created_at ? new Date(h.created_at).toLocaleString() : ""}
+                    </time>
+                    {h.sender_name && (
+                      <span className={s.historyItemSender}>
+                        by {h.sender_name}
+                      </span>
+                    )}
+                  </div>
+
+                  {h.content_type === "text" ? (
+                    <div className={s.historyItemText}>{h.content_text}</div>
+                  ) : h.content_url ? (
+                    <button
+                      type="button"
+                      onClick={() => openMediaWithAuth(h.content_url)}
+                      className={s.btn}
+                      style={{ marginTop: 6 }} // This small inline style is acceptable
+                    >
+                      Open {h.content_type}
+                    </button>
+                  ) : null}
+
+                  <div className={s.historyRecipients}>
+                    <div className={s.historyRecipientsTitle}>Recipients</div>
+                    {h.recipients?.length ? (
+                      <ul className={s.historyRecipientsList}>
+                        {h.recipients.map((r) => (
+                          <li
+                            key={`${h.id}_${r.user_id}`}
+                            className={s.historyRecipientItem}
+                          >
+                            {r.display_name}
+                            {r.char_name ? (
+                              <span className={s.recipientCharName}>
+                                {" "}
+                                — {r.char_name}
+                              </span>
+                            ) : null}
+                            {r.viewed_at ? (
+                              <span className={s.recipientViewed}>
+                                viewed {new Date(r.viewed_at).toLocaleString()}
+                              </span>
+                            ) : (
+                              <span className={s.recipientNotViewed}>
+                                not opened
+                              </span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className={s.recipientChar}>—</div>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
     </section>
   );
 }
-
-const btn = (active) => ({
-  border: "1px solid " + (active ? "#556" : "#333"),
-  background: active ? "#1a1a24" : "#101015",
-  color: active ? "#dfe" : "#eee",
-  padding: "8px 12px",
-  borderRadius: 8,
-  cursor: "pointer",
-});
-const btnPrimary = {
-  border: "1px solid #4a4",
-  background: "#163016",
-  color: "#efe",
-  padding: "8px 12px",
-  borderRadius: 8,
-  cursor: "pointer",
-};
-const btnDanger = {
-  border: "1px solid #844",
-  background: "#301616",
-  color: "#fee",
-  padding: "6px 10px",
-  borderRadius: 8,
-  cursor: "pointer",
-};

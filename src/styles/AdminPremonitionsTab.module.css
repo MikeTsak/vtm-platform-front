@@ -1,0 +1,304 @@
+/* src/styles/AdminPremonitionsTab.module.css */
+
+/* --- Main Layout --- */
+.adminGrid {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 16px;
+}
+
+.panel {
+  border: 1px solid var(--border, #2a2a2f);
+  border-radius: var(--radius, 12px);
+  padding: 12px;
+  background: var(--surface, #0f0f14);
+}
+
+/* --- Recipients Panel (Left) --- */
+.recipientsHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.recipientsHeader strong {
+  font-size: 1.1rem;
+}
+
+.allMalksLabel {
+  margin-left: auto;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.loading,
+.error {
+  padding: 8px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+.loading {
+  color: #bbb;
+  background: #1a1a20;
+}
+.error {
+  color: #f88;
+  background: #301616;
+  border: 1px solid #844;
+}
+
+.recipientsList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.recipientItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+.recipientItem:hover {
+  background: #1a1a24;
+}
+.recipientItem input {
+  cursor: pointer;
+}
+.recipientItem input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.recipientName {
+  font-weight: 600;
+}
+.recipientChar {
+  font-size: 12px;
+  color: #aab;
+}
+
+/* --- Composer Panel (Right) --- */
+.modeSwitch {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.sendClearButtons {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+
+.composerInputArea {
+  /* No specific styles needed, it's a wrapper */
+}
+
+.textarea {
+  width: 100%;
+  resize: vertical;
+  border-radius: 8px;
+  border: 1px solid #333;
+  background: #0b0b10;
+  color: #ddd;
+  padding: 10px;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.fileInputInfo {
+  margin-top: 6px;
+  color: #aab;
+  font-size: 12px;
+}
+
+/* --- Progress UI --- */
+.progressArea {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.progressBar {
+  height: 10px;
+  background: #0f0f14;
+  border: 1px solid #333;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.progressInner {
+  width: 0%; /* Will be set by inline style */
+  height: 100%;
+  background: linear-gradient(90deg, #2dbf6a, #5ed28a);
+  transition: width 0.12s linear;
+}
+
+.progressStats {
+  display: flex;
+  font-size: 12px;
+  color: #aab;
+  gap: 10px;
+}
+
+/* --- History Panel --- */
+.historyPanel {
+  margin-top: 16px;
+  border-top: 1px dashed #333;
+  padding-top: 12px;
+}
+
+.historyHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.historyHeader strong {
+  font-size: 1.1rem;
+}
+.historyMeta {
+  margin-left: auto;
+  font-size: 12px;
+  color: #aab;
+}
+
+.historyList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.historyItem {
+  border: 1px solid #2a2a2f;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.historyItemHeader {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+.historyItemType {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  opacity: 0.8;
+  font-weight: 600;
+}
+.historyItemTime {
+  font-size: 12px;
+  color: #aab;
+}
+.historyItemSender {
+  margin-left: auto;
+  font-size: 12px;
+  color: #aab;
+}
+
+.historyItemText {
+  margin-top: 6px;
+  white-space: pre-wrap;
+  font-size: 14px;
+  color: #ddd;
+}
+
+.historyRecipients {
+  margin-top: 8px;
+}
+.historyRecipientsTitle {
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.historyRecipientsList {
+  margin: 0;
+  padding-left: 18px;
+}
+.historyRecipientItem {
+  font-size: 13px;
+}
+.recipientCharName {
+  color: #889;
+}
+.recipientViewed {
+  margin-left: 6px;
+  color: #6fbf73;
+  font-size: 12px;
+}
+.recipientNotViewed {
+  margin-left: 6px;
+  color: #aab;
+  font-size: 12px;
+}
+
+/* --- Buttons --- */
+.btn {
+  border: 1px solid #333;
+  background: #101015;
+  color: #eee;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+.btn:hover:not(:disabled) {
+  border-color: #555;
+  background: #1f1f2a;
+}
+.btn.active {
+  border-color: #556;
+  background: #1a1a24;
+  color: #dfe;
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnPrimary {
+  border-color: #4a4;
+  background: #163016;
+  color: #efe;
+}
+.btnPrimary:hover:not(:disabled) {
+  border-color: #6c6;
+  background: #1f421f;
+}
+
+.btnSecondary {
+  border-color: #445;
+  background: #101018;
+  color: #dde;
+}
+.btnSecondary:hover:not(:disabled) {
+  border-color: #667;
+  background: #181820;
+}
+
+.btnDanger {
+  border-color: #844;
+  background: #301616;
+  color: #fee;
+  padding: 6px 10px; /* Slightly smaller */
+}
+.btnDanger:hover:not(:disabled) {
+  border-color: #a66;
+  background: #421f1f;
+}
