@@ -25,6 +25,7 @@ import ResetPassword from './pages/user/ResetPassword';
 import Boons from './pages/Boons';
 import Coteries from './pages/Coteries';
 import Premonitions from './pages/Premonitions';
+import News from './pages/News'; // ✅ IMPORTED NEWS PAGE
 
 function Private({ children }) {
   const { user } = useContext(AuthCtx);
@@ -153,6 +154,10 @@ function Nav() {
             <NavLink to="/downtimes" className={getNavLinkClass}>Downtimes</NavLink>
             <NavLink to="/boons" className={getNavLinkClass}>Boons</NavLink>
             <NavLink to="/coteries" className={getNavLinkClass}>Coteries</NavLink>
+            
+            {/* ✅ ADDED NEWS LINK */}
+            <NavLink to="/news" className={getNavLinkClass}>News</NavLink>
+
             <NavLink to="/comms" className={getNavLinkClass}>Comms</NavLink>
 
             {/* 🔮 Premonitions link: only for Admins or Malkavian players */}
@@ -202,17 +207,23 @@ export default function App() {
               <Route path="/downtimes" element={<Private><DownTimes/></Private>} />
               <Route path="/boons" element={<Private><Boons /></Private>} />
               <Route path="/comms" element={<Private><Comms/></Private>} />
+              <Route path="/coteries" element={<Private><Coteries/></Private>} />
+              
+              {/* ✅ ADDED NEWS ROUTE */}
+              <Route path="/news" element={<Private><News/></Private>} />
+
               <Route path="/admin" element={<AdminOnly><Admin/></AdminOnly>} />
               <Route path="/admin/npcs" element={<AdminOnly><NPCs/></AdminOnly>} />
+              <Route path="/admin/npcs/:id" element={<AdminOnly><AdminNPCView/></AdminOnly>} />
+              
               <Route path="/forgot" element={<ForgotPassword />} />
               <Route path="/reset" element={<ResetPassword />} />
-              <Route path="/admin/npcs/:id" element={<AdminOnly><AdminNPCView/></AdminOnly>} />
               <Route path="/login" element={<Login/>} />
               <Route path="/register" element={<Register/>} />
               <Route path="/terms" element={<Terms />} />
               <Route path="/legal" element={<Legal />} />
               <Route path="/privacy" element={<Privacy />} />
-              <Route path="/coteries" element={<Private><Coteries/></Private>} />
+              
               <Route
                 path="/premonitions"
                 element={<MalkavianOrAdminOnly><Premonitions/></MalkavianOrAdminOnly>}

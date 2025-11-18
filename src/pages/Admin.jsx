@@ -20,6 +20,7 @@ import AdminDowntimesTab from '../components/admin/AdminDowntimesTab.jsx';
 import AdminXPTab from '../components/admin/AdminXPTab.jsx';
 import AdminNPCsTab from '../components/admin/AdminNPCsTab.jsx';
 import AdminChatLogsTab from '../components/admin/AdminChatLogsTab.jsx';
+import AdminDiceLogsTab from '../components/admin/AdminDiceLogsTab.jsx'; // <-- Added Import
 
 
 /* ---------------- UI bits ---------------- */
@@ -36,7 +37,7 @@ function TabButton({ active, onClick, children }) {
 
 /* ---------------- Main ---------------- */
 export default function Admin() {
-  const [tab, setTab] = useState('users'); // users | characters | claims | downtimes | xp | npcs | chat | stats | logs
+  const [tab, setTab] = useState('users'); // users | characters | claims | downtimes | xp | npcs | chat | stats | dice | logs
   const [loading, setLoading] = useState(false);
 
   // All data state lives here
@@ -596,6 +597,7 @@ export default function Admin() {
           <TabButton active={tab==='npcs'} onClick={()=>setTab('npcs')}>NPCs</TabButton>
           <TabButton active={tab==='chat'} onClick={()=>setTab('chat')}>Chat Logs</TabButton>
           <TabButton active={tab==='stats'} onClick={()=>setTab('stats')}>Chat Stats</TabButton>
+          <TabButton active={tab==='dice'} onClick={()=>setTab('dice')}>Dice Logs</TabButton> {/* <-- Added Button */}
           <TabButton active={tab==='logs'} onClick={()=>setTab('logs')}>Server Logs</TabButton>
           <button className={`${styles.btn} ${styles.btnGhost} ${styles.rowEnd}`} onClick={load}>Reload</button>
         </div>
@@ -657,6 +659,10 @@ export default function Admin() {
             users={users} 
           />
         )}
+        {/* -- Added Tab -- */}
+        {tab === 'dice' && (
+          <AdminDiceLogsTab />
+        )}
         {tab === 'logs' && <AdminLogs />}
 
         {/* Modal remains here */}
@@ -671,11 +677,3 @@ export default function Admin() {
     </div>
   );
 }
-
-
-
-
-
-
-
-

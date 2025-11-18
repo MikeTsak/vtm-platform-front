@@ -1,8 +1,16 @@
-// src/components/ChatStatsTab.jsx
-import React, { useState, useMemo } from 'react';
-import styles from '../../styles/Admin.module.css';
+// src/components/ChatStatsTab.jsx 
+import React, { useEffect, useMemo, useState } from 'react';
+import styles from '../../styles/Admin.module.css'; // adjust the path if needed
 
-/* ---------- VTM Lookups (as requested) ---------- */
+/** ---------- API base & auth ---------- */
+const devDefault =
+  typeof window !== 'undefined' && window.location?.port === '3000'
+    ? 'http://localhost:3001'
+    : '';
+const API_BASE = (process.env.REACT_APP_API_BASE || devDefault).replace(/\/$/, '');
+const AUTH_TOKEN_KEY = 'token';
+
+/** ---------- Clan helpers ---------- */
 const CLAN_COLORS = {
   Brujah: '#b40f1f',
   Gangrel: '#2f7a3a',
@@ -19,12 +27,10 @@ const CLAN_COLORS = {
   'Thin-blood': '#6e6e2b',
 };
 const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim' };
-const fileify = (c) => (NAME_OVERRIDES[c] || c).replace(/\s+/g, '_');
-const symlogo = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.png` : '');
-/* -------------------------------------------------- */
+const fileify = (c) => (NAME_OVERRIDES[c] || c || '').replace(/\s+/g, '_');
+const clanSymbol = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.png` : '');
 
-
-// --- Helper Component: StatCard ---
+/** ---------- Small UI bits ---------- */
 function StatCard({ title, value, subtext }) {
   return (
     <div className={styles.statCard}>
@@ -35,35 +41,39 @@ function StatCard({ title, value, subtext }) {
   );
 }
 
-// --- Helper Component: StatList ---
 function StatList({ title, items, isLoading }) {
   return (
-    <div className={`${styles.statListCard}`}> {/* Removed .card, added new class */}
+    <div className={styles.statListCard}>
       <h3 className={styles.statListTitle}>{title}</h3>
       <div className={styles.statListBody}>
-        {isLoading && <div className={styles.subtle}>Calculating...</div>}
-        {!isLoading && items.length === 0 && <div className={styles.subtle}>No data for this period.</div>}
+        {isLoading && <div className={styles.subtle}>Calculating…</div>}
+        {!isLoading && items.length === 0 && (
+          <div className={styles.subtle}>No data for this period.</div>
+        )}
         <ol className={styles.statList}>
-          {items.map((item, index) => {
-            const clanColor = CLAN_COLORS[item.clan] || 'var(--text-secondary)';
-            const clanLogoUrl = symlogo(item.clan);
+          {items.map((item, i) => {
+            const color = CLAN_COLORS[item.clan] || 'var(--text-secondary)';
+            const logo = clanSymbol(item.clan);
             return (
-              <li 
-                key={item.id || index}
-                style={{ '--clan-color': clanColor }}
-                className={clanLogoUrl ? styles.hasAvatar : ''}
+              <li
+                key={item.id ?? `${item.name}-${i}`}
+                style={{ '--clan-color': color }}
+                className={logo ? styles.hasAvatar : undefined}
               >
-                {clanLogoUrl && (
-                  <img src={clanLogoUrl} alt={item.clan} className={styles.statListAvatar} />
-                )}
-                {!clanLogoUrl && (
-                  <span className={styles.statListRank}>{index + 1}</span>
+                {logo ? (
+                  <img src={logo} alt={item.clan || ''} className={styles.statListAvatar} />
+                ) : (
+                  <span className={styles.statListRank}>{i + 1}</span>
                 )}
                 <div className={styles.statListItemInfo}>
                   <span className={styles.statListItemName}>{item.name}</span>
-                  {item.subname && <span className={styles.statListItemSubname}>{item.subname}</span>}
+                  {item.subname && (
+                    <span className={styles.statListItemSubname}>{item.subname}</span>
+                  )}
                 </div>
-                <span className={styles.statListItemCount}>{item.count.toLocaleString()} msgs</span>
+                <span className={styles.statListItemCount}>
+                  {item.count.toLocaleString()} msgs
+                </span>
               </li>
             );
           })}
@@ -73,150 +83,277 @@ function StatList({ title, items, isLoading }) {
   );
 }
 
-// --- Main Stats Tab Component ---
-export default function ChatStatsTab({ directMessages, npcMessages, npcs, users }) {
-  // --- State for Date Range ---
-  const today = new Date().toISOString().split('T')[0];
-  const [startDate, setStartDate] = useState(today); // Default to today
-  const [endDate, setEndDate] = useState(today);     // Default to today
+/** ---------- Helper: fetch with fallback ---------- */
+async function fetchJsonWithFallback(urls, headers) {
+  let lastErr;
+  for (const u of urls) {
+    try {
+      const r = await fetch(u, { headers });
+      if (!r.ok) throw new Error(`${u} -> ${r.status}`);
+      return await r.json();
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error('All fetch attempts failed');
+}
 
-  // --- Memoized Lookup Maps (Updated to include clan) ---
+/** ---------- Main ---------- */
+export default function ChatStatsTab({
+  directMessages: directMessagesProp,
+  npcMessages: npcMessagesProp,
+  npcs: npcsProp,
+  users: usersProp,
+}) {
+  const token = useMemo(() => localStorage.getItem(AUTH_TOKEN_KEY) || '', []);
+  const headersObj = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
+
+  // Local state (auto-fetch if props not provided)
+  const [directMessages, setDirectMessages] = useState(directMessagesProp || []);
+  const [npcMessages, setNpcMessages] = useState(npcMessagesProp || []);
+  const [npcs, setNpcs] = useState(npcsProp || []);
+  const [users, setUsers] = useState(usersProp || []);
+
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
+
+  // Date range defaults (Last 30 Days)
+  const todayStr = new Date().toISOString().split('T')[0];
+  const thirtyDaysAgoStr = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().split('T')[0];
+  })();
+  const [startDate, setStartDate] = useState(thirtyDaysAgoStr);
+  const [endDate, setEndDate] = useState(todayStr);
+
+  // Auto-fetch if props missing
+  useEffect(() => {
+    const needDirect = !directMessagesProp;
+    const needNpcMsgs = !npcMessagesProp;
+    const needNpcs = !npcsProp;
+    const needUsers = !usersProp;
+    if (!needDirect && !needNpcMsgs && !needNpcs && !needUsers) return;
+
+    let cancelled = false;
+    setLoading(true);
+    setErr('');
+
+    (async () => {
+      try {
+        const tasks = [];
+
+        if (needDirect) {
+          tasks.push(
+            fetchJsonWithFallback(
+              [
+                `${API_BASE}/api/admin/chat/all`, // admin first
+                `${API_BASE}/api/court/chat/all`, // optional court fallback if you add it
+              ],
+              headersObj
+            )
+              .then((d) => (!cancelled ? setDirectMessages(d?.messages || []) : undefined))
+              .catch(() => {
+                // If both fail (likely permissions), leave empty but annotate error.
+                if (!cancelled) setDirectMessages([]);
+              })
+          );
+        }
+
+        if (needNpcMsgs) {
+          tasks.push(
+            fetchJsonWithFallback(
+              [
+                `${API_BASE}/api/admin/chat/npc/all`, // admin
+                `${API_BASE}/api/court/chat/npc/all`, // court fallback (add this route per my note)
+              ],
+              headersObj
+            )
+              .then((d) => (!cancelled ? setNpcMessages(d?.messages || []) : undefined))
+              .catch((e) => {
+                if (!cancelled) {
+                  setNpcMessages([]);
+                  setErr((prev) =>
+                    prev
+                      ? prev
+                      : 'No permission to load NPC stats (need admin or court access).'
+                  );
+                }
+              })
+          );
+        }
+
+        if (needNpcs) {
+          tasks.push(
+            fetchJsonWithFallback(
+              [
+                `${API_BASE}/api/chat/npcs`, // public/court list used elsewhere in your app
+                `${API_BASE}/api/admin/npcs`,
+                `${API_BASE}/api/court/npcs`,
+              ],
+              headersObj
+            )
+              .then((d) => (!cancelled ? setNpcs(d?.npcs || []) : undefined))
+              .catch(() => !cancelled && setNpcs([]))
+          );
+        }
+
+        if (needUsers) {
+          tasks.push(
+            fetchJsonWithFallback(
+              [
+                `${API_BASE}/api/chat/users`, // whatever you already expose to get names/clans
+                `${API_BASE}/api/admin/users`,
+                `${API_BASE}/api/court/users`,
+              ],
+              headersObj
+            )
+              .then((d) => (!cancelled ? setUsers(d?.users || []) : undefined))
+              .catch(() => !cancelled && setUsers([]))
+          );
+        }
+
+        await Promise.all(tasks);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [directMessagesProp, npcMessagesProp, npcsProp, usersProp, headersObj]);
+
+  /** ---------- Lookups ---------- */
   const userMap = useMemo(() => {
     const map = new Map();
-    users.forEach(u => map.set(u.id, {
-      name: u.display_name || u.email || `User ${u.id}`,
-      clan: u.clan || null,
-      char_name: u.char_name || null
-    }));
+    (users || []).forEach((u) => {
+      map.set(u.id, {
+        name: u.display_name || u.email || `User ${u.id}`,
+        char_name: u.char_name || null,
+        clan: u.clan || null,
+      });
+    });
     return map;
   }, [users]);
 
   const npcMap = useMemo(() => {
     const map = new Map();
-    npcs.forEach(n => map.set(n.id, {
-      name: n.name || `NPC ${n.id}`,
-      clan: n.clan || null
-    }));
+    (npcs || []).forEach((n) => {
+      map.set(n.id, {
+        name: n.name || `NPC ${n.id}`,
+        clan: n.clan || null,
+      });
+    });
     return map;
   }, [npcs]);
 
-  // --- Memoized All-Time Stats ---
-  const allTimeStats = useMemo(() => {
-    return {
-      totalDirect: directMessages.length,
-      totalNpc: npcMessages.length,
-      totalAllTime: directMessages.length + npcMessages.length,
-    };
-  }, [directMessages, npcMessages]);
+  /** ---------- All-time counters ---------- */
+  const allTimeStats = useMemo(
+    () => ({
+      totalDirect: (directMessages || []).length,
+      totalNpc: (npcMessages || []).length,
+      totalAllTime: (directMessages || []).length + (npcMessages || []).length,
+    }),
+    [directMessages, npcMessages]
+  );
 
-  // --- Memoized Filtered Data ---
+  /** ---------- Date filter ---------- */
   const filteredData = useMemo(() => {
-    // Create Date objects for comparison. Set end date to end of the day.
+    if (!startDate || !endDate) return { filteredDirect: [], filteredNpc: [] };
     const start = new Date(startDate);
-    start.setHours(0, 0, 0, 0); // Start of the day
     const end = new Date(endDate);
-    end.setHours(23, 59, 59, 999); // End of the day
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+    const a = start.getTime();
+    const b = end.getTime();
+    if (b < a) return { filteredDirect: [], filteredNpc: [] };
 
-    const startTs = start.getTime();
-    const endTs = end.getTime();
+    const inRange = (ts) => {
+      const t = new Date(ts).getTime();
+      return Number.isFinite(t) && t >= a && t <= b;
+    };
 
-    if (!startDate || !endDate || endTs < startTs) {
-      return { filteredDirect: [], filteredNpc: [] };
-    }
-
-    const filteredDirect = directMessages.filter(msg => {
-      const msgTs = new Date(msg.created_at).getTime();
-      return msgTs >= startTs && msgTs <= endTs;
-    });
-
-    const filteredNpc = npcMessages.filter(msg => {
-      const msgTs = new Date(msg.created_at).getTime();
-      return msgTs >= startTs && msgTs <= endTs;
-    });
-
-    return { filteredDirect, filteredNpc };
+    return {
+      filteredDirect: (directMessages || []).filter((m) => inRange(m.created_at)),
+      filteredNpc: (npcMessages || []).filter((m) => inRange(m.created_at)),
+    };
   }, [directMessages, npcMessages, startDate, endDate]);
 
-  // --- Memoized Period Stats Calculation (Updated to use new map structure) ---
+  /** ---------- Period stats ---------- */
   const periodStats = useMemo(() => {
     const { filteredDirect, filteredNpc } = filteredData;
 
-    const senderCounts = new Map();
-    const receiverCounts = new Map();
-    const npcReceiverCounts = new Map(); // Player -> NPC
+    const senderCounts = new Map();      // user_id -> count
+    const receiverCounts = new Map();    // user_id -> count
+    const npcReceiverCounts = new Map(); // npc_id  -> count (players → NPC)
 
-    // Process Direct Messages
+    // user ↔ user
     for (const msg of filteredDirect) {
-      const senderId = msg.sender_id;
-      const receiverId = msg.recipient_id;
-      
-      senderCounts.set(senderId, (senderCounts.get(senderId) || 0) + 1);
-      receiverCounts.set(receiverId, (receiverCounts.get(receiverId) || 0) + 1);
+      const s = msg.sender_id;
+      const r = msg.recipient_id;
+      if (s) senderCounts.set(s, (senderCounts.get(s) || 0) + 1);
+      if (r) receiverCounts.set(r, (receiverCounts.get(r) || 0) + 1);
     }
 
-    // Process NPC Messages
+    // user → NPC (we only count messages sent by users to an NPC)
     for (const msg of filteredNpc) {
       if (msg.from_side === 'user') {
-        // User sent a message TO an NPC
-        const senderId = msg.user_id; // The user who sent it
-        const receiverId = msg.npc_id; // The NPC who received it
-        
-        senderCounts.set(senderId, (senderCounts.get(senderId) || 0) + 1);
-        npcReceiverCounts.set(receiverId, (npcReceiverCounts.get(receiverId) || 0) + 1);
+        if (msg.user_id) senderCounts.set(msg.user_id, (senderCounts.get(msg.user_id) || 0) + 1);
+        if (msg.npc_id) npcReceiverCounts.set(msg.npc_id, (npcReceiverCounts.get(msg.npc_id) || 0) + 1);
       }
     }
 
-    // Helper to sort maps into top lists (Updated)
-    const getTop = (countMap, nameMap, limit = 10) => {
-      return Array.from(countMap.entries())
+    const intoTopList = (map, nameMap, limit = 10) =>
+      Array.from(map.entries())
         .map(([id, count]) => {
           const info = nameMap.get(id);
           if (info) {
             return {
               id,
-              name: info.char_name || info.name, // Use char_name if user, else npc name
-              subname: info.char_name ? info.name : null, // User's display_name
+              name: info.char_name || info.name,
+              subname: info.char_name ? info.name : null,
               clan: info.clan,
-              count
+              count,
             };
           }
-          // Fallback for missing user/npc
           return { id, name: `ID ${id}`, subname: null, clan: null, count };
         })
         .sort((a, b) => b.count - a.count)
         .slice(0, limit);
-    };
 
     return {
       totalInPeriod: filteredDirect.length + filteredNpc.length,
-      topSenders: getTop(senderCounts, userMap),
-      topReceivers: getTop(receiverCounts, userMap),
-      topNpcReceivers: getTop(npcReceiverCounts, npcMap),
+      topSenders: intoTopList(senderCounts, userMap),
+      topReceivers: intoTopList(receiverCounts, userMap),
+      topNpcReceivers: intoTopList(npcReceiverCounts, npcMap),
     };
-
   }, [filteredData, userMap, npcMap]);
 
+  /** ---------- Render ---------- */
   return (
-    <div className={styles.stack12}> {/* Removed .card */}
+    <div className={styles.stack12}>
       <h3>Chat Statistics</h3>
 
-      {/* --- Date Filters --- */}
+      {err && <div className={`${styles.alert} ${styles.alertError}`}>{err}</div>}
+
+      {/* Date controls */}
       <div className={styles.dateFilters}>
         <label className={styles.labeledInput}>
           <span>Start Date</span>
-          <input 
-            type="date" 
-            value={startDate} 
-            onChange={e => setStartDate(e.target.value)}
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
             className={styles.input}
           />
         </label>
         <label className={styles.labeledInput}>
           <span>End Date</span>
-          <input 
-            type="date" 
-            value={endDate} 
-            onChange={e => setEndDate(e.target.value)}
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
             className={styles.input}
           />
         </label>
@@ -224,9 +361,10 @@ export default function ChatStatsTab({ directMessages, npcMessages, npcs, users 
           <button
             className={`${styles.btn} ${styles.btnSecondary}`}
             onClick={() => {
-              const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-              setStartDate(weekAgo);
-              setEndDate(today);
+              const d = new Date();
+              d.setDate(d.getDate() - 7);
+              setStartDate(d.toISOString().split('T')[0]);
+              setEndDate(todayStr);
             }}
           >
             Last 7 Days
@@ -234,18 +372,27 @@ export default function ChatStatsTab({ directMessages, npcMessages, npcs, users 
           <button
             className={`${styles.btn} ${styles.btnSecondary}`}
             onClick={() => {
-              const monthAgo = new Date();
-              monthAgo.setDate(monthAgo.getDate() - 30);
-              setStartDate(monthAgo.toISOString().split('T')[0]);
-              setEndDate(today);
+              const d = new Date();
+              d.setDate(d.getDate() - 30);
+              setStartDate(d.toISOString().split('T')[0]);
+              setEndDate(todayStr);
             }}
           >
             Last 30 Days
           </button>
+          <button
+            className={styles.btn}
+            onClick={() => {
+              setStartDate(todayStr);
+              setEndDate(todayStr);
+            }}
+          >
+            Today
+          </button>
         </div>
       </div>
 
-      {/* --- Stat Cards Grid --- */}
+      {/* Summary cards */}
       <div className={styles.statsGrid}>
         <StatCard
           title="Messages in Period"
@@ -269,20 +416,11 @@ export default function ChatStatsTab({ directMessages, npcMessages, npcs, users 
         />
       </div>
 
-      {/* --- Top Lists Grid --- */}
+      {/* Top lists */}
       <div className={styles.statsListGrid}>
-        <StatList
-          title="Most Active Senders"
-          items={periodStats.topSenders}
-        />
-        <StatList
-          title="Most Active Receivers"
-          items={periodStats.topReceivers}
-        />
-        <StatList
-          title="Most Messaged NPCs"
-          items={periodStats.topNpcReceivers}
-        />
+        <StatList title="Most Active Senders" items={periodStats.topSenders} isLoading={loading} />
+        <StatList title="Most Active Receivers" items={periodStats.topReceivers} isLoading={loading} />
+        <StatList title="Most Messaged NPCs" items={periodStats.topNpcReceivers} isLoading={loading} />
       </div>
     </div>
   );

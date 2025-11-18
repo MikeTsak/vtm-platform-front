@@ -23,7 +23,7 @@ export default function Boons() {
 
   // Check user permissions
   const canManage = useMemo(() => {
-    return user?.role === 'admin' || user?.role === 'courtuser';
+    return user?.role === 'admin' || user?.role === 'courtuser' || user?.permission_level === 'admin';
   }, [user]);
 
   // Fetch all boons (all users)
@@ -91,10 +91,6 @@ export default function Boons() {
   return (
     <div className={styles.boonsPage}>
       <div className={styles.container}>
-
-
-      
-
         {/* --- Dynamic Content --- */}
         <div className={styles.boonTracker}>
           <div className={styles.header}>
@@ -159,9 +155,8 @@ export default function Boons() {
           </div>
         </div>
 
+        <hr className={styles.divider} />
 
-          <hr className={styles.divider} />
-        
         {/* --- Static Content --- */}
         <div className={styles.staticContent}>
           <h2>Boon levels</h2>
@@ -211,8 +206,11 @@ export default function Boons() {
  */
 function BoonForm({ entities, boon, onSave, onCancel }) {
   const [formData, setFormData] = useState({
+    // Keys mirror the dropdown values exactly: 'npc' (manual), 'player-12', 'npc-5'
+    from_key: 'npc',
     from_id: '',
     from_name: '',
+    to_key: 'npc',
     to_id: '',
     to_name: '',
     level: 'trivial',
@@ -221,7 +219,7 @@ function BoonForm({ entities, boon, onSave, onCancel }) {
   });
   const [error, setError] = useState('');
 
-  // Entity list with "NPC" option
+  // Entity list with "NPC (Manual Entry)" option first
   const entityOptions = useMemo(() => {
     return [
       { id: 'npc', name: '--- NPC (Manual Entry) ---' },
@@ -232,12 +230,27 @@ function BoonForm({ entities, boon, onSave, onCancel }) {
     ];
   }, [entities]);
 
-  // Load boon data when editing
+  // Helper: derive a key from (id, name) by matching the entities list
+  const deriveKeyFromExisting = (id, name) => {
+    if (!id) return 'npc'; // manual
+    const match = entities.find(e => String(e.id) === String(id));
+    if (match) return `${match.type}-${match.id}`;
+    // Fallback: try by name (before " (")
+    const baseName = (name || '').split(' (')[0].trim();
+    const byName = entities.find(e => (e.name || '').split(' (')[0].trim() === baseName);
+    return byName ? `${byName.type}-${byName.id}` : 'npc';
+  };
+
+  // Load boon data when editing, or reset on create; also whenever entities load
   useEffect(() => {
     if (boon) {
+      const fk = deriveKeyFromExisting(boon.from_id, boon.from_name);
+      const tk = deriveKeyFromExisting(boon.to_id, boon.to_name);
       setFormData({
+        from_key: fk,
         from_id: boon.from_id || '',
         from_name: boon.from_name || '',
+        to_key: tk,
         to_id: boon.to_id || '',
         to_name: boon.to_name || '',
         level: boon.level || 'trivial',
@@ -245,44 +258,53 @@ function BoonForm({ entities, boon, onSave, onCancel }) {
         description: boon.description || '',
       });
     } else {
-      // Reset for new form
+      // New form
       setFormData({
-        from_id: '', from_name: '', to_id: '', to_name: '',
+        from_key: 'npc', from_id: '', from_name: '',
+        to_key: 'npc', to_id: '', to_name: '',
         level: 'trivial', status: 'owed', description: '',
       });
     }
-  }, [boon]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boon, entities]);
 
   // Handle entity dropdown changes
   const handleEntityChange = (e, fieldPrefix) => {
     const selectedValue = e.target.value;
     const selectedOption = entityOptions.find(opt => opt.id === selectedValue);
 
-    if (selectedOption && selectedOption.id !== 'npc') {
-      const [type, id] = selectedOption.id.split('-');
+    if (!selectedOption) return;
+
+    if (selectedOption.id === 'npc') {
+      // Manual entry mode
       setFormData(prev => ({
         ...prev,
-        [`${fieldPrefix}_id`]: id,
-        [`${fieldPrefix}_name`]: selectedOption.name.split(' (')[0], // Get name before " (NPC)" or " (Clan)"
-      }));
-    } else {
-      // "NPC (Manual Entry)" selected
-      setFormData(prev => ({
-        ...prev,
+        [`${fieldPrefix}_key`]: 'npc',
         [`${fieldPrefix}_id`]: '',
-        [`${fieldPrefix}_name`]: fieldPrefix === 'from' ? formData.from_name : formData.to_name, // Keep manual name if it exists
+        // keep any existing typed name
       }));
+      return;
     }
+
+    // A real entity from the list
+    const [type, id] = selectedOption.id.split('-');
+    const cleanName = selectedOption.name.split(' (')[0];
+    setFormData(prev => ({
+      ...prev,
+      [`${fieldPrefix}_key`]: selectedOption.id,
+      [`${fieldPrefix}_id`]: id,
+      [`${fieldPrefix}_name`]: cleanName,
+    }));
   };
 
-  // Handle manual name input
+  // Handle manual name input (used only when key === 'npc')
   const handleNameChange = (e, fieldPrefix) => {
     const name = e.target.value;
     setFormData(prev => ({
       ...prev,
       [`${fieldPrefix}_name`]: name,
-      // Clear ID if they type manually
-      [`${fieldPrefix}_id`]: '',
+      [`${fieldPrefix}_id`]: '',         // ensure it's manual
+      [`${fieldPrefix}_key`]: 'npc',     // keep dropdown on manual entry
     }));
   };
 
@@ -294,24 +316,28 @@ function BoonForm({ entities, boon, onSave, onCancel }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    
+
     // Validate
     if (!formData.from_name || !formData.to_name) {
       setError('"From" and "To" names are required.');
       return;
     }
-    
-    const payload = { ...formData };
-    // Ensure IDs are null, not empty strings
-    payload.from_id = payload.from_id || null;
-    payload.to_id = payload.to_id || null;
-    
+
+    // Build a clean payload (avoid sending *_key helper fields)
+    const payload = {
+      from_id: formData.from_id || null,
+      from_name: formData.from_name,
+      to_id: formData.to_id || null,
+      to_name: formData.to_name,
+      level: formData.level,
+      status: formData.status,
+      description: formData.description,
+    };
+
     try {
       if (boon) {
-        // Update
         await api.patch(`/boons/${boon.id}`, payload);
       } else {
-        // Create
         await api.post('/boons', payload);
       }
       onSave(); // Trigger refresh and close
@@ -319,29 +345,25 @@ function BoonForm({ entities, boon, onSave, onCancel }) {
       setError(err.response?.data?.error || 'Failed to save boon');
     }
   };
-  
-  // Determine if manual name input should be shown
-  const fromKey = formData.from_id ? `player-${formData.from_id}` : 'npc';
-  const toKey = formData.to_id ? `player-${formData.to_id}` : 'npc';
 
   return (
     <form onSubmit={handleSubmit} className={styles.boonForm}>
       <h3>{boon ? 'Edit Boon' : 'Record New Boon'}</h3>
       {error && <div className={styles.alertError}>{error}</div>}
-      
+
       <div className={styles.formGrid}>
         {/* --- FROM --- */}
         <label>From (Owes)</label>
         <div>
           <select
-            value={fromKey}
+            value={formData.from_key}
             onChange={(e) => handleEntityChange(e, 'from')}
           >
             {entityOptions.map(opt => (
               <option key={opt.id} value={opt.id}>{opt.name}</option>
             ))}
           </select>
-          {fromKey === 'npc' && (
+          {formData.from_key === 'npc' && (
             <input
               type="text"
               placeholder="Enter NPC Name..."
@@ -356,14 +378,14 @@ function BoonForm({ entities, boon, onSave, onCancel }) {
         <label>To (Holder)</label>
         <div>
           <select
-            value={toKey}
+            value={formData.to_key}
             onChange={(e) => handleEntityChange(e, 'to')}
           >
             {entityOptions.map(opt => (
               <option key={opt.id} value={opt.id}>{opt.name}</option>
             ))}
           </select>
-          {toKey === 'npc' && (
+          {formData.to_key === 'npc' && (
             <input
               type="text"
               placeholder="Enter NPC Name..."
@@ -381,7 +403,7 @@ function BoonForm({ entities, boon, onSave, onCancel }) {
             <option key={lvl} value={lvl}>{lvl.charAt(0).toUpperCase() + lvl.slice(1)}</option>
           ))}
         </select>
-        
+
         <label htmlFor="status">Status</label>
         <select id="status" name="status" value={formData.status} onChange={handleChange}>
           {BOON_STATUSES.map(s => (
@@ -400,7 +422,7 @@ function BoonForm({ entities, boon, onSave, onCancel }) {
         rows={3}
         placeholder="Details of the boon..."
       />
-      
+
       <div className={styles.formActions}>
         <button type="submit" className={styles.btnPrimary}>Save Boon</button>
         <button type="button" className={styles.btnGhost} onClick={onCancel}>Cancel</button>

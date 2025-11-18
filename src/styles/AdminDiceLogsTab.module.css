@@ -1,0 +1,297 @@
+/* src/styles/AdminDiceLogsTab.module.css */
+/* Uses variables and classes from Admin.module.css */
+
+/* ---------- Base Layout ---------- */
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* ---------- Toolbar ---------- */
+.toolbar {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* Import button styles from Admin.module.css */
+.btn {
+  composes: btn from './Admin.module.css';
+}
+.btnPrimary {
+  composes: btnPrimary from './Admin.module.css';
+  display: inline-flex; /* For spinner */
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Manually copied styles for disabled button */
+.btn[disabled] {
+  background-color: var(--bg-tertiary);
+  border-color: var(--border-color);
+  color: var(--text-secondary);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+  opacity: 0.6;
+}
+.btn[disabled]:hover {
+  background-color: var(--bg-tertiary);
+  border-color: var(--border-color);
+  color: var(--text-secondary);
+  transform: none;
+  box-shadow: none;
+}
+
+.spinner {
+  composes: spinner from './Admin.module.css';
+  width: 16px;
+  height: 16px;
+  border-width: 3px;
+  margin: 0;
+}
+
+/* Import checkbox styles */
+.customCheckbox {
+  composes: customCheckbox from './Admin.module.css';
+}
+.checkmark {
+  composes: checkmark from './Admin.module.css';
+}
+
+.error {
+  color: var(--color-error);
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+/* ---------- Log List ---------- */
+.logList {
+  display: grid;
+  gap: 1rem;
+}
+
+/* ---------- Roll Card ---------- */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.rollCard {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1rem;
+  display: flex;
+  gap: 1rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  transition: all 0.3s ease-out;
+  animation: fadeIn 0.4s ease-out;
+  position: relative;
+  overflow: hidden; /* For border/glow */
+}
+
+/* Conditional Border/Glow based on result */
+.rollCard::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background-color: var(--border-color); /* Default */
+  transition: all 0.3s ease;
+}
+
+.rollCard[data-result="success"]:hover { border-color: var(--color-success); }
+.rollCard[data-result="success"]::before { background-color: var(--color-success); }
+
+.rollCard[data-result="failure"] { opacity: 0.8; }
+.rollCard[data-result="failure"]:hover { opacity: 1; }
+.rollCard[data-result="failure"]::before { background-color: var(--text-secondary); }
+
+.rollCard[data-result="critical"] {
+  border-color: var(--accent-purple);
+  box-shadow: 0 0 15px rgba(127, 90, 240, 0.2);
+}
+.rollCard[data-result="critical"]::before { 
+  background-color: var(--accent-purple);
+  box-shadow: 0 0 8px var(--accent-purple);
+}
+
+.rollCard[data-result="messy"],
+.rollCard[data-result="bestial"] {
+  border-color: var(--vtm-red);
+  box-shadow: 0 0 15px rgba(138, 3, 3, 0.2);
+  background: color-mix(in srgb, var(--bg-tertiary) 85%, var(--vtm-red) 15%);
+}
+.rollCard[data-result="messy"]::before,
+.rollCard[data-result="bestial"]::before {
+  background-color: var(--vtm-red);
+  box-shadow: 0 0 8px var(--vtm-red);
+}
+
+
+.resultIcon {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  align-self: flex-start;
+  background: var(--bg-inset);
+  border-radius: 6px;
+  padding: 4px;
+  flex-shrink: 0;
+}
+
+.rollContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0; /* Prevent flex overflow */
+}
+
+.rollHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.rollUser {
+  font-size: 1rem;
+  color: var(--text-primary);
+  min-width: 0;
+}
+.rollUser strong {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Manually composed styles from Admin.module.css .subtle */
+.rollUser .subtle {
+  color: var(--text-secondary);
+  font-style: italic;
+  font-size: 0.8rem;
+  margin-left: 0.25rem;
+  white-space: nowrap;
+}
+
+
+.rollSuccesses {
+  font-family: 'Fira Code', monospace;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+/* Color code the success count */
+.rollSuccesses[data-result="success"] { color: var(--color-success); }
+.rollSuccesses[data-result="critical"] { color: var(--accent-purple); }
+.rollSuccesses[data-result="messy"] { color: var(--vtm-red); }
+.rollSuccesses[data-result="bestial"] { color: var(--vtm-red); }
+.rollSuccesses[data-result="failure"] { color: var(--text-secondary); }
+
+
+.rollNote {
+  background: var(--bg-inset);
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  font-style: italic;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  border-left: 3px solid var(--border-color);
+}
+
+.diceArea {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.diceStrip {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.diceTitle {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.diceContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.die {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  transition: transform 0.2s ease;
+}
+.die:hover {
+  transform: scale(1.1);
+}
+
+.dieFallback {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-family: 'Fira Code', monospace;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 1.1rem;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 600px) {
+  .rollCard {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .resultIcon {
+    width: 48px;
+    height: 48px;
+    align-self: flex-end; /* Move icon to top right */
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+  }
+  .rollHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+  .rollSuccesses {
+    font-size: 1rem;
+    background: var(--bg-inset);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+  }
+  .diceArea {
+    gap: 1rem;
+  }
+  .die, .dieFallback {
+    width: 28px;
+    height: 28px;
+  }
+}

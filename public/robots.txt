@@ -1,3 +1,13 @@
-# https://www.robotstxt.org/robotstxt.html
+# robots.txt for vtm.miketsak.gr
+
 User-agent: *
-Disallow:
+# Allow everything by default
+Allow: /
+
+# But block sensitive / internal paths
+Disallow: /admin
+Disallow: /api
+Disallow: /login
+Disallow: /auth
+Disallow: /settings
+Disallow: /profile
