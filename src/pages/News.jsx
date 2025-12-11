@@ -1,17 +1,33 @@
 // src/pages/News.jsx
 import React, { useState, useEffect, useContext, useRef } from 'react';
-import api from '../api';
+import api from '../api'; // Uses axios instance from api.js
 import { AuthCtx } from '../AuthContext';
 import styles from '../styles/News.module.css';
 
-// --- HELPER: Resolve API URL for Images ---
-const devDefault = window.location.port === "3000" ? "http://localhost:3001" : "";
-const API_BASE = (process.env.REACT_APP_API_BASE || devDefault).replace(/\/$/, "");
+/* --- URL RESOLUTION LOGIC (Adapted from Premonitions.jsx) ---
+  This ensures image/video URLs are built correctly regardless of 
+  whether the DB path includes '/api' or not.
+*/
+const RAW_BASE = process.env.REACT_APP_API_URL || (window.location.port === "3000" ? "http://localhost:3001/api" : "/api");
+const API_BASE = RAW_BASE ? RAW_BASE.replace(/\/+$/, "") : "";
 
-const qualifyUrl = (u) => {
-  if (!u) return u;
-  if (u.startsWith("http://") || u.startsWith("https://")) return u;
-  return `${API_BASE}${u}`;
+// Helper to join paths without duplicating '/api'
+function apiJoin(path) {
+  if (!path) return "";
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  
+  // If the base ends in '/api' and the path starts with '/api', remove one to prevent double
+  if (API_BASE.endsWith("/api") && path.startsWith("/api/")) {
+    return `${API_BASE}${path.slice(4)}`;
+  }
+  // If base doesn't end in /api but path does, just join (or handle root)
+  return `${API_BASE}${path.startsWith('/') ? '' : '/'}${path}`;
+}
+
+// --- HELPER: Detect Video Content ---
+const isVideoUrl = (url) => {
+  if (!url) return false;
+  return /\.(mp4|webm)|#video/i.test(url);
 };
 
 // --- DATA: Greek Name Components ---
@@ -90,6 +106,7 @@ export default function News() {
   const [error, setError] = useState(null); 
   const [showModal, setShowModal] = useState(false);
 
+  // Permissions
   const isAdmin = user?.role === 'admin';
   const isCourt = user?.role === 'courtuser';
   const canPostNews = isAdmin;
@@ -99,6 +116,7 @@ export default function News() {
     setLoading(true);
     setError(null); 
     try {
+      // Uses api.js (axios) which handles the base URL automatically for the request
       const { data } = await api.get('/news');
       setItems(data.items || []);
     } catch (e) {
@@ -167,7 +185,9 @@ export default function News() {
 
         <div className={styles.masonry}>
           {filteredItems.map(item => {
-            const finalMediaUrl = qualifyUrl(item.media_url);
+            // ✅ USE apiJoin for the src to fix the double-api issue
+            const finalMediaUrl = apiJoin(item.media_url);
+            const isVid = isVideoUrl(item.media_url);
 
             // --- RENDER LOGIC ---
             if (item.type === 'news') {
@@ -182,7 +202,11 @@ export default function News() {
                       <h2 className={styles.rumorTitle}>{item.title}</h2>
                       {item.media_url && (
                         <div className={styles.newsMediaFrame} style={{borderRadius:0, border:'2px solid #333'}}>
-                           <img src={finalMediaUrl} alt="Proof" className={styles.media} style={{filter:'sepia(0.8)'}} />
+                           {isVid ? (
+                             <video src={finalMediaUrl} controls className={styles.media} style={{filter:'sepia(0.8)'}} />
+                           ) : (
+                             <img src={finalMediaUrl} alt="Proof" className={styles.media} style={{filter:'sepia(0.8)'}} />
+                           )}
                         </div>
                       )}
                       <div 
@@ -228,7 +252,7 @@ export default function News() {
 
                       {item.media_url && (
                         <div className={styles.newsMediaFrame}>
-                          {item.media_url.match(/\.(mp4|webm)$/i) ? (
+                          {isVid ? (
                             <video src={finalMediaUrl} controls className={styles.media} />
                           ) : (
                             <img src={finalMediaUrl} alt="Article" className={styles.media} />
@@ -253,7 +277,7 @@ export default function News() {
                   <article className={`${styles.card} ${styles.announcement}`}>
                      {item.media_url && (
                       <div className={styles.mediaFrame}>
-                        {item.media_url.match(/\.(mp4|webm)$/i) ? (
+                        {isVid ? (
                           <video src={finalMediaUrl} controls className={styles.media} />
                         ) : (
                           <img src={finalMediaUrl} alt="Announcement" className={styles.media} />
@@ -326,6 +350,11 @@ function CreateModal({ type, onClose, onSuccess }) {
           }
         });
         mediaUrl = upRes.data.url;
+
+        // Fix for Video playback: append hash to force detection
+        if (file.type.startsWith('video/')) {
+          mediaUrl += '#video.mp4';
+        }
       }
 
       const payload = {
