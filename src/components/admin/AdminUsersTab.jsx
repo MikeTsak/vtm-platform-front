@@ -23,17 +23,21 @@ const CLAN_COLORS = {
 
 const headerStyle = {
   display: 'grid',
-  gridTemplateColumns: '64px 1.2fr 1.6fr 0.9fr 1.2fr 0.8fr 120px',
+  // Updated grid template to fit Discord ID
+  gridTemplateColumns: '64px 1fr 1.3fr 0.8fr 1fr 1fr 0.7fr 120px',
   gap: '10px',
   padding: '10px 12px',
   borderBottom: '1px solid var(--border-color, #2b2b2b)',
   color: 'var(--text-secondary, #a0a0a0)',
   fontWeight: 700,
-  fontSize: '0.9rem',
+  fontSize: '0.85rem', // Slightly smaller to fit
+  textTransform: 'uppercase',
+  letterSpacing: '0.5px'
 };
 const rowStyle = {
   display: 'grid',
-  gridTemplateColumns: '64px 1.2fr 1.6fr 0.9fr 1.2fr 0.8fr 120px',
+  // Updated grid template to fit Discord ID
+  gridTemplateColumns: '64px 1fr 1.3fr 0.8fr 1fr 1fr 0.7fr 120px',
   gap: '10px',
   alignItems: 'center',
   padding: '10px 12px',
@@ -61,15 +65,20 @@ const tinyChip = (hex) => ({
 
 /**
  * props:
- *  - users: Array<{ id, email, display_name, role, character_id?, char_name?, clan?, xp? }>
- *  - onSave: ({ id, display_name?, email?, role? }) => Promise|void
+ * - users: Array<{ id, email, display_name, role, character_id?, char_name?, clan?, xp?, discord_id? }>
+ * - onSave: ({ id, display_name?, email?, role?, discord_id? }) => Promise|void
  */
 export default function AdminUsersTab({ users = [], onSave }) {
   const [drafts, setDrafts] = useState(() =>
     new Map(
       (users || []).map((u) => [
         u.id,
-        { display_name: u.display_name ?? '', email: u.email ?? '', role: u.role ?? 'user' },
+        { 
+          display_name: u.display_name ?? '', 
+          email: u.email ?? '', 
+          role: u.role ?? 'user',
+          discord_id: u.discord_id ?? '' 
+        },
       ])
     )
   );
@@ -79,7 +88,12 @@ export default function AdminUsersTab({ users = [], onSave }) {
       new Map(
         (users || []).map((u) => [
           u.id,
-          { display_name: u.display_name ?? '', email: u.email ?? '', role: u.role ?? 'user' },
+          { 
+            display_name: u.display_name ?? '', 
+            email: u.email ?? '', 
+            role: u.role ?? 'user',
+            discord_id: u.discord_id ?? '' 
+          },
         ])
       )
     );
@@ -88,12 +102,12 @@ export default function AdminUsersTab({ users = [], onSave }) {
   const setRow = (u, patch) => {
     setDrafts((prev) => {
       const next = new Map(prev);
-      const existing = next.get(u.id) || { display_name: '', email: '', role: 'user' };
+      const existing = next.get(u.id) || { display_name: '', email: '', role: 'user', discord_id: '' };
       next.set(u.id, { ...existing, ...patch });
       return next;
     });
   };
-  const getRow = (u) => drafts.get(u.id) || { display_name: '', email: '', role: 'user' };
+  const getRow = (u) => drafts.get(u.id) || { display_name: '', email: '', role: 'user', discord_id: '' };
   const resetRow = (u) =>
     setDrafts((prev) => {
       const next = new Map(prev);
@@ -101,6 +115,7 @@ export default function AdminUsersTab({ users = [], onSave }) {
         display_name: u.display_name ?? '',
         email: u.email ?? '',
         role: u.role ?? 'user',
+        discord_id: u.discord_id ?? ''
       });
       return next;
     });
@@ -114,7 +129,7 @@ export default function AdminUsersTab({ users = [], onSave }) {
           Admin • Users
         </h3>
         <p className={styles?.muted ?? ''} style={{ margin: '6px 0 0', color: 'var(--text-secondary, #a0a0a0)', fontSize: '0.9rem' }}>
-          Edit display name, email, or role. Save per row. Character data is read-only.
+          Edit display name, email, role, or Discord ID. Save per row. Character data is read-only.
         </p>
       </div>
 
@@ -123,6 +138,7 @@ export default function AdminUsersTab({ users = [], onSave }) {
         <div>Display Name</div>
         <div>Email</div>
         <div>Role</div>
+        <div>Discord ID</div>
         <div>Character</div>
         <div>Clan / XP</div>
         <div>Actions</div>
@@ -134,7 +150,7 @@ export default function AdminUsersTab({ users = [], onSave }) {
           const clanColor = CLAN_COLORS[u.clan] || '#7F5AF0';
           return (
             <div key={u.id} style={rowStyle}>
-              <div style={{ color: 'var(--text-secondary, #a0a0a0)' }}>#{u.id}</div>
+              <div style={{ color: 'var(--text-secondary, #a0a0a0)', fontFamily: 'monospace' }}>#{u.id}</div>
 
               <div>
                 <input
@@ -167,6 +183,17 @@ export default function AdminUsersTab({ users = [], onSave }) {
                     <option key={r} value={r}>{r}</option>
                   ))}
                 </select>
+              </div>
+
+              {/* Discord ID Field */}
+              <div>
+                <input
+                  className={styles?.input ?? ''}
+                  style={{ ...pill, height: 36, fontFamily: 'monospace' }}
+                  value={draft.discord_id}
+                  onChange={(e) => setRow(u, { discord_id: e.target.value })}
+                  placeholder="123456789..."
+                />
               </div>
 
               <div>

@@ -83,7 +83,7 @@ const Highlight = ({ text, query }) => {
 
 // --- Main Chat Logs Component ---
 export default function AdminChatLogsTab({ messages, charIndex }) {
-  const [viewMode, setViewMode] = useState('direct'); // 'direct' | 'npc'
+  const [viewMode, setViewMode] = useState('direct'); // 'direct' | 'npc' | 'group'
 
   // --- Direct Message State ---
   const [directSearch, setDirectSearch] = useState('');
@@ -109,7 +109,15 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
   const [selectedNpcConversation, setSelectedNpcConversation] = useState(null); // { userId, userName, charName, charClan }
 
   const [currentThread, setCurrentThread] = useState([]);
-  const [loading, setLoading] = useState({ npcs: false, convos: false, thread: false });
+  
+  // --- Group Message State ---
+  const [groupList, setGroupList] = useState([]);
+  const [groupSearch, setGroupSearch] = useState('');
+  const debouncedGroupSearch = useDebouncedValue(groupSearch);
+  const [selectedGroup, setSelectedGroup] = useState(null);
+  const [groupThread, setGroupThread] = useState([]);
+
+  const [loading, setLoading] = useState({ npcs: false, convos: false, thread: false, groups: false, groupThread: false });
   const [error, setError] = useState('');
 
   // Helper to find char info from user ID
@@ -318,27 +326,80 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
     return () => { cancelled = true; };
   }, [viewMode, selectedNpc, selectedNpcConversation]);
 
+  // --- Load Groups on Mode Switch ---
+  useEffect(() => {
+    if (viewMode !== 'group') return;
+    let cancelled = false;
+    const loadGroups = async () => {
+      setLoading(prev => ({ ...prev, groups: true })); setError('');
+      try {
+        const res = await api.get('/admin/chat/groups');
+        if (cancelled) return;
+        setGroupList(res.data.groups || []);
+      } catch {
+        if (!cancelled) setError('Failed to load groups.');
+      } finally {
+        if (!cancelled) setLoading(prev => ({ ...prev, groups: false }));
+      }
+    };
+    loadGroups();
+    return () => { cancelled = true; };
+  }, [viewMode]);
+
+  // --- Filter Groups ---
+  const filteredGroups = useMemo(() => {
+    const q = debouncedGroupSearch.toLowerCase();
+    if (!q) return groupList;
+    return groupList.filter(g => (g.name || '').toLowerCase().includes(q));
+  }, [groupList, debouncedGroupSearch]);
+
+  // --- Load Group Thread ---
+  useEffect(() => {
+    if (viewMode !== 'group' || !selectedGroup?.id) {
+      setGroupThread([]);
+      return;
+    }
+    let cancelled = false;
+    const loadThread = async () => {
+      setLoading(prev => ({ ...prev, groupThread: true })); setError('');
+      try {
+        const res = await api.get(`/admin/chat/groups/${selectedGroup.id}/history`);
+        if (cancelled) return;
+        const msgs = (res.data.messages || []).map(m => ({
+            ...m,
+            created_at: m.created_at // Ensure format matches
+        }));
+        setGroupThread(msgs);
+      } catch {
+        if (!cancelled) { setError('Failed to load group messages.'); setGroupThread([]); }
+      } finally {
+        if (!cancelled) setLoading(prev => ({ ...prev, groupThread: false }));
+      }
+    };
+    loadThread();
+    return () => { cancelled = true; };
+  }, [viewMode, selectedGroup]);
+
+
   // --- Handle Mode Change ---
   const handleModeChange = (mode) => {
     setViewMode(mode);
     if (mode === 'direct') {
-      setSelectedNpc(null);
-      setSelectedNpcConversation(null);
-      setConvos([]);
-      setCurrentThread([]);
-      setNpcSearch('');
-      setNpcConvoSearch('');
-    } else {
-      setSelectedConversationKey(null);
-      setCurrentMessages([]);
-      setDirectSearch('');
+      setSelectedNpc(null); setSelectedNpcConversation(null); setConvos([]); setCurrentThread([]); setNpcSearch(''); setNpcConvoSearch('');
+      setSelectedGroup(null); setGroupThread([]); setGroupSearch('');
+    } else if (mode === 'npc') {
+      setSelectedConversationKey(null); setCurrentMessages([]); setDirectSearch('');
+      setSelectedGroup(null); setGroupThread([]); setGroupSearch('');
+    } else if (mode === 'group') {
+      setSelectedConversationKey(null); setCurrentMessages([]); setDirectSearch('');
+      setSelectedNpc(null); setSelectedNpcConversation(null); setConvos([]); setCurrentThread([]); setNpcSearch(''); setNpcConvoSearch('');
     }
     setError('');
   };
 
   return (
     <div className={styles.logsContainer} data-mode={viewMode}>
-      {/* --- Column 1: Conversation/NPC List --- */}
+      {/* --- Column 1: Conversation/NPC/Group List --- */}
       <aside className={styles.sidebar}>
         <div className={styles.sidebarHeader}>
           <div className={styles.modeSwitcher}>
@@ -354,12 +415,22 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
             >
               NPC Chats
             </button>
+            <button
+              onClick={() => handleModeChange('group')}
+              className={viewMode === 'group' ? styles.active : ''}
+            >
+              Groups
+            </button>
           </div>
           <input
             type="search"
-            placeholder={viewMode === 'direct' ? "Search conversations..." : "Search NPCs..."}
-            value={viewMode === 'direct' ? directSearch : npcSearch}
-            onChange={e => viewMode === 'direct' ? setDirectSearch(e.target.value) : setNpcSearch(e.target.value)}
+            placeholder={viewMode === 'direct' ? "Search conversations..." : viewMode === 'npc' ? "Search NPCs..." : "Search Groups..."}
+            value={viewMode === 'direct' ? directSearch : viewMode === 'npc' ? npcSearch : groupSearch}
+            onChange={e => {
+                if (viewMode === 'direct') setDirectSearch(e.target.value);
+                else if (viewMode === 'npc') setNpcSearch(e.target.value);
+                else setGroupSearch(e.target.value);
+            }}
             className={styles.searchInput}
           />
         </div>
@@ -381,6 +452,16 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
               searchQuery={debouncedNpcSearch}
               loading={loading.npcs}
               error={error && !loading.npcs ? error : ''}
+            />
+          )}
+          {viewMode === 'group' && (
+            <GroupList
+              groups={filteredGroups}
+              selectedId={selectedGroup?.id}
+              onSelect={setSelectedGroup}
+              searchQuery={debouncedGroupSearch}
+              loading={loading.groups}
+              error={error && !loading.groups ? error : ''}
             />
           )}
         </div>
@@ -439,6 +520,16 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
             mode="npc"
           />
         )}
+        {viewMode === 'group' && selectedGroup && (
+          <MessagePanel
+            messages={groupThread}
+            participants={{ groupName: selectedGroup.name }}
+            loading={loading.groupThread}
+            error={error}
+            mode="group"
+          />
+        )}
+
         {/* Placeholders */}
         {viewMode === 'direct' && !selectedConversationKey && (
           <div className={styles.placeholderCard}>
@@ -464,6 +555,15 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
             <div>
               <h3>Select a Conversation</h3>
               <p className={styles.subtle}>Select a thread from the middle panel to view messages.</p>
+            </div>
+          </div>
+        )}
+        {viewMode === 'group' && !selectedGroup && (
+           <div className={styles.placeholderCard}>
+            <div className={styles.placeholderDot} />
+            <div>
+              <h3>Select a Group</h3>
+              <p className={styles.subtle}>Choose a group chat from the list on the left.</p>
             </div>
           </div>
         )}
@@ -542,6 +642,36 @@ function NpcList({ npcs, selectedId, onSelect, searchQuery, loading, error }) {
   });
 }
 
+// --- Component: List of Groups ---
+function GroupList({ groups, selectedId, onSelect, searchQuery, loading, error }) {
+  if (loading) return <div className={styles.listEmptyState}>Loading Groups...</div>;
+  if (error) return <div className={`${styles.listEmptyState} ${styles.errorText}`}>{error}</div>;
+  if (!groups.length && !searchQuery) {
+    return <div className={styles.listEmptyState}>No groups found.</div>;
+  }
+  if (!groups.length && searchQuery) {
+    return <div className={styles.listEmptyState}>No groups match "{searchQuery}".</div>;
+  }
+
+  return groups.map(g => (
+    <button
+      key={g.id}
+      className={`${styles.listItem} ${g.id === selectedId ? styles.active : ''}`}
+      onClick={() => onSelect(g)}
+    >
+      <div className={styles.listItemText}>
+        <Highlight text={g.name} query={searchQuery} />
+        <small style={{display:'block', opacity:0.6}}>Created by {g.creator_name}</small>
+      </div>
+      <div className={styles.listItemMeta}>
+        <span className={styles.timestamp}>
+          {g.member_count || 0} members
+        </span>
+      </div>
+    </button>
+  ));
+}
+
 // --- Component: List of Conversations for an NPC ---
 function NpcConversationList({ conversations, selectedUserId, onSelect, searchQuery, loading, error, npcSelected }) {
   if (!npcSelected) return <div className={styles.listEmptyState}>Select an NPC first.</div>;
@@ -591,6 +721,8 @@ function MessagePanel({ messages, participants, loading, error, mode, selectedCo
       const name1 = participants.user1Char && participants.user1Char !== '—' ? `${participants.user1Char} (${participants.user1})` : participants.user1;
       const name2 = participants.user2Char && participants.user2Char !== '—' ? `${participants.user2Char} (${participants.user2})` : participants.user2;
       return <>{name1} <span className={styles.convoSeparator}>↔</span> {name2}</>;
+    } else if (mode === 'group') {
+      return <>{participants.groupName} <small>(Group Chat)</small></>;
     } else {
       return <>{participants.npc} <span className={styles.convoSeparator}>↔</span> {participants.user}</>;
     }
@@ -613,6 +745,15 @@ function MessagePanel({ messages, participants, loading, error, mode, selectedCo
         clan: senderIsUser1 ? participants.user1Clan : participants.user2Clan,
         isSent: isSentByPrimaryUser, // True if sender is user1 (lower ID)
       };
+    } else if (mode === 'group') {
+        // In group view, we just show everything as 'received' (left) for uniformity, 
+        // OR simply list them all on the left with names.
+        // We'll return isSent=false to keep them left-aligned in a column.
+        return {
+            name: message.char_name || message.display_name || 'Unknown',
+            clan: message.clan,
+            isSent: false
+        };
     } else { // mode === 'npc'
       const isSentByNpc = message.from === 'npc'; // NPC messages go right
       return {

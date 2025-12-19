@@ -20,7 +20,8 @@ import AdminDowntimesTab from '../components/admin/AdminDowntimesTab.jsx';
 import AdminXPTab from '../components/admin/AdminXPTab.jsx';
 import AdminNPCsTab from '../components/admin/AdminNPCsTab.jsx';
 import AdminChatLogsTab from '../components/admin/AdminChatLogsTab.jsx';
-import AdminDiceLogsTab from '../components/admin/AdminDiceLogsTab.jsx'; // <-- Added Import
+import AdminDiceLogsTab from '../components/admin/AdminDiceLogsTab.jsx'; 
+import AdminDiscordTab from '../components/admin/AdminDiscordTab.jsx'; // <-- Added Import
 
 
 /* ---------------- UI bits ---------------- */
@@ -37,7 +38,7 @@ function TabButton({ active, onClick, children }) {
 
 /* ---------------- Main ---------------- */
 export default function Admin() {
-  const [tab, setTab] = useState('users'); // users | characters | claims | downtimes | xp | npcs | chat | stats | dice | logs
+  const [tab, setTab] = useState('users'); // users | characters | claims | downtimes | xp | npcs | chat | stats | dice | discord | logs
   const [loading, setLoading] = useState(false);
 
   // All data state lives here
@@ -128,7 +129,8 @@ export default function Admin() {
       await api.patch(`/admin/users/${u.id}`, {
         display_name: u.display_name,
         email: u.email,
-        role: u.role
+        role: u.role,
+        discord_id: u.discord_id
       });
       setMsg(`Saved user #${u.id}`);
       load(); // Reload to reflect changes
@@ -597,7 +599,8 @@ export default function Admin() {
           <TabButton active={tab==='npcs'} onClick={()=>setTab('npcs')}>NPCs</TabButton>
           <TabButton active={tab==='chat'} onClick={()=>setTab('chat')}>Chat Logs</TabButton>
           <TabButton active={tab==='stats'} onClick={()=>setTab('stats')}>Chat Stats</TabButton>
-          <TabButton active={tab==='dice'} onClick={()=>setTab('dice')}>Dice Logs</TabButton> {/* <-- Added Button */}
+          <TabButton active={tab==='dice'} onClick={()=>setTab('dice')}>Dice Logs</TabButton>
+          <TabButton active={tab==='discord'} onClick={()=>setTab('discord')}>Discord</TabButton> {/* <-- Added Button */}
           <TabButton active={tab==='logs'} onClick={()=>setTab('logs')}>Server Logs</TabButton>
           <button className={`${styles.btn} ${styles.btnGhost} ${styles.rowEnd}`} onClick={load}>Reload</button>
         </div>
@@ -654,14 +657,17 @@ export default function Admin() {
         {tab === 'stats' && (
           <ChatStatsTab 
             directMessages={allMessages} 
-            npcMessages={allNpcMessages} // Note: This is currently not loaded
+            npcMessages={allNpcMessages}
             npcs={npcs} 
             users={users} 
           />
         )}
-        {/* -- Added Tab -- */}
         {tab === 'dice' && (
           <AdminDiceLogsTab />
+        )}
+        {/* -- Added Tab -- */}
+        {tab === 'discord' && (
+          <AdminDiscordTab />
         )}
         {tab === 'logs' && <AdminLogs />}
 
