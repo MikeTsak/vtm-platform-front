@@ -21,7 +21,9 @@ import AdminXPTab from '../components/admin/AdminXPTab.jsx';
 import AdminNPCsTab from '../components/admin/AdminNPCsTab.jsx';
 import AdminChatLogsTab from '../components/admin/AdminChatLogsTab.jsx';
 import AdminDiceLogsTab from '../components/admin/AdminDiceLogsTab.jsx'; 
-import AdminDiscordTab from '../components/admin/AdminDiscordTab.jsx'; // <-- Added Import
+import AdminDiscordTab from '../components/admin/AdminDiscordTab.jsx'; 
+import AdminNpcEmailTab from '../components/admin/AdminNpcEmailTab.jsx';
+
 
 
 /* ---------------- UI bits ---------------- */
@@ -597,6 +599,7 @@ export default function Admin() {
           <TabButton active={tab==='downtimes'} onClick={()=>setTab('downtimes')}>Downtimes</TabButton>
           <TabButton active={tab==='xp'} onClick={()=>setTab('xp')}>XP Tools</TabButton>
           <TabButton active={tab==='npcs'} onClick={()=>setTab('npcs')}>NPCs</TabButton>
+          <TabButton active={tab === 'npc_email'} onClick={() => setTab('npc_email')}>NPC Email</TabButton>
           <TabButton active={tab==='chat'} onClick={()=>setTab('chat')}>Chat Logs</TabButton>
           <TabButton active={tab==='stats'} onClick={()=>setTab('stats')}>Chat Stats</TabButton>
           <TabButton active={tab==='dice'} onClick={()=>setTab('dice')}>Dice Logs</TabButton>
@@ -648,6 +651,10 @@ export default function Admin() {
             onDelete={deleteNPC}
           />
         )}
+        {tab === 'npc_email' && (
+            <AdminNpcEmailTab npcs={npcs} />
+          )}
+
         {tab === 'chat' && (
           <AdminChatLogsTab 
             messages={allMessages} 

@@ -84,6 +84,24 @@
   z-index: -1;
 }
 
+.videoPlaceholder {
+  min-height: 150px;
+  color: #ccc;
+  transition: background 0.2s;
+}
+.videoPlaceholder:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #fff;
+}
+.glitchText {
+  animation: glitch 1s linear infinite;
+}
+@keyframes glitch {
+  2%, 64% { transform: translate(2px,0) skew(0deg); }
+  4%, 60% { transform: translate(-2px,0) skew(0deg); }
+  62% { transform: translate(0,0) skew(5deg); }
+}
+
 /* --- Sanity (for Admins) --- */
 .adminPage {
   color: var(--text);
