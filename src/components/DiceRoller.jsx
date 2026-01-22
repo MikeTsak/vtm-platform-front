@@ -1,5 +1,6 @@
+// src/components/DiceRoller.jsx
 import React, { useMemo, useState } from 'react';
-import api from '../api'; // Ensure you have this standard API wrapper
+import api from '../api'; 
 import styles from '../styles/DiceRoller.module.css';
 
 /**
@@ -23,27 +24,26 @@ function computeOutcome(normal, hunger, difficulty) {
   const hasCritical = tens >= 2;
   const messyCritical = hasCritical && tensHunger > 0;
 
-  // Bestial failure: failed test (successes < difficulty, or 0 successes if no diff) + at least one hunger 1
-  // If no difficulty is set, standard V5 usually treats 0 successes as a failure.
+  // Bestial failure: failed test + at least one hunger 1
   const metDifficulty = typeof difficulty === 'number' && difficulty > 0
     ? successesTotal >= difficulty
     : successesTotal > 0;
 
   const bestialFailure = !metDifficulty && hunger.some(v => v === 1);
 
-  // For a neat label
+  // Label
   let label = 'Failure';
   if (metDifficulty) label = 'Success';
-  if (hasCritical && metDifficulty) label = 'Critical!'; // V5 core: you must SUCCEED for a crit to count
+  if (hasCritical && metDifficulty) label = 'Critical!';
   if (messyCritical && metDifficulty) label = 'Messy Critical!';
   if (bestialFailure) label = 'Bestial Failure';
 
-  // Choose result art
+  // Art
   let art = '/img/dice/Success.png';
   if (messyCritical && metDifficulty) art = '/img/dice/MessyCrit.png';
   else if (hasCritical && metDifficulty) art = '/img/dice/Crit.png';
   else if (bestialFailure) art = '/img/dice/BestialFail.png';
-  else if (!metDifficulty) art = '/img/dice/BestialFail.png'; // fallback art for normal failure
+  else if (!metDifficulty) art = '/img/dice/BestialFail.png';
 
   return {
     successesTotal, extraFromPairs,
@@ -52,25 +52,26 @@ function computeOutcome(normal, hunger, difficulty) {
   };
 }
 
-export default function DiceRoller() {
+export default function DiceRoller({ characterId }) {
   const [open, setOpen] = useState(false);
 
   // Inputs
-  const [normalCount, setNormalCount] = useState(4);
-  const [hungerCount, setHungerCount] = useState(1);
+  const [poolTotal, setPoolTotal] = useState(5); 
+  const [hungerLevel, setHungerLevel] = useState(1);
   const [difficulty, setDifficulty] = useState('');
-  const [note, setNote] = useState(''); // User entered note
+  const [note, setNote] = useState('');
 
   // Roll state
   const [normalDice, setNormalDice] = useState([]);
   const [hungerDice, setHungerDice] = useState([]);
   const [hasRolled, setHasRolled] = useState(false);
-  const [isSending, setIsSending] = useState(false); // Network state
+  const [isSending, setIsSending] = useState(false);
 
   // Willpower reroll state
   const [wpMode, setWpMode] = useState(false);
   const [wpUsed, setWpUsed] = useState(false);
   const [wpSelections, setWpSelections] = useState(new Set());
+  const [wpMessage, setWpMessage] = useState('');
 
   // Rouse check state
   const [rouseVal, setRouseVal] = useState(null);
@@ -83,16 +84,12 @@ export default function DiceRoller() {
       await api.post('/dice/rolls', {
         pool: nDice.length + hDice.length,
         hunger: hDice.length,
-        results: {
-          normal: nDice,
-          hunger: hDice
-        },
+        results: { normal: nDice, hunger: hDice },
         difficulty: difficulty ? Number(difficulty) : undefined,
         note: rollNote || undefined
       });
     } catch (e) {
       console.error("Failed to log dice roll:", e);
-      // Optionally show a transient error, but don't block the UI
     } finally {
       setIsSending(false);
     }
@@ -100,26 +97,32 @@ export default function DiceRoller() {
 
   // --- Actions ---
   const roll = async () => {
-    const n = Math.max(0, Math.min(20, Number(normalCount) || 0));
-    const h = Math.max(0, Math.min(5, Number(hungerCount) || 0));
-    const normal = Array.from({ length: n }, rollD10);
-    const hunger = Array.from({ length: h }, rollD10);
+    const total = Math.max(0, Math.min(30, Number(poolTotal) || 0));
+    const hLvl = Math.max(0, Math.min(5, Number(hungerLevel) || 0));
 
-    // Update local state immediately for snappiness
+    const actualHungerCount = Math.min(total, hLvl);
+    const actualNormalCount = total - actualHungerCount;
+
+    const normal = Array.from({ length: actualNormalCount }, rollD10);
+    const hunger = Array.from({ length: actualHungerCount }, rollD10);
+
     setNormalDice(normal);
     setHungerDice(hunger);
     setHasRolled(true);
+    
     setWpMode(false);
     setWpUsed(false);
     setWpSelections(new Set());
+    setWpMessage('');
+    setRouseVal(null); 
 
-    // Log to server
     await logRollToApi(normal, hunger, note);
   };
 
   const doWillpower = async () => {
     if (wpSelections.size === 0 || wpSelections.size > 3) return;
     
+    // 1. Reroll selected dice
     const rerolled = normalDice.map((v, i) => (wpSelections.has(i) ? rollD10() : v));
     
     setNormalDice(rerolled);
@@ -127,9 +130,43 @@ export default function DiceRoller() {
     setWpMode(false);
     setWpSelections(new Set());
 
-    // Log reroll to server
+    // 2. Log reroll in background
     const rerollNote = note ? `${note} (WP Reroll)` : 'Willpower Reroll';
-    await logRollToApi(rerolled, hungerDice, rerollNote);
+    logRollToApi(rerolled, hungerDice, rerollNote);
+
+    // 3. Apply Willpower Cost (Fetch -> Modify -> Save)
+    setWpMessage('Applying WP cost...');
+    try {
+      // Determine target URL: specific ID if provided, otherwise "me"
+      const targetUrl = characterId 
+        ? (characterId.startsWith('npc:') ? `/admin/npcs/${characterId.split(':')[1]}` : `/characters/${characterId}`)
+        : '/characters/me';
+
+      // A. Fetch current sheet
+      const { data } = await api.get(targetUrl);
+      const char = data.character || data.npc || data; // handle various API wrappers
+      
+      let sheet = char.sheet;
+      if (typeof sheet === 'string') {
+        try { sheet = JSON.parse(sheet); } catch {}
+      }
+      if (!sheet) sheet = {};
+
+      // B. Modify Willpower (Add 1 Superficial)
+      if (!sheet.willpower) sheet.willpower = { superficial: 0, aggravated: 0 };
+      
+      const currentSup = Number(sheet.willpower.superficial) || 0;
+      sheet.willpower.superficial = currentSup + 1;
+
+      // C. Save back
+      await api.put(targetUrl, { ...char, sheet });
+      
+      setWpMessage('1 WP (Sup) Spent');
+    } catch (e) {
+      console.error("Failed to apply WP cost", e);
+      // Friendly fallback message if user has no active character
+      setWpMessage('Manual deduction needed');
+    }
   };
 
   const doRouse = () => {
@@ -138,9 +175,8 @@ export default function DiceRoller() {
     setRouseVal(val);
     setRouseSuccess(ok);
     if (!ok) {
-      setHungerCount(h => Math.min(5, Math.max(0, (Number(h) || 0) + 1)));
+      setHungerLevel(h => Math.min(5, Math.max(0, (Number(h) || 0) + 1)));
     }
-    // Optional: You could also log rouse checks to the API if desired
   };
 
   // Outcome memo
@@ -150,14 +186,13 @@ export default function DiceRoller() {
     return computeOutcome(normalDice, hungerDice, diff);
   }, [hasRolled, normalDice, hungerDice, difficulty]);
 
-  // Eligible normal-dice indices for WP reroll
+  // WP Selection Logic
   const normalIdx = useMemo(() => normalDice.map((_, i) => i), [normalDice]);
   const canEnterWp = hasRolled && !wpUsed && normalIdx.length > 0;
   const canConfirmWp = wpSelections.size > 0 && wpSelections.size <= 3;
 
   const toggleWpSelect = (idx) => {
     if (!wpMode) return;
-    if (!normalIdx.includes(idx)) return;
     const next = new Set(wpSelections);
     if (next.has(idx)) next.delete(idx);
     else if (next.size < 3) next.add(idx);
@@ -195,17 +230,17 @@ export default function DiceRoller() {
         <div className={styles.inputs}>
           <div className={styles.inputRow}>
              <div className={styles.inputGroup}>
-              <label>Pool</label>
+              <label>Total Pool</label>
               <input
                 className={styles.input} type="number" min={0} max={30}
-                value={normalCount} onChange={(e)=>setNormalCount(e.target.value)}
+                value={poolTotal} onChange={(e)=>setPoolTotal(e.target.value)}
               />
             </div>
             <div className={styles.inputGroup}>
               <label>Hunger</label>
               <input
                 className={styles.input} type="number" min={0} max={5}
-                value={hungerCount} onChange={(e)=>setHungerCount(e.target.value)}
+                value={hungerLevel} onChange={(e)=>setHungerLevel(e.target.value)}
               />
             </div>
             <div className={styles.inputGroup}>
@@ -229,7 +264,7 @@ export default function DiceRoller() {
               {isSending ? 'Rolling...' : 'ROLL'}
             </button>
             <button className={`${styles.rollBtn} ${styles.secondaryBtn}`} onClick={doRouse}>
-              Rouse
+              Rouse Check
             </button>
           </div>
            {rouseVal !== null && (
@@ -256,9 +291,10 @@ export default function DiceRoller() {
             </div>
 
             <div className={styles.diceContainer}>
-              {/* Normal */}
+              {/* Normal Dice (Selectable for WP) */}
               <div className={styles.poolBlock}>
                 <div className={styles.poolDice}>
+                  {normalDice.length === 0 && <span className={styles.muted}>No normal dice</span>}
                   {normalDice.map((v, i) => {
                     const isSuccess = v >= 6 && v < 10;
                     const isTen = v === 10;
@@ -276,6 +312,7 @@ export default function DiceRoller() {
                         ].join(' ')}
                         onClick={() => toggleWpSelect(i)}
                         disabled={!selectable}
+                        title={selectable ? 'Click to reroll' : ''}
                       >
                         {v}
                       </button>
@@ -283,7 +320,8 @@ export default function DiceRoller() {
                   })}
                 </div>
               </div>
-              {/* Hunger */}
+              
+              {/* Hunger Dice (Not selectable) */}
               {hungerDice.length > 0 && (
                  <div className={`${styles.poolBlock} ${styles.hungerBlock}`}>
                   <div className={styles.poolDice}>
@@ -307,7 +345,7 @@ export default function DiceRoller() {
               )}
             </div>
 
-            {/* Willpower */}
+            {/* Willpower Section */}
             <div className={styles.wpRow}>
                {!wpMode && !wpUsed && (
                   <button className={styles.wpToggle} disabled={!canEnterWp} onClick={() => setWpMode(true)}>
@@ -319,11 +357,16 @@ export default function DiceRoller() {
                     <span className={styles.wpHint}>Select up to 3 normal dice</span>
                     <button className={styles.wpCancel} onClick={() => {setWpMode(false); setWpSelections(new Set());}}>Cancel</button>
                     <button className={styles.wpConfirm} disabled={!canConfirmWp} onClick={doWillpower}>
-                      Confirm
+                      Confirm (Cost: 1 WP)
                     </button>
                  </div>
                )}
-               {wpUsed && <span className={styles.wpUsed}>WP Used</span>}
+               {wpUsed && (
+                 <div className={styles.wpUsed}>
+                   <span>WP Used</span>
+                   {wpMessage && <span style={{fontSize:'0.8em', marginLeft:'8px', opacity:0.8}}>({wpMessage})</span>}
+                 </div>
+               )}
             </div>
           </>
         )}

@@ -113,6 +113,13 @@ function normalizeFromFlatAny(source) {
   const flat = source?.sheet && looksLikeFlatSheet(source.sheet) ? source.sheet : source;
   const sheet = {};
 
+  // Helper to find a value case-insensitively in an object
+  const getCaseInsensitive = (obj, key) => {
+    if (!obj) return undefined;
+    const k = Object.keys(obj).find(k => k.toLowerCase() === key.toLowerCase());
+    return k ? obj[k] : undefined;
+  };
+
   sheet.attributes = { ...(flat.attributes || {}) };
 
   const skills = {};
@@ -148,24 +155,51 @@ function normalizeFromFlatAny(source) {
   // normalized BP key
   sheet.blood_potency = Number(flat.bloodPotency ?? flat.blood_potency ?? 1);
 
-  // ----- Health (max only) -----
-  // Recompute only the maximum: Stamina + 3
-  {
-    const stamina =
-      Number(sheet.attributes?.['Stamina'] ?? flat.attributes?.Stamina ?? 1);
-    sheet.health_max = stamina + 3;
+  // ----- Health (Derived: Stamina + 3 + (Resilience ? Fortitude : 0)) -----
+  // Look for Stamina in any casing
+  const staminaRaw = getCaseInsensitive(sheet.attributes, 'Stamina') ?? getCaseInsensitive(flat.attributes, 'Stamina') ?? 1;
+  const stamina = Number(staminaRaw);
+  let healthMax = stamina + 3;
 
-    // Do NOT touch sheet.health_current here — keep whatever the save already has.
-    // (If you want to initialize once when absent, uncomment the 2 lines below.)
-    // if (typeof sheet.health_current === 'undefined' && typeof flat.health_current !== 'undefined') {
-    //   sheet.health_current = Number(flat.health_current);
-    // }
+  // Robustly find Fortitude dots (check casing)
+  const fortDotsRaw = getCaseInsensitive(sheet.disciplines, 'Fortitude') ?? 0;
+  const fortitudeDots = Number(fortDotsRaw);
+
+  // Robustly find Fortitude powers (check casing)
+  const fortPowers = getCaseInsensitive(sheet.disciplinePowers, 'Fortitude') || [];
+  
+  // Check for "Resilience" or "Toughness" (common rename/homebrew)
+  const hasResilience = Array.isArray(fortPowers) && fortPowers.some(p => {
+    const name = String(p.name || p.id || '').toLowerCase();
+    return name.includes('resilience') || name.includes('toughness');
+  });
+
+  if (hasResilience) {
+    healthMax += fortitudeDots;
   }
+  
+  sheet.health_max = healthMax;
+
+  const hSuperficial = Number(flat?.health?.superficial ?? 0);
+  const hAggravated  = Number(flat?.health?.aggravated  ?? 0);
+  const legacyHealth = Number(flat?.health_current);
+
+  if (Number.isFinite(legacyHealth)) {
+    sheet.health_current = Math.max(0, Math.min(sheet.health_max, legacyHealth));
+  } else {
+    const hDmg = Math.max(0, Math.min(sheet.health_max, hSuperficial + hAggravated));
+    sheet.health_current = sheet.health_max - hDmg;
+  }
+  sheet.health = { superficial: hSuperficial, aggravated: hAggravated };
+
 
   // ----- Willpower (derived) -----
   // Max Willpower = Composure + Resolve
-  const comp = Number(sheet.attributes?.['Composure'] ?? flat.attributes?.Composure ?? 1);
-  const reso = Number(sheet.attributes?.['Resolve']   ?? flat.attributes?.Resolve   ?? 1);
+  const compRaw = getCaseInsensitive(sheet.attributes, 'Composure') ?? getCaseInsensitive(flat.attributes, 'Composure') ?? 1;
+  const resoRaw = getCaseInsensitive(sheet.attributes, 'Resolve')   ?? getCaseInsensitive(flat.attributes, 'Resolve')   ?? 1;
+  
+  const comp = Number(compRaw);
+  const reso = Number(resoRaw);
   sheet.willpower_max = comp + reso;
 
   // Optional structured willpower damage support (like Health)
@@ -177,7 +211,7 @@ function normalizeFromFlatAny(source) {
 
   // Compute current: clamp legacy if present; else max minus recorded damage (if any)
   if (Number.isFinite(legacyWpCurrent)) {
-    sheet.willpower_current = Math.max(0, Math.min(sheet.willpower_max, Number(sheet.willpower_current || 0)));
+    sheet.willpower_current = Math.max(0, Math.min(sheet.willpower_max, legacyWpCurrent));
   } else {
     const wpDmg = Math.max(0, Math.min(sheet.willpower_max, wpSuperficial + wpAggravated));
     sheet.willpower_current = sheet.willpower_max - wpDmg;
@@ -193,6 +227,11 @@ function normalizeFromFlatAny(source) {
     blood_sorcery: Array.isArray(flat.rituals?.blood_sorcery) ? flat.rituals.blood_sorcery : [],
     oblivion: Array.isArray(flat.rituals?.oblivion) ? flat.rituals.oblivion : [],
   };
+  
+
+  // ----- Passthrough XP Fields -----
+  if (flat.xp_spent !== undefined) sheet.xp_spent = flat.xp_spent;
+  if (flat.experience !== undefined) sheet.experience = flat.experience;
 
   return sheet;
 }
@@ -553,9 +592,6 @@ export default function CharacterView({
     return Array.from(knownRitualIds).map(id => byId.get(id)).filter(Boolean);
   }, [knownRitualIds]);
 
-  // ===== START FIX (1/3) =====
-  // Create a Set of all known discipline powers (by ID and Name)
-  // This is needed to check Oblivion Ceremony prerequisites.
   const knownPowerNamesAndIds = useMemo(() => {
     const powers = sheet.disciplinePowers || {};
     const known = new Set();
@@ -569,7 +605,6 @@ export default function CharacterView({
     });
     return known;
   }, [sheet.disciplinePowers]);
-  // ===== END FIX (1/3) =====
 
 
   function canLearnRitual(level) {
@@ -696,16 +731,22 @@ export default function CharacterView({
             <div className={styles.rowForm} style={{ gap: 12, flexWrap: 'wrap' }}>
               <Pill label="Blood Potency" value={sheet?.blood_potency ?? 1} />
               <Pill label="Humanity" value={sheet?.humanity ?? '—'} />
-              <Pill
-                label="Health"
-                value={`${sheet?.health_current ?? '—'} / ${sheet?.health_max ?? '—'}`}
-              />
+              
+              {/* Health Tracker */}
+              {(() => {
+                const agg = sheet?.health?.aggravated || 0;
+                const sup = sheet?.health?.superficial || 0;
+                const max = sheet?.health_max || 1;
+                return <StatTracker label="Health" max={max} agg={agg} sup={sup} />;
+              })()}
 
-
-              <Pill
-                label="Willpower"
-                value={`${sheet?.willpower_current ?? '—'} / ${sheet?.willpower_max ?? '—'}${Number(sheet?.willpower_current) <= 0 ? ' (Depleted)' : ''}`}
-              />
+              {/* Willpower Tracker */}
+              {(() => {
+                const agg = sheet?.willpower?.aggravated || 0;
+                const sup = sheet?.willpower?.superficial || 0;
+                const max = sheet?.willpower_max || 1;
+                return <StatTracker label="Willpower" max={max} agg={agg} sup={sup} />;
+              })()}
 
             </div>
           </div>
@@ -1152,10 +1193,8 @@ onAdd={async (merit, targetDots, options = {}) => {
                         const allowed = canLearnRitual(level);
                         const cost = XP_RULES.ritual(level);
                         const afford = xp >= cost;
-                        // ===== START FIX (2/3) =====
                         // Pass the correct set of known powers, not known rituals
                         const { unmet } = ritualPrereqStatus(rit, knownPowerNamesAndIds);
-                        // ===== END FIX (2/3) =====
                         return (
                           <RitualRow
                             key={rit.id}
@@ -1184,10 +1223,8 @@ onAdd={async (merit, targetDots, options = {}) => {
                         const allowed = canLearnCeremony(level);
                         const cost = XP_RULES.ceremony(level);
                         const afford = xp >= cost;
-                        // ===== START FIX (3/3) =====
                         // Pass the correct set of known powers, not known rituals
                         const { unmet } = ritualPrereqStatus(cer, knownPowerNamesAndIds);
-                        // ===== END FIX (3/3) =====
                         return (
                           <RitualRow
                             key={cer.id}
@@ -1236,6 +1273,47 @@ function Pill({ label, value }) {
     <span className={styles.pill}>
       <span className={styles.dim}>{label}:</span> <b>{value}</b>
     </span>
+  );
+}
+
+// New visual tracker for Health/Willpower
+function StatTracker({ label, max, agg, sup }) {
+  const boxes = [];
+  for (let i = 0; i < max; i++) {
+    let content = null;
+    let color = 'inherit';
+    
+    if (i < agg) {
+      content = 'X';
+      color = '#b40f1f'; // Redish
+    } else if (i < agg + sup) {
+      content = '/';
+    }
+
+    boxes.push(
+      <div 
+        key={i} 
+        style={{
+            width: 24, height: 24, 
+            border: '1px solid rgba(128,128,128,0.5)', 
+            display:'flex', alignItems:'center', justifyContent:'center',
+            fontSize: 18, fontWeight:'bold', lineHeight:0,
+            color: color,
+            background: 'rgba(0,0,0,0.1)'
+        }}
+      >
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+      <div style={{ fontSize:'0.75rem', textTransform:'uppercase', opacity:0.7, fontWeight:'bold' }}>{label}</div>
+      <div style={{ display:'flex', flexWrap:'wrap', gap:2 }}>
+        {boxes}
+      </div>
+    </div>
   );
 }
 
@@ -1467,9 +1545,7 @@ function RitualRow({ item, level, cost, owned, allowed, afford, prereqUnmet = []
   );
 }
 
-/* ===== START: REPLACED FUNCTION ===== */
 /* ---------- Ritual/Ceremony prereq helper ---------- */
-// This function now checks against known *discipline powers*, not known rituals.
 const _norm = (v) => String(v ?? '').trim().toLowerCase();
 
 function ritualPrereqStatus(rit, knownPowerSet) {
@@ -1508,7 +1584,6 @@ function ritualPrereqStatus(rit, knownPowerSet) {
   
   return { unmet: unmetList };
 }
-/* ===== END: REPLACED FUNCTION ===== */
 
 
 /* ===== Discipline power picker modal ===== */

@@ -1,23 +1,40 @@
-/* ---------- CSS Variables (Theme Palette) ---------- */
+/* src/styles/Admin.module.css */
+
+/* =========================================
+   1. VARIABLES & THEME
+   ========================================= */
 :root {
+  /* Colors */
   --bg-primary: #121212;
   --bg-secondary: #1e1e1e;
   --bg-tertiary: #2a2a2a;
-  --bg-inset: #101010;
+  --bg-inset: #0a0a0a;
+
   --text-primary: #e0e0e0;
-  --text-secondary: #aaaaaa;
+  --text-secondary: #a0a0a0;
+  --text-muted: #666666;
+
   --accent-purple: #7F5AF0;
   --accent-purple-dark: #6a48d9;
+  --accent-purple-glow: rgba(127, 90, 240, 0.4);
+
   --border-color: #333333;
+  --border-color-hover: #4d4d4d;
+
   --color-success: #00C851;
   --color-error: #FF4444;
   --vtm-red: #8a0303;
 
-  /* Clan Colors - we can't use these here directly, */
-  /* but they will be applied inline via JS */
+  /* Spacing & Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --header-height: 60px;
 }
 
-/* ---------- Keyframe Animations ---------- */
+/* =========================================
+   2. ANIMATIONS
+   ========================================= */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
@@ -28,451 +45,10 @@
   to { transform: rotate(360deg); }
 }
 
-/* ---------- Base Layout ---------- */
-.adminRoot {
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-  min-height: 100vh;
-  padding: 2rem 1rem;
-  font-family: 'Noto Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  animation: fadeIn 0.5s ease-out;
-}
-
-.container {
-  max-width: 1600px;
-  margin: 0 auto;
-  padding: 1.5rem;
-  background-color: var(--bg-secondary);
-  border-radius: 12px;
-  border: 1px solid var(--border-color);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-}
-
-.title {
-  font-size: 2.5rem;
-  font-weight: 500;
-  color: var(--accent-purple);
-  margin-bottom: 1.5rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--border-color);
-  letter-spacing: -0.5px;
-}
-
-/* ---------- Feedback (Loading, Alerts) ---------- */
-.loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.1rem;
-  color: var(--text-secondary);
-  margin: 2rem 0;
-}
-
-.spinner {
-  display: inline-block;
-  width: 24px;
-  height: 24px;
-  margin-right: 12px;
-  border: 4px solid var(--bg-tertiary);
-  border-top-color: var(--accent-purple);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-.alert {
-  padding: 1rem 1.5rem;
-  margin-bottom: 1rem;
-  border-radius: 8px;
-  font-weight: 500;
-  border: 1px solid transparent;
-  animation: fadeIn 0.3s ease-out;
-}
-
-.alertError {
-  background-color: rgba(255, 68, 68, 0.1);
-  border-color: var(--color-error);
-  color: var(--color-error);
-}
-
-.alertInfo {
-  background-color: rgba(0, 200, 81, 0.1);
-  border-color: var(--color-success);
-  color: var(--color-success);
-}
-
-/* ---------- Tab Toolbar ---------- */
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 2rem;
-  border-bottom: 2px solid var(--border-color);
-}
-
-.tab {
-  font-family: inherit;
-  font-size: 0.95rem;
-  font-weight: 600;
-  padding: 0.75rem 1.25rem;
-  border: none;
-  background-color: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  border-radius: 8px 8px 0 0;
-  border-bottom: 3px solid transparent;
-  transform: translateY(2px); /* Align with the bottom border */
-  transition: all 0.2s ease-in-out;
-}
-
-.tab:hover {
-  background-color: var(--bg-tertiary);
-  color: var(--text-primary);
-}
-
-.tabActive {
-  color: var(--accent-purple);
-  border-bottom-color: var(--accent-purple);
-  background-color: var(--bg-tertiary);
-}
-
-/* ---------- General Buttons (e.g., Reload) ---------- */
-.rowEnd {
-  margin-left: auto;
-  align-self: center;
-}
-
-.btn {
-  font-family: inherit;
-  font-size: 0.9rem;
-  font-weight: 600;
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s ease-in-out;
-}
-
-.btnGhost {
-  background-color: transparent;
-  color: var(--accent-purple);
-  border: 2px solid var(--accent-purple);
-}
-
-.btnGhost:hover {
-  background-color: var(--accent-purple);
-  color: var(--bg-primary);
-  box-shadow: 0 0 15px rgba(127, 90, 240, 0.5);
-  transform: scale(1.03);
-}
-
-/* ---------- Tab Content ---------- */
-/* This will animate the tabs as they switch */
-.adminRoot > .container > div[class*="Tab"] {
-  animation: fadeIn 0.4s ease-out;
-}
-
-/* ---------- Utility Classes ---------- */
-.stack12 {
-  display: grid;
-  gap: 12px;
-}
-
-/* ---------- Tab-specific Headers ---------- */
-.stack12 > h3 {
-  font-size: 1.5rem;
-  font-weight: 500;
-  color: var(--text-primary);
-  margin: 0.5rem 0;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--border-color);
-}
-
-/* ---------- Form Inputs (General) ---------- */
-.input,
-.select {
-  width: 100%;
-  padding: 0.6rem 0.8rem;
-  font-family: inherit;
-  font-size: 0.95rem;
-  background-color: var(--bg-tertiary);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  transition: all 0.2s ease-in-out;
-  box-sizing: border-box; /* Ensures padding doesn't break layout */
-}
-
-.input:focus,
-.select:focus {
-  outline: none;
-  border-color: var(--accent-purple);
-  background-color: var(--bg-primary);
-  box-shadow: 0 0 0 3px rgba(127, 90, 240, 0.3);
-}
-
-.select {
-  /* A modern dark-theme dropdown arrow */
-  appearance: none;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23aaaaaa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-  background-repeat: no-repeat;
-  background-position: right 0.7rem center;
-  background-size: 1em;
-}
-
-/* ---------- Primary Button Style ---------- */
-.btnPrimary {
-  background-color: var(--accent-purple);
-  color: #ffffff;
-  border: 2px solid var(--accent-purple);
-  font-weight: 600;
-}
-
-.btnPrimary:hover {
-  background-color: var(--accent-purple-dark);
-  border-color: var(--accent-purple-dark);
-  box-shadow: 0 0 15px rgba(127, 90, 240, 0.5);
-  transform: scale(1.03);
-}
-
-/* ---------- Users Tab Grid ---------- */
-.usersGrid {
-  display: grid;
-  /* Define 5 columns for the grid */
-  grid-template-columns: 1.5fr 1.5fr 1fr 1.2fr 0.5fr;
-  gap: 1rem;
-  align-items: center;
-  text-shadow: 2px 0.5px rgb(122, 122, 122);
-}
-
-.gridHeader {
-  font-weight: 600;
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  padding-bottom: 0.5rem;
-  border-bottom: 2px solid var(--border-color);
-  letter-spacing: 0.5px;
-}
-
-/* Cell for Character/Clan */
-.charCell {
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-  display: flex;
-  flex-direction: column;
-  line-height: 1.3;
-  /* We use the --clan-color variable set in the JSX */
-  color: var(--clan-color, var(--text-secondary));
-}
-
-.charName {
-  font-weight: 600;
-  font-style: normal;
-  /* Apply the clan color */
-  color: inherit;
-  transition: color 0.2s ease;
-}
-
-.clanName {
-  font-size: 0.85rem;
-  font-style: italic;
-  /* Apply the clan color */
-  color: inherit;
-  opacity: 0.8;
-  transition: color 0.2s ease;
-}
-
-/* Legacy .subtle class, just in case */
-.subtle {
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-  font-style: italic;
-}
-
-/* ---------- Character Tab Styles ---------- */
-.characterCardGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
-  gap: 1.5rem;
-}
-
-.characterCard {
-  background-color: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  position: relative;
-  overflow: hidden;
-  /* This creates a clan-colored "glow" inside the card,
-    which is visible from under the semi-transparent logo.
-  */
-  border-top: 3px solid var(--clan-color);
-  transition: all 0.3s ease-in-out;
-}
-
-.characterCard:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3), 0 0 20px var(--clan-color, #000);
-}
-
-/* This is the VTM Clan Symbol watermark.
-  It uses the '--clan-logo-url' variable set in the JSX.
-*/
-.characterCard::after {
-  content: '';
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 100px;
-  height: 100px;
-  background-image: var(--clan-logo-url);
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-  opacity: 0.05;
-  transition: all 0.4s ease;
-  pointer-events: none; /* Allows clicking "through" it */
-}
-
-.characterCard:hover::after {
-  opacity: 0.1;
-  transform: rotate(3deg) scale(1.05);
-}
-
-.cardHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 1.5rem;
-  background-color: rgba(0,0,0,0.1);
-  border-bottom: 1px solid var(--border-color);
-}
-
-.cardOwnerInfo {
-  line-height: 1.3;
-}
-
-.cardOwnerLabel {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-}
-
-.cardOwnerName {
-  font-size: 0.95rem;
-  color: var(--text-primary);
-  font-family: 'Fira Code', 'Courier New', monospace;
-}
-
-/* This is the small, full-color clan logo in the header.
-  It's different from the watermark.
-*/
-.clanLogo {
-  width: 45px;
-  height: 45px;
-  background-image: var(--clan-logo-url);
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-  opacity: 0.7;
-  transition: opacity 0.3s ease;
-}
-.characterCard:hover .clanLogo {
-  opacity: 1;
-}
-
-.cardBody {
-  padding: 1.5rem;
-}
-
-.cardFooter {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  padding: 1rem 1.5rem;
-  background-color: rgba(0,0,0,0.1);
-  border-top: 1px solid var(--border-color);
-  margin-top: auto; /* Pushes footer to the bottom */
-}
-
-/* ---------- Form Grid & Inputs ---------- */
-.formGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr 100px; /* Name, Clan, XP */
-  gap: 1rem;
-}
-
-/* Style for the <label> tag which now wraps span + input */
-.cardBody label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-
-.cardBody label > span {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-}
-
-.inputMono {
-  font-family: 'Fira Code', 'Courier New', monospace;
-  font-size: 0.9rem;
-  line-height: 1.5;
-  color: #c8c8c8;
-  resize: vertical;
-  min-height: 150px;
-}
-
-.input[disabled] {
-  background-color: var(--bg-inset);
-  color: var(--text-secondary);
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
-/* ---------- Button Variants ---------- */
-.btnSecondary {
-  background-color: transparent;
-  color: var(--text-secondary);
-  border: 2px solid var(--border-color);
-}
-
-.btnSecondary:hover {
-  color: var(--text-primary);
-  border-color: var(--accent-purple);
-  background-color: rgba(127, 90, 240, 0.1);
-  box-shadow: 0 0 10px rgba(127, 90, 240, 0.3);
-  transform: scale(1.03);
-}
-
-.btnDanger {
-  background-color: var(--vtm-red);
-  color: #ffffff;
-  border: 2px solid var(--vtm-red);
-  font-weight: 600;
-}
-
-.btnDanger:hover {
-  background-color: #a82020;
-  border-color: #a82020;
-  box-shadow: 0 0 15px rgba(185, 28, 28, 0.5);
-  transform: scale(1.03);
-}
-
-/* Re-using .rowEnd from before */
-.rowEnd {
-  margin-left: auto;
-}
-
-/* ---------- Keyframe Animations (Add if not present) ---------- */
-@keyframes fadeInBackdrop {
-  from { opacity: 0; }
-  to { opacity: 1; }
+@keyframes pulse {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(127, 90, 240, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(127, 90, 240, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(127, 90, 240, 0); }
 }
 
 @keyframes scaleInModal {
@@ -480,2213 +56,635 @@
   to { opacity: 1; transform: scale(1); }
 }
 
-/* ---------- Modal Styles ---------- */
-.modalBackdrop {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(10, 10, 10, 0.7);
-  backdrop-filter: blur(8px);
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  animation: fadeInBackdrop 0.3s ease-out;
-}
-
-.modalCard {
-  width: min(1180px, 96vw);
-  max-width: 1180px;
-  max-height: 95vh;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-  display: flex;
-  flex-direction: column;
-  animation: scaleInModal 0.3s ease-out;
-  position: relative;
-  overflow: hidden; /* We will scroll the body, not the card */
-  
-  /* Watermark from clan logo */
-  border-top: 4px solid var(--clan-color);
-}
-
-.modalCard::after {
-  content: '';
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 150px;
-  height: 150px;
-  background-image: var(--clan-logo-url);
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-  opacity: 0.04;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.modalHeader {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--border-color);
-  background-color: rgba(0,0,0,0.1);
-  flex-shrink: 0;
-  position: relative;
-  z-index: 1;
-}
-
-.modalHeaderContent {
-  flex: 1 1 auto;
-}
-.modalHeaderContent h3 {
-  font-size: 1.75rem;
-  color: var(--accent-purple);
-  margin: 0 0 0.25rem 0;
-}
-.modalHeaderContent .subtle {
-  font-size: 0.95rem;
-  color: var(--text-secondary);
-}
-.modalHeaderContent .subtle b {
-  color: var(--clan-color); /* Set by inline style */
-  font-weight: 600;
-}
-
-.modalClanLogo {
-  width: 50px;
-  height: 50px;
-  background-image: var(--clan-logo-url);
-  background-size: contain;
-  background-position: center;
-  background-repeat: no-repeat;
-  opacity: 0.8;
-  flex-shrink: 0;
-}
-
-.modalHeaderActions {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  flex-shrink: 0;
-}
-
-.modalBody {
-  flex: 1 1 auto;
-  overflow-y: auto;
+/* =========================================
+   3. BASE LAYOUT & TYPOGRAPHY
+   ========================================= */
+.adminRoot {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
   padding: 1.5rem;
-  display: grid;
-  gap: 1.5rem;
-  background-color: var(--bg-primary); /* Darker inset for content */
-}
-
-.modalFooter {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem 1.5rem;
-  border-top: 1px solid var(--border-color);
-  background-color: rgba(0,0,0,0.1);
-  flex-shrink: 0;
-  z-index: 1;
-}
-
-/* ---------- XP Panel ---------- */
-.xpPanel {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem 1.5rem;
-  background-color: var(--bg-inset);
-  border-bottom: 1px solid var(--border-color);
-  flex-shrink: 0;
-  z-index: 1;
-}
-
-.xpImpact {
-  font-size: 1.1rem;
-  font-weight: 500;
-  color: var(--text-secondary);
-}
-.xpImpact span {
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-/* ---------- Editor Section ---------- */
-.editorSection {
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-}
-
-.sectionHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--border-color);
-  margin-bottom: 0.5rem;
-}
-.sectionHeader h4 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0;
-}
-.sectionHeader .subtle {
-  font-size: 0.85rem;
-  font-style: italic;
-}
-
-.sectionSubhead {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--accent-purple);
-  margin: 0 0 0.5rem 0;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-/* ---------- Grid Layouts ---------- */
-.formGrid {
-  display: grid;
-  gap: 0.75rem 1rem;
-}
-
-.twoColGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-  gap: 1.5rem;
-}
-
-/* ---------- Form Elements ---------- */
-.labeledInput {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-.labeledInput span {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-}
-
-/* Row for complex items like M&F */
-.mfRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-/* Picker for M&F */
-.mfPicker {
-  background-color: var(--bg-tertiary);
-  padding: 0.75rem;
-  border-radius: 6px;
-  border: 1px solid var(--border-color);
-  margin-top: 0.5rem;
-}
-
-.jsonError {
-  padding: 0.2rem 0.6rem;
-  border-radius: 4px;
-  background-color: var(--color-error);
-  color: white;
-  font-weight: 600;
-  font-size: 0.85rem;
-}
-
-/* ---------- Button Variants ---------- */
-.btnToggle {
-  background-color: var(--bg-tertiary);
-  color: var(--text-secondary);
-  border: 2px solid var(--border-color);
-  font-weight: 600;
-}
-.btnToggle.active {
-  background-color: var(--accent-purple);
-  color: #ffffff;
-  border-color: var(--accent-purple);
-  box-shadow: 0 0 10px rgba(127, 90, 240, 0.5);
-}
-
-.btnIcon {
-  padding: 0.4rem 0.6rem;
-  font-size: 1.1rem;
-  line-height: 1;
-  font-weight: 600;
-  background-color: var(--bg-tertiary);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-color);
-}
-.btnIcon:hover {
-  background-color: var(--color-error);
-  color: white;
-  border-color: var(--color-error);
-  transform: scale(1.05);
-}
-.btnIcon[title="Move up"]:hover,
-.btnIcon[title="Move down"]:hover {
-  background-color: var(--accent-purple);
-  border-color: var(--accent-purple);
-}
-
-/* Re-use .row helper */
-.row {
-  display: flex;
-  align-items: center;
-}
-
-/* ---------- Downtimes Tab Styles ---------- */
-.downtimeCardGrid {
-  display: grid;
-  gap: 1.5rem;
-}
-
-.downtimeCard {
-  background-color: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  padding: 1.5rem;
-  gap: 1rem;
-  /* Clan color is used for a subtle border */
-  border-left: 5px solid var(--clan-color);
-  transition: all 0.3s ease;
-}
-
-/* Watermark */
-.downtimeCard::after {
-  content: '';
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 100px;
-  height: 100px;
-  background-image: var(--clan-logo-url);
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-  opacity: 0.04;
-  pointer-events: none;
-  transition: all 0.4s ease;
-}
-.downtimeCard:hover::after {
-  opacity: 0.08;
-}
-
-/* Style cards based on status */
-.downtimeCard[data-status="approved"] {
-  border-left-color: var(--color-success);
-}
-.downtimeCard[data-status="rejected"] {
-  border-left-color: var(--color-error);
-}
-.downtimeCard[data-status="resolved"] {
-  border-left-color: var(--accent-purple);
-  opacity: 0.8;
-  background-color: var(--bg-secondary);
-}
-.downtimeCard[data-status="resolved"]:hover {
-  opacity: 1;
-}
-
-
-/* ---------- Downtime Card Header ---------- */
-.downtimeHeader {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.downtimeInfo {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.downtimeTitle {
-  font-size: 1.25rem;
-  color: var(--text-primary);
-}
-.downtimeTitle b:first-child {
-  color: var(--accent-purple);
-  font-family: 'Fira Code', monospace;
-}
-
-.downtimeMeta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem 0.75rem; /* row-gap, column-gap */
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-}
-/* Stylish separator */
-.downtimeMeta > span:not(:last-child)::after {
-  content: '·';
-  color: var(--border-color);
-  margin-left: 0.75rem;
-  font-weight: 600;
-}
-
-.downtimeActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-/* ---------- Status-colored Select ---------- */
-.select[data-status] {
-  font-weight: 600;
-  text-transform: capitalize;
-}
-.select[data-status="submitted"] {
-  border-color: var(--border-color);
-  color: var(--text-secondary);
-}
-.select[data-status="approved"] {
-  border-color: var(--color-success);
-  color: var(--color-success);
-  background-color: rgba(0, 200, 81, 0.1);
-}
-.select[data-status="rejected"] {
-  border-color: var(--color-error);
-  color: var(--color-error);
-  background-color: rgba(255, 68, 68, 0.1);
-}
-.select[data-status="resolved"] {
-  border-color: var(--accent-purple);
-  color: var(--accent-purple);
-  background-color: rgba(127, 90, 240, 0.1);
-}
-
-/* ---------- New Button Variant ---------- */
-.btnSuccess {
-  background-color: var(--color-success);
-  color: #ffffff;
-  border: 2px solid var(--color-success);
-  font-weight: 600;
-}
-.btnSuccess:hover {
-  background-color: #00a140;
-  border-color: #00a140;
-  box-shadow: 0 0 15px rgba(0, 200, 81, 0.5);
-  transform: scale(1.03);
-}
-
-/* ---------- Downtime Card Body (Textareas) ---------- */
-.downtimeBody {
-  display: grid;
-  gap: 1.25rem;
-}
-
-.labeledTextarea {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.labeledTextarea > span {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.textarea {
-  composes: input; /* Inherits .input style */
-  resize: vertical;
-  min-height: 80px;
-  line-height: 1.5;
-  font-size: 0.95rem;
-}
-
-.readOnlyTextarea {
-  background: var(--bg-inset);
-  color: var(--text-secondary);
-  font-style: italic;
-  opacity: 0.8;
-  border-style: dashed;
-}
-
-.privateNotes {
-  background-color: rgba(127, 90, 240, 0.05);
-  border-left: 3px solid var(--accent-purple);
-}
-
-/* ---------- KBD (Code) Style ---------- */
-.kbd {
-  font-family: 'Fira Code', monospace;
-  background-color: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  padding: 0.1rem 0.4rem;
-  border-radius: 4px;
-  font-size: 0.85rem;
-  color: var(--accent-purple);
-}
-
-/* ---------- Claims Tab Layout (REVISED) ---------- */
-.claimsLayout {
-  display: grid;
-  /* Map (big) on left, controls (smaller) on right */
-  grid-template-columns: 1fr minmax(400px, 450px);
-  gap: 1.5rem;
-  height: calc(90vh - 100px); /* Full height minus some padding */
-  max-height: 800px;
-}
-
-/* 1. Main Map Panel (Left) */
-.mapMainPanel {
-  background-color: var(--bg-tertiary);
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  overflow: hidden; /* For map border radius */
-  height: 100%;
-  display: flex; /* For fallback */
-  animation: fadeIn 0.5s ease-out; /* Add animation */
-}
-.mapCanvas {
-  height: 100%; 
-  width: 100%;
-  background-color: var(--bg-inset);
-  border-radius: 8px; /* Match card */
-}
-
-/* 2. Control Sidebar (Right) */
-.controlSidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  max-height: 100%;
-}
-
-/* This is now just the list panel */
-.sidePanel {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  background-color: var(--bg-tertiary);
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-  padding: 1rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  flex-shrink: 1; /* Allow shrinking */
-  min-height: 250px; /* Give it a min height */
-  animation: fadeIn 0.5s ease-out 0.1s; /* Stagger animation */
-  animation-fill-mode: backwards;
-}
-
-/* This is the editor panel */
-.detailPanel {
-  flex: 1; 
-  overflow-y: auto;
-  padding-right: 5px; /* For scrollbar */
-}
-/* Ensure editor and placeholder animate in */
-.detailPanel > .editorSection,
-.detailPanel > .placeholderCard {
-  animation: fadeIn 0.5s ease-out 0.2s;
-  animation-fill-mode: backwards;
-}
-
-
-/* ---------- Map Styles (Unchanged from last time) ---------- */
-.mapFallback {
-  height: 100%;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  background-color: var(--bg-inset);
-}
-.mapFallback .icon {
-  font-size: 2.5rem;
-  opacity: 0.3;
-}
-.darkTileLayer {
-  filter: invert(1) hue-rotate(180deg) brightness(0.8) contrast(1.1);
-}
-.mapTooltip {
-  background-color: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  color: #ffffff !important;
-  font-size: 11px;
-  font-weight: 600;
-  text-shadow: 0 0 3px #000, 0 0 3px #000, 0 0 3px #000;
-  padding: 0 !important;
-  white-space: nowrap;
-}
-.mapTooltip::before {
-   display: none !important;
-}
-:global(.leaflet-popup-content-wrapper) {
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
-  border: 1px solid var(--accent-purple);
-  border-radius: 8px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-}
-:global(.leaflet-popup-content) {
-  margin: 12px;
-  font-family: 'Noto Sans', sans-serif;
-  font-size: 0.9rem;
-  line-height: 1.5;
-}
-:global(.leaflet-popup-content b) {
-  color: var(--accent-purple);
-}
-:global(.leaflet-popup-content code) {
-  font-family: 'Fira Code', monospace;
-  background-color: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  padding: 0.1rem 0.4rem;
-  border-radius: 4px;
-  font-size: 0.85rem;
-  color: var(--text-primary);
-}
-:global(.leaflet-popup-tip) {
-  background-color: var(--bg-secondary);
-  border-left: 1px solid var(--accent-purple);
-  border-bottom: 1px solid var(--accent-purple);
-  box-shadow: -2px 2px 5px rgba(0,0,0,0.3);
-}
-:global(.leaflet-popup-close-button) {
-  color: var(--text-secondary) !important;
-  padding: 8px 8px 0 0 !important;
-  text-shadow: none;
-}
-:global(.leaflet-popup-close-button:hover) {
-  color: var(--text-primary) !important;
-  background: none !important;
-}
-
-/* ---------- Sidebar List & Filters (Unchanged from last time) ---------- */
-.sideHeader {
-  display: flex;
-  gap: 0.5rem;
-}
-.inputSearch {
-  flex: 1;
-  composes: input;
-  padding-left: 2.2rem;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23777' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3ccircle cx='11' cy='11' r='8'%3e%3c/circle%3e%3cline x1='21' y1='21' x2='16.65' y2='16.65'%3e%3c/line%3e%3c/svg%3e");
-  background-repeat: no-repeat;
-  background-position: 0.7rem center;
-  background-size: 1rem;
-}
-.sideFilters {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-}
-.claimList {
-  flex: 1;
-  overflow-y: auto;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  background-color: var(--bg-secondary);
-  padding: 0.25rem;
-  min-height: 100px; /* Ensure list has some height */
-}
-.claimItem {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  width: 100%;
-  padding: 0.75rem;
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid var(--border-color);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.2s ease-in-out;
-  text-align: left;
-}
-.claimItem:last-child {
-  border-bottom: none;
-}
-.claimItem:hover {
-  background-color: var(--bg-tertiary);
-  color: var(--text-primary);
-}
-.claimItemActive {
-  background-color: var(--accent-purple);
-  color: #ffffff;
-  border-radius: 4px;
-  border-bottom-color: transparent;
-}
-.claimItemActive:hover {
-  background-color: var(--accent-purple-dark);
-  color: #ffffff;
-}
-.claimItemActive .subtle,
-.claimItemActive:hover .subtle {
-  color: rgba(255, 255, 255, 0.7);
-}
-.claimBadge {
-  font-family: 'Fira Code', monospace;
-  font-size: 0.8rem;
-  font-weight: 600;
-  background-color: var(--bg-inset);
-  padding: 0.2rem 0.6rem;
-  border-radius: 20px;
-  color: var(--text-secondary);
-}
-.claimItemActive .claimBadge {
-  background-color: rgba(0,0,0,0.2);
-  color: #ffffff;
-}
-.claimText {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  line-height: 1.3;
-}
-.claimText b {
-  font-weight: 600;
-  color: var(--text-primary);
-}
-.claimItemActive .claimText b {
-  color: #ffffff;
-}
-.claimText small {
-  font-size: 0.85rem;
-}
-.claimSwatch {
-  width: 20px;
-  height: 20px;
-  min-width: 20px;
-  border-radius: 4px;
-  border: 1px solid rgba(0,0,0,0.3);
-  transition: transform 0.2s ease;
-}
-.claimItem:hover .claimSwatch {
-  transform: scale(1.1);
-}
-.emptyNote {
-  text-align: center;
-  padding: 2rem 1rem;
-  font-style: italic;
-  color: var(--text-secondary);
-}
-
-/* ---------- Detail Panel & Editor (Unchanged from last time) ---------- */
-.detailHeader {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--border-color);
-  margin-bottom: 0.5rem;
-}
-.detailHeader h3 {
-  margin: 0;
-  font-size: 1.5rem;
-  color: var(--text-primary);
-}
-.detailHeader .subtle {
-  margin-top: 0.2rem;
-  font-family: 'Fira Code', monospace;
-}
-.detailSwatch {
-  width: 40px;
-  height: 40px;
-  min-width: 40px;
-  border-radius: 50%;
-  border: 2px solid var(--border-color);
-  box-shadow: 0 0 10px rgba(0,0,0,0.5);
-}
-.colorBox {
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 38px;
-  padding: 0;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  cursor: pointer;
-  background-color: transparent;
-  transition: all 0.2s ease;
-}
-.colorBox::-webkit-color-swatch {
-  border-radius: 5px;
-  border: none;
-}
-.colorBox:hover, .colorBox:focus {
-  border-color: var(--accent-purple);
-  box-shadow: 0 0 0 3px rgba(127, 90, 240, 0.3);
-}
-.inputError {
-  border-color: var(--color-error);
-  box-shadow: 0 0 0 3px rgba(255, 68, 68, 0.3);
-}
-.inputError:focus {
-  border-color: var(--color-error);
-  box-shadow: 0 0 0 3px rgba(255, 68, 68, 0.3);
-}
-
-/* ---------- Placeholder Card (Unchanged from last time) ---------- */
-/* @keyframes pulse definition is already present */
-.placeholderCard {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  gap: 1.5rem;
-  padding: 3rem;
-  height: 100%;
-  min-height: 400px;
-  background-color: var(--bg-tertiary);
-  border-radius: 8px;
-  border: 2px dashed var(--border-color);
-  color: var(--text-secondary);
-}
-.placeholderDot {
-  width: 50px;
-  height: 50px;
-  background-color: var(--accent-purple);
-  border-radius: 50%;
-  animation: pulse 2s infinite;
-}
-.placeholderCard h3 {
-  font-size: 1.5rem;
-  color: var(--text-primary);
-  margin-bottom: 0.5rem;
-}
-
-/* ---------- Custom Checkbox (Unchanged from last time) ---------- */
-.customCheckbox {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  cursor: pointer;
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  transition: color 0.2s ease;
-}
-.customCheckbox input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-.customCheckbox .checkmark {
-  position: relative;
-  height: 20px;
-  width: 20px;
-  background-color: var(--bg-inset);
-  border: 2px solid var(--border-color);
-  border-radius: 4px;
-  transition: all 0.2s ease;
-}
-.customCheckbox:hover {
-  color: var(--text-primary);
-}
-.customCheckbox:hover .checkmark {
-  border-color: var(--accent-purple);
-}
-.customCheckbox input:checked ~ .checkmark {
-  background-color: var(--accent-purple);
-  border-color: var(--accent-purple);
-}
-.customCheckbox .checkmark::after {
-  content: "";
-  position: absolute;
-  display: none;
-  left: 6px;
-  top: 2px;
-  width: 5px;
-  height: 10px;
-  border: solid white;
-  border-width: 0 3px 3px 0;
-  transform: rotate(45deg);
-}
-.customCheckbox input:checked ~ .checkmark::after {
-  display: block;
-}
-
-/* ---------- XP Tab Grid ---------- */
-.xpGrid {
-  display: grid;
-  /* Define 5 columns for the grid */
-  grid-template-columns: 1.5fr 1fr 1.5fr 0.5fr 1fr;
-  gap: 1rem;
-  align-items: center;
-}
-
-/* Cell for Character */
-.xpCharCell {
-  position: relative;
-  overflow: hidden;
-  padding: 0.25rem 0.5rem;
-}
-/* Watermark for clan logo */
-.xpCharCell::after {
-  content: '';
-  position: absolute;
-  top: -5px;
-  right: -5px;
-  width: 40px;
-  height: 40px;
-  background-image: var(--clan-logo-url);
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-  opacity: 0.1;
-  pointer-events: none;
-  transition: opacity 0.3s ease;
-}
-.xpCharCell:hover::after {
-  opacity: 0.2;
-}
-
-/* Re-use charName/clanName from Users tab */
-.xpGrid .charName {
-  font-weight: 600;
-  color: var(--clan-color);
-  font-size: 1.05rem;
-}
-.xpGrid .clanName {
-  font-style: italic;
-  font-size: 0.9rem;
-  opacity: 0.8;
-}
-
-/* Cell for Owner */
-.ownerCell {
-  composes: subtle; /* Inherits .subtle style */
-  font-family: 'Fira Code', 'Courier New', monospace;
-  font-size: 0.85rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Cell for XP */
-.xpCell {
-  font-family: 'Fira Code', 'Courier New', monospace;
-  font-weight: 700;
-  font-size: 1.1rem;
-  color: var(--text-primary);
-  text-align: center;
-  padding: 0 0.5rem;
-}
-
-/* Cell for Actions */
-.actionCell {
-  composes: row; /* Inherits .row style */
-  gap: 0.5rem;
-  justify-content: flex-start;
-}
-.actionCell .input {
-  width: 80px;
-  text-align: center;
-}
-
-/* Style for disabled buttons */
-.btn[disabled] {
-  background-color: var(--bg-tertiary);
-  border-color: var(--border-color);
-  color: var(--text-secondary);
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-  opacity: 0.6;
-}
-.btn[disabled]:hover {
-  background-color: var(--bg-tertiary);
-  border-color: var(--border-color);
-  color: var(--text-secondary);
-  transform: none;
-  box-shadow: none;
-}
-
-/* ---------- Modern Table Styles ---------- */
-.tableContainer {
-  width: 100%;
-  overflow-x: auto; /* Allow horizontal scroll on small screens */
-  background-color: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-.table {
-  width: 100%;
-  border-collapse: collapse; /* Clean, modern look */
-  font-size: 0.95rem;
-}
-
-.table th,
-.table td {
-  padding: 1rem 1.25rem;
-  text-align: left;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.table th {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  background-color: var(--bg-secondary);
-}
-
-.table tbody tr {
-  background-color: var(--bg-tertiary);
-  transition: background-color 0.2s ease-in-out;
-  position: relative; /* For clan icon */
-}
-
-.table tbody tr:hover {
-  background-color: var(--bg-secondary);
-}
-
-.table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.table .emptyCell {
-  text-align: center;
-  padding: 1.5rem;
-  font-style: italic;
-  color: var(--text-secondary);
-}
-
-/* ---------- NPC Table Cell Styles ---------- */
-.table .idCell {
-  font-family: 'Fira Code', monospace;
-  font-weight: 600;
-  color: var(--accent-purple);
-  font-size: 0.9rem;
-}
-
-.table .npcNameCell {
-  font-weight: 600;
-  color: var(--text-primary);
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  position: relative;
-}
-
-/* Clan icon, using the watermark as a small element */
-.table .clanIcon {
-  width: 24px;
-  height: 24px;
-  min-width: 24px;
-  background-image: var(--clan-logo-url);
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-  opacity: 0.5;
-  transition: all 0.3s ease;
-}
-.table tbody tr:hover .clanIcon {
-  opacity: 1;
-  transform: scale(1.1);
-}
-
-.table .clanCell {
-  color: var(--clan-color);
-  font-style: italic;
-  font-weight: 500;
-}
-
-.table .dateCell {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  white-space: nowrap;
-}
-
-
-/* ---------- NPC Create Card ---------- */
-.npcCreateCard {
-  background-color: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  margin-top: 1rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  font-family: 'Noto Sans', 'Helvetica Neue', Arial, sans-serif;
+  box-sizing: border-box;
   animation: fadeIn 0.4s ease-out;
 }
 
-.npcCreateHeader {
-  padding: 1.5rem 1.5rem 1rem 1.5rem;
-  border-bottom: 1px solid var(--border-color);
-}
-.npcCreateHeader h4 {
-  font-size: 1.5rem;
-  color: var(--accent-purple);
-  margin: 0 0 0.5rem 0;
-}
-.npcCreateHeader .subtle {
-  font-size: 0.95rem;
-}
-
-.npcCreateBody {
+.container {
+  max-width: 1600px;
+  margin: 0 auto;
   padding: 1.5rem;
-  /* This will style the CharacterSetup component inside */
   background-color: var(--bg-secondary);
-}
-
-/* Style the CharacterSetup component when it's inside our card */
-.npcCreateBody > div { /* Assumes CharacterSetup's root is a div */
-  background-color: var(--bg-tertiary) !important;
-  border: 1px solid var(--border-color) !important;
-  padding: 1rem;
-  border-radius: 6px;
-}
-
-.npcCreateFooter {
-  padding: 1rem 1.5rem;
-  border-top: 1px solid var(--border-color);
-  background-color: var(--bg-secondary);
-  border-radius: 0 0 8px 8px;
-}
-
-/* ---------- Chat Stats Tab ---------- */
-.dateFilters {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 1rem;
-  padding: 1rem 1.5rem;
-  background-color: var(--bg-tertiary);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   border: 1px solid var(--border-color);
-}
-.dateFilters .labeledInput {
-  flex: 1 1 150px;
-}
-.dateFilterButtons {
-  display: flex;
-  gap: 0.5rem;
-  margin-left: auto;
-  padding-bottom: 2px; /* Align with inputs */
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
 }
 
-/* ---------- Stat Card Grid (Google-inspired) ---------- */
-.statsGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1rem;
-}
-
-.statCard {
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 1.5rem;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-.statCard:hover {
-  transform: translateY(-5px);
-  border-color: var(--accent-purple);
-  box-shadow: 0 8px 20px rgba(127, 90, 240, 0.2);
-}
-.statCard::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 4px;
-  background-color: var(--accent-purple);
-  opacity: 0.8;
-  transition: all 0.3s ease;
-}
-.statCard:hover::before {
-  height: 6px;
-  opacity: 1;
-  box-shadow: 0 0 10px var(--accent-purple);
-}
-
-.statTitle {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  margin: 0 0 0.5rem 0;
-  letter-spacing: 0.5px;
-}
-
-.statValue {
-  font-size: 2.5rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  line-height: 1.1;
-  margin-bottom: 0.5rem;
-}
-
-.statSubtext {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  font-style: italic;
-}
-
-/* ---------- Stat List Grid (Leaderboards) ---------- */
-.statsListGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1rem;
-}
-
-.statListCard {
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden; /* For list scrolling */
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  min-height: 300px; /* Give lists a min height */
-}
-
-.statListTitle {
-  font-size: 1.25rem;
+.title {
+  font-size: 2rem;
   font-weight: 500;
-  color: var(--text-primary);
-  margin: 0;
-  padding: 1rem 1.5rem;
+  color: var(--accent-purple);
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
   border-bottom: 1px solid var(--border-color);
-  background-color: var(--bg-secondary);
+  letter-spacing: -0.02em;
 }
 
-.statListBody {
-  flex: 1;
-  overflow-y: auto;
-  padding: 1rem;
+/* Utility Helpers */
+.stack12 { display: grid; gap: 1.5rem; animation: fadeIn 0.4s ease-out; }
+.stack12 > h3 {
+  font-size: 1.5rem;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.5rem;
+  color: var(--text-primary);
 }
-.statListBody .subtle {
-  padding: 1rem;
-  text-align: center;
+.row { display: flex; align-items: center; }
+.rowEnd { margin-left: auto; align-self: center; }
+.subtle { color: var(--text-secondary); font-size: 0.85rem; }
+.kbd {
+  font-family: 'Fira Code', monospace;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-color);
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  color: var(--accent-purple);
+  font-size: 0.8rem;
 }
 
-.statList {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.statList li {
+/* =========================================
+   4. LOADING & ALERTS
+   ========================================= */
+.loading {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem;
-  border-radius: 6px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  transition: all 0.2s ease;
-}
-.statList li:hover {
-  background-color: var(--bg-tertiary);
-  border-color: var(--clan-color);
-  transform: scale(1.02);
-}
-.statList li:not(.hasAvatar):hover {
-  border-color: var(--accent-purple);
+  justify-content: center;
+  padding: 3rem;
+  background: var(--bg-inset);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-weight: 500;
 }
 
-.statListRank {
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--accent-purple);
-  background-color: rgba(127, 90, 240, 0.1);
-  border: 1px solid var(--accent-purple);
+.spinner {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  margin-right: 12px;
+  border: 3px solid rgba(127, 90, 240, 0.2);
+  border-top-color: var(--accent-purple);
   border-radius: 50%;
-  width: 28px;
-  height: 28px;
-  min-width: 28px;
+  animation: spin 0.8s linear infinite;
+}
+
+.alert {
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  border-left: 4px solid transparent;
+  display: flex;
+  align-items: center;
+  animation: fadeIn 0.3s ease-out;
+}
+.alertError { background: rgba(255, 68, 68, 0.1); border-left-color: var(--color-error); color: #ff8080; }
+.alertInfo { background: rgba(0, 200, 81, 0.1); border-left-color: var(--color-success); color: #69f0ae; }
+.alertMini { padding: 0.5rem 1rem; margin: 0; font-size: 0.9rem; flex: 1; }
+
+/* =========================================
+   5. NAVIGATION TOOLBAR
+   ========================================= */
+.toolbar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+  border-bottom: 2px solid var(--border-color);
+  /* Scrollable on mobile */
+  overflow-x: auto;
+  white-space: nowrap;
+  padding-bottom: 2px; /* Space for scrollbar invisibly */
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+}
+.toolbar::-webkit-scrollbar { display: none; } /* Chrome/Safari */
+
+.tab {
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.8rem 1.5rem;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s ease;
+  flex-shrink: 0; /* Prevent squishing */
+}
+.tab:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+.tabActive {
+  color: var(--accent-purple);
+  border-bottom-color: var(--accent-purple);
+  background: var(--bg-tertiary);
+}
+
+/* =========================================
+   6. BUTTONS & INPUTS
+   ========================================= */
+.btn {
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-}
-
-.statListAvatar {
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
-  border-radius: 50%;
-  border: 2px solid var(--clan-color);
-  object-fit: cover;
-  background-color: var(--bg-inset);
-  padding: 2px;
-  filter: drop-shadow(0 0 3px var(--clan-color));
-}
-
-.statListItemInfo {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  line-height: 1.3;
-  min-width: 0; /* Prevents overflow */
-}
-
-.statListItemName {
-  font-weight: 600;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.statList li:hover .statListItemName {
-  color: var(--clan-color);
-}
-.statList li:not(.hasAvatar):hover .statListItemName {
-  color: var(--accent-purple);
-}
-
-
-.statListItemSubname {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  font-style: italic;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.statListItemCount {
-  font-family: 'Fira Code', monospace;
-  font-weight: 600;
-  font-size: 1.1rem;
-  color: var(--text-primary);
-  margin-left: auto;
-  padding-left: 0.5rem;
-}
-/* ---------- List Item Styles (REPLACE: .convoAvatar background-color) ---------- */
-.convoAvatar {
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
-  border-radius: 50%;
-  border: 2px solid var(--clan-color, var(--border-color));
-  object-fit: cover;
-  background-color: #ffffff; /* Changed to white */
-  padding: 2px;
-  filter: drop-shadow(0 0 2px var(--clan-color));
-}
-
-/* ---------- Stat List Grid (Leaderboards) (REPLACE: .statListAvatar background-color) ---------- */
-.statListAvatar {
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
-  border-radius: 50%;
-  border: 2px solid var(--clan-color);
-  object-fit: cover;
-  background-color: #ffffff; /* Changed to white */
-  padding: 2px;
-  filter: drop_shadow(0 0 3px var(--clan-color));
-}
-
-/* ---------- Chat Logs Tab Layout (REVISED v2) ---------- */
-.logsContainer {
-  display: grid;
-  height: calc(90vh - 100px); /* Full height minus some padding */
-  max-height: 800px;
-  grid-template-rows: 1fr;
-  border: 1px solid var(--border-color);
-  background-color: var(--bg-secondary);
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-/* 2-column mode for Direct Messages */
-.logsContainer[data-mode="direct"] {
-  /* Give slightly more space to the list */
-  grid-template-columns: minmax(340px, 1.3fr) 2fr;
-}
-
-/* 3-column mode for NPC Chats */
-.logsContainer[data-mode="npc"] {
-  /* Adjust balance for better readability */
-  grid-template-columns: minmax(300px, 1fr) minmax(300px, 1fr) 2.2fr;
-}
-
-/* ---------- List Sidebars ---------- */
-.sidebar,
-.conversationList {
-  display: flex;
-  flex-direction: column;
-  background-color: var(--bg-tertiary);
-  border-right: 1px solid var(--border-color);
-  height: 100%;
-  max-height: 100%; /* Ensure it respects container height */
-  overflow: hidden; /* Prevent sidebar itself from scrolling */
-}
-
-.sidebarHeader {
-  padding: 0.75rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  border-bottom: 1px solid var(--border-color);
-  flex-shrink: 0;
-  background: var(--bg-secondary);
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Subtle shadow */
-  z-index: 5; /* Keep header above list */
-}
-
-.sidebarList {
-  flex: 1;
-  overflow-y: auto; /* Allow THIS part to scroll */
-  padding: 0.5rem;
-  min-height: 0; /* Necessary for flex scrolling */
-}
-
-/* Improved Scrollbar Styling (Webkit browsers like Chrome/Edge/Safari) */
-.sidebarList::-webkit-scrollbar {
-  width: 8px;
-}
-.sidebarList::-webkit-scrollbar-track {
-  background: var(--bg-tertiary);
-  border-radius: 4px;
-}
-.sidebarList::-webkit-scrollbar-thumb {
-  background-color: var(--border-color);
-  border-radius: 4px;
-  border: 2px solid var(--bg-tertiary); /* Creates padding around thumb */
-}
-.sidebarList::-webkit-scrollbar-thumb:hover {
-  background-color: var(--text-secondary);
-}
-
-
-.listEmptyState {
-  padding: 2rem 1rem;
-  text-align: center;
-  font-style: italic;
-  color: var(--text-secondary);
-}
-.listEmptyState.errorText {
-  color: var(--color-error);
-  font-style: normal;
-  font-weight: 500;
-}
-
-/* ---------- Mode Switcher (Unchanged) ---------- */
-.modeSwitcher {
-  display: flex;
-  background-color: var(--bg-inset);
-  border-radius: 20px;
-  padding: 4px;
-  border: 1px solid var(--border-color);
-}
-.modeSwitcher button {
-  flex: 1;
-  border: none;
-  background: transparent;
-  color: var(--text-secondary);
-  font-family: inherit;
-  font-size: 0.85rem;
-  font-weight: 600;
-  padding: 0.5rem 0.75rem;
-  border-radius: 16px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-.modeSwitcher button:hover:not(.active) {
-  color: var(--text-primary);
-}
-.modeSwitcher button.active {
-  background-color: var(--accent-purple);
-  color: #ffffff;
-  box-shadow: 0 2px 8px rgba(127, 90, 240, 0.4);
-}
-
-/* Re-use search input style */
-.searchInput {
-  composes: inputSearch;
-  width: 100%;
-  box-sizing: border-box; /* Ensure padding doesn't break layout */
-}
-
-/* ---------- List Item Styles (Improved Readability) ---------- */
-.listItem {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  width: 100%;
-  padding: 0.75rem;
-  background: transparent;
-  border: 1px solid transparent; /* Use border for spacing instead of margin */
-  /* border-bottom: 1px solid var(--border-color); Removed */
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.2s ease-in-out;
-  text-align: left;
-  border-radius: 6px;
-  margin-bottom: 0.25rem;
-}
-.listItem:hover {
-  background-color: var(--bg-secondary);
-  border-color: var(--border-color);
-  color: var(--text-primary);
-}
-.listItem.active {
-  background-color: var(--accent-purple);
-  border-color: var(--accent-purple-dark);
-  color: #ffffff;
-}
-.listItem.active:hover {
-  background-color: var(--accent-purple-dark);
-}
-
-.convoAvatar {
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
-  border-radius: 50%;
-  border: 2px solid var(--clan-color, var(--border-color));
-  object-fit: cover;
-  background-color: #ffffff;
-  padding: 2px;
-  filter: drop-shadow(0 0 2px var(--clan-color));
-  flex-shrink: 0; /* Prevent avatar shrinking */
-}
-.listItem.active .convoAvatar {
-  border-color: rgba(255,255,255,0.8);
-  filter: none;
-}
-
-.listItemText {
-  flex: 1;
-  min-width: 0; /* Crucial for text overflow */
-  font-size: 0.95rem;
-  font-weight: 500;
-  color: var(--text-primary);
-  display: flex;
-  flex-wrap: wrap; /* Allow wrapping if names are very long */
-  align-items: center;
-  gap: 0.3rem 0.5rem; /* row-gap column-gap */
-  line-height: 1.3; /* Improve line spacing */
-}
-.listItem.active .listItemText {
-  color: #ffffff;
-}
-
-.convoName {
-  display: flex;
-  align-items: center;
   gap: 0.5rem;
-  white-space: nowrap; /* Prevent name itself from wrapping */
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%; /* Ensure it respects flex container */
-}
-.convoSeparator {
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  flex-shrink: 0; /* Don't let separator shrink */
-}
-.listItem.active .convoSeparator {
-  color: rgba(255,255,255,0.7);
+  line-height: 1;
 }
 
+/* Variants */
+.btnPrimary { background: var(--accent-purple); color: white; border: 2px solid var(--accent-purple); }
+.btnPrimary:hover { background: var(--accent-purple-dark); border-color: var(--accent-purple-dark); transform: translateY(-1px); }
 
-.listItemMeta {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.2rem;
-  flex-shrink: 0;
-  font-size: 0.8rem;
-  text-align: right; /* Align right */
-}
-.snippet {
-  color: var(--text-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 120px; /* Allow a bit more space for snippet */
-}
-.timestamp {
-  color: var(--text-secondary);
-  font-weight: 500;
-  white-space: nowrap; /* Prevent timestamp wrapping */
-}
-.listItem.active .snippet,
-.listItem.active .timestamp {
-  color: rgba(255, 255, 255, 0.7);
-}
+.btnSecondary { background: transparent; border: 2px solid var(--border-color); color: var(--text-secondary); }
+.btnSecondary:hover { border-color: var(--text-primary); color: var(--text-primary); background: var(--bg-tertiary); }
 
-.clanChip {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--clan-color);
-  background-color: rgba(0,0,0,0.2);
-  padding: 0.1rem 0.4rem;
-  border-radius: 10px;
-  border: 1px solid var(--clan-color);
-  white-space: nowrap; /* Keep chip on one line */
-}
-.listItem.active .clanChip {
-  color: #fff;
-  background-color: rgba(255,255,255,0.2);
-  border-color: #fff;
-}
+.btnGhost { background: transparent; color: var(--accent-purple); border: 2px solid var(--accent-purple); }
+.btnGhost:hover { background: var(--accent-purple); color: white; }
 
+.btnDanger { background: var(--vtm-red); color: white; border: 2px solid var(--vtm-red); }
+.btnDanger:hover { background: #a82020; border-color: #a82020; }
 
-/* ---------- Message Panel ---------- */
-.messagePanel {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  background-color: var(--bg-primary);
-  overflow: hidden; /* Prevent panel overflow */
-}
+.btnSuccess { background: var(--color-success); color: #121212; border: 2px solid var(--color-success); }
+.btnSuccess:hover { background: #00e676; border-color: #00e676; }
 
-.messagePanelHeader {
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--border-color);
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  background: var(--bg-secondary);
-  flex-shrink: 0;
-  z-index: 10;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-  text-align: center;
-  white-space: nowrap; /* Prevent header wrapping */
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.messagePanelHeader .convoSeparator {
-  color: var(--accent-purple);
-  margin: 0 0.5rem;
-  font-weight: 400;
-}
+.btnToggle { background: var(--bg-tertiary); color: var(--text-secondary); border: 1px solid var(--border-color); padding: 0.5rem 1rem; }
+.btnToggle.active { background: var(--accent-purple); color: white; border-color: var(--accent-purple); }
 
-.messageList {
-  flex: 1;
-  overflow-y: auto; /* Allow THIS to scroll */
-  padding: 1.5rem 1rem; /* More vertical padding */
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem; /* Slightly more gap between bubbles */
-  position: relative;
-  min-height: 0; /* Flex scroll fix */
-}
+.btnIcon { padding: 0.5rem; background: var(--bg-inset); color: var(--text-secondary); border: 1px solid var(--border-color); border-radius: 4px; }
+.btnIcon:hover { color: white; border-color: var(--accent-purple); }
 
-/* Improved Scrollbar Styling (Webkit browsers) */
-.messageList::-webkit-scrollbar {
-  width: 10px;
-}
-.messageList::-webkit-scrollbar-track {
-  background: var(--bg-primary); /* Match panel background */
-}
-.messageList::-webkit-scrollbar-thumb {
-  background-color: var(--border-color);
-  border-radius: 5px;
-  border: 3px solid var(--bg-primary);
-}
-.messageList::-webkit-scrollbar-thumb:hover {
-  background-color: var(--text-secondary);
-}
+.btnSmall { padding: 0.3rem 0.7rem; font-size: 0.8rem; }
+.btn[disabled] { opacity: 0.5; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
 
-
-/* ---------- Message Bubbles ---------- */
-.messageRow {
-  display: flex;
-  margin-bottom: 0.25rem;
-}
-.sentRow {
-  justify-content: flex-end;
-  padding-left: 3rem; /* Push sent messages away from left edge */
-}
-.receivedRow {
-  justify-content: flex-start;
-  padding-right: 3rem; /* Push received messages away from right edge */
-}
-
-.messageBubble {
-  max-width: 100%; /* Allow bubbles to take more width if needed */
-  width: fit-content; /* Shrink to content width */
-  padding: 0.7rem 1rem; /* Slightly more padding */
-  border-radius: 18px;
+/* Inputs */
+.input, .select, .textarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-family: inherit;
   font-size: 0.95rem;
-  line-height: 1.45; /* Improve line spacing */
-  position: relative;
-  padding-bottom: 1.6rem; /* Ensure space for timestamp */
-  word-wrap: break-word;
-  animation: scaleInModal 0.2s ease-out; /* Faster animation */
-  box-shadow: 0 1px 2px rgba(0,0,0,0.2); /* Subtle shadow */
-}
-
-.sentRow .messageBubble {
-  background-color: var(--accent-purple);
-  color: #ffffff;
-  border-bottom-right-radius: 4px;
-}
-.receivedRow .messageBubble {
-  background-color: var(--bg-tertiary);
+  background: var(--bg-inset);
   color: var(--text-primary);
-  border-bottom-left-radius: 4px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+  box-sizing: border-box;
 }
-
-.senderName {
-  font-size: 0.8rem;
-  font-weight: 600;
-  margin-bottom: 0.3rem; /* More space below name */
-  display: block; /* Ensure it takes its own line */
-  /* Clan color applied via inline style */
+.input:focus, .select:focus, .textarea:focus {
+  outline: none;
+  border-color: var(--accent-purple);
+  box-shadow: 0 0 0 3px rgba(127, 90, 240, 0.2);
 }
-
-.messageBody {
-  white-space: pre-wrap;
+.select {
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23aaaaaa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.8rem center;
+  background-size: 1rem;
 }
+.textarea { resize: vertical; min-height: 100px; line-height: 1.5; }
+.readOnlyTextarea { opacity: 0.7; background: var(--bg-tertiary); font-style: italic; border-style: dashed; }
+.privateNotes { background: rgba(127, 90, 240, 0.05); border-left: 3px solid var(--accent-purple); }
+.inputMono { font-family: 'Fira Code', monospace; color: #d0d0d0; }
+.inputError { border-color: var(--color-error); }
+.jsonError { background: var(--color-error); color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600; }
 
-.messageTime {
-  font-size: 0.7rem;
-  position: absolute;
-  bottom: 0.5rem; /* Consistent bottom padding */
-  right: 1rem; /* Consistent right padding */
-  color: var(--text-secondary);
-  opacity: 0.8;
-  user-select: none; /* Prevent selecting timestamp accidentally */
-}
-.sentRow .messageTime {
-  color: rgba(255, 255, 255, 0.7);
-}
-
-/* Search Highlight (Unchanged) */
-.hl {
-  background-color: #f0e68c;
-  color: #333;
-  padding: 1px 0;
-}
-
-/* Placeholder card adjustments if needed */
-.messagePanel .placeholderCard {
-  /* Ensure placeholder fits within the panel */
-  height: auto;
-  min-height: 200px;
-  margin: auto; /* Center it */
-  border: none;
-  background: transparent;
-}
-
-/* ==========================================================================
-   Mobile Responsiveness (<= 768px)
-   ========================================================================== */
-
-@media (max-width: 768px) {
-
-  /* ---------- Base Layout Adjustments ---------- */
-  .adminRoot {
-    padding: 1rem 0.5rem; /* Reduce outer padding */
-  }
-
-  .container {
-    padding: 1rem; /* Reduce container padding */
-  }
-
-  .title {
-    font-size: 1.8rem; /* Smaller title */
-    margin-bottom: 1rem;
-    padding-bottom: 0.75rem;
-  }
-
-  /* ---------- Tab Toolbar Adjustments ---------- */
-  .toolbar {
-    margin-bottom: 1.5rem;
-    gap: 0.25rem; /* Tighter gap */
-  }
-
-  .tab {
-    font-size: 0.85rem; /* Smaller tab text */
-    padding: 0.6rem 0.8rem; /* Smaller tab padding */
-  }
-
-  /* ---------- General Button/Input Adjustments ---------- */
-  .btn {
-    font-size: 0.85rem;
-    padding: 0.5rem 0.8rem; /* Slightly adjust padding for easier tapping */
-  }
-  .input, .select, .textarea {
-    font-size: 0.9rem; /* Slightly smaller input text */
-  }
-
-  /* ---------- Users Tab Grid (Stack) ---------- */
-  .usersGrid {
-    grid-template-columns: 1fr; /* Stack columns */
-    gap: 1.5rem; /* Increase gap between stacked users */
-  }
-  .usersGrid .gridHeader {
-    display: none; /* Hide headers on mobile */
-  }
-  .usersGrid > input,
-  .usersGrid > select,
-  .usersGrid > div {
-    grid-column: 1 / -1; /* Ensure each element takes full width */
-  }
-  /* Add labels implicitly */
-  .usersGrid > input:nth-of-type(3n+1)::before { content: 'Display Name: '; display: block; font-weight: 600; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.25rem; }
-  .usersGrid > input:nth-of-type(3n+2)::before { content: 'Email: '; display: block; font-weight: 600; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.25rem; }
-  .usersGrid > select::before { content: 'Role: '; display: block; font-weight: 600; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.25rem; }
-  .usersGrid > .charCell::before { content: 'Character: '; display: block; font-weight: 600; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.25rem; }
-  .usersGrid > div:last-of-type { justify-self: end; } /* Align save button */
-
-
-  /* ---------- Character Card Grid (Single Column) ---------- */
-  .characterCardGrid {
-    grid-template-columns: 1fr; /* Single column */
-    gap: 1rem;
-  }
-  .characterCard .formGrid {
-      grid-template-columns: 1fr 1fr 80px; /* Adjust XP column slightly */
-  }
-
-
-  /* ---------- Modal (Character Editor) ---------- */
-  .modalBackdrop {
-    padding: 0.5rem; /* Less padding */
-    align-items: flex-start; /* Align modal to top */
-    overflow-y: auto; /* Allow backdrop itself to scroll if modal is too tall */
-  }
-  .modalCard {
-    width: 100%; /* Full width */
-    max-width: none;
-    max-height: none; /* Allow modal to grow */
-    min-height: 90vh; /* Ensure it takes most screen height */
-    margin-top: 1rem;
-  }
-  .modalHeader {
-    padding: 0.75rem 1rem;
-  }
-  .modalHeaderContent h3 {
-      font-size: 1.3rem;
-  }
-  .modalBody {
-    padding: 1rem;
-    gap: 1rem;
-  }
-  .editorSection {
-    padding: 1rem;
-  }
-  .twoColGrid {
-    grid-template-columns: 1fr; /* Stack columns in editor */
-    gap: 1rem;
-  }
-  .mfRow {
-    grid-template-columns: 1fr auto auto; /* Adjust M&F row layout */
-  }
-  .mfRow > input:nth-of-type(1) { flex-basis: 100%; order: 1 } /* Name first */
-  .mfRow > input:nth-of-type(2) { flex-basis: 100%; order: 3 } /* Desc third */
-  .mfRow > input:nth-of-type(3) { width: 70px; flex-grow: 0; order: 2; } /* Dots second */
-  .mfRow > button { order: 4; } /* Button last */
-
-  .mfPicker .row {
-    flex-direction: column; /* Stack picker controls */
-    align-items: stretch; /* Make inputs full width */
-  }
-   .mfPicker .row > input, .mfPicker .row > select { width: 100%; }
-
-
-  /* ---------- Claims Layout (Stack Map over Controls) ---------- */
-  .claimsLayout {
-    grid-template-columns: 1fr; /* Single column */
-    grid-template-rows: auto auto; /* Auto height rows */
-    height: auto; /* Allow content height */
-    max-height: none;
-  }
-  .mapMainPanel {
-    height: 45vh; /* Fixed height for map */
-    min-height: 300px;
-  }
-  .controlSidebar {
-     gap: 1rem; /* Reduce gap */
-  }
-  .sidePanel {
-      min-height: auto; /* Remove min-height */
-  }
-  .claimList {
-     max-height: 30vh; /* Limit list height */
-  }
-
-
-  /* ---------- Downtimes Tab (Cards already stack) ---------- */
-  .downtimeHeader {
-    flex-direction: column; /* Stack header info and actions */
-    align-items: stretch; /* Full width actions */
-  }
-  .downtimeActions {
-    flex-direction: column; /* Stack buttons */
-    align-items: stretch;
-  }
-  .downtimeActions .select { width: 100%; } /* Full width select */
-
-
-  /* ---------- XP Tab Grid (Stack) ---------- */
-  .xpGrid {
-    grid-template-columns: 1fr; /* Stack columns */
-    gap: 1.5rem; /* Increase gap between stacked users */
-  }
-  .xpGrid .gridHeader {
-    display: none; /* Hide headers */
-  }
-  .xpGrid > div {
-    grid-column: 1 / -1; /* Full width */
-    /* Add labels implicitly */
-  }
-   .xpGrid > .xpCharCell::before { content: 'Character: '; display: block; font-weight: 600; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.25rem; }
-   .xpGrid > .clanName::before { content: 'Clan: '; display: block; font-weight: 600; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.25rem; }
-   .xpGrid > .ownerCell::before { content: 'Owner: '; display: block; font-weight: 600; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.25rem; }
-   .xpGrid > .xpCell::before { content: 'Current XP: '; display: block; font-weight: 600; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.25rem; }
-   .xpGrid > .actionCell::before { content: 'Grant XP: '; display: block; font-weight: 600; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.25rem; }
-
-   .xpGrid .xpCell { text-align: left; }
-   .xpGrid .actionCell { justify-content: flex-start; }
-
-
-  /* ---------- NPCs Tab (Table) ---------- */
-  /* Ensure horizontal scroll works, reduce padding */
-  .table th, .table td {
-    padding: 0.75rem;
-    white-space: nowrap; /* Prevent wrapping in table cells */
-  }
-
-
-  /* ---------- Chat Logs (Stack Columns) ---------- */
-  .logsContainer {
-    grid-template-columns: 1fr; /* Force single column */
-    grid-template-rows: auto auto 1fr; /* Header, optional convo list, messages */
-    height: 75vh; /* Adjust height for mobile */
-  }
-  .logsContainer[data-mode="direct"] {
-      grid-template-rows: auto 1fr; /* Only list and messages */
-  }
-
-  .sidebar, .conversationList {
-      border-right: none; /* No vertical borders */
-      border-bottom: 1px solid var(--border-color); /* Horizontal border */
-      max-height: 40vh; /* Limit height of lists */
-      min-height: 150px;
-  }
-  .sidebarList {
-      /* Reduce padding slightly */
-      padding: 0.25rem;
-  }
-  .messagePanel {
-     /* Message panel takes remaining space */
-  }
-  .messagePanelHeader {
-      font-size: 0.9rem; /* Smaller header */
-      padding: 0.75rem 1rem;
-  }
-  .messageList {
-      padding: 1rem 0.5rem; /* Adjust padding */
-  }
-  .messageBubble {
-      font-size: 0.9rem; /* Slightly smaller text */
-      padding: 0.6rem 0.8rem;
-      padding-bottom: 1.4rem; /* Adjust for timestamp */
-  }
-  .sentRow { padding-left: 1rem; } /* Less extreme padding */
-  .receivedRow { padding-right: 1rem; }
-
-  /* Adjust list item text/meta */
-   .listItemText { font-size: 0.9rem; }
-   .listItemMeta { font-size: 0.75rem; }
-   .snippet { max-width: 80px; } /* Shorter snippet */
-
-
-  /* ---------- Chat Stats (Stack Grids) ---------- */
-  .dateFilters {
-    flex-direction: column; /* Stack date filters */
-    align-items: stretch;
-  }
-  .dateFilterButtons {
-    margin-left: 0;
-    justify-content: center;
-  }
-  .statsGrid {
-    grid-template-columns: 1fr; /* Single column stats cards */
-  }
-  .statsListGrid {
-    grid-template-columns: 1fr; /* Single column leaderboards */
-  }
-
-}
-
-/* ==========================================================================
-   Even Smaller Screens (<= 480px) - Optional fine-tuning
-   ========================================================================== */
-@media (max-width: 480px) {
-  .title { font-size: 1.6rem; }
-  .tab { font-size: 0.75rem; padding: 0.5rem 0.6rem; }
-  .btn { font-size: 0.8rem; padding: 0.4rem 0.7rem; }
-  .input, .select, .textarea { font-size: 0.85rem; }
-
-  .modalCard { min-height: 85vh; } /* Closer to full height */
-  .modalBody { padding: 0.75rem; }
-  .editorSection { padding: 0.75rem; }
-
-  .claimsLayout .mapMainPanel { height: 40vh; } /* Maybe smaller map */
-
-  .logsContainer { height: 70vh; } /* Further adjust chat height */
-  .logsContainer[data-mode="npc"] { grid-template-columns: 1fr; grid-template-rows: auto auto auto 1fr; } /* Stack all 3 */
-  .sidebar, .conversationList { max-height: 30vh; }
-  .messageBubble { font-size: 0.85rem; }
-
-  .statValue { font-size: 2rem; }
-  .statListTitle { font-size: 1.1rem; }
-  .statListItemCount { font-size: 1rem; }
-}
-
-/* ---------- Downtimes Tab (Grouped) ---------- */
-
-/* Grid for the new Player Groups */
-.downtimeGroupGrid {
+/* =========================================
+   7. USERS & XP TABS (Grid Tables)
+   ========================================= */
+/* Users Grid */
+.usersGrid {
   display: grid;
+  grid-template-columns: 1.5fr 1.5fr 1fr 1.2fr auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  margin-bottom: 0.5rem;
+  transition: background 0.2s;
+}
+.usersGrid:hover { background: #2f2f2f; }
+
+.gridHeader {
+  display: grid;
+  grid-template-columns: 1.5fr 1.5fr 1fr 1.2fr auto;
+  gap: 1rem;
+  padding: 0 1rem 0.5rem 1rem;
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid var(--border-color);
+  margin-bottom: 0.5rem;
+}
+
+.charCell { display: flex; flex-direction: column; line-height: 1.3; }
+.charName { font-weight: 600; color: var(--clan-color, var(--text-primary)); }
+.clanName { font-size: 0.85rem; font-style: italic; opacity: 0.8; }
+
+/* XP Grid */
+.xpGrid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1.5fr 0.5fr 1fr;
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
+}
+.xpGrid:first-of-type { border-top-left-radius: var(--radius-md); border-top-right-radius: var(--radius-md); }
+.xpGrid:last-of-type { border-bottom-left-radius: var(--radius-md); border-bottom-right-radius: var(--radius-md); border-bottom: none; }
+
+.xpCharCell { position: relative; padding-left: 2.5rem; }
+.xpCharCell::before {
+  content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  width: 28px; height: 28px;
+  background-image: var(--clan-logo-url); background-size: contain; background-repeat: no-repeat;
+  opacity: 0.8;
+}
+.ownerCell { font-family: 'Fira Code', monospace; font-size: 0.85rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.xpCell { font-family: 'Fira Code', monospace; font-weight: 700; text-align: center; color: var(--accent-purple); }
+.actionCell { display: flex; gap: 0.5rem; }
+.actionCell .input { width: 80px; text-align: center; padding: 0.4rem; }
+
+.xpPanel {
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
+  padding: 1rem 1.5rem; background: var(--bg-inset); border-bottom: 1px solid var(--border-color);
+}
+.xpImpact { font-size: 1.1rem; color: var(--text-secondary); }
+.xpImpact span { font-weight: 600; color: var(--text-primary); }
+
+/* =========================================
+   8. CHARACTERS & EDITOR (Cards & Modal)
+   ========================================= */
+/* Cards */
+.characterCardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
   gap: 1.5rem;
 }
-
-/* Card for each player's group of downtimes */
-.playerDowntimeGroup {
-  background-color: var(--bg-secondary);
+.characterCard {
+  background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
-  border-radius: 10px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius-md);
   overflow: hidden;
-  /* Clan color is used for the header */
-  border-top: 4px solid var(--clan-color);
-  animation: fadeIn 0.5s ease-out;
-}
-
-.playerGroupHeader {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem 1.5rem;
-  background-color: var(--bg-tertiary);
-  border-bottom: 1px solid var(--border-color);
   position: relative;
+  display: flex;
+  flex-direction: column;
+  border-top: 4px solid var(--clan-color, var(--border-color));
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.characterCard:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+.characterCard::after {
+  content: ''; position: absolute; top: 10px; right: 10px; width: 120px; height: 120px;
+  background-image: var(--clan-logo-url); background-size: contain; background-repeat: no-repeat;
+  opacity: 0.05; pointer-events: none;
 }
 
-/* Watermark in the header */
-.playerGroupHeader::after {
-  content: '';
-  position: absolute;
-  top: 5px;
-  right: 10px;
-  width: 60px;
-  height: 60px;
-  background-image: var(--clan-logo-url);
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-  opacity: 0.05;
-  pointer-events: none;
+.cardHeader {
+  padding: 1rem; background: rgba(0,0,0,0.1); border-bottom: 1px solid var(--border-color);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.cardOwnerLabel { font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary); display: block; }
+.cardOwnerName { font-weight: 600; font-size: 0.95rem; }
+.clanLogo { width: 40px; height: 40px; background-size: contain; background-repeat: no-repeat; background-position: center; }
+
+.cardBody { padding: 1.5rem; flex: 1; }
+.formGrid { display: grid; gap: 1rem; grid-template-columns: 1fr 1fr 80px; }
+.labeledInput span, .cardBody label span {
+  font-size: 0.8rem; text-transform: uppercase; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 0.3rem;
+}
+.labeledInput { display: flex; flex-direction: column; gap: 0.25rem; }
+
+.cardFooter {
+  padding: 1rem; background: rgba(0,0,0,0.1); border-top: 1px solid var(--border-color);
+  display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: auto;
 }
 
+/* Modal */
+.modalBackdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px);
+  z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 1rem;
+  animation: fadeIn 0.3s;
+}
+.modalCard {
+  width: min(1000px, 100%); max-height: 90vh; background: var(--bg-secondary);
+  border-radius: var(--radius-lg); border: 1px solid var(--border-color);
+  display: flex; flex-direction: column; box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+  animation: scaleInModal 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  border-top: 4px solid var(--clan-color); position: relative;
+}
+.modalHeader {
+  padding: 1.5rem; background: var(--bg-tertiary); border-bottom: 1px solid var(--border-color);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.modalHeaderContent h3 { margin: 0; font-size: 1.5rem; color: var(--text-primary); }
+.modalHeaderActions { display: flex; gap: 0.5rem; }
+.modalClanLogo { width: 48px; height: 48px; background-size: contain; opacity: 0.8; }
+
+.modalBody { flex: 1; overflow-y: auto; padding: 1.5rem; display: grid; gap: 1.5rem; }
+.modalFooter {
+  padding: 1.5rem; background: var(--bg-tertiary); border-top: 1px solid var(--border-color);
+  display: flex; justify-content: flex-end; gap: 1rem;
+}
+
+.editorSection { background: var(--bg-inset); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.5rem; }
+.sectionHeader { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 0.8rem; margin-bottom: 1rem; }
+.sectionHeader h4 { margin: 0; color: var(--accent-purple); font-size: 1.1rem; }
+.sectionSubhead { font-size: 0.9rem; font-weight: 700; color: var(--text-primary); text-transform: uppercase; margin-bottom: 0.5rem; }
+
+.twoColGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+.mfRow { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; }
+.mfPicker { background: var(--bg-tertiary); padding: 1rem; border: 1px solid var(--border-color); border-radius: 6px; margin-top: 0.5rem; }
+
+/* =========================================
+   9. DOWNTIMES TAB (Modernized)
+   ========================================= */
+.downtimeGroupGrid { display: grid; gap: 2rem; }
+
+.playerDowntimeGroup {
+  background: var(--bg-tertiary); border-radius: var(--radius-md);
+  border: 1px solid var(--border-color); overflow: hidden;
+  border-left: 5px solid var(--clan-color, var(--border-color));
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.playerGroupHeader {
+  padding: 1rem; background: rgba(0,0,0,0.1);
+  display: flex; align-items: center; gap: 1rem; border-bottom: 1px solid var(--border-color);
+}
 .playerGroupBadge {
-  width: 45px;
-  height: 45px;
-  min-width: 45px;
-  border-radius: 50%;
-  background-color: #ffffff; /* White background for logo */
-  border: 2px solid var(--clan-color);
-  padding: 4px;
-  box-shadow: 0 0 10px var(--clan-color);
-  background-image: var(--clan-logo-url);
-  background-size: contain;
-  background-position: center;
-  background-repeat: no-repeat;
+  width: 40px; height: 40px; background-image: var(--clan-logo-url); background-size: cover;
+  border-radius: 50%; border: 2px solid var(--clan-color); background-color: white;
 }
+.playerGroupInfo { display: flex; flex-direction: column; }
+.playerCharName { font-weight: 700; font-size: 1.1rem; color: var(--text-primary); }
+.playerDisplayName { font-size: 0.85rem; color: var(--text-secondary); font-family: monospace; }
 
-.playerGroupInfo {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.3;
-  min-width: 0; /* Prevent overflow */
-}
-
-.playerCharName {
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: var(--clan-color);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.playerDisplayName {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  font-family: 'Fira Code', monospace;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* List container for compact rows */
-.downtimeCompactList {
-  display: flex;
-  flex-direction: column;
-  padding: 0.5rem;
-  gap: 0.25rem;
-}
-
-/* Compact Row Style */
+.downtimeCompactList { display: flex; flex-direction: column; }
 .downtimeCompactRow {
-  display: grid;
-  grid-template-columns: 1fr auto auto auto;
-  gap: 1rem;
-  align-items: center;
-  padding: 0.75rem 1rem;
-  border-radius: 6px;
-  border: 1px solid transparent;
-  transition: all 0.2s ease-in-out;
+  display: grid; grid-template-columns: 1fr auto auto auto; gap: 1rem;
+  padding: 1rem; align-items: center; border-bottom: 1px solid var(--border-color);
+  transition: background 0.2s; cursor: default;
 }
-.downtimeCompactRow:hover {
-  background-color: var(--bg-tertiary);
-  border-color: var(--border-color);
-}
-/* Dim resolved downtimes */
-.downtimeCompactRow[data-status="resolved"] {
-  opacity: 0.7;
-}
-.downtimeCompactRow[data-status="resolved"]:hover {
-  opacity: 1;
-}
+.downtimeCompactRow:last-child { border-bottom: none; }
+.downtimeCompactRow:hover { background: rgba(255,255,255,0.03); }
 
+.compactTitle { font-weight: 500; font-size: 0.95rem; color: var(--text-primary); }
+.compactTitle b { color: var(--accent-purple); font-family: 'Fira Code', monospace; }
+.compactDate { font-family: monospace; font-size: 0.85rem; color: var(--text-secondary); }
 
-.compactTitle {
-  font-size: 0.95rem;
-  font-weight: 500;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.compactTitle b {
-  font-family: 'Fira Code', monospace;
-  color: var(--accent-purple);
-  font-weight: 600;
-}
-
-.compactStatus {
-  /* Aligns with date */
-}
-
-/* Status Badge */
 .statusBadge {
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
-  text-transform: capitalize;
-  border: 1px solid;
-  white-space: nowrap;
+  padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700;
+  text-transform: uppercase; border: 1px solid currentColor;
 }
-.statusBadge[data-status="submitted"] { color: var(--text-secondary); border-color: var(--border-color); }
-.statusBadge[data-status="approved"] { color: var(--color-success); border-color: var(--color-success); }
-.statusBadge[data-status="rejected"] { color: var(--color-error); border-color: var(--color-error); }
-.statusBadge[data-status="resolved"] { color: var(--accent-purple); border-color: var(--accent-purple); }
+.statusBadge[data-status="submitted"] { color: var(--text-secondary); }
+.statusBadge[data-status="approved"] { color: var(--color-success); background: rgba(0,200,81,0.1); }
+.statusBadge[data-status="rejected"] { color: var(--color-error); background: rgba(255,68,68,0.1); }
+.statusBadge[data-status="resolved"] { color: var(--accent-purple); background: rgba(127,90,240,0.1); }
 
-
-.compactDate {
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  white-space: nowrap;
+/* Full Editor Card */
+.downtimeCard {
+  background: var(--bg-secondary); border: 1px solid var(--border-color);
+  padding: 1.5rem; margin: 0.5rem 1rem; border-radius: var(--radius-sm);
+  display: flex; flex-direction: column; gap: 1.5rem; animation: fadeIn 0.3s;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
 }
+.downtimeHeader { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; flex-wrap: wrap; gap: 1rem; }
+.downtimeTitle { font-size: 1.2rem; }
+.downtimeMeta { display: flex; gap: 1rem; font-size: 0.85rem; color: var(--text-secondary); }
+.downtimeActions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.downtimeBody { display: grid; gap: 1rem; }
+.labeledTextarea { display: flex; flex-direction: column; gap: 0.5rem; }
+.labeledTextarea span { font-weight: 600; color: var(--text-secondary); font-size: 0.8rem; text-transform: uppercase; }
 
-/* Small Button Variant */
-.btnSmall {
-  padding: 0.3rem 0.7rem;
-  font-size: 0.8rem;
-}
-
-/* Mini Alerts (re-use from previous) */
-.alertMini {
-  composes: alert;
-  padding: 0.5rem 1rem;
-  margin: 0;
-  font-size: 0.9rem;
-  flex: 1; /* Allow to take space in flex row */
-}
-
-/* ---------- Downtime Filter Toggles ---------- */
+/* Status Toggles */
 .filterToggleGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 0.5rem 1rem; /* row, column */
-  padding: 0.75rem 0.5rem;
-  border-top: 1px solid var(--border-color);
-  border-bottom: 1px solid var(--border-color);
-  margin-top: 1rem;
+  display: flex; flex-wrap: wrap; gap: 1rem; padding: 1rem;
+  background: var(--bg-tertiary); border-radius: var(--radius-sm); margin-bottom: 1.5rem;
 }
-
-/* Style the custom checkbox for status toggles */
 .statusToggle {
-  font-size: 0.9rem;
-  font-weight: 500;
-  text-transform: capitalize;
+  display: flex; align-items: center; gap: 0.5rem; cursor: pointer;
+  font-size: 0.9rem; font-weight: 500; text-transform: capitalize; user-select: none;
 }
-/* Color-code the toggles to match their status */
-.statusToggle[data-status="submitted"] .checkmark { border-color: var(--text-secondary); }
-.statusToggle[data-status="approved"] .checkmark { border-color: var(--color-success); }
-.statusToggle[data-status="rejected"] .checkmark { border-color: var(--color-error); }
-.statusToggle[data-status="resolved"] .checkmark { border-color: var(--accent-purple); }
+.statusToggle input { display: none; }
+.checkmark { width: 16px; height: 16px; border: 2px solid var(--border-color); border-radius: 4px; display: inline-block; background: var(--bg-inset); }
+.statusToggle[data-status="submitted"] input:checked ~ .checkmark { background: var(--text-secondary); border-color: var(--text-secondary); }
+.statusToggle[data-status="approved"] input:checked ~ .checkmark { background: var(--color-success); border-color: var(--color-success); }
+.statusToggle[data-status="rejected"] input:checked ~ .checkmark { background: var(--color-error); border-color: var(--color-error); }
+.statusToggle[data-status="resolved"] input:checked ~ .checkmark { background: var(--accent-purple); border-color: var(--accent-purple); }
 
-.statusToggle[data-status="submitted"] input:checked ~ .checkmark { background-color: var(--text-secondary); }
-.statusToggle[data-status="approved"] input:checked ~ .checkmark { background-color: var(--color-success); }
-.statusToggle[data-status="rejected"] input:checked ~ .checkmark { background-color: var(--color-error); }
-.statusToggle[data-status="resolved"] input:checked ~ .checkmark { background-color: var(--accent-purple); }
+/* =========================================
+   10. CHAT LOGS
+   ========================================= */
+.logsContainer {
+  display: grid; grid-template-columns: 320px 1fr;
+  height: 75vh; background: var(--bg-secondary);
+  border: 1px solid var(--border-color); border-radius: var(--radius-md); overflow: hidden;
+}
+.sidebar {
+  background: var(--bg-tertiary); border-right: 1px solid var(--border-color);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.sidebarHeader { padding: 1rem; border-bottom: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 0.5rem; }
+.sidebarList { overflow-y: auto; flex: 1; }
+.searchInput { padding-left: 2rem; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23777' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3ccircle cx='11' cy='11' r='8'%3e%3c/circle%3e%3cline x1='21' y1='21' x2='16.65' y2='16.65'%3e%3c/line%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: 0.6rem center; background-size: 1rem; }
 
-.statusToggle[data-status="submitted"] span { color: var(--text-secondary); }
-.statusToggle[data-status="approved"] span { color: var(--color-success); }
-.statusToggle[data-status="rejected"] span { color: var(--color-error); }
-.statusToggle[data-status="resolved"] span { color: var(--accent-purple); }
+.listItem {
+  padding: 0.8rem 1rem; border-bottom: 1px solid var(--border-color);
+  cursor: pointer; display: flex; gap: 0.8rem; align-items: center; transition: background 0.2s;
+}
+.listItem:hover { background: rgba(255,255,255,0.03); }
+.listItem.active { background: rgba(127,90,240,0.15); border-left: 3px solid var(--accent-purple); }
+.convoAvatar { width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--border-color); object-fit: cover; background: white; }
+.listItemText { display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+.convoName { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-primary); }
+.snippet { font-size: 0.8rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.timestamp { font-size: 0.7rem; color: var(--text-muted); margin-left: auto; }
 
-.statusToggle input:checked ~ span {
-  opacity: 0.6;
-  text-decoration: line-through;
+.messagePanel { display: flex; flex-direction: column; background: var(--bg-primary); overflow: hidden; }
+.messagePanelHeader {
+  padding: 1rem; background: var(--bg-secondary); border-bottom: 1px solid var(--border-color);
+  font-weight: 600; display: flex; align-items: center; justify-content: center;
+}
+.messageList { flex: 1; overflow-y: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+.messageRow { display: flex; width: 100%; }
+.sentRow { justify-content: flex-end; }
+.receivedRow { justify-content: flex-start; }
+
+.messageBubble {
+  max-width: 75%; padding: 0.8rem 1rem; border-radius: 12px; position: relative;
+  font-size: 0.95rem; line-height: 1.4; box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+.sentRow .messageBubble { background: var(--accent-purple); color: white; border-bottom-right-radius: 2px; }
+.receivedRow .messageBubble { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-color); border-bottom-left-radius: 2px; }
+.messageTime { display: block; font-size: 0.7rem; opacity: 0.7; margin-top: 4px; text-align: right; }
+.senderName { font-size: 0.75rem; font-weight: 600; margin-bottom: 2px; display: block; }
+
+.modeSwitcher { display: flex; background: var(--bg-inset); padding: 4px; border-radius: 20px; border: 1px solid var(--border-color); }
+.modeSwitcher button { flex: 1; border: none; background: transparent; color: var(--text-secondary); border-radius: 16px; padding: 0.4rem; cursor: pointer; font-size: 0.85rem; font-weight: 600; }
+.modeSwitcher button.active { background: var(--accent-purple); color: white; }
+
+/* ---------- Chat Stats ---------- */
+.dateFilters { display: flex; gap: 1rem; align-items: flex-end; padding: 1rem; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); margin-bottom: 1.5rem; }
+.statsGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+.statCard { background: var(--bg-tertiary); padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); text-align: center; }
+.statValue { font-size: 2.5rem; font-weight: 700; color: var(--accent-purple); display: block; }
+.statTitle { font-size: 0.85rem; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 1px; }
+
+.statsListGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+.statListCard { background: var(--bg-tertiary); border-radius: var(--radius-md); border: 1px solid var(--border-color); overflow: hidden; display: flex; flex-direction: column; max-height: 500px; }
+.statListTitle { padding: 1rem; background: var(--bg-secondary); border-bottom: 1px solid var(--border-color); font-weight: 600; }
+.statListBody { padding: 1rem; overflow-y: auto; flex: 1; }
+.statList { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.statList li { display: flex; align-items: center; gap: 1rem; padding: 0.5rem; background: var(--bg-secondary); border-radius: 6px; border: 1px solid transparent; }
+.statList li:hover { border-color: var(--accent-purple); }
+.statListRank { width: 24px; height: 24px; background: var(--bg-inset); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; color: var(--accent-purple); }
+.statListAvatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
+.statListItemName { font-weight: 600; color: var(--text-primary); }
+.statListItemCount { margin-left: auto; font-family: monospace; font-weight: 700; color: var(--text-secondary); }
+
+/* =========================================
+   11. CLAIMS & MAPS
+   ========================================= */
+.claimsLayout {
+  display: grid; grid-template-columns: 1fr 380px; gap: 1.5rem; height: 75vh;
+}
+.mapMainPanel {
+  background: var(--bg-inset); border-radius: var(--radius-md); overflow: hidden;
+  border: 1px solid var(--border-color); position: relative;
+}
+.mapCanvas { width: 100%; height: 100%; }
+.controlSidebar { display: flex; flex-direction: column; gap: 1rem; overflow: hidden; }
+.sidePanel {
+  background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: var(--radius-md);
+  display: flex; flex-direction: column; overflow: hidden; flex: 1;
+}
+.sideHeader { padding: 1rem; border-bottom: 1px solid var(--border-color); }
+.claimList { overflow-y: auto; flex: 1; }
+.claimItem {
+  padding: 0.8rem 1rem; border-bottom: 1px solid var(--border-color); cursor: pointer;
+  display: flex; align-items: center; gap: 0.8rem; transition: background 0.2s;
+}
+.claimItem:hover { background: rgba(255,255,255,0.05); }
+.claimItemActive { background: var(--accent-purple); color: white; }
+.claimSwatch { width: 16px; height: 16px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.5); }
+.claimText { display: flex; flex-direction: column; line-height: 1.2; }
+.detailHeader { padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem; }
+.detailSwatch { width: 32px; height: 32px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+.colorBox { width: 100%; height: 40px; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; background: transparent; }
+
+/* =========================================
+   12. NPC TABLE & CREATE
+   ========================================= */
+.tableContainer { overflow-x: auto; border-radius: var(--radius-md); border: 1px solid var(--border-color); }
+.table { width: 100%; border-collapse: collapse; min-width: 600px; }
+.table th { text-align: left; padding: 1rem; background: var(--bg-tertiary); color: var(--text-secondary); font-size: 0.8rem; text-transform: uppercase; }
+.table td { padding: 1rem; border-top: 1px solid var(--border-color); vertical-align: middle; }
+.idCell { font-family: monospace; color: var(--accent-purple); }
+.npcNameCell { font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+.clanIcon { width: 24px; height: 24px; background-size: contain; opacity: 0.7; }
+.clanCell { font-style: italic; color: var(--clan-color); }
+.emptyCell { text-align: center; padding: 2rem; color: var(--text-secondary); font-style: italic; }
+
+.npcCreateCard { background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: var(--radius-md); overflow: hidden; margin-top: 1rem; }
+.npcCreateHeader { padding: 1.5rem; border-bottom: 1px solid var(--border-color); }
+.npcCreateHeader h4 { margin: 0 0 0.5rem 0; font-size: 1.4rem; color: var(--accent-purple); }
+.npcCreateBody { padding: 1.5rem; background: var(--bg-secondary); }
+.npcCreateFooter { padding: 1rem 1.5rem; background: var(--bg-secondary); border-top: 1px solid var(--border-color); }
+
+/* =========================================
+   13. CUSTOM CHECKBOX
+   ========================================= */
+.customCheckbox { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; user-select: none; }
+.customCheckbox input { display: none; }
+.checkmark { width: 18px; height: 18px; border: 2px solid var(--border-color); border-radius: 4px; position: relative; transition: all 0.2s; background: var(--bg-inset); }
+.customCheckbox input:checked ~ .checkmark { background: var(--accent-purple); border-color: var(--accent-purple); }
+
+/* =========================================
+   14. MOBILE RESPONSIVENESS
+   ========================================= */
+@media (max-width: 900px) {
+  .claimsLayout { grid-template-columns: 1fr; grid-template-rows: 400px 1fr; height: auto; }
+}
+
+@media (max-width: 768px) {
+  /* Layout */
+  .adminRoot { padding: 0.5rem; }
+  .container { padding: 1rem; border-radius: 0; border: none; }
+  .title { font-size: 1.5rem; }
+  
+  /* Toolbar */
+  .toolbar { margin-bottom: 1.5rem; gap: 0.25rem; }
+  .tab { padding: 0.6rem 1rem; font-size: 0.85rem; }
+
+  /* Inputs/Buttons */
+  .input, .select, .btn { font-size: 16px; /* No iOS zoom */ }
+  .formGrid { grid-template-columns: 1fr; }
+
+  /* Users Grid -> Cards */
+  .gridHeader { display: none; }
+  .usersGrid {
+    grid-template-columns: 1fr; gap: 0.8rem; padding: 1.2rem;
+    position: relative; border-radius: var(--radius-md); background: var(--bg-tertiary);
+    margin-bottom: 1rem; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  }
+  .usersGrid > *:nth-child(1)::before { content: "Name: "; font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 2px; }
+  .usersGrid > *:nth-child(2)::before { content: "Email: "; font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 2px; }
+  .usersGrid .charCell::before { content: "Character: "; font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 2px; }
+  .usersGrid > .rowEnd { width: 100%; margin-top: 0.5rem; }
+  .usersGrid .btnPrimary { width: 100%; }
+
+  /* XP Grid -> Cards */
+  .xpGrid { grid-template-columns: 1fr; gap: 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-bottom: 1rem; padding: 1.2rem; }
+  .xpGrid:first-of-type, .xpGrid:last-of-type { border-radius: var(--radius-md); }
+  .xpCharCell::before { position: static; transform: none; display: inline-block; margin-right: 0.5rem; }
+  .actionCell { width: 100%; }
+  .actionCell .input { flex: 1; }
+  .actionCell .btn { flex: 1; }
+
+  /* Chat Logs */
+  .logsContainer { grid-template-columns: 1fr; grid-template-rows: 200px 1fr; height: 85vh; }
+  .sidebar { border-right: none; border-bottom: 1px solid var(--border-color); }
+  .messageBubble { max-width: 85%; }
+  .logsContainer[data-mode="npc"] { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr; }
+
+  /* Downtimes */
+  .downtimeCompactRow { grid-template-columns: 1fr; gap: 0.5rem; }
+  .compactDate { font-size: 0.8rem; opacity: 0.7; }
+  
+  /* Modal */
+  .modalBackdrop { padding: 0; align-items: flex-end; }
+  .modalCard { width: 100%; height: 95vh; border-radius: 16px 16px 0 0; border: none; }
+  .twoColGrid { grid-template-columns: 1fr; }
+  .mfRow { flex-wrap: wrap; }
+  .mfRow > input { width: 100%; }
+  .mfRow > button { width: 100%; margin-top: 0.5rem; }
+
+  /* Stats */
+  .dateFilters { flex-direction: column; align-items: stretch; }
+  .statsGrid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+  .modalCard { min-height: 85vh; }
+  .claimsLayout .mapMainPanel { height: 40vh; }
 }
