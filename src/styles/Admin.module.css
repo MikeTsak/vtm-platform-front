@@ -496,9 +496,14 @@
    10. CHAT LOGS
    ========================================= */
 .logsContainer {
-  display: grid; grid-template-columns: 320px 1fr;
-  height: 75vh; background: var(--bg-secondary);
-  border: 1px solid var(--border-color); border-radius: var(--radius-md); overflow: hidden;
+  display: grid;
+  grid-template-columns: 320px 1fr; /* Default 2 columns */
+  height: 75vh;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  position: relative;
 }
 .sidebar {
   background: var(--bg-tertiary); border-right: 1px solid var(--border-color);
@@ -665,7 +670,9 @@
   .logsContainer { grid-template-columns: 1fr; grid-template-rows: 200px 1fr; height: 85vh; }
   .sidebar { border-right: none; border-bottom: 1px solid var(--border-color); }
   .messageBubble { max-width: 85%; }
-  .logsContainer[data-mode="npc"] { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr; }
+  .logsContainer[data-mode="npc"] {
+    grid-template-columns: 280px 280px 1fr;
+  } 
 
   /* Downtimes */
   .downtimeCompactRow { grid-template-columns: 1fr; gap: 0.5rem; }
@@ -687,4 +694,168 @@
 @media (max-width: 480px) {
   .modalCard { min-height: 85vh; }
   .claimsLayout .mapMainPanel { height: 40vh; }
+}
+
+/* =========================================
+   15. AI SUMMARIZE BUTTON & MODAL
+   ========================================= */
+
+.messagePanelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.8rem 1.5rem;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.panelTitle {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 1.05rem;
+}
+
+.aiButton {
+  background: linear-gradient(135deg, #2b5876 0%, #4e4376 100%);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #fff;
+  padding: 0.4rem 1rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(78, 67, 118, 0.4);
+}
+.aiButton:hover {
+  filter: brightness(1.2);
+  transform: translateY(-1px);
+}
+.aiButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  filter: grayscale(0.8);
+}
+
+.spinnerSmall {
+  width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+}
+
+.aiSummaryBox {
+  background: linear-gradient(to bottom, #1a1a2e, #16213e);
+  border-bottom: 1px solid #4e4376;
+  padding: 1rem 1.5rem;
+  animation: fadeIn 0.3s ease-out;
+  position: relative;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  margin-bottom: 1px;
+}
+
+.aiHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.8rem;
+  color: #a5a5d9;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 700;
+}
+
+.aiContent {
+  background: rgba(0,0,0,0.2);
+  border-radius: 6px;
+  padding: 1rem;
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+/* Markdown Formatting */
+.markdownBody {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #e0e0e0;
+}
+
+.markdownBody h1, 
+.markdownBody h2, 
+.markdownBody h3 {
+  color: var(--accent-purple);
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.markdownBody strong {
+  color: var(--accent-purple);
+  font-weight: 700;
+}
+
+.markdownBody ul, 
+.markdownBody ol {
+  padding-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.markdownBody li {
+  margin-bottom: 0.25rem;
+}
+
+.markdownBody p {
+  margin-bottom: 0.8rem;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 1.5rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 0.5rem;
+}
+.closeBtn:hover {
+  color: #fff;
+}
+
+/* New Global Recap Button */
+.globalRecapBtn {
+  width: 100%;
+  background: linear-gradient(135deg, #7F5AF0 0%, #6a48d9 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.8rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  margin-bottom: 1rem; /* Space before switcher */
+  box-shadow: 0 4px 12px rgba(127, 90, 240, 0.3);
+  transition: transform 0.2s, box-shadow 0.2s;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.globalRecapBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(127, 90, 240, 0.5);
+}
+
+.globalRecapBtn:disabled {
+  opacity: 0.7;
+  cursor: wait;
+  transform: none;
 }

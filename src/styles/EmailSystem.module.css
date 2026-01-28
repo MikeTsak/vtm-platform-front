@@ -10,6 +10,7 @@
   overflow: hidden;
   border-radius: 8px; /* If nested inside Comms wrapper */
   border: 1px solid #333;
+  position: relative;
 }
 
 /* --- SIDEBAR (List) --- */
@@ -20,6 +21,7 @@
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  z-index: 10;
 }
 
 .emailHeader {
@@ -50,11 +52,12 @@
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
+  height: 36px;
 }
 .composeBtn:hover { background: #006cc1; }
 
 .iconBtn {
-  background: transparent; border: none; font-size: 1.2rem; cursor: pointer; opacity: 0.7;
+  background: transparent; border: none; font-size: 1.2rem; cursor: pointer; opacity: 0.7; height: 36px; width: 36px;
 }
 .iconBtn:hover { opacity: 1; }
 
@@ -72,6 +75,7 @@
   cursor: pointer;
   transition: background 0.1s;
   background: #252526;
+  min-height: 80px; /* Touch target */
 }
 
 .threadCard:hover { background: #2d2d30; }
@@ -143,6 +147,7 @@
   display: flex;
   flex-direction: column;
   background: #1e1e1e;
+  z-index: 10;
 }
 
 .emailViewHeader {
@@ -239,15 +244,19 @@
   padding: 16px 24px;
   background: #252526;
   border-top: 1px solid #3e3e42;
+  /* Safe area for mobile */
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
 }
 
 .btnPri {
-  background: #0078d4; color: #fff; border: none; padding: 8px 24px; border-radius: 4px; font-weight: 600; cursor: pointer;
+  background: #0078d4; color: #fff; border: none; padding: 10px 24px; border-radius: 4px; font-weight: 600; cursor: pointer;
+  min-height: 44px;
 }
 .btnPri:hover { background: #006cc1; }
 
 .btnSec {
-  background: transparent; border: 1px solid #555; color: #ccc; padding: 8px 16px; border-radius: 4px; cursor: pointer;
+  background: transparent; border: 1px solid #555; color: #ccc; padding: 10px 16px; border-radius: 4px; cursor: pointer;
+  min-height: 44px;
 }
 .btnSec:hover { border-color: #888; color: #fff; }
 
@@ -262,39 +271,76 @@
   border: 1px solid #444; border-radius: 4px; background: #1e1e1e;
 }
 .toolbar {
-  background: #2d2d30; padding: 6px; border-bottom: 1px solid #444; display: flex; gap: 4px;
+  background: #2d2d30; padding: 8px; border-bottom: 1px solid #444; display: flex; gap: 8px; flex-wrap: wrap;
 }
 .toolbar button {
-  background: transparent; color: #ccc; border: none; padding: 4px 8px; border-radius: 2px; cursor: pointer; font-weight: bold;
+  background: transparent; color: #ccc; border: 1px solid #444; padding: 6px 12px; border-radius: 2px; cursor: pointer; font-weight: bold;
+  min-height: 36px;
 }
 .toolbar button:hover { background: #3e3e42; }
 .editable {
-  min-height: 120px; padding: 12px; outline: none; color: #eee;
+  min-height: 120px; padding: 12px; outline: none; color: #eee; font-size: 16px;
 }
 
 /* Modals */
 .modalBackdrop {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 999;
+  position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 999;
 }
 .modal {
   background: #252526; width: 600px; max-width: 90vw; border-radius: 8px; padding: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); border: 1px solid #444; display: flex; flex-direction: column; gap: 12px;
 }
 .modal h3, .modal h4 { margin: 0 0 10px 0; color: #fff; }
 .input {
-  background: #1e1e1e; border: 1px solid #444; padding: 10px; color: #fff; border-radius: 4px; width: 100%; box-sizing: border-box;
+  background: #1e1e1e; border: 1px solid #444; padding: 12px; color: #fff; border-radius: 4px; width: 100%; box-sizing: border-box; font-size: 16px;
 }
 .input:focus { border-color: #0078d4; outline: none; }
 .modalActions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; }
 .modalSeparator { border-top: 1px solid #3e3e42; margin: 10px 0; }
-.identityRow { display: flex; justify-content: space-between; align-items: center; padding: 8px; background: #1e1e1e; margin-bottom: 4px; border-radius: 4px; }
+.identityRow { display: flex; justify-content: space-between; align-items: center; padding: 8px; background: #1e1e1e; margin-bottom: 4px; border-radius: 4px; min-height: 44px;}
 
-/* Mobile */
+/* Mobile Back Button */
 .mobileBackBtn { display: none; }
+
+/* =========================================
+   MEDIA QUERY: MOBILE
+   ========================================= */
 @media (max-width: 768px) {
-  .emailContainer { flex-direction: column; border: none; border-radius: 0; }
-  .emailSidebar { width: 100%; height: 100%; display: flex; }
-  .emailMain { display: none; width: 100%; height: 100%; }
-  .mobileViewActive .emailSidebar { display: none; }
-  .mobileViewActive .emailMain { display: flex; }
-  .mobileBackBtn { display: block; background: transparent; border: none; color: #0078d4; font-size: 1.5rem; cursor: pointer; padding-right: 15px; }
+  .emailContainer {
+    display: block; /* Remove flex to allow absolute positioning */
+    border: none;
+    border-radius: 0;
+  }
+  
+  /* Stack Screens */
+  .emailSidebar, .emailMain {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0; left: 0;
+    transition: transform 0.3s ease;
+  }
+  
+  /* Default: Show Sidebar, Hide Main */
+  .emailSidebar { transform: translateX(0); z-index: 10; }
+  .emailMain { transform: translateX(100%); z-index: 20; background: #1e1e1e; }
+  
+  /* Active State: Show Main */
+  .mobileViewActive .emailSidebar { transform: translateX(-30%); }
+  .mobileViewActive .emailMain { transform: translateX(0); }
+  
+  .mobileBackBtn { 
+    display: block; 
+    background: transparent; 
+    border: none; 
+    color: #0078d4; 
+    font-size: 1.5rem; 
+    cursor: pointer; 
+    padding: 0 16px 0 0; 
+  }
+
+  /* Modal Full Screen */
+  .modal {
+    width: 100%; height: 100dvh; max-width: none; border-radius: 0; padding: 20px;
+    justify-content: flex-start;
+  }
 }

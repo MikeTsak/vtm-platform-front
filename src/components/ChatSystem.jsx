@@ -1,5 +1,5 @@
 // src/pages/ChatSystem.jsx
-import React, { useState, useEffect, useContext, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useContext, useRef, useMemo, useLayoutEffect } from 'react';
 import { AuthCtx } from '../AuthContext';
 import api from '../api';
 import styles from '../styles/ChatSystem.module.css';
@@ -14,6 +14,31 @@ const CLAN_COLORS = {
 const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim', 'Thin-blood': 'Thinblood' };
 const symlogo = (c) =>
   (c ? `/img/clans/330px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g, '_')}_symbol.png` : '');
+
+/* --- Icons --- */
+const ImageIcon = () => (
+<svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    {/* The Frame (broken at top right for arrow) */}
+    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
+    {/* The Landscape/Mountain */}
+    <polyline points="21 15 16 10 5 21" />
+    {/* The Sun */}
+    <circle cx="8" cy="9" r="2" />
+    {/* The Upload Arrow */}
+    <line x1="16" y1="13" x2="16" y2="3" />
+    <polyline points="12 7 16 3 20 7" />
+  </svg>
+);
+
 
 /* --- PUSH HELPERS --- */
 const VAPID_PUBLIC_KEY = (window.__VAPID_PUBLIC_KEY__ || (document.querySelector('meta[name="vapid-public-key"]')?.content) || process.env.REACT_APP_VAPID_PUBLIC_KEY || '').trim();
@@ -114,6 +139,64 @@ const sortContacts = (list) => {
   });
 };
 
+/* --- Status Icon Helper --- */
+const StatusIcon = ({ msg }) => {
+  if (!msg || !msg.created_at) return null;
+  if (msg.read_at) {
+    return <span title={`Seen: ${new Date(msg.read_at).toLocaleString()}`} className={styles.statusSeen}>✓✓</span>; 
+  }
+  if (msg.delivered_at) {
+    return <span title={`Delivered: ${new Date(msg.delivered_at).toLocaleString()}`} className={styles.statusDelivered}>✓✓</span>;
+  }
+  return <span title="Sent" className={styles.statusSent}>✓</span>;
+};
+
+/* --- CHAT IMAGE COMPONENT (Secure Fetch) --- */
+const ChatImage = ({ attachmentId }) => {
+  const [imageUrl, setImageUrl] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    let urlToRevoke = null;
+
+    setLoading(true);
+    setError(false);
+    setImageUrl(null);
+    
+    api.get(`/chat/media/${attachmentId}`, { responseType: 'blob' })
+      .then((response) => {
+        if (!active) return;
+        urlToRevoke = URL.createObjectURL(response.data);
+        setImageUrl(urlToRevoke);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Failed to load image", err);
+        if (!active) return;
+        setError(true);
+        setLoading(false);
+      });
+
+    return () => {
+      active = false;
+      if (urlToRevoke) URL.revokeObjectURL(urlToRevoke);
+    };
+  }, [attachmentId]);
+
+  if (loading) return <div className={styles.imageLoading}>Loading image...</div>;
+  if (error) return <div className={styles.imageError}>⚠ Image failed to load</div>;
+
+  return (
+    <img 
+      src={imageUrl} 
+      alt="Attachment" 
+      className={styles.chatImage} 
+      onClick={() => window.open(imageUrl, '_blank')}
+    />
+  );
+};
 
 export default function Comms() {
   const { user: currentUser } = useContext(AuthCtx);
@@ -121,18 +204,24 @@ export default function Comms() {
 
   const [users, setUsers] = useState([]);
   const [npcs, setNpcs] = useState([]);
-  const [groups, setGroups] = useState([]); // New Group State
+  const [groups, setGroups] = useState([]); 
   const [filter, setFilter] = useState('');
   const [noCharOpen, setNoCharOpen] = useState(false);
 
   const [selectedContact, setSelectedContact] = useState(null);
-  const [selectedPlayerId, setSelectedPlayerId] = useState(null); // For Admin-NPC
+  const [selectedPlayerId, setSelectedPlayerId] = useState(null); 
   const [npcConvos, setNpcConvos] = useState([]);
   const [adminPlayerTab, setAdminPlayerTab] = useState('recent');
   const [adminPlayerFilter, setAdminPlayerFilter] = useState('');
 
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
+  
+  /* --- Attachments State --- */
+  const [attachment, setAttachment] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const fileInputRef = useRef(null);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const pollRef = useRef(null);
@@ -152,6 +241,10 @@ export default function Comms() {
 
   const [isMobile, setIsMobile] = useState(false);
   const containerRef = useRef(null);
+  
+  // UX Refs
+  const textareaRef = useRef(null);
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
 
   /* --- SCROLL LOGIC --- */
   const messagesEndRef = useRef(null);
@@ -173,7 +266,10 @@ export default function Comms() {
   useEffect(() => {
     const el = messagesListRef.current;
     if (!el) return;
-    const onScroll = () => { userScrollingRef.current = !isNearBottom(el); };
+    const onScroll = () => { 
+        userScrollingRef.current = !isNearBottom(el);
+        setShowScrollBtn(!isNearBottom(el, 300));
+    };
     el.addEventListener('scroll', onScroll);
     return () => el.removeEventListener('scroll', onScroll);
   }, []);
@@ -185,7 +281,20 @@ export default function Comms() {
   useEffect(() => {
     userScrollingRef.current = false;
     scrollToBottom(false);
+    if(textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+    }
+    // Clear attachments when switching contacts
+    clearAttachment();
   }, [selectedContact]);
+
+  // Auto-resize textarea logic
+  useLayoutEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 150)}px`;
+    }
+  }, [newMessage]);
 
   /* --- Setup & Notifs --- */
   useEffect(() => {
@@ -258,7 +367,7 @@ export default function Comms() {
   const threadKey = useMemo(() => {
     if (!selectedContact) return 'none';
     if (selectedContact.type === 'user') return `u-${selectedContact.id}`;
-    if (selectedContact.type === 'group') return `g-${selectedContact.id}`; // Added group key
+    if (selectedContact.type === 'group') return `g-${selectedContact.id}`;
     return isAdmin ? `n-${selectedContact.id}-p-${selectedPlayerId || 'none'}` : `n-${selectedContact.id}`;
   }, [selectedContact, selectedPlayerId, isAdmin]);
 
@@ -268,8 +377,9 @@ export default function Comms() {
       setDrafts(prev => ({ ...prev, [prevThreadKeyRef.current]: newMessage }));
       setNewMessage((prevDrafts => (prevDrafts[threadKey] || ''))(drafts));
       prevThreadKeyRef.current = threadKey;
+      if(!isMobile && textareaRef.current) textareaRef.current.focus();
     }
-  }, [threadKey, drafts, newMessage]);
+  }, [threadKey, drafts, newMessage, isMobile]);
 
   const lastTsRef = useRef(0);
   const initialSyncRef = useRef(true);
@@ -318,7 +428,7 @@ export default function Comms() {
         const [{ data: u }, { data: n }, { data: g }] = await Promise.all([
           api.get('/chat/users'),
           api.get('/chat/npcs'),
-          api.get('/chat/groups') // Fetch groups
+          api.get('/chat/groups') 
         ]);
         const userList = Array.isArray(u) ? u : (u.users || []);
         const npcList  = Array.isArray(n) ? n : (n.npcs || []);
@@ -333,61 +443,40 @@ export default function Comms() {
         setLoading(false);
       }
     })();
-  }, [currentUser, creatingGroup]); // Refresh on group creation
+  }, [currentUser, creatingGroup]);
 
-  // Admin NPC Roster
-  useEffect(() => {
-    if (!isAdmin || !selectedContact || selectedContact.type !== 'npc' || !hasAuthHeader) {
-      setNpcConvos([]);
-      return;
-    }
-    let cancelled = false;
-    const load = async () => {
-      try {
-        let res;
-        try {
-          res = await api.get('/admin/chat/npc/conversations', { params: { npc_id: selectedContact.id } });
-        } catch {
-          res = await api.get(`/admin/chat/npc-conversations/${selectedContact.id}`);
-        }
-        if (cancelled) return;
-        const rows = (res.data?.conversations || []).map(r => ({
-          user_id: r.user_id,
-          display_name: r.display_name || '',
-          char_name: r.char_name || '',
-          last_message_at: r.last_message_at || null,
-        }));
-        rows.sort((a, b) => new Date(b.last_message_at || 0) - new Date(a.last_message_at || 0));
-        setNpcConvos(rows);
-      } catch (e) {
-        if (e?.response?.status === 401) setError('Your session expired. Please log in again.');
-        setNpcConvos([]);
-      }
-    };
-    load();
-    return () => { cancelled = true; };
-  }, [isAdmin, selectedContact, hasAuthHeader]);
-
-  // Message Polling
+  // Combined Polling: Messages & Admin Recent Roster
   useEffect(() => {
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
     setMessages([]);
     setError('');
 
+    // Force clear roster if not relevant
+    if (!isAdmin || !selectedContact || selectedContact.type !== 'npc') {
+      setNpcConvos([]);
+    }
+
     const load = async () => {
       if (!selectedContact) return;
       try {
+        /* ------------------------------------------------------------------
+           1. LOAD MESSAGES
+           ------------------------------------------------------------------ */
         let msgs = [];
         if (selectedContact.type === 'group') {
            const res = await api.get(`/chat/groups/${selectedContact.id}/history`);
            msgs = (res.data.messages || []).map(m => ({
              id: m.id, body: m.body, created_at: m.created_at, sender_id: m.sender_id,
-             sender_name: m.char_name || m.display_name, sender_clan: m.clan // Group specific
+             sender_name: m.char_name || m.display_name, sender_clan: m.clan,
+             attachment_id: m.attachment_id // Includes attachment
            }));
         } else if (selectedContact.type === 'user') {
           const res = await api.get(`/chat/history/${selectedContact.id}`);
           msgs = (res.data.messages || []).map(m => ({
-            id: m.id, body: m.body, created_at: m.created_at, sender_id: m.sender_id,
+            id: m.id, body: m.body, created_at: m.created_at, 
+            read_at: m.read_at, delivered_at: m.delivered_at,
+            sender_id: m.sender_id,
+            attachment_id: m.attachment_id // Includes attachment
           }));
         } else {
           // NPC Logic
@@ -401,11 +490,13 @@ export default function Comms() {
             }
             msgs = (res.data.messages || []).map(m => ({
               id: m.id, body: m.body, created_at: m.created_at, sender_id: m.from_side === 'npc' ? 'npc' : selectedPlayerId, _from: m.from_side,
+              attachment_id: m.attachment_id
             }));
           } else {
             const res = await api.get(`/chat/npc-history/${selectedContact.id}`);
             msgs = (res.data.messages || []).map(m => ({
               id: m.id, body: m.body, created_at: m.created_at, sender_id: m.from_side === 'user' ? currentUser.id : 'npc', _from: m.from_side,
+              attachment_id: m.attachment_id
             }));
           }
         }
@@ -423,7 +514,7 @@ export default function Comms() {
               const latest = inboundNew[inboundNew.length - 1];
               let title = 'New Message';
               let icon = '/img/ATT-logo(1).png';
-
+              
               if (selectedContact.type === 'group') {
                 title = `${selectedContact.name}: ${latest.sender_name || 'Someone'}`;
               } else if (selectedContact.type === 'user') {
@@ -433,12 +524,43 @@ export default function Comms() {
                 title = isAdmin && selectedPlayerId ? `${selectedContact.name} ↔ ${users.find(u => u.id === selectedPlayerId)?.char_name || 'Player'}` : selectedContact.name;
                 icon = symlogo(selectedContact.clan) || icon;
               }
-              notify(title, latest.body || 'New message', icon);
+              const notificationBody = latest.attachment_id ? '📷 Image Attachment' : (latest.body || 'New message');
+              notify(title, notificationBody, icon);
             }
           }
           lastTsRef.current = Math.max(lastTsRef.current, newestTs);
           setMessages(msgs);
+
+          // Mark Delivered for User Chats (Fixed path)
+          if (selectedContact.type === 'user' && !isAdmin && msgs.length > 0) {
+             api.post('/chat/delivered', { sender_id: selectedContact.id }).catch(() => {});
+          }
         }
+        
+        /* ------------------------------------------------------------------
+           2. LOAD ADMIN ROSTER (Updated Fix: Polls every time)
+           ------------------------------------------------------------------ */
+        if (isAdmin && selectedContact.type === 'npc' && hasAuthHeader) {
+          try {
+            let res;
+            try {
+              res = await api.get('/admin/chat/npc/conversations', { params: { npc_id: selectedContact.id } });
+            } catch {
+              res = await api.get(`/admin/chat/npc-conversations/${selectedContact.id}`);
+            }
+            const rows = (res.data?.conversations || []).map(r => ({
+              user_id: r.user_id,
+              display_name: r.display_name || '',
+              char_name: r.char_name || '',
+              last_message_at: r.last_message_at || null,
+            }));
+            rows.sort((a, b) => new Date(b.last_message_at || 0) - new Date(a.last_message_at || 0));
+            setNpcConvos(rows);
+          } catch (e) {
+            // silent fail for roster update
+          }
+        }
+
         initialSyncRef.current = false;
       } catch (e) {
         setError(e?.response?.status === 401 ? 'Your session expired. Please log in again.' : 'Could not load messages.');
@@ -450,22 +572,78 @@ export default function Comms() {
     return () => clearInterval(pollRef.current);
   }, [selectedContact, selectedPlayerId, isAdmin, hasAuthHeader, currentUser?.id, users, threadKey]);
 
-  const handleSendMessage = async (e) => {
-    e?.preventDefault?.();
+  /* --- File Handling --- */
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    // Simple validation
+    if (!file.type.startsWith('image/')) {
+      alert('Only images are allowed');
+      return;
+    }
+
+    const MAX_MB = 50;  // 50MB limit for chat attachments
+    const MAX_BYTES = MAX_MB * 1024 * 1024;
+    if (file.size > MAX_BYTES) { 
+      alert(`File size too large (max ${MAX_MB}MB)`);
+      return;
+    }
+
+    setAttachment(file);
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    
+    // Focus input so user can still type
+    if(textareaRef.current) textareaRef.current.focus();
+  };
+
+  const clearAttachment = () => {
+    setAttachment(null);
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  /* --- Sending Logic --- */
+  const doSend = async () => {
     const body = newMessage.trim();
-    if (!body || !selectedContact) return;
+    if ((!body && !attachment) || !selectedContact) return;
     if (isAdmin && selectedContact.type === 'npc' && !selectedPlayerId) return;
     if (sendingRef.current) return;
+    
     sendingRef.current = true;
+    let attachmentId = null;
 
     try {
+      // 1. Upload Attachment if present
+      if (attachment) {
+        const formData = new FormData();
+        formData.append('file', attachment);
+        
+        try {
+          const res = await api.post('/chat/upload', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
+          attachmentId = res.data.id;
+        } catch (err) {
+          alert('Failed to upload image');
+          sendingRef.current = false;
+          return;
+        }
+      }
+
+      // 2. Prepare Payload
+      const payload = { body, attachment_id: attachmentId };
+
+      // 3. Send Message
       if (selectedContact.type === 'group') {
-        const { data } = await api.post(`/chat/groups/${selectedContact.id}/messages`, { body });
+        const { data } = await api.post(`/chat/groups/${selectedContact.id}/messages`, payload);
         setMessages(prev => [...prev, { ...data.message, sender_id: currentUser.id, sender_name: 'Me' }]);
         setGroups(prev => sortContacts(prev.map(g => g.id === selectedContact.id ? { ...g, last_message_at: Date.now() } : g)));
       }
       else if (selectedContact.type === 'user') {
-        const { data } = await api.post('/chat/messages', { recipient_id: selectedContact.id, body });
+        const { data } = await api.post('/chat/messages', { recipient_id: selectedContact.id, ...payload });
         setMessages(prev => [...prev, data.message]);
         
         setUsers(prev => {
@@ -477,11 +655,11 @@ export default function Comms() {
         api.post('/chat/read', { sender_id: selectedContact.id }).catch(()=>{});
       } else {
         if (isAdmin) {
-          const { data } = await api.post('/admin/chat/npc/messages', { npc_id: selectedContact.id, user_id: selectedPlayerId, body });
-          setMessages(prev => [...prev, { id: data.message.id, body: data.message.body, created_at: data.message.created_at, sender_id: 'npc', _from: 'npc' }]);
+          const { data } = await api.post('/admin/chat/npc/messages', { npc_id: selectedContact.id, user_id: selectedPlayerId, ...payload });
+          setMessages(prev => [...prev, { id: data.message.id, body: data.message.body, created_at: data.message.created_at, sender_id: 'npc', _from: 'npc', attachment_id: data.message.attachment_id }]);
         } else {
-          const { data } = await api.post('/chat/npc/messages', { npc_id: selectedContact.id, body });
-          setMessages(prev => [...prev, { id: data.message.id, body: data.message.body, created_at: data.message.created_at, sender_id: currentUser.id, _from: 'user' }]);
+          const { data } = await api.post('/chat/npc/messages', { npc_id: selectedContact.id, ...payload });
+          setMessages(prev => [...prev, { id: data.message.id, body: data.message.body, created_at: data.message.created_at, sender_id: currentUser.id, _from: 'user', attachment_id: data.message.attachment_id }]);
           
           setNpcs(prev => {
              const updated = prev.map(n => 
@@ -493,11 +671,26 @@ export default function Comms() {
       }
 
       setNewMessage('');
+      clearAttachment();
       setDrafts(prev => ({ ...prev, [threadKey]: '' }));
+      if(textareaRef.current) textareaRef.current.style.height = 'auto';
     } catch (err) {
       setError(err?.response?.status === 401 ? 'Your session expired. Please log in again.' : 'Failed to send message.');
     } finally {
       sendingRef.current = false;
+      if(!isMobile) setTimeout(() => textareaRef.current?.focus(), 10);
+    }
+  };
+
+  const handleSendMessage = (e) => {
+    e?.preventDefault?.();
+    doSend();
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      doSend();
     }
   };
 
@@ -508,12 +701,15 @@ export default function Comms() {
       setCreatingGroup(false);
       setNewGroupName('');
       setNewGroupMembers([]);
-      // Force reload by toggling a dependency if needed, or rely on next poll/reload
-      setCreatingGroup(false); 
-      // Manually trigger reload of contacts
       const { data: g } = await api.get('/chat/groups');
       setGroups(sortContacts(g.groups.map(asGroupContact)));
     } catch (e) { alert('Failed to create group'); }
+  };
+
+  const copyToClipboard = (text) => {
+      if(navigator.clipboard && text) {
+          navigator.clipboard.writeText(text);
+      }
   };
 
   /* --- Render & Filters --- */
@@ -574,8 +770,18 @@ export default function Comms() {
   const adminRecentPlayers = useMemo(() => {
     const byId = new Map((users || []).map(u => [u.id, u]));
     return (npcConvos || []).map(r => {
+      // Robust Fallback: if user not found in main list, use the data from recent conversation row
       const u = byId.get(r.user_id);
-      return u ? { ...u, last_message_at: r.last_message_at } : { type: 'user', id: r.user_id, display_name: r.display_name, char_name: r.char_name, clan: undefined, last_message_at: r.last_message_at };
+      return u 
+        ? { ...u, last_message_at: r.last_message_at } 
+        : { 
+            type: 'user', 
+            id: r.user_id, 
+            display_name: r.display_name || 'Unknown', 
+            char_name: r.char_name || 'Unknown', 
+            clan: undefined, 
+            last_message_at: r.last_message_at 
+          };
     });
   }, [npcConvos, users]);
 
@@ -583,7 +789,7 @@ export default function Comms() {
 
   const currentAccent = (() => {
     if (!selectedContact) return '#8a0f1a';
-    if (selectedContact.type === 'group') return '#444'; // Neutral for groups
+    if (selectedContact.type === 'group') return '#444'; 
     return CLAN_COLORS[selectedContact.clan] || '#8a0f1a';
   })();
 
@@ -617,6 +823,7 @@ export default function Comms() {
       setUsers(prev => prev.map(u => u.id === contact.id ? { ...u, unread_count: 0 } : u));
       api.post('/chat/read', { sender_id: contact.id }).catch(()=>{});
     }
+    // Only scroll window on Desktop, on mobile we use CSS slide
     if (!isMobile) window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -785,9 +992,12 @@ export default function Comms() {
           <>
             <header className={styles.chatHeader} style={{ '--accent': currentAccent }}>
               <div className={styles.chatWith}>
+                {/* Mobile Back Button */}
                 <button type="button" className={styles.mobileContactsBtn} onClick={() => setSelectedContact(null)}>{'<'}</button>
                 <span className={styles.chatDot} />
-                Chat with <b>{headerLabel}</b>
+                <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', flex:1}}>
+                   Chat with <b>{headerLabel}</b>
+                </span>
                 {selectedContact.type === 'npc' && selectedContact.clan && (
                   <span className={styles.charTag}>{selectedContact.clan}</span>
                 )}
@@ -806,7 +1016,7 @@ export default function Comms() {
                   <div className={styles.adminRosterHeader}>
                     <div className={styles.adminRosterTabs}>
                       <button type="button" className={`${styles.rosterTab} ${adminPlayerTab === 'recent' ? styles.active : ''}`} onClick={() => setAdminPlayerTab('recent')}>Recent</button>
-                      <button type="button" className={`${styles.rosterTab} ${adminPlayerTab === 'all' ? styles.active : ''}`} onClick={() => setAdminPlayerTab('all')}>All Players</button>
+                      <button type="button" className={`${styles.rosterTab} ${adminPlayerTab === 'all' ? styles.active : ''}`} onClick={() => setAdminPlayerTab('all')}>All</button>
                     </div>
                     {adminPlayerTab === 'all' && (
                       <div className={styles.rosterSearchWrap}>
@@ -850,19 +1060,79 @@ export default function Comms() {
                           {item.sender_name}
                         </div>
                       )}
-                      <div className={styles.messageBody}>{item.body}</div>
-                      <div className={styles.messageTimestamp}>{formatTime(item.created_at)}</div>
+                      
+                      {/* Secure Image Rendering with ChatImage Component */}
+                      {item.attachment_id && (
+                        <div className={styles.chatImageWrapper}>
+                          <ChatImage attachmentId={item.attachment_id} />
+                        </div>
+                      )}
+                      
+                      {item.body && <div className={styles.messageBody}>{item.body}</div>}
+                      
+                      <div className={styles.messageMetaLine}>
+                        <span className={styles.messageTimestamp}>
+                            {formatTime(item.created_at)}
+                            {mine && <span className={styles.statusWrapper}><StatusIcon msg={item} /></span>}
+                        </span>
+                        {!mine && item.body && <button className={styles.actionBtn} onClick={() => copyToClipboard(item.body)} title="Copy">Copy</button>}
+                      </div>
                       <span className={`${styles.tail} ${mine ? styles.tailRight : styles.tailLeft}`} />
                     </div>
                   </div>
                 );
               })}
               <div ref={messagesEndRef} />
+              {showScrollBtn && (
+                 <button className={styles.scrollBtn} onClick={() => scrollToBottom(true)}>↓</button>
+              )}
             </div>
 
             <form className={styles.messageInputForm} onSubmit={handleSendMessage}>
-              <input type="text" value={newMessage} onChange={e => setNewMessage(e.target.value)} placeholder="Type a message…" className={styles.messageInput} disabled={isAdmin && selectedContact.type === 'npc' && !selectedPlayerId} />
-              <button type="submit" className={styles.sendButton} disabled={sendingRef.current || !newMessage.trim() || (isAdmin && selectedContact.type === 'npc' && !selectedPlayerId)}>Send</button>
+                {/* Image Preview Container */}
+                {previewUrl && (
+                  <div className={styles.previewContainer}>
+                    <div className={styles.previewWrapper}>
+                       <img src={previewUrl} alt="Preview" />
+                       <button type="button" onClick={clearAttachment} className={styles.removePreviewBtn}>×</button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Hidden File Input */}
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  style={{display:'none'}} 
+                  accept="image/*" 
+                  onChange={handleFileSelect} 
+                />
+
+                {/* Upload Button */}
+                <button 
+                  type="button" 
+                  className={styles.uploadBtn} 
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Attach Image"
+                >
+                  <ImageIcon />
+                </button>
+
+                <div className={styles.inputWrapper}>
+                    <textarea 
+                        ref={textareaRef}
+                        value={newMessage} 
+                        onChange={e => setNewMessage(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        placeholder="Type a message..." 
+                        className={styles.messageInput} 
+                        disabled={isAdmin && selectedContact.type === 'npc' && !selectedPlayerId} 
+                        rows={1}
+                    />
+                </div>
+                <button type="submit" className={styles.sendButton} disabled={sendingRef.current || (!newMessage.trim() && !attachment) || (isAdmin && selectedContact.type === 'npc' && !selectedPlayerId)}>
+                    <span className={styles.sendIcon}>➤</span>
+                </button>
             </form>
           </>
         ) : (

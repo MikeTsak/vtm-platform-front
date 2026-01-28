@@ -6,11 +6,13 @@
   flex-direction: column;
   width: 100%;
   max-width: 1400px;
-  height: 90vh;
+  /* Use dvh for mobile browsers to account for dynamic address bars */
+  height: 90vh; 
   margin: 0 auto;
   padding: 20px;
   box-sizing: border-box;
   font-family: 'Inter', system-ui, sans-serif;
+  overflow: hidden; /* Prevent body scroll */
 }
 
 /* --- Mode Switcher (Tabs) --- */
@@ -18,7 +20,7 @@
   display: flex;
   justify-content: center;
   gap: 40px;
-  margin-bottom: 25px;
+  margin-bottom: 15px;
   flex-shrink: 0;
   position: relative;
   z-index: 10;
@@ -60,9 +62,10 @@
   margin-top: 4px;
   color: #555;
   font-weight: 500;
-  opacity: 0; /* Hidden by default for cleaner look, or set to 1 if you want it always visible */
+  opacity: 0; 
   transform: translateY(-5px);
   transition: all 0.3s;
+  pointer-events: none;
 }
 
 /* Show subtitle on hover or active */
@@ -105,33 +108,39 @@
 @media (max-width: 768px) {
   .wrapper {
     padding: 0;
-    height: 100dvh;
+    /* Full viewport height on mobile, specifically dynamic for address bars */
+    height: 100dvh; 
     max-width: none;
+    background: #000;
   }
 
   .modeSwitch {
     margin: 0;
-    background: #000;
+    background: #050505;
     border-bottom: 1px solid #333;
-    padding: 8px 0;
+    padding: 0;
     gap: 0;
-    justify-content: space-evenly;
+    justify-content: space-between;
     width: 100%;
+    height: 55px; /* Fixed height for touch */
   }
 
   .modeSwitch button {
     flex: 1;
-    padding: 8px;
+    padding: 0;
+    justify-content: center;
     border-bottom-width: 3px;
   }
 
   .modeTitle {
-    font-size: 1rem;
+    font-size: 0.9rem;
+    line-height: 1.2;
   }
   
   .modeSubtitle {
-    font-size: 0.65rem;
-    opacity: 1; /* Always show text on mobile since hover doesn't exist */
+    font-size: 0.6rem;
+    opacity: 1; 
     transform: translateY(0);
+    margin-top: 2px;
   }
 }

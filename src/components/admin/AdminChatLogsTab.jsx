@@ -1,64 +1,36 @@
 // src/pages/AdminChatLogsTab.jsx
 import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react';
+import ReactMarkdown from 'react-markdown'; 
 import api from '../../api';
 import styles from '../../styles/Admin.module.css';
 
-/* ---------- VTM Lookups (as requested) ---------- */
+/* ---------- VTM Lookups ---------- */
 const CLAN_COLORS = {
-  Brujah: '#b40f1f',
-  Gangrel: '#2f7a3a',
-  Malkavian: '#713c8b',
-  Nosferatu: '#6a4b2b',
-  Toreador: '#b8236b',
-  Tremere: '#7b1113',
-  Ventrue: '#1b4c8c',
-  'Banu Haqim': '#7a2f57',
-  Hecata: '#2b6b6b',
-  Lasombra: '#191a5a',
-  'The Ministry': '#865f12',
-  Caitiff: '#636363',
-  'Thin-blood': '#6e6e2b',
+  Brujah: '#b40f1f', Gangrel: '#2f7a3a', Malkavian: '#713c8b', Nosferatu: '#6a4b2b',
+  Toreador: '#b8236b', Tremere: '#7b1113', Ventrue: '#1b4c8c', 'Banu Haqim': '#7a2f57',
+  Hecata: '#2b6b6b', Lasombra: '#191a5a', 'The Ministry': '#865f12',
+  Caitiff: '#636363', 'Thin-blood': '#6e6e2b',
 };
 const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim' };
 const fileify = (c) => (NAME_OVERRIDES[c] || c).replace(/\s+/g, '_');
 const symlogo = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.png` : '');
-/* -------------------------------------------------- */
 
-
-/* ==================== CHAT LOGS HELPERS ==================== */
-
-// --- Helper: Debounce Hook ---
+/* ==================== HELPERS ==================== */
 const useDebouncedValue = (value, ms = 250) => {
   const [v, setV] = useState(value);
-  useEffect(() => {
-    const t = setTimeout(() => setV(value), ms);
-    return () => clearTimeout(t);
-  }, [value, ms]);
+  useEffect(() => { const t = setTimeout(() => setV(value), ms); return () => clearTimeout(t); }, [value, ms]);
   return v;
 };
 
-// --- Helper: Format Timestamp ---
 const formatTimestamp = (ts, includeDate = true) => {
   if (!ts) return '—';
   const date = new Date(ts);
-  const optionsDate = { month: 'short', day: 'numeric' };
-  const optionsTime = { hour: '2-digit', minute: '2-digit' };
-  try {
-      // Use Greece time zone explicitly
-      const timeZone = 'Europe/Athens';
-      return includeDate
-        ? date.toLocaleString('en-US', { ...optionsDate, ...optionsTime, timeZone })
-        : date.toLocaleTimeString('en-US', { ...optionsTime, timeZone });
-  } catch (e) {
-      console.error("Error formatting date:", e, "Timestamp:", ts);
-      // Fallback formatting
-      const fallbackDate = date.toLocaleDateString();
-      const fallbackTime = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); // Basic time format
-      return includeDate ? `${fallbackDate} ${fallbackTime}` : fallbackTime;
-  }
+  const options = { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Athens' };
+  if (includeDate) { Object.assign(options, { month: 'short', day: 'numeric' }); }
+  try { return date.toLocaleString('en-US', options); } 
+  catch (e) { return date.toLocaleTimeString(); }
 };
 
-// --- Helper: Highlight Search Terms ---
 const Highlight = ({ text, query }) => {
   const q = String(query || '').trim().toLowerCase();
   const txt = String(text || '');
@@ -67,102 +39,118 @@ const Highlight = ({ text, query }) => {
   const parts = [];
   let lastIndex = 0;
   let matchIndex;
-
   while ((matchIndex = lowerText.indexOf(q, lastIndex)) !== -1) {
-    if (matchIndex > lastIndex) { parts.push(<span key={lastIndex}>{txt.substring(lastIndex, matchIndex)}</span>); }
-    const matchedText = txt.substring(matchIndex, matchIndex + q.length);
-    parts.push(<mark key={matchIndex} className={styles.hl}>{matchedText}</mark>);
+    if (matchIndex > lastIndex) parts.push(<span key={lastIndex}>{txt.substring(lastIndex, matchIndex)}</span>);
+    parts.push(<mark key={matchIndex} className={styles.hl}>{txt.substring(matchIndex, matchIndex + q.length)}</mark>);
     lastIndex = matchIndex + q.length;
   }
-  if (lastIndex < txt.length) { parts.push(<span key={lastIndex}>{txt.substring(lastIndex)}</span>); }
+  if (lastIndex < txt.length) parts.push(<span key={lastIndex}>{txt.substring(lastIndex)}</span>);
   return <>{parts}</>;
 };
 
-
-/* ==================== CHAT LOGS ==================== */
-
-// --- Main Chat Logs Component ---
+/* ==================== MAIN COMPONENT ==================== */
 export default function AdminChatLogsTab({ messages, charIndex }) {
-  const [viewMode, setViewMode] = useState('direct'); // 'direct' | 'npc' | 'group'
-
-  // --- Direct Message State ---
+  const [viewMode, setViewMode] = useState('direct');
+  
+  // State: Direct
   const [directSearch, setDirectSearch] = useState('');
   const debouncedDirectSearch = useDebouncedValue(directSearch);
-  const [selectedConversationKey, setSelectedConversationKey] = useState(null); // e.g., "user1-user2"
+  const [selectedConversationKey, setSelectedConversationKey] = useState(null);
   const [currentMessages, setCurrentMessages] = useState([]);
-  const [currentParticipants, setCurrentParticipants] = useState({
-    user1: 'User 1', user2: 'User 2',
-    user1Id: null, user2Id: null, // Keep track of IDs for alignment
-    user1Char: '—', user2Char: '—',
-    user1Clan: null, user2Clan: null,
-  });
+  const [currentParticipants, setCurrentParticipants] = useState({});
 
-  // --- NPC Message State ---
+  // State: NPC
   const [npcList, setNpcList] = useState([]);
   const [npcSearch, setNpcSearch] = useState('');
   const debouncedNpcSearch = useDebouncedValue(npcSearch);
-  const [selectedNpc, setSelectedNpc] = useState(null); // { id, name, clan }
-
-  const [convos, setConvos] = useState([]); // Conversations for the selected NPC
+  const [selectedNpc, setSelectedNpc] = useState(null);
+  const [convos, setConvos] = useState([]);
   const [npcConvoSearch, setNpcConvoSearch] = useState('');
   const debouncedNpcConvoSearch = useDebouncedValue(npcConvoSearch);
-  const [selectedNpcConversation, setSelectedNpcConversation] = useState(null); // { userId, userName, charName, charClan }
-
+  const [selectedNpcConversation, setSelectedNpcConversation] = useState(null);
   const [currentThread, setCurrentThread] = useState([]);
-  
-  // --- Group Message State ---
+
+  // State: Group
   const [groupList, setGroupList] = useState([]);
   const [groupSearch, setGroupSearch] = useState('');
   const debouncedGroupSearch = useDebouncedValue(groupSearch);
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [groupThread, setGroupThread] = useState([]);
 
-  const [loading, setLoading] = useState({ npcs: false, convos: false, thread: false, groups: false, groupThread: false });
+  // State: Global AI Summary
+  const [globalSummary, setGlobalSummary] = useState(null);
+  const [globalLoading, setGlobalLoading] = useState(false);
+
+  const [loading, setLoading] = useState({});
   const [error, setError] = useState('');
 
-  // Helper to find char info from user ID
   const getCharInfoByUserId = useCallback((userId) => {
     const charEntry = Object.values(charIndex).find(c => c.user_id === Number(userId));
-    return charEntry ? {
-        name: charEntry.char_name,
-        clan: charEntry.clan
-    } : { name: '—', clan: '—' };
+    return charEntry ? { name: charEntry.char_name, clan: charEntry.clan } : { name: '—', clan: '—' };
   }, [charIndex]);
 
+  // --- AI: Global Summarize Handler ---
+  const handleGlobalSummarize = async () => {
+    if (!messages || !messages.length) return alert("No messages to summarize.");
+    setGlobalLoading(true);
+    
+    try {
+      // 1. Sort all messages by date (Newest last) then slice the last 100
+      const sorted = [...messages].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+      const recent = sorted.slice(-100); 
 
-  // --- Process Direct Messages into Conversations ---
+      // 2. Format
+      const chatText = recent.map(m => {
+        let sender = 'Unknown Character';
+        if (m.from === 'npc') {
+          sender = m.sender_name || 'NPC'; 
+        } else {
+          if (m.char_name) {
+            sender = m.char_name;
+          } else if (m.sender_id) {
+            const info = getCharInfoByUserId(m.sender_id);
+            if (info.name && info.name !== '—') sender = info.name;
+          }
+        }
+        return `[${new Date(m.created_at).toLocaleString()}] ${sender}: ${m.body}`;
+      }).join('\n');
+
+      // 3. Send to API
+      const { data } = await api.post('/admin/chat/summarize', { 
+        text: chatText, 
+        context: "The last 100 messages exchanged in the game (Global Activity Log)" 
+      });
+      setGlobalSummary(data.summary);
+    } catch (err) {
+      alert('Global Summary Failed: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setGlobalLoading(false);
+    }
+  };
+
+  // --- 1. DIRECT MSG PROCESSING ---
   const directConversations = useMemo(() => {
     const groups = new Map();
     for (const msg of messages) {
       const id1 = Number(msg.sender_id);
       const id2 = Number(msg.recipient_id);
-      if (!id1 || !id2) continue; // Skip messages without both IDs
-
+      if (!id1 || !id2) continue;
       const ids = [id1, id2].sort((a, b) => a - b);
       const key = ids.join('-');
       const msgTimestamp = new Date(msg.created_at).getTime();
 
       if (!groups.has(key)) {
-        const char1Info = getCharInfoByUserId(ids[0]);
-        const char2Info = getCharInfoByUserId(ids[1]);
-
-        // Find the full user objects if possible (needed for display names)
-        const user1Entry = Object.values(charIndex).find(c => c.user_id === ids[0]) || { display_name: `User ${ids[0]}` };
-        const user2Entry = Object.values(charIndex).find(c => c.user_id === ids[1]) || { display_name: `User ${ids[1]}` };
+        const char1 = getCharInfoByUserId(ids[0]);
+        const char2 = getCharInfoByUserId(ids[1]);
+        const user1 = Object.values(charIndex).find(c => c.user_id === ids[0]) || { display_name: `User ${ids[0]}` };
+        const user2 = Object.values(charIndex).find(c => c.user_id === ids[1]) || { display_name: `User ${ids[1]}` };
 
         groups.set(key, {
-          key,
-          user1Id: ids[0],
-          user2Id: ids[1],
-          user1Name: user1Entry.display_name, // Use found display name
-          user2Name: user2Entry.display_name, // Use found display name
-          user1CharName: char1Info.name,
-          user2CharName: char2Info.name,
-          user1Clan: char1Info.clan,
-          user2Clan: char2Info.clan,
-          messages: [],
-          latestTimestamp: 0,
-          latestSnippet: '',
+          key, user1Id: ids[0], user2Id: ids[1],
+          user1Name: user1.display_name, user2Name: user2.display_name,
+          user1CharName: char1.name, user2CharName: char2.name,
+          user1Clan: char1.clan, user2Clan: char2.clan,
+          messages: [], latestTimestamp: 0, latestSnippet: '',
         });
       }
       const group = groups.get(key);
@@ -172,658 +160,456 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
         group.latestSnippet = msg.body;
       }
     }
-    // Sort messages within each group *after* processing all messages
-    groups.forEach(group => group.messages.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
-    // Sort groups by latest message
+    groups.forEach(g => g.messages.sort((a, b) => new Date(a.created_at) - new Date(b.created_at)));
     return Array.from(groups.values()).sort((a, b) => b.latestTimestamp - a.latestTimestamp);
-  }, [messages, getCharInfoByUserId, charIndex]); // Added charIndex dependency
+  }, [messages, getCharInfoByUserId, charIndex]);
 
-  // --- Filter Direct Conversations ---
-  const filteredDirectConversations = useMemo(() => {
+  const filteredDirect = useMemo(() => {
     const q = debouncedDirectSearch.toLowerCase();
     if (!q) return directConversations;
-    return directConversations.filter(convo =>
-      (convo.user1Name || '').toLowerCase().includes(q) ||
-      (convo.user2Name || '').toLowerCase().includes(q) ||
-      (convo.user1CharName || '').toLowerCase().includes(q) ||
-      (convo.user2CharName || '').toLowerCase().includes(q) ||
-      (convo.user1Clan || '').toLowerCase().includes(q) ||
-      (convo.user2Clan || '').toLowerCase().includes(q) ||
-      convo.messages.some(msg => (msg.body || '').toLowerCase().includes(q))
+    return directConversations.filter(c => 
+      (c.user1Name||'').toLowerCase().includes(q) || (c.user2Name||'').toLowerCase().includes(q) ||
+      (c.user1CharName||'').toLowerCase().includes(q) || (c.user2CharName||'').toLowerCase().includes(q) ||
+      c.messages.some(m => (m.body||'').toLowerCase().includes(q))
     );
   }, [directConversations, debouncedDirectSearch]);
 
-  // --- Handle Selecting Direct Conversation ---
+  // --- 2. LOADERS & EFFECTS ---
   useEffect(() => {
-    if (viewMode !== 'direct' || !selectedConversationKey) {
-      setCurrentMessages([]);
-      return;
-    }
+    if (viewMode !== 'direct' || !selectedConversationKey) { setCurrentMessages([]); return; }
     const convo = directConversations.find(c => c.key === selectedConversationKey);
     if (convo) {
       setCurrentMessages(convo.messages);
-      // Store IDs in participants for alignment logic
       setCurrentParticipants({
-        user1: convo.user1Name,
-        user2: convo.user2Name,
-        user1Id: convo.user1Id, // Store ID
-        user2Id: convo.user2Id, // Store ID
-        user1Char: convo.user1CharName,
-        user2Char: convo.user2CharName,
-        user1Clan: convo.user1Clan,
-        user2Clan: convo.user2Clan,
+        user1: convo.user1Name, user2: convo.user2Name,
+        user1Id: convo.user1Id, user2Id: convo.user2Id,
+        user1Char: convo.user1CharName, user2Char: convo.user2CharName,
+        user1Clan: convo.user1Clan, user2Clan: convo.user2Clan,
       });
-    } else {
-      setCurrentMessages([]);
     }
   }, [selectedConversationKey, directConversations, viewMode]);
 
-
-  // --- Load NPCs on Mode Switch ---
   useEffect(() => {
     if (viewMode !== 'npc') return;
-    let cancelled = false;
-    const loadNpcs = async () => {
-      setLoading(prev => ({ ...prev, npcs: true })); setError('');
-      try {
-        let res;
-        try { res = await api.get('/admin/npcs'); }
-        catch { res = await api.get('/chat/npcs'); } // Fallback
-        if (cancelled) return;
-        const list = Array.isArray(res.data) ? res.data : (res.data?.npcs || []);
-        setNpcList(list.map(n => ({ id: n.id, name: n.name, clan: n.clan })).sort((a, b) => a.name.localeCompare(b.name)));
-      } catch {
-        if (!cancelled) setError('Failed to load NPCs.');
-      } finally {
-        if (!cancelled) setLoading(prev => ({ ...prev, npcs: false }));
-      }
-    };
-    loadNpcs();
-    return () => { cancelled = true; };
+    api.get('/admin/npcs').then(res => {
+      const list = (res.data.npcs || res.data || []).map(n => ({ id: n.id, name: n.name, clan: n.clan }));
+      setNpcList(list.sort((a,b) => a.name.localeCompare(b.name)));
+    }).catch(() => setError('Failed to load NPCs'));
   }, [viewMode]);
 
-  // --- Filter NPCs ---
-  const filteredNpcs = useMemo(() => {
-    const q = debouncedNpcSearch.toLowerCase();
-    if (!q) return npcList;
-    return npcList.filter(n => (n.name || '').toLowerCase().includes(q) || (n.clan || '').toLowerCase().includes(q));
-  }, [npcList, debouncedNpcSearch]);
-
-  // --- Load Convos for Selected NPC ---
   useEffect(() => {
-    if (viewMode !== 'npc' || !selectedNpc?.id) {
-      setConvos([]);
-      setSelectedNpcConversation(null);
-      return;
-    }
-    let cancelled = false;
-    const loadConvos = async () => {
-      setLoading(prev => ({ ...prev, convos: true })); setError('');
-      try {
-        let res;
-        try { res = await api.get('/admin/chat/npc/conversations', { params: { npc_id: selectedNpc.id } }); }
-        catch { res = await api.get(`/admin/chat/npc-conversations/${selectedNpc.id}`); } // Fallback
-        if (cancelled) return;
-        const rows = (res.data?.conversations || []).map(r => ({
-          userId: r.user_id,
-          charName: r.char_name || '',
-          charClan: getCharInfoByUserId(r.user_id).clan,
-          userName: r.display_name || `User ${r.user_id}`,
-          lastMessageAt: r.last_message_at || null,
-        }));
-        rows.sort((a, b) => new Date(b.lastMessageAt || 0).getTime() - new Date(a.lastMessageAt || 0).getTime());
-        setConvos(rows);
-      } catch {
-        if (!cancelled) { setError('Failed to load conversations for NPC.'); setConvos([]); }
-      } finally {
-        if (!cancelled) setLoading(prev => ({ ...prev, convos: false }));
-      }
-    };
-    loadConvos();
-    return () => { cancelled = true; };
-  }, [viewMode, selectedNpc, getCharInfoByUserId]);
+    if (viewMode !== 'npc' || !selectedNpc) { setConvos([]); return; }
+    setLoading(p => ({...p, convos: true}));
+    const url = `/admin/chat/npc/conversations?npc_id=${selectedNpc.id}`;
+    api.get(url).then(res => {
+      const rows = (res.data.conversations||[]).map(r => ({
+        userId: r.user_id, charName: r.char_name||'', charClan: getCharInfoByUserId(r.user_id).clan,
+        userName: r.display_name || `User ${r.user_id}`, lastMessageAt: r.last_message_at
+      }));
+      setConvos(rows.sort((a,b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt)));
+    }).finally(() => setLoading(p => ({...p, convos: false})));
+  }, [selectedNpc, viewMode, getCharInfoByUserId]);
 
-  // --- Filter NPC Convos ---
-  const filteredNpcConvos = useMemo(() => {
-    const q = debouncedNpcConvoSearch.toLowerCase();
-    if (!q) return convos;
-    return convos.filter(c =>
-      (c.charName || '').toLowerCase().includes(q) ||
-      (c.userName || '').toLowerCase().includes(q) ||
-      (c.charClan || '').toLowerCase().includes(q)
-    );
-  }, [convos, debouncedNpcConvoSearch]);
-
-  // --- Load Thread for Selected NPC Conversation ---
   useEffect(() => {
-    if (viewMode !== 'npc' || !selectedNpc?.id || !selectedNpcConversation?.userId) {
-      setCurrentThread([]);
-      return;
-    }
-    let cancelled = false;
-    const loadThread = async () => {
-      setLoading(prev => ({ ...prev, thread: true })); setError('');
-      try {
-        let res;
-        try { res = await api.get('/admin/chat/npc/history', { params: { npc_id: selectedNpc.id, user_id: selectedNpcConversation.userId } }); }
-        catch { res = await api.get(`/admin/chat/npc-history/${selectedNpc.id}/${selectedNpcConversation.userId}`); } // Fallback
-        if (cancelled) return;
-        const msgs = (res.data?.messages || []).map(m => ({
-          id: m.id,
-          body: m.body,
-          created_at: m.created_at,
-          from: m.from_side // 'npc' | 'user'
-        }));
-        msgs.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-        setCurrentThread(msgs);
-      } catch {
-        if (!cancelled) { setError('Failed to load message thread.'); setCurrentThread([]); }
-      } finally {
-        if (!cancelled) setLoading(prev => ({ ...prev, thread: false }));
-      }
-    };
-    loadThread();
-    return () => { cancelled = true; };
-  }, [viewMode, selectedNpc, selectedNpcConversation]);
+    if (viewMode !== 'npc' || !selectedNpc || !selectedNpcConversation) { setCurrentThread([]); return; }
+    setLoading(p => ({...p, thread: true}));
+    const url = `/admin/chat/npc/history?npc_id=${selectedNpc.id}&user_id=${selectedNpcConversation.userId}`;
+    api.get(url).then(res => {
+      const msgs = (res.data.messages||[]).map(m => ({ id: m.id, body: m.body, created_at: m.created_at, from: m.from_side }));
+      setCurrentThread(msgs.sort((a,b) => new Date(a.created_at) - new Date(b.created_at)));
+    }).finally(() => setLoading(p => ({...p, thread: false})));
+  }, [selectedNpc, selectedNpcConversation]);
 
-  // --- Load Groups on Mode Switch ---
   useEffect(() => {
     if (viewMode !== 'group') return;
-    let cancelled = false;
-    const loadGroups = async () => {
-      setLoading(prev => ({ ...prev, groups: true })); setError('');
-      try {
-        const res = await api.get('/admin/chat/groups');
-        if (cancelled) return;
-        setGroupList(res.data.groups || []);
-      } catch {
-        if (!cancelled) setError('Failed to load groups.');
-      } finally {
-        if (!cancelled) setLoading(prev => ({ ...prev, groups: false }));
-      }
-    };
-    loadGroups();
-    return () => { cancelled = true; };
+    api.get('/admin/chat/groups').then(res => {
+      setGroupList((res.data.groups||[]));
+    }).catch(() => setError('Failed to load groups'));
   }, [viewMode]);
 
-  // --- Filter Groups ---
+  useEffect(() => {
+    if (viewMode !== 'group' || !selectedGroup) { setGroupThread([]); return; }
+    setLoading(p => ({...p, groupThread: true}));
+    api.get(`/admin/chat/groups/${selectedGroup.id}/history`).then(res => {
+      setGroupThread((res.data.messages||[]));
+    }).finally(() => setLoading(p => ({...p, groupThread: false})));
+  }, [selectedGroup]);
+
+  // --- 3. FILTER LISTS ---
+  const filteredNpcs = useMemo(() => {
+    const q = debouncedNpcSearch.toLowerCase();
+    return npcList.filter(n => (n.name||'').toLowerCase().includes(q));
+  }, [npcList, debouncedNpcSearch]);
+
+  const filteredConvos = useMemo(() => {
+    const q = debouncedNpcConvoSearch.toLowerCase();
+    return convos.filter(c => (c.charName||'').toLowerCase().includes(q) || (c.userName||'').toLowerCase().includes(q));
+  }, [convos, debouncedNpcConvoSearch]);
+
   const filteredGroups = useMemo(() => {
     const q = debouncedGroupSearch.toLowerCase();
-    if (!q) return groupList;
-    return groupList.filter(g => (g.name || '').toLowerCase().includes(q));
+    return groupList.filter(g => (g.name||'').toLowerCase().includes(q));
   }, [groupList, debouncedGroupSearch]);
 
-  // --- Load Group Thread ---
-  useEffect(() => {
-    if (viewMode !== 'group' || !selectedGroup?.id) {
-      setGroupThread([]);
-      return;
-    }
-    let cancelled = false;
-    const loadThread = async () => {
-      setLoading(prev => ({ ...prev, groupThread: true })); setError('');
-      try {
-        const res = await api.get(`/admin/chat/groups/${selectedGroup.id}/history`);
-        if (cancelled) return;
-        const msgs = (res.data.messages || []).map(m => ({
-            ...m,
-            created_at: m.created_at // Ensure format matches
-        }));
-        setGroupThread(msgs);
-      } catch {
-        if (!cancelled) { setError('Failed to load group messages.'); setGroupThread([]); }
-      } finally {
-        if (!cancelled) setLoading(prev => ({ ...prev, groupThread: false }));
-      }
-    };
-    loadThread();
-    return () => { cancelled = true; };
-  }, [viewMode, selectedGroup]);
-
-
-  // --- Handle Mode Change ---
-  const handleModeChange = (mode) => {
-    setViewMode(mode);
-    if (mode === 'direct') {
-      setSelectedNpc(null); setSelectedNpcConversation(null); setConvos([]); setCurrentThread([]); setNpcSearch(''); setNpcConvoSearch('');
-      setSelectedGroup(null); setGroupThread([]); setGroupSearch('');
-    } else if (mode === 'npc') {
-      setSelectedConversationKey(null); setCurrentMessages([]); setDirectSearch('');
-      setSelectedGroup(null); setGroupThread([]); setGroupSearch('');
-    } else if (mode === 'group') {
-      setSelectedConversationKey(null); setCurrentMessages([]); setDirectSearch('');
-      setSelectedNpc(null); setSelectedNpcConversation(null); setConvos([]); setCurrentThread([]); setNpcSearch(''); setNpcConvoSearch('');
-    }
-    setError('');
+  const handleModeChange = (m) => {
+    setViewMode(m);
+    setSelectedNpc(null); setSelectedConversationKey(null); setSelectedGroup(null);
+    setNpcSearch(''); setDirectSearch(''); setGroupSearch('');
   };
 
   return (
     <div className={styles.logsContainer} data-mode={viewMode}>
-      {/* --- Column 1: Conversation/NPC/Group List --- */}
+      {/* SIDEBAR: LISTS */}
       <aside className={styles.sidebar}>
         <div className={styles.sidebarHeader}>
+          {/* --- GLOBAL RECAP BUTTON --- */}
+          <button 
+            className={styles.globalRecapBtn} 
+            onClick={handleGlobalSummarize}
+            disabled={globalLoading}
+          >
+            {globalLoading ? <span className={styles.spinnerSmall} /> : '✨ Global Recap'}
+          </button>
+
           <div className={styles.modeSwitcher}>
-            <button
-              onClick={() => handleModeChange('direct')}
-              className={viewMode === 'direct' ? styles.active : ''}
-            >
-              Direct Messages
-            </button>
-            <button
-              onClick={() => handleModeChange('npc')}
-              className={viewMode === 'npc' ? styles.active : ''}
-            >
-              NPC Chats
-            </button>
-            <button
-              onClick={() => handleModeChange('group')}
-              className={viewMode === 'group' ? styles.active : ''}
-            >
-              Groups
-            </button>
+            {['direct','npc','group'].map(m => (
+              <button key={m} onClick={() => handleModeChange(m)} className={viewMode === m ? styles.active : ''}>
+                {m.charAt(0).toUpperCase() + m.slice(1)}
+              </button>
+            ))}
           </div>
-          <input
-            type="search"
-            placeholder={viewMode === 'direct' ? "Search conversations..." : viewMode === 'npc' ? "Search NPCs..." : "Search Groups..."}
-            value={viewMode === 'direct' ? directSearch : viewMode === 'npc' ? npcSearch : groupSearch}
-            onChange={e => {
-                if (viewMode === 'direct') setDirectSearch(e.target.value);
-                else if (viewMode === 'npc') setNpcSearch(e.target.value);
-                else setGroupSearch(e.target.value);
-            }}
+          <input 
+            type="search" 
+            placeholder="Search..." 
             className={styles.searchInput}
+            value={viewMode==='direct'?directSearch:viewMode==='npc'?npcSearch:groupSearch}
+            onChange={e => {
+              const v = e.target.value;
+              if (viewMode==='direct') setDirectSearch(v);
+              else if (viewMode==='npc') setNpcSearch(v);
+              else setGroupSearch(v);
+            }}
           />
         </div>
-
         <div className={styles.sidebarList}>
           {viewMode === 'direct' && (
-            <ConversationList
-              conversations={filteredDirectConversations}
-              selectedKey={selectedConversationKey}
-              onSelect={setSelectedConversationKey}
-              searchQuery={debouncedDirectSearch}
+            <ConversationList 
+              list={filteredDirect} 
+              selected={selectedConversationKey} 
+              onSelect={setSelectedConversationKey} 
+              query={debouncedDirectSearch} 
             />
           )}
           {viewMode === 'npc' && (
-            <NpcList
-              npcs={filteredNpcs}
-              selectedId={selectedNpc?.id}
-              onSelect={setSelectedNpc}
-              searchQuery={debouncedNpcSearch}
-              loading={loading.npcs}
-              error={error && !loading.npcs ? error : ''}
+            <NpcList 
+              list={filteredNpcs} 
+              selected={selectedNpc?.id} 
+              onSelect={setSelectedNpc} 
+              query={debouncedNpcSearch} 
             />
           )}
           {viewMode === 'group' && (
-            <GroupList
-              groups={filteredGroups}
-              selectedId={selectedGroup?.id}
-              onSelect={setSelectedGroup}
-              searchQuery={debouncedGroupSearch}
-              loading={loading.groups}
-              error={error && !loading.groups ? error : ''}
+            <GroupList 
+              list={filteredGroups} 
+              selected={selectedGroup?.id} 
+              onSelect={setSelectedGroup} 
+              query={debouncedGroupSearch} 
             />
           )}
         </div>
       </aside>
 
-      {/* --- Column 2: NPC Conversation List (NPC Mode Only) --- */}
+      {/* MIDDLE: NPC CONVOS */}
       {viewMode === 'npc' && (
         <aside className={styles.conversationList}>
           <div className={styles.sidebarHeader}>
-            <input
-              type="search"
-              placeholder={selectedNpc ? `Search convos for ${selectedNpc.name}...` : "Select NPC first"}
-              value={npcConvoSearch}
-              onChange={e => setNpcConvoSearch(e.target.value)}
+            <input 
+              type="search" 
+              placeholder={selectedNpc ? "Search threads..." : "Select NPC"} 
               className={styles.searchInput}
               disabled={!selectedNpc}
+              value={npcConvoSearch}
+              onChange={e => setNpcConvoSearch(e.target.value)}
             />
           </div>
           <div className={styles.sidebarList}>
-            <NpcConversationList
-              conversations={filteredNpcConvos}
-              selectedUserId={selectedNpcConversation?.userId}
-              onSelect={setSelectedNpcConversation}
-              searchQuery={debouncedNpcConvoSearch}
-              loading={loading.convos}
-              error={error && loading.npcs ? '' : error}
-              npcSelected={!!selectedNpc}
-            />
+            {selectedNpc && (
+              <NpcConvoList 
+                list={filteredConvos} 
+                selected={selectedNpcConversation?.userId} 
+                onSelect={setSelectedNpcConversation} 
+                query={debouncedNpcConvoSearch}
+              />
+            )}
           </div>
         </aside>
       )}
 
-      {/* --- Column 3: Message Panel --- */}
+      {/* MAIN: MESSAGES */}
       <main className={styles.messagePanel}>
         {viewMode === 'direct' && selectedConversationKey && (
-          <MessagePanel
-            messages={currentMessages}
-            participants={currentParticipants}
-            loading={false}
-            error={error}
-            mode="direct"
-            selectedConversationKey={selectedConversationKey} // Pass key for alignment logic
+          <MessagePanel 
+            messages={currentMessages} 
+            participants={currentParticipants} 
+            mode="direct" 
           />
         )}
-        {viewMode === 'npc' && selectedNpcConversation && selectedNpc && (
-          <MessagePanel
-            messages={currentThread}
+        {viewMode === 'npc' && selectedNpcConversation && (
+          <MessagePanel 
+            messages={currentThread} 
             participants={{
-              npc: selectedNpc.name,
-              npcClan: selectedNpc.clan,
-              user: selectedNpcConversation.charName || selectedNpcConversation.userName,
-              userClan: selectedNpcConversation.charClan,
-            }}
+              npc: selectedNpc?.name, 
+              npcClan: selectedNpc?.clan,
+              user: selectedNpcConversation.charName || 'Unknown Character', 
+              userClan: selectedNpcConversation.charClan
+            }} 
+            mode="npc" 
             loading={loading.thread}
-            error={error}
-            mode="npc"
           />
         )}
         {viewMode === 'group' && selectedGroup && (
-          <MessagePanel
-            messages={groupThread}
-            participants={{ groupName: selectedGroup.name }}
+          <MessagePanel 
+            messages={groupThread} 
+            participants={{ groupName: selectedGroup.name }} 
+            mode="group" 
             loading={loading.groupThread}
-            error={error}
-            mode="group"
           />
         )}
-
-        {/* Placeholders */}
-        {viewMode === 'direct' && !selectedConversationKey && (
+        
+        {/* Placeholder */}
+        {((viewMode === 'direct' && !selectedConversationKey) || 
+          (viewMode === 'npc' && !selectedNpcConversation) || 
+          (viewMode === 'group' && !selectedGroup)) && (
           <div className={styles.placeholderCard}>
-            <div className={styles.placeholderDot} />
-            <div>
-              <h3>Select a Conversation</h3>
-              <p className={styles.subtle}>Choose a direct message thread from the list on the left.</p>
-            </div>
-          </div>
-        )}
-        {viewMode === 'npc' && !selectedNpc && (
-           <div className={styles.placeholderCard}>
-            <div className={styles.placeholderDot} />
-            <div>
-              <h3>Select an NPC</h3>
-              <p className={styles.subtle}>Choose an NPC from the list on the far left.</p>
-            </div>
-          </div>
-        )}
-        {viewMode === 'npc' && selectedNpc && !selectedNpcConversation && (
-           <div className={styles.placeholderCard}>
-            <div className={styles.placeholderDot} />
-            <div>
-              <h3>Select a Conversation</h3>
-              <p className={styles.subtle}>Select a thread from the middle panel to view messages.</p>
-            </div>
-          </div>
-        )}
-        {viewMode === 'group' && !selectedGroup && (
-           <div className={styles.placeholderCard}>
-            <div className={styles.placeholderDot} />
-            <div>
-              <h3>Select a Group</h3>
-              <p className={styles.subtle}>Choose a group chat from the list on the left.</p>
-            </div>
+            <h3>Select a Conversation</h3>
+            <p className={styles.subtle}>Choose a thread to view the full history and AI summary.</p>
           </div>
         )}
       </main>
+
+      {/* --- GLOBAL SUMMARY MODAL --- */}
+      {globalSummary && (
+        <GlobalSummaryModal 
+          summary={globalSummary} 
+          onClose={() => setGlobalSummary(null)} 
+        />
+      )}
     </div>
   );
 }
 
-// --- Component: List of Direct Conversations ---
-function ConversationList({ conversations, selectedKey, onSelect, searchQuery }) {
-  if (!conversations.length && !searchQuery) {
-    return <div className={styles.listEmptyState}>No direct messages found.</div>;
-  }
-  if (!conversations.length && searchQuery) {
-    return <div className={styles.listEmptyState}>No conversations match "{searchQuery}".</div>;
-  }
+/* ==================== SUB-COMPONENTS ==================== */
 
-  const formatName = (user, char, clan) => {
-    const name = (char && char !== '—') ? char : user;
-    const logo = symlogo(clan);
-    return (
-      <span className={styles.convoName}>
-        {logo && <img src={logo} alt={clan || ''} className={styles.convoAvatar} style={{'--clan-color': CLAN_COLORS[clan]}} />}
-        <Highlight text={name} query={searchQuery} />
-      </span>
-    );
-  };
+// --- UPDATED LIST COMPONENTS WITH COLORS ---
 
-  return conversations.map(convo => (
-    <button
-      key={convo.key}
-      className={`${styles.listItem} ${convo.key === selectedKey ? styles.active : ''}`}
-      onClick={() => onSelect(convo.key)}
-    >
+const ConversationList = ({ list, selected, onSelect, query }) => list.map(c => {
+  // Helper to color names
+  const renderName = (name, clan) => (
+    <span style={{ color: CLAN_COLORS[clan] || 'var(--text-primary)', fontWeight: 500 }}>
+      {symlogo(clan) && <img src={symlogo(clan)} alt="" style={{width:'14px', height:'14px', marginRight:'4px', verticalAlign:'middle'}} />}
+      <Highlight text={name} query={query}/>
+    </span>
+  );
+
+  return (
+    <button key={c.key} className={`${styles.listItem} ${c.key===selected?styles.active:''}`} onClick={() => onSelect(c.key)}>
       <div className={styles.listItemText}>
-        {formatName(convo.user1Name, convo.user1CharName, convo.user1Clan)}
-        <span className={styles.convoSeparator}>&</span>
-        {formatName(convo.user2Name, convo.user2CharName, convo.user2Clan)}
+        {renderName(c.user1CharName||c.user1Name, c.user1Clan)}
+        <span style={{margin:'0 6px', color:'#666'}}>↔</span>
+        {renderName(c.user2CharName||c.user2Name, c.user2Clan)}
       </div>
-      <div className={styles.listItemMeta}>
-        <span className={styles.snippet}><Highlight text={convo.latestSnippet} query={searchQuery} /></span>
-        <span className={styles.timestamp}>{formatTimestamp(convo.latestTimestamp, false)}</span>
-      </div>
+      <div className={styles.listItemMeta}><span className={styles.timestamp}>{formatTimestamp(c.latestTimestamp, false)}</span></div>
     </button>
-  ));
-}
+  );
+});
 
-// --- Component: List of NPCs ---
-function NpcList({ npcs, selectedId, onSelect, searchQuery, loading, error }) {
-  if (loading) return <div className={styles.listEmptyState}>Loading NPCs...</div>;
-  if (error) return <div className={`${styles.listEmptyState} ${styles.errorText}`}>{error}</div>;
-  if (!npcs.length && !searchQuery) {
-    return <div className={styles.listEmptyState}>No NPCs found.</div>;
-  }
-  if (!npcs.length && searchQuery) {
-    return <div className={styles.listEmptyState}>No NPCs match "{searchQuery}".</div>;
-  }
+const NpcList = ({ list, selected, onSelect, query }) => list.map(n => (
+  <button key={n.id} className={`${styles.listItem} ${n.id===selected?styles.active:''}`} onClick={() => onSelect(n)} style={{'--clan-color':CLAN_COLORS[n.clan]}}>
+    {symlogo(n.clan) && <img src={symlogo(n.clan)} className={styles.convoAvatar} alt=""/>}
+    <div className={styles.listItemText} style={{ color: CLAN_COLORS[n.clan] || 'var(--text-primary)' }}>
+      <Highlight text={n.name} query={query}/>
+    </div>
+  </button>
+));
 
-  return npcs.map(npc => {
-    const clanColor = CLAN_COLORS[npc.clan] || 'var(--text-secondary)';
-    const clanLogoUrl = symlogo(npc.clan);
-    return (
-      <button
-        key={npc.id}
-        className={`${styles.listItem} ${npc.id === selectedId ? styles.active : ''}`}
-        onClick={() => onSelect(npc)}
-        style={{'--clan-color': clanColor}}
-      >
-        {clanLogoUrl && <img src={clanLogoUrl} alt={npc.clan || ''} className={styles.convoAvatar} />}
-        <div className={styles.listItemText}>
-          <Highlight text={npc.name} query={searchQuery} />
-          {npc.clan && <span className={styles.clanChip}><Highlight text={npc.clan} query={searchQuery} /></span>}
+const NpcConvoList = ({ list, selected, onSelect, query }) => list.map(c => (
+  <button key={c.userId} className={`${styles.listItem} ${c.userId===selected?styles.active:''}`} onClick={() => onSelect(c)} style={{'--clan-color':CLAN_COLORS[c.charClan]}}>
+    {symlogo(c.charClan) && <img src={symlogo(c.charClan)} className={styles.convoAvatar} alt=""/>}
+    <div className={styles.listItemText} style={{ color: CLAN_COLORS[c.charClan] || 'var(--text-primary)' }}>
+      <Highlight text={c.charName||c.userName} query={query}/>
+      {c.charName && c.charName !== c.userName && <small style={{color:'var(--text-secondary)'}}><Highlight text={c.userName} query={query}/></small>}
+    </div>
+    <div className={styles.listItemMeta}><span className={styles.timestamp}>{formatTimestamp(c.lastMessageAt, true)}</span></div>
+  </button>
+));
+
+const GroupList = ({ list, selected, onSelect, query }) => list.map(g => (
+  <button key={g.id} className={`${styles.listItem} ${g.id===selected?styles.active:''}`} onClick={() => onSelect(g)}>
+    <div className={styles.listItemText}><Highlight text={g.name} query={query}/></div>
+  </button>
+));
+
+/* ==================== GLOBAL SUMMARY MODAL ==================== */
+function GlobalSummaryModal({ summary, onClose }) {
+  return (
+    <div className={styles.modalBackdrop} onClick={onClose}>
+      <div className={styles.modalCard} onClick={e => e.stopPropagation()} style={{ maxWidth: '800px', height: 'auto', maxHeight: '90vh' }}>
+        <div className={styles.modalHeader}>
+          <div className={styles.modalHeaderContent}>
+            <h3>🌍 Global Activity Recap</h3>
+            <p className={styles.subtle}>Summary of the last 100 messages across all channels.</p>
+          </div>
+          <button className={styles.btnIcon} onClick={onClose}>✕</button>
         </div>
-      </button>
-    );
-  });
-}
-
-// --- Component: List of Groups ---
-function GroupList({ groups, selectedId, onSelect, searchQuery, loading, error }) {
-  if (loading) return <div className={styles.listEmptyState}>Loading Groups...</div>;
-  if (error) return <div className={`${styles.listEmptyState} ${styles.errorText}`}>{error}</div>;
-  if (!groups.length && !searchQuery) {
-    return <div className={styles.listEmptyState}>No groups found.</div>;
-  }
-  if (!groups.length && searchQuery) {
-    return <div className={styles.listEmptyState}>No groups match "{searchQuery}".</div>;
-  }
-
-  return groups.map(g => (
-    <button
-      key={g.id}
-      className={`${styles.listItem} ${g.id === selectedId ? styles.active : ''}`}
-      onClick={() => onSelect(g)}
-    >
-      <div className={styles.listItemText}>
-        <Highlight text={g.name} query={searchQuery} />
-        <small style={{display:'block', opacity:0.6}}>Created by {g.creator_name}</small>
+        <div className={styles.modalBody}>
+          <div className={styles.markdownBody} style={{ padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>
+            <ReactMarkdown>{summary}</ReactMarkdown>
+          </div>
+        </div>
+        <div className={styles.modalFooter}>
+          <button className={styles.btnSecondary} onClick={onClose}>Close</button>
+        </div>
       </div>
-      <div className={styles.listItemMeta}>
-        <span className={styles.timestamp}>
-          {g.member_count || 0} members
-        </span>
-      </div>
-    </button>
-  ));
+    </div>
+  );
 }
 
-// --- Component: List of Conversations for an NPC ---
-function NpcConversationList({ conversations, selectedUserId, onSelect, searchQuery, loading, error, npcSelected }) {
-  if (!npcSelected) return <div className={styles.listEmptyState}>Select an NPC first.</div>;
-  if (loading) return <div className={styles.listEmptyState}>Loading conversations...</div>;
-  if (error) return <div className={`${styles.listEmptyState} ${styles.errorText}`}>{error}</div>;
-  if (!conversations.length && !searchQuery) {
-    return <div className={styles.listEmptyState}>No conversations found for this NPC.</div>;
-  }
-  if (!conversations.length && searchQuery) {
-    return <div className={styles.listEmptyState}>No conversations match "{searchQuery}".</div>;
-  }
-
-  return conversations.map(convo => {
-    const clanColor = CLAN_COLORS[convo.charClan] || 'var(--text-secondary)';
-    const clanLogoUrl = symlogo(convo.charClan);
-    return (
-      <button
-        key={convo.userId}
-        className={`${styles.listItem} ${convo.userId === selectedUserId ? styles.active : ''}`}
-        onClick={() => onSelect(convo)}
-        style={{'--clan-color': clanColor}}
-      >
-        {clanLogoUrl && <img src={clanLogoUrl} alt={convo.charClan || ''} className={styles.convoAvatar} />}
-        <div className={styles.listItemText}>
-          <Highlight text={convo.charName || convo.userName} query={searchQuery} />
-        </div>
-        <div className={styles.listItemMeta}>
-          {convo.charName && convo.userName !== convo.charName && <span className={styles.snippet}><Highlight text={convo.userName} query={searchQuery} /></span>}
-          <span className={styles.timestamp}>{formatTimestamp(convo.lastMessageAt, true)}</span>
-        </div>
-      </button>
-    );
-  });
-}
-
-
-// --- Component: Message Display Panel ---
-function MessagePanel({ messages, participants, loading, error, mode, selectedConversationKey }) { // Added selectedConversationKey
+/* ==================== MESSAGE PANEL (WITH AI) ==================== */
+function MessagePanel({ messages, participants, loading, mode }) { 
   const messagesEndRef = useRef(null);
+  const [summary, setSummary] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
-  }, [messages, participants]); // Keep both dependencies
+  }, [messages, participants, summary]);
 
-  const getParticipantsDisplay = () => {
-    if (mode === 'direct') {
-      const name1 = participants.user1Char && participants.user1Char !== '—' ? `${participants.user1Char} (${participants.user1})` : participants.user1;
-      const name2 = participants.user2Char && participants.user2Char !== '—' ? `${participants.user2Char} (${participants.user2})` : participants.user2;
-      return <>{name1} <span className={styles.convoSeparator}>↔</span> {name2}</>;
-    } else if (mode === 'group') {
-      return <>{participants.groupName} <small>(Group Chat)</small></>;
-    } else {
-      return <>{participants.npc} <span className={styles.convoSeparator}>↔</span> {participants.user}</>;
+  const handleSummarize = async () => {
+    if (!messages.length) return;
+    setAiLoading(true);
+    setSummary(null);
+
+    try {
+      const chatText = messages.map(m => {
+        let sender = 'Unknown Character';
+
+        if (mode === 'direct') {
+          if (m.sender_id === participants.user1Id) {
+            sender = participants.user1Char && participants.user1Char !== '—' ? participants.user1Char : 'Character A';
+          } else if (m.sender_id === participants.user2Id) {
+            sender = participants.user2Char && participants.user2Char !== '—' ? participants.user2Char : 'Character B';
+          }
+        } else if (mode === 'npc') {
+          if (m.from === 'npc') {
+            sender = participants.npc || 'NPC';
+          } else {
+            sender = participants.user || 'Character';
+          }
+        } else if (mode === 'group') {
+          sender = m.char_name || 'Unknown Character';
+        }
+        
+        return `[${new Date(m.created_at).toLocaleTimeString()}] ${sender}: ${m.body}`;
+      }).join('\n');
+
+      let contextStr = '';
+      if (mode === 'direct') contextStr = `${participants.user1Char||'Char A'} and ${participants.user2Char||'Char B'}`;
+      else if (mode === 'npc') contextStr = `NPC ${participants.npc} and ${participants.user}`;
+      else if (mode === 'group') contextStr = `Group ${participants.groupName}`;
+
+      const { data } = await api.post('/admin/chat/summarize', { text: chatText, context: contextStr });
+      setSummary(data.summary);
+    } catch (err) {
+      alert('AI Error: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setAiLoading(false);
     }
   };
 
-  // --- MODIFIED getBubbleSender ---
-  const getBubbleSender = useCallback((message) => {
+  const getHeaderTitle = () => {
     if (mode === 'direct') {
-      // User1 is always the one with the lower ID from the key "id1-id2"
-      // Messages *from* user1 should appear on the right (isSent = true)
-      const user1Id = participants.user1Id; // Get ID from participants state
-      const isSentByPrimaryUser = message.sender_id === user1Id;
-
-      const senderIsUser1 = message.sender_id === participants.user1Id;
-      const charName = senderIsUser1 ? participants.user1Char : participants.user2Char;
-      const displayName = senderIsUser1 ? participants.user1 : participants.user2;
-
-      return {
-        name: (charName && charName !== '—') ? charName : displayName,
-        clan: senderIsUser1 ? participants.user1Clan : participants.user2Clan,
-        isSent: isSentByPrimaryUser, // True if sender is user1 (lower ID)
-      };
-    } else if (mode === 'group') {
-        // In group view, we just show everything as 'received' (left) for uniformity, 
-        // OR simply list them all on the left with names.
-        // We'll return isSent=false to keep them left-aligned in a column.
-        return {
-            name: message.char_name || message.display_name || 'Unknown',
-            clan: message.clan,
-            isSent: false
-        };
-    } else { // mode === 'npc'
-      const isSentByNpc = message.from === 'npc'; // NPC messages go right
-      return {
-        name: isSentByNpc ? participants.npc : participants.user,
-        clan: isSentByNpc ? participants.npcClan : participants.userClan,
-        isSent: isSentByNpc,
-      };
+      const c1 = participants.user1Clan;
+      const c2 = participants.user2Clan;
+      return (
+        <>
+          <span style={{color: CLAN_COLORS[c1] || 'inherit'}}>{participants.user1Char||participants.user1}</span>
+          <span style={{margin:'0 8px', color:'#666'}}>↔</span>
+          <span style={{color: CLAN_COLORS[c2] || 'inherit'}}>{participants.user2Char||participants.user2}</span>
+        </>
+      );
     }
-  }, [mode, participants]); // Dependencies for useCallback
-  // --- END MODIFIED getBubbleSender ---
-
+    if (mode === 'group') return participants.groupName;
+    return (
+      <>
+        <span style={{color: CLAN_COLORS[participants.npcClan] || 'inherit'}}>{participants.npc}</span>
+        <span style={{margin:'0 8px', color:'#666'}}>↔</span>
+        <span style={{color: CLAN_COLORS[participants.userClan] || 'inherit'}}>{participants.user}</span>
+      </>
+    );
+  };
 
   return (
     <>
       <div className={styles.messagePanelHeader}>
-        {getParticipantsDisplay()}
+        <div className={styles.panelTitle}>{getHeaderTitle()}</div>
+        <button 
+          className={styles.aiButton} 
+          onClick={handleSummarize} 
+          disabled={aiLoading || !messages || messages.length === 0}
+        >
+          {aiLoading ? <span className={styles.spinnerSmall} /> : '✨ Summarize'}
+        </button>
       </div>
+
+      {summary && (
+        <div className={styles.aiSummaryBox}>
+          <div className={styles.aiHeader}>
+            <strong>🤖 AI Summary</strong>
+            <button onClick={() => setSummary(null)} className={styles.closeBtn}>×</button>
+          </div>
+          <div className={styles.aiContent}>
+            <div className={styles.markdownBody}>
+              <ReactMarkdown>{summary}</ReactMarkdown>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className={styles.messageList}>
-        {loading && <div className={styles.listEmptyState}>Loading messages...</div>}
-        {error && !loading && <div className={`${styles.listEmptyState} ${styles.errorText}`}>{error}</div>}
-        {!loading && !error && messages.map((msg, index) => {
+        {loading && <div className={styles.listEmptyState}>Loading...</div>}
+        {!loading && messages.map((msg, i) => {
+          let isSent = false;
+          let name = 'Unknown';
+          let clan = null;
 
-          const sender = getBubbleSender(msg); // Uses the updated logic
-
-          let showSender = false;
-          if (index === 0) {
-            showSender = true;
+          if (mode === 'direct') {
+            const isUser1 = msg.sender_id === participants.user1Id;
+            isSent = isUser1; 
+            name = isUser1 ? (participants.user1Char||participants.user1) : (participants.user2Char||participants.user2);
+            clan = isUser1 ? participants.user1Clan : participants.user2Clan;
+          } else if (mode === 'npc') {
+            isSent = msg.from === 'npc';
+            name = isSent ? participants.npc : participants.user;
+            clan = isSent ? participants.npcClan : participants.userClan;
           } else {
-            // Ensure prevSender uses the same logic
-            const prevMessage = messages[index-1];
-            // Need to handle potential undefined prevMessage if array is modified unexpectedly
-            if (prevMessage) {
-                const prevSender = getBubbleSender(prevMessage);
-                showSender = sender.name !== prevSender.name;
-            } else {
-                showSender = true; // Default to showing if previous message is missing
-            }
+             name = msg.char_name || msg.display_name;
+             clan = msg.clan;
           }
 
+          const showSender = i === 0 || messages[i-1].sender_id !== msg.sender_id || messages[i-1].from !== msg.from;
+
           return (
-             <MessageBubble
-                key={msg.id || index}
-                message={msg}
-                isSent={sender.isSent} // Passed correctly to MessageBubble
-                senderName={sender.name}
-                senderClan={sender.clan}
-                showSender={showSender}
-             />
+            <div key={i} className={`${styles.messageRow} ${isSent ? styles.sentRow : styles.receivedRow}`}>
+              <div className={styles.messageBubble} title={formatTimestamp(msg.created_at)}>
+                {showSender && <div className={styles.senderName} style={{color: CLAN_COLORS[clan] || '#ccc'}}>{name}</div>}
+                <div className={styles.messageBody}>{msg.body}</div>
+                <div className={styles.messageTime}>{formatTimestamp(msg.created_at, false)}</div>
+              </div>
+            </div>
           );
         })}
-         {!loading && !error && messages.length === 0 && (
-           <div className={styles.listEmptyState}>No messages in this conversation yet.</div>
-         )}
         <div ref={messagesEndRef} />
       </div>
     </>
   );
 }
-
-// --- Component: Single Message Bubble ---
-function MessageBubble({ message, isSent, senderName, senderClan, showSender }) {
-   const clanColor = CLAN_COLORS[senderClan] || 'var(--accent-purple)'; // Fallback color
-
-   return (
-      <div className={`${styles.messageRow} ${isSent ? styles.sentRow : styles.receivedRow}`}>
-         <div className={styles.messageBubble} title={formatTimestamp(message.created_at, true)}>
-           {showSender && <div className={styles.senderName} style={{color: clanColor}}>{senderName}</div>}
-           <div className={styles.messageBody}>{message.body}</div>
-           <div className={styles.messageTime}>{formatTimestamp(message.created_at, false)}</div>
-         </div>
-      </div>
-   );
- }
