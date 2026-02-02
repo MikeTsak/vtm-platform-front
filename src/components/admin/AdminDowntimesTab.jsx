@@ -300,7 +300,7 @@ export default function AdminDowntimesTab() {
             />
           </label>
           <label className={styles.labeledInput}>
-            <span>Next Downtime Opening date</span>
+            <span>Next Modern Event date</span>
             <input
               type="date"
               className={styles.input}

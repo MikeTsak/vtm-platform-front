@@ -362,7 +362,7 @@ export default function DownTimes() {
             futureText={niceDate(deadline) || 'TBD'}
           />
           <CountdownDisplay
-            title="Next Opening"
+            title="Next Modern Event"
             countdown={openingCountdown}
             pastText="Submissions are Open." // If opening date is past, they're open
             futureText={niceDate(opening) || 'TBD'}

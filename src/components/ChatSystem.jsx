@@ -605,18 +605,24 @@ export default function Comms() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  /* --- Sending Logic --- */
+/* --- Sending Logic --- */
   const doSend = async () => {
     const body = newMessage.trim();
+    
+    // Validation: prevent empty sends and ensure a contact is selected
     if ((!body && !attachment) || !selectedContact) return;
+    
+    // Admin Guard: NPCs need a target player context to send a message
     if (isAdmin && selectedContact.type === 'npc' && !selectedPlayerId) return;
+    
+    // Prevent double-sending (concurrency lock)
     if (sendingRef.current) return;
     
     sendingRef.current = true;
     let attachmentId = null;
 
     try {
-      // 1. Upload Attachment if present
+      // 1. Handle File Upload if an attachment exists
       if (attachment) {
         const formData = new FormData();
         formData.append('file', attachment);
@@ -633,34 +639,59 @@ export default function Comms() {
         }
       }
 
-      // 2. Prepare Payload
+      // 2. Prepare common payload
       const payload = { body, attachment_id: attachmentId };
+      let newMsg = null;
 
-      // 3. Send Message
+      // 3. Route request based on contact type (Group, Direct Player, or NPC)
       if (selectedContact.type === 'group') {
         const { data } = await api.post(`/chat/groups/${selectedContact.id}/messages`, payload);
-        setMessages(prev => [...prev, { ...data.message, sender_id: currentUser.id, sender_name: 'Me' }]);
+        newMsg = { ...data.message, sender_id: currentUser.id, sender_name: 'Me' };
+        
+        // Update group list order
         setGroups(prev => sortContacts(prev.map(g => g.id === selectedContact.id ? { ...g, last_message_at: Date.now() } : g)));
       }
       else if (selectedContact.type === 'user') {
         const { data } = await api.post('/chat/messages', { recipient_id: selectedContact.id, ...payload });
-        setMessages(prev => [...prev, data.message]);
+        newMsg = data.message;
         
+        // Update user list: move to top and clear unread count for this contact
         setUsers(prev => {
            const updated = prev.map(u => 
              u.id === selectedContact.id ? { ...u, last_message_at: Date.now(), unread_count: 0 } : u
            );
            return sortContacts(updated);
         });
+        
+        // Mark as read immediately on server
         api.post('/chat/read', { sender_id: selectedContact.id }).catch(()=>{});
-      } else {
+      } 
+      else {
+        // NPC Context
         if (isAdmin) {
+          // Admin replying as the NPC
           const { data } = await api.post('/admin/chat/npc/messages', { npc_id: selectedContact.id, user_id: selectedPlayerId, ...payload });
-          setMessages(prev => [...prev, { id: data.message.id, body: data.message.body, created_at: data.message.created_at, sender_id: 'npc', _from: 'npc', attachment_id: data.message.attachment_id }]);
+          newMsg = { 
+            id: data.message.id, 
+            body: data.message.body, 
+            created_at: data.message.created_at, 
+            sender_id: 'npc', 
+            _from: 'npc', 
+            attachment_id: data.message.attachment_id 
+          };
         } else {
+          // Player talking to an NPC
           const { data } = await api.post('/chat/npc/messages', { npc_id: selectedContact.id, ...payload });
-          setMessages(prev => [...prev, { id: data.message.id, body: data.message.body, created_at: data.message.created_at, sender_id: currentUser.id, _from: 'user', attachment_id: data.message.attachment_id }]);
+          newMsg = { 
+            id: data.message.id, 
+            body: data.message.body, 
+            created_at: data.message.created_at, 
+            sender_id: currentUser.id, 
+            _from: 'user', 
+            attachment_id: data.message.attachment_id 
+          };
           
+          // Re-sort NPC list
           setNpcs(prev => {
              const updated = prev.map(n => 
                n.id === selectedContact.id ? { ...n, last_message_at: Date.now() } : n
@@ -670,14 +701,30 @@ export default function Comms() {
         }
       }
 
+      // 4. Update UI State Immediately
+      if (newMsg) {
+        // Add message to view without waiting for polling
+        setMessages(prev => [...prev, newMsg]);
+        
+        // CRITICAL: Update last timestamp ref to prevent the next poll 
+        // from fetching this same message as a duplicate.
+        const msgTime = new Date(newMsg.created_at).getTime();
+        if (msgTime > lastTsRef.current) {
+          lastTsRef.current = msgTime;
+        }
+      }
+
+      // 5. Cleanup Inputs
       setNewMessage('');
       clearAttachment();
-      setDrafts(prev => ({ ...prev, [threadKey]: '' }));
-      if(textareaRef.current) textareaRef.current.style.height = 'auto';
+      setDrafts(prev => ({ ...prev, [threadKey]: '' })); // Clear saved draft for this thread
+      if(textareaRef.current) textareaRef.current.style.height = 'auto'; // Reset textarea auto-resize
+      
     } catch (err) {
       setError(err?.response?.status === 401 ? 'Your session expired. Please log in again.' : 'Failed to send message.');
     } finally {
       sendingRef.current = false;
+      // Focus textarea back for desktop users
       if(!isMobile) setTimeout(() => textareaRef.current?.focus(), 10);
     }
   };

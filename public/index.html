@@ -4,7 +4,31 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <!-- App identity -->
+    <script>
+      (function() {
+        // Clear Local and Session Storage to force new login and reset drafts
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Clear all session cookies
+        const cookies = document.cookie.split(";");
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i];
+          const eqPos = cookie.indexOf("=");
+          const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
+          document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+        }
+
+        // Wipe Service Worker Cache API
+        if ('caches' in window) {
+          caches.keys().then(names => {
+            for (let name of names) caches.delete(name);
+          });
+        }
+        console.log("Privacy: Session memory nuked on startup.");
+      })();
+    </script>
+
     <title>Erebus Portal — Athens Through-Time</title>
     <meta name="description" content="Erebus Portal for the Athens Through-Time LARP. Create characters, manage downtimes, and navigate the court. Powered by Cerebral Productions." />
     <meta name="application-name" content="Erebus Portal" />
@@ -14,12 +38,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-    <!-- Favicon & PWA icons (all use ATT logo) -->
     <link rel="icon" type="image/png" href="%PUBLIC_URL%/img/ATT-logo(1).png" />
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/img/ATT-logo(1).png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
 
-    <!-- Social / Open Graph -->
     <meta property="og:title" content="Erebus Portal — Athens Through-Time" />
     <meta property="og:description" content="Enter the Court. Build your character, spend XP, and coordinate your coterie." />
     <meta property="og:type" content="website" />
@@ -31,7 +53,6 @@
     <meta name="twitter:description" content="V5 character builder & court tools for the Athens Through-Time LARP." />
     <meta name="twitter:image" content="%PUBLIC_URL%/img/ATT-logo(1).png" />
 
-    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
