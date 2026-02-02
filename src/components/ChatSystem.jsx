@@ -811,10 +811,17 @@ export default function Comms() {
     return isAdmin ? `n-${contact.id}-p-${selPlayerId || 'none'}` : `n-${contact.id}`;
   };
 
-  const selectContact = (contact) => {
+const selectContact = (contact) => {
+    // BUG FIX: Αν είναι ήδη επιλεγμένος, μην κάνεις τίποτα για να αποφύγεις το άδειασμα της οθόνης
+    if (selectedContact?.type === contact.type && selectedContact?.id === contact.id) {
+      return;
+    }
+
     setDrafts(prev => ({ ...prev, [threadKey]: newMessage }));
     setSelectedContact(contact);
+    
     if (isAdmin && contact?.type === 'user') setSelectedPlayerId(null);
+    
     const nextKey = buildThreadKey(contact, isAdmin && contact?.type === 'npc' ? selectedPlayerId : null);
     setNewMessage(drafts[nextKey] || '');
     setError('');
@@ -823,7 +830,7 @@ export default function Comms() {
       setUsers(prev => prev.map(u => u.id === contact.id ? { ...u, unread_count: 0 } : u));
       api.post('/chat/read', { sender_id: contact.id }).catch(()=>{});
     }
-    // Only scroll window on Desktop, on mobile we use CSS slide
+
     if (!isMobile) window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 

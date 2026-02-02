@@ -48,6 +48,63 @@ const Highlight = ({ text, query }) => {
   return <>{parts}</>;
 };
 
+/* --- CHAT IMAGE COMPONENT (Secure Fetch) --- */
+const ChatImage = ({ attachmentId }) => {
+  const [imageUrl, setImageUrl] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    let urlToRevoke = null;
+
+    setLoading(true);
+    setError(false);
+    setImageUrl(null);
+    
+    // Uses the same endpoint as ChatSystem. Server allows access if auth token is valid.
+    api.get(`/chat/media/${attachmentId}`, { responseType: 'blob' })
+      .then((response) => {
+        if (!active) return;
+        urlToRevoke = URL.createObjectURL(response.data);
+        setImageUrl(urlToRevoke);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Failed to load image", err);
+        if (!active) return;
+        setError(true);
+        setLoading(false);
+      });
+
+    return () => {
+      active = false;
+      if (urlToRevoke) URL.revokeObjectURL(urlToRevoke);
+    };
+  }, [attachmentId]);
+
+  if (loading) return <div style={{ fontSize:'0.75rem', color:'#888', fontStyle:'italic', margin:'4px 0' }}>Loading image...</div>;
+  if (error) return <div style={{ fontSize:'0.75rem', color:'#c44', margin:'4px 0' }}>⚠ Image failed to load</div>;
+
+  return (
+    <img 
+      src={imageUrl} 
+      alt="Attachment" 
+      style={{
+        maxWidth: '100%',
+        maxHeight: '300px',
+        borderRadius: '6px',
+        marginTop: '8px',
+        marginBottom: '4px',
+        cursor: 'pointer',
+        border: '1px solid #333',
+        display: 'block'
+      }}
+      onClick={() => window.open(imageUrl, '_blank')}
+    />
+  );
+};
+
 /* ==================== MAIN COMPONENT ==================== */
 export default function AdminChatLogsTab({ messages, charIndex }) {
   const [viewMode, setViewMode] = useState('direct');
@@ -215,7 +272,14 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
     setLoading(p => ({...p, thread: true}));
     const url = `/admin/chat/npc/history?npc_id=${selectedNpc.id}&user_id=${selectedNpcConversation.userId}`;
     api.get(url).then(res => {
-      const msgs = (res.data.messages||[]).map(m => ({ id: m.id, body: m.body, created_at: m.created_at, from: m.from_side }));
+      // API returns attachment_id
+      const msgs = (res.data.messages||[]).map(m => ({ 
+        id: m.id, 
+        body: m.body, 
+        created_at: m.created_at, 
+        from: m.from_side,
+        attachment_id: m.attachment_id // Capture attachment
+      }));
       setCurrentThread(msgs.sort((a,b) => new Date(a.created_at) - new Date(b.created_at)));
     }).finally(() => setLoading(p => ({...p, thread: false})));
   }, [selectedNpc, selectedNpcConversation]);
@@ -231,6 +295,7 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
     if (viewMode !== 'group' || !selectedGroup) { setGroupThread([]); return; }
     setLoading(p => ({...p, groupThread: true}));
     api.get(`/admin/chat/groups/${selectedGroup.id}/history`).then(res => {
+      // API returns attachment_id
       setGroupThread((res.data.messages||[]));
     }).finally(() => setLoading(p => ({...p, groupThread: false})));
   }, [selectedGroup]);
@@ -602,6 +667,12 @@ function MessagePanel({ messages, participants, loading, mode }) {
             <div key={i} className={`${styles.messageRow} ${isSent ? styles.sentRow : styles.receivedRow}`}>
               <div className={styles.messageBubble} title={formatTimestamp(msg.created_at)}>
                 {showSender && <div className={styles.senderName} style={{color: CLAN_COLORS[clan] || '#ccc'}}>{name}</div>}
+                
+                {/* --- RENDER IMAGE ATTACHMENT --- */}
+                {msg.attachment_id && (
+                  <ChatImage attachmentId={msg.attachment_id} />
+                )}
+                
                 <div className={styles.messageBody}>{msg.body}</div>
                 <div className={styles.messageTime}>{formatTimestamp(msg.created_at, false)}</div>
               </div>
