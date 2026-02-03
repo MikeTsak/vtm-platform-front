@@ -1623,7 +1623,7 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
   const countDots = useCallback((s = '') => {
     const bullets = (s.match(/[•●○]/g) || []).length;
     const matchResult = s.match(/\b(\d+)\b/);
-    const digits = matchResult ? parseInt(matchResult[1], 10) || 0 : 0;
+    const digits = matchResult ? parseInt(matchResult[1], 10) : 0;
     return Math.max(bullets, digits || 1);
   }, []);
 

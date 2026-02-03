@@ -380,9 +380,10 @@ function BoonForm({ entities, boon, onSave, onCancel }) {
       setFormData(prev => ({ ...prev, [`${fieldPrefix}_key`]: 'npc', [`${fieldPrefix}_id`]: '' }));
       return;
     }
+    const parts = selectedOption.id.split('-');
     // eslint-disable-next-line no-unused-vars
-    const [type] = selectedOption.id.split('-');
-    const id = selectedOption.id.split('-')[1];
+    const [type] = parts;
+    const id = parts[1];
     const cleanName = selectedOption.name.split(' (')[0];
     setFormData(prev => ({
       ...prev, [`${fieldPrefix}_key`]: selectedOption.id, [`${fieldPrefix}_id`]: id, [`${fieldPrefix}_name`]: cleanName,

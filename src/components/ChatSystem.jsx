@@ -263,6 +263,14 @@ export default function Comms() {
     }
   };
 
+  // Clear attachment helper
+  const clearAttachment = useCallback(() => {
+    setAttachment(null);
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [previewUrl]);
+
   useEffect(() => {
     const el = messagesListRef.current;
     if (!el) return;
@@ -285,11 +293,8 @@ export default function Comms() {
         textareaRef.current.style.height = 'auto';
     }
     // Clear attachments when switching contacts
-    setAttachment(null);
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setPreviewUrl(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  }, [selectedContact, previewUrl]);
+    clearAttachment();
+  }, [selectedContact, clearAttachment]);
 
   // Auto-resize textarea logic
   useLayoutEffect(() => {
@@ -599,13 +604,6 @@ export default function Comms() {
     
     // Focus input so user can still type
     if(textareaRef.current) textareaRef.current.focus();
-  };
-
-  const clearAttachment = () => {
-    setAttachment(null);
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setPreviewUrl(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
 /* --- Sending Logic --- */
