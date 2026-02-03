@@ -7,14 +7,21 @@ export default function AnnouncementsView({ canEdit }) {
   const [showModal, setShowModal] = useState(false);
   const contentRef = useRef(null);
 
-  const fetchItems = async () => {
+  const fetchItems = async (signal) => {
     try {
-      const { data } = await api.get('/news');
+      const { data } = await api.get('/news', { signal });
       setItems((data.items || []).filter(i => i.type === 'announcement'));
-    } catch (e) { console.error("Decree fetch error"); }
+    } catch (e) { 
+      if (e.name === 'CanceledError' || e.name === 'AbortError') return;
+      console.error("Decree fetch error"); 
+    }
   };
 
-  useEffect(() => { fetchItems(); }, []);
+  useEffect(() => { 
+    const abortController = new AbortController();
+    fetchItems(abortController.signal);
+    return () => abortController.abort();
+  }, []);
 
   const handleDelete = async (id) => {
     if(window.confirm("Revoke this decree?")) { 
