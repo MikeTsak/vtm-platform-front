@@ -97,6 +97,8 @@ export default function EmailSystem({ user, isMobile }) {
     }
   };
 
+  // Reload emails when admin status changes - intentional behavior
+  // Admin and non-admin views require different API endpoints and data
   useEffect(() => { 
     const abortController = new AbortController();
     loadEmails(abortController.signal);

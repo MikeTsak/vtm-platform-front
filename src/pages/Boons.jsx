@@ -68,6 +68,8 @@ export default function Boons() {
     }
   }
 
+  // Load all data on mount or when permission level changes
+  // Re-fetching when canManage changes is intentional - admin vs regular views require different data
   useEffect(() => {
     const abortController = new AbortController();
     const signal = abortController.signal;
