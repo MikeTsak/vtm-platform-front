@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import styles from 'styles/CharacterView.module.css';
-import { ALL_DISCIPLINE_NAMES } from 'data/disciplines';
-import { RITUALS } from 'data/rituals';
-import * as xp from 'utils/xpCosts';
+import styles from '../styles/CharacterView.module.css';
+import { ALL_DISCIPLINE_NAMES } from '../data/disciplines';
+import { RITUALS } from '../data/rituals';
+import * as xp from '../utils/xpCosts';
 
 // This constant was missing from the original file, causing a reference error.
 const SKILLS = {
