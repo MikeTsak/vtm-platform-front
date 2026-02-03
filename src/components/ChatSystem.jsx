@@ -199,6 +199,7 @@ const ChatImage = ({ attachmentId }) => {
 };
 
 /* --- Helper: Generate unique temporary ID --- */
+// Module-scoped counter intentionally shared across all component instances for global uniqueness
 let tempIdCounter = 0;
 const generateTempId = () => {
   // Use crypto.randomUUID() if available (modern browsers), fallback to timestamp+counter+random
@@ -206,6 +207,7 @@ const generateTempId = () => {
     return `temp_${crypto.randomUUID()}`;
   }
   // Combine timestamp with counter and random component for uniqueness
+  // Counter is module-scoped to prevent collisions even across multiple instances
   return `temp_${Date.now()}_${++tempIdCounter}_${Math.random().toString(36).slice(2, 11)}`;
 };
 
@@ -662,7 +664,9 @@ export default function Comms() {
         if (data && data.message) {
           newMsg = { ...data.message, sender_id: currentUser.id, sender_name: 'Me' };
         } else {
-          // Fallback: construct message object if API doesn't return it properly
+          // Defensive fallback: Construct message object if API doesn't return proper response.
+          // This ensures the UI updates immediately even if there's an API inconsistency.
+          // Note: Uses temporary ID - message will have correct server ID after next poll/refresh.
           newMsg = {
             id: generateTempId(),
             body,
@@ -682,7 +686,8 @@ export default function Comms() {
         if (data && data.message) {
           newMsg = data.message;
         } else {
-          // Fallback: construct message object if API doesn't return it properly
+          // Defensive fallback: Construct message if API response is missing expected data.
+          // Ensures immediate UI update. Temporary ID replaced after next poll/refresh.
           newMsg = {
             id: generateTempId(),
             body,
