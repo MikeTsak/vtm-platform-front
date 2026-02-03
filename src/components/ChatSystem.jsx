@@ -198,6 +198,13 @@ const ChatImage = ({ attachmentId }) => {
   );
 };
 
+/* --- Helper: Generate unique temporary ID --- */
+let tempIdCounter = 0;
+const generateTempId = () => {
+  // Combine timestamp with counter and random component for uniqueness
+  return `temp_${Date.now()}_${++tempIdCounter}_${Math.random().toString(36).substr(2, 9)}`;
+};
+
 export default function Comms() {
   const { user: currentUser } = useContext(AuthCtx);
   const isAdmin = currentUser?.role === 'admin';
@@ -653,7 +660,7 @@ export default function Comms() {
         } else {
           // Fallback: construct message object if API doesn't return it properly
           newMsg = {
-            id: Date.now(), // temporary ID
+            id: generateTempId(),
             body,
             created_at: new Date().toISOString(),
             sender_id: currentUser.id,
@@ -673,7 +680,7 @@ export default function Comms() {
         } else {
           // Fallback: construct message object if API doesn't return it properly
           newMsg = {
-            id: Date.now(), // temporary ID
+            id: generateTempId(),
             body,
             created_at: new Date().toISOString(),
             sender_id: currentUser.id,
@@ -710,7 +717,7 @@ export default function Comms() {
           } else {
             // Fallback: construct message object if API doesn't return it properly
             newMsg = {
-              id: Date.now(), // temporary ID
+              id: generateTempId(),
               body,
               created_at: new Date().toISOString(),
               sender_id: 'npc',
@@ -734,7 +741,7 @@ export default function Comms() {
           } else {
             // Fallback: construct message object if API doesn't return it properly
             newMsg = {
-              id: Date.now(), // temporary ID
+              id: generateTempId(),
               body,
               created_at: new Date().toISOString(),
               sender_id: currentUser.id,

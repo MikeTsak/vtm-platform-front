@@ -3,6 +3,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import api from '../api';
 import styles from '../styles/DownTimes.module.css'; // Using the correct module
 
+// --- Helper: Generate unique temporary ID ---
+let tempIdCounter = 0;
+const generateTempId = () => {
+  // Combine timestamp with counter and random component for uniqueness
+  return `temp_${Date.now()}_${++tempIdCounter}_${Math.random().toString(36).substr(2, 9)}`;
+};
+
 // --- Helper: Countdown Hook ---
 function useCountdown(targetDate) {
   const [now, setNow] = useState(new Date().getTime());
@@ -133,7 +140,7 @@ function SubmitCard({ quota, onDowntimeCreated, deadline }) {
       } else {
         // Fallback: construct downtime object if API doesn't return it properly
         const newDowntime = {
-          id: Date.now(), // temporary ID
+          id: generateTempId(),
           title: payload.title,
           body: payload.body,
           feeding_type: payload.feeding_type,
