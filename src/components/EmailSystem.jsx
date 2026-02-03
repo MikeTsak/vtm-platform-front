@@ -77,26 +77,33 @@ export default function EmailSystem({ user, isMobile }) {
   const emailEndRef = useRef(null);
 
   // Load Threads
-  const loadEmails = async () => {
+  const loadEmails = async (signal) => {
     setLoading(true);
     try {
       if (isAdmin) {
-        const { data } = await api.get('/admin/emails/threads');
+        const { data } = await api.get('/admin/emails/threads', { signal });
         setThreads(data.threads);
-        const { data: idData } = await api.get('/admin/emails/identities');
+        const { data: idData } = await api.get('/admin/emails/identities', { signal });
         setAdminEmailIdentities(idData.identities);
       } else {
-        const { data } = await api.get('/emails/my-inbox');
+        const { data } = await api.get('/emails/my-inbox', { signal });
         setThreads(data.threads);
       }
     } catch (e) {
+      if (e.name === 'CanceledError' || e.name === 'AbortError') return;
       console.error('Failed to load emails', e);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { loadEmails(); }, [isAdmin]);
+  // Reload emails when admin status changes - intentional behavior
+  // Admin and non-admin views require different API endpoints and data
+  useEffect(() => { 
+    const abortController = new AbortController();
+    loadEmails(abortController.signal);
+    return () => abortController.abort();
+  }, [isAdmin]);
 
   const openEmailThread = async (t) => {
     setSelectedThread(t);

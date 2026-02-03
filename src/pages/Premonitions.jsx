@@ -96,12 +96,13 @@ function PlayerPremonitions() {
     return r.json();
   };
 
-  const fetchMine = async () => {
+  const fetchMine = async (signal) => {
     setLoading(true);
     setErr("");
     try {
       const r = await fetch(apiJoin("/api/premonitions/mine"), {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        signal,
       });
       if (!r.ok) {
         const errJson = await parseJsonSafely(r).catch(() => ({}));
@@ -110,6 +111,7 @@ function PlayerPremonitions() {
       const j = await parseJsonSafely(r);
       setItems(Array.isArray(j.premonitions) ? j.premonitions : []);
     } catch (e) {
+      if (e.name === 'AbortError') return;
       setErr(e.message || "Failed to load premonitions");
     } finally {
       setLoading(false);
@@ -117,7 +119,9 @@ function PlayerPremonitions() {
   };
 
   useEffect(() => {
-    fetchMine();
+    const abortController = new AbortController();
+    fetchMine(abortController.signal);
+    return () => abortController.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

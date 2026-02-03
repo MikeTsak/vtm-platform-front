@@ -31,13 +31,14 @@ export default function Boons() {
   const canManage = isAdmin || isCourt;
 
   // Load Boons
-  async function loadBoons() {
+  async function loadBoons(signal) {
     try {
       setLoading(true);
       setError('');
-      const { data } = await api.get('/boons');
+      const { data } = await api.get('/boons', { signal });
       setBoons(data.boons || []);
     } catch (e) {
+      if (e.name === 'CanceledError' || e.name === 'AbortError') return;
       setError(e.response?.data?.error || 'Failed to fetch boons');
     } finally {
       setLoading(false);
@@ -45,30 +46,41 @@ export default function Boons() {
   }
 
   // Load Admin Entities (Players + NPCs) - Needed for identifying NPCs
-  async function loadEntities() {
+  async function loadEntities(signal) {
     if (!canManage) return;
     try {
-      const { data } = await api.get('/boons/entities');
+      const { data } = await api.get('/boons/entities', { signal });
       setEntities(data.entities || []);
     } catch (e) {
+      if (e.name === 'CanceledError' || e.name === 'AbortError') return;
       console.error("Failed to load entities", e);
     }
   }
 
   // Load My Character (To know "My" name)
-  async function loadMyCharacter() {
+  async function loadMyCharacter(signal) {
     try {
-      const { data } = await api.get('/characters/me');
+      const { data } = await api.get('/characters/me', { signal });
       setMyCharacter(data.character || null);
     } catch (e) {
+      if (e.name === 'CanceledError' || e.name === 'AbortError') return;
       console.warn("No character found for user or fetch failed");
     }
   }
 
+  // Load all data on mount or when permission level changes
+  // Re-fetching when canManage changes is intentional - admin vs regular views require different data
   useEffect(() => {
-    loadBoons();
-    loadMyCharacter();
-    loadEntities();
+    const abortController = new AbortController();
+    const signal = abortController.signal;
+    
+    loadBoons(signal);
+    loadMyCharacter(signal);
+    loadEntities(signal);
+    
+    return () => {
+      abortController.abort();
+    };
   }, [canManage]);
 
   // --- Sorting & Filtering Logic ---

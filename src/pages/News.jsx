@@ -39,17 +39,24 @@ export default function News() {
   const [showModal, setShowModal] = useState(false);
   const isAdmin = user?.role === 'admin';
 
-  const fetchNews = async () => {
+  const fetchNews = async (signal) => {
     setLoading(true);
     try {
-      const { data } = await api.get('/news');
+      const { data } = await api.get('/news', { signal });
       // Filter ONLY human news
       setItems((data.items || []).filter(i => i.type === 'news'));
-    } catch (e) { console.error(e); } 
+    } catch (e) { 
+      if (e.name === 'CanceledError' || e.name === 'AbortError') return;
+      console.error(e); 
+    } 
     finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchNews(); }, []);
+  useEffect(() => { 
+    const abortController = new AbortController();
+    fetchNews(abortController.signal);
+    return () => abortController.abort();
+  }, []);
 
   const handleDelete = async (id) => {
     if(window.confirm("Delete this article?")) {
