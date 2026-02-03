@@ -2,7 +2,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import api from '../api';
 import {
-  COTERIES,
   COTERIE_DOC,
   ALL_COTERIE_NAMES,
   getCoterie,

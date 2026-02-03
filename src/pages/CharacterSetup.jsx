@@ -470,23 +470,23 @@ const save = async () => {
   }
 
   // 4) Pools: backgroundPool & flawPool
-  for (const [i, pool] of (P.picks?.backgroundPool || []).entries()) {
+  (P.picks?.backgroundPool || []).forEach((pool, i) => {
     const key = `Pool-${i}-${pool.total}`;
     const vals = predatorPicks.pools?.[key] || {};
     Object.entries(vals).forEach(([nm, v]) => {
       const dots = Number(v) || 0;
       if (dots > 0) meritsOut.push({ name: nm, dots });
     });
-  }
+  });
 
-  for (const [i, pool] of (P.picks?.flawPool || []).entries()) {
+  (P.picks?.flawPool || []).forEach((pool, i) => {
     const key = `FlawPool-${i}-${pool.total}`;
     const vals = predatorPicks.pools?.[key] || {};
     Object.entries(vals).forEach(([nm, v]) => {
       const dots = Number(v) || 0;
       if (dots > 0) flawsOut.push({ name: nm, dots });
     });
-  }
+  });
 
   // 5) Static effects from Predator
   if (P.effects?.merits)        meritsOut.push(...P.effects.merits);
@@ -1203,6 +1203,8 @@ function Field({ label, children }) {
   );
 }
 
+// AdvTable component is currently unused but kept for potential future use
+/* eslint-disable no-unused-vars */
 function AdvTable({ label, rows, setRows, cap }) {
   const spent = rows.reduce((a,r)=>a+(Number(r.dots)||0),0);
   return (

@@ -81,7 +81,6 @@ function Nav() {
   const { user, logout } = useContext(AuthCtx);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [canSeePremonitions, setCanSeePremonitions] = useState(false);
-  const [checkingPremo, setCheckingPremo] = useState(false);
   const location = useLocation();
 
   const toggleMenu = () => setIsMenuOpen(v => !v);
@@ -97,16 +96,13 @@ function Nav() {
   // ✅ Detect if user is admin OR has a Malkavian character, to show the Premonitions link
   useEffect(() => {
     let live = true;
-    setCheckingPremo(true);
     setCanSeePremonitions(false);
 
     if (!user) {
-      setCheckingPremo(false);
       return;
     }
     if (user.role === 'admin') {
       setCanSeePremonitions(true);
-      setCheckingPremo(false);
       return;
     }
 
@@ -116,8 +112,7 @@ function Nav() {
         const clan = data?.character?.clan;
         setCanSeePremonitions(clan === 'Malkavian');
       })
-      .catch(() => { /* ignore; default false */ })
-      .finally(() => { if (live) setCheckingPremo(false); });
+      .catch(() => { /* ignore; default false */ });
 
     return () => { live = false; };
   }, [user]);

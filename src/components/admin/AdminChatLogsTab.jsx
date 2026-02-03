@@ -139,7 +139,6 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
   const [globalLoading, setGlobalLoading] = useState(false);
 
   const [loading, setLoading] = useState({});
-  const [error, setError] = useState('');
 
   const getCharInfoByUserId = useCallback((userId) => {
     const charEntry = Object.values(charIndex).find(c => c.user_id === Number(userId));
@@ -251,7 +250,7 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
     api.get('/admin/npcs').then(res => {
       const list = (res.data.npcs || res.data || []).map(n => ({ id: n.id, name: n.name, clan: n.clan }));
       setNpcList(list.sort((a,b) => a.name.localeCompare(b.name)));
-    }).catch(() => setError('Failed to load NPCs'));
+    }).catch(() => { /* Failed to load NPCs */ });
   }, [viewMode]);
 
   useEffect(() => {
@@ -282,13 +281,13 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
       }));
       setCurrentThread(msgs.sort((a,b) => new Date(a.created_at) - new Date(b.created_at)));
     }).finally(() => setLoading(p => ({...p, thread: false})));
-  }, [selectedNpc, selectedNpcConversation]);
+  }, [selectedNpc, selectedNpcConversation, viewMode]);
 
   useEffect(() => {
     if (viewMode !== 'group') return;
     api.get('/admin/chat/groups').then(res => {
       setGroupList((res.data.groups||[]));
-    }).catch(() => setError('Failed to load groups'));
+    }).catch(() => { /* Failed to load groups */ });
   }, [viewMode]);
 
   useEffect(() => {
@@ -298,7 +297,7 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
       // API returns attachment_id
       setGroupThread((res.data.messages||[]));
     }).finally(() => setLoading(p => ({...p, groupThread: false})));
-  }, [selectedGroup]);
+  }, [selectedGroup, viewMode]);
 
   // --- 3. FILTER LISTS ---
   const filteredNpcs = useMemo(() => {

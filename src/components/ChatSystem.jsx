@@ -1,5 +1,5 @@
 // src/pages/ChatSystem.jsx
-import React, { useState, useEffect, useContext, useRef, useMemo, useLayoutEffect } from 'react';
+import React, { useState, useEffect, useContext, useRef, useMemo, useLayoutEffect, useCallback } from 'react';
 import { AuthCtx } from '../AuthContext';
 import api from '../api';
 import styles from '../styles/ChatSystem.module.css';
@@ -263,6 +263,14 @@ export default function Comms() {
     }
   };
 
+  // Clear attachment helper
+  const clearAttachment = useCallback(() => {
+    setAttachment(null);
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [previewUrl]);
+
   useEffect(() => {
     const el = messagesListRef.current;
     if (!el) return;
@@ -286,7 +294,7 @@ export default function Comms() {
     }
     // Clear attachments when switching contacts
     clearAttachment();
-  }, [selectedContact]);
+  }, [selectedContact, clearAttachment]);
 
   // Auto-resize textarea logic
   useLayoutEffect(() => {
@@ -388,15 +396,15 @@ export default function Comms() {
     lastTsRef.current = 0;
   }, [threadKey]);
 
-  const isInbound = (m) => {
+  const isInbound = useCallback((m) => {
     if (!selectedContact) return false;
     if (selectedContact.type === 'user') return m.sender_id !== currentUser?.id;
     if (selectedContact.type === 'group') return m.sender_id !== currentUser?.id;
     if (isAdmin) return m.sender_id !== 'npc';
     return m.sender_id === 'npc';
-  };
+  }, [selectedContact, currentUser, isAdmin]);
 
-  const notify = (title, body, icon) => {
+  const notify = useCallback((title, body, icon) => {
     try {
       if (!notifSupported) return;
       if (!notifOn) return;
@@ -404,7 +412,7 @@ export default function Comms() {
       const opts = { body, icon, badge: icon, tag: `comms-${threadKey}` };
       new Notification(title, opts);
     } catch { /* noop */ }
-  };
+  }, [notifSupported, notifOn, threadKey]);
 
   /* --- API & Data Loading --- */
   useEffect(() => {
@@ -570,7 +578,7 @@ export default function Comms() {
     load();
     pollRef.current = setInterval(load, 6000);
     return () => clearInterval(pollRef.current);
-  }, [selectedContact, selectedPlayerId, isAdmin, hasAuthHeader, currentUser?.id, users, threadKey]);
+  }, [selectedContact, selectedPlayerId, isAdmin, hasAuthHeader, currentUser?.id, users, threadKey, isInbound, notify]);
 
   /* --- File Handling --- */
   const handleFileSelect = (e) => {
@@ -596,13 +604,6 @@ export default function Comms() {
     
     // Focus input so user can still type
     if(textareaRef.current) textareaRef.current.focus();
-  };
-
-  const clearAttachment = () => {
-    setAttachment(null);
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setPreviewUrl(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
 /* --- Sending Logic --- */

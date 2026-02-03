@@ -74,6 +74,7 @@ export default function AdminClaimsTab({ claims, characters, onSave, onDelete })
       owner_character_id: c.owner_character_id ?? '',
     };
   }
+  // eslint-disable-next-line no-unused-vars
   function setRow(c, patch) {
     setEdits(prev => ({ ...prev, [c.division]: { ...getRow(c), ...patch } }));
   }

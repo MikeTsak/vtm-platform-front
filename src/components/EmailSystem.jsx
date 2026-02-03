@@ -96,7 +96,10 @@ export default function EmailSystem({ user, isMobile }) {
     }
   };
 
-  useEffect(() => { loadEmails(); }, [isAdmin]);
+  useEffect(() => { 
+    loadEmails(); 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin]);
 
   const openEmailThread = async (t) => {
     setSelectedThread(t);

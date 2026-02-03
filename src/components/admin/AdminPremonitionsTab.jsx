@@ -78,9 +78,11 @@ export default function AdminPremonitionsTab() {
   const objectUrlCache = useRef(new Map());
   const createdUrls = useRef([]);
   useEffect(() => {
+    // Copy the current value to a variable so it doesn't change
+    const urlsToRevoke = createdUrls.current;
     return () => {
       // revoke created object URLs on unmount
-      createdUrls.current.forEach((u) => URL.revokeObjectURL(u));
+      urlsToRevoke.forEach((u) => URL.revokeObjectURL(u));
     };
   }, []);
 
@@ -120,6 +122,7 @@ export default function AdminPremonitionsTab() {
 
   useEffect(() => {
     fetchHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [headersObj]);
 
   // Helpers

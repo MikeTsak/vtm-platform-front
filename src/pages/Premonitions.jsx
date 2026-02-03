@@ -79,18 +79,20 @@ function PlayerPremonitions() {
 
   // Cleanup object URLs on unmount
   useEffect(() => {
-    const urls = createdUrls.current;
+    // Copy the current values to variables so they don't change
+    const urlsToRevoke = createdUrls.current;
+    const cache = objectUrlCache.current;
     return () => {
-      urls.forEach((u) => URL.revokeObjectURL(u));
-      urls.length = 0;
-      objectUrlCache.current.clear();
+      urlsToRevoke.forEach((u) => URL.revokeObjectURL(u));
+      urlsToRevoke.length = 0;
+      cache.clear();
     };
   }, []);
 
   const parseJsonSafely = async (r) => {
     const ct = (r.headers.get("content-type") || "").toLowerCase();
     if (!ct.includes("application/json")) {
-      const text = await r.text();
+      await r.text();
       throw new Error(`Unexpected response: ${r.status}`);
     }
     return r.json();

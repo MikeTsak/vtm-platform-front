@@ -426,6 +426,7 @@ export default function CharacterView({
   const [msg, setMsg] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [modalCfg, setModalCfg] = useState(null);
+  // eslint-disable-next-line no-unused-vars
   const [pendingFixes, setPendingFixes] = useState([]);
   const [xpTotals, setXpTotals] = useState(null);
   const shopRef = useRef(null);
@@ -473,7 +474,7 @@ export default function CharacterView({
   }
 
   const tint = useMemo(() => (ch ? CLAN_COLORS[ch.clan] || '#8a0f1a' : '#8a0f1a'), [ch]);
-  const sheet = ch?.sheet || {};
+  const sheet = useMemo(() => ch?.sheet || {}, [ch]);
   const xp = ch?.xp ?? 0;
 
   const disciplinesMap = useMemo(
@@ -580,11 +581,12 @@ export default function CharacterView({
   }
 
   // Ritual helpers
-  const knownRitualIds = new Set([
+  const knownRitualIds = useMemo(() => new Set([
     ...(sheet.rituals?.blood_sorcery || []).map(r => r.id),
     ...(sheet.rituals?.oblivion || []).map(r => r.id),
-  ]);
+  ]), [sheet.rituals]);
 
+  // eslint-disable-next-line no-unused-vars
   const knownRitualNames = useMemo(() => {
     const bs = Object.values(RITUALS?.blood_sorcery?.levels || {}).flat();
     const ob = Object.values(RITUALS?.oblivion?.levels || {}).flat();
@@ -1603,7 +1605,7 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
   }, [name, next]);
 
   const norm = (v) => String(v ?? '').trim().toLowerCase();
-  const normDisc = (s) => norm(s).replace(/\s+/g, ' ');
+  const normDisc = useCallback((s) => norm(s).replace(/\s+/g, ' '), []);
 
   const ownedCanon = useMemo(() => {
     const ids = ownedPowerIds.map(norm);
@@ -1616,14 +1618,16 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
     const m = new Map();
     Object.entries(disciplineDots || {}).forEach(([k, v]) => m.set(normDisc(k), Number(v) || 0));
     return m;
-  }, [disciplineDots]);
+  }, [disciplineDots, normDisc]);
 
-  const countDots = (s = '') => {
+  const countDots = useCallback((s = '') => {
     const bullets = (s.match(/[•●○]/g) || []).length;
-    const digits = parseInt((s.match(/\b(\d+)\b/) || [,'0'])[1], 10) || 0;
+    const matchResult = s.match(/\b(\d+)\b/);
+    const digits = matchResult ? parseInt(matchResult[1], 10) : 0;
     return Math.max(bullets, digits || 1);
-  };
-  const parseAmalgam = (s = '') =>
+  }, []);
+
+  const parseAmalgam = useCallback((s = '') =>
     s.split(/(?:,|&|\+|and)/i)
       .map(part => part.trim())
       .filter(Boolean)
@@ -1631,7 +1635,8 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
         const nameMatch = part.match(/^[^\d•●○]+/);
         const discName = (nameMatch ? nameMatch[0] : part).trim().replace(/[:.-]+$/, '');
         return { disc: discName, dots: countDots(part) };
-      });
+      })
+  , [countDots]);
 
   const annotated = useMemo(() => {
     return fullPool.map(p => {
@@ -1657,7 +1662,7 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
         __available: !owned && unmet.length === 0,
       };
     });
-  }, [fullPool, ownedCanon, dotsByDisc]);
+  }, [fullPool, ownedCanon, dotsByDisc, normDisc, parseAmalgam]);
 
   const [query, setQuery] = useState('');
   const filtered = useMemo(() => {
@@ -1887,6 +1892,7 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
 }
 
 /* ---------- Misc helpers ---------- */
+/* eslint-disable-next-line no-unused-vars */
 function labelize(k) {
   return k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
@@ -1938,7 +1944,6 @@ function MeritAdder({ xp, existing = [], onAdd }) {
   const [selId, setSelId] = useState(all[0]?.id || '');
   const sel = useMemo(() => all.find(m => m.id === selId) || null, [all, selId]);
 
-  const ownedKeys = useMemo(() => new Set((existing || []).map(m => `${m.id}:${m.dots}`)), [existing]);
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase();
     if (!qq) return all;

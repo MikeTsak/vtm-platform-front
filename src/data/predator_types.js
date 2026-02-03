@@ -1,8 +1,8 @@
 // src/data/predator_types.js
 
 // 🔹 Shared helpers (from merits_flaws.js)
+// eslint-disable-next-line no-unused-vars
 const slug = (s) => String(s || '').toLowerCase().trim().replace(/\s+/g, '_');
-const idFor = (cat, name) => `${slug(cat)}__${slug(name)}`;
 
 // 🔹 Render order (from CharacterSetup.jsx)
 export const PREDATOR_TYPE_NAMES = [

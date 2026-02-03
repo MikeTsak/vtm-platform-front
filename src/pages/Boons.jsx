@@ -69,6 +69,7 @@ export default function Boons() {
     loadBoons();
     loadMyCharacter();
     loadEntities();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canManage]);
 
   // --- Sorting & Filtering Logic ---
@@ -368,6 +369,7 @@ function BoonForm({ entities, boon, onSave, onCancel }) {
         level: 'trivial', status: 'owed', description: '',
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boon, entities]);
 
   const handleEntityChange = (e, fieldPrefix) => {
@@ -378,7 +380,10 @@ function BoonForm({ entities, boon, onSave, onCancel }) {
       setFormData(prev => ({ ...prev, [`${fieldPrefix}_key`]: 'npc', [`${fieldPrefix}_id`]: '' }));
       return;
     }
-    const [type, id] = selectedOption.id.split('-');
+    const parts = selectedOption.id.split('-');
+    // eslint-disable-next-line no-unused-vars
+    const [type] = parts;
+    const id = parts[1];
     const cleanName = selectedOption.name.split(' (')[0];
     setFormData(prev => ({
       ...prev, [`${fieldPrefix}_key`]: selectedOption.id, [`${fieldPrefix}_id`]: id, [`${fieldPrefix}_name`]: cleanName,

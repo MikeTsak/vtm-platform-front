@@ -2987,6 +2987,8 @@ export const DISCIPLINES = {
 };
 
 // helper to generate placeholder powers per level
+// (currently unused but kept for potential future use)
+// eslint-disable-next-line no-unused-vars
 function p(name) {
   return [
     { id: `${slug(name)}_power_a`, name: `${name} Power A` },
