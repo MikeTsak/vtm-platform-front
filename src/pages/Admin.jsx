@@ -60,10 +60,10 @@ export default function Admin() {
   const [err, setErr] = useState('');
 
   // Central data loader
-  async function load() {
+  async function load(signal) {
     setLoading(true); setErr(''); setMsg('');
     try {
-      const u = await api.get('/admin/users');
+      const u = await api.get('/admin/users', { signal });
       setUsers(u.data.users || []);
 
       // Build character index from users
@@ -86,41 +86,61 @@ export default function Admin() {
 
       // Claims
       try {
-        const cl = await api.get('/domain-claims');
+        const cl = await api.get('/domain-claims', { signal });
         setClaims(cl.data.claims || []);
-      } catch (e) { console.error("Failed to load claims", e); }
+      } catch (e) { 
+        if (e.name === 'CanceledError' || e.name === 'AbortError') return;
+        console.error("Failed to load claims", e); 
+      }
 
       // Downtimes (admin view)
       try {
-        const dts = await api.get('/admin/downtimes');
+        const dts = await api.get('/admin/downtimes', { signal });
         setDowntimes(dts.data.downtimes || []);
-      } catch (e) { console.error("Failed to load downtimes", e); }
+      } catch (e) { 
+        if (e.name === 'CanceledError' || e.name === 'AbortError') return;
+        console.error("Failed to load downtimes", e); 
+      }
 
       // NPCs
       try {
-        const np = await api.get('/admin/npcs');
+        const np = await api.get('/admin/npcs', { signal });
         setNPCs(np.data.npcs || []);
-      } catch (e) { console.error("Failed to load NPCs", e); }
+      } catch (e) { 
+        if (e.name === 'CanceledError' || e.name === 'AbortError') return;
+        console.error("Failed to load NPCs", e); 
+      }
 
       // All chat messages (for admin)
       try {
-          const msgs = await api.get('/admin/chat/all');
+          const msgs = await api.get('/admin/chat/all', { signal });
           setAllMessages(msgs.data.messages || []);
-      } catch (e) { console.error("Failed to load all messages", e); }
+      } catch (e) { 
+        if (e.name === 'CanceledError' || e.name === 'AbortError') return;
+        console.error("Failed to load all messages", e); 
+      }
 
       // TODO: Load allNpcMessages if ChatStatsTab needs it
       // try {
-      //   const npcMsgs = await api.get('/admin/chat/all-npc');
+      //   const npcMsgs = await api.get('/admin/chat/all-npc', { signal });
       //   setAllNpcMessages(npcMsgs.data.messages || []);
-      // } catch (e) { console.error("Failed to load all NPC messages", e); }
+      // } catch (e) { 
+      //   if (e.name === 'CanceledError' || e.name === 'AbortError') return;
+      //   console.error("Failed to load all NPC messages", e); 
+      // }
 
     } catch (e) {
+      if (e.name === 'CanceledError' || e.name === 'AbortError') return;
       setErr(e.response?.data?.error || 'Failed to load primary admin data');
     } finally {
       setLoading(false);
     }
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { 
+    const abortController = new AbortController();
+    load(abortController.signal);
+    return () => abortController.abort();
+  }, []);
 
   // ========= API FUNCTIONS (passed as props) =========
 

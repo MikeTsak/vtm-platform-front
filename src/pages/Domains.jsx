@@ -92,16 +92,24 @@ export default function Domains() {
   const bounds = useMemo(() => (geoJsonData ? L.geoJSON(geoJsonData).getBounds() : null), [geoJsonData]);
 
   // Load claims function
-  const loadClaims = useCallback(async () => {
+  const loadClaims = useCallback(async (signal) => {
     setErr(''); setMsg(''); setIsLoading(true);
     try {
-      const { data: claimsData } = await api.get('/domain-claims');
+      const { data: claimsData } = await api.get('/domain-claims', { signal });
       setClaims(claimsData.claims || []);
-    } catch (e) { console.error("Error loading claims:", e); setErr(e.response?.data?.error || 'Failed to load claims'); }
+    } catch (e) { 
+      if (e.name === 'CanceledError' || e.name === 'AbortError') return;
+      console.error("Error loading claims:", e); 
+      setErr(e.response?.data?.error || 'Failed to load claims'); 
+    }
     finally { setIsLoading(false); }
   }, []);
 
-  useEffect(() => { loadClaims(); }, [loadClaims]);
+  useEffect(() => { 
+    const abortController = new AbortController();
+    loadClaims(abortController.signal);
+    return () => abortController.abort();
+  }, [loadClaims]);
 
   // Memoized claim lookup
   const claimByDiv = useMemo(() => new Map(claims.map(c => [Number(c.division), c])), [claims]);
