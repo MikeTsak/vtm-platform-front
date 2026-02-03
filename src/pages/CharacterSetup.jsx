@@ -524,10 +524,16 @@ const save = async () => {
   };
 
     const url = forNPC ? '/admin/npcs' : '/characters';
-    await api.post(url, { name, clan, sheet: payload });
+    const { data } = await api.post(url, { name, clan, sheet: payload });
+    
+    // Store the created character data if returned by API
+    // This ensures we have the server-generated ID and any other fields
+    const createdCharacter = data?.character || data?.npc;
 
-    // optional callback
-    onDone?.();
+    // optional callback - pass the created character if available
+    if (onDone) {
+      onDone(createdCharacter);
+    }
 
     // ✅ show success modal instead of navigating immediately
     setSuccessOpen(true);

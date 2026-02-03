@@ -127,7 +127,21 @@ function SubmitCard({ quota, onDowntimeCreated, deadline }) {
         feeding_type: feeding.trim() || null,
       };
       const { data } = await api.post('/downtimes', payload);
-      onDowntimeCreated(data.downtime);
+      // Ensure we have downtime data from API response
+      if (data && data.downtime) {
+        onDowntimeCreated(data.downtime);
+      } else {
+        // Fallback: construct downtime object if API doesn't return it properly
+        const newDowntime = {
+          id: Date.now(), // temporary ID
+          title: payload.title,
+          body: payload.body,
+          feeding_type: payload.feeding_type,
+          status: 'submitted',
+          created_at: new Date().toISOString()
+        };
+        onDowntimeCreated(newDowntime);
+      }
       setTitle('');
       setBody('');
       setFeeding('');

@@ -647,14 +647,39 @@ export default function Comms() {
       // 3. Route request based on contact type (Group, Direct Player, or NPC)
       if (selectedContact.type === 'group') {
         const { data } = await api.post(`/chat/groups/${selectedContact.id}/messages`, payload);
-        newMsg = { ...data.message, sender_id: currentUser.id, sender_name: 'Me' };
+        // Ensure we have message data from API response
+        if (data && data.message) {
+          newMsg = { ...data.message, sender_id: currentUser.id, sender_name: 'Me' };
+        } else {
+          // Fallback: construct message object if API doesn't return it properly
+          newMsg = {
+            id: Date.now(), // temporary ID
+            body,
+            created_at: new Date().toISOString(),
+            sender_id: currentUser.id,
+            sender_name: 'Me',
+            attachment_id: attachmentId
+          };
+        }
         
         // Update group list order
         setGroups(prev => sortContacts(prev.map(g => g.id === selectedContact.id ? { ...g, last_message_at: Date.now() } : g)));
       }
       else if (selectedContact.type === 'user') {
         const { data } = await api.post('/chat/messages', { recipient_id: selectedContact.id, ...payload });
-        newMsg = data.message;
+        // Ensure we have message data from API response
+        if (data && data.message) {
+          newMsg = data.message;
+        } else {
+          // Fallback: construct message object if API doesn't return it properly
+          newMsg = {
+            id: Date.now(), // temporary ID
+            body,
+            created_at: new Date().toISOString(),
+            sender_id: currentUser.id,
+            attachment_id: attachmentId
+          };
+        }
         
         // Update user list: move to top and clear unread count for this contact
         setUsers(prev => {
@@ -672,25 +697,51 @@ export default function Comms() {
         if (isAdmin) {
           // Admin replying as the NPC
           const { data } = await api.post('/admin/chat/npc/messages', { npc_id: selectedContact.id, user_id: selectedPlayerId, ...payload });
-          newMsg = { 
-            id: data.message.id, 
-            body: data.message.body, 
-            created_at: data.message.created_at, 
-            sender_id: 'npc', 
-            _from: 'npc', 
-            attachment_id: data.message.attachment_id 
-          };
+          // Ensure we have message data from API response
+          if (data && data.message) {
+            newMsg = { 
+              id: data.message.id, 
+              body: data.message.body, 
+              created_at: data.message.created_at, 
+              sender_id: 'npc', 
+              _from: 'npc', 
+              attachment_id: data.message.attachment_id 
+            };
+          } else {
+            // Fallback: construct message object if API doesn't return it properly
+            newMsg = {
+              id: Date.now(), // temporary ID
+              body,
+              created_at: new Date().toISOString(),
+              sender_id: 'npc',
+              _from: 'npc',
+              attachment_id: attachmentId
+            };
+          }
         } else {
           // Player talking to an NPC
           const { data } = await api.post('/chat/npc/messages', { npc_id: selectedContact.id, ...payload });
-          newMsg = { 
-            id: data.message.id, 
-            body: data.message.body, 
-            created_at: data.message.created_at, 
-            sender_id: currentUser.id, 
-            _from: 'user', 
-            attachment_id: data.message.attachment_id 
-          };
+          // Ensure we have message data from API response
+          if (data && data.message) {
+            newMsg = { 
+              id: data.message.id, 
+              body: data.message.body, 
+              created_at: data.message.created_at, 
+              sender_id: currentUser.id, 
+              _from: 'user', 
+              attachment_id: data.message.attachment_id 
+            };
+          } else {
+            // Fallback: construct message object if API doesn't return it properly
+            newMsg = {
+              id: Date.now(), // temporary ID
+              body,
+              created_at: new Date().toISOString(),
+              sender_id: currentUser.id,
+              _from: 'user',
+              attachment_id: attachmentId
+            };
+          }
           
           // Re-sort NPC list
           setNpcs(prev => {
