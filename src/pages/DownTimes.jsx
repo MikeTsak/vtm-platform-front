@@ -7,7 +7,7 @@ import styles from '../styles/DownTimes.module.css'; // Using the correct module
 let tempIdCounter = 0;
 const generateTempId = () => {
   // Combine timestamp with counter and random component for uniqueness
-  return `temp_${Date.now()}_${++tempIdCounter}_${Math.random().toString(36).substr(2, 9)}`;
+  return `temp_${Date.now()}_${++tempIdCounter}_${Math.random().toString(36).slice(2, 11)}`;
 };
 
 // --- Helper: Countdown Hook ---
