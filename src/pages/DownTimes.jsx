@@ -3,6 +3,19 @@ import React, { useEffect, useMemo, useState } from 'react';
 import api from '../api';
 import styles from '../styles/DownTimes.module.css'; // Using the correct module
 
+// --- Helper: Generate unique temporary ID ---
+// Module-scoped counter intentionally shared across all component instances for global uniqueness
+let tempIdCounter = 0;
+const generateTempId = () => {
+  // Use crypto.randomUUID() if available (modern browsers), fallback to timestamp+counter+random
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return `temp_${crypto.randomUUID()}`;
+  }
+  // Combine timestamp with counter and random component for uniqueness
+  // Counter is module-scoped to prevent collisions even across multiple instances
+  return `temp_${Date.now()}_${++tempIdCounter}_${Math.random().toString(36).slice(2, 11)}`;
+};
+
 // --- Helper: Countdown Hook ---
 function useCountdown(targetDate) {
   const [now, setNow] = useState(new Date().getTime());
@@ -127,7 +140,23 @@ function SubmitCard({ quota, onDowntimeCreated, deadline }) {
         feeding_type: feeding.trim() || null,
       };
       const { data } = await api.post('/downtimes', payload);
-      onDowntimeCreated(data.downtime);
+      // Ensure we have downtime data from API response
+      if (data && data.downtime) {
+        onDowntimeCreated(data.downtime);
+      } else {
+        // Defensive fallback: Construct downtime if API response is missing expected data.
+        // This ensures the UI updates immediately even if there's an API inconsistency.
+        // Note: Uses temporary ID - downtime will have correct server ID after refresh/reload.
+        const newDowntime = {
+          id: generateTempId(),
+          title: payload.title,
+          body: payload.body,
+          feeding_type: payload.feeding_type,
+          status: 'submitted',
+          created_at: new Date().toISOString()
+        };
+        onDowntimeCreated(newDowntime);
+      }
       setTitle('');
       setBody('');
       setFeeding('');
