@@ -50,6 +50,24 @@ npm run build
 
 Build output goes to `build/`.
 
+#### Deployment Notes
+
+The build process includes:
+* **PWA Icons**: Icons for Progressive Web App installation (`/icons/icon-192.png`, `/icons/icon-512.png`, maskable variants)
+* **.htaccess**: Proper MIME type configuration for Apache servers (ensures JS files are served as `application/javascript`, not `text/html`)
+* **Manifest**: Valid PWA manifest with all required icons
+* **Modern JavaScript**: No deprecated methods (e.g., `substr` replaced with `substring`)
+
+For Apache servers, the `.htaccess` file in the build directory includes:
+* Correct MIME types for JS, CSS, JSON, images, and fonts
+* SPA routing (all routes redirect to index.html)
+* Caching policies (no-cache for HTML/JS/CSS, long cache for assets)
+
+For other servers (nginx, etc.), ensure you configure:
+* Correct MIME types for all file extensions
+* SPA fallback routing to index.html
+* Proper caching headers
+
 ---
 
 ## 3) Environment Variables
