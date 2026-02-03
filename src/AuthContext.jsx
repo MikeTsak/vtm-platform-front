@@ -6,14 +6,21 @@ export const AuthCtx = createContext(null);
 export default function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
 
-  async function loadMe() {
+  async function loadMe(signal) {
     try {
-      const { data } = await api.get('/auth/me');
+      const { data } = await api.get('/auth/me', { signal });
       setUser(data.user);
-    } catch { setUser(null); }
+    } catch (e) { 
+      if (e.name === 'CanceledError' || e.name === 'AbortError') return;
+      setUser(null); 
+    }
   }
 
-  useEffect(() => { if (localStorage.getItem('token')) loadMe(); }, []);
+  useEffect(() => { 
+    const abortController = new AbortController();
+    if (localStorage.getItem('token')) loadMe(abortController.signal);
+    return () => abortController.abort();
+  }, []);
 
   const login = async (email, password) => {
     const { data } = await api.post('/auth/login', { email, password });
