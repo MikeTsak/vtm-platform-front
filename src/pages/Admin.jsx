@@ -1,16 +1,13 @@
 // src/pages/Admin.jsx
-import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
 import api from '../api';
 import styles from '../styles/Admin.module.css';
 import 'leaflet/dist/leaflet.css';
 
 // Core Components (already exist, unchanged)
-import CharacterSetup from './CharacterSetup';
 import CharacterEditor from './CharacterEditor.jsx';
 import AdminLogs from '../components/admin/AdminLogs.jsx';
 import ChatStatsTab from '../components/admin/ChatStatsTab.jsx';
-import ErrorBoundary from '../components/ErrorBoundary.jsx';
 
 // Tab Components (Newly broken out)
 import AdminUsersTab from '../components/admin/AdminUsersTab.jsx';
@@ -49,7 +46,7 @@ export default function Admin() {
   const [charIndex, setCharIndex] = useState({});
   const [downtimes, setDowntimes] = useState([]);
   const [npcs, setNPCs] = useState([]);
-  const [allNpcMessages, setAllNpcMessages] = useState([]); // Used by stats
+  const [allNpcMessages] = useState([]); // Used by stats (placeholder)
   const [allMessages, setAllMessages] = useState([]); // Used by chat + stats
   
   // Modal state

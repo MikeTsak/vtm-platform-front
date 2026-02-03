@@ -386,9 +386,6 @@ export function getCoterie(name) {
 export function summarizeCoterie(name) {
   const c = getCoterie(name);
   if (!c) return null;
-  const dom = c.domain
-    ? ["chasse","lien","portillon"].filter((k) => c.domain[k]).map((k) => `${cap(k)} •`.repeat(c.domain[k] || 0)).join(" ")
-    : "None";
   return {
     name,
     domain: c.domain || null,
@@ -400,4 +397,5 @@ export function summarizeCoterie(name) {
   };
 }
 
+// eslint-disable-next-line no-unused-vars
 function cap(s){ return String(s||"").charAt(0).toUpperCase()+String(s||"").slice(1); }
