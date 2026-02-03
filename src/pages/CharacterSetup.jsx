@@ -88,10 +88,6 @@ const SKILLS = {
   Mental:   ['Academics','Awareness','Finance','Investigation','Medicine','Occult','Politics','Science','Technology'],
 };
 
-// --- Predator Types ---
-// This section has been removed and is now imported from ../data/predator_types
-
-
 // V5-ish rules applied as requested
 const RULES = {
   attributes: {
@@ -221,6 +217,7 @@ const canDecAttr = (k) => {
 
   /* ---------- Derived: Skill quotas ---------- */
   const skillReq = RULES.skillPackages[skillPackage];
+
   const skillCounts = useMemo(() => {
     const c = {0:0,1:0,2:0,3:0,4:0,5:0};
     Object.values(skillDots).forEach(v => { c[v] = (c[v]||0)+1; });
@@ -237,27 +234,30 @@ const canDecAttr = (k) => {
     return out;
   }, [skillReq, skillCounts]);
 
-/* Skills: leave as-is; decrements are already always allowed */
-// This block is what needs modification
+  // ✅ FIX: Skills should "lock" increments when a tier is full (package distribution),
+  // and we also want to be able to explain *why* validation fails.
   const canIncSkill = (k) => {
     const v = skillDots[k] || 0;
     const next = v + 1;
-    // Original logic:
-    // if (next > (skillReq.max || 5)) return false;
-    // if (!(String(next) in skillReq)) return false;
-    // if ((skillCounts[next] || 0) >= (skillReq[String(next)] || 0)) return false;
-    // return true;
 
-    // Modified logic: Only restrict by the max dots allowed in a single skill.
-    // The final quota validation (skillOk) will be the sole gate for progression.
+    // hard cap per package
     if (next > (skillReq.max || 5)) return false;
+
+    // if the package doesn't even have that tier (e.g. Balanced has no "4" tier)
+    if (!(String(next) in skillReq)) return false;
+
+    // lock when the target tier is already full
+    const needAtNext = Number(skillReq[String(next)] || 0);
+    const haveAtNext = Number(skillCounts[next] || 0);
+    if (haveAtNext >= needAtNext) return false;
+
     return true;
   };
-/* Skills: leave as-is; decrements are already always allowed */
-const canDecSkill = (k) => {
-  const v = skillDots[k] || 0;
-  return v > 0; // free reallocation down to 0
-};
+
+  const canDecSkill = (k) => {
+    const v = skillDots[k] || 0;
+    return v > 0; // free reallocation down to 0
+  };
 
   /* ---------- Handlers ---------- */
 const incAttr = (k, d) =>
@@ -303,6 +303,34 @@ const incAttr = (k, d) =>
     const maxOk = Object.values(skillDots).every(v => v <= req.max);
     return exact && maxOk;
   }, [skillCounts, skillDots, skillPackage]);
+
+  // ✅ NEW: Explain why Skills are not validating
+  const skillWhy = useMemo(() => {
+    const req = RULES.skillPackages[skillPackage] || {};
+    const msgs = [];
+
+    // Max violations
+    const overMax = Object.entries(skillDots)
+      .filter(([,v]) => Number(v) > Number(req.max))
+      .map(([name,v]) => `${name} (${v})`);
+    if (overMax.length) {
+      msgs.push(`Some skills exceed the max of ${req.max}: ${overMax.join(', ')}`);
+    }
+
+    // Tier mismatches (only tiers the package defines)
+    const tiers = Object.keys(req).filter(k => k !== 'max').map(Number).sort((a,b)=>a-b);
+    tiers.forEach(t => {
+      const need = Number(req[String(t)] || 0);
+      const have = Number(skillCounts[t] || 0);
+      if (have < need) msgs.push(`You need ${need - have} more skill(s) at ${t} dot(s).`);
+      if (have > need) msgs.push(`You have ${have - need} too many skill(s) at ${t} dot(s).`);
+    });
+
+    // If everything matches but still false (shouldn't happen), fallback
+    if (!msgs.length && !skillOk) msgs.push('Skill distribution does not match the selected package.');
+
+    return msgs;
+  }, [skillPackage, skillDots, skillCounts, skillOk]);
 
   const discOk = useMemo(
     () => selectedDiscs.length === 2 && favoredDisc && selectedDiscs.includes(favoredDisc),
@@ -973,6 +1001,20 @@ const save = async () => {
               />
 
               <p className={styles.muted}>Validation: {skillOk ? '✅' : '❌'}</p>
+
+              {/* ✅ NEW: show reasons */}
+              {!skillOk && skillWhy.length > 0 && (
+                <div className={styles.alert} style={{marginTop:10}}>
+                  <span className={styles.alertDot} />
+                  <div>
+                    <b>Skills are not valid yet:</b>
+                    <ul style={{margin:'6px 0 0 18px'}}>
+                      {skillWhy.map((m, i) => <li key={i}>{m}</li>)}
+                    </ul>
+                  </div>
+                </div>
+              )}
+
               <div className={styles.navRow}>
                 <button className={styles.ghostBtn} type="button" onClick={()=>setStep(4)}>Back</button>
                 <button className={styles.cta} type="button" onClick={()=>setStep(6)} disabled={!skillOk}>Next</button>

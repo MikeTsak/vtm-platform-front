@@ -23,7 +23,7 @@ import AdminNPCView from './components/AdminNPCView.jsx';
 import ForgotPassword from './pages/user/ForgotPassword';
 import ResetPassword from './pages/user/ResetPassword';
 import Boons from './pages/Boons';
-import Coteries from './pages/Coteries';
+import Court from './pages/Court';
 import Premonitions from './pages/Premonitions';
 import News from './pages/News'; // ✅ IMPORTED NEWS PAGE
 
@@ -153,7 +153,7 @@ function Nav() {
             <NavLink to="/domains" className={getNavLinkClass}>Domains</NavLink>
             <NavLink to="/downtimes" className={getNavLinkClass}>Downtimes</NavLink>
             <NavLink to="/boons" className={getNavLinkClass}>Boons</NavLink>
-            <NavLink to="/coteries" className={getNavLinkClass}>Coteries</NavLink>
+            <NavLink to="/court" className={getNavLinkClass}>Court</NavLink>
             
             {/* ✅ ADDED NEWS LINK */}
             <NavLink to="/news" className={getNavLinkClass}>News</NavLink>
@@ -207,7 +207,7 @@ export default function App() {
               <Route path="/downtimes" element={<Private><DownTimes/></Private>} />
               <Route path="/boons" element={<Private><Boons /></Private>} />
               <Route path="/comms" element={<Private><Comms/></Private>} />
-              <Route path="/coteries" element={<Private><Coteries/></Private>} />
+              <Route path="/court" element={<Private><Court/></Private>} />
               
               {/* ✅ ADDED NEWS ROUTE */}
               <Route path="/news" element={<Private><News/></Private>} />
