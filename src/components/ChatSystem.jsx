@@ -201,6 +201,10 @@ const ChatImage = ({ attachmentId }) => {
 /* --- Helper: Generate unique temporary ID --- */
 let tempIdCounter = 0;
 const generateTempId = () => {
+  // Use crypto.randomUUID() if available (modern browsers), fallback to timestamp+counter+random
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return `temp_${crypto.randomUUID()}`;
+  }
   // Combine timestamp with counter and random component for uniqueness
   return `temp_${Date.now()}_${++tempIdCounter}_${Math.random().toString(36).slice(2, 11)}`;
 };
