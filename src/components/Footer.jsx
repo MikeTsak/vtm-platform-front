@@ -1,8 +1,37 @@
+// src/pages/Footer.jsx
 import React from 'react';
 import { Link } from 'react-router-dom';
 import styles from '../styles/Footer.module.css';
 
 export default function Footer() {
+  
+  // Logic to clear service workers and cache storage
+  const handleClearCache = async () => {
+    if (window.confirm('This will refresh the app and clear local caches to fix loading issues. Continue?')) {
+      try {
+        // 1. Unregister Service Workers
+        if ('serviceWorker' in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          for (const registration of registrations) {
+            await registration.unregister();
+          }
+        }
+        
+        // 2. Clear Cache Storage API
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(key => caches.delete(key)));
+        }
+
+        // 3. Force Reload
+        window.location.reload();
+      } catch (e) {
+        console.error("Cache clear failed", e);
+        window.location.reload();
+      }
+    }
+  };
+
   return (
     <footer className={styles.footer}>
       <div className={styles.row}>
@@ -93,6 +122,16 @@ export default function Footer() {
         >
           Dark Pack Agreement
         </a>
+        
+        {/* Clear Cache Button */}
+        <button 
+          type="button" 
+          onClick={handleClearCache} 
+          className={styles.footerLink}
+          style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, font: 'inherit' }}
+        >
+          Clear Cache
+        </button>
       </div>
 
     </footer>

@@ -27,13 +27,9 @@ const ImageIcon = () => (
     strokeLinecap="round"
     strokeLinejoin="round"
   >
-    {/* The Frame (broken at top right for arrow) */}
     <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
-    {/* The Landscape/Mountain */}
     <polyline points="21 15 16 10 5 21" />
-    {/* The Sun */}
     <circle cx="8" cy="9" r="2" />
-    {/* The Upload Arrow */}
     <line x1="16" y1="13" x2="16" y2="3" />
     <polyline points="12 7 16 3 20 7" />
   </svg>
@@ -110,7 +106,8 @@ const asNpcContact = (n) => ({
   id: n.id, 
   name: n.name, 
   clan: n.clan,
-  last_message_at: n.last_message_at ? new Date(n.last_message_at).getTime() : 0
+  last_message_at: n.last_message_at ? new Date(n.last_message_at).getTime() : 0,
+  unread_count: n.unread_count || 0 
 });
 
 const asGroupContact = (g) => ({
@@ -199,15 +196,11 @@ const ChatImage = ({ attachmentId }) => {
 };
 
 /* --- Helper: Generate unique temporary ID --- */
-// Module-scoped counter intentionally shared across all component instances for global uniqueness
 let tempIdCounter = 0;
 const generateTempId = () => {
-  // Use crypto.randomUUID() if available (modern browsers), fallback to timestamp+counter+random
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return `temp_${crypto.randomUUID()}`;
   }
-  // Combine timestamp with counter and random component for uniqueness
-  // Counter is module-scoped to prevent collisions even across multiple instances
   return `temp_${Date.now()}_${++tempIdCounter}_${Math.random().toString(36).slice(2, 11)}`;
 };
 
@@ -276,7 +269,6 @@ export default function Comms() {
     }
   };
 
-  // Clear attachment helper
   const clearAttachment = useCallback(() => {
     setAttachment(null);
     if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -305,11 +297,9 @@ export default function Comms() {
     if(textareaRef.current) {
         textareaRef.current.style.height = 'auto';
     }
-    // Clear attachments when switching contacts
     clearAttachment();
   }, [selectedContact, clearAttachment]);
 
-  // Auto-resize textarea logic
   useLayoutEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -402,11 +392,17 @@ export default function Comms() {
     }
   }, [threadKey, drafts, newMessage, isMobile]);
 
+  /* --- State Reset on Thread Change --- */
   const lastTsRef = useRef(0);
   const initialSyncRef = useRef(true);
+  
+  // FIX: Clear messages ONLY when threadKey changes, not during polling
   useEffect(() => {
     initialSyncRef.current = true;
     lastTsRef.current = 0;
+    setMessages([]); // Clear messages here
+    setNpcConvos([]); 
+    setError('');
   }, [threadKey]);
 
   const isInbound = useCallback((m) => {
@@ -469,12 +465,12 @@ export default function Comms() {
   // Combined Polling: Messages & Admin Recent Roster
   useEffect(() => {
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
-    setMessages([]);
-    setError('');
-
-    // Force clear roster if not relevant
-    if (!isAdmin || !selectedContact || selectedContact.type !== 'npc') {
-      setNpcConvos([]);
+    // FIX: Removed setMessages([]) from here to prevent clearing screen on send
+    
+    // Clear logic if admin deselects player in NPC view
+    if (isAdmin && selectedContact && selectedContact.type === 'npc' && !selectedPlayerId) {
+        // We handle this via the threadKey effect usually, but just in case
+        return; 
     }
 
     const load = async () => {
@@ -489,7 +485,7 @@ export default function Comms() {
            msgs = (res.data.messages || []).map(m => ({
              id: m.id, body: m.body, created_at: m.created_at, sender_id: m.sender_id,
              sender_name: m.char_name || m.display_name, sender_clan: m.clan,
-             attachment_id: m.attachment_id // Includes attachment
+             attachment_id: m.attachment_id 
            }));
         } else if (selectedContact.type === 'user') {
           const res = await api.get(`/chat/history/${selectedContact.id}`);
@@ -497,12 +493,12 @@ export default function Comms() {
             id: m.id, body: m.body, created_at: m.created_at, 
             read_at: m.read_at, delivered_at: m.delivered_at,
             sender_id: m.sender_id,
-            attachment_id: m.attachment_id // Includes attachment
+            attachment_id: m.attachment_id
           }));
         } else {
           // NPC Logic
           if (isAdmin) {
-            if (!selectedPlayerId || !hasAuthHeader) { setMessages([]); return; }
+            if (!selectedPlayerId || !hasAuthHeader) { return; }
             let res;
             try {
               res = await api.get(`/admin/chat/npc/history`, { params: { npc_id: selectedContact.id, user_id: selectedPlayerId } });
@@ -514,9 +510,20 @@ export default function Comms() {
               attachment_id: m.attachment_id
             }));
           } else {
-            const res = await api.get(`/chat/npc-history/${selectedContact.id}`);
+            // NPC Logic (Player View) - New Endpoint with Fallback
+            let res;
+            try {
+                res = await api.get('/chat/npc/history', { params: { npc_id: selectedContact.id } });
+            } catch (e) {
+                res = await api.get(`/chat/npc-history/${selectedContact.id}`);
+            }
+
             msgs = (res.data.messages || []).map(m => ({
-              id: m.id, body: m.body, created_at: m.created_at, sender_id: m.from_side === 'user' ? currentUser.id : 'npc', _from: m.from_side,
+              id: m.id, 
+              body: m.body, 
+              created_at: m.created_at, 
+              sender_id: m.from_side === 'user' ? currentUser.id : 'npc', 
+              _from: m.from_side,
               attachment_id: m.attachment_id
             }));
           }
@@ -552,14 +559,13 @@ export default function Comms() {
           lastTsRef.current = Math.max(lastTsRef.current, newestTs);
           setMessages(msgs);
 
-          // Mark Delivered for User Chats (Fixed path)
           if (selectedContact.type === 'user' && !isAdmin && msgs.length > 0) {
              api.post('/chat/delivered', { sender_id: selectedContact.id }).catch(() => {});
           }
         }
         
         /* ------------------------------------------------------------------
-           2. LOAD ADMIN ROSTER (Updated Fix: Polls every time)
+           2. LOAD ADMIN ROSTER
            ------------------------------------------------------------------ */
         if (isAdmin && selectedContact.type === 'npc' && hasAuthHeader) {
           try {
@@ -584,7 +590,10 @@ export default function Comms() {
 
         initialSyncRef.current = false;
       } catch (e) {
-        setError(e?.response?.status === 401 ? 'Your session expired. Please log in again.' : 'Could not load messages.');
+        // Only show error if we don't have messages yet, otherwise silent fail
+        if (messages.length === 0) {
+            setError(e?.response?.status === 401 ? 'Your session expired. Please log in again.' : 'Could not load messages.');
+        }
       }
     };
 
@@ -598,13 +607,12 @@ export default function Comms() {
     const file = e.target.files[0];
     if (!file) return;
     
-    // Simple validation
     if (!file.type.startsWith('image/')) {
       alert('Only images are allowed');
       return;
     }
 
-    const MAX_MB = 50;  // 50MB limit for chat attachments
+    const MAX_MB = 50;  
     const MAX_BYTES = MAX_MB * 1024 * 1024;
     if (file.size > MAX_BYTES) { 
       alert(`File size too large (max ${MAX_MB}MB)`);
@@ -615,7 +623,6 @@ export default function Comms() {
     const url = URL.createObjectURL(file);
     setPreviewUrl(url);
     
-    // Focus input so user can still type
     if(textareaRef.current) textareaRef.current.focus();
   };
 
@@ -623,20 +630,14 @@ export default function Comms() {
   const doSend = async () => {
     const body = newMessage.trim();
     
-    // Validation: prevent empty sends and ensure a contact is selected
     if ((!body && !attachment) || !selectedContact) return;
-    
-    // Admin Guard: NPCs need a target player context to send a message
     if (isAdmin && selectedContact.type === 'npc' && !selectedPlayerId) return;
-    
-    // Prevent double-sending (concurrency lock)
     if (sendingRef.current) return;
     
     sendingRef.current = true;
     let attachmentId = null;
 
     try {
-      // 1. Handle File Upload if an attachment exists
       if (attachment) {
         const formData = new FormData();
         formData.append('file', attachment);
@@ -653,20 +654,14 @@ export default function Comms() {
         }
       }
 
-      // 2. Prepare common payload
       const payload = { body, attachment_id: attachmentId };
       let newMsg = null;
 
-      // 3. Route request based on contact type (Group, Direct Player, or NPC)
       if (selectedContact.type === 'group') {
         const { data } = await api.post(`/chat/groups/${selectedContact.id}/messages`, payload);
-        // Ensure we have message data from API response
         if (data && data.message) {
           newMsg = { ...data.message, sender_id: currentUser.id, sender_name: 'Me' };
         } else {
-          // Defensive fallback: Construct message object if API doesn't return proper response.
-          // This ensures the UI updates immediately even if there's an API inconsistency.
-          // Note: Uses temporary ID - message will have correct server ID after next poll/refresh.
           newMsg = {
             id: generateTempId(),
             body,
@@ -676,18 +671,13 @@ export default function Comms() {
             attachment_id: attachmentId
           };
         }
-        
-        // Update group list order
         setGroups(prev => sortContacts(prev.map(g => g.id === selectedContact.id ? { ...g, last_message_at: Date.now() } : g)));
       }
       else if (selectedContact.type === 'user') {
         const { data } = await api.post('/chat/messages', { recipient_id: selectedContact.id, ...payload });
-        // Ensure we have message data from API response
         if (data && data.message) {
           newMsg = data.message;
         } else {
-          // Defensive fallback: Construct message if API response is missing expected data.
-          // Ensures immediate UI update. Temporary ID replaced after next poll/refresh.
           newMsg = {
             id: generateTempId(),
             body,
@@ -697,7 +687,6 @@ export default function Comms() {
           };
         }
         
-        // Update user list: move to top and clear unread count for this contact
         setUsers(prev => {
            const updated = prev.map(u => 
              u.id === selectedContact.id ? { ...u, last_message_at: Date.now(), unread_count: 0 } : u
@@ -705,15 +694,12 @@ export default function Comms() {
            return sortContacts(updated);
         });
         
-        // Mark as read immediately on server
         api.post('/chat/read', { sender_id: selectedContact.id }).catch(()=>{});
       } 
       else {
         // NPC Context
         if (isAdmin) {
-          // Admin replying as the NPC
           const { data } = await api.post('/admin/chat/npc/messages', { npc_id: selectedContact.id, user_id: selectedPlayerId, ...payload });
-          // Ensure we have message data from API response
           if (data && data.message) {
             newMsg = { 
               id: data.message.id, 
@@ -724,7 +710,6 @@ export default function Comms() {
               attachment_id: data.message.attachment_id 
             };
           } else {
-            // Fallback: construct message object if API doesn't return it properly
             newMsg = {
               id: generateTempId(),
               body,
@@ -735,9 +720,7 @@ export default function Comms() {
             };
           }
         } else {
-          // Player talking to an NPC
           const { data } = await api.post('/chat/npc/messages', { npc_id: selectedContact.id, ...payload });
-          // Ensure we have message data from API response
           if (data && data.message) {
             newMsg = { 
               id: data.message.id, 
@@ -748,7 +731,6 @@ export default function Comms() {
               attachment_id: data.message.attachment_id 
             };
           } else {
-            // Fallback: construct message object if API doesn't return it properly
             newMsg = {
               id: generateTempId(),
               body,
@@ -759,7 +741,6 @@ export default function Comms() {
             };
           }
           
-          // Re-sort NPC list
           setNpcs(prev => {
              const updated = prev.map(n => 
                n.id === selectedContact.id ? { ...n, last_message_at: Date.now() } : n
@@ -769,30 +750,23 @@ export default function Comms() {
         }
       }
 
-      // 4. Update UI State Immediately
       if (newMsg) {
-        // Add message to view without waiting for polling
         setMessages(prev => [...prev, newMsg]);
-        
-        // CRITICAL: Update last timestamp ref to prevent the next poll 
-        // from fetching this same message as a duplicate.
         const msgTime = new Date(newMsg.created_at).getTime();
         if (msgTime > lastTsRef.current) {
           lastTsRef.current = msgTime;
         }
       }
 
-      // 5. Cleanup Inputs
       setNewMessage('');
       clearAttachment();
-      setDrafts(prev => ({ ...prev, [threadKey]: '' })); // Clear saved draft for this thread
-      if(textareaRef.current) textareaRef.current.style.height = 'auto'; // Reset textarea auto-resize
+      setDrafts(prev => ({ ...prev, [threadKey]: '' }));
+      if(textareaRef.current) textareaRef.current.style.height = 'auto'; 
       
     } catch (err) {
       setError(err?.response?.status === 401 ? 'Your session expired. Please log in again.' : 'Failed to send message.');
     } finally {
       sendingRef.current = false;
-      // Focus textarea back for desktop users
       if(!isMobile) setTimeout(() => textareaRef.current?.focus(), 10);
     }
   };
@@ -885,7 +859,6 @@ export default function Comms() {
   const adminRecentPlayers = useMemo(() => {
     const byId = new Map((users || []).map(u => [u.id, u]));
     return (npcConvos || []).map(r => {
-      // Robust Fallback: if user not found in main list, use the data from recent conversation row
       const u = byId.get(r.user_id);
       return u 
         ? { ...u, last_message_at: r.last_message_at } 
@@ -927,7 +900,6 @@ export default function Comms() {
   };
 
 const selectContact = (contact) => {
-    // BUG FIX: Αν είναι ήδη επιλεγμένος, μην κάνεις τίποτα για να αποφύγεις το άδειασμα της οθόνης
     if (selectedContact?.type === contact.type && selectedContact?.id === contact.id) {
       return;
     }
@@ -1103,6 +1075,9 @@ const selectContact = (contact) => {
                   </span>
                   <span className={styles.charName}>NPC</span>
                 </span>
+                {n.unread_count > 0 && (
+                  <span className={styles.unreadBadge}>{n.unread_count}</span>
+                )}
               </button>
             );
           })}
@@ -1183,7 +1158,6 @@ const selectContact = (contact) => {
                         </div>
                       )}
                       
-                      {/* Secure Image Rendering with ChatImage Component */}
                       {item.attachment_id && (
                         <div className={styles.chatImageWrapper}>
                           <ChatImage attachmentId={item.attachment_id} />
@@ -1211,7 +1185,6 @@ const selectContact = (contact) => {
             </div>
 
             <form className={styles.messageInputForm} onSubmit={handleSendMessage}>
-                {/* Image Preview Container */}
                 {previewUrl && (
                   <div className={styles.previewContainer}>
                     <div className={styles.previewWrapper}>
@@ -1221,7 +1194,6 @@ const selectContact = (contact) => {
                   </div>
                 )}
 
-                {/* Hidden File Input */}
                 <input 
                   type="file" 
                   ref={fileInputRef} 
@@ -1230,7 +1202,6 @@ const selectContact = (contact) => {
                   onChange={handleFileSelect} 
                 />
 
-                {/* Upload Button */}
                 <button 
                   type="button" 
                   className={styles.uploadBtn} 
