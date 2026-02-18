@@ -69,7 +69,7 @@
 
 .courtGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); /* Increased min-width for side-by-side */
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
   gap: 2rem;
 }
 
@@ -81,6 +81,7 @@
   position: relative;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+  overflow: hidden; /* Keeps the clan watermark inside the edges */
   
   /* Side-by-side Layout */
   display: flex;
@@ -93,6 +94,31 @@
   border-color: #444;
   box-shadow: 0 10px 25px rgba(139, 0, 0, 0.1);
 }
+
+/* --- CLAN BACKGROUND WATERMARK (New Image Approach) --- */
+.clanWatermark {
+  position: absolute;
+  top: 50%;
+  right: -5%;
+  transform: translateY(-50%);
+  height: 120%; /* Makes the logo slightly larger than the card */
+  opacity: 0.05; /* VERY faint */
+  z-index: 0; /* Puts it behind everything else */
+  pointer-events: none; /* Stops it from blocking clicks */
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.memberCard:hover .clanWatermark {
+  opacity: 0.08; 
+  transform: translateY(-50%) scale(1.05); /* Pulses slightly on hover */
+}
+
+/* Ensure text and content sits ABOVE the watermark */
+.polaroid, .memberInfo {
+  position: relative;
+  z-index: 2; 
+}
+
 
 .princeCard {
   width: 600px;
@@ -123,7 +149,6 @@
   box-shadow: 2px 5px 15px rgba(0,0,0,0.8);
   transform: rotate(-3deg); 
   transition: transform 0.3s ease, box-shadow 0.3s ease;
-  z-index: 2;
 }
 
 .memberCard:hover .polaroid {

@@ -2,6 +2,20 @@ import React, { useState, useEffect } from 'react';
 import api from '../api';
 import styles from '../styles/Court.module.css';
 
+/* --- Clan assets logic (Matches ChatSystem & Home) --- */
+const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim', 'Thin-blood': 'Thinblood' };
+const symlogo = (c) =>
+  (c ? `/img/clans/330px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g, '_')}_symbol.png` : '');
+
+// --- URL BUILDER HELPER ---
+const buildImageUrl = (val) => {
+  if (!val) return null;
+  const trimmed = val.trim();
+  if (trimmed.startsWith('http')) return trimmed;
+  const cleanName = trimmed.replace(/\.jpg$/i, '');
+  return `https://portal.attlarp.gr/images.court/${encodeURIComponent(cleanName)}.jpg`;
+};
+
 export default function HierarchyView({ canEdit }) {
   const [roster, setRoster] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -92,15 +106,27 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles }) {
   };
 
   const primaryTitle = (ent.titles && ent.titles.length > 0) ? ent.titles[0] : null;
+  const displayImageUrl = buildImageUrl(ent.image_url);
+  const clanLogoUrl = symlogo(ent.clan); // Gets the correct clan logo
 
   return (
     <div className={`${styles.memberCard} ${specialClass}`}>
       
+      {/* --- CLAN WATERMARK (Using an img tag instead of CSS variables) --- */}
+      {clanLogoUrl && (
+        <img 
+          src={clanLogoUrl} 
+          alt="" 
+          className={styles.clanWatermark} 
+          onError={(e) => e.target.style.display = 'none'} // Hides broken images safely
+        />
+      )}
+
       {/* --- LEFT SIDE: Polaroid Portrait --- */}
       <div className={styles.polaroid}>
-        {ent.image_url ? (
+        {displayImageUrl ? (
           <img 
-            src={ent.image_url} 
+            src={displayImageUrl} 
             alt={ent.name} 
             className={styles.polaroidImg} 
           />
@@ -125,15 +151,16 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles }) {
           {canEdit && (
             <input
               type="text"
-              placeholder="Paste portrait URL here..."
+              placeholder="e.g. Athens through time 2-1"
               className={styles.imageInput}
               defaultValue={ent.image_url || ''}
               onBlur={(e) => {
-                if (e.target.value !== ent.image_url) {
-                  update(ent.id, ent.type, 'image_url', e.target.value);
+                const newVal = e.target.value.trim();
+                if (newVal !== ent.image_url) {
+                  update(ent.id, ent.type, 'image_url', newVal);
                 }
               }}
-              title="Character Portrait URL"
+              title="Enter just the filename part, e.g. 'Athens through time 3 (166)'"
             />
           )}
 
