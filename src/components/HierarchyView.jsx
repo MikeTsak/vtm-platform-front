@@ -12,12 +12,10 @@ export default function HierarchyView({ canEdit }) {
     let isMounted = true;
     const fetchRoster = async () => {
       try {
-        // Switch API path based on permission
         const path = canEdit ? '/admin/camarilla/roster' : '/camarilla/roster';
         const { data } = await api.get(path); 
         if (isMounted) setRoster(data.roster || []);
       } catch (e) {
-        // Fallback if admin route fails
         if (e.response?.status === 403 && canEdit) {
             const { data } = await api.get('/camarilla/roster');
             if (isMounted) setRoster(data.roster || []);
@@ -51,12 +49,14 @@ export default function HierarchyView({ canEdit }) {
   if (loading) return <div className={styles.loading}>Consulting the genealogy scrolls...</div>;
 
   const prince = roster.find(r => r.titles?.includes("Prince"));
-  const council = roster.filter(r => 
-    (r.titles?.includes("Seneschal") || r.titles?.includes("Sheriff")) && r.id !== prince?.id
-  );
-  const others = roster.filter(r => 
-    r.id !== prince?.id && !council.some(c => c.id === r.id)
-  );
+  
+  const council = roster
+    .filter(r => (r.titles?.includes("Seneschal") || r.titles?.includes("Sheriff")) && r.id !== prince?.id)
+    .sort((a, b) => (b.status || 0) - (a.status || 0));
+    
+  const others = roster
+    .filter(r => r.id !== prince?.id && !council.some(c => c.id === r.id))
+    .sort((a, b) => (b.status || 0) - (a.status || 0));
 
   return (
     <div className={styles.hierarchyWrapper}>
@@ -91,65 +91,95 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles }) {
     update(ent.id, ent.type, 'titles', newTitles);
   };
 
-  // Primary title for display next to name
   const primaryTitle = (ent.titles && ent.titles.length > 0) ? ent.titles[0] : null;
 
   return (
     <div className={`${styles.memberCard} ${specialClass}`}>
-      <div className={styles.cardHeader}>
-        <div className={styles.name}>
-          {/* Always show the Honorific Title next to name */}
-          {primaryTitle && <span className={styles.honorific}>{primaryTitle}</span>}
-          {ent.name}
-        </div>
-        <div className={styles.clan}>{ent.clan}</div>
-      </div>
-
-      <div className={styles.cardBody}>
-        {canEdit ? (
-          /* --- ADMIN VIEW: Checkboxes for editing --- */
-          <div className={styles.tagGrid}>
-            {titles.map(t => (
-              <label key={t} className={styles.checkboxLabel}>
-                <input 
-                  type="checkbox" 
-                  checked={(ent.titles || []).includes(t)}
-                  onChange={() => toggleTitle(t)}
-                />
-                {t}
-              </label>
-            ))}
-          </div>
-        ) : (
-          /* --- USER VIEW: Static Text Badges only --- */
-          <div className={styles.displayTitles}>
-            {(ent.titles || []).length > 0 ? (
-              (ent.titles).map(t => (
-                <span key={t} className={styles.titleTag}>{t}</span>
-              ))
-            ) : (
-              <span className={styles.muted}>—</span>
-            )}
-          </div>
-        )}
-      </div>
-
-      <div className={styles.cardFooter}>
-        <div className={styles.statusDisplay}>
-          {"●".repeat(ent.status || 1)}{"○".repeat(5 - (ent.status || 1))}
-        </div>
-        
-        {/* Status Slider is hidden for non-admins */}
-        {canEdit && (
-          <input 
-            type="range" min="1" max="5" 
-            value={ent.status || 1}
-            onChange={(e) => update(ent.id, ent.type, 'status', parseInt(e.target.value))}
-            className={styles.statusSlider}
-            title="Adjust Status"
+      
+      {/* --- LEFT SIDE: Polaroid Portrait --- */}
+      <div className={styles.polaroid}>
+        {ent.image_url ? (
+          <img 
+            src={ent.image_url} 
+            alt={ent.name} 
+            className={styles.polaroidImg} 
           />
+        ) : (
+          <div className={styles.polaroidPlaceholder}>
+            No Photo
+          </div>
         )}
       </div>
+
+      {/* --- RIGHT SIDE: Info & Controls --- */}
+      <div className={styles.memberInfo}>
+        <div className={styles.cardHeader}>
+          <div className={styles.name}>
+            {primaryTitle && <span className={styles.honorific}>{primaryTitle}</span>}
+            {ent.name}
+          </div>
+          <div className={styles.clan}>{ent.clan}</div>
+        </div>
+
+        <div className={styles.cardBody}>
+          {canEdit && (
+            <input
+              type="text"
+              placeholder="Paste portrait URL here..."
+              className={styles.imageInput}
+              defaultValue={ent.image_url || ''}
+              onBlur={(e) => {
+                if (e.target.value !== ent.image_url) {
+                  update(ent.id, ent.type, 'image_url', e.target.value);
+                }
+              }}
+              title="Character Portrait URL"
+            />
+          )}
+
+          {canEdit ? (
+            <div className={styles.tagGrid}>
+              {titles.map(t => (
+                <label key={t} className={styles.checkboxLabel}>
+                  <input 
+                    type="checkbox" 
+                    checked={(ent.titles || []).includes(t)}
+                    onChange={() => toggleTitle(t)}
+                  />
+                  {t}
+                </label>
+              ))}
+            </div>
+          ) : (
+            <div className={styles.displayTitles}>
+              {(ent.titles || []).length > 0 ? (
+                (ent.titles).map(t => (
+                  <span key={t} className={styles.titleTag}>{t}</span>
+                ))
+              ) : (
+                <span className={styles.muted}>—</span>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className={styles.cardFooter}>
+          <div className={styles.statusDisplay}>
+            {"●".repeat(ent.status || 1)}{"○".repeat(5 - (ent.status || 1))}
+          </div>
+          
+          {canEdit && (
+            <input 
+              type="range" min="1" max="5" 
+              value={ent.status || 1}
+              onChange={(e) => update(ent.id, ent.type, 'status', parseInt(e.target.value))}
+              className={styles.statusSlider}
+              title="Adjust Status"
+            />
+          )}
+        </div>
+      </div>
+      
     </div>
   );
 }
