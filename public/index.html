@@ -4,31 +4,6 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <script>
-      (function() {
-        // Clear Local and Session Storage to force new login and reset drafts
-        localStorage.clear();
-        sessionStorage.clear();
-        
-        // Clear all session cookies
-        const cookies = document.cookie.split(";");
-        for (let i = 0; i < cookies.length; i++) {
-          const cookie = cookies[i];
-          const eqPos = cookie.indexOf("=");
-          const name = eqPos > -1 ? cookie.substring(0, eqPos) : cookie;
-          document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
-        }
-
-        // Wipe Service Worker Cache API
-        if ('caches' in window) {
-          caches.keys().then(names => {
-            for (let name of names) caches.delete(name);
-          });
-        }
-        console.log("Privacy: Session memory nuked on startup.");
-      })();
-    </script>
-
     <title>Erebus Portal — Athens Through-Time</title>
     <meta name="description" content="Erebus Portal for the Athens Through-Time LARP. Create characters, manage downtimes, and navigate the court. Powered by Cerebral Productions." />
     <meta name="application-name" content="Erebus Portal" />
