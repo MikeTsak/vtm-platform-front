@@ -234,6 +234,7 @@ export default function Comms() {
 
   const [drafts, setDrafts] = useState({});
   const sendingRef = useRef(false);
+  const loadSeqRef = useRef(0);
 
   // Group Creation State
   const [creatingGroup, setCreatingGroup] = useState(false);
@@ -398,6 +399,7 @@ export default function Comms() {
   
   // FIX: Clear messages ONLY when threadKey changes, not during polling
   useEffect(() => {
+    loadSeqRef.current += 1; // invalidate any in-flight load for the previous thread
     initialSyncRef.current = true;
     lastTsRef.current = 0;
     setMessages([]); // Clear messages here
@@ -475,6 +477,7 @@ export default function Comms() {
 
     const load = async () => {
       if (!selectedContact) return;
+      const mySeq = loadSeqRef.current; // capture sequence to detect stale responses
       try {
         /* ------------------------------------------------------------------
            1. LOAD MESSAGES
@@ -535,6 +538,9 @@ export default function Comms() {
         const hasNewMessages = newestTs > lastTsRef.current;
         const isInitialLoad = initialSyncRef.current;
 
+        // Discard results if the thread changed while this request was in-flight
+        if (loadSeqRef.current !== mySeq) return;
+
         if (isInitialLoad || hasNewMessages) {
           if (hasNewMessages && !isInitialLoad) {
             const inboundNew = msgs.filter(m => new Date(m.created_at).getTime() > lastTsRef.current && isInbound(m));
@@ -575,6 +581,7 @@ export default function Comms() {
             } catch {
               res = await api.get(`/admin/chat/npc-conversations/${selectedContact.id}`);
             }
+            if (loadSeqRef.current !== mySeq) return;
             const rows = (res.data?.conversations || []).map(r => ({
               user_id: r.user_id,
               display_name: r.display_name || '',
@@ -590,8 +597,10 @@ export default function Comms() {
 
         initialSyncRef.current = false;
       } catch (e) {
-        // Only show error if we don't have messages yet, otherwise silent fail
-        if (messages.length === 0) {
+        // Discard error if the thread changed while this request was in-flight
+        if (loadSeqRef.current !== mySeq) return;
+        // Show error only on initial load; during polling keep existing messages
+        if (initialSyncRef.current) {
             setError(e?.response?.status === 401 ? 'Your session expired. Please log in again.' : 'Could not load messages.');
         }
       }
