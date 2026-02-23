@@ -563,7 +563,11 @@ export default function Comms() {
             }
           }
           lastTsRef.current = Math.max(lastTsRef.current, newestTs);
-          setMessages(msgs);
+          setMessages(prev => {
+            const serverIds = new Set(msgs.map(m => m.id));
+            const localOnly = prev.filter(m => String(m.id).startsWith('temp_') && !serverIds.has(m.id));
+            return [...msgs, ...localOnly];
+          });
 
           if (selectedContact.type === 'user' && !isAdmin && msgs.length > 0) {
              api.post('/chat/delivered', { sender_id: selectedContact.id }).catch(() => {});
