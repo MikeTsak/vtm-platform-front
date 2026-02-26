@@ -103,7 +103,12 @@ function PlayerPremonitions() {
     setErr("");
     try {
       const r = await fetch(apiJoin("/api/premonitions/mine"), {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        },
       });
       if (!r.ok) {
         const errJson = await parseJsonSafely(r).catch(() => ({}));

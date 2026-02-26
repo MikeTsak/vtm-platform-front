@@ -40,7 +40,12 @@ export default function AdminPremonitionsTab() {
     []
   );
   const headersObj = useMemo(
-    () => (token ? { Authorization: `Bearer ${token}` } : {}),
+    () => ({
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    }),
     [token]
   );
 

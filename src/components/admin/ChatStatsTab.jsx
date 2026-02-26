@@ -106,7 +106,12 @@ export default function ChatStatsTab({
   users: usersProp,
 }) {
   const token = useMemo(() => localStorage.getItem(AUTH_TOKEN_KEY) || '', []);
-  const headersObj = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
+  const headersObj = useMemo(() => ({ 
+    Authorization: `Bearer ${token}`,
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0'
+  }), [token]);
 
   // Local state (auto-fetch if props not provided)
   const [directMessages, setDirectMessages] = useState(directMessagesProp || []);
