@@ -1,7 +1,7 @@
 // src/pages/DownTimes.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import api from '../api';
-import styles from '../styles/DownTimes.module.css'; // Using the correct module
+import styles from '../styles/DownTimes.module.css';
 
 // --- Helper: Generate unique temporary ID ---
 // Module-scoped counter intentionally shared across all component instances for global uniqueness
@@ -12,12 +12,11 @@ const generateTempId = () => {
     return `temp_${crypto.randomUUID()}`;
   }
   // Combine timestamp with counter and random component for uniqueness
-  // Counter is module-scoped to prevent collisions even across multiple instances
   return `temp_${Date.now()}_${++tempIdCounter}_${Math.random().toString(36).slice(2, 11)}`;
 };
 
 // --- Helper: Countdown Hook ---
-function useCountdown(targetDate) {
+function useCountdown(targetDate, isEndOfDay = false) {
   const [now, setNow] = useState(new Date().getTime());
 
   useEffect(() => {
@@ -26,7 +25,7 @@ function useCountdown(targetDate) {
       setNow(new Date().getTime());
     }, 1000);
     return () => clearInterval(interval);
-  }, []); // Empty dependency array means this effect runs once on mount
+  }, []);
 
   return useMemo(() => {
     if (!targetDate) {
@@ -35,8 +34,14 @@ function useCountdown(targetDate) {
     }
     
     // Parse the target date. Assumes YYYY-MM-DD from server.
-    const targetTime = new Date(targetDate).getTime();
-    const difference = targetTime - now;
+    const targetTime = new Date(targetDate);
+    
+    // If it's a deadline, stretch it to the very last second of that day (23:59:59)
+    if (isEndOfDay) {
+      targetTime.setHours(23, 59, 59, 999);
+    }
+
+    const difference = targetTime.getTime() - now;
 
     if (difference <= 0) {
       return { isPast: true, days: 0, hours: 0, minutes: 0, seconds: 0, totalHours: 0 };
@@ -49,7 +54,7 @@ function useCountdown(targetDate) {
     const totalHours = difference / (1000 * 60 * 60);
 
     return { isPast: false, days, hours, minutes, seconds, totalHours };
-  }, [now, targetDate]); // Recalculate only when `now` or `targetDate` changes
+  }, [now, targetDate, isEndOfDay]);
 }
 
 // --- Helper: Countdown Display Component ---
@@ -93,14 +98,13 @@ function CountdownDisplay({ title, countdown, pastText, futureText }) {
   );
 }
 
-
-// --- Helper: treat "resolved" as past (Unchanged) ---
+// --- Helper: treat "resolved" as past ---
 const statusIsPast = (s) => {
   const status = String(s || '').toLowerCase();
   return status === 'resolved' || status === 'rejected' || status === 'resolved in scene';
 };
 
-// --- Format for display (Unchanged) ---
+// --- Format for display ---
 function niceDate(d) {
   if (!d) return '—';
   const dt = new Date(d);
@@ -112,7 +116,7 @@ function niceDate(d) {
   }
 }
 
-// --- Submit Card Component (Unchanged) ---
+// --- Submit Card Component ---
 function SubmitCard({ quota, onDowntimeCreated, deadline }) {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
@@ -121,7 +125,14 @@ function SubmitCard({ quota, onDowntimeCreated, deadline }) {
   const [err, setErr] = useState('');
 
   const isFull = quota.used >= quota.limit;
-  const isPastDeadline = deadline && (new Date(deadline).getTime() < new Date().getTime());
+  
+  // FIX: Extend the deadline to the end of the selected day (23:59:59)
+  let isPastDeadline = false;
+  if (deadline) {
+    const dlDate = new Date(deadline);
+    dlDate.setHours(23, 59, 59, 999); 
+    isPastDeadline = dlDate.getTime() < new Date().getTime();
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -145,8 +156,6 @@ function SubmitCard({ quota, onDowntimeCreated, deadline }) {
         onDowntimeCreated(data.downtime);
       } else {
         // Defensive fallback: Construct downtime if API response is missing expected data.
-        // This ensures the UI updates immediately even if there's an API inconsistency.
-        // Note: Uses temporary ID - downtime will have correct server ID after refresh/reload.
         const newDowntime = {
           id: generateTempId(),
           title: payload.title,
@@ -222,7 +231,7 @@ function SubmitCard({ quota, onDowntimeCreated, deadline }) {
             {loading ? 'Submitting...' : 'Submit Downtime'}
           </button>
           <div className={styles.formHint}>
-            Quota: <b>{quota.used} / {quota.limit}</b> used this month.
+            Quota: <b>{quota.used} / {quota.limit}</b> used this cycle.
             {isFull && <span style={{ color: 'var(--err)', marginLeft: '8px' }}>Quota full.</span>}
             {isPastDeadline && !isFull && <span style={{ color: 'var(--err)', marginLeft: '8px' }}>Deadline has passed.</span>}
           </div>
@@ -232,7 +241,7 @@ function SubmitCard({ quota, onDowntimeCreated, deadline }) {
   );
 }
 
-// --- List Item Component (FIXED to show GM Resolution) ---
+// --- List Item Component ---
 function DowntimeItem({ dt }) {
   const status = (dt.status || 'submitted').toLowerCase();
   let badgeClass = styles.badgePending;
@@ -259,13 +268,6 @@ function DowntimeItem({ dt }) {
       )}
 
       <p className={styles.itemBody}>{dt.body || '(No action description)'}</p>
-      
-      {/* {dt.gm_notes && (
-        <div className={styles.itemNotes}>
-          <div className={styles.itemNotesLabel}>Result</div>
-          <p className={styles.itemNotesBody}>{dt.gm_notes}</p>
-        </div>
-      )} */}
 
       {dt.gm_resolution && (
         <div className={styles.itemNotes}>
@@ -277,7 +279,7 @@ function DowntimeItem({ dt }) {
   );
 }
 
-// --- Main Component (MODIFIED) ---
+// --- Main Component ---
 export default function DownTimes() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
@@ -294,9 +296,9 @@ export default function DownTimes() {
   const [filter, setFilter] = useState('active');
   const [q, setQ] = useState('');
 
-  // --- NEW: Countdown state ---
-  const deadlineCountdown = useCountdown(deadline);
-  const openingCountdown = useCountdown(opening);
+  // --- NEW: Countdown hooks pass true for end-of-day deadline, false for opening ---
+  const deadlineCountdown = useCountdown(deadline, true); 
+  const openingCountdown = useCountdown(opening, false);
 
   // Initial load
   useEffect(() => {
@@ -377,11 +379,10 @@ export default function DownTimes() {
           <p className={styles.subtitle}>Submit and review your monthly actions.</p>
         </div>
         <div className={styles.headerActions}>
-           {/* ... */}
+           {/* Placeholder for any future actions */}
         </div>
       </header>
 
-      {/* --- MODIFIED: Schedule banner with countdowns --- */}
       <section className={styles.card}>
         <div className={styles.countdownWrap}>
           <CountdownDisplay
@@ -393,7 +394,7 @@ export default function DownTimes() {
           <CountdownDisplay
             title="Next Modern Event"
             countdown={openingCountdown}
-            pastText="Submissions are Open." // If opening date is past, they're open
+            pastText="Submissions are Open." 
             futureText={niceDate(opening) || 'TBD'}
           />
         </div>
