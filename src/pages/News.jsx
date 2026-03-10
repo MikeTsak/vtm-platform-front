@@ -15,20 +15,30 @@ function apiJoin(path) {
 }
 
 const NEWS_OUTLETS = {
-  'ERT': { name: 'ERT News', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/ERT_logo_2020.svg/1024px-ERT_logo_2020.svg.png', color: '#0057b7', url: 'www.ertnews.gr' },
+  'ERT': { name: 'ERT News', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/ERT_logo_2020.svg/960px-ERT_logo_2020.svg.png', color: '#0057b7', url: 'www.ertnews.gr' },
   'SKAI': { name: 'SKAI.gr', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/03/Skai_TV_logo.svg/1200px-Skai_TV_logo.svg.png', color: '#004d99', url: 'www.skai.gr' },
-  'ALPHA': { name: 'Alpha News', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/Alpha_TV_logo.svg/1142px-Alpha_TV_logo.svg.png', color: '#0093d0', url: 'www.alphatv.gr' },
+  'ALPHA': { name: 'Alpha News', logo: 'https://upload.wikimedia.org/wikipedia/commons/e/eb/Alpha_TV_logo.svg', color: '#0093d0', url: 'www.alphatv.gr' },
   'MEGA': { name: 'Mega Gegonota', logo: 'https://upload.wikimedia.org/wikipedia/commons/8/83/MEGA_CHANNEL.png', color: '#222222', url: 'www.megatv.com' },
+  'KATHIMERINI': { name: 'Kathimerini', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRNk0h-loKAwB5Ay_ohV5G8ItU88h7PY_RkPw&s', color: '#999999', url: 'www.kathimerini.gr' },
+  'GOSSIP': { name: 'Gossip-tv', logo: 'https://cdn.gosmd.gr/img/1200/630/90/2016/05/19/1952016-14126.jpg?t=xRh4M6KRWfNTqee7gQzcuw', color: '#e6007e', url: 'www.gossip-tv.gr' },
   'RUMOR': { name: 'Rumor / Gossip', color: '#fbbf24', url: null }
 };
+
+const GREEK_REPORTERS = [
+  "Giorgos Papadopoulos", "Maria Nikolaou", "Dimitris Georgiou",
+  "Eleni Vasileiou", "Kostas Oikonomou", "Katerina Dimitriou",
+  "Nikos Karagiannis", "Anna Makri", "Giannis Petrou", "Sofia Antoniou",
+  "Thanasis Konstantinou", "Vasilis Alexiou", "Maria Christodoulou",
+  "Andreas Makris", "Ioanna Louka", "Stavros Lymperis", "Christina Panagiotou"
+];
 
 const isVideoUrl = (url) => /\.(mp4|webm)|#video/i.test(url);
 
 const EditorToolbar = ({ onCmd }) => (
-  <div className={styles.toolbar}>
-    <button type="button" onClick={() => onCmd('bold')}><b>B</b></button>
-    <button type="button" onClick={() => onCmd('italic')}><i>I</i></button>
-    <button type="button" onClick={() => onCmd('underline')}><u>U</u></button>
+  <div className={styles.toolbar} style={{ display: 'flex', gap: '5px', padding: '8px', backgroundColor: '#374151', borderBottom: '1px solid #4b5563', borderTopLeftRadius: '6px', borderTopRightRadius: '6px' }}>
+    <button type="button" onClick={() => onCmd('bold')} style={{ padding: '4px 10px', cursor: 'pointer', borderRadius: '4px', border: '1px solid #4b5563', background: '#1f2937', color: '#fff' }}><b>B</b></button>
+    <button type="button" onClick={() => onCmd('italic')} style={{ padding: '4px 10px', cursor: 'pointer', borderRadius: '4px', border: '1px solid #4b5563', background: '#1f2937', color: '#fff' }}><i>I</i></button>
+    <button type="button" onClick={() => onCmd('underline')} style={{ padding: '4px 10px', cursor: 'pointer', borderRadius: '4px', border: '1px solid #4b5563', background: '#1f2937', color: '#fff' }}><u>U</u></button>
   </div>
 );
 
@@ -44,7 +54,12 @@ export default function News() {
     try {
       const { data } = await api.get('/news');
       // Filter ONLY human news
-      setItems((data.items || []).filter(i => i.type === 'news'));
+      let fetchedNews = (data.items || []).filter(i => i.type === 'news');
+      
+      // Sort: Most recent first (Newest to Oldest)
+      fetchedNews.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      
+      setItems(fetchedNews);
     } catch (e) { console.error(e); } 
     finally { setLoading(false); }
   };
@@ -100,7 +115,7 @@ export default function News() {
                     <div className={styles.url}>🔒 https://{theme.url}/article/{item.id}</div>
                   </div>
                   <div className={styles.newsHeader} style={{borderBottomColor: theme.color}}>
-                    <img src={theme.logo} alt={theme.name} className={styles.logo} />
+                    <img src={theme.logo} alt={theme.name} className={styles.logo} style={{ maxHeight: '40px', objectFit: 'contain' }} />
                     <span className={styles.live}>LIVE</span>
                   </div>
                   <div className={styles.newsBody}>
@@ -127,12 +142,17 @@ export default function News() {
   );
 }
 
-// Simplified Modal strictly for News/Rumors
+// 3. Upgraded Admin Article Form (Dark Theme)
 function CreateNewsModal({ onClose, onSuccess }) {
   const [formData, setFormData] = useState({ title: '', subtitle: '', body: '', theme: 'ERT', journalist_name: '' });
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const contentRef = useRef(null);
+
+  const handleRandomizeName = () => {
+    const randomName = GREEK_REPORTERS[Math.floor(Math.random() * GREEK_REPORTERS.length)];
+    setFormData({ ...formData, journalist_name: randomName });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -160,25 +180,72 @@ function CreateNewsModal({ onClose, onSuccess }) {
   };
 
   return (
-    <div className={styles.modalOverlay}>
-      <div className={styles.modal}>
-        <div className={styles.modalHeader}><h2>Submit News</h2><button onClick={onClose} className={styles.closeBtn}>×</button></div>
-        <form onSubmit={handleSubmit} className={styles.form}>
-           <input placeholder="Title" required value={formData.title} onChange={e=>setFormData({...formData, title: e.target.value})} />
-           <div className={styles.row}>
-             <input placeholder="Subtitle" value={formData.subtitle} onChange={e=>setFormData({...formData, subtitle: e.target.value})} />
-             <select value={formData.theme} onChange={e=>setFormData({...formData, theme: e.target.value})}>
-               {Object.keys(NEWS_OUTLETS).map(k => <option key={k} value={k}>{NEWS_OUTLETS[k].name}</option>)}
-             </select>
+    <div className={styles.modalOverlay} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+      <div className={styles.modal} style={{ maxWidth: '800px', width: '100%', backgroundColor: '#1f2937', borderRadius: '8px', color: '#f3f4f6', boxShadow: '0 10px 25px rgba(0,0,0,0.8)' }}>
+        
+        <div className={styles.modalHeader} style={{ padding: '20px', borderBottom: '1px solid #374151', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#111827' }}>
+          <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#f9fafb' }}>Submit News Article</h2>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#9ca3af' }}>×</button>
+        </div>
+
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '20px' }}>
+           
+           {/* Headline */}
+           <div>
+             <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.9rem', fontWeight: 'bold', color: '#d1d5db' }}>Headline *</label>
+             <input placeholder="Attention-grabbing title..." required value={formData.title} onChange={e=>setFormData({...formData, title: e.target.value})} style={{ width: '100%', padding: '12px', fontSize: '1.1rem', borderRadius: '6px', border: '1px solid #4b5563', backgroundColor: '#111827', color: '#fff' }} />
            </div>
-           <div className={styles.editorContainer}>
-             <EditorToolbar onCmd={(c,v) => document.execCommand(c,false,v)} />
-             <div className={styles.editable} contentEditable ref={contentRef} />
+           
+           {/* Row: Subtitle & Theme */}
+           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
+             <div>
+               <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.9rem', fontWeight: 'bold', color: '#d1d5db' }}>Subtitle (Optional)</label>
+               <input placeholder="Secondary context..." value={formData.subtitle} onChange={e=>setFormData({...formData, subtitle: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #4b5563', backgroundColor: '#111827', color: '#fff' }} />
+             </div>
+             <div>
+               <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.9rem', fontWeight: 'bold', color: '#d1d5db' }}>Outlet / Theme</label>
+               <select value={formData.theme} onChange={e=>setFormData({...formData, theme: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #4b5563', backgroundColor: '#111827', color: '#fff' }}>
+                 {Object.keys(NEWS_OUTLETS).map(k => <option key={k} value={k}>{NEWS_OUTLETS[k].name}</option>)}
+               </select>
+             </div>
            </div>
-           <input type="file" onChange={e => setFile(e.target.files[0])} />
-           <div className={styles.footer}>
-             <button type="submit" disabled={uploading} className={styles.btnPrimary}>{uploading ? 'Publishing...' : 'Publish'}</button>
+
+           {/* Row: Journalist Name */}
+           <div>
+             <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.9rem', fontWeight: 'bold', color: '#d1d5db' }}>Journalist Name</label>
+             <div style={{ display: 'flex', gap: '10px' }}>
+                <input placeholder="e.g. Giannis Petrou" value={formData.journalist_name} onChange={e=>setFormData({...formData, journalist_name: e.target.value})} style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #4b5563', backgroundColor: '#111827', color: '#fff' }} />
+                <button type="button" onClick={handleRandomizeName} style={{ padding: '10px 16px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', transition: '0.2s' }}>
+                  🎲 Randomize
+                </button>
+             </div>
            </div>
+
+           {/* WYSIWYG Editor */}
+           <div>
+             <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.9rem', fontWeight: 'bold', color: '#d1d5db' }}>Article Body *</label>
+             <div style={{ border: '1px solid #4b5563', borderRadius: '6px', display: 'flex', flexDirection: 'column' }}>
+               <EditorToolbar onCmd={(c,v) => document.execCommand(c,false,v)} />
+               <div className={styles.editable} contentEditable ref={contentRef} style={{ minHeight: '180px', padding: '12px', outline: 'none', backgroundColor: '#111827', color: '#fff', borderBottomLeftRadius: '6px', borderBottomRightRadius: '6px', overflowY: 'auto' }} />
+             </div>
+           </div>
+
+           {/* Media Upload */}
+           <div style={{ border: '2px dashed #4b5563', padding: '16px', borderRadius: '6px', backgroundColor: '#111827', textAlign: 'center' }}>
+             <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: '#d1d5db', cursor: 'pointer' }}>
+               📷 Attach Image or Video (Optional)
+               <input type="file" onChange={e => setFile(e.target.files[0])} style={{ display: 'block', margin: '10px auto 0', color: '#9ca3af' }} />
+             </label>
+           </div>
+
+           {/* Footer / Submit */}
+           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px', paddingTop: '16px', borderTop: '1px solid #374151' }}>
+             <button type="button" onClick={onClose} disabled={uploading} style={{ padding: '10px 20px', borderRadius: '6px', border: '1px solid #4b5563', backgroundColor: '#374151', cursor: 'pointer', fontWeight: 'bold', color: '#f3f4f6' }}>Cancel</button>
+             <button type="submit" disabled={uploading} style={{ padding: '10px 24px', borderRadius: '6px', border: 'none', backgroundColor: uploading ? '#9ca3af' : '#10b981', color: '#fff', cursor: uploading ? 'not-allowed' : 'pointer', fontWeight: 'bold', fontSize: '1rem', transition: '0.2s' }}>
+               {uploading ? 'Publishing...' : '📡 Publish'}
+             </button>
+           </div>
+           
         </form>
       </div>
     </div>
