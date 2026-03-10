@@ -53,7 +53,6 @@ export default function News() {
     setLoading(true);
     try {
       const { data } = await api.get('/news');
-      // Filter ONLY human news
       let fetchedNews = (data.items || []).filter(i => i.type === 'news');
       
       // Sort: Most recent first (Newest to Oldest)
@@ -109,24 +108,61 @@ export default function News() {
 
             return (
               <div key={item.id} className={styles.masonryItem}>
-                <article className={`${styles.browserCard} ${styles['theme'+item.theme]}`}>
+                <article 
+                  className={styles.browserCard} 
+                  style={{ 
+                    '--theme-color': theme.color, /* Pass color to CSS variables for selection/links */
+                    borderTop: `6px solid ${theme.color}`,
+                    boxShadow: `0 8px 20px ${theme.color}25` // subtle colored shadow glow
+                  }}
+                >
                   <div className={styles.browserBar}>
-                    <div className={styles.dots}><span/><span/><span/></div>
-                    <div className={styles.url}>🔒 https://{theme.url}/article/{item.id}</div>
+                    <div className={styles.dots}>
+                      <span style={{ backgroundColor: theme.color, opacity: 0.4 }}/>
+                      <span style={{ backgroundColor: theme.color, opacity: 0.7 }}/>
+                      <span style={{ backgroundColor: theme.color }}/>
+                    </div>
+                    <div className={styles.url} style={{ color: theme.color, borderColor: `${theme.color}40` }}>
+                      🔒 https://{theme.url}/article/{item.id}
+                    </div>
                   </div>
-                  <div className={styles.newsHeader} style={{borderBottomColor: theme.color}}>
-                    <img src={theme.logo} alt={theme.name} className={styles.logo} style={{ maxHeight: '40px', objectFit: 'contain' }} />
-                    <span className={styles.live}>LIVE</span>
+                  
+                  <div 
+                    className={styles.newsHeader} 
+                    style={{ 
+                      borderBottom: `2px solid ${theme.color}30`, 
+                      backgroundImage: `url(${theme.logo})`
+                    }}
+                  >
+                    <div className={styles.headerOverlay}>
+                      <div className={styles.headerTitleGroup}>
+                        <span className={styles.live} style={{ backgroundColor: theme.color }}>LIVE</span>
+                        <span className={styles.outletName} style={{ color: theme.color }}>{theme.name}</span>
+                      </div>
+                    </div>
                   </div>
+                  
                   <div className={styles.newsBody}>
-                    <h2>{item.title}</h2>
-                    {item.subtitle && <h4>{item.subtitle}</h4>}
-                    <div className={styles.meta}>By {item.journalist_name || 'Staff'} | {new Date(item.created_at).toLocaleDateString()}</div>
+                    <h2 style={{ borderBottom: `2px solid ${theme.color}40`, paddingBottom: '8px' }}>
+                      {item.title}
+                    </h2>
+                    {item.subtitle && <h4 style={{ color: theme.color }}>{item.subtitle}</h4>}
+                    
+                    <div className={styles.meta}>
+                      <span className={styles.journalist} style={{ color: theme.color, fontWeight: '800' }}>
+                        By {item.journalist_name || 'Staff'}
+                      </span>
+                      <span className={styles.date} style={{ color: `${theme.color}99` }}>
+                        | {new Date(item.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    
                     {item.media_url && (
-                      <div className={styles.mediaFrame}>
+                      <div className={styles.mediaFrame} style={{ boxShadow: `0 4px 15px ${theme.color}30` }}>
                          {isVideoUrl(item.media_url) ? <video src={mediaUrl} controls /> : <img src={mediaUrl} alt="News" />}
                       </div>
                     )}
+                    
                     <div className={styles.bodyHtml} dangerouslySetInnerHTML={{ __html: item.body }} />
                   </div>
                   {isAdmin && <button onClick={() => handleDelete(item.id)} className={styles.deleteOverlay}>×</button>}
@@ -142,7 +178,7 @@ export default function News() {
   );
 }
 
-// 3. Upgraded Admin Article Form (Dark Theme)
+// Admin Article Form (Dark Theme)
 function CreateNewsModal({ onClose, onSuccess }) {
   const [formData, setFormData] = useState({ title: '', subtitle: '', body: '', theme: 'ERT', journalist_name: '' });
   const [file, setFile] = useState(null);
@@ -172,7 +208,7 @@ function CreateNewsModal({ onClose, onSuccess }) {
         body: contentRef.current.innerHTML,
         theme: formData.theme,
         journalist_name: formData.journalist_name,
-        media_url: mediaUrl
+        media_url: mediaUrl // Corrected property name!
       });
       onSuccess();
     } catch (e) { alert("Error posting"); } 
@@ -180,7 +216,7 @@ function CreateNewsModal({ onClose, onSuccess }) {
   };
 
   return (
-    <div className={styles.modalOverlay} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+    <div className={styles.modalOverlay}>
       <div className={styles.modal} style={{ maxWidth: '800px', width: '100%', backgroundColor: '#1f2937', borderRadius: '8px', color: '#f3f4f6', boxShadow: '0 10px 25px rgba(0,0,0,0.8)' }}>
         
         <div className={styles.modalHeader} style={{ padding: '20px', borderBottom: '1px solid #374151', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#111827' }}>
@@ -190,13 +226,11 @@ function CreateNewsModal({ onClose, onSuccess }) {
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '20px' }}>
            
-           {/* Headline */}
            <div>
              <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.9rem', fontWeight: 'bold', color: '#d1d5db' }}>Headline *</label>
              <input placeholder="Attention-grabbing title..." required value={formData.title} onChange={e=>setFormData({...formData, title: e.target.value})} style={{ width: '100%', padding: '12px', fontSize: '1.1rem', borderRadius: '6px', border: '1px solid #4b5563', backgroundColor: '#111827', color: '#fff' }} />
            </div>
            
-           {/* Row: Subtitle & Theme */}
            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
              <div>
                <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.9rem', fontWeight: 'bold', color: '#d1d5db' }}>Subtitle (Optional)</label>
@@ -210,7 +244,6 @@ function CreateNewsModal({ onClose, onSuccess }) {
              </div>
            </div>
 
-           {/* Row: Journalist Name */}
            <div>
              <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.9rem', fontWeight: 'bold', color: '#d1d5db' }}>Journalist Name</label>
              <div style={{ display: 'flex', gap: '10px' }}>
@@ -221,16 +254,14 @@ function CreateNewsModal({ onClose, onSuccess }) {
              </div>
            </div>
 
-           {/* WYSIWYG Editor */}
            <div>
              <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.9rem', fontWeight: 'bold', color: '#d1d5db' }}>Article Body *</label>
              <div style={{ border: '1px solid #4b5563', borderRadius: '6px', display: 'flex', flexDirection: 'column' }}>
                <EditorToolbar onCmd={(c,v) => document.execCommand(c,false,v)} />
-               <div className={styles.editable} contentEditable ref={contentRef} style={{ minHeight: '180px', padding: '12px', outline: 'none', backgroundColor: '#111827', color: '#fff', borderBottomLeftRadius: '6px', borderBottomRightRadius: '6px', overflowY: 'auto' }} />
+               <div className={styles.editable} contentEditable ref={contentRef} />
              </div>
            </div>
 
-           {/* Media Upload */}
            <div style={{ border: '2px dashed #4b5563', padding: '16px', borderRadius: '6px', backgroundColor: '#111827', textAlign: 'center' }}>
              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: '#d1d5db', cursor: 'pointer' }}>
                📷 Attach Image or Video (Optional)
@@ -238,7 +269,6 @@ function CreateNewsModal({ onClose, onSuccess }) {
              </label>
            </div>
 
-           {/* Footer / Submit */}
            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px', paddingTop: '16px', borderTop: '1px solid #374151' }}>
              <button type="button" onClick={onClose} disabled={uploading} style={{ padding: '10px 20px', borderRadius: '6px', border: '1px solid #4b5563', backgroundColor: '#374151', cursor: 'pointer', fontWeight: 'bold', color: '#f3f4f6' }}>Cancel</button>
              <button type="submit" disabled={uploading} style={{ padding: '10px 24px', borderRadius: '6px', border: 'none', backgroundColor: uploading ? '#9ca3af' : '#10b981', color: '#fff', cursor: uploading ? 'not-allowed' : 'pointer', fontWeight: 'bold', fontSize: '1rem', transition: '0.2s' }}>
