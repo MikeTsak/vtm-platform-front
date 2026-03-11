@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api';
 import styles from '../../styles/Admin.module.css';
+import Loading from '../Loading'; // <-- Imported your component here
 
 export default function AdminDiscordTab() {
   const [config, setConfig] = useState({
@@ -122,6 +123,12 @@ export default function AdminDiscordTab() {
           Test Notification Now
         </button>
       </div>
+
+      <br />
+      Loading screen is intentionally left here to show the glowing eyes and fangs while the actual loading state is managed by the buttons above. This way, you can see the fun animation even when not actively loading something specific.
+      {/* --- IMPORTED LOADER DISPLAYED CONSTANTLY --- */}
+      <Loading />
+      
     </div>
   );
 }
