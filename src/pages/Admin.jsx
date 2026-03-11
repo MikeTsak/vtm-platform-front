@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import api from '../api';
 import styles from '../styles/Admin.module.css';
 import 'leaflet/dist/leaflet.css';
+import Loading from '../components/Loading';
 
 // Core Components (already exist, unchanged)
 import CharacterEditor from './CharacterEditor.jsx';
@@ -581,11 +582,7 @@ export default function Admin() {
     <div className={styles.adminRoot}>
       <div className={styles.container}>
         <h2 className={styles.title}>Admin Console</h2>
-        {loading && (
-          <div className={styles.loading}>
-            <span className={styles.spinner} /> Loading…
-          </div>
-        )}
+        {loading && <Loading />}
         {err && <div className={`${styles.alert} ${styles.alertError}`}>{err}</div>}
         {msg && <div className={`${styles.alert} ${styles.alertInfo}`}>{msg}</div>}
 

@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'; 
 import api from '../../api';
 import styles from '../../styles/Admin.module.css';
+import Loading from '../Loading';
 
 /* ---------- VTM Lookups ---------- */
 const CLAN_COLORS = {
@@ -83,7 +84,7 @@ const ChatImage = ({ attachmentId }) => {
     };
   }, [attachmentId]);
 
-  if (loading) return <div style={{ fontSize:'0.75rem', color:'#888', fontStyle:'italic', margin:'4px 0' }}>Loading image...</div>;
+  if (loading) return <Loading />;
   if (error) return <div style={{ fontSize:'0.75rem', color:'#c44', margin:'4px 0' }}>⚠ Image failed to load</div>;
 
   return (

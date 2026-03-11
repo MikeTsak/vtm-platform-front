@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import styles from '../styles/Court.module.css';
+import Loading from './Loading';
 
 /* --- Clan assets logic (Matches ChatSystem & Home) --- */
 const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim', 'Thin-blood': 'Thinblood' };
@@ -60,7 +61,7 @@ export default function HierarchyView({ canEdit }) {
     }
   };
 
-  if (loading) return <div className={styles.loading}>Consulting the genealogy scrolls...</div>;
+  if (loading) return <Loading />;
 
   const prince = roster.find(r => r.titles?.includes("Prince"));
   

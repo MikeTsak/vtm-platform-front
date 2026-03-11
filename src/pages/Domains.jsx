@@ -7,6 +7,7 @@ import 'leaflet/dist/leaflet.css';
 import styles from '../styles/Domains.module.css'; // Correct import
 import domainsRaw from '../data/Domains.json';
 import api from '../api';
+import Loading from '../components/Loading';
 
 // --- Division Names Mapping ---
 const DIVISION_NAMES = {
@@ -271,7 +272,7 @@ export default function Domains() {
 
   // --- Render Logic ---
   if (isLoading) {
-    return <div className={styles.loading}>Loading claims and map data...</div>;
+    return <Loading />;
   }
   if (!geoJsonData || !bounds) {
     return <div className={`${styles.wrap} ${styles.alertError}`}>Error: Invalid or missing Domains.json map data.</div>;
