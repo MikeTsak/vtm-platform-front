@@ -4,6 +4,7 @@ import api from '../api';
 import { Link, useNavigate } from 'react-router-dom';
 import styles from '../styles/Home.module.css';
 import shatterStyles from '../styles/ShatterEffect.module.css';
+import Loading from '../components/loading';
 
 /* Helper to map clan names to image files */
 const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim' };
@@ -180,7 +181,7 @@ export default function Home() {
     return () => { isMounted = false; };
   }, [nav]);
 
-  if (loading) return <div className={styles.loadingScreen}>Unlocking the Gate...</div>;
+  if (loading) return <Loading text="Unlocking the Gate..." fullPage size="lg" />;
   if (fetchError && !me) return <div className={styles.loadingScreen}>{fetchError}</div>;
   if (!me) return <div className={styles.loadingScreen}>Please log in.</div>;
 

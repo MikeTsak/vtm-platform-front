@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api from '../api';
 import styles from '../styles/Court.module.css';
+import Loading from './loading';
 
 // --- Dedicated component to fetch and render DB Blobs ---
 function BlobImage({ url }) {
@@ -38,7 +39,7 @@ function BlobImage({ url }) {
   }
   
   if (!imgSrc) {
-    return <div style={{ color: '#a3a3ad', fontSize: '13px', margin: '15px 0' }}>Loading attachment...</div>;
+    return <Loading text="Loading attachment..." size="sm" />;
   }
 
   return (

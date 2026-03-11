@@ -3,6 +3,7 @@ import React, { useState, useEffect, useContext, useRef, useMemo, useLayoutEffec
 import { AuthCtx } from '../AuthContext';
 import api from '../api';
 import styles from '../styles/ChatSystem.module.css';
+import Loading from './loading';
 
 /* --- Clan assets & colors --- */
 const CLAN_COLORS = {
@@ -182,7 +183,7 @@ const ChatImage = ({ attachmentId }) => {
     };
   }, [attachmentId]);
 
-  if (loading) return <div className={styles.imageLoading}>Loading image...</div>;
+  if (loading) return <Loading text="Loading image..." size="sm" />;
   if (error) return <div className={styles.imageError}>⚠ Image failed to load</div>;
 
   return (
@@ -886,7 +887,7 @@ export default function Comms() {
     });
   }, [npcConvos, users]);
 
-  if (loading) return <div className={styles.loading}>Loading contacts…</div>;
+  if (loading) return <Loading text="Loading contacts…" fullPage />;
 
   const currentAccent = (() => {
     if (!selectedContact) return '#8a0f1a';
