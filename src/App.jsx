@@ -26,6 +26,7 @@ import Boons from './pages/Boons';
 import Court from './pages/Court';
 import Premonitions from './pages/Premonitions';
 import News from './pages/News'; // ✅ IMPORTED NEWS PAGE
+import Loading from './components/loading';
 
 function Private({ children }) {
   const { user } = useContext(AuthCtx);
@@ -71,7 +72,7 @@ function MalkavianOrAdminOnly({ children }) {
   }, [user, location.pathname]);
 
   if (isLoading) {
-    return <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--muted)' }}>Checking access...</div>;
+    return <Loading text="Checking access..." fullPage />;
   }
   if (!isAuthorized) return <Navigate to="/" replace />;
   return children;

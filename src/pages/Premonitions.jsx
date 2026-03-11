@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState, useContext, useCallback } from "react";
 import { AuthCtx } from "../AuthContext";
 import AdminPremonitionsTab from "../components/admin/AdminPremonitionsTab";
+import Loading from "../components/loading";
 import s from "../styles/Premonitions.module.css";
 
 /**
@@ -164,7 +165,7 @@ function PlayerPremonitions() {
           <h2 className={s.title}>Your Premonitions</h2>
           <p className={s.subtitle}>Listen to the static...</p>
         </header>
-        <div className={s.loadingBox}>Listening for echoes…</div>
+        <Loading text="Listening for echoes…" fullPage size="lg" />
       </main>
     );
   }
@@ -293,9 +294,7 @@ function PremonitionItem({ item, index, fetchMediaBlob }) {
               ) : status === "error" ? (
                 <div className={s.mediaError}>Signal Corrupted</div>
               ) : (
-                <div className={s.mediaLoading}>
-                  <div className={s.glitchText}>Receiving Image...</div>
-                </div>
+                <Loading text="Receiving Image..." size="sm" />
               )}
             </>
           )}
@@ -324,7 +323,7 @@ function PremonitionItem({ item, index, fetchMediaBlob }) {
                   }}
                 >
                   {status === "loading" ? (
-                     <div className={s.mediaLoading}>Downloading Stream...</div>
+                     <Loading text="Downloading Stream..." size="sm" />
                   ) : (
                     <>
                       <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>▶</div>
