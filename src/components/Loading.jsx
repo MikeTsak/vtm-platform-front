@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 
+// Mixed explicit UX terms with the vampire theme
+const phrases = [
+  "LOADING...", 
+  "FETCHING DARK DATA...", 
+  "AWAKENING SERVER...",
+  "PLEASE WAIT...",
+  "LOADING BLOODLINES..."
+];
+
 const Loading = () => {
   // Changed the default state so "LOADING..." is the very first thing they see
   const [loadingText, setLoadingText] = useState('LOADING...');
-  
-  // Mixed explicit UX terms with the vampire theme
-  const phrases = [
-    "LOADING...", 
-    "FETCHING DARK DATA...", 
-    "AWAKENING SERVER...",
-    "PLEASE WAIT...",
-    "LOADING BLOODLINES..."
-  ];
 
   useEffect(() => {
     let index = 0;
@@ -20,7 +20,7 @@ const Loading = () => {
       setLoadingText(phrases[index]);
     }, 3000);
     return () => clearInterval(interval);
-  }, [phrases.length]);
+  }, []);
 
   const advancedStyles = `
     .dracula-container {

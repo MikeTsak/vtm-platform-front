@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api from '../api';
 import styles from '../styles/EmailSystem.module.css';
+import Loading from './Loading';
 
 // --- Internal Rich Text Editor Components ---
 const EditorToolbar = ({ onCmd }) => (
@@ -167,7 +168,7 @@ export default function EmailSystem({ user, isMobile }) {
           </div>
         </div>
         <div className={styles.threadList}>
-          {loading && <div className={styles.loading}>Checking mail...</div>}
+          {loading && <Loading />}
           {threads.map(t => {
             const senderName = isAdmin ? t.user_name : t.from_name;
             const avatarColor = getColor(senderName || 'Unknown');

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useMemo } from 'react';
 import api from '../api';
 import { AuthCtx } from '../AuthContext';
 import styles from '../styles/Boons.module.css';
+import Loading from '../components/Loading';
 
 // Form levels and statuses
 const BOON_LEVELS = ['trivial', 'minor', 'major', 'life'];
@@ -210,7 +211,7 @@ export default function Boons() {
         )}
 
         {/* --- GRID --- */}
-        {loading && <div className={styles.loading}>Accessing Registry...</div>}
+        {loading && <Loading />}
         
         {!loading && !processedBoons.length && (
            <div className={styles.subtle}>

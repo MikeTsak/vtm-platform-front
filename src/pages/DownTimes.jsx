@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import api from '../api';
 import styles from '../styles/DownTimes.module.css';
+import Loading from '../components/Loading';
 
 // --- Helper: Generate unique temporary ID ---
 // Module-scoped counter intentionally shared across all component instances for global uniqueness
@@ -443,7 +444,7 @@ export default function DownTimes() {
       {/* List */}
       <section className={styles.list}>
         {loading && (
-          <div className={`${styles.item} ${styles.skeleton}`}></div>
+          <Loading />
         )}
         {!loading && list.length === 0 && (
           <div className={styles.empty}>

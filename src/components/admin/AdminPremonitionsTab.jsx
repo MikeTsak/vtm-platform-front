@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 // CHANGED: Import the CSS module
 import s from "../../styles/AdminPremonitionsTab.module.css";
+import Loading from "../Loading";
 
 /**
  * API base:
@@ -319,7 +320,7 @@ export default function AdminPremonitionsTab() {
           </label>
         </div>
 
-        {loading && <div className={s.loading}>Loading…</div>}
+        {loading && <Loading />}
         {err && <div className={s.error}>⚠️ {err}</div>}
 
         {!loading && !err && (
@@ -466,7 +467,7 @@ export default function AdminPremonitionsTab() {
           </div>
 
           {historyErr && <div className={s.error}>⚠️ {historyErr}</div>}
-          {historyLoading && <div className={s.loading}>Loading…</div>}
+          {historyLoading && <Loading />}
 
           {!historyLoading && !historyErr && (
             <ul className={s.historyList}>

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import api from '../api';
 import { AuthCtx } from '../AuthContext';
 import styles from '../styles/News.module.css';
+import Loading from '../components/Loading';
 
 /* --- CONFIGURATION --- */
 const RAW_BASE = process.env.REACT_APP_API_URL || (window.location.port === "3000" ? "http://localhost:3001/api" : "/api");
@@ -82,7 +83,7 @@ export default function News() {
       </header>
 
       <div className={styles.content}>
-        {loading && <div className={styles.loading}>Scanning frequencies...</div>}
+        {loading && <Loading />}
         <div className={styles.masonry}>
           {items.map(item => {
             const theme = NEWS_OUTLETS[item.theme] || NEWS_OUTLETS['ERT'];

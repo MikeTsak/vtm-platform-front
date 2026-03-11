@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useRef, useState, useContext, useCallback } 
 import { AuthCtx } from "../AuthContext";
 import AdminPremonitionsTab from "../components/admin/AdminPremonitionsTab";
 import s from "../styles/Premonitions.module.css";
+import Loading from "../components/Loading";
 
 /**
  * API base helper
@@ -164,7 +165,7 @@ function PlayerPremonitions() {
           <h2 className={s.title}>Your Premonitions</h2>
           <p className={s.subtitle}>Listen to the static...</p>
         </header>
-        <div className={s.loadingBox}>Listening for echoes…</div>
+        <Loading />
       </main>
     );
   }
@@ -324,7 +325,7 @@ function PremonitionItem({ item, index, fetchMediaBlob }) {
                   }}
                 >
                   {status === "loading" ? (
-                     <div className={s.mediaLoading}>Downloading Stream...</div>
+                     <Loading />
                   ) : (
                     <>
                       <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>▶</div>
