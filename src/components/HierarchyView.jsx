@@ -20,8 +20,14 @@ const buildImageUrl = (val) => {
 export default function HierarchyView({ canEdit }) {
   const [roster, setRoster] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isEditMode, setIsEditMode] = useState(canEdit); // <-- Added local toggle state
   
   const TITLES = ["Prince", "Seneschal", "Primogen", "Sheriff", "Harpy", "Assistant Harpy", "Hound", "Whip"];
+
+  // Keep local edit state in sync if the parent prop changes
+  useEffect(() => {
+    setIsEditMode(canEdit);
+  }, [canEdit]);
 
   useEffect(() => {
     let isMounted = true;
@@ -46,7 +52,7 @@ export default function HierarchyView({ canEdit }) {
   }, [canEdit]);
 
   const update = async (id, type, field, value) => {
-    if (!canEdit) return;
+    if (!canEdit) return; // Always check actual permissions here
     const previousRoster = [...roster];
 
     setRoster(prev => prev.map(r => 
@@ -63,33 +69,71 @@ export default function HierarchyView({ canEdit }) {
 
   if (loading) return <Loading />;
 
-  const prince = roster.find(r => r.titles?.includes("Prince"));
+  // Separate the dead from the living
+  const deceased = roster
+    .filter(r => r.is_deceased)
+    .sort((a, b) => (b.status || 0) - (a.status || 0));
+
+  const alive = roster.filter(r => !r.is_deceased);
+
+  // Ex-members shouldn't occupy the active throne/council seats
+  const prince = alive.find(r => r.titles?.includes("Prince") && !r.is_ex);
   
-  const council = roster
-    .filter(r => (r.titles?.includes("Seneschal") || r.titles?.includes("Sheriff")) && r.id !== prince?.id)
+  const council = alive
+    .filter(r => (r.titles?.includes("Seneschal") || r.titles?.includes("Sheriff")) && r.id !== prince?.id && !r.is_ex)
     .sort((a, b) => (b.status || 0) - (a.status || 0));
     
-  const others = roster
+  const others = alive
     .filter(r => r.id !== prince?.id && !council.some(c => c.id === r.id))
     .sort((a, b) => (b.status || 0) - (a.status || 0));
 
   return (
     <div className={styles.hierarchyWrapper}>
-      {prince && (
-        <div className={styles.throneRoom}>
-          <MemberCard ent={prince} specialClass={styles.princeCard} canEdit={canEdit} update={update} titles={TITLES} />
+      
+      {/* Admin View Toggle */}
+      {canEdit && (
+        <div className={styles.adminControls}>
+          <button 
+            className={styles.toggleViewBtn} 
+            onClick={() => setIsEditMode(!isEditMode)}
+          >
+            {isEditMode ? "Preview as Player" : "Return to Admin View"}
+          </button>
         </div>
       )}
-      <div className={styles.councilRow}>
-        {council.map(c => (
-          <MemberCard key={`${c.type}-${c.id}`} ent={c} specialClass={styles.highRankCard} canEdit={canEdit} update={update} titles={TITLES} />
-        ))}
-      </div>
+
+      {/* Active Hierarchy */}
+      {prince && (
+        <div className={styles.throneRoom}>
+          <MemberCard ent={prince} specialClass={styles.princeCard} canEdit={isEditMode} update={update} titles={TITLES} />
+        </div>
+      )}
+      
+      {council.length > 0 && (
+        <div className={styles.councilRow}>
+          {council.map(c => (
+            <MemberCard key={`${c.type}-${c.id}`} ent={c} specialClass={styles.highRankCard} canEdit={isEditMode} update={update} titles={TITLES} />
+          ))}
+        </div>
+      )}
+      
       <div className={styles.courtGrid}>
         {others.map(o => (
-          <MemberCard key={`${o.type}-${o.id}`} ent={o} canEdit={canEdit} update={update} titles={TITLES} />
+          <MemberCard key={`${o.type}-${o.id}`} ent={o} canEdit={isEditMode} update={update} titles={TITLES} />
         ))}
       </div>
+
+      {/* Deceased Section */}
+      {deceased.length > 0 && (
+        <>
+          <h2 className={styles.deceasedTitle}>Deceased</h2>
+          <div className={styles.courtGrid}>
+            {deceased.map(d => (
+              <MemberCard key={`${d.type}-${d.id}`} ent={d} canEdit={isEditMode} update={update} titles={TITLES} />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -106,20 +150,21 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles }) {
     update(ent.id, ent.type, 'titles', newTitles);
   };
 
-  const primaryTitle = (ent.titles && ent.titles.length > 0) ? ent.titles[0] : null;
+  const prefix = ent.is_ex ? "Ex-" : "";
+  const primaryTitle = (ent.titles && ent.titles.length > 0) ? `${prefix}${ent.titles[0]}` : null;
   const displayImageUrl = buildImageUrl(ent.image_url);
-  const clanLogoUrl = symlogo(ent.clan); // Gets the correct clan logo
+  const clanLogoUrl = symlogo(ent.clan); 
 
   return (
     <div className={`${styles.memberCard} ${specialClass}`}>
       
-      {/* --- CLAN WATERMARK (Using an img tag instead of CSS variables) --- */}
+      {/* --- CLAN WATERMARK --- */}
       {clanLogoUrl && (
         <img 
           src={clanLogoUrl} 
           alt="" 
           className={styles.clanWatermark} 
-          onError={(e) => e.target.style.display = 'none'} // Hides broken images safely
+          onError={(e) => e.target.style.display = 'none'} 
         />
       )}
 
@@ -129,7 +174,8 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles }) {
           <img 
             src={displayImageUrl} 
             alt={ent.name} 
-            className={styles.polaroidImg} 
+            // Apply grayscale if deceased
+            className={`${styles.polaroidImg} ${ent.is_deceased ? styles.grayscale : ''}`} 
           />
         ) : (
           <div className={styles.polaroidPlaceholder}>
@@ -150,19 +196,41 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles }) {
 
         <div className={styles.cardBody}>
           {canEdit && (
-            <input
-              type="text"
-              placeholder="e.g. Athens through time 2-1"
-              className={styles.imageInput}
-              defaultValue={ent.image_url || ''}
-              onBlur={(e) => {
-                const newVal = e.target.value.trim();
-                if (newVal !== ent.image_url) {
-                  update(ent.id, ent.type, 'image_url', newVal);
-                }
-              }}
-              title="Enter just the filename part, e.g. 'Athens through time 3 (166)'"
-            />
+            <>
+              <input
+                type="text"
+                placeholder="e.g. Athens through time 2-1"
+                className={styles.imageInput}
+                defaultValue={ent.image_url || ''}
+                onBlur={(e) => {
+                  const newVal = e.target.value.trim();
+                  if (newVal !== ent.image_url) {
+                    update(ent.id, ent.type, 'image_url', newVal);
+                  }
+                }}
+                title="Enter just the filename part, e.g. 'Athens through time 3 (166)'"
+              />
+              
+              {/* Modifier Toggles */}
+              <div className={styles.statusToggles}>
+                <label className={styles.checkboxLabel}>
+                  <input 
+                    type="checkbox" 
+                    checked={!!ent.is_ex}
+                    onChange={(e) => update(ent.id, ent.type, 'is_ex', e.target.checked)}
+                  />
+                  <span className={styles.exTag}>EX-ROLE</span>
+                </label>
+                <label className={styles.checkboxLabel}>
+                  <input 
+                    type="checkbox" 
+                    checked={!!ent.is_deceased}
+                    onChange={(e) => update(ent.id, ent.type, 'is_deceased', e.target.checked)}
+                  />
+                  <span className={styles.deadTag}>DECEASED</span>
+                </label>
+              </div>
+            </>
           )}
 
           {canEdit ? (
@@ -182,7 +250,7 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles }) {
             <div className={styles.displayTitles}>
               {(ent.titles || []).length > 0 ? (
                 (ent.titles).map(t => (
-                  <span key={t} className={styles.titleTag}>{t}</span>
+                  <span key={t} className={styles.titleTag}>{prefix}{t}</span>
                 ))
               ) : (
                 <span className={styles.muted}>—</span>

@@ -4,6 +4,7 @@ import { AuthCtx } from '../AuthContext';
 import api from '../api';
 import styles from '../styles/ChatSystem.module.css';
 import Loading from './Loading';
+import EmojiPicker from 'emoji-picker-react'; // <-- NEW IMPORT
 
 /* --- Clan assets & colors --- */
 const CLAN_COLORS = {
@@ -36,6 +37,14 @@ const ImageIcon = () => (
   </svg>
 );
 
+const SmileIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"></circle>
+    <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+    <line x1="9" y1="9" x2="9.01" y2="9"></line>
+    <line x1="15" y1="9" x2="15.01" y2="9"></line>
+  </svg>
+);
 
 /* --- PUSH HELPERS --- */
 const VAPID_PUBLIC_KEY = (window.__VAPID_PUBLIC_KEY__ || (document.querySelector('meta[name="vapid-public-key"]')?.content) || process.env.REACT_APP_VAPID_PUBLIC_KEY || '').trim();
@@ -224,6 +233,13 @@ export default function Comms() {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   
+  /* --- Emoji Picker State --- */
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+  const onEmojiClick = (emojiObject) => {
+    setNewMessage(prevInput => prevInput + emojiObject.emoji);
+  };
+  
   /* --- Attachments State --- */
   const [attachment, setAttachment] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -398,12 +414,11 @@ export default function Comms() {
   const lastTsRef = useRef(0);
   const initialSyncRef = useRef(true);
   
-  // FIX: Clear messages ONLY when threadKey changes, not during polling
   useEffect(() => {
-    loadSeqRef.current += 1; // invalidate any in-flight load for the previous thread
+    loadSeqRef.current += 1;
     initialSyncRef.current = true;
     lastTsRef.current = 0;
-    setMessages([]); // Clear messages here
+    setMessages([]);
     setNpcConvos([]); 
     setError('');
   }, [threadKey]);
@@ -468,21 +483,15 @@ export default function Comms() {
   // Combined Polling: Messages & Admin Recent Roster
   useEffect(() => {
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
-    // FIX: Removed setMessages([]) from here to prevent clearing screen on send
     
-    // Clear logic if admin deselects player in NPC view
     if (isAdmin && selectedContact && selectedContact.type === 'npc' && !selectedPlayerId) {
-        // We handle this via the threadKey effect usually, but just in case
         return; 
     }
 
     const load = async () => {
       if (!selectedContact) return;
-      const mySeq = loadSeqRef.current; // capture sequence to detect stale responses
+      const mySeq = loadSeqRef.current;
       try {
-        /* ------------------------------------------------------------------
-           1. LOAD MESSAGES
-           ------------------------------------------------------------------ */
         let msgs = [];
         if (selectedContact.type === 'group') {
            const res = await api.get(`/chat/groups/${selectedContact.id}/history`);
@@ -500,7 +509,6 @@ export default function Comms() {
             attachment_id: m.attachment_id
           }));
         } else {
-          // NPC Logic
           if (isAdmin) {
             if (!selectedPlayerId || !hasAuthHeader) { return; }
             let res;
@@ -514,7 +522,6 @@ export default function Comms() {
               attachment_id: m.attachment_id
             }));
           } else {
-            // NPC Logic (Player View) - New Endpoint with Fallback
             let res;
             try {
                 res = await api.get('/chat/npc/history', { params: { npc_id: selectedContact.id } });
@@ -539,7 +546,6 @@ export default function Comms() {
         const hasNewMessages = newestTs > lastTsRef.current;
         const isInitialLoad = initialSyncRef.current;
 
-        // Discard results if the thread changed while this request was in-flight
         if (loadSeqRef.current !== mySeq) return;
 
         if (isInitialLoad || hasNewMessages) {
@@ -575,9 +581,6 @@ export default function Comms() {
           }
         }
         
-        /* ------------------------------------------------------------------
-           2. LOAD ADMIN ROSTER
-           ------------------------------------------------------------------ */
         if (isAdmin && selectedContact.type === 'npc' && hasAuthHeader) {
           try {
             let res;
@@ -596,15 +599,13 @@ export default function Comms() {
             rows.sort((a, b) => new Date(b.last_message_at || 0) - new Date(a.last_message_at || 0));
             setNpcConvos(rows);
           } catch (e) {
-            // silent fail for roster update
+            // silent fail
           }
         }
 
         initialSyncRef.current = false;
       } catch (e) {
-        // Discard error if the thread changed while this request was in-flight
         if (loadSeqRef.current !== mySeq) return;
-        // Show error only on initial load; during polling keep existing messages
         if (initialSyncRef.current) {
             setError(e?.response?.status === 401 ? 'Your session expired. Please log in again.' : 'Could not load messages.');
         }
@@ -711,7 +712,6 @@ export default function Comms() {
         api.post('/chat/read', { sender_id: selectedContact.id }).catch(()=>{});
       } 
       else {
-        // NPC Context
         if (isAdmin) {
           const { data } = await api.post('/admin/chat/npc/messages', { npc_id: selectedContact.id, user_id: selectedPlayerId, ...payload });
           if (data && data.message) {
@@ -773,6 +773,7 @@ export default function Comms() {
       }
 
       setNewMessage('');
+      setShowEmojiPicker(false); // Hide picker on send
       clearAttachment();
       setDrafts(prev => ({ ...prev, [threadKey]: '' }));
       if(textareaRef.current) textareaRef.current.style.height = 'auto'; 
@@ -1198,13 +1199,24 @@ const selectContact = (contact) => {
               )}
             </div>
 
-            <form className={styles.messageInputForm} onSubmit={handleSendMessage}>
+            <form className={styles.messageInputForm} onSubmit={handleSendMessage} style={{ position: 'relative' }}>
                 {previewUrl && (
                   <div className={styles.previewContainer}>
                     <div className={styles.previewWrapper}>
                        <img src={previewUrl} alt="Preview" />
                        <button type="button" onClick={clearAttachment} className={styles.removePreviewBtn}>×</button>
                     </div>
+                  </div>
+                )}
+
+                {/* Emoji Picker Popup */}
+                {showEmojiPicker && (
+                  <div style={{ position: 'absolute', bottom: '100%', left: '0', zIndex: 50, marginBottom: '10px' }}>
+                    <EmojiPicker 
+                      onEmojiClick={onEmojiClick} 
+                      theme="dark" 
+                      searchDisabled={false}
+                    />
                   </div>
                 )}
 
@@ -1215,6 +1227,15 @@ const selectContact = (contact) => {
                   accept="image/*" 
                   onChange={handleFileSelect} 
                 />
+
+                <button 
+                  type="button" 
+                  className={styles.uploadBtn} 
+                  onClick={() => setShowEmojiPicker(val => !val)}
+                  title="Add Emoji"
+                >
+                  <SmileIcon />
+                </button>
 
                 <button 
                   type="button" 
