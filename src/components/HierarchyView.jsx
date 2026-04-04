@@ -20,11 +20,10 @@ const buildImageUrl = (val) => {
 export default function HierarchyView({ canEdit }) {
   const [roster, setRoster] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isEditMode, setIsEditMode] = useState(canEdit); // <-- Added local toggle state
+  const [isEditMode, setIsEditMode] = useState(canEdit); 
   
   const TITLES = ["Prince", "Seneschal", "Primogen", "Sheriff", "Harpy", "Assistant Harpy", "Hound", "Whip"];
 
-  // Keep local edit state in sync if the parent prop changes
   useEffect(() => {
     setIsEditMode(canEdit);
   }, [canEdit]);
@@ -52,7 +51,7 @@ export default function HierarchyView({ canEdit }) {
   }, [canEdit]);
 
   const update = async (id, type, field, value) => {
-    if (!canEdit) return; // Always check actual permissions here
+    if (!canEdit) return; 
     const previousRoster = [...roster];
 
     setRoster(prev => prev.map(r => 
@@ -69,22 +68,47 @@ export default function HierarchyView({ canEdit }) {
 
   if (loading) return <Loading />;
 
-  // Separate the dead from the living
-  const deceased = roster
+  // --- NEW: Filter out hidden characters for players (or admins previewing as players)
+  const displayedRoster = isEditMode ? roster : roster.filter(r => !r.is_hidden);
+
+  // Separate the dead from the living using the displayed roster
+  const deceased = displayedRoster
     .filter(r => r.is_deceased)
     .sort((a, b) => (b.status || 0) - (a.status || 0));
 
-  const alive = roster.filter(r => !r.is_deceased);
+  const alive = displayedRoster.filter(r => !r.is_deceased);
 
-  // Ex-members shouldn't occupy the active throne/council seats
-  const prince = alive.find(r => r.titles?.includes("Prince") && !r.is_ex);
+  const mainCourtTitles = ["Prince", "Seneschal", "Sheriff", "Harpy", "Assistant Harpy", "Hound"];
   
-  const council = alive
-    .filter(r => (r.titles?.includes("Seneschal") || r.titles?.includes("Sheriff")) && r.id !== prince?.id && !r.is_ex)
+  // Helper to sort Main Court by rank importance
+  const getMainCourtRank = (ent) => {
+    if (!ent.titles) return 99;
+    let best = 99;
+    ent.titles.forEach(t => {
+      const idx = mainCourtTitles.indexOf(t);
+      if (idx !== -1 && idx < best) best = idx;
+    });
+    return best;
+  };
+
+  // 1. Main Court
+  const mainCourt = alive
+    .filter(r => r.titles?.some(t => mainCourtTitles.includes(t)) && !r.is_ex)
+    .sort((a, b) => {
+      const rankA = getMainCourtRank(a);
+      const rankB = getMainCourtRank(b);
+      if (rankA !== rankB) return rankA - rankB; 
+      return (b.status || 0) - (a.status || 0);  
+    });
+
+  // 2. Primogen
+  const primogen = alive
+    .filter(r => r.titles?.includes("Primogen") && !r.is_ex && !mainCourt.some(m => m.id === r.id))
     .sort((a, b) => (b.status || 0) - (a.status || 0));
-    
+
+  // 3. The Rest
   const others = alive
-    .filter(r => r.id !== prince?.id && !council.some(c => c.id === r.id))
+    .filter(r => !mainCourt.some(m => m.id === r.id) && !primogen.some(p => p.id === r.id))
     .sort((a, b) => (b.status || 0) - (a.status || 0));
 
   return (
@@ -102,37 +126,72 @@ export default function HierarchyView({ canEdit }) {
         </div>
       )}
 
-      {/* Active Hierarchy */}
-      {prince && (
-        <div className={styles.throneRoom}>
-          <MemberCard ent={prince} specialClass={styles.princeCard} canEdit={isEditMode} update={update} titles={TITLES} />
+      {/* Main Court Box */}
+      {mainCourt.length > 0 && (
+        <div className={styles.sectionBox}>
+          <h2 className={styles.sectionTitle}>Main Court</h2>
+          <div className={styles.courtGrid}>
+            {mainCourt.map(m => (
+              <MemberCard 
+                key={`${m.type}-${m.id}`} 
+                ent={m} 
+                specialClass={m.titles?.includes("Prince") ? styles.princeCard : styles.highRankCard} 
+                canEdit={isEditMode} 
+                update={update} 
+                titles={TITLES} 
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Primogen Box */}
+      {primogen.length > 0 && (
+        <div className={styles.sectionBox}>
+          <h2 className={styles.sectionTitle}>Primogen Council</h2>
+          <div className={styles.courtGrid}>
+            {primogen.map(p => (
+              <MemberCard 
+                key={`${p.type}-${p.id}`} 
+                ent={p} 
+                specialClass={styles.highRankCard} 
+                canEdit={isEditMode} 
+                update={update} 
+                titles={TITLES} 
+              />
+            ))}
+          </div>
         </div>
       )}
       
-      {council.length > 0 && (
-        <div className={styles.councilRow}>
-          {council.map(c => (
-            <MemberCard key={`${c.type}-${c.id}`} ent={c} specialClass={styles.highRankCard} canEdit={isEditMode} update={update} titles={TITLES} />
-          ))}
+      {/* Rest of the Court */}
+      {others.length > 0 && (
+        <div className={styles.sectionBox}>
+          <h2 className={styles.sectionTitle}>Court Members</h2>
+          <div className={styles.courtGrid}>
+            {others.map(o => (
+              <MemberCard 
+                key={`${o.type}-${o.id}`} 
+                ent={o} 
+                canEdit={isEditMode} 
+                update={update} 
+                titles={TITLES} 
+              />
+            ))}
+          </div>
         </div>
       )}
-      
-      <div className={styles.courtGrid}>
-        {others.map(o => (
-          <MemberCard key={`${o.type}-${o.id}`} ent={o} canEdit={isEditMode} update={update} titles={TITLES} />
-        ))}
-      </div>
 
       {/* Deceased Section */}
       {deceased.length > 0 && (
-        <>
+        <div className={styles.sectionBox}>
           <h2 className={styles.deceasedTitle}>Deceased</h2>
           <div className={styles.courtGrid}>
             {deceased.map(d => (
               <MemberCard key={`${d.type}-${d.id}`} ent={d} canEdit={isEditMode} update={update} titles={TITLES} />
             ))}
           </div>
-        </>
+        </div>
       )}
     </div>
   );
@@ -155,8 +214,11 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles }) {
   const displayImageUrl = buildImageUrl(ent.image_url);
   const clanLogoUrl = symlogo(ent.clan); 
 
+  // Apply hidden styling if character is hidden (only visible in edit mode anyway)
+  const hiddenClass = ent.is_hidden ? styles.hiddenCard : "";
+
   return (
-    <div className={`${styles.memberCard} ${specialClass}`}>
+    <div className={`${styles.memberCard} ${specialClass} ${hiddenClass}`}>
       
       {/* --- CLAN WATERMARK --- */}
       {clanLogoUrl && (
@@ -174,7 +236,6 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles }) {
           <img 
             src={displayImageUrl} 
             alt={ent.name} 
-            // Apply grayscale if deceased
             className={`${styles.polaroidImg} ${ent.is_deceased ? styles.grayscale : ''}`} 
           />
         ) : (
@@ -208,11 +269,19 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles }) {
                     update(ent.id, ent.type, 'image_url', newVal);
                   }
                 }}
-                title="Enter just the filename part, e.g. 'Athens through time 3 (166)'"
+                title="Enter just the filename part"
               />
               
-              {/* Modifier Toggles */}
               <div className={styles.statusToggles}>
+                {/* NEW: HIDE TOGGLE */}
+                <label className={styles.checkboxLabel}>
+                  <input 
+                    type="checkbox" 
+                    checked={!!ent.is_hidden}
+                    onChange={(e) => update(ent.id, ent.type, 'is_hidden', e.target.checked)}
+                  />
+                  <span className={styles.hideTag}>HIDDEN</span>
+                </label>
                 <label className={styles.checkboxLabel}>
                   <input 
                     type="checkbox" 
@@ -275,7 +344,6 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles }) {
           )}
         </div>
       </div>
-      
     </div>
   );
 }

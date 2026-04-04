@@ -535,3 +535,61 @@
   color: #000;
   box-shadow: 0 0 12px rgba(139, 0, 0, 0.4);
 }
+
+/* --- NEW SECTION BOXES --- */
+.sectionBox {
+  background: rgba(10, 10, 10, 0.4);
+  border: 1px solid #222;
+  border-radius: 4px;
+  padding: 2rem;
+  margin-bottom: 3rem;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+}
+
+.sectionTitle {
+  font-size: 2rem;
+  color: #8b0000;
+  text-transform: uppercase;
+  letter-spacing: 6px;
+  margin-top: 0;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid #333;
+  padding-bottom: 0.5rem;
+  text-shadow: 0 0 10px rgba(139, 0, 0, 0.2);
+}
+
+/* --- UPDATED PRINCE CARD --- */
+/* (Make sure to replace your existing .princeCard block with this one) */
+.princeCard {
+  border: 1px solid #d4af37;
+  background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+  box-shadow: 0 0 30px rgba(212, 175, 55, 0.15);
+}
+
+/* Optional: if you want the Prince card to span across two columns so it looks bigger in the grid */
+.princeCard {
+  grid-column: 1 / -1; 
+}
+
+.princeCard .name {
+  font-size: 2.2rem;
+  color: #d4af37;
+  text-shadow: 0 0 12px rgba(212, 175, 55, 0.4);
+}
+
+/* --- Hidden Status Styling --- */
+.hideTag {
+  color: #1e90ff; /* A clean blue to distinguish from ex/deceased */
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+.hiddenCard {
+  opacity: 0.6;
+  border: 1px dashed #555;
+}
+
+.hiddenCard:hover {
+  opacity: 1; /* Bring it back to full opacity when the admin hovers over it to edit */
+  border-style: solid;
+}
