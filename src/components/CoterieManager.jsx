@@ -244,18 +244,15 @@ function ExtrasList({ items }) {
     </ul>
   );
 }
-function BackgroundsEditor({ items, setItems, remaining }) {
+function BackgroundsEditor({ items, setItems }) {
   const [q, setQ] = useState(''); const [dots, setDots] = useState(1);
   function add() {
-    const name = q.trim(); if (!name) return; if (dots > remaining) return;
+    const name = q.trim(); if (!name) return; 
     setItems([...items, { name, dots }]); setQ(''); setDots(1);
   }
   function updateDots(idx, v) {
     const next = [...items];
-    const oldDots = next[idx].dots;
     const newDots = Math.max(1, Math.min(5, v));
-    const delta = newDots - oldDots;
-    if (delta > 0 && delta > remaining) return;
     next[idx] = { ...next[idx], dots: newDots };
     setItems(next);
   }
@@ -272,7 +269,7 @@ function BackgroundsEditor({ items, setItems, remaining }) {
           className={styles.backgroundInput}
         />
         <NumberInput label="Dots" value={dots} setValue={setDots} min={1} max={5} width="100px" />
-        <button onClick={add} disabled={!q.trim() || dots > remaining} className={styles.buttonPrimary}>
+        <button onClick={add} disabled={!q.trim()} className={styles.buttonPrimary}>
           Add Background
         </button>
       </div>
@@ -365,7 +362,7 @@ function TypesBrowser({ onPick }) {
 
 /* =================== Main Coteries =================== */
 export default function Coteries() {
-  const [tab, setTab] = useState('saved'); // Default to the saved tab
+  const [tab, setTab] = useState('all'); // Default to the saved tab
 
   // --- Role Verification ---
   const [currentUserRole, setCurrentUserRole] = useState(null);
@@ -381,6 +378,7 @@ export default function Coteries() {
 
   // --- Database State ---
   const [coteriesList, setCoteriesList] = useState([]);
+  const [publicCoteries, setPublicCoteries] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -427,14 +425,21 @@ export default function Coteries() {
   const selectedTypeObj = useMemo(() => (selectedType ? getCoterie(selectedType) : null), [selectedType]);
   
   // DOMAIN IS NOW ALWAYS OPTIONAL
-  const remaining = Math.max(0, poolTotal - allocated);
-  const valid = useMemo(() => {
-    const hasMinMembers = members.length >= 3;
-    const hasName = name.trim().length > 0;
-    const notOverspent = allocated <= poolTotal;
-    // Removed hasDomain requirement
-    return hasMinMembers && hasName && notOverspent;
-  }, [members.length, name, allocated, poolTotal]);
+  const remaining = poolTotal - allocated; // Can now be negative (bypass)
+  
+  // --- ΝΕΟ ΣΥΣΤΗΜΑ VALIDATION ---
+  const validationErrors = useMemo(() => {
+    const errors = [];
+    if (name.trim().length === 0) {
+      errors.push("Missing Coterie Name.");
+    }
+    if (members.length < 3) {
+      errors.push(`At least 3 members are required (you currently have ${members.length}).`);
+    }
+    return errors;
+  }, [name, members.length]);
+
+  const valid = validationErrors.length === 0;
 
   // --- Load saved coteries from DB ---
   const loadCoteries = async () => {
@@ -446,9 +451,24 @@ export default function Coteries() {
     }
   };
 
+  const loadPublicCoteries = async () => {
+    try {
+      const { data } = await api.get('/coteries/all');
+      setPublicCoteries(data.coteries || []);
+    } catch (e) {
+      console.error('Failed to load public coteries', e);
+    }
+  };
+
   useEffect(() => {
     loadCoteries();
   }, []);
+
+  useEffect(() => {
+    if (tab === 'all') {
+      loadPublicCoteries();
+    }
+  }, [tab]);
 
   // --- Reset Builder to blank slate ---
   const startNewCoterie = () => {
@@ -619,7 +639,8 @@ export default function Coteries() {
           value={tab}
           onChange={setTab}
           tabs={[
-            { value: 'saved', label: 'Saved Coteries' },
+            { value: 'saved', label: 'My Coteries' },
+            { value: 'all', label: 'All Coteries' },
             (canCreate || editingId) ? { value: 'builder', label: 'Builder' } : null,
             { value: 'types', label: 'Types' },
             { value: 'overview', label: 'Rules Overview' },
@@ -704,6 +725,36 @@ export default function Coteries() {
                 </Card>
               );
             })
+          )}
+        </div>
+      )}
+
+{tab === 'all' && (
+        <div style={{ display: 'grid', gap: '1.25rem' }}>
+          {publicCoteries.length === 0 ? (
+            <Card>
+              <Muted style={{ textAlign: 'center', padding: '2rem 0' }}>
+                No coteries are currently registered in the domain.
+              </Muted>
+            </Card>
+          ) : (
+            <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
+              {publicCoteries.map(c => {
+                const domainLabel = c.domain_id ? domainOptions.find(d => d.value === c.domain_id)?.label : null;
+                return (
+                  <Card key={c.id} title={c.name} subtitle={`Type: ${c.type || 'Custom'}`}>
+                    <div style={{ display: 'grid', gap: '0.5rem' }}>
+                      <Muted><b>Domain:</b> {c.domain_id ? `#${c.domain_id} — ${domainLabel || 'Unknown'}` : 'None'}</Muted>
+                      <Muted><b>Members:</b> {c.member_count} Kindred</Muted>
+                      {/* ΠΡΟΣΘΗΚΗ ΕΔΩ: Εμφάνιση των ονομάτων! */}
+                      {c.members_display && (
+                        <Muted><b>Roster:</b> {c.members_display}</Muted>
+                      )}
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
           )}
         </div>
       )}
@@ -799,7 +850,9 @@ export default function Coteries() {
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                   <Muted>Total: <b>{poolTotal}</b></Muted>
                   <Muted>Spent: <b>{allocated}</b></Muted>
-                  <Muted>Remaining: <b>{remaining}</b></Muted>
+                  <Muted style={{ color: remaining < 0 ? 'var(--err)' : 'inherit' }}>
+                    Remaining: <b>{remaining}</b>
+                  </Muted>
                 </div>
               </div>
               <div>
@@ -821,20 +874,32 @@ export default function Coteries() {
             <RequiredList items={required} />
           </Card>
 
-          <BackgroundsEditor items={backgrounds} setItems={setBackgrounds} remaining={remaining} />
+          <BackgroundsEditor items={backgrounds} setItems={setBackgrounds} />
 
-          <Card tone={valid ? 'success' : 'warn'} title="Save & Export">
+          <Card tone={valid ? (allocated > poolTotal ? 'warn' : 'success') : 'warn'} title="Save & Export">
+            
+            {/* ΝΕΟ: Εμφάνιση συγκεκριμένων λαθών */}
             {!valid && (
-              <Muted>
-                Required: name, ≥3 members, and don’t overspend the pool.
+              <div style={{ marginBottom: '10px' }}>
+                <Muted style={{ color: 'var(--err)', marginBottom: '4px' }}><b>Cannot save yet. Please fix the following:</b></Muted>
+                <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'var(--err)', fontSize: '0.9rem' }}>
+                  {validationErrors.map((err, i) => <li key={i}>{err}</li>)}
+                </ul>
+              </div>
+            )}
+
+            {valid && allocated > poolTotal && (
+              <Muted style={{ color: 'var(--err)' }}>
+                <b>Notice:</b> You are overspending the pool by {Math.abs(remaining)} points. The difference must be paid by the characters' personal backgrounds!
               </Muted>
             )}
+
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               <button
                 onClick={saveToDatabase}
                 disabled={!valid || isSaving}
                 className={styles.buttonPrimary}
-                title={valid ? 'Save directly to the server' : 'Fill required fields first'}
+                title={valid ? 'Save directly to the server' : 'Fix errors to save'}
               >
                 {isSaving ? 'Saving...' : (editingId ? 'Update Database' : 'Save to Database')}
               </button>
