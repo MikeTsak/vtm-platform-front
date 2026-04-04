@@ -95,22 +95,22 @@
   box-shadow: 0 10px 25px rgba(139, 0, 0, 0.1);
 }
 
-/* --- CLAN BACKGROUND WATERMARK (New Image Approach) --- */
+/* --- CLAN BACKGROUND WATERMARK --- */
 .clanWatermark {
   position: absolute;
   top: 50%;
   right: -5%;
   transform: translateY(-50%);
-  height: 120%; /* Makes the logo slightly larger than the card */
-  opacity: 0.05; /* VERY faint */
-  z-index: 0; /* Puts it behind everything else */
-  pointer-events: none; /* Stops it from blocking clicks */
+  height: 120%; 
+  opacity: 0.15; 
+  z-index: 0; 
+  pointer-events: none; 
   transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
 .memberCard:hover .clanWatermark {
-  opacity: 0.08; 
-  transform: translateY(-50%) scale(1.05); /* Pulses slightly on hover */
+  opacity: 0.25; 
+  transform: translateY(-50%) scale(1.05); 
 }
 
 /* Ensure text and content sits ABOVE the watermark */
@@ -120,11 +120,19 @@
 }
 
 
+/* --- UPDATED PRINCE CARD --- */
 .princeCard {
-  width: 600px;
   border: 1px solid #d4af37;
   background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
   box-shadow: 0 0 30px rgba(212, 175, 55, 0.15);
+  
+  /* These lines force the card into its own row and center it */
+  grid-column: 1 / -1; 
+  justify-self: center;
+  
+  /* Keeps the card looking like a normal card instead of stretching the whole screen */
+  width: 100%;
+  max-width: 600px;
 }
 
 .princeCard .name {
@@ -451,22 +459,72 @@
 .modalActions button[type="submit"]:hover { background: #a00000; }
 
 @media (max-width: 900px) {
-  .princeCard { width: 100%; }
-  .councilRow { grid-template-columns: 1fr; gap: 1.5rem; padding: 0 1rem; }
-  .courtGrid { grid-template-columns: 1fr; padding: 0 1rem; }
+  /* Scale down the main title */
   .title { font-size: 2.2rem; letter-spacing: 4px; }
+  
+  /* Navigation */
   .tabs { flex-direction: column; width: 100%; }
   .tab { width: 100%; }
 
-  /* Mobile tweak for the new card layout */
+  /* Section Boxes (Main Court, Primogen, etc.) */
+  .sectionBox {
+    padding: 1rem; 
+    margin-bottom: 2rem;
+  }
+  
+  .sectionTitle {
+    font-size: 1.5rem;
+    letter-spacing: 3px;
+    text-align: center; /* Centers the title on mobile */
+  }
+
+  .deceasedTitle {
+    font-size: 1.8rem;
+    letter-spacing: 4px;
+    margin-top: 3rem;
+  }
+
+  /* Grid Layouts */
+  .princeCard { width: 100%; grid-column: auto; }
+  .councilRow { grid-template-columns: 1fr; gap: 1.5rem; padding: 0; }
+  .courtGrid { grid-template-columns: 1fr; gap: 1.5rem; }
+
+  /* Member Card adjustments */
   .memberCard {
     flex-direction: column;
     align-items: center;
     text-align: center;
+    padding: 1.2rem;
   }
+
   .polaroid {
-    transform: rotate(0deg); /* remove tilt on mobile so it centers nicely */
+    transform: rotate(0deg); /* Removes the tilt on mobile so it centers nicely */
     margin-bottom: 1rem;
+    width: 120px; /* Slightly smaller picture on mobile */
+  }
+
+  .memberInfo {
+    width: 100%; /* Ensures the text takes full width to center properly */
+  }
+
+  .displayTitles {
+    justify-content: center; /* Center the title tags */
+  }
+
+  .tagGrid {
+    grid-template-columns: 1fr; /* Stacks admin title checkboxes vertically */
+  }
+
+  .statusToggles {
+    flex-wrap: wrap; /* Allows the Ex/Hidden/Dead toggles to wrap */
+    justify-content: center;
+    gap: 0.8rem;
+  }
+
+  .cardFooter {
+    flex-direction: column; /* Stacks the status dots and the slider */
+    gap: 15px;
+    justify-content: center;
   }
 }
 
@@ -592,4 +650,88 @@
 .hiddenCard:hover {
   opacity: 1; /* Bring it back to full opacity when the admin hovers over it to edit */
   border-style: solid;
+}
+
+/* --- Image Lightbox Modal (Smooth Polaroid Frame) --- */
+.lightboxOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  backdrop-filter: blur(5px);
+  cursor: pointer;
+  
+  /* Smooth fade in for the dark background */
+  opacity: 0;
+  animation: fadeInOverlay 0.2s ease forwards;
+}
+
+.lightboxContent {
+  position: relative;
+  cursor: default;
+  
+  /* The Giant Polaroid Frame Styling */
+  background: #1c1c1c;
+  padding: 12px 12px 40px 12px; /* Bottom padding creates the polaroid "chin" */
+  border-radius: 3px;
+  border: 1px solid #2a2a2a;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9);
+
+  /* Smooth spring-like pop-in animation */
+  opacity: 0;
+  transform: scale(0.8) translateY(20px);
+  animation: smoothPop 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.lightboxImage {
+  /* Keeps the 1:1 cropped square instead of the full uncropped picture */
+  width: min(80vw, 450px);
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border: 1px solid #000;
+  display: block;
+}
+
+.closeLightboxBtn {
+  position: absolute;
+  top: -15px;
+  right: -15px;
+  background: #8b0000;
+  color: white;
+  border: 2px solid #111;
+  border-radius: 50%;
+  width: 35px;
+  height: 35px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+  transition: all 0.2s ease;
+  z-index: 10000;
+}
+
+.closeLightboxBtn:hover {
+  background: #ff3333;
+  transform: scale(1.1);
+}
+
+/* --- Animations --- */
+@keyframes fadeInOverlay {
+  to { opacity: 1; }
+}
+
+@keyframes smoothPop {
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }

@@ -21,8 +21,10 @@ export default function HierarchyView({ canEdit }) {
   const [roster, setRoster] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isEditMode, setIsEditMode] = useState(canEdit); 
+  const [enlargedImage, setEnlargedImage] = useState(null); // Lightbox state
   
-  const TITLES = ["Prince", "Seneschal", "Primogen", "Sheriff", "Harpy", "Assistant Harpy", "Hound", "Whip"];
+  // All possible titles for the admin checkboxes
+  const TITLES = ["Prince", "Seneschal", "Primogen", "Sheriff", "Keeper", "Harpy", "Assistant Harpy", "Hound", "Shadow", "Whip"];
 
   useEffect(() => {
     setIsEditMode(canEdit);
@@ -68,7 +70,7 @@ export default function HierarchyView({ canEdit }) {
 
   if (loading) return <Loading />;
 
-  // --- NEW: Filter out hidden characters for players (or admins previewing as players)
+  // Filter out hidden characters for players (or admins previewing as players)
   const displayedRoster = isEditMode ? roster : roster.filter(r => !r.is_hidden);
 
   // Separate the dead from the living using the displayed roster
@@ -78,7 +80,8 @@ export default function HierarchyView({ canEdit }) {
 
   const alive = displayedRoster.filter(r => !r.is_deceased);
 
-  const mainCourtTitles = ["Prince", "Seneschal", "Sheriff", "Harpy", "Assistant Harpy", "Hound"];
+  // Titles that belong in the top box, sorted by rank importance
+  const mainCourtTitles = ["Prince", "Seneschal", "Sheriff", "Keeper", "Harpy", "Assistant Harpy", "Hound", "Shadow"];
   
   // Helper to sort Main Court by rank importance
   const getMainCourtRank = (ent) => {
@@ -101,14 +104,14 @@ export default function HierarchyView({ canEdit }) {
       return (b.status || 0) - (a.status || 0);  
     });
 
-  // 2. Primogen
+  // 2. Primogen (Checks both ID and TYPE to prevent NPC collisions)
   const primogen = alive
-    .filter(r => r.titles?.includes("Primogen") && !r.is_ex && !mainCourt.some(m => m.id === r.id))
+    .filter(r => r.titles?.includes("Primogen") && !r.is_ex && !mainCourt.some(m => m.id === r.id && m.type === r.type))
     .sort((a, b) => (b.status || 0) - (a.status || 0));
 
-  // 3. The Rest
+  // 3. The Rest (Checks both ID and TYPE to prevent NPC collisions)
   const others = alive
-    .filter(r => !mainCourt.some(m => m.id === r.id) && !primogen.some(p => p.id === r.id))
+    .filter(r => !mainCourt.some(m => m.id === r.id && m.type === r.type) && !primogen.some(p => p.id === r.id && p.type === r.type))
     .sort((a, b) => (b.status || 0) - (a.status || 0));
 
   return (
@@ -139,6 +142,7 @@ export default function HierarchyView({ canEdit }) {
                 canEdit={isEditMode} 
                 update={update} 
                 titles={TITLES} 
+                onImageClick={setEnlargedImage}
               />
             ))}
           </div>
@@ -157,7 +161,8 @@ export default function HierarchyView({ canEdit }) {
                 specialClass={styles.highRankCard} 
                 canEdit={isEditMode} 
                 update={update} 
-                titles={TITLES} 
+                titles={TITLES}
+                onImageClick={setEnlargedImage}
               />
             ))}
           </div>
@@ -176,6 +181,7 @@ export default function HierarchyView({ canEdit }) {
                 canEdit={isEditMode} 
                 update={update} 
                 titles={TITLES} 
+                onImageClick={setEnlargedImage}
               />
             ))}
           </div>
@@ -188,8 +194,25 @@ export default function HierarchyView({ canEdit }) {
           <h2 className={styles.deceasedTitle}>Deceased</h2>
           <div className={styles.courtGrid}>
             {deceased.map(d => (
-              <MemberCard key={`${d.type}-${d.id}`} ent={d} canEdit={isEditMode} update={update} titles={TITLES} />
+              <MemberCard 
+                key={`${d.type}-${d.id}`} 
+                ent={d} 
+                canEdit={isEditMode} 
+                update={update} 
+                titles={TITLES} 
+                onImageClick={setEnlargedImage}
+              />
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Image Lightbox Modal */}
+      {enlargedImage && (
+        <div className={styles.lightboxOverlay} onClick={() => setEnlargedImage(null)}>
+          <div className={styles.lightboxContent} onClick={(e) => e.stopPropagation()}>
+            <button className={styles.closeLightboxBtn} onClick={() => setEnlargedImage(null)}>✖</button>
+            <img src={enlargedImage} alt="Enlarged portrait" className={styles.lightboxImage} />
           </div>
         </div>
       )}
@@ -197,7 +220,7 @@ export default function HierarchyView({ canEdit }) {
   );
 }
 
-function MemberCard({ ent, specialClass = "", canEdit, update, titles }) {
+function MemberCard({ ent, specialClass = "", canEdit, update, titles, onImageClick }) {
   const toggleTitle = (title) => {
     const currentTitles = ent.titles || [];
     let newTitles;
@@ -214,7 +237,6 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles }) {
   const displayImageUrl = buildImageUrl(ent.image_url);
   const clanLogoUrl = symlogo(ent.clan); 
 
-  // Apply hidden styling if character is hidden (only visible in edit mode anyway)
   const hiddenClass = ent.is_hidden ? styles.hiddenCard : "";
 
   return (
@@ -237,6 +259,7 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles }) {
             src={displayImageUrl} 
             alt={ent.name} 
             className={`${styles.polaroidImg} ${ent.is_deceased ? styles.grayscale : ''}`} 
+            onClick={() => onImageClick(displayImageUrl)}
           />
         ) : (
           <div className={styles.polaroidPlaceholder}>
@@ -273,7 +296,6 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles }) {
               />
               
               <div className={styles.statusToggles}>
-                {/* NEW: HIDE TOGGLE */}
                 <label className={styles.checkboxLabel}>
                   <input 
                     type="checkbox" 

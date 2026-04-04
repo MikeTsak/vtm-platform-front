@@ -38,7 +38,7 @@ function computeAllDomainsFromJson() {
 }
 /* ==================================================== */
 
-/* ---------- Small UI helpers (unchanged) ---------- */
+/* ---------- Small UI helpers ---------- */
 function Card({ title, subtitle, children, footer, tone = 'default' }) {
   return (
     <section className={styles.card} data-tone={tone}>
@@ -121,7 +121,7 @@ function NumberInput({ label, value, setValue, min = 0, max = 99, step = 1, widt
   );
 }
 function Text({ children }) { return <p className={styles.text}>{children}</p>; }
-function Muted({ children, className }) { return <p className={`${styles.muted} ${className || ''}`}>{children}</p>; }
+function Muted({ children, className, style }) { return <p className={`${styles.muted} ${className || ''}`} style={style}>{children}</p>; }
 function ManualAdder({ onAdd }) {
   const [name, setName] = useState('');
   return (
@@ -365,16 +365,33 @@ function TypesBrowser({ onPick }) {
 
 /* =================== Main Coteries =================== */
 export default function Coteries() {
-  const [tab, setTab] = useState('overview');
+  const [tab, setTab] = useState('saved'); // Default to the saved tab
 
-  // Domains from JSON (no API needed)
+  // --- Role Verification ---
+  const [currentUserRole, setCurrentUserRole] = useState(null);
+  useEffect(() => {
+    let mounted = true;
+    api.get('/auth/me')
+      .then(({ data }) => { if (mounted) setCurrentUserRole(data.user?.role); })
+      .catch(() => {});
+    return () => { mounted = false; };
+  }, []);
+
+  const canCreate = currentUserRole === 'admin' || currentUserRole === 'courtuser';
+
+  // --- Database State ---
+  const [coteriesList, setCoteriesList] = useState([]);
+  const [editingId, setEditingId] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Domains from JSON
   const allDomains = useMemo(() => computeAllDomainsFromJson(), []);
   const domainOptions = useMemo(
     () => allDomains.map(d => ({ value: d.number, label: d.name })),
     [allDomains]
   );
 
-  // Roster (unchanged)
+  // Roster
   const [users, setUsers] = useState([]);
   useEffect(() => {
     let mounted = true;
@@ -384,7 +401,7 @@ export default function Coteries() {
     return () => { mounted = false; };
   }, []);
 
-  // Builder state (unchanged)
+  // Builder state
   const [name, setName] = useState('');
   const [selectedType, setSelectedType] = useState('');
   const [domainId, setDomainId] = useState('');
@@ -408,16 +425,161 @@ export default function Coteries() {
   const allocated = useMemo(() => requiredSpend + domainSpend + backgroundsSpend, [requiredSpend, domainSpend, backgroundsSpend]);
 
   const selectedTypeObj = useMemo(() => (selectedType ? getCoterie(selectedType) : null), [selectedType]);
-  const typeHasNoDomain = !selectedTypeObj || selectedTypeObj.domain == null;
-
+  
+  // DOMAIN IS NOW ALWAYS OPTIONAL
   const remaining = Math.max(0, poolTotal - allocated);
   const valid = useMemo(() => {
     const hasMinMembers = members.length >= 3;
     const hasName = name.trim().length > 0;
-    const hasDomain = typeHasNoDomain ? true : Boolean(domainId);
     const notOverspent = allocated <= poolTotal;
-    return hasMinMembers && hasName && hasDomain && notOverspent;
-  }, [members.length, name, domainId, allocated, poolTotal, typeHasNoDomain]);
+    // Removed hasDomain requirement
+    return hasMinMembers && hasName && notOverspent;
+  }, [members.length, name, allocated, poolTotal]);
+
+  // --- Load saved coteries from DB ---
+  const loadCoteries = async () => {
+    try {
+      const { data } = await api.get('/coteries');
+      setCoteriesList(data.coteries || []);
+    } catch (e) {
+      console.error('Failed to load coteries', e);
+    }
+  };
+
+  useEffect(() => {
+    loadCoteries();
+  }, []);
+
+  // --- Reset Builder to blank slate ---
+  const startNewCoterie = () => {
+    setEditingId(null);
+    setName('');
+    setSelectedType('');
+    setDomainId('');
+    setMembers([]);
+    setPointsPerMember(1);
+    setCoterieXP(0);
+    setChasse(0);
+    setLien(0);
+    setPortillon(0);
+    setBaseline({ chasse: 0, lien: 0, portillon: 0 });
+    setRequired({});
+    setExtras([]);
+    setBackgrounds([]);
+    setTab('builder');
+  };
+
+  // --- Load an existing coterie into the Builder ---
+  const editCoterie = async (c) => {
+    try {
+      // Fetch full details to grab the members list too
+      const { data } = await api.get(`/coteries/${c.id}`);
+      const full = data.coterie;
+      const mems = data.members || [];
+      
+      const safeParse = (val, fallback) => {
+        if (!val) return fallback;
+        if (typeof val === 'string') {
+          try { return JSON.parse(val); } catch { return fallback; }
+        }
+        return val;
+      };
+
+      setEditingId(full.id);
+      setName(full.name || '');
+      setSelectedType(full.type || '');
+      setDomainId(full.domain_id ? String(full.domain_id) : '');
+      setPointsPerMember(full.points_per_member || 1);
+      setCoterieXP(full.coterie_xp || 0);
+      
+      setChasse(full.chasse || 0);
+      setLien(full.lien || 0);
+      setPortillon(full.portillon || 0);
+      
+      setRequired(safeParse(full.required_json, {}));
+      setBackgrounds(safeParse(full.backgrounds_json, []));
+      setExtras(safeParse(full.extras_json, []));
+      
+      setMembers(mems.map(m => ({ id: m.user_id, name: m.display_name })));
+      
+      if (full.type) {
+         const tData = getCoterie(full.type);
+         if (tData) {
+           setBaseline({
+             chasse: Number(tData?.domain?.chasse || 0),
+             lien: Number(tData?.domain?.lien || 0),
+             portillon: Number(tData?.domain?.portillon || 0)
+           });
+         } else {
+           setBaseline({ chasse: 0, lien: 0, portillon: 0 });
+         }
+      } else {
+         setBaseline({ chasse: 0, lien: 0, portillon: 0 });
+      }
+      
+      setTab('builder');
+    } catch (err) {
+      console.error(err);
+      alert('Failed to load coterie details. Are you sure you have permission?');
+    }
+  };
+
+  // --- Save directly to the Database ---
+  const saveToDatabase = async () => {
+    setIsSaving(true);
+    try {
+      const payload = {
+        name: name.trim(),
+        type: selectedType || null,
+        domain_id: domainId ? Number(domainId) : null,
+        traits: { chasse, lien, portillon },
+        required,
+        backgrounds,
+        extras,
+        points_per_member: pointsPerMember,
+        coterie_xp: coterieXP,
+        members: members.map(m => ({ user_id: m.id, display_name: m.name }))
+      };
+
+      if (editingId) {
+        // Update existing
+        await api.put(`/coteries/${editingId}`, payload);
+        // The backend requires a separate call to update members
+        await api.post(`/coteries/${editingId}/members/set`, { members: payload.members });
+      } else {
+        // Create new
+        await api.post('/coteries', payload);
+      }
+      
+      await loadCoteries();
+      setTab('saved'); // Send them back to the list
+    } catch (e) {
+      alert(e.response?.data?.error || 'Failed to save coterie to the database.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // --- Adjust Coterie XP on the fly ---
+  const adjustXP = async (id, delta) => {
+    try {
+      await api.post(`/coteries/${id}/xp`, { delta });
+      await loadCoteries(); // Refresh to show the new XP amount
+    } catch (e) {
+      alert(e.response?.data?.error || 'Failed to adjust XP.');
+    }
+  };
+
+  // --- Delete Coterie ---
+  const deleteCoterie = async (id) => {
+    if (!window.confirm("Are you sure you want to permanently delete this coterie?")) return;
+    try {
+      await api.delete(`/coteries/${id}`);
+      await loadCoteries();
+    } catch (e) {
+      alert(e.response?.data?.error || 'Failed to delete (You may need Admin privileges).');
+    }
+  };
 
   const applyType = (typeName) => {
     const c = getCoterie(typeName);
@@ -434,7 +596,7 @@ export default function Coteries() {
     setPortillon(v => Math.max(base.portillon, v));
     setRequired({ ...(c?.required || {}) });
     setExtras([...(c?.extras || [])]);
-    if (!c?.domain) setDomainId('');
+    // Note: We don't clear domainId here, we let the user choose if they want it
   };
 
   function resetAllocations() {
@@ -442,30 +604,6 @@ export default function Coteries() {
     setBackgrounds([]);
   }
 
-  function exportJSON() {
-    const domain = domainOptions.find((d) => String(d.value) === String(domainId));
-    const payload = {
-      name: name.trim(),
-      type: selectedType || null,
-      domain_id: domain ? domain.value : (typeHasNoDomain ? null : ''),
-      domain_name: domain ? domain.label : (typeHasNoDomain ? null : ''),
-      members: members.map((m) => ({ id: m.id < 0 ? null : m.id, name: m.name })),
-      pool: { per_member: pointsPerMember, total: poolTotal, spent: allocated, remaining },
-      traits: { chasse, lien, portillon, baseline },
-      required,
-      backgrounds,
-      extras_suggested: extras,
-      coterie_xp: coterieXP,
-      rules_meta: { doc: COTERIE_DOC },
-      created_at: new Date().toISOString(),
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob); const a = document.createElement('a');
-    const fn = `coterie-${(name || 'draft').toLowerCase().replace(/[^a-z0-9]+/g, '-')}.json`;
-    a.href = url; a.download = fn; a.click(); URL.revokeObjectURL(url);
-  }
-
-  // Overview copy (unchanged)
   const coreEnglish = [
     "A coterie is a small group of Kindred, bound together by necessity, ambition, or shared circumstance.",
     "They often share resources, a common Haven, and mutual goals, navigating the treacherous politics of the night together.",
@@ -481,12 +619,94 @@ export default function Coteries() {
           value={tab}
           onChange={setTab}
           tabs={[
-            { value: 'overview', label: 'Overview' },
-            { value: 'builder', label: 'Builder' },
+            { value: 'saved', label: 'Saved Coteries' },
+            (canCreate || editingId) ? { value: 'builder', label: 'Builder' } : null,
             { value: 'types', label: 'Types' },
-          ]}
+            { value: 'overview', label: 'Rules Overview' },
+          ].filter(Boolean)}
         />
       </div>
+
+      {tab === 'saved' && (
+        <div style={{ display: 'grid', gap: '1.25rem' }}>
+          
+          {canCreate && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.5rem' }}>
+              <button onClick={startNewCoterie} className={styles.buttonPrimary}>
+                + Build New Coterie
+              </button>
+            </div>
+          )}
+          
+          {coteriesList.length === 0 ? (
+            <Card>
+              <Muted style={{ textAlign: 'center', padding: '2rem 0' }}>
+                No coteries are currently registered in the system.<br/>
+                {canCreate ? 'Click "Build New Coterie" to start organizing!' : 'You are not currently part of any registered coterie.'}
+              </Muted>
+            </Card>
+          ) : (
+            coteriesList.map(c => {
+              const safeParse = (val) => {
+                if (typeof val === 'string') { try { return JSON.parse(val); } catch { return []; } }
+                return val || [];
+              };
+              const bgs = safeParse(c.backgrounds_json);
+              
+              return (
+                <Card key={c.id} title={c.name} subtitle={`Type: ${c.type || 'Custom'}`}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                    <div>
+                      <Muted><b>Domain Division:</b> {c.domain_id ? `#${c.domain_id}` : 'None'}</Muted>
+                      <Muted><b>Pool Points:</b> {c.points_per_member} per member</Muted>
+                      
+                      <Muted style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <b>XP Bank:</b> {c.coterie_xp}
+                        <button 
+                          onClick={() => adjustXP(c.id, -1)} 
+                          disabled={c.coterie_xp <= 0}
+                          title="Spend 1 XP"
+                          style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', cursor: 'pointer', borderRadius: '4px', padding: '2px 8px' }}
+                        >
+                          -1
+                        </button>
+                        <button 
+                          onClick={() => adjustXP(c.id, 1)} 
+                          title="Award 1 XP"
+                          style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', cursor: 'pointer', borderRadius: '4px', padding: '2px 8px' }}
+                        >
+                          +1
+                        </button>
+                      </Muted>
+
+                    </div>
+                    <div>
+                      <Muted><b>Chasse:</b> {c.chasse}</Muted>
+                      <Muted><b>Lien:</b> {c.lien}</Muted>
+                      <Muted><b>Portillon:</b> {c.portillon}</Muted>
+                    </div>
+                    {bgs.length > 0 && (
+                      <div>
+                        <Muted><b>Backgrounds:</b></Muted>
+                        <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'var(--muted)', fontSize: '0.9rem' }}>
+                          {bgs.map((b, i) => <li key={i}>{b.name} (•{b.dots})</li>)}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
+                    <button onClick={() => editCoterie(c)} className={styles.buttonPrimary}>Edit Coterie</button>
+                    {canCreate && (
+                      <button onClick={() => deleteCoterie(c.id)} className={styles.removeButton}>Delete</button>
+                    )}
+                  </div>
+                </Card>
+              );
+            })
+          )}
+        </div>
+      )}
 
       {tab === 'overview' && (
         <>
@@ -555,15 +775,14 @@ export default function Coteries() {
 
             <label className={styles.field}>
               <span className={styles.fieldLabel}>
-                Domain {selectedTypeObj && selectedTypeObj.domain == null ? <em className={styles.muted}>(not required for this type)</em> : '(required)'}
+                Domain <em className={styles.muted}>(optional)</em>
               </span>
               <select
                 value={domainId}
                 onChange={(e) => setDomainId(e.target.value)}
-                disabled={selectedTypeObj && selectedTypeObj.domain == null}
                 className={styles.select}
               >
-                <option value="">— Select domain —</option>
+                <option value="">— Select domain (optional) —</option>
                 {domainOptions.map((o) => (
                   <option key={o.value} value={o.value}>
                     #{o.value} — {o.label}
@@ -604,22 +823,26 @@ export default function Coteries() {
 
           <BackgroundsEditor items={backgrounds} setItems={setBackgrounds} remaining={remaining} />
 
-          <Card tone={valid ? 'success' : 'warn'} title="Export">
+          <Card tone={valid ? 'success' : 'warn'} title="Save & Export">
             {!valid && (
               <Muted>
-                Required: name, ≥3 members, don’t overspend the pool
-                {selectedTypeObj && selectedTypeObj.domain == null ? '' : ', and select a Domain'}.
+                Required: name, ≥3 members, and don’t overspend the pool.
               </Muted>
             )}
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               <button
-                onClick={exportJSON}
-                disabled={!valid}
+                onClick={saveToDatabase}
+                disabled={!valid || isSaving}
                 className={styles.buttonPrimary}
-                title={valid ? 'Download coterie draft JSON' : 'Fill required fields first'}
+                title={valid ? 'Save directly to the server' : 'Fill required fields first'}
               >
-                Export JSON
+                {isSaving ? 'Saving...' : (editingId ? 'Update Database' : 'Save to Database')}
               </button>
+              {editingId && (
+                <button onClick={startNewCoterie} className={styles.buttonSecondary}>
+                  Cancel Edit
+                </button>
+              )}
             </div>
           </Card>
         </>

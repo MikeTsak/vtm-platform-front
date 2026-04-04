@@ -348,6 +348,16 @@
     .button, .buttonPrimary, .buttonSecondary, .applyTypeButton { padding: 0.5rem 0.9rem; font-size: 0.9rem; }
     .backgroundItem { flex-direction: column; align-items: stretch; }
     .backgroundControls { width: 100%; justify-content: space-between; }
+    /* Make tabs stack cleanly on narrow phones */
+  .tabs {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .tabButton {
+    width: 100%;
+    text-align: center;
+  }
 }
 
 @media (max-width: 480px) {
