@@ -30,7 +30,7 @@
   z-index: 9000;
   transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   
-  /* ✅ FIX: Grid Layout for Stacking */
+  /* Grid Layout for Stacking */
   display: grid;
   place-items: center;
   grid-template-columns: 1fr;
@@ -47,7 +47,7 @@
   background: #333;
 }
 
-/* ✅ FIX: Force items to overlap */
+/* Force items to overlap */
 .fab > * {
   grid-area: 1 / 1; /* Both SVG and IMG go to row 1, col 1 */
   pointer-events: none; /* Clicks pass through to button */
@@ -488,4 +488,27 @@
 .diceContainer::-webkit-scrollbar-thumb {
   background: var(--dr-border);
   border-radius: 3px;
+}
+
+/* --- Mobile Responsiveness --- */
+@media (max-width: 768px) {
+  .fab {
+    bottom: auto; /* Clears the desktop bottom value */
+    top: 70px; /* Places it near the top. Adjust this if it overlaps your top navbar! */
+    right: 16px;
+  }
+
+  .panel {
+    bottom: auto; /* Clears the desktop bottom value */
+    top: 145px; /* Places the panel directly under the mobile FAB */
+    right: 16px;
+    width: calc(100vw - 32px); /* Makes sure it fits nicely on narrow mobile screens */
+    max-height: calc(100dvh - 160px); /* Uses dynamic viewport height for mobile browsers */
+    transform-origin: top right; /* Makes the opening animation start from the top right */
+    transform: translateY(-20px) scale(0.95); /* Slide down instead of sliding up */
+  }
+
+  .panel.open {
+    transform: translateY(0) scale(1);
+  }
 }

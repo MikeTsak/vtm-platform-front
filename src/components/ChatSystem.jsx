@@ -4,7 +4,7 @@ import { AuthCtx } from '../AuthContext';
 import api from '../api';
 import styles from '../styles/ChatSystem.module.css';
 import Loading from './Loading';
-import EmojiPicker from 'emoji-picker-react'; // <-- NEW IMPORT
+import EmojiPicker from 'emoji-picker-react';
 
 /* --- Clan assets & colors --- */
 const CLAN_COLORS = {
@@ -124,6 +124,7 @@ const asGroupContact = (g) => ({
   type: 'group',
   id: g.id,
   name: g.name,
+  created_by: g.created_by,
   last_message_at: g.last_message_at ? new Date(g.last_message_at).getTime() : 0
 });
 
@@ -257,6 +258,60 @@ export default function Comms() {
   const [creatingGroup, setCreatingGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupMembers, setNewGroupMembers] = useState([]);
+
+  // Group Management State
+  const [managingGroup, setManagingGroup] = useState(false);
+  const [currentGroupMembers, setCurrentGroupMembers] = useState([]);
+  const [groupMembersLoading, setGroupMembersLoading] = useState(false);
+
+  const openManageGroup = async () => {
+    setManagingGroup(true);
+    setGroupMembersLoading(true);
+    try {
+      const { data } = await api.get(`/chat/groups/${selectedContact.id}/members`);
+      setCurrentGroupMembers(data.members || []);
+    } catch(e) {
+      console.error(e);
+    } finally {
+      setGroupMembersLoading(false);
+    }
+  };
+
+  const handleAddMemberToGroup = async (userId) => {
+    try {
+      await api.post(`/chat/groups/${selectedContact.id}/members`, { members: [userId] });
+      openManageGroup(); // refresh list
+    } catch(e) { alert('Failed to add member'); }
+  };
+
+  const handleRemoveMemberFromGroup = async (userId) => {
+    try {
+      await api.delete(`/chat/groups/${selectedContact.id}/members/${userId}`);
+      openManageGroup(); // refresh list
+    } catch(e) { alert('Failed to remove member'); }
+  };
+
+  const handleDeleteGroup = async () => {
+    if (!window.confirm("Are you sure you want to delete this group? This will erase all message history and cannot be undone.")) return;
+    try {
+      await api.delete(`/chat/groups/${selectedContact.id}`);
+      setManagingGroup(false);
+      setSelectedContact(null); // Close the chat window
+      const { data: g } = await api.get('/chat/groups');
+      setGroups(sortContacts(g.groups.map(asGroupContact)));
+    } catch(e) { alert('Failed to delete group'); }
+  };
+
+  // --- Leave Group Function ---
+  const handleLeaveGroup = async () => {
+    if (!window.confirm("Are you sure you want to leave this group chat?")) return;
+    try {
+      await api.delete(`/chat/groups/${selectedContact.id}/members/${currentUser.id}`);
+      setSelectedContact(null); // Close the chat window
+      const { data: g } = await api.get('/chat/groups');
+      setGroups(sortContacts(g.groups.map(asGroupContact)));
+    } catch(e) { alert('Failed to leave group'); }
+  };
 
   const [notifOn, setNotifOn] = useState(() => localStorage.getItem('comms_notifs') === '1');
   const notifSupported = typeof window !== 'undefined' && 'Notification' in window;
@@ -1016,6 +1071,55 @@ const selectContact = (contact) => {
     </div>
   );
 
+  // Group Manage Modal
+  const renderManageGroupModal = () => {
+    const memberIds = currentGroupMembers.map(m => m.id);
+    const nonMembers = usersWithChar.filter(u => !memberIds.includes(u.id));
+
+    return (
+      <div className={styles.modalBackdrop}>
+        <div className={styles.modal}>
+          <h3>Manage: {selectedContact?.name}</h3>
+          
+          {groupMembersLoading ? <Loading /> : (
+            <>
+              <div className={styles.sectionLabel} style={{position:'static'}}>Current Members</div>
+              <div className={styles.memberSelect}>
+                {currentGroupMembers.map(m => (
+                  <div key={m.id} className={styles.memberRow} style={{justifyContent: 'space-between', padding: '6px 10px'}}>
+                    <span>{m.char_name || 'No char'} <small>({m.display_name})</small></span>
+                    {/* Only show remove button if the user is NOT the group creator */}
+                    {m.id !== selectedContact.created_by && (
+                      <button className={styles.btnSec} style={{padding: '4px 8px', fontSize: '0.75rem'}} onClick={() => handleRemoveMemberFromGroup(m.id)}>Remove</button>
+                    )}
+                    {m.id === selectedContact.created_by && <small style={{color: '#888'}}>Creator</small>}
+                  </div>
+                ))}
+              </div>
+
+              <div className={styles.sectionLabel} style={{position:'static', marginTop:'10px'}}>Add Members</div>
+              <div className={styles.memberSelect}>
+                {nonMembers.length === 0 ? (
+                  <div style={{padding:'10px', color:'#666', textAlign: 'center'}}>All players are in the group.</div>
+                ) : nonMembers.map(u => (
+                  <div key={u.id} className={styles.memberRow} style={{justifyContent: 'space-between', padding: '6px 10px'}}>
+                    <span>{u.char_name} <small>({u.display_name})</small></span>
+                    <button className={styles.btnPri} style={{padding: '4px 8px', fontSize: '0.75rem'}} onClick={() => handleAddMemberToGroup(u.id)}>Add</button>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+          
+          <div className={styles.modalActions} style={{justifyContent: 'space-between', marginTop: '16px'}}>
+            <button onClick={handleDeleteGroup} className={styles.btnSec} style={{borderColor: '#d41b2c', color: '#d41b2c'}}>Delete Group</button>
+            <button onClick={() => setManagingGroup(false)} className={styles.btnPri}>Done</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const containerClasses = [
     styles.commsContainer,
     isMobile && selectedContact ? styles.mobileChatActive : ''
@@ -1024,6 +1128,7 @@ const selectContact = (contact) => {
   return (
     <div ref={containerRef} className={containerClasses} style={{ '--accent': currentAccent }}>
       {creatingGroup && renderCreateGroupModal()}
+      {managingGroup && renderManageGroupModal()}
 
       <aside className={styles.userList} id="comms-contacts">
         <div className={styles.listHeader}>
@@ -1110,6 +1215,30 @@ const selectContact = (contact) => {
                 <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', flex:1}}>
                    Chat with <b>{headerLabel}</b>
                 </span>
+                
+                {/* GROUP BUTTON LOGIC */}
+                {selectedContact.type === 'group' && (
+                  <>
+                    {(selectedContact.created_by === currentUser?.id || isAdmin) ? (
+                      <button 
+                        onClick={openManageGroup} 
+                        className={styles.btnSec} 
+                        style={{padding: '2px 8px', fontSize: '0.75rem', marginLeft: '10px'}}
+                      >
+                        ⚙️ Manage
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={handleLeaveGroup} 
+                        className={styles.btnSec} 
+                        style={{padding: '2px 8px', fontSize: '0.75rem', marginLeft: '10px', borderColor: '#d41b2c', color: '#d41b2c'}}
+                      >
+                        🚪 Leave
+                      </button>
+                    )}
+                  </>
+                )}
+
                 {selectedContact.type === 'npc' && selectedContact.clan && (
                   <span className={styles.charTag}>{selectedContact.clan}</span>
                 )}
