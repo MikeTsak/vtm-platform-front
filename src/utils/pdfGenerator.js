@@ -1,11 +1,14 @@
 // src/utils/pdfGenerator.js
-import html2pdf from 'html2pdf.js';
 
 export default async function generateVTMCharacterSheetPDF(character) {
-  // 1. Parse the sheet data securely
+  // 1. Parse the sheet data securely (Handle both wrapped and raw sheet objects)
   let sheet = {};
   try {
-    sheet = typeof character.sheet === 'string' ? JSON.parse(character.sheet) : (character.sheet || {});
+    if (character.sheet) {
+      sheet = typeof character.sheet === 'string' ? JSON.parse(character.sheet) : character.sheet;
+    } else {
+      sheet = character; // Fallback if the object passed IS the sheet directly
+    }
   } catch (e) {
     console.error('Invalid sheet JSON', e);
     alert('Invalid JSON sheet. Cannot generate PDF.');
@@ -28,7 +31,7 @@ export default async function generateVTMCharacterSheetPDF(character) {
   const renderDots = (value, max = 5) => {
     let html = '<div class="dots-container">';
     for (let i = 1; i <= max; i++) {
-      html += `<span class="dot ${i <= (value || 0) ? 'filled' : ''}"></span>`;
+      html += `<span class="dot ${i <= (Number(value) || 0) ? 'filled' : ''}"></span>`;
     }
     html += '</div>';
     return html;
@@ -43,8 +46,8 @@ export default async function generateVTMCharacterSheetPDF(character) {
       let boxStyle = 'width: 14px; height: 14px; border: 1px solid #222; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; line-height: 1;';
 
       if (isValueTracker) {
-        if (i < value) isFilled = true;
-        if (i >= max - stains) content = '/';
+        if (i < (Number(value) || 0)) isFilled = true;
+        if (i >= max - (Number(stains) || 0)) content = '/';
         
         if (isFilled) {
           if (isHunger) {
@@ -58,11 +61,11 @@ export default async function generateVTMCharacterSheetPDF(character) {
         }
       } else {
         boxStyle += ' background: #fff; color: #222;';
-        if (i < agg) { 
+        if (i < (Number(agg) || 0)) { 
           content = 'X'; 
           boxStyle += ' color: #b40f1f;'; 
         } 
-        else if (i < agg + sup) { 
+        else if (i < (Number(agg) || 0) + (Number(sup) || 0)) { 
           content = '/'; 
         }
       }
@@ -73,21 +76,26 @@ export default async function generateVTMCharacterSheetPDF(character) {
     return html;
   };
 
-  // --- Data Extraction ---
+  // --- Data Extraction with Ultra-Safe Null Checks ---
   const attrs = sheet.attributes || {};
   const skills = sheet.skills || {};
-  const getSkill = (k) => typeof skills[k] === 'object' ? skills[k].dots : skills[k];
+  
+  // Safely extract skill dots whether they are an object or a flat number
+  const getSkill = (k) => (skills[k] && typeof skills[k] === 'object') ? skills[k].dots : (skills[k] || 0);
+  
   const disciplines = sheet.disciplines || {};
-  const merits = (sheet.advantages && sheet.advantages.merits) || [];
-  const flaws = (sheet.advantages && sheet.advantages.flaws) || [];
+  const merits = Array.isArray(sheet.advantages?.merits) ? sheet.advantages.merits : [];
+  const flaws = Array.isArray(sheet.advantages?.flaws) ? sheet.advantages.flaws : [];
 
   // Calculate dynamic max values and current tracker status
   const stamina = Number(attrs.Stamina) || 1;
   let maxHealth = stamina + 3;
-  const fortitudePowers = sheet.disciplinePowers?.Fortitude || [];
-  if (Array.isArray(fortitudePowers) && fortitudePowers.some(p => String(p.name || p.id).toLowerCase().includes('resilience'))) {
+  
+  const fortitudePowers = Array.isArray(sheet.disciplinePowers?.Fortitude) ? sheet.disciplinePowers.Fortitude : [];
+  if (fortitudePowers.some(p => String(p?.name || p?.id || '').toLowerCase().includes('resilience'))) {
      maxHealth += Number(sheet.disciplines?.Fortitude || 0);
   }
+  
   const maxWillpower = (Number(attrs.Composure) || 1) + (Number(attrs.Resolve) || 1);
 
   const healthAgg = sheet.health?.aggravated || 0;
@@ -104,7 +112,15 @@ export default async function generateVTMCharacterSheetPDF(character) {
   const logoUrl = window.location.origin + '/img/ATT-logo(1).png';
   const exportDateString = formatExportDate();
 
-  // --- HTML Template ---
+  // --- STRICTLY NO SPACES IN FILENAME ---
+  const charName = (character.name || sheet.name || 'Character').trim();
+  let rawFileName = `${charName}-Athens-Through-Time-VTM-${exportDateString}.pdf`;
+  const finalFileName = rawFileName.replace(/[\s:]+/g, '-').replace(/-+/g, '-');
+  
+  // Very important: Escape single quotes so it doesn't break the injected javascript
+  const safeFileName = finalFileName.replace(/'/g, "\\'");
+
+  // --- HTML Template for the VTM Sheet ---
   const contentHtml = `
     <div id="vtm-sheet-content" style="font-family: 'Crimson Text', serif; color: #222; background: #fff; padding: 20px 40px; width: 800px; margin: 0 auto; box-sizing: border-box;">
       <style>
@@ -131,6 +147,8 @@ export default async function generateVTMCharacterSheetPDF(character) {
         #vtm-sheet-content .dots-container, #vtm-sheet-content .boxes-container { display: flex; gap: 3px; }
         #vtm-sheet-content .dot { width: 10px; height: 10px; border: 1px solid #222; border-radius: 50%; background: #fff; display: inline-block; box-sizing: border-box; }
         #vtm-sheet-content .dot.filled { background: #8a0303; border-color: #8a0303; }
+        #vtm-sheet-content .box { width: 12px; height: 12px; border: 1px solid #222; background: #fff; display: inline-block; box-sizing: border-box; }
+        #vtm-sheet-content .box.filled { background: #222; }
         #vtm-sheet-content .trackers { margin-top: 30px; padding: 15px; background: #f4f4f4; border: 1px solid #ddd; border-radius: 4px; }
         #vtm-sheet-content .tracker-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         #vtm-sheet-content .tracker-row strong { font-family: 'Oswald', sans-serif; font-size: 16px; width: 100px; }
@@ -145,7 +163,7 @@ export default async function generateVTMCharacterSheetPDF(character) {
       </div>
 
       <div class="meta-grid">
-        <div class="meta-field"><strong>Name:</strong> <span>${character.name || sheet.name || ''}</span></div>
+        <div class="meta-field"><strong>Name:</strong> <span>${charName}</span></div>
         <div class="meta-field"><strong>Concept:</strong> <span>${sheet.concept || ''}</span></div>
         <div class="meta-field"><strong>Predator:</strong> <span>${sheet.predatorType || sheet.predator_type || ''}</span></div>
         
@@ -153,7 +171,7 @@ export default async function generateVTMCharacterSheetPDF(character) {
         <div class="meta-field"><strong>Ambition:</strong> <span>${sheet.ambition || ''}</span></div>
         <div class="meta-field"><strong>Sire:</strong> <span>${sheet.sire || ''}</span></div>
         
-        <div class="meta-field"><strong>Clan:</strong> <span>${character.clan || ''}</span></div>
+        <div class="meta-field"><strong>Clan:</strong> <span>${character.clan || sheet.clan || ''}</span></div>
         <div class="meta-field"><strong>Desire:</strong> <span>${sheet.desire || ''}</span></div>
         <div class="meta-field"><strong>Generation:</strong> <span>${sheet.generation || ''}</span></div>
       </div>
@@ -246,7 +264,7 @@ export default async function generateVTMCharacterSheetPDF(character) {
           <div>
             <div class="stat-row"><strong>${d}</strong> ${renderDots(val)}</div>
             <div style="padding-left:10px; font-size:13px; color:#555;">
-              ${(sheet.disciplinePowers?.[d] || []).map(p => `• ${p.name || p.id}`).join('<br>')}
+              ${(Array.isArray(sheet.disciplinePowers?.[d]) ? sheet.disciplinePowers[d] : []).map(p => `• ${p.name || p.id}`).join('<br>')}
             </div>
           </div>
         `).join('')}
@@ -266,53 +284,113 @@ export default async function generateVTMCharacterSheetPDF(character) {
     </div>
   `;
 
-  // 2. OPEN THE HTML IN A NEW TAB
-  const printWindow = window.open('', '_blank');
-  if (printWindow) {
-    printWindow.document.open();
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head><title>${character.name || 'Character'} - V5 Sheet</title></head>
-        <body style="margin: 0; background: #e5e5e5; display: flex; justify-content: center; padding: 20px;">
-          <div style="box-shadow: 0 0 10px rgba(0,0,0,0.3);">
-            ${contentHtml}
-          </div>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-  } else {
-    alert("Pop-up blocked! Could not open the new tab.");
+  // --- HTML for the ENTIRE New Window (Includes CDN and Button) ---
+  const fullHtmlPage = `
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <title>${charName} - V5 Sheet</title>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+        <style>
+          body {
+            margin: 0; 
+            background: #e5e5e5; 
+            display: flex; 
+            flex-direction: column;
+            align-items: center; 
+            padding: 40px 20px;
+            font-family: sans-serif;
+          }
+          .sheet-wrapper {
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            background: #fff;
+          }
+          .action-area {
+            width: 100%;
+            max-width: 800px; /* Matches the sheet width */
+            margin-bottom: 20px;
+            display: flex;
+          }
+          .btn-download {
+            background-color: #8a0303;
+            color: #fff;
+            border: none;
+            padding: 20px;
+            font-size: 20px;
+            border-radius: 0px; /* Sharp, boxy corners */
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%; /* Long, full width */
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+          }
+          .btn-download:hover {
+            background-color: #600202;
+          }
+          .btn-download:disabled {
+            background-color: #555;
+            cursor: wait;
+          }
+        </style>
+      </head>
+      <body>
+        
+        <div class="action-area">
+          <button id="download-btn" class="btn-download">Download PDF</button>
+        </div>
+
+        <div class="sheet-wrapper">
+          ${contentHtml}
+        </div>
+
+        <script>
+          document.getElementById('download-btn').addEventListener('click', function() {
+            var btn = this;
+            var originalText = btn.innerText;
+            
+            // UI feedback while processing
+            btn.innerText = 'GENERATING PDF... PLEASE WAIT';
+            btn.disabled = true;
+
+            var element = document.getElementById('vtm-sheet-content');
+            
+            // MAGIC FIX: scrollY: 0 prevents the huge blank space at the top
+            var opt = {
+              margin:       [5, 0, 5, 0],
+              filename:     '${safeFileName}',
+              image:        { type: 'jpeg', quality: 0.98 },
+              html2canvas:  { scale: 2, useCORS: true, scrollY: 0, scrollX: 0 },
+              jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            // Call the globally loaded html2pdf library
+            html2pdf().set(opt).from(element).save().then(function() {
+               // Restore button state after download starts
+               btn.innerText = originalText;
+               btn.disabled = false;
+            }).catch(function(err) {
+               console.error("PDF Generation Error:", err);
+               alert("An error occurred while generating the PDF.");
+               btn.innerText = originalText;
+               btn.disabled = false;
+            });
+          });
+        </script>
+
+      </body>
+    </html>
+  `;
+
+  // 2. Convert the HTML string into a Blob URL to avoid the 'about:blank' display
+  const blob = new Blob([fullHtmlPage], { type: 'text/html;charset=utf-8' });
+  const blobUrl = URL.createObjectURL(blob);
+  
+  const printWindow = window.open(blobUrl, '_blank');
+  
+  if (!printWindow) {
+    alert("Pop-up blocked! Could not open the new tab to view your character sheet.");
   }
-
-  // 3. GENERATE AND DOWNLOAD PDF IN THE BACKGROUND
-  const hiddenContainer = document.createElement('div');
-  hiddenContainer.innerHTML = contentHtml;
-  hiddenContainer.style.position = 'absolute';
-  hiddenContainer.style.left = '-9999px';
-  hiddenContainer.style.top = '0';
-  document.body.appendChild(hiddenContainer);
-
-  // --- STRICTLY NO SPACES IN FILENAME ---
-  const charName = (character.name || 'Character').trim();
-  let rawFileName = `${charName}-Athens-Through-Time-VTM-${exportDateString}.pdf`;
-  // Replace ALL spaces and colons with dashes, then collapse any multiple dashes into a single dash
-  const finalFileName = rawFileName.replace(/[\s:]+/g, '-').replace(/-+/g, '-');
-
-  const opt = {
-    margin:       10,
-    filename:     finalFileName,
-    image:        { type: 'jpeg', quality: 0.98 },
-    html2canvas:  { scale: 2, useCORS: true },
-    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-  };
-
-  html2pdf().set(opt).from(hiddenContainer.firstElementChild).save().then(() => {
-    // Cleanup the hidden element once the download triggers
-    document.body.removeChild(hiddenContainer);
-  }).catch(err => {
-    console.error('PDF Download Error:', err);
-    document.body.removeChild(hiddenContainer);
-  });
 }
