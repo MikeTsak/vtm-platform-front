@@ -538,7 +538,7 @@ const save = async () => {
     bloodPotency: bloodPotencyOut
   };
 
-    const url = forNPC ? '/admin/npcs' : (isRebuilding ? '/api/characters/rebuild' : '/api/characters');
+    const url = forNPC ? '/admin/npcs' : (isRebuilding ? '/characters/rebuild' : '/characters');
     const { data } = await api.post(url, { name, clan, sheet: payload });
     
     // Store the created character data if returned by API

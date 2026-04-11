@@ -79,7 +79,7 @@ async function subscribePush() {
       applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
     });
   }
-  try { await api.post('/api/push/subscribe', { subscription: sub }); } catch { /* ignore */ }
+  try { await api.post('/push/subscribe', { subscription: sub }); } catch { /* ignore */ }
   return sub;
 }
 
@@ -90,7 +90,7 @@ async function unsubscribePush() {
   if (sub) {
     const endpoint = sub.endpoint;
     try { await sub.unsubscribe(); } catch {}
-    try { await api.post('/api/push/unsubscribe', { endpoint }); } catch {}
+    try { await api.post('/push/unsubscribe', { endpoint }); } catch {}
     return true;
   }
   return false;
@@ -434,7 +434,7 @@ export default function Comms() {
       try {
         if (canPush() && VAPID_PUBLIC_KEY) {
           const sub = await subscribePush();
-          if (sub) { try { await api.post('/api/push/test'); } catch {} }
+          if (sub) { try { await api.post('/push/test'); } catch {} }
         }
       } catch { /* ignore */ }
       setNotifDenied(false); setNotifOn(true);
@@ -444,7 +444,7 @@ export default function Comms() {
         const sub = await reg?.pushManager.getSubscription();
         const endpoint = sub?.endpoint;
         try { await unsubscribePush(); } catch {}
-        if (endpoint) { try { await api.post('/api/push/unsubscribe', { endpoint }); } catch {} }
+        if (endpoint) { try { await api.post('/push/unsubscribe', { endpoint }); } catch {} }
       } catch {}
       setNotifOn(false); setNotifDenied(false);
     }

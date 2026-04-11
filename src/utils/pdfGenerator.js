@@ -12,6 +12,18 @@ export default async function generateVTMCharacterSheetPDF(character) {
     return;
   }
 
+  // --- Date Formatter ---
+  const formatExportDate = () => {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    const mmm = months[now.getMonth()];
+    const yyyy = now.getFullYear();
+    return `${hh}:${mm} - ${dd} ${mmm} ${yyyy}`;
+  };
+
   // --- Helpers for dots and boxes ---
   const renderDots = (value, max = 5) => {
     let html = '<div class="dots-container">';
@@ -22,10 +34,40 @@ export default async function generateVTMCharacterSheetPDF(character) {
     return html;
   };
 
-  const renderBoxes = (value, max = 10) => {
+  // Advanced tracker renderer for X, /, and blood emojis
+  const renderTrackerBoxes = (max, agg = 0, sup = 0, isValueTracker = false, value = 0, stains = 0, isHunger = false) => {
     let html = '<div class="boxes-container">';
-    for (let i = 1; i <= max; i++) {
-      html += `<span class="box ${i <= (value || 0) ? 'filled' : ''}"></span>`;
+    for (let i = 0; i < max; i++) {
+      let content = '';
+      let isFilled = false;
+      let boxStyle = 'width: 14px; height: 14px; border: 1px solid #222; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; line-height: 1;';
+
+      if (isValueTracker) {
+        if (i < value) isFilled = true;
+        if (i >= max - stains) content = '/';
+        
+        if (isFilled) {
+          if (isHunger) {
+            content = '🩸';
+            boxStyle += ' background: rgba(0,0,0,0.05); border-color: rgba(128,128,128,0.5); font-size: 10px;';
+          } else {
+            boxStyle += ' background: #222; color: #fff;';
+          }
+        } else {
+          boxStyle += ' background: #fff; color: #222;';
+        }
+      } else {
+        boxStyle += ' background: #fff; color: #222;';
+        if (i < agg) { 
+          content = 'X'; 
+          boxStyle += ' color: #b40f1f;'; 
+        } 
+        else if (i < agg + sup) { 
+          content = '/'; 
+        }
+      }
+
+      html += `<span style="${boxStyle}">${content}</span>`;
     }
     html += '</div>';
     return html;
@@ -39,8 +81,28 @@ export default async function generateVTMCharacterSheetPDF(character) {
   const merits = (sheet.advantages && sheet.advantages.merits) || [];
   const flaws = (sheet.advantages && sheet.advantages.flaws) || [];
 
+  // Calculate dynamic max values and current tracker status
+  const stamina = Number(attrs.Stamina) || 1;
+  let maxHealth = stamina + 3;
+  const fortitudePowers = sheet.disciplinePowers?.Fortitude || [];
+  if (Array.isArray(fortitudePowers) && fortitudePowers.some(p => String(p.name || p.id).toLowerCase().includes('resilience'))) {
+     maxHealth += Number(sheet.disciplines?.Fortitude || 0);
+  }
+  const maxWillpower = (Number(attrs.Composure) || 1) + (Number(attrs.Resolve) || 1);
+
+  const healthAgg = sheet.health?.aggravated || 0;
+  const healthSup = sheet.health?.superficial || 0;
+
+  const wpAgg = sheet.willpower?.aggravated || 0;
+  const wpSup = sheet.willpower?.superficial || 0;
+
+  const humanityVal = sheet.morality?.humanity ?? sheet.humanity ?? 7;
+  const stains = sheet.stains || 0;
+  const hungerVal = sheet.hunger || 0;
+
   // Use the absolute URL so html2pdf and the new window can definitely find your image
   const logoUrl = window.location.origin + '/img/ATT-logo(1).png';
+  const exportDateString = formatExportDate();
 
   // --- HTML Template ---
   const contentHtml = `
@@ -50,10 +112,12 @@ export default async function generateVTMCharacterSheetPDF(character) {
         
         #vtm-sheet-content h1, #vtm-sheet-content h2, #vtm-sheet-content h3, #vtm-sheet-content .section-title { font-family: 'Oswald', sans-serif; text-transform: uppercase; }
         
-        /* Updated Header for Logo */
+        /* Updated Header for Logo and Subtitle */
         #vtm-sheet-content .header { display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 30px; border-bottom: 2px solid #8a0303; padding-bottom: 10px; }
-        #vtm-sheet-content .header img { height: 55px; width: auto; object-fit: contain; }
-        #vtm-sheet-content .header h1 { color: #8a0303; font-size: 32px; letter-spacing: 2px; margin: 0; }
+        #vtm-sheet-content .header img { height: 65px; width: auto; object-fit: contain; }
+        #vtm-sheet-content .header-text { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; }
+        #vtm-sheet-content .header h1 { color: #8a0303; font-size: 32px; letter-spacing: 2px; margin: 0; line-height: 1.1; }
+        #vtm-sheet-content .header .subtitle { font-family: 'Oswald', sans-serif; font-size: 16px; color: #555; letter-spacing: 1px; margin-top: 2px; text-transform: uppercase; }
         
         #vtm-sheet-content .meta-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px 30px; margin-bottom: 30px; font-size: 14px; }
         #vtm-sheet-content .meta-field { display: flex; border-bottom: 1px solid #ccc; padding-bottom: 2px; }
@@ -67,8 +131,6 @@ export default async function generateVTMCharacterSheetPDF(character) {
         #vtm-sheet-content .dots-container, #vtm-sheet-content .boxes-container { display: flex; gap: 3px; }
         #vtm-sheet-content .dot { width: 10px; height: 10px; border: 1px solid #222; border-radius: 50%; background: #fff; display: inline-block; box-sizing: border-box; }
         #vtm-sheet-content .dot.filled { background: #8a0303; border-color: #8a0303; }
-        #vtm-sheet-content .box { width: 12px; height: 12px; border: 1px solid #222; background: #fff; display: inline-block; box-sizing: border-box; }
-        #vtm-sheet-content .box.filled { background: #222; }
         #vtm-sheet-content .trackers { margin-top: 30px; padding: 15px; background: #f4f4f4; border: 1px solid #ddd; border-radius: 4px; }
         #vtm-sheet-content .tracker-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         #vtm-sheet-content .tracker-row strong { font-family: 'Oswald', sans-serif; font-size: 16px; width: 100px; }
@@ -76,7 +138,10 @@ export default async function generateVTMCharacterSheetPDF(character) {
 
       <div class="header">
         <img src="${logoUrl}" alt="ATT Logo" />
-        <h1>VAMPIRE THE MASQUERADE</h1>
+        <div class="header-text">
+          <h1>VAMPIRE THE MASQUERADE</h1>
+          <div class="subtitle">Chronicle: Athens Through-Time LARP</div>
+        </div>
       </div>
 
       <div class="meta-grid">
@@ -84,7 +149,7 @@ export default async function generateVTMCharacterSheetPDF(character) {
         <div class="meta-field"><strong>Concept:</strong> <span>${sheet.concept || ''}</span></div>
         <div class="meta-field"><strong>Predator:</strong> <span>${sheet.predatorType || sheet.predator_type || ''}</span></div>
         
-        <div class="meta-field"><strong>Chronicle:</strong> <span>${sheet.chronicle || 'Athens Through-Time'}</span></div>
+        <div class="meta-field"><strong>Exported:</strong> <span>${exportDateString}</span></div>
         <div class="meta-field"><strong>Ambition:</strong> <span>${sheet.ambition || ''}</span></div>
         <div class="meta-field"><strong>Sire:</strong> <span>${sheet.sire || ''}</span></div>
         
@@ -156,21 +221,21 @@ export default async function generateVTMCharacterSheetPDF(character) {
         <div>
           <div class="tracker-row">
             <strong>HEALTH</strong>
-            ${renderBoxes(sheet.health_current ?? (attrs.Stamina + 3), attrs.Stamina + 3)}
+            ${renderTrackerBoxes(maxHealth, healthAgg, healthSup, false)}
           </div>
           <div class="tracker-row">
             <strong>WILLPOWER</strong>
-            ${renderBoxes(sheet.willpower_current ?? (attrs.Composure + attrs.Resolve), attrs.Composure + attrs.Resolve)}
+            ${renderTrackerBoxes(maxWillpower, wpAgg, wpSup, false)}
           </div>
         </div>
         <div>
           <div class="tracker-row">
             <strong>HUMANITY</strong>
-            ${renderBoxes(sheet.humanity || 7, 10)}
+            ${renderTrackerBoxes(10, 0, 0, true, humanityVal, stains, false)}
           </div>
           <div class="tracker-row">
             <strong>HUNGER</strong>
-            ${renderBoxes(sheet.hunger || 1, 5)}
+            ${renderTrackerBoxes(5, 0, 0, true, hungerVal, 0, true)}
           </div>
         </div>
       </div>
@@ -229,16 +294,22 @@ export default async function generateVTMCharacterSheetPDF(character) {
   hiddenContainer.style.top = '0';
   document.body.appendChild(hiddenContainer);
 
-  const fileName = `${(character.name || 'Character').replace(/\s+/g, '_')}_Sheet.pdf`;
+  // --- STRICTLY NO SPACES IN FILENAME ---
+  const charName = (character.name || 'Character').trim();
+  let rawFileName = `${charName}-Athens-Through-Time-VTM-${exportDateString}.pdf`;
+  // Replace ALL spaces and colons with dashes, then collapse any multiple dashes into a single dash
+  const finalFileName = rawFileName.replace(/[\s:]+/g, '-').replace(/-+/g, '-');
+
   const opt = {
     margin:       10,
-    filename:     fileName,
+    filename:     finalFileName,
     image:        { type: 'jpeg', quality: 0.98 },
     html2canvas:  { scale: 2, useCORS: true },
     jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
   };
 
   html2pdf().set(opt).from(hiddenContainer.firstElementChild).save().then(() => {
+    // Cleanup the hidden element once the download triggers
     document.body.removeChild(hiddenContainer);
   }).catch(err => {
     console.error('PDF Download Error:', err);

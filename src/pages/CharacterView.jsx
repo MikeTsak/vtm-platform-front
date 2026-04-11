@@ -1,12 +1,14 @@
 // src/pages/CharacterView.jsx
-import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, useRef, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api';
+import { AuthCtx } from '../AuthContext';
 import { DISCIPLINES, ALL_DISCIPLINE_NAMES, iconPath } from '../data/disciplines';
 import { RITUALS } from '../data/rituals';
 import styles from '../styles/CharacterView.module.css';
 import CharacterSetup from './CharacterSetup';
 import { MERITS_AND_FLAWS } from '../data/merits_flaws';
+import generateVTMCharacterSheetPDF from '../utils/pdfGenerator'; 
 
 /* ---------- Clan tint colors ---------- */
 const CLAN_COLORS = {
@@ -24,6 +26,13 @@ const CLAN_COLORS = {
   Caitiff: '#636363',
   'Thin-blood': '#6e6e2b',
 };
+
+const NAME_OVERRIDES = {
+  'The Ministry': 'Ministry',
+  'Banu Haqim': 'Banu_Haqim',
+  'Thin-blood': 'Thinblood'
+};
+const symlogo = (c) => `/img/clans/330px-${(NAME_OVERRIDES[c]||c).replace(/\s+/g,'_')}_symbol.png`;
 
 const ATTRS = [
   ['Strength','Dexterity','Stamina'],
@@ -44,7 +53,6 @@ function bulletCount(s = '') {
   const m = String(s).match(/•/g);
   return m ? m.length : 0;
 }
-/** Parse dot specs like "•", "•••", "• - •••", "•• or ••••", "• +" */
 function parseDotSpec(spec = '') {
   const src = String(spec).trim();
   if (!src) return [];
@@ -66,14 +74,13 @@ function parseDotSpec(spec = '') {
 function glyph(n) {
   return '•'.repeat(Math.max(0, Number(n) || 0));
 }
-/** Flatten merits only (exclude Caitiff/Thin-blood/Ghouls/Cults families) */
 function allSelectableMerits() {
   const out = [];
   for (const [cat, payload] of Object.entries(MERITS_AND_FLAWS)) {
     if (['Caitiff', 'Thin-blood', 'Ghouls', 'Cults'].includes(cat)) continue;
     const pushIt = (item, category) => {
       const allowed = parseDotSpec(item.dots);
-      if (!allowed.length) return; // not buyable here
+      if (!allowed.length) return; 
       out.push({ id: item.id, name: item.name, dotsSpec: item.dots, description: item.description, category, allowed });
     };
     (payload.merits || []).forEach(m => pushIt(m, cat));
@@ -114,7 +121,6 @@ function normalizeFromFlatAny(source) {
   const flat = source?.sheet && looksLikeFlatSheet(source.sheet) ? source.sheet : source;
   const sheet = {};
 
-  // Helper to find a value case-insensitively in an object
   const getCaseInsensitive = (obj, key) => {
     if (!obj) return undefined;
     const k = Object.keys(obj).find(k => k.toLowerCase() === key.toLowerCase());
@@ -151,25 +157,20 @@ function normalizeFromFlatAny(source) {
   };
 
   sheet.morality = flat.morality || {};
-  sheet.humanity = flat.morality?.humanity ?? undefined;
+  sheet.humanity = flat.morality?.humanity ?? flat.humanity ?? undefined;
+  sheet.stains = flat.stains ?? 0;
+  sheet.hunger = flat.hunger ?? 1;
 
-  // normalized BP key
   sheet.blood_potency = Number(flat.bloodPotency ?? flat.blood_potency ?? 1);
 
-  // ----- Health (Derived: Stamina + 3 + (Resilience ? Fortitude : 0)) -----
-  // Look for Stamina in any casing
   const staminaRaw = getCaseInsensitive(sheet.attributes, 'Stamina') ?? getCaseInsensitive(flat.attributes, 'Stamina') ?? 1;
   const stamina = Number(staminaRaw);
   let healthMax = stamina + 3;
 
-  // Robustly find Fortitude dots (check casing)
   const fortDotsRaw = getCaseInsensitive(sheet.disciplines, 'Fortitude') ?? 0;
   const fortitudeDots = Number(fortDotsRaw);
 
-  // Robustly find Fortitude powers (check casing)
   const fortPowers = getCaseInsensitive(sheet.disciplinePowers, 'Fortitude') || [];
-  
-  // Check for "Resilience" or "Toughness" (common rename/homebrew)
   const hasResilience = Array.isArray(fortPowers) && fortPowers.some(p => {
     const name = String(p.name || p.id || '').toLowerCase();
     return name.includes('resilience') || name.includes('toughness');
@@ -194,8 +195,6 @@ function normalizeFromFlatAny(source) {
   sheet.health = { superficial: hSuperficial, aggravated: hAggravated };
 
 
-  // ----- Willpower (derived) -----
-  // Max Willpower = Composure + Resolve
   const compRaw = getCaseInsensitive(sheet.attributes, 'Composure') ?? getCaseInsensitive(flat.attributes, 'Composure') ?? 1;
   const resoRaw = getCaseInsensitive(sheet.attributes, 'Resolve')   ?? getCaseInsensitive(flat.attributes, 'Resolve')   ?? 1;
   
@@ -203,24 +202,17 @@ function normalizeFromFlatAny(source) {
   const reso = Number(resoRaw);
   sheet.willpower_max = comp + reso;
 
-  // Optional structured willpower damage support (like Health)
   const wpSuperficial = Number(flat?.willpower?.superficial ?? 0);
   const wpAggravated  = Number(flat?.willpower?.aggravated  ?? 0);
-
-  // Legacy numeric "current" support
   const legacyWpCurrent = Number(flat?.willpower_current);
 
-  // Compute current: clamp legacy if present; else max minus recorded damage (if any)
   if (Number.isFinite(legacyWpCurrent)) {
     sheet.willpower_current = Math.max(0, Math.min(sheet.willpower_max, legacyWpCurrent));
   } else {
     const wpDmg = Math.max(0, Math.min(sheet.willpower_max, wpSuperficial + wpAggravated));
     sheet.willpower_current = sheet.willpower_max - wpDmg;
   }
-
-  // Keep a structured node for future use (non-breaking if unused elsewhere)
   sheet.willpower = { superficial: wpSuperficial, aggravated: wpAggravated };
-
 
   sheet.resonances = flat.resonances || [];
 
@@ -229,25 +221,23 @@ function normalizeFromFlatAny(source) {
     oblivion: Array.isArray(flat.rituals?.oblivion) ? flat.rituals.oblivion : [],
   };
   
-
-// ----- Passthrough XP Fields -----
   if (flat.xp_spent !== undefined) sheet.xp_spent = flat.xp_spent;
   if (flat.experience !== undefined) sheet.experience = flat.experience;
-  
-  // ✅ FORCE-preserve the allow_reset flag, no matter where the cleaner hid it!
+
   if (source?.sheet?.allow_reset === true) sheet.allow_reset = true;
   if (flat?.allow_reset === true) sheet.allow_reset = true;
   if (source?.allow_reset === true) sheet.allow_reset = true;
 
+  if (source?.sheet?.is_active !== undefined) sheet.is_active = source.sheet.is_active;
+  if (flat?.is_active !== undefined) sheet.is_active = flat.is_active;
+  if (source?.is_active !== undefined) sheet.is_active = source.is_active;
+
   return sheet;
 }
-
-
 
 function attachStructured(raw) {
   if (!raw) return raw;
 
-  // --- local helpers --------------------------------------------------------
   function buildDisciplineIndex() {
     const map = {};
     for (const [disc, data] of Object.entries((typeof DISCIPLINES !== 'undefined' && DISCIPLINES) || {})) {
@@ -302,9 +292,7 @@ function attachStructured(raw) {
             seenLevel.add(level);
             next.push({ ...p, level });
           }
-          // duplicates for the same level are ignored (keep first)
         } else {
-          // keep unknowns so we don't destroy data
           next.push(p);
         }
       });
@@ -315,7 +303,6 @@ function attachStructured(raw) {
 
     return out;
   }
-  // --------------------------------------------------------------------------
 
   let sheet;
   if (isStructuredSheet(raw.sheet)) {
@@ -326,22 +313,19 @@ function attachStructured(raw) {
     sheet = normalizeFromFlatAny(raw);
   }
 
-  // defaults
   sheet.rituals = sheet.rituals || { blood_sorcery: [], oblivion: [] };
   sheet.rituals.blood_sorcery = sheet.rituals.blood_sorcery || [];
   sheet.rituals.oblivion = sheet.rituals.oblivion || [];
   if (sheet.blood_potency == null) sheet.blood_potency = 1;
   sheet.disciplinePowers = sheet.disciplinePowers || {};
 
-  // normalize legacy picks (infer levels, de-dup per level, sort)
   sheet = ensureDisciplinePicksHaveLevels(sheet);
 
   return { ...raw, sheet };
 }
 
-
 /* ===========================
-   XP rules (keep in sync with backend)
+   XP rules
    =========================== */
 const XP_RULES = {
   attribute: newLevel => newLevel * 5,
@@ -353,7 +337,7 @@ const XP_RULES = {
   disciplineCaitiff: newLevel => newLevel * 6,
   ritual: lvl => lvl * 3,
   ceremony: lvl => lvl * 3,
-  bloodPotency: newLevel => newLevel * 10, // BP costs 10 × new level
+  bloodPotency: newLevel => newLevel * 10, 
 };
 
 function disciplineKindFor(ch, name) {
@@ -370,7 +354,7 @@ function estimateDisciplineCost(ch, name, current, next) {
 }
 
 /* ===========================
-   Drawers
+   Drawers & Visual Trackers
    =========================== */
 function Drawer({ title, subtitle, defaultOpen = false, children }) {
   const [open, setOpen] = useState(!!defaultOpen);
@@ -393,6 +377,61 @@ function Drawer({ title, subtitle, defaultOpen = false, children }) {
   );
 }
 
+function TrackerBlock({ label, val, max, agg=0, sup=0, filled=0, stains=0 }) {
+  const boxes = [];
+  for(let i=0; i<max; i++){
+    let content = '';
+    let isFilled = false;
+    
+    if (agg > 0 || sup > 0) {
+      if(i < agg) content = 'X';
+      else if(i < agg + sup) content = '/';
+    } else {
+      if (i < filled) isFilled = true;
+      if (i >= max - stains) content = '/';
+    }
+
+    let bg = isFilled ? 'var(--text-color, #222)' : 'rgba(0,0,0,0.05)';
+    let border = isFilled ? 'var(--text-color, #222)' : 'rgba(128,128,128,0.5)';
+    let fSize = 18;
+
+    // Blood Emoji specifically for Hunger
+    if (label === 'Hunger' && isFilled) {
+      content = '🩸';
+      bg = 'rgba(0,0,0,0.05)'; 
+      border = 'rgba(128,128,128,0.5)';
+      fSize = 14;
+    }
+
+    boxes.push(
+      <div 
+         key={i} 
+         style={{
+           width: 24, height: 24, border: `1px solid ${border}`,
+           display: 'flex', alignItems: 'center', justifyContent: 'center',
+           fontSize: fSize, fontWeight: 'bold', lineHeight: 0,
+           color: content === 'X' ? '#b40f1f' : 'inherit',
+           backgroundColor: bg,
+           borderRadius: '4px',
+           boxSizing: 'border-box',
+           flexShrink: 0 // Prevent squishing
+         }}
+      >
+        {content}
+      </div>
+    );
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', boxSizing: 'border-box' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', textTransform: 'uppercase', opacity: 0.8, fontWeight: 'bold' }}>
+        <span>{label}</span> 
+        <span style={{ fontWeight: 'normal' }}>{val} / {max}</span>
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', justifyContent: 'center' }}>{boxes}</div>
+    </div>
+  );
+}
+
 /* ===========================
    Component
    =========================== */
@@ -401,11 +440,19 @@ export default function CharacterView({
   loadPath,
   xpSpendPath,
 }) {
+  const { id } = useParams();
+  const navigate = useNavigate();
+
+  // Get current user to check for admin privileges
+  const { user } = useContext(AuthCtx) || {};
+  const isAdmin = user?.role === 'admin';
+
   const paths = useMemo(() => {
     if (adminNPCId) {
       return {
         load: `/admin/npcs/${adminNPCId}`,
         spend: `/admin/npcs/${adminNPCId}/xp/spend`,
+        update: `/admin/npcs/${adminNPCId}`,
         totals: null,
         pickFrom: 'npc',
       };
@@ -414,17 +461,19 @@ export default function CharacterView({
       return {
         load: loadPath,
         spend: xpSpendPath,
+        update: loadPath,
         totals: null,
         pickFrom: 'npc',
       };
     }
     return {
-      load: `/characters/me`,
-      spend: `/characters/xp/spend`,
+      load: id ? `/characters/user/${id}` : `/characters/me`,
+      spend: id ? `/characters/user/${id}/xp/spend` : `/characters/xp/spend`,
+      update: id ? `/characters/user/${id}` : `/characters/me`,
       totals: `/characters/xp/total`,
       pickFrom: 'character',
     };
-  }, [adminNPCId, loadPath, xpSpendPath]);
+  }, [adminNPCId, loadPath, xpSpendPath, id]);
 
   const [showSetup, setShowSetup] = useState(false);
   const [ch, setCh] = useState(null);
@@ -432,13 +481,20 @@ export default function CharacterView({
   const [msg, setMsg] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [modalCfg, setModalCfg] = useState(null);
-  // eslint-disable-next-line no-unused-vars
   const [pendingFixes, setPendingFixes] = useState([]);
   const [xpTotals, setXpTotals] = useState(null);
   const shopRef = useRef(null);
-  
-  const navigate = useNavigate();
 
+  // Auto-save Tracker States
+  const [tempHealth, setTempHealth] = useState({ superficial: 0, aggravated: 0 });
+  const [tempWillpower, setTempWillpower] = useState({ superficial: 0, aggravated: 0 });
+  const [tempHunger, setTempHunger] = useState(1);
+  const [tempHumanity, setTempHumanity] = useState(7);
+  const [tempStains, setTempStains] = useState(0);
+  const [saveStatus, setSaveStatus] = useState('');
+  const saveTimeoutRef = useRef(null);
+  const isInitialTrackerLoad = useRef(true);
+  
   // Load character/NPC
   useEffect(() => {
     let mounted = true;
@@ -448,7 +504,18 @@ export default function CharacterView({
         if (adminNPCId || loadPath) obj = r.data.npc || r.data.character || r.data[paths.pickFrom] || null;
         else obj = r.data.character || r.data[paths.pickFrom] || r.data.npc || null;
         if (!mounted) return;
-        setCh(attachStructured(obj));
+        
+        const structured = attachStructured(obj);
+        setCh(structured);
+        
+        if (structured && structured.sheet) {
+          setTempHealth({ superficial: structured.sheet.health?.superficial || 0, aggravated: structured.sheet.health?.aggravated || 0 });
+          setTempWillpower({ superficial: structured.sheet.willpower?.superficial || 0, aggravated: structured.sheet.willpower?.aggravated || 0 });
+          setTempHunger(structured.sheet.hunger ?? 1);
+          setTempHumanity(structured.sheet.morality?.humanity ?? structured.sheet.humanity ?? 7);
+          setTempStains(structured.sheet.stains ?? 0);
+          isInitialTrackerLoad.current = false;
+        }
       })
       .catch(e => {
         if (!mounted) return;
@@ -464,6 +531,50 @@ export default function CharacterView({
       .then(r => setXpTotals(r.data))
       .catch(() => {});
   }, [paths.totals, ch]);
+
+  // Auto-Save Effect for Trackers (Only triggers if Admin makes a change)
+  useEffect(() => {
+    if (isInitialTrackerLoad.current || !ch || !isAdmin) return;
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    
+    setSaveStatus('Saving trackers...');
+    saveTimeoutRef.current = setTimeout(() => {
+      const nextSheet = JSON.parse(JSON.stringify(ch.sheet || {}));
+      nextSheet.health = tempHealth;
+      nextSheet.willpower = tempWillpower;
+      nextSheet.hunger = tempHunger;
+      nextSheet.stains = tempStains;
+      nextSheet.humanity = tempHumanity;
+      if (!nextSheet.morality) nextSheet.morality = {};
+      nextSheet.morality.humanity = tempHumanity;
+
+      const payload = {
+          name: ch.name,
+          clan: ch.clan,
+          sheet: nextSheet
+      };
+
+      api.put(paths.update, payload).catch(() => {
+         api.patch(paths.update, payload).catch(()=>{});
+      })
+      .then(() => setSaveStatus('Saved'))
+      .catch(() => setSaveStatus('Error'))
+      .finally(() => setTimeout(() => setSaveStatus(''), 2000));
+
+    }, 1000);
+    
+    return () => clearTimeout(saveTimeoutRef.current);
+  }, [tempHealth, tempWillpower, tempHunger, tempHumanity, tempStains, ch, paths.update, isAdmin]);
+
+  const updateTracker = (type, kind, delta) => {
+    if (!isAdmin) return; // Hard block for non-admins just in case
+    if (type === 'health') {
+      setTempHealth(prev => ({ ...prev, [kind]: Math.max(0, (prev[kind] || 0) + delta) }));
+    } else if (type === 'willpower') {
+      setTempWillpower(prev => ({ ...prev, [kind]: Math.max(0, (prev[kind] || 0) + delta) }));
+    }
+  };
+
 
   async function spendXP(payload) {
     setErr(''); setMsg('');
@@ -490,7 +601,6 @@ export default function CharacterView({
     [sheet]
   );
 
-  // Compute missing power selections (for current dots)
   const computeMissingPicks = useCallback(() => {
     const dots = sheet.disciplines || {};
     const picks = sheet.disciplinePowers || {};
@@ -505,7 +615,6 @@ export default function CharacterView({
     return q;
   }, [sheet]);
 
-  // When character loads/updates, prompt for any missing power selections
   useEffect(() => {
     if (!ch) return;
     const q = computeMissingPicks();
@@ -523,7 +632,6 @@ export default function CharacterView({
     }
   }, [ch, computeMissingPicks, modalOpen]);
 
-  // Discipline power confirm flow
   async function confirmDisciplinePurchase({ name, selectedPowerId, selectedPowerName, current, next, kind, assignOnly }) {
     const nextSheet = JSON.parse(JSON.stringify(sheet));
     nextSheet.disciplines = nextSheet.disciplines || {};
@@ -549,7 +657,7 @@ export default function CharacterView({
       } else {
         await spendXP({
           type: 'discipline',
-          disciplineKind: kind, // 'clan' | 'other' | 'caitiff'
+          disciplineKind: kind, 
           target: name,
           currentLevel: current,
           newLevel: next,
@@ -557,7 +665,6 @@ export default function CharacterView({
         });
       }
 
-      // Refresh character after change
       const r = await api.get(paths.load);
       const obj = r.data[paths.pickFrom] || r.data.character || r.data.npc || null;
       setCh(attachStructured(obj));
@@ -565,7 +672,6 @@ export default function CharacterView({
       setModalOpen(false);
       setModalCfg(null);
 
-      // Continue auto-assign queue if we were fixing missing powers
       if (assignOnly) {
         const rest = computeMissingPicks();
         setPendingFixes(rest);
@@ -588,19 +694,10 @@ export default function CharacterView({
     }
   }
 
-  // Ritual helpers
   const knownRitualIds = useMemo(() => new Set([
     ...(sheet.rituals?.blood_sorcery || []).map(r => r.id),
     ...(sheet.rituals?.oblivion || []).map(r => r.id),
   ]), [sheet.rituals]);
-
-  // eslint-disable-next-line no-unused-vars
-  const knownRitualNames = useMemo(() => {
-    const bs = Object.values(RITUALS?.blood_sorcery?.levels || {}).flat();
-    const ob = Object.values(RITUALS?.oblivion?.levels || {}).flat();
-    const byId = new Map([...bs, ...ob].map(r => [r.id, r.name]));
-    return Array.from(knownRitualIds).map(id => byId.get(id)).filter(Boolean);
-  }, [knownRitualIds]);
 
   const knownPowerNamesAndIds = useMemo(() => {
     const powers = sheet.disciplinePowers || {};
@@ -615,7 +712,6 @@ export default function CharacterView({
     });
     return known;
   }, [sheet.disciplinePowers]);
-
 
   function canLearnRitual(level) {
     const bsLevel = Number(sheet.disciplines?.['Blood Sorcery'] || 0);
@@ -643,9 +739,7 @@ export default function CharacterView({
     await spendXP({ type: 'ceremony', target: cer.id, ritualLevel: level, patchSheet: nextSheet });
   }
 
-  
 
-  // ===== Empty / loading & builder overlay (players only) =====
   if (!ch) {
     return (
       <div className={styles.emptyWrap} style={{ '--tint': tint }}>
@@ -656,13 +750,10 @@ export default function CharacterView({
         )}
 
         <div className={styles.loadingSwap}>
-          {/* Phase 1 */}
           <div className={styles.loadingPhase}>
             <div className={styles.spinner} aria-label="Loading" />
             <div className={styles.loadingText}>Loading character…</div>
           </div>
-
-          {/* Phase 2: only for players */}
           {!adminNPCId && !loadPath && (
             <div className={styles.emptyPhase}>
               <h2 className={styles.cardHead}>No character found</h2>
@@ -674,7 +765,6 @@ export default function CharacterView({
           )}
         </div>
 
-        {/* Setup overlay */}
         {!adminNPCId && !loadPath && showSetup && (
           <div className={styles.setupOverlay} role="dialog" aria-modal="true">
             <button
@@ -695,6 +785,15 @@ export default function CharacterView({
 
   const inClanDisciplines = ALL_DISCIPLINE_NAMES.filter(n => disciplineKindFor(ch, n) === 'clan');
   const outOfClanDisciplines = ALL_DISCIPLINE_NAMES.filter(n => disciplineKindFor(ch, n) !== 'clan');
+
+  const stamina = Number(sheet.attributes?.Stamina) || 1;
+  let maxHealth = stamina + 3;
+  const fortitudePowers = sheet.disciplinePowers?.Fortitude || [];
+  if (Array.isArray(fortitudePowers) && fortitudePowers.some(p => String(p.name || p.id).toLowerCase().includes('resilience'))) {
+     maxHealth += Number(sheet.disciplines?.Fortitude || 0);
+  }
+  const maxWillpower = (Number(sheet.attributes?.Composure) || 1) + (Number(sheet.attributes?.Resolve) || 1);
+
 
   return (
     <div className={styles.root} style={{ '--tint': tint }}>
@@ -718,7 +817,7 @@ export default function CharacterView({
           )}
 
           <div className={styles.metaRow}>
-            <span>Predator: <b>{sheet?.predator_type || '—'}</b></span>
+            <span>Predator: <b>{sheet?.predator_type || sheet?.predatorType || '—'}</b></span>
             <span>Sire: <b>{sheet?.sire || '—'}</b></span>
             <span>Ambition: <b>{sheet?.ambition || '—'}</b></span>
             <span>Desire: <b>{sheet?.desire || '—'}</b></span>
@@ -739,7 +838,7 @@ export default function CharacterView({
 
           <div className={`${styles.card} ${styles.sheetWide} ${styles.bleedEdge}`}>
             
-            {/* --- NEW RE-ROLL AUTHORIZED BANNER --- */}
+            {/* --- RE-ROLL AUTHORIZED BANNER --- */}
             {sheet.allow_reset && (
               <div style={{ padding: '20px', background: 'rgba(217, 119, 6, 0.1)', border: '1px solid #d97706', borderRadius: '8px', marginBottom: '25px', textAlign: 'center' }}>
                 <h3 style={{ color: '#d97706', margin: '0 0 10px 0', fontSize: '1.5rem' }}>Re-Roll Authorized</h3>
@@ -755,29 +854,93 @@ export default function CharacterView({
                 </button>
               </div>
             )}
-            {/* ------------------------------------- */}
             
             <div className={styles.rowForm} style={{ gap: 12, flexWrap: 'wrap' }}>
               <Pill label="Blood Potency" value={sheet?.blood_potency ?? 1} />
-              <Pill label="Humanity" value={sheet?.humanity ?? '—'} />
-              
-              {/* Health Tracker */}
-              {(() => {
-                const agg = sheet?.health?.aggravated || 0;
-                const sup = sheet?.health?.superficial || 0;
-                const max = sheet?.health_max || 1;
-                return <StatTracker label="Health" max={max} agg={agg} sup={sup} />;
-              })()}
+              {sheet.generation && <Pill label="Generation" value={sheet.generation} />}
+            </div>
 
-              {/* Willpower Tracker */}
-              {(() => {
-                const agg = sheet?.willpower?.aggravated || 0;
-                const sup = sheet?.willpower?.superficial || 0;
-                const max = sheet?.willpower_max || 1;
-                return <StatTracker label="Willpower" max={max} agg={agg} sup={sup} />;
-              })()}
+            {/* INTERACTIVE TRACKERS GRID - BOX-SIZING APPLIED TO PREVENT OVERFLOW */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%', marginTop: '20px', boxSizing: 'border-box' }}>
+              
+              {/* Row 1: Health & Willpower side-by-side (will stack on mobile) */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', boxSizing: 'border-box' }}>
+                {/* Health */}
+                <div style={{ boxSizing: 'border-box', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                   <TrackerBlock label="Health" val={maxHealth} max={maxHealth} agg={tempHealth.aggravated} sup={tempHealth.superficial} />
+                   {isAdmin && (
+                     <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '15px', marginTop: '12px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '12px' }}>
+                         <div style={{ display: 'flex', alignItems: 'center' }}>
+                             <span style={{ fontSize: '0.8rem', opacity: 0.7, marginRight: '5px' }}>Sup:</span>
+                             <button className={styles.ghostBtn} style={{ padding: '2px 8px', minWidth: '30px' }} onClick={()=>updateTracker('health','superficial',-1)}>-</button>
+                             <button className={styles.ghostBtn} style={{ padding: '2px 8px', minWidth: '30px', marginLeft: '4px' }} onClick={()=>updateTracker('health','superficial',1)}>+</button>
+                         </div>
+                         <div style={{ display: 'flex', alignItems: 'center' }}>
+                             <span style={{ fontSize: '0.8rem', opacity: 0.7, marginRight: '5px' }}>Agg:</span>
+                             <button className={styles.ghostBtn} style={{ padding: '2px 8px', minWidth: '30px' }} onClick={()=>updateTracker('health','aggravated',-1)}>-</button>
+                             <button className={styles.ghostBtn} style={{ padding: '2px 8px', minWidth: '30px', marginLeft: '4px' }} onClick={()=>updateTracker('health','aggravated',1)}>+</button>
+                         </div>
+                     </div>
+                   )}
+                </div>
+
+                {/* Willpower */}
+                <div style={{ boxSizing: 'border-box', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                   <TrackerBlock label="Willpower" val={maxWillpower} max={maxWillpower} agg={tempWillpower.aggravated} sup={tempWillpower.superficial} />
+                   {isAdmin && (
+                     <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '15px', marginTop: '12px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '12px' }}>
+                         <div style={{ display: 'flex', alignItems: 'center' }}>
+                             <span style={{ fontSize: '0.8rem', opacity: 0.7, marginRight: '5px' }}>Sup:</span>
+                             <button className={styles.ghostBtn} style={{ padding: '2px 8px', minWidth: '30px' }} onClick={()=>updateTracker('willpower','superficial',-1)}>-</button>
+                             <button className={styles.ghostBtn} style={{ padding: '2px 8px', minWidth: '30px', marginLeft: '4px' }} onClick={()=>updateTracker('willpower','superficial',1)}>+</button>
+                         </div>
+                         <div style={{ display: 'flex', alignItems: 'center' }}>
+                             <span style={{ fontSize: '0.8rem', opacity: 0.7, marginRight: '5px' }}>Agg:</span>
+                             <button className={styles.ghostBtn} style={{ padding: '2px 8px', minWidth: '30px' }} onClick={()=>updateTracker('willpower','aggravated',-1)}>-</button>
+                             <button className={styles.ghostBtn} style={{ padding: '2px 8px', minWidth: '30px', marginLeft: '4px' }} onClick={()=>updateTracker('willpower','aggravated',1)}>+</button>
+                         </div>
+                     </div>
+                   )}
+                </div>
+              </div>
+
+              {/* Row 2: Humanity (Centered Full Width Wrapper) */}
+              <div style={{ boxSizing: 'border-box', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', width: '100%' }}>
+                 <TrackerBlock label="Humanity" val={tempHumanity} max={10} filled={tempHumanity} stains={tempStains} />
+                 {isAdmin && (
+                   <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '15px', marginTop: '12px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '12px' }}>
+                       <div style={{ display: 'flex', alignItems: 'center' }}>
+                           <span style={{ fontSize: '0.8rem', opacity: 0.7, marginRight: '5px' }}>Hum:</span>
+                           <button className={styles.ghostBtn} style={{ padding: '2px 8px', minWidth: '30px' }} onClick={()=>setTempHumanity(h=>Math.max(0, h-1))}>-</button>
+                           <button className={styles.ghostBtn} style={{ padding: '2px 8px', minWidth: '30px', marginLeft: '4px' }} onClick={()=>setTempHumanity(h=>Math.min(10, h+1))}>+</button>
+                       </div>
+                       <div style={{ display: 'flex', alignItems: 'center' }}>
+                           <span style={{ fontSize: '0.8rem', opacity: 0.7, marginRight: '5px' }}>Stains:</span>
+                           <button className={styles.ghostBtn} style={{ padding: '2px 8px', minWidth: '30px' }} onClick={()=>setTempStains(s=>Math.max(0, s-1))}>-</button>
+                           <button className={styles.ghostBtn} style={{ padding: '2px 8px', minWidth: '30px', marginLeft: '4px' }} onClick={()=>setTempStains(s=>Math.min(10, s+1))}>+</button>
+                       </div>
+                   </div>
+                 )}
+              </div>
+
+              {/* Row 3: Hunger (Centered Full Width Wrapper) */}
+              <div style={{ boxSizing: 'border-box', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', width: '100%' }}>
+                 <TrackerBlock label="Hunger" val={tempHunger} max={5} filled={tempHunger} />
+                 {isAdmin && (
+                   <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '15px', marginTop: '12px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '12px' }}>
+                       <div style={{ display: 'flex', alignItems: 'center' }}>
+                           <span style={{ fontSize: '0.8rem', opacity: 0.7, marginRight: '5px' }}>Lvl:</span>
+                           <button className={styles.ghostBtn} style={{ padding: '2px 8px', minWidth: '30px' }} onClick={()=>setTempHunger(h=>Math.max(0, h-1))}>-</button>
+                           <button className={styles.ghostBtn} style={{ padding: '2px 8px', minWidth: '30px', marginLeft: '4px' }} onClick={()=>setTempHunger(h=>Math.min(5, h+1))}>+</button>
+                       </div>
+                   </div>
+                 )}
+              </div>
 
             </div>
+            
+            {saveStatus && isAdmin && <div style={{ marginTop: '10px', fontSize: '0.85rem', color: 'var(--text-color)', opacity: 0.7, textAlign: 'center' }}>{saveStatus}</div>}
+
           </div>
 
           <Card>
@@ -832,6 +995,18 @@ export default function CharacterView({
               ))}
             </div>
           </Card>
+
+          {/* --- DOWNLOAD PDF BUTTON --- */}
+          <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
+            <button 
+              className={styles.cta} 
+              onClick={() => generateVTMCharacterSheetPDF(ch)}
+              title="Download a generated PDF of your character sheet"
+            >
+              Download PDF Sheet
+            </button>
+          </div>
+
         </section>
 
         {/* ===== XP SHOP ===== */}
@@ -847,7 +1022,7 @@ export default function CharacterView({
             <div className={styles.grid}>
               {(() => {
                 const current = Number(sheet.blood_potency ?? 1);
-                const max = 10; // hard cap
+                const max = 10; 
                 const next = Math.min(current + 1, max);
                 const canRaise = current < max;
                 const cost = XP_RULES.bloodPotency(next);
@@ -958,7 +1133,7 @@ export default function CharacterView({
           <SpecialtyAdder
             xp={xp}
             onAdd={async (skillName, spec) => {
-              const cost = XP_RULES.specialty(); // 3 XP
+              const cost = XP_RULES.specialty(); 
               if (xp < cost) return;
 
               const nextSheet = JSON.parse(JSON.stringify(sheet));
@@ -979,7 +1154,6 @@ export default function CharacterView({
               });
             }}
           />
-
           </Card>
 
           {/* Disciplines */}
@@ -1033,7 +1207,7 @@ export default function CharacterView({
                   const current = Number(sheet.disciplines?.[name] || 0);
                   const next = Math.min(current + 1, 5);
                   const canRaise = next > 0 && next <= 5;
-                  const kind = disciplineKindFor(ch, name); // 'other' or 'caitiff'
+                  const kind = disciplineKindFor(ch, name); 
                   const cost = estimateDisciplineCost(ch, name, current, next);
                   const afford = xp >= cost;
                   const isKnown = current > 0;
@@ -1077,100 +1251,89 @@ export default function CharacterView({
                     ? sheet.backgrounds.map(b => ({ id: b.id, name: b.name, dots: b.dots }))
                     : [])
               ]}
-onAdd={async (merit, targetDots, options = {}) => {
-  const separate = !!options.separate; // add as separate instance?
-  const nextSheet = JSON.parse(JSON.stringify(sheet));
+              onAdd={async (merit, targetDots, options = {}) => {
+                const separate = !!options.separate; 
+                const nextSheet = JSON.parse(JSON.stringify(sheet));
 
-  // Ensure containers exist
-  nextSheet.advantages = nextSheet.advantages || { merits: [], flaws: [] };
-  nextSheet.advantages.merits = Array.isArray(nextSheet.advantages.merits) ? nextSheet.advantages.merits : [];
-  nextSheet.backgrounds = Array.isArray(nextSheet.backgrounds) ? nextSheet.backgrounds : [];
+                nextSheet.advantages = nextSheet.advantages || { merits: [], flaws: [] };
+                nextSheet.advantages.merits = Array.isArray(nextSheet.advantages.merits) ? nextSheet.advantages.merits : [];
+                nextSheet.backgrounds = Array.isArray(nextSheet.backgrounds) ? nextSheet.backgrounds : [];
 
-  const meritsArr = nextSheet.advantages.merits;
-  const bgsArr    = nextSheet.backgrounds;
+                const meritsArr = nextSheet.advantages.merits;
+                const bgsArr    = nextSheet.backgrounds;
 
-  // All existing entries with this id, across BOTH containers
-  const sameMerits = meritsArr.filter(m => m.id === merit.id);
-  const sameBgs    = bgsArr.filter(b => b.id === merit.id);
-  const currentDots = [...sameMerits, ...sameBgs].reduce(
-    (max, e) => Math.max(max, Number(e.dots || 0)), 0
-  );
+                const sameMerits = meritsArr.filter(m => m.id === merit.id);
+                const sameBgs    = bgsArr.filter(b => b.id === merit.id);
+                const currentDots = [...sameMerits, ...sameBgs].reduce(
+                  (max, e) => Math.max(max, Number(e.dots || 0)), 0
+                );
 
-  // If the character already has this as a BACKGROUND, prefer to keep modifying backgrounds.
-  const preferBackgrounds = sameBgs.length > 0;
+                const preferBackgrounds = sameBgs.length > 0;
 
-  if (separate) {
-    // FULL cost for a new, separate instance (e.g., another Haven • = 3 XP)
-    const cost = XP_RULES.advantageDot(Number(targetDots) || 0);
-    if (xp < cost) return;
+                if (separate) {
+                  const cost = XP_RULES.advantageDot(Number(targetDots) || 0);
+                  if (xp < cost) return;
 
-    const instance = sameMerits.length + sameBgs.length + 1; // optional marker
-    const newEntry = {
-      id: merit.id,
-      name: merit.name,
-      dots: Number(targetDots),
-      from: 'xp_shop',
-      instance,
-    };
+                  const instance = sameMerits.length + sameBgs.length + 1; 
+                  const newEntry = {
+                    id: merit.id,
+                    name: merit.name,
+                    dots: Number(targetDots),
+                    from: 'xp_shop',
+                    instance,
+                  };
 
-    if (preferBackgrounds) bgsArr.push(newEntry);
-    else meritsArr.push(newEntry);
+                  if (preferBackgrounds) bgsArr.push(newEntry);
+                  else meritsArr.push(newEntry);
 
-    await spendXP({
-      type: 'advantage',
-      target: merit.id,
-      dots: Number(targetDots),
-      patchSheet: nextSheet,
-    });
-    return;
-  }
+                  await spendXP({
+                    type: 'advantage',
+                    target: merit.id,
+                    dots: Number(targetDots),
+                    patchSheet: nextSheet,
+                  });
+                  return;
+                }
 
-  // UPGRADE existing: pay only the delta (e.g., Haven • -> Haven •• costs 3 XP)
-  const delta = Math.max(0, Number(targetDots) - currentDots);
-  const cost = XP_RULES.advantageDot(delta);
-  if (delta <= 0 || xp < cost) return;
+                const delta = Math.max(0, Number(targetDots) - currentDots);
+                const cost = XP_RULES.advantageDot(delta);
+                if (delta <= 0 || xp < cost) return;
 
-  let upgraded = false;
+                let upgraded = false;
 
-  // Try to upgrade in the preferred container first
-  const tryUpgradeIn = (arr) => {
-    for (let i = 0; i < arr.length; i++) {
-      const entry = arr[i];
-      if (entry.id === merit.id && Number(entry.dots || 0) === currentDots) {
-        arr[i] = { ...entry, dots: Number(targetDots) };
-        return true;
-      }
-    }
-    return false;
-  };
+                const tryUpgradeIn = (arr) => {
+                  for (let i = 0; i < arr.length; i++) {
+                    const entry = arr[i];
+                    if (entry.id === merit.id && Number(entry.dots || 0) === currentDots) {
+                      arr[i] = { ...entry, dots: Number(targetDots) };
+                      return true;
+                    }
+                  }
+                  return false;
+                };
 
-  upgraded = preferBackgrounds ? tryUpgradeIn(bgsArr) : tryUpgradeIn(meritsArr);
-  if (!upgraded) {
-    // Try the other container
-    upgraded = preferBackgrounds ? tryUpgradeIn(meritsArr) : tryUpgradeIn(bgsArr);
-  }
+                upgraded = preferBackgrounds ? tryUpgradeIn(bgsArr) : tryUpgradeIn(meritsArr);
+                if (!upgraded) {
+                  upgraded = preferBackgrounds ? tryUpgradeIn(meritsArr) : tryUpgradeIn(bgsArr);
+                }
 
-  // Safety: if nothing matched (shouldn't happen), add as a new merits entry
-  if (!upgraded) {
-    meritsArr.push({
-      id: merit.id,
-      name: merit.name,
-      dots: Number(targetDots),
-      from: 'xp_shop',
-      instance: sameMerits.length + sameBgs.length + 1,
-    });
-  }
+                if (!upgraded) {
+                  meritsArr.push({
+                    id: merit.id,
+                    name: merit.name,
+                    dots: Number(targetDots),
+                    from: 'xp_shop',
+                    instance: sameMerits.length + sameBgs.length + 1,
+                  });
+                }
 
-  await spendXP({
-    type: 'advantage',
-    target: merit.id,
-    dots: delta,           // pay only the increase
-    patchSheet: nextSheet, // now reflects the new TOTAL rating
-  });
-}}
-
-
-
+                await spendXP({
+                  type: 'advantage',
+                  target: merit.id,
+                  dots: delta,           
+                  patchSheet: nextSheet, 
+                });
+              }}
             />
             {Array.isArray(sheet?.advantages?.merits) && sheet.advantages.merits.length > 0 && (
               <div className={styles.grid} style={{ marginTop: 10 }}>
@@ -1222,7 +1385,6 @@ onAdd={async (merit, targetDots, options = {}) => {
                         const allowed = canLearnRitual(level);
                         const cost = XP_RULES.ritual(level);
                         const afford = xp >= cost;
-                        // Pass the correct set of known powers, not known rituals
                         const { unmet } = ritualPrereqStatus(rit, knownPowerNamesAndIds);
                         return (
                           <RitualRow
@@ -1252,7 +1414,6 @@ onAdd={async (merit, targetDots, options = {}) => {
                         const allowed = canLearnCeremony(level);
                         const cost = XP_RULES.ceremony(level);
                         const afford = xp >= cost;
-                        // Pass the correct set of known powers, not known rituals
                         const { unmet } = ritualPrereqStatus(cer, knownPowerNamesAndIds);
                         return (
                           <RitualRow
@@ -1302,47 +1463,6 @@ function Pill({ label, value }) {
     <span className={styles.pill}>
       <span className={styles.dim}>{label}:</span> <b>{value}</b>
     </span>
-  );
-}
-
-// New visual tracker for Health/Willpower
-function StatTracker({ label, max, agg, sup }) {
-  const boxes = [];
-  for (let i = 0; i < max; i++) {
-    let content = null;
-    let color = 'inherit';
-    
-    if (i < agg) {
-      content = 'X';
-      color = '#b40f1f'; // Redish
-    } else if (i < agg + sup) {
-      content = '/';
-    }
-
-    boxes.push(
-      <div 
-        key={i} 
-        style={{
-            width: 24, height: 24, 
-            border: '1px solid rgba(128,128,128,0.5)', 
-            display:'flex', alignItems:'center', justifyContent:'center',
-            fontSize: 18, fontWeight:'bold', lineHeight:0,
-            color: color,
-            background: 'rgba(0,0,0,0.1)'
-        }}
-      >
-        {content}
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
-      <div style={{ fontSize:'0.75rem', textTransform:'uppercase', opacity:0.7, fontWeight:'bold' }}>{label}</div>
-      <div style={{ display:'flex', flexWrap:'wrap', gap:2 }}>
-        {boxes}
-      </div>
-    </div>
   );
 }
 
@@ -1579,32 +1699,26 @@ const _norm = (v) => String(v ?? '').trim().toLowerCase();
 
 function ritualPrereqStatus(rit, knownPowerSet) {
   const prereq = rit?.prereq;
-  // No prerequisite
   if (!prereq || prereq === '—') return { unmet: [] };
 
-  // Helper to normalize power names, e.g., "Binding Fetter (Errata)" -> "binding fetter"
   const norm = (s) => _norm(s.replace(/\s+\(Errata\)$/i, ''));
   const unmetList = [];
 
   if (prereq.includes(' or ')) {
-    // Handle 'OR' logic, e.g., "Ashes to Ashes or Oblivion's Sight"
     const parts = prereq.split(/\s+or\s+/i);
     const met = parts.some(part => knownPowerSet.has(norm(part)));
     if (!met) {
-      // If none are met, the unmet req is the whole original string
       unmetList.push(prereq);
     }
   } else if (prereq.includes(';')) {
-    // Handle 'AND' logic (using ';'), e.g., "Ashes to Ashes; Binding Fetter (Errata)"
     const parts = prereq.split(';');
     for (const part of parts) {
       const p = part.trim();
       if (p && !knownPowerSet.has(norm(p))) {
-        unmetList.push(p.replace(/\s+\(Errata\)$/i, '')); // Add the clean name to the unmet list
+        unmetList.push(p.replace(/\s+\(Errata\)$/i, '')); 
       }
     }
   } else {
-    // Handle single requirement, e.g., "Ashes to Ashes"
     const p = prereq.trim();
     if (p && !knownPowerSet.has(norm(p))) {
       unmetList.push(p);
@@ -1619,7 +1733,6 @@ function ritualPrereqStatus(rit, knownPowerSet) {
 function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
   const { name, next, assignOnly, ownedPowerIds = [], ownedPowerNames = [], ownedPowers = [], disciplineDots = {} } = cfg;
 
-  // Build pool up to 'next' & sort
   const fullPool = useMemo(() => {
     const out = [];
     const levels = DISCIPLINES?.[name]?.levels || {};
@@ -1782,7 +1895,6 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
           </div>
         ) : (
           <div className={styles.modalGrid}>
-            {/* LEFT PANE */}
             <div className={styles.paneCard}>
               <aside className={styles.powerListPane}>
                 <input
@@ -1842,7 +1954,6 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
               </aside>
             </div>
 
-        {/* RIGHT PANE */}
         <div className={styles.paneCard}>
           <section className={styles.powerDetailPane}>
             {!sel ? (
@@ -1918,12 +2029,6 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
   );
 }
 
-/* ---------- Misc helpers ---------- */
-/* eslint-disable-next-line no-unused-vars */
-function labelize(k) {
-  return k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-}
-
 /* ---------- Specialty adder ---------- */
 function SpecialtyAdder({ xp, onAdd }) {
   const [skill, setSkill] = useState('Academics');
@@ -1967,7 +2072,7 @@ function SpecialtyAdder({ xp, onAdd }) {
 function MeritAdder({ xp, existing = [], onAdd }) {
   const all = useMemo(() => allSelectableMerits(), []);
   const [q, setQ] = useState('');
-  const [addSeparate, setAddSeparate] = useState(false); // toggle: add as another instance
+  const [addSeparate, setAddSeparate] = useState(false); 
   const [selId, setSelId] = useState(all[0]?.id || '');
   const sel = useMemo(() => all.find(m => m.id === selId) || null, [all, selId]);
 
@@ -1984,9 +2089,7 @@ function MeritAdder({ xp, existing = [], onAdd }) {
   const [dots, setDots] = useState(dotsOptions[0] || 1);
 
   const idOrName = (sel?.id || sel?.name || '').toLowerCase();
-  // Allow duplicates at least for Haven & Retainers; extend if you like (Allies, Contacts, etc.)
   const allowMulti = /^(haven|retainer|retainers)$/.test(idOrName);
-
 
   const currentOwnedForSel = useMemo(() => {
     if (!sel) return 0;
@@ -1997,20 +2100,16 @@ function MeritAdder({ xp, existing = [], onAdd }) {
 
   useEffect(() => {
     const allowed = sel?.allowed || [1];
-    // pick the first allowed value greater than what you own; otherwise pick the largest allowed
     const nextAllowed = allowed.find(n => n > currentOwnedForSel) ?? allowed[allowed.length - 1];
     setDots(nextAllowed || 1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selId, existing]); // reset when merit or owned list changes
+  }, [selId, existing, sel, currentOwnedForSel]); 
 
   const delta = Math.max(0, Number(dots || 0) - currentOwnedForSel);
   const cost = addSeparate
-    ? XP_RULES.advantageDot(Number(dots || 0)) // full cost for new instance
-    : XP_RULES.advantageDot(delta);            // delta cost for upgrade
+    ? XP_RULES.advantageDot(Number(dots || 0)) 
+    : XP_RULES.advantageDot(delta);            
   const afford = xp >= cost;
   const blocked = !sel || (addSeparate ? Number(dots || 0) <= 0 : delta <= 0) || !afford;
-
-
 
   return (
     <div className={styles.grid} style={{ gap: 12 }}>
@@ -2084,8 +2183,6 @@ function MeritAdder({ xp, existing = [], onAdd }) {
               {' • '}Cost: <b>{cost}</b> XP
             </div>
           )}
-
-
       </div>
 
       {sel && (

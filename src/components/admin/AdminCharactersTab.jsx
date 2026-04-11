@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import api from '../../api'; 
 import styles from '../../styles/Admin.module.css';
-import generateVTMCharacterSheetPDF from '../../utils/pdfGenerator'; // <-- IMPORTED GENERATOR
+import generateVTMCharacterSheetPDF from '../../utils/pdfGenerator'; 
 
 /* ---------- VTM Lookups ---------- */
 const CLAN_COLORS = {
@@ -14,9 +14,9 @@ const CLAN_COLORS = {
 const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim' };
 const fileify = (c) => (NAME_OVERRIDES[c] || c).replace(/\s+/g, '_');
 const symlogo = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.png` : '');
-/* -------------------------------------------------- */
 
-const TrackerDisplay = ({ label, currentObj, max, onUpdate }) => {
+// Updated TrackerDisplay to support single-values (Humanity/Hunger) and Stains
+const TrackerDisplay = ({ label, currentObj, max, onUpdate, isValueTracker = false, value = 0, stains = 0 }) => {
   const trackSize = max || 1;
   const agg = currentObj?.aggravated || 0;
   const sup = currentObj?.superficial || 0;
@@ -24,14 +24,31 @@ const TrackerDisplay = ({ label, currentObj, max, onUpdate }) => {
   const boxes = [];
   for (let i = 0; i < trackSize; i++) {
     let content = '';
+    let isFilled = false;
     let boxStyle = {
       width: '24px', height: '24px', border: '1px solid var(--border-color, #ccc)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontSize: '18px', fontWeight: 'bold', backgroundColor: 'var(--bg-primary, #fff)',
       cursor: 'default', color: 'var(--text-color, #000)', lineHeight: 1
     };
-    if (i < agg) { content = 'X'; boxStyle.color = '#b40f1f'; } 
-    else if (i < agg + sup) { content = '/'; }
+
+    if (isValueTracker) {
+      if (i < value) isFilled = true;
+      if (i >= trackSize - stains) content = '/';
+      if (isFilled) {
+         if (label === 'Hunger') {
+           content = '🩸';
+           boxStyle.fontSize = '14px';
+           // Don't change background to black for Hunger
+         } else {
+           boxStyle.backgroundColor = 'var(--text-color, #333)';
+           boxStyle.color = '#fff';
+         }
+      }
+    } else {
+      if (i < agg) { content = 'X'; boxStyle.color = '#b40f1f'; } 
+      else if (i < agg + sup) { content = '/'; }
+    }
 
     boxes.push(<div key={i} style={boxStyle} title={`Box ${i+1}`}>{content}</div>);
   }
@@ -43,16 +60,35 @@ const TrackerDisplay = ({ label, currentObj, max, onUpdate }) => {
       </div>
       <div style={{ display: 'flex', gap: '2px', flexWrap: 'wrap', marginBottom: '6px' }}>{boxes}</div>
       <div style={{ display: 'flex', gap: '10px', fontSize: '0.8rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-          <span style={{ opacity: 0.7 }}>Sup:</span>
-          <button className={styles.btn} style={{ padding: '0 6px' }} onClick={() => onUpdate('superficial', -1)}>-</button>
-          <button className={styles.btn} style={{ padding: '0 6px' }} onClick={() => onUpdate('superficial', 1)}>+</button>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-          <span style={{ opacity: 0.7 }}>Agg:</span>
-          <button className={styles.btn} style={{ padding: '0 6px' }} onClick={() => onUpdate('aggravated', -1)}>-</button>
-          <button className={styles.btn} style={{ padding: '0 6px' }} onClick={() => onUpdate('aggravated', 1)}>+</button>
-        </div>
+        {!isValueTracker ? (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+              <span style={{ opacity: 0.7 }}>Sup:</span>
+              <button className={styles.btn} style={{ padding: '0 6px' }} onClick={() => onUpdate('superficial', -1)}>-</button>
+              <button className={styles.btn} style={{ padding: '0 6px' }} onClick={() => onUpdate('superficial', 1)}>+</button>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+              <span style={{ opacity: 0.7 }}>Agg:</span>
+              <button className={styles.btn} style={{ padding: '0 6px' }} onClick={() => onUpdate('aggravated', -1)}>-</button>
+              <button className={styles.btn} style={{ padding: '0 6px' }} onClick={() => onUpdate('aggravated', 1)}>+</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+              <span style={{ opacity: 0.7 }}>Val:</span>
+              <button className={styles.btn} style={{ padding: '0 6px' }} onClick={() => onUpdate('value', -1)}>-</button>
+              <button className={styles.btn} style={{ padding: '0 6px' }} onClick={() => onUpdate('value', 1)}>+</button>
+            </div>
+            {label === 'Humanity' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                <span style={{ opacity: 0.7 }}>Stains:</span>
+                <button className={styles.btn} style={{ padding: '0 6px' }} onClick={() => onUpdate('stains', -1)}>-</button>
+                <button className={styles.btn} style={{ padding: '0 6px' }} onClick={() => onUpdate('stains', 1)}>+</button>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
@@ -101,12 +137,50 @@ export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEdit
     } catch (e) { alert('Failed to toggle active status.'); }
   };
 
-  const updateTracker = (c, category, type, delta) => {
+  // --- AUTOMATIC BACKGROUND SAVING INCORPORATED HERE ---
+  const updateTracker = async (c, category, type, delta) => {
     const row = getRow(c);
-    let data = {}; try { data = JSON.parse(row.sheet || '{}'); } catch (e) { alert("Invalid JSON"); return; }
-    if (!data[category]) data[category] = {};
-    data[category][type] = Math.max(0, (data[category][type] || 0) + delta); 
-    setRow(c, { sheet: JSON.stringify(data, null, 2) });
+    let data = {}; 
+    try { 
+      data = JSON.parse(row.sheet || '{}'); 
+    } catch (e) { 
+      alert("Invalid JSON. Please fix syntax errors before clicking trackers."); 
+      return; 
+    }
+    
+    if (category === 'hunger') {
+       data.hunger = Math.max(0, Math.min(5, (data.hunger || 0) + delta));
+    } else if (category === 'humanity') {
+       if (type === 'value') {
+          const current = data.morality?.humanity ?? data.humanity ?? 7;
+          const next = Math.max(0, Math.min(10, current + delta));
+          data.humanity = next;
+          if (!data.morality) data.morality = {};
+          data.morality.humanity = next;
+       } else if (type === 'stains') {
+          data.stains = Math.max(0, Math.min(10, (data.stains || 0) + delta));
+       }
+    } else {
+       if (!data[category]) data[category] = {};
+       data[category][type] = Math.max(0, (data[category][type] || 0) + delta); 
+    }
+    
+    const updatedSheetString = JSON.stringify(data, null, 2);
+    
+    // 1. Instantly update the UI
+    setRow(c, { sheet: updatedSheetString });
+
+    // 2. Silently save to the database in the background
+    try {
+      await api.patch(`/admin/characters/${c.id}`, {
+        name: row.name,
+        clan: row.clan,
+        sheet: data
+      });
+    } catch (error) {
+      console.error("Auto-save failed:", error);
+      alert("Failed to auto-save the tracker update. Check your connection.");
+    }
   };
 
   const calculateStats = (jsonString) => {
@@ -155,6 +229,8 @@ export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEdit
                 <div style={{ marginTop: '1.5rem', padding: '0.75rem', background: 'rgba(0,0,0,0.05)', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
                   <TrackerDisplay label="Health" max={maxHealth} currentObj={sheetObj.health || {}} onUpdate={(type, delta) => updateTracker(c, 'health', type, delta)} />
                   <TrackerDisplay label="Willpower" max={maxWillpower} currentObj={sheetObj.willpower || {}} onUpdate={(type, delta) => updateTracker(c, 'willpower', type, delta)} />
+                  <TrackerDisplay label="Humanity" max={10} isValueTracker={true} value={sheetObj.morality?.humanity ?? sheetObj.humanity ?? 7} stains={sheetObj.stains || 0} onUpdate={(type, delta) => updateTracker(c, 'humanity', type, delta)} />
+                  <TrackerDisplay label="Hunger" max={5} isValueTracker={true} value={sheetObj.hunger || 0} onUpdate={(type, delta) => updateTracker(c, 'hunger', type, delta)} />
                 </div>
               
                 <label className={styles.stack12} style={{marginTop: '1rem'}}>
@@ -170,7 +246,6 @@ export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEdit
                   }}>Save JSON</button>
                 <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => onOpenEditor(c)}>Open Editor</button>
                 
-                {/* --- CALLS NEW HTML/PDF GENERATOR --- */}
                 <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => generateVTMCharacterSheetPDF(c)}>Download PDF</button>
 
                 {isActive ? (
