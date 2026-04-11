@@ -225,6 +225,16 @@ export default function Comms() {
   const [filter, setFilter] = useState('');
   const [noCharOpen, setNoCharOpen] = useState(false);
 
+  // --- NEW: Fetch my character to check if they are "active" ---
+  const [myChar, setMyChar] = useState(null);
+  useEffect(() => {
+    if (isAdmin) return;
+    api.get('/characters/me').then(r => setMyChar(r.data.character)).catch(()=>{});
+  }, [isAdmin]);
+
+  const isCharActive = isAdmin || (myChar && myChar.sheet && myChar.sheet.is_active === true);
+  // -------------------------------------------------------------
+
   const [selectedContact, setSelectedContact] = useState(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState(null); 
   const [npcConvos, setNpcConvos] = useState([]);
@@ -1133,7 +1143,11 @@ const selectContact = (contact) => {
       <aside className={styles.userList} id="comms-contacts">
         <div className={styles.listHeader}>
           <div className={styles.listTitle}>Contacts</div>
-          <button className={styles.addGroupBtn} onClick={() => setCreatingGroup(true)} title="Create Group">+</button>
+          
+          {/* ONLY ACTIVE CHARACTERS CAN CREATE GROUPS */}
+          {isCharActive && (
+            <button className={styles.addGroupBtn} onClick={() => setCreatingGroup(true)} title="Create Group">+</button>
+          )}
         </div>
         <div className={styles.searchWrap}>
           <input type="text" className={styles.search} placeholder="Search..." value={filter} onChange={(e) => setFilter(e.target.value)} />
@@ -1328,6 +1342,13 @@ const selectContact = (contact) => {
               )}
             </div>
 
+            {/* NEW APPROVAL BANNER */}
+            {!isCharActive && (
+              <div style={{ padding: '8px', background: '#d41b2c', color: '#fff', textAlign: 'center', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                Your character is waiting for ST approval. You cannot send messages yet.
+              </div>
+            )}
+
             <form className={styles.messageInputForm} onSubmit={handleSendMessage} style={{ position: 'relative' }}>
                 {previewUrl && (
                   <div className={styles.previewContainer}>
@@ -1362,6 +1383,7 @@ const selectContact = (contact) => {
                   className={styles.uploadBtn} 
                   onClick={() => setShowEmojiPicker(val => !val)}
                   title="Add Emoji"
+                  disabled={!isCharActive}
                 >
                   <SmileIcon />
                 </button>
@@ -1371,6 +1393,7 @@ const selectContact = (contact) => {
                   className={styles.uploadBtn} 
                   onClick={() => fileInputRef.current?.click()}
                   title="Attach Image"
+                  disabled={!isCharActive}
                 >
                   <ImageIcon />
                 </button>
@@ -1381,13 +1404,13 @@ const selectContact = (contact) => {
                         value={newMessage} 
                         onChange={e => setNewMessage(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        placeholder="Type a message..." 
+                        placeholder={!isCharActive ? "Waiting for ST approval..." : "Type a message..."} 
                         className={styles.messageInput} 
-                        disabled={isAdmin && selectedContact.type === 'npc' && !selectedPlayerId} 
+                        disabled={!isCharActive || (isAdmin && selectedContact.type === 'npc' && !selectedPlayerId)} 
                         rows={1}
                     />
                 </div>
-                <button type="submit" className={styles.sendButton} disabled={sendingRef.current || (!newMessage.trim() && !attachment) || (isAdmin && selectedContact.type === 'npc' && !selectedPlayerId)}>
+                <button type="submit" className={styles.sendButton} disabled={!isCharActive || sendingRef.current || (!newMessage.trim() && !attachment) || (isAdmin && selectedContact.type === 'npc' && !selectedPlayerId)}>
                     <span className={styles.sendIcon}>➤</span>
                 </button>
             </form>

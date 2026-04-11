@@ -427,7 +427,7 @@ export const RITUALS = {
         {
           id: 'awaken_the_homuncular_servant',
           name: 'Awaken the Homuncular Servant',
-          prereq: 'Where the Shroud Thins',
+          prereq: 'Where the Veil Thins',
           cost: '1 Rouse',
           effect: 'Create spies/stalkers from parts or small animals.',
           dice_pool: 'Resolve + Oblivion',
@@ -449,7 +449,7 @@ export const RITUALS = {
         {
           id: 'compel_spirit',
           name: 'Compel Spirit',
-          prereq: 'Where the Shroud Thins',
+          prereq: 'Where the Veil Thins',
           cost: '1 Rouse',
           effect: "Bend a wraith to the vampire's will.",
           dice_pool: 'Resolve + Oblivion',
@@ -473,7 +473,7 @@ export const RITUALS = {
         {
           id: 'fortezza_sindonica',
           name: 'Fortezza Sindonica',
-          prereq: 'Where the Shroud Thins',
+          prereq: 'Where the Veil Thins',
           cost: '3 Rouse',
           effect: 'Create a barrier that harms wraiths.',
           dice_pool: 'Resolve + Oblivion',
@@ -506,7 +506,7 @@ export const RITUALS = {
         {
           id: 'knit_the_veil',
           name: 'Knit the Veil',
-          prereq: 'Where the Shroud Thins',
+          prereq: 'Where the Veil Thins',
           cost: '1 Rouse',
           effect: 'Make a shroud impenetrable.',
           dice_pool: 'Resolve + Oblivion',
@@ -550,7 +550,7 @@ export const RITUALS = {
         {
           id: 'wisdom_of_the_dead',
           name: 'Wisdom of the Dead',
-          prereq: "Where the Shroud Thins or Oblivion's Sight",
+          prereq: "Where the Veil Thins or Oblivion's Sight",
           cost: '1 Rouse',
           effect: 'Gain information from a corpse skull/head.',
           dice_pool: 'Resolve + Oblivion',

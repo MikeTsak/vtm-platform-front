@@ -1,5 +1,6 @@
 // src/pages/CharacterView.jsx
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api';
 import { DISCIPLINES, ALL_DISCIPLINE_NAMES, iconPath } from '../data/disciplines';
 import { RITUALS } from '../data/rituals';
@@ -229,9 +230,14 @@ function normalizeFromFlatAny(source) {
   };
   
 
-  // ----- Passthrough XP Fields -----
+// ----- Passthrough XP Fields -----
   if (flat.xp_spent !== undefined) sheet.xp_spent = flat.xp_spent;
   if (flat.experience !== undefined) sheet.experience = flat.experience;
+  
+  // ✅ FORCE-preserve the allow_reset flag, no matter where the cleaner hid it!
+  if (source?.sheet?.allow_reset === true) sheet.allow_reset = true;
+  if (flat?.allow_reset === true) sheet.allow_reset = true;
+  if (source?.allow_reset === true) sheet.allow_reset = true;
 
   return sheet;
 }
@@ -430,6 +436,8 @@ export default function CharacterView({
   const [pendingFixes, setPendingFixes] = useState([]);
   const [xpTotals, setXpTotals] = useState(null);
   const shopRef = useRef(null);
+  
+  const navigate = useNavigate();
 
   // Load character/NPC
   useEffect(() => {
@@ -729,7 +737,26 @@ export default function CharacterView({
             </button>
           </div>
 
-          <div className={styles.card} style={{ display: 'grid', gap: 12 }}>
+          <div className={`${styles.card} ${styles.sheetWide} ${styles.bleedEdge}`}>
+            
+            {/* --- NEW RE-ROLL AUTHORIZED BANNER --- */}
+            {sheet.allow_reset && (
+              <div style={{ padding: '20px', background: 'rgba(217, 119, 6, 0.1)', border: '1px solid #d97706', borderRadius: '8px', marginBottom: '25px', textAlign: 'center' }}>
+                <h3 style={{ color: '#d97706', margin: '0 0 10px 0', fontSize: '1.5rem' }}>Re-Roll Authorized</h3>
+                <p style={{ margin: '0 0 20px 0', fontSize: '1rem', color: 'var(--text-color)', opacity: 0.9 }}>
+                  An admin has granted you permission to rebuild your character. This will reset your sheet and XP, but preserve your chat history.
+                </p>
+                <button
+                  className={styles.actionBtn}
+                  style={{ background: '#d97706', color: '#fff', border: 'none', padding: '12px 24px', fontSize: '1.1rem', cursor: 'pointer', borderRadius: '4px', fontWeight: 'bold' }}
+                  onClick={() => navigate('/make')}
+                >
+                  Start Re-Roll Wizard
+                </button>
+              </div>
+            )}
+            {/* ------------------------------------- */}
+            
             <div className={styles.rowForm} style={{ gap: 12, flexWrap: 'wrap' }}>
               <Pill label="Blood Potency" value={sheet?.blood_potency ?? 1} />
               <Pill label="Humanity" value={sheet?.humanity ?? '—'} />

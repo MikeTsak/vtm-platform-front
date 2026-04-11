@@ -117,6 +117,7 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
   const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
   const [successOpen, setSuccessOpen] = useState(false);
+  const [isRebuilding, setIsRebuilding] = useState(false);
 
 
   // Identity + meta
@@ -185,9 +186,23 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
   const [humanity, setHumanity] = useState(RULES.humanity);
   const [bloodPotency, setBloodPotency] = useState(RULES.bloodPotency);
 
-    useEffect(() => {
+  useEffect(() => {
     if (forNPC) return; // NPCs don't use /characters/me
-    api.get('/characters/me').then(r => setExisting(r.data.character)).catch(()=>{});
+    api.get('/characters/me').then(r => {
+      const char = r.data.character;
+      setExisting(char);
+      
+      // ✅ If the character exists but the sheet is empty (Admin Wiped it) OR an admin allowed it, automatically open the wizard!
+      if (char && char.sheet && char.sheet.allow_reset === true) {
+        setIsRebuilding(true);
+        if (char.name) setName(char.name);
+        if (char.clan) setClan(char.clan);
+      } else if (char && (!char.sheet || Object.keys(char.sheet).length === 0)) {
+        setIsRebuilding(true);
+        if (char.name) setName(char.name);
+        if (char.clan) setClan(char.clan);
+      }
+    }).catch(()=>{});
   }, [forNPC]);
   
 
@@ -523,7 +538,7 @@ const save = async () => {
     bloodPotency: bloodPotencyOut
   };
 
-    const url = forNPC ? '/admin/npcs' : '/characters';
+    const url = forNPC ? '/admin/npcs' : (isRebuilding ? '/api/characters/rebuild' : '/api/characters');
     const { data } = await api.post(url, { name, clan, sheet: payload });
     
     // Store the created character data if returned by API
@@ -546,11 +561,14 @@ const save = async () => {
 
   /* ---------- Render ---------- */
 
-  if (existing) {
+if (existing && !isRebuilding) {
     return (
       <div className={styles.sheetCard}>
         <h3 className={styles.cardTitle}>Your Character</h3>
         <p>Character: <b>{existing.name}</b> ({existing.clan})</p>
+        <p className={styles.muted} style={{marginTop: '10px'}}>
+           You have already created a character.
+        </p>
       </div>
     );
   }

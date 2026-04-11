@@ -1,5 +1,6 @@
 // src/pages/DownTimes.jsx
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useContext } from 'react';
+import { AuthCtx } from '../AuthContext'; // <-- Added to get currentUser role
 import api from '../api';
 import styles from '../styles/DownTimes.module.css';
 import Loading from '../components/Loading';
@@ -282,6 +283,7 @@ function DowntimeItem({ dt }) {
 
 // --- Main Component ---
 export default function DownTimes() {
+  const { user: currentUser } = useContext(AuthCtx); // <-- Added AuthCtx
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
 
@@ -292,6 +294,9 @@ export default function DownTimes() {
   // My downtimes
   const [mine, setMine] = useState([]);
   const [quota, setQuota] = useState({ used: 0, limit: 3 });
+  
+  // --- NEW: Fetch my character to check if they are "active" ---
+  const [myChar, setMyChar] = useState(null);
 
   // UI state
   const [filter, setFilter] = useState('active');
@@ -308,10 +313,12 @@ export default function DownTimes() {
       setLoading(true);
       setErr('');
       try {
-        const [cfgP, mineP, quotaP] = await Promise.allSettled([
+        // Fetch config, downtimes, quota, AND character concurrently
+        const [cfgP, mineP, quotaP, charP] = await Promise.allSettled([
           api.get('/downtimes/config'),
           api.get('/downtimes/mine'),
           api.get('/downtimes/quota'),
+          api.get('/characters/me') // <-- Added
         ]);
 
         if (!mounted) return;
@@ -337,6 +344,10 @@ export default function DownTimes() {
         } else {
            console.warn('Failed to load downtime quota:', quotaP.reason);
         }
+        
+        if (charP.status === 'fulfilled') {
+          setMyChar(charP.value.data?.character || null);
+        }
 
       } catch (e) {
         console.error(e);
@@ -352,6 +363,9 @@ export default function DownTimes() {
     setMine(prev => [newDowntime, ...prev]);
     setQuota(prev => ({ ...prev, used: prev.used + 1 }));
   };
+  
+  // Calculate if the user's character is active
+  const isCharActive = currentUser?.role === 'admin' || (myChar && myChar.sheet && myChar.sheet.is_active === true);
 
   // Memoized lists
   const active = useMemo(() => mine.filter(d => !statusIsPast(d.status)), [mine]);
@@ -403,12 +417,18 @@ export default function DownTimes() {
 
       {err && <div className={`${styles.alert} ${styles.alertError}`}>{err}</div>}
 
-      {/* Submit Card */}
-      <SubmitCard 
-        quota={quota} 
-        onDowntimeCreated={handleDowntimeCreated} 
-        deadline={deadline}
-      />
+      {/* NEW APPROVAL BANNER OR Submit Card */}
+      {!isCharActive ? (
+        <div style={{ padding: '15px', background: '#d41b2c', color: '#fff', textAlign: 'center', fontSize: '0.95rem', fontWeight: 'bold', borderRadius: '8px', marginBottom: '20px' }}>
+          Your character is waiting for ST approval. You cannot submit downtimes yet.
+        </div>
+      ) : (
+        <SubmitCard 
+          quota={quota} 
+          onDowntimeCreated={handleDowntimeCreated} 
+          deadline={deadline}
+        />
+      )}
 
       {/* Controls: Filter + Search */}
       <section className={styles.controls}>
