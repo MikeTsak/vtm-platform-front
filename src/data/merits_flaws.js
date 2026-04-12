@@ -626,12 +626,14 @@ export const MERITS_AND_FLAWS = {
         description:
           'Once per story, escape all official punishment that would otherwise destroy you.',
       },
-      {
+{
         id: idFor('Other', 'Mystic of the Void'),
         name: 'Mystic of the Void',
         dots: '• or ••',
         description:
           'Count as knowing one Oblivion Power for ceremony prerequisites (Hecata/Lasombra choose three instead of one).',
+        requiresPowerSelection: true,
+        targetDiscipline: 'Oblivion'  
       },
     ],
     flaws: [

@@ -47,7 +47,7 @@ const SKILLS = {
 };
 
 /* ======================================================
-   MERITS HELPERS (module-scope so MeritAdder can use them)
+   MERITS & FLAWS HELPERS
    ====================================================== */
 function bulletCount(s = '') {
   const m = String(s).match(/•/g);
@@ -74,6 +74,7 @@ function parseDotSpec(spec = '') {
 function glyph(n) {
   return '•'.repeat(Math.max(0, Number(n) || 0));
 }
+
 function allSelectableMerits() {
   const out = [];
   for (const [cat, payload] of Object.entries(MERITS_AND_FLAWS)) {
@@ -92,6 +93,26 @@ function allSelectableMerits() {
   }
   const seen = new Set();
   return out.filter(m => (seen.has(m.id) ? false : (seen.add(m.id), true)));
+}
+
+function allSelectableFlaws() {
+  const out = [];
+  for (const [cat, payload] of Object.entries(MERITS_AND_FLAWS)) {
+    if (['Caitiff', 'Thin-blood', 'Ghouls', 'Cults'].includes(cat)) continue;
+    const pushIt = (item, category) => {
+      const allowed = parseDotSpec(item.dots);
+      if (!allowed.length) return; 
+      out.push({ id: item.id, name: item.name, dotsSpec: item.dots, description: item.description, category, allowed });
+    };
+    (payload.flaws || []).forEach(f => pushIt(f, cat));
+    if (payload.groups) {
+      for (const [sub, grp] of Object.entries(payload.groups)) {
+        (grp.flaws || []).forEach(f => pushIt(f, `${cat} / ${sub}`));
+      }
+    }
+  }
+  const seen = new Set();
+  return out.filter(f => (seen.has(f.id) ? false : (seen.add(f.id), true)));
 }
 
 /* ===========================
@@ -395,7 +416,6 @@ function TrackerBlock({ label, val, max, agg=0, sup=0, filled=0, stains=0 }) {
     let border = isFilled ? 'var(--text-color, #222)' : 'rgba(128,128,128,0.5)';
     let fSize = 18;
 
-    // Blood Emoji specifically for Hunger
     if (label === 'Hunger' && isFilled) {
       content = '🩸';
       bg = 'rgba(0,0,0,0.05)'; 
@@ -414,7 +434,7 @@ function TrackerBlock({ label, val, max, agg=0, sup=0, filled=0, stains=0 }) {
            backgroundColor: bg,
            borderRadius: '4px',
            boxSizing: 'border-box',
-           flexShrink: 0 // Prevent squishing
+           flexShrink: 0 
          }}
       >
         {content}
@@ -443,9 +463,12 @@ export default function CharacterView({
   const { id } = useParams();
   const navigate = useNavigate();
 
-  // Get current user to check for admin privileges
   const { user } = useContext(AuthCtx) || {};
   const isAdmin = user?.role === 'admin';
+
+  // Memoize all merits and flaws so we can look up their full descriptions later
+  const allMeritsFlat = useMemo(() => allSelectableMerits(), []);
+  const allFlawsFlat = useMemo(() => allSelectableFlaws(), []);
 
   const paths = useMemo(() => {
     if (adminNPCId) {
@@ -485,7 +508,6 @@ export default function CharacterView({
   const [xpTotals, setXpTotals] = useState(null);
   const shopRef = useRef(null);
 
-  // Auto-save Tracker States
   const [tempHealth, setTempHealth] = useState({ superficial: 0, aggravated: 0 });
   const [tempWillpower, setTempWillpower] = useState({ superficial: 0, aggravated: 0 });
   const [tempHunger, setTempHunger] = useState(1);
@@ -495,7 +517,6 @@ export default function CharacterView({
   const saveTimeoutRef = useRef(null);
   const isInitialTrackerLoad = useRef(true);
   
-  // Load character/NPC
   useEffect(() => {
     let mounted = true;
     api.get(paths.load)
@@ -524,7 +545,6 @@ export default function CharacterView({
     return () => { mounted = false; };
   }, [paths, adminNPCId, loadPath]);
 
-  // Optional: fetch XP totals (players only)
   useEffect(() => {
     if (!paths.totals || !ch) return;
     api.get(paths.totals)
@@ -532,7 +552,6 @@ export default function CharacterView({
       .catch(() => {});
   }, [paths.totals, ch]);
 
-  // Auto-Save Effect for Trackers (Only triggers if Admin makes a change)
   useEffect(() => {
     if (isInitialTrackerLoad.current || !ch || !isAdmin) return;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -567,7 +586,7 @@ export default function CharacterView({
   }, [tempHealth, tempWillpower, tempHunger, tempHumanity, tempStains, ch, paths.update, isAdmin]);
 
   const updateTracker = (type, kind, delta) => {
-    if (!isAdmin) return; // Hard block for non-admins just in case
+    if (!isAdmin) return; 
     if (type === 'health') {
       setTempHealth(prev => ({ ...prev, [kind]: Math.max(0, (prev[kind] || 0) + delta) }));
     } else if (type === 'willpower') {
@@ -582,12 +601,12 @@ export default function CharacterView({
       const { data } = await api.post(paths.spend, payload);
       const obj = data.character || data.npc || null;
       setCh(attachStructured(obj));
-      setMsg(`Spent ${data.spent} XP.`);
+      setMsg(`Action successful.`);
       if (paths.totals) {
         try { const t = await api.get(paths.totals); setXpTotals(t.data); } catch {}
       }
     } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to spend XP');
+      setErr(e.response?.data?.error || 'Failed to update character sheet');
       throw e;
     }
   }
@@ -698,20 +717,33 @@ export default function CharacterView({
     ...(sheet.rituals?.blood_sorcery || []).map(r => r.id),
     ...(sheet.rituals?.oblivion || []).map(r => r.id),
   ]), [sheet.rituals]);
-
-  const knownPowerNamesAndIds = useMemo(() => {
+const knownPowerNamesAndIds = useMemo(() => {
     const powers = sheet.disciplinePowers || {};
     const known = new Set();
-    const norm = (v) => String(v ?? '').trim().toLowerCase();
+    
+    // Aggressive normalizer: strips spaces, underscores, dashes, and (errata) tags
+    const superNorm = (v) => String(v ?? '').toLowerCase().replace(/\(errata\)/g, '').replace(/[\s_\-]+/g, '');
   
     Object.values(powers).flat().forEach(p => {
-      if (p?.id) known.add(norm(p.id));
-      if (p?.name) known.add(norm(p.name));
-      if (p?.slug) known.add(norm(p.slug));
-      if (p?.key) known.add(norm(p.key));
+      if (p?.id) known.add(superNorm(p.id));
+      if (p?.name) known.add(superNorm(p.name));
+      if (p?.slug) known.add(superNorm(p.slug));
+      if (p?.key) known.add(superNorm(p.key));
     });
+
+    const merits = sheet.advantages?.merits || [];
+    const mysticMerit = merits.find(m => m.id === 'other__mystic_of_the_void');
+    if (mysticMerit && mysticMerit.notes) {
+      try {
+        const ghostPowers = JSON.parse(mysticMerit.notes);
+        if (Array.isArray(ghostPowers)) {
+          ghostPowers.forEach(gp => known.add(superNorm(gp)));
+        }
+      } catch (e) {}
+    }
+
     return known;
-  }, [sheet.disciplinePowers]);
+  }, [sheet.disciplinePowers, sheet.advantages?.merits]);
 
   function canLearnRitual(level) {
     const bsLevel = Number(sheet.disciplines?.['Blood Sorcery'] || 0);
@@ -738,6 +770,19 @@ export default function CharacterView({
     nextSheet.rituals.oblivion.push({ id: cer.id, name: cer.name, level });
     await spendXP({ type: 'ceremony', target: cer.id, ritualLevel: level, patchSheet: nextSheet });
   }
+
+  /* --- Flaw/Merit Rule Calculations --- */
+  const meritsList = Array.isArray(sheet?.advantages?.merits) ? sheet.advantages.merits : [];
+  const backgroundsList = Array.isArray(sheet?.backgrounds) ? sheet.backgrounds : [];
+  const flawsList = Array.isArray(sheet?.advantages?.flaws) ? sheet.advantages.flaws : [];
+  
+  const displayMerits = [...meritsList, ...backgroundsList];
+
+  const totalMeritDots = displayMerits.reduce((sum, m) => sum + Number(m.dots || 0), 0);
+  const totalFlawDots = flawsList.reduce((sum, f) => sum + Number(f.dots || 0), 0);
+
+  const requiredFlaws = Math.floor(totalMeritDots / 7) * 2;
+  const flawDeficit = requiredFlaws - totalFlawDots;
 
 
   if (!ch) {
@@ -794,7 +839,6 @@ export default function CharacterView({
   }
   const maxWillpower = (Number(sheet.attributes?.Composure) || 1) + (Number(sheet.attributes?.Resolve) || 1);
 
-
   return (
     <div className={styles.root} style={{ '--tint': tint }}>
       <div className={styles.wrap}>
@@ -838,7 +882,6 @@ export default function CharacterView({
 
           <div className={`${styles.card} ${styles.sheetWide} ${styles.bleedEdge}`}>
             
-            {/* --- RE-ROLL AUTHORIZED BANNER --- */}
             {sheet.allow_reset && (
               <div style={{ padding: '20px', background: 'rgba(217, 119, 6, 0.1)', border: '1px solid #d97706', borderRadius: '8px', marginBottom: '25px', textAlign: 'center' }}>
                 <h3 style={{ color: '#d97706', margin: '0 0 10px 0', fontSize: '1.5rem' }}>Re-Roll Authorized</h3>
@@ -860,10 +903,8 @@ export default function CharacterView({
               {sheet.generation && <Pill label="Generation" value={sheet.generation} />}
             </div>
 
-            {/* INTERACTIVE TRACKERS GRID - BOX-SIZING APPLIED TO PREVENT OVERFLOW */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%', marginTop: '20px', boxSizing: 'border-box' }}>
               
-              {/* Row 1: Health & Willpower side-by-side (will stack on mobile) */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', boxSizing: 'border-box' }}>
                 {/* Health */}
                 <div style={{ boxSizing: 'border-box', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
@@ -904,7 +945,7 @@ export default function CharacterView({
                 </div>
               </div>
 
-              {/* Row 2: Humanity (Centered Full Width Wrapper) */}
+              {/* Row 2: Humanity */}
               <div style={{ boxSizing: 'border-box', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', width: '100%' }}>
                  <TrackerBlock label="Humanity" val={tempHumanity} max={10} filled={tempHumanity} stains={tempStains} />
                  {isAdmin && (
@@ -923,7 +964,7 @@ export default function CharacterView({
                  )}
               </div>
 
-              {/* Row 3: Hunger (Centered Full Width Wrapper) */}
+              {/* Row 3: Hunger */}
               <div style={{ boxSizing: 'border-box', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', width: '100%' }}>
                  <TrackerBlock label="Hunger" val={tempHunger} max={5} filled={tempHunger} />
                  {isAdmin && (
@@ -996,7 +1037,6 @@ export default function CharacterView({
             </div>
           </Card>
 
-          {/* --- DOWNLOAD PDF BUTTON --- */}
           <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
             <button 
               className={styles.cta} 
@@ -1160,7 +1200,6 @@ export default function CharacterView({
           <Card>
             <div className={styles.cardHead}><b>Disciplines</b></div>
 
-            {/* In-clan */}
             <div className={styles.subhead}>In-Clan</div>
             <div className={styles.grid}>
               {inClanDisciplines.length === 0 && (
@@ -1200,7 +1239,6 @@ export default function CharacterView({
               })}
             </div>
 
-            {/* Out-of-clan */}
             <Drawer title="Out-of-Clan" subtitle="check with your ST before spending XP" defaultOpen={false}>
               <div className={styles.grid}>
                 {outOfClanDisciplines.map(name => {
@@ -1242,15 +1280,25 @@ export default function CharacterView({
 
           {/* Merits (Advantages) */}
           <Card>
-            <div className={styles.cardHead}><b>Merits</b></div>
+            <div className={styles.cardHead} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <b>Merits & Backgrounds</b>
+              <span className={styles.muted} style={{ fontSize: '0.85rem' }}>
+                Total Dots: <b>{totalMeritDots}</b>
+              </span>
+            </div>
+
+            {flawDeficit > 0 && (
+              <div className={styles.alertWarning} style={{ marginBottom: 15 }}>
+                <b>Rule Requirement:</b> You have {totalMeritDots} points in Merits. For every 7 points, you must take 2 points of Flaws. 
+                You currently need <b>{flawDeficit} more dot{flawDeficit > 1 ? 's' : ''}</b> in Flaws.
+              </div>
+            )}
+
             <MeritAdder
               xp={xp}
-              existing={[
-                ...(Array.isArray(sheet?.advantages?.merits) ? sheet.advantages.merits : []),
-                ...(Array.isArray(sheet?.backgrounds)
-                    ? sheet.backgrounds.map(b => ({ id: b.id, name: b.name, dots: b.dots }))
-                    : [])
-              ]}
+              clan={ch.clan}
+              knownPowerNamesAndIds={knownPowerNamesAndIds}
+              existing={displayMerits}
               onAdd={async (merit, targetDots, options = {}) => {
                 const separate = !!options.separate; 
                 const nextSheet = JSON.parse(JSON.stringify(sheet));
@@ -1282,6 +1330,7 @@ export default function CharacterView({
                     from: 'xp_shop',
                     instance,
                   };
+                  if (options.notes) newEntry.notes = JSON.stringify(options.notes);
 
                   if (preferBackgrounds) bgsArr.push(newEntry);
                   else meritsArr.push(newEntry);
@@ -1306,6 +1355,7 @@ export default function CharacterView({
                     const entry = arr[i];
                     if (entry.id === merit.id && Number(entry.dots || 0) === currentDots) {
                       arr[i] = { ...entry, dots: Number(targetDots) };
+                      if (options.notes) arr[i].notes = JSON.stringify(options.notes);
                       return true;
                     }
                   }
@@ -1318,13 +1368,15 @@ export default function CharacterView({
                 }
 
                 if (!upgraded) {
-                  meritsArr.push({
+                  const newMerit = {
                     id: merit.id,
                     name: merit.name,
                     dots: Number(targetDots),
                     from: 'xp_shop',
                     instance: sameMerits.length + sameBgs.length + 1,
-                  });
+                  };
+                  if (options.notes) newMerit.notes = JSON.stringify(options.notes);
+                  meritsArr.push(newMerit);
                 }
 
                 await spendXP({
@@ -1335,38 +1387,103 @@ export default function CharacterView({
                 });
               }}
             />
-            {Array.isArray(sheet?.advantages?.merits) && sheet.advantages.merits.length > 0 && (
-              <div className={styles.grid} style={{ marginTop: 10 }}>
-                <div className={styles.subhead}>Owned Merits</div>
-                <ul className={styles.powerList}>
-                  {sheet.advantages.merits.map((m, i) => (
-                    <li key={`${m.id || m.name}-${i}`} className={styles.powerPill}>
-                      <span className={styles.levelBadge}>{glyph(m.dots || 0)}</span>
-                      <span className={styles.powerName}>{m.name || m.id}</span>
-                    </li>
-                  ))}
-                </ul>
+            {displayMerits.length > 0 && (
+              <div className={styles.grid} style={{ marginTop: 15 }}>
+                <div className={styles.subhead}>Owned Merits & Backgrounds</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {displayMerits.map((m, i) => {
+                    const details = allMeritsFlat.find(x => x.id === m.id);
+                    const desc = details?.description || 'No description available.';
+                    
+                    let notesStr = m.notes;
+                    try {
+                      const parsed = JSON.parse(m.notes);
+                      if (Array.isArray(parsed)) notesStr = parsed.join(', ');
+                    } catch(e) {}
+
+                    return (
+                      <Drawer 
+                        key={`${m.id || m.name}-${i}`} 
+                        title={<span style={{ display: 'flex', gap: 8, alignItems: 'center' }}><span>{m.name}</span> <span style={{ color: 'var(--text-color)', opacity: 0.7 }}>{glyph(m.dots)}</span></span>}
+                        subtitle={details?.category || ''}
+                      >
+                        <div style={{ padding: '4px 0', fontSize: '0.95rem', opacity: 0.9 }}>
+                          {desc}
+                        </div>
+                        {notesStr && (
+                          <div style={{ marginTop: 8, padding: 8, background: 'rgba(255,255,255,0.05)', borderRadius: 4, fontSize: '0.85rem' }}>
+                            <b>Notes/Selections:</b> {notesStr}
+                          </div>
+                        )}
+                      </Drawer>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </Card>
 
           {/* Flaws */}
           <Card>
-            <div className={styles.cardHead}><b>Flaws</b></div>
-            {Array.isArray(sheet?.advantages?.flaws) && sheet.advantages.flaws.length > 0 ? (
-              <div className={styles.grid} style={{ marginTop: 10 }}>
+            <div className={styles.cardHead} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+               <b>Flaws</b>
+               <span className={styles.muted} style={{ fontSize: '0.85rem' }}>
+                 Total Dots: <b>{totalFlawDots}</b>
+               </span>
+            </div>
+
+            <FlawAdder 
+               existing={flawsList}
+               onAdd={async (flaw, targetDots) => {
+                 const nextSheet = JSON.parse(JSON.stringify(sheet));
+                 nextSheet.advantages = nextSheet.advantages || { merits: [], flaws: [] };
+                 nextSheet.advantages.flaws = Array.isArray(nextSheet.advantages.flaws) ? nextSheet.advantages.flaws : [];
+                 
+                 const newEntry = {
+                   id: flaw.id,
+                   name: flaw.name,
+                   dots: Number(targetDots),
+                   from: 'xp_shop'
+                 };
+                 
+                 nextSheet.advantages.flaws.push(newEntry);
+                 
+                 await spendXP({
+                   type: 'flaw',
+                   target: flaw.id,
+                   dots: 0,
+                   patchSheet: nextSheet
+                 });
+               }}
+            />
+
+            {flawsList.length > 0 && (
+              <div className={styles.grid} style={{ marginTop: 20 }}>
                 <div className={styles.subhead}>Known Flaws</div>
-                <ul className={styles.powerList}>
-                  {sheet.advantages.flaws.map((f, i) => (
-                    <li key={`${f.id || f.name}-${i}`} className={styles.powerPill}>
-                      <span className={styles.levelBadge}>{'•'.repeat(Number(f.dots || 0))}</span>
-                      <span className={styles.powerName}>{f.name || f.id}</span>
-                    </li>
-                  ))}
-                </ul>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {flawsList.map((f, i) => {
+                    const details = allFlawsFlat.find(x => x.id === f.id);
+                    const desc = details?.description || 'No description available.';
+                    
+                    return (
+                      <Drawer 
+                        key={`${f.id || f.name}-${i}`} 
+                        title={<span style={{ display: 'flex', gap: 8, alignItems: 'center' }}><span>{f.name}</span> <span style={{ color: '#b40f1f' }}>{glyph(f.dots)}</span></span>}
+                        subtitle={details?.category || ''}
+                      >
+                        <div style={{ padding: '4px 0', fontSize: '0.95rem', opacity: 0.9 }}>
+                          {desc}
+                        </div>
+                        {f.notes && (
+                          <div style={{ marginTop: 8, padding: 8, background: 'rgba(255,0,0,0.05)', borderRadius: 4, fontSize: '0.85rem' }}>
+                            <b>Notes:</b> {f.notes}
+                          </div>
+                        )}
+                      </Drawer>
+                    );
+                  })}
+                </div>
               </div>
-            ) : (
-              <div className={styles.muted}>No recorded flaws.</div>
             )}
           </Card>
 
@@ -1697,16 +1814,18 @@ function RitualRow({ item, level, cost, owned, allowed, afford, prereqUnmet = []
 /* ---------- Ritual/Ceremony prereq helper ---------- */
 const _norm = (v) => String(v ?? '').trim().toLowerCase();
 
+/* ---------- Ritual/Ceremony prereq helper ---------- */
 function ritualPrereqStatus(rit, knownPowerSet) {
   const prereq = rit?.prereq;
   if (!prereq || prereq === '—') return { unmet: [] };
 
-  const norm = (s) => _norm(s.replace(/\s+\(Errata\)$/i, ''));
+  // Use the exact same aggressive normalizer here to ensure a perfect match
+  const superNorm = (v) => String(v ?? '').toLowerCase().replace(/\(errata\)/g, '').replace(/[\s_\-]+/g, '');
   const unmetList = [];
 
   if (prereq.includes(' or ')) {
     const parts = prereq.split(/\s+or\s+/i);
-    const met = parts.some(part => knownPowerSet.has(norm(part)));
+    const met = parts.some(part => knownPowerSet.has(superNorm(part)));
     if (!met) {
       unmetList.push(prereq);
     }
@@ -1714,13 +1833,13 @@ function ritualPrereqStatus(rit, knownPowerSet) {
     const parts = prereq.split(';');
     for (const part of parts) {
       const p = part.trim();
-      if (p && !knownPowerSet.has(norm(p))) {
+      if (p && !knownPowerSet.has(superNorm(p))) {
         unmetList.push(p.replace(/\s+\(Errata\)$/i, '')); 
       }
     }
   } else {
     const p = prereq.trim();
-    if (p && !knownPowerSet.has(norm(p))) {
+    if (p && !knownPowerSet.has(superNorm(p))) {
       unmetList.push(p);
     }
   }
@@ -2069,12 +2188,34 @@ function SpecialtyAdder({ xp, onAdd }) {
 }
 
 /* ---------- Merit adder (XP Shop) ---------- */
-function MeritAdder({ xp, existing = [], onAdd }) {
+function MeritAdder({ xp, clan, knownPowerNamesAndIds, existing = [], onAdd }) {
   const all = useMemo(() => allSelectableMerits(), []);
   const [q, setQ] = useState('');
   const [addSeparate, setAddSeparate] = useState(false); 
   const [selId, setSelId] = useState(all[0]?.id || '');
   const sel = useMemo(() => all.find(m => m.id === selId) || null, [all, selId]);
+
+  const [mysticSelections, setMysticSelections] = useState([]);
+  
+  useEffect(() => { setMysticSelections([]); }, [selId]);
+
+  const isMystic = sel?.id === 'other__mystic_of_the_void';
+  const maxMystic = ['Hecata', 'Lasombra'].includes(clan) ? 3 : 1;
+
+  const availableOblivion = useMemo(() => {
+    const out = [];
+    if (!isMystic || typeof DISCIPLINES === 'undefined' || !DISCIPLINES['Oblivion']) return out;
+    Object.entries(DISCIPLINES['Oblivion'].levels || {}).forEach(([lvlStr, list]) => {
+      const level = Number(lvlStr);
+      (list || []).forEach(p => {
+        const normId = String(p.id ?? '').toLowerCase();
+        if (!knownPowerNamesAndIds.has(normId)) {
+          out.push({ ...p, level });
+        }
+      });
+    });
+    return out;
+  }, [isMystic, knownPowerNamesAndIds]);
 
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase();
@@ -2084,6 +2225,14 @@ function MeritAdder({ xp, existing = [], onAdd }) {
       (m.category || '').toLowerCase().includes(qq)
     );
   }, [q, all]);
+
+  const groupedOptions = useMemo(() => {
+    return filtered.reduce((acc, m) => {
+      acc[m.category || 'General'] = acc[m.category || 'General'] || [];
+      acc[m.category || 'General'].push(m);
+      return acc;
+    }, {});
+  }, [filtered]);
 
   const dotsOptions = sel?.allowed || [];
   const [dots, setDots] = useState(dotsOptions[0] || 1);
@@ -2109,7 +2258,7 @@ function MeritAdder({ xp, existing = [], onAdd }) {
     ? XP_RULES.advantageDot(Number(dots || 0)) 
     : XP_RULES.advantageDot(delta);            
   const afford = xp >= cost;
-  const blocked = !sel || (addSeparate ? Number(dots || 0) <= 0 : delta <= 0) || !afford;
+  const blocked = !sel || (addSeparate ? Number(dots || 0) <= 0 : delta <= 0) || !afford || (isMystic && mysticSelections.length === 0);
 
   return (
     <div className={styles.grid} style={{ gap: 12 }}>
@@ -2124,17 +2273,21 @@ function MeritAdder({ xp, existing = [], onAdd }) {
         <span className={styles.muted}>Cost: <b>{cost}</b> XP</span>
       </div>
 
-      <div className={styles.rowForm}>
+      <div className={styles.rowForm} style={{ flexWrap: 'wrap' }}>
         <select
           className={styles.input}
           value={selId}
           onChange={e => setSelId(e.target.value)}
           style={{ flex: 2, minWidth: 220 }}
         >
-          {filtered.map(m => (
-            <option key={m.id} value={m.id}>
-              {m.name} {m.category ? `— ${m.category}` : ''} ({m.dotsSpec})
-            </option>
+          {Object.entries(groupedOptions).map(([cat, list]) => (
+            <optgroup key={cat} label={cat}>
+              {list.map(m => (
+                <option key={m.id} value={m.id}>
+                  {m.name} ({m.dotsSpec})
+                </option>
+              ))}
+            </optgroup>
           ))}
         </select>
 
@@ -2150,7 +2303,7 @@ function MeritAdder({ xp, existing = [], onAdd }) {
         <button
           className={styles.cta}
           disabled={blocked}
-          onClick={() => onAdd(sel, dots, { separate: addSeparate })}
+          onClick={() => onAdd(sel, dots, { separate: addSeparate, notes: isMystic ? mysticSelections : undefined })}
           title={
             addSeparate
               ? (Number(dots || 0) <= 0 ? 'Pick a dot rating' : '')
@@ -2174,21 +2327,148 @@ function MeritAdder({ xp, existing = [], onAdd }) {
             <span>Add as another instance (don’t upgrade)</span>
           </label>
         )}
+      </div>
 
-        {sel && (
-            <div className={styles.muted}>
-              Owned instances: <b>{existing.filter(m => m.id === (sel.id || '')).length}</b>
-              {' • '}Highest rating: <b>{currentOwnedForSel || '—'}</b>
-              {' • '}Mode: <b>{addSeparate ? 'Add another' : 'Upgrade'}</b>
-              {' • '}Cost: <b>{cost}</b> XP
+      {isMystic && (
+        <div className={styles.rowForm} style={{ flexDirection: 'column', alignItems: 'flex-start', marginTop: 10 }}>
+          <label><b>Select {maxMystic} Oblivion Power(s) for Prerequisites:</b></label>
+          <select
+            multiple={maxMystic > 1}
+            className={styles.input}
+            style={{ height: maxMystic > 1 ? '100px' : 'auto', width: '100%' }}
+            value={maxMystic > 1 ? mysticSelections : (mysticSelections[0] || '')}
+            onChange={(e) => {
+              if (maxMystic === 1) {
+                setMysticSelections([e.target.value]);
+              } else {
+                const opts = Array.from(e.target.selectedOptions, o => o.value);
+                if (opts.length <= maxMystic) setMysticSelections(opts);
+              }
+            }}
+          >
+            <option value="" disabled={maxMystic === 1}>-- Select Power(s) --</option>
+            {availableOblivion.map(p => (
+              <option key={p.id} value={p.id}>{p.name} (Level {p.level})</option>
+            ))}
+          </select>
+          {maxMystic > 1 && <span className={styles.muted}>Hold Ctrl/Cmd to select multiple (up to {maxMystic}).</span>}
+        </div>
+      )}
+
+      {sel && (
+        <div className={styles.paneCard} style={{ padding: '14px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: '6px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
+              {sel.name} <span style={{ opacity: 0.6, fontSize: '0.85rem', fontWeight: 'normal' }}>({sel.category})</span>
             </div>
-          )}
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-color)', opacity: 0.8 }}>
+              Owned: <b>{existing.filter(m => m.id === (sel.id || '')).length}</b> • Highest: <b>{currentOwnedForSel || '—'}</b>
+            </div>
+          </div>
+          <div style={{ fontSize: '0.95rem', lineHeight: '1.5', opacity: 0.85 }}>
+            {sel.description || 'No description available.'}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------- Flaw Adder ---------- */
+function FlawAdder({ existing = [], onAdd }) {
+  const all = useMemo(() => allSelectableFlaws(), []);
+  const [q, setQ] = useState('');
+  const [selId, setSelId] = useState(all[0]?.id || '');
+  const sel = useMemo(() => all.find(f => f.id === selId) || null, [all, selId]);
+
+  const filtered = useMemo(() => {
+    const qq = q.trim().toLowerCase();
+    if (!qq) return all;
+    return all.filter(f =>
+      f.name.toLowerCase().includes(qq) ||
+      (f.category || '').toLowerCase().includes(qq)
+    );
+  }, [q, all]);
+
+  const groupedOptions = useMemo(() => {
+    return filtered.reduce((acc, f) => {
+      acc[f.category || 'General'] = acc[f.category || 'General'] || [];
+      acc[f.category || 'General'].push(f);
+      return acc;
+    }, {});
+  }, [filtered]);
+
+  const dotsOptions = sel?.allowed || [];
+  const [dots, setDots] = useState(dotsOptions[0] || 1);
+
+  useEffect(() => {
+    setDots(sel?.allowed?.[0] || 1);
+  }, [selId, sel]);
+
+  const blocked = !sel || Number(dots || 0) <= 0;
+
+  return (
+    <div className={styles.grid} style={{ gap: 12 }}>
+      <div className={styles.rowForm}>
+        <input
+          className={styles.input}
+          placeholder="Search flaws… (name or category)"
+          value={q}
+          onChange={e => setQ(e.target.value)}
+          style={{ flex: 1 }}
+        />
+        <span className={styles.muted}>Cost: <b>0 XP</b></span>
+      </div>
+
+      <div className={styles.rowForm} style={{ flexWrap: 'wrap' }}>
+        <select
+          className={styles.input}
+          value={selId}
+          onChange={e => setSelId(e.target.value)}
+          style={{ flex: 2, minWidth: 220 }}
+        >
+          {Object.entries(groupedOptions).map(([cat, list]) => (
+            <optgroup key={cat} label={cat}>
+              {list.map(f => (
+                <option key={f.id} value={f.id}>
+                  {f.name} ({f.dotsSpec})
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+
+        <select
+          className={styles.input}
+          value={dots}
+          onChange={e => setDots(Number(e.target.value))}
+          style={{ width: 120 }}
+        >
+          {dotsOptions.map(n => <option key={n} value={n}>{glyph(n)} ({n})</option>)}
+        </select>
+
+        <button
+          className={styles.cta}
+          disabled={blocked}
+          onClick={() => onAdd(sel, dots)}
+        >
+          Add {dots} dot{Number(dots) === 1 ? '' : 's'}
+        </button>
       </div>
 
       {sel && (
-        <div className={styles.muted} style={{ lineHeight: 1.4 }}>
-          <b>{sel.name}</b>{sel.category ? ` — ${sel.category}` : ''}<br/>
-          {sel.description || 'No description available.'}
+        <div className={styles.paneCard} style={{ padding: '14px', background: 'rgba(255,0,0,0.05)', border: '1px solid rgba(255,0,0,0.2)', borderRadius: '6px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
+              {sel.name} <span style={{ opacity: 0.6, fontSize: '0.85rem', fontWeight: 'normal' }}>({sel.category})</span>
+            </div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-color)', opacity: 0.8 }}>
+              Owned: <b>{existing.filter(f => f.id === (sel.id || '')).length}</b>
+            </div>
+          </div>
+          <div style={{ fontSize: '0.95rem', lineHeight: '1.5', opacity: 0.85 }}>
+            {sel.description || 'No description available.'}
+          </div>
         </div>
       )}
     </div>

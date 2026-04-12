@@ -1,4 +1,4 @@
-// src/pages/ChatSystem.jsx
+// src/components/ChatSystem.jsx
 import React, { useState, useEffect, useContext, useRef, useMemo, useLayoutEffect, useCallback } from 'react';
 import { AuthCtx } from '../AuthContext';
 import api from '../api';
@@ -19,16 +19,7 @@ const symlogo = (c) =>
 
 /* --- Icons --- */
 const ImageIcon = () => (
-<svg
-    width="20"
-    height="20"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
     <polyline points="21 15 16 10 5 21" />
     <circle cx="8" cy="9" r="2" />
@@ -44,6 +35,23 @@ const SmileIcon = () => (
     <line x1="9" y1="9" x2="9.01" y2="9"></line>
     <line x1="15" y1="9" x2="15.01" y2="9"></line>
   </svg>
+);
+
+/* --- Gold NPC Tag Component --- */
+const NPCTag = () => (
+  <span style={{ 
+    color: '#ffd700', 
+    fontSize: '0.75rem', 
+    fontWeight: 'bold', 
+    marginLeft: '6px', 
+    verticalAlign: 'middle', 
+    background: 'rgba(255,215,0,0.1)', 
+    padding: '2px 4px', 
+    borderRadius: '4px',
+    textTransform: 'uppercase'
+  }}>
+    NPC
+  </span>
 );
 
 /* --- PUSH HELPERS --- */
@@ -125,25 +133,26 @@ const asGroupContact = (g) => ({
   id: g.id,
   name: g.name,
   created_by: g.created_by,
-  last_message_at: g.last_message_at ? new Date(g.last_message_at).getTime() : 0
+  last_message_at: g.last_message_at ? new Date(g.last_message_at).getTime() : 0,
+  unread_count: g.unread_count || 0
 });
 
 const isContactAdmin = (u) => u?.role === 'admin' || u?.permission_level === 'admin' || !!u?.is_admin;
 
-/* --- SORT HELPER --- */
+/* --- MESSENGER SORT HELPER (Unread -> Most Recent -> A-Z) --- */
 const sortContacts = (list) => {
   return [...list].sort((a, b) => {
     const unreadA = a.unread_count || 0;
     const unreadB = b.unread_count || 0;
-    if (unreadA !== unreadB) return unreadB - unreadA;
+    if (unreadA !== unreadB) return unreadB - unreadA; // Unread first
     
     const timeA = a.last_message_at || 0;
     const timeB = b.last_message_at || 0;
-    if (timeA !== timeB) return timeB - timeA;
+    if (timeA !== timeB) return timeB - timeA; // Newest first
     
     const nameA = a.display_name || a.name || '';
     const nameB = b.display_name || b.name || '';
-    return nameA.localeCompare(nameB);
+    return nameA.localeCompare(nameB); // Alphabetical fallback
   });
 };
 
@@ -215,7 +224,7 @@ const generateTempId = () => {
   return `temp_${Date.now()}_${++tempIdCounter}_${Math.random().toString(36).slice(2, 11)}`;
 };
 
-export default function Comms() {
+export default function ChatSystem() {
   const { user: currentUser } = useContext(AuthCtx);
   const isAdmin = currentUser?.role === 'admin';
 
@@ -225,7 +234,6 @@ export default function Comms() {
   const [filter, setFilter] = useState('');
   const [noCharOpen, setNoCharOpen] = useState(false);
 
-  // --- NEW: Fetch my character to check if they are "active" ---
   const [myChar, setMyChar] = useState(null);
   useEffect(() => {
     if (isAdmin) return;
@@ -233,7 +241,6 @@ export default function Comms() {
   }, [isAdmin]);
 
   const isCharActive = isAdmin || (myChar && myChar.sheet && myChar.sheet.is_active === true);
-  // -------------------------------------------------------------
 
   const [selectedContact, setSelectedContact] = useState(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState(null); 
@@ -244,14 +251,9 @@ export default function Comms() {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   
-  /* --- Emoji Picker State --- */
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-
-  const onEmojiClick = (emojiObject) => {
-    setNewMessage(prevInput => prevInput + emojiObject.emoji);
-  };
+  const onEmojiClick = (emojiObject) => setNewMessage(prevInput => prevInput + emojiObject.emoji);
   
-  /* --- Attachments State --- */
   const [attachment, setAttachment] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const fileInputRef = useRef(null);
@@ -264,12 +266,10 @@ export default function Comms() {
   const sendingRef = useRef(false);
   const loadSeqRef = useRef(0);
 
-  // Group Creation State
   const [creatingGroup, setCreatingGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupMembers, setNewGroupMembers] = useState([]);
 
-  // Group Management State
   const [managingGroup, setManagingGroup] = useState(false);
   const [currentGroupMembers, setCurrentGroupMembers] = useState([]);
   const [groupMembersLoading, setGroupMembersLoading] = useState(false);
@@ -290,14 +290,14 @@ export default function Comms() {
   const handleAddMemberToGroup = async (userId) => {
     try {
       await api.post(`/chat/groups/${selectedContact.id}/members`, { members: [userId] });
-      openManageGroup(); // refresh list
+      openManageGroup(); 
     } catch(e) { alert('Failed to add member'); }
   };
 
   const handleRemoveMemberFromGroup = async (userId) => {
     try {
       await api.delete(`/chat/groups/${selectedContact.id}/members/${userId}`);
-      openManageGroup(); // refresh list
+      openManageGroup(); 
     } catch(e) { alert('Failed to remove member'); }
   };
 
@@ -306,20 +306,17 @@ export default function Comms() {
     try {
       await api.delete(`/chat/groups/${selectedContact.id}`);
       setManagingGroup(false);
-      setSelectedContact(null); // Close the chat window
-      const { data: g } = await api.get('/chat/groups');
-      setGroups(sortContacts(g.groups.map(asGroupContact)));
+      setSelectedContact(null); 
+      fetchContacts();
     } catch(e) { alert('Failed to delete group'); }
   };
 
-  // --- Leave Group Function ---
   const handleLeaveGroup = async () => {
     if (!window.confirm("Are you sure you want to leave this group chat?")) return;
     try {
       await api.delete(`/chat/groups/${selectedContact.id}/members/${currentUser.id}`);
-      setSelectedContact(null); // Close the chat window
-      const { data: g } = await api.get('/chat/groups');
-      setGroups(sortContacts(g.groups.map(asGroupContact)));
+      setSelectedContact(null); 
+      fetchContacts();
     } catch(e) { alert('Failed to leave group'); }
   };
 
@@ -331,11 +328,9 @@ export default function Comms() {
   const [isMobile, setIsMobile] = useState(false);
   const containerRef = useRef(null);
   
-  // UX Refs
   const textareaRef = useRef(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
 
-  /* --- SCROLL LOGIC --- */
   const messagesEndRef = useRef(null);
   const messagesListRef = useRef(null);
   const userScrollingRef = useRef(false);
@@ -390,7 +385,6 @@ export default function Comms() {
     }
   }, [newMessage]);
 
-  /* --- Setup & Notifs --- */
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth <= 768);
     checkMobile();
@@ -457,7 +451,6 @@ export default function Comms() {
     return () => document.removeEventListener('visibilitychange', onVis);
   }, []);
 
-  /* --- Thread key --- */
   const threadKey = useMemo(() => {
     if (!selectedContact) return 'none';
     if (selectedContact.type === 'user') return `u-${selectedContact.id}`;
@@ -475,7 +468,6 @@ export default function Comms() {
     }
   }, [threadKey, drafts, newMessage, isMobile]);
 
-  /* --- State Reset on Thread Change --- */
   const lastTsRef = useRef(0);
   const initialSyncRef = useRef(true);
   
@@ -506,7 +498,6 @@ export default function Comms() {
     } catch { /* noop */ }
   }, [notifSupported, notifOn, threadKey]);
 
-  /* --- API & Data Loading --- */
   useEffect(() => {
     const t = localStorage.getItem('token');
     if (t) api.defaults.headers.common['Authorization'] = `Bearer ${t}`;
@@ -519,149 +510,145 @@ export default function Comms() {
 
   const hasAuthHeader = !!api?.defaults?.headers?.common?.Authorization;
 
-  // Fetch Users, NPCs, Groups
-  useEffect(() => {
-    (async () => {
-      setLoading(true);
-      setError('');
-      try {
-        const [{ data: u }, { data: n }, { data: g }] = await Promise.all([
-          api.get('/chat/users'),
-          api.get('/chat/npcs'),
-          api.get('/chat/groups') 
-        ]);
-        const userList = Array.isArray(u) ? u : (u.users || []);
-        const npcList  = Array.isArray(n) ? n : (n.npcs || []);
-        const groupList = g.groups || [];
-        
-        setUsers(sortContacts(userList.map(asUserContact)));
-        setNpcs(sortContacts(npcList.map(asNpcContact)));
-        setGroups(sortContacts(groupList.map(asGroupContact)));
-      } catch (e) {
-        setError(e?.response?.status === 401 ? 'Your session expired. Please log in again.' : 'Could not load contacts.');
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [currentUser, creatingGroup]);
+  // Background Contacts Fetcher (Updates sidebars dynamically)
+  const fetchContacts = useCallback(async () => {
+    if (!hasAuthHeader) return;
+    try {
+      const [{ data: u }, { data: n }, { data: g }] = await Promise.all([
+        api.get('/chat/users'),
+        api.get('/chat/npcs'),
+        api.get('/chat/groups') 
+      ]);
+      setUsers(sortContacts((u.users || []).map(asUserContact)));
+      setNpcs(sortContacts((n.npcs || []).map(asNpcContact)));
+      setGroups(sortContacts((g.groups || []).map(asGroupContact)));
+    } catch (e) {
+      if (e?.response?.status === 401) setError('Your session expired. Please log in again.');
+    }
+  }, [hasAuthHeader]);
 
-  // Combined Polling: Messages & Admin Recent Roster
+  // Initial Load & Polling setup for Contacts
+  useEffect(() => {
+    setLoading(true);
+    fetchContacts().finally(() => setLoading(false));
+    
+    const contactInterval = setInterval(fetchContacts, 10000); // 10s background poll
+    return () => clearInterval(contactInterval);
+  }, [fetchContacts, creatingGroup]);
+
+
+  // Active Conversation Message Polling
   useEffect(() => {
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
     
-    if (isAdmin && selectedContact && selectedContact.type === 'npc' && !selectedPlayerId) {
-        return; 
-    }
-
     const load = async () => {
       if (!selectedContact) return;
       const mySeq = loadSeqRef.current;
       try {
         let msgs = [];
-        if (selectedContact.type === 'group') {
-           const res = await api.get(`/chat/groups/${selectedContact.id}/history`);
-           msgs = (res.data.messages || []).map(m => ({
-             id: m.id, body: m.body, created_at: m.created_at, sender_id: m.sender_id,
-             sender_name: m.char_name || m.display_name, sender_clan: m.clan,
-             attachment_id: m.attachment_id 
-           }));
-        } else if (selectedContact.type === 'user') {
-          const res = await api.get(`/chat/history/${selectedContact.id}`);
-          msgs = (res.data.messages || []).map(m => ({
-            id: m.id, body: m.body, created_at: m.created_at, 
-            read_at: m.read_at, delivered_at: m.delivered_at,
-            sender_id: m.sender_id,
-            attachment_id: m.attachment_id
-          }));
-        } else {
-          if (isAdmin) {
-            if (!selectedPlayerId || !hasAuthHeader) { return; }
-            let res;
-            try {
-              res = await api.get(`/admin/chat/npc/history`, { params: { npc_id: selectedContact.id, user_id: selectedPlayerId } });
-            } catch {
-              res = await api.get(`/admin/chat/npc-history/${selectedContact.id}/${selectedPlayerId}`);
-            }
+        let hasNewMessages = false;
+        let isInitialLoad = initialSyncRef.current;
+
+        // ONLY FETCH MESSAGES IF WE HAVE A VALID TARGET
+        const shouldFetchMessages = !(isAdmin && selectedContact.type === 'npc' && !selectedPlayerId);
+
+        if (shouldFetchMessages) {
+          if (selectedContact.type === 'group') {
+             const res = await api.get(`/chat/groups/${selectedContact.id}/history`);
+             msgs = (res.data.messages || []).map(m => ({
+               id: m.id, body: m.body, created_at: m.created_at, sender_id: m.sender_id,
+               sender_name: m.char_name || m.display_name, sender_clan: m.clan,
+               attachment_id: m.attachment_id 
+             }));
+          } else if (selectedContact.type === 'user') {
+            const res = await api.get(`/chat/history/${selectedContact.id}`);
             msgs = (res.data.messages || []).map(m => ({
-              id: m.id, body: m.body, created_at: m.created_at, sender_id: m.from_side === 'npc' ? 'npc' : selectedPlayerId, _from: m.from_side,
+              id: m.id, body: m.body, created_at: m.created_at, 
+              read_at: m.read_at, delivered_at: m.delivered_at,
+              sender_id: m.sender_id,
               attachment_id: m.attachment_id
             }));
           } else {
-            let res;
-            try {
-                res = await api.get('/chat/npc/history', { params: { npc_id: selectedContact.id } });
-            } catch (e) {
-                res = await api.get(`/chat/npc-history/${selectedContact.id}`);
-            }
-
-            msgs = (res.data.messages || []).map(m => ({
-              id: m.id, 
-              body: m.body, 
-              created_at: m.created_at, 
-              sender_id: m.from_side === 'user' ? currentUser.id : 'npc', 
-              _from: m.from_side,
-              attachment_id: m.attachment_id
-            }));
-          }
-        }
-
-        msgs.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-        const newestTs = msgs.reduce((t, m) => Math.max(t, new Date(m.created_at).getTime()), 0);
-        
-        const hasNewMessages = newestTs > lastTsRef.current;
-        const isInitialLoad = initialSyncRef.current;
-
-        if (loadSeqRef.current !== mySeq) return;
-
-        if (isInitialLoad || hasNewMessages) {
-          if (hasNewMessages && !isInitialLoad) {
-            const inboundNew = msgs.filter(m => new Date(m.created_at).getTime() > lastTsRef.current && isInbound(m));
-            if (inboundNew.length && (document.hidden || !pageVisibleRef.current)) {
-              const latest = inboundNew[inboundNew.length - 1];
-              let title = 'New Message';
-              let icon = '/img/ATT-logo(1).png';
-              
-              if (selectedContact.type === 'group') {
-                title = `${selectedContact.name}: ${latest.sender_name || 'Someone'}`;
-              } else if (selectedContact.type === 'user') {
-                title = selectedContact.char_name || selectedContact.display_name;
-                icon = symlogo(selectedContact.clan) || icon;
-              } else {
-                title = isAdmin && selectedPlayerId ? `${selectedContact.name} ↔ ${users.find(u => u.id === selectedPlayerId)?.char_name || 'Player'}` : selectedContact.name;
-                icon = symlogo(selectedContact.clan) || icon;
+            if (isAdmin) {
+              if (selectedPlayerId && hasAuthHeader) { 
+                const res = await api.get(`/admin/chat/npc-history/${selectedContact.id}/${selectedPlayerId}`);
+                msgs = (res.data.messages || []).map(m => ({
+                  id: m.id, body: m.body, created_at: m.created_at, sender_id: m.from_side === 'npc' ? 'npc' : selectedPlayerId, _from: m.from_side,
+                  attachment_id: m.attachment_id
+                }));
               }
-              const notificationBody = latest.attachment_id ? '📷 Image Attachment' : (latest.body || 'New message');
-              notify(title, notificationBody, icon);
+            } else {
+              const res = await api.get(`/chat/npc-history/${selectedContact.id}`);
+              msgs = (res.data.messages || []).map(m => ({
+                id: m.id, 
+                body: m.body, 
+                created_at: m.created_at, 
+                sender_id: m.from_side === 'user' ? currentUser.id : 'npc', 
+                _from: m.from_side,
+                attachment_id: m.attachment_id
+              }));
             }
           }
-          lastTsRef.current = Math.max(lastTsRef.current, newestTs);
-          setMessages(prev => {
-            const serverIds = new Set(msgs.map(m => m.id));
-            const localOnly = prev.filter(m => String(m.id).startsWith('temp_') && !serverIds.has(m.id));
-            return [...msgs, ...localOnly];
-          });
 
-          if (selectedContact.type === 'user' && !isAdmin && msgs.length > 0) {
-             api.post('/chat/delivered', { sender_id: selectedContact.id }).catch(() => {});
+          msgs.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+          const newestTs = msgs.reduce((t, m) => Math.max(t, new Date(m.created_at).getTime()), 0);
+          
+          hasNewMessages = newestTs > lastTsRef.current;
+
+          if (loadSeqRef.current !== mySeq) return;
+
+          if (isInitialLoad || hasNewMessages) {
+            if (hasNewMessages && !isInitialLoad) {
+              const inboundNew = msgs.filter(m => new Date(m.created_at).getTime() > lastTsRef.current && isInbound(m));
+              if (inboundNew.length && (document.hidden || !pageVisibleRef.current)) {
+                const latest = inboundNew[inboundNew.length - 1];
+                let title = 'New Message';
+                let icon = '/img/ATT-logo(1).png';
+                
+                if (selectedContact.type === 'group') {
+                  title = `${selectedContact.name}: ${latest.sender_name || 'Someone'}`;
+                } else if (selectedContact.type === 'user') {
+                  title = selectedContact.char_name || selectedContact.display_name;
+                  icon = symlogo(selectedContact.clan) || icon;
+                } else {
+                  title = isAdmin && selectedPlayerId ? `${selectedContact.name} ↔ ${users.find(u => u.id === selectedPlayerId)?.char_name || 'Player'}` : selectedContact.name;
+                  icon = symlogo(selectedContact.clan) || icon;
+                }
+                const notificationBody = latest.attachment_id ? '📷 Image Attachment' : (latest.body || 'New message');
+                notify(title, notificationBody, icon);
+              }
+            }
+            lastTsRef.current = Math.max(lastTsRef.current, newestTs);
+            setMessages(prev => {
+              const serverIds = new Set(msgs.map(m => m.id));
+              const localOnly = prev.filter(m => String(m.id).startsWith('temp_') && !serverIds.has(m.id));
+              return [...msgs, ...localOnly];
+            });
+
+            if (selectedContact.type === 'user' && !isAdmin && msgs.length > 0) {
+               api.post('/chat/delivered', { sender_id: selectedContact.id }).catch(() => {});
+            }
           }
         }
         
+        // ---> Admin Roster Sync (ALWAYS RUNS if NPC is selected) <---
         if (isAdmin && selectedContact.type === 'npc' && hasAuthHeader) {
           try {
-            let res;
-            try {
-              res = await api.get('/admin/chat/npc/conversations', { params: { npc_id: selectedContact.id } });
-            } catch {
-              res = await api.get(`/admin/chat/npc-conversations/${selectedContact.id}`);
-            }
+            const res = await api.get(`/admin/chat/npc-conversations/${selectedContact.id}`);
             if (loadSeqRef.current !== mySeq) return;
             const rows = (res.data?.conversations || []).map(r => ({
               user_id: r.user_id,
               display_name: r.display_name || '',
               char_name: r.char_name || '',
               last_message_at: r.last_message_at || null,
+              unread_count: r.unread_count || 0
             }));
-            rows.sort((a, b) => new Date(b.last_message_at || 0) - new Date(a.last_message_at || 0));
+            // Sort by unread_count first, then recent
+            rows.sort((a, b) => {
+              const unreadDiff = (b.unread_count || 0) - (a.unread_count || 0);
+              if (unreadDiff !== 0) return unreadDiff;
+              return new Date(b.last_message_at || 0) - new Date(a.last_message_at || 0);
+            });
             setNpcConvos(rows);
           } catch (e) {
             // silent fail
@@ -678,7 +665,7 @@ export default function Comms() {
     };
 
     load();
-    pollRef.current = setInterval(load, 6000);
+    pollRef.current = setInterval(load, 4000); // 4s active message poll
     return () => clearInterval(pollRef.current);
   }, [selectedContact, selectedPlayerId, isAdmin, hasAuthHeader, currentUser?.id, users, threadKey, isInbound, notify]);
 
@@ -692,7 +679,7 @@ export default function Comms() {
       return;
     }
 
-    const MAX_MB = 50;  
+    const MAX_MB = 5;  
     const MAX_BYTES = MAX_MB * 1024 * 1024;
     if (file.size > MAX_BYTES) { 
       alert(`File size too large (max ${MAX_MB}MB)`);
@@ -838,7 +825,7 @@ export default function Comms() {
       }
 
       setNewMessage('');
-      setShowEmojiPicker(false); // Hide picker on send
+      setShowEmojiPicker(false);
       clearAttachment();
       setDrafts(prev => ({ ...prev, [threadKey]: '' }));
       if(textareaRef.current) textareaRef.current.style.height = 'auto'; 
@@ -870,8 +857,7 @@ export default function Comms() {
       setCreatingGroup(false);
       setNewGroupName('');
       setNewGroupMembers([]);
-      const { data: g } = await api.get('/chat/groups');
-      setGroups(sortContacts(g.groups.map(asGroupContact)));
+      fetchContacts();
     } catch (e) { alert('Failed to create group'); }
   };
 
@@ -941,14 +927,15 @@ export default function Comms() {
     return (npcConvos || []).map(r => {
       const u = byId.get(r.user_id);
       return u 
-        ? { ...u, last_message_at: r.last_message_at } 
+        ? { ...u, last_message_at: r.last_message_at, unread_count: r.unread_count } 
         : { 
             type: 'user', 
             id: r.user_id, 
             display_name: r.display_name || 'Unknown', 
             char_name: r.char_name || 'Unknown', 
             clan: undefined, 
-            last_message_at: r.last_message_at 
+            last_message_at: r.last_message_at,
+            unread_count: r.unread_count || 0
           };
     });
   }, [npcConvos, users]);
@@ -962,14 +949,17 @@ export default function Comms() {
   })();
 
   const headerLabel = (() => {
-    if (!selectedContact) return '';
-    if (selectedContact.type === 'user') return selectedContact.char_name || selectedContact.display_name;
-    if (selectedContact.type === 'group') return selectedContact.name;
-    if (isAdmin) {
+    if (!selectedContact) return null;
+    if (selectedContact.type === 'user') return <>{selectedContact.char_name || selectedContact.display_name}</>;
+    if (selectedContact.type === 'group') return <>{selectedContact.name}</>;
+    if (isAdmin && selectedContact.type === 'npc') {
       const selUser = users.find(u => u.id === selectedPlayerId);
-      return selUser ? `${selectedContact.name} ➜ ${selUser.char_name || selUser.display_name}` : selectedContact.name;
+      return selUser 
+        ? <>{selectedContact.name} <NPCTag /> ➜ {selUser.char_name || selUser.display_name}</> 
+        : <>{selectedContact.name} <NPCTag /></>;
     }
-    return selectedContact.name;
+    if (selectedContact.type === 'npc') return <>{selectedContact.name} <NPCTag /></>;
+    return <>{selectedContact.name}</>;
   })();
 
   const buildThreadKey = (contact, selPlayerId) => {
@@ -996,6 +986,9 @@ const selectContact = (contact) => {
     if (contact.type === 'user') {
       setUsers(prev => prev.map(u => u.id === contact.id ? { ...u, unread_count: 0 } : u));
       api.post('/chat/read', { sender_id: contact.id }).catch(()=>{});
+    } else if (contact.type === 'npc' && !isAdmin) {
+      setNpcs(prev => prev.map(n => n.id === contact.id ? { ...n, unread_count: 0 } : n));
+      api.post('/chat/read', { npc_id: contact.id }).catch(()=>{});
     }
 
     if (!isMobile) window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1006,6 +999,10 @@ const selectContact = (contact) => {
     setSelectedPlayerId(userId);
     const nextKey = buildThreadKey(selectedContact, userId);
     setNewMessage(drafts[nextKey] || '');
+    
+    // Clear unread counts visually for the selected player's thread with this NPC
+    setNpcConvos(prev => prev.map(c => c.user_id === userId ? { ...c, unread_count: 0 } : c));
+    api.post('/chat/read', { npc_id: selectedContact.id, sender_id: userId, is_admin_reading_npc: true }).catch(()=>{});
   };
 
   const renderUserRow = (u, keyPrefix = 'u') => {
@@ -1203,7 +1200,7 @@ const selectContact = (contact) => {
                 </span>
                 <span className={styles.userMeta}>
                   <span className={styles.userName}>
-                    {n.name} 
+                    {n.name} <NPCTag />
                     {n.clan && <span className={styles.clanChip} style={{'--chip':tint}}>{n.clan}</span>}
                     {timeStr && <span style={{marginLeft:'auto', fontSize:'0.7rem', opacity:0.6, fontWeight:'normal'}}>{timeStr}</span>}
                   </span>
@@ -1281,7 +1278,7 @@ const selectContact = (contact) => {
                     <div className={styles.replyingTo}>
                       {selectedPlayerId
                         ? <><span>To: </span><b>{users.find(u => u.id === selectedPlayerId)?.char_name || 'Unknown'}</b><button type="button" className={styles.clearTargetBtn} onClick={() => setSelectedPlayerId(null)}>Clear</button></>
-                        : <span className={styles.replyHint}>Pick a player to reply as <b>{selectedContact.name}</b></span>
+                        : <span className={styles.replyHint}>Pick a player to reply as <b>{selectedContact.name} <NPCTag /></b></span>
                       }
                     </div>
                   </div>
@@ -1295,6 +1292,9 @@ const selectContact = (contact) => {
                             <span className={styles.rosterName}>{u.char_name || 'No character'}</span>
                             <span className={styles.rosterSub}>{u.display_name}</span>
                           </span>
+                          {u.unread_count > 0 && (
+                            <span className={styles.unreadBadge} style={{ marginLeft: '8px', minWidth: '18px', padding: '1px 5px' }}>{u.unread_count}</span>
+                          )}
                         </button>
                       );
                     })}
@@ -1342,7 +1342,6 @@ const selectContact = (contact) => {
               )}
             </div>
 
-            {/* NEW APPROVAL BANNER */}
             {!isCharActive && (
               <div style={{ padding: '8px', background: '#d41b2c', color: '#fff', textAlign: 'center', fontSize: '0.85rem', fontWeight: 'bold' }}>
                 Your character is waiting for ST approval. You cannot send messages yet.
