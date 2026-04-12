@@ -155,7 +155,7 @@ export default function Admin() {
     }
   }
 
-  async function grantXP(character_id, delta) {
+async function grantXP(character_id, delta) {
     if (!delta) return;
     setErr(''); setMsg('');
     try {
@@ -164,6 +164,19 @@ export default function Admin() {
       load(); // Reload
     } catch (e) {
       setErr(e.response?.data?.error || 'Failed to adjust XP');
+    }
+  }
+
+  // ADD THIS FUNCTION RIGHT HERE:
+  async function grantBulkXP(delta) {
+    setErr(''); setMsg('');
+    try {
+      await api.patch('/admin/characters/xp/bulk', { delta: Number(delta) });
+      setMsg(`Bulk XP (${delta > 0 ? '+' : ''}${delta}) applied to all characters!`);
+      load(); // Reload everything so the grid updates instantly
+    } catch (e) {
+      setErr(e.response?.data?.error || 'Failed to apply Bulk XP');
+      throw e; // Throw it back to the tab so it can turn off the "Applying..." loading state
     }
   }
 
@@ -636,6 +649,7 @@ export default function Admin() {
           <AdminXPTab 
             users={users} 
             onGrant={grantXP} 
+            onBulkGrant={grantBulkXP}
           />
         )} 
         {tab === 'npcs' && (
