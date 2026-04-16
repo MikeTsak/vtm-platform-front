@@ -634,7 +634,7 @@ export default function CharacterView({
     return q;
   }, [sheet]);
 
-  useEffect(() => {
+useEffect(() => {
     if (!ch) return;
     const q = computeMissingPicks();
     setPendingFixes(q);
@@ -645,11 +645,13 @@ export default function CharacterView({
         current: first.level - 1,
         next: first.level,
         kind: 'select',
-        assignOnly: true
+        assignOnly: true,
+        disciplineDots: sheet.disciplines,
+        ownedPowers: sheet.disciplinePowers?.[first.name] || []
       });
       setModalOpen(true);
     }
-  }, [ch, computeMissingPicks, modalOpen]);
+  }, [ch, computeMissingPicks, modalOpen, sheet]); 
 
   async function confirmDisciplinePurchase({ name, selectedPowerId, selectedPowerName, current, next, kind, assignOnly }) {
     const nextSheet = JSON.parse(JSON.stringify(sheet));
@@ -691,7 +693,7 @@ export default function CharacterView({
       setModalOpen(false);
       setModalCfg(null);
 
-      if (assignOnly) {
+if (assignOnly) {
         const rest = computeMissingPicks();
         setPendingFixes(rest);
         if (rest.length) {
@@ -701,7 +703,10 @@ export default function CharacterView({
             current: first.level - 1,
             next: first.level,
             kind: 'select',
-            assignOnly: true
+            assignOnly: true,
+            // Add these two lines using the updated 'nextSheet'
+            disciplineDots: nextSheet.disciplines,
+            ownedPowers: nextSheet.disciplinePowers?.[first.name] || []
           });
           setModalOpen(true);
         } else {
