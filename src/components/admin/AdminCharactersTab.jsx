@@ -101,6 +101,7 @@ export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEdit
   })), [users]);
 
   const [edits, setEdits] = useState({});
+  const [confirmDialog, setConfirmDialog] = useState(null);
   function getRow(c) { return edits[c.id] ?? { name: c.name, clan: c.clan, sheet: JSON.stringify(c.sheet || {}, null, 2) }; }
   function setRow(c, patch) { setEdits(prev => ({ ...prev, [c.id]: { ...getRow(c), ...patch } })); }
 
@@ -114,6 +115,65 @@ export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEdit
       setRow(char, { sheet: JSON.stringify(data, null, 2) });
       alert('Permission granted!');
     } catch (e) { alert('Failed to authorize reset.'); }
+  };
+
+  // Helper to open the dialog
+  const requestGlobalReset = (trackersToReset) => {
+    setConfirmDialog({
+      title: 'Confirm Global Reset',
+      message: `Are you absolutely sure you want to reset ${trackersToReset.join(', ')} for ALL characters? This cannot be undone.`,
+      onConfirm: () => {
+        setConfirmDialog(null);
+        resetAllCharacters(trackersToReset);
+      }
+    });
+  };
+
+const resetAllCharacters = async (trackersToReset) => {
+    const confirmMessage = `Are you absolutely sure you want to reset ${trackersToReset.join(' and ')} for ALL characters? This will wipe everyone's current damage.`;
+    if (!window.confirm(confirmMessage)) return;
+
+    // Loop through every character and prepare the updates
+    const updatePromises = chars.map(async (c) => {
+      const row = getRow(c);
+      let data = {}; 
+      try { 
+        data = JSON.parse(row.sheet || '{}'); 
+      } catch (e) { 
+        console.warn(`Skipping ${c.name} due to invalid JSON.`);
+        return Promise.resolve(); // Skip broken sheets so it doesn't crash the loop
+      }
+      
+      if (trackersToReset.includes('health')) {
+        data.health = { superficial: 0, aggravated: 0 };
+      }
+      if (trackersToReset.includes('willpower')) {
+        data.willpower = { superficial: 0, aggravated: 0 };
+      }
+      if (trackersToReset.includes('hunger')) {
+        data.hunger = 1;
+      }
+      
+      const updatedSheetString = JSON.stringify(data, null, 2);
+      
+      // Update UI instantly
+      setRow(c, { sheet: updatedSheetString });
+
+      // Save to database
+      return api.patch(`/admin/characters/${c.id}`, {
+        name: row.name,
+        clan: row.clan,
+        sheet: data
+      });
+    });
+
+    try {
+      await Promise.all(updatePromises);
+      alert(`Success! ${trackersToReset.join(' and ')} reset for all characters.`);
+    } catch (error) {
+      console.error("Global reset failed:", error);
+      alert("There was an error saving some characters. Check the console.");
+    }
   };
 
   const handleRevokeReset = async (char) => {
@@ -195,9 +255,23 @@ export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEdit
     return { maxHealth, maxWillpower, sheetObj: data };
   };
 
-  return (
+return (
     <div className={styles.stack12}>
-      <h3>Characters</h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+        <h3>Characters</h3>
+        
+{/* --- GLOBAL ACTIONS PANEL --- */}
+        {chars.length > 0 && (
+          <div style={{ display: 'flex', gap: '10px', background: 'rgba(217, 119, 6, 0.1)', border: '1px solid #d97706', padding: '10px', borderRadius: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#d97706' }}>GLOBAL ACTIONS:</span>
+            <button className={styles.btn} style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-color)' }} onClick={() => resetAllCharacters(['health'])}>Heal All</button>
+            <button className={styles.btn} style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-color)' }} onClick={() => resetAllCharacters(['willpower'])}>Restore All WP</button>
+            <button className={styles.btn} style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-color)' }} onClick={() => resetAllCharacters(['hunger'])}>Reset All Hunger</button>
+            <button className={styles.btn} style={{ backgroundColor: '#b40f1f', color: '#fff', borderColor: '#b40f1f' }} onClick={() => resetAllCharacters(['health', 'willpower', 'hunger'])}>Reset All Trackers</button>
+          </div>
+        )}
+      </div>
+      
       {!chars.length && <div className={styles.subtle}>No characters yet.</div>}
       
       <div className={styles.characterCardGrid}>
@@ -231,6 +305,7 @@ export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEdit
                   <TrackerDisplay label="Willpower" max={maxWillpower} currentObj={sheetObj.willpower || {}} onUpdate={(type, delta) => updateTracker(c, 'willpower', type, delta)} />
                   <TrackerDisplay label="Humanity" max={10} isValueTracker={true} value={sheetObj.morality?.humanity ?? sheetObj.humanity ?? 7} stains={sheetObj.stains || 0} onUpdate={(type, delta) => updateTracker(c, 'humanity', type, delta)} />
                   <TrackerDisplay label="Hunger" max={5} isValueTracker={true} value={sheetObj.hunger || 0} onUpdate={(type, delta) => updateTracker(c, 'hunger', type, delta)} />
+                  
                 </div>
               
                 <label className={styles.stack12} style={{marginTop: '1rem'}}>

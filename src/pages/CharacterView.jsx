@@ -194,7 +194,7 @@ function normalizeFromFlatAny(source) {
   const fortPowers = getCaseInsensitive(sheet.disciplinePowers, 'Fortitude') || [];
   const hasResilience = Array.isArray(fortPowers) && fortPowers.some(p => {
     const name = String(p.name || p.id || '').toLowerCase();
-    return name.includes('resilience') || name.includes('toughness');
+    return name.includes('resilience');
   });
 
   if (hasResilience) {
@@ -1456,7 +1456,7 @@ const knownPowerNamesAndIds = useMemo(() => {
                  await spendXP({
                    type: 'flaw',
                    target: flaw.id,
-                   dots: 0,
+                   dots: Number(targetDots),
                    patchSheet: nextSheet
                  });
                }}
