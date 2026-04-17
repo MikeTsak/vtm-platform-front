@@ -47,8 +47,13 @@ export default function News() {
   const { user } = useContext(AuthCtx);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
+  
+  // Track which modal mode is open: null | 'news' | 'rumor'
+  const [modalMode, setModalMode] = useState(null); 
+  
   const isAdmin = user?.role === 'admin';
+  const isCourt = user?.role === 'courtuser';
+  const canPostRumor = isAdmin || isCourt;
 
   const fetchNews = async () => {
     setLoading(true);
@@ -77,8 +82,21 @@ export default function News() {
     <div className={styles.page}>
       <header className={styles.header}>
         <h1 className={styles.pageTitle}>Human World News</h1>
-        <div className={styles.actions}>
-          {isAdmin && <button className={styles.createBtn} onClick={() => setShowModal(true)}>+ Write Article</button>}
+        <div className={styles.actions} style={{ display: 'flex', gap: '10px' }}>
+          {isAdmin && (
+            <button className={styles.createBtn} onClick={() => setModalMode('news')}>
+              + Write Article
+            </button>
+          )}
+          {canPostRumor && (
+            <button 
+              className={styles.createBtn} 
+              onClick={() => setModalMode('rumor')}
+              style={{ backgroundColor: '#fbbf24', color: '#000', border: 'none' }}
+            >
+              + Post Rumor
+            </button>
+          )}
         </div>
       </header>
 
@@ -112,9 +130,9 @@ export default function News() {
                 <article 
                   className={styles.browserCard} 
                   style={{ 
-                    '--theme-color': theme.color, /* Pass color to CSS variables for selection/links */
+                    '--theme-color': theme.color, 
                     borderTop: `6px solid ${theme.color}`,
-                    boxShadow: `0 8px 20px ${theme.color}25` // subtle colored shadow glow
+                    boxShadow: `0 8px 20px ${theme.color}25` 
                   }}
                 >
                   <div className={styles.browserBar}>
@@ -174,14 +192,27 @@ export default function News() {
         </div>
       </div>
       
-      {showModal && <CreateNewsModal onClose={() => setShowModal(false)} onSuccess={() => {setShowModal(false); fetchNews();}} />}
+      {modalMode && (
+        <CreateNewsModal 
+          mode={modalMode} 
+          onClose={() => setModalMode(null)} 
+          onSuccess={() => { setModalMode(null); fetchNews(); }} 
+        />
+      )}
     </div>
   );
 }
 
-// Admin Article Form (Dark Theme)
-function CreateNewsModal({ onClose, onSuccess }) {
-  const [formData, setFormData] = useState({ title: '', subtitle: '', body: '', theme: 'ERT', journalist_name: '' });
+// Admin / Court Article Form (Dark Theme)
+function CreateNewsModal({ mode, onClose, onSuccess }) {
+  const [formData, setFormData] = useState({ 
+    title: '', 
+    subtitle: '', 
+    body: '', 
+    theme: mode === 'rumor' ? 'RUMOR' : 'ERT', 
+    journalist_name: '' 
+  });
+  
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const contentRef = useRef(null);
@@ -205,14 +236,14 @@ function CreateNewsModal({ onClose, onSuccess }) {
       await api.post('/news', {
         type: 'news',
         title: formData.title,
-        subtitle: formData.subtitle,
+        subtitle: mode === 'rumor' ? '' : formData.subtitle,
         body: contentRef.current.innerHTML,
         theme: formData.theme,
         journalist_name: formData.journalist_name,
-        media_url: mediaUrl // Corrected property name!
+        media_url: mediaUrl
       });
       onSuccess();
-    } catch (e) { alert("Error posting"); } 
+    } catch (e) { alert("Error posting. Ensure you have the correct permissions."); } 
     finally { setUploading(false); }
   };
 
@@ -221,7 +252,9 @@ function CreateNewsModal({ onClose, onSuccess }) {
       <div className={styles.modal} style={{ maxWidth: '800px', width: '100%', backgroundColor: '#1f2937', borderRadius: '8px', color: '#f3f4f6', boxShadow: '0 10px 25px rgba(0,0,0,0.8)' }}>
         
         <div className={styles.modalHeader} style={{ padding: '20px', borderBottom: '1px solid #374151', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#111827' }}>
-          <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#f9fafb' }}>Submit News Article</h2>
+          <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#f9fafb' }}>
+            {mode === 'rumor' ? 'Post a Rumor' : 'Submit News Article'}
+          </h2>
           <button onClick={onClose} style={{ background: 'transparent', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#9ca3af' }}>×</button>
         </div>
 
@@ -229,34 +262,48 @@ function CreateNewsModal({ onClose, onSuccess }) {
            
            <div>
              <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.9rem', fontWeight: 'bold', color: '#d1d5db' }}>Headline *</label>
-             <input placeholder="Attention-grabbing title..." required value={formData.title} onChange={e=>setFormData({...formData, title: e.target.value})} style={{ width: '100%', padding: '12px', fontSize: '1.1rem', borderRadius: '6px', border: '1px solid #4b5563', backgroundColor: '#111827', color: '#fff' }} />
+             <input placeholder={mode === 'rumor' ? "What's the whisper on the street?" : "Attention-grabbing title..."} required value={formData.title} onChange={e=>setFormData({...formData, title: e.target.value})} style={{ width: '100%', padding: '12px', fontSize: '1.1rem', borderRadius: '6px', border: '1px solid #4b5563', backgroundColor: '#111827', color: '#fff' }} />
            </div>
            
-           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
-             <div>
-               <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.9rem', fontWeight: 'bold', color: '#d1d5db' }}>Subtitle (Optional)</label>
-               <input placeholder="Secondary context..." value={formData.subtitle} onChange={e=>setFormData({...formData, subtitle: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #4b5563', backgroundColor: '#111827', color: '#fff' }} />
-             </div>
+           <div style={{ display: 'grid', gridTemplateColumns: mode === 'rumor' ? '1fr' : '2fr 1fr', gap: '16px' }}>
+             {/* Hide Subtitle entirely in Rumor mode */}
+             {mode !== 'rumor' && (
+               <div>
+                 <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.9rem', fontWeight: 'bold', color: '#d1d5db' }}>Subtitle (Optional)</label>
+                 <input placeholder="Secondary context..." value={formData.subtitle} onChange={e=>setFormData({...formData, subtitle: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #4b5563', backgroundColor: '#111827', color: '#fff' }} />
+               </div>
+             )}
              <div>
                <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.9rem', fontWeight: 'bold', color: '#d1d5db' }}>Outlet / Theme</label>
-               <select value={formData.theme} onChange={e=>setFormData({...formData, theme: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #4b5563', backgroundColor: '#111827', color: '#fff' }}>
-                 {Object.keys(NEWS_OUTLETS).map(k => <option key={k} value={k}>{NEWS_OUTLETS[k].name}</option>)}
+               <select 
+                 value={formData.theme} 
+                 onChange={e=>setFormData({...formData, theme: e.target.value})} 
+                 disabled={mode === 'rumor'}
+                 style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #4b5563', backgroundColor: mode === 'rumor' ? '#374151' : '#111827', color: '#fff' }}>
+                 {Object.keys(NEWS_OUTLETS).map(k => {
+                   if (mode === 'rumor' && k !== 'RUMOR') return null;
+                   return <option key={k} value={k}>{NEWS_OUTLETS[k].name}</option>;
+                 })}
                </select>
              </div>
            </div>
 
-           <div>
-             <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.9rem', fontWeight: 'bold', color: '#d1d5db' }}>Journalist Name</label>
-             <div style={{ display: 'flex', gap: '10px' }}>
-                <input placeholder="e.g. Giannis Petrou" value={formData.journalist_name} onChange={e=>setFormData({...formData, journalist_name: e.target.value})} style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #4b5563', backgroundColor: '#111827', color: '#fff' }} />
-                <button type="button" onClick={handleRandomizeName} style={{ padding: '10px 16px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', transition: '0.2s' }}>
-                  🎲 Randomize
-                </button>
+           {mode !== 'rumor' && (
+             <div>
+               <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.9rem', fontWeight: 'bold', color: '#d1d5db' }}>Journalist Name</label>
+               <div style={{ display: 'flex', gap: '10px' }}>
+                  <input placeholder="e.g. Giannis Petrou" value={formData.journalist_name} onChange={e=>setFormData({...formData, journalist_name: e.target.value})} style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #4b5563', backgroundColor: '#111827', color: '#fff' }} />
+                  <button type="button" onClick={handleRandomizeName} style={{ padding: '10px 16px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', transition: '0.2s' }}>
+                    🎲 Randomize
+                  </button>
+               </div>
              </div>
-           </div>
+           )}
 
            <div>
-             <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.9rem', fontWeight: 'bold', color: '#d1d5db' }}>Article Body *</label>
+             <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.9rem', fontWeight: 'bold', color: '#d1d5db' }}>
+               {mode === 'rumor' ? 'Gossip Details *' : 'Article Body *'}
+             </label>
              <div style={{ border: '1px solid #4b5563', borderRadius: '6px', display: 'flex', flexDirection: 'column' }}>
                <EditorToolbar onCmd={(c,v) => document.execCommand(c,false,v)} />
                <div className={styles.editable} contentEditable ref={contentRef} />
@@ -272,7 +319,7 @@ function CreateNewsModal({ onClose, onSuccess }) {
 
            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px', paddingTop: '16px', borderTop: '1px solid #374151' }}>
              <button type="button" onClick={onClose} disabled={uploading} style={{ padding: '10px 20px', borderRadius: '6px', border: '1px solid #4b5563', backgroundColor: '#374151', cursor: 'pointer', fontWeight: 'bold', color: '#f3f4f6' }}>Cancel</button>
-             <button type="submit" disabled={uploading} style={{ padding: '10px 24px', borderRadius: '6px', border: 'none', backgroundColor: uploading ? '#9ca3af' : '#10b981', color: '#fff', cursor: uploading ? 'not-allowed' : 'pointer', fontWeight: 'bold', fontSize: '1rem', transition: '0.2s' }}>
+             <button type="submit" disabled={uploading} style={{ padding: '10px 24px', borderRadius: '6px', border: 'none', backgroundColor: uploading ? '#9ca3af' : (mode === 'rumor' ? '#fbbf24' : '#10b981'), color: mode === 'rumor' ? '#000' : '#fff', cursor: uploading ? 'not-allowed' : 'pointer', fontWeight: 'bold', fontSize: '1rem', transition: '0.2s' }}>
                {uploading ? 'Publishing...' : '📡 Publish'}
              </button>
            </div>
