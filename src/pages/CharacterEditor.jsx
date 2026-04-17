@@ -131,12 +131,24 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
   const [charName, setCharName] = useState(character?.name || '');
   const [charClan, setCharClan] = useState(character?.clan || '');
 
-  // Discipline kind for XP math (per discipline)
+// Discipline kind for XP math (per discipline)
   const initialKinds = useMemo(() => {
-    const m = {}; // <--- BUG FIX 1
-    Object.keys(originalSheet?.disciplines || {}).forEach(k => { m[k] = 'other'; });
+    const m = {};
+    const myClan = character?.clan || '';
+    
+    Object.keys(originalSheet?.disciplines || {}).forEach(k => { 
+      // Auto-detect if this discipline belongs to the character's clan!
+      const discInfo = DiscDataNS.DISCIPLINES?.[k];
+      if (myClan === 'Caitiff') {
+        m[k] = 'caitiff';
+      } else if (discInfo && Array.isArray(discInfo.clan_affinity) && discInfo.clan_affinity.includes(myClan)) {
+        m[k] = 'clan';
+      } else {
+        m[k] = 'other';
+      }
+    });
     return m;
-  }, [originalSheet]);
+  }, [originalSheet, character?.clan]);
   const [discKinds, setDiscKinds] = useState(initialKinds);
 
   // XP mode: 'xp' | 'refund' | 'free'
@@ -465,7 +477,7 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
   const deltaSign = xpImpact === 0 ? '' : (xpImpact > 0 ? 'Spend' : 'Refund');
   const deltaAbs = Math.abs(xpImpact);
 
-  // ======= SAVE =======
+// ======= SAVE =======
   async function handleSave() {
     setErr(''); setMsg('');
     if (!jsonValid) { setErr('Fix JSON first.'); return; }
@@ -475,7 +487,14 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
 
       // 1) XP delta
       if (xpImpact !== 0) {
-        await api.patch(`/admin/characters/${character.id}/xp`, { delta: -xpImpact });
+        // Prompt for a reason so the Audit Log is readable!
+        let reason = window.prompt(`This will ${deltaSign} ${deltaAbs} XP. Enter a reason for the Audit Log:`, "Character Editor Updates");
+        if (reason === null) { setSaving(false); return; } // Cancelled
+        
+        await api.patch(`/admin/characters/${character.id}/xp`, { 
+          delta: -xpImpact,
+          reason: reason // Send the reason to the backend
+        });
       }
 
       // 2) Save sheet + name/clan updates
@@ -500,8 +519,15 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
     setErr(''); setMsg('');
     const amt = Number(manualXp) || 0;
     if (!amt) return;
+    
+    let reason = window.prompt(`Enter a reason for ${sign === 'add' ? 'adding' : 'removing'} ${amt} XP:`, "Manual Admin Adjustment");
+    if (reason === null) return; // Cancelled
+    
     try {
-      await api.patch(`/admin/characters/${character.id}/xp`, { delta: sign === 'add' ? amt : -amt });
+      await api.patch(`/admin/characters/${character.id}/xp`, { 
+        delta: sign === 'add' ? amt : -amt,
+        reason: reason 
+      });
       setMsg(`${sign === 'add' ? 'Added' : 'Removed'} ${amt} XP.`);
       onSaved?.();
     } catch (e) {

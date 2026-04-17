@@ -167,7 +167,16 @@ async function grantXP(character_id, delta) {
     }
   }
 
-  // ADD THIS FUNCTION RIGHT HERE:
+  const adminxp = async () => {
+    try {
+      const { data } = await api.get('/admin/xp-logs');
+      return data;
+    } catch (error) {
+      console.error("Failed to load XP logs:", error);
+      return []; // Return an empty array if it fails so the app doesn't crash
+    }
+  };
+
   async function grantBulkXP(delta) {
     setErr(''); setMsg('');
     try {
@@ -645,13 +654,14 @@ async function grantXP(character_id, delta) {
             onSave={saveDowntime}
           />
         )}
-        {tab === 'xp' && (
+{tab === 'xp' && (
           <AdminXPTab 
             users={users} 
             onGrant={grantXP} 
             onBulkGrant={grantBulkXP}
+            adminxp={adminxp} 
           />
-        )} 
+        )}
         {tab === 'npcs' && (
           <AdminNPCsTab
             npcs={npcs}
