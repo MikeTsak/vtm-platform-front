@@ -738,7 +738,7 @@ export default function ChatSystem() {
             attachment_id: attachmentId
           };
         }
-        setGroups(prev => sortContacts(prev.map(g => g.id === selectedContact.id ? { ...g, last_message_at: Date.now() } : g)));
+        setGroups(prev => sortContacts(prev.map(g => g.id === selectedContact.id ? { ...g, last_message_at: Date.now(), unread_count: 0 } : g)));
       }
       else if (selectedContact.type === 'user') {
         const { data } = await api.post('/chat/messages', { recipient_id: selectedContact.id, ...payload });
@@ -969,7 +969,7 @@ export default function ChatSystem() {
     return isAdmin ? `n-${contact.id}-p-${selPlayerId || 'none'}` : `n-${contact.id}`;
   };
 
-const selectContact = (contact) => {
+  const selectContact = (contact) => {
     if (selectedContact?.type === contact.type && selectedContact?.id === contact.id) {
       return;
     }
@@ -989,6 +989,9 @@ const selectContact = (contact) => {
     } else if (contact.type === 'npc' && !isAdmin) {
       setNpcs(prev => prev.map(n => n.id === contact.id ? { ...n, unread_count: 0 } : n));
       api.post('/chat/read', { npc_id: contact.id }).catch(()=>{});
+    } else if (contact.type === 'group') {
+      setGroups(prev => prev.map(g => g.id === contact.id ? { ...g, unread_count: 0 } : g));
+      api.post(`/chat/groups/${contact.id}/read`).catch(()=>{});
     }
 
     if (!isMobile) window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1162,6 +1165,9 @@ const selectContact = (contact) => {
                   <span className={styles.userMeta}>
                     <span className={styles.userName}>{g.name}</span>
                   </span>
+                  {g.unread_count > 0 && (
+                    <span className={styles.unreadBadge}>{g.unread_count}</span>
+                  )}
                 </button>
               ))}
             </>
