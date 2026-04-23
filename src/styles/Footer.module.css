@@ -94,12 +94,21 @@
   padding-top: 10px;
 }
 .footerLink {
+  all: unset;              /* 🔥 resets EVERYTHING */
+  cursor: pointer;
+
   color: #e9e9e9;
   text-decoration: none;
   font-size: .95rem;
   opacity: .9;
+
+  display: inline;         /* match <a> behavior */
 }
-.footerLink:hover { text-decoration: underline; opacity: 1; }
+
+.footerLink:hover {
+  text-decoration: underline;
+  color: #fff;
+}
 
 /* Mobile adjustments */
 @media (max-width: 740px) {
