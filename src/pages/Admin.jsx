@@ -692,7 +692,7 @@ async function grantXP(character_id, delta) {
         )}
         {/* -- Added Tab -- */}
         {tab === 'discord' && (
-          <AdminDiscordTab />
+          <AdminDiscordTab users={users} />
         )}
         {tab === 'logs' && <AdminLogs />}
 
