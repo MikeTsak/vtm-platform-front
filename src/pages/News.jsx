@@ -36,7 +36,7 @@ const GREEK_REPORTERS = [
 const isVideoUrl = (url) => /\.(mp4|webm)|#video/i.test(url);
 
 const EditorToolbar = ({ onCmd }) => (
-  <div className={styles.toolbar} style={{ display: 'flex', gap: '5px', padding: '8px', backgroundColor: '#374151', borderBottom: '1px solid #4b5563', borderTopLeftRadius: '6px', borderTopRightRadius: '6px' }}>
+  <div style={{ display: 'flex', gap: '5px', padding: '8px', backgroundColor: '#374151', borderBottom: '1px solid #4b5563', borderTopLeftRadius: '6px', borderTopRightRadius: '6px' }}>
     <button type="button" onClick={() => onCmd('bold')} style={{ padding: '4px 10px', cursor: 'pointer', borderRadius: '4px', border: '1px solid #4b5563', background: '#1f2937', color: '#fff' }}><b>B</b></button>
     <button type="button" onClick={() => onCmd('italic')} style={{ padding: '4px 10px', cursor: 'pointer', borderRadius: '4px', border: '1px solid #4b5563', background: '#1f2937', color: '#fff' }}><i>I</i></button>
     <button type="button" onClick={() => onCmd('underline')} style={{ padding: '4px 10px', cursor: 'pointer', borderRadius: '4px', border: '1px solid #4b5563', background: '#1f2937', color: '#fff' }}><u>U</u></button>
@@ -48,8 +48,8 @@ export default function News() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // Track which modal mode is open: null | 'news' | 'rumor'
   const [modalMode, setModalMode] = useState(null); 
+  const [viewMode, setViewMode] = useState('split');
   
   const isAdmin = user?.role === 'admin';
   const isCourt = user?.role === 'courtuser';
@@ -61,8 +61,8 @@ export default function News() {
       const { data } = await api.get('/news');
       let fetchedNews = (data.items || []).filter(i => i.type === 'news');
       
-      // Sort: Most recent first (Newest to Oldest)
-      fetchedNews.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      // Sort: Strict chronological order (Most recent first)
+      fetchedNews.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       
       setItems(fetchedNews);
     } catch (e) { console.error(e); } 
@@ -78,11 +78,15 @@ export default function News() {
     }
   };
 
+  // Separate data into Categories
+  const newsItems = items.filter(item => item.theme !== 'RUMOR');
+  const rumorItems = items.filter(item => item.theme === 'RUMOR');
+
   return (
     <div className={styles.page}>
       <header className={styles.header}>
         <h1 className={styles.pageTitle}>Human World News</h1>
-        <div className={styles.actions} style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px' }}>
           {isAdmin && (
             <button className={styles.createBtn} onClick={() => setModalMode('news')}>
               + Write Article
@@ -100,95 +104,134 @@ export default function News() {
         </div>
       </header>
 
-      <div className={styles.content}>
+      <div>
         {loading && <Loading />}
-        <div className={styles.masonry}>
-          {items.map(item => {
-            const theme = NEWS_OUTLETS[item.theme] || NEWS_OUTLETS['ERT'];
-            const mediaUrl = apiJoin(item.media_url);
+        
+        {/* View Mode Menus / Tabs */}
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid #374151' }}>
+          <button 
+            onClick={() => setViewMode('split')} 
+            style={{ padding: '8px 16px', fontWeight: 'bold', borderRadius: '6px', border: 'none', cursor: 'pointer', transition: '0.2s', background: viewMode === 'split' ? '#3b82f6' : '#1f2937', color: viewMode === 'split' ? '#fff' : '#9ca3af' }}>
+            Split View
+          </button>
+          <button 
+            onClick={() => setViewMode('news')} 
+            style={{ padding: '8px 16px', fontWeight: 'bold', borderRadius: '6px', border: 'none', cursor: 'pointer', transition: '0.2s', background: viewMode === 'news' ? '#3b82f6' : '#1f2937', color: viewMode === 'news' ? '#fff' : '#9ca3af' }}>
+            News Only
+          </button>
+          <button 
+            onClick={() => setViewMode('rumors')} 
+            style={{ padding: '8px 16px', fontWeight: 'bold', borderRadius: '6px', border: 'none', cursor: 'pointer', transition: '0.2s', background: viewMode === 'rumors' ? '#fbbf24' : '#1f2937', color: viewMode === 'rumors' ? '#000' : '#9ca3af' }}>
+            Rumors Only
+          </button>
+        </div>
 
-            if (item.theme === 'RUMOR') {
-              return (
-                <div key={item.id} className={styles.masonryItem}>
-                  <article className={styles.rumorCard}>
-                    <h2 className={styles.rumorTitle}>{item.title}</h2>
-                    {item.media_url && (
-                      <div className={styles.mediaFrame}>
-                        {isVideoUrl(item.media_url) ? <video src={mediaUrl} controls /> : <img src={mediaUrl} alt="Proof" />}
-                      </div>
-                    )}
-                    <div className={styles.rumorBody} dangerouslySetInnerHTML={{ __html: item.body }} />
-                    <div className={styles.meta}>— Heard on {new Date(item.created_at).toLocaleDateString()}</div>
-                    {isAdmin && <button onClick={() => handleDelete(item.id)} className={styles.deleteOverlay}>×</button>}
-                  </article>
-                </div>
-              );
-            }
-
-            return (
-              <div key={item.id} className={styles.masonryItem}>
-                <article 
-                  className={styles.browserCard} 
-                  style={{ 
-                    '--theme-color': theme.color, 
-                    borderTop: `6px solid ${theme.color}`,
-                    boxShadow: `0 8px 20px ${theme.color}25` 
-                  }}
-                >
-                  <div className={styles.browserBar}>
-                    <div className={styles.dots}>
-                      <span style={{ backgroundColor: theme.color, opacity: 0.4 }}/>
-                      <span style={{ backgroundColor: theme.color, opacity: 0.7 }}/>
-                      <span style={{ backgroundColor: theme.color }}/>
+        {/* Layout Container */}
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: viewMode === 'split' ? 'row' : 'column', 
+          flexWrap: 'wrap', 
+          gap: '2rem', 
+          alignItems: 'flex-start' 
+        }}>
+          
+          {/* News Section */}
+          {(viewMode === 'split' || viewMode === 'news') && (
+            <div style={{ flex: 1, minWidth: '300px' }}>
+              {viewMode === 'split' && (
+                <h2 style={{ marginBottom: '16px', color: '#f3f4f6', borderBottom: '2px solid #4b5563', paddingBottom: '8px' }}>
+                  📰 Official News
+                </h2>
+              )}
+              <div className={styles.masonry}>
+                {newsItems.map(item => {
+                  const theme = NEWS_OUTLETS[item.theme] || NEWS_OUTLETS['ERT'];
+                  const mediaUrl = apiJoin(item.media_url);
+                  return (
+                    <div key={item.id} className={styles.masonryItem}>
+                      <article 
+                        className={styles.browserCard} 
+                        style={{ '--theme-color': theme.color, borderTop: `6px solid ${theme.color}`, boxShadow: `0 8px 20px ${theme.color}25` }}
+                      >
+                        <div className={styles.browserBar}>
+                          <div className={styles.dots}>
+                            <span style={{ backgroundColor: theme.color, opacity: 0.4 }}/>
+                            <span style={{ backgroundColor: theme.color, opacity: 0.7 }}/>
+                            <span style={{ backgroundColor: theme.color }}/>
+                          </div>
+                          <div className={styles.url} style={{ color: theme.color, borderColor: `${theme.color}40` }}>
+                            🔒 https://{theme.url}/article/{item.id}
+                          </div>
+                        </div>
+                        
+                        <div className={styles.newsHeader} style={{ borderBottom: `2px solid ${theme.color}30`, backgroundImage: `url(${theme.logo})` }}>
+                          <div className={styles.headerOverlay}>
+                            <div className={styles.headerTitleGroup}>
+                              <span className={styles.live} style={{ backgroundColor: theme.color }}>LIVE</span>
+                              <span className={styles.outletName} style={{ color: theme.color }}>{theme.name}</span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className={styles.newsBody}>
+                          <h2 style={{ borderBottom: `2px solid ${theme.color}40`, paddingBottom: '8px' }}>{item.title}</h2>
+                          {item.subtitle && <h4 style={{ color: theme.color }}>{item.subtitle}</h4>}
+                          
+                          <div className={styles.meta}>
+                            <span className={styles.journalist} style={{ color: theme.color, fontWeight: '800' }}>By {item.journalist_name || 'Staff'}</span>
+                            <span className={styles.date} style={{ color: `${theme.color}99` }}>| {new Date(item.created_at).toLocaleDateString()}</span>
+                          </div>
+                          
+                          {item.media_url && (
+                            <div className={styles.mediaFrame} style={{ boxShadow: `0 4px 15px ${theme.color}30` }}>
+                               {isVideoUrl(item.media_url) ? <video src={mediaUrl} controls /> : <img src={mediaUrl} alt="News" />}
+                            </div>
+                          )}
+                          
+                          <div className={styles.bodyHtml} dangerouslySetInnerHTML={{ __html: item.body }} />
+                        </div>
+                        {isAdmin && <button onClick={() => handleDelete(item.id)} className={styles.deleteOverlay}>×</button>}
+                      </article>
                     </div>
-                    <div className={styles.url} style={{ color: theme.color, borderColor: `${theme.color}40` }}>
-                      🔒 https://{theme.url}/article/{item.id}
-                    </div>
-                  </div>
-                  
-                  <div 
-                    className={styles.newsHeader} 
-                    style={{ 
-                      borderBottom: `2px solid ${theme.color}30`, 
-                      backgroundImage: `url(${theme.logo})`
-                    }}
-                  >
-                    <div className={styles.headerOverlay}>
-                      <div className={styles.headerTitleGroup}>
-                        <span className={styles.live} style={{ backgroundColor: theme.color }}>LIVE</span>
-                        <span className={styles.outletName} style={{ color: theme.color }}>{theme.name}</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className={styles.newsBody}>
-                    <h2 style={{ borderBottom: `2px solid ${theme.color}40`, paddingBottom: '8px' }}>
-                      {item.title}
-                    </h2>
-                    {item.subtitle && <h4 style={{ color: theme.color }}>{item.subtitle}</h4>}
-                    
-                    <div className={styles.meta}>
-                      <span className={styles.journalist} style={{ color: theme.color, fontWeight: '800' }}>
-                        By {item.journalist_name || 'Staff'}
-                      </span>
-                      <span className={styles.date} style={{ color: `${theme.color}99` }}>
-                        | {new Date(item.created_at).toLocaleDateString()}
-                      </span>
-                    </div>
-                    
-                    {item.media_url && (
-                      <div className={styles.mediaFrame} style={{ boxShadow: `0 4px 15px ${theme.color}30` }}>
-                         {isVideoUrl(item.media_url) ? <video src={mediaUrl} controls /> : <img src={mediaUrl} alt="News" />}
-                      </div>
-                    )}
-                    
-                    <div className={styles.bodyHtml} dangerouslySetInnerHTML={{ __html: item.body }} />
-                  </div>
-                  {isAdmin && <button onClick={() => handleDelete(item.id)} className={styles.deleteOverlay}>×</button>}
-                </article>
+                  );
+                })}
+                {newsItems.length === 0 && <p style={{ color: '#9ca3af' }}>No news published yet.</p>}
               </div>
-            );
-          })}
+            </div>
+          )}
+
+          {/* Rumors Section */}
+          {(viewMode === 'split' || viewMode === 'rumors') && (
+            <div style={{ flex: 1, minWidth: '300px' }}>
+              {viewMode === 'split' && (
+                <h2 style={{ marginBottom: '16px', color: '#fbbf24', borderBottom: '2px dashed #fbbf24', paddingBottom: '8px' }}>
+                  🤫 Whispers & Rumors
+                </h2>
+              )}
+              <div className={styles.masonry}>
+                {rumorItems.map(item => {
+                  const mediaUrl = apiJoin(item.media_url);
+                  return (
+                    <div key={item.id} className={styles.masonryItem}>
+                      <article className={styles.rumorCard}>
+                        <h2 className={styles.rumorTitle}>{item.title}</h2>
+                        {item.media_url && (
+                          <div className={styles.mediaFrame}>
+                            {isVideoUrl(item.media_url) ? <video src={mediaUrl} controls /> : <img src={mediaUrl} alt="Proof" />}
+                          </div>
+                        )}
+                        <div className={styles.rumorBody} dangerouslySetInnerHTML={{ __html: item.body }} />
+                        <div className={styles.meta}>— Heard on {new Date(item.created_at).toLocaleDateString()}</div>
+                        {isAdmin && <button onClick={() => handleDelete(item.id)} className={styles.deleteOverlay}>×</button>}
+                      </article>
+                    </div>
+                  );
+                })}
+                {rumorItems.length === 0 && <p style={{ color: '#9ca3af' }}>No rumors heard lately.</p>}
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
       
@@ -203,7 +246,7 @@ export default function News() {
   );
 }
 
-// Admin / Court Article Form (Dark Theme)
+// Admin / Court Article Form
 function CreateNewsModal({ mode, onClose, onSuccess }) {
   const [formData, setFormData] = useState({ 
     title: '', 
@@ -249,9 +292,9 @@ function CreateNewsModal({ mode, onClose, onSuccess }) {
 
   return (
     <div className={styles.modalOverlay}>
-      <div className={styles.modal} style={{ maxWidth: '800px', width: '100%', backgroundColor: '#1f2937', borderRadius: '8px', color: '#f3f4f6', boxShadow: '0 10px 25px rgba(0,0,0,0.8)' }}>
+      <div style={{ maxWidth: '800px', width: '100%', backgroundColor: '#1f2937', borderRadius: '8px', color: '#f3f4f6', boxShadow: '0 10px 25px rgba(0,0,0,0.8)' }}>
         
-        <div className={styles.modalHeader} style={{ padding: '20px', borderBottom: '1px solid #374151', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#111827' }}>
+        <div style={{ padding: '20px', borderBottom: '1px solid #374151', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#111827', borderTopLeftRadius: '8px', borderTopRightRadius: '8px' }}>
           <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#f9fafb' }}>
             {mode === 'rumor' ? 'Post a Rumor' : 'Submit News Article'}
           </h2>
@@ -262,15 +305,14 @@ function CreateNewsModal({ mode, onClose, onSuccess }) {
            
            <div>
              <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.9rem', fontWeight: 'bold', color: '#d1d5db' }}>Headline *</label>
-             <input placeholder={mode === 'rumor' ? "What's the whisper on the street?" : "Attention-grabbing title..."} required value={formData.title} onChange={e=>setFormData({...formData, title: e.target.value})} style={{ width: '100%', padding: '12px', fontSize: '1.1rem', borderRadius: '6px', border: '1px solid #4b5563', backgroundColor: '#111827', color: '#fff' }} />
+             <input placeholder={mode === 'rumor' ? "What's the whisper on the street?" : "Attention-grabbing title..."} required value={formData.title} onChange={e=>setFormData({...formData, title: e.target.value})} style={{ width: '100%', padding: '12px', fontSize: '1.1rem', borderRadius: '6px', border: '1px solid #4b5563', backgroundColor: '#111827', color: '#fff', boxSizing: 'border-box' }} />
            </div>
            
            <div style={{ display: 'grid', gridTemplateColumns: mode === 'rumor' ? '1fr' : '2fr 1fr', gap: '16px' }}>
-             {/* Hide Subtitle entirely in Rumor mode */}
              {mode !== 'rumor' && (
                <div>
                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.9rem', fontWeight: 'bold', color: '#d1d5db' }}>Subtitle (Optional)</label>
-                 <input placeholder="Secondary context..." value={formData.subtitle} onChange={e=>setFormData({...formData, subtitle: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #4b5563', backgroundColor: '#111827', color: '#fff' }} />
+                 <input placeholder="Secondary context..." value={formData.subtitle} onChange={e=>setFormData({...formData, subtitle: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #4b5563', backgroundColor: '#111827', color: '#fff', boxSizing: 'border-box' }} />
                </div>
              )}
              <div>
@@ -279,7 +321,7 @@ function CreateNewsModal({ mode, onClose, onSuccess }) {
                  value={formData.theme} 
                  onChange={e=>setFormData({...formData, theme: e.target.value})} 
                  disabled={mode === 'rumor'}
-                 style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #4b5563', backgroundColor: mode === 'rumor' ? '#374151' : '#111827', color: '#fff' }}>
+                 style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #4b5563', backgroundColor: mode === 'rumor' ? '#374151' : '#111827', color: '#fff', boxSizing: 'border-box' }}>
                  {Object.keys(NEWS_OUTLETS).map(k => {
                    if (mode === 'rumor' && k !== 'RUMOR') return null;
                    return <option key={k} value={k}>{NEWS_OUTLETS[k].name}</option>;
@@ -292,7 +334,7 @@ function CreateNewsModal({ mode, onClose, onSuccess }) {
              <div>
                <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.9rem', fontWeight: 'bold', color: '#d1d5db' }}>Journalist Name</label>
                <div style={{ display: 'flex', gap: '10px' }}>
-                  <input placeholder="e.g. Giannis Petrou" value={formData.journalist_name} onChange={e=>setFormData({...formData, journalist_name: e.target.value})} style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #4b5563', backgroundColor: '#111827', color: '#fff' }} />
+                  <input placeholder="e.g. Giannis Petrou" value={formData.journalist_name} onChange={e=>setFormData({...formData, journalist_name: e.target.value})} style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #4b5563', backgroundColor: '#111827', color: '#fff', boxSizing: 'border-box' }} />
                   <button type="button" onClick={handleRandomizeName} style={{ padding: '10px 16px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', transition: '0.2s' }}>
                     🎲 Randomize
                   </button>

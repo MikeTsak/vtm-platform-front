@@ -44,17 +44,18 @@
   margin-bottom: 20px;
 }
 
-/* Masonry Layout */
+/* --- UPDATED: Grid Layout for left-to-right chronological order --- */
 .masonry { 
-  column-count: 3; 
-  column-gap: 25px; 
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 25px;
+  align-items: start; /* Prevents cards from stretching vertically */
 }
-@media(max-width: 1000px){ .masonry { column-count: 2; } }
-@media(max-width: 650px){ .masonry { column-count: 1; } }
+@media(max-width: 1000px){ .masonry { grid-template-columns: repeat(2, 1fr); } }
+@media(max-width: 650px){ .masonry { grid-template-columns: 1fr; } }
 
 .masonryItem { 
-  break-inside: avoid; 
-  margin-bottom: 25px; 
+  width: 100%;
 }
 
 /* Enhanced Browser Card */
@@ -67,15 +68,13 @@
   transition: transform 0.25s ease, box-shadow 0.25s ease;
   display: flex;
   flex-direction: column;
-  --theme-color: #000; /* Fallback for CSS Var */
+  --theme-color: #000; 
 }
 
 .browserCard:hover {
   transform: translateY(-5px);
-  /* The inline style glow will combine nicely with this translation */
 }
 
-/* Make text highlights match the brand color */
 .browserCard ::selection {
   background-color: var(--theme-color);
   color: #ffffff;
@@ -107,7 +106,6 @@
   border: 1px solid;
 }
 
-/* --- UPGRADED NEWS HEADER (BACKGROUND LOGO) --- */
 .newsHeader { 
   position: relative;
   height: 80px; 
@@ -157,7 +155,6 @@
   100% { opacity: 1; }
 }
 
-/* News Body */
 .newsBody { 
   padding: 20px; 
 }
@@ -192,7 +189,6 @@
   border-radius: 6px;
 }
 
-/* Rich Text formatting */
 .bodyHtml {
   font-size: 0.95rem;
   line-height: 1.6;
@@ -201,7 +197,6 @@
 
 .bodyHtml p { margin-top: 0; margin-bottom: 10px; }
 
-/* Links in the rich text automatically pick up the theme color! */
 .bodyHtml a {
   color: var(--theme-color);
   font-weight: bold;
@@ -232,7 +227,6 @@
   background: #b91c1c;
 }
 
-/* Rumor Card Style */
 .rumorCard { 
   background: #fef3c7; 
   padding: 25px; 
@@ -252,7 +246,6 @@
 }
 .rumorBody { font-size: 1.1rem; line-height: 1.5; margin-bottom: 15px; }
 
-/* --- MODAL STYLES --- */
 .modalOverlay { 
   position: fixed; 
   top: 0; 
@@ -260,7 +253,7 @@
   right: 0; 
   bottom: 0; 
   background: rgba(0,0,0,0.85); 
-  z-index: 9999; /* Ensures it pops up over everything else */
+  z-index: 9999; 
   display: flex; 
   justify-content: center; 
   align-items: center; 
