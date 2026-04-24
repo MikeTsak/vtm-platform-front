@@ -24,6 +24,7 @@ import ForgotPassword from './pages/user/ForgotPassword';
 import ResetPassword from './pages/user/ResetPassword';
 import Boons from './pages/Boons';
 import Court from './pages/Court';
+import MediaViewer from './pages/MediaViewer';
 import Premonitions from './pages/Premonitions';
 import News from './pages/News'; // ✅ IMPORTED NEWS PAGE
 
@@ -218,6 +219,7 @@ export default function App() {
               <Route path="/terms" element={<Terms />} />
               <Route path="/legal" element={<Legal />} />
               <Route path="/privacy" element={<Privacy />} />
+              <Route path="/media/:id" element={<MediaViewer />} />
               
               <Route
                 path="/premonitions"
