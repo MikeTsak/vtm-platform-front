@@ -286,6 +286,7 @@ export const DISCIPLINES = {
         {
           id: 'premonition',
           name: 'Premonition',
+          clan: 'Malkavian',
           cost: 'Free (passive) / 1 Rouse (active)',
           duration: 'Passive; active use requires roll',
           dice_pool: 'Resolve + Auspex',
@@ -873,6 +874,7 @@ export const DISCIPLINES = {
         {
           id: 'dementation',
           name: 'Dementation',
+          clan: 'Malkavian',
           cost: '1 Rouse per target per scene',
           amalgam: 'Obfuscate ●●',
           duration: 'One scene',
@@ -1144,6 +1146,7 @@ export const DISCIPLINES = {
         {
           id: 'valeren',
           name: 'Valeren',
+          clan: 'Salubri',
           cost: '1 Rouse',
           amalgam: 'Auspex ●',
           duration: '—',
@@ -2109,6 +2112,7 @@ export const DISCIPLINES = {
         {
           id: 'vicissitude',
           name: 'Vicissitude',
+          clan: 'Tzimisce',
           cost: '1 Rouse',
           amalgam: 'Dominate ●●',
           duration: 'Permanent',
@@ -2153,6 +2157,7 @@ export const DISCIPLINES = {
         {
           id: 'fleshcrafting',
           name: 'Fleshcrafting',
+          clan: 'Tzimisce',
           cost: '1 Rouse',
           prerequisite: 'Vicissitude',
           amalgam: 'Dominate ●●',
@@ -2189,6 +2194,7 @@ export const DISCIPLINES = {
           id: 'horrid_form',
           name: 'Horrid Form',
           cost: '1 Rouse',
+          clan: 'Tzimisce',
           prerequisite: 'Vicissitude',
           amalgam: 'Dominate ●●',
           duration: 'One scene (or until ended)',

@@ -803,6 +803,7 @@ useEffect(() => {
         next: first.level,
         kind: 'select',
         assignOnly: true,
+        characterClan: ch.clan,
         disciplineDots: sheet.disciplines,
         ownedPowers: sheet.disciplinePowers?.[first.name] || []
       });
@@ -2070,7 +2071,11 @@ function ritualPrereqStatus(rit, knownPowerSet) {
 
 /* ===== Discipline power picker modal ===== */
 function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
-  const { name, next, assignOnly, ownedPowerIds = [], ownedPowerNames = [], ownedPowers = [], disciplineDots = {} } = cfg;
+  // Destructure characterClan from cfg
+  const { 
+    name, next, assignOnly, characterClan, 
+    ownedPowerIds = [], ownedPowerNames = [], ownedPowers = [], disciplineDots = {} 
+  } = cfg;
 
   const fullPool = useMemo(() => {
     const out = [];
@@ -2117,7 +2122,7 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
       })
   , [countDots]);
 
-  const annotated = useMemo(() => {
+const annotated = useMemo(() => {
     return fullPool.map(p => {
       const candidates = [
         norm(p?.id), norm(p?.name), norm(p?.slug), norm(p?.key), norm(p?.code), norm(p?.power_id)
@@ -2125,6 +2130,8 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
       const owned = candidates.some(c => ownedCanon.has(c));
 
       const unmet = [];
+      const clanLockUnmet = p.clan && p.clan !== characterClan;
+
       if (p.amalgam) {
         const reqs = parseAmalgam(String(p.amalgam));
         for (const req of reqs) {
@@ -2137,11 +2144,11 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
 
       return {
         ...p,
-        __flags: { owned, unmet },
-        __available: !owned && unmet.length === 0,
+        __flags: { owned, unmet, clanLockUnmet },
+        __available: !owned && unmet.length === 0 && !clanLockUnmet,
       };
     });
-  }, [fullPool, ownedCanon, dotsByDisc, normDisc, parseAmalgam]);
+  }, [fullPool, ownedCanon, dotsByDisc, normDisc, parseAmalgam, characterClan]);
 
   const [query, setQuery] = useState('');
   const filtered = useMemo(() => {
@@ -2248,12 +2255,15 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
                     if (row.__type === 'hdr') {
                       return <div key={row.key} className={styles.levelHeader}>Level {row.level}</div>;
                     }
-                    const p = row.power;
+const p = row.power;
                     const active = p.id === selectedId;
                     const disabled = !p.__available;
-                    const reason = p.__flags.owned
-                      ? 'Owned'
-                      : (p.__flags.unmet.length ? `Conditions not met: ${p.__flags.unmet.join(', ')}` : '');
+                    
+                    // Improved reason logic
+                    let reason = '';
+                    if (p.__flags.owned) reason = 'Owned';
+                    else if (p.__flags.clanLockUnmet) reason = `Requires Clan: ${p.clan}`;
+                    else if (p.__flags.unmet.length) reason = `Needs: ${p.__flags.unmet.join(', ')}`;
 
                     return (
                       <button
@@ -2293,23 +2303,28 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
               </aside>
             </div>
 
-        <div className={styles.paneCard}>
-          <section className={styles.powerDetailPane}>
-            {!sel ? (
-              <div className={styles.emptyNote}>Select a power on the left to see details.</div>
-            ) : (
-              <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: 8 }}>
-                  <div>
-                    <div style={{ fontSize: 18, fontWeight: 700 }}>{sel.name}</div>
-                    <div className={styles.muted} style={{ fontSize: 13 }}>
-                      Level {sel.__level}{sel.source ? ` • Source: ${sel.source}` : ''}
-                    </div>
-                  </div>
+            <div className={styles.paneCard}>
+              <section className={styles.powerDetailPane}>
+                {!sel ? (
+                  <div className={styles.emptyNote}>Select a power on the left to see details.</div>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: 8 }}>
+                      <div>
+                        <div style={{ fontSize: 18, fontWeight: 700 }}>{sel.name}</div>
+                        <div className={styles.muted} style={{ fontSize: 13 }}>
+                          Level {sel.__level}{sel.source ? ` • Source: ${sel.source}` : ''}
+                        </div>
+                      </div>
 
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+<div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {sel.__flags?.owned && (
                       <span className={`${styles.powerBadgeMuted} badge-owned`}>Owned</span>
+                    )}
+                    {sel.__flags?.clanLockUnmet && (
+                      <span className={`${styles.powerBadgeMuted} badge-warn`}>
+                        Requires Clan: {sel.clan}
+                      </span>
                     )}
                     {Array.isArray(sel.__flags?.unmet) && sel.__flags.unmet.length > 0 && (
                       <span className={`${styles.powerBadgeMuted} badge-warn`}>
@@ -2317,38 +2332,38 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
                       </span>
                     )}
                   </div>
-                </div>
+                    </div>
 
-                <div className={styles.detailTags} style={{ marginTop: 10 }}>
-                  {sel.cost && (
-                    <span className={styles.powerTag}><b>Cost:</b> {sel.cost}</span>
-                  )}
-                  {sel.duration && (
-                    <span className={styles.powerTag}><b>Duration:</b> {sel.duration}</span>
-                  )}
-                  {sel.dice_pool && (
-                    <span className={styles.powerTag}><b>Dice Pool:</b> {sel.dice_pool}</span>
-                  )}
-                  {sel.opposing_pool && (
-                    <span className={styles.powerTag}><b>Opposing Pool:</b> {sel.opposing_pool}</span>
-                  )}
-                  {sel.prerequisite && (
-                    <span className={styles.powerTag}><b>Prerequisite:</b> {sel.prerequisite}</span>
-                  )}
-                  {sel.amalgam && (
-                    <span className={styles.powerTag}><b>Amalgam:</b> {sel.amalgam}</span>
-                  )}
-                </div>
+                    <div className={styles.detailTags} style={{ marginTop: 10 }}>
+                      {sel.cost && (
+                        <span className={styles.powerTag}><b>Cost:</b> {sel.cost}</span>
+                      )}
+                      {sel.duration && (
+                        <span className={styles.powerTag}><b>Duration:</b> {sel.duration}</span>
+                      )}
+                      {sel.dice_pool && (
+                        <span className={styles.powerTag}><b>Dice Pool:</b> {sel.dice_pool}</span>
+                      )}
+                      {sel.opposing_pool && (
+                        <span className={styles.powerTag}><b>Opposing Pool:</b> {sel.opposing_pool}</span>
+                      )}
+                      {sel.prerequisite && (
+                        <span className={styles.powerTag}><b>Prerequisite:</b> {sel.prerequisite}</span>
+                      )}
+                      {sel.amalgam && (
+                        <span className={styles.powerTag}><b>Amalgam:</b> {sel.amalgam}</span>
+                      )}
+                    </div>
 
-                {sel.notes && (
-                  <div className={styles.powerNotes} style={{ marginTop: 10 }}>
-                    <b>Notes:</b> {sel.notes}
-                  </div>
+                    {sel.notes && (
+                      <div className={styles.powerNotes} style={{ marginTop: 10 }}>
+                        <b>Notes:</b> {sel.notes}
+                      </div>
+                    )}
+                  </>
                 )}
-              </>
-            )}
-          </section>
-        </div>
+              </section>
+            </div>
 
           </div>
         )}

@@ -258,6 +258,7 @@ var DISCIPLINES = {
       }, {
         id: 'premonition',
         name: 'Premonition',
+        clan: 'Malkavian',
         cost: 'Free (passive) / 1 Rouse (active)',
         duration: 'Passive; active use requires roll',
         dice_pool: 'Resolve + Auspex',
@@ -774,6 +775,7 @@ var DISCIPLINES = {
       }, {
         id: 'dementation',
         name: 'Dementation',
+        clan: 'Malkavian',
         cost: '1 Rouse per target per scene',
         amalgam: 'Obfuscate ●●',
         duration: 'One scene',
@@ -1005,6 +1007,7 @@ var DISCIPLINES = {
       }, {
         id: 'valeren',
         name: 'Valeren',
+        clan: 'Salubri',
         cost: '1 Rouse',
         amalgam: 'Auspex ●',
         duration: '—',
@@ -1862,6 +1865,7 @@ var DISCIPLINES = {
       }, {
         id: 'vicissitude',
         name: 'Vicissitude',
+        clan: 'Tzimisce',
         cost: '1 Rouse',
         amalgam: 'Dominate ●●',
         duration: 'Permanent',
@@ -1901,6 +1905,7 @@ var DISCIPLINES = {
       }, {
         id: 'fleshcrafting',
         name: 'Fleshcrafting',
+        clan: 'Tzimisce',
         cost: '1 Rouse',
         prerequisite: 'Vicissitude',
         amalgam: 'Dominate ●●',
@@ -1933,6 +1938,7 @@ var DISCIPLINES = {
         id: 'horrid_form',
         name: 'Horrid Form',
         cost: '1 Rouse',
+        clan: 'Tzimisce',
         prerequisite: 'Vicissitude',
         amalgam: 'Dominate ●●',
         duration: 'One scene (or until ended)',
@@ -2656,6 +2662,8 @@ var DISCIPLINES = {
     }
   }
 }; // helper to generate placeholder powers per level
+// (currently unused but kept for potential future use)
+// eslint-disable-next-line no-unused-vars
 
 exports.DISCIPLINES = DISCIPLINES;
 
