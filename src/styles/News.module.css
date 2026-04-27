@@ -47,9 +47,10 @@
 /* --- UPDATED: Grid Layout for left-to-right chronological order --- */
 .masonry { 
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  /* Automatically adjusts column count based on available space without overlapping */
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
   gap: 25px;
-  align-items: start; /* Prevents cards from stretching vertically */
+  align-items: start; 
 }
 @media(max-width: 1000px){ .masonry { grid-template-columns: repeat(2, 1fr); } }
 @media(max-width: 650px){ .masonry { grid-template-columns: 1fr; } }
@@ -193,6 +194,8 @@
   font-size: 0.95rem;
   line-height: 1.6;
   color: #374151;
+  word-break: break-word; 
+  overflow-wrap: break-word; 
 }
 
 .bodyHtml p { margin-top: 0; margin-bottom: 10px; }
@@ -244,7 +247,13 @@
   margin-top: 0;
   margin-bottom: 15px; 
 }
-.rumorBody { font-size: 1.1rem; line-height: 1.5; margin-bottom: 15px; }
+.rumorBody { 
+  font-size: 1.1rem; 
+  line-height: 1.5; 
+  margin-bottom: 15px; 
+  word-break: break-word; 
+  overflow-wrap: break-word
+}
 
 .modalOverlay { 
   position: fixed; 

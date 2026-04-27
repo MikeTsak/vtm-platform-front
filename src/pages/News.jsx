@@ -137,7 +137,7 @@ export default function News() {
           
           {/* News Section */}
           {(viewMode === 'split' || viewMode === 'news') && (
-            <div style={{ flex: 1, minWidth: '300px' }}>
+            <div style={{ flex: 1, minWidth: '300px', maxWidth: '100%' }}>
               {viewMode === 'split' && (
                 <h2 style={{ marginBottom: '16px', color: '#f3f4f6', borderBottom: '2px solid #4b5563', paddingBottom: '8px' }}>
                   📰 Official News
@@ -202,7 +202,7 @@ export default function News() {
 
           {/* Rumors Section */}
           {(viewMode === 'split' || viewMode === 'rumors') && (
-            <div style={{ flex: 1, minWidth: '300px' }}>
+            <div style={{ flex: 1, minWidth: '300px', maxWidth: '100%' }}>
               {viewMode === 'split' && (
                 <h2 style={{ marginBottom: '16px', color: '#fbbf24', borderBottom: '2px dashed #fbbf24', paddingBottom: '8px' }}>
                   🤫 Whispers & Rumors
