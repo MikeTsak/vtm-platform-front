@@ -7,7 +7,7 @@ import { DISCIPLINES, ALL_DISCIPLINE_NAMES, iconPath } from '../data/disciplines
 import { RITUALS } from '../data/rituals';
 import styles from '../styles/CharacterView.module.css';
 import CharacterSetup from './CharacterSetup';
-import { MERITS_AND_FLAWS } from '../data/merits_flaws';
+import { MERITS_AND_FLAWS, listAllItems } from '../data/merits_flaws';
 import generateVTMCharacterSheetPDF from '../utils/pdfGenerator'; 
 
 /* ---------- Clan tint colors ---------- */
@@ -171,6 +171,10 @@ function normalizeFromFlatAny(source) {
   sheet.sire = flat.sire || '';
   sheet.ambition = flat.ambition || '';
   sheet.desire = flat.desire || '';
+  
+  // Normalizing Touchstones and Convictions
+  sheet.touchstones = Array.isArray(flat.touchstones) ? flat.touchstones : (Array.isArray(flat.morality?.touchstones) ? flat.morality.touchstones : []);
+  sheet.convictions = Array.isArray(flat.convictions) ? flat.convictions : (Array.isArray(flat.morality?.convictions) ? flat.morality.convictions : []);
 
   sheet.advantages = {
     merits: Array.isArray(flat.advantages?.merits) ? flat.advantages.merits : [],
@@ -453,6 +457,108 @@ function TrackerBlock({ label, val, max, agg=0, sup=0, filled=0, stains=0 }) {
 }
 
 /* ===========================
+   Profile Edit Modal
+   =========================== */
+function ProfileEditModal({ sheet, onClose, onSave, busy }) {
+  const [ambition, setAmbition] = useState(sheet.ambition || '');
+  const [desire, setDesire] = useState(sheet.desire || '');
+  const [touchstones, setTouchstones] = useState([...(sheet.touchstones || [])]);
+  const [convictions, setConvictions] = useState([...(sheet.convictions || [])]);
+
+  return (
+    <div className={styles.modalOverlay} role="dialog">
+      <div className={`${styles.card} ${styles.modalCard}`} style={{ width: 'min(92vw, 600px)', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div className={styles.modalHeader}>
+          <h3 className={styles.modalTitle}>Edit Profile & Morality</h3>
+        </div>
+        <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          
+          <div>
+            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: 6 }}>Ambition</label>
+            <input 
+              className={styles.input} 
+              value={ambition} 
+              onChange={e => setAmbition(e.target.value)} 
+              placeholder="e.g. Become Prince" 
+              style={{ width: '100%', boxSizing: 'border-box' }} 
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: 6 }}>Desire</label>
+            <input 
+              className={styles.input} 
+              value={desire} 
+              onChange={e => setDesire(e.target.value)} 
+              placeholder="e.g. Drink from a celebrity" 
+              style={{ width: '100%', boxSizing: 'border-box' }} 
+            />
+          </div>
+
+          <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)', margin: '12px 0' }} />
+
+          {/* Touchstones List */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <label style={{ fontWeight: 'bold' }}>Touchstones</label>
+              <button className={styles.ghostBtn} style={{ padding: '4px 10px', fontSize: '0.85rem' }} onClick={() => setTouchstones([...touchstones, ''])}>+ Add Touchstone</button>
+            </div>
+            {touchstones.map((t, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                <input 
+                  className={styles.input} 
+                  value={t} 
+                  onChange={e => { const n=[...touchstones]; n[i]=e.target.value; setTouchstones(n); }} 
+                  style={{ flex: 1 }} 
+                  placeholder="Touchstone description..." 
+                />
+                <button 
+                  className={styles.ghostBtn} 
+                  style={{ color: '#b40f1f', fontWeight: 'bold', padding: '0 12px' }} 
+                  onClick={() => setTouchstones(touchstones.filter((_, idx) => idx !== i))}
+                  title="Remove Touchstone"
+                >×</button>
+              </div>
+            ))}
+            {touchstones.length === 0 && <div className={styles.muted} style={{ fontSize: '0.9rem' }}>No touchstones added.</div>}
+          </div>
+
+          {/* Convictions List */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <label style={{ fontWeight: 'bold' }}>Convictions</label>
+              <button className={styles.ghostBtn} style={{ padding: '4px 10px', fontSize: '0.85rem' }} onClick={() => setConvictions([...convictions, ''])}>+ Add Conviction</button>
+            </div>
+            {convictions.map((c, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                <input 
+                  className={styles.input} 
+                  value={c} 
+                  onChange={e => { const n=[...convictions]; n[i]=e.target.value; setConvictions(n); }} 
+                  style={{ flex: 1 }} 
+                  placeholder="Conviction description..." 
+                />
+                <button 
+                  className={styles.ghostBtn} 
+                  style={{ color: '#b40f1f', fontWeight: 'bold', padding: '0 12px' }} 
+                  onClick={() => setConvictions(convictions.filter((_, idx) => idx !== i))}
+                  title="Remove Conviction"
+                >×</button>
+              </div>
+            ))}
+            {convictions.length === 0 && <div className={styles.muted} style={{ fontSize: '0.9rem' }}>No convictions added.</div>}
+          </div>
+
+        </div>
+        <div className={styles.modalFooter} style={{ padding: '16px 20px' }}>
+          <button className={styles.ghostBtn} onClick={onClose} disabled={busy}>Cancel</button>
+          <button className={styles.cta} onClick={() => onSave({ ambition, desire, touchstones, convictions })} disabled={busy}>{busy ? 'Saving...' : 'Save Changes'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ===========================
    Component
    =========================== */
 export default function CharacterView({
@@ -469,6 +575,10 @@ export default function CharacterView({
   // Memoize all merits and flaws so we can look up their full descriptions later
   const allMeritsFlat = useMemo(() => allSelectableMerits(), []);
   const allFlawsFlat = useMemo(() => allSelectableFlaws(), []);
+
+  // Fetch all items from data to identify what is truly a Flaw
+  const allDataItems = useMemo(() => listAllItems(), []);
+  const flawIds = useMemo(() => new Set(allDataItems.filter(i => i.type === 'Flaw').map(i => i.id)), [allDataItems]);
 
   const paths = useMemo(() => {
     if (adminNPCId) {
@@ -504,6 +614,8 @@ export default function CharacterView({
   const [msg, setMsg] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [modalCfg, setModalCfg] = useState(null);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
   const [pendingFixes, setPendingFixes] = useState([]);
   const [xpTotals, setXpTotals] = useState(null);
   const shopRef = useRef(null);
@@ -608,6 +720,35 @@ export default function CharacterView({
     } catch (e) {
       setErr(e.response?.data?.error || 'Failed to update character sheet');
       throw e;
+    }
+  }
+
+  async function saveProfileData(newData) {
+    setSavingProfile(true);
+    const nextSheet = JSON.parse(JSON.stringify(sheet));
+    nextSheet.ambition = newData.ambition;
+    nextSheet.desire = newData.desire;
+    nextSheet.touchstones = newData.touchstones;
+    nextSheet.convictions = newData.convictions;
+    
+    nextSheet.morality = nextSheet.morality || {};
+    nextSheet.morality.touchstones = newData.touchstones;
+    nextSheet.morality.convictions = newData.convictions;
+
+    try {
+       await api.put(paths.update, {
+          name: ch.name,
+          clan: ch.clan,
+          sheet: nextSheet
+       });
+       setCh(prev => ({ ...prev, sheet: nextSheet }));
+       setProfileModalOpen(false);
+       setMsg('Profile details updated successfully.');
+       setTimeout(() => setMsg(''), 3000);
+    } catch(e) {
+       setErr('Failed to update profile details.');
+    } finally {
+       setSavingProfile(false);
     }
   }
 
@@ -776,19 +917,26 @@ const knownPowerNamesAndIds = useMemo(() => {
     await spendXP({ type: 'ceremony', target: cer.id, ritualLevel: level, patchSheet: nextSheet });
   }
 
-  /* --- Flaw/Merit Rule Calculations --- */
-  const meritsList = Array.isArray(sheet?.advantages?.merits) ? sheet.advantages.merits : [];
-  const backgroundsList = Array.isArray(sheet?.backgrounds) ? sheet.backgrounds : [];
-  const flawsList = Array.isArray(sheet?.advantages?.flaws) ? sheet.advantages.flaws : [];
-  
+  /* --- Flaw/Merit Rule Calculations (with Self-Healing) --- */
+  const rawMerits = Array.isArray(sheet?.advantages?.merits) ? sheet.advantages.merits : [];
+  const rawBackgrounds = Array.isArray(sheet?.backgrounds) ? sheet.backgrounds : [];
+  const rawFlaws = Array.isArray(sheet?.advantages?.flaws) ? sheet.advantages.flaws : [];
+
+  const meritsList = [];
+  const backgroundsList = [];
+  const flawsList = [...rawFlaws];
+
+  // Heal: If any flaws are inside merits/backgrounds, move them visually to flawsList
+  rawMerits.forEach(m => flawIds.has(m.id) ? flawsList.push(m) : meritsList.push(m));
+  rawBackgrounds.forEach(b => flawIds.has(b.id) ? flawsList.push(b) : backgroundsList.push(b));
+
   const displayMerits = [...meritsList, ...backgroundsList];
 
   const totalMeritDots = displayMerits.reduce((sum, m) => sum + Number(m.dots || 0), 0);
   const totalFlawDots = flawsList.reduce((sum, f) => sum + Number(f.dots || 0), 0);
 
   const requiredFlaws = Math.floor(totalMeritDots / 7) * 2;
-  const flawDeficit = requiredFlaws - totalFlawDots;
-
+  const flawDeficit = Math.max(0, requiredFlaws - totalFlawDots);
 
   if (!ch) {
     return (
@@ -870,6 +1018,13 @@ const knownPowerNamesAndIds = useMemo(() => {
             <span>Sire: <b>{sheet?.sire || '—'}</b></span>
             <span>Ambition: <b>{sheet?.ambition || '—'}</b></span>
             <span>Desire: <b>{sheet?.desire || '—'}</b></span>
+            <button 
+              className={styles.ghostBtn} 
+              onClick={() => setProfileModalOpen(true)} 
+              style={{ padding: '2px 10px', fontSize: '0.85rem', marginLeft: 'auto', border: '1px solid var(--border-color)', borderRadius: '4px' }}
+            >
+              ✎ Edit Details
+            </button>
           </div>
 
           {err && <div className={styles.alertError}>{err}</div>}
@@ -988,6 +1143,41 @@ const knownPowerNamesAndIds = useMemo(() => {
             {saveStatus && isAdmin && <div style={{ marginTop: '10px', fontSize: '0.85rem', color: 'var(--text-color)', opacity: 0.7, textAlign: 'center' }}>{saveStatus}</div>}
 
           </div>
+          
+          {/* Touchstones & Convictions */}
+          <Card>
+            <div className={styles.cardHead} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <b>Touchstones & Convictions</b>
+              <button 
+                className={styles.ghostBtn} 
+                onClick={() => setProfileModalOpen(true)} 
+                style={{ fontSize: '0.8rem', padding: '2px 8px' }}
+              >
+                ✎ Edit
+              </button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginTop: '12px' }}>
+              
+              <div style={{ padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+                <div style={{ fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '6px', marginBottom: '8px' }}>Touchstones</div>
+                {sheet.touchstones && sheet.touchstones.length > 0 ? (
+                  <ul style={{ margin: 0, paddingLeft: 20, fontSize: '0.95rem', opacity: 0.9 }}>
+                    {sheet.touchstones.map((t, i) => <li key={i} style={{ marginBottom: '4px' }}>{t}</li>)}
+                  </ul>
+                ) : <div className={styles.muted} style={{ fontSize: '0.9rem' }}>No touchstones defined.</div>}
+              </div>
+
+              <div style={{ padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+                <div style={{ fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '6px', marginBottom: '8px' }}>Convictions</div>
+                {sheet.convictions && sheet.convictions.length > 0 ? (
+                  <ul style={{ margin: 0, paddingLeft: 20, fontSize: '0.95rem', opacity: 0.9 }}>
+                    {sheet.convictions.map((c, i) => <li key={i} style={{ marginBottom: '4px' }}>{c}</li>)}
+                  </ul>
+                ) : <div className={styles.muted} style={{ fontSize: '0.9rem' }}>No convictions defined.</div>}
+              </div>
+
+            </div>
+          </Card>
 
           <Card>
             <div className={styles.cardHead}><b>Attributes</b></div>
@@ -1561,12 +1751,21 @@ const knownPowerNamesAndIds = useMemo(() => {
         </section>
       </div>
 
-      {/* ----- Discipline Power Modal ----- */}
+      {/* ----- Modals ----- */}
       {modalOpen && modalCfg && (
         <DisciplinePowerModal
           cfg={modalCfg}
           onClose={() => { setModalOpen(false); setModalCfg(null); }}
           onConfirm={(sel) => confirmDisciplinePurchase({ ...modalCfg, ...sel })}
+        />
+      )}
+
+      {profileModalOpen && (
+        <ProfileEditModal
+          sheet={sheet}
+          onClose={() => setProfileModalOpen(false)}
+          onSave={saveProfileData}
+          busy={savingProfile}
         />
       )}
     </div>
