@@ -142,6 +142,9 @@ export default function MeritsFlawsPicker({
   meritBudget = 7,       // total dots you allow for merits
 }) {
   const [q, setQ] = useState('');
+  
+  // Calculate Flaw Budget dynamically based on Merit Budget (2 Flaws for every 7 Merits)
+  const flawBudget = Math.max(2, Math.floor(meritBudget / 7) * 2);
 
   const allItems = useMemo(() => flattenData(), []);
   const filtered = useMemo(() => {
@@ -188,8 +191,8 @@ export default function MeritsFlawsPicker({
       if (exists) {
         setFlaws(prev => prev.filter(f => f.id !== item.id));
       } else {
-        // enforce EXACTLY 2 total dots -> prevent adding past 2
-        if (flawDots + defaultDots > 2) return;
+        // enforce exactly the flawBudget total dots -> prevent adding past it
+        if (flawDots + defaultDots > flawBudget) return;
         setFlaws(prev => [...prev, {
           id: item.id,
           name: item.name,
@@ -212,10 +215,10 @@ export default function MeritsFlawsPicker({
       return;
     }
     if (item.type === 'Flaw') {
-      // keep at EXACT 2 total (can't exceed 2)
+      // keep at EXACT flawBudget total (can't exceed flawBudget)
       const others = flaws.filter(f => f.id !== item.id);
       const sumOthers = others.reduce((a, f) => a + (Number(f.dots) || 0), 0);
-      if (sumOthers + n > 2) return;
+      if (sumOthers + n > flawBudget) return;
       setFlaws([...others, { ...item, dots: n }]);
     }
   };
@@ -239,7 +242,7 @@ export default function MeritsFlawsPicker({
         <div>
           <h4 className={styles.sectionSub}>Pick Merits & Flaws</h4>
           <p className={styles.muted} style={{ marginTop: 4 }}>
-            Merits budget: <b>{meritsSpent}/{meritBudget}</b> • Flaws required: <b>{flawDots}/2</b>
+            Merits budget: <b>{meritsSpent}/{meritBudget}</b> • Flaws required: <b>{flawDots}/{flawBudget}</b>
           </p>
         </div>
         <input
@@ -312,14 +315,14 @@ export default function MeritsFlawsPicker({
 
         {/* Flaws column */}
         <div className={`${styles.bleedSoft}`} style={{ display: 'grid', gap: 10 }}>
-          <h5 className={styles.sectionSub}>Flaws (exactly 2 dots)</h5>
+          <h5 className={styles.sectionSub}>Flaws (exactly {flawBudget} dots)</h5>
           {flawsList.map(it => {
             const allowed = parseDotSpec(it.dotsSpec);
             if (!allowed.length) return null;
             const picked = isPicked(it.id, it.type);
             const curDots = pickedDots(it.id, it.type);
             const minIfAdd = allowed[0];
-            const wouldExceed = !picked && (flawDots + minIfAdd > 2);
+            const wouldExceed = !picked && (flawDots + minIfAdd > flawBudget);
             return (
               <div
                 key={it.id}
@@ -377,13 +380,13 @@ export default function MeritsFlawsPicker({
           <span className={`${styles.pill} ${meritsSpent <= meritBudget ? styles.done : ''}`}>
             Merits <b>• {meritsSpent}/{meritBudget}</b>
           </span>
-          <span className={`${styles.pill} ${flawDots === 2 ? styles.done : ''}`}>
-            Flaws <b>• {flawDots}/2</b>
+          <span className={`${styles.pill} ${flawDots === flawBudget ? styles.done : ''}`}>
+            Flaws <b>• {flawDots}/{flawBudget}</b>
           </span>
         </div>
-        {(flawDots !== 2) && (
+        {(flawDots !== flawBudget) && (
           <div className={styles.alert} style={{ marginTop: 6 }}>
-            <span className={styles.alertDot} /> Flaws must total exactly 2 dots for character creation.
+            <span className={styles.alertDot} /> Flaws must total exactly {flawBudget} dots for character creation.
           </div>
         )}
       </div>

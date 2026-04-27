@@ -106,6 +106,13 @@ export const MERITS_AND_FLAWS = {
         description:
           'Treat Humanity as +1 (max 10), or +2 at four dots, for Blush of Life, eating, drinking, or sex.',
       },
+      {
+        id: idFor('Looks', 'Scene Kid'),
+        name: 'Scene Kid',
+        dots: '•',
+        description:
+          "The player's style embodies that of a particular subculture. Add one die to all appropriate Social pools when dealing with that subculture.",
+      },
     ],
     flaws: [
       {
@@ -279,7 +286,7 @@ export const MERITS_AND_FLAWS = {
       {
         id: idFor('Bonding', 'Two Masters'),
         name: 'Two Masters',
-        dots: '• (Flaw)',
+        dots: '•',
         description: 'Can be Blood Bound to two individuals at once.',
       },
     ],
@@ -309,6 +316,13 @@ export const MERITS_AND_FLAWS = {
         dots: '•',
         description:
           'Resolve + Awareness (Diff 2) to tell if a mortal was fed on recently; crit reveals if feed recurs.',
+      },
+      {
+        id: idFor('Feeding', 'Drive-thru'),
+        name: 'Drive-thru',
+        dots: '•',
+        description:
+          'Safely complete a hunt within minutes while on the move by increasing the difficulty by 1.',
       },
       {
         id: idFor('Feeding', 'Vein Tapper'),
@@ -353,6 +367,27 @@ export const MERITS_AND_FLAWS = {
           'Either force mortals to fit preference or always spend 1 WP to feed.',
       },
       {
+        id: idFor('Feeding', 'Resonance Sensitivity'),
+        name: 'Resonance Sensitivity',
+        dots: '•',
+        description:
+          'One resonance really messes with the character, causing a unique compulsion.',
+      },
+      {
+        id: idFor('Feeding', 'Resonance Mimic'),
+        name: 'Resonance Mimic',
+        dots: '••',
+        description:
+          'The character gets influenced and penalized from the memories of their victim.',
+      },
+      {
+        id: idFor('Feeding', 'Sloppy Feeder'),
+        name: 'Sloppy Feeder',
+        dots: '••',
+        description:
+          'The pattern of attacks when feeding is telltale enough to identify. One attack can be linked to previous attacks.',
+      },
+      {
         id: idFor('Feeding', 'Starving Decay'),
         name: 'Starving Decay',
         dots: '••',
@@ -370,7 +405,7 @@ export const MERITS_AND_FLAWS = {
         id: idFor('Mythic', 'Eat Food'),
         name: 'Eat Food',
         dots: '••',
-        description: 'Can consume food (no nourishment).',
+        description: 'Can consume food (no nourishment). It must be expelled before resting for the day.',
       },
       {
         id: idFor('Mythic', 'Cold Dead Hunger'),
@@ -405,6 +440,20 @@ export const MERITS_AND_FLAWS = {
         dots: '• - •••',
         description:
           '• Reroll 1 die per story (excl. Hunger). •• +1 die to all L1 Rituals. ••• Free danger premonition once/session.',
+      },
+      {
+        id: idFor('Mythic', 'Ley Line Leach'),
+        name: 'Ley Line Leach',
+        dots: '•',
+        description:
+          'Follow ancient paths of power while traveling. After traveling to a different city/locale, negate the need for a Rouse Check for the next night.',
+      },
+      {
+        id: idFor('Mythic', 'Persistent Blush'),
+        name: 'Persistent Blush',
+        dots: '•••',
+        description:
+          'A single activation of Blush of Life lasts 1 week.',
       },
     ],
     flaws: [
@@ -442,6 +491,27 @@ export const MERITS_AND_FLAWS = {
         dots: '••',
         description:
           "Gain a second Clan's variant Bane in addition to your own (ST approval).",
+      },
+      {
+        id: idFor('Mythic', 'Land Locked'),
+        name: 'Land Locked',
+        dots: '•',
+        description:
+          'Unable to leave the land, the player must make a Fear Frenzy test at Difficulty 3 to board a boat or plane.',
+      },
+      {
+        id: idFor('Mythic', 'Resistant Blush'),
+        name: 'Resistant Blush',
+        dots: '•',
+        description:
+          'When rolling a Rouse Check for Blush of Life, roll twice and take the lowest result.',
+      },
+      {
+        id: idFor('Mythic', 'Corpse Flesh'),
+        name: 'Corpse Flesh',
+        dots: '•',
+        description:
+          'Unable to use Blush of Life.',
       },
     ],
   },
@@ -626,14 +696,14 @@ export const MERITS_AND_FLAWS = {
         description:
           'Once per story, escape all official punishment that would otherwise destroy you.',
       },
-{
+      {
         id: idFor('Other', 'Mystic of the Void'),
         name: 'Mystic of the Void',
         dots: '• or ••',
         description:
           'Count as knowing one Oblivion Power for ceremony prerequisites (Hecata/Lasombra choose three instead of one).',
         requiresPowerSelection: true,
-        targetDiscipline: 'Oblivion'  
+        targetDiscipline: 'Oblivion',
       },
     ],
     flaws: [
@@ -856,6 +926,40 @@ export const MERITS_AND_FLAWS = {
   'Cults': {
     blurb:
       'Some items tied to specific cults; adapt as needed. [27]',
+    merits: [
+      {
+        id: idFor('Cults', 'Apocryphal Texts'),
+        name: 'Apocryphal Texts',
+        dots: '•',
+        description: 'The character possesses writings from one of the church\'s leaders. Gain two dice on applicable Intelligence rolls. (Can add a 1 dot optional Flaw where Willpower damage modifier for social combat is increased by 1).',
+      },
+      {
+        id: idFor('Cults', 'Inspired Artist'),
+        name: 'Inspired Artist',
+        dots: '••',
+        description: 'When using the cult\'s symbols or message in art, add a 1-die penalty to onlookers to resist Social rolls from cult members.',
+      },
+      {
+        id: idFor('Cults', 'Traveling Preacher'),
+        name: 'Traveling Preacher',
+        dots: '••',
+        description: 'Having spread the cult\'s message where they go, reduce the difficulty on rolls to avoid the Second Inquisition by 1.',
+      },
+    ],
+    flaws: [
+      {
+        id: idFor('Cults', 'Excommunicated'),
+        name: 'Excommunicated',
+        dots: '• - ••',
+        description: 'They\'ve done something to be cast out. At 1 dot, subtract 2 dice from all rolls dealing with the cult. At 2 dots, the cult actively seeks to destroy you.',
+      },
+      {
+        id: idFor('Cults', 'Faithless'),
+        name: 'Faithless',
+        dots: '••',
+        description: 'Being a member for the benefits. Lose two dice on rolls pertaining to the Cult from Resolve and Composure rolls. Cannot learn Rituals, Ceremonies, and Loresheets higher than level 2.',
+      },
+    ],
     // Nested by cult name for easy grouping in UI
     groups: {
       'Ashfinders': {
@@ -1009,11 +1113,25 @@ export const MERITS_AND_FLAWS = {
             description:
               'Public notoriety; benefits and obvious Masquerade risks (also available for Kindred society).',
           },
+          {
+            id: idFor('Backgrounds Fame', 'Influencer'),
+            name: 'Influencer',
+            dots: '•',
+            description:
+              'Requires Fame ••+. Have the equivalent Influence rating equal to your Fame minus one towards a fan or related field once per story.',
+          },
+          {
+            id: idFor('Backgrounds Fame', 'Enduring Fame'),
+            name: 'Enduring Fame',
+            dots: '•',
+            description:
+              'Requires Fame •••+. Fame lost during the story fully recovers at the start of the next story.',
+          },
         ],
         flaws: [
           { id: idFor('Backgrounds Fame', 'Dark Secret'), name: 'Dark Secret', dots: '• +', description: 'A dangerous secret known to a few dedicated enemies.' },
           { id: idFor('Backgrounds Fame', 'Infamy'), name: 'Infamy', dots: '• +', description: 'You did something atrocious and others know.' },
-          { id: idFor('Backgrounds Fame', 'Banned From'), name: 'Banned From', dots: '• - •••', description: 'Barred from a city; small=•, medium=••, large=•••. [31]' },
+          { id: idFor('Backgrounds Fame', 'Banned From'), name: 'Banned From', dots: '• - •••', description: 'Barred from a city; small=•, medium=••, large=•••.' },
         ],
       },
       'Influence': {
@@ -1044,6 +1162,10 @@ export const MERITS_AND_FLAWS = {
           { id: idFor('Backgrounds Haven', 'Business Establishment'), name: 'Business Establishment', dots: '•• - •••', description: 'Run/rent as a business; stream of income but higher visibility; −1 base Haven for privacy/defense vs (choose) financial or criminal intrusions.' },
           { id: idFor('Backgrounds Haven', 'Furcus'), name: 'Furcus', dots: '• - •••', description: 'Sits on veins of the earth/frayed Veil; +1 die per dot to Ritual/Ceremony here.' },
           { id: idFor('Backgrounds Haven', 'Machine Shop'), name: 'Machine Shop', dots: '• +', description: '+1 die per dot to Craft/build/repair/disassemble machinery.' },
+          { id: idFor('Backgrounds Haven', 'Mobile'), name: 'Mobile', dots: '• - •••', description: 'Mobile haven (car, van, boat, plane, etc.). Size equals the number of dots. (Coterie dots may be used for this merit).' },
+          { id: idFor('Backgrounds Haven', 'Armored'), name: 'Armored', dots: '•', description: 'Requires Mobile Haven merit. Mobile Haven has reinforced panels/locks/tires/glass. Can sustain 10 points of damage.' },
+          { id: idFor('Backgrounds Haven', 'Smugglers Stash'), name: 'Smugglers Stash', dots: '• - ••', description: 'Requires Mobile Haven merit. Secret stash within the haven to hide contraband. Searches done at +2 difficulty.' },
+          { id: idFor('Backgrounds Haven', 'Spare Plates'), name: 'Spare Plates', dots: '••', description: 'Requires Mobile Haven merit. Spare set of plates/stickers/identifiers switchable within a turn.' },
         ],
         flaws: [
           { id: idFor('Backgrounds Haven', 'No Haven'), name: 'No Haven', dots: '•', description: 'Must make basic test nightly to find secure rest.' },
@@ -1051,6 +1173,8 @@ export const MERITS_AND_FLAWS = {
           { id: idFor('Backgrounds Haven', 'Haunted'), name: 'Haunted', dots: '• +', description: 'Supernatural manifestation haunts the haven.' },
           { id: idFor('Backgrounds Haven', 'Compromised'), name: 'Compromised', dots: '••', description: 'On a watchlist / possibly raided.' },
           { id: idFor('Backgrounds Haven', 'Shared'), name: 'Shared', dots: '• or ••', description: 'Haven is co-owned / has a landlord. (Coteries typically ignore this.)' },
+          { id: idFor('Backgrounds Haven', 'On the Rails'), name: 'On the Rails', dots: '•', description: 'Requires Mobile Haven. Haven\'s movement isn\'t under Player control (destinations scheduled/fixed).' },
+          { id: idFor('Backgrounds Haven', 'Temperamental'), name: 'Temperamental', dots: '•', description: 'Requires Mobile Haven. Vehicle is mechanically unreliable; failed Drive tests halt the vehicle.' },
         ],
       },
       'Herd': {
@@ -1107,6 +1231,7 @@ export const MERITS_AND_FLAWS = {
         flaws: [
           { id: idFor('Backgrounds Status', 'Suspect'), name: 'Suspect', dots: '•', description: 'You angered a Sect; −2 dice to Social with offended Factions until you prove worth.' },
           { id: idFor('Backgrounds Status', 'Shunned'), name: 'Shunned', dots: '••', description: 'Despised by a Sect; they actively work against you.' },
+          { id: idFor('Backgrounds Status', 'Mortal Pretender'), name: 'Mortal Pretender', dots: '•', description: 'You go out of your way to lead a mortal life, unsettling your vampiric peers. Suffer a two-dice penalty to Social tests against vampires dedicated to upholding the Masquerade.' },
         ],
       },
     },
