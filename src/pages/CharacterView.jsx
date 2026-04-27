@@ -354,6 +354,23 @@ function attachStructured(raw) {
     sheet = normalizeFromFlatAny(raw);
   }
 
+  // --- NORMALIZATION FIX ADDED HERE ---
+  const normalizeStringArray = (arr) => {
+    if (!Array.isArray(arr)) return [];
+    return arr.map(item => {
+      if (typeof item === 'string') return item;
+      // Rescue old object formats like { name: '...', conviction: '...' }
+      if (typeof item === 'object' && item !== null) {
+        return item.conviction || item.description || item.name || JSON.stringify(item);
+      }
+      return String(item || '');
+    });
+  };
+
+  sheet.touchstones = normalizeStringArray(sheet.touchstones || sheet.morality?.touchstones);
+  sheet.convictions = normalizeStringArray(sheet.convictions || sheet.morality?.convictions);
+  // ------------------------------------
+
   sheet.rituals = sheet.rituals || { blood_sorcery: [], oblivion: [] };
   sheet.rituals.blood_sorcery = sheet.rituals.blood_sorcery || [];
   sheet.rituals.oblivion = sheet.rituals.oblivion || [];
