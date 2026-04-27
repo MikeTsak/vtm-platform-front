@@ -172,9 +172,25 @@ function normalizeFromFlatAny(source) {
   sheet.ambition = flat.ambition || '';
   sheet.desire = flat.desire || '';
   
-  // Normalizing Touchstones and Convictions
-  sheet.touchstones = Array.isArray(flat.touchstones) ? flat.touchstones : (Array.isArray(flat.morality?.touchstones) ? flat.morality.touchstones : []);
-  sheet.convictions = Array.isArray(flat.convictions) ? flat.convictions : (Array.isArray(flat.morality?.convictions) ? flat.morality.convictions : []);
+// Normalizing Touchstones and Convictions
+  const normalizeStringArray = (arr) => {
+    if (!Array.isArray(arr)) return [];
+    return arr.map(item => {
+      if (typeof item === 'string') return item;
+      // Rescue old object formats like { name: '...', conviction: '...' }
+      if (typeof item === 'object' && item !== null) {
+        return item.conviction || item.description || item.name || JSON.stringify(item);
+      }
+      return String(item || '');
+    });
+  };
+
+  sheet.touchstones = normalizeStringArray(
+    Array.isArray(flat.touchstones) ? flat.touchstones : flat.morality?.touchstones
+  );
+  sheet.convictions = normalizeStringArray(
+    Array.isArray(flat.convictions) ? flat.convictions : flat.morality?.convictions
+  );
 
   sheet.advantages = {
     merits: Array.isArray(flat.advantages?.merits) ? flat.advantages.merits : [],
