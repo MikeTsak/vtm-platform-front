@@ -50,6 +50,7 @@ export default function News() {
   const [loading, setLoading] = useState(true);
   
   const [modalMode, setModalMode] = useState(null); 
+  const [fullscreenArticle, setFullscreenArticle] = useState(null);
   const [viewMode, setViewMode] = useState('split');
   
   const isAdmin = user?.role === 'admin';
@@ -149,7 +150,7 @@ export default function News() {
                   const theme = NEWS_OUTLETS[item.theme] || NEWS_OUTLETS['ERT'];
                   const mediaUrl = apiJoin(item.media_url);
                   return (
-                    <div key={item.id} className={styles.masonryItem}>
+                    <div key={item.id} className={styles.masonryItem} onClick={() => setFullscreenArticle(item)} style={{ cursor: 'pointer' }}>
                       <article 
                         className={styles.browserCard} 
                         style={{ '--theme-color': theme.color, borderTop: `6px solid ${theme.color}`, boxShadow: `0 8px 20px ${theme.color}25` }}
@@ -191,7 +192,14 @@ export default function News() {
                           
                           <div className={styles.bodyHtml} dangerouslySetInnerHTML={{ __html: item.body }} />
                         </div>
-                        {isAdmin && <button onClick={() => handleDelete(item.id)} className={styles.deleteOverlay}>×</button>}
+                        {isAdmin && (
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }} 
+                            className={styles.deleteOverlay}
+                          >
+                            ×
+                          </button>
+                        )}
                       </article>
                     </div>
                   );
@@ -213,7 +221,7 @@ export default function News() {
                 {rumorItems.map(item => {
                   const mediaUrl = apiJoin(item.media_url);
                   return (
-                    <div key={item.id} className={styles.masonryItem}>
+                    <div key={item.id} className={styles.masonryItem} onClick={() => setFullscreenArticle(item)} style={{ cursor: 'pointer' }}>
                       <article className={styles.rumorCard}>
                         <h2 className={styles.rumorTitle}>{item.title}</h2>
                         {item.media_url && (
@@ -223,7 +231,14 @@ export default function News() {
                         )}
                         <div className={styles.rumorBody} dangerouslySetInnerHTML={{ __html: item.body }} />
                         <div className={styles.meta}>— Heard on {new Date(item.created_at).toLocaleDateString()}</div>
-                        {isAdmin && <button onClick={() => handleDelete(item.id)} className={styles.deleteOverlay}>×</button>}
+                        {isAdmin && (
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }} 
+                            className={styles.deleteOverlay}
+                          >
+                            ×
+                          </button>
+                        )}
                       </article>
                     </div>
                   );
@@ -243,6 +258,99 @@ export default function News() {
           onSuccess={() => { setModalMode(null); fetchNews(); }} 
         />
       )}
+
+      {fullscreenArticle && (
+        <FullscreenArticleModal 
+          item={fullscreenArticle} 
+          onClose={() => setFullscreenArticle(null)} 
+        />
+      )}
+    </div>
+  );
+}
+
+// Fullscreen Reader Modal Component
+function FullscreenArticleModal({ item, onClose }) {
+  const isRumor = item.theme === 'RUMOR';
+  const theme = NEWS_OUTLETS[item.theme] || NEWS_OUTLETS['ERT'];
+  const mediaUrl = apiJoin(item.media_url);
+
+  return (
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <div 
+        onClick={(e) => e.stopPropagation()} 
+        style={{ 
+          maxWidth: '900px', 
+          width: '95%', 
+          maxHeight: '90vh', 
+          backgroundColor: '#1f2937', 
+          borderRadius: '12px', 
+          color: '#f3f4f6', 
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+          overflowY: 'auto',
+          borderTop: isRumor ? '6px dashed #fbbf24' : `8px solid ${theme.color}`
+        }}
+      >
+        {/* Modal Header Control */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '16px 20px 0 20px' }}>
+          <button 
+            onClick={onClose} 
+            style={{ background: 'transparent', border: 'none', fontSize: '2rem', cursor: 'pointer', color: '#9ca3af', transition: '0.2s' }}
+            onMouseEnter={(e) => e.target.style.color = '#fff'}
+            onMouseLeave={(e) => e.target.style.color = '#9ca3af'}
+          >
+            ×
+          </button>
+        </div>
+
+        {/* Modal Content */}
+        <div style={{ padding: '0 40px 40px 40px' }}>
+          {isRumor ? (
+            /* Rumor Fullscreen Layout */
+            <div>
+              <span style={{ backgroundColor: '#fbbf24', color: '#000', padding: '4px 10px', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 'bold', display: 'inline-block', marginBottom: '16px' }}>
+                🤫 WHISPER / RUMOR
+              </span>
+              <h1 style={{ fontSize: '2.5rem', marginTop: 0, marginBottom: '20px', color: '#fff', lineHeight: '1.2' }}>{item.title}</h1>
+              
+              {item.media_url && (
+                <div style={{ display: 'flex', justifyContent: 'center', backgroundColor: '#111827', padding: '12px', borderRadius: '8px', marginBottom: '24px' }}>
+                  {isVideoUrl(item.media_url) ? <video src={mediaUrl} controls style={{ maxWidth: '100%', maxHeight: '500px' }} /> : <img src={mediaUrl} alt="Proof" style={{ maxWidth: '100%', maxHeight: '500px', objectFit: 'contain' }} />}
+                </div>
+              )}
+              
+              <div style={{ fontSize: '1.2rem', lineHeight: '1.7', color: '#d1d5db', marginBottom: '24px' }} dangerouslySetInnerHTML={{ __html: item.body }} />
+              <div style={{ color: '#9ca3af', borderTop: '1px solid #374151', paddingTop: '16px', fontSize: '0.95rem' }}>— Heard on {new Date(item.created_at).toLocaleDateString()}</div>
+            </div>
+          ) : (
+            /* Official News Fullscreen Layout */
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '20px', paddingBottom: '16px', borderBottom: `2px solid ${theme.color}30` }}>
+                <img src={theme.logo} alt={theme.name} style={{ height: '40px', maxWidth: '150px', objectFit: 'contain' }} />
+                <span style={{ backgroundColor: theme.color, color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold' }}>LIVE</span>
+              </div>
+
+              <h1 style={{ fontSize: '2.8rem', marginTop: 0, marginBottom: '10px', color: '#fff', lineHeight: '1.15' }}>{item.title}</h1>
+              {item.subtitle && <h3 style={{ color: theme.color, fontSize: '1.4rem', marginTop: 0, marginBottom: '20px', fontWeight: '500' }}>{item.subtitle}</h3>}
+              
+              <div style={{ display: 'flex', gap: '10px', color: '#9ca3af', fontSize: '0.95rem', marginBottom: '24px' }}>
+                <span style={{ color: theme.color, fontWeight: 'bold' }}>By {item.journalist_name || 'Staff Writer'}</span>
+                <span>•</span>
+                <span>Published on {new Date(item.created_at).toLocaleDateString()}</span>
+              </div>
+
+              {item.media_url && (
+                <div style={{ display: 'flex', justifyContent: 'center', backgroundColor: '#111827', padding: '12px', borderRadius: '8px', marginBottom: '30px', boxShadow: `0 10px 30px ${theme.color}15` }}>
+                  {isVideoUrl(item.media_url) ? <video src={mediaUrl} controls style={{ maxWidth: '100%', maxHeight: '550px' }} /> : <img src={mediaUrl} alt="News Media" style={{ maxWidth: '100%', maxHeight: '550px', objectFit: 'contain' }} />}
+                </div>
+              )}
+
+              <div style={{ fontSize: '1.25rem', lineHeight: '1.75', color: '#e5e7eb' }} dangerouslySetInnerHTML={{ __html: item.body }} />
+            </div>
+          )}
+        </div>
+
+      </div>
     </div>
   );
 }
