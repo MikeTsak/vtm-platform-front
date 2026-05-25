@@ -3,7 +3,7 @@ import api from '../api';
 import styles from '../styles/Court.module.css';
 import Loading from './Loading';
 
-/* --- Clan assets logic (Matches ChatSystem & Home) --- */
+/* --- Clan assets logic --- */
 const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim', 'Thin-blood': 'Thinblood' };
 const symlogo = (c) =>
   (c ? `/img/clans/330px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g, '_')}_symbol.png` : '');
@@ -21,9 +21,9 @@ export default function HierarchyView({ canEdit }) {
   const [roster, setRoster] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isEditMode, setIsEditMode] = useState(canEdit); 
-  const [enlargedImage, setEnlargedImage] = useState(null); // Lightbox state
+  const [enlargedImage, setEnlargedImage] = useState(null); 
+  const [selectedClan, setSelectedClan] = useState(""); // For bulk bloodhunt
   
-  // All possible titles for the admin checkboxes
   const TITLES = ["Prince", "Seneschal", "Primogen", "Sheriff", "Keeper", "Harpy", "Assistant Harpy", "Hound", "Shadow", "Whip"];
 
   useEffect(() => {
@@ -68,22 +68,45 @@ export default function HierarchyView({ canEdit }) {
     }
   };
 
+  // Bulk Bloodhunt Clan Action
+  const handleBulkBloodhunt = () => {
+    if (!selectedClan) return;
+    const confirmMsg = `Are you absolutely sure you want to call a Blood Hunt on EVERY member of clan ${selectedClan}?`;
+    if (!window.confirm(confirmMsg)) return;
+
+    // Find all alive/active members of that clan who aren't already bloodhunted
+    const targets = roster.filter(r => r.clan === selectedClan && !r.is_bloodhunted);
+    
+    // Execute updates sequentially or they might overwhelm the backend
+    targets.forEach(t => {
+      update(t.id, t.type, 'is_bloodhunted', true);
+    });
+    setSelectedClan("");
+  };
+
   if (loading) return <Loading />;
 
-  // Filter out hidden characters for players (or admins previewing as players)
+  // Get unique clans for the dropdown
+  const uniqueClans = [...new Set(roster.map(r => r.clan))].filter(Boolean).sort();
+
   const displayedRoster = isEditMode ? roster : roster.filter(r => !r.is_hidden);
 
-  // Separate the dead from the living using the displayed roster
-  const deceased = displayedRoster
-    .filter(r => r.is_deceased)
-    .sort((a, b) => (b.status || 0) - (a.status || 0));
+  // Group characters by their status
+  const bloodhunted = displayedRoster.filter(r => r.is_bloodhunted).sort((a, b) => (b.status || 0) - (a.status || 0));
 
-  const alive = displayedRoster.filter(r => !r.is_deceased);
+  // Active members are not bloodhunted, deceased, missing, exiled, left, or called
+  const activeMembers = displayedRoster.filter(r => 
+    !r.is_bloodhunted && !r.is_deceased && !r.is_called && !r.is_missing && !r.is_exiled && !r.is_left
+  );
 
-  // Titles that belong in the top box, sorted by rank importance
+  const deceased = displayedRoster.filter(r => r.is_deceased && !r.is_bloodhunted).sort((a, b) => (b.status || 0) - (a.status || 0));
+  const called = displayedRoster.filter(r => r.is_called && !r.is_bloodhunted).sort((a, b) => (b.status || 0) - (a.status || 0));
+  const missing = displayedRoster.filter(r => r.is_missing && !r.is_bloodhunted).sort((a, b) => (b.status || 0) - (a.status || 0));
+  const exiled = displayedRoster.filter(r => r.is_exiled && !r.is_bloodhunted).sort((a, b) => (b.status || 0) - (a.status || 0));
+  const left = displayedRoster.filter(r => r.is_left && !r.is_bloodhunted).sort((a, b) => (b.status || 0) - (a.status || 0));
+
   const mainCourtTitles = ["Prince", "Seneschal", "Sheriff", "Keeper", "Harpy", "Assistant Harpy", "Hound", "Shadow"];
   
-  // Helper to sort Main Court by rank importance
   const getMainCourtRank = (ent) => {
     if (!ent.titles) return 99;
     let best = 99;
@@ -94,8 +117,7 @@ export default function HierarchyView({ canEdit }) {
     return best;
   };
 
-  // 1. Main Court
-  const mainCourt = alive
+  const mainCourt = activeMembers
     .filter(r => r.titles?.some(t => mainCourtTitles.includes(t)) && !r.is_ex)
     .sort((a, b) => {
       const rankA = getMainCourtRank(a);
@@ -104,22 +126,36 @@ export default function HierarchyView({ canEdit }) {
       return (b.status || 0) - (a.status || 0);  
     });
 
-  // 2. Primogen (Checks both ID and TYPE to prevent NPC collisions)
-  const primogen = alive
+  const primogen = activeMembers
     .filter(r => r.titles?.includes("Primogen") && !r.is_ex && !mainCourt.some(m => m.id === r.id && m.type === r.type))
     .sort((a, b) => (b.status || 0) - (a.status || 0));
 
-  // 3. The Rest (Checks both ID and TYPE to prevent NPC collisions)
-  const others = alive
+  const others = activeMembers
     .filter(r => !mainCourt.some(m => m.id === r.id && m.type === r.type) && !primogen.some(p => p.id === r.id && p.type === r.type))
     .sort((a, b) => (b.status || 0) - (a.status || 0));
 
   return (
     <div className={styles.hierarchyWrapper}>
       
-      {/* Admin View Toggle */}
+      {/* Admin Controls */}
       {canEdit && (
-        <div className={styles.adminControls}>
+        <div className={styles.adminControls} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          
+          <div className={styles.bulkActionRow}>
+            <span style={{ fontSize: '0.8rem', color: '#888', textTransform: 'uppercase' }}>Bulk Action:</span>
+            <select 
+              className={styles.clanSelect}
+              value={selectedClan} 
+              onChange={(e) => setSelectedClan(e.target.value)}
+            >
+              <option value="">-- Select Clan --</option>
+              {uniqueClans.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <button className={styles.bulkBloodhuntBtn} onClick={handleBulkBloodhunt}>
+              Bloodhunt Clan
+            </button>
+          </div>
+
           <button 
             className={styles.toggleViewBtn} 
             onClick={() => setIsEditMode(!isEditMode)}
@@ -129,21 +165,33 @@ export default function HierarchyView({ canEdit }) {
         </div>
       )}
 
+      {/* --- TOP PRIORITY: BLOOD HUNT --- */}
+      {bloodhunted.length > 0 && (
+        <div className={styles.sectionBox} style={{ borderColor: '#660000', backgroundColor: 'rgba(20, 0, 0, 0.6)' }}>
+          <h2 className={styles.bloodhuntTitle}>🩸 BLOOD HUNT / RED LIST 🩸</h2>
+          <div className={styles.courtGrid}>
+            {bloodhunted.map(bh => (
+              <MemberCard 
+                key={`${bh.type}-${bh.id}`} 
+                ent={bh} 
+                specialClass={styles.bloodhuntCard} 
+                canEdit={isEditMode} 
+                update={update} 
+                titles={TITLES} 
+                onImageClick={setEnlargedImage}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Main Court Box */}
       {mainCourt.length > 0 && (
         <div className={styles.sectionBox}>
           <h2 className={styles.sectionTitle}>Main Court</h2>
           <div className={styles.courtGrid}>
             {mainCourt.map(m => (
-              <MemberCard 
-                key={`${m.type}-${m.id}`} 
-                ent={m} 
-                specialClass={m.titles?.includes("Prince") ? styles.princeCard : styles.highRankCard} 
-                canEdit={isEditMode} 
-                update={update} 
-                titles={TITLES} 
-                onImageClick={setEnlargedImage}
-              />
+              <MemberCard key={`${m.type}-${m.id}`} ent={m} specialClass={m.titles?.includes("Prince") ? styles.princeCard : styles.highRankCard} canEdit={isEditMode} update={update} titles={TITLES} onImageClick={setEnlargedImage} />
             ))}
           </div>
         </div>
@@ -155,15 +203,7 @@ export default function HierarchyView({ canEdit }) {
           <h2 className={styles.sectionTitle}>Primogen Council</h2>
           <div className={styles.courtGrid}>
             {primogen.map(p => (
-              <MemberCard 
-                key={`${p.type}-${p.id}`} 
-                ent={p} 
-                specialClass={styles.highRankCard} 
-                canEdit={isEditMode} 
-                update={update} 
-                titles={TITLES}
-                onImageClick={setEnlargedImage}
-              />
+              <MemberCard key={`${p.type}-${p.id}`} ent={p} specialClass={styles.highRankCard} canEdit={isEditMode} update={update} titles={TITLES} onImageClick={setEnlargedImage} />
             ))}
           </div>
         </div>
@@ -175,34 +215,54 @@ export default function HierarchyView({ canEdit }) {
           <h2 className={styles.sectionTitle}>Court Members</h2>
           <div className={styles.courtGrid}>
             {others.map(o => (
-              <MemberCard 
-                key={`${o.type}-${o.id}`} 
-                ent={o} 
-                canEdit={isEditMode} 
-                update={update} 
-                titles={TITLES} 
-                onImageClick={setEnlargedImage}
-              />
+              <MemberCard key={`${o.type}-${o.id}`} ent={o} canEdit={isEditMode} update={update} titles={TITLES} onImageClick={setEnlargedImage} />
             ))}
           </div>
         </div>
       )}
 
-      {/* Deceased Section */}
+      {/* --- INACTIVE / REMOVED SECTIONS --- */}
+      {called.length > 0 && (
+        <div className={styles.sectionBox}>
+          <h2 className={styles.deceasedTitle}>Called</h2>
+          <div className={styles.courtGrid}>
+            {called.map(c => <MemberCard key={`${c.type}-${c.id}`} ent={c} canEdit={isEditMode} update={update} titles={TITLES} onImageClick={setEnlargedImage} />)}
+          </div>
+        </div>
+      )}
+
+      {missing.length > 0 && (
+        <div className={styles.sectionBox}>
+          <h2 className={styles.deceasedTitle}>Missing</h2>
+          <div className={styles.courtGrid}>
+            {missing.map(m => <MemberCard key={`${m.type}-${m.id}`} ent={m} canEdit={isEditMode} update={update} titles={TITLES} onImageClick={setEnlargedImage} />)}
+          </div>
+        </div>
+      )}
+
+      {exiled.length > 0 && (
+        <div className={styles.sectionBox}>
+          <h2 className={styles.deceasedTitle}>Exiled</h2>
+          <div className={styles.courtGrid}>
+            {exiled.map(e => <MemberCard key={`${e.type}-${e.id}`} ent={e} canEdit={isEditMode} update={update} titles={TITLES} onImageClick={setEnlargedImage} />)}
+          </div>
+        </div>
+      )}
+
+      {left.length > 0 && (
+        <div className={styles.sectionBox}>
+          <h2 className={styles.deceasedTitle}>Departed / Left</h2>
+          <div className={styles.courtGrid}>
+            {left.map(l => <MemberCard key={`${l.type}-${l.id}`} ent={l} canEdit={isEditMode} update={update} titles={TITLES} onImageClick={setEnlargedImage} />)}
+          </div>
+        </div>
+      )}
+
       {deceased.length > 0 && (
         <div className={styles.sectionBox}>
           <h2 className={styles.deceasedTitle}>Deceased</h2>
           <div className={styles.courtGrid}>
-            {deceased.map(d => (
-              <MemberCard 
-                key={`${d.type}-${d.id}`} 
-                ent={d} 
-                canEdit={isEditMode} 
-                update={update} 
-                titles={TITLES} 
-                onImageClick={setEnlargedImage}
-              />
-            ))}
+            {deceased.map(d => <MemberCard key={`${d.type}-${d.id}`} ent={d} canEdit={isEditMode} update={update} titles={TITLES} onImageClick={setEnlargedImage} />)}
           </div>
         </div>
       )}
@@ -238,11 +298,18 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles, onImageCl
   const clanLogoUrl = symlogo(ent.clan); 
 
   const hiddenClass = ent.is_hidden ? styles.hiddenCard : "";
+  
+  // Determine if the polaroid should be grayscale or red
+  let polaroidClass = styles.polaroidImg;
+  if (ent.is_bloodhunted) {
+    polaroidClass = `${styles.polaroidImg} ${styles.bloodhuntImg}`;
+  } else if (ent.is_deceased || ent.is_missing || ent.is_exiled || ent.is_left || ent.is_called) {
+    polaroidClass = `${styles.polaroidImg} ${styles.grayscale}`;
+  }
 
   return (
     <div className={`${styles.memberCard} ${specialClass} ${hiddenClass}`}>
       
-      {/* --- CLAN WATERMARK --- */}
       {clanLogoUrl && (
         <img 
           src={clanLogoUrl} 
@@ -252,23 +319,19 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles, onImageCl
         />
       )}
 
-      {/* --- LEFT SIDE: Polaroid Portrait --- */}
       <div className={styles.polaroid}>
         {displayImageUrl ? (
           <img 
             src={displayImageUrl} 
             alt={ent.name} 
-            className={`${styles.polaroidImg} ${ent.is_deceased ? styles.grayscale : ''}`} 
+            className={polaroidClass} 
             onClick={() => onImageClick(displayImageUrl)}
           />
         ) : (
-          <div className={styles.polaroidPlaceholder}>
-            No Photo
-          </div>
+          <div className={styles.polaroidPlaceholder}>No Photo</div>
         )}
       </div>
 
-      {/* --- RIGHT SIDE: Info & Controls --- */}
       <div className={styles.memberInfo}>
         <div className={styles.cardHeader}>
           <div className={styles.name}>
@@ -295,30 +358,38 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles, onImageCl
                 title="Enter just the filename part"
               />
               
-              <div className={styles.statusToggles}>
+              <div className={styles.statusToggles} style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
                 <label className={styles.checkboxLabel}>
-                  <input 
-                    type="checkbox" 
-                    checked={!!ent.is_hidden}
-                    onChange={(e) => update(ent.id, ent.type, 'is_hidden', e.target.checked)}
-                  />
+                  <input type="checkbox" checked={!!ent.is_bloodhunted} onChange={(e) => update(ent.id, ent.type, 'is_bloodhunted', e.target.checked)} />
+                  <span className={styles.bloodhuntTag}>BLOODHUNT</span>
+                </label>
+                <label className={styles.checkboxLabel}>
+                  <input type="checkbox" checked={!!ent.is_hidden} onChange={(e) => update(ent.id, ent.type, 'is_hidden', e.target.checked)} />
                   <span className={styles.hideTag}>HIDDEN</span>
                 </label>
                 <label className={styles.checkboxLabel}>
-                  <input 
-                    type="checkbox" 
-                    checked={!!ent.is_ex}
-                    onChange={(e) => update(ent.id, ent.type, 'is_ex', e.target.checked)}
-                  />
+                  <input type="checkbox" checked={!!ent.is_ex} onChange={(e) => update(ent.id, ent.type, 'is_ex', e.target.checked)} />
                   <span className={styles.exTag}>EX-ROLE</span>
                 </label>
                 <label className={styles.checkboxLabel}>
-                  <input 
-                    type="checkbox" 
-                    checked={!!ent.is_deceased}
-                    onChange={(e) => update(ent.id, ent.type, 'is_deceased', e.target.checked)}
-                  />
+                  <input type="checkbox" checked={!!ent.is_deceased} onChange={(e) => update(ent.id, ent.type, 'is_deceased', e.target.checked)} />
                   <span className={styles.deadTag}>DECEASED</span>
+                </label>
+                <label className={styles.checkboxLabel}>
+                  <input type="checkbox" checked={!!ent.is_called} onChange={(e) => update(ent.id, ent.type, 'is_called', e.target.checked)} />
+                  <span className={styles.exTag}>CALLED</span>
+                </label>
+                <label className={styles.checkboxLabel}>
+                  <input type="checkbox" checked={!!ent.is_missing} onChange={(e) => update(ent.id, ent.type, 'is_missing', e.target.checked)} />
+                  <span className={styles.exTag}>MISSING</span>
+                </label>
+                <label className={styles.checkboxLabel}>
+                  <input type="checkbox" checked={!!ent.is_exiled} onChange={(e) => update(ent.id, ent.type, 'is_exiled', e.target.checked)} />
+                  <span className={styles.exTag}>EXILED</span>
+                </label>
+                <label className={styles.checkboxLabel}>
+                  <input type="checkbox" checked={!!ent.is_left} onChange={(e) => update(ent.id, ent.type, 'is_left', e.target.checked)} />
+                  <span className={styles.exTag}>LEFT</span>
                 </label>
               </div>
             </>
