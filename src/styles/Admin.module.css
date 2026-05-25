@@ -625,8 +625,54 @@
 .customCheckbox input:checked ~ .checkmark { background: var(--accent-purple); border-color: var(--accent-purple); }
 
 /* =========================================
-   14. MOBILE RESPONSIVENESS
+   14. MOBILE RESPONSIVENESS & NEW LAYOUTS
    ========================================= */
+
+/* --- New Layout Classes for Components --- */
+.formGrid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.formGrid3 { display: grid; grid-template-columns: auto auto 1fr; gap: 1rem; }
+
+.discordToggles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin: 20px 0;
+}
+
+/* Email Tab Layout */
+.emailLayout { 
+  display: flex; 
+  overflow: hidden; 
+  height: 600px; 
+  border-radius: var(--radius-md); 
+  background: var(--bg-secondary);
+}
+.emailSidebar { 
+  width: 350px; 
+  border-right: 1px solid var(--border-color); 
+  display: flex; 
+  flex-direction: column; 
+  background: rgba(0,0,0,0.2); 
+}
+.emailMain { flex: 1; display: flex; flex-direction: column; }
+
+/* Premonitions Tab Layout */
+.premonitionsGrid { display: grid; grid-template-columns: 320px 1fr; gap: 1.5rem; align-items: start; }
+.premonitionsPanel { 
+  background: var(--bg-tertiary); 
+  border-radius: var(--radius-md); 
+  border: 1px solid var(--border-color); 
+  padding: 1.5rem; 
+  display: flex; 
+  flex-direction: column; 
+  gap: 1rem; 
+}
+.premonitionsList { max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; margin: 0; padding: 0; list-style: none; }
+.premonitionsItem { display: flex; gap: 1rem; align-items: center; padding: 0.8rem; background: var(--bg-inset); border-radius: var(--radius-sm); }
+.premonitionsSwitch { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.premonitionsProgress { padding: 1rem; background: var(--bg-inset); border-radius: var(--radius-sm); margin-top: 1rem; }
+
+/* --- Media Queries --- */
 @media (max-width: 900px) {
   .claimsLayout { grid-template-columns: 1fr; grid-template-rows: 400px 1fr; height: auto; }
 }
@@ -642,37 +688,28 @@
   .tab { padding: 0.6rem 1rem; font-size: 0.85rem; }
 
   /* Inputs/Buttons */
-  .input, .select, .btn { font-size: 16px; /* No iOS zoom */ }
-  .formGrid { grid-template-columns: 1fr; }
-
-  /* Users Grid -> Cards */
-  .gridHeader { display: none; }
-  .usersGrid {
-    grid-template-columns: 1fr; gap: 0.8rem; padding: 1.2rem;
-    position: relative; border-radius: var(--radius-md); background: var(--bg-tertiary);
-    margin-bottom: 1rem; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-  }
-  .usersGrid > *:nth-child(1)::before { content: "Name: "; font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 2px; }
-  .usersGrid > *:nth-child(2)::before { content: "Email: "; font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 2px; }
-  .usersGrid .charCell::before { content: "Character: "; font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 2px; }
-  .usersGrid > .rowEnd { width: 100%; margin-top: 0.5rem; }
-  .usersGrid .btnPrimary { width: 100%; }
-
-  /* XP Grid -> Cards */
-  .xpGrid { grid-template-columns: 1fr; gap: 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-bottom: 1rem; padding: 1.2rem; }
-  .xpGrid:first-of-type, .xpGrid:last-of-type { border-radius: var(--radius-md); }
-  .xpCharCell::before { position: static; transform: none; display: inline-block; margin-right: 0.5rem; }
-  .actionCell { width: 100%; }
-  .actionCell .input { flex: 1; }
-  .actionCell .btn { flex: 1; }
+  .input, .select, .btn { font-size: 16px; /* Prevents iOS zoom */ }
+  .formGrid, .formGrid2, .formGrid3 { grid-template-columns: 1fr; }
+  .discordToggles { grid-template-columns: 1fr; }
 
   /* Chat Logs */
-  .logsContainer { grid-template-columns: 1fr; grid-template-rows: 200px 1fr; height: 85vh; }
-  .sidebar { border-right: none; border-bottom: 1px solid var(--border-color); }
-  .messageBubble { max-width: 85%; }
+  .logsContainer { 
+    grid-template-columns: 1fr !important; 
+    grid-template-rows: minmax(150px, 25vh) auto 1fr; 
+    height: 85vh; 
+  }
   .logsContainer[data-mode="npc"] {
-    grid-template-columns: 280px 280px 1fr;
-  } 
+    grid-template-rows: minmax(120px, 20vh) minmax(120px, 20vh) 1fr;
+  }
+  .sidebar, .conversationList { border-right: none; border-bottom: 1px solid var(--border-color); }
+  .messageBubble { max-width: 85%; }
+
+  /* Email System */
+  .emailLayout { flex-direction: column; height: auto; min-height: 70vh; }
+  .emailSidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border-color); height: 250px; }
+
+  /* Premonitions */
+  .premonitionsGrid { grid-template-columns: 1fr; }
 
   /* Downtimes */
   .downtimeCompactRow { grid-template-columns: 1fr; gap: 0.5rem; }
