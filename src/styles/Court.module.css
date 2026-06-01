@@ -803,3 +803,12 @@
   color: #fff;
   box-shadow: 0 0 10px rgba(255,0,0,0.5);
 }
+
+.keeperSubtitle {
+  display: block;      /* Ensures it stays on its own line */
+  font-size: 0.70rem;  /* Slightly smaller for a subtitle appearance */
+  color: #a3a3ad;      /* Matches your muted theme */
+  margin-top: 4px;     /* Provides separation from the dots */
+  text-align: center;  /* Centers it under the status dots */
+  font-family: monospace;
+}

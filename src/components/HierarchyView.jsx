@@ -338,7 +338,6 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles, onImageCl
             {primaryTitle && <span className={styles.honorific}>{primaryTitle}</span>}
             {ent.name}
           </div>
-          <div className={styles.clan}>{ent.clan}</div>
         </div>
 
         <div className={styles.cardBody}>
@@ -421,21 +420,33 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles, onImageCl
           )}
         </div>
 
-        <div className={styles.cardFooter}>
-          <div className={styles.statusDisplay}>
-            {"●".repeat(ent.status || 1)}{"○".repeat(5 - (ent.status || 1))}
-          </div>
+<div className={styles.memberInfoWrapper}>
+<div className={styles.cardFooter}>
+  <div className={styles.statusDisplay}>
+    {"●".repeat(ent.status || 1)}{"○".repeat(5 - (ent.status || 1))}
+  </div>
+    {(ent.titles || []).includes("Keeper") && (
+    <div className={styles.keeperSubtitle}>
+      (In Elysium: ●●●●●)
+    </div>
+  )}
+  </div>
+
+  <div className={styles.clan}>{ent.clan}</div>
+  
+
+
           
-          {canEdit && (
-            <input 
-              type="range" min="1" max="5" 
-              value={ent.status || 1}
-              onChange={(e) => update(ent.id, ent.type, 'status', parseInt(e.target.value))}
-              className={styles.statusSlider}
-              title="Adjust Status"
-            />
-          )}
-        </div>
+  {canEdit && (
+    <input 
+      type="range" min="1" max="5" 
+      value={ent.status || 1}
+      onChange={(e) => update(ent.id, ent.type, 'status', parseInt(e.target.value))}
+      className={styles.statusSlider}
+      title="Adjust Status"
+    />
+  )}
+</div>
       </div>
     </div>
   );

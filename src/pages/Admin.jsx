@@ -70,7 +70,7 @@ export default function Admin() {
   async function load() {
     setLoading(true); setErr(''); setMsg('');
     try {
-      const xp = await api.get('/admin/xp-logs');
+      const xp = await api.get('/admin/xp-logs?limit=al');
       setXpLogs(xp.data.logs || xp.data || []);
     } catch (e) {
       console.error('Failed to load XP logs', e);
@@ -98,7 +98,7 @@ try {
 }
 
 try {
-  const dice = await api.get('/admin/dice/rolls');
+  const dice = await api.get('/admin/dice/rolls?limit=all');
   setDiceRolls(dice.data.rolls || []);
 } catch (e) {
   console.error('Failed to load dice logs', e);
