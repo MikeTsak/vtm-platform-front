@@ -53,20 +53,56 @@ const getTies = (map, idToNameFn = null) => {
 };
 
 /** ---------- UI Components ---------- */
+function DiceImage({ v, imgFn, isExporting }) {
+  const [hasError, setHasError] = useState(false);
+
+  if (hasError) {
+    return (
+      <div style={{ 
+        width: isExporting ? '36px' : '28px', 
+        height: isExporting ? '36px' : '28px', 
+        display: 'inline-flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        background: '#222', 
+        border: '1px solid #555', 
+        borderRadius: '4px', 
+        fontSize: '13px', 
+        color: '#fff', 
+        fontWeight: 'bold' 
+      }}>
+        {v}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={imgFn(v)}
+      alt={String(v)}
+      style={{ 
+        width: isExporting ? '36px' : '28px', 
+        height: isExporting ? '36px' : '28px', 
+        objectFit: 'contain',
+        backgroundColor: '#ffffff', /* Added white background */
+        borderRadius: '6px',        /* Rounded edges for the white box */
+        padding: '2px'              /* Small padding to keep it looking clean */
+      }}
+      onError={() => setHasError(true)}
+    />
+  );
+}
+
 function DiceStripInline({ title, values, imgFn, isExporting }) {
   if (!values || !values.length) return null;
   return (
     <div style={{ marginTop: '0.5rem' }}>
-      <div style={{ fontSize: isExporting ? '0.85rem' : '0.7rem', color: 'var(--muted)', marginBottom: '4px', fontWeight: 'bold' }}>{title} ({values.length})</div>
+      <div style={{ fontSize: isExporting ? '0.85rem' : '0.7rem', color: 'var(--muted)', marginBottom: '4px', fontWeight: 'bold' }}>
+        {title} ({values.length})
+      </div>
       <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
         {values.map((v, i) => (
-          <img
-            key={i}
-            src={imgFn(v)}
-            alt={String(v)}
-            style={{ width: isExporting ? '36px' : '28px', height: isExporting ? '36px' : '28px', objectFit: 'contain' }}
-            onError={(e) => { e.currentTarget.outerHTML = `<div style="width: ${isExporting ? '36px' : '28px'}; height: ${isExporting ? '36px' : '28px'}; display: inline-flex; align-items: center; justify-content: center; background: #222; border: 1px solid #555; border-radius: 4px; font-size: 13px; color: #fff; font-weight: bold;">${v}</div>`; }}
-          />
+          <DiceImage key={i} v={v} imgFn={imgFn} isExporting={isExporting} />
         ))}
       </div>
     </div>
@@ -293,7 +329,7 @@ export default function ChatStatsTab({
   };
 
   /** ---------- Lookups ---------- */
-  const userMap = useMemo(() => {
+const userMap = useMemo(() => {
     const map = new Map();
     (users || []).forEach((u) => { 
       const c = characters.find(char => char.user_id === u.id);
@@ -301,7 +337,8 @@ export default function ChatStatsTab({
         name: u.display_name || u.email || `User ${u.id}`, 
         char_name: u.char_name || null, 
         clan: u.clan || null,
-        excluded: c ? (c.is_deceased || c.is_hidden) : false
+        // Added is_called to catch all removed characters
+        excluded: c ? (c.is_deceased || c.is_hidden || c.is_missing || c.is_exiled || c.is_left || c.is_called) : false
       }); 
     });
     return map;
@@ -546,13 +583,14 @@ export default function ChatStatsTab({
     return { xpFlow, xpDailyChart, aggregateByMonth, topPurchase, diceRolled: filteredDice.length, bestRoll, worstRoll, luckiestChar, rouseSuccessRate, totalRouse: rouseRolls.length, downtimesCount: filteredDowntimes.length, avgResHours };
   }, [filteredData, characters, startDate, endDate]);
 
-  const popStats = useMemo(() => {
-    let active = 0, deceased = 0, hidden = 0, totalHumanity = 0, humanityCount = 0;
+const popStats = useMemo(() => {
+    let active = 0, deceased = 0, retired = 0, totalHumanity = 0, humanityCount = 0;
     const clanPop = {}; const politicalPower = new Map();
 
     characters.forEach(c => {
       if (c.is_deceased) deceased++;
-      else if (c.is_hidden) hidden++;
+      // Added is_called to the retired count check
+      else if (c.is_hidden || c.is_missing || c.is_exiled || c.is_left || c.is_called) retired++;
       else {
         active++;
         const clan = c.clan || 'Unknown';
@@ -578,7 +616,7 @@ export default function ChatStatsTab({
     const avgHumanity = humanityCount > 0 ? (totalHumanity / humanityCount).toFixed(1) : 'N/A';
     const pieData = Object.entries(clanPop).sort((a, b) => b[1] - a[1]).map(([clan, count]) => ({ label: clan, value: count, color: CLAN_COLORS[clan] || '#888', logo: clanSymbol(clan) }));
 
-    return { active, deceased, hidden, pieData, avgHumanity, mostPoliticalClan };
+    return { active, deceased, retired, pieData, avgHumanity, mostPoliticalClan };
   }, [characters]);
 
   /** ---------- Chart Renderers ---------- */
@@ -738,7 +776,7 @@ export default function ChatStatsTab({
                 <div style={{ display: 'grid', gridTemplateColumns: isExporting ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem' }}>
                   <StatCard title="Total Active" value={popStats.active} subtext="Living kindred" highlight isExporting={isExporting} />
                   <StatCard title="Total Deceased" value={popStats.deceased} subtext="Met Final Death" isExporting={isExporting} />
-                  <StatCard title="Retired / Hidden" value={popStats.hidden} subtext="Removed from play" isExporting={isExporting} />
+                  <StatCard title="Left / Exiled / Missing" value={popStats.retired} subtext="Removed from play" isExporting={isExporting} />
                   <StatCard title="Average Humanity" value={popStats.avgHumanity} subtext="Across active domain" isExporting={isExporting} />
                 </div>
                 <StatCard title="Most Political" value={popStats.mostPoliticalClan.name} subtext={`${popStats.mostPoliticalClan.count} Active Titles Held`} highlight isExporting={isExporting} />
@@ -809,6 +847,22 @@ export default function ChatStatsTab({
 
           </div>
         </div>
+        {/* Conditional Export Footer */}
+        {isExporting && (
+          <div style={{
+            textAlign: 'center',
+            marginTop: '40px',
+            paddingTop: '20px',
+            borderTop: '1px solid rgba(255,255,255,0.1)',
+            color: 'var(--muted)',
+            fontSize: '1.1rem',
+            letterSpacing: '1px',
+            width: '100%',
+            gridColumn: '1 / -1' /* Ensures it spans full width under the masonry layout */
+          }}>
+            © Athens Through-Time Larp. Stats from Erebus Portal made by MikeTsak.gr
+          </div>
+        )}
 
       </div>
     </div>
