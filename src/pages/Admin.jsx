@@ -47,8 +47,17 @@ export default function Admin() {
   const [charIndex, setCharIndex] = useState({});
   const [downtimes, setDowntimes] = useState([]);
   const [npcs, setNPCs] = useState([]);
-  const [allNpcMessages] = useState([]); // Used by stats (placeholder)
+  const [allNpcMessages, setAllNpcMessages] = useState([]);
   const [allMessages, setAllMessages] = useState([]); // Used by chat + stats
+
+  const [allGroupMessages, setAllGroupMessages] = useState([]);
+  const [allEmailMessages, setAllEmailMessages] = useState([]);
+  const [chatGroups, setChatGroups] = useState([]);
+
+  const [xpLogs, setXpLogs] = useState([]);
+  const [premonitions, setPremonitions] = useState([]);
+  const [diceRolls, setDiceRolls] = useState([]);
+  const [characters, setCharacters] = useState([]);
   
   // Modal state
   const [editorTarget, setEditorTarget] = useState(null); 
@@ -60,6 +69,47 @@ export default function Admin() {
   // Central data loader
   async function load() {
     setLoading(true); setErr(''); setMsg('');
+    try {
+      const xp = await api.get('/admin/xp-logs');
+      setXpLogs(xp.data.logs || xp.data || []);
+    } catch (e) {
+      console.error('Failed to load XP logs', e);
+    }
+
+    // All Group chat messages & groups
+      try {
+        const gMsgs = await api.get('/admin/chat/groups/messages/all');
+        setAllGroupMessages(gMsgs.data.messages || []);
+        const grps = await api.get('/admin/chat/groups');
+        setChatGroups(grps.data.groups || []);
+      } catch (e) { console.error("Failed to load group messages", e); }
+
+      // All Email messages
+      try {
+        const eMsgs = await api.get('/admin/emails/messages/all');
+        setAllEmailMessages(eMsgs.data.messages || []);
+      } catch (e) { console.error("Failed to load email messages", e); }
+
+try {
+  const prems = await api.get('/admin/premonitions');
+  setPremonitions(prems.data.premonitions || []);
+} catch (e) {
+  console.error('Failed to load premonitions', e);
+}
+
+try {
+  const dice = await api.get('/admin/dice/rolls');
+  setDiceRolls(dice.data.rolls || []);
+} catch (e) {
+  console.error('Failed to load dice logs', e);
+}
+
+try {
+  const chars = await api.get('/admin/characters');
+  setCharacters(chars.data.characters || []);
+} catch (e) {
+  console.error('Failed to load characters', e);
+}
     try {
       const u = await api.get('/admin/users');
       setUsers(u.data.users || []);
@@ -105,12 +155,13 @@ export default function Admin() {
           const msgs = await api.get('/admin/chat/all');
           setAllMessages(msgs.data.messages || []);
       } catch (e) { console.error("Failed to load all messages", e); }
-
-      // TODO: Load allNpcMessages if ChatStatsTab needs it
-      // try {
-      //   const npcMsgs = await api.get('/admin/chat/all-npc');
-      //   setAllNpcMessages(npcMsgs.data.messages || []);
-      // } catch (e) { console.error("Failed to load all NPC messages", e); }
+// All NPC chat messages (for stats)
+      try {
+        const npcMsgs = await api.get('/admin/chat/npc/all');
+        setAllNpcMessages(npcMsgs.data.messages || []);
+      } catch (e) { 
+        console.error("Failed to load all NPC messages", e); 
+      }
 
     } catch (e) {
       setErr(e.response?.data?.error || 'Failed to load primary admin data');
@@ -617,7 +668,7 @@ async function grantXP(character_id, delta) {
           <TabButton active={tab==='npcs'} onClick={()=>setTab('npcs')}>NPCs</TabButton>
           <TabButton active={tab === 'npc_email'} onClick={() => setTab('npc_email')}>NPC Email</TabButton>
           <TabButton active={tab==='chat'} onClick={()=>setTab('chat')}>Chat Logs</TabButton>
-          <TabButton active={tab==='stats'} onClick={()=>setTab('stats')}>Chat Stats</TabButton>
+          <TabButton active={tab==='stats'} onClick={()=>setTab('stats')}>Stats</TabButton>
           <TabButton active={tab==='dice'} onClick={()=>setTab('dice')}>Dice Logs</TabButton>
           <TabButton active={tab==='discord'} onClick={()=>setTab('discord')}>Discord</TabButton> {/* <-- Added Button */}
           <TabButton active={tab==='logs'} onClick={()=>setTab('logs')}>Server Logs</TabButton>
@@ -680,12 +731,20 @@ async function grantXP(character_id, delta) {
           />
         )}
         {tab === 'stats' && (
-          <ChatStatsTab 
-            directMessages={allMessages} 
-            npcMessages={allNpcMessages}
-            npcs={npcs} 
-            users={users} 
-          />
+        <ChatStatsTab
+          directMessages={allMessages}
+          npcMessages={allNpcMessages}
+          groupMessages={allGroupMessages}
+          emailMessages={allEmailMessages}
+          chatGroups={chatGroups}
+          npcs={npcs}
+          users={users}
+          xpLogs={xpLogs}
+          premonitions={premonitions}
+          diceRolls={diceRolls}
+          downtimes={downtimes}
+          characters={characters}
+        />
         )}
         {tab === 'dice' && (
           <AdminDiceLogsTab />
