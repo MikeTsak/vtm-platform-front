@@ -427,103 +427,142 @@
   .headerActions { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
   .formRow { flex-direction: column; align-items: stretch; }
   .cta { width: 100%; }
+  .modeSwitcher { flex-direction: column; }
 }
+
+/* =========================================
+   NEW: Mode Switcher & Project Styling
+   ========================================= */
 
 /* --- Mode Switcher --- */
 .modeSwitcher {
   display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
+  gap: 12px;
+  margin: 0 auto 24px auto;
+  max-width: 980px; /* Aligns with the cards */
 }
 
 .modeBtn {
   flex: 1;
-  padding: 12px;
-  border-radius: 6px;
-  border: 1px solid #333;
-  font-weight: bold;
+  padding: 14px 20px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
-  font-size: 1rem;
+  font-size: 1.05rem;
   background: transparent;
-  color: #888;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: inherit;
 }
 
 .modeBtn:hover {
   background: rgba(255, 255, 255, 0.05);
+  border-color: #555;
+  color: var(--text);
 }
 
 .modeBtnStandardActive {
-  border: 2px solid #8a0303;
-  background: rgba(138, 3, 3, 0.2);
-  color: #fff;
+  border: 2px solid var(--tint) !important;
+  background: color-mix(in srgb, var(--tint) 20%, transparent) !important;
+  color: #fff !important;
+  box-shadow: 0 4px 15px color-mix(in srgb, var(--tint) 20%, transparent);
 }
 .modeBtnStandardActive:hover {
-  background: rgba(138, 3, 3, 0.3);
+  background: color-mix(in srgb, var(--tint) 25%, transparent) !important;
 }
 
 .modeBtnProjectActive {
-  border: 2px solid #1b4c8c;
-  background: rgba(27, 76, 140, 0.2);
-  color: #fff;
+  border: 2px solid #1b4c8c !important;
+  background: rgba(27, 76, 140, 0.2) !important;
+  color: #fff !important;
+  box-shadow: 0 4px 15px rgba(27, 76, 140, 0.2);
 }
 .modeBtnProjectActive:hover {
-  background: rgba(27, 76, 140, 0.3);
+  background: rgba(27, 76, 140, 0.25) !important;
 }
 
 /* --- Project Specific Styling --- */
+
+/* Text & Headings */
 .projectTitleText {
-  color: #8ab4f8;
+  color: #8ab4f8 !important;
+  text-shadow: 0 0 14px rgba(138, 180, 248, 0.4) !important;
 }
 
+/* Project Countdowns */
 .projectCountdown {
-  border-top: 4px solid #1b4c8c;
+  border-top-color: #1b4c8c !important;
 }
 
+/* Project Submission Card */
 .projectSubmitCard {
-  border-top: 4px solid #1b4c8c;
-  background: rgba(27, 76, 140, 0.05);
+  border-top: 4px solid #1b4c8c !important;
+  background: linear-gradient(180deg, rgba(27, 76, 140, 0.08), #141519) !important;
 }
 
 .projectSubmitInfo {
-  margin-bottom: 15px;
+  margin-bottom: 16px;
   color: #8ab4f8;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   display: flex;
-  gap: 8px;
+  gap: 10px;
+  background: rgba(27, 76, 140, 0.1);
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(138, 180, 248, 0.2);
 }
 
 .projectInput {
+  border-color: rgba(27, 76, 140, 0.5) !important;
+}
+.projectInput:focus {
   border-color: #1b4c8c !important;
+  box-shadow: 0 0 0 3px rgba(27, 76, 140, 0.3) !important;
 }
 
 .projectSubmitBtn {
-  background: #1b4c8c !important;
-  box-shadow: 0 0 10px rgba(27, 76, 140, 0.5) !important;
+  background: linear-gradient(145deg, #12335e, #1b4c8c) !important;
+  border-color: #0f2b50 !important;
+  box-shadow: 0 4px 10px rgba(27, 76, 140, 0.4) !important;
+}
+.projectSubmitBtn:not(:disabled):hover {
+  box-shadow: 0 6px 15px rgba(27, 76, 140, 0.6) !important;
 }
 
+/* Project Items (List) */
 .projectItem {
   border-left: 4px solid #1b4c8c !important;
 }
 
 .projectItemHeader {
-  background: rgba(27, 76, 140, 0.1);
+  background: rgba(27, 76, 140, 0.1) !important;
 }
 
 .projectTag {
   font-size: 0.75rem;
   background: #1b4c8c;
   color: #fff;
-  padding: 2px 6px;
+  padding: 3px 8px;
   border-radius: 4px;
-  margin-left: 10px;
+  margin-left: 12px;
   vertical-align: middle;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+  box-shadow: 0 0 8px rgba(27, 76, 140, 0.6);
 }
 
+/* Filter Chips & Icons */
 .chipCountProject {
   background: #1b4c8c !important;
+  color: #fff !important;
 }
 
 .emptyIconProject {
-  color: #1b4c8c;
+  color: #1b4c8c !important;
+  text-shadow: 0 0 20px rgba(27, 76, 140, 0.5);
 }
