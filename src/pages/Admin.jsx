@@ -21,6 +21,7 @@ import AdminChatLogsTab from '../components/admin/AdminChatLogsTab.jsx';
 import AdminDiceLogsTab from '../components/admin/AdminDiceLogsTab.jsx'; 
 import AdminDiscordTab from '../components/admin/AdminDiscordTab.jsx'; 
 import AdminNpcEmailTab from '../components/admin/AdminNpcEmailTab.jsx';
+import AdminMasterTab from '../components/admin/AdminMasterTab.jsx';
 
 
 
@@ -670,7 +671,8 @@ async function grantXP(character_id, delta) {
           <TabButton active={tab==='chat'} onClick={()=>setTab('chat')}>Chat Logs</TabButton>
           <TabButton active={tab==='stats'} onClick={()=>setTab('stats')}>Stats</TabButton>
           <TabButton active={tab==='dice'} onClick={()=>setTab('dice')}>Dice Logs</TabButton>
-          <TabButton active={tab==='discord'} onClick={()=>setTab('discord')}>Discord</TabButton> {/* <-- Added Button */}
+          <TabButton active={tab==='discord'} onClick={()=>setTab('discord')}>Discord</TabButton>
+          <TabButton active={tab==='master'} onClick={()=>setTab('master')}>Master</TabButton>
           <TabButton active={tab==='logs'} onClick={()=>setTab('logs')}>Server Logs</TabButton>
           <button className={`${styles.btn} ${styles.btnGhost} ${styles.rowEnd}`} onClick={load}>Reload</button>
         </div>
@@ -749,9 +751,11 @@ async function grantXP(character_id, delta) {
         {tab === 'dice' && (
           <AdminDiceLogsTab />
         )}
-        {/* -- Added Tab -- */}
         {tab === 'discord' && (
           <AdminDiscordTab users={users} />
+        )}
+        {tab === 'master' && (            
+          <AdminMasterTab />
         )}
         {tab === 'logs' && <AdminLogs />}
 

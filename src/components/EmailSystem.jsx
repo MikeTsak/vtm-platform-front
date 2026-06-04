@@ -58,7 +58,7 @@ const getColor = (str) => {
   return colors[Math.abs(hash) % colors.length];
 };
 
-export default function EmailSystem({ user, isMobile }) {
+export default function EmailSystem({ user, isMobile, commsEnabled = true }) {
   const isAdmin = user?.role === 'admin';
   const [loading, setLoading] = useState(false);
   const [threads, setThreads] = useState([]);
@@ -114,6 +114,7 @@ export default function EmailSystem({ user, isMobile }) {
   };
 
   const handleEmailReply = async () => {
+    if (!commsEnabled) return;
     if (!emailReplyBody.trim()) return;
     try {
       const endpoint = isAdmin ? '/admin/emails/reply' : '/emails/send';
@@ -128,6 +129,7 @@ export default function EmailSystem({ user, isMobile }) {
 
   const handleEmailSend = async (e) => {
     e.preventDefault();
+    if (!commsEnabled) return;
     try {
       await api.post('/emails/send', { 
         to_email: emailForm.to, 
@@ -164,7 +166,7 @@ export default function EmailSystem({ user, isMobile }) {
           <h2>Inbox</h2>
           <div className={styles.headerActions}>
             {isAdmin && <button className={styles.iconBtn} title="Manage" onClick={()=>setAdminIdentitiesOpen(true)}>⚙️</button>}
-            {!isAdmin && <button className={styles.composeBtn} onClick={()=>setEmailComposeOpen(true)}>+ Compose</button>}
+            {!isAdmin && commsEnabled && <button className={styles.composeBtn} onClick={()=>setEmailComposeOpen(true)}>+ Compose</button>}
           </div>
         </div>
         <div className={styles.threadList}>
@@ -210,17 +212,10 @@ export default function EmailSystem({ user, isMobile }) {
             
             <div className={styles.emailBodyScroll}>
               {emailMessages.map(m => {
-                // DETERMINE DISPLAY NAME SAFELY FOR BOTH ADMIN AND PLAYER
                 let msgName = 'Unknown';
                 if (m.sender_type === 'user') {
-                    // If message is from a user:
-                    // - Player view: It's 'Me'
-                    // - Admin view: It's the User Name
                     msgName = isAdmin ? selectedThread.user_name : 'Me';
                 } else {
-                    // If message is from identity (NPC):
-                    // - Player view: It's the Sender Name (from_name)
-                    // - Admin view: It's the Identity Name
                     msgName = isAdmin ? selectedThread.identity_name : selectedThread.from_name;
                 }
 
@@ -241,11 +236,17 @@ export default function EmailSystem({ user, isMobile }) {
               })}
               <div ref={emailEndRef} />
             </div>
+
+            {!commsEnabled && (
+              <div style={{ padding: '8px', background: '#FF4444', color: '#fff', textAlign: 'center', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                ⚠️ SURFACE WEB COMMS ARE CURRENTLY OFFLINE. MESSAGE SENDING IS DISABLED. ⚠️
+              </div>
+            )}
             
-            <div className={styles.emailReplyBox}>
-               <TextEditor value={emailReplyBody} onChange={setEmailReplyBody} placeholder="Reply..." />
+            <div className={styles.emailReplyBox} style={{ opacity: !commsEnabled ? 0.6 : 1, pointerEvents: !commsEnabled ? 'none' : 'auto' }}>
+               <TextEditor value={emailReplyBody} onChange={setEmailReplyBody} placeholder={!commsEnabled ? "System Offline..." : "Reply..."} />
                <div style={{ textAlign: 'right', marginTop:'10px' }}>
-                  <button onClick={handleEmailReply} className={styles.btnPri}>Send</button>
+                  <button onClick={handleEmailReply} className={styles.btnPri} disabled={!commsEnabled}>Send</button>
                </div>
             </div>
           </>

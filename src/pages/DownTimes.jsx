@@ -1,53 +1,34 @@
 // src/pages/DownTimes.jsx
 import React, { useEffect, useMemo, useState, useContext } from 'react';
-import { AuthCtx } from '../AuthContext'; // <-- Added to get currentUser role
+import { AuthCtx } from '../AuthContext'; 
 import api from '../api';
 import styles from '../styles/DownTimes.module.css';
 import Loading from '../components/Loading';
 
-// --- Helper: Generate unique temporary ID ---
-// Module-scoped counter intentionally shared across all component instances for global uniqueness
 let tempIdCounter = 0;
 const generateTempId = () => {
-  // Use crypto.randomUUID() if available (modern browsers), fallback to timestamp+counter+random
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return `temp_${crypto.randomUUID()}`;
   }
-  // Combine timestamp with counter and random component for uniqueness
   return `temp_${Date.now()}_${++tempIdCounter}_${Math.random().toString(36).slice(2, 11)}`;
 };
 
-// --- Helper: Countdown Hook ---
 function useCountdown(targetDate, isEndOfDay = false) {
   const [now, setNow] = useState(new Date().getTime());
 
   useEffect(() => {
-    // Update the current time every second
-    const interval = setInterval(() => {
-      setNow(new Date().getTime());
-    }, 1000);
+    const interval = setInterval(() => setNow(new Date().getTime()), 1000);
     return () => clearInterval(interval);
   }, []);
 
   return useMemo(() => {
-    if (!targetDate) {
-      // If no date is set, treat it as "past"
-      return { isPast: true, days: 0, hours: 0, minutes: 0, seconds: 0, totalHours: 0 };
-    }
+    if (!targetDate) return { isPast: true, days: 0, hours: 0, minutes: 0, seconds: 0, totalHours: 0 };
     
-    // Parse the target date. Assumes YYYY-MM-DD from server.
     const targetTime = new Date(targetDate);
-    
-    // If it's a deadline, stretch it to the very last second of that day (23:59:59)
-    if (isEndOfDay) {
-      targetTime.setHours(23, 59, 59, 999);
-    }
+    if (isEndOfDay) targetTime.setHours(23, 59, 59, 999);
 
     const difference = targetTime.getTime() - now;
-
-    if (difference <= 0) {
-      return { isPast: true, days: 0, hours: 0, minutes: 0, seconds: 0, totalHours: 0 };
-    }
+    if (difference <= 0) return { isPast: true, days: 0, hours: 0, minutes: 0, seconds: 0, totalHours: 0 };
 
     const days = Math.floor(difference / (1000 * 60 * 60 * 24));
     const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -59,19 +40,16 @@ function useCountdown(targetDate, isEndOfDay = false) {
   }, [now, targetDate, isEndOfDay]);
 }
 
-// --- Helper: Countdown Display Component ---
-function CountdownDisplay({ title, countdown, pastText, futureText }) {
+function CountdownDisplay({ title, countdown, pastText, futureText, isProject }) {
   const { isPast, days, hours, minutes, seconds, totalHours } = countdown;
 
-  // Add 'soon' class if not past and < 24 hours remaining
   let wrapperClass = styles.countdownBox;
-  if (!isPast && totalHours > 0 && totalHours < 24) {
-    wrapperClass += ` ${styles.countdownSoon}`;
-  }
+  if (!isPast && totalHours > 0 && totalHours < 24) wrapperClass += ` ${styles.countdownSoon}`;
+  if (isProject) wrapperClass += ` ${styles.projectCountdown}`;
 
   return (
     <div className={wrapperClass}>
-      <h4 className={styles.countdownTitle}>{title}</h4>
+      <h4 className={`${styles.countdownTitle} ${isProject ? styles.projectTitleText : ''}`}>{title}</h4>
       {isPast ? (
         <div className={styles.countdownPast}>{pastText}</div>
       ) : (
@@ -94,31 +72,25 @@ function CountdownDisplay({ title, countdown, pastText, futureText }) {
           </div>
         </div>
       )}
-      {/* Show the actual date underneath for clarity */}
       <div className={styles.countdownDate}>{futureText}</div>
     </div>
   );
 }
 
-// --- Helper: treat "resolved" as past ---
 const statusIsPast = (s) => {
   const status = String(s || '').toLowerCase();
   return status === 'resolved' || status === 'rejected' || status === 'resolved in scene';
 };
 
-// --- Format for display ---
 function niceDate(d) {
   if (!d) return '—';
   const dt = new Date(d);
   if (isNaN(dt.getTime())) return '—';
-  try {
-    return dt.toLocaleDateString('en-GB', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
-  } catch {
-    return dt.toDateString();
-  }
+  try { return dt.toLocaleDateString('en-GB', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }); } 
+  catch { return dt.toDateString(); }
 }
 
-// --- Submit Card Component ---
+// --- Standard Submit Card ---
 function SubmitCard({ quota, onDowntimeCreated, deadline }) {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
@@ -128,7 +100,6 @@ function SubmitCard({ quota, onDowntimeCreated, deadline }) {
 
   const isFull = quota.used >= quota.limit;
   
-  // FIX: Extend the deadline to the end of the selected day (23:59:59)
   let isPastDeadline = false;
   if (deadline) {
     const dlDate = new Date(deadline);
@@ -139,38 +110,14 @@ function SubmitCard({ quota, onDowntimeCreated, deadline }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (isFull || loading || !title || !body) return;
-    if (isPastDeadline) {
-      setErr('The deadline for downtime submission has passed.');
-      return;
-    }
+    if (isPastDeadline) { setErr('The deadline for downtime submission has passed.'); return; }
     
-    setLoading(true);
-    setErr('');
+    setLoading(true); setErr('');
     try {
-      const payload = {
-        title: title.trim(),
-        body: body.trim(),
-        feeding_type: feeding.trim() || null,
-      };
+      const payload = { title: title.trim(), body: body.trim(), feeding_type: feeding.trim() || null };
       const { data } = await api.post('/downtimes', payload);
-      // Ensure we have downtime data from API response
-      if (data && data.downtime) {
-        onDowntimeCreated(data.downtime);
-      } else {
-        // Defensive fallback: Construct downtime if API response is missing expected data.
-        const newDowntime = {
-          id: generateTempId(),
-          title: payload.title,
-          body: payload.body,
-          feeding_type: payload.feeding_type,
-          status: 'submitted',
-          created_at: new Date().toISOString()
-        };
-        onDowntimeCreated(newDowntime);
-      }
-      setTitle('');
-      setBody('');
-      setFeeding('');
+      onDowntimeCreated(data?.downtime || { id: generateTempId(), ...payload, status: 'submitted', created_at: new Date().toISOString() });
+      setTitle(''); setBody(''); setFeeding('');
     } catch (e) {
       setErr(e?.response?.data?.error || 'Failed to submit downtime.');
     } finally {
@@ -182,60 +129,96 @@ function SubmitCard({ quota, onDowntimeCreated, deadline }) {
     <section className={styles.card}>
       <form onSubmit={handleSubmit} className={styles.form}>
         <div className={styles.field}>
-          <label className={styles.label}>Title</label>
-          <input
-            className={styles.input}
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g., Investigate Elysium rumors"
-            maxLength={100}
-            required
-            disabled={isFull || loading || isPastDeadline}
-          />
+          <label className={styles.label}>Action Title</label>
+          <input className={styles.input} type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Investigate Elysium rumors" maxLength={100} required disabled={isFull || loading || isPastDeadline} />
         </div>
         <div className={styles.field}>
-          <label className={styles.label}>Action</label>
-          <textarea
-            className={`${styles.input} ${styles.textarea}`}
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            placeholder="Describe your downtime action..."
-            maxLength={1500}
-            required
-            disabled={isFull || loading || isPastDeadline}
-          />
+          <label className={styles.label}>Action Description</label>
+          <textarea className={`${styles.input} ${styles.textarea}`} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Describe your downtime action..." maxLength={1500} required disabled={isFull || loading || isPastDeadline} />
           <span className={styles.counter}>{body.length} / 1500</span>
         </div>
         <div className={styles.field}>
-          <label className={styles.label}>
-            Feeding Type <span className={styles.muted}>(Optional, leave blank for default)</span>
-          </label>
-          <input
-            className={styles.input}
-            type="text"
-            value={feeding}
-            onChange={(e) => setFeeding(e.target.value)}
-            placeholder="e.g., Farmer, Alleycat, Scene Queen..."
-            maxLength={100}
-            disabled={isFull || loading || isPastDeadline}
-          />
+          <label className={styles.label}>Feeding Type <span className={styles.muted}>(Optional, leave blank for default)</span></label>
+          <input className={styles.input} type="text" value={feeding} onChange={(e) => setFeeding(e.target.value)} placeholder="e.g., Farmer, Alleycat..." maxLength={100} disabled={isFull || loading || isPastDeadline} />
         </div>
-
         {err && <div className={`${styles.alert} ${styles.alertError}`}>{err}</div>}
-
         <div className={styles.formRow}>
-          <button
-            type="submit"
-            className={styles.cta}
-            disabled={isFull || loading || !title || !body || isPastDeadline}
-          >
+          <button type="submit" className={styles.cta} disabled={isFull || loading || !title || !body || isPastDeadline}>
             {loading ? 'Submitting...' : 'Submit Downtime'}
           </button>
           <div className={styles.formHint}>
             Quota: <b>{quota.used} / {quota.limit}</b> used this cycle.
-            {isFull && <span style={{ color: 'var(--err)', marginLeft: '8px' }}>Quota full.</span>}
-            {isPastDeadline && !isFull && <span style={{ color: 'var(--err)', marginLeft: '8px' }}>Deadline has passed.</span>}
+            {isFull && <span className={styles.errorText} style={{ marginLeft: '8px' }}>Quota full.</span>}
+            {isPastDeadline && !isFull && <span className={styles.errorText} style={{ marginLeft: '8px' }}>Deadline has passed.</span>}
+          </div>
+        </div>
+      </form>
+    </section>
+  );
+}
+
+// --- Project Submit Card ---
+function ProjectSubmitCard({ quota, onDowntimeCreated, deadline }) {
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
+
+  const isFull = quota.used >= quota.limit;
+  
+  let isPastDeadline = false;
+  if (deadline) {
+    const dlDate = new Date(deadline);
+    dlDate.setHours(23, 59, 59, 999); 
+    isPastDeadline = dlDate.getTime() < new Date().getTime();
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (isFull || loading || !title || !body) return;
+    if (isPastDeadline) { setErr('The deadline for project submission has passed.'); return; }
+    
+    setLoading(true); setErr('');
+    try {
+      const finalTitle = `[PROJECT] ${title.trim()}`;
+      const payload = { title: finalTitle, body: body.trim(), feeding_type: null };
+      
+      const { data } = await api.post('/downtimes', payload);
+      onDowntimeCreated(data?.downtime || { id: generateTempId(), ...payload, status: 'submitted', created_at: new Date().toISOString() });
+      setTitle(''); setBody('');
+    } catch (e) {
+      setErr(e?.response?.data?.error || 'Failed to submit project.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <section className={`${styles.card} ${styles.projectSubmitCard}`}>
+      <form onSubmit={handleSubmit} className={styles.form}>
+        <div className={styles.projectSubmitInfo}>
+          <span>ℹ️</span> <span>Long-term projects span multiple months. Submitting an action step here consumes one of your monthly action slots.</span>
+        </div>
+        <div className={styles.field}>
+          <label className={styles.label}>Project Name / Phase</label>
+          <input className={`${styles.input} ${styles.projectInput}`} type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Secure Haven Defenses (Phase 1)" maxLength={100} required disabled={isFull || loading || isPastDeadline} />
+        </div>
+        <div className={styles.field}>
+          <label className={styles.label}>Detailed Execution Plan</label>
+          <textarea className={`${styles.input} ${styles.textarea} ${styles.projectInput}`} style={{ minHeight: '200px' }} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Describe exactly what you are doing, resources used, and who is involved..." maxLength={3000} required disabled={isFull || loading || isPastDeadline} />
+          <span className={styles.counter}>{body.length} / 3000</span>
+        </div>
+        
+        {err && <div className={`${styles.alert} ${styles.alertError}`}>{err}</div>}
+        
+        <div className={styles.formRow}>
+          <button type="submit" className={`${styles.cta} ${styles.projectSubmitBtn}`} disabled={isFull || loading || !title || !body || isPastDeadline}>
+            {loading ? 'Submitting...' : 'Submit Project Action'}
+          </button>
+          <div className={styles.formHint}>
+            Quota: <b>{quota.used} / {quota.limit}</b> used this cycle.
+            {isFull && <span className={styles.errorText} style={{ marginLeft: '8px' }}>Quota full.</span>}
+            {isPastDeadline && !isFull && <span className={styles.errorText} style={{ marginLeft: '8px' }}>Deadline has passed.</span>}
           </div>
         </div>
       </form>
@@ -244,7 +227,7 @@ function SubmitCard({ quota, onDowntimeCreated, deadline }) {
 }
 
 // --- List Item Component ---
-function DowntimeItem({ dt }) {
+function DowntimeItem({ dt, isProject }) {
   const status = (dt.status || 'submitted').toLowerCase();
   let badgeClass = styles.badgePending;
   if (status === 'approved') badgeClass = styles.badgeApproved;
@@ -252,10 +235,12 @@ function DowntimeItem({ dt }) {
   if (status === 'rejected') badgeClass = styles.badgeRejected;
   if (status === 'resolved' || status === 'resolved in scene') badgeClass = styles.badgeReview;
 
+  const displayTitle = isProject ? dt.title.replace('[PROJECT] ', '') : dt.title;
+
   return (
-    <article className={styles.item}>
-      <header className={styles.itemHead}>
-        <h3 className={styles.itemTitle}>{dt.title || '(no title)'}</h3>
+    <article className={`${styles.item} ${isProject ? styles.projectItem : ''}`}>
+      <header className={`${styles.itemHead} ${isProject ? styles.projectItemHeader : ''}`}>
+        <h3 className={styles.itemTitle}>{displayTitle || '(no title)'} {isProject && <span className={styles.projectTag}>PROJECT</span>}</h3>
         <span className={`${styles.badge} ${badgeClass}`}>{dt.status}</span>
       </header>
       <div className={styles.itemMeta}>
@@ -263,18 +248,18 @@ function DowntimeItem({ dt }) {
         {dt.resolved_at && ` • Resolved: ${niceDate(dt.resolved_at)}`}
       </div>
       
-      {dt.feeding_type && (
+      {!isProject && dt.feeding_type && (
         <div className={styles.itemMeta} style={{marginTop: '4px'}}>
           Feeding: <b>{dt.feeding_type}</b>
         </div>
       )}
 
-      <p className={styles.itemBody}>{dt.body || '(No action description)'}</p>
+      <p className={styles.itemBody} style={{ whiteSpace: 'pre-wrap' }}>{dt.body || '(No action description)'}</p>
 
       {dt.gm_resolution && (
         <div className={styles.itemNotes}>
           <div className={styles.itemNotesLabel}>Resolution</div>
-          <p className={styles.itemNotesBody}>{dt.gm_resolution}</p>
+          <p className={styles.itemNotesBody} style={{ whiteSpace: 'pre-wrap' }}>{dt.gm_resolution}</p>
         </div>
       )}
     </article>
@@ -283,28 +268,31 @@ function DowntimeItem({ dt }) {
 
 // --- Main Component ---
 export default function DownTimes() {
-  const { user: currentUser } = useContext(AuthCtx); // <-- Added AuthCtx
+  const { user: currentUser } = useContext(AuthCtx); 
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
+
+  // Mode Switcher
+  const [viewMode, setViewMode] = useState('standard'); // 'standard' | 'project'
 
   // Global schedule
   const [deadline, setDeadline] = useState('');
   const [opening, setOpening] = useState('');
+  const [projectDeadline, setProjectDeadline] = useState('');
 
   // My downtimes
   const [mine, setMine] = useState([]);
   const [quota, setQuota] = useState({ used: 0, limit: 3 });
-  
-  // --- NEW: Fetch my character to check if they are "active" ---
   const [myChar, setMyChar] = useState(null);
 
   // UI state
   const [filter, setFilter] = useState('active');
   const [q, setQ] = useState('');
 
-  // --- NEW: Countdown hooks pass true for end-of-day deadline, false for opening ---
+  // Countdowns
   const deadlineCountdown = useCountdown(deadline, true); 
   const openingCountdown = useCountdown(opening, false);
+  const projectCountdown = useCountdown(projectDeadline, true);
 
   // Initial load
   useEffect(() => {
@@ -313,44 +301,38 @@ export default function DownTimes() {
       setLoading(true);
       setErr('');
       try {
-        // Fetch config, downtimes, quota, AND character concurrently
         const [cfgP, mineP, quotaP, charP] = await Promise.allSettled([
           api.get('/downtimes/config'),
           api.get('/downtimes/mine'),
           api.get('/downtimes/quota'),
-          api.get('/characters/me') // <-- Added
+          api.get('/characters/me') 
         ]);
 
         if (!mounted) return;
 
         if (cfgP.status === 'fulfilled') {
-          const { downtime_deadline, downtime_opening } = cfgP.value.data || {};
+          const { downtime_deadline, downtime_opening, project_deadline, downtime_active_phase } = cfgP.value.data || {};
           setDeadline(downtime_deadline || '');
           setOpening(downtime_opening || '');
-        } else {
-          console.warn('Failed to load downtime config:', cfgP.reason);
+          setProjectDeadline(project_deadline || '');
+
+          // --- MASTER SWITCH: Default Tab ---
+          if (downtime_active_phase === 'project') {
+             setViewMode('project');
+          } else {
+             setViewMode('standard');
+          }
         }
 
         if (mineP.status === 'fulfilled') {
-          const dts = (mineP.value.data?.downtimes || [])
-            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+          const dts = (mineP.value.data?.downtimes || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
           setMine(dts);
-        } else {
-          setErr('Failed to load your downtimes.');
-        }
+        } else setErr('Failed to load your actions.');
 
-        if (quotaP.status === 'fulfilled') {
-          setQuota(quotaP.value.data || { used: 0, limit: 3 });
-        } else {
-           console.warn('Failed to load downtime quota:', quotaP.reason);
-        }
-        
-        if (charP.status === 'fulfilled') {
-          setMyChar(charP.value.data?.character || null);
-        }
+        if (quotaP.status === 'fulfilled') setQuota(quotaP.value.data || { used: 0, limit: 3 });
+        if (charP.status === 'fulfilled') setMyChar(charP.value.data?.character || null);
 
       } catch (e) {
-        console.error(e);
         setErr('Failed to load your downtimes.');
       } finally {
         if (mounted) setLoading(false);
@@ -364,12 +346,17 @@ export default function DownTimes() {
     setQuota(prev => ({ ...prev, used: prev.used + 1 }));
   };
   
-  // Calculate if the user's character is active
   const isCharActive = currentUser?.role === 'admin' || (myChar && myChar.sheet && myChar.sheet.is_active === true);
 
-  // Memoized lists
-  const active = useMemo(() => mine.filter(d => !statusIsPast(d.status)), [mine]);
-  const past   = useMemo(() => mine.filter(d => statusIsPast(d.status)), [mine]);
+  // Split and Memoize lists
+  const isProj = (dt) => dt.title && dt.title.startsWith('[PROJECT]');
+  
+  const currentCategoryMine = useMemo(() => {
+    return viewMode === 'project' ? mine.filter(isProj) : mine.filter(dt => !isProj(dt));
+  }, [mine, viewMode]);
+
+  const active = useMemo(() => currentCategoryMine.filter(d => !statusIsPast(d.status)), [currentCategoryMine]);
+  const past   = useMemo(() => currentCategoryMine.filter(d => statusIsPast(d.status)), [currentCategoryMine]);
   
   const list = useMemo(() => {
     const source = (filter === 'past') ? past : active;
@@ -388,46 +375,59 @@ export default function DownTimes() {
 
   return (
     <main className={styles.page}>
+      
+      {/* MODE SWITCHER */}
+      <div className={styles.modeSwitcher}>
+        <button 
+          className={`${styles.modeBtn} ${viewMode === 'standard' ? styles.modeBtnStandardActive : ''}`}
+          onClick={() => { setViewMode('standard'); setFilter('active'); setQ(''); }}
+        >
+          🦇 Monthly Actions
+        </button>
+        <button 
+          className={`${styles.modeBtn} ${viewMode === 'project' ? styles.modeBtnProjectActive : ''}`}
+          onClick={() => { setViewMode('project'); setFilter('active'); setQ(''); }}
+        >
+          📜 Long-Term Projects
+        </button>
+      </div>
+
       <header className={styles.header}>
         <div>
-          <h2 className={styles.title}>Downtimes</h2>
-          <p className={styles.subtitle}>Submit and review your monthly actions.</p>
-        </div>
-        <div className={styles.headerActions}>
-           {/* Placeholder for any future actions */}
+          <h2 className={`${styles.title} ${viewMode === 'project' ? styles.projectTitleText : ''}`}>
+            {viewMode === 'standard' ? 'Downtimes' : 'Project Actions'}
+          </h2>
+          <p className={styles.subtitle}>
+            {viewMode === 'standard' 
+              ? 'Submit and review your monthly actions.' 
+              : 'Orchestrate elaborate plans over the course of multiple months.'}
+          </p>
         </div>
       </header>
 
-      <section className={styles.card}>
+      <section className={styles.card} style={{ background: 'transparent', padding: 0, boxShadow: 'none' }}>
         <div className={styles.countdownWrap}>
-          <CountdownDisplay
-            title="Submission Deadline"
-            countdown={deadlineCountdown}
-            pastText="The Deadline has passed."
-            futureText={niceDate(deadline) || 'TBD'}
-          />
-          <CountdownDisplay
-            title="Next Modern Event"
-            countdown={openingCountdown}
-            pastText="Submissions are Open." 
-            futureText={niceDate(opening) || 'TBD'}
-          />
+          {viewMode === 'standard' ? (
+            <>
+              <CountdownDisplay title="Submission Deadline" countdown={deadlineCountdown} pastText="The Deadline has passed." futureText={niceDate(deadline) || 'TBD'} />
+              <CountdownDisplay title="Next Modern Event" countdown={openingCountdown} pastText="Submissions are Open." futureText={niceDate(opening) || 'TBD'} />
+            </>
+          ) : (
+             <CountdownDisplay title="Next Project Phase Deadline" countdown={projectCountdown} pastText="The Phase Deadline has passed." futureText={niceDate(projectDeadline) || 'TBD'} isProject={true} />
+          )}
         </div>
       </section>
 
       {err && <div className={`${styles.alert} ${styles.alertError}`}>{err}</div>}
 
-      {/* NEW APPROVAL BANNER OR Submit Card */}
       {!isCharActive ? (
-        <div style={{ padding: '15px', background: '#d41b2c', color: '#fff', textAlign: 'center', fontSize: '0.95rem', fontWeight: 'bold', borderRadius: '8px', marginBottom: '20px' }}>
-          Your character is waiting for ST approval. You cannot submit downtimes yet.
+        <div className={`${styles.alert} ${styles.alertError}`} style={{ textAlign: 'center', fontWeight: 'bold' }}>
+          Your character is waiting for ST approval. You cannot submit actions yet.
         </div>
       ) : (
-        <SubmitCard 
-          quota={quota} 
-          onDowntimeCreated={handleDowntimeCreated} 
-          deadline={deadline}
-        />
+        viewMode === 'standard' 
+          ? <SubmitCard quota={quota} onDowntimeCreated={handleDowntimeCreated} deadline={deadline} />
+          : <ProjectSubmitCard quota={quota} onDowntimeCreated={handleDowntimeCreated} deadline={projectDeadline} />
       )}
 
       {/* Controls: Filter + Search */}
@@ -435,47 +435,33 @@ export default function DownTimes() {
         <div className={styles.filters}>
           <label className={styles.filterLabel}>Filter by Status</label>
           <div className={styles.chips}>
-            <button 
-              className={`${styles.chip} ${filter === 'active' ? styles.chipActive : ''}`}
-              onClick={() => setFilter('active')}
-            >
-              Active <span className={styles.chipCount}>{activeCount}</span>
+            <button className={`${styles.chip} ${filter === 'active' ? styles.chipActive : ''}`} onClick={() => setFilter('active')}>
+              Active <span className={`${styles.chipCount} ${viewMode === 'project' && filter === 'active' ? styles.chipCountProject : ''}`}>{activeCount}</span>
             </button>
-            <button 
-              className={`${styles.chip} ${filter === 'past' ? styles.chipActive : ''}`}
-              onClick={() => setFilter('past')}
-            >
-              Past <span className={styles.chipCount}>{pastCount}</span>
+            <button className={`${styles.chip} ${filter === 'past' ? styles.chipActive : ''}`} onClick={() => setFilter('past')}>
+              Past <span className={`${styles.chipCount} ${viewMode === 'project' && filter === 'past' ? styles.chipCountProject : ''}`}>{pastCount}</span>
             </button>
           </div>
         </div>
         <div className={styles.searchWrap}>
-          <label className={styles.filterLabel}>Search {filter} downtimes</label>
-          <input
-            className={styles.search}
-            type="text"
-            placeholder="Search by title, body, or result..."
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
+          <label className={styles.filterLabel}>Search {filter} {viewMode === 'standard' ? 'downtimes' : 'projects'}</label>
+          <input className={styles.search} type="text" placeholder="Search by title, body, or result..." value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
       </section>
 
       {/* List */}
       <section className={styles.list}>
-        {loading && (
-          <Loading />
-        )}
+        {loading && <Loading />}
         {!loading && list.length === 0 && (
           <div className={styles.empty}>
-            <div className={styles.emptyIcon}>☾</div>
+            <div className={`${styles.emptyIcon} ${viewMode === 'project' ? styles.emptyIconProject : ''}`}>{viewMode === 'standard' ? '☾' : '📜'}</div>
             <div className={styles.emptyText}>
-              {q ? `No ${filter} downtimes match your search.` : `You have no ${filter} downtimes.`}
+              {q ? `No ${filter} submissions match your search.` : `You have no ${filter} ${viewMode === 'standard' ? 'downtimes' : 'projects'}.`}
             </div>
           </div>
         )}
         {!loading && list.map(dt => (
-          <DowntimeItem key={dt.id} dt={dt} />
+          <DowntimeItem key={dt.id} dt={dt} isProject={viewMode === 'project'} />
         ))}
       </section>
     </main>

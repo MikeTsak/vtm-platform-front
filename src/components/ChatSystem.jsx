@@ -224,7 +224,7 @@ const generateTempId = () => {
   return `temp_${Date.now()}_${++tempIdCounter}_${Math.random().toString(36).slice(2, 11)}`;
 };
 
-export default function ChatSystem() {
+export default function ChatSystem({ commsEnabled = true }) {
   const { user: currentUser } = useContext(AuthCtx);
   const isAdmin = currentUser?.role === 'admin';
 
@@ -695,6 +695,7 @@ export default function ChatSystem() {
 
 /* --- Sending Logic --- */
   const doSend = async () => {
+    if (!commsEnabled) return;
     const body = newMessage.trim();
     
     if ((!body && !attachment) || !selectedContact) return;
@@ -1348,13 +1349,18 @@ export default function ChatSystem() {
               )}
             </div>
 
-            {!isCharActive && (
+            {/* --- REPLACED WARNING BANNER LOGIC --- */}
+            {!commsEnabled ? (
+              <div style={{ padding: '8px', background: '#FF4444', color: '#fff', textAlign: 'center', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                ⚠️ SCHRECKNET IS CURRENTLY OFFLINE. MESSAGE SENDING IS DISABLED. ⚠️
+              </div>
+            ) : !isCharActive ? (
               <div style={{ padding: '8px', background: '#d41b2c', color: '#fff', textAlign: 'center', fontSize: '0.85rem', fontWeight: 'bold' }}>
                 Your character is waiting for ST approval. You cannot send messages yet.
               </div>
-            )}
+            ) : null}
 
-            <form className={styles.messageInputForm} onSubmit={handleSendMessage} style={{ position: 'relative' }}>
+            <form className={styles.messageInputForm} onSubmit={handleSendMessage} style={{ position: 'relative', opacity: !commsEnabled ? 0.6 : 1 }}>
                 {previewUrl && (
                   <div className={styles.previewContainer}>
                     <div className={styles.previewWrapper}>
@@ -1388,7 +1394,7 @@ export default function ChatSystem() {
                   className={styles.uploadBtn} 
                   onClick={() => setShowEmojiPicker(val => !val)}
                   title="Add Emoji"
-                  disabled={!isCharActive}
+                  disabled={!isCharActive || !commsEnabled}
                 >
                   <SmileIcon />
                 </button>
@@ -1398,7 +1404,7 @@ export default function ChatSystem() {
                   className={styles.uploadBtn} 
                   onClick={() => fileInputRef.current?.click()}
                   title="Attach Image"
-                  disabled={!isCharActive}
+                  disabled={!isCharActive || !commsEnabled}
                 >
                   <ImageIcon />
                 </button>
@@ -1409,13 +1415,13 @@ export default function ChatSystem() {
                         value={newMessage} 
                         onChange={e => setNewMessage(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        placeholder={!isCharActive ? "Waiting for ST approval..." : "Type a message..."} 
+                        placeholder={!commsEnabled ? "System Offline..." : (!isCharActive ? "Waiting for ST approval..." : "Type a message...")} 
                         className={styles.messageInput} 
-                        disabled={!isCharActive || (isAdmin && selectedContact.type === 'npc' && !selectedPlayerId)} 
+                        disabled={!commsEnabled || !isCharActive || (isAdmin && selectedContact.type === 'npc' && !selectedPlayerId)} 
                         rows={1}
                     />
                 </div>
-                <button type="submit" className={styles.sendButton} disabled={!isCharActive || sendingRef.current || (!newMessage.trim() && !attachment) || (isAdmin && selectedContact.type === 'npc' && !selectedPlayerId)}>
+                <button type="submit" className={styles.sendButton} disabled={!commsEnabled || !isCharActive || sendingRef.current || (!newMessage.trim() && !attachment) || (isAdmin && selectedContact.type === 'npc' && !selectedPlayerId)}>
                     <span className={styles.sendIcon}>➤</span>
                 </button>
             </form>

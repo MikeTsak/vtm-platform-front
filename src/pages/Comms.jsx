@@ -1,6 +1,7 @@
 // src/pages/Comms.jsx
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { AuthCtx } from '../AuthContext';
+import api from '../api';
 import styles from '../styles/Comms.module.css';
 import ChatSystem from '../components/ChatSystem';
 import EmailSystem from '../components/EmailSystem';
@@ -9,6 +10,7 @@ export default function Comms() {
   const { user } = useContext(AuthCtx);
   const [commsMode, setCommsMode] = useState('chat'); // 'chat' | 'email'
   const [isMobile, setIsMobile] = useState(false);
+  const [commsEnabled, setCommsEnabled] = useState(true);
   const containerRef = useRef(null);
 
   // Mobile detection
@@ -27,6 +29,20 @@ export default function Comms() {
       if (observer) observer.disconnect();
       else window.removeEventListener('resize', checkMobile);
     };
+  }, []);
+
+  // Master Comms Polling
+  useEffect(() => {
+    const checkComms = async () => {
+      try {
+        const { data } = await api.get('/comms/status');
+        setCommsEnabled(data.comms_enabled);
+      } catch (e) {}
+    };
+    
+    checkComms();
+    const interval = setInterval(checkComms, 10000); // 10s poll
+    return () => clearInterval(interval);
   }, []);
 
   return (
@@ -51,9 +67,9 @@ export default function Comms() {
       </div>
 
       {commsMode === 'chat' ? (
-        <ChatSystem user={user} isMobile={isMobile} />
+        <ChatSystem user={user} isMobile={isMobile} commsEnabled={commsEnabled} />
       ) : (
-        <EmailSystem user={user} isMobile={isMobile} />
+        <EmailSystem user={user} isMobile={isMobile} commsEnabled={commsEnabled} />
       )}
     </div>
   );
