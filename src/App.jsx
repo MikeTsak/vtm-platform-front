@@ -26,7 +26,8 @@ import Boons from './pages/Boons';
 import Court from './pages/Court';
 import MediaViewer from './pages/MediaViewer';
 import Premonitions from './pages/Premonitions';
-import News from './pages/News'; // ✅ IMPORTED NEWS PAGE
+import News from './pages/News'; 
+import GlobalBanner from './components/GlobalBanner';
 
 function Private({ children }) {
   const { user } = useContext(AuthCtx);
@@ -193,6 +194,7 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}>
+          <GlobalBanner />
           <Nav />
           <div style={{ flexGrow: 1 }}>
             <Routes>
