@@ -29,7 +29,8 @@ import MediaViewer from './pages/MediaViewer';
 import Premonitions from './pages/Premonitions';
 import News from './pages/News'; 
 import GlobalBanner from './components/GlobalBanner';
-import Nav from './components/Nav'; // ✅ IMPORT THE NEW NAV COMPONENT
+import Nav from './components/Nav'; 
+import NotFound from './pages/404';
 
 function Private({ children }) {
   const { user } = useContext(AuthCtx);
@@ -118,6 +119,10 @@ export default function App() {
                 path="/premonitions"
                 element={<MalkavianOrAdminOnly><Premonitions/></MalkavianOrAdminOnly>}
               />
+
+              {/* ✅ ADDED CATCH-ALL ROUTE HERE */}
+              <Route path="*" element={<NotFound />} />
+              
             </Routes>
           </div>
           <DiceRoller />

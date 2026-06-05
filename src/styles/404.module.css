@@ -1,0 +1,378 @@
+/* src/styles/NotFound.module.css */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Fira+Code:wght@400;800&family=Inter:wght@400;500;600&display=swap');
+
+.container {
+  position: relative;
+  min-height: calc(100vh - 80px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #050505;
+  overflow: hidden;
+  cursor: crosshair; 
+  cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32'><text y='24' font-size='24'>🦇</text></svg>") 16 16, crosshair;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none; 
+  background: radial-gradient(
+    circle 350px at var(--x, 50%) var(--y, 50%),
+    transparent 0%,
+    rgba(0, 0, 0, 0.95) 70%,
+    #000 100%
+  );
+  z-index: 2;
+  transition: background 0.1s ease-out; 
+}
+
+.container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(138, 3, 3, 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(138, 3, 3, 0.15) 1px, transparent 1px);
+  background-size: 40px 40px;
+  opacity: 0.5;
+  z-index: 0;
+}
+
+.content {
+  position: relative;
+  z-index: 3;
+  text-align: center;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.glitch {
+  font-family: 'Fira Code', monospace;
+  font-size: clamp(5rem, 15vw, 10rem);
+  font-weight: 800;
+  color: #fff;
+  margin: 0;
+  position: relative;
+  text-shadow: 0 0 20px rgba(138, 3, 3, 0.8);
+  animation: noise 3s infinite linear alternate-reverse;
+}
+
+.glitch::before,
+.glitch::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+}
+
+.glitch::before {
+  left: 4px;
+  text-shadow: -2px 0 #ff00c1;
+  clip: rect(44px, 450px, 56px, 0);
+  animation: glitch-anim 5s infinite linear alternate-reverse;
+}
+
+.glitch::after {
+  left: -4px;
+  text-shadow: -2px 0 #00fff9, 2px 2px #8a0303;
+  clip: rect(44px, 450px, 56px, 0);
+  animation: glitch-anim2 5s infinite linear alternate-reverse;
+}
+
+.title {
+  font-family: 'Cinzel', serif;
+  color: #8a0303;
+  font-size: clamp(1.5rem, 5vw, 2.5rem);
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  margin: 0.5rem 0 1rem 0;
+  text-shadow: 0 0 10px rgba(138, 3, 3, 0.5);
+}
+
+.description {
+  font-family: 'Inter', sans-serif;
+  color: #a0a0a0;
+  max-width: 500px;
+  line-height: 1.6;
+  font-size: 1rem;
+  margin-bottom: 2rem;
+}
+
+.homeBtn {
+  font-family: 'Cinzel', serif;
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: #fff;
+  text-decoration: none;
+  padding: 1rem 2.5rem;
+  border: 1px solid #8a0303;
+  background: rgba(138, 3, 3, 0.15);
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  position: relative;
+  overflow: hidden;
+}
+
+.homeBtn:hover {
+  background: rgba(138, 3, 3, 0.6);
+  box-shadow: 0 0 20px rgba(138, 3, 3, 0.8), inset 0 0 15px rgba(138, 3, 3, 0.6);
+  text-shadow: 0 0 5px #fff;
+}
+
+/* ========================================= */
+/* --- CSS ATHENS METRO SCENE ---            */
+/* ========================================= */
+
+.chaseScene {
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+  height: 140px;
+  background: #050505;
+  border: 1px solid #333;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 2.5rem;
+  box-shadow: inset 0 0 30px #000, 0 5px 20px rgba(0,0,0,0.7);
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- Surface: Acropolis --- */
+.athensSurface {
+  position: relative;
+  height: 50%;
+  background: linear-gradient(to bottom, #110000, #0a0a0a);
+  border-bottom: 2px solid #222;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.acropolis {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  opacity: 0.7;
+  z-index: 2;
+  margin-bottom: -2px;
+}
+
+.templeRoof {
+  width: 70px;
+  border-bottom: 12px solid #4a050c;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+}
+
+.templePillars {
+  width: 66px;
+  height: 18px;
+  background: repeating-linear-gradient(
+    90deg,
+    #4a050c 0px,
+    #4a050c 6px,
+    transparent 6px,
+    transparent 10px
+  );
+}
+
+.templeBase {
+  width: 80px;
+  height: 6px;
+  background: #4a050c;
+  border-radius: 2px;
+}
+
+.acropolisHill {
+  position: absolute;
+  bottom: 0;
+  width: 180px;
+  height: 25px;
+  background: #111;
+  border-radius: 100px 100px 0 0;
+  z-index: 1;
+}
+
+/* --- Underground: Metro Tunnel --- */
+.underground {
+  position: relative;
+  height: 50%;
+  background: #0a0a0a;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end; /* Ensures train sits at the bottom */
+}
+
+.tunnelLights {
+  position: absolute;
+  top: 5px;
+  left: 0;
+  width: 200%;
+  height: 3px;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0,
+    transparent 120px,
+    rgba(255, 255, 255, 0.6) 120px,
+    rgba(255, 255, 255, 0.6) 160px
+  );
+  animation: speedEnvironment 0.3s linear infinite;
+  box-shadow: 0 0 8px rgba(255,255,255,0.3);
+}
+
+.tunnelPillars {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 200%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0,
+    transparent 60px,
+    #151515 60px,
+    #151515 80px
+  );
+  animation: speedEnvironment 0.5s linear infinite;
+  z-index: 1;
+}
+
+/* --- Flexible Metro Train --- */
+.trainWrapper {
+  position: absolute;
+  bottom: 8px;
+  right: 5%;
+  width: 80%;
+  max-width: 320px;
+  display: flex;
+  align-items: flex-end;
+  z-index: 3;
+  animation: trainVibrate 0.15s infinite alternate;
+}
+
+.trainCar {
+  flex: 1; /* Allows the cars to flex and scale smoothly */
+  height: 35px;
+  background: linear-gradient(to bottom, #444, #111);
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  box-shadow: -2px 5px 10px rgba(0,0,0,0.9);
+}
+
+.trainFront {
+  flex: 0.8; 
+  height: 35px;
+  background: linear-gradient(to bottom, #444, #111);
+  border-radius: 3px 15px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  position: relative;
+}
+
+/* The flexible accordion joints between cars */
+.trainJoint {
+  width: 10px;
+  height: 26px;
+  margin-bottom: 4px; /* Centers it vertically with the cars */
+  background: repeating-linear-gradient(
+    90deg,
+    #111 0px,
+    #111 2px,
+    #333 2px,
+    #333 4px
+  );
+  box-shadow: inset 0 2px 5px rgba(0,0,0,0.8);
+}
+
+.trainWindow {
+  width: 25%;
+  max-width: 25px;
+  height: 14px;
+  background: #ffe600;
+  border-radius: 2px;
+  box-shadow: 0 0 10px rgba(255, 230, 0, 0.5);
+  opacity: 0.9;
+}
+
+.trainLight {
+  position: absolute;
+  right: -4px;
+  bottom: 8px;
+  width: 8px;
+  height: 8px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 8px 0 15px 8px rgba(255, 255, 255, 0.7);
+}
+
+/* --- Animation Keyframes --- */
+@keyframes speedEnvironment {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-160px); } 
+}
+
+@keyframes trainVibrate {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(1px); }
+}
+
+@keyframes glitch-anim {
+  0% { clip: rect(10px, 9999px, 81px, 0); transform: skew(0.79deg); }
+  10% { clip: rect(96px, 9999px, 100px, 0); transform: skew(0.53deg); }
+  20% { clip: rect(87px, 9999px, 48px, 0); transform: skew(0.18deg); }
+  30% { clip: rect(68px, 9999px, 20px, 0); transform: skew(0.48deg); }
+  40% { clip: rect(17px, 9999px, 57px, 0); transform: skew(0.85deg); }
+  50% { clip: rect(63px, 9999px, 83px, 0); transform: skew(0.74deg); }
+  60% { clip: rect(14px, 9999px, 82px, 0); transform: skew(0.46deg); }
+  70% { clip: rect(93px, 9999px, 60px, 0); transform: skew(0.73deg); }
+  80% { clip: rect(3px, 9999px, 48px, 0); transform: skew(0.6deg); }
+  90% { clip: rect(11px, 9999px, 8px, 0); transform: skew(0.19deg); }
+  100% { clip: rect(66px, 9999px, 25px, 0); transform: skew(0.75deg); }
+}
+
+@keyframes glitch-anim2 {
+  0% { clip: rect(40px, 9999px, 18px, 0); transform: skew(0.81deg); }
+  10% { clip: rect(54px, 9999px, 98px, 0); transform: skew(0.66deg); }
+  20% { clip: rect(22px, 9999px, 89px, 0); transform: skew(0.71deg); }
+  30% { clip: rect(33px, 9999px, 57px, 0); transform: skew(0.89deg); }
+  40% { clip: rect(11px, 9999px, 75px, 0); transform: skew(0.64deg); }
+  50% { clip: rect(27px, 9999px, 83px, 0); transform: skew(0.92deg); }
+  60% { clip: rect(46px, 9999px, 66px, 0); transform: skew(0.77deg); }
+  70% { clip: rect(69px, 9999px, 94px, 0); transform: skew(0.85deg); }
+  80% { clip: rect(88px, 9999px, 73px, 0); transform: skew(0.97deg); }
+  90% { clip: rect(55px, 9999px, 86px, 0); transform: skew(0.61deg); }
+  100% { clip: rect(74px, 9999px, 9px, 0); transform: skew(0.55deg); }
+}
+
+@keyframes noise {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(2px, -2px); }
+  40% { transform: translate(2px, 2px); }
+  60% { transform: translate(1px, -1px); }
+  80% { transform: translate(2px, 0px); }
+}
+
+@media (max-width: 768px) {
+  .overlay {
+    background: radial-gradient(
+      circle 220px at 50% 30%, 
+      transparent 0%,
+      rgba(0, 0, 0, 0.9) 70%,
+      #000 100%
+    );
+  }
+}

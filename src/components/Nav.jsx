@@ -5,6 +5,30 @@ import { AuthCtx } from '../AuthContext';
 import api from '../api';
 import styles from '../styles/Nav.module.css';
 
+// Reusable Dropdown Component with Mobile Accordion Logic
+function NavDropdown({ title, children }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div 
+      className={`${styles.dropdown} ${isOpen ? styles.dropdownOpen : ''}`}
+      // On desktop, hover handles the menu. On mobile, we rely on clicks.
+      onMouseEnter={() => window.innerWidth > 768 && setIsOpen(true)}
+      onMouseLeave={() => window.innerWidth > 768 && setIsOpen(false)}
+    >
+      <div 
+        className={styles.dropdownToggle} 
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        {title} <span className={`${styles.chevron} ${isOpen ? styles.chevronOpen : ''}`}>▼</span>
+      </div>
+      <div className={`${styles.dropdownContent} ${isOpen ? styles.dropdownContentOpen : ''}`}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export default function Nav() {
   const { user, logout } = useContext(AuthCtx);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -14,24 +38,23 @@ export default function Nav() {
   const toggleMenu = () => setIsMenuOpen(v => !v);
   const closeMenu = () => setIsMenuOpen(false);
   
+  // Close menu whenever the route changes
   useEffect(() => { 
     closeMenu(); 
   }, [location.pathname]);
 
+  // Prevent background scrolling when mobile menu is open
   useEffect(() => {
     if (isMenuOpen) document.documentElement.style.overflow = 'hidden';
     else document.documentElement.style.overflow = '';
     return () => { document.documentElement.style.overflow = ''; };
   }, [isMenuOpen]);
 
-  // ✅ Detect if user is admin OR has a Malkavian character, to show the Premonitions link
   useEffect(() => {
     let live = true;
     setCanSeePremonitions(false);
 
-    if (!user) {
-      return;
-    }
+    if (!user) return;
     if (user.role === 'admin') {
       setCanSeePremonitions(true);
       return;
@@ -43,7 +66,7 @@ export default function Nav() {
         const clan = data?.character?.clan;
         setCanSeePremonitions(clan === 'Malkavian');
       })
-      .catch(() => { /* ignore; default false */ });
+      .catch(() => {});
 
     return () => { live = false; };
   }, [user]);
@@ -51,65 +74,95 @@ export default function Nav() {
   const getNavLinkClass = ({ isActive }) =>
     `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`;
 
+  const getDropdownClass = ({ isActive }) =>
+    `${styles.dropdownItem} ${isActive ? styles.dropdownItemActive : ''}`;
+
   return (
-    <nav className={`${styles.navBar} ${isMenuOpen ? styles.open : ''}`}>
-      <div className={styles.left}>
-        <Link to="/" className={styles.brand} aria-label="Erebus Portal — Home" onClick={closeMenu}>
-          <img src="/img/ATT-logo(1).png" alt="" className={styles.navLogo} />
-          <span className={styles.brandText}>Erebus Portal</span>
-        </Link>
-      </div>
+    <>
+      {/* Mobile Backdrop Overlay */}
+      <div 
+        className={`${styles.mobileOverlay} ${isMenuOpen ? styles.overlayOpen : ''}`} 
+        onClick={closeMenu} 
+      />
 
-      {/* Hamburger (mobile) */}
-      <button
-        className={`${styles.mobileMenuToggle} ${isMenuOpen ? styles.open : ''}`}
-        onClick={toggleMenu}
-        aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
-        aria-expanded={isMenuOpen}
-        aria-controls="primary-nav"
-      >
-        <span className={styles.bar}></span>
-      </button>
+      <nav className={`${styles.navBar} ${isMenuOpen ? styles.open : ''}`}>
+        <div className={styles.left}>
+          <Link to="/" className={styles.brand} aria-label="Erebus Portal — Home" onClick={closeMenu}>
+            <img src="/img/ATT-logo(1).png" alt="" className={styles.navLogo} />
+            <span className={styles.brandText}>Erebus Portal</span>
+          </Link>
+        </div>
 
-      {/* Main navigation links */}
-      <div id="primary-nav" className={styles.navLinks} role="navigation" aria-label="Primary">
-        {user && (
-          <>
-            <NavLink to="/character" className={getNavLinkClass}>Character</NavLink>
-            <NavLink to="/domains" className={getNavLinkClass}>Domains</NavLink>
-            <NavLink to="/downtimes" className={getNavLinkClass}>Downtimes</NavLink>
-            <NavLink to="/boons" className={getNavLinkClass}>Boons</NavLink>
-            <NavLink to="/court" className={getNavLinkClass}>Court</NavLink>
-            <NavLink to="/news" className={getNavLinkClass}>News</NavLink>
-            <NavLink to="/comms" className={getNavLinkClass}>Comms</NavLink>
+        {/* Hamburger (mobile) */}
+        <button
+          className={`${styles.mobileMenuToggle} ${isMenuOpen ? styles.open : ''}`}
+          onClick={toggleMenu}
+          aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
+          aria-expanded={isMenuOpen}
+          aria-controls="primary-nav"
+        >
+          <span className={styles.bar}></span>
+        </button>
 
-            {/* 🔮 Premonitions link: only for Admins or Malkavian players */}
-            {canSeePremonitions && (
-              <NavLink to="/premonitions" className={getNavLinkClass} title="Premonitions">
-                Premonitions
-              </NavLink>
-            )}
-          </>
-        )}
-        {user?.role === 'admin' && (
-          <>
+        {/* Main navigation links */}
+        <div id="primary-nav" className={styles.navLinks} role="navigation" aria-label="Primary">
+          {user && (
+            <>
+              <NavDropdown title="Personal">
+                <NavLink to="/character" className={getDropdownClass}>Character Sheet</NavLink>
+                <NavLink to="/downtimes" className={getDropdownClass}>Actions & Projects</NavLink>
+                {canSeePremonitions && (
+                  <NavLink to="/premonitions" className={getDropdownClass}>Premonitions</NavLink>
+                )}
+              </NavDropdown>
+
+              <NavDropdown title="Athens">
+                <NavLink to="/court" className={getDropdownClass}>Court Hierarchy</NavLink>
+                <NavLink to="/boons" className={getDropdownClass}>Boons Ledger</NavLink>
+                <NavLink to="/domains" className={getDropdownClass}>City Domains</NavLink>
+                <NavLink to="/news" className={getDropdownClass}>News & Rumors</NavLink>
+              </NavDropdown>
+
+              <NavDropdown title="Network">
+                <NavLink to="/comms" className={getDropdownClass}>SchreckNet Comms</NavLink>
+                <NavLink to="/session" className={getDropdownClass}>🔨Live Session(Work On Proggress)</NavLink>
+              </NavDropdown>
+            </>
+          )}
+          
+          {user?.role === 'admin' && (
             <NavLink to="/admin" className={getNavLinkClass}>Admin</NavLink>
-          </>
-        )}
-      </div>
+          )}
+          
+          {/* User Info inside Drawer on Mobile */}
+          <div className={styles.mobileUserInfo}>
+            {user ? (
+              <>
+                <span className={styles.greeting}>Logged in as: <b>{user.display_name}</b></span>
+                <button type="button" className={styles.logoutBtn} onClick={logout}>
+                  Logout
+                </button>
+              </>
+            ) : (
+              <NavLink to="/login" className={getNavLinkClass}>Login</NavLink>
+            )}
+          </div>
+        </div>
 
-      <div className={styles.userInfo}>
-        {user ? (
-          <>
-            <span className={styles.greeting}>Hi, {user.display_name}</span>
-            <button type="button" className={styles.logoutBtn} onClick={logout}>
-              Logout
-            </button>
-          </>
-        ) : (
-          <NavLink to="/login" className={getNavLinkClass}>Login</NavLink>
-        )}
-      </div>
-    </nav>
+        {/* User Info on Desktop */}
+        <div className={styles.desktopUserInfo}>
+          {user ? (
+            <>
+              <span className={styles.greeting}>Hi, {user.display_name}</span>
+              <button type="button" className={styles.logoutBtn} onClick={logout}>
+                Logout
+              </button>
+            </>
+          ) : (
+            <NavLink to="/login" className={getNavLinkClass}>Login</NavLink>
+          )}
+        </div>
+      </nav>
+    </>
   );
 }
