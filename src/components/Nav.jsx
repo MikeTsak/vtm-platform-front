@@ -127,13 +127,16 @@ export default function Nav() {
 
               <NavDropdown title="Network">
                 <NavLink to="/comms" className={getDropdownClass}>SchreckNet Comms</NavLink>
-                <NavLink to="/session" className={getDropdownClass}>🔨Live Session(Work On Proggress)</NavLink>
+                <NavLink to="/live-session" className={getDropdownClass}>Live Session</NavLink>
               </NavDropdown>
             </>
           )}
           
           {user?.role === 'admin' && (
-            <NavLink to="/admin" className={getNavLinkClass}>Admin</NavLink>
+            <NavDropdown title="Admin">
+              <NavLink to="/admin" className={getDropdownClass}>Admin Panel</NavLink>
+              <NavLink to="/admin/live-session" className={getDropdownClass}>Live Session Dashboard</NavLink>
+            </NavDropdown>
           )}
           
           {/* User Info inside Drawer on Mobile */}
