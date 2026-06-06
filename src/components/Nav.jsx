@@ -117,7 +117,9 @@ export default function Nav() {
               </NavDropdown>
 
               <NavDropdown title="Athens">
-                <NavLink to="/court" className={getDropdownClass}>Court Hierarchy</NavLink>
+                <NavLink to="/court/hierarchy" className={getDropdownClass}>Court Hierarchy</NavLink>
+                <NavLink to="/court/announcements" className={getDropdownClass}>Announcements</NavLink>
+                <NavLink to="/court/coteries" className={getDropdownClass}>Coteries</NavLink>
                 <NavLink to="/boons" className={getDropdownClass}>Boons Ledger</NavLink>
                 <NavLink to="/domains" className={getDropdownClass}>City Domains</NavLink>
                 <NavLink to="/news" className={getDropdownClass}>News & Rumors</NavLink>

@@ -31,6 +31,9 @@ import News from './pages/News';
 import GlobalBanner from './components/GlobalBanner';
 import Nav from './components/Nav'; 
 import NotFound from './pages/404';
+import Hierarchy from './components/HierarchyView.jsx'; 
+import Announcements from './components/AnnouncementsView.jsx'; 
+import Coteries from './components/CoterieManager.jsx';
 
 function Private({ children }) {
   const { user } = useContext(AuthCtx);
@@ -99,6 +102,9 @@ export default function App() {
               <Route path="/boons" element={<Private><Boons /></Private>} />
               <Route path="/comms" element={<Private><Comms/></Private>} />
               <Route path="/court" element={<Private><Court/></Private>} />
+              <Route path="/court/hierarchy" element={<Private><Hierarchy /></Private>} />
+              <Route path="/court/announcements" element={<Private><Announcements /></Private>} />
+              <Route path="/court/coteries" element={<Private><Coteries /></Private>} />
               
               <Route path="/news" element={<Private><News/></Private>} />
 

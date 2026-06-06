@@ -1,344 +1,502 @@
-/* src/styles/Home.module.css */
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Inter:wght@300;400;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=UnifrakturMaguntia&display=swap');
+/* src/styles/Home.module.css
+   Mobile-first · Gothic Kindred · Erebus Portal
+   ─────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=UnifrakturMaguntia&display=swap');
 
+/* ── Design Tokens ────────────────────────────────────────────── */
 :root {
-  --bg-deep: #050505;
-  --bg-panel: #121212;
-  --accent: #b01423; /* Blood Red */
-  --accent-glow: rgba(176, 20, 35, 0.5);
-  --gold: #a18a4d;
-  --text-main: #e0e0e0;
-  --text-muted: #8a8a90;
-  
-  --paper-bg: #e3dac9;
-  --paper-text: #1a1a1a;
-  
-  --malk-purple: #713c8b;
-  --malk-glow: rgba(113, 60, 139, 0.8);
+  --bg-void:    #060608;
+  --bg-panel:   #0e0e10;
+  --bg-raised:  #141418;
+  --border:     #2a2a30;
+  --border-hi:  #3d3d48;
+  --blood:      #8b0000;
+  --blood-hi:   #b01423;
+  --blood-glow: rgba(176, 20, 35, 0.35);
+  --gold:       #9a7f3c;
+  --gold-hi:    #c4a35a;
+  --text:       #ddd8cc;
+  --text-dim:   #888090;
+  --text-ghost: #3d3a45;
+  --paper-bg:   #e8e0cc;
+  --paper-text: #1a1510;
+  --malk:       #7b2fa0;
+  --malk-glow:  rgba(123, 47, 160, 0.5);
+  --radius:     8px;
+  --radius-sm:  4px;
 }
 
-/* --- Layout & Background --- */
+/* ── Reset / Base ─────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+/* ── Page ─────────────────────────────────────────────────────── */
 .homePage {
-  min-height: 100vh;
-  background-color: var(--bg-deep);
-  background-image: 
-    radial-gradient(circle at 20% 20%, rgba(30, 10, 15, 0.4) 0%, transparent 50%),
-    radial-gradient(circle at 80% 80%, rgba(10, 20, 30, 0.4) 0%, transparent 50%);
-  color: var(--text-main);
-  padding: 2rem;
-  font-family: 'Inter', sans-serif;
+  min-height: 100dvh;
+  background: var(--bg-void);
+  background-image:
+    radial-gradient(ellipse 80% 50% at 20% 0%,   rgba(139, 0, 0, 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 100%, rgba(40, 10, 50, 0.12) 0%, transparent 60%);
+  color: var(--text);
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  padding: 1rem;
   overflow-x: hidden;
 }
 
-@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@media (min-width: 768px) { .homePage { padding: 1.5rem 2rem; } }
+@media (min-width: 1200px){ .homePage { padding: 2rem 3rem; } }
 
+/* ── Animations ───────────────────────────────────────────────── */
+@keyframes fadeUp   { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeIn   { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pulse    { 0%,100%{ opacity: 0.6; } 50%{ opacity: 1; } }
+@keyframes bloodDrip{ 0%{ transform: scaleY(0); opacity: 0; } 100%{ transform: scaleY(1); opacity: 1; } }
+@keyframes breathe  { 0%,100%{ box-shadow: 0 0 8px var(--malk-glow); } 50%{ box-shadow: 0 0 22px var(--malk-glow), inset 0 0 12px rgba(80,0,80,0.3); } }
+@keyframes twitch   { 0%,100%{ transform: translate(0,0); } 20%{ transform: translate(-2px,1px); } 40%{ transform: translate(2px,-1px); } 60%{ transform: translate(-1px,2px); } 80%{ transform: translate(1px,-2px); } }
+@keyframes shimmer  { 0%{ background-position: -200% center; } 100%{ background-position: 200% center; } }
+
+/* ── Loading / Empty ──────────────────────────────────────────── */
 .loadingScreen {
-  height: 80vh; display: grid; place-items: center;
-  font-family: 'Cinzel', serif; color: var(--text-muted); letter-spacing: 0.1em;
+  display: grid; place-items: center; min-height: 80dvh;
+  font-family: 'Cinzel', serif; color: var(--text-dim); letter-spacing: 0.12em;
 }
-.errorCard { padding: 20px; background: rgba(50,0,0,0.5); border: 1px solid #f00; color: #ffaaaa; text-align: center; margin-bottom: 20px; }
+.emptyState {
+  padding: 1.5rem; text-align: center; color: var(--text-ghost);
+  font-style: italic; font-size: 0.9rem;
+}
+.errorBanner {
+  background: rgba(139,0,0,0.2); border: 1px solid var(--blood);
+  color: #ffb0b0; padding: 0.75rem 1rem; border-radius: var(--radius);
+  margin-bottom: 1.5rem; font-size: 0.9rem; text-align: center;
+}
 
-/* --- 1. IDENTITY HEADER --- */
+/* ── No-character screen ──────────────────────────────────────── */
+.noCharPage  { display: grid; place-items: center; min-height: 80dvh; padding: 1rem; }
+.noCharCard  {
+  background: var(--bg-panel); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 2.5rem 2rem; text-align: center;
+  max-width: 480px; width: 100%;
+  box-shadow: 0 0 40px rgba(0,0,0,0.8), 0 0 80px rgba(139,0,0,0.05);
+  animation: fadeUp 0.7s ease-out;
+}
+.noCharRose  { font-size: 3rem; margin-bottom: 1rem; }
+.noCharTitle { font-family: 'Cinzel', serif; font-size: 1.6rem; color: var(--text); margin: 0 0 0.75rem; }
+.noCharSub   { color: var(--text-dim); font-size: 1rem; line-height: 1.6; margin: 0 0 2rem; }
+.noCharBtn   {
+  background: var(--blood-hi); border: none; color: #fff;
+  font-family: 'Cinzel', serif; font-size: 0.9rem; letter-spacing: 0.08em;
+  padding: 0.75rem 2rem; border-radius: var(--radius-sm); cursor: pointer;
+  transition: background 0.25s, box-shadow 0.25s;
+}
+.noCharBtn:hover { background: #d01830; box-shadow: 0 0 16px var(--blood-glow); }
+
+/* ════════════════════════════════════════════════════════════════
+   1. IDENTITY HEADER
+════════════════════════════════════════════════════════════════ */
 .identityHeader {
-  display: flex; align-items: center; justify-content: space-between;
-  background: linear-gradient(90deg, rgba(20,20,20,0.9), rgba(10,10,10,0.8));
-  border-bottom: 1px solid #333; padding: 1.5rem 2rem; border-radius: 12px;
-  margin-bottom: 2rem; backdrop-filter: blur(10px);
-  box-shadow: 0 10px 30px rgba(0,0,0,0.5); animation: fadeIn 0.6s ease-out;
-}
-
-.idLeft { display: flex; align-items: center; gap: 1.5rem; }
-
-.clanIconContainer {
-  position: relative; width: 70px; height: 70px; display: grid; place-items: center;
-}
-.clanIconContainer::before {
-  content: ''; position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--accent);
-  box-shadow: 0 0 15px var(--accent-glow);
-}
-.clanSymbol { width: 50px; height: 50px; object-fit: contain; z-index: 2; }
-
-.idInfo h1 {
-  font-family: 'Cinzel', serif; font-size: 1.8rem; margin: 0;
-  background: linear-gradient(to right, #fff, #aaa); -webkit-background-clip: text; color: transparent;
-}
-.idInfo p { margin: 0.2rem 0 0; color: var(--text-muted); font-size: 0.9rem; }
-.xpBadge {
-  background: #222; padding: 2px 8px; border-radius: 4px; border: 1px solid #444;
-  color: var(--gold); font-weight: bold; margin-left: 8px;
-}
-.idRight { opacity: 0.6; filter: grayscale(100%); transition: 0.3s; }
-.idRight:hover { opacity: 1; filter: grayscale(0%); }
-.clanLogoText { height: 50px; width: auto; }
-
-
-/* --- 2. TOP ROW: FEEDS (1/5 - 2/5 - 2/5) --- */
-.topFeeds {
-  display: grid;
-  grid-template-columns: 1fr 2fr 2fr; /* 1:2:2 Ratio */
-  gap: 1.5rem;
-  margin-bottom: 3rem;
-  align-items: start;
-}
-
-/* Common Logbook Style */
-.logbook {
-  height: 100%;
-  min-height: 500px;
-  display: flex;
-  flex-direction: column;
-  border-radius: 8px;
-  overflow: hidden;
-  animation: fadeIn 0.8s ease-out;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  position: relative;
   background: var(--bg-panel);
-  border: 1px solid #333;
-}
-
-/* -- Col 1: Newspaper -- */
-.newspaper {
-  background-color: var(--paper-bg);
-  color: var(--paper-text);
-  position: relative;
-  border: 1px solid #d3cabb;
-  min-height: 500px;
-  display: flex; flex-direction: column;
-  border-radius: 2px;
-  box-shadow: 
-    0 1px 1px rgba(0,0,0,0.15), 
-    0 10px 0 -5px #d3cabb, 
-    0 20px 0 -10px #c3bbaa, 
-    5px 5px 15px rgba(0,0,0,0.5);
-  
-  /* Imperfect Box */
-  transform: rotate(-2deg) translateX(10px);
-  transition: transform 0.3s ease;
-  z-index: 1;
-}
-.newspaper:hover {
-  transform: rotate(0deg) scale(1.02);
-  z-index: 10;
-}
-
-.newspaper::after {
-  content: ""; position: absolute; inset: 0;
-  background-image: url("https://www.transparenttextures.com/patterns/aged-paper.png");
-  opacity: 0.4; pointer-events: none;
-}
-
-.paperHeader {
-  text-align: center; border-bottom: 3px double #1a1a1a; padding: 15px; margin-bottom: 10px;
-}
-.paperName {
-  font-family: 'UnifrakturMaguntia', cursive; font-size: 1.8rem; margin: 0; line-height: 1; color: #111;
-}
-.paperDate {
-  font-family: 'Cinzel', serif; font-size: 0.6rem; font-weight: bold; color: #555;
-  text-transform: uppercase; margin-top: 4px; display: block; letter-spacing: 2px;
-}
-.headlineList {
-  list-style: none; padding: 0 15px; margin: 0; display: flex; flex-direction: column; gap: 12px;
-  flex-grow: 1; overflow-y: auto;
-}
-.headlineItem { border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 8px; }
-.headlineItem:last-child { border-bottom: none; }
-.headlineLink { text-decoration: none; color: inherit; display: block; }
-.headlineLink:hover .headlineTitle { text-decoration: underline; color: #000; }
-
-.outletBadge {
-  display: inline-block; font-size: 0.6rem; font-weight: 900; color: #fff; background: #333;
-  padding: 1px 4px; border-radius: 2px; margin-right: 6px; vertical-align: middle; text-transform: uppercase;
-}
-.tagERT { background-color: #0057b7; }
-.tagSKAI { background-color: #004d99; }
-.tagALPHA { background-color: #0093d0; }
-.tagMEGA { background-color: #222; }
-.tagANT1 { background-color: #f0ab00; color: #000; }
-.tagANNOUNCEMENT { background-color: #b40f1f; font-family: 'Cinzel', serif; letter-spacing: 1px; }
-
-.headlineTitle {
-  font-family: 'Playfair Display', serif; font-size: 0.95rem; font-weight: 700; line-height: 1.2; margin: 4px 0 0 0; color: #222;
-}
-.headlineDate { font-size: 0.65rem; color: #666; display: block; margin-top: 2px; font-style: italic; }
-.readMore {
-  display: block; text-align: center; padding: 15px; font-family: 'Cinzel', serif; font-size: 0.8rem;
-  color: #888; text-decoration: none; border-top: 1px solid #ccc; margin-top: auto;
-}
-.readMore:hover { color: #b01423; background: rgba(0,0,0,0.02); }
-
-/* -- Col 2 & 3: Logbooks -- */
-.logHeader {
-  background: #1a1a1a; padding: 12px 15px; border-bottom: 1px solid #333;
-  display: flex; align-items: center; justify-content: space-between;
-}
-.logTitle {
-  font-family: 'Cinzel', serif; font-size: 1rem; color: var(--text-main); margin: 0;
-  display: flex; align-items: center; gap: 8px;
-}
-.logIcon { color: var(--accent); }
-.logList {
-  list-style: none; padding: 0; margin: 0; overflow-y: auto; flex-grow: 1;
-}
-.logItem { border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.2s; }
-.logItem:hover { background: rgba(255,255,255,0.02); }
-.logLink { display: block; padding: 12px 15px; text-decoration: none; color: inherit; }
-.logMeta { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 0.75rem; color: #666; }
-.logContent { font-size: 0.9rem; color: #ccc; display: block; line-height: 1.4; }
-.statusBadge { font-size: 0.7rem; padding: 1px 5px; border-radius: 3px; text-transform: uppercase; }
-.statusapproved { color: #4f4; border: 1px solid #4f4; }
-.statusrejected { color: #f44; border: 1px solid #f44; }
-.statuspending, .statussubmitted { color: #fc0; border: 1px solid #fc0; }
-
-
-/* --- 3. BOTTOM: NAVIGATION --- */
-.navSection {
-  border-top: 1px solid #222;
-  padding-top: 2rem;
-}
-.navGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 1.5rem;
-}
-
-.navCard {
-  position: relative;
-  background: linear-gradient(145deg, #1a1a1a, #111);
-  border: 1px solid #333;
-  padding: 1.2rem;
-  border-radius: 8px;
-  text-decoration: none;
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  display: flex; flex-direction: column; justify-content: center; text-align: center;
-  min-height: 100px;
-}
-.navCard::before {
-  content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 3px;
-  background: var(--accent); opacity: 0; transition: 0.3s;
-}
-.navCard:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 25px rgba(0,0,0,0.7);
-  border-color: #555;
-}
-.navCard:hover::before { opacity: 1; box-shadow: 0 0 10px var(--accent); }
-
-.navIcon { font-size: 2rem; margin-bottom: 0.5rem; color: #555; transition: color 0.3s; }
-.navCard:hover .navIcon { color: #fff; }
-.navTitle { font-family: 'Cinzel', serif; font-size: 1rem; font-weight: 700; color: #ccc; margin-bottom: 4px; }
-.navSub { font-size: 0.75rem; color: #666; font-family: 'Inter', sans-serif; }
-
-
-/* =========================================
-   THE COBWEB BUTTON (Malkavian Exclusive)
-   ========================================= */
-.malkNavCard {
-  /* Layout (Matches navCard structure) */
-  position: relative;
-  display: flex; /* Explicit display */
-  flex-direction: column;
-  justify-content: center;
-  text-align: center;
-  min-height: 100px;
-  padding: 1.2rem;
-  border-radius: 8px;
-  text-decoration: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
   overflow: hidden;
-  transition: all 0.3s ease;
-  cursor: pointer;
-
-  /* VISUALS: The Madness */
-  background: radial-gradient(circle at 50% 50%, #1a0b1a 0%, #000000 100%);
-  border: 1px solid #5a2a6a;
-  box-shadow: 0 0 10px rgba(90, 42, 106, 0.3);
-  animation: breatheMadness 4s infinite ease-in-out;
+  animation: fadeUp 0.5s ease-out both;
 }
 
-/* The "Cracked" Border Effect */
-.malkNavCard::before {
+/* Red top accent stripe */
+.identityHeader::before {
   content: '';
-  position: absolute;
-  inset: 0;
-  border: 1px solid rgba(255, 0, 255, 0.1);
-  clip-path: polygon(0 0, 100% 0, 100% 10%, 90% 15%, 100% 20%, 100% 100%, 0 100%, 0 80%, 5% 75%, 0 70%);
-  pointer-events: none;
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--blood-hi), transparent);
 }
 
-.malkNavCard:hover {
-  background: #2a0f2a;
-  border-color: #d844ff;
-  box-shadow: 0 0 20px rgba(216, 68, 255, 0.6), inset 0 0 20px rgba(80, 0, 80, 0.8);
-  transform: scale(1.02) rotate(-1deg); /* Unsettling tilt */
-  z-index: 10;
+/* Decorative corner marks */
+.corner {
+  position: absolute; width: 12px; height: 12px;
+  border-color: var(--gold); border-style: solid;
+  opacity: 0.5;
+}
+.cornerTL { top: 6px; left: 6px;  border-width: 1px 0 0 1px; }
+.cornerTR { top: 6px; right: 6px; border-width: 1px 1px 0 0; }
+.cornerBL { bottom: 6px; left: 6px;  border-width: 0 0 1px 1px; }
+.cornerBR { bottom: 6px; right: 6px; border-width: 0 1px 1px 0; }
+
+.headerInner {
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
 }
 
-/* Icon Styling */
-.malkIcon {
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
-  color: #9d54c4;
-  text-shadow: 0 0 5px #9d54c4;
-  transition: 0.2s;
+/* Clan ring */
+.clanRing {
+  flex-shrink: 0;
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  border: 1px solid var(--blood);
+  box-shadow: 0 0 12px var(--blood-glow), inset 0 0 12px rgba(0,0,0,0.6);
+  display: grid; place-items: center;
+  background: radial-gradient(circle, #1a0a0a 0%, #0a0a0a 100%);
+}
+@media (min-width: 480px) { .clanRing { width: 64px; height: 64px; } }
+
+.clanSymbol { width: 70%; height: 70%; object-fit: contain; opacity: 0.9; }
+
+/* Name meta */
+.headerMeta { flex: 1; min-width: 0; }
+.charName {
+  font-family: 'Cinzel', serif; font-size: 1.4rem; font-weight: 700;
+  margin: 0; line-height: 1.1;
+  background: linear-gradient(135deg, #fff 0%, #b0a090 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+@media (min-width: 480px) { .charName { font-size: 1.7rem; } }
+@media (min-width: 768px) { .charName { font-size: 2rem; } }
+
+.charSub { margin: 0.3rem 0 0; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.clanLabel { color: var(--text-dim); font-size: 0.9rem; font-style: italic; }
+.separator { color: var(--border-hi); }
+.xpChip {
+  background: var(--bg-raised); border: 1px solid var(--border-hi);
+  color: var(--gold-hi); font-family: 'Cinzel', serif; font-size: 0.75rem;
+  padding: 1px 7px; border-radius: 3px; font-style: normal;
 }
 
-.malkNavCard:hover .malkIcon {
-  color: #fff;
-  text-shadow: 2px 2px 0px #ff00ff, -2px -2px 0px #00ffff; /* Chromatic Aberration */
-  animation: twitch 0.3s infinite;
+/* Watermark clan logo */
+.clanWatermark {
+  position: absolute; right: 1rem; top: 50%; transform: translateY(-50%);
+  opacity: 0.06; filter: grayscale(100%); pointer-events: none;
+  transition: opacity 0.4s;
+}
+.identityHeader:hover .clanWatermark { opacity: 0.12; }
+.clanLogo { height: 55px; width: auto; }
+
+/* Quota bar */
+.quotaBar {
+  margin-top: 1rem;
+  display: flex; align-items: center; gap: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+.quotaLabel { font-size: 0.75rem; color: var(--text-dim); white-space: nowrap; }
+.quotaTrack {
+  flex: 1; height: 4px; background: var(--bg-raised);
+  border-radius: 2px; position: relative; display: flex; align-items: center;
+}
+.quotaFill {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  background: linear-gradient(90deg, var(--blood), var(--blood-hi));
+  border-radius: 2px; transition: width 0.6s ease;
+  box-shadow: 0 0 6px var(--blood-glow);
+}
+.quotaPip {
+  flex: 1; height: 10px; border-radius: 1px; border: 1px solid var(--border-hi);
+  background: transparent; transition: background 0.3s;
+  position: relative; z-index: 1; margin: 0 1px;
+}
+.quotaPipUsed { background: var(--blood-hi); border-color: var(--blood-hi); box-shadow: 0 0 4px var(--blood-glow); }
+.quotaCount { font-family: 'Cinzel', serif; font-size: 0.75rem; color: var(--gold-hi); white-space: nowrap; }
+
+/* ════════════════════════════════════════════════════════════════
+   2. FEEDS
+════════════════════════════════════════════════════════════════ */
+.feeds {
+  display: grid;
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+  animation: fadeUp 0.6s 0.1s ease-out both;
 }
 
-/* Text Styling */
-.malkTitle {
-  font-family: 'Cinzel', serif;
-  font-size: 1rem;
-  font-weight: 700;
-  color: #e0b0ff;
-  letter-spacing: 1px;
+/* Stacked on mobile; side-by-side on tablet+; 3-col on desktop */
+@media (min-width: 640px) {
+  .feeds { grid-template-columns: 1fr 1fr; }
+  .chronicle { grid-column: 1 / -1; }  /* full-width on tablet */
+}
+@media (min-width: 1100px) {
+  .feeds { grid-template-columns: 1fr 2fr 2fr; align-items: start; }
+  .chronicle { grid-column: auto; }    /* restore 3-col on desktop */
 }
 
-.malkSub {
-  font-size: 0.75rem;
-  color: #a27aa5;
-  font-family: 'Inter', sans-serif;
-  font-style: italic;
+/* ── The Chronicle (newspaper) ──────────────────────────────── */
+.chronicle {
+  background: var(--paper-bg);
+  color: var(--paper-text);
+  border-radius: 2px;
+  overflow: hidden;
+  min-height: 280px;
+  display: flex; flex-direction: column;
+  position: relative;
+  box-shadow:
+    0 2px 4px rgba(0,0,0,0.2),
+    5px 5px 0 -1px #cfc8b2,
+    10px 10px 0 -2px #bfb89e,
+    4px 8px 20px rgba(0,0,0,0.5);
 }
 
-/* --- Animations --- */
-@keyframes breatheMadness {
-  0% { border-color: #5a2a6a; box-shadow: 0 0 5px rgba(90, 42, 106, 0.3); }
-  50% { border-color: #8a3a9a; box-shadow: 0 0 15px rgba(138, 58, 154, 0.5); }
-  100% { border-color: #5a2a6a; box-shadow: 0 0 5px rgba(90, 42, 106, 0.3); }
+/* Paper texture overlay */
+.chronicle::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background-image: url('https://www.transparenttextures.com/patterns/old-mathematics.png');
+  opacity: 0.18;
 }
 
-@keyframes twitch {
-  0% { transform: translate(0, 0); }
-  20% { transform: translate(-2px, 1px); }
-  40% { transform: translate(2px, -1px); }
-  60% { transform: translate(-1px, 2px); }
-  80% { transform: translate(1px, -2px); }
-  100% { transform: translate(0, 0); }
-}
-
-
-/* --- RESPONSIVE --- */
-@media (max-width: 1200px) {
-  .topFeeds { 
-    grid-template-columns: 1fr; 
-    grid-template-rows: auto auto auto;
-    gap: 2rem;
-  } 
-  .newspaper { 
-    transform: rotate(0deg) translateX(0); /* Reset rotation on mobile */
-    max-width: 600px; 
-    margin: 0 auto; 
-    width: 100%;
+/* Tilt only on desktop — too jarring on mobile */
+@media (min-width: 1100px) {
+  .chronicle {
+    transform: rotate(-1.5deg) translateX(6px);
+    transition: transform 0.35s ease;
+  }
+  .chronicle:hover {
+    transform: rotate(0deg) scale(1.01);
+    z-index: 5;
   }
 }
 
-@media (max-width: 600px) {
-  .homePage { padding: 1rem; }
-  .identityHeader { flex-direction: column; text-align: center; gap: 1rem; }
-  .idLeft { flex-direction: column; }
-  .idRight { display: none; }
-  .navGrid { grid-template-columns: 1fr 1fr; } /* 2 col nav on phone */
+.chronicleHeader {
+  text-align: center; padding: 1rem 1rem 0.5rem;
+  border-bottom: 3px double var(--paper-text);
+  position: relative; z-index: 1;
+}
+.chronicleRule {
+  display: inline-block; width: 30%; height: 1px;
+  background: var(--paper-text); vertical-align: middle; margin: 0 0.5rem;
+}
+.chronicleName {
+  font-family: 'UnifrakturMaguntia', cursive;
+  font-size: 1.6rem; margin: 0; line-height: 1; color: #111;
+  display: inline; vertical-align: middle;
+}
+@media (min-width: 480px) { .chronicleName { font-size: 2rem; } }
+
+.chronicleDate {
+  display: block; margin-top: 4px;
+  font-family: 'Cinzel', serif; font-size: 0.6rem; letter-spacing: 2px;
+  text-transform: uppercase; color: #555;
+}
+
+.headlineList {
+  list-style: none; padding: 0.5rem 1rem; margin: 0;
+  flex: 1; overflow-y: auto; position: relative; z-index: 1;
+  display: flex; flex-direction: column; gap: 0.6rem;
+}
+.headlineItem { border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 0.6rem; }
+.headlineItem:last-child { border-bottom: none; }
+
+.headlineLink { text-decoration: none; color: inherit; display: block; }
+.headlineLink:hover .headlineTitle { text-decoration: underline; }
+
+.outletBadge {
+  display: inline-block; font-size: 0.58rem; font-weight: 900;
+  color: #fff; background: #333; padding: 1px 5px; border-radius: 2px;
+  margin-right: 5px; vertical-align: middle; text-transform: uppercase;
+}
+.tagERT    { background: #0057b7; }
+.tagSKAI   { background: #004d99; }
+.tagALPHA  { background: #0093d0; }
+.tagMEGA   { background: #222; }
+.tagANT1   { background: #f0ab00; color: #000; }
+.tagANNOUNCEMENT { background: #8b0000; font-family: 'Cinzel', serif; }
+.tagDECREE { background: #8b0000; font-family: 'Cinzel', serif; }
+
+.headlineTitle {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 0.95rem; font-weight: 600; line-height: 1.25;
+  margin: 4px 0 0; color: #1a1a1a;
+}
+.headlineDate { font-size: 0.65rem; color: #666; display: block; margin-top: 2px; font-style: italic; }
+
+.chronicleReadMore {
+  display: block; text-align: center; padding: 0.75rem;
+  font-family: 'Cinzel', serif; font-size: 0.75rem; color: #777;
+  text-decoration: none; border-top: 1px solid #ccc;
+  margin-top: auto; position: relative; z-index: 1;
+  transition: color 0.2s, background 0.2s;
+}
+.chronicleReadMore:hover { color: var(--blood-hi); background: rgba(0,0,0,0.03); }
+
+/* ── Logbooks (whispers + actions) ──────────────────────────── */
+.logbook {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex; flex-direction: column;
+  min-height: 260px;
+  overflow: hidden;
+}
+
+.logHeader {
+  background: var(--bg-raised);
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
+}
+.logTitle {
+  font-family: 'Cinzel', serif; font-size: 0.85rem; letter-spacing: 0.05em;
+  color: var(--text); margin: 0; display: flex; align-items: center; gap: 0.5rem;
+}
+.logDot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--blood-hi); box-shadow: 0 0 6px var(--blood-glow);
+  animation: pulse 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+.logViewAll {
+  font-size: 0.75rem; color: var(--text-dim); text-decoration: none;
+  transition: color 0.2s;
+}
+.logViewAll:hover { color: var(--gold-hi); }
+
+.logList { list-style: none; padding: 0; margin: 0; overflow-y: auto; flex: 1; }
+.logItem {
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  transition: background 0.2s;
+}
+.logItem:hover { background: rgba(255,255,255,0.025); }
+.logItem .emptyState { padding: 1.5rem; }
+
+.logLink { display: block; padding: 0.7rem 1rem; text-decoration: none; color: inherit; }
+.logRow  { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; margin-bottom: 3px; flex-wrap: wrap; }
+.logFrom { font-size: 0.82rem; color: var(--text); font-weight: 600; }
+.logTime { font-size: 0.7rem; color: var(--text-ghost); flex-shrink: 0; }
+.logPreview { font-size: 0.85rem; color: var(--text-dim); line-height: 1.4; display: block; font-style: italic; }
+
+.npcTag {
+  display: inline-block; font-size: 0.6rem; font-weight: 900;
+  background: #6b0040; color: #ffaad4; padding: 1px 4px; border-radius: 2px;
+  margin-right: 4px; font-style: normal; vertical-align: middle;
+}
+
+/* Status badges */
+.statusBadge {
+  font-size: 0.65rem; padding: 1px 6px; border-radius: 3px;
+  text-transform: uppercase; font-family: 'Cinzel', serif; letter-spacing: 0.05em;
+  border: 1px solid currentColor;
+}
+.status_approved  { color: #5cf088; }
+.status_rejected  { color: #f05050; }
+.status_pending,
+.status_submitted { color: #f0c040; }
+
+/* ════════════════════════════════════════════════════════════════
+   3. NAV GRID
+════════════════════════════════════════════════════════════════ */
+.navSection { animation: fadeUp 0.6s 0.2s ease-out both; }
+
+.dividerLine {
+  display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;
+}
+.dividerLine::before,
+.dividerLine::after {
+  content: ''; flex: 1; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-hi), transparent);
+}
+.dividerIcon { color: var(--gold); font-size: 0.8rem; flex-shrink: 0; }
+
+/* Mobile: 2 columns; tablet: 3–4; desktop: up to 5 */
+.navGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+@media (min-width: 480px)  { .navGrid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 768px)  { .navGrid { grid-template-columns: repeat(4, 1fr); gap: 1rem; } }
+@media (min-width: 1200px) { .navGrid { grid-template-columns: repeat(5, 1fr); } }
+
+.navCard {
+  position: relative; overflow: hidden;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 0.75rem;
+  text-decoration: none;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; gap: 0.3rem;
+  min-height: 90px;
+  transition: transform 0.25s, border-color 0.25s, box-shadow 0.25s;
+}
+/* bottom blood line */
+.navCard::after {
+  content: '';
+  position: absolute; bottom: 0; left: 20%; right: 20%; height: 2px;
+  background: var(--blood-hi);
+  transform: scaleX(0); transform-origin: center;
+  transition: transform 0.3s ease;
+  box-shadow: 0 0 8px var(--blood-glow);
+}
+.navCard:hover {
+  transform: translateY(-3px);
+  border-color: var(--border-hi);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+}
+.navCard:hover::after { transform: scaleX(1); }
+
+.navCardIcon {
+  font-size: 1.5rem; line-height: 1;
+  filter: grayscale(60%); transition: filter 0.25s;
+}
+.navCard:hover .navCardIcon { filter: grayscale(0%); }
+.navCardTitle {
+  font-family: 'Cinzel', serif; font-size: 0.8rem; font-weight: 600;
+  color: var(--text); letter-spacing: 0.04em;
+}
+.navCardSub { font-size: 0.7rem; color: var(--text-dim); }
+
+/* ── Malkavian Cobweb card ──────────────────────────────────── */
+.malkCard {
+  background: radial-gradient(circle at 50% 50%, #180b1a 0%, #050505 100%);
+  border-color: #5a2a6a;
+  animation: breathe 4s ease-in-out infinite;
+  cursor: pointer;
+}
+.malkCard::before {
+  content: '';
+  position: absolute; inset: 0;
+  border: 1px solid rgba(255,0,255,0.08);
+  clip-path: polygon(0 0, 100% 0, 100% 10%, 90% 15%, 100% 20%, 100% 100%, 0 100%, 0 80%, 5% 75%, 0 70%);
+  pointer-events: none;
+}
+.malkCard:hover {
+  border-color: #c030ff;
+  box-shadow: 0 0 20px rgba(190, 60, 255, 0.4), inset 0 0 20px rgba(70,0,70,0.5);
+  transform: scale(1.02) rotate(-0.5deg);
+}
+.malkCard::after { background: #d844ff; }
+
+.malkIcon { color: #a060cc; text-shadow: 0 0 8px #a060cc; }
+.malkCard:hover .malkIcon {
+  color: #fff;
+  text-shadow: 2px 2px 0 #ff00ff, -2px -2px 0 #00ffff;
+  animation: twitch 0.25s infinite;
+}
+.malkTitle { color: #ddb8ff; }
+.malkSub   { color: #9070aa; font-style: italic; }
+
+/* ════════════════════════════════════════════════════════════════
+   SHATTER OVERLAY (self-contained, no ShatterEffect.module.css needed)
+════════════════════════════════════════════════════════════════ */
+.shatterOverlay {
+  position: fixed; inset: 0; z-index: 9999;
+  pointer-events: none; overflow: hidden;
+}
+.shatterImpact {
+  position: absolute;
+  left: var(--click-x, 50%); top: var(--click-y, 50%);
+  width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(150, 255, 240, 0.9);
+  box-shadow: 0 0 20px 10px rgba(120,240,220,0.4);
+  transform: translate(-50%, -50%);
+  animation: fadeIn 0.08s ease-out both;
+}
+.shatterShard {
+  position: absolute; inset: 0;
+  animation: shardFly var(--delay, 0s) calc(0.12s + var(--delay, 0s)) forwards;
+}
+@keyframes shardFly {
+  0%   { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 1; }
+  100% { transform: translate(var(--x), var(--y)) rotate(var(--rotate)) scale(var(--scale)); opacity: 0; }
+}
+.shatterShape {
+  position: absolute; inset: 0;
+  background: var(--tint, rgba(255,255,255,0.04));
+  outline: 1px solid var(--edge, rgba(200,240,255,0.4));
 }
