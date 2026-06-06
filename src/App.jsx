@@ -34,6 +34,8 @@ import NotFound from './pages/404';
 import Hierarchy from './components/HierarchyView.jsx'; 
 import Announcements from './components/AnnouncementsView.jsx'; 
 import Coteries from './components/CoterieManager.jsx';
+import LiveSession from './pages/LiveSession';
+import LiveSessionDashboard from './pages/admin/LiveSessionDashboard';
 
 function Private({ children }) {
   const { user } = useContext(AuthCtx);
@@ -101,6 +103,7 @@ export default function App() {
               <Route path="/downtimes" element={<Private><DownTimes/></Private>} />
               <Route path="/boons" element={<Private><Boons /></Private>} />
               <Route path="/comms" element={<Private><Comms/></Private>} />
+              <Route path="/live-session" element={<Private><LiveSession/></Private>} />
               <Route path="/court" element={<Private><Court/></Private>} />
               <Route path="/court/hierarchy" element={<Private><Hierarchy /></Private>} />
               <Route path="/court/announcements" element={<Private><Announcements /></Private>} />
@@ -109,6 +112,7 @@ export default function App() {
               <Route path="/news" element={<Private><News/></Private>} />
 
               <Route path="/admin" element={<AdminOnly><Admin/></AdminOnly>} />
+              <Route path="/admin/live-session" element={<AdminOnly><LiveSessionDashboard/></AdminOnly>} />
               <Route path="/admin/npcs" element={<AdminOnly><NPCs/></AdminOnly>} />
               <Route path="/admin/npcs/:id" element={<AdminOnly><AdminNPCView/></AdminOnly>} />
               

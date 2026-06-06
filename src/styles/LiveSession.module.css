@@ -1,0 +1,338 @@
+.page {
+  min-height: calc(100dvh - 120px);
+  background: radial-gradient(circle at top, #2d0f14 0%, #120d10 55%, #0b0a0d 100%);
+  color: #ece8ea;
+  padding: 1rem;
+}
+
+.playerPanel,
+.adminPanel {
+  width: min(1100px, 100%);
+  margin: 0 auto;
+  background: rgba(12, 12, 14, 0.92);
+  border: 1px solid #3f2228;
+  border-radius: 16px;
+  padding: 1rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+}
+
+.playerPanel h1, .playerPanel h2, .playerPanel h3, .playerPanel h4,
+.adminPanel h1, .adminPanel h2, .adminPanel h3, .adminPanel h4 {
+  margin: 0.2rem 0 0.6rem;
+}
+
+.subtle {
+  margin-top: 0;
+  color: #c4b5b8;
+}
+
+.joinRow,
+.adminControls,
+.actionRow {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.8rem;
+}
+
+.joinRow input,
+.adminControls input,
+.adminControls select,
+.actionRow input,
+.actionRow select,
+.lookupBox select {
+  flex: 1;
+  min-width: 150px;
+  background: #17171c;
+  color: #f2eef0;
+  border: 1px solid #4c3036;
+  border-radius: 10px;
+  padding: 0.65rem;
+}
+
+.page button {
+  border: none;
+  background: linear-gradient(180deg, #8a0f1a, #5d0913);
+  color: white;
+  border-radius: 10px;
+  padding: 0.65rem 0.9rem;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.page button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.statusLine {
+  margin-bottom: 0.6rem;
+  color: #d0b9be;
+}
+
+.hungerMeter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0.7rem 0;
+}
+
+.hungerDots {
+  display: flex;
+  gap: 0.35rem;
+  margin: 0.45rem 0;
+}
+
+.hungerOn,
+.hungerOff {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.hungerOn { background: #ef4444; box-shadow: 0 0 10px rgba(239, 68, 68, 0.65); }
+.hungerOff { background: #3a3a44; }
+
+.trackerRow {
+  margin: 0.5rem 0;
+}
+
+.trackerLabel {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.2rem;
+  font-size: 0.9rem;
+}
+
+.trackerBar,
+.trackBar {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: #2b2b31;
+  overflow: hidden;
+}
+
+.trackerBar span,
+.trackBar span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #e11d48, #b91c1c);
+}
+
+.quickRows {
+  margin-top: 1rem;
+  border-top: 1px solid #382126;
+  padding-top: 0.7rem;
+}
+
+.scrollChips {
+  display: flex;
+  gap: 0.45rem;
+  overflow-x: auto;
+  padding-bottom: 0.2rem;
+  margin-bottom: 0.5rem;
+}
+
+.chip,
+.chipActive {
+  background: #25252b;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.chipActive {
+  background: linear-gradient(180deg, #be123c, #881337);
+}
+
+.quickActionsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 0.4rem;
+}
+
+.resultCard,
+.lookupBox,
+.broadcastPanel {
+  margin-top: 0.9rem;
+  border: 1px solid #3f272c;
+  border-radius: 12px;
+  padding: 0.8rem;
+  background: rgba(10, 10, 12, 0.7);
+}
+
+.resultFlags {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.resultFlags span {
+  background: #3f2027;
+  border: 1px solid #6f2f3c;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.85rem;
+}
+
+.diceRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.6rem 0;
+}
+
+.die,
+.dieSelected,
+.hungerDie {
+  min-width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #222229;
+  font-weight: 700;
+}
+
+.dieSelected {
+  background: #eab308;
+  color: #231b00;
+}
+
+.hungerDie {
+  background: #7f1d1d;
+}
+
+.columns {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 1rem;
+}
+
+.playerGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.8rem;
+}
+
+.playerCard {
+  background: rgba(17, 17, 21, 0.95);
+  border: 1px solid #3d272c;
+  border-radius: 12px;
+  padding: 0.8rem;
+}
+
+.playerHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+}
+
+.playerHead p {
+  margin: 0;
+  color: #bba7ab;
+  font-size: 0.9rem;
+}
+
+.npcTag {
+  border: 1px solid #5e2f39;
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+.trackWrap {
+  margin-top: 0.5rem;
+}
+
+.trackLabel {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+}
+
+.quickBtns {
+  margin-top: 0.6rem;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+}
+
+.quickBtns button {
+  font-size: 0.78rem;
+  padding: 0.45rem 0.35rem;
+}
+
+.rollHistoryList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.rollEntry {
+  border: 1px solid #3b252a;
+  border-radius: 10px;
+  padding: 0.55rem;
+  background: #14141a;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.rollEntry p {
+  margin: 0.1rem 0 0;
+  color: #b59ea3;
+  font-size: 0.85rem;
+}
+
+.rollMeta {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.timerBadge {
+  padding: 0.5rem 0.7rem;
+  border-radius: 999px;
+  background: #34191f;
+  border: 1px solid #64313b;
+  font-weight: 700;
+}
+
+.broadcastItem {
+  border-top: 1px solid #322026;
+  padding-top: 0.35rem;
+  margin-top: 0.35rem;
+}
+
+.infoBox,
+.errorBox,
+.emptyState {
+  margin-top: 0.6rem;
+  border-radius: 10px;
+  padding: 0.6rem;
+}
+
+.infoBox { background: rgba(30, 64, 175, 0.2); border: 1px solid rgba(59, 130, 246, 0.4); }
+.errorBox { background: rgba(127, 29, 29, 0.3); border: 1px solid rgba(239, 68, 68, 0.6); }
+.emptyState { background: rgba(42, 32, 35, 0.8); border: 1px dashed #5f4b4f; }
+
+@media (max-width: 900px) {
+  .columns {
+    grid-template-columns: 1fr;
+  }
+
+  .playerPanel,
+  .adminPanel {
+    padding: 0.8rem;
+    border-radius: 12px;
+  }
+
+  .quickBtns {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
