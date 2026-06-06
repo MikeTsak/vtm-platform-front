@@ -1,6 +1,6 @@
 import api from '../api';
 
-const base = '/api/live-session';
+const base = '/live-session';
 
 export const createLiveSession = async (payload) => {
   const { data } = await api.post(base, payload);
