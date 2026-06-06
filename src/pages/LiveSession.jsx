@@ -21,6 +21,7 @@ import styles from '../styles/LiveSession.module.css';
 
 const ATTRIBUTES = ['Strength', 'Dexterity', 'Stamina', 'Charisma', 'Manipulation', 'Composure', 'Intelligence', 'Wits', 'Resolve'];
 const SKILLS = ['Athletics', 'Brawl', 'Craft', 'Drive', 'Firearms', 'Larceny', 'Melee', 'Stealth', 'Survival', 'Animal Ken', 'Etiquette', 'Insight', 'Intimidation', 'Leadership', 'Performance', 'Persuasion', 'Streetwise', 'Subterfuge', 'Academics', 'Awareness', 'Finance', 'Investigation', 'Medicine', 'Occult', 'Politics', 'Science', 'Technology'];
+const toInt = (value, fallback = 0) => Number(value) || fallback;
 
 const DISCIPLINE_POWERS = Object.entries(DISCIPLINES).flatMap(([discipline, body]) =>
   Object.values(body?.levels || {}).flatMap((powers) =>
@@ -327,7 +328,7 @@ export default function LiveSession() {
           <div className={styles.actionRow}>
             <label>
               Difficulty
-              <input type="number" min={0} max={10} value={difficulty} onChange={(e) => setDifficulty(Number(e.target.value) || 0)} />
+              <input type="number" min={0} max={10} value={difficulty} onChange={(e) => setDifficulty(toInt(e.target.value, 0))} />
             </label>
             <button onClick={() => executePoolRoll(currentPool, 'pool_roll', `${selectedAttribute} + ${selectedSkill}`)}>
               Roll {selectedAttribute} + {selectedSkill} ({currentPool})

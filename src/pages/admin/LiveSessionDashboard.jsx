@@ -20,7 +20,7 @@ const DISCIPLINE_LOOKUP = Object.entries(DISCIPLINES).flatMap(([discipline, body
 
 export default function LiveSessionDashboard() {
   const [sessionId, setSessionId] = useState(localStorage.getItem('adminLiveSessionId') || '');
-  const [sessionName, setSessionName] = useState('Athens Through Time Live Session');
+  const [sessionName, setSessionName] = useState('Live Session');
   const [session, setSession] = useState(null);
   const [players, setPlayers] = useState([]);
   const [rolls, setRolls] = useState([]);
@@ -96,7 +96,7 @@ export default function LiveSessionDashboard() {
 
   const endSessionTimer = () => {
     setTimerStart(null);
-    setMessage('Timer stopped. Session remains active until backend close action is implemented.');
+    setMessage('Session timer stopped.');
   };
 
   const adjustPlayer = async (characterId, deltas) => {

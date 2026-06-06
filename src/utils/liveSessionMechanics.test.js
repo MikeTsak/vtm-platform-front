@@ -41,6 +41,20 @@ describe('liveSessionMechanics', () => {
     expect(roll.normalDice).toHaveLength(0);
   });
 
+  test('rollPool with zero pool returns no dice and failure outcome', () => {
+    const roll = rollPool(0, 0, 1, () => 0.9);
+    expect(roll.normalDice).toEqual([]);
+    expect(roll.hungerDice).toEqual([]);
+    expect(roll.outcome.metDifficulty).toBe(false);
+  });
+
+  test('computeOutcome fails when difficulty is above possible successes', () => {
+    const out = computeOutcome([10, 10], [], 10);
+    expect(out.successes).toBe(4);
+    expect(out.metDifficulty).toBe(false);
+    expect(out.label).toBe('Failure');
+  });
+
   test('discipline rouse parsing works with textual costs', () => {
     expect(disciplineRequiresRouse({ cost: '1 Rouse Check' })).toBe(true);
     expect(disciplineRequiresRouse({ cost: 'Free' })).toBe(false);
