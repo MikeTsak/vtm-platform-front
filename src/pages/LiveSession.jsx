@@ -1,3 +1,4 @@
+// src/pages/LiveSession.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import api from '../api';
 import { DISCIPLINES } from '../data/disciplines';
@@ -11,414 +12,324 @@ import {
   runRouseCheck,
   summarizeTrackers,
 } from '../utils/liveSessionMechanics';
-import {
-  getLiveSession,
-  joinLiveSession,
-  logLiveSessionRoll,
-  getLiveSessionBroadcasts,
-} from '../api/liveSession';
+import { getLiveSession, joinLiveSession, logLiveSessionRoll, getLiveSessionBroadcasts } from '../api/liveSession';
 import styles from '../styles/LiveSession.module.css';
 
 const ATTRIBUTES = ['Strength', 'Dexterity', 'Stamina', 'Charisma', 'Manipulation', 'Composure', 'Intelligence', 'Wits', 'Resolve'];
 const SKILLS = ['Athletics', 'Brawl', 'Craft', 'Drive', 'Firearms', 'Larceny', 'Melee', 'Stealth', 'Survival', 'Animal Ken', 'Etiquette', 'Insight', 'Intimidation', 'Leadership', 'Performance', 'Persuasion', 'Streetwise', 'Subterfuge', 'Academics', 'Awareness', 'Finance', 'Investigation', 'Medicine', 'Occult', 'Politics', 'Science', 'Technology'];
-const toInt = (value, fallback = 0) => Number(value) || fallback;
 
-const DISCIPLINE_POWERS = Object.entries(DISCIPLINES).flatMap(([discipline, body]) =>
-  Object.values(body?.levels || {}).flatMap((powers) =>
-    (powers || []).map((power) => ({ discipline, ...power }))
-  )
-);
-
-function TrackerRow({ label, superficial = 0, aggravated = 0, max = 1 }) {
+function StatusBar({ label, sup = 0, agg = 0, max = 1 }) {
   const safeMax = Math.max(1, Number(max) || 1);
-  const total = Math.max(0, Math.min(safeMax, Number(superficial) + Number(aggravated)));
-  const pct = (total / safeMax) * 100;
+  const supPct = (Math.min(sup, safeMax) / safeMax) * 100;
+  const aggPct = (Math.min(agg, safeMax - sup) / safeMax) * 100;
+  
   return (
-    <div className={styles.trackerRow}>
-      <div className={styles.trackerLabel}>{label} <b>{safeMax - total}/{safeMax}</b></div>
-      <div className={styles.trackerBar}>
-        <span style={{ width: `${pct}%` }} />
+    <div className={styles.trackerCard}>
+      <div className={styles.trackerHeader}>
+        <span>{label}</span>
+        <span>{safeMax - (sup + agg)} / {safeMax}</span>
       </div>
-      <small>Sup {superficial} / Agg {aggravated}</small>
+      <div className={styles.barWrap}>
+        <div className={styles.barSup} style={{ width: `${supPct}%` }} />
+        <div className={styles.barAgg} style={{ width: `${aggPct}%` }} />
+        <div className={styles.barEmpty} />
+      </div>
     </div>
   );
 }
 
 export default function LiveSession() {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
-
   const [character, setCharacter] = useState(null);
   const [sheet, setSheet] = useState(null);
   const [trackers, setTrackers] = useState(null);
-
   const [sessionId, setSessionId] = useState(localStorage.getItem('liveSessionId') || '');
   const [session, setSession] = useState(null);
   const [broadcasts, setBroadcasts] = useState([]);
 
+  // Roll States
   const [difficulty, setDifficulty] = useState(2);
   const [selectedAttribute, setSelectedAttribute] = useState('Wits');
   const [selectedSkill, setSelectedSkill] = useState('Awareness');
   const [lastRoll, setLastRoll] = useState(null);
   const [wpSelections, setWpSelections] = useState([]);
-
   const [selectedPowerId, setSelectedPowerId] = useState('');
 
-  const activePower = useMemo(
-    () => DISCIPLINE_POWERS.find((power) => power.id === selectedPowerId),
-    [selectedPowerId]
-  );
+  const activePower = useMemo(() => 
+    Object.entries(DISCIPLINES).flatMap(([disc, body]) => 
+      Object.values(body?.levels || {}).flatMap(powers => powers.map(p => ({ disc, ...p })))
+    ).find(p => p.id === selectedPowerId), 
+  [selectedPowerId]);
 
-  const currentPool = useMemo(
-    () => getPoolFromCharacter(sheet, selectedAttribute, selectedSkill),
-    [sheet, selectedAttribute, selectedSkill]
-  );
+  const currentPool = useMemo(() => getPoolFromCharacter(sheet, selectedAttribute, selectedSkill), [sheet, selectedAttribute, selectedSkill]);
 
   useEffect(() => {
-    let live = true;
-
-    const load = async () => {
-      setLoading(true);
-      setError('');
-      try {
-        const { data } = await api.get('/characters/me');
-        if (!live) return;
-        const loadedCharacter = data.character || data;
-        let loadedSheet = loadedCharacter?.sheet || {};
-        if (typeof loadedSheet === 'string') {
-          try {
-            loadedSheet = JSON.parse(loadedSheet);
-          } catch {
-            loadedSheet = {};
-          }
-        }
-        setCharacter(loadedCharacter);
-        setSheet(loadedSheet);
-        setTrackers(summarizeTrackers(loadedSheet));
-      } catch {
-        if (!live) return;
-        setError('Could not load your character sheet for live session mode.');
-      } finally {
-        if (live) setLoading(false);
-      }
-    };
-
-    load();
-    return () => { live = false; };
+    api.get('/characters/me').then(({ data }) => {
+      const char = data.character || data;
+      const parsedSheet = typeof char.sheet === 'string' ? JSON.parse(char.sheet) : char.sheet;
+      setCharacter(char);
+      setSheet(parsedSheet);
+      setTrackers(summarizeTrackers(parsedSheet));
+    });
   }, []);
 
   useEffect(() => {
     if (!sessionId) return;
-    let live = true;
-
-    const loadSession = async () => {
+    const load = async () => {
       try {
-        const data = await getLiveSession(sessionId);
-        if (!live) return;
-        setSession(data.session || data);
-      } catch {
-        if (!live) return;
-        setSession(null);
-      }
-
-      try {
-        const data = await getLiveSessionBroadcasts(sessionId);
-        if (!live) return;
-        setBroadcasts(data.broadcasts || data.messages || []);
-      } catch {
-        if (!live) return;
-        setBroadcasts([]);
-      }
+        const sData = await getLiveSession(sessionId);
+        setSession(sData.session || sData);
+        const bData = await getLiveSessionBroadcasts(sessionId);
+        setBroadcasts(bData.broadcasts || bData.messages || []);
+      } catch (e) {}
     };
-
-    loadSession();
-    const timer = setInterval(loadSession, 5000);
-    return () => {
-      live = false;
-      clearInterval(timer);
-    };
+    load();
+    const int = setInterval(load, 5000);
+    return () => clearInterval(int);
   }, [sessionId]);
-
-  const persistSheet = async (nextSheet) => {
-    if (!character) return;
-    try {
-      const payload = { ...character, sheet: nextSheet };
-      await api.put('/characters/me', payload);
-      setMessage('Character trackers synced.');
-    } catch {
-      setMessage('Live trackers updated locally. Could not sync right now.');
-    }
-  };
 
   const applySheetUpdate = async (mutator) => {
     setSheet((prev) => {
       const next = mutator(JSON.parse(JSON.stringify(prev || {})));
       setTrackers(summarizeTrackers(next));
-      persistSheet(next);
+      if (character) api.put('/characters/me', { ...character, sheet: next });
       return next;
     });
   };
 
-  const pushRoll = async (rollType, payload) => {
-    if (!sessionId) return;
-    try {
-      await logLiveSessionRoll(sessionId, payload);
-      setMessage(`${rollType} logged to session.`);
-    } catch {
-      setMessage(`${rollType} complete. Session logging unavailable.`);
-    }
+  const pushRoll = async (type, payload) => {
+    if (sessionId) await logLiveSessionRoll(sessionId, payload).catch(()=>{});
   };
 
-  const handleJoin = async () => {
-    if (!sessionId) return;
-    localStorage.setItem('liveSessionId', sessionId);
-    try {
-      await joinLiveSession(sessionId, { characterId: character?.id });
-      const data = await getLiveSession(sessionId);
-      setSession(data.session || data);
-      setMessage('Joined live session.');
-    } catch {
-      setMessage('Could not join session now. You can still use local live tools.');
-    }
-  };
-
-  const executePoolRoll = async (pool, rollType, note) => {
+  const executeRoll = async (pool, type, note) => {
     const roll = rollPool(pool, trackers?.hunger ?? 0, difficulty);
-    setLastRoll({ ...roll, rollType, note });
+    setLastRoll({ ...roll, type, note });
     setWpSelections([]);
-
-    await pushRoll(rollType, {
-      characterId: character?.id,
-      roll_type: rollType,
-      pool: roll.pool,
-      hunger: roll.hunger,
-      results: { normal: roll.normalDice, hunger: roll.hungerDice },
-      successes: roll.outcome.successes,
-      has_critical: roll.outcome.hasCritical,
-      has_messy_critical: roll.outcome.hasMessyCritical,
-      has_bestial_failure: roll.outcome.hasBestialFailure,
-      note,
-    });
-  };
-
-  const handleRouse = async (source = 'rouse_check') => {
-    const result = runRouseCheck(trackers?.hunger ?? 0);
-    await applySheetUpdate((next) => {
-      next.hunger = result.nextHunger;
-      return next;
-    });
-
-    await pushRoll(source, {
-      characterId: character?.id,
-      roll_type: source,
-      pool: 1,
-      hunger: result.nextHunger,
-      results: { rouse: [result.die] },
-      successes: result.success ? 1 : 0,
-      note: result.success ? 'No hunger gained' : 'Hunger +1',
-    });
-
-    setMessage(result.success ? 'Rouse success.' : 'Rouse failed. Hunger increased.');
+    await pushRoll(type, { characterId: character?.id, roll_type: type, pool: roll.pool, hunger: roll.hunger, results: { normal: roll.normalDice, hunger: roll.hungerDice }, successes: roll.outcome.successes, has_critical: roll.outcome.hasCritical, has_messy_critical: roll.outcome.hasMessyCritical, has_bestial_failure: roll.outcome.hasBestialFailure, note });
   };
 
   const handleWillpowerReroll = async () => {
-    if (!lastRoll || !wpSelections.length) return;
+    if (!lastRoll || !wpSelections.length || trackers.willpower.superficial + trackers.willpower.aggravated >= trackers.willpower.max) return;
 
-    const { rerolled } = rerollNormalDice(lastRoll.normalDice, wpSelections);
-    const outcome = computeOutcome(rerolled, lastRoll.hungerDice, difficulty);
-    const updated = { ...lastRoll, normalDice: rerolled, outcome, note: 'Willpower reroll' };
-    setLastRoll(updated);
-    setWpSelections([]);
-
-    await applySheetUpdate((next) => {
+    // Deduct WP
+    await applySheetUpdate(next => {
       if (!next.willpower) next.willpower = { superficial: 0, aggravated: 0 };
-      next.willpower.superficial = (Number(next.willpower.superficial) || 0) + 1;
+      next.willpower.superficial += 1;
       return next;
     });
 
-    await pushRoll('willpower_reroll', {
-      characterId: character?.id,
-      roll_type: 'willpower_reroll',
-      pool: updated.pool,
-      hunger: updated.hunger,
-      results: { normal: updated.normalDice, hunger: updated.hungerDice },
-      successes: updated.outcome.successes,
-      has_critical: updated.outcome.hasCritical,
-      has_messy_critical: updated.outcome.hasMessyCritical,
-      has_bestial_failure: updated.outcome.hasBestialFailure,
-      note: 'Spent 1 WP superficial',
-    });
+    const { rerolled } = rerollNormalDice(lastRoll.normalDice, wpSelections);
+    const outcome = computeOutcome(rerolled, lastRoll.hungerDice, difficulty);
+    const updated = { ...lastRoll, normalDice: rerolled, outcome, note: 'Willpower Reroll' };
+    setLastRoll(updated);
+    setWpSelections([]);
+    await pushRoll('willpower_reroll', { characterId: character?.id, roll_type: 'willpower_reroll', pool: updated.pool, hunger: updated.hunger, results: { normal: updated.normalDice, hunger: updated.hungerDice }, successes: updated.outcome.successes, note: 'Spent 1 WP' });
+  };
+
+  const handleRouse = async (source = 'rouse_check', autoActivate = null) => {
+    const result = runRouseCheck(trackers?.hunger ?? 0);
+    await applySheetUpdate(next => { next.hunger = result.nextHunger; return next; });
+    await pushRoll(source, { characterId: character?.id, roll_type: source, pool: 1, hunger: result.nextHunger, results: { rouse: [result.die] }, successes: result.success ? 1 : 0, note: result.success ? 'No hunger gained' : 'Hunger +1' });
+    
+    if (autoActivate) {
+      await pushRoll('discipline_activation', { characterId: character?.id, roll_type: 'discipline_activation', note: `${autoActivate.disc} • ${autoActivate.name}` });
+    }
   };
 
   const activateDiscipline = async () => {
     if (!activePower) return;
-
     if (disciplineRequiresRouse(activePower)) {
-      await handleRouse('discipline_rouse_check');
+      await handleRouse('discipline_rouse_check', activePower);
+    } else {
+      await pushRoll('discipline_activation', { characterId: character?.id, roll_type: 'discipline_activation', note: `${activePower.disc} • ${activePower.name}` });
     }
-
-    await pushRoll('discipline_activation', {
-      characterId: character?.id,
-      roll_type: 'discipline_activation',
-      note: `${activePower.discipline} • ${activePower.name}`,
-      results: { power: activePower },
-    });
-
-    setMessage(`${activePower.name} activated.`);
   };
 
-  if (loading) return <div className={styles.page}><div className={styles.emptyState}>Loading live session…</div></div>;
+  if (!trackers) return <div className={styles.page}>Loading LARP Interface...</div>;
 
   return (
     <div className={styles.page}>
-      <section className={styles.playerPanel}>
-        <h1>Live Session</h1>
-        <p className={styles.subtle}>Mobile-first control panel for live VTM scenes.</p>
-
-        <div className={styles.joinRow}>
-          <input
-            type="text"
-            placeholder="Session ID"
-            value={sessionId}
-            onChange={(e) => setSessionId(e.target.value.trim())}
-          />
-          <button onClick={handleJoin}>Join</button>
+      <div className={styles.playerPanel}>
+        <h1 className={styles.title}>Live Action Terminal</h1>
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+          <input className={styles.input} placeholder="Session ID" value={sessionId} onChange={e => { setSessionId(e.target.value); localStorage.setItem('liveSessionId', e.target.value); }} />
+          <button className={styles.btnGhost} onClick={() => joinLiveSession(sessionId, { characterId: character?.id })}>Connect</button>
         </div>
 
-        <div className={styles.statusLine}>{session ? `Session: ${session.name || session.id}` : 'No session connected'} </div>
-
-        {trackers && (
-          <>
-            <div className={styles.hungerMeter}>
-              <span>Hunger</span>
-              <div>{Array.from({ length: 5 }).map((_, idx) => <i key={idx} className={idx < trackers.hunger ? styles.hungerOn : styles.hungerOff} />)}</div>
+        {/* Status Trackers */}
+        <div className={styles.trackerGrid}>
+          <div className={styles.trackerCard}>
+            <div className={styles.trackerHeader}><span>Hunger</span><span>{trackers.hunger} / 5</span></div>
+            <div className={styles.hungerDots}>
+              {Array.from({ length: 5 }).map((_, i) => <span key={i} className={i < trackers.hunger ? styles.hungerOn : styles.hungerOff} />)}
             </div>
+            <button className={styles.btnGhost} style={{ width: '100%', marginTop: '1rem' }} onClick={() => handleRouse()}>Make Rouse Check</button>
+          </div>
+          <StatusBar label="Health" sup={trackers.health.superficial} agg={trackers.health.aggravated} max={trackers.health.max} />
+          <StatusBar label="Willpower" sup={trackers.willpower.superficial} agg={trackers.willpower.aggravated} max={trackers.willpower.max} />
+        </div>
 
-            <TrackerRow label="Health" superficial={trackers.health.superficial} aggravated={trackers.health.aggravated} max={trackers.health.max} />
-            <TrackerRow label="Willpower" superficial={trackers.willpower.superficial} aggravated={trackers.willpower.aggravated} max={trackers.willpower.max} />
-          </>
-        )}
-
-        <div className={styles.quickRows}>
-          <h3>Two-button roll</h3>
+        {/* Two-Tap Roller */}
+        <div className={styles.trackerCard} style={{ marginBottom: '1rem' }}>
+          <div className={styles.trackerHeader}>Two-Tap Custom Roll</div>
           <div className={styles.scrollChips}>
-            {ATTRIBUTES.map((attribute) => (
-              <button
-                key={attribute}
-                className={selectedAttribute === attribute ? styles.chipActive : styles.chip}
-                onClick={() => setSelectedAttribute(attribute)}
-              >
-                {attribute}
-              </button>
-            ))}
+            {ATTRIBUTES.map(attr => <button key={attr} className={selectedAttribute === attr ? styles.chipActive : styles.chip} onClick={() => setSelectedAttribute(attr)}>{attr}</button>)}
           </div>
           <div className={styles.scrollChips}>
-            {SKILLS.map((skill) => (
-              <button
-                key={skill}
-                className={selectedSkill === skill ? styles.chipActive : styles.chip}
-                onClick={() => setSelectedSkill(skill)}
-              >
-                {skill}
-              </button>
-            ))}
+            {SKILLS.map(skill => <button key={skill} className={selectedSkill === skill ? styles.chipActive : styles.chip} onClick={() => setSelectedSkill(skill)}>{skill}</button>)}
           </div>
-
-          <div className={styles.actionRow}>
-            <label>
-              Difficulty
-              <input type="number" min={0} max={10} value={difficulty} onChange={(e) => setDifficulty(toInt(e.target.value, 0))} />
-            </label>
-            <button onClick={() => executePoolRoll(currentPool, 'pool_roll', `${selectedAttribute} + ${selectedSkill}`)}>
-              Roll {selectedAttribute} + {selectedSkill} ({currentPool})
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+            <input type="number" min={1} max={10} className={styles.input} style={{ width: '80px' }} value={difficulty} onChange={e => setDifficulty(Number(e.target.value))} title="Difficulty" />
+            <button className={styles.btnPrimary} onClick={() => executeRoll(currentPool, 'pool_roll', `${selectedAttribute} + ${selectedSkill}`)}>
+              Roll {selectedAttribute} + {selectedSkill} ({currentPool} Dice)
             </button>
           </div>
         </div>
 
-        <div className={styles.quickRows}>
-          <h3>Quick actions</h3>
-          <div className={styles.quickActionsGrid}>
-            {COMMON_ROLLS.map((item) => {
-              const pool = getPoolFromCharacter(sheet, item.attribute, item.skill);
-              return (
-                <button key={item.key} onClick={() => executePoolRoll(pool, item.key, `${item.attribute} + ${item.skill}`)}>
-                  {item.label} ({pool})
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className={styles.actionRow}>
-          <button onClick={() => handleRouse()}>Rouse Check</button>
-          <select value={selectedPowerId} onChange={(e) => setSelectedPowerId(e.target.value)}>
-            <option value="">Select Discipline Power</option>
-            {DISCIPLINE_POWERS.map((power) => (
-              <option key={power.id} value={power.id}>{power.discipline} — {power.name}</option>
+        {/* Common Quick Rolls */}
+        <div className={styles.trackerCard} style={{ marginBottom: '1rem' }}>
+          <div className={styles.trackerHeader}>Common Checks</div>
+          <div className={styles.quickRollGrid}>
+            {COMMON_ROLLS.map(item => (
+              <button key={item.key} className={styles.btnGhost} onClick={() => executeRoll(getPoolFromCharacter(sheet, item.attribute, item.skill), item.key, item.label)}>
+                {item.label} ({getPoolFromCharacter(sheet, item.attribute, item.skill)})
+              </button>
             ))}
-          </select>
-          <button onClick={activateDiscipline} disabled={!selectedPowerId}>Activate Discipline</button>
+          </div>
         </div>
 
-        {activePower && (
-          <div className={styles.disciplineInfo}>
-            <strong>{activePower.name}</strong>
-            <p>Cost: {activePower.cost || 'Free'} {disciplineRequiresRouse(activePower) ? '(Rouse required)' : ''}</p>
-            <p>{activePower.notes || activePower.duration || 'No additional notes.'}</p>
+        {/* Powers */}
+        <div className={styles.trackerCard}>
+          <div className={styles.trackerHeader}>Disciplines</div>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <select className={styles.input} value={selectedPowerId} onChange={e => setSelectedPowerId(e.target.value)}>
+              <option value="">Select Power...</option>
+              {Object.entries(DISCIPLINES).flatMap(([disc, body]) => Object.values(body?.levels || {}).flatMap(powers => powers.map(p => (
+                <option key={p.id} value={p.id}>{disc} — {p.name} {disciplineRequiresRouse(p) ? '(Rouse)' : ''}</option>
+              ))))}
+            </select>
+            <button className={styles.btnPrimary} onClick={activateDiscipline} disabled={!selectedPowerId} style={{ width: '120px' }}>Use</button>
           </div>
-        )}
+        </div>
 
-        {lastRoll?.outcome && (
-          <section className={styles.resultCard}>
-            <h2>{lastRoll.outcome.label}</h2>
-            <p>{lastRoll.outcome.successes} successes (Diff {difficulty})</p>
-            <div className={styles.resultFlags}>
-              {lastRoll.outcome.hasCritical ? <span>Critical</span> : null}
-              {lastRoll.outcome.hasMessyCritical ? <span>Messy Critical</span> : null}
-              {lastRoll.outcome.hasBestialFailure ? <span>Bestial Failure</span> : null}
-            </div>
+{/* Roll Results */}
+        {lastRoll?.outcome && (() => {
+          const metDiff = difficulty > 0 ? lastRoll.outcome.successes >= difficulty : lastRoll.outcome.successes > 0;
+          const successes = lastRoll.outcome.successes;
+          
+          // Determine the exact outcome art for the top of the card
+          let art = '/img/dice/Success.png';
+          if (lastRoll.outcome.hasMessyCritical && metDiff) art = '/img/dice/MessyCrit.png';
+          else if (lastRoll.outcome.hasCritical && metDiff) art = '/img/dice/Crit.png';
+          else if (lastRoll.outcome.hasBestialFailure || !metDiff) art = '/img/dice/BestialFail.png';
 
-            <div className={styles.diceRow}>
-              {lastRoll.normalDice.map((die, idx) => {
-                const selected = wpSelections.includes(idx);
-                return (
-                  <button
-                    key={`normal-${idx}`}
-                    className={selected ? styles.dieSelected : styles.die}
-                    onClick={() => {
-                      setWpSelections((prev) => {
-                        if (prev.includes(idx)) return prev.filter((v) => v !== idx);
-                        if (prev.length >= 3) return prev;
-                        return [...prev, idx];
-                      });
-                    }}
-                  >
-                    {die}
-                  </button>
-                );
-              })}
-              {lastRoll.hungerDice.map((die, idx) => <span key={`hunger-${idx}`} className={styles.hungerDie}>{die}</span>)}
-            </div>
+          // Determine the descriptive label (Never say 'Failure' unless Total or Bestial)
+          let labelText = "";
+          if (lastRoll.outcome.hasBestialFailure) {
+            labelText = `${successes} Bestial Failure`;
+          } else if (successes === 0) {
+            labelText = `Total Failure`;
+          } else if (lastRoll.outcome.hasMessyCritical && metDiff) {
+            labelText = `${successes} Messy Critical`;
+          } else if (lastRoll.outcome.hasCritical && metDiff) {
+            labelText = `${successes} Crit Success`;
+          } else {
+            labelText = `${successes} Success${successes > 1 ? 'es' : ''}`;
+          }
 
-            <button onClick={handleWillpowerReroll} disabled={!wpSelections.length}>Spend 1 WP to reroll selected normal dice</button>
-          </section>
-        )}
+          // Helper to get the correct symbol based on the VTM V5 Rules
+          const getDieImage = (die, isHunger) => {
+            if (isHunger) {
+              if (die === 10) return '/img/dice/MessyCrit.png';    // Ankh with fangs
+              if (die === 1) return '/img/dice/BestialFail.png';   // Beast skull
+              if (die >= 6) return '/img/dice/Success.png';        // Regular Ankh
+              return null;                                         // Empty
+            } else {
+              if (die === 10) return '/img/dice/Crit.png';         // Ankh with stars
+              if (die >= 6) return '/img/dice/Success.png';        // Regular Ankh
+              return null;                                         // Empty
+            }
+          };
 
-        {broadcasts.length > 0 && (
-          <section className={styles.broadcastPanel}>
-            <h3>GM Broadcasts</h3>
-            {broadcasts.slice(0, 5).map((msg, idx) => (
-              <div key={msg.id || idx} className={styles.broadcastItem}>
-                {msg.message || msg.text || ''}
+          return (
+            <div className={styles.resultCard}>
+              <img src={art} alt={labelText} className={styles.outcomeImage} draggable="false" />
+              
+              <h2 style={{ color: lastRoll.outcome.hasMessyCritical || lastRoll.outcome.hasBestialFailure ? '#e11d48' : 'inherit', margin: '0.5rem 0' }}>
+                {labelText}
+              </h2>
+              
+              <p className={styles.subtle}>Target Diff {difficulty}</p>
+              
+              <div className={styles.diceRow}>
+                {/* Normal Dice */}
+                {lastRoll.normalDice.map((die, i) => {
+                  const isSuccess = die >= 6;
+                  const imgSrc = getDieImage(die, false);
+                  const isSelected = wpSelections.includes(i);
+                  
+                  return (
+                    <div key={`n-${i}`} className={styles.diceCol}>
+                      <button 
+                        className={`
+                          ${styles.boxDie} 
+                          ${isSuccess ? styles.boxFilled : styles.boxEmpty} 
+                          ${isSelected ? styles.boxSelected : ''}
+                        `}
+                        onClick={() => {
+                          setWpSelections(prev => prev.includes(i) ? prev.filter(v => v !== i) : prev.length < 3 ? [...prev, i] : prev);
+                        }}
+                        title={isSelected ? "Deselect" : "Select for Willpower reroll"}
+                      >
+                        {imgSrc && <img src={imgSrc} alt={`Die rolled ${die}`} className={styles.dieImage} />}
+                      </button>
+                      <span className={styles.diceNumber}>{die}</span>
+                    </div>
+                  );
+                })}
+                
+                {/* Hunger Dice */}
+                {lastRoll.hungerDice.map((die, i) => {
+                  const isSuccess = die >= 6;
+                  const imgSrc = getDieImage(die, true);
+                  
+                  return (
+                    <div key={`h-${i}`} className={styles.diceCol}>
+                      <div className={`
+                        ${styles.boxDie} 
+                        ${styles.boxHunger} 
+                        ${isSuccess ? styles.boxHungerFilled : styles.boxEmpty}
+                      `}>
+                        {imgSrc && <img src={imgSrc} alt={`Hunger Die rolled ${die}`} className={styles.dieImage} />}
+                      </div>
+                      <span className={styles.diceNumber}>{die}</span>
+                    </div>
+                  );
+                })}
               </div>
-            ))}
-          </section>
-        )}
 
-        {error ? <div className={styles.errorBox}>{error}</div> : null}
-        {message ? <div className={styles.infoBox}>{message}</div> : null}
-      </section>
+              {/* Reroll button logic */}
+              {lastRoll.normalDice.some(d => d < 6) && (
+                <button 
+                  className={styles.btnPrimary} 
+                  onClick={handleWillpowerReroll} 
+                  disabled={!wpSelections.length || trackers.willpower.superficial + trackers.willpower.aggravated >= trackers.willpower.max}
+                  style={{ marginTop: '1rem' }}
+                >
+                  Spend 1 WP to Reroll ({wpSelections.length}/3)
+                </button>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* GM Broadcasts */}
+        {broadcasts.length > 0 && (
+          <div className={styles.trackerCard} style={{ marginTop: '1rem', border: '1px solid #e11d48' }}>
+            <div className={styles.trackerHeader}>ST Broadcasts</div>
+            {broadcasts.slice(0, 3).map((msg, i) => <div key={i} style={{ padding: '0.5rem 0', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>{msg.message}</div>)}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

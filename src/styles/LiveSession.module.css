@@ -1,338 +1,243 @@
+/* LiveSession.module.css */
 .page {
-  min-height: calc(100dvh - 120px);
-  background: radial-gradient(circle at top, #2d0f14 0%, #120d10 55%, #0b0a0d 100%);
-  color: #ece8ea;
-  padding: 1rem;
+  min-height: 100dvh;
+  background: radial-gradient(circle at top center, #2a0b12 0%, #110b0d 50%, #050405 100%);
+  color: #f2eef0;
+  padding: clamp(0.5rem, 2vw, 1.5rem);
+  font-family: system-ui, -apple-system, sans-serif;
+  padding-bottom: 80px; /* Space for mobile bottom bar */
 }
 
-.playerPanel,
-.adminPanel {
-  width: min(1100px, 100%);
+/* Glass Panels */
+.playerPanel, .adminPanel {
+  width: min(1200px, 100%);
   margin: 0 auto;
-  background: rgba(12, 12, 14, 0.92);
-  border: 1px solid #3f2228;
+  background: rgba(18, 14, 16, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 24px;
+  padding: clamp(1rem, 3vw, 2rem);
+  box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.6);
+}
+
+.title { font-size: 2rem; font-weight: 900; margin-bottom: 0.5rem; letter-spacing: -0.03em; }
+.subtle { color: #a89a9c; font-size: 0.95rem; margin-top: 0; }
+
+/* Status & Trackers */
+.trackerGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.trackerCard {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 16px;
-  padding: 1rem;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+  padding: 1.2rem;
 }
 
-.playerPanel h1, .playerPanel h2, .playerPanel h3, .playerPanel h4,
-.adminPanel h1, .adminPanel h2, .adminPanel h3, .adminPanel h4 {
-  margin: 0.2rem 0 0.6rem;
-}
-
-.subtle {
-  margin-top: 0;
-  color: #c4b5b8;
-}
-
-.joinRow,
-.adminControls,
-.actionRow {
+.trackerHeader {
   display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+  justify-content: space-between;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
   margin-bottom: 0.8rem;
 }
 
-.joinRow input,
-.adminControls input,
-.adminControls select,
-.actionRow input,
-.actionRow select,
-.lookupBox select {
-  flex: 1;
-  min-width: 150px;
-  background: #17171c;
-  color: #f2eef0;
-  border: 1px solid #4c3036;
-  border-radius: 10px;
-  padding: 0.65rem;
-}
-
-.page button {
-  border: none;
-  background: linear-gradient(180deg, #8a0f1a, #5d0913);
-  color: white;
-  border-radius: 10px;
-  padding: 0.65rem 0.9rem;
-  cursor: pointer;
-  font-weight: 700;
-}
-
-.page button:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.statusLine {
-  margin-bottom: 0.6rem;
-  color: #d0b9be;
-}
-
-.hungerMeter {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin: 0.7rem 0;
-}
-
-.hungerDots {
-  display: flex;
-  gap: 0.35rem;
-  margin: 0.45rem 0;
-}
-
-.hungerOn,
-.hungerOff {
-  width: 14px;
-  height: 14px;
+/* Hunger Dots */
+.hungerDots { display: flex; gap: 0.5rem; justify-content: flex-end; }
+.hungerOn, .hungerOff {
+  width: 18px; height: 18px;
   border-radius: 50%;
-  display: inline-block;
+  transition: all 0.3s ease;
+}
+.hungerOn { background: #e11d48; box-shadow: 0 0 15px rgba(225, 29, 72, 0.6); }
+.hungerOff { background: rgba(255, 255, 255, 0.1); }
+
+/* Health/WP Bars */
+.barWrap { width: 100%; height: 12px; background: rgba(255,255,255,0.05); border-radius: 6px; overflow: hidden; display: flex; }
+.barSup { background: #fbbf24; height: 100%; transition: width 0.3s; }
+.barAgg { background: #9f1239; height: 100%; transition: width 0.3s; }
+.barEmpty { background: transparent; height: 100%; transition: width 0.3s; flex-grow: 1; }
+
+/* Inputs & Buttons */
+.input {
+  width: 100%; min-height: 48px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: white; border-radius: 12px;
+  padding: 0 1rem; font-size: 1rem;
 }
 
-.hungerOn { background: #ef4444; box-shadow: 0 0 10px rgba(239, 68, 68, 0.65); }
-.hungerOff { background: #3a3a44; }
-
-.trackerRow {
-  margin: 0.5rem 0;
-}
-
-.trackerLabel {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 0.2rem;
-  font-size: 0.9rem;
-}
-
-.trackerBar,
-.trackBar {
+.btnPrimary {
+  background: linear-gradient(135deg, #be123c, #881337);
+  color: white; border: none; border-radius: 12px;
+  min-height: 48px; padding: 0 1.5rem;
+  font-weight: 700; font-size: 1rem; cursor: pointer;
+  box-shadow: 0 4px 15px rgba(190, 18, 60, 0.4);
+  transition: transform 0.1s, filter 0.2s;
   width: 100%;
-  height: 10px;
-  border-radius: 999px;
-  background: #2b2b31;
-  overflow: hidden;
+}
+.btnPrimary:active { transform: scale(0.98); }
+.btnPrimary:disabled { filter: grayscale(1); opacity: 0.5; cursor: not-allowed; }
+
+.btnGhost {
+  background: rgba(255,255,255,0.05); color: white;
+  border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;
+  min-height: 48px; padding: 0 1rem; cursor: pointer;
 }
 
-.trackerBar span,
-.trackBar span {
-  display: block;
-  height: 100%;
-  background: linear-gradient(90deg, #e11d48, #b91c1c);
-}
-
-.quickRows {
-  margin-top: 1rem;
-  border-top: 1px solid #382126;
-  padding-top: 0.7rem;
-}
-
+/* Two-Tap Roll Selectors */
 .scrollChips {
+  display: flex; gap: 0.5rem; overflow-x: auto;
+  padding-bottom: 0.5rem; margin-bottom: 1rem;
+  scroll-snap-type: x mandatory; scrollbar-width: none;
+}
+.scrollChips::-webkit-scrollbar { display: none; }
+.chip, .chipActive {
+  scroll-snap-align: start; flex-shrink: 0;
+  padding: 0.6rem 1.2rem; border-radius: 20px;
+  font-weight: 600; border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(0,0,0,0.4); cursor: pointer;
+}
+.chipActive { background: rgba(225, 29, 72, 0.2); border-color: #e11d48; color: white; }
+
+/* Quick Rolls Grid */
+.quickRollGrid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.5rem;
+}
+
+/* Dice Results */
+.resultCard {
+  margin-top: 1.5rem; padding: 1.5rem;
+  background: rgba(0,0,0,0.6); border: 1px solid #e11d48;
+  border-radius: 16px; text-align: center;
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+@keyframes popIn { 0% { transform: scale(0.95); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+
+.diceRow { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; margin: 1rem 0; }
+.die, .dieSelected, .hungerDie {
+  width: 48px; height: 48px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 900; font-size: 1.2rem; cursor: pointer;
+  box-shadow: inset 0 2px 4px rgba(255,255,255,0.1), 0 4px 8px rgba(0,0,0,0.5);
+}
+.die { background: #2a2a35; border: 1px solid #3f3f4e; }
+.dieSelected { background: #fbbf24; color: #111; border: 1px solid #f59e0b; transform: translateY(-3px); }
+.hungerDie { background: #9f1239; color: #fff; border: 1px solid #e11d48; cursor: default; }
+
+/* Admin Grid */
+.adminPlayerGrid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem;
+}
+.adminPlayerCard {
+  background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 16px; padding: 1rem;
+}
+.adminControls { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.miniBtnRow { display: flex; gap: 0.25rem; margin-top: 0.5rem; }
+.miniBtnRow button { flex: 1; padding: 0.4rem; border-radius: 6px; font-size: 0.8rem; background: rgba(255,255,255,0.1); border: none; color: white; cursor: pointer; }
+
+/* Outcome Art */
+.outcomeImage {
+  width: 140px; 
+  height: auto; 
+  margin: 0 auto 1rem; 
+  display: block;
+  filter: drop-shadow(0 10px 20px rgba(0,0,0,0.5));
+  animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Dice Box Grid */
+.diceRow { 
+  display: flex; 
+  flex-wrap: wrap; 
+  gap: 0.8rem; 
+  justify-content: center; 
+  margin: 1.5rem 0; 
+}
+.diceCol { 
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  gap: 0.4rem; 
+}
+
+/* The Boxes */
+.boxDie {
+  width: 44px; 
+  height: 44px; 
+  border-radius: 8px; 
+  border: 2px solid #f2eef0;
+  cursor: pointer; 
+  transition: all 0.2s ease;
+  padding: 0;
+}
+.boxFilled { background: #f2eef0; }
+.boxEmpty { background: rgba(0,0,0,0.3); }
+
+/* Hunger Boxes */
+.boxHunger { border-color: #e11d48; cursor: default; }
+.boxHungerFilled { background: #e11d48; }
+
+/* Selection state for Willpower rerolls */
+.boxSelected { 
+  border-color: #fbbf24; 
+  box-shadow: 0 0 15px rgba(251, 191, 36, 0.5); 
+  transform: translateY(-4px); 
+}
+
+/* Small numbers underneath */
+.diceNumber { 
+  font-size: 0.9rem; 
+  font-weight: 800; 
+  color: #a89a9c; 
+}
+
+/* The Boxes */
+.boxDie {
+  width: 44px; 
+  height: 44px; 
+  border-radius: 8px; 
+  border: 2px solid #f2eef0;
+  cursor: pointer; 
+  transition: all 0.2s ease;
+  padding: 4px; /* Gives the image breathing room */
   display: flex;
-  gap: 0.45rem;
-  overflow-x: auto;
-  padding-bottom: 0.2rem;
-  margin-bottom: 0.5rem;
-}
-
-.chip,
-.chipActive {
-  background: #25252b;
-  font-size: 0.9rem;
-  white-space: nowrap;
-}
-
-.chipActive {
-  background: linear-gradient(180deg, #be123c, #881337);
-}
-
-.quickActionsGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
-  gap: 0.4rem;
-}
-
-.resultCard,
-.lookupBox,
-.broadcastPanel {
-  margin-top: 0.9rem;
-  border: 1px solid #3f272c;
-  border-radius: 12px;
-  padding: 0.8rem;
-  background: rgba(10, 10, 12, 0.7);
-}
-
-.resultFlags {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.resultFlags span {
-  background: #3f2027;
-  border: 1px solid #6f2f3c;
-  border-radius: 999px;
-  padding: 0.2rem 0.55rem;
-  font-size: 0.85rem;
-}
-
-.diceRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  margin: 0.6rem 0;
-}
-
-.die,
-.dieSelected,
-.hungerDie {
-  min-width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #222229;
-  font-weight: 700;
+}
+.boxFilled { background: #f2eef0; }
+.boxEmpty { background: rgba(0,0,0,0.3); }
+
+/* Hunger Boxes */
+.boxHunger { border-color: #e11d48; cursor: default; }
+.boxHungerFilled { background: #e11d48; }
+
+/* Selection state for Willpower rerolls */
+.boxSelected { 
+  border-color: #fbbf24; 
+  box-shadow: 0 0 15px rgba(251, 191, 36, 0.5); 
+  transform: translateY(-4px); 
 }
 
-.dieSelected {
-  background: #eab308;
-  color: #231b00;
+/* Internal Image Styling */
+.dieImage {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none; /* Prevents dragging issues */
 }
 
-.hungerDie {
-  background: #7f1d1d;
-}
-
-.columns {
-  margin-top: 1rem;
-  display: grid;
-  grid-template-columns: 1.3fr 1fr;
-  gap: 1rem;
-}
-
-.playerGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 0.8rem;
-}
-
-.playerCard {
-  background: rgba(17, 17, 21, 0.95);
-  border: 1px solid #3d272c;
-  border-radius: 12px;
-  padding: 0.8rem;
-}
-
-.playerHead {
-  display: flex;
-  justify-content: space-between;
-  align-items: start;
-}
-
-.playerHead p {
-  margin: 0;
-  color: #bba7ab;
-  font-size: 0.9rem;
-}
-
-.npcTag {
-  border: 1px solid #5e2f39;
-  border-radius: 999px;
-  padding: 0.1rem 0.5rem;
-  font-size: 0.75rem;
-}
-
-.trackWrap {
-  margin-top: 0.5rem;
-}
-
-.trackLabel {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.85rem;
-}
-
-.quickBtns {
-  margin-top: 0.6rem;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.35rem;
-}
-
-.quickBtns button {
-  font-size: 0.78rem;
-  padding: 0.45rem 0.35rem;
-}
-
-.rollHistoryList {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-}
-
-.rollEntry {
-  border: 1px solid #3b252a;
-  border-radius: 10px;
-  padding: 0.55rem;
-  background: #14141a;
-  display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-
-.rollEntry p {
-  margin: 0.1rem 0 0;
-  color: #b59ea3;
-  font-size: 0.85rem;
-}
-
-.rollMeta {
-  text-align: right;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.timerBadge {
-  padding: 0.5rem 0.7rem;
-  border-radius: 999px;
-  background: #34191f;
-  border: 1px solid #64313b;
-  font-weight: 700;
-}
-
-.broadcastItem {
-  border-top: 1px solid #322026;
-  padding-top: 0.35rem;
-  margin-top: 0.35rem;
-}
-
-.infoBox,
-.errorBox,
-.emptyState {
-  margin-top: 0.6rem;
-  border-radius: 10px;
-  padding: 0.6rem;
-}
-
-.infoBox { background: rgba(30, 64, 175, 0.2); border: 1px solid rgba(59, 130, 246, 0.4); }
-.errorBox { background: rgba(127, 29, 29, 0.3); border: 1px solid rgba(239, 68, 68, 0.6); }
-.emptyState { background: rgba(42, 32, 35, 0.8); border: 1px dashed #5f4b4f; }
-
-@media (max-width: 900px) {
-  .columns {
-    grid-template-columns: 1fr;
-  }
-
-  .playerPanel,
-  .adminPanel {
-    padding: 0.8rem;
-    border-radius: 12px;
-  }
-
-  .quickBtns {
-    grid-template-columns: repeat(2, 1fr);
-  }
+/* Small numbers underneath */
+.diceNumber { 
+  font-size: 0.9rem; 
+  font-weight: 800; 
+  color: #a89a9c; 
 }

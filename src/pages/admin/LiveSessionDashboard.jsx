@@ -1,237 +1,139 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { DISCIPLINES } from '../../data/disciplines';
-import LiveSessionPlayerList from '../../components/LiveSessionPlayerList';
-import LiveSessionRollHistory from '../../components/LiveSessionRollHistory';
-import {
-  createLiveSession,
-  getLiveSession,
-  getLiveSessionPlayers,
-  getLiveSessionRolls,
-  sendLiveSessionBroadcast,
-  updateLiveSessionPlayer,
-} from '../../api/liveSession';
+// src/pages/admin/LiveSessionDashboard.jsx
+import React, { useEffect, useState, useMemo } from 'react';
+import { getLiveSession, getLiveSessionPlayers, getLiveSessionRolls, createLiveSession, updateLiveSessionPlayer, sendLiveSessionBroadcast } from '../../api/liveSession';
 import styles from '../../styles/LiveSession.module.css';
-
-const DISCIPLINE_LOOKUP = Object.entries(DISCIPLINES).flatMap(([discipline, body]) =>
-  Object.values(body?.levels || {}).flatMap((powers) =>
-    (powers || []).map((power) => ({ discipline, ...power }))
-  )
-);
 
 export default function LiveSessionDashboard() {
   const [sessionId, setSessionId] = useState(localStorage.getItem('adminLiveSessionId') || '');
-  const [sessionName, setSessionName] = useState('Live Session');
+  const [sessionName, setSessionName] = useState('VTM Live Scene');
   const [session, setSession] = useState(null);
   const [players, setPlayers] = useState([]);
   const [rolls, setRolls] = useState([]);
-  const [search, setSearch] = useState('');
   const [broadcast, setBroadcast] = useState('');
-  const [ambientHungerDelta, setAmbientHungerDelta] = useState(1);
-  const [lookup, setLookup] = useState('');
-  const [timerStart, setTimerStart] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
-
-  const filteredPlayers = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    if (!term) return players;
-    return players.filter((player) => {
-      const name = String(player.name || player.character_name || '').toLowerCase();
-      const clan = String(player.clan || '').toLowerCase();
-      return name.includes(term) || clan.includes(term);
-    });
-  }, [players, search]);
-
-  const selectedDiscipline = useMemo(
-    () => DISCIPLINE_LOOKUP.find((item) => item.id === lookup),
-    [lookup]
-  );
 
   useEffect(() => {
-    if (!sessionId) return undefined;
-    let live = true;
-
+    if (!sessionId) return;
     const load = async () => {
       try {
-        const [sessionData, playerData, rollData] = await Promise.all([
-          getLiveSession(sessionId),
-          getLiveSessionPlayers(sessionId),
-          getLiveSessionRolls(sessionId),
+        const [sData, pData, rData] = await Promise.all([
+          getLiveSession(sessionId), getLiveSessionPlayers(sessionId), getLiveSessionRolls(sessionId)
         ]);
-
-        if (!live) return;
-        setSession(sessionData.session || sessionData);
-        setPlayers(playerData.players || playerData || []);
-        setRolls(rollData.rolls || rollData || []);
-      } catch {
-        if (!live) return;
-        setMessage('Could not refresh session feed.');
-      }
+        setSession(sData.session || sData);
+        setPlayers(pData.players || pData || []);
+        setRolls(rData.rolls || rData || []);
+      } catch (e) {}
     };
-
     load();
-    const timer = setInterval(load, 4000);
-    return () => {
-      live = false;
-      clearInterval(timer);
-    };
+    const int = setInterval(load, 3000); // Fast 3-second polling for live table feel
+    return () => clearInterval(int);
   }, [sessionId]);
 
   const startSession = async () => {
-    setLoading(true);
     try {
       const data = await createLiveSession({ name: sessionName });
-      const newId = String(data?.session?.id || data?.id || '');
-      setSession(data.session || data);
+      const newId = String(data?.session?.id || data?.id);
       setSessionId(newId);
       localStorage.setItem('adminLiveSessionId', newId);
-      setTimerStart(Date.now());
-      setMessage('Live session started.');
-    } catch {
-      setMessage('Could not create a live session.');
-    } finally {
-      setLoading(false);
-    }
+    } catch (e) {}
   };
 
-  const endSessionTimer = () => {
-    setTimerStart(null);
-    setMessage('Session timer stopped.');
+  const adjustPlayer = async (charId, deltas) => {
+    await updateLiveSessionPlayer(sessionId, charId, deltas);
+    const pData = await getLiveSessionPlayers(sessionId);
+    setPlayers(pData.players || pData || []);
   };
 
-  const adjustPlayer = async (characterId, deltas) => {
-    if (!sessionId) return;
-    try {
-      await updateLiveSessionPlayer(sessionId, characterId, deltas);
-      setMessage('Player stats updated.');
-      const playerData = await getLiveSessionPlayers(sessionId);
-      setPlayers(playerData.players || playerData || []);
-    } catch {
-      setMessage('Could not update player stats.');
-    }
+  const handleBroadcast = async () => {
+    if (!broadcast.trim()) return;
+    await sendLiveSessionBroadcast(sessionId, { message: broadcast.trim() });
+    setBroadcast('');
   };
-
-  const forceRouse = async (characterId) => {
-    await adjustPlayer(characterId, { forceRouseCheck: true });
-  };
-
-  const sendBroadcast = async () => {
-    if (!sessionId || !broadcast.trim()) return;
-    try {
-      await sendLiveSessionBroadcast(sessionId, { message: broadcast.trim() });
-      setBroadcast('');
-      setMessage('Broadcast sent.');
-    } catch {
-      setMessage('Could not send broadcast.');
-    }
-  };
-
-  const applyAmbientHunger = async () => {
-    if (!sessionId || !players.length) return;
-    try {
-      await Promise.all(
-        players.map((player) =>
-          updateLiveSessionPlayer(sessionId, player.character_id || player.characterId || player.id, {
-            hungerDelta: Number(ambientHungerDelta) || 0,
-          })
-        )
-      );
-      setMessage('Ambient hunger adjustment applied.');
-    } catch {
-      setMessage('Ambient hunger update failed for one or more players.');
-    }
-  };
-
-  const elapsed = timerStart ? Math.floor((Date.now() - timerStart) / 1000) : 0;
-  const mm = String(Math.floor(elapsed / 60)).padStart(2, '0');
-  const ss = String(elapsed % 60).padStart(2, '0');
 
   return (
     <div className={styles.page}>
-      <section className={styles.adminPanel}>
-        <h1>GM Live Session Dashboard</h1>
-
+      <div className={styles.adminPanel}>
+        <h1 className={styles.title}>Storyteller Live Table</h1>
+        
         <div className={styles.adminControls}>
-          <input
-            type="text"
-            value={sessionName}
-            onChange={(e) => setSessionName(e.target.value)}
-            placeholder="Session name"
-          />
-          <button onClick={startSession} disabled={loading}>{loading ? 'Starting…' : 'Start Session'}</button>
-
-          <input
-            type="text"
-            value={sessionId}
-            onChange={(e) => {
-              const value = e.target.value.trim();
-              setSessionId(value);
-              localStorage.setItem('adminLiveSessionId', value);
-            }}
-            placeholder="Session ID"
-          />
-
-          <button onClick={() => setTimerStart(Date.now())}>Start Timer</button>
-          <button onClick={endSessionTimer}>End Timer</button>
-          <span className={styles.timerBadge}>{timerStart ? `${mm}:${ss}` : '00:00'}</span>
+          <input className={styles.input} style={{flex: 1}} value={sessionName} onChange={e => setSessionName(e.target.value)} placeholder="Chronicle Name" />
+          <button className={styles.btnPrimary} style={{flex: 0.5}} onClick={startSession}>Initialize Table</button>
+          <input className={styles.input} style={{flex: 1}} value={sessionId} onChange={e => { setSessionId(e.target.value); localStorage.setItem('adminLiveSessionId', e.target.value); }} placeholder="Existing Session ID" />
         </div>
 
-        <div className={styles.adminControls}>
-          <input
-            type="text"
-            placeholder="Search players"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <input
-            type="text"
-            placeholder="Broadcast message"
-            value={broadcast}
-            onChange={(e) => setBroadcast(e.target.value)}
-          />
-          <button onClick={sendBroadcast}>Broadcast</button>
-          <input
-            type="number"
-            value={ambientHungerDelta}
-            onChange={(e) => setAmbientHungerDelta(Number(e.target.value) || 0)}
-          />
-          <button onClick={applyAmbientHunger}>Adjust Ambient Hunger</button>
+        <div className={styles.adminControls} style={{ background: 'rgba(225, 29, 72, 0.1)', padding: '1rem', borderRadius: '16px', border: '1px solid rgba(225, 29, 72, 0.3)' }}>
+          <input className={styles.input} style={{flex: 2}} value={broadcast} onChange={e => setBroadcast(e.target.value)} placeholder="Send a global ST broadcast to all players..." />
+          <button className={styles.btnPrimary} style={{flex: 0.5}} onClick={handleBroadcast}>Broadcast</button>
+          <button className={styles.btnGhost} style={{flex: 0.5}} onClick={() => Promise.all(players.map(p => adjustPlayer(p.character_id, { hungerDelta: 1 })))}>+1 Ambient Hunger to All</button>
         </div>
 
-        <div className={styles.lookupBox}>
-          <h3>Quick Discipline Lookup</h3>
-          <select value={lookup} onChange={(e) => setLookup(e.target.value)}>
-            <option value="">Select power</option>
-            {DISCIPLINE_LOOKUP.map((power) => (
-              <option key={power.id} value={power.id}>{power.discipline} — {power.name}</option>
-            ))}
-          </select>
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem', marginTop: '2rem' }}>
+          
+          {/* Virtual Table Top Player Grid */}
+          <section>
+            <h2 style={{borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem'}}>Active Characters ({players.length})</h2>
+            <div className={styles.adminPlayerGrid}>
+              {players.map(p => (
+                <div key={p.character_id || p.id} className={styles.adminPlayerCard}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <b style={{fontSize: '1.2rem'}}>{p.name || p.character_name}</b>
+                    <span className={styles.subtle}>{p.clan}</span>
+                  </div>
+                  
+                  {/* Player Quick Adjusters */}
+                  <div style={{ marginTop: '1rem', fontSize: '0.9rem' }}>
+                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                      <span>Hunger: {p.hunger ?? 0}</span>
+                      <div className={styles.miniBtnRow}>
+                        <button onClick={() => adjustPlayer(p.character_id, { hungerDelta: -1 })}>-</button>
+                        <button onClick={() => adjustPlayer(p.character_id, { hungerDelta: 1 })}>+</button>
+                        <button onClick={() => adjustPlayer(p.character_id, { forceRouseCheck: true })} style={{background: '#9f1239'}}>Rouse</button>
+                      </div>
+                    </div>
+                    
+                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem'}}>
+                      <span>HP: {(p.health_max || 5) - ((p.health?.superficial || 0) + (p.health?.aggravated || 0))}</span>
+                      <div className={styles.miniBtnRow}>
+                        <button onClick={() => adjustPlayer(p.character_id, { healthDelta: -1 })}>- DMG</button>
+                        <button onClick={() => adjustPlayer(p.character_id, { healthDelta: 1 })}>+ DMG</button>
+                      </div>
+                    </div>
 
-          {selectedDiscipline ? (
-            <div className={styles.disciplineInfo}>
-              <strong>{selectedDiscipline.discipline} • {selectedDiscipline.name}</strong>
-              <p>Cost: {selectedDiscipline.cost || 'Free'}</p>
-              <p>Dice: {selectedDiscipline.dice_pool || 'N/A'}</p>
-              <p>{selectedDiscipline.notes || selectedDiscipline.duration || 'No extra notes.'}</p>
+                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem'}}>
+                      <span>WP: {(p.willpower_max || 5) - ((p.willpower?.superficial || 0) + (p.willpower?.aggravated || 0))}</span>
+                      <div className={styles.miniBtnRow}>
+                        <button onClick={() => adjustPlayer(p.character_id, { wpDelta: -1 })}>- DMG</button>
+                        <button onClick={() => adjustPlayer(p.character_id, { wpDelta: 1 })}>+ DMG</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-          ) : null}
-        </div>
-
-        <div className={styles.columns}>
-          <section>
-            <h2>Players & NPCs</h2>
-            <LiveSessionPlayerList players={filteredPlayers} onAdjust={adjustPlayer} onForceRouse={forceRouse} />
           </section>
 
+          {/* Roll Feed */}
           <section>
-            <h2>Roll History</h2>
-            <LiveSessionRollHistory rolls={rolls} />
+            <h2 style={{borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem'}}>Roll Feed</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {rolls.slice(0, 15).map((r, i) => (
+                <div key={i} style={{ background: 'rgba(0,0,0,0.4)', padding: '0.8rem', borderRadius: '12px', borderLeft: r.has_bestial_failure || r.has_messy_critical ? '4px solid #e11d48' : '4px solid #3f3f4e' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
+                    <span>{r.player_name || r.character_name}</span>
+                    <span style={{color: '#fbbf24'}}>{r.successes} Succ</span>
+                  </div>
+                  <div className={styles.subtle} style={{ fontSize: '0.85rem' }}>{r.roll_type} - {r.note}</div>
+                  <div style={{ fontSize: '0.8rem', color: '#a89a9c', marginTop: '0.3rem' }}>
+                    Pool: {r.pool} | Hunger: {r.hunger}
+                    {r.has_bestial_failure && <span style={{color: '#e11d48', marginLeft: '5px'}}>⚠️ Bestial</span>}
+                    {r.has_messy_critical && <span style={{color: '#e11d48', marginLeft: '5px'}}>🩸 Messy Crit</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
           </section>
-        </div>
 
-        {session ? <div className={styles.infoBox}>Session active: {session.name || session.id}</div> : null}
-        {message ? <div className={styles.infoBox}>{message}</div> : null}
-      </section>
+        </div>
+      </div>
     </div>
   );
 }
