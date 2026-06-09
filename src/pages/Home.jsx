@@ -24,10 +24,11 @@ const CLAN_COLORS = {
 };
 
 const THEMES = [
-  { id: 'camarilla', label: 'Camarilla Crimson', hex: '#8a0f1a' },
-  { id: 'schrecknet',  label: 'SchreckNet Blue',   hex: '#0ea5e9' },
-  { id: 'anarch',      label: 'Anarch Gold',       hex: '#ea580c' },
-  { id: 'hecata',      label: 'Hecata Teal',       hex: '#0d9488' },
+  { id: 'clan',        label: 'Clan Theme',       sub: 'Bloodline',   hex: 'var(--tint)' },
+  { id: 'camarilla',   label: 'Camarilla Crimson',hex: '#8a0f1a'       },
+  { id: 'schrecknet',  label: 'SchreckNet Blue',  hex: '#0ea5e9'       },
+  { id: 'anarch',      label: 'Anarch Gold',      hex: '#ea580c'       },
+  { id: 'hecata',      label: 'Hecata Teal',      hex: '#0d9488'       },
 ];
 
 const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim' };
@@ -145,7 +146,8 @@ export default function Home() {
   const [recentNews, setRecentNews] = useState([]);
   const [fetchError, setFetchError] = useState(null);
   
-  const [activeTheme, setActiveTheme] = useState(() => localStorage.getItem('vtm_theme') || 'camarilla');
+  // ✅ DEFAULT SET TO CLAN-THEME WITH DARK ENGINE
+  const [activeTheme, setActiveTheme] = useState(() => localStorage.getItem('vtm_theme') || 'clan');
   const [isShattering, setIsShattering] = useState(false);
   const [clickPoint, setClickPoint] = useState(null);
   const [shards, setShards] = useState([]);
@@ -154,11 +156,36 @@ export default function Home() {
 
   const eventCd = useCountdown(openingDate);
 
-  /* ── Theme syncing ── */
+  /* ── Theme syncing & Saving to Backend ── */
+  useEffect(() => {
+    // Sync backend theme if user loaded
+    if (me?.theme && me.theme !== activeTheme && !localStorage.getItem('theme_synced')) {
+      setActiveTheme(me.theme);
+      localStorage.setItem('theme_synced', 'true'); // Prevent infinite loop override
+    }
+  }, [me]);
+
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', activeTheme);
     localStorage.setItem('vtm_theme', activeTheme);
-  }, [activeTheme]);
+
+    if (activeTheme === 'clan') {
+      const clanColor = (ch && CLAN_COLORS[ch.clan]) ? CLAN_COLORS[ch.clan] : '#8a0f1a';
+      document.documentElement.style.setProperty('--tint', clanColor);
+    } else {
+      document.documentElement.style.removeProperty('--tint');
+    }
+  }, [activeTheme, ch]);
+
+  // Handler for Theme Clicks
+  const handleThemeChange = async (themeId) => {
+    setActiveTheme(themeId);
+    try {
+      await api.put('/auth/theme', { theme: themeId });
+    } catch (e) {
+      console.error('Failed to sync theme with server', e);
+    }
+  };
 
   /* ── Shatter trigger ── */
   const handlePremonitionClick = (e) => {
@@ -267,18 +294,26 @@ export default function Home() {
     </div>
   );
 
-  const clan        = (ch.clan || '').trim().toLowerCase();
-  const isMalkavian = clan === 'malkavian';
+  const clan        = (ch.clan || '').trim();
+  const isMalkavian = clan.toLowerCase() === 'malkavian';
   const showCobweb  = isMalkavian || me.role === 'admin';
   const quotaPct    = Math.min((quota.used / quota.limit) * 100, 100);
+  
+  const dynamicClanTint = CLAN_COLORS[clan] || '#8a0f1a';
 
   let sheetObj = {};
   try {
     sheetObj = typeof ch.sheet === 'string' ? JSON.parse(ch.sheet) : (ch.sheet || {});
   } catch(e) {}
 
-  // Apply dynamic clan color to corner notching if available
-  const dynamicClanTint = CLAN_COLORS[ch.clan] || 'var(--tint)';
+  // Construct Themes Array dynamically to insert Character's Clan
+  const availableThemes = [
+    { id: 'clan', label: clan ? `${clan}` : 'Default', sub: 'Bloodline', hex: dynamicClanTint },
+    { id: 'camarilla', label: 'Camarilla', sub: 'Crimson', hex: '#8a0f1a' },
+    { id: 'schrecknet',  label: 'SchreckNet', sub: 'Blue', hex: '#0ea5e9' },
+    { id: 'anarch',      label: 'Anarch', sub: 'Gold', hex: '#ea580c' },
+    { id: 'hecata',      label: 'Hecata', sub: 'Teal', hex: '#0d9488' },
+  ];
 
   return (
     <main className={styles.homePage}>
@@ -302,7 +337,7 @@ export default function Home() {
       {/* ══════════════════════════════════════════
           1. IDENTITY HEADER
       ══════════════════════════════════════════ */}
-      <header className={styles.identityHeader} style={{ borderColor: CLAN_COLORS[ch.clan] || 'var(--border-color)' }}>
+      <header className={styles.identityHeader} style={{ '--dynamic-tint': dynamicClanTint }}>
         <span className={`${styles.corner} ${styles.cornerTL}`} />
         <span className={`${styles.corner} ${styles.cornerTR}`} />
         <span className={`${styles.corner} ${styles.cornerBL}`} />
@@ -394,35 +429,27 @@ export default function Home() {
       {/* ══════════════════════════════════════════
           THEME CUSTOMIZATION INTERFACE
       ══════════════════════════════════════════ */}
-      {/* <section className={styles.feedCard} style={{ marginBottom: '2.5rem' }}>
-        <h2 className={styles.feedHeading} style={{ fontSize: '1.15rem' }}>Interface Aesthetics</h2>
-        <p style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Select your preferred localized terminal theme or network styling.</p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
-          {THEMES.map(t => (
+      <section className={styles.feedCard} style={{ marginBottom: '2.5rem', height: 'fit-content' }}>
+        <h2 className={styles.feedHeading} style={{ fontSize: '1.15rem' }}>Interface Protocol</h2>
+        <p style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Synchronize your terminal aesthetic to your preferred lineage or faction.</p>
+        
+        <div className={styles.themeGrid}>
+          {availableThemes.map(t => (
             <button
               key={t.id}
-              onClick={() => setActiveTheme(t.id)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '10px 12px',
-                background: activeTheme === t.id ? 'color-mix(in srgb, var(--tint) 25%, transparent)' : 'rgba(255,255,255,0.03)',
-                border: `1px solid ${activeTheme === t.id ? 'var(--tint)' : 'var(--border-color)'}`,
-                borderRadius: '8px',
-                color: 'var(--text-color)',
-                cursor: 'pointer',
-                fontSize: '0.85rem',
-                fontWeight: 600,
-                transition: 'all 0.2s ease'
-              }}
+              onClick={() => handleThemeChange(t.id)}
+              className={`${styles.themeBtn} ${activeTheme === t.id ? styles.themeBtnActive : ''}`}
+              style={{ '--theme-color': t.hex }}
             >
-              <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: t.hex, border: '1px solid var(--border-color)' }} />
-              {t.label.split(' ')[0]}
+              <span className={styles.themeDot} />
+              <div className={styles.themeInfo}>
+                <span className={styles.themeName}>{t.label}</span>
+                <span className={styles.themeSub}>{t.sub}</span>
+              </div>
             </button>
           ))}
         </div>
-      </section> */}
+      </section>
 
       {/* ══════════════════════════════════════════
           2. FEEDS (Chronicle, Comms, Action Log)
@@ -430,91 +457,97 @@ export default function Home() {
       <div className={styles.dashboardGrid}>
         
         {/* ── THE CHRONICLE (News) ── */}
-        <section className={styles.feedCard}>
+        <section className={styles.compactFeedCard}>
           <h2 className={styles.feedHeading}>The Erebus Chronicle</h2>
           {recentNews.length === 0 ? (
             <p className={styles.emptyFeedText}>No headlines tonight.</p>
           ) : (
-            <ul className={styles.newsList}>
-              {recentNews.slice(0, 3).map(item => {
-                const tag = item.type === 'announcement' ? 'DECREE' : (item.theme || 'NEWS').toUpperCase();
-                const tagKey = (item.theme || item.type || '').toUpperCase();
-                return (
-                  <li key={item.id} className={styles.newsItem}>
-                    <Link to="/news" className={styles.newsLink}>
-                      <span className={`${styles.newsTag} ${styles[`tag${tagKey}`] || ''}`}>{tag}</span>
-                      <div className={styles.newsContent}>
-                        <h3 className={styles.newsTitle}>{item.title}</h3>
-                        <time className={styles.newsDate}>{formatTimestamp(item.created_at)}</time>
-                      </div>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
+            <div className={styles.feedListScroll}>
+              <ul className={styles.newsList}>
+                {recentNews.slice(0, 3).map(item => {
+                  const tag = item.type === 'announcement' ? 'DECREE' : (item.theme || 'NEWS').toUpperCase();
+                  const tagKey = (item.theme || item.type || '').toUpperCase();
+                  return (
+                    <li key={item.id} className={styles.newsItem}>
+                      <Link to="/news" className={styles.newsLink}>
+                        <span className={`${styles.newsTag} ${styles[`tag${tagKey}`] || ''}`}>{tag}</span>
+                        <div className={styles.newsContent}>
+                          <h3 className={styles.newsTitle}>{item.title}</h3>
+                          <time className={styles.newsDate}>{formatTimestamp(item.created_at)}</time>
+                        </div>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
           )}
           <Link to="/news" className={styles.feedLinkBtn}>Full Edition ›</Link>
         </section>
 
         {/* ── WHISPERS (Comms / Recent Chats) ── */}
-        <section className={styles.feedCard}>
+        <section className={styles.compactFeedCard}>
           <h2 className={styles.feedHeading}>Recent Whispers</h2>
           {recentChats.length === 0 ? (
             <p className={styles.emptyFeedText}>No recent correspondence.</p>
           ) : (
-            <ul className={styles.chatList}>
-              {recentChats.slice(0, 4).map(chat => (
-                <li key={chat.id} className={styles.chatItem}>
-                  <Link to="/comms" className={styles.chatLink}>
-                    <div className={styles.chatHead}>
-                      <span className={styles.chatPartner}>
-                        {chat.isNPC && <span className={styles.npcTag}>NPC</span>}
-                        {chat.partnerName}
-                      </span>
-                      <time className={styles.chatTime}>{formatTimestamp(chat.timestamp)}</time>
-                    </div>
-                    <p className={styles.chatSnippet}>
-                      {(chat.lastMessage || '').substring(0, 50)}
-                      {(chat.lastMessage || '').length > 50 ? '…' : ''}
-                    </p>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <div className={styles.feedListScroll}>
+              <ul className={styles.chatList}>
+                {recentChats.slice(0, 4).map(chat => (
+                  <li key={chat.id} className={styles.chatItem}>
+                    <Link to="/comms" className={styles.chatLink}>
+                      <div className={styles.chatHead}>
+                        <span className={styles.chatPartner}>
+                          {chat.isNPC && <span className={styles.npcTag}>NPC</span>}
+                          {chat.partnerName}
+                        </span>
+                        <time className={styles.chatTime}>{formatTimestamp(chat.timestamp)}</time>
+                      </div>
+                      <p className={styles.chatSnippet}>
+                        {(chat.lastMessage || '').substring(0, 50)}
+                        {(chat.lastMessage || '').length > 50 ? '…' : ''}
+                      </p>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
           <Link to="/comms" className={styles.feedLinkBtn}>Open Comms ›</Link>
         </section>
 
         {/* ── ACTION LOG (Downtimes) ── */}
-        <section className={styles.feedCard}>
+        <section className={styles.compactFeedCard}>
           <h2 className={styles.feedHeading}>Action Log</h2>
           {recentDowntimes.length === 0 ? (
             <p className={styles.emptyFeedText}>No recent actions recorded.</p>
           ) : (
-            <ul className={styles.dtList}>
-              {recentDowntimes.map(dt => {
-                const status = (dt.status || 'submitted').toLowerCase();
-                let badgeClass = styles.badgePending;
-                if (status === 'approved') badgeClass = styles.badgeApproved;
-                if (status === 'needs a scene') badgeClass = styles.badgeNeedsScene;
-                if (status === 'rejected') badgeClass = styles.badgeRejected;
-                if (status === 'resolved' || status === 'resolved in scene') badgeClass = styles.badgeReview;
+            <div className={styles.feedListScroll}>
+              <ul className={styles.dtList}>
+                {recentDowntimes.map(dt => {
+                  const status = (dt.status || 'submitted').toLowerCase();
+                  let badgeClass = styles.badgePending;
+                  if (status === 'approved') badgeClass = styles.badgeApproved;
+                  if (status === 'needs a scene') badgeClass = styles.badgeNeedsScene;
+                  if (status === 'rejected') badgeClass = styles.badgeRejected;
+                  if (status === 'resolved' || status === 'resolved in scene') badgeClass = styles.badgeReview;
 
-                return (
-                  <li key={dt.id} className={styles.dtItem}>
-                    <Link to="/downtimes" className={styles.dtLink}>
-                      <div className={styles.dtHead}>
-                        <span className={`${styles.statusBadge} ${badgeClass}`}>
-                          {dt.status}
-                        </span>
-                        <time className={styles.dtTime}>{formatTimestamp(dt.created_at)}</time>
-                      </div>
-                      <p className={styles.dtTitle}>{dt.title}</p>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
+                  return (
+                    <li key={dt.id} className={styles.dtItem}>
+                      <Link to="/downtimes" className={styles.dtLink}>
+                        <div className={styles.dtHead}>
+                          <span className={`${styles.statusBadge} ${badgeClass}`}>
+                            {dt.status}
+                          </span>
+                          <time className={styles.dtTime}>{formatTimestamp(dt.created_at)}</time>
+                        </div>
+                        <p className={styles.dtTitle}>{dt.title}</p>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
           )}
           <Link to="/downtimes" className={styles.feedLinkBtn}>Review Downtimes ›</Link>
         </section>

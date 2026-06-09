@@ -677,6 +677,11 @@
   background: color-mix(in srgb, var(--tint) 60%, #000);
 }
 
+.pageSection {
+  max-width: 1200px;
+  margin: 0 auto 2.5rem auto;
+}
+
 /* Mobile Responsiveness */
 @media (max-width: 1024px) {
   .navGrid {
@@ -727,4 +732,70 @@
   .navGrid {
     grid-template-columns: 1fr;
   }
+}
+
+/* =========================================
+   THEME SELECTOR GRID
+   ========================================= */
+.themeGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-top: 1rem;
+}
+
+.themeBtn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  color: var(--text-muted);
+}
+
+.themeBtn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: color-mix(in srgb, var(--theme-color) 50%, var(--border-color));
+  color: var(--text-color);
+}
+
+.themeBtnActive {
+  background: color-mix(in srgb, var(--theme-color) 10%, transparent);
+  border-color: var(--theme-color);
+  color: #ffffff;
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--theme-color) 20%, transparent);
+}
+
+.themeDot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--theme-color);
+  border: 2px solid rgba(255,255,255,0.1);
+  box-shadow: 0 0 8px var(--theme-color);
+  flex-shrink: 0;
+}
+
+.themeInfo {
+  display: flex;
+  flex-direction: column;
+}
+
+.themeName {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: inherit;
+  margin-bottom: 2px;
+}
+
+.themeSub {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.8;
 }
