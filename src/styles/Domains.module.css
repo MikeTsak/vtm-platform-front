@@ -1,308 +1,612 @@
-/* src/styles/Domains.module.css */
+/* ============================================================
+   Domains.module.css
+   Full-bleed map UI with floating panels.
+   All color is derived from the global CSS var theme system
+   (--bg-color, --surface-color, --border-color, --tint, etc.)
+   so every theme (Camarilla, Anarch, SchreckNet…) works.
+   ============================================================ */
 
-/* ---------- Base Layout ---------- */
+/* ── Root container ─────────────────────────────────────── */
 .wrap {
-  padding: 1rem;
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-  height: calc(90vh - 100px);
-  max-height: 800px;
+  position: fixed;
+  inset: 0;
+  top: 56px; /* below the site navbar */
+  background: var(--bg-color);
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', Roboto, sans-serif;
+}
+
+/* ── Leaflet Map ─────────────────────────────────────────── */
+.map {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+/* Dark-tinted tile layer via CSS filter */
+.darkTileLayer {
+  filter: brightness(0.38) saturate(0.4) hue-rotate(180deg);
+}
+
+/* ── Leaflet popup overrides ─────────────────────────────── */
+:global(.leaflet-popup-content-wrapper) {
+  background: var(--surface-color) !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6) !important;
+  font-size: 0.85rem !important;
+}
+:global(.leaflet-popup-tip) {
+  background: var(--surface-color) !important;
+}
+:global(.leaflet-popup-close-button) {
+  color: var(--text-muted) !important;
+}
+
+/* ── Division labels (permanent tooltips) ────────────────── */
+.divisionLabel {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: rgba(255,255,255,0.75) !important;
+  font-size: 0.6rem !important;
+  font-weight: 700 !important;
+  font-family: 'Courier New', monospace !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.9) !important;
+  pointer-events: none !important;
+  padding: 0 !important;
+}
+
+/* ── Shared glass panel mixin ────────────────────────────── */
+/* Applied individually below — no @extend in modules */
+
+/* ============================================================
+   LEFT RAIL — All Divisions
+   ============================================================ */
+.rail {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  transform: translateY(-50%);
+  z-index: 900;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  max-height: calc(100vh - 120px);
+}
+
+.railToggle {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  position: relative;
-  overflow: hidden;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 36px;
+  padding: 14px 0;
+  background: color-mix(in srgb, var(--surface-color) 85%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+  writing-mode: vertical-rl;
 }
 
-/* ---------- Main Content Area (Map + All Domains List) ---------- */
-.mainContent {
-  flex-grow: 1;
+.railToggle:hover {
+  color: var(--text-color);
+  border-color: var(--tint);
+  background: color-mix(in srgb, var(--tint) 8%, var(--surface-color));
+}
+
+.railToggleIcon {
+  font-size: 0.6rem;
+  writing-mode: horizontal-tb;
+}
+
+.railToggleLabel {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.railBody {
   display: flex;
-  gap: 1rem;
-  min-height: 0;
+  flex-direction: column;
+  width: 220px;
+  max-height: calc(100vh - 120px);
+  margin-left: 6px;
+  background: color-mix(in srgb, var(--surface-color) 90%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
   overflow: hidden;
 }
 
-/* ---------- Loading State ---------- */
-.loading {
-  composes: loading from './Admin.module.css';
-  height: 100%;
-}
-
-/* ---------- Message Area ---------- */
-.messageArea {
-  padding: 0.75rem 1rem;
-  border-radius: 6px;
-  font-weight: 500;
-  border: 1px solid transparent;
+.railHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px 8px;
+  border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
 }
-.alertError {
-  composes: alertError from './Admin.module.css';
-}
-.alertOk {
-  composes: alertInfo from './Admin.module.css';
+
+.railTitle {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
 }
 
-/* ---------- Map Container ---------- */
-.map {
-  flex-grow: 1;
-  border-radius: 8px;
+.railCount {
+  font-size: 0.7rem;
+  font-family: 'Courier New', monospace;
+  color: var(--tint);
+  font-weight: 700;
+  background: color-mix(in srgb, var(--tint) 12%, transparent);
+  padding: 2px 7px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--tint) 30%, transparent);
+}
+
+.railSearch {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.railSearchInput {
+  width: 100%;
+  background: color-mix(in srgb, var(--bg-color) 60%, transparent);
   border: 1px solid var(--border-color);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  z-index: 1; /* Below overlays */
-  min-height: 300px;
-  background-color: var(--bg-inset);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 0.8rem;
+  color: var(--text-color);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+
+.railSearchInput::placeholder {
+  color: var(--text-muted);
+}
+
+.railSearchInput:focus {
+  border-color: var(--tint);
+}
+
+.railList {
+  overflow-y: auto;
+  flex: 1;
+  padding: 4px 0;
+}
+
+.railList::-webkit-scrollbar { width: 3px; }
+.railList::-webkit-scrollbar-track { background: transparent; }
+.railList::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 2px; }
+
+.railItem {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 5px 12px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  transition: background 0.12s, color 0.12s;
+}
+
+.railItem:hover {
+  background: color-mix(in srgb, var(--tint) 8%, transparent);
+  color: var(--text-color);
+}
+
+.railItemActive {
+  background: color-mix(in srgb, var(--tint) 15%, transparent) !important;
+  color: #ffffff !important;
+}
+
+.railDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1.5px solid;
+  flex-shrink: 0;
+}
+
+.railNum {
+  font-family: 'Courier New', monospace;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  width: 26px;
+}
+
+.railName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.78rem;
+}
+
+/* ============================================================
+   RIGHT PANEL — Claimed Divisions
+   ============================================================ */
+.claimsPanel {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  bottom: 12px;
+  width: 240px;
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  background: color-mix(in srgb, var(--surface-color) 88%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.45);
+}
+
+.claimsPanelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.claimsPanelTitle {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+
+.claimsPanelCount {
+  font-size: 0.7rem;
+  font-family: 'Courier New', monospace;
+  color: var(--tint);
+  font-weight: 700;
+  background: color-mix(in srgb, var(--tint) 12%, transparent);
+  padding: 2px 7px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--tint) 30%, transparent);
+}
+
+.claimsPanelEmpty {
+  padding: 20px 16px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin: 0;
+}
+
+.claimsScroll {
+  overflow-y: auto;
+  flex: 1;
+  padding: 6px 0;
+}
+
+.claimsScroll::-webkit-scrollbar { width: 3px; }
+.claimsScroll::-webkit-scrollbar-track { background: transparent; }
+.claimsScroll::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 2px; }
+
+.claimItem {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 50%, transparent);
+  cursor: pointer;
+  text-align: left;
+  padding: 0;
+  transition: background 0.15s;
+  color: inherit;
+}
+
+.claimItem:last-child {
+  border-bottom: none;
+}
+
+.claimItem:hover {
+  background: color-mix(in srgb, var(--tint) 8%, transparent);
+}
+
+.claimItemActive {
+  background: color-mix(in srgb, var(--tint) 14%, transparent) !important;
+}
+
+/* The colored left stripe uses the per-item --claim-color custom property */
+.claimColorBar {
+  width: 4px;
+  background: var(--claim-color);
+  flex-shrink: 0;
+  border-radius: 0;
+  opacity: 0.85;
+}
+
+.claimBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 9px 12px;
   min-width: 0;
 }
 
-/* ---------- Map Tile Layer Style ---------- */
-.darkTileLayer {
-  filter: invert(1) hue-rotate(180deg) brightness(0.8) contrast(1.1);
-}
-
-/* ---------- Map Labels Style ---------- */
-.divisionLabel {
-  background-color: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  color: #ffffff !important;
-  font-size: 11px !important;
-  font-weight: 600 !important;
-  text-shadow: 0 0 3px #000, 0 0 3px #000, 0 0 3px #000 !important;
-  padding: 0 !important;
-  white-space: nowrap !important;
-}
-.divisionLabel::before {
-   display: none !important;
-}
-
-/* ---------- Map Popup Style (:global) ---------- */
-:global(.leaflet-popup-content-wrapper) {
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
-  border: 1px solid var(--accent-purple);
-  border-radius: 8px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-}
-:global(.leaflet-popup-content) {
-  margin: 12px;
-  font-family: 'Noto Sans', sans-serif;
-  font-size: 0.9rem;
-  line-height: 1.5;
-}
-:global(.leaflet-popup-content b) { color: var(--accent-purple); }
-:global(.leaflet-popup-content code) {
-  font-family: 'Fira Code', monospace;
-  background-color: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  padding: 0.1rem 0.4rem;
-  border-radius: 4px;
+.claimOwner {
   font-size: 0.85rem;
-  color: var(--text-primary);
-}
-:global(.leaflet-popup-tip) {
-  background-color: var(--bg-secondary);
-  border-left: 1px solid var(--accent-purple);
-  border-bottom: 1px solid var(--accent-purple);
-  box-shadow: -2px 2px 5px rgba(0,0,0,0.3);
-}
-:global(.leaflet-popup-close-button) {
-  color: var(--text-secondary) !important;
-  padding: 8px 8px 0 0 !important; text-shadow: none;
-}
-:global(.leaflet-popup-close-button:hover) {
-  color: var(--text-primary) !important; background: none !important;
+  font-weight: 600;
+  color: var(--text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* ---------- Info Panel (Mobile Overlay) ---------- */
-.infoPanel {
-  position: absolute;
-  bottom: 0; left: 0; right: 0;
-  background-color: var(--bg-secondary);
-  border-top: 2px solid var(--accent-purple);
-  padding: 1rem;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
-  z-index: 10;
-  transform: translateY(100%);
-  transition: transform 0.3s ease-in-out;
-  max-height: 40vh;
-  overflow-y: auto;
-  display: none; /* Hidden on desktop */
+.claimMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
-.infoPanelContent h3 { font-size: 1.2rem; color: var(--accent-purple); margin: 0 0 0.5rem 0; }
-.infoPanelContent p { margin: 0.3rem 0; font-size: 0.95rem; color: var(--text-secondary); }
-.infoPanelContent code {
-  display: inline-block; padding: 0 6px; border-radius: 4px; background: var(--bg-tertiary);
-  border: 1px solid var(--border-color); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
-  font-size: 0.85rem; line-height: 1.5; color: var(--text-primary); margin-left: 0.5rem;
-}
-.closeInfoPanel {
-  position: absolute; top: 0.5rem; right: 0.5rem; background: transparent; border: none;
-  color: var(--text-secondary); font-size: 1.5rem; line-height: 1; padding: 0.2rem 0.5rem;
-  cursor: pointer; transition: color 0.2s ease;
-}
-.closeInfoPanel:hover { color: var(--text-primary); }
 
-/* ---------- All Domains List Styles ---------- */
-.allDomainsListWrap {
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-  width: 280px;
+.claimDivNum {
+  font-family: 'Courier New', monospace;
+  font-size: 0.68rem;
+  color: var(--tint);
+  font-weight: 700;
   flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  max-height: 100%;
-  overflow: hidden;
 }
-.allDomainsListWrap h4 {
-  margin: 0; padding: 0.75rem 1rem; font-size: 1.1rem; font-weight: 500;
-  color: var(--text-primary); background-color: var(--bg-tertiary);
-  border-bottom: 1px solid var(--border-color); flex-shrink: 0;
-}
-.allDomainsList { flex-grow: 1; overflow-y: auto; padding: 0.5rem; min-height: 0; }
-.allDomainsList::-webkit-scrollbar { width: 8px; }
-.allDomainsList::-webkit-scrollbar-track { background: var(--bg-secondary); border-radius: 4px; }
-.allDomainsList::-webkit-scrollbar-thumb { background-color: var(--border-color); border-radius: 4px; border: 2px solid var(--bg-secondary); }
-.allDomainsList::-webkit-scrollbar-thumb:hover { background-color: var(--text-secondary); }
-.allDomainsItem {
-  display: flex; align-items: center; gap: 0.75rem; width: 100%; padding: 0.6rem 0.5rem;
-  background: transparent; border: 1px solid transparent; color: var(--text-secondary);
-  cursor: pointer; transition: all 0.2s ease-in-out; text-align: left;
-  border-radius: 4px; font-size: 0.9rem; margin-bottom: 2px;
-}
-.allDomainsItem:hover { background-color: var(--bg-tertiary); border-color: var(--border-color); color: var(--text-primary); }
-.allDomainsItem:focus { outline: none; border-color: var(--accent-purple); box-shadow: 0 0 0 2px rgba(127, 90, 240, 0.3); }
-.allDomainsNumber {
-  font-family: 'Fira Code', monospace; font-weight: 600; color: var(--accent-purple);
-  width: 30px; text-align: right; flex-shrink: 0;
-}
-.allDomainsName { flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.allDomainsItem:hover .allDomainsName { color: var(--text-primary); }
 
-/* ---------- Claim List Section (Overlay with Corner Positioning) ---------- */
-.claimListWrap {
+.claimDivName {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ============================================================
+   BOTTOM HUD — Selected Division Detail
+   ============================================================ */
+.hud {
   position: absolute;
-  width: 380px;
-  max-width: 40%;
-  max-height: 70%;
-  background-color: var(--bg-secondary);
-  border-radius: 8px;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 12px 20px 12px 16px;
+  background: color-mix(in srgb, var(--surface-color) 92%, transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--border-color);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-  z-index: 1000; /* Above map */
+  border-top: 2px solid var(--tint);
+  border-radius: 14px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04);
+  min-width: 380px;
+  max-width: calc(100vw - 550px); /* don't overlap the panels */
+  animation: hudSlideUp 0.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes hudSlideUp {
+  from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.hudLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.hudSwatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  box-shadow: 0 0 10px var(--claim-color, rgba(0,0,0,0.3));
+  border: 1px solid rgba(255,255,255,0.12);
+}
+
+.hudSwatchEmpty {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  border: 1.5px dashed var(--border-color);
+  opacity: 0.5;
+}
+
+.hudInfo {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+}
+
+.hudDivNum {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--tint);
+  font-family: 'Courier New', monospace;
+}
+
+.hudDivName {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-color);
+  white-space: nowrap;
   overflow: hidden;
-  transition: top 0.3s ease, left 0.3s ease, right 0.3s ease, bottom 0.3s ease;
-
-  /* Default position (top-right) */
-  top: 1rem; right: 1rem; left: auto; bottom: auto;
-}
-.claimListWrap[data-position="top-left"] { top: 1rem; left: 1rem; right: auto; bottom: auto; }
-.claimListWrap[data-position="top-right"] { top: 1rem; right: 1rem; left: auto; bottom: auto; }
-.claimListWrap[data-position="bottom-left"] { bottom: 1rem; left: 1rem; right: auto; top: auto; }
-.claimListWrap[data-position="bottom-right"] { bottom: 1rem; right: 1rem; left: auto; top: auto; }
-
-.claimListHeader {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 0.5rem 1rem; border-bottom: 1px solid var(--border-color);
-  background-color: var(--bg-tertiary); flex-shrink: 0; cursor: grab;
-}
-.claimListHeader:active { cursor: grabbing; }
-.claimListHeader h3 { margin: 0; font-size: 1rem; font-weight: 500; color: var(--text-primary); white-space: nowrap; }
-
-.cornerButtons { display: flex; gap: 4px; margin-left: auto; }
-.cornerButtons button {
-  background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-secondary);
-  font-size: 0.9rem; line-height: 1; padding: 2px 5px; border-radius: 4px; cursor: pointer; transition: all 0.2s ease;
-}
-.cornerButtons button:hover { background: var(--bg-tertiary); color: var(--text-primary); border-color: var(--accent-purple); }
-
-.claimList { flex-grow: 1; overflow-y: auto; padding: 0.5rem; min-height: 0; }
-.claimList::-webkit-scrollbar { width: 8px; }
-.claimList::-webkit-scrollbar-track { background: var(--bg-secondary); border-radius: 4px; }
-.claimList::-webkit-scrollbar-thumb { background-color: var(--border-color); border-radius: 4px; border: 2px solid var(--bg-secondary); }
-.claimList::-webkit-scrollbar-thumb:hover { background-color: var(--text-secondary); }
-.claimRow {
-  display: grid; grid-template-columns: 40px 1fr 1fr 1fr; gap: 0.75rem; align-items: center;
-  padding: 0.6rem 0.5rem; border-bottom: 1px solid var(--border-color); font-size: 0.85rem;
-  color: var(--text-secondary); cursor: pointer; transition: background-color 0.2s ease; border-radius: 4px;
-}
-.claimRow:last-child { border-bottom: none; }
-.claimRow:hover { background-color: var(--bg-tertiary); color: var(--text-primary); }
-.claimHead {
-  font-weight: 600; font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary);
-  padding-bottom: 0.4rem; border-bottom: 2px solid var(--border-color); cursor: default; background: none;
-}
-.claimHead:hover { background-color: transparent; }
-.claimNameCell { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.claimRow:hover .claimNameCell { color: var(--text-primary); }
-.colorCell { display: flex; align-items: center; gap: 0.5rem; }
-.colorCell code {
-  display: inline-block; padding: 0 6px; border-radius: 4px; background: var(--bg-tertiary);
-  border: 1px solid var(--border-color); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
-  font-size: 0.8rem; line-height: 1.5; color: var(--text-primary);
-}
-.swatch { display: inline-block; width: 16px; height: 16px; border-radius: 3px; border: 1px solid rgba(255, 255, 255, 0.2); flex-shrink: 0; }
-.muted { padding: 1rem; text-align: center; font-style: italic; color: var(--text-secondary); }
-
-/* ---------- Mobile Adjustments ---------- */
-@media (max-width: 900px) { /* Stack Map and All Domains List */
-  .mainContent { flex-direction: column; }
-  .allDomainsListWrap { width: 100%; max-height: 35vh; order: 2; }
-  .map { order: 1; min-height: 40vh; }
-  /* Tablet overlay styling */
-  .claimListWrap {
-      width: calc(100% - 2rem); max-width: 450px; left: 1rem; right: 1rem; margin: 0 auto;
-  }
-  .claimListWrap[data-position="bottom-left"] { left: 1rem; right: auto; }
-  .claimListWrap[data-position="bottom-right"] { right: 1rem; left: auto; }
+  text-overflow: ellipsis;
 }
 
+.hudRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+.hudOwnerLabel {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.hudOwner {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.hudClose {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.hudClose:hover {
+  background: color-mix(in srgb, var(--tint) 15%, transparent);
+  border-color: var(--tint);
+  color: #ffffff;
+}
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+.toast {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1100;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.toastError {
+  background: color-mix(in srgb, #ef4444 20%, var(--surface-color));
+  border: 1px solid rgba(239,68,68,0.5);
+  color: #fca5a5;
+}
+
+.toastOk {
+  background: color-mix(in srgb, #22c55e 20%, var(--surface-color));
+  border: 1px solid rgba(34,197,94,0.5);
+  color: #86efac;
+}
+
+/* ============================================================
+   ERROR STATES
+   ============================================================ */
+.alertError {
+  padding: 16px 20px;
+  background: color-mix(in srgb, #ef4444 15%, var(--surface-color));
+  border: 1px solid rgba(239,68,68,0.4);
+  border-radius: 10px;
+  color: #fca5a5;
+  font-size: 0.9rem;
+  margin: 12px;
+}
+
+/* ============================================================
+   RESPONSIVE — Mobile
+   ============================================================ */
 @media (max-width: 768px) {
-  .wrap { height: auto; max-height: none; padding: 0.5rem; }
-
-  /* Stack Claim list below All Domains list */
-  .claimListWrap {
-    position: relative; /* Not absolute/fixed */
-    top: auto; right: auto; left: auto; bottom: auto;
-    width: 100%; max-width: none; max-height: 45vh; margin-top: 1rem;
-    transform: none !important; transition: none; z-index: auto;
-    border-radius: 8px; border: 1px solid var(--border-color);
+  .claimsPanel {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 220px;
+    border-radius: 14px 14px 0 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    flex-direction: column;
   }
-  .cornerButtons { display: none; } /* Hide corner buttons */
 
-  /* Info panel becomes bottom sheet overlay */
-  .infoPanel {
-    display: block; position: fixed; z-index: 100;
-    bottom: 0; left: 0; right: 0; max-height: 35vh;
-    transform: translateY(100%);
+  .claimsScroll {
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 4px 8px;
   }
-  .infoPanel:has(.infoPanelContent) { transform: translateY(0); }
 
-  /* Adjust claim row grid */
-  .claimRow { grid-template-columns: 35px 1fr auto; gap: 0.5rem; padding: 0.5rem; }
-  .claimRow > span:nth-child(3), .claimHead > span:nth-child(3) { display: none; } /* Hide color */
-  .claimRow > span:nth-child(4) { justify-self: end; font-size: 0.8rem; } /* Owner right */
+  .claimsScroll::-webkit-scrollbar { height: 3px; width: auto; }
 
-   /* All Domains list adjustments */
-   .allDomainsListWrap { max-height: 30vh; }
-   .allDomainsListWrap h4 { font-size: 1rem; padding: 0.5rem 1rem; }
-   .allDomainsItem { font-size: 0.85rem; padding: 0.5rem; }
-}
+  .claimItem {
+    flex-direction: column;
+    min-width: 120px;
+    max-width: 140px;
+    border-bottom: none;
+    border-right: 1px solid color-mix(in srgb, var(--border-color) 50%, transparent);
+    flex-shrink: 0;
+  }
 
-@media (max-width: 480px) {
-    /* Adjust heights */
-    .claimListWrap { max-height: 50vh; }
-    .infoPanel { max-height: 30vh; }
-    /* Font sizes */
-    .infoPanelContent h3 { font-size: 1rem; }
-    .infoPanelContent p { font-size: 0.85rem; }
-    .claimListHeader h3 { font-size: 1rem; }
-    .claimRow { font-size: 0.8rem; }
-    .allDomainsItem { font-size: 0.8rem; }
-    .allDomainsNumber { width: 25px; }
+  .claimItem:last-child { border-right: none; }
+
+  .claimColorBar {
+    width: 100%;
+    height: 3px;
+  }
+
+  .rail {
+    top: 12px;
+    left: 12px;
+    transform: none;
+    bottom: auto;
+  }
+
+  .hud {
+    bottom: 230px;
+    min-width: calc(100vw - 32px);
+    max-width: calc(100vw - 32px);
+  }
 }

@@ -28,7 +28,7 @@ const THEMES = [
   { id: 'camarilla',   label: 'Camarilla Crimson',hex: '#8a0f1a'       },
   { id: 'schrecknet',  label: 'SchreckNet Blue',  hex: '#0ea5e9'       },
   { id: 'anarch',      label: 'Anarch Gold',      hex: '#ea580c'       },
-  { id: 'hecata',      label: 'Hecata Teal',      hex: '#0d9488'       },
+  { id: 'Giannakis',      label: 'Giannakis',      hex: '#0d9488'       },
 ];
 
 const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim' };
@@ -312,7 +312,7 @@ export default function Home() {
     { id: 'camarilla', label: 'Camarilla', sub: 'Crimson', hex: '#8a0f1a' },
     { id: 'schrecknet',  label: 'SchreckNet', sub: 'Blue', hex: '#0ea5e9' },
     { id: 'anarch',      label: 'Anarch', sub: 'Gold', hex: '#ea580c' },
-    { id: 'hecata',      label: 'Hecata', sub: 'Teal', hex: '#0d9488' },
+    { id: 'Giannakis',      label: 'Giannakis', sub: 'Teal', hex: '#0d9488' },
   ];
 
   return (

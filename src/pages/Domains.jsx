@@ -4,7 +4,7 @@ import L from 'leaflet';
 import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 
-import styles from '../styles/Domains.module.css'; // Correct import
+import styles from '../styles/Domains.module.css';
 import domainsRaw from '../data/Domains.json';
 import api from '../api';
 import Loading from '../components/Loading';
@@ -23,186 +23,112 @@ const DIVISION_NAMES = {
   41: 'Ymuttos', 42: 'Parnitha', 43: 'Peiraias, Neo Faliro', 44: 'Xaidari',
   45: 'Korydallos, Nikaia, Agia Barbara', 46: 'Glyfada', 47: 'Gkyzh', 48: 'Eleysina', 49: 'Aspropirgos'
 };
-// --- End of Division Names ---
-
-// --- All Domains List Component ---
-function AllDomainsList({ domains, onDomainClick }) {
-    if (!domains || domains.length === 0) {
-        return null;
-    }
-    // Sort domains numerically by division number
-    const sortedDomains = domains.slice().sort((a, b) => a.number - b.number);
-
-    return (
-        <div className={styles.allDomainsListWrap}>
-            <h4>All Divisions ({sortedDomains.length})</h4>
-            <div className={styles.allDomainsList}>
-                {sortedDomains.map(domain => (
-                    <button
-                        key={domain.number}
-                        className={styles.allDomainsItem}
-                        onClick={() => onDomainClick(domain.number)}
-                    >
-                        <span className={styles.allDomainsNumber}>#{domain.number}</span>
-                        <span className={styles.allDomainsName}>{domain.name}</span>
-                    </button>
-                ))}
-            </div>
-        </div>
-    );
-}
-// --- End All Domains List Component ---
 
 export default function Domains() {
-  const [claims, setClaims] = useState([]);
-  const [err, setErr] = useState('');
-  const [msg, setMsg] = useState('');
-  const mapRef = useRef(null);
-  const geoJsonRef = useRef(null); // Ref to access GeoJSON layer
-
-  const [selectedDivision, setSelectedDivision] = useState(null);
+  const [claims, setClaims]                             = useState([]);
+  const [err, setErr]                                   = useState('');
+  const [msg, setMsg]                                   = useState('');
+  const mapRef                                          = useRef(null);
+  const geoJsonRef                                      = useRef(null);
+  const [selectedDivision, setSelectedDivision]         = useState(null);
   const [selectedDivisionInfo, setSelectedDivisionInfo] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading]                       = useState(true);
+  const [railOpen, setRailOpen]                         = useState(false);
+  const [searchQuery, setSearchQuery]                   = useState('');
 
-  // Corner Positioning State (FIXED: Default to bottom-left)
-  const [claimListPosition, setClaimListPosition] = useState('bottom-left');
+  const { geoJsonData, allDomainsList } = useMemo(() => {
+    if (!domainsRaw || !Array.isArray(domainsRaw.features)) {
+      console.error('Domains.json is missing or has incorrect structure.');
+      return { geoJsonData: null, allDomainsList: [] };
+    }
+    const domains  = [];
+    const features = domainsRaw.features.map((f, i) => {
+      const divisionNumber = f?.properties?.division != null ? Number(f.properties.division) : (i + 1);
+      const divisionName   = DIVISION_NAMES[divisionNumber] || `Division ${divisionNumber}`;
+      domains.push({ number: divisionNumber, name: divisionName });
+      return { ...f, properties: { ...f?.properties, __division: divisionNumber, __name: divisionName } };
+    });
+    return { geoJsonData: { ...domainsRaw, features }, allDomainsList: domains };
+  }, []);
 
-  // Memoize GeoJSON data and extract domain list
-  const { geoJsonData, allDomainsList } = useMemo(
-    () => {
-        if (!domainsRaw || !Array.isArray(domainsRaw.features)) {
-            console.error("Domains.json is missing or has incorrect structure.");
-            return { geoJsonData: null, allDomainsList: [] };
-        }
-        const domains = [];
-        const features = domainsRaw.features.map((f, i) => {
-            const divisionNumber = f?.properties?.division != null ? Number(f.properties.division) : (i + 1);
-            const divisionName = DIVISION_NAMES[divisionNumber] || `Division ${divisionNumber}`;
-            domains.push({ number: divisionNumber, name: divisionName });
-            return {
-              ...f,
-              properties: { ...f?.properties, __division: divisionNumber, __name: divisionName },
-            };
-        });
-        return { geoJsonData: { ...domainsRaw, features }, allDomainsList: domains };
-    },
-    []
-  );
+  const bounds     = useMemo(() => (geoJsonData ? L.geoJSON(geoJsonData).getBounds() : null), [geoJsonData]);
+  const claimByDiv = useMemo(() => new Map(claims.map(c => [Number(c.division), c])), [claims]);
+  const numOr      = (v, fallback) => (Number.isFinite(parseFloat(v)) ? parseFloat(v) : fallback);
 
-  // Calculate bounds
-  const bounds = useMemo(() => (geoJsonData ? L.geoJSON(geoJsonData).getBounds() : null), [geoJsonData]);
-
-  // Load claims function
   const loadClaims = useCallback(async () => {
     setErr(''); setMsg(''); setIsLoading(true);
     try {
       const { data: claimsData } = await api.get('/domain-claims');
       setClaims(claimsData.claims || []);
-    } catch (e) { console.error("Error loading claims:", e); setErr(e.response?.data?.error || 'Failed to load claims'); }
-    finally { setIsLoading(false); }
+    } catch (e) {
+      console.error('Error loading claims:', e);
+      setErr(e.response?.data?.error || 'Failed to load claims');
+    } finally { setIsLoading(false); }
   }, []);
 
   useEffect(() => { loadClaims(); }, [loadClaims]);
 
-  // Memoized claim lookup
-  const claimByDiv = useMemo(() => new Map(claims.map(c => [Number(c.division), c])), [claims]);
-
-  // Helper numOr
-  const numOr = (v, fallback) => (Number.isFinite(parseFloat(v)) ? parseFloat(v) : fallback);
-
-  // --- Style function ---
   const style = useCallback((feature) => {
-    const n = feature?.properties?.__division;
-    const claim = claimByDiv.get(n);
-    const isSelected = selectedDivision === n;
-    const fill = claim?.color || feature?.properties?.fill || '#888888';
+    const n           = feature?.properties?.__division;
+    const claim       = claimByDiv.get(n);
+    const isSelected  = selectedDivision === n;
+    const fill        = claim?.color || feature?.properties?.fill || '#888888';
     const baseOpacity = claim ? 0.60 : numOr(feature?.properties?.['fill-opacity'], 0.35);
-
     return {
-      color: isSelected ? 'var(--accent-purple)' : (claim?.color || feature?.properties?.stroke || '#444444'),
-      weight: isSelected ? 3.5 : 1.5,
-      opacity: numOr(feature?.properties?.['stroke-opacity'], 1),
-      fillColor: fill,
+      color:       isSelected ? '#c084fc' : (claim?.color || feature?.properties?.stroke || '#444444'),
+      weight:      isSelected ? 3.5 : 1.5,
+      opacity:     numOr(feature?.properties?.['stroke-opacity'], 1),
+      fillColor:   fill,
       fillOpacity: isSelected ? Math.min(baseOpacity + 0.25, 0.9) : baseOpacity,
-      dashArray: isSelected ? '' : '4',
+      dashArray:   isSelected ? '' : '4',
     };
   }, [selectedDivision, claimByDiv]);
 
-  // --- onEachFeature ---
   const onEach = useCallback((feature, layer) => {
-    const n = feature?.properties?.__division;
-    const name = feature?.properties?.__name || `Division ${n}`;
+    const n     = feature?.properties?.__division;
+    const name  = feature?.properties?.__name || `Division ${n}`;
     const claim = claimByDiv.get(n);
 
     layer.on({
       mouseover: (e) => {
-        const targetLayer = e.target;
-        const targetDivision = targetLayer.feature.properties.__division;
-        if (selectedDivision !== targetDivision) {
-          const currentStyle = style(targetLayer.feature);
-          targetLayer.setStyle({
-            weight: 3,
-            fillOpacity: Math.min(currentStyle.fillOpacity + 0.15, 0.85),
-            dashArray: '',
-            color: 'var(--accent-purple)',
-          });
-          if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
-             layer.bringToFront();
-          }
+        const tgt = e.target;
+        if (selectedDivision !== tgt.feature.properties.__division) {
+          const cur = style(tgt.feature);
+          tgt.setStyle({ weight: 3, fillOpacity: Math.min(cur.fillOpacity + 0.15, 0.85), dashArray: '', color: '#c084fc' });
+          if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) layer.bringToFront();
         }
       },
       mouseout: (e) => {
-        const targetLayer = e.target;
-        const targetDivision = targetLayer.feature.properties.__division;
-        if (selectedDivision !== targetDivision && geoJsonRef.current) {
-           geoJsonRef.current.resetStyle(targetLayer);
+        const tgt = e.target;
+        if (selectedDivision !== tgt.feature.properties.__division && geoJsonRef.current) {
+          geoJsonRef.current.resetStyle(tgt);
         }
       },
       click: (e) => {
-        // Only stop propagation for real DOM events, not synthetic ones
-        if (e.originalEvent) {
-          L.DomEvent.stopPropagation(e); // Prevent map click right after
-        }
-
+        if (e.originalEvent) L.DomEvent.stopPropagation(e);
         const clickedDivision = e.target.feature.properties.__division;
         const map = mapRef.current;
-
-        // Ensure fitBounds is called *within* the event handler
-        if (map) {
-          // This provides the smooth zoom
-          map.fitBounds(e.target.getBounds(), { padding: [40, 40], maxZoom: 15, duration: 0.5 });
-        }
-
-        // Reset previous style *before* setting new state
+        if (map) map.fitBounds(e.target.getBounds(), { padding: [40, 40], maxZoom: 15, duration: 0.5 });
         if (selectedDivision !== null && selectedDivision !== clickedDivision) {
-          const prevLayer = Object.values(geoJsonRef.current?.getLayers() || {}).find(
+          const prev = Object.values(geoJsonRef.current?.getLayers() || {}).find(
             l => l.feature.properties.__division === selectedDivision
           );
-          if (prevLayer && geoJsonRef.current) {
-             geoJsonRef.current.resetStyle(prevLayer);
-          }
+          if (prev && geoJsonRef.current) geoJsonRef.current.resetStyle(prev);
         }
-
-        // Update state
         setSelectedDivision(clickedDivision);
         const clickedClaim = claimByDiv.get(clickedDivision);
         setSelectedDivisionInfo({
           number: clickedDivision,
-          name: name,
+          name,
           owner: clickedClaim?.owner_name || 'Unclaimed',
-          color: clickedClaim?.color || 'N/A',
+          color: clickedClaim?.color || null,
         });
         setMsg(''); setErr('');
-        e.target.bringToFront(); // Bring selected to front
-        
-        // --- THIS IS THE FIX ---
-        // Manually open the popup since we overrode the default click
+        e.target.bringToFront();
         e.target.openPopup();
-        // --- END OF FIX ---
       },
     });
 
-    // Tooltip (Permanent Label)
     layer.bindTooltip(`${n}: ${name}`, {
       permanent: true,
       direction: 'center',
@@ -210,187 +136,221 @@ export default function Domains() {
       opacity: 0.85,
     });
 
-    // Popup (On Click)
-    const escapeHtml = (unsafe = '') => unsafe.toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    const esc = (s = '') => s.toString()
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+
     if (claim) {
       layer.bindPopup(
-        `<b>Division ${n}: ${escapeHtml(name)}</b><br/>` +
-        `Owner: ${escapeHtml(claim.owner_name)}<br/>` +
-        (claim.color ? `Color: <span style="display:inline-block; width:12px; height:12px; background-color:${escapeHtml(claim.color)}; border:1px solid #fff; margin-right: 4px; vertical-align:middle;"></span><code>${escapeHtml(claim.color)}</code>` : '')
+        `<b>Division ${n}: ${esc(name)}</b><br/>` +
+        `Owner: ${esc(claim.owner_name)}<br/>` +
+        (claim.color ? `Color: <span style="display:inline-block;width:12px;height:12px;background-color:${esc(claim.color)};border:1px solid #fff;margin-right:4px;vertical-align:middle;"></span><code>${esc(claim.color)}</code>` : '')
       );
     } else {
-      layer.bindPopup(`<b>Division ${n}: ${escapeHtml(name)}</b><br/>Unclaimed`);
+      layer.bindPopup(`<b>Division ${n}: ${esc(name)}</b><br/>Unclaimed`);
     }
+  }, [selectedDivision, claimByDiv, style]);
 
-  }, [selectedDivision, claimByDiv, style]); // Keep style in dependencies
-
-  // --- Handle click outside polygons to deselect ---
   useEffect(() => {
     const map = mapRef.current;
-    if (map) {
-      const handleClickOutside = (e) => {
-         const targetClass = e.originalEvent.target.classList;
-         if (targetClass.contains('leaflet-container') || targetClass.contains('leaflet-tile')) {
-              if (selectedDivision !== null) {
-                  const prevLayer = Object.values(geoJsonRef.current?.getLayers() || {}).find(
-                      l => l.feature.properties.__division === selectedDivision
-                  );
-                  if (prevLayer && geoJsonRef.current) {
-                      geoJsonRef.current.resetStyle(prevLayer);
-                  }
-                  setSelectedDivision(null);
-                  setSelectedDivisionInfo(null);
-              }
-         }
-      };
-      map.on('click', handleClickOutside);
-      return () => { map.off('click', handleClickOutside); };
-    }
+    if (!map) return;
+    const handler = (e) => {
+      const cls = e.originalEvent.target.classList;
+      if (cls.contains('leaflet-container') || cls.contains('leaflet-tile')) {
+        if (selectedDivision !== null) {
+          const prev = Object.values(geoJsonRef.current?.getLayers() || {}).find(
+            l => l.feature.properties.__division === selectedDivision
+          );
+          if (prev && geoJsonRef.current) geoJsonRef.current.resetStyle(prev);
+          setSelectedDivision(null);
+          setSelectedDivisionInfo(null);
+        }
+      }
+    };
+    map.on('click', handler);
+    return () => { map.off('click', handler); };
   }, [mapRef, selectedDivision]);
 
-  // Key for GeoJSON component
   const geoJsonKey = useMemo(() => `geojson-${selectedDivision}-${claims.length}`, [selectedDivision, claims]);
 
-  // --- Unified handler for jumping to a division ---
   const handleJumpToDivision = useCallback((divisionNumber) => {
-    const map = mapRef.current;
+    const map          = mapRef.current;
     const geoJsonLayer = geoJsonRef.current;
     if (!map || !geoJsonLayer) return;
+    const target = geoJsonLayer.getLayers().find(l => l.feature?.properties?.__division === Number(divisionNumber));
+    if (target) target.fire('click');
+    else console.warn(`Layer for division ${divisionNumber} not found.`);
+  }, []);
 
-    const layers = geoJsonLayer.getLayers();
-    const targetLayer = layers.find(layer => layer.feature?.properties?.__division === Number(divisionNumber));
+  const filteredDomains = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    return allDomainsList
+      .slice()
+      .sort((a, b) => a.number - b.number)
+      .filter(d => !q || d.name.toLowerCase().includes(q) || String(d.number).includes(q));
+  }, [allDomainsList, searchQuery]);
 
-    if (targetLayer) {
-        // Fire the click event, which now contains the fitBounds call
-        // This will now work because the 'click' handler is fixed
-        targetLayer.fire('click');
-        // No separate fitBounds call needed here
-    } else {
-        console.warn(`Layer for division ${divisionNumber} not found.`);
-    }
-  }, [mapRef, geoJsonRef]); // Dependencies: refs
-
-  // --- Render Logic ---
-  if (isLoading) {
-    return <Loading />;
-  }
+  if (isLoading) return <Loading />;
   if (!geoJsonData || !bounds) {
-    return <div className={`${styles.wrap} ${styles.alertError}`}>Error: Invalid or missing Domains.json map data.</div>;
+    return (
+      <div className={styles.wrap}>
+        <div className={styles.alertError}>Error: Invalid or missing map data.</div>
+      </div>
+    );
   }
 
   return (
     <div className={styles.wrap}>
+
+      {/* ── Status toast ── */}
       {(err || msg) && (
-        <div className={`${styles.messageArea} ${err ? styles.alertError : styles.alertOk}`}>
+        <div className={`${styles.toast} ${err ? styles.toastError : styles.toastOk}`}>
           {err || msg}
         </div>
       )}
 
-      {/* Main content area: Map + All Domains List */}
-      <div className={styles.mainContent}>
-        <MapContainer
-          whenCreated={(m) => { mapRef.current = m; }}
-          bounds={bounds}
-          className={styles.map}
-          scrollWheelZoom={true}
-          preferCanvas={true}
-          minZoom={11}
-        >
-          <TileLayer
-            className={styles.darkTileLayer} // Apply dark style
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          />
-          <GeoJSON
-            key={geoJsonKey} // Force re-render on changes
-            ref={geoJsonRef}
-            data={geoJsonData}
-            style={style}
-            onEachFeature={onEach}
-          />
-        </MapContainer>
-
-        {/* Render the All Domains List */}
-        <AllDomainsList
-            domains={allDomainsList}
-            onDomainClick={handleJumpToDivision} // Use the unified handler
+      {/* ── MAP ── */}
+      <MapContainer
+        whenCreated={(m) => { mapRef.current = m; }}
+        bounds={bounds}
+        className={styles.map}
+        scrollWheelZoom={true}
+        preferCanvas={true}
+        minZoom={11}
+      >
+        <TileLayer
+          className={styles.darkTileLayer}
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         />
+        <GeoJSON
+          key={geoJsonKey}
+          ref={geoJsonRef}
+          data={geoJsonData}
+          style={style}
+          onEachFeature={onEach}
+        />
+      </MapContainer>
+
+      {/* ── LEFT RAIL: All Divisions ── */}
+      <div className={`${styles.rail} ${railOpen ? styles.railOpen : ''}`}>
+        <button
+          className={styles.railToggle}
+          onClick={() => setRailOpen(o => !o)}
+          title={railOpen ? 'Collapse' : 'All Divisions'}
+        >
+          <span className={styles.railToggleIcon}>{railOpen ? '◀' : '▶'}</span>
+          {!railOpen && <span className={styles.railToggleLabel}>Divisions</span>}
+        </button>
+
+        {railOpen && (
+          <div className={styles.railBody}>
+            <div className={styles.railHeader}>
+              <span className={styles.railTitle}>All Divisions</span>
+              <span className={styles.railCount}>{allDomainsList.length}</span>
+            </div>
+            <div className={styles.railSearch}>
+              <input
+                className={styles.railSearchInput}
+                type="text"
+                placeholder="Search…"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <div className={styles.railList}>
+              {filteredDomains.map(domain => {
+                const isClaimed  = claimByDiv.has(domain.number);
+                const claimColor = claimByDiv.get(domain.number)?.color;
+                return (
+                  <button
+                    key={domain.number}
+                    className={`${styles.railItem} ${selectedDivision === domain.number ? styles.railItemActive : ''}`}
+                    onClick={() => handleJumpToDivision(domain.number)}
+                  >
+                    <span
+                      className={styles.railDot}
+                      style={{ background: isClaimed ? (claimColor || '#888') : 'transparent', borderColor: isClaimed ? (claimColor || '#888') : 'rgba(255,255,255,0.15)' }}
+                    />
+                    <span className={styles.railNum}>#{domain.number}</span>
+                    <span className={styles.railName}>{domain.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
-
-      {/* Mobile Info Panel (relies on CSS for display) */}
-      {selectedDivisionInfo && (
-          <div className={styles.infoPanel}>
-            <div className={styles.infoPanelContent}>
-              <h3>Division {selectedDivisionInfo.number}: {selectedDivisionInfo.name}</h3>
-              <p>Owner: {selectedDivisionInfo.owner}</p>
-              {selectedDivisionInfo.color !== 'N/A' && (
-                <p>Color: <span className={styles.swatch} style={{ background: selectedDivisionInfo.color }} /> <code>{selectedDivisionInfo.color}</code></p>
-              )}
-            </div>
-            <button className={styles.closeInfoPanel} onClick={() => {
-              if (selectedDivision !== null) {
-                const prevLayer = Object.values(geoJsonRef.current?.getLayers() || {}).find(
-                  l => l.feature.properties.__division === selectedDivision
-                );
-                 if (prevLayer && geoJsonRef.current) { geoJsonRef.current.resetStyle(prevLayer); }
-              }
-              setSelectedDivisionInfo(null);
-              setSelectedDivision(null);
-            }}>
-              &times;
-            </button>
-          </div>
-      )}
-
-      {/* Claim List Section (Overlay with Corner Positioning) */}
-      <div
-        className={styles.claimListWrap}
-        data-position={claimListPosition} // Link state to CSS for positioning
-      >
-        <div className={styles.claimListHeader}>
-          <h3>Claimed Divisions ({claims.length})</h3>
-          {/* Corner Buttons (Desktop Only via CSS) */}
-          <div className={styles.cornerButtons}>
-             <button title="Move to Top Left" onClick={() => setClaimListPosition('top-left')}>↖</button>
-             <button title="Move to Top Right" onClick={() => setClaimListPosition('top-right')}>↗</button>
-             <button title="Move to Bottom Left" onClick={() => setClaimListPosition('bottom-left')}>↙</button>
-             <button title="Move to Bottom Right" onClick={() => setClaimListPosition('bottom-right')}>↘</button>
-          </div>
+      {/* ── RIGHT PANEL: Claimed Divisions ── */}
+      <div className={styles.claimsPanel}>
+        <div className={styles.claimsPanelHeader}>
+          <span className={styles.claimsPanelTitle}>Territory</span>
+          <span className={styles.claimsPanelCount}>{claims.length} claimed</span>
         </div>
-        {!claims.length && <div className={styles.muted}>No claims yet.</div>}
-        {claims.length > 0 && (
-          <div className={styles.claimList}>
-            <div className={`${styles.claimRow} ${styles.claimHead}`}>
-              <span>Div</span>
-              <span>Name</span>
-              <span>Color</span>
-              <span>Owner</span>
-            </div>
+        {claims.length === 0 ? (
+          <p className={styles.claimsPanelEmpty}>No territory claimed.</p>
+        ) : (
+          <div className={styles.claimsScroll}>
             {claims
               .slice()
               .sort((a, b) => Number(a.division) - Number(b.division))
               .map(c => {
                 const name = DIVISION_NAMES[c.division] || `Division ${c.division}`;
                 return (
-                  <div
+                  <button
                     key={c.division}
-                    className={styles.claimRow}
-                    onClick={() => handleJumpToDivision(c.division)} // Use unified handler
+                    className={`${styles.claimItem} ${selectedDivision === Number(c.division) ? styles.claimItemActive : ''}`}
+                    onClick={() => handleJumpToDivision(c.division)}
+                    style={{ '--claim-color': c.color || '#888888' }}
                   >
-                    <span>#{c.division}</span>
-                    <span className={styles.claimNameCell}>{name}</span>
-                    <span className={styles.colorCell}>
-                      <span className={styles.swatch} style={{ background: c.color || '#888' }} />
-                      <code>{c.color || 'N/A'}</code>
-                    </span>
-                    <span>{c.owner_name || 'Unclaimed'}</span>
-                  </div>
+                    <span className={styles.claimColorBar} />
+                    <div className={styles.claimBody}>
+                      <span className={styles.claimOwner}>{c.owner_name || 'Unclaimed'}</span>
+                      <span className={styles.claimMeta}>
+                        <span className={styles.claimDivNum}>#{c.division}</span>
+                        <span className={styles.claimDivName}>{name}</span>
+                      </span>
+                    </div>
+                  </button>
                 );
               })}
           </div>
         )}
       </div>
+
+      {/* ── BOTTOM HUD: Selected Division ── */}
+      {selectedDivisionInfo && (
+        <div className={styles.hud}>
+          <div className={styles.hudLeft}>
+            {selectedDivisionInfo.color
+              ? <span className={styles.hudSwatch} style={{ background: selectedDivisionInfo.color }} />
+              : <span className={styles.hudSwatchEmpty} />
+            }
+            <div className={styles.hudInfo}>
+              <span className={styles.hudDivNum}>Division {selectedDivisionInfo.number}</span>
+              <span className={styles.hudDivName}>{selectedDivisionInfo.name}</span>
+            </div>
+          </div>
+          <div className={styles.hudRight}>
+            <span className={styles.hudOwnerLabel}>Controlled by</span>
+            <span className={styles.hudOwner}>{selectedDivisionInfo.owner}</span>
+          </div>
+          <button
+            className={styles.hudClose}
+            onClick={() => {
+              if (selectedDivision !== null) {
+                const prev = Object.values(geoJsonRef.current?.getLayers() || {}).find(
+                  l => l.feature.properties.__division === selectedDivision
+                );
+                if (prev && geoJsonRef.current) geoJsonRef.current.resetStyle(prev);
+              }
+              setSelectedDivisionInfo(null);
+              setSelectedDivision(null);
+            }}
+          >✕</button>
+        </div>
+      )}
     </div>
   );
 }

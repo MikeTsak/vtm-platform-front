@@ -1,3 +1,4 @@
+// src/components/HierarchyView.jsx
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import styles from '../styles/Court.module.css';
@@ -22,9 +23,9 @@ export default function HierarchyView({ canEdit }) {
   const [loading, setLoading] = useState(true);
   const [isEditMode, setIsEditMode] = useState(canEdit); 
   const [enlargedImage, setEnlargedImage] = useState(null); 
-  const [selectedClan, setSelectedClan] = useState(""); // For bulk bloodhunt
+  const [selectedClan, setSelectedClan] = useState("");
   
-  const TITLES = ["Prince", "Seneschal", "Primogen", "Sheriff", "Keeper", "Harpy", "Assistant Harpy", "Hound", "Shadow", "Whip"];
+  const TITLES = ["Prince", "Seneschal", "Primogen", "Sheriff", "Keeper", "Harpy", "Scourge", "Heralds"];
 
   useEffect(() => {
     setIsEditMode(canEdit);
