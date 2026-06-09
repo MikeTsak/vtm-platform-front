@@ -392,7 +392,7 @@ export default function Home() {
       {/* ══════════════════════════════════════════
           CHRONICLE EVENT COUNTDOWN & TRACKERS
       ══════════════════════════════════════════ */}
-      <div className={styles.dashboardGrid} style={{ gridTemplateColumns: '1fr 1fr', marginBottom: '2.5rem' }}>
+      <div className={`${styles.pageSection} ${styles.dashboardGrid}`} style={{ gridTemplateColumns: '1fr 1fr' }}>
         <section className={styles.feedCard} style={{ textAlign: 'center', justifyContent: 'center' }}>
           <h3 style={{ margin: 0, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>Next Modern Event</h3>
           <div style={{ fontSize: '1.5rem', fontWeight: 700, fontFamily: 'var(--font-title)', color: 'var(--tint)', marginTop: '4px' }}>
@@ -429,7 +429,7 @@ export default function Home() {
       {/* ══════════════════════════════════════════
           THEME CUSTOMIZATION INTERFACE
       ══════════════════════════════════════════ */}
-      <section className={styles.feedCard} style={{ marginBottom: '2.5rem', height: 'fit-content' }}>
+      <section className={`${styles.pageSection} ${styles.feedCard}`} style={{ height: 'fit-content' }}>
         <h2 className={styles.feedHeading} style={{ fontSize: '1.15rem' }}>Interface Protocol</h2>
         <p style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Synchronize your terminal aesthetic to your preferred lineage or faction.</p>
         

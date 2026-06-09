@@ -735,6 +735,16 @@
 }
 
 /* =========================================
+   CONSTRAINED PAGE WRAPPER
+   Keeps every top-level section inside the
+   same 1200px column as identityHeader etc.
+   ========================================= */
+.pageSection {
+  max-width: 1200px;
+  margin: 0 auto 2.5rem auto;
+}
+
+/* =========================================
    THEME SELECTOR GRID
    ========================================= */
 .themeGrid {
