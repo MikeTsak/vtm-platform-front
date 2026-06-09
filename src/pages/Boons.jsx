@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useContext, useMemo } from 'react';
+// src/pages/Boons.jsx
+import React, { useState, useEffect, useContext, useMemo, useRef } from 'react';
 import api from '../api';
 import { AuthCtx } from '../AuthContext';
 import styles from '../styles/Boons.module.css';
@@ -24,26 +25,22 @@ function relDate(ts) {
 /* ── Legend data ────────────────────────────── */
 const LEGEND = [
   {
-    level: 'trivial',
-    title: 'Trivial',
+    level: 'trivial', title: 'Trivial',
     body: 'No real risk or cost to the granter. May not even be tracked within a coterie.',
     examples: ['Helping find blood for the night', 'Getting an invitation to an exclusive club', 'Making space in a haven'],
   },
   {
-    level: 'minor',
-    title: 'Minor',
+    level: 'minor', title: 'Minor',
     body: 'Requires effort, going out of one\'s way. Carries some risk.',
     examples: ['Voting in favour of another (if minimal harm)', 'Killing an unimportant mortal', 'Providing refuge or sustenance', 'Access to ancient tomes'],
   },
   {
-    level: 'major',
-    title: 'Major',
+    level: 'major', title: 'Major',
     body: 'Not given lightly — risk and expense can be considerable.',
     examples: ['Granting rich hunting grounds', 'Revealing a major secret', 'Leveraging resources for another\'s agenda', 'Changing one\'s vote in council'],
   },
   {
-    level: 'life',
-    title: 'Life',
+    level: 'life', title: 'Life',
     body: 'Very rare. Given only when Final Death or a Touchstone is on the horizon.',
     examples: ['A desperate attempt to save own unlife', 'Saving a Touchstone\'s life', 'Keeping a deadly secret indefinitely'],
   },
@@ -58,9 +55,15 @@ export default function Boons() {
   const [entities, setEntities]       = useState([]);
   const [showForm, setShowForm]       = useState(false);
   const [editTarget, setEditTarget]   = useState(null);
+  
+  // Filters & Search
   const [sortMode, setSortMode]       = useState('date');
   const [filterActive, setFilterActive] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  
   const [legendOpen, setLegendOpen]   = useState(false);
+  const searchRef = useRef(null);
 
   const isAdmin  = user?.role === 'admin' || user?.permission_level === 'admin';
   const isCourt  = user?.role === 'courtuser';
@@ -88,11 +91,39 @@ export default function Boons() {
 
   useEffect(() => {
     loadBoons(); loadMyCharacter(); loadEntities();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canManage]);
+
+  // Click outside to close suggestions
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setShowSuggestions(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Extract unique names for Autocomplete
+  const uniqueNames = useMemo(() => {
+    const names = new Set();
+    boons.forEach(b => {
+      if (b.from_name) names.add(b.from_name.trim());
+      if (b.to_name) names.add(b.to_name.trim());
+    });
+    return Array.from(names).sort();
+  }, [boons]);
+
+  const filteredNames = useMemo(() => {
+    if (!searchQuery) return [];
+    const q = searchQuery.toLowerCase();
+    return uniqueNames.filter(n => n.toLowerCase().includes(q)).slice(0, 8);
+  }, [searchQuery, uniqueNames]);
 
   const processedBoons = useMemo(() => {
     let result = [...boons];
+    
+    // Ownership Filter
     if (filterActive && user) {
       if (isAdmin) {
         const npcNames = entities.filter(e => e.type === 'npc')
@@ -113,6 +144,20 @@ export default function Boons() {
         });
       }
     }
+
+    // Search Query Filter
+    if (searchQuery) {
+      const sq = searchQuery.toLowerCase();
+      result = result.filter(b => 
+        (b.from_name && b.from_name.toLowerCase().includes(sq)) || 
+        (b.to_name && b.to_name.toLowerCase().includes(sq)) ||
+        (b.description && b.description.toLowerCase().includes(sq))
+      );
+    }
+
+    
+
+    // Sorting
     const levelRank  = { life: 4, major: 3, minor: 2, trivial: 1 };
     const statusRank = { owed: 1, paid: 2, excused: 3 };
     switch (sortMode) {
@@ -132,15 +177,15 @@ export default function Boons() {
         result.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     }
     return result;
-  }, [boons, sortMode, filterActive, user, myCharacter, isAdmin, entities]);
+  }, [boons, sortMode, filterActive, user, myCharacter, isAdmin, entities, searchQuery]);
 
-  /* stats */
+/* ── Stats updated dynamically (case-insensitive) ── */
   const stats = useMemo(() => ({
-    total:   boons.length,
-    active:  boons.filter(b => b.status === 'owed').length,
-    life:    boons.filter(b => b.level  === 'life'  && b.status === 'owed').length,
-    major:   boons.filter(b => b.level  === 'major' && b.status === 'owed').length,
-  }), [boons]);
+    total:   processedBoons.length,
+    active:  processedBoons.filter(b => String(b.status).toLowerCase() === 'owed').length,
+    life:    processedBoons.filter(b => String(b.level).toLowerCase()  === 'life'  && String(b.status).toLowerCase() === 'owed').length,
+    major:   processedBoons.filter(b => String(b.level).toLowerCase()  === 'major' && String(b.status).toLowerCase() === 'owed').length,
+  }), [processedBoons]);
 
   const handleSave   = async () => { await loadBoons(); setShowForm(false); setEditTarget(null); };
   const handleDelete = async (id) => {
@@ -185,7 +230,7 @@ export default function Boons() {
 
         {error && <div className={styles.alertError}>{error}</div>}
 
-        {/* ── Stats bar ── */}
+        {/* ── Stats bar (Now visually clean and formatted) ── */}
         {!loading && (
           <div className={styles.statsBar}>
             <div className={styles.statItem}>
@@ -200,27 +245,57 @@ export default function Boons() {
             <div className={styles.statDivider} />
             <div className={styles.statItem}>
               <span className={`${styles.statValue} ${styles.statMajor}`}>{stats.major}</span>
-              <span className={styles.statLabel}>Major owed</span>
+              <span className={styles.statLabel}>Major Owed</span>
             </div>
             <div className={styles.statDivider} />
             <div className={styles.statItem}>
               <span className={`${styles.statValue} ${styles.statLife}`}>{stats.life}</span>
-              <span className={styles.statLabel}>Life owed</span>
+              <span className={styles.statLabel}>Life Owed</span>
             </div>
           </div>
         )}
 
-        {/* ── Toolbar ── */}
+        {/* ── Toolbar & Search ── */}
         <div className={styles.toolbar}>
-          <div className={styles.toolbarLeft}>
+          
+          <div className={styles.searchWrap} ref={searchRef}>
+            <span className={styles.searchIcon}>🔍</span>
+            <input 
+              type="text" 
+              className={styles.searchInput}
+              placeholder="Search by Kindred name or circumstance..." 
+              value={searchQuery}
+              onChange={e => {
+                setSearchQuery(e.target.value);
+                setShowSuggestions(true);
+              }}
+              onFocus={() => setShowSuggestions(true)}
+            />
+            {showSuggestions && filteredNames.length > 0 && (
+              <div className={styles.suggestions}>
+                {filteredNames.map(name => (
+                  <div 
+                    key={name} 
+                    className={styles.suggestionItem}
+                    onClick={() => {
+                      setSearchQuery(name);
+                      setShowSuggestions(false);
+                    }}
+                  >
+                    {name}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className={styles.toolbarRight}>
             <button
               className={`${styles.filterChip} ${filterActive ? styles.filterChipActive : ''}`}
               onClick={() => setFilterActive(f => !f)}
             >
               {filterActive ? '✕ ' : ''}{filterLabel}
             </button>
-          </div>
-          <div className={styles.toolbarRight}>
             <select className={styles.sortSelect} value={sortMode} onChange={e => setSortMode(e.target.value)}>
               <option value="date">Newest first</option>
               <option value="level">Highest value</option>
@@ -238,9 +313,11 @@ export default function Boons() {
           <div className={styles.emptyState}>
             <span className={styles.emptyIcon}>⚖️</span>
             <p className={styles.emptyText}>
-              {filterActive
-                ? (isAdmin ? 'No NPC records found.' : 'No personal boons on record.')
-                : 'No debts recorded in the registry.'}
+              {searchQuery 
+                ? 'No boons match your search criteria.'
+                : filterActive
+                  ? (isAdmin ? 'No NPC records found.' : 'No personal boons on record.')
+                  : 'No debts recorded in the registry.'}
             </p>
           </div>
         )}
@@ -260,11 +337,11 @@ export default function Boons() {
                   <div className={styles.cardInner}>
                     {/* Top row: badges + actions */}
                     <div className={styles.cardTopRow}>
-                      <span className={`${styles.levelBadge} ${styles[`lvBadge_${boon.level}`]}`}>
-                        {LEVEL_LABELS[boon.level] || boon.level}
+                      <span className={`${styles.levelBadge} ${styles[`lvBadge_${String(boon.level).toLowerCase()}`]}`}>
+                        {LEVEL_LABELS[String(boon.level).toLowerCase()] || boon.level}
                       </span>
-                      <span className={`${styles.statusBadge} ${styles[`stBadge_${boon.status}`]}`}>
-                        {STATUS_LABELS[boon.status] || boon.status}
+                      <span className={`${styles.statusBadge} ${styles[`stBadge_${String(boon.status).toLowerCase()}`]}`}>
+                        {STATUS_LABELS[String(boon.status).toLowerCase()] || boon.status}
                       </span>
                       <span className={styles.cardDate}>{relDate(boon.created_at)}</span>
                       {canManage && (
@@ -365,7 +442,6 @@ function BoonForm({ entities, boon, onSave, onCancel }) {
     } else {
       setFormData({ from_key: 'npc', from_id: '', from_name: '', to_key: 'npc', to_id: '', to_name: '', level: 'trivial', status: 'owed', description: '' });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boon, entities]);
 
   const handleEntityChange = (e, prefix) => {
@@ -411,7 +487,6 @@ function BoonForm({ entities, boon, onSave, onCancel }) {
       {error && <div className={styles.alertError}>{error}</div>}
 
       <form onSubmit={handleSubmit} className={styles.form}>
-        {/* FROM */}
         <div className={styles.formSection}>
           <label className={styles.formLabel}>Debtor <span className={styles.formLabelSub}>(owes the boon)</span></label>
           <select className={styles.formSelect} value={formData.from_key} onChange={e => handleEntityChange(e, 'from')}>
@@ -422,7 +497,6 @@ function BoonForm({ entities, boon, onSave, onCancel }) {
           )}
         </div>
 
-        {/* TO */}
         <div className={styles.formSection}>
           <label className={styles.formLabel}>Creditor <span className={styles.formLabelSub}>(holds the boon)</span></label>
           <select className={styles.formSelect} value={formData.to_key} onChange={e => handleEntityChange(e, 'to')}>
@@ -433,7 +507,6 @@ function BoonForm({ entities, boon, onSave, onCancel }) {
           )}
         </div>
 
-        {/* Level + Status */}
         <div className={styles.formRow}>
           <div className={styles.formSection}>
             <label className={styles.formLabel} htmlFor="level">Level</label>
@@ -449,7 +522,6 @@ function BoonForm({ entities, boon, onSave, onCancel }) {
           </div>
         </div>
 
-        {/* Description */}
         <div className={styles.formSection}>
           <label className={styles.formLabel} htmlFor="description">Description</label>
           <textarea className={styles.formTextarea} id="description" name="description" value={formData.description} onChange={handleChange} rows={4} placeholder="Circumstances of the boon…" />

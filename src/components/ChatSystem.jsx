@@ -251,6 +251,10 @@ export default function ChatSystem({ commsEnabled = true }) {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   
+  // EDIT/DELETE STATES
+  const [editingMsgId, setEditingMsgId] = useState(null);
+  const [editBody, setEditBody] = useState('');
+
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const onEmojiClick = (emojiObject) => setNewMessage(prevInput => prevInput + emojiObject.emoji);
   
@@ -273,6 +277,21 @@ export default function ChatSystem({ commsEnabled = true }) {
   const [managingGroup, setManagingGroup] = useState(false);
   const [currentGroupMembers, setCurrentGroupMembers] = useState([]);
   const [groupMembersLoading, setGroupMembersLoading] = useState(false);
+  
+  const [headerGroupMembers, setHeaderGroupMembers] = useState([]);
+
+  // Fetch group members dynamically for header rendering
+  useEffect(() => {
+    if (selectedContact?.type === 'group') {
+      let live = true;
+      api.get(`/chat/groups/${selectedContact.id}/members`).then(res => {
+        if (live) setHeaderGroupMembers(res.data.members || []);
+      }).catch(() => {});
+      return () => { live = false; };
+    } else {
+      setHeaderGroupMembers([]);
+    }
+  }, [selectedContact]);
 
   const openManageGroup = async () => {
     setManagingGroup(true);
@@ -318,6 +337,27 @@ export default function ChatSystem({ commsEnabled = true }) {
       setSelectedContact(null); 
       fetchContacts();
     } catch(e) { alert('Failed to leave group'); }
+  };
+
+  const handleDeleteMessage = async (msgId) => {
+    if (!window.confirm("Delete this message? It cannot be undone.")) return;
+    try {
+      await api.delete(`/chat/messages/${msgId}`);
+      setMessages(prev => prev.filter(m => m.id !== msgId));
+    } catch (e) {
+      alert("Failed to delete message. It may be too old or you lack permission.");
+    }
+  };
+
+  const submitEditMessage = async () => {
+    if (!editBody.trim()) return;
+    try {
+      await api.put(`/chat/messages/${editingMsgId}`, { body: editBody });
+      setMessages(prev => prev.map(m => m.id === editingMsgId ? { ...m, body: editBody, edited: true } : m));
+      setEditingMsgId(null);
+    } catch (e) {
+      alert("Failed to edit message. It may be too old or you lack permission.");
+    }
   };
 
   const [notifOn, setNotifOn] = useState(() => localStorage.getItem('comms_notifs') === '1');
@@ -558,7 +598,7 @@ export default function ChatSystem({ commsEnabled = true }) {
              msgs = (res.data.messages || []).map(m => ({
                id: m.id, body: m.body, created_at: m.created_at, sender_id: m.sender_id,
                sender_name: m.char_name || m.display_name, sender_clan: m.clan,
-               attachment_id: m.attachment_id 
+               attachment_id: m.attachment_id, edited: m.edited
              }));
           } else if (selectedContact.type === 'user') {
             const res = await api.get(`/chat/history/${selectedContact.id}`);
@@ -566,7 +606,7 @@ export default function ChatSystem({ commsEnabled = true }) {
               id: m.id, body: m.body, created_at: m.created_at, 
               read_at: m.read_at, delivered_at: m.delivered_at,
               sender_id: m.sender_id,
-              attachment_id: m.attachment_id
+              attachment_id: m.attachment_id, edited: m.edited
             }));
           } else {
             if (isAdmin) {
@@ -574,7 +614,7 @@ export default function ChatSystem({ commsEnabled = true }) {
                 const res = await api.get(`/admin/chat/npc-history/${selectedContact.id}/${selectedPlayerId}`);
                 msgs = (res.data.messages || []).map(m => ({
                   id: m.id, body: m.body, created_at: m.created_at, sender_id: m.from_side === 'npc' ? 'npc' : selectedPlayerId, _from: m.from_side,
-                  attachment_id: m.attachment_id
+                  attachment_id: m.attachment_id, edited: m.edited
                 }));
               }
             } else {
@@ -585,7 +625,7 @@ export default function ChatSystem({ commsEnabled = true }) {
                 created_at: m.created_at, 
                 sender_id: m.from_side === 'user' ? currentUser.id : 'npc', 
                 _from: m.from_side,
-                attachment_id: m.attachment_id
+                attachment_id: m.attachment_id, edited: m.edited
               }));
             }
           }
@@ -944,9 +984,9 @@ export default function ChatSystem({ commsEnabled = true }) {
   if (loading) return <Loading />;
 
   const currentAccent = (() => {
-    if (!selectedContact) return '#8a0f1a';
-    if (selectedContact.type === 'group') return '#444'; 
-    return CLAN_COLORS[selectedContact.clan] || '#8a0f1a';
+    if (!selectedContact) return 'var(--tint)';
+    if (selectedContact.type === 'group') return 'var(--tint)'; 
+    return CLAN_COLORS[selectedContact.clan] || 'var(--tint)';
   })();
 
   const headerLabel = (() => {
@@ -1014,7 +1054,7 @@ export default function ChatSystem({ commsEnabled = true }) {
     const showAdminIcon = isContactAdmin(u);
     const crest = showAdminIcon ? '/img/dice/MessyCrit.png' : symlogo(u.clan);
     const initials = (u.display_name || '?').split(' ').map(p => p[0]).slice(0,2).join('').toUpperCase();
-    const tint = CLAN_COLORS[u.clan] || '#8a0f1a';
+    const tint = CLAN_COLORS[u.clan] || 'var(--tint)';
     
     let timeStr = '';
     if (u.last_message_at) {
@@ -1103,7 +1143,7 @@ export default function ChatSystem({ commsEnabled = true }) {
                     {m.id !== selectedContact.created_by && (
                       <button className={styles.btnSec} style={{padding: '4px 8px', fontSize: '0.75rem'}} onClick={() => handleRemoveMemberFromGroup(m.id)}>Remove</button>
                     )}
-                    {m.id === selectedContact.created_by && <small style={{color: '#888'}}>Creator</small>}
+                    {m.id === selectedContact.created_by && <small style={{color: 'var(--text-muted)'}}>Creator</small>}
                   </div>
                 ))}
               </div>
@@ -1111,7 +1151,7 @@ export default function ChatSystem({ commsEnabled = true }) {
               <div className={styles.sectionLabel} style={{position:'static', marginTop:'10px'}}>Add Members</div>
               <div className={styles.memberSelect}>
                 {nonMembers.length === 0 ? (
-                  <div style={{padding:'10px', color:'#666', textAlign: 'center'}}>All players are in the group.</div>
+                  <div style={{padding:'10px', color:'var(--text-muted)', textAlign: 'center'}}>All players are in the group.</div>
                 ) : nonMembers.map(u => (
                   <div key={u.id} className={styles.memberRow} style={{justifyContent: 'space-between', padding: '6px 10px'}}>
                     <span>{u.char_name} <small>({u.display_name})</small></span>
@@ -1123,7 +1163,7 @@ export default function ChatSystem({ commsEnabled = true }) {
           )}
           
           <div className={styles.modalActions} style={{justifyContent: 'space-between', marginTop: '16px'}}>
-            <button onClick={handleDeleteGroup} className={styles.btnSec} style={{borderColor: '#d41b2c', color: '#d41b2c'}}>Delete Group</button>
+            <button onClick={handleDeleteGroup} className={styles.btnSec} style={{borderColor: 'var(--err)', color: 'var(--err)'}}>Delete Group</button>
             <button onClick={() => setManagingGroup(false)} className={styles.btnPri}>Done</button>
           </div>
         </div>
@@ -1192,7 +1232,7 @@ export default function ChatSystem({ commsEnabled = true }) {
           {filteredNpcs.map(n => {
             const active = selectedContact?.type === 'npc' && selectedContact?.id === n.id;
             const crest = symlogo(n.clan);
-            const tint = CLAN_COLORS[n.clan] || '#8a0f1a';
+            const tint = CLAN_COLORS[n.clan] || 'var(--tint)';
             let timeStr = '';
             if (n.last_message_at) {
                const d = new Date(n.last_message_at);
@@ -1230,9 +1270,14 @@ export default function ChatSystem({ commsEnabled = true }) {
                 {/* Mobile Back Button */}
                 <button type="button" className={styles.mobileContactsBtn} onClick={() => setSelectedContact(null)}>{'<'}</button>
                 <span className={styles.chatDot} />
-                <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', flex:1}}>
-                   Chat with <b>{headerLabel}</b>
-                </span>
+                <div style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', flex:1, display: 'flex', flexDirection: 'column', justifyContent: 'center'}}>
+                   <span>Chat with <b>{headerLabel}</b></span>
+                   {selectedContact?.type === 'group' && headerGroupMembers.length > 0 && (
+                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 'normal', marginTop: '2px' }}>
+                       {headerGroupMembers.map(m => m.char_name || m.display_name).join(', ')}
+                     </span>
+                   )}
+                </div>
                 
                 {/* GROUP BUTTON LOGIC */}
                 {selectedContact.type === 'group' && (
@@ -1249,7 +1294,7 @@ export default function ChatSystem({ commsEnabled = true }) {
                       <button 
                         onClick={handleLeaveGroup} 
                         className={styles.btnSec} 
-                        style={{padding: '2px 8px', fontSize: '0.75rem', marginLeft: '10px', borderColor: '#d41b2c', color: '#d41b2c'}}
+                        style={{padding: '2px 8px', fontSize: '0.75rem', marginLeft: '10px', borderColor: 'var(--err)', color: 'var(--err)'}}
                       >
                         🚪 Leave
                       </button>
@@ -1291,7 +1336,7 @@ export default function ChatSystem({ commsEnabled = true }) {
                   </div>
                   <div className={styles.adminRosterList}>
                     {(adminPlayerTab === 'recent' ? adminRecentPlayers : adminAllPlayersFiltered).map(u => {
-                      const tint = CLAN_COLORS[u.clan] || '#8a0f1a';
+                      const tint = CLAN_COLORS[u.clan] || 'var(--tint)';
                       return (
                         <button type="button" key={`sel-${u.id}`} className={`${styles.rosterItem} ${selectedPlayerId === u.id ? styles.selected : ''}`} onClick={() => selectAdminTarget(u.id)} style={{ '--accent': tint }}>
                           <span className={styles.rosterAvatar}>{symlogo(u.clan) ? <img className={styles.rosterAvatarImg} src={symlogo(u.clan)} alt="crest"/> : <span className={styles.rosterInitials}>{(u.display_name||'?').slice(0,2)}</span>}</span>
@@ -1314,29 +1359,52 @@ export default function ChatSystem({ commsEnabled = true }) {
               {grouped.map(item => {
                 if (item.type === 'day') return <div key={item.id} className={styles.dayDivider}><span>{item.day}</span></div>;
                 const mine = selectedContact.type === 'user' ? item.sender_id === currentUser.id : (selectedContact.type === 'group' ? item.sender_id === currentUser.id : (isAdmin ? item.sender_id==='npc' : item.sender_id===currentUser.id));
+                const timeSinceSent = Date.now() - new Date(item.created_at).getTime();
+                const canEditDelete = mine && timeSinceSent < 4 * 60 * 60 * 1000 && !String(item.id).startsWith('temp_');
+
                 return (
                   <div key={item.id} className={`${styles.messageRow} ${mine ? styles.right : styles.left}`}>
                     <div className={`${styles.messageBubble} ${mine ? styles.sent : styles.received}`} style={mine ? { '--accent': currentAccent } : undefined}>
                       {selectedContact.type === 'group' && !mine && (
-                        <div className={styles.groupSender} style={{ color: CLAN_COLORS[item.sender_clan] || '#ccc' }}>
+                        <div className={styles.groupSender} style={{ color: CLAN_COLORS[item.sender_clan] || 'var(--text-muted)' }}>
                           {item.sender_name}
                         </div>
                       )}
                       
-                      {item.attachment_id && (
-                        <div className={styles.chatImageWrapper}>
-                          <ChatImage attachmentId={item.attachment_id} />
+                      {editingMsgId === item.id ? (
+                        <div className={styles.editMessageWrapper}>
+                          <textarea value={editBody} onChange={e => setEditBody(e.target.value)} className={styles.editMessageInput} />
+                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '6px' }}>
+                             <button onClick={() => setEditingMsgId(null)} className={styles.actionBtn}>Cancel</button>
+                             <button onClick={submitEditMessage} className={styles.actionBtn} style={{ color: 'var(--text-color)', fontWeight: 'bold' }}>Save</button>
+                          </div>
                         </div>
+                      ) : (
+                        <>
+                          {item.attachment_id && (
+                            <div className={styles.chatImageWrapper}>
+                              <ChatImage attachmentId={item.attachment_id} />
+                            </div>
+                          )}
+                          {item.body && <div className={styles.messageBody}>{item.body}</div>}
+                        </>
                       )}
-                      
-                      {item.body && <div className={styles.messageBody}>{item.body}</div>}
-                      
+
                       <div className={styles.messageMetaLine}>
                         <span className={styles.messageTimestamp}>
                             {formatTime(item.created_at)}
+                            {item.edited && <span style={{fontSize:'0.65rem', opacity:0.6}}>(edited)</span>}
                             {mine && <span className={styles.statusWrapper}><StatusIcon msg={item} /></span>}
                         </span>
-                        {!mine && item.body && <button className={styles.actionBtn} onClick={() => copyToClipboard(item.body)} title="Copy">Copy</button>}
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          {canEditDelete && !editingMsgId && (
+                            <>
+                              <button className={styles.actionBtn} onClick={() => { setEditingMsgId(item.id); setEditBody(item.body); }}>Edit</button>
+                              <button className={styles.actionBtn} onClick={() => handleDeleteMessage(item.id)}>Delete</button>
+                            </>
+                          )}
+                          {!mine && item.body && <button className={styles.actionBtn} onClick={() => copyToClipboard(item.body)} title="Copy">Copy</button>}
+                        </div>
                       </div>
                       <span className={`${styles.tail} ${mine ? styles.tailRight : styles.tailLeft}`} />
                     </div>
@@ -1351,11 +1419,11 @@ export default function ChatSystem({ commsEnabled = true }) {
 
             {/* --- REPLACED WARNING BANNER LOGIC --- */}
             {!commsEnabled ? (
-              <div style={{ padding: '8px', background: '#FF4444', color: '#fff', textAlign: 'center', fontSize: '0.85rem', fontWeight: 'bold' }}>
+              <div style={{ padding: '8px', background: 'var(--err)', color: '#fff', textAlign: 'center', fontSize: '0.85rem', fontWeight: 'bold' }}>
                 ⚠️ SCHRECKNET IS CURRENTLY OFFLINE. MESSAGE SENDING IS DISABLED. ⚠️
               </div>
             ) : !isCharActive ? (
-              <div style={{ padding: '8px', background: '#d41b2c', color: '#fff', textAlign: 'center', fontSize: '0.85rem', fontWeight: 'bold' }}>
+              <div style={{ padding: '8px', background: 'var(--err)', color: '#fff', textAlign: 'center', fontSize: '0.85rem', fontWeight: 'bold' }}>
                 Your character is waiting for ST approval. You cannot send messages yet.
               </div>
             ) : null}
