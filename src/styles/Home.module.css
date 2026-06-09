@@ -1,502 +1,730 @@
-/* src/styles/Home.module.css
-   Mobile-first · Gothic Kindred · Erebus Portal
-   ─────────────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=UnifrakturMaguntia&display=swap');
+/* src/styles/Home.module.css */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,400&display=swap');
 
-/* ── Design Tokens ────────────────────────────────────────────── */
-:root {
-  --bg-void:    #060608;
-  --bg-panel:   #0e0e10;
-  --bg-raised:  #141418;
-  --border:     #2a2a30;
-  --border-hi:  #3d3d48;
-  --blood:      #8b0000;
-  --blood-hi:   #b01423;
-  --blood-glow: rgba(176, 20, 35, 0.35);
-  --gold:       #9a7f3c;
-  --gold-hi:    #c4a35a;
-  --text:       #ddd8cc;
-  --text-dim:   #888090;
-  --text-ghost: #3d3a45;
-  --paper-bg:   #e8e0cc;
-  --paper-text: #1a1510;
-  --malk:       #7b2fa0;
-  --malk-glow:  rgba(123, 47, 160, 0.5);
-  --radius:     8px;
-  --radius-sm:  4px;
-}
-
-/* ── Reset / Base ─────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; }
-
-/* ── Page ─────────────────────────────────────────────────────── */
 .homePage {
-  min-height: 100dvh;
-  background: var(--bg-void);
-  background-image:
-    radial-gradient(ellipse 80% 50% at 20% 0%,   rgba(139, 0, 0, 0.08) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 40% at 80% 100%, rgba(40, 10, 50, 0.12) 0%, transparent 60%);
-  color: var(--text);
-  font-family: 'Cormorant Garamond', Georgia, serif;
-  padding: 1rem;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  min-height: 100vh;
+  padding: 2.5rem 1.5rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', Roboto, sans-serif;
+  box-sizing: border-box;
   overflow-x: hidden;
 }
 
-@media (min-width: 768px) { .homePage { padding: 1.5rem 2rem; } }
-@media (min-width: 1200px){ .homePage { padding: 2rem 3rem; } }
-
-/* ── Animations ───────────────────────────────────────────────── */
-@keyframes fadeUp   { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes fadeIn   { from { opacity: 0; } to { opacity: 1; } }
-@keyframes pulse    { 0%,100%{ opacity: 0.6; } 50%{ opacity: 1; } }
-@keyframes bloodDrip{ 0%{ transform: scaleY(0); opacity: 0; } 100%{ transform: scaleY(1); opacity: 1; } }
-@keyframes breathe  { 0%,100%{ box-shadow: 0 0 8px var(--malk-glow); } 50%{ box-shadow: 0 0 22px var(--malk-glow), inset 0 0 12px rgba(80,0,80,0.3); } }
-@keyframes twitch   { 0%,100%{ transform: translate(0,0); } 20%{ transform: translate(-2px,1px); } 40%{ transform: translate(2px,-1px); } 60%{ transform: translate(-1px,2px); } 80%{ transform: translate(1px,-2px); } }
-@keyframes shimmer  { 0%{ background-position: -200% center; } 100%{ background-position: 200% center; } }
-
-/* ── Loading / Empty ──────────────────────────────────────────── */
-.loadingScreen {
-  display: grid; place-items: center; min-height: 80dvh;
-  font-family: 'Cinzel', serif; color: var(--text-dim); letter-spacing: 0.12em;
-}
-.emptyState {
-  padding: 1.5rem; text-align: center; color: var(--text-ghost);
-  font-style: italic; font-size: 0.9rem;
-}
-.errorBanner {
-  background: rgba(139,0,0,0.2); border: 1px solid var(--blood);
-  color: #ffb0b0; padding: 0.75rem 1rem; border-radius: var(--radius);
-  margin-bottom: 1.5rem; font-size: 0.9rem; text-align: center;
+/* Typography settings for Serious Gothic Tone */
+.identityHeader h1, 
+.charName, 
+.feedHeading, 
+.navCardTitle, 
+.malkTitle, 
+.newsTitle,
+.chronicleName {
+  font-family: 'Playfair Display', serif;
 }
 
-/* ── No-character screen ──────────────────────────────────────── */
-.noCharPage  { display: grid; place-items: center; min-height: 80dvh; padding: 1rem; }
-.noCharCard  {
-  background: var(--bg-panel); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 2.5rem 2rem; text-align: center;
-  max-width: 480px; width: 100%;
-  box-shadow: 0 0 40px rgba(0,0,0,0.8), 0 0 80px rgba(139,0,0,0.05);
-  animation: fadeUp 0.7s ease-out;
-}
-.noCharRose  { font-size: 3rem; margin-bottom: 1rem; }
-.noCharTitle { font-family: 'Cinzel', serif; font-size: 1.6rem; color: var(--text); margin: 0 0 0.75rem; }
-.noCharSub   { color: var(--text-dim); font-size: 1rem; line-height: 1.6; margin: 0 0 2rem; }
-.noCharBtn   {
-  background: var(--blood-hi); border: none; color: #fff;
-  font-family: 'Cinzel', serif; font-size: 0.9rem; letter-spacing: 0.08em;
-  padding: 0.75rem 2rem; border-radius: var(--radius-sm); cursor: pointer;
-  transition: background 0.25s, box-shadow 0.25s;
-}
-.noCharBtn:hover { background: #d01830; box-shadow: 0 0 16px var(--blood-glow); }
-
-/* ════════════════════════════════════════════════════════════════
-   1. IDENTITY HEADER
-════════════════════════════════════════════════════════════════ */
+/* =========================================
+   1. IDENTITY HEADER (Gothic Architecture)
+   ========================================= */
 .identityHeader {
   position: relative;
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 1.25rem;
-  margin-bottom: 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto 2.5rem auto;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 2rem;
   overflow: hidden;
-  animation: fadeUp 0.5s ease-out both;
+  box-shadow: var(--shadow);
 }
 
-/* Red top accent stripe */
-.identityHeader::before {
-  content: '';
-  position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  background: linear-gradient(90deg, transparent, var(--blood-hi), transparent);
-}
-
-/* Decorative corner marks */
+/* Border corner notches */
 .corner {
-  position: absolute; width: 12px; height: 12px;
-  border-color: var(--gold); border-style: solid;
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-color: var(--dynamic-tint, var(--tint));
+  border-style: solid;
   opacity: 0.5;
 }
-.cornerTL { top: 6px; left: 6px;  border-width: 1px 0 0 1px; }
-.cornerTR { top: 6px; right: 6px; border-width: 1px 1px 0 0; }
-.cornerBL { bottom: 6px; left: 6px;  border-width: 0 0 1px 1px; }
-.cornerBR { bottom: 6px; right: 6px; border-width: 0 1px 1px 0; }
+.cornerTL { top: 8px; left: 8px; border-width: 2px 0 0 2px; }
+.cornerTR { top: 8px; right: 8px; border-width: 2px 2px 0 0; }
+.cornerBL { bottom: 8px; left: 8px; border-width: 0 0 2px 2px; }
+.cornerBR { bottom: 8px; right: 8px; border-width: 0 2px 2px 0; }
 
 .headerInner {
-  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
-}
-
-/* Clan ring */
-.clanRing {
-  flex-shrink: 0;
-  width: 56px; height: 56px;
-  border-radius: 50%;
-  border: 1px solid var(--blood);
-  box-shadow: 0 0 12px var(--blood-glow), inset 0 0 12px rgba(0,0,0,0.6);
-  display: grid; place-items: center;
-  background: radial-gradient(circle, #1a0a0a 0%, #0a0a0a 100%);
-}
-@media (min-width: 480px) { .clanRing { width: 64px; height: 64px; } }
-
-.clanSymbol { width: 70%; height: 70%; object-fit: contain; opacity: 0.9; }
-
-/* Name meta */
-.headerMeta { flex: 1; min-width: 0; }
-.charName {
-  font-family: 'Cinzel', serif; font-size: 1.4rem; font-weight: 700;
-  margin: 0; line-height: 1.1;
-  background: linear-gradient(135deg, #fff 0%, #b0a090 100%);
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  background-clip: text;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-@media (min-width: 480px) { .charName { font-size: 1.7rem; } }
-@media (min-width: 768px) { .charName { font-size: 2rem; } }
-
-.charSub { margin: 0.3rem 0 0; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-.clanLabel { color: var(--text-dim); font-size: 0.9rem; font-style: italic; }
-.separator { color: var(--border-hi); }
-.xpChip {
-  background: var(--bg-raised); border: 1px solid var(--border-hi);
-  color: var(--gold-hi); font-family: 'Cinzel', serif; font-size: 0.75rem;
-  padding: 1px 7px; border-radius: 3px; font-style: normal;
-}
-
-/* Watermark clan logo */
-.clanWatermark {
-  position: absolute; right: 1rem; top: 50%; transform: translateY(-50%);
-  opacity: 0.06; filter: grayscale(100%); pointer-events: none;
-  transition: opacity 0.4s;
-}
-.identityHeader:hover .clanWatermark { opacity: 0.12; }
-.clanLogo { height: 55px; width: auto; }
-
-/* Quota bar */
-.quotaBar {
-  margin-top: 1rem;
-  display: flex; align-items: center; gap: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--border);
-}
-.quotaLabel { font-size: 0.75rem; color: var(--text-dim); white-space: nowrap; }
-.quotaTrack {
-  flex: 1; height: 4px; background: var(--bg-raised);
-  border-radius: 2px; position: relative; display: flex; align-items: center;
-}
-.quotaFill {
-  position: absolute; left: 0; top: 0; bottom: 0;
-  background: linear-gradient(90deg, var(--blood), var(--blood-hi));
-  border-radius: 2px; transition: width 0.6s ease;
-  box-shadow: 0 0 6px var(--blood-glow);
-}
-.quotaPip {
-  flex: 1; height: 10px; border-radius: 1px; border: 1px solid var(--border-hi);
-  background: transparent; transition: background 0.3s;
-  position: relative; z-index: 1; margin: 0 1px;
-}
-.quotaPipUsed { background: var(--blood-hi); border-color: var(--blood-hi); box-shadow: 0 0 4px var(--blood-glow); }
-.quotaCount { font-family: 'Cinzel', serif; font-size: 0.75rem; color: var(--gold-hi); white-space: nowrap; }
-
-/* ════════════════════════════════════════════════════════════════
-   2. FEEDS
-════════════════════════════════════════════════════════════════ */
-.feeds {
-  display: grid;
-  gap: 1.25rem;
-  margin-bottom: 2rem;
-  animation: fadeUp 0.6s 0.1s ease-out both;
-}
-
-/* Stacked on mobile; side-by-side on tablet+; 3-col on desktop */
-@media (min-width: 640px) {
-  .feeds { grid-template-columns: 1fr 1fr; }
-  .chronicle { grid-column: 1 / -1; }  /* full-width on tablet */
-}
-@media (min-width: 1100px) {
-  .feeds { grid-template-columns: 1fr 2fr 2fr; align-items: start; }
-  .chronicle { grid-column: auto; }    /* restore 3-col on desktop */
-}
-
-/* ── The Chronicle (newspaper) ──────────────────────────────── */
-.chronicle {
-  background: var(--paper-bg);
-  color: var(--paper-text);
-  border-radius: 2px;
-  overflow: hidden;
-  min-height: 280px;
-  display: flex; flex-direction: column;
+  display: flex;
+  align-items: center;
+  gap: 2rem;
   position: relative;
-  box-shadow:
-    0 2px 4px rgba(0,0,0,0.2),
-    5px 5px 0 -1px #cfc8b2,
-    10px 10px 0 -2px #bfb89e,
-    4px 8px 20px rgba(0,0,0,0.5);
+  z-index: 2;
 }
 
-/* Paper texture overlay */
-.chronicle::after {
-  content: ''; position: absolute; inset: 0; pointer-events: none;
-  background-image: url('https://www.transparenttextures.com/patterns/old-mathematics.png');
-  opacity: 0.18;
-}
-
-/* Tilt only on desktop — too jarring on mobile */
-@media (min-width: 1100px) {
-  .chronicle {
-    transform: rotate(-1.5deg) translateX(6px);
-    transition: transform 0.35s ease;
-  }
-  .chronicle:hover {
-    transform: rotate(0deg) scale(1.01);
-    z-index: 5;
-  }
-}
-
-.chronicleHeader {
-  text-align: center; padding: 1rem 1rem 0.5rem;
-  border-bottom: 3px double var(--paper-text);
-  position: relative; z-index: 1;
-}
-.chronicleRule {
-  display: inline-block; width: 30%; height: 1px;
-  background: var(--paper-text); vertical-align: middle; margin: 0 0.5rem;
-}
-.chronicleName {
-  font-family: 'UnifrakturMaguntia', cursive;
-  font-size: 1.6rem; margin: 0; line-height: 1; color: #111;
-  display: inline; vertical-align: middle;
-}
-@media (min-width: 480px) { .chronicleName { font-size: 2rem; } }
-
-.chronicleDate {
-  display: block; margin-top: 4px;
-  font-family: 'Cinzel', serif; font-size: 0.6rem; letter-spacing: 2px;
-  text-transform: uppercase; color: #555;
-}
-
-.headlineList {
-  list-style: none; padding: 0.5rem 1rem; margin: 0;
-  flex: 1; overflow-y: auto; position: relative; z-index: 1;
-  display: flex; flex-direction: column; gap: 0.6rem;
-}
-.headlineItem { border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 0.6rem; }
-.headlineItem:last-child { border-bottom: none; }
-
-.headlineLink { text-decoration: none; color: inherit; display: block; }
-.headlineLink:hover .headlineTitle { text-decoration: underline; }
-
-.outletBadge {
-  display: inline-block; font-size: 0.58rem; font-weight: 900;
-  color: #fff; background: #333; padding: 1px 5px; border-radius: 2px;
-  margin-right: 5px; vertical-align: middle; text-transform: uppercase;
-}
-.tagERT    { background: #0057b7; }
-.tagSKAI   { background: #004d99; }
-.tagALPHA  { background: #0093d0; }
-.tagMEGA   { background: #222; }
-.tagANT1   { background: #f0ab00; color: #000; }
-.tagANNOUNCEMENT { background: #8b0000; font-family: 'Cinzel', serif; }
-.tagDECREE { background: #8b0000; font-family: 'Cinzel', serif; }
-
-.headlineTitle {
-  font-family: 'Cormorant Garamond', Georgia, serif;
-  font-size: 0.95rem; font-weight: 600; line-height: 1.25;
-  margin: 4px 0 0; color: #1a1a1a;
-}
-.headlineDate { font-size: 0.65rem; color: #666; display: block; margin-top: 2px; font-style: italic; }
-
-.chronicleReadMore {
-  display: block; text-align: center; padding: 0.75rem;
-  font-family: 'Cinzel', serif; font-size: 0.75rem; color: #777;
-  text-decoration: none; border-top: 1px solid #ccc;
-  margin-top: auto; position: relative; z-index: 1;
-  transition: color 0.2s, background 0.2s;
-}
-.chronicleReadMore:hover { color: var(--blood-hi); background: rgba(0,0,0,0.03); }
-
-/* ── Logbooks (whispers + actions) ──────────────────────────── */
-.logbook {
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  display: flex; flex-direction: column;
-  min-height: 260px;
+.clanRing {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  border: 2px solid var(--border-color);
+  background: #F5F5F59A;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
 }
 
-.logHeader {
-  background: var(--bg-raised);
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: space-between;
-  flex-shrink: 0;
-}
-.logTitle {
-  font-family: 'Cinzel', serif; font-size: 0.85rem; letter-spacing: 0.05em;
-  color: var(--text); margin: 0; display: flex; align-items: center; gap: 0.5rem;
-}
-.logDot {
-  width: 6px; height: 6px; border-radius: 50%;
-  background: var(--blood-hi); box-shadow: 0 0 6px var(--blood-glow);
-  animation: pulse 2s ease-in-out infinite;
-  flex-shrink: 0;
-}
-.logViewAll {
-  font-size: 0.75rem; color: var(--text-dim); text-decoration: none;
-  transition: color 0.2s;
-}
-.logViewAll:hover { color: var(--gold-hi); }
-
-.logList { list-style: none; padding: 0; margin: 0; overflow-y: auto; flex: 1; }
-.logItem {
-  border-bottom: 1px solid rgba(255,255,255,0.04);
-  transition: background 0.2s;
-}
-.logItem:hover { background: rgba(255,255,255,0.025); }
-.logItem .emptyState { padding: 1.5rem; }
-
-.logLink { display: block; padding: 0.7rem 1rem; text-decoration: none; color: inherit; }
-.logRow  { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; margin-bottom: 3px; flex-wrap: wrap; }
-.logFrom { font-size: 0.82rem; color: var(--text); font-weight: 600; }
-.logTime { font-size: 0.7rem; color: var(--text-ghost); flex-shrink: 0; }
-.logPreview { font-size: 0.85rem; color: var(--text-dim); line-height: 1.4; display: block; font-style: italic; }
-
-.npcTag {
-  display: inline-block; font-size: 0.6rem; font-weight: 900;
-  background: #6b0040; color: #ffaad4; padding: 1px 4px; border-radius: 2px;
-  margin-right: 4px; font-style: normal; vertical-align: middle;
+.clanSymbol {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
 }
 
-/* Status badges */
-.statusBadge {
-  font-size: 0.65rem; padding: 1px 6px; border-radius: 3px;
-  text-transform: uppercase; font-family: 'Cinzel', serif; letter-spacing: 0.05em;
-  border: 1px solid currentColor;
+.headerMeta {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
-.status_approved  { color: #5cf088; }
-.status_rejected  { color: #f05050; }
-.status_pending,
-.status_submitted { color: #f0c040; }
 
-/* ════════════════════════════════════════════════════════════════
-   3. NAV GRID
-════════════════════════════════════════════════════════════════ */
-.navSection { animation: fadeUp 0.6s 0.2s ease-out both; }
+.charName {
+  font-size: 2.75rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  line-height: 1.1;
+}
 
-.dividerLine {
-  display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;
+.charSub {
+  font-size: 1rem;
+  color: var(--text-muted);
+  margin: 0.25rem 0 0 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
-.dividerLine::before,
-.dividerLine::after {
-  content: ''; flex: 1; height: 1px;
-  background: linear-gradient(90deg, transparent, var(--border-hi), transparent);
-}
-.dividerIcon { color: var(--gold); font-size: 0.8rem; flex-shrink: 0; }
 
-/* Mobile: 2 columns; tablet: 3–4; desktop: up to 5 */
-.navGrid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.75rem;
+.clanLabel {
+  font-weight: 600;
+  color: color-mix(in srgb, var(--tint) 70%, #fff);
 }
-@media (min-width: 480px)  { .navGrid { grid-template-columns: repeat(3, 1fr); } }
-@media (min-width: 768px)  { .navGrid { grid-template-columns: repeat(4, 1fr); gap: 1rem; } }
-@media (min-width: 1200px) { .navGrid { grid-template-columns: repeat(5, 1fr); } }
 
-.navCard {
-  position: relative; overflow: hidden;
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 1rem 0.75rem;
-  text-decoration: none;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  text-align: center; gap: 0.3rem;
-  min-height: 90px;
-  transition: transform 0.25s, border-color 0.25s, box-shadow 0.25s;
+.separator {
+  color: var(--border-color);
 }
-/* bottom blood line */
-.navCard::after {
-  content: '';
-  position: absolute; bottom: 0; left: 20%; right: 20%; height: 2px;
-  background: var(--blood-hi);
-  transform: scaleX(0); transform-origin: center;
-  transition: transform 0.3s ease;
-  box-shadow: 0 0 8px var(--blood-glow);
-}
-.navCard:hover {
-  transform: translateY(-3px);
-  border-color: var(--border-hi);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.6);
-}
-.navCard:hover::after { transform: scaleX(1); }
 
-.navCardIcon {
-  font-size: 1.5rem; line-height: 1;
-  filter: grayscale(60%); transition: filter 0.25s;
+.xpChip {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
 }
-.navCard:hover .navCardIcon { filter: grayscale(0%); }
-.navCardTitle {
-  font-family: 'Cinzel', serif; font-size: 0.8rem; font-weight: 600;
-  color: var(--text); letter-spacing: 0.04em;
-}
-.navCardSub { font-size: 0.7rem; color: var(--text-dim); }
 
-/* ── Malkavian Cobweb card ──────────────────────────────────── */
-.malkCard {
-  background: radial-gradient(circle at 50% 50%, #180b1a 0%, #050505 100%);
-  border-color: #5a2a6a;
-  animation: breathe 4s ease-in-out infinite;
-  cursor: pointer;
-}
-.malkCard::before {
-  content: '';
-  position: absolute; inset: 0;
-  border: 1px solid rgba(255,0,255,0.08);
-  clip-path: polygon(0 0, 100% 0, 100% 10%, 90% 15%, 100% 20%, 100% 100%, 0 100%, 0 80%, 5% 75%, 0 70%);
+.clanWatermark {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0.03;
+  height: 80%;
   pointer-events: none;
 }
+
+.clanLogo {
+  height: 100%;
+  filter: brightness(0) invert(1);
+}
+
+/* Quota / Action Bar */
+.quotaBar {
+  margin-top: 2rem;
+  border-top: 1px solid var(--border-color);
+  padding-top: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.85rem;
+}
+
+.quotaLabel {
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.quotaTrack {
+  flex: 1;
+  height: 8px;
+  background: var(--bg-color);
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  gap: 4px;
+  padding: 0 2px;
+  border: 1px solid var(--border-color);
+}
+
+.quotaFill {
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  background: var(--tint);
+  border-radius: 4px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.quotaPip {
+  flex: 1;
+  height: 100%;
+  background: transparent;
+}
+
+.quotaPipUsed {
+  background: color-mix(in srgb, var(--tint) 40%, #18181b);
+}
+
+.quotaCount {
+  font-family: monospace;
+  font-weight: 700;
+  color: var(--text-color);
+}
+
+/* =========================================
+   2. DASHBOARD FEEDS (Glassmorphic Grids)
+   ========================================= */
+.dashboardGrid {
+  max-width: 1200px;
+  margin: 0 auto 2.5rem auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.feedCard {
+  background: linear-gradient(180deg, var(--surface-lighter), var(--surface-color));
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-shadow: var(--shadow);
+  /* Crucial for grid children to respect column widths */
+  min-width: 0; 
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+
+.compactFeedCard {
+  background: linear-gradient(180deg, var(--surface-lighter), var(--surface-color));
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-shadow: var(--shadow);
+  height: 360px; /* Fixed height budget */
+  overflow: hidden;
+  min-width: 0; /* Prevents grid item breakout */
+}
+
+.feedListScroll {
+  overflow-y: auto;
+  flex: 1;
+  padding-right: 4px;
+  margin-bottom: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Custom scrollbar for a clean dark terminal look */
+.feedListScroll::-webkit-scrollbar {
+  width: 4px;
+}
+.feedListScroll::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.1);
+}
+.feedListScroll::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+.feedListScroll::-webkit-scrollbar-thumb:hover {
+  background: var(--tint);
+}
+
+.newsTitle, .chatSnippet, .dtTitle {
+  /* ── FIX: Ensure long unbroken strings wrap correctly instead of breaking out ── */
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+  max-width: 100%;
+}
+
+.newsLink, .chatLink, .dtLink {
+  /* ── FIX: Ensure internal link items constrain to their parent card ── */
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.feedHeading {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-color);
+  margin: 0 0 0.5rem 0;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.5rem;
+  letter-spacing: 0.02em;
+}
+
+.emptyFeedText {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 0.95rem;
+  text-align: center;
+  padding: 2rem 0;
+  margin: 0;
+}
+
+.feedLinkBtn {
+  display: block;
+  text-align: center;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  padding: 0.7rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  margin-top: auto;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.feedLinkBtn:hover {
+  background: color-mix(in srgb, var(--tint) 20%, transparent);
+  color: #ffffff;
+  border-color: var(--tint);
+}
+
+/* Chronicle / Newspaper */
+.chronicle {
+  border-top: 2px solid var(--tint);
+  padding-top: 0.5rem;
+}
+.chronicleHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.chronicleRule {
+  flex: 1;
+  height: 1px;
+  background: var(--border-color);
+}
+.chronicleName {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--tint);
+}
+.chronicleDate {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+.newsList {
+  list-style: none;
+  margin: 0; padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.newsItem {
+  border-bottom: 1px dashed var(--border-color);
+  padding-bottom: 0.5rem;
+}
+.newsLink {
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.newsTag {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  width: fit-content;
+}
+.tagANNOUNCEMENT { background: #1e4d20; border-color: #2e883a; color: #d8f2dc; }
+.tagPOLITICAL     { background: #4d431a; border-color: #887a2e; color: #fff6d6; }
+.tagCRITICAL      { background: #4d1a20; border-color: #882e3a; color: #ffd6db; }
+
+.newsContent {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+.newsTitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-color);
+  margin: 0;
+  line-height: 1.3;
+}
+.newsDate {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* Comms List (Whispers) */
+.chatList {
+  list-style: none;
+  margin: 0; padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.chatItem {
+  border-bottom: 1px dashed var(--border-color);
+  padding-bottom: 0.5rem;
+}
+.chatLink {
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.chatHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.chatPartner {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-color);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.chatTime {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.chatSnippet {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* Action Log List (Downtimes) */
+.dtList {
+  list-style: none;
+  margin: 0; padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.dtItem {
+  border-bottom: 1px dashed var(--border-color);
+  padding-bottom: 0.5rem;
+}
+.dtLink {
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dtHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.dtTitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-color);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dtTime {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Color Palette for Action Statuses */
+.badgePending { background: #2a2b31; color: #eaeaea; border: 1px solid #444; font-size: 0.65rem; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; font-weight: 700;} 
+.badgeReview  { background: #2a2418; color: #ffdca6; border: 1px solid #e1b64a; font-size: 0.65rem; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; font-weight: 700;} 
+.badgeApproved{ background: #1e2a20; color: #c4f0d0; border: 1px solid #1faa70; font-size: 0.65rem; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; font-weight: 700;} 
+.badgeRejected{ background: #2a1b1f; color: #ffd6db; border: 1px solid #f25f5c; font-size: 0.65rem; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; font-weight: 700;} 
+.badgeNeedsScene { background: #1b2a3a; color: #d6e8ff; border: 1px solid #6ea8ff; font-size: 0.65rem; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; font-weight: 700;}
+
+/* =========================================
+   3. NAVIGATION GRID (Gothic Web)
+   ========================================= */
+.navSection {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.dividerLine {
+  display: flex;
+  justify-content: center;
+  position: relative;
+  margin: 1.5rem 0 2.5rem 0;
+}
+
+.dividerLine::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--border-color);
+}
+
+.dividerIcon {
+  background: var(--bg-color);
+  color: var(--tint);
+  padding: 0 1rem;
+  z-index: 2;
+  position: relative;
+  font-size: 1.25rem;
+}
+
+.navGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+}
+
+.navCard {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1.5rem;
+  color: inherit;
+  text-decoration: none;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 16px rgba(0,0,0,.2);
+}
+
+.navCard:hover {
+  transform: translateY(-4px);
+  border-color: var(--tint);
+  background: var(--surface-lighter);
+  box-shadow: 0 4px 20px color-mix(in srgb, var(--tint) 35%, transparent);
+}
+
+.navCardIcon {
+  font-size: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+.navCardTitle {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 0.1rem;
+}
+
+.navCardSub {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* Malkavian Easter Egg Node */
+.malkCard {
+  background: rgba(113, 60, 139, 0.05);
+  border-color: #713c8b;
+}
+
 .malkCard:hover {
-  border-color: #c030ff;
-  box-shadow: 0 0 20px rgba(190, 60, 255, 0.4), inset 0 0 20px rgba(70,0,70,0.5);
-  transform: scale(1.02) rotate(-0.5deg);
+  border-color: #9333ea;
+  box-shadow: 0 4px 20px rgba(147, 51, 234, 0.25);
+  background: #1a1120;
 }
-.malkCard::after { background: #d844ff; }
 
-.malkIcon { color: #a060cc; text-shadow: 0 0 8px #a060cc; }
-.malkCard:hover .malkIcon {
-  color: #fff;
-  text-shadow: 2px 2px 0 #ff00ff, -2px -2px 0 #00ffff;
-  animation: twitch 0.25s infinite;
+.malkTitle {
+  color: #c084fc;
 }
-.malkTitle { color: #ddb8ff; }
-.malkSub   { color: #9070aa; font-style: italic; }
 
-/* ════════════════════════════════════════════════════════════════
-   SHATTER OVERLAY (self-contained, no ShatterEffect.module.css needed)
-════════════════════════════════════════════════════════════════ */
+.malkSub {
+  color: #d8b4fe;
+}
+
+/* Shatter Effect Overlay (Premonitions) */
 .shatterOverlay {
-  position: fixed; inset: 0; z-index: 9999;
-  pointer-events: none; overflow: hidden;
+  position: fixed; inset: 0;
+  z-index: 9999; pointer-events: none;
+  background: transparent;
 }
 .shatterImpact {
   position: absolute;
-  left: var(--click-x, 50%); top: var(--click-y, 50%);
-  width: 6px; height: 6px; border-radius: 50%;
-  background: rgba(150, 255, 240, 0.9);
-  box-shadow: 0 0 20px 10px rgba(120,240,220,0.4);
-  transform: translate(-50%, -50%);
-  animation: fadeIn 0.08s ease-out both;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #fff;
+  top: var(--click-y); left: var(--click-x);
+  box-shadow: 0 0 40px 20px #a2ffe0, 0 0 120px 60px #50d6c9, 0 0 200px 100px #1a5668;
+  animation: cv_shock .3s ease-out forwards;
 }
 .shatterShard {
-  position: absolute; inset: 0;
-  animation: shardFly var(--delay, 0s) calc(0.12s + var(--delay, 0s)) forwards;
-}
-@keyframes shardFly {
-  0%   { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 1; }
-  100% { transform: translate(var(--x), var(--y)) rotate(var(--rotate)) scale(var(--scale)); opacity: 0; }
+  position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+  animation: cv_shatterFly TOTAL_MS cubic-bezier(0.12, 0.78, 0.35, 0.98) forwards;
 }
 .shatterShape {
-  position: absolute; inset: 0;
-  background: var(--tint, rgba(255,255,255,0.04));
-  outline: 1px solid var(--edge, rgba(200,240,255,0.4));
+  width: 100%; height: 100%;
+  background: var(--tint);
+  box-shadow: 0 0 2px var(--edge) inset, 0 0 0 1px #000;
+  animation: cv_shardDim TOTAL_MS linear forwards;
+}
+@keyframes cv_shock { 
+  0% { transform: scale(1); opacity: 1; } 
+  100% { transform: scale(14); opacity: 0; } 
+}
+@keyframes cv_shatterFly { 
+  100% { transform: translate(var(--x), var(--y)) rotate(var(--rotate)) scale(var(--scale)); opacity: 0; } 
+}
+@keyframes cv_shardDim { 
+  60% { background: var(--tint); } 
+  100% { background: #040608; } 
+}
+
+/* Fallback Screens */
+.loadingScreen, 
+.noCharPage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: var(--bg-color);
+  color: var(--text-color);
+}
+
+.noCharCard {
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 2.5rem;
+  text-align: center;
+  max-width: 480px;
+  box-shadow: var(--shadow);
+}
+
+.noCharRose {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  animation: fadeIn 1s ease-in-out;
+}
+
+.noCharTitle {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  font-family: 'Playfair Display', serif;
+}
+
+.noCharSub {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-bottom: 1.5rem;
+}
+
+.noCharBtn {
+  background: var(--tint);
+  color: #ffffff;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  border: 1px solid color-mix(in srgb, var(--tint) 60%, #000);
+  cursor: pointer;
+  transition: background 0.2s ease;
+  width: 100%;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+
+.noCharBtn:hover {
+  background: color-mix(in srgb, var(--tint) 60%, #000);
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 1024px) {
+  .navGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .dashboardGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .homePage {
+    padding: 1.5rem 0.5rem;
+  }
+  
+  .identityHeader {
+    padding: 1.25rem;
+  }
+  
+  .headerInner {
+    flex-direction: column;
+    text-align: center;
+    gap: 1rem;
+  }
+
+  .clanRing {
+    width: 72px;
+    height: 72px;
+  }
+  
+  .clanSymbol {
+    width: 44px;
+    height: 44px;
+  }
+  
+  .charName {
+    font-size: 2rem;
+  }
+
+  .clanWatermark {
+    display: none !important;
+  }
+
+  .dashboardGrid {
+    grid-template-columns: 1fr;
+  }
+  
+  .navGrid {
+    grid-template-columns: 1fr;
+  }
 }

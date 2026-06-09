@@ -5,14 +5,12 @@ import { AuthCtx } from '../AuthContext';
 import api from '../api';
 import styles from '../styles/Nav.module.css';
 
-// Reusable Dropdown Component with Mobile Accordion Logic
 function NavDropdown({ title, children }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
     <div 
       className={`${styles.dropdown} ${isOpen ? styles.dropdownOpen : ''}`}
-      // On desktop, hover handles the menu. On mobile, we rely on clicks.
       onMouseEnter={() => window.innerWidth > 768 && setIsOpen(true)}
       onMouseLeave={() => window.innerWidth > 768 && setIsOpen(false)}
     >
@@ -38,12 +36,10 @@ export default function Nav() {
   const toggleMenu = () => setIsMenuOpen(v => !v);
   const closeMenu = () => setIsMenuOpen(false);
   
-  // Close menu whenever the route changes
   useEffect(() => { 
     closeMenu(); 
   }, [location.pathname]);
 
-  // Prevent background scrolling when mobile menu is open
   useEffect(() => {
     if (isMenuOpen) document.documentElement.style.overflow = 'hidden';
     else document.documentElement.style.overflow = '';
@@ -71,21 +67,17 @@ export default function Nav() {
     return () => { live = false; };
   }, [user]);
 
-  const getNavLinkClass = ({ isActive }) =>
-    `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`;
-
   const getDropdownClass = ({ isActive }) =>
     `${styles.dropdownItem} ${isActive ? styles.dropdownItemActive : ''}`;
 
   return (
     <>
-      {/* Mobile Backdrop Overlay */}
       <div 
         className={`${styles.mobileOverlay} ${isMenuOpen ? styles.overlayOpen : ''}`} 
         onClick={closeMenu} 
       />
 
-      <nav className={`${styles.navBar} ${isMenuOpen ? styles.open : ''}`}>
+      <nav className={`${styles.navBar} ${isMenuOpen ? styles.navBarOpen : ''}`}>
         <div className={styles.left}>
           <Link to="/" className={styles.brand} aria-label="Erebus Portal — Home" onClick={closeMenu}>
             <img src="/img/ATT-logo(1).png" alt="" className={styles.navLogo} />
@@ -93,19 +85,17 @@ export default function Nav() {
           </Link>
         </div>
 
-        {/* Hamburger (mobile) */}
         <button
-          className={`${styles.mobileMenuToggle} ${isMenuOpen ? styles.open : ''}`}
+          className={`${styles.mobileMenuToggle} ${isMenuOpen ? styles.toggleOpen : ''}`}
           onClick={toggleMenu}
           aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
           aria-expanded={isMenuOpen}
           aria-controls="primary-nav"
         >
-          <span className={styles.bar}></span>
+          <span className={styles.bar} />
         </button>
 
-        {/* Main navigation links */}
-        <div id="primary-nav" className={styles.navLinks} role="navigation" aria-label="Primary">
+        <div id="primary-nav" className={styles.navLinks} role="navigation">
           {user && (
             <>
               <NavDropdown title="Personal">
@@ -139,7 +129,6 @@ export default function Nav() {
             </NavDropdown>
           )}
           
-          {/* User Info inside Drawer on Mobile */}
           <div className={styles.mobileUserInfo}>
             {user ? (
               <>
@@ -149,12 +138,11 @@ export default function Nav() {
                 </button>
               </>
             ) : (
-              <NavLink to="/login" className={getNavLinkClass}>Login</NavLink>
+              <NavLink to="/login" className={styles.navLink}>Login</NavLink>
             )}
           </div>
         </div>
 
-        {/* User Info on Desktop */}
         <div className={styles.desktopUserInfo}>
           {user ? (
             <>
@@ -164,7 +152,7 @@ export default function Nav() {
               </button>
             </>
           ) : (
-            <NavLink to="/login" className={getNavLinkClass}>Login</NavLink>
+            <NavLink to="/login" className={styles.navLink}>Login</NavLink>
           )}
         </div>
       </nav>

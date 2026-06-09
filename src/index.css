@@ -92,3 +92,47 @@ body {
   background: color-mix(in srgb, var(--tint) 15%, transparent);
   box-shadow: 0 0 8px color-mix(in srgb, var(--tint) 50%, transparent);
 }
+
+/* --------------------------- */
+/* ---   VTM V5 Themes       --- */
+/* --------------------------- */
+
+:root, [data-theme='camarilla'] {
+  --tint: #8a0f1a;
+  --bg-color: #0d0d0f;
+  --surface-color: #141417;
+  --surface-lighter: #1a1b1f;
+  --border-color: #2f3138;
+  --text-color: #e8e8ed;
+  --text-muted: #9398a0;
+}
+
+[data-theme='schrecknet'] {
+  --tint: #0ea5e9;
+  --bg-color: #030712;
+  --surface-color: #111827;
+  --surface-lighter: #1f2937;
+  --border-color: #374151;
+  --text-color: #38bdf8;
+  --text-muted: #9ca3af;
+}
+
+[data-theme='anarch'] {
+  --tint: #ea580c;
+  --bg-color: #18181b;
+  --surface-color: #27272a;
+  --surface-lighter: #3f3f46;
+  --border-color: #52525b;
+  --text-color: #f97316;
+  --text-muted: #a1a1aa;
+}
+
+[data-theme='hecata'] {
+  --tint: #0d9488;
+  --bg-color: #022c22;
+  --surface-color: #0f766e;
+  --surface-lighter: #134e4a;
+  --border-color: #115e59;
+  --text-color: #99f6e4;
+  --text-muted: #ccfbf1;
+}

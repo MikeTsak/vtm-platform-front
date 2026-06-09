@@ -226,8 +226,8 @@ function ProjectSubmitCard({ quota, onDowntimeCreated, deadline }) {
   );
 }
 
-// --- List Item Component ---
-function DowntimeItem({ dt, isProject }) {
+// --- List Item Component with Inline Edit ---
+function DowntimeItem({ dt, isProject, isDeadlinePassed, onUpdateDowntime }) {
   const status = (dt.status || 'submitted').toLowerCase();
   let badgeClass = styles.badgePending;
   if (status === 'approved') badgeClass = styles.badgeApproved;
@@ -237,24 +237,90 @@ function DowntimeItem({ dt, isProject }) {
 
   const displayTitle = isProject ? dt.title.replace('[PROJECT] ', '') : dt.title;
 
+  // Edit states
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(displayTitle);
+  const [editBody, setEditBody] = useState(dt.body);
+  const [saving, setSaving] = useState(false);
+  const [editErr, setEditErr] = useState('');
+
+  // Can edit: strictly 'submitted' status AND deadline not passed
+  const canEdit = status === 'submitted' && !isDeadlinePassed;
+
+  const handleSave = async () => {
+    if (!editTitle.trim() || !editBody.trim()) return;
+    setSaving(true); setEditErr('');
+    try {
+      const finalTitle = isProject ? `[PROJECT] ${editTitle.trim()}` : editTitle.trim();
+      const payload = { title: finalTitle, body: editBody.trim() };
+      
+      await api.put(`/downtimes/${dt.id}`, payload);
+      onUpdateDowntime(dt.id, { ...dt, title: finalTitle, body: editBody.trim() });
+      setIsEditing(false);
+    } catch (e) {
+      setEditErr(e?.response?.data?.error || 'Failed to update action.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <article className={`${styles.item} ${isProject ? styles.projectItem : ''}`}>
       <header className={`${styles.itemHead} ${isProject ? styles.projectItemHeader : ''}`}>
         <h3 className={styles.itemTitle}>{displayTitle || '(no title)'} {isProject && <span className={styles.projectTag}>PROJECT</span>}</h3>
         <span className={`${styles.badge} ${badgeClass}`}>{dt.status}</span>
       </header>
-      <div className={styles.itemMeta}>
-        Submitted: {niceDate(dt.created_at)}
-        {dt.resolved_at && ` • Resolved: ${niceDate(dt.resolved_at)}`}
-      </div>
       
-      {!isProject && dt.feeding_type && (
-        <div className={styles.itemMeta} style={{marginTop: '4px'}}>
-          Feeding: <b>{dt.feeding_type}</b>
+      {isEditing ? (
+        <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <input 
+            className={styles.input} 
+            type="text" 
+            value={editTitle} 
+            onChange={e => setEditTitle(e.target.value)} 
+            maxLength={100} 
+          />
+          <textarea 
+            className={`${styles.input} ${styles.textarea}`} 
+            style={{ minHeight: '120px' }}
+            value={editBody} 
+            onChange={e => setEditBody(e.target.value)} 
+            maxLength={isProject ? 3000 : 1500} 
+          />
+          {editErr && <div className={`${styles.alert} ${styles.alertError}`} style={{ margin: 0 }}>{editErr}</div>}
+          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+            <button className={styles.btnSecondary} onClick={() => setIsEditing(false)} disabled={saving}>Cancel</button>
+            <button className={styles.cta} onClick={handleSave} disabled={saving || !editTitle || !editBody}>
+              {saving ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
         </div>
-      )}
+      ) : (
+        <>
+          <div className={styles.itemMeta}>
+            Submitted: {niceDate(dt.created_at)}
+            {dt.resolved_at && ` • Resolved: ${niceDate(dt.resolved_at)}`}
+          </div>
+          
+          {!isProject && dt.feeding_type && (
+            <div className={styles.itemMeta} style={{marginTop: '4px'}}>
+              Feeding: <b>{dt.feeding_type}</b>
+            </div>
+          )}
 
-      <p className={styles.itemBody} style={{ whiteSpace: 'pre-wrap' }}>{dt.body || '(No action description)'}</p>
+          <p className={styles.itemBody} style={{ whiteSpace: 'pre-wrap' }}>{dt.body || '(No action description)'}</p>
+
+          {canEdit && (
+            <button 
+              className={styles.btnGhost} 
+              style={{ marginTop: '0.5rem', padding: '0.3rem 0.8rem', fontSize: '0.8rem', borderColor: '#fbbf24', color: '#fbbf24' }} 
+              onClick={() => setIsEditing(true)}
+            >
+              Edit Action
+            </button>
+          )}
+        </>
+      )}
 
       {dt.gm_resolution && (
         <div className={styles.itemNotes}>
@@ -316,7 +382,6 @@ export default function DownTimes() {
           setOpening(downtime_opening || '');
           setProjectDeadline(project_deadline || '');
 
-          // --- MASTER SWITCH: Default Tab ---
           if (downtime_active_phase === 'project') {
              setViewMode('project');
           } else {
@@ -344,6 +409,10 @@ export default function DownTimes() {
   const handleDowntimeCreated = (newDowntime) => {
     setMine(prev => [newDowntime, ...prev]);
     setQuota(prev => ({ ...prev, used: prev.used + 1 }));
+  };
+
+  const handleDowntimeUpdated = (id, updatedItem) => {
+    setMine(prev => prev.map(dt => dt.id === id ? updatedItem : dt));
   };
   
   const isCharActive = currentUser?.role === 'admin' || (myChar && myChar.sheet && myChar.sheet.is_active === true);
@@ -461,7 +530,13 @@ export default function DownTimes() {
           </div>
         )}
         {!loading && list.map(dt => (
-          <DowntimeItem key={dt.id} dt={dt} isProject={viewMode === 'project'} />
+          <DowntimeItem 
+            key={dt.id} 
+            dt={dt} 
+            isProject={viewMode === 'project'} 
+            isDeadlinePassed={viewMode === 'project' ? projectCountdown.isPast : deadlineCountdown.isPast}
+            onUpdateDowntime={handleDowntimeUpdated}
+          />
         ))}
       </section>
     </main>

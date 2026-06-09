@@ -1,11 +1,35 @@
 // src/pages/Home.jsx
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useContext } from 'react';
 import api from '../api';
 import { Link, useNavigate } from 'react-router-dom';
+import { AuthCtx } from '../AuthContext';
 import styles from '../styles/Home.module.css';
 import Loading from '../components/Loading';
 
-/* ── Clan image helpers ─────────────────────────────────────────── */
+/* ── Clan tint colors ───────────────────────────────────────────── */
+const CLAN_COLORS = {
+  Brujah: '#b40f1f',
+  Gangrel: '#2f7a3a',
+  Malkavian: '#713c8b',
+  Nosferatu: '#6a4b2b',
+  Toreador: '#b8236b',
+  Tremere: '#7b1113',
+  Ventrue: '#1b4c8c',
+  'Banu Haqim': '#7a2f57',
+  Hecata: '#2b6b6b',
+  Lasombra: '#191a5a',
+  'The Ministry': '#865f12',
+  Caitiff: '#636363',
+  'Thin-blood': '#6e6e2b',
+};
+
+const THEMES = [
+  { id: 'camarilla', label: 'Camarilla Crimson', hex: '#8a0f1a' },
+  { id: 'schrecknet',  label: 'SchreckNet Blue',   hex: '#0ea5e9' },
+  { id: 'anarch',      label: 'Anarch Gold',       hex: '#ea580c' },
+  { id: 'hecata',      label: 'Hecata Teal',       hex: '#0d9488' },
+];
+
 const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim' };
 const fileify = (c) => (NAME_OVERRIDES[c] || c).replace(/\s+/g, '_');
 const symlogo  = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.png`      : '');
@@ -20,10 +44,38 @@ const formatTimestamp = (ts) => {
   if (diff < 60)   return 'Just now';
   if (diff < 3600) return `${Math.round(diff / 60)}m ago`;
   if (diff < 86400)return `${Math.round(diff / 3600)}h ago`;
-  return date.toLocaleDateString('el-GR', { month: 'short', day: 'numeric' });
+  return date.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' });
 };
 
-/* ── Shatter constants ──────────────────────────────────────────── */
+function niceDate(d) {
+  if (!d) return '—';
+  const dt = new Date(d);
+  if (isNaN(dt.getTime())) return '—';
+  try { return dt.toLocaleDateString('en-GB', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }); } 
+  catch { return dt.toDateString(); }
+}
+
+/* ── Countdown Hook ─────────────────────────────────────────────── */
+function useCountdown(targetDate) {
+  const [now, setNow] = useState(() => new Date().getTime());
+  useEffect(() => {
+    const int = setInterval(() => setNow(new Date().getTime()), 1000);
+    return () => clearInterval(int);
+  }, []);
+  
+  if (!targetDate) return { isPast: true, days: 0, hours: 0, mins: 0 };
+  const diff = new Date(targetDate).getTime() - now;
+  if (diff <= 0) return { isPast: true, days: 0, hours: 0, mins: 0 };
+  
+  return {
+    isPast: false,
+    days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+    hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
+    mins: Math.floor((diff / (1000 * 60)) % 60)
+  };
+}
+
+/* ── Shatter constants (Premonitions) ───────────────────────────── */
 const GRID_COLS = 12, GRID_ROWS = 16, TOTAL_MS = 1500;
 const rnd = (a, b) => a + Math.random() * (b - a);
 
@@ -43,7 +95,7 @@ function makeShardPoly(cell) {
 /* ── Nav card data ──────────────────────────────────────────────── */
 const NAV_CARDS = [
   { to: '/character', icon: '🩸', title: 'Character',    sub: 'Sheet & XP'        },
-  { to: '/downtimes', icon: '🌑', title: 'Downtimes',   sub: null /* quota */     },
+  { to: '/downtimes', icon: '🌑', title: 'Downtimes',   sub: 'Monthly Actions'    },
   { to: '/comms',     icon: '📜', title: 'Comms',        sub: 'Letters & Whispers'},
   { to: '/domains',   icon: '🏛️', title: 'Domains',      sub: 'Territory Map'     },
   { to: '/boons',     icon: '⚖️', title: 'Boons',        sub: 'Blood Registry'    },
@@ -52,23 +104,61 @@ const NAV_CARDS = [
   { to: '/news',      icon: '🌍', title: 'News',          sub: 'Archive'           },
 ];
 
-/* ─────────────────────────────────────────────────────────────────
-   COMPONENT
-───────────────────────────────────────────────────────────────── */
+/* ── Mini Split Damage Bar ──────────────────────────────────────── */
+function MiniVtmBar({ label, sup, agg, max }) {
+  const safeMax = Math.max(1, Number(max) || 5);
+  const aggCount = Math.min(Number(agg) || 0, safeMax);
+  const supCount = Math.min(Number(sup) || 0, safeMax - aggCount);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', background: 'var(--bg-color)', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '0.8rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
+        <span>{label}</span>
+        <span>{safeMax - (aggCount + supCount)} / {safeMax}</span>
+      </div>
+      <div style={{ display: 'flex', gap: '2px' }}>
+        {Array.from({ length: safeMax }).map((_, i) => {
+          const isAgg = i < aggCount;
+          const isSup = !isAgg && i < aggCount + supCount;
+          return (
+            <div key={i} style={{ 
+              flex: 1, height: '10px', borderRadius: '2px',
+              background: isAgg ? 'var(--tint)' : isSup ? 'var(--text-muted)' : 'rgba(255,255,255,0.05)',
+              border: '1px solid var(--border-color)'
+            }} />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
-  const [me,             setMe]             = useState(null);
-  const [ch,             setCh]             = useState(null);
-  const [quota,          setQuota]          = useState({ used: 0, limit: 3 });
-  const [loading,        setLoading]        = useState(true);
-  const [recentDowntimes,setRecentDowntimes]= useState([]);
-  const [recentChats,    setRecentChats]    = useState([]);
-  const [recentNews,     setRecentNews]     = useState([]);
-  const [fetchError,     setFetchError]     = useState(null);
-  const [isShattering,   setIsShattering]   = useState(false);
-  const [clickPoint,     setClickPoint]     = useState(null);
-  const [shards,         setShards]         = useState([]);
+  const { user: currentUser } = useContext(AuthCtx);
+  const [me, setMe] = useState(null);
+  const [ch, setCh] = useState(null);
+  const [quota, setQuota] = useState({ used: 0, limit: 3 });
+  const [openingDate, setOpeningDate] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [recentDowntimes, setRecentDowntimes] = useState([]);
+  const [recentChats, setRecentChats] = useState([]);
+  const [recentNews, setRecentNews] = useState([]);
+  const [fetchError, setFetchError] = useState(null);
+  
+  const [activeTheme, setActiveTheme] = useState(() => localStorage.getItem('vtm_theme') || 'camarilla');
+  const [isShattering, setIsShattering] = useState(false);
+  const [clickPoint, setClickPoint] = useState(null);
+  const [shards, setShards] = useState([]);
   const overlayRef = useRef(null);
   const nav = useNavigate();
+
+  const eventCd = useCountdown(openingDate);
+
+  /* ── Theme syncing ── */
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', activeTheme);
+    localStorage.setItem('vtm_theme', activeTheme);
+  }, [activeTheme]);
 
   /* ── Shatter trigger ── */
   const handlePremonitionClick = (e) => {
@@ -130,11 +220,12 @@ export default function Home() {
         setCh(chData.character);
 
         if (chData.character) {
-          const [qR, dtR, chatR, newsR] = await Promise.allSettled([
+          const [qR, dtR, chatR, newsR, cfgR] = await Promise.allSettled([
             api.get('/downtimes/quota'),
             api.get('/downtimes/mine'),
             api.get('/chat/my-recent'),
             api.get('/news/recent'),
+            api.get('/downtimes/config')
           ]);
           if (!live) return;
           if (qR.status    === 'fulfilled') setQuota(qR.value.data);
@@ -145,6 +236,7 @@ export default function Home() {
           );
           if (chatR.status === 'fulfilled') setRecentChats(chatR.value.data?.conversations || []);
           if (newsR.status === 'fulfilled') setRecentNews(newsR.value.data?.news || []);
+          if (cfgR.status  === 'fulfilled') setOpeningDate(cfgR.value.data?.downtime_opening || null);
         }
       } catch (err) {
         console.error(err);
@@ -156,16 +248,15 @@ export default function Home() {
     return () => { live = false; };
   }, [nav]);
 
-  /* ── Guards ── */
   if (loading) return <Loading />;
-  if (!me)     return <div className={styles.loadingScreen}>Please log in.</div>;
+  if (!me) return <div className={styles.loadingScreen}>Please log in.</div>;
 
   if (!ch) return (
     <div className={styles.noCharPage}>
       <div className={styles.noCharCard}>
         <div className={styles.noCharRose}>🥀</div>
         <h2 className={styles.noCharTitle}>Welcome, {me.display_name}</h2>
-        <p  className={styles.noCharSub}>
+        <p className={styles.noCharSub}>
           You must present yourself before the gathered Kindred of Athens.<br/>
           Forge your identity. Claim your lineage.
         </p>
@@ -180,6 +271,14 @@ export default function Home() {
   const isMalkavian = clan === 'malkavian';
   const showCobweb  = isMalkavian || me.role === 'admin';
   const quotaPct    = Math.min((quota.used / quota.limit) * 100, 100);
+
+  let sheetObj = {};
+  try {
+    sheetObj = typeof ch.sheet === 'string' ? JSON.parse(ch.sheet) : (ch.sheet || {});
+  } catch(e) {}
+
+  // Apply dynamic clan color to corner notching if available
+  const dynamicClanTint = CLAN_COLORS[ch.clan] || 'var(--tint)';
 
   return (
     <main className={styles.homePage}>
@@ -201,17 +300,15 @@ export default function Home() {
       )}
 
       {/* ══════════════════════════════════════════
-          1.  IDENTITY HEADER
+          1. IDENTITY HEADER
       ══════════════════════════════════════════ */}
-      <header className={styles.identityHeader}>
-        {/* Decorative corner marks */}
+      <header className={styles.identityHeader} style={{ borderColor: CLAN_COLORS[ch.clan] || 'var(--border-color)' }}>
         <span className={`${styles.corner} ${styles.cornerTL}`} />
         <span className={`${styles.corner} ${styles.cornerTR}`} />
         <span className={`${styles.corner} ${styles.cornerBL}`} />
         <span className={`${styles.corner} ${styles.cornerBR}`} />
 
         <div className={styles.headerInner}>
-          {/* Clan symbol */}
           <div className={styles.clanRing}>
             <img
               src={symlogo(ch.clan)}
@@ -221,17 +318,15 @@ export default function Home() {
             />
           </div>
 
-          {/* Name + meta */}
           <div className={styles.headerMeta}>
             <h1 className={styles.charName}>{ch.name}</h1>
-            <p  className={styles.charSub}>
+            <p className={styles.charSub}>
               <span className={styles.clanLabel}>{ch.clan || 'Caitiff'}</span>
               <span className={styles.separator}>·</span>
               <span className={styles.xpChip}>{ch.xp ?? 0} XP</span>
             </p>
           </div>
 
-          {/* Clan logo watermark */}
           <div className={styles.clanWatermark} aria-hidden>
             <img
               src={textlogo(ch.clan)}
@@ -242,7 +337,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Downtime quota bar */}
         <div className={styles.quotaBar}>
           <span className={styles.quotaLabel}>Actions this period</span>
           <div className={styles.quotaTrack}>
@@ -261,110 +355,174 @@ export default function Home() {
       {fetchError && <div className={styles.errorBanner}>{fetchError}</div>}
 
       {/* ══════════════════════════════════════════
-          2.  FEEDS  (newspaper · whispers · actions)
+          CHRONICLE EVENT COUNTDOWN & TRACKERS
       ══════════════════════════════════════════ */}
-      <section className={styles.feeds} aria-label="Activity feeds">
-
-        {/* ── 2a. THE CHRONICLE ── */}
-        <div className={styles.chronicle}>
-          <div className={styles.chronicleHeader}>
-            <span className={styles.chronicleRule} />
-            <h2 className={styles.chronicleName}>The Erebus Chronicle</h2>
-            <span className={styles.chronicleRule} />
-            <span className={styles.chronicleDate}>
-              {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-            </span>
+      <div className={styles.dashboardGrid} style={{ gridTemplateColumns: '1fr 1fr', marginBottom: '2.5rem' }}>
+        <section className={styles.feedCard} style={{ textAlign: 'center', justifyContent: 'center' }}>
+          <h3 style={{ margin: 0, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>Next Modern Event</h3>
+          <div style={{ fontSize: '1.5rem', fontWeight: 700, fontFamily: 'var(--font-title)', color: 'var(--tint)', marginTop: '4px' }}>
+            {niceDate(openingDate)}
           </div>
-
-          {recentNews.length === 0
-            ? <p className={styles.emptyState}>No headlines tonight.</p>
-            : (
-              <ul className={styles.headlineList}>
-                {recentNews.map(item => {
-                  const tag = item.type === 'announcement' ? 'DECREE' : (item.theme || 'NEWS').toUpperCase();
-                  const tagKey = (item.theme || item.type || '').toUpperCase();
-                  return (
-                    <li key={item.id} className={styles.headlineItem}>
-                      <Link to="/news" className={styles.headlineLink}>
-                        <span className={`${styles.outletBadge} ${styles[`tag${tagKey}`] || ''}`}>{tag}</span>
-                        <h3 className={styles.headlineTitle}>{item.title}</h3>
-                        <time className={styles.headlineDate}>{formatTimestamp(item.created_at)}</time>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            )
-          }
-          <Link to="/news" className={styles.chronicleReadMore}>Full Edition ›</Link>
-        </div>
-
-        {/* ── 2b. WHISPERS (recent chats) ── */}
-        <div className={styles.logbook}>
-          <div className={styles.logHeader}>
-            <h3 className={styles.logTitle}>
-              <span className={styles.logDot} />
-              Recent Whispers
-            </h3>
-            <Link to="/comms" className={styles.logViewAll}>View all</Link>
-          </div>
-          <ul className={styles.logList}>
-            {recentChats.length === 0
-              ? <li className={styles.emptyState}>No recent correspondence.</li>
-              : recentChats.map(chat => (
-                  <li key={chat.id} className={styles.logItem}>
-                    <Link to="/comms" className={styles.logLink}>
-                      <div className={styles.logRow}>
-                        <span className={styles.logFrom}>
-                          {chat.isNPC && <span className={styles.npcTag}>NPC</span>}
-                          {chat.partnerName}
-                        </span>
-                        <time className={styles.logTime}>{formatTimestamp(chat.timestamp)}</time>
-                      </div>
-                      <span className={styles.logPreview}>
-                        {(chat.lastMessage || '').substring(0, 60)}
-                        {(chat.lastMessage || '').length > 60 ? '…' : ''}
-                      </span>
-                    </Link>
-                  </li>
-                ))
-            }
-          </ul>
-        </div>
-
-        {/* ── 2c. ACTION LOG (recent downtimes) ── */}
-        <div className={styles.logbook}>
-          <div className={styles.logHeader}>
-            <h3 className={styles.logTitle}>
-              <span className={styles.logDot} style={{ background: 'var(--gold)' }} />
-              Action Log
-            </h3>
-            <Link to="/downtimes" className={styles.logViewAll}>View all</Link>
-          </div>
-          <ul className={styles.logList}>
-            {recentDowntimes.length === 0
-              ? <li className={styles.emptyState}>No recent actions.</li>
-              : recentDowntimes.map(dt => (
-                  <li key={dt.id} className={styles.logItem}>
-                    <Link to="/downtimes" className={styles.logLink}>
-                      <div className={styles.logRow}>
-                        <span className={`${styles.statusBadge} ${styles[`status_${dt.status}`]}`}>
-                          {dt.status}
-                        </span>
-                        <time className={styles.logTime}>{formatTimestamp(dt.created_at)}</time>
-                      </div>
-                      <span className={styles.logPreview}>{dt.title}</span>
-                    </Link>
-                  </li>
-                ))
-            }
-          </ul>
-        </div>
-
-      </section>
+          {!eventCd.isPast ? (
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '12px', fontFamily: 'monospace', fontSize: '1.2rem', fontWeight: 700 }}>
+              <div>{eventCd.days} <span style={{fontSize:'0.7rem', display:'block', color:'var(--text-muted)'}}>Days</span></div>
+              <div>{String(eventCd.hours).padStart(2,'0')} <span style={{fontSize:'0.7rem', display:'block', color:'var(--text-muted)'}}>Hours</span></div>
+              <div>{String(eventCd.mins).padStart(2,'0')} <span style={{fontSize:'0.7rem', display:'block', color:'var(--text-muted)'}}>Mins</span></div>
+            </div>
+          ) : (
+            <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '12px' }}>Event is underway or concluded.</div>
+          )}
+        </section>
+        
+        <section className={styles.feedCard} style={{ justifyContent: 'center', gap: '10px' }}>
+          <h3 style={{ margin: 0, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', textAlign: 'center' }}>Status Summaries</h3>
+          <MiniVtmBar 
+            label="Health" 
+            max={sheetObj.health?.max || 5} 
+            sup={sheetObj.health?.superficial || 0} 
+            agg={sheetObj.health?.aggravated || 0} 
+          />
+          <MiniVtmBar 
+            label="Willpower" 
+            max={Number(sheetObj.attributes?.Composure) + Number(sheetObj.attributes?.Resolve) || 5} 
+            sup={sheetObj.willpower?.superficial || 0} 
+            agg={sheetObj.willpower?.aggravated || 0} 
+          />
+        </section>
+      </div>
 
       {/* ══════════════════════════════════════════
-          3.  NAVIGATION GRID
+          THEME CUSTOMIZATION INTERFACE
+      ══════════════════════════════════════════ */}
+      {/* <section className={styles.feedCard} style={{ marginBottom: '2.5rem' }}>
+        <h2 className={styles.feedHeading} style={{ fontSize: '1.15rem' }}>Interface Aesthetics</h2>
+        <p style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Select your preferred localized terminal theme or network styling.</p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
+          {THEMES.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setActiveTheme(t.id)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 12px',
+                background: activeTheme === t.id ? 'color-mix(in srgb, var(--tint) 25%, transparent)' : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${activeTheme === t.id ? 'var(--tint)' : 'var(--border-color)'}`,
+                borderRadius: '8px',
+                color: 'var(--text-color)',
+                cursor: 'pointer',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: t.hex, border: '1px solid var(--border-color)' }} />
+              {t.label.split(' ')[0]}
+            </button>
+          ))}
+        </div>
+      </section> */}
+
+      {/* ══════════════════════════════════════════
+          2. FEEDS (Chronicle, Comms, Action Log)
+      ══════════════════════════════════════════ */}
+      <div className={styles.dashboardGrid}>
+        
+        {/* ── THE CHRONICLE (News) ── */}
+        <section className={styles.feedCard}>
+          <h2 className={styles.feedHeading}>The Erebus Chronicle</h2>
+          {recentNews.length === 0 ? (
+            <p className={styles.emptyFeedText}>No headlines tonight.</p>
+          ) : (
+            <ul className={styles.newsList}>
+              {recentNews.slice(0, 3).map(item => {
+                const tag = item.type === 'announcement' ? 'DECREE' : (item.theme || 'NEWS').toUpperCase();
+                const tagKey = (item.theme || item.type || '').toUpperCase();
+                return (
+                  <li key={item.id} className={styles.newsItem}>
+                    <Link to="/news" className={styles.newsLink}>
+                      <span className={`${styles.newsTag} ${styles[`tag${tagKey}`] || ''}`}>{tag}</span>
+                      <div className={styles.newsContent}>
+                        <h3 className={styles.newsTitle}>{item.title}</h3>
+                        <time className={styles.newsDate}>{formatTimestamp(item.created_at)}</time>
+                      </div>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          <Link to="/news" className={styles.feedLinkBtn}>Full Edition ›</Link>
+        </section>
+
+        {/* ── WHISPERS (Comms / Recent Chats) ── */}
+        <section className={styles.feedCard}>
+          <h2 className={styles.feedHeading}>Recent Whispers</h2>
+          {recentChats.length === 0 ? (
+            <p className={styles.emptyFeedText}>No recent correspondence.</p>
+          ) : (
+            <ul className={styles.chatList}>
+              {recentChats.slice(0, 4).map(chat => (
+                <li key={chat.id} className={styles.chatItem}>
+                  <Link to="/comms" className={styles.chatLink}>
+                    <div className={styles.chatHead}>
+                      <span className={styles.chatPartner}>
+                        {chat.isNPC && <span className={styles.npcTag}>NPC</span>}
+                        {chat.partnerName}
+                      </span>
+                      <time className={styles.chatTime}>{formatTimestamp(chat.timestamp)}</time>
+                    </div>
+                    <p className={styles.chatSnippet}>
+                      {(chat.lastMessage || '').substring(0, 50)}
+                      {(chat.lastMessage || '').length > 50 ? '…' : ''}
+                    </p>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+          <Link to="/comms" className={styles.feedLinkBtn}>Open Comms ›</Link>
+        </section>
+
+        {/* ── ACTION LOG (Downtimes) ── */}
+        <section className={styles.feedCard}>
+          <h2 className={styles.feedHeading}>Action Log</h2>
+          {recentDowntimes.length === 0 ? (
+            <p className={styles.emptyFeedText}>No recent actions recorded.</p>
+          ) : (
+            <ul className={styles.dtList}>
+              {recentDowntimes.map(dt => {
+                const status = (dt.status || 'submitted').toLowerCase();
+                let badgeClass = styles.badgePending;
+                if (status === 'approved') badgeClass = styles.badgeApproved;
+                if (status === 'needs a scene') badgeClass = styles.badgeNeedsScene;
+                if (status === 'rejected') badgeClass = styles.badgeRejected;
+                if (status === 'resolved' || status === 'resolved in scene') badgeClass = styles.badgeReview;
+
+                return (
+                  <li key={dt.id} className={styles.dtItem}>
+                    <Link to="/downtimes" className={styles.dtLink}>
+                      <div className={styles.dtHead}>
+                        <span className={`${styles.statusBadge} ${badgeClass}`}>
+                          {dt.status}
+                        </span>
+                        <time className={styles.dtTime}>{formatTimestamp(dt.created_at)}</time>
+                      </div>
+                      <p className={styles.dtTitle}>{dt.title}</p>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          <Link to="/downtimes" className={styles.feedLinkBtn}>Review Downtimes ›</Link>
+        </section>
+
+      </div>
+
+      {/* ══════════════════════════════════════════
+          3. NAVIGATION GRID
       ══════════════════════════════════════════ */}
       <section className={styles.navSection} aria-label="Quick navigation">
         <div className={styles.dividerLine}>
@@ -376,9 +534,7 @@ export default function Home() {
             <Link key={to} to={to} className={styles.navCard}>
               <span className={styles.navCardIcon}>{icon}</span>
               <span className={styles.navCardTitle}>{title}</span>
-              <span className={styles.navCardSub}>
-                {to === '/downtimes' ? `${quota.used}/${quota.limit} used` : sub}
-              </span>
+              <span className={styles.navCardSub}>{sub}</span>
             </Link>
           ))}
 
@@ -397,7 +553,6 @@ export default function Home() {
           )}
         </div>
       </section>
-
     </main>
   );
 }
