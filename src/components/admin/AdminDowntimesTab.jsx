@@ -41,10 +41,37 @@ const STATUS = ['submitted', 'approved', 'Needs a Scene', 'rejected', 'resolved'
 
 function StatusToggle({ status, checked, onChange }) {
   return (
-    <label className={`${styles.customCheckbox} ${styles.statusToggle}`} data-status={status}>
-      <input type="checkbox" checked={checked} onChange={onChange} />
-      <span className={styles.checkmark}></span>
-      <span>Hide {status}</span>
+    <label 
+      className={styles.statusToggle}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.65rem',
+        cursor: 'pointer',
+        padding: '0.6rem 1.2rem',
+        background: checked ? 'rgba(255, 255, 255, 0.02)' : 'var(--glass-inset)',
+        border: `1px solid ${checked ? 'var(--glass-border)' : 'var(--accent-purple)'}`,
+        borderRadius: 'var(--radius-sm)',
+        transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+        opacity: checked ? 0.4 : 1,
+        boxShadow: checked ? 'none' : '0 0 10px var(--accent-purple-glow)',
+        userSelect: 'none'
+      }}
+    >
+      <input 
+        type="checkbox" 
+        checked={checked} 
+        onChange={onChange} 
+        style={{ 
+          width: '15px', 
+          height: '15px', 
+          accentColor: 'var(--accent-purple)',
+          cursor: 'pointer'
+        }} 
+      />
+      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: checked ? 'var(--text-muted)' : '#ffffff' }}>
+        Hide {status}
+      </span>
     </label>
   );
 }
@@ -231,49 +258,69 @@ export default function AdminDowntimesTab() {
   return (
     <div className={styles.stack12}>
       
-      {/* MODE SWITCHER */}
-      <div className={styles.modeSwitcher}>
+      {/* 1. TOP INTERACTIVE VIEW OVERVIEW OVERHAUL */}
+      <div style={{ display: 'flex', gap: '0.8rem', background: 'var(--glass-inset)', padding: '5px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', width: 'fit-content' }}>
         <button 
-          className={`${styles.modeBtn} ${viewMode === 'standard' ? styles.modeBtnStandardActive : ''}`}
+          className={styles.tab}
+          style={{ 
+            background: viewMode === 'standard' ? 'linear-gradient(135deg, var(--accent-purple-dark) 0%, var(--accent-purple) 100%)' : 'transparent', 
+            color: viewMode === 'standard' ? '#ffffff' : 'var(--text-secondary)',
+            boxShadow: viewMode === 'standard' ? '0 4px 15px var(--accent-purple-glow)' : 'none',
+            padding: '0.8rem 1.8rem', 
+            borderRadius: 'var(--radius-md)', 
+            fontWeight: 800 
+          }}
           onClick={() => setViewMode('standard')}
         >
           🦇 Standard Downtimes
         </button>
         <button 
-          className={`${styles.modeBtn} ${viewMode === 'project' ? styles.modeBtnProjectActive : ''}`}
+          className={styles.tab}
+          style={{ 
+            background: viewMode === 'project' ? 'linear-gradient(135deg, #1b4c8c 0%, #4da6ff 100%)' : 'transparent', 
+            color: viewMode === 'project' ? '#ffffff' : 'var(--text-secondary)',
+            boxShadow: viewMode === 'project' ? '0 4px 15px rgba(77, 166, 255, 0.4)' : 'none',
+            padding: '0.8rem 1.8rem', 
+            borderRadius: 'var(--radius-md)', 
+            fontWeight: 800 
+          }}
           onClick={() => setViewMode('project')}
         >
           📜 Project Actions
         </button>
       </div>
 
-      {/* ============ Downtime Schedule (Config) ============ */}
-      <section className={styles.editorSection} style={{ borderTop: `4px solid ${viewMode === 'project' ? '#1b4c8c' : '#8a0303'}` }}>
-        <div className={styles.sectionHeader}>
-          <h4>{viewMode === 'standard' ? 'Downtime Configuration' : 'Project Configuration'}</h4>
-          <div className={styles.subtle}>Set the global dates and Active Phase visible to all players.</div>
+      {/* ============ Downtime Schedule (Config Panel) ============ */}
+      <section className={styles.editorSection} style={{ borderTop: `4px solid ${viewMode === 'project' ? '#4da6ff' : 'var(--accent-purple)'}`, background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', padding: '2rem', boxShadow: 'var(--glass-shadow)' }}>
+        <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
+          <h4 style={{ margin: 0, color: viewMode === 'project' ? '#4da6ff' : 'var(--accent-purple)', fontSize: '1.4rem', fontWeight: 800 }}>
+            {viewMode === 'standard' ? 'Downtime Configuration' : 'Project Configuration'}
+          </h4>
+          <div className={styles.subtle}>Adjust parameters, view deadlines, and configure core structural settings.</div>
         </div>
 
-        {cfgLoading && <div className={styles.loading}><span className={styles.spinner} /> Loading config…</div>}
+        {cfgLoading && <div className={styles.loading}><span className={styles.spinner} /> Syncing system configurations…</div>}
         {cfgErr && <div className={`${styles.alert} ${styles.alertError}`}>{cfgErr}</div>}
         {cfgInfo && <div className={`${styles.alert} ${styles.alertInfo}`}>{cfgInfo}</div>}
 
-        {/* --- MASTER PHASE SWITCH --- */}
-        <div className={styles.masterPhaseCard} style={{ borderLeft: masterPhase === 'project' ? '4px solid #1b4c8c' : '4px solid #8a0303' }}>
-          <h4 style={{ margin: '0 0 5px 0', fontSize: '1rem' }}>🌍 Master Active Phase</h4>
-          <p style={{ margin: '0 0 15px 0', color: '#aaa', fontSize: '0.85rem' }}>
-            Determine which tab players see <b>by default</b> when they open their actions page.
+        {/* --- SYSTEM PHASE INTERACTIVE OVERRIDE --- */}
+        <div style={{ background: 'var(--glass-inset)', padding: '1.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)', borderLeft: masterPhase === 'project' ? '4px solid #4da6ff' : '4px solid var(--accent-purple)', marginBottom: '2rem', boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.4)' }}>
+          <h4 style={{ margin: '0 0 6px 0', fontSize: '1.1rem', fontWeight: 700, color: '#ffffff' }}>🌍 Master Active Phase Target</h4>
+          <p style={{ margin: '0 0 15px 0', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+            Sets the default baseline view shown to all users inside their action panels.
           </p>
-          <div className={styles.modeSwitcher} style={{ marginBottom: 0 }}>
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
             <button 
-              className={`${styles.modeBtn} ${masterPhase === 'standard' ? styles.modeBtnStandardActive : ''}`}
+              className={styles.btn}
+              style={{ background: masterPhase === 'standard' ? 'linear-gradient(135deg, var(--accent-purple-dark) 0%, var(--accent-purple) 100%)' : 'rgba(255,255,255,0.03)', border: `1px solid ${masterPhase === 'standard' ? 'transparent' : 'var(--glass-border)'}`, color: '#ffffff', fontWeight: 700 }}
               onClick={() => handlePhaseToggle('standard')}
               disabled={cfgSaving}
             >
               🦇 Monthly Actions Active
             </button>
             <button 
-              className={`${styles.modeBtn} ${masterPhase === 'project' ? styles.modeBtnProjectActive : ''}`}
+              className={styles.btn}
+              style={{ background: masterPhase === 'project' ? 'linear-gradient(135deg, #1b4c8c 0%, #4da6ff 100%)' : 'rgba(255,255,255,0.03)', border: `1px solid ${masterPhase === 'project' ? 'transparent' : 'var(--glass-border)'}`, color: '#ffffff', fontWeight: 700 }}
               onClick={() => handlePhaseToggle('project')}
               disabled={cfgSaving}
             >
@@ -282,7 +329,7 @@ export default function AdminDowntimesTab() {
           </div>
         </div>
 
-        <div className={styles.twoColGrid}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
           {viewMode === 'standard' ? (
             <>
               <label className={styles.labeledInput}>
@@ -302,63 +349,63 @@ export default function AdminDowntimesTab() {
           )}
         </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-          <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={onReloadConfig}>Reload</button>
+        <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', borderTop: '1px solid var(--glass-border)', paddingTop: '1.5rem' }}>
+          <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={onReloadConfig}>Reset Configuration</button>
           <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => onSaveConfig()} disabled={cfgSaving}>
-            {cfgSaving ? 'Saving…' : 'Save Dates'}
+            {cfgSaving ? 'Updating...' : 'Save Operations Schema'}
           </button>
         </div>
       </section>
 
-      {/* ============ Admin List ============ */}
-      <section className={styles.editorSection}>
-        <div className={styles.sectionHeader}>
-          <h4>{viewMode === 'standard' ? 'All Downtimes' : 'All Project Actions'}</h4>
-          <div className={styles.subtle}>Search, filter, and resolve player submissions.</div>
+      {/* ============ Admin List Panel ============ */}
+      <section className={styles.editorSection} style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', padding: '2rem', boxShadow: 'var(--glass-shadow)' }}>
+        <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
+          <h4 style={{ margin: 0, color: 'var(--accent-purple)', fontSize: '1.4rem', fontWeight: 800 }}>
+            {viewMode === 'standard' ? 'Submissions Ledger' : 'Project Registry'}
+          </h4>
+          <div className={styles.subtle}>Inspect, evaluate, modify, and process narrative logs.</div>
         </div>
 
-        <div className={styles.twoColGrid} style={{ alignItems: 'end' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem', alignItems: 'end', marginBottom: '1.5rem' }}>
           <label className={styles.labeledInput}>
-            <span>Search</span>
-            <input className={`${styles.input} ${styles.inputSearch}`} placeholder="Title, body, player, character, clan…" value={q} onChange={(e) => setQ(e.target.value)} />
+            <span>Search Pipeline</span>
+            <input className={styles.input} placeholder="Type query tags (character, action detail, clan details)..." value={q} onChange={(e) => setQ(e.target.value)} />
           </label>
           <label className={styles.labeledInput}>
-            <span>Status Filter (Dropdown)</span>
+            <span>Status Pipeline View</span>
             <select className={styles.select} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-              <option value="all">Show All</option>
+              <option value="all">Display All Operations</option>
               {STATUS.map(s => <option key={s} value={s}>{`Only ${s}`}</option>)}
             </select>
           </label>
         </div>
 
-        <div className={styles.filterToggleGrid}>
-          <StatusToggle status="submitted" checked={hideStatus.submitted} onChange={() => toggleHideStatus('submitted')} />
-          <StatusToggle status="approved"  checked={hideStatus.approved}  onChange={() => toggleHideStatus('approved')} />
-          <StatusToggle status="Needs a Scene"  checked={hideStatus['Needs a Scene']}  onChange={() => toggleHideStatus('Needs a Scene')} />
-          <StatusToggle status="rejected"  checked={hideStatus.rejected}  onChange={() => toggleHideStatus('rejected')} />
-          <StatusToggle status="resolved"  checked={hideStatus.resolved}  onChange={() => toggleHideStatus('resolved')} />
-          <StatusToggle status="Resolved in scene"  checked={hideStatus['Resolved in scene']}  onChange={() => toggleHideStatus('Resolved in scene')} />
+        <div className={styles.filterToggleGrid} style={{ background: 'var(--glass-inset)', padding: '1.2rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)', display: 'flex', flexWrap: 'wrap', gap: '1rem', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.4)' }}>
+          {STATUS.map(st => (
+            <StatusToggle key={st} status={st} checked={hideStatus[st]} onChange={() => toggleHideStatus(st)} />
+          ))}
         </div>
 
-        <div className={styles.row} style={{ gap: '0.5rem', marginTop: '0.5rem' }}>
-          <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => { setQ(''); setStatusFilter('all'); }}>Clear filters</button>
-          <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={loadList}>Reload list</button>
+        <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+          <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => { setQ(''); setStatusFilter('all'); }}>Clear Filter Pipelines</button>
+          <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={loadList}>Sync Records</button>
         </div>
 
-        {listErr && <div className={`${styles.alert} ${styles.alertError}`} style={{ marginTop: '0.75rem' }}>{listErr}</div>}
-        {listLoading && <div className={styles.loading} style={{ marginTop: '0.75rem' }}><span className={styles.spinner} /> Loading…</div>}
+        {listErr && <div className={`${styles.alert} ${styles.alertError}`} style={{ marginTop: '1.5rem' }}>{listErr}</div>}
+        {listLoading && <div className={styles.loading} style={{ marginTop: '1.5rem' }}><span className={styles.spinner} /> Syncing live ledger entries…</div>}
 
         {!listLoading && (
-          <div className={styles.downtimeGroupGrid} style={{ marginTop: '1rem' }}>
+          <div style={{ display: 'grid', gap: '2rem', marginTop: '2rem' }}>
             {groupedAndFiltered.length === 0 && (
-              <div className={styles.placeholderCard}>
-                <div className={styles.placeholderDot} />
-                <h3>No submissions match your filters</h3>
+              <div style={{ padding: '4rem 2rem', textAlign: 'center', background: 'var(--glass-inset)', borderRadius: 'var(--radius-lg)', border: '1px dashed var(--glass-border)', opacity: 0.7 }}>
+                <span style={{ fontSize: '3rem', display: 'block', marginBottom: '1rem' }}>🗄️</span>
+                <h3 style={{ color: 'var(--text-primary)', margin: 0, fontSize: '1.3rem' }}>No data matching parameters</h3>
+                <p className={styles.subtle} style={{ marginTop: '0.4rem' }}>Adjust queries or modify parameters to retrieve dormant records.</p>
               </div>
             )}
 
             {groupedAndFiltered.map(group => {
-              const clanColor = CLAN_COLORS[group.clan] || 'var(--border-color)';
+              const clanColor = CLAN_COLORS[group.clan] || 'var(--accent-purple)';
               const clanLogoUrl = symlogo(group.clan);
               return (
                 <div
@@ -366,18 +413,24 @@ export default function AdminDowntimesTab() {
                   className={styles.playerDowntimeGroup}
                   style={{
                     '--clan-color': clanColor,
-                    '--clan-logo-url': clanLogoUrl ? `url(${clanLogoUrl})` : 'none'
+                    '--clan-logo-url': clanLogoUrl ? `url(${clanLogoUrl})` : 'none',
+                    background: 'rgba(10, 10, 15, 0.4)',
+                    border: '1px solid var(--glass-border)',
+                    borderRadius: 'var(--radius-lg)',
+                    overflow: 'hidden',
+                    borderLeft: `6px solid ${clanColor}`,
+                    backdropFilter: 'var(--glass-blur)'
                   }}
                 >
-                  <header className={styles.playerGroupHeader}>
-                    <div className={styles.playerGroupBadge}></div>
-                    <div className={styles.playerGroupInfo}>
-                      <span className={styles.playerCharName}>{group.char_name || '(No Character)'}</span>
-                      <span className={styles.playerDisplayName}>{group.player_name}</span>
+                  <header style={{ padding: '1.25rem 1.5rem', background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', gap: '1.5rem', borderBottom: '1px solid var(--glass-border)' }}>
+                    <div style={{ width: '44px', height: '44px', backgroundImage: clanLogoUrl ? `url(${clanLogoUrl})` : 'none', backgroundSize: 'cover', borderRadius: '50%', border: `2px solid ${clanColor}`, backgroundColor: 'rgba(255,255,255,0.95)', boxShadow: `0 0 15px ${clanColor}44` }}></div>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontWeight: 800, fontSize: '1.2rem', color: '#ffffff', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>{group.char_name || '(No Character)'}</span>
+                      <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: 'Fira Code, monospace', opacity: 0.8 }}>{group.player_name}</span>
                     </div>
                   </header>
 
-                  <div className={styles.downtimeCompactList}>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
                     {group.downtimes.map(r => (
                       <DowntimeEditorRow
                         key={r.id}
@@ -407,17 +460,20 @@ function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel }
 
   if (!editing) {
     return (
-      <div className={styles.downtimeCompactRow} data-status={(r.status || '').toLowerCase()}>
-        <div className={styles.compactTitle}>
-          <b>#{r.id}</b> — {displayTitle}
+      <div 
+        className={styles.downtimeCompactRow}
+        style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', gap: '1.5rem', padding: '1.2rem 1.5rem', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.03)', cursor: 'pointer', background: 'transparent', transition: 'all 0.2s ease' }} 
+        onMouseEnter={e => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
+        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+        onClick={() => onOpen(r)}
+      >
+        <div style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
+          <b style={{ color: 'var(--accent-purple)', fontFamily: 'Fira Code, monospace', marginRight: '10px' }}>#{r.id}</b> {displayTitle}
         </div>
-        <div className={styles.compactStatus}>
+        <div style={{ fontFamily: 'Fira Code, monospace', fontSize: '0.8rem', color: 'var(--text-secondary)', opacity: 0.8 }}>{niceDate(r.created_at)}</div>
+        <div>
           <span className={styles.statusBadge} data-status={r.status}>{r.status}</span>
         </div>
-        <div className={styles.compactDate}>{niceDate(r.created_at)}</div>
-        <button className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSmall}`} onClick={() => onOpen(r)}>
-          View
-        </button>
       </div>
     );
   }
@@ -426,71 +482,71 @@ function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel }
   return (
     <article
       className={styles.downtimeCard}
-      data-status={b.status}
-      style={{ margin: '0.5rem 0', borderLeftWidth: '4px', borderLeftColor: isProj ? '#1b4c8c' : '', animation: 'fadeIn 0.3s ease-out' }}
+      style={{ background: 'var(--glass-inset)', border: '1px solid var(--glass-border)', padding: '1.5rem', margin: '1.25rem', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: '1.5rem', boxShadow: 'inset 0 4px 20px rgba(0,0,0,0.5)', borderLeft: `4px solid ${isProj ? '#4da6ff' : 'var(--accent-purple)'}` }}
     >
-      <header className={styles.downtimeHeader} style={{ padding: '0.75rem 1rem', background: isProj ? 'rgba(27, 76, 140, 0.1)' : '' }}>
-        <div className={styles.downtimeInfo}>
-          <div className={styles.downtimeTitle}>
-            <b>#{r.id}</b> — {displayTitle || '(no title)'} {isProj && <span style={{fontSize: '0.75rem', background: '#1b4c8c', color: '#fff', padding: '2px 6px', borderRadius: '4px', marginLeft: '10px'}}>PROJECT</span>}
+      <header style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+          <div style={{ fontSize: '1.25rem', color: '#ffffff', fontWeight: 800, letterSpacing: '-0.02em' }}>
+            <b style={{ color: isProj ? '#4da6ff' : 'var(--accent-purple)', fontFamily: 'Fira Code, monospace', marginRight: '8px' }}>#{r.id}</b> {displayTitle || '(no title)'} 
+            {isProj && <span style={{fontSize: '0.7rem', background: '#1b4c8c', border: '1px solid #4da6ff', color: '#ffffff', padding: '2px 8px', borderRadius: '4px', marginLeft: '12px', verticalAlign: 'middle', fontWeight: 900, letterSpacing: '1px'}}>LONG-TERM PROJECT</span>}
           </div>
-          <div className={styles.downtimeMeta} style={{ fontSize: '0.8rem' }}>
-            <span>Player: <b>{r.player_name || r.email}</b></span>
-            <span>Character: <b>{r.char_name || '—'}</b> {r.clan ? `(${r.clan})` : ''}</span>
+          <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            <span>Account: <b style={{ color: 'var(--text-secondary)' }}>{r.player_name || r.email}</b></span>
+            <span>Subject: <b style={{ color: 'var(--text-secondary)' }}>{r.char_name || '—'}</b> {r.clan ? `[${r.clan}]` : ''}</span>
           </div>
         </div>
       </header>
 
-      <div className={styles.downtimeBody} style={{ padding: '1rem', gap: '0.75rem' }}>
-        <label className={styles.labeledTextarea}>
-          <span>Action</span>
-          <textarea className={`${styles.textarea} ${styles.readOnlyTextarea}`} style={{minHeight: isProj ? '200px' : '100px'}} readOnly value={r.body || ''} />
+      <div style={{ display: 'grid', gap: '1.5rem' }}>
+        <label className={styles.labeledInput}>
+          <span>Kindred Activity Record Log</span>
+          <textarea className={styles.textarea} style={{ minHeight: isProj ? '220px' : '120px', background: 'rgba(0, 0, 0, 0.4)', borderStyle: 'dashed', opacity: 0.85, color: '#e0e0e5' }} readOnly value={r.body || ''} />
         </label>
 
         {!isProj && r.feeding_type && (
-          <div className={styles.labeledInput}>
-            <span>Feeding Type</span>
-            <div className={`${styles.input} ${styles.readOnlyTextarea}`} style={{ display: 'flex', alignItems: 'center' }}>
+          <label className={styles.labeledInput}>
+            <span>Feeding Methodology Vector</span>
+            <div className={styles.input} style={{ background: 'rgba(0, 0, 0, 0.4)', borderStyle: 'dashed', opacity: 0.85, display: 'flex', alignItems: 'center', height: '44px', color: 'var(--accent-purple)', fontWeight: 700 }}>
               {r.feeding_type}
             </div>
-          </div>
+          </label>
         )}
 
-        <div className={styles.twoColGrid}>
-          <label className={styles.labeledTextarea}>
-            <span>GM Notes</span>
-            <textarea className={styles.textarea} value={b.gm_notes} onChange={(e) => onUpdate(r.id, 'gm_notes', e.target.value)} />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+          <label className={styles.labeledInput}>
+            <span>GM Internal Infrastructure Notes</span>
+            <textarea className={styles.textarea} value={b.gm_notes} onChange={(e) => onUpdate(r.id, 'gm_notes', e.target.value)} placeholder="Write secure internal comments hidden from character dashboard logs..." />
           </label>
-          <label className={styles.labeledTextarea}>
-            <span>GM Resolution</span>
-            <textarea className={`${styles.textarea} ${styles.privateNotes}`} value={b.gm_resolution} onChange={(e) => onUpdate(r.id, 'gm_resolution', e.target.value)} />
+          <label className={styles.labeledInput}>
+            <span>GM Transmission Feedback (Dispatched To Character)</span>
+            <textarea className={styles.textarea} style={{ background: 'rgba(157, 124, 25ff, 0.03)', borderLeft: '3px solid var(--accent-purple)' }} value={b.gm_resolution} onChange={(e) => onUpdate(r.id, 'gm_resolution', e.target.value)} placeholder="Write resolution notes visible to character upon final completion..." />
           </label>
         </div>
 
-        <div className={styles.twoColGrid}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', background: 'var(--glass-bg)', padding: '1.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)', boxShadow: '0 4px 15px rgba(0,0,0,0.2)' }}>
           <label className={styles.labeledInput}>
-            <span>Status</span>
-            <select className={styles.select} value={b.status} onChange={(e) => onUpdate(r.id, 'status', e.target.value)} data-status={b.status}>
+            <span>Registry Status State</span>
+            <select className={styles.select} value={b.status} onChange={(e) => onUpdate(r.id, 'status', e.target.value)}>
               {STATUS.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </label>
 
           <div className={styles.labeledInput}>
-            <span>Quick Actions</span>
-            <div className={styles.row} style={{ gap: 8, flexWrap: 'wrap' }}>
-              <button className={`${styles.btn} ${styles.btnSuccess}`} type="button" onClick={() => onSave(r.id, { status: 'approved' })}>Mark Approved</button>
-              <button className={`${styles.btn}`} style={{background: '#ffc107', color: '#000'}} type="button" onClick={() => onSave(r.id, { status: 'Needs a Scene' })}>Needs Scene</button>
-              <button className={`${styles.btn} ${styles.btnDanger}`} type="button" onClick={() => onSave(r.id, { status: 'rejected' })}>Reject</button>
-              <button className={`${styles.btn} ${styles.btnPrimary}`} type="button" onClick={() => onSave(r.id, { status: 'resolved' })}>Resolve</button>
-              <button className={`${styles.btn} ${styles.btnPrimary}`} type="button" onClick={() => onSave(r.id, { status: 'Resolved in scene' })}>Resolved in Scene</button>
+            <span>Macro Processing Protocols</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem' }}>
+              <button className={`${styles.btn} ${styles.btnSuccess} ${styles.btnSmall}`} type="button" onClick={() => onSave(r.id, { status: 'approved' })}>Approve</button>
+              <button className={`${styles.btn} ${styles.btnWarning} ${styles.btnSmall}`} type="button" onClick={() => onSave(r.id, { status: 'Needs a Scene' })}>Needs Scene</button>
+              <button className={`${styles.btn} ${styles.btnDanger} ${styles.btnSmall}`} type="button" onClick={() => onSave(r.id, { status: 'rejected' })}>Reject</button>
+              <button className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSmall}`} type="button" onClick={() => onSave(r.id, { status: 'resolved' })}>Resolve</button>
+              <button className={styles.btn} style={{ background: 'linear-gradient(135deg, #1b4c8c 0%, #4da6ff 100%)', color: '#ffffff', padding: '0.4rem 0.8rem', fontSize: '0.8rem', fontWeight: 700, borderRadius: 'var(--radius-sm)' }} type="button" onClick={() => onSave(r.id, { status: 'Resolved in scene' })}>In Scene</button>
             </div>
           </div>
         </div>
 
-        <div className={styles.row} style={{ gap: 8, marginTop: 8, alignItems: 'center' }}>
-          <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => onCancel(r.id)} disabled={b.saving}>Close</button>
-          <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => onSave(r.id)} disabled={b.saving}>
-            {b.saving ? 'Saving…' : 'Save Changes'}
+        <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', alignItems: 'center', borderTop: '1px solid var(--glass-border)', paddingTop: '1.5rem' }}>
+          <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => onCancel(r.id)} disabled={b.saving}>Discard & Terminate Terminal</button>
+          <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => onSave(r.id)} disabled={b.saving} style={{ marginLeft: 'auto' }}>
+            {b.saving ? 'Commiting Changes...' : 'Commit Operational Record'}
           </button>
           {b.error && <div className={`${styles.alertMini} ${styles.alertError}`}>{b.error}</div>}
           {b.info && <div className={`${styles.alertMini} ${styles.alertInfo}`}>{b.info}</div>}

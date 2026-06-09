@@ -3,7 +3,6 @@ import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'; 
 import api from '../../api';
 import styles from '../../styles/Admin.module.css';
-import Loading from '../Loading';
 
 /* ---------- VTM Lookups ---------- */
 const CLAN_COLORS = {
@@ -49,7 +48,7 @@ const Highlight = ({ text, query }) => {
   return <>{parts}</>;
 };
 
-/* --- CHAT IMAGE COMPONENT (Secure Fetch) --- */
+/* --- CHAT IMAGE COMPONENT --- */
 const ChatImage = ({ attachmentId }) => {
   const [imageUrl, setImageUrl] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -59,11 +58,8 @@ const ChatImage = ({ attachmentId }) => {
     let active = true;
     let urlToRevoke = null;
 
-    setLoading(true);
-    setError(false);
-    setImageUrl(null);
+    setLoading(true); setError(false); setImageUrl(null);
     
-    // Uses the same endpoint as ChatSystem. Server allows access if auth token is valid.
     api.get(`/chat/media/${attachmentId}`, { responseType: 'blob' })
       .then((response) => {
         if (!active) return;
@@ -84,22 +80,17 @@ const ChatImage = ({ attachmentId }) => {
     };
   }, [attachmentId]);
 
-  if (loading) return <Loading />;
-  if (error) return <div style={{ fontSize:'0.75rem', color:'#c44', margin:'4px 0' }}>⚠ Image failed to load</div>;
+  if (loading) return <div style={{ display: 'flex', padding: '1rem', justifyContent: 'center' }}><span className={styles.spinner} style={{ width: '20px', height: '20px', borderWidth: '2px' }} /></div>;
+  if (error) return <div style={{ fontSize: '0.8rem', color: 'var(--color-error)', margin: '8px 0', padding: '6px 12px', background: 'rgba(255,77,77,0.05)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(255,77,77,0.1)' }}>⚠ Media Link Unavailable</div>;
 
   return (
     <img 
       src={imageUrl} 
       alt="Attachment" 
       style={{
-        maxWidth: '100%',
-        maxHeight: '300px',
-        borderRadius: '6px',
-        marginTop: '8px',
-        marginBottom: '4px',
-        cursor: 'pointer',
-        border: '1px solid #333',
-        display: 'block'
+        maxWidth: '100%', maxHeight: '350px', borderRadius: 'var(--radius-sm)',
+        marginTop: '8px', marginBottom: '8px', cursor: 'pointer',
+        border: '1px solid var(--glass-border)', boxShadow: 'var(--glass-shadow)', display: 'block'
       }}
       onClick={() => window.open(imageUrl, '_blank')}
     />
@@ -135,10 +126,9 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [groupThread, setGroupThread] = useState([]);
 
-  // State: Global AI Summary
+  // State: Global AI
   const [globalSummary, setGlobalSummary] = useState(null);
   const [globalLoading, setGlobalLoading] = useState(false);
-
   const [loading, setLoading] = useState({});
 
   const getCharInfoByUserId = useCallback((userId) => {
@@ -152,19 +142,15 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
     setGlobalLoading(true);
     
     try {
-      // 1. Sort all messages by date (Newest last) then slice the last 100
       const sorted = [...messages].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
       const recent = sorted.slice(-100); 
 
-      // 2. Format
       const chatText = recent.map(m => {
         let sender = 'Unknown Character';
-        if (m.from === 'npc') {
-          sender = m.sender_name || 'NPC'; 
-        } else {
-          if (m.char_name) {
-            sender = m.char_name;
-          } else if (m.sender_id) {
+        if (m.from === 'npc') { sender = m.sender_name || 'NPC'; } 
+        else {
+          if (m.char_name) { sender = m.char_name; } 
+          else if (m.sender_id) {
             const info = getCharInfoByUserId(m.sender_id);
             if (info.name && info.name !== '—') sender = info.name;
           }
@@ -172,7 +158,6 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
         return `[${new Date(m.created_at).toLocaleString()}] ${sender}: ${m.body}`;
       }).join('\n');
 
-      // 3. Send to API
       const { data } = await api.post('/admin/chat/summarize', { 
         text: chatText, 
         context: "The last 100 messages exchanged in the game (Global Activity Log)" 
@@ -185,7 +170,7 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
     }
   };
 
-  // --- 1. DIRECT MSG PROCESSING ---
+  // --- DIRECT MSG PROCESSING ---
   const directConversations = useMemo(() => {
     const groups = new Map();
     for (const msg of messages) {
@@ -231,13 +216,14 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
     );
   }, [directConversations, debouncedDirectSearch]);
 
-  // --- 2. LOADERS & EFFECTS ---
+  // --- LOADERS & EFFECTS ---
   useEffect(() => {
     if (viewMode !== 'direct' || !selectedConversationKey) { setCurrentMessages([]); return; }
     const convo = directConversations.find(c => c.key === selectedConversationKey);
     if (convo) {
       setCurrentMessages(convo.messages);
       setCurrentParticipants({
+        threadKey: selectedConversationKey, // Important for scrolling
         user1: convo.user1Name, user2: convo.user2Name,
         user1Id: convo.user1Id, user2Id: convo.user2Id,
         user1Char: convo.user1CharName, user2Char: convo.user2CharName,
@@ -251,7 +237,7 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
     api.get('/admin/npcs').then(res => {
       const list = (res.data.npcs || res.data || []).map(n => ({ id: n.id, name: n.name, clan: n.clan }));
       setNpcList(list.sort((a,b) => a.name.localeCompare(b.name)));
-    }).catch(() => { /* Failed to load NPCs */ });
+    }).catch(() => {});
   }, [viewMode]);
 
   useEffect(() => {
@@ -272,13 +258,8 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
     setLoading(p => ({...p, thread: true}));
     const url = `/admin/chat/npc/history?npc_id=${selectedNpc.id}&user_id=${selectedNpcConversation.userId}`;
     api.get(url).then(res => {
-      // API returns attachment_id
       const msgs = (res.data.messages||[]).map(m => ({ 
-        id: m.id, 
-        body: m.body, 
-        created_at: m.created_at, 
-        from: m.from_side,
-        attachment_id: m.attachment_id // Capture attachment
+        id: m.id, body: m.body, created_at: m.created_at, from: m.from_side, attachment_id: m.attachment_id 
       }));
       setCurrentThread(msgs.sort((a,b) => new Date(a.created_at) - new Date(b.created_at)));
     }).finally(() => setLoading(p => ({...p, thread: false})));
@@ -286,21 +267,18 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
 
   useEffect(() => {
     if (viewMode !== 'group') return;
-    api.get('/admin/chat/groups').then(res => {
-      setGroupList((res.data.groups||[]));
-    }).catch(() => { /* Failed to load groups */ });
+    api.get('/admin/chat/groups').then(res => setGroupList(res.data.groups||[])).catch(() => {});
   }, [viewMode]);
 
   useEffect(() => {
     if (viewMode !== 'group' || !selectedGroup) { setGroupThread([]); return; }
     setLoading(p => ({...p, groupThread: true}));
     api.get(`/admin/chat/groups/${selectedGroup.id}/history`).then(res => {
-      // API returns attachment_id
       setGroupThread((res.data.messages||[]));
     }).finally(() => setLoading(p => ({...p, groupThread: false})));
   }, [selectedGroup, viewMode]);
 
-  // --- 3. FILTER LISTS ---
+  // --- FILTER LISTS ---
   const filteredNpcs = useMemo(() => {
     const q = debouncedNpcSearch.toLowerCase();
     return npcList.filter(n => (n.name||'').toLowerCase().includes(q));
@@ -323,30 +301,39 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
   };
 
   return (
-    <div className={styles.logsContainer} data-mode={viewMode}>
+    <div style={{ display: 'flex', height: '78vh', background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', overflow: 'hidden', boxShadow: 'var(--glass-shadow)' }}>
+      
       {/* SIDEBAR: LISTS */}
-      <aside className={styles.sidebar}>
-        <div className={styles.sidebarHeader}>
-          {/* --- GLOBAL RECAP BUTTON --- */}
+      <aside style={{ width: '380px', display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.3)', flexShrink: 0 }}>
+        <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', borderBottom: '1px solid var(--glass-border)' }}>
           <button 
             className={styles.globalRecapBtn} 
             onClick={handleGlobalSummarize}
             disabled={globalLoading}
           >
-            {globalLoading ? <span className={styles.spinnerSmall} /> : '✨ Global Recap'}
+            {globalLoading ? <span className={styles.spinner} style={{ width: '16px', height: '16px', borderWidth: '2px' }} /> : '✨ Global AI Recap'}
           </button>
 
           <div className={styles.modeSwitcher}>
             {['direct','npc','group'].map(m => (
-              <button key={m} onClick={() => handleModeChange(m)} className={viewMode === m ? styles.active : ''}>
+              <button 
+                key={m} 
+                onClick={() => handleModeChange(m)} 
+                style={{ 
+                  flex: 1, padding: '0.6rem 0.5rem', border: 'none', borderRadius: 'var(--radius-sm)',
+                  cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, 
+                  background: viewMode === m ? 'linear-gradient(135deg, var(--accent-purple-dark) 0%, var(--accent-purple) 100%)' : 'transparent',
+                  color: viewMode === m ? '#ffffff' : 'var(--text-secondary)', 
+                  transition: 'all 0.2s',
+                  boxShadow: viewMode === m ? '0 4px 15px var(--accent-purple-glow)' : 'none'
+                }}
+              >
                 {m.charAt(0).toUpperCase() + m.slice(1)}
               </button>
             ))}
           </div>
           <input 
-            type="search" 
-            placeholder="Search..." 
-            className={styles.searchInput}
+            type="search" placeholder="Search wiretap..." className={styles.input}
             value={viewMode==='direct'?directSearch:viewMode==='npc'?npcSearch:groupSearch}
             onChange={e => {
               const v = e.target.value;
@@ -356,163 +343,170 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
             }}
           />
         </div>
-        <div className={styles.sidebarList}>
-          {viewMode === 'direct' && (
-            <ConversationList 
-              list={filteredDirect} 
-              selected={selectedConversationKey} 
-              onSelect={setSelectedConversationKey} 
-              query={debouncedDirectSearch} 
-            />
-          )}
-          {viewMode === 'npc' && (
-            <NpcList 
-              list={filteredNpcs} 
-              selected={selectedNpc?.id} 
-              onSelect={setSelectedNpc} 
-              query={debouncedNpcSearch} 
-            />
-          )}
-          {viewMode === 'group' && (
-            <GroupList 
-              list={filteredGroups} 
-              selected={selectedGroup?.id} 
-              onSelect={setSelectedGroup} 
-              query={debouncedGroupSearch} 
-            />
-          )}
+        <div className={styles.sidebarList} style={{ overflowY: 'auto', flex: 1 }}>
+          {viewMode === 'direct' && <ConversationList list={filteredDirect} selected={selectedConversationKey} onSelect={setSelectedConversationKey} query={debouncedDirectSearch} />}
+          {viewMode === 'npc' && <NpcList list={filteredNpcs} selected={selectedNpc?.id} onSelect={setSelectedNpc} query={debouncedNpcSearch} />}
+          {viewMode === 'group' && <GroupList list={filteredGroups} selected={selectedGroup?.id} onSelect={setSelectedGroup} query={debouncedGroupSearch} />}
         </div>
       </aside>
 
       {/* MIDDLE: NPC CONVOS */}
       {viewMode === 'npc' && (
-        <aside className={styles.conversationList}>
-          <div className={styles.sidebarHeader}>
+        <aside style={{ width: '320px', display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.45)', flexShrink: 0 }}>
+          <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--glass-border)' }}>
             <input 
-              type="search" 
-              placeholder={selectedNpc ? "Search threads..." : "Select NPC"} 
-              className={styles.searchInput}
-              disabled={!selectedNpc}
-              value={npcConvoSearch}
-              onChange={e => setNpcConvoSearch(e.target.value)}
+              type="search" placeholder={selectedNpc ? "Filter threads..." : "Select NPC"} 
+              className={styles.input} disabled={!selectedNpc}
+              value={npcConvoSearch} onChange={e => setNpcConvoSearch(e.target.value)}
             />
           </div>
-          <div className={styles.sidebarList}>
-            {selectedNpc && (
-              <NpcConvoList 
-                list={filteredConvos} 
-                selected={selectedNpcConversation?.userId} 
-                onSelect={setSelectedNpcConversation} 
-                query={debouncedNpcConvoSearch}
-              />
-            )}
+          <div className={styles.sidebarList} style={{ overflowY: 'auto', flex: 1 }}>
+            {selectedNpc && <NpcConvoList list={filteredConvos} selected={selectedNpcConversation?.userId} onSelect={setSelectedNpcConversation} query={debouncedNpcConvoSearch} />}
           </div>
         </aside>
       )}
 
       {/* MAIN: MESSAGES */}
-      <main className={styles.messagePanel}>
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: 'var(--glass-inset)' }}>
         {viewMode === 'direct' && selectedConversationKey && (
-          <MessagePanel 
-            messages={currentMessages} 
-            participants={currentParticipants} 
-            mode="direct" 
-          />
+          <MessagePanel messages={currentMessages} participants={currentParticipants} mode="direct" />
         )}
         {viewMode === 'npc' && selectedNpcConversation && (
           <MessagePanel 
             messages={currentThread} 
             participants={{
-              npc: selectedNpc?.name, 
-              npcClan: selectedNpc?.clan,
-              user: selectedNpcConversation.charName || 'Unknown Character', 
-              userClan: selectedNpcConversation.charClan
+              threadKey: selectedNpcConversation.userId,
+              npc: selectedNpc?.name, npcClan: selectedNpc?.clan,
+              user: selectedNpcConversation.charName || 'Unknown Character', userClan: selectedNpcConversation.charClan
             }} 
-            mode="npc" 
-            loading={loading.thread}
+            mode="npc" loading={loading.thread}
           />
         )}
         {viewMode === 'group' && selectedGroup && (
           <MessagePanel 
             messages={groupThread} 
-            participants={{ groupName: selectedGroup.name }} 
-            mode="group" 
-            loading={loading.groupThread}
+            participants={{ threadKey: selectedGroup.id, groupName: selectedGroup.name }} 
+            mode="group" loading={loading.groupThread}
           />
         )}
         
-        {/* Placeholder */}
-        {((viewMode === 'direct' && !selectedConversationKey) || 
-          (viewMode === 'npc' && !selectedNpcConversation) || 
-          (viewMode === 'group' && !selectedGroup)) && (
+        {((viewMode === 'direct' && !selectedConversationKey) || (viewMode === 'npc' && !selectedNpcConversation) || (viewMode === 'group' && !selectedGroup)) && (
           <div className={styles.placeholderCard}>
-            <h3>Select a Conversation</h3>
-            <p className={styles.subtle}>Choose a thread to view the full history and AI summary.</p>
+            <span style={{ fontSize: '3rem', opacity: 0.5, marginBottom: '1rem', display: 'block' }}>💬</span>
+            <h3>Select a Transmission</h3>
+            <p className={styles.subtle}>Choose a thread to view the full history and secure AI summary insights.</p>
           </div>
         )}
       </main>
 
       {/* --- GLOBAL SUMMARY MODAL --- */}
-      {globalSummary && (
-        <GlobalSummaryModal 
-          summary={globalSummary} 
-          onClose={() => setGlobalSummary(null)} 
-        />
-      )}
+      {globalSummary && <GlobalSummaryModal summary={globalSummary} onClose={() => setGlobalSummary(null)} />}
     </div>
   );
 }
 
 /* ==================== SUB-COMPONENTS ==================== */
 
-// --- UPDATED LIST COMPONENTS WITH COLORS ---
-
 const ConversationList = ({ list, selected, onSelect, query }) => list.map(c => {
-  // Helper to color names
+  const isSelected = c.key === selected;
   const renderName = (name, clan) => (
-    <span style={{ color: CLAN_COLORS[clan] || 'var(--text-primary)', fontWeight: 500 }}>
-      {symlogo(clan) && <img src={symlogo(clan)} alt="" style={{width:'14px', height:'14px', marginRight:'4px', verticalAlign:'middle'}} />}
+    <span style={{ color: CLAN_COLORS[clan] || '#ffffff', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+      {symlogo(clan) && <img src={symlogo(clan)} alt="" style={{ width:'16px', height:'16px', filter: `drop-shadow(0 0 4px ${CLAN_COLORS[clan] || '#fff'})` }} />}
       <Highlight text={name} query={query}/>
     </span>
   );
 
   return (
-    <button key={c.key} className={`${styles.listItem} ${c.key===selected?styles.active:''}`} onClick={() => onSelect(c.key)}>
-      <div className={styles.listItemText}>
+    <button 
+      key={c.key} onClick={() => onSelect(c.key)}
+      style={{
+        display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'left', width: '100%', 
+        padding: '1.2rem 1.5rem', cursor: 'pointer', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.03)',
+        background: isSelected ? 'linear-gradient(90deg, rgba(157, 124, 255, 0.15) 0%, transparent 100%)' : 'transparent',
+        borderLeft: isSelected ? '4px solid var(--accent-purple)' : '4px solid transparent',
+        transition: 'background 0.2s ease'
+      }}
+      onMouseEnter={e => { if(!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.03)' }}
+      onMouseLeave={e => { if(!isSelected) e.currentTarget.style.background = 'transparent' }}
+    >
+      <div style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', width: '100%' }}>
         {renderName(c.user1CharName||c.user1Name, c.user1Clan)}
-        <span style={{margin:'0 6px', color:'#666'}}>↔</span>
+        <span style={{ margin:'0 8px', color:'var(--text-muted)' }}>↔</span>
         {renderName(c.user2CharName||c.user2Name, c.user2Clan)}
       </div>
-      <div className={styles.listItemMeta}><span className={styles.timestamp}>{formatTimestamp(c.latestTimestamp, false)}</span></div>
+      <div className={styles.messageTime} style={{ marginTop: 0, textAlign: 'left', color: 'var(--text-secondary)' }}>{formatTimestamp(c.latestTimestamp, true)}</div>
     </button>
   );
 });
 
-const NpcList = ({ list, selected, onSelect, query }) => list.map(n => (
-  <button key={n.id} className={`${styles.listItem} ${n.id===selected?styles.active:''}`} onClick={() => onSelect(n)} style={{'--clan-color':CLAN_COLORS[n.clan]}}>
-    {symlogo(n.clan) && <img src={symlogo(n.clan)} className={styles.convoAvatar} alt=""/>}
-    <div className={styles.listItemText} style={{ color: CLAN_COLORS[n.clan] || 'var(--text-primary)' }}>
-      <Highlight text={n.name} query={query}/>
-    </div>
-  </button>
-));
+const NpcList = ({ list, selected, onSelect, query }) => list.map(n => {
+  const isSelected = n.id === selected;
+  return (
+    <button 
+      key={n.id} onClick={() => onSelect(n)}
+      style={{
+        display: 'flex', alignItems: 'center', gap: '12px', width: '100%', textAlign: 'left',
+        padding: '1.2rem 1.5rem', cursor: 'pointer', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.03)',
+        background: isSelected ? 'linear-gradient(90deg, rgba(157, 124, 255, 0.15) 0%, transparent 100%)' : 'transparent',
+        borderLeft: isSelected ? '4px solid var(--accent-purple)' : '4px solid transparent',
+        transition: 'background 0.2s ease'
+      }}
+      onMouseEnter={e => { if(!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.03)' }}
+      onMouseLeave={e => { if(!isSelected) e.currentTarget.style.background = 'transparent' }}
+    >
+      {symlogo(n.clan) && <img src={symlogo(n.clan)} style={{ width: '26px', height: '26px', borderRadius: '50%', background: '#fff', padding: '2px', border: `2px solid ${CLAN_COLORS[n.clan] || '#fff'}` }} alt=""/>}
+      <span style={{ color: CLAN_COLORS[n.clan] || '#ffffff', fontWeight: 800, fontSize: '1.05rem' }}>
+        <Highlight text={n.name} query={query}/>
+      </span>
+    </button>
+  );
+});
 
-const NpcConvoList = ({ list, selected, onSelect, query }) => list.map(c => (
-  <button key={c.userId} className={`${styles.listItem} ${c.userId===selected?styles.active:''}`} onClick={() => onSelect(c)} style={{'--clan-color':CLAN_COLORS[c.charClan]}}>
-    {symlogo(c.charClan) && <img src={symlogo(c.charClan)} className={styles.convoAvatar} alt=""/>}
-    <div className={styles.listItemText} style={{ color: CLAN_COLORS[c.charClan] || 'var(--text-primary)' }}>
-      <Highlight text={c.charName||c.userName} query={query}/>
-      {c.charName && c.charName !== c.userName && <small style={{color:'var(--text-secondary)'}}><Highlight text={c.userName} query={query}/></small>}
-    </div>
-    <div className={styles.listItemMeta}><span className={styles.timestamp}>{formatTimestamp(c.lastMessageAt, true)}</span></div>
-  </button>
-));
+const NpcConvoList = ({ list, selected, onSelect, query }) => list.map(c => {
+  const isSelected = c.userId === selected;
+  return (
+    <button 
+      key={c.userId} onClick={() => onSelect(c)}
+      style={{
+        display: 'flex', gap: '12px', alignItems: 'center', width: '100%', textAlign: 'left', overflow: 'hidden',
+        padding: '1rem 1.25rem', cursor: 'pointer', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.03)',
+        background: isSelected ? 'linear-gradient(90deg, rgba(157, 124, 255, 0.15) 0%, transparent 100%)' : 'transparent',
+        borderLeft: isSelected ? '4px solid var(--accent-purple)' : '4px solid transparent',
+        transition: 'background 0.2s ease'
+      }}
+      onMouseEnter={e => { if(!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.03)' }}
+      onMouseLeave={e => { if(!isSelected) e.currentTarget.style.background = 'transparent' }}
+    >
+      {symlogo(c.charClan) && <img src={symlogo(c.charClan)} style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#fff', padding: '2px', border: `2px solid ${CLAN_COLORS[c.charClan] || '#fff'}` }} alt=""/>}
+      <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
+        <span style={{ color: CLAN_COLORS[c.charClan] || '#ffffff', fontWeight: 700, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+          <Highlight text={c.charName||c.userName} query={query}/>
+        </span>
+        <span className={styles.messageTime} style={{ marginTop: '4px', textAlign: 'left', color: 'var(--text-secondary)' }}>{formatTimestamp(c.lastMessageAt, true)}</span>
+      </div>
+    </button>
+  );
+});
 
-const GroupList = ({ list, selected, onSelect, query }) => list.map(g => (
-  <button key={g.id} className={`${styles.listItem} ${g.id===selected?styles.active:''}`} onClick={() => onSelect(g)}>
-    <div className={styles.listItemText}><Highlight text={g.name} query={query}/></div>
-  </button>
-));
+const GroupList = ({ list, selected, onSelect, query }) => list.map(g => {
+  const isSelected = g.id === selected;
+  return (
+    <button 
+      key={g.id} onClick={() => onSelect(g)}
+      style={{
+        width: '100%', textAlign: 'left', padding: '1.2rem 1.5rem', cursor: 'pointer', border: 'none',
+        borderBottom: '1px solid rgba(255,255,255,0.03)',
+        background: isSelected ? 'linear-gradient(90deg, rgba(157, 124, 255, 0.15) 0%, transparent 100%)' : 'transparent',
+        borderLeft: isSelected ? '4px solid var(--accent-purple)' : '4px solid transparent',
+        transition: 'background 0.2s ease'
+      }}
+      onMouseEnter={e => { if(!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.03)' }}
+      onMouseLeave={e => { if(!isSelected) e.currentTarget.style.background = 'transparent' }}
+    >
+      <div style={{ fontWeight: 800, color: '#ffffff', fontSize: '1.05rem' }}><Highlight text={g.name} query={query}/></div>
+    </button>
+  );
+});
 
 /* ==================== GLOBAL SUMMARY MODAL ==================== */
 function GlobalSummaryModal({ summary, onClose }) {
@@ -520,19 +514,19 @@ function GlobalSummaryModal({ summary, onClose }) {
     <div className={styles.modalBackdrop} onClick={onClose}>
       <div className={styles.modalCard} onClick={e => e.stopPropagation()} style={{ maxWidth: '800px', height: 'auto', maxHeight: '90vh' }}>
         <div className={styles.modalHeader}>
-          <div className={styles.modalHeaderContent}>
-            <h3>🌍 Global Activity Recap</h3>
-            <p className={styles.subtle}>Summary of the last 100 messages across all channels.</p>
+          <div>
+            <h3 style={{ margin: 0, color: '#fff' }}>🌍 Global Activity Recap</h3>
+            <p className={styles.subtle} style={{ margin: '4px 0 0 0' }}>AI summary of the last 100 messages across all operational grid frequencies.</p>
           </div>
-          <button className={styles.btnIcon} onClick={onClose}>✕</button>
+          <button className={`${styles.btn} ${styles.btnSecondary}`} style={{ padding: '0.4rem', width: '36px', height: '36px', borderRadius: '50%' }} onClick={onClose}>✕</button>
         </div>
         <div className={styles.modalBody}>
-          <div className={styles.markdownBody} style={{ padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>
+          <div className={styles.markdownBody} style={{ padding: '1.5rem', background: 'var(--glass-inset)', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)' }}>
             <ReactMarkdown>{summary}</ReactMarkdown>
           </div>
         </div>
         <div className={styles.modalFooter}>
-          <button className={styles.btnSecondary} onClick={onClose}>Close</button>
+          <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={onClose}>Terminate View</button>
         </div>
       </div>
     </div>
@@ -545,35 +539,27 @@ function MessagePanel({ messages, participants, loading, mode }) {
   const [summary, setSummary] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
 
+  // AUTO-SCROLL FIX: Only snap to bottom when the thread context switches.
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
-  }, [messages, participants, summary]);
+  }, [participants.threadKey]);
 
   const handleSummarize = async () => {
     if (!messages.length) return;
-    setAiLoading(true);
-    setSummary(null);
+    setAiLoading(true); setSummary(null);
 
     try {
       const chatText = messages.map(m => {
         let sender = 'Unknown Character';
-
         if (mode === 'direct') {
-          if (m.sender_id === participants.user1Id) {
-            sender = participants.user1Char && participants.user1Char !== '—' ? participants.user1Char : 'Character A';
-          } else if (m.sender_id === participants.user2Id) {
-            sender = participants.user2Char && participants.user2Char !== '—' ? participants.user2Char : 'Character B';
-          }
+          if (m.sender_id === participants.user1Id) { sender = participants.user1Char && participants.user1Char !== '—' ? participants.user1Char : 'Character A'; } 
+          else if (m.sender_id === participants.user2Id) { sender = participants.user2Char && participants.user2Char !== '—' ? participants.user2Char : 'Character B'; }
         } else if (mode === 'npc') {
-          if (m.from === 'npc') {
-            sender = participants.npc || 'NPC';
-          } else {
-            sender = participants.user || 'Character';
-          }
+          if (m.from === 'npc') { sender = participants.npc || 'NPC'; } 
+          else { sender = participants.user || 'Character'; }
         } else if (mode === 'group') {
           sender = m.char_name || 'Unknown Character';
         }
-        
         return `[${new Date(m.created_at).toLocaleTimeString()}] ${sender}: ${m.body}`;
       }).join('\n');
 
@@ -584,101 +570,84 @@ function MessagePanel({ messages, participants, loading, mode }) {
 
       const { data } = await api.post('/admin/chat/summarize', { text: chatText, context: contextStr });
       setSummary(data.summary);
-    } catch (err) {
-      alert('AI Error: ' + (err.response?.data?.error || err.message));
-    } finally {
-      setAiLoading(false);
-    }
+      
+      setTimeout(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, 150);
+    } catch (err) { alert('AI Error: ' + (err.response?.data?.error || err.message)); } 
+    finally { setAiLoading(false); }
   };
 
   const getHeaderTitle = () => {
     if (mode === 'direct') {
-      const c1 = participants.user1Clan;
-      const c2 = participants.user2Clan;
+      const c1 = participants.user1Clan; const c2 = participants.user2Clan;
       return (
-        <>
-          <span style={{color: CLAN_COLORS[c1] || 'inherit'}}>{participants.user1Char||participants.user1}</span>
-          <span style={{margin:'0 8px', color:'#666'}}>↔</span>
-          <span style={{color: CLAN_COLORS[c2] || 'inherit'}}>{participants.user2Char||participants.user2}</span>
-        </>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.25rem', fontWeight: 800 }}>
+          <span style={{color: CLAN_COLORS[c1] || '#ffffff'}}>{participants.user1Char||participants.user1}</span>
+          <span style={{color:'var(--text-muted)'}}>↔</span>
+          <span style={{color: CLAN_COLORS[c2] || '#ffffff'}}>{participants.user2Char||participants.user2}</span>
+        </div>
       );
     }
-    if (mode === 'group') return participants.groupName;
+    if (mode === 'group') return <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ffffff' }}>{participants.groupName}</span>;
     return (
-      <>
-        <span style={{color: CLAN_COLORS[participants.npcClan] || 'inherit'}}>{participants.npc}</span>
-        <span style={{margin:'0 8px', color:'#666'}}>↔</span>
-        <span style={{color: CLAN_COLORS[participants.userClan] || 'inherit'}}>{participants.user}</span>
-      </>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.25rem', fontWeight: 800 }}>
+        <span style={{color: CLAN_COLORS[participants.npcClan] || '#ffffff'}}>{participants.npc}</span>
+        <span style={{color:'var(--text-muted)'}}>↔</span>
+        <span style={{color: CLAN_COLORS[participants.userClan] || '#ffffff'}}>{participants.user}</span>
+      </div>
     );
   };
 
   return (
     <>
-      <div className={styles.messagePanelHeader}>
-        <div className={styles.panelTitle}>{getHeaderTitle()}</div>
-        <button 
-          className={styles.aiButton} 
-          onClick={handleSummarize} 
-          disabled={aiLoading || !messages || messages.length === 0}
-        >
-          {aiLoading ? <span className={styles.spinnerSmall} /> : '✨ Summarize'}
+      <div style={{ display: 'flex', padding: '1.5rem', background: 'rgba(0,0,0,0.4)', borderBottom: '1px solid var(--glass-border)', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, zIndex: 10 }}>
+        {getHeaderTitle()}
+        <button className={styles.aiButton} onClick={handleSummarize} disabled={aiLoading || !messages || messages.length === 0}>
+          {aiLoading ? <span className={styles.spinner} style={{ width: '16px', height: '16px', borderWidth: '2px', marginRight: '8px', margin: 0 }} /> : '✨'}
+          {aiLoading ? 'Analyzing...' : 'AI Thread Summary'}
         </button>
       </div>
 
-      {summary && (
-        <div className={styles.aiSummaryBox}>
-          <div className={styles.aiHeader}>
-            <strong>🤖 AI Summary</strong>
-            <button onClick={() => setSummary(null)} className={styles.closeBtn}>×</button>
-          </div>
-          <div className={styles.aiContent}>
-            <div className={styles.markdownBody}>
-              <ReactMarkdown>{summary}</ReactMarkdown>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className={styles.messageList}>
-        {loading && <div className={styles.listEmptyState}>Loading...</div>}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        {loading && <div className={styles.loading}><span className={styles.spinner} /> Extracting transmission stream...</div>}
+        
         {!loading && messages.map((msg, i) => {
-          let isSent = false;
-          let name = 'Unknown';
-          let clan = null;
+          let isSent = false; let name = 'Unknown'; let clan = null;
 
           if (mode === 'direct') {
             const isUser1 = msg.sender_id === participants.user1Id;
-            isSent = isUser1; 
-            name = isUser1 ? (participants.user1Char||participants.user1) : (participants.user2Char||participants.user2);
-            clan = isUser1 ? participants.user1Clan : participants.user2Clan;
+            isSent = isUser1; name = isUser1 ? (participants.user1Char||participants.user1) : (participants.user2Char||participants.user2); clan = isUser1 ? participants.user1Clan : participants.user2Clan;
           } else if (mode === 'npc') {
-            isSent = msg.from === 'npc';
-            name = isSent ? participants.npc : participants.user;
-            clan = isSent ? participants.npcClan : participants.userClan;
+            isSent = msg.from === 'npc'; name = isSent ? participants.npc : participants.user; clan = isSent ? participants.npcClan : participants.userClan;
           } else {
-             name = msg.char_name || msg.display_name;
-             clan = msg.clan;
+             name = msg.char_name || msg.display_name; clan = msg.clan;
           }
 
           const showSender = i === 0 || messages[i-1].sender_id !== msg.sender_id || messages[i-1].from !== msg.from;
 
           return (
             <div key={i} className={`${styles.messageRow} ${isSent ? styles.sentRow : styles.receivedRow}`}>
-              <div className={styles.messageBubble} title={formatTimestamp(msg.created_at)}>
-                {showSender && <div className={styles.senderName} style={{color: CLAN_COLORS[clan] || '#ccc'}}>{name}</div>}
-                
-                {/* --- RENDER IMAGE ATTACHMENT --- */}
-                {msg.attachment_id && (
-                  <ChatImage attachmentId={msg.attachment_id} />
-                )}
-                
-                <div className={styles.messageBody}>{msg.body}</div>
+              <div className={styles.messageBubble}>
+                {showSender && <div className={styles.senderName} style={{ color: CLAN_COLORS[clan] || 'var(--text-secondary)' }}>{name}</div>}
+                {msg.attachment_id && <ChatImage attachmentId={msg.attachment_id} />}
+                <div style={{ color: isSent ? '#ffffff' : 'var(--text-primary)', wordBreak: 'break-word', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{msg.body}</div>
                 <div className={styles.messageTime}>{formatTimestamp(msg.created_at, false)}</div>
               </div>
             </div>
           );
         })}
+
+        {summary && (
+          <div style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', border: '1px solid var(--accent-purple)', borderRadius: 'var(--radius-md)', padding: '1.5rem', marginTop: '1rem', boxShadow: '0 8px 30px rgba(157, 124, 255, 0.15)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--accent-purple)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '1rem' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>🤖 System AI Output</span>
+              <button onClick={() => setSummary(null)} className={styles.btnGhost} style={{ border: 'none', background: 'transparent', padding: '0 0.5rem', fontSize: '1.5rem' }}>×</button>
+            </div>
+            <div style={{ padding: '1.5rem', background: 'var(--glass-inset)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)' }}>
+              <div className={styles.markdownBody}><ReactMarkdown>{summary}</ReactMarkdown></div>
+            </div>
+          </div>
+        )}
+
         <div ref={messagesEndRef} />
       </div>
     </>
