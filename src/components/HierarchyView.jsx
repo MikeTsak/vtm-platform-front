@@ -1,4 +1,3 @@
-// src/components/HierarchyView.jsx
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import styles from '../styles/Court.module.css';
@@ -23,9 +22,9 @@ export default function HierarchyView({ canEdit }) {
   const [loading, setLoading] = useState(true);
   const [isEditMode, setIsEditMode] = useState(canEdit); 
   const [enlargedImage, setEnlargedImage] = useState(null); 
-  const [selectedClan, setSelectedClan] = useState("");
+  const [selectedClan, setSelectedClan] = useState(""); // For bulk bloodhunt
   
-  const TITLES = ["Prince", "Seneschal", "Primogen", "Sheriff", "Keeper", "Harpy", "Scourge", "Heralds"];
+  const TITLES = ["Prince", "Seneschal", "Primogen", "Sheriff", "Keeper", "Harpy", "Assistant Harpy", "Hound", "Shadow", "Whip"];
 
   useEffect(() => {
     setIsEditMode(canEdit);
@@ -143,7 +142,7 @@ export default function HierarchyView({ canEdit }) {
         <div className={styles.adminControls} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           
           <div className={styles.bulkActionRow}>
-            <span style={{ fontSize: '0.8rem', color: '#888', textTransform: 'uppercase' }}>Bulk Action:</span>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Bulk Action:</span>
             <select 
               className={styles.clanSelect}
               value={selectedClan} 
@@ -168,7 +167,7 @@ export default function HierarchyView({ canEdit }) {
 
       {/* --- TOP PRIORITY: BLOOD HUNT --- */}
       {bloodhunted.length > 0 && (
-        <div className={styles.sectionBox} style={{ borderColor: '#660000', backgroundColor: 'rgba(20, 0, 0, 0.6)' }}>
+        <div className={styles.sectionBox} style={{ borderColor: 'var(--tint)', backgroundColor: 'color-mix(in srgb, var(--tint) 10%, transparent)' }}>
           <h2 className={styles.bloodhuntTitle}>🩸 BLOOD HUNT / RED LIST 🩸</h2>
           <div className={styles.courtGrid}>
             {bloodhunted.map(bh => (
@@ -300,7 +299,6 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles, onImageCl
 
   const hiddenClass = ent.is_hidden ? styles.hiddenCard : "";
   
-  // Determine if the polaroid should be grayscale or red
   let polaroidClass = styles.polaroidImg;
   if (ent.is_bloodhunted) {
     polaroidClass = `${styles.polaroidImg} ${styles.bloodhuntImg}`;
@@ -421,33 +419,30 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles, onImageCl
           )}
         </div>
 
-<div className={styles.memberInfoWrapper}>
-<div className={styles.cardFooter}>
-  <div className={styles.statusDisplay}>
-    {"●".repeat(ent.status || 1)}{"○".repeat(5 - (ent.status || 1))}
-  </div>
-    {(ent.titles || []).includes("Keeper") && (
-    <div className={styles.keeperSubtitle}>
-      (In Elysium: ●●●●●)
-    </div>
-  )}
-  </div>
+        <div className={styles.memberInfoWrapper}>
+          <div className={styles.cardFooter}>
+            <div className={styles.statusDisplay}>
+              {"●".repeat(ent.status || 1)}{"○".repeat(5 - (ent.status || 1))}
+            </div>
+              {(ent.titles || []).includes("Keeper") && (
+              <div className={styles.keeperSubtitle}>
+                (In Elysium: ●●●●●)
+              </div>
+            )}
+            </div>
 
-  <div className={styles.clan}>{ent.clan}</div>
-  
-
-
-          
-  {canEdit && (
-    <input 
-      type="range" min="1" max="5" 
-      value={ent.status || 1}
-      onChange={(e) => update(ent.id, ent.type, 'status', parseInt(e.target.value))}
-      className={styles.statusSlider}
-      title="Adjust Status"
-    />
-  )}
-</div>
+            <div className={styles.clan}>{ent.clan}</div>
+            
+            {canEdit && (
+              <input 
+                type="range" min="1" max="5" 
+                value={ent.status || 1}
+                onChange={(e) => update(ent.id, ent.type, 'status', parseInt(e.target.value))}
+                className={styles.statusSlider}
+                title="Adjust Status"
+              />
+            )}
+          </div>
       </div>
     </div>
   );

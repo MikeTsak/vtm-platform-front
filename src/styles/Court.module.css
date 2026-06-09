@@ -1,9 +1,9 @@
 .page {
-  background-color: #050505;
-  color: #d1d1d1;
+  background-color: var(--bg-color);
+  color: var(--text-color);
   min-height: 100vh;
   padding: 2rem;
-  font-family: 'Garamond', 'Georgia', serif;
+  font-family: var(--font-body);
 }
 
 /* --- Navigation & Header --- */
@@ -14,11 +14,12 @@
 
 .title {
   font-size: 3.5rem;
-  color: #8b0000;
+  color: var(--tint);
   text-transform: uppercase;
   letter-spacing: 10px;
   margin-bottom: 1.5rem;
-  text-shadow: 0 0 20px rgba(139, 0, 0, 0.4);
+  text-shadow: 0 0 20px color-mix(in srgb, var(--tint) 40%, transparent);
+  font-family: var(--font-title);
 }
 
 .tabs {
@@ -29,20 +30,21 @@
 
 .tab {
   background: none;
-  border: 1px solid #333;
-  color: #666;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
   padding: 10px 25px;
   cursor: pointer;
   transition: 0.3s ease;
   text-transform: uppercase;
   letter-spacing: 2px;
+  font-family: var(--font-body);
 }
 
 .tab.active {
-  border-color: #8b0000;
-  color: #fff;
-  background: rgba(139, 0, 0, 0.15);
-  box-shadow: inset 0 0 10px rgba(139, 0, 0, 0.3);
+  border-color: var(--tint);
+  color: var(--text-color);
+  background: color-mix(in srgb, var(--tint) 15%, transparent);
+  box-shadow: inset 0 0 10px color-mix(in srgb, var(--tint) 30%, transparent);
 }
 
 /* --- Hierarchy Grid --- */
@@ -75,15 +77,13 @@
 
 /* --- Member Card Styling --- */
 .memberCard {
-  background: #111;
-  border: 1px solid #222;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
   padding: 1.5rem;
   position: relative;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-  overflow: hidden; /* Keeps the clan watermark inside the edges */
-  
-  /* Side-by-side Layout */
+  overflow: hidden; 
   display: flex;
   flex-direction: row;
   gap: 1.5rem;
@@ -91,8 +91,8 @@
 }
 
 .memberCard:hover {
-  border-color: #444;
-  box-shadow: 0 10px 25px rgba(139, 0, 0, 0.1);
+  border-color: var(--tint);
+  box-shadow: 0 10px 25px color-mix(in srgb, var(--tint) 15%, transparent);
 }
 
 /* --- CLAN BACKGROUND WATERMARK --- */
@@ -123,14 +123,10 @@
 /* --- UPDATED PRINCE CARD --- */
 .princeCard {
   border: 1px solid #d4af37;
-  background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+  background: linear-gradient(135deg, var(--surface-lighter) 0%, var(--bg-color) 100%);
   box-shadow: 0 0 30px rgba(212, 175, 55, 0.15);
-  
-  /* These lines force the card into its own row and center it */
   grid-column: 1 / -1; 
   justify-self: center;
-  
-  /* Keeps the card looking like a normal card instead of stretching the whole screen */
   width: 100%;
   max-width: 600px;
 }
@@ -142,18 +138,18 @@
 }
 
 .highRankCard {
-  border-left: 5px solid #8b0000;
-  background: linear-gradient(to right, #161616, #111);
+  border-left: 5px solid var(--tint);
+  background: linear-gradient(to right, var(--surface-lighter), var(--surface-color));
 }
 
 /* --- THE POLAROID --- */
 .polaroid {
   flex-shrink: 0;
   width: 140px;
-  background: #1c1c1c; 
+  background: var(--surface-color); 
   padding: 8px 8px 24px 8px; 
   border-radius: 2px;
-  border: 1px solid #2a2a2a;
+  border: 1px solid var(--border-color);
   box-shadow: 2px 5px 15px rgba(0,0,0,0.8);
   transform: rotate(-3deg); 
   transition: transform 0.3s ease, box-shadow 0.3s ease;
@@ -168,7 +164,7 @@
   width: 100%;
   aspect-ratio: 1 / 1;
   object-fit: cover;
-  border: 1px solid #000; 
+  border: 1px solid var(--border-color); 
   display: block;
 }
 
@@ -178,11 +174,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #0a0a0a;
-  color: #555;
+  background: var(--bg-color);
+  color: var(--text-muted);
   font-size: 0.85rem;
   font-style: italic;
-  border: 1px solid #000;
+  border: 1px solid var(--border-color);
 }
 
 /* --- RIGHT SIDE INFO CONTAINER --- */
@@ -195,7 +191,7 @@
 }
 
 .cardHeader {
-  border-bottom: 1px solid #222;
+  border-bottom: 1px solid var(--border-color);
   padding-bottom: 0.8rem;
   margin-bottom: 1rem;
 }
@@ -209,8 +205,19 @@
   letter-spacing: 1px;
 }
 
-.name { font-size: 1.3rem; font-weight: bold; color: #fff; }
-.clan { font-size: 0.85rem; color: #8b0000; text-transform: uppercase; font-style: italic; }
+.name { 
+  font-size: 1.3rem; 
+  font-weight: bold; 
+  color: var(--text-color); 
+  font-family: var(--font-title);
+}
+
+.clan { 
+  font-size: 0.85rem; 
+  color: var(--tint); 
+  text-transform: uppercase; 
+  font-style: italic; 
+}
 
 .cardBody {
   flex-grow: 1;
@@ -220,9 +227,9 @@
   width: 100%;
   padding: 8px;
   margin-bottom: 1rem;
-  background: #0a0a0a;
-  border: 1px solid #333;
-  color: #ccc;
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
   border-radius: 4px;
   font-family: inherit;
   font-size: 0.85rem;
@@ -230,7 +237,7 @@
 }
 
 .imageInput:focus {
-  border-color: #8b0000;
+  border-color: var(--tint);
   outline: none;
 }
 
@@ -242,7 +249,7 @@
 
 .checkboxLabel {
   font-size: 0.75rem;
-  color: #777;
+  color: var(--text-muted);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -251,8 +258,8 @@
   transition: color 0.2s;
 }
 
-.checkboxLabel:hover { color: #fff; }
-.checkboxLabel input { accent-color: #8b0000; }
+.checkboxLabel:hover { color: var(--text-color); }
+.checkboxLabel input { accent-color: var(--tint); }
 
 .displayTitles {
   display: flex;
@@ -263,17 +270,17 @@
 
 .titleTag {
   padding: 4px 12px;
-  background: #1a1a1a;
-  border: 1px solid #333;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
   font-size: 0.75rem;
-  color: #bbb;
+  color: var(--text-muted);
   border-radius: 2px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .muted {
-  color: #444;
+  color: var(--text-muted);
   font-style: italic;
   font-size: 0.8rem;
 }
@@ -281,25 +288,25 @@
 .cardFooter {
   margin-top: auto; 
   padding-top: 1rem;
-  border-top: 1px solid #222;
+  border-top: 1px solid var(--border-color);
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
 .statusDisplay {
-  color: #8b0000;
+  color: var(--tint);
   letter-spacing: 4px;
   font-size: 1.1rem;
-  text-shadow: 0 0 5px rgba(139, 0, 0, 0.5);
+  text-shadow: 0 0 5px color-mix(in srgb, var(--tint) 50%, transparent);
 }
 
 .statusSlider {
   width: 70px;
   height: 4px;
-  background: #333;
+  background: var(--border-color);
   outline: none;
-  accent-color: #8b0000;
+  accent-color: var(--tint);
 }
 
 /* --- Announcements Styles --- */
@@ -308,9 +315,9 @@
 .decreeBtn {
   display: block;
   margin: 0 auto 2rem auto;
-  background: #1a1a1a;
-  border: 1px solid #8b0000;
-  color: #8b0000;
+  background: var(--surface-lighter);
+  border: 1px solid var(--tint);
+  color: var(--tint);
   padding: 10px 30px;
   text-transform: uppercase;
   letter-spacing: 2px;
@@ -320,17 +327,17 @@
 }
 
 .decreeBtn:hover {
-  background: #8b0000;
-  color: #000;
-  box-shadow: 0 0 15px rgba(139, 0, 0, 0.4);
+  background: var(--tint);
+  color: var(--bg-color);
+  box-shadow: 0 0 15px color-mix(in srgb, var(--tint) 40%, transparent);
 }
 
 .list { display: flex; flex-direction: column; gap: 2rem; }
 
 .decreeCard {
-  background: #0f0f0f;
-  border: 1px solid #222;
-  border-top: 3px solid #444;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-top: 3px solid var(--border-color);
   padding: 2rem;
   position: relative;
 }
@@ -338,27 +345,27 @@
 .decreeHeader {
   display: flex;
   justify-content: space-between;
-  border-bottom: 1px solid #222;
+  border-bottom: 1px solid var(--border-color);
   padding-bottom: 1rem;
   margin-bottom: 1.5rem;
   font-size: 0.9rem;
-  color: #666;
+  color: var(--text-muted);
   text-transform: uppercase;
 }
 
-.decreeAuthor { color: #8b0000; font-weight: bold; }
+.decreeAuthor { color: var(--tint); font-weight: bold; }
 
 .decreeTitle {
   font-size: 1.8rem;
   margin: 0 0 1rem 0;
-  color: #e0e0e0;
-  font-family: 'Garamond', serif;
+  color: var(--text-color);
+  font-family: var(--font-title);
 }
 
 .decreeBody {
   font-size: 1.1rem;
   line-height: 1.6;
-  color: #bbb;
+  color: var(--text-muted);
   white-space: pre-wrap;
 }
 
@@ -368,16 +375,16 @@
   right: 1rem;
   background: transparent;
   border: none;
-  color: #444;
+  color: var(--text-muted);
   cursor: pointer;
   font-size: 0.8rem;
   text-transform: uppercase;
 }
-.deleteBtn:hover { color: #d00; text-decoration: underline; }
+.deleteBtn:hover { color: var(--tint); text-decoration: underline; }
 
 .empty {
   text-align: center;
-  color: #444;
+  color: var(--text-muted);
   font-style: italic;
   margin-top: 3rem;
   font-size: 1.2rem;
@@ -396,8 +403,8 @@
 }
 
 .modal {
-  background: #111;
-  border: 1px solid #333;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
   width: min(600px, 90vw);
   padding: 2rem;
   box-shadow: 0 20px 50px rgba(0,0,0,0.8);
@@ -405,8 +412,8 @@
 
 .modal h2 {
   margin-top: 0;
-  color: #8b0000;
-  border-bottom: 1px solid #333;
+  color: var(--tint);
+  border-bottom: 1px solid var(--border-color);
   padding-bottom: 1rem;
   margin-bottom: 1.5rem;
 }
@@ -414,49 +421,49 @@
 .form { display: flex; flex-direction: column; gap: 1.5rem; }
 
 .form input {
-  background: #0a0a0a;
-  border: 1px solid #333;
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
   padding: 12px;
-  color: #fff;
+  color: var(--text-color);
   font-family: inherit;
   font-size: 1.1rem;
 }
 
 .editor {
-  background: #0a0a0a;
-  border: 1px solid #333;
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
   padding: 12px;
   min-height: 150px;
-  color: #ddd;
+  color: var(--text-color);
   font-size: 1rem;
   line-height: 1.5;
   outline: none;
   overflow-y: auto;
 }
 
-.editor:focus { border-color: #555; }
+.editor:focus { border-color: var(--tint); }
 
 .modalActions { display: flex; justify-content: flex-end; gap: 1rem; }
 
 .modalActions button {
   padding: 8px 20px;
   cursor: pointer;
-  border: 1px solid #333;
+  border: 1px solid var(--border-color);
   background: transparent;
-  color: #888;
+  color: var(--text-muted);
   font-family: inherit;
   text-transform: uppercase;
   transition: 0.2s;
 }
 
-.modalActions button:hover { border-color: #666; color: #fff; }
+.modalActions button:hover { border-color: var(--tint); color: var(--text-color); }
 
 .modalActions button[type="submit"] {
-  background: #8b0000;
-  border-color: #8b0000;
-  color: #000;
+  background: var(--tint);
+  border-color: var(--tint);
+  color: var(--bg-color);
 }
-.modalActions button[type="submit"]:hover { background: #a00000; }
+.modalActions button[type="submit"]:hover { filter: brightness(1.2); }
 
 @media (max-width: 900px) {
   /* Scale down the main title */
@@ -475,7 +482,7 @@
   .sectionTitle {
     font-size: 1.5rem;
     letter-spacing: 3px;
-    text-align: center; /* Centers the title on mobile */
+    text-align: center; 
   }
 
   .deceasedTitle {
@@ -498,31 +505,31 @@
   }
 
   .polaroid {
-    transform: rotate(0deg); /* Removes the tilt on mobile so it centers nicely */
+    transform: rotate(0deg); 
     margin-bottom: 1rem;
-    width: 120px; /* Slightly smaller picture on mobile */
+    width: 120px; 
   }
 
   .memberInfo {
-    width: 100%; /* Ensures the text takes full width to center properly */
+    width: 100%; 
   }
 
   .displayTitles {
-    justify-content: center; /* Center the title tags */
+    justify-content: center; 
   }
 
   .tagGrid {
-    grid-template-columns: 1fr; /* Stacks admin title checkboxes vertically */
+    grid-template-columns: 1fr; 
   }
 
   .statusToggles {
-    flex-wrap: wrap; /* Allows the Ex/Hidden/Dead toggles to wrap */
+    flex-wrap: wrap; 
     justify-content: center;
     gap: 0.8rem;
   }
 
   .cardFooter {
-    flex-direction: column; /* Stacks the status dots and the slider */
+    flex-direction: column; 
     gap: 15px;
     justify-content: center;
   }
@@ -537,12 +544,13 @@
 .deceasedTitle {
   text-align: center;
   font-size: 2.5rem;
-  color: #555;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 10px;
   margin: 5rem 0 2rem 0;
-  border-bottom: 1px solid #222;
+  border-bottom: 1px solid var(--border-color);
   padding-bottom: 1rem;
+  font-family: var(--font-title);
   text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
 }
 
@@ -551,17 +559,17 @@
   gap: 1.5rem;
   margin-bottom: 1rem;
   padding-bottom: 1rem;
-  border-bottom: 1px dashed #333;
+  border-bottom: 1px dashed var(--border-color);
 }
 
 .exTag {
-  color: #d4af37;
+  color: #d4af37; /* Keeping Gold for Ex/Old rank respect */
   font-weight: bold;
   letter-spacing: 1px;
 }
 
 .deadTag {
-  color: #888;
+  color: var(--text-muted);
   font-weight: bold;
   letter-spacing: 1px;
 }
@@ -575,9 +583,9 @@
 }
 
 .toggleViewBtn {
-  background: #1a1a1a;
-  border: 1px solid #8b0000;
-  color: #8b0000;
+  background: var(--surface-lighter);
+  border: 1px solid var(--tint);
+  color: var(--tint);
   padding: 8px 20px;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -589,15 +597,15 @@
 }
 
 .toggleViewBtn:hover {
-  background: #8b0000;
-  color: #000;
-  box-shadow: 0 0 12px rgba(139, 0, 0, 0.4);
+  background: var(--tint);
+  color: var(--bg-color);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--tint) 40%, transparent);
 }
 
 /* --- NEW SECTION BOXES --- */
 .sectionBox {
-  background: rgba(10, 10, 10, 0.4);
-  border: 1px solid #222;
+  background: color-mix(in srgb, var(--bg-color) 40%, transparent);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   padding: 2rem;
   margin-bottom: 3rem;
@@ -606,49 +614,31 @@
 
 .sectionTitle {
   font-size: 2rem;
-  color: #8b0000;
+  color: var(--tint);
   text-transform: uppercase;
   letter-spacing: 6px;
   margin-top: 0;
   margin-bottom: 2rem;
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid var(--border-color);
   padding-bottom: 0.5rem;
-  text-shadow: 0 0 10px rgba(139, 0, 0, 0.2);
-}
-
-/* --- UPDATED PRINCE CARD --- */
-/* (Make sure to replace your existing .princeCard block with this one) */
-.princeCard {
-  border: 1px solid #d4af37;
-  background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
-  box-shadow: 0 0 30px rgba(212, 175, 55, 0.15);
-}
-
-/* Optional: if you want the Prince card to span across two columns so it looks bigger in the grid */
-.princeCard {
-  grid-column: 1 / -1; 
-}
-
-.princeCard .name {
-  font-size: 2.2rem;
-  color: #d4af37;
-  text-shadow: 0 0 12px rgba(212, 175, 55, 0.4);
+  font-family: var(--font-title);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--tint) 20%, transparent);
 }
 
 /* --- Hidden Status Styling --- */
 .hideTag {
-  color: #1e90ff; /* A clean blue to distinguish from ex/deceased */
+  color: #1e90ff; 
   font-weight: bold;
   letter-spacing: 1px;
 }
 
 .hiddenCard {
   opacity: 0.6;
-  border: 1px dashed #555;
+  border: 1px dashed var(--border-color);
 }
 
 .hiddenCard:hover {
-  opacity: 1; /* Bring it back to full opacity when the admin hovers over it to edit */
+  opacity: 1; 
   border-style: solid;
 }
 
@@ -666,8 +656,6 @@
   z-index: 9999;
   backdrop-filter: blur(5px);
   cursor: pointer;
-  
-  /* Smooth fade in for the dark background */
   opacity: 0;
   animation: fadeInOverlay 0.2s ease forwards;
 }
@@ -675,22 +663,17 @@
 .lightboxContent {
   position: relative;
   cursor: default;
-  
-  /* The Giant Polaroid Frame Styling */
-  background: #1c1c1c;
-  padding: 12px 12px 40px 12px; /* Bottom padding creates the polaroid "chin" */
+  background: var(--surface-color);
+  padding: 12px 12px 40px 12px; 
   border-radius: 3px;
-  border: 1px solid #2a2a2a;
+  border: 1px solid var(--border-color);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9);
-
-  /* Smooth spring-like pop-in animation */
   opacity: 0;
   transform: scale(0.8) translateY(20px);
   animation: smoothPop 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 
 .lightboxImage {
-  /* Keeps the 1:1 cropped square instead of the full uncropped picture */
   width: min(80vw, 450px);
   aspect-ratio: 1 / 1;
   object-fit: cover;
@@ -702,9 +685,9 @@
   position: absolute;
   top: -15px;
   right: -15px;
-  background: #8b0000;
+  background: var(--tint);
   color: white;
-  border: 2px solid #111;
+  border: 2px solid var(--surface-color);
   border-radius: 50%;
   width: 35px;
   height: 35px;
@@ -720,7 +703,7 @@
 }
 
 .closeLightboxBtn:hover {
-  background: #ff3333;
+  filter: brightness(1.2);
   transform: scale(1.1);
 }
 
@@ -739,58 +722,57 @@
 /* --- Bloodhunt Styling --- */
 .bloodhuntTitle {
   font-size: 2.5rem;
-  color: #ff1a1a;
+  color: var(--tint);
   text-transform: uppercase;
   letter-spacing: 8px;
   margin-top: 0;
   margin-bottom: 2rem;
-  border-bottom: 2px solid #660000;
+  border-bottom: 2px solid var(--border-color);
   padding-bottom: 0.5rem;
-  text-shadow: 0 0 15px rgba(255, 0, 0, 0.6);
+  text-shadow: 0 0 15px color-mix(in srgb, var(--tint) 60%, transparent);
   text-align: center;
 }
 
 .bloodhuntCard {
-  border: 1px solid #ff0000;
-  background: linear-gradient(135deg, #1f0000 0%, #0a0000 100%);
-  box-shadow: 0 0 20px rgba(255, 0, 0, 0.2);
+  border: 1px solid var(--tint);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--tint) 20%, transparent) 0%, var(--bg-color) 100%);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--tint) 20%, transparent);
 }
 
 .bloodhuntTag {
-  color: #ff1a1a;
+  color: var(--tint);
   font-weight: bold;
   letter-spacing: 1px;
-  text-shadow: 0 0 5px rgba(255, 0, 0, 0.5);
+  text-shadow: 0 0 5px color-mix(in srgb, var(--tint) 50%, transparent);
 }
 
 .bloodhuntImg {
-  border: 2px solid #ff0000 !important;
-  /* Adds a harsh red tint to the image */
-  filter: sepia(100%) hue-rotate(-50deg) saturate(300%) contrast(120%);
+  border: 2px solid var(--tint) !important;
+  filter: sepia(100%) hue-rotate(0deg) saturate(300%) contrast(120%);
 }
 
 .bulkActionRow {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: #111;
+  background: var(--surface-color);
   padding: 10px;
-  border: 1px solid #333;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
 }
 
 .clanSelect {
-  background: #0a0a0a;
-  color: #fff;
-  border: 1px solid #555;
+  background: var(--bg-color);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
   padding: 6px;
   font-family: inherit;
 }
 
 .bulkBloodhuntBtn {
-  background: #4a0000;
-  color: #ff9999;
-  border: 1px solid #ff0000;
+  background: color-mix(in srgb, var(--tint) 20%, transparent);
+  color: var(--tint);
+  border: 1px solid var(--tint);
   padding: 6px 12px;
   cursor: pointer;
   text-transform: uppercase;
@@ -799,16 +781,16 @@
 }
 
 .bulkBloodhuntBtn:hover {
-  background: #ff0000;
-  color: #fff;
-  box-shadow: 0 0 10px rgba(255,0,0,0.5);
+  background: var(--tint);
+  color: var(--bg-color);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--tint) 50%, transparent);
 }
 
 .keeperSubtitle {
-  display: block;      /* Ensures it stays on its own line */
-  font-size: 0.70rem;  /* Slightly smaller for a subtitle appearance */
-  color: #a3a3ad;      /* Matches your muted theme */
-  margin-top: 4px;     /* Provides separation from the dots */
-  text-align: center;  /* Centers it under the status dots */
+  display: block;      
+  font-size: 0.70rem;  
+  color: var(--text-muted);      
+  margin-top: 4px;     
+  text-align: center;  
   font-family: monospace;
 }
