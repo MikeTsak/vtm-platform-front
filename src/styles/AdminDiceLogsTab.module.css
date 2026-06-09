@@ -1,4 +1,5 @@
 /* src/styles/AdminDiceLogsTab.module.css */
+
 /* Uses variables and classes from Admin.module.css */
 
 /* ---------- Base Layout ---------- */
@@ -22,8 +23,9 @@
 .btn {
   composes: btn from './Admin.module.css';
 }
+
 .btnPrimary {
-  composes: btnPrimary from './Admin.module.css';
+  composes: btnprimary from './Admin.module.css';
   display: inline-flex; /* For spinner */
   align-items: center;
   gap: 0.5rem;
@@ -39,6 +41,7 @@
   box-shadow: none;
   opacity: 0.6;
 }
+
 .btn[disabled]:hover {
   background-color: var(--bg-tertiary);
   border-color: var(--border-color);
@@ -57,8 +60,9 @@
 
 /* Import checkbox styles */
 .customCheckbox {
-  composes: customCheckbox from './Admin.module.css';
+  composes: customcheckbox from './Admin.module.css';
 }
+
 .checkmark {
   composes: checkmark from './Admin.module.css';
 }
@@ -88,7 +92,7 @@
   padding: 1rem;
   display: flex;
   gap: 1rem;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 20%);
   transition: all 0.3s ease-out;
   animation: fadeIn 0.4s ease-out;
   position: relative;
@@ -116,8 +120,9 @@
 
 .rollCard[data-result="critical"] {
   border-color: var(--accent-purple);
-  box-shadow: 0 0 15px rgba(127, 90, 240, 0.2);
+  box-shadow: 0 0 15px rgb(127 90 240 / 20%);
 }
+
 .rollCard[data-result="critical"]::before { 
   background-color: var(--accent-purple);
   box-shadow: 0 0 8px var(--accent-purple);
@@ -126,9 +131,10 @@
 .rollCard[data-result="messy"],
 .rollCard[data-result="bestial"] {
   border-color: var(--vtm-red);
-  box-shadow: 0 0 15px rgba(138, 3, 3, 0.2);
+  box-shadow: 0 0 15px rgb(138 3 3 / 20%);
   background: color-mix(in srgb, var(--bg-tertiary) 85%, var(--vtm-red) 15%);
 }
+
 .rollCard[data-result="messy"]::before,
 .rollCard[data-result="bestial"]::before {
   background-color: var(--vtm-red);
@@ -168,6 +174,7 @@
   color: var(--text-primary);
   min-width: 0;
 }
+
 .rollUser strong {
   font-weight: 600;
   white-space: nowrap;
@@ -193,6 +200,7 @@
   flex-shrink: 0;
   white-space: nowrap;
 }
+
 /* Color code the success count */
 .rollSuccesses[data-result="success"] { color: var(--color-success); }
 .rollSuccesses[data-result="critical"] { color: var(--accent-purple); }
@@ -241,9 +249,10 @@
   width: 32px;
   height: 32px;
   border-radius: 4px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 30%);
   transition: transform 0.2s ease;
 }
+
 .die:hover {
   transform: scale(1.1);
 }
@@ -263,11 +272,12 @@
 }
 
 /* ---------- Responsive ---------- */
-@media (max-width: 600px) {
+@media (width <= 600px) {
   .rollCard {
     flex-direction: column;
     gap: 0.75rem;
   }
+
   .resultIcon {
     width: 48px;
     height: 48px;
@@ -276,20 +286,24 @@
     top: 1rem;
     right: 1rem;
   }
+
   .rollHeader {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.25rem;
   }
+
   .rollSuccesses {
     font-size: 1rem;
     background: var(--bg-inset);
     padding: 0.25rem 0.5rem;
     border-radius: 4px;
   }
+
   .diceArea {
     gap: 1rem;
   }
+
   .die, .dieFallback {
     width: 28px;
     height: 28px;

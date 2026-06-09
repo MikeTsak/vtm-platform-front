@@ -6,12 +6,13 @@
   flex-direction: column;
   width: 100%;
   max-width: 1400px;
+
   /* Use dvh for mobile browsers to account for dynamic address bars */
   height: 90vh; 
   margin: 0 auto;
   padding: 20px;
   box-sizing: border-box;
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: Inter, system-ui, sans-serif;
   overflow: hidden; /* Prevent body scroll */
 }
 
@@ -46,7 +47,7 @@
 
 /* Tab Title */
 .modeTitle {
-  font-family: 'Cinzel', serif;
+  font-family: Cinzel, serif;
   font-size: 1.3rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -58,7 +59,7 @@
 /* Tab Subtitle */
 .modeSubtitle {
   font-size: 0.75rem;
-  font-family: 'Inter', sans-serif;
+  font-family: Inter, sans-serif;
   margin-top: 4px;
   color: #555;
   font-weight: 500;
@@ -83,7 +84,7 @@
 
 .activeMode .modeTitle {
   color: #fff;
-  text-shadow: 0 0 15px rgba(176, 20, 35, 0.6);
+  text-shadow: 0 0 15px rgb(176 20 35 / 60%);
 }
 
 /* Specific colors for Surface Web warning */
@@ -100,14 +101,16 @@
 .modeSwitch button:first-child.activeMode {
   border-bottom-color: #30d158 !important;
 }
+
 .modeSwitch button:first-child.activeMode .modeTitle {
-  text-shadow: 0 0 15px rgba(48, 209, 88, 0.4);
+  text-shadow: 0 0 15px rgb(48 209 88 / 40%);
 }
 
 /* --- Mobile Responsiveness --- */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .wrapper {
     padding: 0;
+
     /* Full viewport height on mobile, specifically dynamic for address bars */
     height: 100dvh; 
     max-width: none;

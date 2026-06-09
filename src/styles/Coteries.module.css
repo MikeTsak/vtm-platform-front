@@ -1,4 +1,5 @@
 /* src/styles/Coteries.module.css */
+
 /* Import fonts */
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;500;600&display=swap');
 
@@ -10,7 +11,6 @@
   --border: #2b2330;       /* Muted border */
   --text: #e7e2ea;         /* Off-white text */
   --muted: #a393a8;         /* Muted purple-grey text */
-
   --primary: #8a0f1a;      /* Deep blood red - Main Accent */
   --primary-2: #be1200;    /* Brighter blood - Hover/Focus */
   --accent: #d71f3c;       /* Highlight red */
@@ -19,12 +19,10 @@
   /* Adding Status colors for consistency */
   --ok: #3ecf8e; /* Green from DownTimes example, adjust if needed */
   --err: #ff6b6b; /* Reddish error */
-
   --radius: 12px; /* Adjusted from 14px for consistency */
   --radius-sm: 8px; /* Adjusted from 10px */
-
   --font-title: 'Cinzel', serif;
-  --font-body: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, segoe ui, roboto, sans-serif;
 }
 
 /* ---------- Base Layout & Typography ---------- */
@@ -36,6 +34,7 @@
   gap: 1.25rem;
   font-family: var(--font-body);
   color: var(--text);
+
   /* Background applied globally or on parent, assuming .adminRoot */
 }
 
@@ -78,8 +77,9 @@
     font-weight: 600;
     color: var(--accent); /* Use Highlight Red */
     transition: color 0.2s ease, text-shadow 0.2s ease;
-    border-bottom: 1px dashed rgba(215, 31, 60, 0.4); /* Dashed red underline */
+    border-bottom: 1px dashed rgb(215 31 60 / 40%); /* Dashed red underline */
 }
+
 .summaryLink:hover {
     color: var(--glow);
     text-shadow: 0 0 8px var(--glow);
@@ -97,13 +97,13 @@
 .card {
   background: linear-gradient(170deg, var(--surface-2), var(--surface)); /* Reversed gradient */
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: 0 10px 30px rgba(0,0,0,.45); /* Adjusted shadow */
+  border-radius: var(--radius); /* Adjusted shadow */
   padding: clamp(1rem, 2vw, 1.5rem);
   display: grid;
   gap: 1rem;
+
   /* Add subtle red glow inside */
-  box-shadow: 0 8px 24px rgba(0,0,0,.3), inset 0 0 40px rgba(138, 15, 26, 0.1);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 30%), inset 0 0 40px rgb(138 15 26 / 10%);
 }
 
 .cardHeader {
@@ -132,6 +132,7 @@
   border-left: 4px solid var(--ok);
   background: color-mix(in srgb, var(--surface) 85%, var(--ok) 15%);
 }
+
 .card[data-tone="warn"] {
   border-left: 4px solid var(--err);
   background: color-mix(in srgb, var(--surface) 85%, var(--err) 15%);
@@ -139,6 +140,7 @@
 
 /* ---------- Tabs (Chip Style) ---------- */
 .tabs { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
 .tabButton {
   padding: 0.5rem 0.9rem; border-radius: 999px;
   border: 1px solid var(--border);
@@ -147,15 +149,17 @@
   cursor: pointer; font-weight: 600; font-size: 0.85rem;
   transition: all 0.2s ease;
 }
+
 .tabButton:hover {
   border-color: var(--primary); /* Deep red border */
   color: var(--text);
 }
+
 .tabButtonActive {
   border-color: var(--primary);
   background: color-mix(in srgb, var(--primary) 20%, var(--surface)); /* Tinted background */
   color: var(--accent); /* Highlight red text */
-  box-shadow: 0 0 8px rgba(138, 15, 26, 0.5); /* Primary red glow */
+  box-shadow: 0 0 8px rgb(138 15 26 / 50%); /* Primary red glow */
 }
 
 /* ---------- Dot Picker ---------- */
@@ -170,14 +174,17 @@
     outline: none;
     box-shadow: 0 0 0 2px var(--accent); /* Highlight red focus */
 }
+
 .dot {
   width: 14px; height: 14px; border-radius: 50%; display: block;
   border: 1px solid var(--border); transition: background-color 0.2s ease, border-color 0.2s ease;
 }
+
 .dotFilled {
   background: var(--text); border-color: var(--text);
-  box-shadow: 0 0 4px rgba(231, 226, 234, 0.4); /* Subtle glow for filled */
+  box-shadow: 0 0 4px rgb(231 226 234 / 40%); /* Subtle glow for filled */
 }
+
 .dotButton:hover .dot:not(.dotFilled) {
     border-color: var(--muted); /* Indicate hover on empty */
 }
@@ -195,6 +202,7 @@
   transition: border-color .2s, box-shadow .2s;
   width: 100%; box-sizing: border-box;
 }
+
 .input:focus, .select:focus, .textarea:focus {
   outline: none;
   border-color: var(--primary); /* Deep red focus border */
@@ -202,6 +210,7 @@
 }
 .input::placeholder { color: var(--muted); opacity: 0.6; }
 .textarea { min-height: 100px; resize: vertical; line-height: 1.6; }
+
 .select {
   appearance: none;
   background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a393a8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e"); /* Use muted color */
@@ -216,6 +225,7 @@
 .fieldLabel { font-weight: 600; font-size: 0.85rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
 
 /* ---------- Buttons ---------- */
+
 /* General Button Base (Not used directly, but composes uses it) */
 .button {
   font-family: inherit; font-size: 0.9rem; font-weight: 600; padding: 0.6rem 1rem;
@@ -229,15 +239,17 @@
   background: linear-gradient(180deg, var(--accent), var(--primary)); /* Red gradient */
   color: #fff5f7; /* Light text for contrast */
   border-color: color-mix(in srgb, var(--primary) 70%, #000);
-  text-shadow: 0 1px 1px rgba(0,0,0,0.3);
-  box-shadow: 0 4px 10px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,0.05);
+  text-shadow: 0 1px 1px rgb(0 0 0 / 30%);
+  box-shadow: 0 4px 10px rgb(0 0 0 / 30%), inset 0 1px 0 rgb(255 255 255 / 5%);
 }
+
 .buttonPrimary:hover:not(:disabled) {
   background: linear-gradient(180deg, var(--glow), var(--primary-2)); /* Brighter gradient on hover */
   border-color: var(--primary);
-  box-shadow: 0 6px 15px rgba(138, 15, 26, 0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+  box-shadow: 0 6px 15px rgb(138 15 26 / 40%), inset 0 1px 0 rgb(255 255 255 / 10%);
   transform: translateY(-1px);
 }
+
 .buttonPrimary:disabled {
    background: var(--surface-2); border-color: var(--border); color: var(--muted);
    cursor: not-allowed; opacity: 0.6; box-shadow: none; text-shadow: none;
@@ -251,6 +263,7 @@
   border-color: var(--border);
   color: var(--muted);
 }
+
 .buttonSecondary:hover:not(:disabled) {
   border-color: var(--primary);
   background: color-mix(in srgb, var(--primary) 10%, transparent);
@@ -265,10 +278,12 @@
   color: var(--ok);
   font-weight: 700;
 }
+
 .applyTypeButton:hover:not(:disabled) {
    background: color-mix(in srgb, var(--ok) 25%, var(--surface));
-   box-shadow: 0 0 10px rgba(62, 207, 142, 0.3); /* Green glow */
+   box-shadow: 0 0 10px rgb(62 207 142 / 30%); /* Green glow */
 }
+
 .applyTypeButton:disabled {
   background: var(--surface-2); border-color: var(--border); color: var(--muted);
   cursor: not-allowed; opacity: 0.6; box-shadow: none;
@@ -280,6 +295,7 @@
     padding: 0.4rem 0.8rem; font-size: 0.85rem;
     border-color: var(--border); background: transparent; color: var(--muted);
 }
+
 .removeButton:hover {
     background-color: var(--primary); /* Deep red */
     border-color: var(--primary);
@@ -288,11 +304,13 @@
 
 /* ---------- Member Picker ---------- */
 .memberSearchInput { composes: input; flex: 1; min-width: 220px; }
+
 .memberListContainer {
     display: grid; gap: 0.4rem; max-height: 180px; overflow-y: auto;
     border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.5rem;
     background: var(--bg); /* Darkest background */
 }
+
 .memberListItem {
     text-align: left; background: var(--surface); border: 1px solid var(--border);
     border-radius: var(--radius-sm); padding: 0.5rem 0.75rem; color: var(--text);
@@ -302,6 +320,7 @@
 .memberListItem b { color: var(--accent); } /* Highlight red name */
 .currentMembersList { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.5rem; }
 .currentMemberItem { display: flex; align-items: center; gap: 0.5rem; }
+
 .currentMemberName {
     background: var(--bg); border: 1px solid var(--border); padding: 0.4rem 0.8rem;
     border-radius: var(--radius-sm); flex: 1; color: var(--text); font-size: 0.9rem;
@@ -317,6 +336,7 @@
 /* ---------- Backgrounds Editor ---------- */
 .backgroundInput { composes: input; flex: 1; min-width: 220px; }
 .backgroundItem { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+
 .backgroundNameDisplay {
     flex: 1; background: var(--bg); border: 1px solid var(--border);
     border-radius: var(--radius-sm); padding: 0.5rem 0.75rem;
@@ -327,17 +347,18 @@
 
 /* ---------- Types Browser ---------- */
 .typeSearchInput { composes: input; flex: 1; min-width: 240px; }
+
 .typeItem {
     border: 1px solid var(--border); background: var(--surface);
     border-radius: var(--radius); padding: 1rem; display: grid; gap: 0.5rem;
     transition: all 0.2s ease;
 }
-.typeItem:hover { border-color: var(--primary); box-shadow: 0 0 10px rgba(138, 15, 26, 0.3); }
+.typeItem:hover { border-color: var(--primary); box-shadow: 0 0 10px rgb(138 15 26 / 30%); }
 .typeItemHeader { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: center; }
 .typeName { font-size: 1.1rem; font-weight: 700; color: var(--text); }
 
 /* ---------- Responsive Adjustments ---------- */
-@media (max-width: 768px) {
+@media (width <= 768px) {
     .wrap { padding: 1rem; gap: 1rem; }
     .header { margin-bottom: 0.25rem; }
     .title { font-size: 1.8rem; }
@@ -348,6 +369,7 @@
     .button, .buttonPrimary, .buttonSecondary, .applyTypeButton { padding: 0.5rem 0.9rem; font-size: 0.9rem; }
     .backgroundItem { flex-direction: column; align-items: stretch; }
     .backgroundControls { width: 100%; justify-content: space-between; }
+
     /* Make tabs stack cleanly on narrow phones */
   .tabs {
     flex-direction: column;
@@ -360,7 +382,7 @@
   }
 }
 
-@media (max-width: 480px) {
+@media (width <= 480px) {
     .wrap { padding: 0.75rem; }
     .title { font-size: 1.6rem; }
     .tabs { gap: 0.3rem; }

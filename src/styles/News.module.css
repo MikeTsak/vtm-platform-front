@@ -45,6 +45,7 @@
   transition: all 0.2s;
   font-family: inherit;
 }
+
 .createBtn:hover {
   border-color: var(--tint);
   background: color-mix(in srgb, var(--tint) 20%, transparent);
@@ -55,6 +56,7 @@
   color: #000;
   border-color: #f59e0b;
 }
+
 .rumorBtn:hover {
   background: #f59e0b;
   border-color: #d97706;
@@ -68,6 +70,7 @@
   padding-bottom: 16px;
   border-bottom: 1px solid var(--border-color);
 }
+
 .viewTab {
   padding: 8px 16px;
   font-weight: bold;
@@ -79,11 +82,13 @@
   color: var(--text-muted);
   font-family: inherit;
 }
+
 .viewTabActive {
   background: color-mix(in srgb, var(--tint) 20%, transparent);
   color: var(--text-color);
   border-color: var(--tint);
 }
+
 .rumorTabActive {
   background: color-mix(in srgb, #fbbf24 20%, transparent);
   color: #fbbf24;
@@ -97,6 +102,7 @@
   gap: 2rem;
   align-items: flex-start;
 }
+
 .column {
   flex: 1;
   min-width: 300px;
@@ -110,6 +116,7 @@
   padding-bottom: 8px;
   font-family: var(--font-title);
 }
+
 .sectionHeadingRumor {
   margin-bottom: 16px;
   color: #fbbf24;
@@ -128,14 +135,17 @@
   columns: 1;
   column-gap: 1rem;
 }
-@media (min-width: 800px) { .masonry { columns: 2; } }
-@media (min-width: 1300px) { .masonry { columns: 3; } }
+
+@media (width >= 800px) { .masonry { columns: 2; } }
+
+@media (width >= 1300px) { .masonry { columns: 3; } }
 
 .masonryItem {
   break-inside: avoid;
   margin-bottom: 1rem;
   transition: transform 0.2s;
 }
+
 .masonryItem:hover {
   transform: translateY(-3px);
 }
@@ -144,13 +154,13 @@
    OFFICIAL NEWS CARD (Newspaper Aesthetic)
    ========================================= */
 .browserCard {
-  background: #ffffff; /* Classic Newspaper White */
-  color: #111111;      /* Crisp dark ink */
+  background: #fff; /* Classic Newspaper White */
+  color: #111;      /* Crisp dark ink */
   border: 1px solid var(--border-color);
   border-radius: 4px;  /* Sharper edges for paper feel */
   overflow: hidden;
   position: relative;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 15px rgb(0 0 0 / 30%);
 }
 
 .browserBar {
@@ -162,11 +172,12 @@
 }
 .dots { display: flex; gap: 4px; margin-right: 12px; }
 .dots span { width: 10px; height: 10px; border-radius: 50%; }
+
 .url {
   flex: 1;
   font-size: 0.75rem;
   padding: 4px 8px;
-  background: #ffffff;
+  background: #fff;
   border-radius: 12px;
   border: 1px solid #e5e7eb;
   color: #4b5563 !important; /* Force dark gray URL */
@@ -181,14 +192,15 @@
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
-  background-color: #ffffff;
+  background-color: #fff;
   position: relative;
   border-bottom: 2px solid #e5e7eb;
 }
+
 .headerOverlay {
   position: absolute;
   bottom: 0; left: 0; right: 0;
-  background: linear-gradient(transparent, rgba(255,255,255,0.9) 70%, #ffffff);
+  background: linear-gradient(transparent, rgb(255 255 255 / 90%) 70%, #fff);
   padding: 8px 12px;
 }
 .headerTitleGroup { display: flex; gap: 8px; align-items: center; }
@@ -197,22 +209,25 @@
 
 .newsBody {
   padding: 16px 20px;
-  background: #ffffff;
+  background: #fff;
 }
+
 .newsBody h2 {
-  margin: 0 0 8px 0;
+  margin: 0 0 8px;
   font-size: 1.4rem;
   font-family: 'Playfair Display', var(--font-title), serif; /* Serif for newspaper headlines */
-  color: #000000;
+  color: #000;
   font-weight: 800;
   line-height: 1.2;
 }
+
 .newsBody h4 {
-  margin: 0 0 12px 0;
+  margin: 0 0 12px;
   font-size: 1rem;
   font-weight: 600;
   font-family: var(--font-body);
 }
+
 .meta {
   display: flex;
   gap: 6px;
@@ -232,6 +247,7 @@
   background: #f9fafb;
   border: 1px solid #d1d5db;
 }
+
 .mediaFrame img, .mediaFrame video {
   width: 100%;
   display: block;
@@ -240,14 +256,14 @@
 .bodyHtml {
   font-size: 0.95rem;
   line-height: 1.6;
-  color: #333333; /* Dark gray article text */
-  font-family: 'Georgia', serif; /* Classic newspaper body font */
+  color: #333; /* Dark gray article text */
+  font-family: Georgia, serif; /* Classic newspaper body font */
 }
 
 .deleteOverlay {
   position: absolute;
   top: 10px; right: 10px;
-  background: rgba(220, 38, 38, 0.9);
+  background: rgb(220 38 38 / 90%);
   color: #fff;
   border: none;
   width: 24px; height: 24px;
@@ -266,20 +282,21 @@
   background: #2a2311;
   border: 1px solid #4d3a0f;
   padding: 20px;
-  box-shadow: 2px 4px 15px rgba(0,0,0,0.5);
+  box-shadow: 2px 4px 15px rgb(0 0 0 / 50%);
   transform: rotate(-1deg);
   color: #fef3c7;
   position: relative;
   border-radius: 4px;
 }
+
 .rumorCard::before {
   content: '';
   position: absolute;
   top: 10px; left: 50%;
   width: 30px; height: 12px;
-  background: rgba(255,255,255,0.1);
+  background: rgb(255 255 255 / 10%);
   transform: translateX(-50%) rotate(-3deg);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 30%);
 }
 
 .rumorTitle {
@@ -312,7 +329,7 @@
    ========================================= */
 .modalOverlay {
   position: fixed; inset: 0;
-  background: rgba(0,0,0,0.85);
+  background: rgb(0 0 0 / 85%);
   backdrop-filter: blur(5px);
   z-index: 1000;
   display: flex; align-items: center; justify-content: center;
@@ -323,10 +340,10 @@
   max-width: 900px;
   width: 95%;
   max-height: 90vh;
-  background-color: #ffffff; /* Newspaper White */
+  background-color: #fff; /* Newspaper White */
   border-radius: 4px;
-  color: #111111;
-  box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8);
+  color: #111;
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 80%);
   overflow-y: auto;
   border-top: 8px solid var(--theme-color);
 }
@@ -344,6 +361,7 @@
   justify-content: flex-end;
   padding: 16px 20px 0;
 }
+
 .modalHeaderControl button {
   background: transparent; border: none;
   font-size: 2.5rem; cursor: pointer;
@@ -368,12 +386,13 @@
 
 .fsTitle {
   font-size: 2.8rem;
-  margin: 0 0 15px 0;
-  color: #000000;
+  margin: 0 0 15px;
+  color: #000;
   line-height: 1.1;
   font-family: 'Playfair Display', var(--font-title), serif;
   font-weight: 800;
 }
+
 .fullscreenModalRumor .fsTitle {
   color: #fbbf24;
 }
@@ -388,6 +407,7 @@
   border: 1px solid #e5e7eb;
   padding: 12px; border-radius: 4px; margin-bottom: 24px;
 }
+
 .fullscreenModalRumor .fsMediaContainer {
   background-color: #111827;
   border-color: #374151;
@@ -400,9 +420,10 @@
 .fsBody {
   font-size: 1.15rem;
   line-height: 1.8;
-  color: #333333;
-  font-family: 'Georgia', serif;
+  color: #333;
+  font-family: Georgia, serif;
 }
+
 .fullscreenModalRumor .fsBody {
   color: #d1d5db;
   font-family: var(--font-body);
@@ -423,6 +444,7 @@
   border-bottom: 1px solid #e5e7eb;
   padding-bottom: 12px;
 }
+
 .fullscreenModalRumor .fsMeta {
   border-color: #4b5563;
 }
@@ -435,7 +457,7 @@
   max-width: 800px; width: 100%;
   background-color: var(--surface-color);
   border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.8);
+  box-shadow: 0 10px 25px rgb(0 0 0 / 80%);
   border: 1px solid var(--border-color);
 }
 
@@ -460,7 +482,8 @@
 .disabledInput { opacity: 0.5; cursor: not-allowed; }
 
 .formGrid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
-@media(max-width: 600px) { .formGrid { grid-template-columns: 1fr; } }
+
+@media(width <= 600px) { .formGrid { grid-template-columns: 1fr; } }
 
 .randomizerGroup { display: flex; gap: 10px; }
 .randomizeBtn { padding: 10px 16px; background-color: color-mix(in srgb, var(--tint) 20%, transparent); color: var(--tint); border: 1px solid var(--tint); border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; white-space: nowrap;}

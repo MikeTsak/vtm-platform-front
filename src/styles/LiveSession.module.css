@@ -41,7 +41,7 @@
   border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 1.25rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 40%);
   transition: transform 0.2s ease, border-color 0.2s ease;
 }
 
@@ -110,7 +110,7 @@
 
 .btnPrimary {
   background: var(--tint);
-  color: #ffffff;
+  color: #fff;
   box-shadow: 0 2px 4px color-mix(in srgb, var(--tint) 30%, transparent);
 }
 
@@ -287,7 +287,7 @@
 
 .chipActive {
   background: var(--tint);
-  color: #ffffff;
+  color: #fff;
   border-color: var(--tint);
   font-weight: 600;
   box-shadow: 0 2px 8px color-mix(in srgb, var(--tint) 40%, transparent);
@@ -338,7 +338,7 @@
 .outcomeImage {
   height: 64px;
   margin-bottom: 0.5rem;
-  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
+  filter: drop-shadow(0 4px 6px rgb(0 0 0 / 50%));
 }
 
 .subtle {
@@ -395,7 +395,7 @@
 
 .boxSelected {
   border-color: #fbbf24;
-  box-shadow: 0 0 16px rgba(251, 191, 36, 0.4);
+  box-shadow: 0 0 16px rgb(251 191 36 / 40%);
   transform: translateY(-6px);
 }
 
@@ -435,7 +435,7 @@
 }
 
 .playerHead p {
-  margin: 0.25rem 0 0 0;
+  margin: 0.25rem 0 0;
   font-size: 0.85rem;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -443,7 +443,7 @@
 }
 
 .npcTag {
-  background: rgba(251, 191, 36, 0.1);
+  background: rgb(251 191 36 / 10%);
   border: 1px solid #fbbf24;
   color: #fbbf24;
   font-size: 0.7rem;
@@ -519,7 +519,7 @@
 
 .quickBtns button:first-child:hover {
   background: var(--tint);
-  color: #ffffff;
+  color: #fff;
 }
 
 /* =========================================
@@ -580,7 +580,7 @@
 /* =========================================
    MOBILE RESPONSIVENESS
    ========================================= */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .traitsContainer {
     grid-template-columns: 1fr;
     gap: 1.5rem;
@@ -608,7 +608,7 @@
   }
 }
 
-@media (max-width: 600px) {
+@media (width <= 600px) {
   .page {
     padding: 0.5rem;
   }
@@ -662,7 +662,7 @@
   border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 1rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 20%);
   transition: border-color 0.3s ease;
 }
 

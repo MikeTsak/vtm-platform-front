@@ -244,6 +244,7 @@
   padding: 16px 24px;
   background: #252526;
   border-top: 1px solid #3e3e42;
+
   /* Safe area for mobile */
   padding-bottom: calc(16px + env(safe-area-inset-bottom));
 }
@@ -270,26 +271,31 @@
 .editorContainer {
   border: 1px solid #444; border-radius: 4px; background: #1e1e1e;
 }
+
 .toolbar {
   background: #2d2d30; padding: 8px; border-bottom: 1px solid #444; display: flex; gap: 8px; flex-wrap: wrap;
 }
+
 .toolbar button {
   background: transparent; color: #ccc; border: 1px solid #444; padding: 6px 12px; border-radius: 2px; cursor: pointer; font-weight: bold;
   min-height: 36px;
 }
 .toolbar button:hover { background: #3e3e42; }
+
 .editable {
   min-height: 120px; padding: 12px; outline: none; color: #eee; font-size: 16px;
 }
 
 /* Modals */
 .modalBackdrop {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 999;
+  position: fixed; inset: 0; background: rgb(0 0 0 / 85%); display: flex; justify-content: center; align-items: center; z-index: 999;
 }
+
 .modal {
-  background: #252526; width: 600px; max-width: 90vw; border-radius: 8px; padding: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); border: 1px solid #444; display: flex; flex-direction: column; gap: 12px;
+  background: #252526; width: 600px; max-width: 90vw; border-radius: 8px; padding: 24px; box-shadow: 0 20px 50px rgb(0 0 0 / 50%); border: 1px solid #444; display: flex; flex-direction: column; gap: 12px;
 }
-.modal h3, .modal h4 { margin: 0 0 10px 0; color: #fff; }
+.modal h3, .modal h4 { margin: 0 0 10px; color: #fff; }
+
 .input {
   background: #1e1e1e; border: 1px solid #444; padding: 12px; color: #fff; border-radius: 4px; width: 100%; box-sizing: border-box; font-size: 16px;
 }
@@ -304,7 +310,7 @@
 /* =========================================
    MEDIA QUERY: MOBILE
    ========================================= */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .emailContainer {
     display: block; /* Remove flex to allow absolute positioning */
     border: none;

@@ -20,7 +20,7 @@
   background: radial-gradient(
     circle 350px at var(--x, 50%) var(--y, 50%),
     transparent 0%,
-    rgba(0, 0, 0, 0.95) 70%,
+    rgb(0 0 0 / 95%) 70%,
     #000 100%
   );
   z-index: 2;
@@ -32,8 +32,8 @@
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(138, 3, 3, 0.15) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(138, 3, 3, 0.15) 1px, transparent 1px);
+    linear-gradient(rgb(138 3 3 / 15%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(138 3 3 / 15%) 1px, transparent 1px);
   background-size: 40px 40px;
   opacity: 0.5;
   z-index: 0;
@@ -57,7 +57,7 @@
   color: #fff;
   margin: 0;
   position: relative;
-  text-shadow: 0 0 20px rgba(138, 3, 3, 0.8);
+  text-shadow: 0 0 20px rgb(138 3 3 / 80%);
   animation: noise 3s infinite linear alternate-reverse;
 }
 
@@ -87,17 +87,17 @@
 }
 
 .title {
-  font-family: 'Cinzel', serif;
+  font-family: Cinzel, serif;
   color: #8a0303;
   font-size: clamp(1.5rem, 5vw, 2.5rem);
   text-transform: uppercase;
   letter-spacing: 4px;
-  margin: 0.5rem 0 1rem 0;
-  text-shadow: 0 0 10px rgba(138, 3, 3, 0.5);
+  margin: 0.5rem 0 1rem;
+  text-shadow: 0 0 10px rgb(138 3 3 / 50%);
 }
 
 .description {
-  font-family: 'Inter', sans-serif;
+  font-family: Inter, sans-serif;
   color: #a0a0a0;
   max-width: 500px;
   line-height: 1.6;
@@ -106,14 +106,14 @@
 }
 
 .homeBtn {
-  font-family: 'Cinzel', serif;
+  font-family: Cinzel, serif;
   font-weight: 600;
   font-size: 1.1rem;
   color: #fff;
   text-decoration: none;
   padding: 1rem 2.5rem;
   border: 1px solid #8a0303;
-  background: rgba(138, 3, 3, 0.15);
+  background: rgb(138 3 3 / 15%);
   border-radius: 4px;
   transition: all 0.3s ease;
   text-transform: uppercase;
@@ -123,13 +123,15 @@
 }
 
 .homeBtn:hover {
-  background: rgba(138, 3, 3, 0.6);
-  box-shadow: 0 0 20px rgba(138, 3, 3, 0.8), inset 0 0 15px rgba(138, 3, 3, 0.6);
+  background: rgb(138 3 3 / 60%);
+  box-shadow: 0 0 20px rgb(138 3 3 / 80%), inset 0 0 15px rgb(138 3 3 / 60%);
   text-shadow: 0 0 5px #fff;
 }
 
 /* ========================================= */
+
 /* --- CSS ATHENS METRO SCENE ---            */
+
 /* ========================================= */
 
 .chaseScene {
@@ -142,7 +144,7 @@
   border-radius: 8px;
   overflow: hidden;
   margin-bottom: 2.5rem;
-  box-shadow: inset 0 0 30px #000, 0 5px 20px rgba(0,0,0,0.7);
+  box-shadow: inset 0 0 30px #000, 0 5px 20px rgb(0 0 0 / 70%);
   display: flex;
   flex-direction: column;
 }
@@ -151,7 +153,7 @@
 .athensSurface {
   position: relative;
   height: 50%;
-  background: linear-gradient(to bottom, #110000, #0a0a0a);
+  background: linear-gradient(to bottom, #100, #0a0a0a);
   border-bottom: 2px solid #222;
   display: flex;
   flex-direction: column;
@@ -180,7 +182,7 @@
   height: 18px;
   background: repeating-linear-gradient(
     90deg,
-    #4a050c 0px,
+    #4a050c 0,
     #4a050c 6px,
     transparent 6px,
     transparent 10px
@@ -224,11 +226,11 @@
     90deg,
     transparent 0,
     transparent 120px,
-    rgba(255, 255, 255, 0.6) 120px,
-    rgba(255, 255, 255, 0.6) 160px
+    rgb(255 255 255 / 60%) 120px,
+    rgb(255 255 255 / 60%) 160px
   );
   animation: speedEnvironment 0.3s linear infinite;
-  box-shadow: 0 0 8px rgba(255,255,255,0.3);
+  box-shadow: 0 0 8px rgb(255 255 255 / 30%);
 }
 
 .tunnelPillars {
@@ -269,7 +271,7 @@
   display: flex;
   align-items: center;
   justify-content: space-evenly;
-  box-shadow: -2px 5px 10px rgba(0,0,0,0.9);
+  box-shadow: -2px 5px 10px rgb(0 0 0 / 90%);
 }
 
 .trainFront {
@@ -290,12 +292,12 @@
   margin-bottom: 4px; /* Centers it vertically with the cars */
   background: repeating-linear-gradient(
     90deg,
-    #111 0px,
+    #111 0,
     #111 2px,
     #333 2px,
     #333 4px
   );
-  box-shadow: inset 0 2px 5px rgba(0,0,0,0.8);
+  box-shadow: inset 0 2px 5px rgb(0 0 0 / 80%);
 }
 
 .trainWindow {
@@ -304,7 +306,7 @@
   height: 14px;
   background: #ffe600;
   border-radius: 2px;
-  box-shadow: 0 0 10px rgba(255, 230, 0, 0.5);
+  box-shadow: 0 0 10px rgb(255 230 0 / 50%);
   opacity: 0.9;
 }
 
@@ -316,7 +318,7 @@
   height: 8px;
   background: #fff;
   border-radius: 50%;
-  box-shadow: 8px 0 15px 8px rgba(255, 255, 255, 0.7);
+  box-shadow: 8px 0 15px 8px rgb(255 255 255 / 70%);
 }
 
 /* --- Animation Keyframes --- */
@@ -363,15 +365,15 @@
   20% { transform: translate(2px, -2px); }
   40% { transform: translate(2px, 2px); }
   60% { transform: translate(1px, -1px); }
-  80% { transform: translate(2px, 0px); }
+  80% { transform: translate(2px, 0); }
 }
 
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .overlay {
     background: radial-gradient(
       circle 220px at 50% 30%, 
       transparent 0%,
-      rgba(0, 0, 0, 0.9) 70%,
+      rgb(0 0 0 / 90%) 70%,
       #000 100%
     );
   }

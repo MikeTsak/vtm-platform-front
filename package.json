@@ -49,5 +49,10 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "postcss-cli": "^11.0.1",
+    "stylelint": "^17.13.0",
+    "stylelint-config-standard": "^40.0.0"
   }
 }

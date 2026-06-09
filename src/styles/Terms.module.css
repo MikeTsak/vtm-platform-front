@@ -119,7 +119,7 @@ code {
 }
 
 /* Mobile-friendly adjustments */
-@media (max-width: 600px) {
+@media (width <= 600px) {
   .wrap {
     padding: 10px;
   }

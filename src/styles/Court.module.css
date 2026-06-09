@@ -82,7 +82,7 @@
   padding: 1.5rem;
   position: relative;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+  box-shadow: 0 4px 15px rgb(0 0 0 / 50%);
   overflow: hidden; 
   display: flex;
   flex-direction: row;
@@ -124,7 +124,7 @@
 .princeCard {
   border: 1px solid #d4af37;
   background: linear-gradient(135deg, var(--surface-lighter) 0%, var(--bg-color) 100%);
-  box-shadow: 0 0 30px rgba(212, 175, 55, 0.15);
+  box-shadow: 0 0 30px rgb(212 175 55 / 15%);
   grid-column: 1 / -1; 
   justify-self: center;
   width: 100%;
@@ -134,7 +134,7 @@
 .princeCard .name {
   font-size: 2.2rem;
   color: #d4af37;
-  text-shadow: 0 0 12px rgba(212, 175, 55, 0.4);
+  text-shadow: 0 0 12px rgb(212 175 55 / 40%);
 }
 
 .highRankCard {
@@ -147,17 +147,17 @@
   flex-shrink: 0;
   width: 140px;
   background: var(--surface-color); 
-  padding: 8px 8px 24px 8px; 
+  padding: 8px 8px 24px; 
   border-radius: 2px;
   border: 1px solid var(--border-color);
-  box-shadow: 2px 5px 15px rgba(0,0,0,0.8);
+  box-shadow: 2px 5px 15px rgb(0 0 0 / 80%);
   transform: rotate(-3deg); 
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .memberCard:hover .polaroid {
   transform: scale(1.05) rotate(0deg); 
-  box-shadow: 0 10px 20px rgba(0,0,0,0.9);
+  box-shadow: 0 10px 20px rgb(0 0 0 / 90%);
 }
 
 .polaroidImg {
@@ -314,7 +314,7 @@
 
 .decreeBtn {
   display: block;
-  margin: 0 auto 2rem auto;
+  margin: 0 auto 2rem;
   background: var(--surface-lighter);
   border: 1px solid var(--tint);
   color: var(--tint);
@@ -357,7 +357,7 @@
 
 .decreeTitle {
   font-size: 1.8rem;
-  margin: 0 0 1rem 0;
+  margin: 0 0 1rem;
   color: var(--text-color);
   font-family: var(--font-title);
 }
@@ -393,8 +393,8 @@
 /* Modal Styling */
 .modalOverlay {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0, 0, 0, 0.85);
+  inset: 0;
+  background: rgb(0 0 0 / 85%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -407,7 +407,7 @@
   border: 1px solid var(--border-color);
   width: min(600px, 90vw);
   padding: 2rem;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+  box-shadow: 0 20px 50px rgb(0 0 0 / 80%);
 }
 
 .modal h2 {
@@ -465,7 +465,7 @@
 }
 .modalActions button[type="submit"]:hover { filter: brightness(1.2); }
 
-@media (max-width: 900px) {
+@media (width <= 900px) {
   /* Scale down the main title */
   .title { font-size: 2.2rem; letter-spacing: 4px; }
   
@@ -547,11 +547,11 @@
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 10px;
-  margin: 5rem 0 2rem 0;
+  margin: 5rem 0 2rem;
   border-bottom: 1px solid var(--border-color);
   padding-bottom: 1rem;
   font-family: var(--font-title);
-  text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 0 10px rgb(0 0 0 / 50%);
 }
 
 .statusToggles {
@@ -609,7 +609,7 @@
   border-radius: 4px;
   padding: 2rem;
   margin-bottom: 3rem;
-  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+  box-shadow: inset 0 0 20px rgb(0 0 0 / 80%);
 }
 
 .sectionTitle {
@@ -649,7 +649,7 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(0, 0, 0, 0.85);
+  background: rgb(0 0 0 / 85%);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -664,10 +664,10 @@
   position: relative;
   cursor: default;
   background: var(--surface-color);
-  padding: 12px 12px 40px 12px; 
+  padding: 12px 12px 40px; 
   border-radius: 3px;
   border: 1px solid var(--border-color);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9);
+  box-shadow: 0 20px 60px rgb(0 0 0 / 90%);
   opacity: 0;
   transform: scale(0.8) translateY(20px);
   animation: smoothPop 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
@@ -697,7 +697,7 @@
   justify-content: center;
   align-items: center;
   cursor: pointer;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 10px rgb(0 0 0 / 50%);
   transition: all 0.2s ease;
   z-index: 10000;
 }

@@ -21,6 +21,7 @@
   gap: 8px;
   margin-bottom: 10px;
 }
+
 .recipientsHeader strong {
   font-size: 1.1rem;
 }
@@ -40,10 +41,12 @@
   border-radius: 6px;
   margin-bottom: 10px;
 }
+
 .loading {
   color: #bbb;
   background: #1a1a20;
 }
+
 .error {
   color: #f88;
   background: #301616;
@@ -66,12 +69,15 @@
   border-radius: 4px;
   transition: background-color 0.2s;
 }
+
 .recipientItem:hover {
   background: #1a1a24;
 }
+
 .recipientItem input {
   cursor: pointer;
 }
+
 .recipientItem input:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -80,6 +86,7 @@
 .recipientName {
   font-weight: 600;
 }
+
 .recipientChar {
   font-size: 12px;
   color: #aab;
@@ -162,9 +169,11 @@
   gap: 8px;
   margin-bottom: 8px;
 }
+
 .historyHeader strong {
   font-size: 1.1rem;
 }
+
 .historyMeta {
   margin-left: auto;
   font-size: 12px;
@@ -192,6 +201,7 @@
   gap: 8px;
   align-items: baseline;
 }
+
 .historyItemType {
   font-size: 12px;
   text-transform: uppercase;
@@ -199,10 +209,12 @@
   opacity: 0.8;
   font-weight: 600;
 }
+
 .historyItemTime {
   font-size: 12px;
   color: #aab;
 }
+
 .historyItemSender {
   margin-left: auto;
   font-size: 12px;
@@ -219,6 +231,7 @@
 .historyRecipients {
   margin-top: 8px;
 }
+
 .historyRecipientsTitle {
   font-weight: 600;
   font-size: 13px;
@@ -229,17 +242,21 @@
   margin: 0;
   padding-left: 18px;
 }
+
 .historyRecipientItem {
   font-size: 13px;
 }
+
 .recipientCharName {
   color: #889;
 }
+
 .recipientViewed {
   margin-left: 6px;
   color: #6fbf73;
   font-size: 12px;
 }
+
 .recipientNotViewed {
   margin-left: 6px;
   color: #aab;
@@ -258,15 +275,18 @@
   font-size: 14px;
   transition: all 0.2s ease;
 }
+
 .btn:hover:not(:disabled) {
   border-color: #555;
   background: #1f1f2a;
 }
+
 .btn.active {
   border-color: #556;
   background: #1a1a24;
   color: #dfe;
 }
+
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -277,6 +297,7 @@
   background: #163016;
   color: #efe;
 }
+
 .btnPrimary:hover:not(:disabled) {
   border-color: #6c6;
   background: #1f421f;
@@ -287,6 +308,7 @@
   background: #101018;
   color: #dde;
 }
+
 .btnSecondary:hover:not(:disabled) {
   border-color: #667;
   background: #181820;
@@ -298,6 +320,7 @@
   color: #fee;
   padding: 6px 10px; /* Slightly smaller */
 }
+
 .btnDanger:hover:not(:disabled) {
   border-color: #a66;
   background: #421f1f;
