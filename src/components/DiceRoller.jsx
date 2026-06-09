@@ -1,5 +1,5 @@
 // src/components/DiceRoller.jsx
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import api from '../api'; 
 import styles from '../styles/DiceRoller.module.css';
 
@@ -53,7 +53,13 @@ function computeOutcome(normal, hunger, difficulty) {
 }
 
 export default function DiceRoller({ characterId }) {
+  // --- 1. All useState Hooks ---
   const [open, setOpen] = useState(false);
+  const [isHidden, setIsHidden] = useState(false);
+
+  // Integration States
+  const [character, setCharacter] = useState(null);
+  const [sheet, setSheet] = useState(null);
 
   // Inputs
   const [poolTotal, setPoolTotal] = useState(5); 
@@ -77,7 +83,66 @@ export default function DiceRoller({ characterId }) {
   const [rouseVal, setRouseVal] = useState(null);
   const [rouseSuccess, setRouseSuccess] = useState(null);
 
-  // --- API Logging ---
+  // --- 2. All useMemo Hooks ---
+  const targetUrl = useMemo(() => {
+    return characterId 
+      ? (characterId.startsWith('npc:') ? `/admin/npcs/${characterId.split(':')[1]}` : `/characters/${characterId}`)
+      : '/characters/me';
+  }, [characterId]);
+
+  // Outcome memo
+  const outcome = useMemo(() => {
+    if (!hasRolled) return null;
+    const diff = difficulty === '' ? undefined : Number(difficulty) || 0;
+    return computeOutcome(normalDice, hungerDice, diff);
+  }, [hasRolled, normalDice, hungerDice, difficulty]);
+
+  // WP Selection memo
+  const normalIdx = useMemo(() => normalDice.map((_, i) => i), [normalDice]);
+
+  // --- 3. All useEffect Hooks ---
+  useEffect(() => {
+    const checkLocation = () => {
+      setIsHidden(window.location.pathname.includes('/live-session'));
+    };
+    checkLocation();
+
+    const loadCharacter = async () => {
+      if (window.location.pathname.includes('/live-session')) return; 
+      try {
+        const { data } = await api.get(targetUrl);
+        const char = data.character || data.npc || data;
+        setCharacter(char);
+        
+        let parsed = char.sheet;
+        if (typeof parsed === 'string') {
+          try { parsed = JSON.parse(parsed); } catch {}
+        }
+        if (!parsed) parsed = {};
+        
+        setSheet(parsed);
+        if (parsed.hunger !== undefined) {
+          setHungerLevel(parsed.hunger);
+        }
+      } catch (e) {
+        // Silently fail if character fetch fails
+      }
+    };
+    loadCharacter();
+
+    const interval = setInterval(() => {
+      checkLocation();
+      loadCharacter();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [targetUrl]);
+
+  // --- 4. Early Returns ---
+  // Now that all hooks have been declared, it is perfectly safe to return early.
+  if (isHidden) return null;
+
+  // --- 5. Regular Functions ---
   const logRollToApi = async (nDice, hDice, rollNote) => {
     setIsSending(true);
     try {
@@ -95,7 +160,6 @@ export default function DiceRoller({ characterId }) {
     }
   };
 
-  // --- Actions ---
   const roll = async () => {
     const total = Math.max(0, Math.min(30, Number(poolTotal) || 0));
     const hLvl = Math.max(0, Math.min(5, Number(hungerLevel) || 0));
@@ -122,74 +186,81 @@ export default function DiceRoller({ characterId }) {
   const doWillpower = async () => {
     if (wpSelections.size === 0 || wpSelections.size > 3) return;
     
-    // 1. Reroll selected dice
+    // Correctly calculate Max WP using Composure + Resolve
+    if (sheet) {
+      const comp = Number(sheet.attributes?.Composure) || 1;
+      const reso = Number(sheet.attributes?.Resolve) || 1;
+      const max = comp + reso;
+      const used = (Number(sheet.willpower?.superficial) || 0) + (Number(sheet.willpower?.aggravated) || 0);
+      
+      if (used >= max) {
+        setWpMessage('Not enough WP!');
+        return;
+      }
+    }
+
     const rerolled = normalDice.map((v, i) => (wpSelections.has(i) ? rollD10() : v));
     
     setNormalDice(rerolled);
     setWpUsed(true);
     setWpMode(false);
     setWpSelections(new Set());
+    setWpMessage('Applying WP cost...');
 
-    // 2. Log reroll in background
     const rerollNote = note ? `${note} (WP Reroll)` : 'Willpower Reroll';
     logRollToApi(rerolled, hungerDice, rerollNote);
 
-    // 3. Apply Willpower Cost (Fetch -> Modify -> Save)
-    setWpMessage('Applying WP cost...');
-    try {
-      // Determine target URL: specific ID if provided, otherwise "me"
-      const targetUrl = characterId 
-        ? (characterId.startsWith('npc:') ? `/admin/npcs/${characterId.split(':')[1]}` : `/characters/${characterId}`)
-        : '/characters/me';
-
-      // A. Fetch current sheet
-      const { data } = await api.get(targetUrl);
-      const char = data.character || data.npc || data; // handle various API wrappers
-      
-      let sheet = char.sheet;
-      if (typeof sheet === 'string') {
-        try { sheet = JSON.parse(sheet); } catch {}
+    if (sheet && character) {
+      try {
+        const newSheet = JSON.parse(JSON.stringify(sheet));
+        if (!newSheet.willpower) newSheet.willpower = { superficial: 0, aggravated: 0 };
+        newSheet.willpower.superficial = (Number(newSheet.willpower.superficial) || 0) + 1;
+        
+        setSheet(newSheet);
+        await api.put(targetUrl, { ...character, sheet: newSheet });
+        setWpMessage('1 WP (Sup) Spent');
+      } catch (e) {
+        console.error("Failed to apply WP cost", e);
+        setWpMessage('Error syncing WP');
       }
-      if (!sheet) sheet = {};
-
-      // B. Modify Willpower (Add 1 Superficial)
-      if (!sheet.willpower) sheet.willpower = { superficial: 0, aggravated: 0 };
-      
-      const currentSup = Number(sheet.willpower.superficial) || 0;
-      sheet.willpower.superficial = currentSup + 1;
-
-      // C. Save back
-      await api.put(targetUrl, { ...char, sheet });
-      
-      setWpMessage('1 WP (Sup) Spent');
-    } catch (e) {
-      console.error("Failed to apply WP cost", e);
-      // Friendly fallback message if user has no active character
+    } else {
       setWpMessage('Manual deduction needed');
     }
   };
 
-  const doRouse = () => {
+  const doRouse = async () => {
     const val = rollD10();
     const ok = val >= 6;
     setRouseVal(val);
     setRouseSuccess(ok);
+    
     if (!ok) {
-      setHungerLevel(h => Math.min(5, Math.max(0, (Number(h) || 0) + 1)));
+      if (sheet && character) {
+        const currentBackendHunger = Number(sheet.hunger) || 0;
+        const nextHunger = Math.min(5, currentBackendHunger + 1);
+        
+        const newSheet = { ...sheet, hunger: nextHunger };
+        setSheet(newSheet);
+        setHungerLevel(nextHunger); 
+        
+        await api.put(targetUrl, { ...character, sheet: newSheet }).catch(console.error);
+      } else {
+        setHungerLevel(h => Math.min(5, Math.max(0, (Number(h) || 0) + 1)));
+      }
     }
   };
 
-  // Outcome memo
-  const outcome = useMemo(() => {
-    if (!hasRolled) return null;
-    const diff = difficulty === '' ? undefined : Number(difficulty) || 0;
-    return computeOutcome(normalDice, hungerDice, diff);
-  }, [hasRolled, normalDice, hungerDice, difficulty]);
-
-  // WP Selection Logic
-  const normalIdx = useMemo(() => normalDice.map((_, i) => i), [normalDice]);
+  // --- 6. Local Rendering Variables ---
   const canEnterWp = hasRolled && !wpUsed && normalIdx.length > 0;
   const canConfirmWp = wpSelections.size > 0 && wpSelections.size <= 3;
+  
+  // Calculate WP tracking for the button display
+  const comp = Number(sheet?.attributes?.Composure) || 1;
+  const reso = Number(sheet?.attributes?.Resolve) || 1;
+  const maxWp = comp + reso;
+  const currentWp = (Number(sheet?.willpower?.superficial) || 0) + (Number(sheet?.willpower?.aggravated) || 0);
+  const canAffordWp = !sheet || currentWp < maxWp;
+  const remainingWp = Math.max(0, maxWp - currentWp);
 
   const toggleWpSelect = (idx) => {
     if (!wpMode) return;
@@ -347,9 +418,20 @@ export default function DiceRoller({ characterId }) {
 
             {/* Willpower Section */}
             <div className={styles.wpRow}>
+               {sheet && (
+                 <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.85rem', fontWeight: 700, color: 'var(--dr-text-muted)' }}>
+                   <span style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>Willpower</span>
+                   <span style={{ color: canAffordWp ? 'var(--dr-text)' : '#ef4444' }}>{remainingWp} / {maxWp}</span>
+                 </div>
+               )}
+               
                {!wpMode && !wpUsed && (
-                  <button className={styles.wpToggle} disabled={!canEnterWp} onClick={() => setWpMode(true)}>
-                    Willpower Reroll
+                  <button 
+                    className={styles.wpToggle} 
+                    disabled={!canEnterWp || !canAffordWp} 
+                    onClick={() => setWpMode(true)}
+                  >
+                    {canAffordWp ? 'Spend 1 WP to Reroll' : 'No Willpower Remaining'}
                   </button>
                )}
                {wpMode && (

@@ -1,243 +1,689 @@
-/* LiveSession.module.css */
+/* =========================================
+   BASE & LAYOUT
+   ========================================= */
 .page {
-  min-height: 100dvh;
-  background: radial-gradient(circle at top center, #2a0b12 0%, #110b0d 50%, #050405 100%);
-  color: #f2eef0;
-  padding: clamp(0.5rem, 2vw, 1.5rem);
-  font-family: system-ui, -apple-system, sans-serif;
-  padding-bottom: 80px; /* Space for mobile bottom bar */
+  background-color: #09090b; /* Deepest almost-black */
+  color: #f4f4f5;
+  min-height: 100vh;
+  padding: 1rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+  box-sizing: border-box;
 }
 
-/* Glass Panels */
-.playerPanel, .adminPanel {
-  width: min(1200px, 100%);
+.playerPanel {
+  max-width: 768px;
   margin: 0 auto;
-  background: rgba(18, 14, 16, 0.7);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 24px;
-  padding: clamp(1rem, 3vw, 2rem);
-  box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
 }
 
-.title { font-size: 2rem; font-weight: 900; margin-bottom: 0.5rem; letter-spacing: -0.03em; }
-.subtle { color: #a89a9c; font-size: 0.95rem; margin-top: 0; }
+.title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin: 0;
+  color: #ffffff;
+}
 
-/* Status & Trackers */
+/* =========================================
+   CARDS & CONTAINERS
+   ========================================= */
+.trackerCard, 
+.resultCard, 
+.playerCard {
+  background-color: #18181b;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
 .trackerGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1rem;
-  margin: 1.5rem 0;
-}
-
-.trackerCard {
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 16px;
-  padding: 1.2rem;
 }
 
 .trackerHeader {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   font-weight: 700;
   text-transform: uppercase;
-  font-size: 0.85rem;
-  letter-spacing: 0.05em;
-  margin-bottom: 0.8rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  color: #a1a1aa;
+  margin-bottom: 1rem;
 }
 
-/* Hunger Dots */
-.hungerDots { display: flex; gap: 0.5rem; justify-content: flex-end; }
-.hungerOn, .hungerOff {
-  width: 18px; height: 18px;
-  border-radius: 50%;
-  transition: all 0.3s ease;
+.emptyState {
+  color: #71717a;
+  text-align: center;
+  padding: 2rem;
+  font-style: italic;
 }
-.hungerOn { background: #e11d48; box-shadow: 0 0 15px rgba(225, 29, 72, 0.6); }
-.hungerOff { background: rgba(255, 255, 255, 0.1); }
 
-/* Health/WP Bars */
-.barWrap { width: 100%; height: 12px; background: rgba(255,255,255,0.05); border-radius: 6px; overflow: hidden; display: flex; }
-.barSup { background: #fbbf24; height: 100%; transition: width 0.3s; }
-.barAgg { background: #9f1239; height: 100%; transition: width 0.3s; }
-.barEmpty { background: transparent; height: 100%; transition: width 0.3s; flex-grow: 1; }
-
-/* Inputs & Buttons */
+/* =========================================
+   FORMS, INPUTS & BUTTONS
+   ========================================= */
 .input {
-  width: 100%; min-height: 48px;
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255,255,255,0.1);
-  color: white; border-radius: 12px;
-  padding: 0 1rem; font-size: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.input:focus {
+  border-color: #e11d48;
+  box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.15);
+}
+
+.btnPrimary, 
+.btnGhost {
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
 }
 
 .btnPrimary {
-  background: linear-gradient(135deg, #be123c, #881337);
-  color: white; border: none; border-radius: 12px;
-  min-height: 48px; padding: 0 1.5rem;
-  font-weight: 700; font-size: 1rem; cursor: pointer;
-  box-shadow: 0 4px 15px rgba(190, 18, 60, 0.4);
-  transition: transform 0.1s, filter 0.2s;
-  width: 100%;
+  background: #e11d48;
+  color: #ffffff;
+  box-shadow: 0 2px 4px rgba(225, 29, 72, 0.3);
 }
-.btnPrimary:active { transform: scale(0.98); }
-.btnPrimary:disabled { filter: grayscale(1); opacity: 0.5; cursor: not-allowed; }
+
+.btnPrimary:hover:not(:disabled) {
+  background: #be123c;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(225, 29, 72, 0.4);
+}
+
+.btnPrimary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 
 .btnGhost {
-  background: rgba(255,255,255,0.05); color: white;
-  border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;
-  min-height: 48px; padding: 0 1rem; cursor: pointer;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #d4d4d8;
 }
 
-/* Two-Tap Roll Selectors */
-.scrollChips {
-  display: flex; gap: 0.5rem; overflow-x: auto;
-  padding-bottom: 0.5rem; margin-bottom: 1rem;
-  scroll-snap-type: x mandatory; scrollbar-width: none;
+.btnGhost:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #ffffff;
 }
-.scrollChips::-webkit-scrollbar { display: none; }
-.chip, .chipActive {
-  scroll-snap-align: start; flex-shrink: 0;
-  padding: 0.6rem 1.2rem; border-radius: 20px;
-  font-weight: 600; border: 1px solid rgba(255,255,255,0.1);
-  background: rgba(0,0,0,0.4); cursor: pointer;
-}
-.chipActive { background: rgba(225, 29, 72, 0.2); border-color: #e11d48; color: white; }
 
-/* Quick Rolls Grid */
 .quickRollGrid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.5rem;
 }
 
-/* Dice Results */
+/* =========================================
+   STATUS BARS (Health / Willpower)
+   ========================================= */
+.barWrap {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  display: flex;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.barSup {
+  background: #a1a1aa; /* Pale gray for superficial */
+  transition: width 0.3s ease;
+}
+
+.barAgg {
+  background: #e11d48; /* Crimson for aggravated */
+  transition: width 0.3s ease;
+}
+
+.barEmpty {
+  flex: 1;
+}
+
+/* =========================================
+   HUNGER DOTS
+   ========================================= */
+.hungerDots {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  padding: 0.5rem 0;
+}
+
+.hungerOn, 
+.hungerOff {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.hungerOn {
+  background: #e11d48;
+  box-shadow: 0 0 10px rgba(225, 29, 72, 0.6);
+}
+
+.hungerOff {
+  background: transparent;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+}
+
+/* =========================================
+   CUSTOM ROLL UI (Desktop & Mobile)
+   ========================================= */
+.traitsContainer {
+  display: grid;
+  grid-template-columns: 1fr 2fr; 
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.traitGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.traitLabel {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: #71717a;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.categoryWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.categoryBlock {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  padding: 0.75rem;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+  transition: border-color 0.2s ease;
+}
+
+.categoryBlock:hover {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.categoryTitle {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #e11d48; 
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+}
+
+.chipGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+/* =========================================
+   ATTRIBUTE & SKILL CHIPS
+   ========================================= */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #a1a1aa;
+  padding: 0.4rem 1rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-sizing: border-box;
+  min-height: 32px; 
+}
+
+.chip span {
+  display: inline-block;
+  line-height: 1;
+}
+
+.chip:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #e4e4e7;
+}
+
+/* Active State: Red background, white text, smooth glow */
+.chipActive {
+  background: #e11d48;
+  color: #ffffff;
+  border-color: #e11d48;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(225, 29, 72, 0.4);
+}
+
+/* Icon starts with 0 width/opacity to prevent layout jumps when inactive */
+.chipIcon {
+  height: 14px;
+  width: 0; 
+  opacity: 0;
+  margin: 0;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  object-fit: contain;
+  filter: brightness(0) invert(1); /* Forces the Ankh to be stark white */
+}
+
+/* Smoothly expands width and margin when selected */
+.chipActive .chipIcon {
+  width: 14px;
+  opacity: 1;
+}
+
+.chipActive .chipIcon:first-child {
+  margin-right: 6px;
+}
+
+.chipActive .chipIcon:last-child {
+  margin-left: 6px;
+}
+
+.rollActionRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 1rem;
+}
+
+/* =========================================
+   DICE TRAY & RESULTS
+   ========================================= */
 .resultCard {
-  margin-top: 1.5rem; padding: 1.5rem;
-  background: rgba(0,0,0,0.6); border: 1px solid #e11d48;
-  border-radius: 16px; text-align: center;
-  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  text-align: center;
+  border-top: 4px solid #e11d48;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
-@keyframes popIn { 0% { transform: scale(0.95); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 
-.diceRow { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; margin: 1rem 0; }
-.die, .dieSelected, .hungerDie {
-  width: 48px; height: 48px; border-radius: 12px;
-  display: flex; align-items: center; justify-content: center;
-  font-weight: 900; font-size: 1.2rem; cursor: pointer;
-  box-shadow: inset 0 2px 4px rgba(255,255,255,0.1), 0 4px 8px rgba(0,0,0,0.5);
-}
-.die { background: #2a2a35; border: 1px solid #3f3f4e; }
-.dieSelected { background: #fbbf24; color: #111; border: 1px solid #f59e0b; transform: translateY(-3px); }
-.hungerDie { background: #9f1239; color: #fff; border: 1px solid #e11d48; cursor: default; }
-
-/* Admin Grid */
-.adminPlayerGrid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem;
-}
-.adminPlayerCard {
-  background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.05);
-  border-radius: 16px; padding: 1rem;
-}
-.adminControls { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
-.miniBtnRow { display: flex; gap: 0.25rem; margin-top: 0.5rem; }
-.miniBtnRow button { flex: 1; padding: 0.4rem; border-radius: 6px; font-size: 0.8rem; background: rgba(255,255,255,0.1); border: none; color: white; cursor: pointer; }
-
-/* Outcome Art */
 .outcomeImage {
-  width: 140px; 
-  height: auto; 
-  margin: 0 auto 1rem; 
-  display: block;
-  filter: drop-shadow(0 10px 20px rgba(0,0,0,0.5));
-  animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  height: 64px;
+  margin-bottom: 0.5rem;
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
 }
 
-/* Dice Box Grid */
-.diceRow { 
-  display: flex; 
-  flex-wrap: wrap; 
-  gap: 0.8rem; 
-  justify-content: center; 
-  margin: 1.5rem 0; 
-}
-.diceCol { 
-  display: flex; 
-  flex-direction: column; 
-  align-items: center; 
-  gap: 0.4rem; 
+.subtle {
+  color: #71717a;
+  font-size: 0.85rem;
+  margin-top: 0;
 }
 
-/* The Boxes */
+.diceRow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.25rem;
+  margin: 1.5rem 0;
+}
+
+.diceCol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .boxDie {
-  width: 44px; 
-  height: 44px; 
-  border-radius: 8px; 
-  border: 2px solid #f2eef0;
-  cursor: pointer; 
-  transition: all 0.2s ease;
-  padding: 0;
-}
-.boxFilled { background: #f2eef0; }
-.boxEmpty { background: rgba(0,0,0,0.3); }
-
-/* Hunger Boxes */
-.boxHunger { border-color: #e11d48; cursor: default; }
-.boxHungerFilled { background: #e11d48; }
-
-/* Selection state for Willpower rerolls */
-.boxSelected { 
-  border-color: #fbbf24; 
-  box-shadow: 0 0 15px rgba(251, 191, 36, 0.5); 
-  transform: translateY(-4px); 
-}
-
-/* Small numbers underneath */
-.diceNumber { 
-  font-size: 0.9rem; 
-  font-weight: 800; 
-  color: #a89a9c; 
-}
-
-/* The Boxes */
-.boxDie {
-  width: 44px; 
-  height: 44px; 
-  border-radius: 8px; 
-  border: 2px solid #f2eef0;
-  cursor: pointer; 
-  transition: all 0.2s ease;
-  padding: 4px; /* Gives the image breathing room */
+  width: 54px;
+  height: 54px;
+  border-radius: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.15);
   display: flex;
   align-items: center;
   justify-content: center;
-}
-.boxFilled { background: #f2eef0; }
-.boxEmpty { background: rgba(0,0,0,0.3); }
-
-/* Hunger Boxes */
-.boxHunger { border-color: #e11d48; cursor: default; }
-.boxHungerFilled { background: #e11d48; }
-
-/* Selection state for Willpower rerolls */
-.boxSelected { 
-  border-color: #fbbf24; 
-  box-shadow: 0 0 15px rgba(251, 191, 36, 0.5); 
-  transform: translateY(-4px); 
+  background: rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 0;
 }
 
-/* Internal Image Styling */
+.boxFilled {
+  background: #e4e4e7;
+  border-color: #e4e4e7;
+}
+
+.boxEmpty {
+}
+
+.boxHunger {
+  border-color: #e11d48;
+}
+
+.boxHungerFilled {
+  background: #e11d48;
+  border-color: #e11d48;
+}
+
+.boxSelected {
+  border-color: #fbbf24;
+  box-shadow: 0 0 16px rgba(251, 191, 36, 0.4);
+  transform: translateY(-6px);
+}
+
 .dieImage {
-  width: 100%;
-  height: 100%;
+  width: 32px;
+  height: 32px;
   object-fit: contain;
-  pointer-events: none; /* Prevents dragging issues */
 }
 
-/* Small numbers underneath */
-.diceNumber { 
-  font-size: 0.9rem; 
-  font-weight: 800; 
-  color: #a89a9c; 
+.diceNumber {
+  font-size: 0.8rem;
+  color: #a1a1aa;
+  font-weight: 700;
+  font-family: monospace;
+}
+
+/* =========================================
+   PLAYER LIST & GM TOOLS
+   ========================================= */
+.playerGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.25rem;
+}
+
+.playerHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.25rem;
+}
+
+.playerHead h4 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #ffffff;
+}
+
+.playerHead p {
+  margin: 0.25rem 0 0 0;
+  font-size: 0.85rem;
+  color: #a1a1aa;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.npcTag {
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid #fbbf24;
+  color: #fbbf24;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+  text-transform: uppercase;
+}
+
+.trackWrap {
+  margin-bottom: 0.75rem;
+}
+
+.trackLabel {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: #a1a1aa;
+  margin-bottom: 0.3rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.trackLabel strong {
+  color: #ffffff;
+}
+
+.trackBar {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.trackBar span {
+  display: block;
+  height: 100%;
+  background: #e4e4e7;
+  transition: width 0.3s ease;
+}
+
+.quickBtns {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.quickBtns button {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #d4d4d8;
+  padding: 0.5rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.quickBtns button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.quickBtns button:first-child {
+  grid-column: span 3;
+  background: rgba(225, 29, 72, 0.1);
+  border-color: rgba(225, 29, 72, 0.3);
+  color: #e11d48;
+}
+
+.quickBtns button:first-child:hover {
+  background: #e11d48;
+  color: #ffffff;
+}
+
+/* =========================================
+   ROLL HISTORY
+   ========================================= */
+.rollHistoryList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.rollEntry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: background 0.2s ease;
+}
+
+.rollEntry:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.rollEntry strong {
+  display: block;
+  font-size: 1rem;
+  color: #ffffff;
+  margin-bottom: 0.25rem;
+}
+
+.rollEntry p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #71717a;
+  text-transform: capitalize;
+}
+
+.rollMeta {
+  text-align: right;
+}
+
+.rollMeta span {
+  display: block;
+  font-weight: 700;
+  color: #e11d48;
+  margin-bottom: 0.25rem;
+  font-size: 0.95rem;
+}
+
+.rollMeta small {
+  color: #52525b;
+  font-size: 0.75rem;
+}
+
+/* =========================================
+   MOBILE RESPONSIVENESS
+   ========================================= */
+@media (max-width: 768px) {
+  .traitsContainer {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  
+  /* Creates a horizontal scrollable line of category blocks */
+  .categoryWrapper {
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 1rem;
+    padding-bottom: 0.5rem;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .categoryWrapper::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Cards shrink to 85% width so the user sees the next one peeking */
+  .categoryBlock {
+    min-width: 85%;
+    margin-bottom: 0;
+    scroll-snap-align: start;
+    flex-shrink: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .page {
+    padding: 0.5rem;
+  }
+  
+  .trackerCard, 
+  .resultCard, 
+  .playerCard {
+    padding: 1rem;
+  }
+
+  .quickRollGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .diceRow {
+    gap: 0.75rem;
+  }
+  
+  .boxDie {
+    width: 46px;
+    height: 46px;
+  }
+}
+
+/* =========================================
+   ADMIN (ST) LIVE DASHBOARD
+   ========================================= */
+.adminPanel {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.adminControls {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.adminPlayerGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 1rem;
+}
+
+.adminPlayerCard {
+  background-color: #18181b;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: border-color 0.3s ease;
+}
+
+.miniBtnRow {
+  display: grid;
+  gap: 4px;
+}
+
+.miniBtnRow button {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #d4d4d8;
+  padding: 0.3rem 0;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+}
+
+.miniBtnRow button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.3);
 }
