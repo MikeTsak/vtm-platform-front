@@ -58,6 +58,10 @@ function MalkavianOrAdminOnly({ children }) {
   const location = useLocation();
 
   useEffect(() => {
+    // Read the pathname inside the effect body if you ever need to use it
+    // otherwise, it no longer needs to be in the dependency array.
+    const currentPath = location.pathname; 
+
     setIsLoading(true);
     setIsAuthorized(false);
     if (!user) { setIsLoading(false); return; }
@@ -77,8 +81,9 @@ function MalkavianOrAdminOnly({ children }) {
       })
       .catch(() => { /* deny by default */ })
       .finally(() => live && setIsLoading(false));
+      
     return () => { live = false; };
-  }, [user, location.pathname]);
+  }, [user]); // 👈 REMOVED location.pathname FROM HERE
 
   if (isLoading) {
     return <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--muted)' }}>Checking access...</div>;

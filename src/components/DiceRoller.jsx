@@ -1,5 +1,6 @@
 // src/components/DiceRoller.jsx
 import React, { useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import api from '../api'; 
 import styles from '../styles/DiceRoller.module.css';
 
@@ -55,7 +56,9 @@ function computeOutcome(normal, hunger, difficulty) {
 export default function DiceRoller({ characterId }) {
   // --- 1. All useState Hooks ---
   const [open, setOpen] = useState(false);
-  const [isHidden, setIsHidden] = useState(false);
+
+  const location = useLocation();
+  const isHidden = location.pathname.includes('/live-session');
 
   // Integration States
   const [character, setCharacter] = useState(null);
@@ -102,13 +105,8 @@ export default function DiceRoller({ characterId }) {
 
   // --- 3. All useEffect Hooks ---
   useEffect(() => {
-    const checkLocation = () => {
-      setIsHidden(window.location.pathname.includes('/live-session'));
-    };
-    checkLocation();
-
     const loadCharacter = async () => {
-      if (window.location.pathname.includes('/live-session')) return; 
+      if (location.pathname.includes('/live-session')) return; 
       try {
         const { data } = await api.get(targetUrl);
         const char = data.character || data.npc || data;
@@ -128,18 +126,17 @@ export default function DiceRoller({ characterId }) {
         // Silently fail if character fetch fails
       }
     };
+    
     loadCharacter();
 
     const interval = setInterval(() => {
-      checkLocation();
       loadCharacter();
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [targetUrl]);
+  }, [targetUrl, location.pathname]);
 
   // --- 4. Early Returns ---
-  // Now that all hooks have been declared, it is perfectly safe to return early.
   if (isHidden) return null;
 
   // --- 5. Regular Functions ---

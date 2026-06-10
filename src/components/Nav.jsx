@@ -38,7 +38,7 @@ export default function Nav() {
   
   useEffect(() => { 
     closeMenu(); 
-  }, [location.pathname]);
+  }, [location]);
 
   useEffect(() => {
     if (isMenuOpen) document.documentElement.style.overflow = 'hidden';
