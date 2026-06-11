@@ -209,6 +209,7 @@ function PlayerPremonitions() {
 
 // === Individual Item with Lazy Loading ===
 function PremonitionItem({ item, index, fetchMediaBlob }) {
+  const [prevContentUrl, setPrevContentUrl] = useState(item.content_url);
   const [src, setSrc] = useState(null);
   const [status, setStatus] = useState("idle"); // idle | loading | loaded | error
   const cardRef = useRef(null);
@@ -221,6 +222,18 @@ function PremonitionItem({ item, index, fetchMediaBlob }) {
   const kind = item.content_type;
   const isMedia = (kind === "image" || kind === "video") && item.content_url;
   const isDbMedia = isMedia && isDbMediaUrl(item.content_url);
+
+  // ✅ Inline prop comparison to adjust state immediately during render
+  if (item.content_url !== prevContentUrl) {
+    setPrevContentUrl(item.content_url);
+    if (isMedia && !isDbMedia) {
+      setSrc(qualifyUrl(item.content_url));
+      setStatus("loaded");
+    } else {
+      setSrc(null);
+      setStatus("idle");
+    }
+  }
 
   // Trigger load logic
   const loadMedia = useCallback(async () => {
@@ -255,13 +268,8 @@ function PremonitionItem({ item, index, fetchMediaBlob }) {
     return () => observer.disconnect();
   }, [kind, isDbMedia, status, loadMedia]);
 
-  // Handle external links (non-DB)
-  useEffect(() => {
-    if (isMedia && !isDbMedia) {
-      setSrc(qualifyUrl(item.content_url));
-      setStatus("loaded");
-    }
-  }, [isMedia, isDbMedia, item.content_url]);
+  // ✅ The old useEffect for external links has been completely removed 
+  // because the inline check above handles it synchronously!
 
   return (
     <article 

@@ -114,6 +114,7 @@ function normalizeDotsInput(v) {
 // ---------- Component ----------
 export default function CharacterEditor({ character, onClose, onSaved }) {
   // Parse original structured sheet
+// Parse original structured sheet
   const originalSheet = useMemo(() => {
     try {
       if (!character?.sheet) return {};
@@ -122,22 +123,33 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
     } catch { return {}; }
   }, [character]);
 
-  // Local editable sheet
-  const [sheet, setSheet] = useState(() => deepClone(originalSheet));
-  const [jsonText, setJsonText] =useState(() => JSON.stringify(originalSheet ?? {}, null, 2));
-  const [jsonValid, setJsonValid] = useState(true);
+  const [jsonText, setJsonText] = useState(() => JSON.stringify(originalSheet ?? {}, null, 2));
+
+  // Derive sheet and jsonValid directly during render to avoid useEffect state sync
+  const { sheet, jsonValid } = useMemo(() => {
+    try {
+      const parsed = normalizeSheet(JSON.parse(jsonText));
+      return { sheet: parsed, jsonValid: true };
+    } catch {
+      return { sheet: {}, jsonValid: false };
+    }
+  }, [jsonText]);
+
+  const setSheet = () => {
+    // No-op for direct state setting since sheet is derived, 
+    // use writeSheet below for updates.
+  };
 
   // Character top-level meta (editable too)
   const [charName, setCharName] = useState(character?.name || '');
   const [charClan, setCharClan] = useState(character?.clan || '');
 
-// Discipline kind for XP math (per discipline)
+  // Discipline kind for XP math (per discipline)
   const initialKinds = useMemo(() => {
     const m = {};
     const myClan = character?.clan || '';
     
     Object.keys(originalSheet?.disciplines || {}).forEach(k => { 
-      // Auto-detect if this discipline belongs to the character's clan!
       const discInfo = DiscDataNS.DISCIPLINES?.[k];
       if (myClan === 'Caitiff') {
         m[k] = 'caitiff';
@@ -164,18 +176,7 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
   const clanColor = CLAN_COLORS[character.clan] || 'var(--text-secondary)';
   const clanLogoUrl = symlogo(character.clan);
 
-  // Keep JSON and structured in sync
-  useEffect(() => {
-    try {
-      const parsed = normalizeSheet(JSON.parse(jsonText));
-      setSheet(parsed);
-      setJsonValid(true);
-      setErr('');
-    } catch {
-      setJsonValid(false);
-    }
-  }, [jsonText]);
-
+  // No more JSON-sync useEffect required!
   // Normalize incoming weird shapes once on mount
   useEffect(() => {
     const normalized = normalizeSheet(sheet);

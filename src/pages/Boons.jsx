@@ -411,6 +411,7 @@ export default function Boons() {
    BOON FORM
 ══════════════════════════════════════════════ */
 function BoonForm({ entities, boon, onSave, onCancel }) {
+  const [prevBoon, setPrevBoon] = useState(boon);
   const [formData, setFormData] = useState({
     from_key: 'npc', from_id: '', from_name: '',
     to_key:   'npc', to_id:   '', to_name: '',
@@ -432,7 +433,9 @@ function BoonForm({ entities, boon, onSave, onCancel }) {
     return byName ? `${byName.type}-${byName.id}` : 'npc';
   };
 
-  useEffect(() => {
+  // ✅ Inline prop comparison replaces useEffect to prevent double-rendering stale UI
+  if (boon !== prevBoon) {
+    setPrevBoon(boon);
     if (boon) {
       setFormData({
         from_key: deriveKey(boon.from_id, boon.from_name), from_id: boon.from_id || '', from_name: boon.from_name || '',
@@ -442,7 +445,7 @@ function BoonForm({ entities, boon, onSave, onCancel }) {
     } else {
       setFormData({ from_key: 'npc', from_id: '', from_name: '', to_key: 'npc', to_id: '', to_name: '', level: 'trivial', status: 'owed', description: '' });
     }
-  }, [boon, entities]);
+  }
 
   const handleEntityChange = (e, prefix) => {
     const val = e.target.value;

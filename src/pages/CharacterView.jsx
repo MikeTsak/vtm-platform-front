@@ -652,6 +652,10 @@ export default function CharacterView({
   const [pendingFixes, setPendingFixes] = useState([]);
   const [xpTotals, setXpTotals] = useState(null);
   const shopRef = useRef(null);
+  const [inventory, setInventory] = useState([]);
+  const [invModalOpen, setInvModalOpen] = useState(false);
+  const [editingInvItem, setEditingInvItem] = useState(null);
+  const [savingInv, setSavingInv] = useState(false);
 
   const [tempHealth, setTempHealth] = useState({ superficial: 0, aggravated: 0 });
   const [tempWillpower, setTempWillpower] = useState({ superficial: 0, aggravated: 0 });
@@ -661,6 +665,86 @@ export default function CharacterView({
   const [saveStatus, setSaveStatus] = useState('');
   const saveTimeoutRef = useRef(null);
   const isInitialTrackerLoad = useRef(true);
+
+  async function handleSaveInvItem(itemData) {
+    setSavingInv(true);
+    try {
+      if (editingInvItem?.id) {
+        await api.put(`/admin/inventory/${editingInvItem.id}`, itemData);
+      } else {
+        await api.post(`/admin/characters/${ch.id}/inventory`, itemData);
+      }
+      const r = await api.get(`/characters/${ch.id}/inventory`);
+      setInventory(r.data.items || []);
+      setInvModalOpen(false);
+      setEditingInvItem(null);
+    } catch (e) {
+      setErr('Failed to save item.');
+    } finally {
+      setSavingInv(false);
+    }
+  }
+
+  async function handleDeleteInvItem(itemId) {
+    if (!window.confirm("Are you sure you want to delete this item?")) return;
+    try {
+      await api.delete(`/inventory/${itemId}`);
+      setInventory(prev => prev.filter(i => i.id !== itemId));
+    } catch (e) {
+      setErr('Failed to delete item.');
+    }
+  }
+
+  /* ===========================
+   Inventory Edit Modal
+   =========================== */
+function InventoryItemModal({ item, onClose, onSave, busy }) {
+  const [name, setName] = useState(item?.name || '');
+  const [itemType, setItemType] = useState(item?.item_type || 'Mundane');
+  const [description, setDescription] = useState(item?.description || '');
+  const [mechanicNotes, setMechanicNotes] = useState(item?.mechanic_notes || '');
+  const [quantity, setQuantity] = useState(item?.quantity || 1);
+
+  return (
+    <div className={styles.modalOverlay} role="dialog">
+      <div className={`${styles.card} ${styles.modalCard}`} style={{ width: 'min(92vw, 500px)' }}>
+        <div className={styles.modalHeader}>
+          <h3 className={styles.modalTitle}>{item ? 'Edit Item' : 'Add Item'}</h3>
+        </div>
+        <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div>
+            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: 4 }}>Name</label>
+            <input className={styles.input} style={{ width: '100%', boxSizing: 'border-box' }} value={name} onChange={e => setName(e.target.value)} />
+          </div>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: 4 }}>Type</label>
+              <select className={styles.input} style={{ width: '100%', boxSizing: 'border-box' }} value={itemType} onChange={e => setItemType(e.target.value)}>
+                {['Relic', 'Artifact', 'Blood Magic', 'Weapon', 'Armor', 'Mundane'].map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div style={{ width: '100px' }}>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: 4 }}>Qty</label>
+              <input type="number" className={styles.input} style={{ width: '100%', boxSizing: 'border-box' }} value={quantity} onChange={e => setQuantity(Number(e.target.value))} min={1} />
+            </div>
+          </div>
+          <div>
+            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: 4 }}>Description</label>
+            <textarea className={styles.input} style={{ width: '100%', boxSizing: 'border-box' }} value={description} onChange={e => setDescription(e.target.value)} rows={3}></textarea>
+          </div>
+          <div>
+            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: 4 }}>System / Mechanics</label>
+            <textarea className={styles.input} style={{ width: '100%', boxSizing: 'border-box' }} value={mechanicNotes} onChange={e => setMechanicNotes(e.target.value)} rows={3}></textarea>
+          </div>
+        </div>
+        <div className={styles.modalFooter} style={{ padding: '16px 20px' }}>
+          <button className={styles.ghostBtn} onClick={onClose} disabled={busy}>Cancel</button>
+          <button className={styles.cta} onClick={() => onSave({ name, item_type: itemType, description, mechanic_notes: mechanicNotes, quantity })} disabled={busy || !name}>Save Item</button>
+        </div>
+      </div>
+    </div>
+  );
+}
   
   useEffect(() => {
     let mounted = true;
@@ -697,11 +781,50 @@ export default function CharacterView({
       .catch(() => {});
   }, [paths.totals, ch]);
 
+  // INVENTORY FETCH
+  useEffect(() => {
+    if (!ch?.id) return;
+    let mounted = true;
+    api.get(`/characters/${ch.id}/inventory`)
+      .then(r => {
+        if (mounted) setInventory(r.data.items || []);
+      })
+      .catch(err => console.error("Could not load inventory", err));
+      
+    return () => { mounted = false; };
+  }, [ch?.id]);
+
+  const prevHealthRef = useRef(tempHealth);
+  const prevWillpowerRef = useRef(tempWillpower);
+  const prevHungerRef = useRef(tempHunger);
+  const prevHumanityRef = useRef(tempHumanity);
+  const prevStainsRef = useRef(tempStains);
+
+  // Perform inline previous-value check during render
+  if (
+    tempHealth.superficial !== prevHealthRef.current.superficial ||
+    tempHealth.aggravated !== prevHealthRef.current.aggravated ||
+    tempWillpower.superficial !== prevWillpowerRef.current.superficial ||
+    tempWillpower.aggravated !== prevWillpowerRef.current.aggravated ||
+    tempHunger !== prevHungerRef.current ||
+    tempHumanity !== prevHumanityRef.current ||
+    tempStains !== prevStainsRef.current
+  ) {
+    prevHealthRef.current = tempHealth;
+    prevWillpowerRef.current = tempWillpower;
+    prevHungerRef.current = tempHunger;
+    prevHumanityRef.current = tempHumanity;
+    prevStainsRef.current = tempStains;
+
+    if (!isInitialTrackerLoad.current && isAdmin) {
+      setSaveStatus('Saving trackers...');
+    }
+  }
+
   useEffect(() => {
     if (isInitialTrackerLoad.current || !ch || !isAdmin) return;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     
-    setSaveStatus('Saving trackers...');
     saveTimeoutRef.current = setTimeout(() => {
       const nextSheet = JSON.parse(JSON.stringify(ch.sheet || {}));
       nextSheet.health = tempHealth;
@@ -1266,6 +1389,87 @@ const knownPowerNamesAndIds = useMemo(() => {
             </div>
           </Card>
 
+{/* ----- INVENTORY DISPLAY ----- */}
+          <Card>
+            <div className={styles.cardHead} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <b>Relics, Artifacts & Inventory</b>
+              {isAdmin && (
+                <button 
+                  className={styles.ghostBtn} 
+                  onClick={() => { setEditingInvItem(null); setInvModalOpen(true); }} 
+                  style={{ fontSize: '0.8rem', padding: '2px 8px' }}
+                >
+                  + Add Item
+                </button>
+              )}
+            </div>
+            
+            {inventory.length === 0 ? (
+              <div className={styles.muted} style={{ padding: '10px 0' }}>No items in inventory.</div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginTop: '12px' }}>
+                {inventory.map(item => (
+                  <div key={item.id} style={{ 
+                    border: '1px solid var(--border-color)', 
+                    padding: '14px', 
+                    borderRadius: '8px', 
+                    background: 'rgba(255,255,255,0.02)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                    position: 'relative'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <span style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--text-color)', paddingRight: '60px' }}>
+                        {item.name} {item.quantity > 1 ? <span style={{ opacity: 0.6, fontSize: '0.9rem' }}>x{item.quantity}</span> : ''}
+                      </span>
+                      <span style={{ 
+                        fontSize: '0.75rem', 
+                        padding: '2px 8px', 
+                        background: 'rgba(255,255,255,0.08)', 
+                        borderRadius: '12px',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px'
+                      }}>
+                        {item.item_type}
+                      </span>
+                    </div>
+                    
+                    {item.description && (
+                      <div style={{ fontSize: '0.9rem', opacity: 0.85, lineHeight: '1.4' }}>
+                        {item.description}
+                      </div>
+                    )}
+                    
+                    {item.mechanic_notes && (
+                      <div style={{ 
+                        marginTop: 'auto',
+                        fontSize: '0.85rem', 
+                        color: '#d4af37', 
+                        background: 'rgba(212, 175, 55, 0.05)', 
+                        padding: '8px 10px', 
+                        borderRadius: '4px', 
+                        borderLeft: '2px solid #d4af37' 
+                      }}>
+                        <b style={{ display: 'block', marginBottom: '2px' }}>System:</b>
+                        {item.mechanic_notes}
+                      </div>
+                    )}
+
+                    {isAdmin && (
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '8px' }}>
+                        <button className={styles.ghostBtn} style={{ flex: 1, fontSize: '0.8rem', padding: '4px' }} onClick={() => { setEditingInvItem(item); setInvModalOpen(true); }}>Edit</button>
+                        <button className={styles.ghostBtn} style={{ flex: 1, fontSize: '0.8rem', padding: '4px', color: '#b40f1f' }} onClick={() => handleDeleteInvItem(item.id)}>Delete</button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+          {/* ----- END INVENTORY DISPLAY ----- */}
+          {/* ----- END INVENTORY DISPLAY ----- */}
+
           <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
             <button 
               className={styles.cta} 
@@ -1800,6 +2004,15 @@ const knownPowerNamesAndIds = useMemo(() => {
           onClose={() => setProfileModalOpen(false)}
           onSave={saveProfileData}
           busy={savingProfile}
+        />
+      )}
+
+      {invModalOpen && (
+        <InventoryItemModal
+          item={editingInvItem}
+          onClose={() => { setInvModalOpen(false); setEditingInvItem(null); }}
+          onSave={handleSaveInvItem}
+          busy={savingInv}
         />
       )}
     </div>

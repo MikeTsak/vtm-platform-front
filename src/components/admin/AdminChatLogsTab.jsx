@@ -50,15 +50,22 @@ const Highlight = ({ text, query }) => {
 
 /* --- CHAT IMAGE COMPONENT --- */
 const ChatImage = ({ attachmentId }) => {
+  const [prevId, setPrevId] = useState(attachmentId);
   const [imageUrl, setImageUrl] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
+  // Adjust state inline during render if the prop changes
+  if (attachmentId !== prevId) {
+    setPrevId(attachmentId);
+    setImageUrl(null);
+    setLoading(true);
+    setError(false);
+  }
+
   useEffect(() => {
     let active = true;
     let urlToRevoke = null;
-
-    setLoading(true); setError(false); setImageUrl(null);
     
     api.get(`/chat/media/${attachmentId}`, { responseType: 'blob' })
       .then((response) => {

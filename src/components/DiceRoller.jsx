@@ -134,7 +134,7 @@ export default function DiceRoller({ characterId }) {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [targetUrl, location.pathname]);
+  }, [targetUrl, location]);
 
   // --- 4. Early Returns ---
   if (isHidden) return null;
