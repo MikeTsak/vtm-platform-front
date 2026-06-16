@@ -1,8 +1,7 @@
 // src/pages/Home.jsx
-import React, { useEffect, useState, useRef, useContext } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import api from '../api';
 import { Link, useNavigate } from 'react-router-dom';
-import { AuthCtx } from '../AuthContext';
 import styles from '../styles/Home.module.css';
 import Loading from '../components/Loading';
 
@@ -22,14 +21,6 @@ const CLAN_COLORS = {
   Caitiff: '#636363',
   'Thin-blood': '#6e6e2b',
 };
-
-const THEMES = [
-  { id: 'clan',        label: 'Clan Theme',       sub: 'Bloodline',   hex: 'var(--tint)' },
-  { id: 'camarilla',   label: 'Camarilla Crimson',hex: '#8a0f1a'       },
-  { id: 'schrecknet',  label: 'SchreckNet Blue',  hex: '#0ea5e9'       },
-  { id: 'anarch',      label: 'Anarch Gold',      hex: '#ea580c'       },
-  { id: 'Giannakis',      label: 'Giannakis',      hex: '#0d9488'       },
-];
 
 const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim' };
 const fileify = (c) => (NAME_OVERRIDES[c] || c).replace(/\s+/g, '_');
@@ -52,7 +43,7 @@ function niceDate(d) {
   if (!d) return '—';
   const dt = new Date(d);
   if (isNaN(dt.getTime())) return '—';
-  try { return dt.toLocaleDateString('en-GB', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }); } 
+  try { return dt.toLocaleDateString('en-GB', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }); }
   catch { return dt.toDateString(); }
 }
 
@@ -63,11 +54,11 @@ function useCountdown(targetDate) {
     const int = setInterval(() => setNow(new Date().getTime()), 1000);
     return () => clearInterval(int);
   }, []);
-  
+
   if (!targetDate) return { isPast: true, days: 0, hours: 0, mins: 0 };
   const diff = new Date(targetDate).getTime() - now;
   if (diff <= 0) return { isPast: true, days: 0, hours: 0, mins: 0 };
-  
+
   return {
     isPast: false,
     days: Math.floor(diff / (1000 * 60 * 60 * 24)),
@@ -97,7 +88,8 @@ function makeShardPoly(cell) {
 const NAV_CARDS = [
   { to: '/character', icon: '🩸', title: 'Character',    sub: 'Sheet & XP'        },
   { to: '/downtimes', icon: '🌑', title: 'Downtimes',   sub: 'Monthly Actions'    },
-  { to: '/comms',     icon: '📜', title: 'Comms',        sub: 'Letters & Whispers'},
+  { to: '/schrecknet', icon: '📜', title: 'SchreckNet',   sub: 'Everything here is safe.'},
+  { to: '/surfaceweb', icon: '🌐', title: 'Surface Web',  sub: 'Be careful, you are not safe.'},
   { to: '/domains',   icon: '🏛️', title: 'Domains',      sub: 'Territory Map'     },
   { to: '/boons',     icon: '⚖️', title: 'Boons',        sub: 'Blood Registry'    },
   { to: '/court/coteries', icon: '🥀', title: 'Coteries', sub: 'Manage Group'     },
@@ -122,7 +114,7 @@ function MiniVtmBar({ label, sup, agg, max }) {
           const isAgg = i < aggCount;
           const isSup = !isAgg && i < aggCount + supCount;
           return (
-            <div key={i} style={{ 
+            <div key={i} style={{
               flex: 1, height: '10px', borderRadius: '2px',
               background: isAgg ? 'var(--tint)' : isSup ? 'var(--text-muted)' : 'rgba(255,255,255,0.05)',
               border: '1px solid var(--border-color)'
@@ -135,7 +127,6 @@ function MiniVtmBar({ label, sup, agg, max }) {
 }
 
 export default function Home() {
-  const { user: currentUser } = useContext(AuthCtx);
   const [me, setMe] = useState(null);
   const [ch, setCh] = useState(null);
   const [quota, setQuota] = useState({ used: 0, limit: 3 });
@@ -145,7 +136,7 @@ export default function Home() {
   const [recentChats, setRecentChats] = useState([]);
   const [recentNews, setRecentNews] = useState([]);
   const [fetchError, setFetchError] = useState(null);
-  
+
   // ✅ DEFAULT SET TO CLAN-THEME WITH DARK ENGINE
   const [activeTheme, setActiveTheme] = useState(() => localStorage.getItem('vtm_theme') || 'clan');
   const [isShattering, setIsShattering] = useState(false);
@@ -163,7 +154,7 @@ export default function Home() {
       setActiveTheme(me.theme);
       localStorage.setItem('theme_synced', 'true'); // Prevent infinite loop override
     }
-  }, [me]);
+  }, [me, activeTheme]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', activeTheme);
@@ -175,15 +166,15 @@ export default function Home() {
     } else {
       document.documentElement.style.removeProperty('--tint');
     }
-  }, [activeTheme, ch]);
+  }, [activeTheme, ch]); // Fixed: added activeTheme to dependencies
 
   // Handler for Theme Clicks
   const handleThemeChange = async (themeId) => {
     setActiveTheme(themeId);
     try {
       await api.put('/auth/theme', { theme: themeId });
-    } catch (e) {
-      console.error('Failed to sync theme with server', e);
+    } catch (error) {
+      console.error('Failed to sync theme with server', error);
     }
   };
 
@@ -265,14 +256,12 @@ export default function Home() {
           if (newsR.status === 'fulfilled') setRecentNews(newsR.value.data?.news || []);
           if (cfgR.status  === 'fulfilled') setOpeningDate(cfgR.value.data?.downtime_opening || null);
         }
-      } catch (err) {
-        console.error(err);
+      } catch (error) {
         if (live) setFetchError('Failed to load portal data.');
       } finally {
         if (live) setLoading(false);
       }
     })();
-    return () => { live = false; };
   }, [nav]);
 
   if (loading) return <Loading />;
@@ -298,13 +287,15 @@ export default function Home() {
   const isMalkavian = clan.toLowerCase() === 'malkavian';
   const showCobweb  = isMalkavian || me.role === 'admin';
   const quotaPct    = Math.min((quota.used / quota.limit) * 100, 100);
-  
+
   const dynamicClanTint = CLAN_COLORS[clan] || '#8a0f1a';
 
   let sheetObj = {};
   try {
     sheetObj = typeof ch.sheet === 'string' ? JSON.parse(ch.sheet) : (ch.sheet || {});
-  } catch(e) {}
+  } catch (_) {
+    // ignore parse error
+  }
 
   // Construct Themes Array dynamically to insert Character's Clan
   const availableThemes = [
@@ -334,9 +325,9 @@ export default function Home() {
         </div>
       )}
 
-      {/* ══════════════════════════════════════════
+      {/* ════════════════════════════════════════════
           1. IDENTITY HEADER
-      ══════════════════════════════════════════ */}
+      ════════════════════════════════════════════ */}
       <header className={styles.identityHeader} style={{ '--dynamic-tint': dynamicClanTint }}>
         <span className={`${styles.corner} ${styles.cornerTL}`} />
         <span className={`${styles.corner} ${styles.cornerTR}`} />
@@ -389,9 +380,9 @@ export default function Home() {
 
       {fetchError && <div className={styles.errorBanner}>{fetchError}</div>}
 
-      {/* ══════════════════════════════════════════
+      {/* ════════════════════════════════════════════
           CHRONICLE EVENT COUNTDOWN & TRACKERS
-      ══════════════════════════════════════════ */}
+      ══════════════════�═════════════════════════ */}
       <div className={`${styles.pageSection} ${styles.dashboardGrid}`} style={{ gridTemplateColumns: '1fr 1fr' }}>
         <section className={styles.feedCard} style={{ textAlign: 'center', justifyContent: 'center' }}>
           <h3 style={{ margin: 0, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>Next Modern Event</h3>
@@ -408,31 +399,31 @@ export default function Home() {
             <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '12px' }}>Event is underway or concluded.</div>
           )}
         </section>
-        
+
         <section className={styles.feedCard} style={{ justifyContent: 'center', gap: '10px' }}>
           <h3 style={{ margin: 0, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', textAlign: 'center' }}>Status Summaries</h3>
-          <MiniVtmBar 
-            label="Health" 
-            max={sheetObj.health?.max || 5} 
-            sup={sheetObj.health?.superficial || 0} 
-            agg={sheetObj.health?.aggravated || 0} 
+          <MiniVtmBar
+            label="Health"
+            max={sheetObj.health?.max || 5}
+            sup={sheetObj.health?.superficial || 0}
+            agg={sheetObj.health?.aggravated || 0}
           />
-          <MiniVtmBar 
-            label="Willpower" 
-            max={Number(sheetObj.attributes?.Composure) + Number(sheetObj.attributes?.Resolve) || 5} 
-            sup={sheetObj.willpower?.superficial || 0} 
-            agg={sheetObj.willpower?.aggravated || 0} 
+          <MiniVtmBar
+            label="Willpower"
+            max={Number(sheetObj.attributes?.Composure) + Number(sheetObj.attributes?.Resolve) || 5}
+            sup={sheetObj.willpower?.superficial || 0}
+            agg={sheetObj.willpower?.aggravated || 0}
           />
         </section>
       </div>
 
-      {/* ══════════════════════════════════════════
+      {/* ════════════════════════════════════════════
           THEME CUSTOMIZATION INTERFACE
-      ══════════════════════════════════════════ */}
+      ════════════════════════════════════════════ */}
       <section className={`${styles.pageSection} ${styles.feedCard}`} style={{ height: 'fit-content' }}>
         <h2 className={styles.feedHeading} style={{ fontSize: '1.15rem' }}>Interface Protocol</h2>
         <p style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Synchronize your terminal aesthetic to your preferred lineage or faction.</p>
-        
+
         <div className={styles.themeGrid}>
           {availableThemes.map(t => (
             <button
@@ -451,11 +442,11 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ══════════════════════════════════════════
+      {/* ═══════════════════════════════════════════
           2. FEEDS (Chronicle, Comms, Action Log)
-      ══════════════════════════════════════════ */}
+      ═══════════════════════════════════════════ */}
       <div className={styles.dashboardGrid}>
-        
+
         {/* ── THE CHRONICLE (News) ── */}
         <section className={styles.compactFeedCard}>
           <h2 className={styles.feedHeading}>The Erebus Chronicle</h2>
@@ -554,9 +545,9 @@ export default function Home() {
 
       </div>
 
-      {/* ══════════════════════════════════════════
+      {/* ════════════════════════════════════════════
           3. NAVIGATION GRID
-      ══════════════════════════════════════════ */}
+      ════════════════════════════════════════════ */}
       <section className={styles.navSection} aria-label="Quick navigation">
         <div className={styles.dividerLine}>
           <span className={styles.dividerIcon}>✦</span>

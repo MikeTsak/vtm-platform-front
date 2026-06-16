@@ -9,13 +9,13 @@ function NavDropdown({ title, children }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div 
+    <div
       className={`${styles.dropdown} ${isOpen ? styles.dropdownOpen : ''}`}
       onMouseEnter={() => window.innerWidth > 768 && setIsOpen(true)}
       onMouseLeave={() => window.innerWidth > 768 && setIsOpen(false)}
     >
-      <div 
-        className={styles.dropdownToggle} 
+      <div
+        className={styles.dropdownToggle}
         onClick={() => setIsOpen(!isOpen)}
       >
         {title} <span className={`${styles.chevron} ${isOpen ? styles.chevronOpen : ''}`}>▼</span>
@@ -27,6 +27,14 @@ function NavDropdown({ title, children }) {
   );
 }
 
+// Updated to handle both NavLinks and regular Links
+const getNavItemClass = ({ isActive, isDropdownItem = false }) => {
+  if (isDropdownItem) {
+    return `${styles.dropdownItem} ${isActive ? styles.dropdownItemActive : ''}`;
+  }
+  return `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`;
+};
+
 export default function Nav() {
   const { user, logout } = useContext(AuthCtx);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -35,9 +43,9 @@ export default function Nav() {
 
   const toggleMenu = () => setIsMenuOpen(v => !v);
   const closeMenu = () => setIsMenuOpen(false);
-  
-  useEffect(() => { 
-    closeMenu(); 
+
+  useEffect(() => {
+    closeMenu();
   }, [location]);
 
   useEffect(() => {
@@ -67,14 +75,11 @@ export default function Nav() {
     return () => { live = false; };
   }, [user]);
 
-  const getDropdownClass = ({ isActive }) =>
-    `${styles.dropdownItem} ${isActive ? styles.dropdownItemActive : ''}`;
-
   return (
     <>
-      <div 
-        className={`${styles.mobileOverlay} ${isMenuOpen ? styles.overlayOpen : ''}`} 
-        onClick={closeMenu} 
+      <div
+        className={`${styles.mobileOverlay} ${isMenuOpen ? styles.overlayOpen : ''}`}
+        onClick={closeMenu}
       />
 
       <nav className={`${styles.navBar} ${isMenuOpen ? styles.navBarOpen : ''}`}>
@@ -99,36 +104,54 @@ export default function Nav() {
           {user && (
             <>
               <NavDropdown title="Personal">
-                <NavLink to="/character" className={getDropdownClass}>Character Sheet</NavLink>
-                <NavLink to="/downtimes" className={getDropdownClass}>Actions & Projects</NavLink>
+                <NavLink to="/character" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true })}>Character Sheet</NavLink>
+                <NavLink to="/downtimes" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true })}>Actions & Projects</NavLink>
                 {canSeePremonitions && (
-                  <NavLink to="/premonitions" className={getDropdownClass}>Premonitions</NavLink>
+                  <NavLink to="/premonitions" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true })}>Premonitions</NavLink>
                 )}
               </NavDropdown>
 
               <NavDropdown title="Athens">
-                <NavLink to="/court/hierarchy" className={getDropdownClass}>Court Hierarchy</NavLink>
-                <NavLink to="/court/announcements" className={getDropdownClass}>Announcements</NavLink>
-                <NavLink to="/court/coteries" className={getDropdownClass}>Coteries</NavLink>
-                <NavLink to="/boons" className={getDropdownClass}>Boons Ledger</NavLink>
-                <NavLink to="/domains" className={getDropdownClass}>City Domains</NavLink>
-                <NavLink to="/news" className={getDropdownClass}>News & Rumors</NavLink>
+                <NavLink to="/court/hierarchy" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true })}>Court Hierarchy</NavLink>
+                <NavLink to="/court/announcements" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true })}>Announcements</NavLink>
+                <NavLink to="/court/coteries" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true })}>Coteries</NavLink>
+                <NavLink to="/boons" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true })}>Boons Ledger</NavLink>
+                <NavLink to="/domains" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true })}>City Domains</NavLink>
+                <NavLink to="/news" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true })}>News & Rumors</NavLink>
               </NavDropdown>
 
-              <NavDropdown title="Network">
-                <NavLink to="/comms" className={getDropdownClass}>SchreckNet Comms</NavLink>
-                <NavLink to="/live-session" className={getDropdownClass}>Live Session</NavLink>
-              </NavDropdown>
+              {/* Replaced Network dropdown with direct SchreckNet and SurfaceWeb links */}
+              <NavLink
+                to="/schrecknet"
+                className={({ isActive }) => getNavItemClass({ isActive })}
+                aria-label="SchreckNet - Secure Communications"
+              >
+                SchreckNet
+              </NavLink>
+              <NavLink
+                to="/surfaceweb"
+                className={({ isActive }) => getNavItemClass({ isActive })}
+                aria-label="Surface Web - Public Communications"
+              >
+                Surface Web
+              </NavLink>
+              <NavLink
+                to="/live-session"
+                className={({ isActive }) => getNavItemClass({ isActive })}
+                aria-label="Live Session"
+              >
+                Live Session
+              </NavLink>
             </>
           )}
-          
+
           {user?.role === 'admin' && (
             <NavDropdown title="Admin">
-              <NavLink to="/admin" className={getDropdownClass}>Admin Panel</NavLink>
-              <NavLink to="/admin/live-session" className={getDropdownClass}>Live Session Dashboard</NavLink>
+              <NavLink to="/admin" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true })}>Admin Panel</NavLink>
+              <NavLink to="/admin/live-session" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true })}>Live Session Dashboard</NavLink>
             </NavDropdown>
           )}
-          
+
           <div className={styles.mobileUserInfo}>
             {user ? (
               <>

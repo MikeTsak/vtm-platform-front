@@ -454,11 +454,14 @@
    CREATE FORM MODAL
    ========================================= */
 .createModal {
-  max-width: 800px; width: 100%;
+  max-width: 800px;
+  width: 100%;
   background-color: var(--surface-color);
   border-radius: 8px;
   box-shadow: 0 10px 25px rgb(0 0 0 / 80%);
   border: 1px solid var(--border-color);
+  max-height: 90vh; /* Prevent overflow on small screens */
+  overflow-y: auto; /* Allow scrolling if content too tall */
 }
 
 .createModalHeader {
@@ -483,11 +486,12 @@
 
 .formGrid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
 
-@media(width <= 600px) { .formGrid { grid-template-columns: 1fr; } }
-
-.randomizerGroup { display: flex; gap: 10px; }
-.randomizeBtn { padding: 10px 16px; background-color: color-mix(in srgb, var(--tint) 20%, transparent); color: var(--tint); border: 1px solid var(--tint); border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; white-space: nowrap;}
-.randomizeBtn:hover { background-color: var(--tint); color: var(--bg-color); }
+@media(width <= 600px) {
+  .formGrid { grid-template-columns: 1fr; }
+  .createModalHeader { padding: 15px; }
+  .formContainer { padding: 15px; }
+  .createModalHeader h2 { font-size: 1.25rem; }
+}
 
 .editorWrap { border: 1px solid var(--border-color); border-radius: 6px; display: flex; flex-direction: column; overflow: hidden; }
 .editorToolbar { display: flex; gap: 5px; padding: 8px; background-color: var(--surface-lighter); border-bottom: 1px solid var(--border-color); }
@@ -495,6 +499,10 @@
 .editorToolbar button:hover { background: var(--border-color); }
 
 .editable { min-height: 150px; padding: 12px; outline: none; background: var(--bg-color); color: var(--text-color); line-height: 1.5; overflow-y: auto; max-height: 300px; }
+
+@media(width <= 600px) {
+  .editable { min-height: 100px; max-height: 200px; }
+}
 
 .uploadBox { border: 1px dashed var(--border-color); padding: 16px; border-radius: 6px; background-color: var(--bg-color); text-align: center; }
 .uploadBox label { display: block; font-weight: bold; color: var(--text-muted); cursor: pointer; }

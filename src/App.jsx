@@ -12,30 +12,32 @@ import CharacterView from './pages/CharacterView';
 import CharacterSetup from './pages/CharacterSetup';
 import Domains from './pages/Domains';
 import DownTimes from './pages/DownTimes';
-import Comms from './pages/Comms';
-import Admin from './pages/Admin';
-import Footer from './components/Footer';
-import DiceRoller from './components/DiceRoller';
-import Terms from './pages/Terms';
-import Legal from './pages/Legal';
-import Privacy from './pages/Privacy';
-import NPCs from './pages/NPCs';
-import AdminNPCView from './components/AdminNPCView.jsx';
-import ForgotPassword from './pages/user/ForgotPassword';
-import ResetPassword from './pages/user/ResetPassword';
 import Boons from './pages/Boons';
 import Court from './pages/Court';
 import MediaViewer from './pages/MediaViewer';
 import Premonitions from './pages/Premonitions';
-import News from './pages/News'; 
+import News from './pages/News';
 import GlobalBanner from './components/GlobalBanner';
-import Nav from './components/Nav'; 
+import Nav from './components/Nav';
 import NotFound from './pages/404';
-import Hierarchy from './components/HierarchyView.jsx'; 
-import Announcements from './components/AnnouncementsView.jsx'; 
+import Hierarchy from './components/HierarchyView.jsx';
+import Announcements from './components/AnnouncementsView.jsx';
 import Coteries from './components/CoterieManager.jsx';
 import LiveSession from './pages/LiveSession';
 import LiveSessionDashboard from './pages/admin/LiveSessionDashboard';
+import SchreckNet from './pages/SchreckNet';
+import SurfaceWeb from './pages/SurfaceWeb';
+// Missing imports that were causing errors
+import Admin from './pages/Admin';
+import NPCs from './pages/NPCs';
+import AdminNPCView from './components/AdminNPCView.jsx';
+import ForgotPassword from './pages/user/ForgotPassword';
+import ResetPassword from './pages/user/ResetPassword';
+import Terms from './pages/Terms';
+import Legal from './pages/Legal';
+import Privacy from './pages/Privacy';
+import DiceRoller from './components/DiceRoller';
+import Footer from './components/Footer';
 
 function Private({ children }) {
   const { user } = useContext(AuthCtx);
@@ -60,7 +62,7 @@ function MalkavianOrAdminOnly({ children }) {
   useEffect(() => {
     // Read the pathname inside the effect body if you ever need to use it
     // otherwise, it no longer needs to be in the dependency array.
-    const currentPath = location.pathname; 
+    const currentPath = location.pathname;
 
     setIsLoading(true);
     setIsAuthorized(false);
@@ -81,7 +83,7 @@ function MalkavianOrAdminOnly({ children }) {
       })
       .catch(() => { /* deny by default */ })
       .finally(() => live && setIsLoading(false));
-      
+
     return () => { live = false; };
   }, [user]); // 👈 REMOVED location.pathname FROM HERE
 
@@ -106,21 +108,22 @@ export default function App() {
               <Route path="/make" element={<Private><CharacterSetup/></Private>} />
               <Route path="/domains" element={<Private><Domains/></Private>} />
               <Route path="/downtimes" element={<Private><DownTimes/></Private>} />
-              <Route path="/boons" element={<Private><Boons /></Private>} />
-              <Route path="/comms" element={<Private><Comms/></Private>} />
+              <Route path="/boons" element={<Private><Boons/></Private>} />
+              <Route path="/schrecknet" element={<Private><SchreckNet/></Private>} />
+              <Route path="/surfaceweb" element={<Private><SurfaceWeb/></Private>} />
               <Route path="/live-session" element={<Private><LiveSession/></Private>} />
               <Route path="/court" element={<Private><Court/></Private>} />
               <Route path="/court/hierarchy" element={<Private><Hierarchy /></Private>} />
               <Route path="/court/announcements" element={<Private><Announcements /></Private>} />
               <Route path="/court/coteries" element={<Private><Coteries /></Private>} />
-              
+
               <Route path="/news" element={<Private><News/></Private>} />
 
               <Route path="/admin" element={<AdminOnly><Admin/></AdminOnly>} />
               <Route path="/admin/live-session" element={<AdminOnly><LiveSessionDashboard/></AdminOnly>} />
               <Route path="/admin/npcs" element={<AdminOnly><NPCs/></AdminOnly>} />
-              <Route path="/admin/npcs/:id" element={<AdminOnly><AdminNPCView/></AdminOnly>} />
-              
+              <Route path="/admin/npcs/:id" element={<AdminOnly><AdminNPCView /></AdminOnly>} />
+
               <Route path="/forgot" element={<ForgotPassword />} />
               <Route path="/reset" element={<ResetPassword />} />
               <Route path="/login" element={<Login/>} />
@@ -129,15 +132,14 @@ export default function App() {
               <Route path="/legal" element={<Legal />} />
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/media/:id" element={<MediaViewer />} />
-              
+
               <Route
                 path="/premonitions"
-                element={<MalkavianOrAdminOnly><Premonitions/></MalkavianOrAdminOnly>}
+                element={<MalkavianOrAdminOnly><Premonitions /></MalkavianOrAdminOnly>}
               />
 
               {/* ✅ ADDED CATCH-ALL ROUTE HERE */}
               <Route path="*" element={<NotFound />} />
-              
             </Routes>
           </div>
           <DiceRoller />

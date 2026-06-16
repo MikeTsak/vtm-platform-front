@@ -168,17 +168,19 @@ const StatusIcon = ({ msg }) => {
   return <span title="Sent" className={styles.statusSent}>✓</span>;
 };
 
-/* --- CHAT IMAGE COMPONENT (Secure Fetch) --- */
-const ChatImage = ({ attachmentId }) => {
+/* --- CHAT MEDIA COMPONENT (Secure Fetch & Audio Handling) --- */
+const ChatMedia = ({ attachmentId }) => {
   const [prevId, setPrevId] = useState(attachmentId);
-  const [imageUrl, setImageUrl] = useState(null);
+  const [mediaUrl, setMediaUrl] = useState(null);
+  const [mimeType, setMimeType] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   // 1. Adjust state inline during render if the prop changes
   if (attachmentId !== prevId) {
     setPrevId(attachmentId);
-    setImageUrl(null);
+    setMediaUrl(null);
+    setMimeType(null);
     setLoading(true);
     setError(false);
   }
@@ -187,17 +189,16 @@ const ChatImage = ({ attachmentId }) => {
     let active = true;
     let urlToRevoke = null;
 
-    // 2. State resets removed from here!
-    
     api.get(`/chat/media/${attachmentId}`, { responseType: 'blob' })
       .then((response) => {
         if (!active) return;
         urlToRevoke = URL.createObjectURL(response.data);
-        setImageUrl(urlToRevoke);
+        setMediaUrl(urlToRevoke);
+        setMimeType(response.data.type); // Parse the blob type natively
         setLoading(false);
       })
       .catch((err) => {
-        console.error("Failed to load image", err);
+        console.error("Failed to load media", err);
         if (!active) return;
         setError(true);
         setLoading(false);
@@ -210,14 +211,18 @@ const ChatImage = ({ attachmentId }) => {
   }, [attachmentId]);
 
   if (loading) return <Loading />;
-  if (error) return <div className={styles.imageError}>⚠ Image failed to load</div>;
+  if (error) return <div className={styles.imageError}>⚠ Media failed to load</div>;
+
+  if (mimeType && mimeType.startsWith('audio/')) {
+    return <audio src={mediaUrl} controls className={styles.chatAudio} style={{ maxWidth: '100%' }} />;
+  }
 
   return (
     <img 
-      src={imageUrl} 
+      src={mediaUrl} 
       alt="Attachment" 
       className={styles.chatImage} 
-      onClick={() => window.open(imageUrl, '_blank')}
+      onClick={() => window.open(mediaUrl, '_blank')}
     />
   );
 };
@@ -661,7 +666,7 @@ export default function ChatSystem({ commsEnabled = true }) {
                   title = isAdmin && selectedPlayerId ? `${selectedContact.name} ↔ ${users.find(u => u.id === selectedPlayerId)?.char_name || 'Player'}` : selectedContact.name;
                   icon = symlogo(selectedContact.clan) || icon;
                 }
-                const notificationBody = latest.attachment_id ? '📷 Image Attachment' : (latest.body || 'New message');
+                const notificationBody = latest.attachment_id ? '📷 Media Attachment' : (latest.body || 'New message');
                 notify(title, notificationBody, icon);
               }
             }
@@ -716,17 +721,19 @@ export default function ChatSystem({ commsEnabled = true }) {
     return () => clearInterval(pollRef.current);
   }, [selectedContact, selectedPlayerId, isAdmin, hasAuthHeader, currentUser?.id, users, threadKey, isInbound, notify]);
 
-  /* --- File Handling --- */
+/* --- File Handling --- */
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     if (!file) return;
     
-    if (!file.type.startsWith('image/')) {
-      alert('Only images are allowed');
+    // Match the backend: Allow both Images and Audio
+    if (!file.type.startsWith('image/') && !file.type.startsWith('audio/')) {
+      alert('Only images and audio files are allowed');
       return;
     }
 
-    const MAX_MB = 5;  
+    // Increase frontend limit to 50MB
+    const MAX_MB = 50;  
     const MAX_BYTES = MAX_MB * 1024 * 1024;
     if (file.size > MAX_BYTES) { 
       alert(`File size too large (max ${MAX_MB}MB)`);
@@ -753,21 +760,22 @@ export default function ChatSystem({ commsEnabled = true }) {
     let attachmentId = null;
 
     try {
-      if (attachment) {
-        const formData = new FormData();
-        formData.append('file', attachment);
-        
-        try {
-          const res = await api.post('/chat/upload', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-          });
-          attachmentId = res.data.id;
-        } catch (err) {
-          alert('Failed to upload image');
-          sendingRef.current = false;
-          return;
-        }
+    if (attachment) {
+      const formData = new FormData();
+      formData.append('file', attachment);
+      
+      try {
+        const res = await api.post('/chat/upload', formData, {
+          // Setting to undefined strips global defaults and lets the browser set the boundary
+          headers: { 'Content-Type': undefined } 
+        });
+        attachmentId = res.data.id;
+      } catch (err) {
+        alert('Failed to upload attachment');
+        sendingRef.current = false;
+        return;
       }
+    }
 
       const payload = { body, attachment_id: attachmentId };
       let newMsg = null;
@@ -1390,7 +1398,7 @@ export default function ChatSystem({ commsEnabled = true }) {
                         <>
                           {item.attachment_id && (
                             <div className={styles.chatImageWrapper}>
-                              <ChatImage attachmentId={item.attachment_id} />
+                              <ChatMedia attachmentId={item.attachment_id} />
                             </div>
                           )}
                           {item.body && <div className={styles.messageBody}>{item.body}</div>}
@@ -1436,11 +1444,15 @@ export default function ChatSystem({ commsEnabled = true }) {
             ) : null}
 
             <form className={styles.messageInputForm} onSubmit={handleSendMessage} style={{ position: 'relative', opacity: !commsEnabled ? 0.6 : 1 }}>
-                {previewUrl && (
+                {previewUrl && attachment && (
                   <div className={styles.previewContainer}>
                     <div className={styles.previewWrapper}>
-                       <img src={previewUrl} alt="Preview" />
-                       <button type="button" onClick={clearAttachment} className={styles.removePreviewBtn}>×</button>
+                      {attachment.type.startsWith('audio/') ? (
+                        <audio src={previewUrl} controls style={{ maxWidth: '200px', height: '40px' }} />
+                      ) : (
+                        <img src={previewUrl} alt="Preview" />
+                      )}
+                      <button type="button" onClick={clearAttachment} className={styles.removePreviewBtn}>×</button>
                     </div>
                   </div>
                 )}
@@ -1460,7 +1472,7 @@ export default function ChatSystem({ commsEnabled = true }) {
                   type="file" 
                   ref={fileInputRef} 
                   style={{display:'none'}} 
-                  accept="image/*" 
+                  accept="image/*,audio/*"
                   onChange={handleFileSelect} 
                 />
 

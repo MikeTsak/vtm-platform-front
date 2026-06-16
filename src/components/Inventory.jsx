@@ -1,25 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api';
 import InventoryItemModal from './InventoryItemModal';
 import styles from './Inventory.module.css';
 
-function Inventory({ characterId, isOwner }) {
+function Inventory({ characterId }) {
   const id = characterId;
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  // New UI States
-  const [isExpanded, setIsExpanded] = useState(false); // Controls the drawer
-  const [viewMode, setViewMode] = useState('list');    // 'list' or 'grid'
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [viewMode, setViewMode] = useState('list');
   
-  // Modal & Filter states
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [activeTab, setActiveTab] = useState('All');
 
-  const fetchInventory = async () => {
+  const fetchInventory = useCallback(async () => {
     setLoading(true);
     try {
       const res = await api.get(`/characters/${id}/inventory`);
@@ -27,12 +25,12 @@ function Inventory({ characterId, isOwner }) {
       setError(null);
     } catch (err) {
       console.error('Failed to fetch inventory:', err);
-      const detailedError = err.response?.data?.error || err.response?.data?.message || err.message || "Unknown network error";
+      const detailedError = err.response?.data?.error || err.message || "Unknown error";
       setError(`Failed to load inventory: ${detailedError}`);
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     if (id) {
@@ -41,7 +39,7 @@ function Inventory({ characterId, isOwner }) {
       setError("Failed to load inventory: Character ID is missing.");
       setLoading(false);
     }
-  }, [id]);
+  }, [id, fetchInventory]);
 
   const handleSave = async (itemData) => {
     try {
@@ -52,6 +50,7 @@ function Inventory({ characterId, isOwner }) {
       }
       fetchInventory();
       setModalOpen(false);
+      setIsExpanded(true); 
     } catch (err) {
       console.error('Failed to save item:', err);
       const detailedError = err.response?.data?.error || err.message || "Unknown error";
@@ -85,7 +84,6 @@ function Inventory({ characterId, isOwner }) {
 
   const tabs = ['All', 'Weapons/Armor', 'Mystical', 'Mundane'];
 
-  // Helper function to render an item depending on the layout mode
   const renderItem = (item, mode) => {
     const isList = mode === 'list';
     const cardClass = isList ? styles.itemRow : styles.itemCard;
@@ -103,7 +101,20 @@ function Inventory({ characterId, isOwner }) {
             <h4 className={styles.itemName}>{item.name}</h4>
             <span className={styles.itemQuantity}>Qty: {item.quantity}</span>
           </div>
-          <div className={styles.itemType}>{item.item_type}</div>
+
+          {/* DYNAMIC RESEARCH BADGE */}
+          <div className={styles.itemType} style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '1rem' }}>
+            <span>{item.item_type}</span>
+            {item.researched ? (
+              <span style={{ backgroundColor: 'rgba(31, 170, 112, 0.2)', color: '#1faa70', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold', border: '1px solid #1faa70' }}>
+                ✓ RESEARCHED
+              </span>
+            ) : (
+              <span style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', color: '#aaa', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', border: '1px dashed #555' }}>
+                ? UNKNOWN
+              </span>
+            )}
+          </div>
           
           {item.description && <p className={styles.itemDescription}>{item.description}</p>}
           
@@ -114,8 +125,8 @@ function Inventory({ characterId, isOwner }) {
           )}
         </div>
         
-        {/* Only show edit/delete actions if expanded and user is owner */}
-        {isOwner && isExpanded && (
+        {/* FIXED: Removed the 'isOwner' check here so Edit/Delete always show when expanded */}
+        {isExpanded && (
           <div className={styles.itemActions}>
             <button className={styles.editBtn} onClick={() => openModal(item)}>Edit</button>
             <button className={styles.deleteBtn} onClick={() => handleDelete(item.id)}>Delete</button>
@@ -134,33 +145,28 @@ function Inventory({ characterId, isOwner }) {
 
   return (
     <div className={styles.inventoryContainer}>
-      {/* Header */}
       <div className={styles.headerRow}>
         <h3>Relics, Artifacts & Inventory</h3>
-        {isOwner && isExpanded && (
-          <button className={styles.addBtn} onClick={() => openModal()}>
-            + Add Item
-          </button>
-        )}
+        {/* FIXED: Removed 'isOwner' check here so '+ Add Item' is always visible */}
+        <button className={styles.addBtn} onClick={() => openModal()}>
+          + Add Item
+        </button>
       </div>
 
-      {/* --- COLLAPSED DRAWER (PREVIEW) --- */}
       {!isExpanded ? (
         <div className={styles.previewMode}>
           {items.length === 0 ? (
             <div className={styles.emptyState}>
               <p>This character has no inventory items yet.</p>
-              {isOwner && (
-                <button className={styles.addBtnLarge} onClick={() => { setIsExpanded(true); openModal(); }}>
-                  Add First Item
-                </button>
-              )}
+              {/* FIXED: Removed 'isOwner' check here as well */}
+              <button className={styles.addBtnLarge} onClick={() => { setIsExpanded(true); openModal(); }}>
+                Add First Item
+              </button>
             </div>
           ) : (
             <div className={styles.previewContent}>
               <p className={styles.previewLabel}>Recent Item:</p>
-              {/* Render just the first item using the 'list' layout */}
-              {renderItem(items[0], 'list')}
+              {renderItem(items[items.length - 1], 'list')}
             </div>
           )}
           
@@ -171,10 +177,7 @@ function Inventory({ characterId, isOwner }) {
           )}
         </div>
       ) : (
-
-      /* --- EXPANDED INVENTORY (FULL VIEW) --- */
         <div className={styles.expandedMode}>
-          {/* Controls: Tabs & View Toggle */}
           <div className={styles.controlsRow}>
             <div className={styles.tabs}>
               {tabs.map(tab => (
@@ -204,7 +207,6 @@ function Inventory({ characterId, isOwner }) {
             </div>
           </div>
 
-          {/* Item Lists */}
           {items.length === 0 ? (
              <div className={styles.emptyState}>
                <p>This character has no inventory items yet.</p>
@@ -225,7 +227,6 @@ function Inventory({ characterId, isOwner }) {
         </div>
       )}
 
-      {/* Modal */}
       {modalOpen && (
         <InventoryItemModal
           item={editingItem}
