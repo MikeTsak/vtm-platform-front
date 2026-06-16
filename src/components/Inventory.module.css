@@ -1,0 +1,360 @@
+.inventoryContainer {
+  background-color: var(--bg-dark, #1a1a1a);
+  border: 1px solid var(--border-color, #333);
+  border-radius: 8px;
+  padding: 1.5rem;
+  color: var(--text-light, #eee);
+  margin-bottom: 24px;
+}
+
+.headerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-color, #333);
+  padding-bottom: 1rem;
+}
+
+.headerRow h3 {
+  margin: 0;
+  color: var(--vampire-red, #8b0000);
+  font-family: 'Cinzel', serif;
+  font-size: 1.5rem;
+}
+
+.addBtn {
+  background-color: var(--vampire-red, #8b0000);
+  color: #fff;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.2s;
+}
+
+.addBtn:hover {
+  background-color: #a00000;
+}
+
+/* --- Controls & Toggles --- */
+.controlsRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.tabBtn {
+  background-color: transparent;
+  color: #aaa;
+  border: 1px solid #444;
+  padding: 0.4rem 1rem;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tabBtn:hover {
+  border-color: #888;
+  color: #ddd;
+}
+
+.activeTab {
+  background-color: #333;
+  color: #fff;
+  border-color: var(--vampire-red, #8b0000);
+}
+
+.viewToggles {
+  display: flex;
+  background-color: rgba(0,0,0,0.4);
+  border: 1px solid #333;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.viewBtn {
+  background: transparent;
+  border: none;
+  color: #888;
+  padding: 0.4rem 1rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.viewBtn:hover {
+  color: #ccc;
+}
+
+.activeView {
+  background-color: #333;
+  color: #fff;
+  font-weight: bold;
+}
+
+/* --- Layout Containers --- */
+.itemGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.itemList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* --- Shared Content Styles --- */
+.itemHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.25rem;
+}
+
+.itemName {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #fff;
+}
+
+.itemQuantity {
+  background-color: #333;
+  color: #ccc;
+  padding: 0.1rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: bold;
+}
+
+.itemType {
+  font-size: 0.8rem;
+  color: var(--vampire-red, #8b0000);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 1rem;
+}
+
+.itemImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; 
+  display: block;
+}
+
+/* --- Grid Mode (Card) --- */
+.itemCard {
+  background-color: rgba(0, 0, 0, 0.3);
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.2s;
+}
+
+.itemCard:hover { border-color: #555; }
+
+.itemCard .itemImageContainer {
+  width: 100%;
+  height: 180px; 
+  margin-bottom: 1rem;
+  border-radius: 4px;
+  overflow: hidden;
+  background-color: rgba(10, 10, 10, 0.8); 
+  border-bottom: 1px solid #333;
+}
+
+.itemCard .itemContent {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+.itemCard .itemDescription {
+  margin: 0 0 1rem 0;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  color: #ccc;
+  flex-grow: 1;
+}
+
+.itemCard .itemMechanics {
+  background-color: rgba(139, 0, 0, 0.1);
+  border-left: 3px solid var(--vampire-red, #8b0000);
+  padding: 0.75rem;
+  font-size: 0.9rem;
+  color: #ddd;
+  margin-bottom: 1rem;
+}
+
+.itemCard .itemActions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: auto;
+  padding-top: 1rem;
+  border-top: 1px solid #333;
+}
+
+/* --- List Mode (Row) --- */
+.itemRow {
+  background-color: rgba(0, 0, 0, 0.3);
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 1.25rem;
+  transition: border-color 0.2s;
+}
+
+.itemRow:hover { border-color: #555; }
+
+.itemRow .itemImageContainer {
+  width: 100px;
+  height: 100px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  overflow: hidden;
+  background-color: rgba(10, 10, 10, 0.8);
+  border: 1px solid #333;
+}
+
+.itemRow .itemContent {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  justify-content: center;
+}
+
+.itemRow .itemDescription {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  color: #ccc;
+}
+
+.itemRow .itemMechanics {
+  background-color: rgba(139, 0, 0, 0.1);
+  border-left: 3px solid var(--vampire-red, #8b0000);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  color: #ddd;
+  margin-bottom: 0;
+}
+
+.itemRow .itemActions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  justify-content: center;
+  min-width: 80px;
+  border-left: 1px solid #333;
+  padding-left: 1rem;
+}
+
+/* --- Action Buttons --- */
+.editBtn, .deleteBtn {
+  flex: 1;
+  padding: 0.4rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.editBtn {
+  background-color: #333;
+  color: #ddd;
+  border: 1px solid #444;
+}
+
+.editBtn:hover {
+  background-color: #444;
+  border-color: #555;
+}
+
+.deleteBtn {
+  background-color: transparent;
+  color: #ff4444;
+  border: 1px solid #ff4444;
+}
+
+.deleteBtn:hover { background-color: rgba(255, 68, 68, 0.1); }
+
+/* --- Drawer / Preview Styling --- */
+.previewLabel {
+  font-size: 0.85rem;
+  color: #888;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.drawerBtn {
+  width: 100%;
+  background: rgba(139, 0, 0, 0.1);
+  border: 1px dashed var(--vampire-red, #8b0000);
+  color: var(--vampire-red, #8b0000);
+  padding: 0.75rem;
+  margin-top: 1.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 0.95rem;
+  transition: background 0.2s;
+}
+
+.drawerBtn:hover {
+  background: rgba(139, 0, 0, 0.2);
+}
+
+.emptyState {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #888;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  border: 1px dashed #444;
+}
+
+.addBtnLarge {
+  margin-top: 1rem;
+  background-color: transparent;
+  color: var(--vampire-red, #8b0000);
+  border: 1px solid var(--vampire-red, #8b0000);
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: all 0.2s;
+}
+
+.addBtnLarge:hover { background-color: rgba(139, 0, 0, 0.1); }
+.loading { text-align: center; padding: 2rem; color: #888; }
+
+/* Responsive break for List rows on small screens */
+@media (max-width: 600px) {
+  .itemRow { flex-direction: column; }
+  .itemRow .itemImageContainer { width: 100%; height: 150px; }
+  .itemRow .itemActions {
+    flex-direction: row;
+    border-left: none;
+    border-top: 1px solid #333;
+    padding-left: 0;
+    padding-top: 1rem;
+  }
+}

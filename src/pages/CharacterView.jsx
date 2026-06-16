@@ -8,7 +8,13 @@ import { RITUALS } from '../data/rituals';
 import styles from '../styles/CharacterView.module.css';
 import CharacterSetup from './CharacterSetup';
 import { MERITS_AND_FLAWS, listAllItems } from '../data/merits_flaws';
-import generateVTMCharacterSheetPDF from '../utils/pdfGenerator'; 
+import generateVTMCharacterSheetPDF from '../utils/pdfGenerator';
+import Inventory from '../components/Inventory';
+import TouchstonesConvictionsSection from '../components/TouchstonesConvictionsSection';
+import AttributesSection from '../components/AttributesSection';
+import SkillsDisplaySection from '../components/SkillsDisplaySection';
+import DisciplinesDisplaySection from '../components/DisciplinesDisplaySection';
+import MeritsBackgroundsSection from '../components/MeritsBackgroundsSection';
 
 /* ---------- Clan tint colors ---------- */
 const CLAN_COLORS = {
@@ -652,10 +658,6 @@ export default function CharacterView({
   const [pendingFixes, setPendingFixes] = useState([]);
   const [xpTotals, setXpTotals] = useState(null);
   const shopRef = useRef(null);
-  const [inventory, setInventory] = useState([]);
-  const [invModalOpen, setInvModalOpen] = useState(false);
-  const [editingInvItem, setEditingInvItem] = useState(null);
-  const [savingInv, setSavingInv] = useState(false);
 
   const [tempHealth, setTempHealth] = useState({ superficial: 0, aggravated: 0 });
   const [tempWillpower, setTempWillpower] = useState({ superficial: 0, aggravated: 0 });
@@ -666,86 +668,6 @@ export default function CharacterView({
   const saveTimeoutRef = useRef(null);
   const isInitialTrackerLoad = useRef(true);
 
-  async function handleSaveInvItem(itemData) {
-    setSavingInv(true);
-    try {
-      if (editingInvItem?.id) {
-        await api.put(`/admin/inventory/${editingInvItem.id}`, itemData);
-      } else {
-        await api.post(`/admin/characters/${ch.id}/inventory`, itemData);
-      }
-      const r = await api.get(`/characters/${ch.id}/inventory`);
-      setInventory(r.data.items || []);
-      setInvModalOpen(false);
-      setEditingInvItem(null);
-    } catch (e) {
-      setErr('Failed to save item.');
-    } finally {
-      setSavingInv(false);
-    }
-  }
-
-  async function handleDeleteInvItem(itemId) {
-    if (!window.confirm("Are you sure you want to delete this item?")) return;
-    try {
-      await api.delete(`/inventory/${itemId}`);
-      setInventory(prev => prev.filter(i => i.id !== itemId));
-    } catch (e) {
-      setErr('Failed to delete item.');
-    }
-  }
-
-  /* ===========================
-   Inventory Edit Modal
-   =========================== */
-function InventoryItemModal({ item, onClose, onSave, busy }) {
-  const [name, setName] = useState(item?.name || '');
-  const [itemType, setItemType] = useState(item?.item_type || 'Mundane');
-  const [description, setDescription] = useState(item?.description || '');
-  const [mechanicNotes, setMechanicNotes] = useState(item?.mechanic_notes || '');
-  const [quantity, setQuantity] = useState(item?.quantity || 1);
-
-  return (
-    <div className={styles.modalOverlay} role="dialog">
-      <div className={`${styles.card} ${styles.modalCard}`} style={{ width: 'min(92vw, 500px)' }}>
-        <div className={styles.modalHeader}>
-          <h3 className={styles.modalTitle}>{item ? 'Edit Item' : 'Add Item'}</h3>
-        </div>
-        <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div>
-            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: 4 }}>Name</label>
-            <input className={styles.input} style={{ width: '100%', boxSizing: 'border-box' }} value={name} onChange={e => setName(e.target.value)} />
-          </div>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <div style={{ flex: 1 }}>
-              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: 4 }}>Type</label>
-              <select className={styles.input} style={{ width: '100%', boxSizing: 'border-box' }} value={itemType} onChange={e => setItemType(e.target.value)}>
-                {['Relic', 'Artifact', 'Blood Magic', 'Weapon', 'Armor', 'Mundane'].map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
-            <div style={{ width: '100px' }}>
-              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: 4 }}>Qty</label>
-              <input type="number" className={styles.input} style={{ width: '100%', boxSizing: 'border-box' }} value={quantity} onChange={e => setQuantity(Number(e.target.value))} min={1} />
-            </div>
-          </div>
-          <div>
-            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: 4 }}>Description</label>
-            <textarea className={styles.input} style={{ width: '100%', boxSizing: 'border-box' }} value={description} onChange={e => setDescription(e.target.value)} rows={3}></textarea>
-          </div>
-          <div>
-            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: 4 }}>System / Mechanics</label>
-            <textarea className={styles.input} style={{ width: '100%', boxSizing: 'border-box' }} value={mechanicNotes} onChange={e => setMechanicNotes(e.target.value)} rows={3}></textarea>
-          </div>
-        </div>
-        <div className={styles.modalFooter} style={{ padding: '16px 20px' }}>
-          <button className={styles.ghostBtn} onClick={onClose} disabled={busy}>Cancel</button>
-          <button className={styles.cta} onClick={() => onSave({ name, item_type: itemType, description, mechanic_notes: mechanicNotes, quantity })} disabled={busy || !name}>Save Item</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-  
   useEffect(() => {
     let mounted = true;
     api.get(paths.load)
@@ -781,18 +703,6 @@ function InventoryItemModal({ item, onClose, onSave, busy }) {
       .catch(() => {});
   }, [paths.totals, ch]);
 
-  // INVENTORY FETCH
-  useEffect(() => {
-    if (!ch?.id) return;
-    let mounted = true;
-    api.get(`/characters/${ch.id}/inventory`)
-      .then(r => {
-        if (mounted) setInventory(r.data.items || []);
-      })
-      .catch(err => console.error("Could not load inventory", err));
-      
-    return () => { mounted = false; };
-  }, [ch?.id]);
 
   const prevHealthRef = useRef(tempHealth);
   const prevWillpowerRef = useRef(tempWillpower);
@@ -1301,174 +1211,15 @@ const knownPowerNamesAndIds = useMemo(() => {
 
           </div>
           
-          {/* Touchstones & Convictions */}
-          <Card>
-            <div className={styles.cardHead} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <b>Touchstones & Convictions</b>
-              <button 
-                className={styles.ghostBtn} 
-                onClick={() => setProfileModalOpen(true)} 
-                style={{ fontSize: '0.8rem', padding: '2px 8px' }}
-              >
-                ✎ Edit
-              </button>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginTop: '12px' }}>
-              
-              <div style={{ padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-                <div style={{ fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '6px', marginBottom: '8px' }}>Touchstones</div>
-                {sheet.touchstones && sheet.touchstones.length > 0 ? (
-                  <ul style={{ margin: 0, paddingLeft: 20, fontSize: '0.95rem', opacity: 0.9 }}>
-                    {sheet.touchstones.map((t, i) => <li key={i} style={{ marginBottom: '4px' }}>{t}</li>)}
-                  </ul>
-                ) : <div className={styles.muted} style={{ fontSize: '0.9rem' }}>No touchstones defined.</div>}
-              </div>
+          <TouchstonesConvictionsSection sheet={sheet} setProfileModalOpen={setProfileModalOpen} />
+          <Inventory characterId={ch?.id} />
+          {/* ----- END INVENTORY DISPLAY */}
+          <AttributesSection sheet={sheet} />
 
-              <div style={{ padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-                <div style={{ fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '6px', marginBottom: '8px' }}>Convictions</div>
-                {sheet.convictions && sheet.convictions.length > 0 ? (
-                  <ul style={{ margin: 0, paddingLeft: 20, fontSize: '0.95rem', opacity: 0.9 }}>
-                    {sheet.convictions.map((c, i) => <li key={i} style={{ marginBottom: '4px' }}>{c}</li>)}
-                  </ul>
-                ) : <div className={styles.muted} style={{ fontSize: '0.9rem' }}>No convictions defined.</div>}
-              </div>
+          <SkillsDisplaySection sheet={sheet} />
 
-            </div>
-          </Card>
+          <DisciplinesDisplaySection sheet={sheet} />
 
-          <Card>
-            <div className={styles.cardHead}><b>Attributes</b></div>
-            <div className={styles.grid3Col}>
-              {ATTRS.map((col, i) => (
-                <div key={i} className={styles.grid}>
-                  {col.map(name => (
-                    <DotRow key={name} label={name} value={Number(sheet?.attributes?.[name] ?? 1)} max={5} />
-                  ))}
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          <Card>
-            <div className={styles.cardHead}><b>Skills</b></div>
-            <div className={styles.grid3Col}>
-              {Object.entries(SKILLS).map(([group, list]) => (
-                <div key={group} className={styles.grid}>
-                  <div className={styles.subhead}>{group}</div>
-                  {list.map(name => {
-                    const raw = sheet?.skills?.[name];
-                    const node = (raw && typeof raw === 'object' && 'dots' in raw)
-                      ? raw
-                      : { dots: Number(raw || 0), specialties: [] };
-                    return (
-                      <DotRow
-                        key={name}
-                        label={name}
-                        value={Number(node.dots || 0)}
-                        max={5}
-                        rightExtra={renderSpecs(node.specialties)}
-                      />
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          <Card>
-            <div className={styles.cardHead}><b>Disciplines</b></div>
-            <div className={styles.grid}>
-              {Object.keys(disciplinesMap).sort().map(name => (
-                <DisciplineRow
-                  key={name}
-                  name={name}
-                  level={Number(disciplinesMap[name] || 0)}
-                  powers={sheet.disciplinePowers?.[name] || []}
-                />
-              ))}
-            </div>
-          </Card>
-
-{/* ----- INVENTORY DISPLAY ----- */}
-          <Card>
-            <div className={styles.cardHead} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <b>Relics, Artifacts & Inventory</b>
-              {isAdmin && (
-                <button 
-                  className={styles.ghostBtn} 
-                  onClick={() => { setEditingInvItem(null); setInvModalOpen(true); }} 
-                  style={{ fontSize: '0.8rem', padding: '2px 8px' }}
-                >
-                  + Add Item
-                </button>
-              )}
-            </div>
-            
-            {inventory.length === 0 ? (
-              <div className={styles.muted} style={{ padding: '10px 0' }}>No items in inventory.</div>
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginTop: '12px' }}>
-                {inventory.map(item => (
-                  <div key={item.id} style={{ 
-                    border: '1px solid var(--border-color)', 
-                    padding: '14px', 
-                    borderRadius: '8px', 
-                    background: 'rgba(255,255,255,0.02)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '8px',
-                    position: 'relative'
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <span style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--text-color)', paddingRight: '60px' }}>
-                        {item.name} {item.quantity > 1 ? <span style={{ opacity: 0.6, fontSize: '0.9rem' }}>x{item.quantity}</span> : ''}
-                      </span>
-                      <span style={{ 
-                        fontSize: '0.75rem', 
-                        padding: '2px 8px', 
-                        background: 'rgba(255,255,255,0.08)', 
-                        borderRadius: '12px',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px'
-                      }}>
-                        {item.item_type}
-                      </span>
-                    </div>
-                    
-                    {item.description && (
-                      <div style={{ fontSize: '0.9rem', opacity: 0.85, lineHeight: '1.4' }}>
-                        {item.description}
-                      </div>
-                    )}
-                    
-                    {item.mechanic_notes && (
-                      <div style={{ 
-                        marginTop: 'auto',
-                        fontSize: '0.85rem', 
-                        color: '#d4af37', 
-                        background: 'rgba(212, 175, 55, 0.05)', 
-                        padding: '8px 10px', 
-                        borderRadius: '4px', 
-                        borderLeft: '2px solid #d4af37' 
-                      }}>
-                        <b style={{ display: 'block', marginBottom: '2px' }}>System:</b>
-                        {item.mechanic_notes}
-                      </div>
-                    )}
-
-                    {isAdmin && (
-                      <div style={{ display: 'flex', gap: '8px', marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '8px' }}>
-                        <button className={styles.ghostBtn} style={{ flex: 1, fontSize: '0.8rem', padding: '4px' }} onClick={() => { setEditingInvItem(item); setInvModalOpen(true); }}>Edit</button>
-                        <button className={styles.ghostBtn} style={{ flex: 1, fontSize: '0.8rem', padding: '4px', color: '#b40f1f' }} onClick={() => handleDeleteInvItem(item.id)}>Delete</button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-          {/* ----- END INVENTORY DISPLAY ----- */}
-          {/* ----- END INVENTORY DISPLAY ----- */}
 
           <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
             <button 
@@ -1711,214 +1462,12 @@ const knownPowerNamesAndIds = useMemo(() => {
             </Drawer>
           </Card>
 
-          {/* Merits (Advantages) */}
-          <Card>
-            <div className={styles.cardHead} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <b>Merits & Backgrounds</b>
-              <span className={styles.muted} style={{ fontSize: '0.85rem' }}>
-                Total Dots: <b>{totalMeritDots}</b>
-              </span>
-            </div>
-
-            {flawDeficit > 0 && (
-              <div className={styles.alertWarning} style={{ marginBottom: 15 }}>
-                <b>Rule Requirement:</b> You have {totalMeritDots} points in Merits. For every 7 points, you must take 2 points of Flaws. 
-                You currently need <b>{flawDeficit} more dot{flawDeficit > 1 ? 's' : ''}</b> in Flaws.
-              </div>
-            )}
-
-            <MeritAdder
-              xp={xp}
-              clan={ch.clan}
-              knownPowerNamesAndIds={knownPowerNamesAndIds}
-              existing={displayMerits}
-              onAdd={async (merit, targetDots, options = {}) => {
-                const separate = !!options.separate; 
-                const nextSheet = JSON.parse(JSON.stringify(sheet));
-
-                nextSheet.advantages = nextSheet.advantages || { merits: [], flaws: [] };
-                nextSheet.advantages.merits = Array.isArray(nextSheet.advantages.merits) ? nextSheet.advantages.merits : [];
-                nextSheet.backgrounds = Array.isArray(nextSheet.backgrounds) ? nextSheet.backgrounds : [];
-
-                const meritsArr = nextSheet.advantages.merits;
-                const bgsArr    = nextSheet.backgrounds;
-
-                const sameMerits = meritsArr.filter(m => m.id === merit.id);
-                const sameBgs    = bgsArr.filter(b => b.id === merit.id);
-                const currentDots = [...sameMerits, ...sameBgs].reduce(
-                  (max, e) => Math.max(max, Number(e.dots || 0)), 0
-                );
-
-                const preferBackgrounds = sameBgs.length > 0;
-
-                if (separate) {
-                  const cost = XP_RULES.advantageDot(Number(targetDots) || 0);
-                  if (xp < cost) return;
-
-                  const instance = sameMerits.length + sameBgs.length + 1; 
-                  const newEntry = {
-                    id: merit.id,
-                    name: merit.name,
-                    dots: Number(targetDots),
-                    from: 'xp_shop',
-                    instance,
-                  };
-                  if (options.notes) newEntry.notes = JSON.stringify(options.notes);
-
-                  if (preferBackgrounds) bgsArr.push(newEntry);
-                  else meritsArr.push(newEntry);
-
-                  await spendXP({
-                    type: 'advantage',
-                    target: merit.id,
-                    dots: Number(targetDots),
-                    patchSheet: nextSheet,
-                  });
-                  return;
-                }
-
-                const delta = Math.max(0, Number(targetDots) - currentDots);
-                const cost = XP_RULES.advantageDot(delta);
-                if (delta <= 0 || xp < cost) return;
-
-                let upgraded = false;
-
-                const tryUpgradeIn = (arr) => {
-                  for (let i = 0; i < arr.length; i++) {
-                    const entry = arr[i];
-                    if (entry.id === merit.id && Number(entry.dots || 0) === currentDots) {
-                      arr[i] = { ...entry, dots: Number(targetDots) };
-                      if (options.notes) arr[i].notes = JSON.stringify(options.notes);
-                      return true;
-                    }
-                  }
-                  return false;
-                };
-
-                upgraded = preferBackgrounds ? tryUpgradeIn(bgsArr) : tryUpgradeIn(meritsArr);
-                if (!upgraded) {
-                  upgraded = preferBackgrounds ? tryUpgradeIn(meritsArr) : tryUpgradeIn(bgsArr);
-                }
-
-                if (!upgraded) {
-                  const newMerit = {
-                    id: merit.id,
-                    name: merit.name,
-                    dots: Number(targetDots),
-                    from: 'xp_shop',
-                    instance: sameMerits.length + sameBgs.length + 1,
-                  };
-                  if (options.notes) newMerit.notes = JSON.stringify(options.notes);
-                  meritsArr.push(newMerit);
-                }
-
-                await spendXP({
-                  type: 'advantage',
-                  target: merit.id,
-                  dots: delta,           
-                  patchSheet: nextSheet, 
-                });
-              }}
-            />
-            {displayMerits.length > 0 && (
-              <div className={styles.grid} style={{ marginTop: 15 }}>
-                <div className={styles.subhead}>Owned Merits & Backgrounds</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {displayMerits.map((m, i) => {
-                    const details = allMeritsFlat.find(x => x.id === m.id);
-                    const desc = details?.description || 'No description available.';
-                    
-                    let notesStr = m.notes;
-                    try {
-                      const parsed = JSON.parse(m.notes);
-                      if (Array.isArray(parsed)) notesStr = parsed.join(', ');
-                    } catch(e) {}
-
-                    return (
-                      <Drawer 
-                        key={`${m.id || m.name}-${i}`} 
-                        title={<span style={{ display: 'flex', gap: 8, alignItems: 'center' }}><span>{m.name}</span> <span style={{ color: 'var(--text-color)', opacity: 0.7 }}>{glyph(m.dots)}</span></span>}
-                        subtitle={details?.category || ''}
-                      >
-                        <div style={{ padding: '4px 0', fontSize: '0.95rem', opacity: 0.9 }}>
-                          {desc}
-                        </div>
-                        {notesStr && (
-                          <div style={{ marginTop: 8, padding: 8, background: 'rgba(255,255,255,0.05)', borderRadius: 4, fontSize: '0.85rem' }}>
-                            <b>Notes/Selections:</b> {notesStr}
-                          </div>
-                        )}
-                      </Drawer>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </Card>
-
-          {/* Flaws */}
-          <Card>
-            <div className={styles.cardHead} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-               <b>Flaws</b>
-               <span className={styles.muted} style={{ fontSize: '0.85rem' }}>
-                 Total Dots: <b>{totalFlawDots}</b>
-               </span>
-            </div>
-
-            <FlawAdder 
-               existing={flawsList}
-               onAdd={async (flaw, targetDots) => {
-                 const nextSheet = JSON.parse(JSON.stringify(sheet));
-                 nextSheet.advantages = nextSheet.advantages || { merits: [], flaws: [] };
-                 nextSheet.advantages.flaws = Array.isArray(nextSheet.advantages.flaws) ? nextSheet.advantages.flaws : [];
-                 
-                 const newEntry = {
-                   id: flaw.id,
-                   name: flaw.name,
-                   dots: Number(targetDots),
-                   from: 'xp_shop'
-                 };
-                 
-                 nextSheet.advantages.flaws.push(newEntry);
-                 
-                 await spendXP({
-                   type: 'flaw',
-                   target: flaw.id,
-                   dots: Number(targetDots),
-                   patchSheet: nextSheet
-                 });
-               }}
-            />
-
-            {flawsList.length > 0 && (
-              <div className={styles.grid} style={{ marginTop: 20 }}>
-                <div className={styles.subhead}>Known Flaws</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {flawsList.map((f, i) => {
-                    const details = allFlawsFlat.find(x => x.id === f.id);
-                    const desc = details?.description || 'No description available.';
-                    
-                    return (
-                      <Drawer 
-                        key={`${f.id || f.name}-${i}`} 
-                        title={<span style={{ display: 'flex', gap: 8, alignItems: 'center' }}><span>{f.name}</span> <span style={{ color: '#b40f1f' }}>{glyph(f.dots)}</span></span>}
-                        subtitle={details?.category || ''}
-                      >
-                        <div style={{ padding: '4px 0', fontSize: '0.95rem', opacity: 0.9 }}>
-                          {desc}
-                        </div>
-                        {f.notes && (
-                          <div style={{ marginTop: 8, padding: 8, background: 'rgba(255,0,0,0.05)', borderRadius: 4, fontSize: '0.85rem' }}>
-                            <b>Notes:</b> {f.notes}
-                          </div>
-                        )}
-                      </Drawer>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </Card>
+          <MeritsBackgroundsSection
+            sheet={sheet}
+            xp={xp}
+            ch={ch}
+            knownPowerNamesAndIds={knownPowerNamesAndIds}
+          />
 
 
           {/* Rituals & Ceremonies */}
@@ -2006,15 +1555,6 @@ const knownPowerNamesAndIds = useMemo(() => {
           busy={savingProfile}
         />
       )}
-
-      {invModalOpen && (
-        <InventoryItemModal
-          item={editingInvItem}
-          onClose={() => { setInvModalOpen(false); setEditingInvItem(null); }}
-          onSave={handleSaveInvItem}
-          busy={savingInv}
-        />
-      )}
     </div>
   );
 }
@@ -2034,76 +1574,12 @@ function Pill({ label, value }) {
   );
 }
 
-function DotRow({ label, value = 0, max = 5, rightExtra = null }) {
-  return (
-    <div className={styles.dotRow}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span>{label}</span>
-        {rightExtra}
-      </div>
-      <div className={styles.dots}>
-        {Array.from({ length: max }).map((_, i) => (
-          <span key={i} className={`${styles.dot} ${i < value ? styles.dotOn : ''}`} />
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function renderSpecs(specs = []) {
   if (!specs.length) return null;
   return <span className={styles.specsText}>({specs.join(', ')})</span>;
 }
 
-function DisciplineRow({ name, level = 0, powers = [] }) {
-  const icon = iconPath(name);
-  const byLevel = new Map((powers || []).map(p => [Number(p.level), { id: p.id, name: p.name }]));
-  const maxPicked = Math.max(0, ...Array.from(byLevel.keys()));
-  const displayMax = Math.min(5, Math.max(level || 0, maxPicked || 0) || 0) || level || 0 || 0;
-
-  return (
-    <div className={styles.disciplineRow}>
-      <div className={styles.disciplineHead}>
-        <img
-          src={icon}
-          alt=""
-          width={28}
-          height={28}
-          onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/img/disciplines/Oblivion-rombo.png'; }}
-          className={styles.disciplineIcon}
-        />
-        <div className={styles.disciplineTitleBlock}>
-          <b>{name}</b>
-          <div className={styles.dots}>
-            {Array.from({ length: 5 }).map((_, i) => (
-              <span key={i} className={`${styles.dot} ${i < level ? styles.dotOn : ''}`} />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <ul className={styles.powerList}>
-        {Array.from({ length: Math.max(displayMax, level || 0) || 0 }).map((_, i) => {
-          const L = i + 1;
-          const picked = byLevel.get(L);
-          const unlocked = L <= level;
-
-          let cls = styles.powerPill;
-          let label = picked ? picked.name : (unlocked ? 'Pick a power' : 'Locked');
-          if (!unlocked) cls += ` ${styles.powerPillLocked}`;
-          else if (!picked) cls += ` ${styles.powerPillMissing}`;
-
-          return (
-            <li key={L} className={cls} title={picked ? `Level ${L}` : undefined}>
-              <span className={styles.levelBadge}>L{L}</span>
-              <span className={styles.powerName}>{label}</span>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
-  );
-}
 
 function ConfirmModal({ title = 'Confirm Purchase', children, onConfirm, onCancel, busy = false }) {
   return (

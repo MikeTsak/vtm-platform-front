@@ -1,0 +1,220 @@
+/* InventoryItemModal.module.css */
+/* Use the same global variables as CharacterView */
+:root {
+  --tint: #8a0f1a;
+  --bg-color: #0d0d0f;
+  --surface-color: #141417;
+  --surface-lighter: #1a1b1f;
+  --border-color: #2f3138;
+  --text-color: #e8e8ed;
+  --text-muted: #9398a0;
+  --radius: 12px;
+  --shadow: 0 8px 32px rgb(0 0 0 / 50%);
+  --font-title: 'Cinzel', serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --accent: #6ea8ff;
+  --accent-2: #8b76ff;
+  --success: #1faa70;
+  --warning: #e1b64a;
+  --danger: #f25f5c;
+  --shadow-xl: 0 12px 50px rgb(0 0 0 / 55%);
+  --ring: 0 0 0 2px #2a3350, 0 0 0 4px color-mix(in oklab, var(--accent) 40%, transparent);
+}
+
+/* Modal overlay */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgb(5 6 10 / 62%);
+  backdrop-filter: blur(6px);
+  display: grid;
+  place-items: center;
+  z-index: 60;
+  animation: modalFade .18s ease-out;
+}
+
+@keyframes modalFade {
+  from { opacity: 0 }
+  to { opacity: 1 }
+}
+
+/* Modal card */
+.modalCard {
+  background: rgb(16 18 24 / 72%);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  box-shadow: var(--shadow-xl);
+  max-height: min(86vh, 860px);
+  overflow: hidden;
+  color: var(--text-color);
+  animation: modalLift .18s cubic-bezier(.2,.8,.2,1);
+  display: grid;
+  grid-template-rows: auto auto 1fr auto; /* header, note, BODY, footer */
+}
+
+@keyframes modalLift {
+  from { transform: translateY(8px); opacity: .7 }
+  to { transform: translateY(0); opacity: 1 }
+}
+
+/* Modal header */
+.modalHeader {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border-color);
+  background: linear-gradient(180deg, rgb(255 255 255 / 2%), transparent);
+}
+
+.modalTitle {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: .2px;
+  font-family: var(--font-title);
+}
+
+/* Close button (optional, we use onClose prop) */
+.closeBtn {
+  inline-size: 36px;
+  block-size: 36px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background: #0e1118;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.closeBtn:hover {
+  color: #fff;
+  background: #111622;
+  border-color: #334;
+}
+
+/* Form styles */
+.modalForm {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Input, select, textarea */
+.input,
+select.input,
+textarea.input {
+  width: 100%;
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+  border-radius: 8px;
+  padding: 0 .75rem;
+  height: 42px;
+  font-size: 1rem;
+  font-family: var(--font-body);
+  flex: 1;
+  min-width: 120px;
+}
+
+.input:focus,
+select.input:focus,
+textarea.input:focus {
+  outline: none;
+  border-color: var(--tint);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tint) 40%, transparent);
+}
+
+/* Textarea specific */
+textarea.input {
+  height: auto;
+  min-height: 80px;
+  resize: vertical;
+  padding-top: .75rem;
+}
+
+/* File input */
+.input[type="file"] {
+  padding: .5rem .75rem;
+  height: auto;
+}
+
+/* Image preview */
+.imagePreview {
+  margin-top: 8px;
+  max-width: 150px;
+  max-height: 150px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+/* Modal footer */
+.modalFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border-color);
+  background: linear-gradient(0deg, rgb(255 255 255 / 2%), transparent);
+}
+
+/* Buttons */
+.ghostBtn,
+.cta {
+  font-family: var(--font-body);
+  border-radius: 8px;
+  padding: .6rem 1.2rem;
+  transition: all .2s ease;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.ghostBtn {
+  background: transparent;
+  border-color: var(--border-color);
+  color: var(--text-muted);
+}
+
+.ghostBtn:hover {
+  color: #fff;
+  border-color: var(--tint);
+  background: color-mix(in srgb, var(--tint) 20%, transparent);
+}
+
+.cta {
+  background: linear-gradient(145deg, color-mix(in srgb, var(--tint) 90%, #000), var(--tint));
+  color: #fff;
+  border-color: color-mix(in srgb, var(--tint) 60%, #000);
+  text-shadow: 0 1px 2px rgb(0 0 0 / 50%);
+}
+
+.cta:hover:not(:disabled) {
+  filter: brightness(1.2);
+  transform: translateY(-2px);
+}
+
+.cta:disabled {
+  background: #333;
+  border-color: #444;
+  color: #888;
+  cursor: not-allowed;
+}
+
+/* Responsive */
+@media (width <= 480px) {
+  .modalCard {
+    border-radius: 12px;
+    max-height: 90vh;
+  }
+
+  .modalHeader,
+  .modalForm,
+  .modalFooter {
+    padding: 12px 16px;
+  }
+
+  .modalTitle {
+    font-size: 1.1rem;
+  }
+}
