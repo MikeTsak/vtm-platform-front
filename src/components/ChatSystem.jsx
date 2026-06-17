@@ -168,19 +168,17 @@ const StatusIcon = ({ msg }) => {
   return <span title="Sent" className={styles.statusSent}>✓</span>;
 };
 
-/* --- CHAT MEDIA COMPONENT (Secure Fetch & Audio Handling) --- */
-const ChatMedia = ({ attachmentId }) => {
+/* --- CHAT IMAGE COMPONENT (Secure Fetch) --- */
+const ChatImage = ({ attachmentId }) => {
   const [prevId, setPrevId] = useState(attachmentId);
-  const [mediaUrl, setMediaUrl] = useState(null);
-  const [mimeType, setMimeType] = useState(null);
+  const [imageUrl, setImageUrl] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   // 1. Adjust state inline during render if the prop changes
   if (attachmentId !== prevId) {
     setPrevId(attachmentId);
-    setMediaUrl(null);
-    setMimeType(null);
+    setImageUrl(null);
     setLoading(true);
     setError(false);
   }
@@ -189,16 +187,17 @@ const ChatMedia = ({ attachmentId }) => {
     let active = true;
     let urlToRevoke = null;
 
+    // 2. State resets removed from here!
+    
     api.get(`/chat/media/${attachmentId}`, { responseType: 'blob' })
       .then((response) => {
         if (!active) return;
         urlToRevoke = URL.createObjectURL(response.data);
-        setMediaUrl(urlToRevoke);
-        setMimeType(response.data.type); // Parse the blob type natively
+        setImageUrl(urlToRevoke);
         setLoading(false);
       })
       .catch((err) => {
-        console.error("Failed to load media", err);
+        console.error("Failed to load image", err);
         if (!active) return;
         setError(true);
         setLoading(false);
@@ -211,18 +210,14 @@ const ChatMedia = ({ attachmentId }) => {
   }, [attachmentId]);
 
   if (loading) return <Loading />;
-  if (error) return <div className={styles.imageError}>⚠ Media failed to load</div>;
-
-  if (mimeType && mimeType.startsWith('audio/')) {
-    return <audio src={mediaUrl} controls className={styles.chatAudio} style={{ maxWidth: '100%' }} />;
-  }
+  if (error) return <div className={styles.imageError}>⚠ Image failed to load</div>;
 
   return (
     <img 
-      src={mediaUrl} 
+      src={imageUrl} 
       alt="Attachment" 
       className={styles.chatImage} 
-      onClick={() => window.open(mediaUrl, '_blank')}
+      onClick={() => window.open(imageUrl, '_blank')}
     />
   );
 };
@@ -666,7 +661,7 @@ export default function ChatSystem({ commsEnabled = true }) {
                   title = isAdmin && selectedPlayerId ? `${selectedContact.name} ↔ ${users.find(u => u.id === selectedPlayerId)?.char_name || 'Player'}` : selectedContact.name;
                   icon = symlogo(selectedContact.clan) || icon;
                 }
-                const notificationBody = latest.attachment_id ? '📷 Media Attachment' : (latest.body || 'New message');
+                const notificationBody = latest.attachment_id ? '📷 Image Attachment' : (latest.body || 'New message');
                 notify(title, notificationBody, icon);
               }
             }
@@ -760,22 +755,29 @@ export default function ChatSystem({ commsEnabled = true }) {
     let attachmentId = null;
 
     try {
-    if (attachment) {
-      const formData = new FormData();
-      formData.append('file', attachment);
-      
-      try {
-        const res = await api.post('/chat/upload', formData, {
-          // Setting to undefined strips global defaults and lets the browser set the boundary
-          headers: { 'Content-Type': undefined } 
-        });
-        attachmentId = res.data.id;
-      } catch (err) {
-        alert('Failed to upload attachment');
-        sendingRef.current = false;
-        return;
+      if (attachment) {
+        const formData = new FormData();
+        formData.append('file', attachment);
+
+        try {
+          // IMPORTANT: if the shared `api` axios instance sets a default
+          // 'Content-Type: application/json' header (common in api.js setups),
+          // it overrides FormData's multipart boundary and the server gets an
+          // empty body -> multer sees "no file". Setting Content-Type to
+          // undefined here removes it from this request's merged headers so
+          // axios's default adapter can auto-detect FormData and set the
+          // correct 'multipart/form-data; boundary=...' itself.
+          const res = await api.post('/chat/upload', formData, {
+            headers: { 'Content-Type': undefined },
+          });
+          attachmentId = res.data.id;
+        } catch (err) {
+          console.error('Upload error:', err?.response?.data || err);
+          alert(err?.response?.data?.error || 'Failed to upload file. Check file size and type.');
+          sendingRef.current = false;
+          return;
+        }
       }
-    }
 
       const payload = { body, attachment_id: attachmentId };
       let newMsg = null;
@@ -1398,7 +1400,7 @@ export default function ChatSystem({ commsEnabled = true }) {
                         <>
                           {item.attachment_id && (
                             <div className={styles.chatImageWrapper}>
-                              <ChatMedia attachmentId={item.attachment_id} />
+                              <ChatImage attachmentId={item.attachment_id} />
                             </div>
                           )}
                           {item.body && <div className={styles.messageBody}>{item.body}</div>}
@@ -1448,7 +1450,11 @@ export default function ChatSystem({ commsEnabled = true }) {
                   <div className={styles.previewContainer}>
                     <div className={styles.previewWrapper}>
                       {attachment.type.startsWith('audio/') ? (
-                        <audio src={previewUrl} controls style={{ maxWidth: '200px', height: '40px' }} />
+                        <div className={styles.audioPreview}>
+                          <span className={styles.audioPreviewIcon}>🎵</span>
+                          <span className={styles.audioPreviewName}>{attachment.name}</span>
+                          <audio controls src={previewUrl} style={{ maxWidth: '200px', height: '32px' }} />
+                        </div>
                       ) : (
                         <img src={previewUrl} alt="Preview" />
                       )}

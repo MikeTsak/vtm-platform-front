@@ -121,20 +121,22 @@ export default function Nav() {
               </NavDropdown>
 
               {/* Replaced Network dropdown with direct SchreckNet and SurfaceWeb links */}
+              <NavDropdown title="Comms">
               <NavLink
                 to="/schrecknet"
-                className={({ isActive }) => getNavItemClass({ isActive })}
+                className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true })}
                 aria-label="SchreckNet - Secure Communications"
               >
                 SchreckNet
               </NavLink>
               <NavLink
                 to="/surfaceweb"
-                className={({ isActive }) => getNavItemClass({ isActive })}
+                className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true })}
                 aria-label="Surface Web - Public Communications"
               >
                 Surface Web
               </NavLink>
+              </NavDropdown>
               <NavLink
                 to="/live-session"
                 className={({ isActive }) => getNavItemClass({ isActive })}

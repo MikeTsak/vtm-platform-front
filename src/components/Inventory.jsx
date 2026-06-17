@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api';
 import InventoryItemModal from './InventoryItemModal';
-import styles from './Inventory.module.css';
+import styles from '../styles/Inventory.module.css';
 
 function Inventory({ characterId }) {
   const id = characterId;

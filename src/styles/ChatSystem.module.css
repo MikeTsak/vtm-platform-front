@@ -815,6 +815,31 @@
   background: var(--bg-color);
 }
 
+.audioPreview {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  height: 100%;
+  width: 240px;
+  background: var(--bg-color);
+}
+
+.audioPreviewIcon {
+  font-size: 1.5rem;
+}
+
+.audioPreviewName {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .removePreviewBtn {
   position: absolute;
   top: 4px;

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import styles from './InventoryItemModal.module.css';
+import styles from '../styles/InventoryItemModal.module.css';
 
 const InventoryItemModal = ({ item, onClose, onSave, busy }) => {
   const [name, setName] = useState(item?.name || '');

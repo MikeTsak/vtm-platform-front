@@ -99,19 +99,13 @@ function SubmitCard({ quota, onDowntimeCreated, deadline }) {
   const [err, setErr] = useState('');
 
   const isFull = quota.used >= quota.limit;
-  
-  let isPastDeadline = false;
-  if (deadline) {
-    const dlDate = new Date(deadline);
-    dlDate.setHours(23, 59, 59, 999); 
-    isPastDeadline = dlDate.getTime() < new Date().getTime();
-  }
+  const isPastDeadline = false; // deadline check disabled
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (isFull || loading || !title || !body) return;
-    if (isPastDeadline) { setErr('The deadline for downtime submission has passed.'); return; }
-    
+    // if (isPastDeadline) { setErr('The deadline for downtime submission has passed.'); return; }
+
     setLoading(true); setErr('');
     try {
       const payload = { title: title.trim(), body: body.trim(), feeding_type: feeding.trim() || null };
@@ -165,19 +159,13 @@ function ProjectSubmitCard({ quota, onDowntimeCreated, deadline }) {
   const [err, setErr] = useState('');
 
   const isFull = quota.used >= quota.limit;
-  
-  let isPastDeadline = false;
-  if (deadline) {
-    const dlDate = new Date(deadline);
-    dlDate.setHours(23, 59, 59, 999); 
-    isPastDeadline = dlDate.getTime() < new Date().getTime();
-  }
+  const isPastDeadline = false; // deadline check disabled
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (isFull || loading || !title || !body) return;
-    if (isPastDeadline) { setErr('The deadline for project submission has passed.'); return; }
-    
+    // if (isPastDeadline) { setErr('The deadline for project submission has passed.'); return; }
+
     setLoading(true); setErr('');
     try {
       const finalTitle = `[PROJECT] ${title.trim()}`;
@@ -227,7 +215,7 @@ function ProjectSubmitCard({ quota, onDowntimeCreated, deadline }) {
 }
 
 // --- List Item Component with Inline Edit ---
-function DowntimeItem({ dt, isProject, isDeadlinePassed, onUpdateDowntime }) {
+function DowntimeItem({ dt, isProject, onUpdateDowntime }) {
   const status = (dt.status || 'submitted').toLowerCase();
   let badgeClass = styles.badgePending;
   if (status === 'approved') badgeClass = styles.badgeApproved;
@@ -244,8 +232,8 @@ function DowntimeItem({ dt, isProject, isDeadlinePassed, onUpdateDowntime }) {
   const [saving, setSaving] = useState(false);
   const [editErr, setEditErr] = useState('');
 
-  // Can edit: strictly 'submitted' status AND deadline not passed
-  const canEdit = status === 'submitted' && !isDeadlinePassed;
+  // Can edit: strictly 'submitted' status (deadline check disabled for testing)
+  const canEdit = status === 'submitted';
 
   const handleSave = async () => {
     if (!editTitle.trim() || !editBody.trim()) return;
@@ -530,11 +518,10 @@ export default function DownTimes() {
           </div>
         )}
         {!loading && list.map(dt => (
-          <DowntimeItem 
-            key={dt.id} 
-            dt={dt} 
-            isProject={viewMode === 'project'} 
-            isDeadlinePassed={viewMode === 'project' ? projectCountdown.isPast : deadlineCountdown.isPast}
+          <DowntimeItem
+            key={dt.id}
+            dt={dt}
+            isProject={viewMode === 'project'}
             onUpdateDowntime={handleDowntimeUpdated}
           />
         ))}

@@ -2,7 +2,7 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import AuthProvider, { AuthCtx } from './AuthContext';
-import NotificationProvider from './context/NotificationContext';
+import { NotificationProvider } from './context/NotificationContext';
 import NotificationBanner from './components/NotificationBanner';
 import api from './api';
 

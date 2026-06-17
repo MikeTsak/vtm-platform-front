@@ -53,7 +53,7 @@ export default function NotificationBanner() {
         >
           <div>{notification.message}</div>
           <button
-            onClick(() => dismiss(notification.id))
+            onClick={() => dismiss(notification.id)}
             style={{
               background: 'none',
               border: 'none',
