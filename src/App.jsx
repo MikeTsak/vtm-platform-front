@@ -2,6 +2,8 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import AuthProvider, { AuthCtx } from './AuthContext';
+import NotificationProvider from './context/NotificationContext';
+import NotificationBanner from './components/NotificationBanner';
 import api from './api';
 
 // Pages & Components
@@ -97,55 +99,58 @@ function MalkavianOrAdminOnly({ children }) {
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}>
-          <GlobalBanner />
-          <Nav />
-          <div style={{ flexGrow: 1 }}>
-            <Routes>
-              <Route path="/" element={<Private><Home/></Private>} />
-              <Route path="/character" element={<Private><CharacterView/></Private>} />
-              <Route path="/make" element={<Private><CharacterSetup/></Private>} />
-              <Route path="/domains" element={<Private><Domains/></Private>} />
-              <Route path="/downtimes" element={<Private><DownTimes/></Private>} />
-              <Route path="/boons" element={<Private><Boons/></Private>} />
-              <Route path="/schrecknet" element={<Private><SchreckNet/></Private>} />
-              <Route path="/surfaceweb" element={<Private><SurfaceWeb/></Private>} />
-              <Route path="/live-session" element={<Private><LiveSession/></Private>} />
-              <Route path="/court" element={<Private><Court/></Private>} />
-              <Route path="/court/hierarchy" element={<Private><Hierarchy /></Private>} />
-              <Route path="/court/announcements" element={<Private><Announcements /></Private>} />
-              <Route path="/court/coteries" element={<Private><Coteries /></Private>} />
+      <NotificationProvider>
+        <BrowserRouter>
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}>
+            <GlobalBanner />
+            <Nav />
+            <div style={{ flexGrow: 1 }}>
+              <Routes>
+                <Route path="/" element={<Private><Home/></Private>} />
+                <Route path="/character" element={<Private><CharacterView/></Private>} />
+                <Route path="/make" element={<Private><CharacterSetup/></Private>} />
+                <Route path="/domains" element={<Private><Domains/></Private>} />
+                <Route path="/downtimes" element={<Private><DownTimes/></Private>} />
+                <Route path="/boons" element={<Private><Boons/></Private>} />
+                <Route path="/schrecknet" element={<Private><SchreckNet/></Private>} />
+                <Route path="/surfaceweb" element={<Private><SurfaceWeb/></Private>} />
+                <Route path="/live-session" element={<Private><LiveSession/></Private>} />
+                <Route path="/court" element={<Private><Court/></Private>} />
+                <Route path="/court/hierarchy" element={<Private><Hierarchy /></Private>} />
+                <Route path="/court/announcements" element={<Private><Announcements /></Private>} />
+                <Route path="/court/coteries" element={<Private><Coteries /></Private>} />
 
-              <Route path="/news" element={<Private><News/></Private>} />
+                <Route path="/news" element={<Private><News/></Private>} />
 
-              <Route path="/admin" element={<AdminOnly><Admin/></AdminOnly>} />
-              <Route path="/admin/live-session" element={<AdminOnly><LiveSessionDashboard/></AdminOnly>} />
-              <Route path="/admin/npcs" element={<AdminOnly><NPCs/></AdminOnly>} />
-              <Route path="/admin/npcs/:id" element={<AdminOnly><AdminNPCView /></AdminOnly>} />
+                <Route path="/admin" element={<AdminOnly><Admin/></AdminOnly>} />
+                <Route path="/admin/live-session" element={<AdminOnly><LiveSessionDashboard/></AdminOnly>} />
+                <Route path="/admin/npcs" element={<AdminOnly><NPCs/></AdminOnly>} />
+                <Route path="/admin/npcs/:id" element={<AdminOnly><AdminNPCView /></AdminOnly>} />
 
-              <Route path="/forgot" element={<ForgotPassword />} />
-              <Route path="/reset" element={<ResetPassword />} />
-              <Route path="/login" element={<Login/>} />
-              <Route path="/register" element={<Register/>} />
-              <Route path="/terms" element={<Terms />} />
-              <Route path="/legal" element={<Legal />} />
-              <Route path="/privacy" element={<Privacy />} />
-              <Route path="/media/:id" element={<MediaViewer />} />
+                <Route path="/forgot" element={<ForgotPassword />} />
+                <Route path="/reset" element={<ResetPassword />} />
+                <Route path="/login" element={<Login/>} />
+                <Route path="/register" element={<Register/>} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/legal" element={<Legal />} />
+                <Route path="/privacy" element={<Privacy />} />
+                <Route path="/media/:id" element={<MediaViewer />} />
 
-              <Route
-                path="/premonitions"
-                element={<MalkavianOrAdminOnly><Premonitions /></MalkavianOrAdminOnly>}
-              />
+                <Route
+                  path="/premonitions"
+                  element={<MalkavianOrAdminOnly><Premonitions /></MalkavianOrAdminOnly>}
+                />
 
-              {/* ✅ ADDED CATCH-ALL ROUTE HERE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+                {/* ✅ ADDED CATCH-ALL ROUTE HERE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </div>
+            <NotificationBanner />
+            <DiceRoller />
+            <Footer />
           </div>
-          <DiceRoller />
-          <Footer />
-        </div>
-      </BrowserRouter>
+        </BrowserRouter>
+      </NotificationProvider>
     </AuthProvider>
   );
 }
