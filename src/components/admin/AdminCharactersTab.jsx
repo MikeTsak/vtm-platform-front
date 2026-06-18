@@ -1,8 +1,8 @@
 // src/components/admin/AdminCharactersTab.jsx
-import React, { useMemo, useState } from 'react';
-import api from '../../api'; 
+import React, { useMemo, useState, useEffect } from 'react';
+import api from '../../api';
 import styles from '../../styles/Admin.module.css';
-import generateVTMCharacterSheetPDF from '../../utils/pdfGenerator'; 
+import generateVTMCharacterSheetPDF from '../../utils/pdfGenerator';
 
 /* ---------- VTM Lookups ---------- */
 const CLAN_COLORS = {
@@ -15,7 +15,7 @@ const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim' 
 const fileify = (c) => (NAME_OVERRIDES[c] || c).replace(/\s+/g, '_');
 const symlogo = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.png` : '');
 
-// Updated TrackerDisplay to support single-values (Humanity/Hunger) and Stains
+// ---------- TRACKER DISPLAY ----------
 const TrackerDisplay = ({ label, currentObj, max, onUpdate, isValueTracker = false, value = 0, stains = 0 }) => {
   const trackSize = max || 1;
   const agg = currentObj?.aggravated || 0;
@@ -26,10 +26,10 @@ const TrackerDisplay = ({ label, currentObj, max, onUpdate, isValueTracker = fal
     let content = '';
     let isFilled = false;
     let boxStyle = {
-      width: '24px', height: '24px', border: '1px solid var(--border-color, #ccc)',
+      width: '24px', height: '24px', border: '1px solid var(--glass-border)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: '18px', fontWeight: 'bold', backgroundColor: 'var(--bg-primary, #fff)',
-      cursor: 'default', color: 'var(--text-color, #000)', lineHeight: 1
+      fontSize: '16px', fontWeight: 'bold', backgroundColor: 'var(--glass-inset)',
+      cursor: 'default', color: 'var(--text-primary)', lineHeight: 1, borderRadius: '4px'
     };
 
     if (isValueTracker) {
@@ -39,52 +39,52 @@ const TrackerDisplay = ({ label, currentObj, max, onUpdate, isValueTracker = fal
          if (label === 'Hunger') {
            content = '🩸';
            boxStyle.fontSize = '14px';
-           // Don't change background to black for Hunger
          } else {
-           boxStyle.backgroundColor = 'var(--text-color, #333)';
+           boxStyle.backgroundColor = 'var(--accent-purple)';
            boxStyle.color = '#fff';
+           boxStyle.borderColor = 'var(--accent-purple)';
          }
       }
     } else {
-      if (i < agg) { content = 'X'; boxStyle.color = '#b40f1f'; } 
-      else if (i < agg + sup) { content = '/'; }
+      if (i < agg) { content = 'X'; boxStyle.color = '#ff4d4d'; boxStyle.borderColor = '#ff4d4d'; }
+      else if (i < agg + sup) { content = '/'; boxStyle.color = '#ffc107'; }
     }
 
     boxes.push(<div key={i} style={boxStyle} title={`Box ${i+1}`}>{content}</div>);
   }
 
   return (
-    <div style={{ marginBottom: '1rem' }}>
-      <div style={{ fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '4px', display:'flex', justifyContent:'space-between' }}>
-        <span>{label}</span><span style={{ opacity: 0.6, fontSize: '0.75rem' }}>Max: {trackSize}</span>
+    <div style={{ marginBottom: '1rem', flex: '1 1 200px' }}>
+      <div style={{ fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '6px', display:'flex', justifyContent:'space-between', color: 'var(--text-secondary)' }}>
+        <span>{label}</span><span style={{ opacity: 0.6, fontSize: '0.75rem', fontFamily: 'monospace' }}>MAX: {trackSize}</span>
       </div>
-      <div style={{ display: 'flex', gap: '2px', flexWrap: 'wrap', marginBottom: '6px' }}>{boxes}</div>
-      <div style={{ display: 'flex', gap: '10px', fontSize: '0.8rem' }}>
+      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '8px' }}>{boxes}</div>
+      <div style={{ display: 'flex', gap: '8px', fontSize: '0.8rem' }}>
         {!isValueTracker ? (
           <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-              <span style={{ opacity: 0.7 }}>Sup:</span>
-              <button className={styles.btn} style={{ padding: '0 6px' }} onClick={() => onUpdate('superficial', -1)}>-</button>
-              <button className={styles.btn} style={{ padding: '0 6px' }} onClick={() => onUpdate('superficial', 1)}>+</button>
+            <div className={styles.row} style={{ gap: '4px', background: 'var(--glass-inset)', padding: '2px 6px', borderRadius: '4px' }}>
+              <span style={{ opacity: 0.7 }}>SUP:</span>
+              <button className={`${styles.btn} ${styles.btnGhost}`} style={{ padding: '2px 6px', minWidth: '24px' }} onClick={() => onUpdate('superficial', -1)}>-</button>
+              <button className={`${styles.btn} ${styles.btnGhost}`} style={{ padding: '2px 6px', minWidth: '24px' }} onClick={() => onUpdate('superficial', 1)}>+</button>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-              <span style={{ opacity: 0.7 }}>Agg:</span>
-              <button className={styles.btn} style={{ padding: '0 6px' }} onClick={() => onUpdate('aggravated', -1)}>-</button>
-              <button className={styles.btn} style={{ padding: '0 6px' }} onClick={() => onUpdate('aggravated', 1)}>+</button>
+            <div className={styles.row} style={{ gap: '4px', background: 'var(--glass-inset)', padding: '2px 6px', borderRadius: '4px' }}>
+              <span style={{ opacity: 0.7 }}>AGG:</span>
+              <button className={`${styles.btn} ${styles.btnGhost}`} style={{ padding: '2px 6px', minWidth: '24px' }} onClick={() => onUpdate('aggravated', -1)}>-</button>
+              <button className={`${styles.btn} ${styles.btnGhost}`} style={{ padding: '2px 6px', minWidth: '24px' }} onClick={() => onUpdate('aggravated', 1)}>+</button>
             </div>
           </>
         ) : (
           <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-              <span style={{ opacity: 0.7 }}>Val:</span>
-              <button className={styles.btn} style={{ padding: '0 6px' }} onClick={() => onUpdate('value', -1)}>-</button>
-              <button className={styles.btn} style={{ padding: '0 6px' }} onClick={() => onUpdate('value', 1)}>+</button>
+            <div className={styles.row} style={{ gap: '4px', background: 'var(--glass-inset)', padding: '2px 6px', borderRadius: '4px' }}>
+              <span style={{ opacity: 0.7 }}>VAL:</span>
+              <button className={`${styles.btn} ${styles.btnGhost}`} style={{ padding: '2px 6px', minWidth: '24px' }} onClick={() => onUpdate('value', -1)}>-</button>
+              <button className={`${styles.btn} ${styles.btnGhost}`} style={{ padding: '2px 6px', minWidth: '24px' }} onClick={() => onUpdate('value', 1)}>+</button>
             </div>
             {label === 'Humanity' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-                <span style={{ opacity: 0.7 }}>Stains:</span>
-                <button className={styles.btn} style={{ padding: '0 6px' }} onClick={() => onUpdate('stains', -1)}>-</button>
-                <button className={styles.btn} style={{ padding: '0 6px' }} onClick={() => onUpdate('stains', 1)}>+</button>
+              <div className={styles.row} style={{ gap: '4px', background: 'var(--glass-inset)', padding: '2px 6px', borderRadius: '4px' }}>
+                <span style={{ opacity: 0.7 }}>STAINS:</span>
+                <button className={`${styles.btn} ${styles.btnGhost}`} style={{ padding: '2px 6px', minWidth: '24px' }} onClick={() => onUpdate('stains', -1)}>-</button>
+                <button className={`${styles.btn} ${styles.btnGhost}`} style={{ padding: '2px 6px', minWidth: '24px' }} onClick={() => onUpdate('stains', 1)}>+</button>
               </div>
             )}
           </>
@@ -94,157 +94,52 @@ const TrackerDisplay = ({ label, currentObj, max, onUpdate, isValueTracker = fal
   );
 };
 
+// ---------- MAIN COMPONENT ----------
 export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEditor }) {
-  const chars = useMemo(() => users.filter(u => u.character_id).map(u => ({
+  const baseChars = useMemo(() => users.filter(u => u.character_id).map(u => ({
     id: u.character_id, user_id: u.id, name: u.char_name || '', clan: u.clan || '',
     xp: u.xp || 0, sheet: u.sheet || null, owner: `${u.display_name} <${u.email}>`
   })), [users]);
 
-  const [edits, setEdits] = useState({});
+  const [sheetStates, setSheetStates] = useState({});
+  const [expandedCards, setExpandedCards] = useState(new Set());
+  const [filterText, setFilterText] = useState('');
   const [confirmDialog, setConfirmDialog] = useState(null);
-  function getRow(c) { return edits[c.id] ?? { name: c.name, clan: c.clan, sheet: JSON.stringify(c.sheet || {}, null, 2) }; }
-  function setRow(c, patch) { setEdits(prev => ({ ...prev, [c.id]: { ...getRow(c), ...patch } })); }
 
-  const handleReset = async (char) => {
-    if (!window.confirm(`Allow ${char.name} to Re-Roll?`)) return;
-    try {
-      await api.post(`/admin/characters/${char.id}/allow-reset`);
-      const row = getRow(char);
-      let data = {}; try { data = JSON.parse(row.sheet || '{}'); } catch (e) {}
-      data.allow_reset = true;
-      setRow(char, { sheet: JSON.stringify(data, null, 2) });
-      alert('Permission granted!');
-    } catch (e) { alert('Failed to authorize reset.'); }
+  useEffect(() => {
+    const newStates = {};
+    baseChars.forEach(c => { newStates[c.id] = JSON.stringify(c.sheet || {}, null, 2); });
+    setSheetStates(newStates);
+  }, [baseChars]);
+
+  const filteredChars = useMemo(() => {
+    if (!filterText.trim()) return baseChars;
+    const filter = filterText.toLowerCase().trim();
+    return baseChars.filter(c =>
+      c.name.toLowerCase().includes(filter) || c.clan.toLowerCase().includes(filter) || c.owner.toLowerCase().includes(filter)
+    );
+  }, [baseChars, filterText]);
+
+  const getSheetObj = (charId) => {
+    try { return JSON.parse(sheetStates[charId] || '{}'); } 
+    catch (e) { return {}; }
   };
 
-  // Helper to open the dialog
-  const requestGlobalReset = (trackersToReset) => {
-    setConfirmDialog({
-      title: 'Confirm Global Reset',
-      message: `Are you absolutely sure you want to reset ${trackersToReset.join(', ')} for ALL characters? This cannot be undone.`,
-      onConfirm: () => {
-        setConfirmDialog(null);
-        resetAllCharacters(trackersToReset);
-      }
+  const setSheetState = (charId, newSheetObj) => {
+    setSheetStates(prev => ({ ...prev, [charId]: JSON.stringify(newSheetObj, null, 2) }));
+  };
+
+  const toggleExpand = (charId) => {
+    setExpandedCards(prev => {
+      const next = new Set(prev);
+      if (next.has(charId)) next.delete(charId);
+      else next.add(charId);
+      return next;
     });
   };
 
-const resetAllCharacters = async (trackersToReset) => {
-    const confirmMessage = `Are you absolutely sure you want to reset ${trackersToReset.join(' and ')} for ALL characters? This will wipe everyone's current damage.`;
-    if (!window.confirm(confirmMessage)) return;
-
-    // Loop through every character and prepare the updates
-    const updatePromises = chars.map(async (c) => {
-      const row = getRow(c);
-      let data = {}; 
-      try { 
-        data = JSON.parse(row.sheet || '{}'); 
-      } catch (e) { 
-        console.warn(`Skipping ${c.name} due to invalid JSON.`);
-        return Promise.resolve(); // Skip broken sheets so it doesn't crash the loop
-      }
-      
-      if (trackersToReset.includes('health')) {
-        data.health = { superficial: 0, aggravated: 0 };
-      }
-      if (trackersToReset.includes('willpower')) {
-        data.willpower = { superficial: 0, aggravated: 0 };
-      }
-      if (trackersToReset.includes('hunger')) {
-        data.hunger = 1;
-      }
-      
-      const updatedSheetString = JSON.stringify(data, null, 2);
-      
-      // Update UI instantly
-      setRow(c, { sheet: updatedSheetString });
-
-      // Save to database
-      return api.patch(`/admin/characters/${c.id}`, {
-        name: row.name,
-        clan: row.clan,
-        sheet: data
-      });
-    });
-
-    try {
-      await Promise.all(updatePromises);
-      alert(`Success! ${trackersToReset.join(' and ')} reset for all characters.`);
-    } catch (error) {
-      console.error("Global reset failed:", error);
-      alert("There was an error saving some characters. Check the console.");
-    }
-  };
-
-  const handleRevokeReset = async (char) => {
-    if (!window.confirm(`Revoke Re-Roll permission for ${char.name}?`)) return;
-    try {
-      await api.post(`/admin/characters/${char.id}/revoke-reset`);
-      const row = getRow(char);
-      let data = {}; try { data = JSON.parse(row.sheet || '{}'); } catch (e) {}
-      data.allow_reset = false;
-      setRow(char, { sheet: JSON.stringify(data, null, 2) });
-    } catch (e) { alert('Failed to revoke reset.'); }
-  };
-
-  const handleToggleActive = async (char) => {
-    try {
-      await api.post(`/admin/characters/${char.id}/toggle-active`);
-      const row = getRow(char);
-      let data = {}; try { data = JSON.parse(row.sheet || '{}'); } catch (e) {}
-      data.is_active = !data.is_active; 
-      setRow(char, { sheet: JSON.stringify(data, null, 2) });
-    } catch (e) { alert('Failed to toggle active status.'); }
-  };
-
-  // --- AUTOMATIC BACKGROUND SAVING INCORPORATED HERE ---
-  const updateTracker = async (c, category, type, delta) => {
-    const row = getRow(c);
-    let data = {}; 
-    try { 
-      data = JSON.parse(row.sheet || '{}'); 
-    } catch (e) { 
-      alert("Invalid JSON. Please fix syntax errors before clicking trackers."); 
-      return; 
-    }
-    
-    if (category === 'hunger') {
-       data.hunger = Math.max(0, Math.min(5, (data.hunger || 0) + delta));
-    } else if (category === 'humanity') {
-       if (type === 'value') {
-          const current = data.morality?.humanity ?? data.humanity ?? 7;
-          const next = Math.max(0, Math.min(10, current + delta));
-          data.humanity = next;
-          if (!data.morality) data.morality = {};
-          data.morality.humanity = next;
-       } else if (type === 'stains') {
-          data.stains = Math.max(0, Math.min(10, (data.stains || 0) + delta));
-       }
-    } else {
-       if (!data[category]) data[category] = {};
-       data[category][type] = Math.max(0, (data[category][type] || 0) + delta); 
-    }
-    
-    const updatedSheetString = JSON.stringify(data, null, 2);
-    
-    // 1. Instantly update the UI
-    setRow(c, { sheet: updatedSheetString });
-
-    // 2. Silently save to the database in the background
-    try {
-      await api.patch(`/admin/characters/${c.id}`, {
-        name: row.name,
-        clan: row.clan,
-        sheet: data
-      });
-    } catch (error) {
-      console.error("Auto-save failed:", error);
-      alert("Failed to auto-save the tracker update. Check your connection.");
-    }
-  };
-
-  const calculateStats = (jsonString) => {
-    let data = {}; try { data = JSON.parse(jsonString || '{}'); } catch {}
+  const calculateStats = (sheetObj) => {
+    let data = sheetObj;
     const attrs = data.attributes || {};
     let maxHealth = (Number(attrs.Stamina) || 1) + 3;
     const powers = data.disciplinePowers?.Fortitude || [];
@@ -255,92 +150,252 @@ const resetAllCharacters = async (trackersToReset) => {
     return { maxHealth, maxWillpower, sheetObj: data };
   };
 
-return (
+  // --- UNIFIED SHEET UPDATER (Handles Trackers, Inventory, Notes) ---
+  const updateSheetData = async (char, updaterFn) => {
+    const sheetObj = getSheetObj(char.id);
+    let data = {};
+    try { data = JSON.parse(JSON.stringify(sheetObj)); } 
+    catch (e) { alert("Invalid JSON. Please fix syntax errors before updating."); return; }
+
+    data = updaterFn(data);
+    setSheetState(char.id, data);
+
+    try {
+      await api.patch(`/admin/characters/${char.id}`, { name: char.name, clan: char.clan, sheet: data });
+    } catch (error) {
+      console.error("Auto-save failed:", error);
+      alert("Failed to auto-save. Check your connection.");
+      setSheetState(char.id, sheetObj); // Revert on fail
+    }
+  };
+
+  // Tracker Specific logic wrapping the unified updater
+  const updateTracker = (char, category, type, delta) => {
+    updateSheetData(char, (data) => {
+      if (category === 'hunger') {
+         data.hunger = Math.max(0, Math.min(5, (data.hunger || 0) + delta));
+      } else if (category === 'humanity') {
+         if (type === 'value') {
+            const current = data.morality?.humanity ?? data.humanity ?? 7;
+            const next = Math.max(0, Math.min(10, current + delta));
+            data.humanity = next;
+            if (!data.morality) data.morality = {};
+            data.morality.humanity = next;
+         } else if (type === 'stains') {
+            data.stains = Math.max(0, Math.min(10, (data.stains || 0) + delta));
+         }
+      } else {
+         if (!data[category]) data[category] = {};
+         data[category][type] = Math.max(0, (data[category][type] || 0) + delta);
+      }
+      return data;
+    });
+  };
+
+  // Inventory logic
+  const handleAddInventory = (char) => {
+    const itemName = window.prompt("Enter item name:");
+    if (!itemName) return;
+    updateSheetData(char, (data) => {
+      data.inventory = data.inventory || [];
+      data.inventory.push({ name: itemName, qty: 1, notes: '' });
+      return data;
+    });
+  };
+
+  const handleUpdateInventory = (char, index, field, value) => {
+    updateSheetData(char, (data) => {
+      if (data.inventory && data.inventory[index]) {
+        data.inventory[index][field] = value;
+      }
+      return data;
+    });
+  };
+
+  const handleRemoveInventory = (char, index) => {
+    updateSheetData(char, (data) => {
+      if (data.inventory) data.inventory.splice(index, 1);
+      return data;
+    });
+  };
+
+  // --- GLOBAL ACTIONS ---
+  const requestGlobalReset = (trackersToReset) => {
+    setConfirmDialog({
+      title: 'Confirm Global Reset',
+      message: `Are you absolutely sure you want to reset ${trackersToReset.join(', ')} for ALL characters? This cannot be undone.`,
+      onConfirm: () => resetAllCharacters(trackersToReset)
+    });
+  };
+
+  const resetAllCharacters = async (trackersToReset) => {
+    const updatePromises = baseChars.map(async (c) => {
+      const sheetObj = getSheetObj(c.id);
+      let data = {};
+      try { data = JSON.parse(JSON.stringify(sheetObj)); } catch (e) { return Promise.resolve(); }
+
+      if (trackersToReset.includes('health')) data.health = { superficial: 0, aggravated: 0 };
+      if (trackersToReset.includes('willpower')) data.willpower = { superficial: 0, aggravated: 0 };
+      if (trackersToReset.includes('hunger')) data.hunger = 1;
+
+      setSheetState(c.id, data);
+      return api.patch(`/admin/characters/${c.id}`, { name: c.name, clan: c.clan, sheet: data });
+    });
+
+    try {
+      await Promise.all(updatePromises);
+      alert(`Success! ${trackersToReset.join(' and ')} reset for all characters.`);
+    } catch (error) { alert("Error saving some characters. Check console."); }
+  };
+
+  const handleToggleActive = (char) => updateSheetData(char, d => { d.is_active = !d.is_active; return d; });
+  const handleReset = (char) => { if(window.confirm(`Allow Re-Roll?`)) updateSheetData(char, d => { d.allow_reset = true; return d; }); };
+  const handleRevokeReset = (char) => { if(window.confirm(`Revoke Re-Roll?`)) updateSheetData(char, d => { d.allow_reset = false; return d; }); };
+
+  return (
     <div className={styles.stack12}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
-        <h3>Characters</h3>
+        <h3>Characters & Inventory</h3>
         
-{/* --- GLOBAL ACTIONS PANEL --- */}
-        {chars.length > 0 && (
-          <div style={{ display: 'flex', gap: '10px', background: 'rgba(217, 119, 6, 0.1)', border: '1px solid #d97706', padding: '10px', borderRadius: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#d97706' }}>GLOBAL ACTIONS:</span>
-            <button className={styles.btn} style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-color)' }} onClick={() => resetAllCharacters(['health'])}>Heal All</button>
-            <button className={styles.btn} style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-color)' }} onClick={() => resetAllCharacters(['willpower'])}>Restore All WP</button>
-            <button className={styles.btn} style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-color)' }} onClick={() => resetAllCharacters(['hunger'])}>Reset All Hunger</button>
-            <button className={styles.btn} style={{ backgroundColor: '#b40f1f', color: '#fff', borderColor: '#b40f1f' }} onClick={() => resetAllCharacters(['health', 'willpower', 'hunger'])}>Reset All Trackers</button>
+        {filteredChars.length > 0 && (
+          <div style={{ display: 'flex', gap: '10px', background: 'var(--glass-inset)', border: '1px solid var(--glass-border-highlight)', padding: '10px', borderRadius: 'var(--radius-sm)', alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--accent-purple)' }}>GLOBAL ACTIONS:</span>
+            <button className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`} onClick={() => requestGlobalReset(['health'])}>Heal All</button>
+            <button className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`} onClick={() => requestGlobalReset(['willpower'])}>Restore WP</button>
+            <button className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`} onClick={() => requestGlobalReset(['hunger'])}>Reset Hunger</button>
+            <button className={`${styles.btn} ${styles.btnDanger} ${styles.btnSmall}`} onClick={() => requestGlobalReset(['health', 'willpower', 'hunger'])}>Reset All</button>
           </div>
         )}
       </div>
-      
-      {!chars.length && <div className={styles.subtle}>No characters yet.</div>}
-      
-      <div className={styles.characterCardGrid}>
-        {chars.map(c => {
-          const clanColor = CLAN_COLORS[c.clan] || 'var(--border-color)';
+
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        <input type="text" placeholder="Filter by name, clan, or owner..." value={filterText} onChange={e => setFilterText(e.target.value)} className={styles.input} style={{ flex: 1, maxWidth: '400px' }} />
+      </div>
+
+      <div className={styles.characterCardGrid} style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))' }}>
+        {filteredChars.map(c => {
+          const clanColor = CLAN_COLORS[c.clan] || 'var(--accent-purple)';
           const clanLogoUrl = symlogo(c.clan);
-          const rowData = getRow(c);
-          const { maxHealth, maxWillpower, sheetObj } = calculateStats(rowData.sheet);
-          const isResetAllowed = sheetObj.allow_reset === true;
-          const isActive = sheetObj.is_active === true;
-          
+          const sheetObj = getSheetObj(c.id);
+          const { maxHealth, maxWillpower, sheetObj: data } = calculateStats(sheetObj);
+          const isExpanded = expandedCards.has(c.id);
+          const isActive = data.is_active !== false; // Default to true if undefined
+
           return (
-            <div key={c.id} className={styles.characterCard} style={{'--clan-color': clanColor, '--clan-logo-url': clanLogoUrl ? `url(${clanLogoUrl})` : 'none', opacity: isActive ? 1 : 0.75 }}>
-              <div className={styles.cardHeader}>
+            <div key={c.id} className={styles.characterCard} style={{ '--clan-color': clanColor, '--clan-logo-url': clanLogoUrl ? `url(${clanLogoUrl})` : 'none', opacity: isActive ? 1 : 0.6 }}>
+              
+              {/* CARD HEADER */}
+              <div className={styles.cardHeader} style={{ cursor: 'pointer' }} onClick={() => toggleExpand(c.id)}>
                 <div className={styles.cardOwnerInfo}>
-                  <div className={styles.cardOwnerLabel}>Owner {isActive ? '' : '(WAITING FOR APPROVAL)'}</div>
-                  <div className={styles.cardOwnerName}>{c.owner}</div>
+                  <div className={styles.cardOwnerLabel}>Owner: {c.owner} {!isActive && <span style={{color: 'var(--color-error)'}}>(INACTIVE)</span>}</div>
+                  <div className={styles.cardOwnerName} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    {c.name} 
+                    <span style={{ fontSize: '0.8rem', background: clanColor, padding: '2px 8px', borderRadius: '12px' }}>{c.clan}</span>
+                  </div>
                 </div>
-                {clanLogoUrl && <div className={styles.clanLogo}></div>}
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  {clanLogoUrl && <div className={styles.clanLogo} style={{ width: '32px', height: '32px', backgroundSize: 'contain' }}></div>}
+                  <span style={{ color: 'var(--text-secondary)', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }}>▼</span>
+                </div>
               </div>
 
-              <div className={styles.cardBody}>
-                <div className={styles.formGrid}>
-                  <label><span>Name</span><input className={styles.input} value={rowData.name} onChange={e=>setRow(c, { name: e.target.value })}/></label>
-                  <label><span>Clan</span><input className={styles.input} value={rowData.clan} onChange={e=>setRow(c, { clan: e.target.value })}/></label>
-                  <label><span>XP</span><input className={styles.input} value={c.xp} readOnly disabled/></label>
+              {/* CARD BODY */}
+              <div className={styles.cardBody} style={{ padding: '1rem' }}>
+                {/* Vitals Summary */}
+                <div className={styles.row} style={{ gap: '10px', marginBottom: '1rem', flexWrap: 'wrap', fontSize: '0.85rem' }}>
+                  <div style={{ background: 'var(--glass-inset)', padding: '4px 10px', borderRadius: '12px' }}><b>XP:</b> {c.xp}</div>
+                  <div style={{ background: 'var(--glass-inset)', padding: '4px 10px', borderRadius: '12px' }}><b>Gen:</b> {data.generation || '?'}</div>
+                  <div style={{ background: 'var(--glass-inset)', padding: '4px 10px', borderRadius: '12px' }}><b>BP:</b> {data.blood_potency || 1}</div>
+                  <div style={{ background: 'var(--glass-inset)', padding: '4px 10px', borderRadius: '12px' }}><b>Sire:</b> {data.sire || 'Unknown'}</div>
                 </div>
 
-                <div style={{ marginTop: '1.5rem', padding: '0.75rem', background: 'rgba(0,0,0,0.05)', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-                  <TrackerDisplay label="Health" max={maxHealth} currentObj={sheetObj.health || {}} onUpdate={(type, delta) => updateTracker(c, 'health', type, delta)} />
-                  <TrackerDisplay label="Willpower" max={maxWillpower} currentObj={sheetObj.willpower || {}} onUpdate={(type, delta) => updateTracker(c, 'willpower', type, delta)} />
-                  <TrackerDisplay label="Humanity" max={10} isValueTracker={true} value={sheetObj.morality?.humanity ?? sheetObj.humanity ?? 7} stains={sheetObj.stains || 0} onUpdate={(type, delta) => updateTracker(c, 'humanity', type, delta)} />
-                  <TrackerDisplay label="Hunger" max={5} isValueTracker={true} value={sheetObj.hunger || 0} onUpdate={(type, delta) => updateTracker(c, 'hunger', type, delta)} />
-                  
+                {/* Trackers (Always Visible) */}
+                <div style={{ padding: '1rem', background: 'var(--glass-bg)', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                  <TrackerDisplay label="Health" max={maxHealth} currentObj={data.health || {}} onUpdate={(type, delta) => updateTracker(c, 'health', type, delta)} />
+                  <TrackerDisplay label="Willpower" max={maxWillpower} currentObj={data.willpower || {}} onUpdate={(type, delta) => updateTracker(c, 'willpower', type, delta)} />
+                  <TrackerDisplay label="Humanity" max={10} isValueTracker={true} value={data.morality?.humanity ?? data.humanity ?? 7} stains={data.stains || 0} onUpdate={(type, delta) => updateTracker(c, 'humanity', type, delta)} />
+                  <TrackerDisplay label="Hunger" max={5} isValueTracker={true} value={data.hunger || 0} onUpdate={(type, delta) => updateTracker(c, 'hunger', type, delta)} />
                 </div>
-              
-                <label className={styles.stack12} style={{marginTop: '1rem'}}>
-                  <span>Sheet (JSON)</span>
-                  <textarea value={rowData.sheet} onChange={e=>setRow(c, { sheet: e.target.value })} rows={10} className={`${styles.input} ${styles.inputMono}`}/>
-                </label>
+
+                {/* EXPANDED CONTENT */}
+                {isExpanded && (
+                  <div style={{ marginTop: '1.5rem', animation: 'floatIn 0.3s' }}>
+                    
+                    {/* Inventory Section */}
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <div className={styles.row} style={{ justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                        <h4 style={{ margin: 0, color: 'var(--accent-purple)' }}>Inventory</h4>
+                        <button className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`} onClick={() => handleAddInventory(c)}>+ Add Item</button>
+                      </div>
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {(!data.inventory || data.inventory.length === 0) && <div className={styles.subtle} style={{ fontStyle: 'italic' }}>No items in inventory.</div>}
+                        
+                        {(data.inventory || []).map((item, idx) => (
+                          <div key={idx} className={styles.row} style={{ gap: '0.5rem', background: 'var(--glass-inset)', padding: '0.5rem', borderRadius: 'var(--radius-sm)' }}>
+                            <input type="text" className={styles.input} style={{ flex: 2, padding: '0.5rem' }} value={item.name} onChange={(e) => handleUpdateInventory(c, idx, 'name', e.target.value)} placeholder="Item Name" />
+                            <input type="number" className={styles.input} style={{ flex: 1, padding: '0.5rem', minWidth: '60px' }} value={item.qty} onChange={(e) => handleUpdateInventory(c, idx, 'qty', parseInt(e.target.value)||0)} title="Quantity" />
+                            <input type="text" className={styles.input} style={{ flex: 3, padding: '0.5rem' }} value={item.notes || ''} onChange={(e) => handleUpdateInventory(c, idx, 'notes', e.target.value)} placeholder="Notes/Effects" />
+                            <button className={`${styles.btn} ${styles.btnDanger}`} style={{ padding: '0.5rem 0.8rem' }} onClick={() => handleRemoveInventory(c, idx)}>×</button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Admin Notes Section */}
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--color-warning)' }}>Admin Notes (Hidden from Player)</h4>
+                      <textarea className={styles.textarea} style={{ minHeight: '80px', padding: '0.8rem' }} value={data.admin_notes || ''} onChange={(e) => updateSheetData(c, d => { d.admin_notes = e.target.value; return d; })} placeholder="Add story notes, warnings, or plot hooks here..." />
+                    </div>
+
+                    {/* Raw JSON Toggle */}
+                    <details>
+                      <summary style={{ cursor: 'pointer', color: 'var(--text-secondary)', fontWeight: 'bold' }}>View/Edit Raw Sheet JSON</summary>
+                      <textarea value={sheetStates[c.id] || ''} onChange={(e) => setSheetState(c.id, JSON.parse(e.target.value))} className={`${styles.textarea} ${styles.inputMono}`} style={{ marginTop: '0.5rem', minHeight: '150px' }} />
+                    </details>
+
+                  </div>
+                )}
               </div>
-              
-              <div className={styles.cardFooter}>
-                <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={()=>{
-                    try { onSave({ id: c.id, name: rowData.name, clan: rowData.clan, sheet: JSON.parse(rowData.sheet || '{}') }); }
-                    catch { alert('Invalid JSON in sheet'); }
-                  }}>Save JSON</button>
-                <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => onOpenEditor(c)}>Open Editor</button>
-                
-                <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => generateVTMCharacterSheetPDF(c)}>Download PDF</button>
 
-                {isActive ? (
-                  <button className={`${styles.btn}`} style={{ backgroundColor: '#4b5563', borderColor: '#4b5563', color: '#fff' }} onClick={() => handleToggleActive(c)}>Deactivate</button>
-                ) : (
-                  <button className={`${styles.btn} ${styles.btnPrimary}`} style={{ backgroundColor: '#10b981', borderColor: '#10b981' }} onClick={() => handleToggleActive(c)}>Activate</button>
-                )}
+              {/* CARD FOOTER */}
+              <div className={styles.cardFooter} style={{ gap: '0.5rem' }}>
+                <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => { try { onSave({ id: c.id, name: c.name, clan: c.clan, sheet: getSheetObj(c.id) }); } catch { alert('Invalid JSON in sheet'); } }}>Save</button>
+                <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => onOpenEditor({ ...c, sheet: getSheetObj(c.id) })}>Editor Modal</button>
+                <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => generateVTMCharacterSheetPDF(c)}>PDF</button>
 
-                {isResetAllowed ? (
-                  <button className={`${styles.btn}`} style={{ backgroundColor: '#4b5563', borderColor: '#4b5563', color: '#fff' }} onClick={() => handleRevokeReset(c)}>Revoke Re-Roll</button>
-                ) : (
-                  <button className={`${styles.btn} ${styles.btnDanger}`} style={{ backgroundColor: '#d97706', borderColor: '#d97706' }} onClick={() => handleReset(c)}>Allow Re-Roll</button>
-                )}
-
-                <button className={`${styles.btn} ${styles.btnDanger} ${styles.rowEnd}`} onClick={() => onDelete(c.id)}>Delete</button>
+                <div className={styles.rowEnd} style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => handleToggleActive(c)}>
+                    {isActive ? 'Deactivate' : 'Activate'}
+                  </button>
+                  <button className={`${styles.btn} ${data.allow_reset ? styles.btnGhost : styles.btnWarning}`} onClick={() => data.allow_reset ? handleRevokeReset(c) : handleReset(c)}>
+                    {data.allow_reset ? 'Revoke Re-Roll' : 'Allow Re-Roll'}
+                  </button>
+                  <button className={`${styles.btn} ${styles.btnDanger}`} onClick={() => onDelete(c.id)}>Delete</button>
+                </div>
               </div>
             </div>
           );
-        })}
-      </div>
+        })}  
+      </div> 
+
+      {/* CONFIRM DIALOG */}
+      {confirmDialog && (
+        <div className={styles.modalBackdrop}>
+          <div className={styles.modalCard} style={{ maxWidth: '400px', height: 'auto' }}>
+            <div className={styles.modalHeader}>
+              <h3 style={{ margin: 0, color: 'var(--color-error)' }}>{confirmDialog.title}</h3>
+            </div>
+            <div className={styles.modalBody}>
+              <p>{confirmDialog.message}</p>
+            </div>
+            <div className={styles.modalFooter}>
+              <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => setConfirmDialog(null)}>Cancel</button>
+              <button className={`${styles.btn} ${styles.btnDanger}`} onClick={() => { confirmDialog.onConfirm(); setConfirmDialog(null); }}>Confirm</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

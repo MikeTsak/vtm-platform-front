@@ -362,7 +362,7 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds }) => {
               {Object.entries(meritGroupedOptions).map(([cat, list]) => (
                 <optgroup key={cat} label={cat}>
                   {list.map(m => (
-                    <option key={m.id} value={m.id}>
+                    <option key={m.id} value={m.id} title={m.description}>
                       {m.name} ({m.dotsSpec})
                     </option>
                   ))}

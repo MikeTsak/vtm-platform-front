@@ -1,208 +1,239 @@
-/* src/styles/LiveSession.module.css */
+/* ─────────────────────────────────────────────
+   ANIMATIONS (The Fun Stuff)
+───────────────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
-/* =========================================
-   BASE & LAYOUT
-   ========================================= */
+@keyframes popIn {
+  0% { transform: scale(0.5) rotate(-15deg); opacity: 0; }
+  70% { transform: scale(1.1) rotate(5deg); }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+@keyframes pulseGlow {
+  0% { box-shadow: 0 0 5px rgba(225, 29, 72, 0.4); }
+  50% { box-shadow: 0 0 15px rgba(225, 29, 72, 0.8); }
+  100% { box-shadow: 0 0 5px rgba(225, 29, 72, 0.4); }
+}
+
+@keyframes floatSlide {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* ─────────────────────────────────────────────
+   BASE LAYOUT & TYPOGRAPHY
+───────────────────────────────────────────── */
 .page {
-  background-color: var(--bg-color);
-  color: var(--text-color);
   min-height: 100vh;
-  padding: 1.5rem;
-  font-family: var(--font-body);
-  box-sizing: border-box;
+  background-color: #09090b; 
+  background-image: radial-gradient(circle at 50% 0%, #18181b 0%, #09090b 80%);
+  color: #e4e4e7;
+  padding: 2rem 1rem;
+  font-family: system-ui, -apple-system, sans-serif;
+  overflow-x: hidden;
 }
 
 .playerPanel {
-  max-width: 768px;
+  max-width: 850px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.5rem;
+  animation: fadeIn 0.4s ease-out;
 }
 
 .title {
-  font-size: 1.7rem;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  margin: 0;
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: #ffffff;
   text-transform: uppercase;
-  color: var(--tint);
-  font-family: var(--font-title);
-  text-shadow: 0 0 15px color-mix(in srgb, var(--tint) 40%, transparent);
+  letter-spacing: 0.12em;
+  text-align: center;
+  margin: 0 0 1rem 0;
+  text-shadow: 0 4px 12px rgba(225, 29, 72, 0.4);
 }
 
-/* =========================================
+/* ─────────────────────────────────────────────
    CARDS & CONTAINERS
-   ========================================= */
-.trackerCard, 
-.resultCard, 
-.playerCard {
-  background-color: var(--surface-color);
-  border: 1px solid var(--border-color);
+───────────────────────────────────────────── */
+.trackerCard {
+  background: rgba(24, 24, 27, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   padding: 1.25rem;
-  box-shadow: 0 4px 12px rgb(0 0 0 / 40%);
-  transition: transform 0.2s ease, border-color 0.2s ease;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  animation: floatSlide 0.3s ease-out backwards;
 }
 
-.trackerGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1rem;
+.trackerCard:hover {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
 }
+
+/* Staggered load for cards */
+.trackerCard:nth-child(1) { animation-delay: 0.05s; }
+.trackerCard:nth-child(2) { animation-delay: 0.1s; }
+.trackerCard:nth-child(3) { animation-delay: 0.15s; }
 
 .trackerHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-weight: 700;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #a1a1aa;
   text-transform: uppercase;
-  font-size: 0.75rem;
   letter-spacing: 0.08em;
-  color: var(--text-muted);
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 0.5rem;
 }
 
 .emptyState {
-  color: var(--text-muted);
+  font-size: 0.85rem;
+  color: #71717a;
   text-align: center;
-  padding: 2rem;
+  padding: 2rem 0;
   font-style: italic;
 }
 
-/* =========================================
-   FORMS, INPUTS & BUTTONS
-   ========================================= */
+.trackerGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+/* ─────────────────────────────────────────────
+   INPUTS & BUTTONS
+───────────────────────────────────────────── */
 .input {
-  background: var(--bg-color);
-  border: 1px solid var(--border-color);
-  color: var(--text-color);
-  padding: 0.6rem 1rem;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
-  font-size: 0.95rem;
-  outline: none;
+  padding: 0.6rem 1rem;
+  color: #ffffff;
+  font-size: 0.9rem;
   width: 100%;
-  box-sizing: border-box;
-  transition: all 0.2s ease;
-  font-family: inherit;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .input:focus {
-  border-color: var(--tint);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tint) 20%, transparent);
-}
-
-.btnPrimary, 
-.btnGhost {
-  padding: 0.6rem 1.2rem;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  white-space: nowrap;
-  font-family: inherit;
+  outline: none;
+  border-color: #e11d48;
+  box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.25);
+  transform: translateY(-1px);
 }
 
 .btnPrimary {
-  background: var(--tint);
-  color: #fff;
-  box-shadow: 0 2px 4px color-mix(in srgb, var(--tint) 30%, transparent);
+  background: linear-gradient(135deg, #e11d48 0%, #be123c 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.6rem 1.2rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 4px 12px rgba(225, 29, 72, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.btnPrimary::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%; width: 50%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: all 0.4s ease;
+}
+
+.btnPrimary:hover:not(:disabled)::after {
+  left: 100%;
 }
 
 .btnPrimary:hover:not(:disabled) {
-  filter: brightness(1.2);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px color-mix(in srgb, var(--tint) 40%, transparent);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 6px 16px rgba(225, 29, 72, 0.4);
+}
+
+.btnPrimary:active:not(:disabled) {
+  transform: translateY(1px) scale(0.98);
 }
 
 .btnPrimary:disabled {
-  opacity: 0.4;
+  background: #3f3f46;
+  color: #71717a;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 .btnGhost {
   background: transparent;
-  border: 1px solid var(--border-color);
-  color: var(--text-muted);
+  color: #e4e4e7;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 0.6rem 1.2rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .btnGhost:hover {
-  background: var(--surface-lighter);
-  border-color: var(--tint);
-  color: var(--text-color);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-1px);
 }
 
-.quickRollGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 0.5rem;
+.btnGhost:active {
+  transform: scale(0.97);
 }
 
-/* =========================================
-   STATUS BARS (Health / Willpower)
-   ========================================= */
-.barWrap {
-  height: 8px;
-  background: var(--bg-color);
-  border-radius: 4px;
-  display: flex;
-  overflow: hidden;
-  margin-bottom: 0.5rem;
-}
-
-.barSup {
-  background: var(--text-muted);
-  transition: width 0.3s ease;
-}
-
-.barAgg {
-  background: var(--tint);
-  transition: width 0.3s ease;
-}
-
-.barEmpty {
-  flex: 1;
-}
-
-/* =========================================
-   HUNGER DOTS
-   ========================================= */
+/* ─────────────────────────────────────────────
+   HUNGER TRACKER
+───────────────────────────────────────────── */
 .hungerDots {
   display: flex;
   gap: 10px;
   justify-content: center;
-  padding: 0.5rem 0;
+  margin-top: 0.5rem;
 }
 
-.hungerOn, 
-.hungerOff {
-  width: 16px;
-  height: 16px;
+.hungerOn, .hungerOff {
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
-  transition: all 0.3s ease;
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .hungerOn {
-  background: var(--tint);
-  box-shadow: 0 0 10px color-mix(in srgb, var(--tint) 60%, transparent);
+  background: #e11d48;
+  box-shadow: 0 0 10px rgba(225, 29, 72, 0.6);
+  border: 2px solid #ff4d6d;
+  animation: pulseGlow 3s infinite alternate ease-in-out;
+  transform: scale(1.1);
 }
 
 .hungerOff {
-  background: transparent;
-  border: 2px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.1);
 }
 
-/* =========================================
-   CUSTOM ROLL UI (Desktop & Mobile)
-   ========================================= */
+/* ─────────────────────────────────────────────
+   CUSTOM ROLL SECTION
+───────────────────────────────────────────── */
 .traitsContainer {
-  display: grid;
-  grid-template-columns: 1fr 2fr; 
+  display: flex;
+  flex-direction: column;
   gap: 1.5rem;
   margin-bottom: 1.5rem;
 }
@@ -210,149 +241,146 @@
 .traitGroup {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.75rem;
 }
 
 .traitLabel {
   font-size: 0.75rem;
+  color: #fbbf24;
   text-transform: uppercase;
-  color: var(--text-muted);
-  letter-spacing: 0.05em;
-  font-weight: 600;
+  letter-spacing: 0.1em;
+  font-weight: 800;
 }
 
 .categoryWrapper {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
 }
 
 .categoryBlock {
-  background: color-mix(in srgb, var(--bg-color) 40%, transparent);
-  border: 1px solid var(--border-color);
-  padding: 0.75rem;
+  background: rgba(0, 0, 0, 0.2);
   border-radius: 8px;
-  margin-bottom: 0.5rem;
-  transition: border-color 0.2s ease;
-}
-
-.categoryBlock:hover {
-  border-color: color-mix(in srgb, var(--tint) 40%, var(--border-color));
+  padding: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.03);
 }
 
 .categoryTitle {
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--tint); 
+  font-size: 0.7rem;
+  color: #a1a1aa;
   margin-bottom: 0.5rem;
-  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .chipGrid {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: 0.5rem;
 }
 
-/* =========================================
-   ATTRIBUTE & SKILL CHIPS
-   ========================================= */
 .chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-color);
-  border: 1px solid var(--border-color);
-  color: var(--text-muted);
-  padding: 0.4rem 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 20px;
-  font-size: 0.85rem;
-  white-space: nowrap;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.75rem;
+  color: #d4d4d8;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-sizing: border-box;
-  min-height: 32px; 
-}
-
-.chip span {
-  display: inline-block;
-  line-height: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  user-select: none;
 }
 
 .chip:hover {
-  background: var(--surface-lighter);
-  color: var(--text-color);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+}
+
+.chip:active {
+  transform: scale(0.95);
 }
 
 .chipActive {
-  background: var(--tint);
+  background: rgba(225, 29, 72, 0.15);
+  border-color: #e11d48;
   color: #fff;
-  border-color: var(--tint);
-  font-weight: 600;
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--tint) 40%, transparent);
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(225, 29, 72, 0.2);
 }
 
 .chipIcon {
+  width: 14px;
   height: 14px;
-  width: 0; 
   opacity: 0;
-  margin: 0;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  object-fit: contain;
-  filter: brightness(0) invert(1); 
+  transform: scale(0) rotate(-45deg);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .chipActive .chipIcon {
-  width: 14px;
   opacity: 1;
-}
-
-.chipActive .chipIcon:first-child {
-  margin-right: 6px;
-}
-
-.chipActive .chipIcon:last-child {
-  margin-left: 6px;
+  transform: scale(1) rotate(0);
 }
 
 .rollActionRow {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  border-top: 1px solid var(--border-color);
+  gap: 1rem;
+  align-items: stretch;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
   padding-top: 1rem;
 }
 
-/* =========================================
-   DICE TRAY & RESULTS
-   ========================================= */
+/* ─────────────────────────────────────────────
+   QUICK ROLLS
+───────────────────────────────────────────── */
+.quickRollGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.6rem;
+}
+
+/* ─────────────────────────────────────────────
+   ROLL RESULTS & DICE
+───────────────────────────────────────────── */
 .resultCard {
+  background: linear-gradient(180deg, rgba(39, 39, 42, 0.8) 0%, rgba(24, 24, 27, 0.95) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 2.5rem 1.5rem;
   text-align: center;
-  border-top: 4px solid var(--tint);
+  box-shadow: inset 0 2px 20px rgba(255, 255, 255, 0.03), 0 12px 40px rgba(0, 0, 0, 0.6);
+  margin-bottom: 1rem;
   display: flex;
   flex-direction: column;
   align-items: center;
+  animation: fadeIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 
 .outcomeImage {
-  height: 64px;
-  margin-bottom: 0.5rem;
-  filter: drop-shadow(0 4px 6px rgb(0 0 0 / 50%));
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  margin-bottom: 1rem;
+  filter: drop-shadow(0 8px 16px rgba(0,0,0,0.5));
+  animation: popIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
 .subtle {
-  color: var(--text-muted);
   font-size: 0.85rem;
-  margin-top: 0;
+  color: #a1a1aa;
+  margin: 0 0 1.5rem 0;
+  letter-spacing: 0.05em;
 }
 
 .diceRow {
   display: flex;
   flex-wrap: wrap;
+  gap: 1.2rem;
   justify-content: center;
-  gap: 1.25rem;
-  margin: 1.5rem 0;
+  perspective: 1000px;
 }
 
 .diceCol {
@@ -363,329 +391,158 @@
 }
 
 .boxDie {
-  width: 54px;
-  height: 54px;
+  width: 56px;
+  height: 56px;
   border-radius: 12px;
-  border: 2px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-color);
+  position: relative;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  background: transparent;
   padding: 0;
+  animation: popIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
 }
 
-.boxFilled {
-  background: var(--surface-lighter);
-  border-color: var(--text-muted);
+/* Stagger dice animations slightly */
+.diceCol:nth-child(1) .boxDie { animation-delay: 0.05s; }
+.diceCol:nth-child(2) .boxDie { animation-delay: 0.1s; }
+.diceCol:nth-child(3) .boxDie { animation-delay: 0.15s; }
+.diceCol:nth-child(4) .boxDie { animation-delay: 0.2s; }
+.diceCol:nth-child(5) .boxDie { animation-delay: 0.25s; }
+
+.boxDie:hover {
+  transform: translateY(-4px) scale(1.05);
+}
+
+.boxDie:active {
+  transform: scale(0.95);
 }
 
 .boxEmpty {
+  border: 2px dashed rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.2);
 }
 
-.boxHunger {
-  border-color: var(--tint);
-}
-
-.boxHungerFilled {
-  background: var(--tint);
-  border-color: var(--tint);
+.boxFilled {
+  border: 2px solid #52525b;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 10px rgba(255,255,255,0.05);
 }
 
 .boxSelected {
   border-color: #fbbf24;
-  box-shadow: 0 0 16px rgb(251 191 36 / 40%);
-  transform: translateY(-6px);
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.5), inset 0 0 15px rgba(251, 191, 36, 0.2);
+  transform: translateY(-5px);
+}
+
+.boxHunger {
+  border-style: solid;
+  cursor: default;
+}
+
+.boxHunger:hover {
+  transform: none; /* Don't hover animate hunger dice */
+}
+
+.boxHunger.boxEmpty {
+  border-color: rgba(225, 29, 72, 0.3);
+  background: rgba(225, 29, 72, 0.05);
+}
+
+.boxHungerFilled {
+  border-color: #e11d48;
+  background: rgba(225, 29, 72, 0.15);
+  box-shadow: 0 0 20px rgba(225, 29, 72, 0.3), inset 0 0 10px rgba(225, 29, 72, 0.2);
 }
 
 .dieImage {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
 }
 
 .diceNumber {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  font-weight: 700;
-  font-family: monospace;
-}
-
-/* =========================================
-   PLAYER LIST & GM TOOLS
-   ========================================= */
-.playerGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.25rem;
-}
-
-.playerHead {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1.25rem;
-}
-
-.playerHead h4 {
-  margin: 0;
-  font-size: 1.2rem;
-  color: var(--text-color);
-}
-
-.playerHead p {
-  margin: 0.25rem 0 0;
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.npcTag {
-  background: rgb(251 191 36 / 10%);
-  border: 1px solid #fbbf24;
-  color: #fbbf24;
-  font-size: 0.7rem;
-  font-weight: 700;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #d4d4d8;
+  background: rgba(0,0,0,0.3);
   padding: 2px 8px;
-  border-radius: 12px;
-  text-transform: uppercase;
-}
-
-.trackWrap {
-  margin-bottom: 0.75rem;
-}
-
-.trackLabel {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  margin-bottom: 0.3rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.trackLabel strong {
-  color: var(--text-color);
-}
-
-.trackBar {
-  height: 6px;
-  background: var(--bg-color);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.trackBar span {
-  display: block;
-  height: 100%;
-  background: var(--text-color);
-  transition: width 0.3s ease;
-}
-
-.quickBtns {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.4rem;
-  margin-top: 1.25rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid var(--border-color);
-}
-
-.quickBtns button {
-  background: var(--bg-color);
-  border: 1px solid var(--border-color);
-  color: var(--text-muted);
-  padding: 0.5rem;
-  border-radius: 6px;
-  font-size: 0.75rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.quickBtns button:hover {
-  background: var(--surface-lighter);
-  color: var(--text-color);
-}
-
-.quickBtns button:first-child {
-  grid-column: span 3;
-  background: color-mix(in srgb, var(--tint) 10%, transparent);
-  border-color: color-mix(in srgb, var(--tint) 30%, transparent);
-  color: var(--tint);
-}
-
-.quickBtns button:first-child:hover {
-  background: var(--tint);
-  color: #fff;
-}
-
-/* =========================================
-   ROLL HISTORY
-   ========================================= */
-.rollHistoryList {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.rollEntry {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem;
-  background: var(--bg-color);
   border-radius: 10px;
-  border: 1px solid var(--border-color);
-  transition: background 0.2s ease;
 }
 
-.rollEntry:hover {
-  background: var(--surface-lighter);
-}
-
-.rollEntry strong {
-  display: block;
-  font-size: 1rem;
-  color: var(--text-color);
-  margin-bottom: 0.25rem;
-}
-
-.rollEntry p {
-  margin: 0;
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  text-transform: capitalize;
-}
-
-.rollMeta {
-  text-align: right;
-}
-
-.rollMeta span {
-  display: block;
-  font-weight: 700;
-  color: var(--tint);
-  margin-bottom: 0.25rem;
-  font-size: 0.95rem;
-}
-
-.rollMeta small {
-  color: var(--text-muted);
-  font-size: 0.75rem;
-}
-
-/* =========================================
+/* ─────────────────────────────────────────────
    MOBILE RESPONSIVENESS
-   ========================================= */
-@media (width <= 768px) {
-  .traitsContainer {
+───────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .page {
+    padding: 1rem 0.5rem;
+  }
+  
+  .title {
+    font-size: 1.8rem;
+  }
+  
+  .trackerGrid {
     grid-template-columns: 1fr;
-    gap: 1.5rem;
   }
   
   .categoryWrapper {
-    flex-direction: row;
-    overflow-x: auto;
-    gap: 1rem;
-    padding-bottom: 0.5rem;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-  }
-  
-  .categoryWrapper::-webkit-scrollbar {
-    display: none;
-  }
-
-  .categoryBlock {
-    min-width: 85%;
-    margin-bottom: 0;
-    scroll-snap-align: start;
-    flex-shrink: 0;
-  }
-}
-
-@media (width <= 600px) {
-  .page {
-    padding: 0.5rem;
-  }
-  
-  .trackerCard, 
-  .resultCard, 
-  .playerCard {
-    padding: 1rem;
-  }
-
-  .quickRollGrid {
     grid-template-columns: 1fr;
   }
-
+  
+  .rollActionRow {
+    flex-direction: column;
+  }
+  
+  .rollActionRow input {
+    width: 100% !important; /* Override inline styles for full width on mobile */
+    text-align: center;
+  }
+  
   .diceRow {
-    gap: 0.75rem;
+    gap: 0.8rem;
   }
   
   .boxDie {
-    width: 46px;
-    height: 46px;
+    width: 48px;
+    height: 48px;
+  }
+  
+  .dieImage {
+    width: 28px;
+    height: 28px;
+  }
+
+  .quickRollGrid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+  
+  .btnPrimary, .btnGhost {
+    padding: 0.8rem 1.2rem; /* Larger tap targets */
   }
 }
 
-/* =========================================
-   ADMIN (ST) LIVE DASHBOARD
-   ========================================= */
-.adminPanel {
-  max-width: 1400px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.adminControls {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.adminPlayerGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-  gap: 1rem;
-}
-
-.adminPlayerCard {
-  background-color: var(--surface-color);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 1rem;
-  box-shadow: 0 4px 12px rgb(0 0 0 / 20%);
-  transition: border-color 0.3s ease;
-}
-
-.miniBtnRow {
-  display: grid;
-  gap: 4px;
-}
-
-.miniBtnRow button {
-  background: var(--bg-color);
-  border: 1px solid var(--border-color);
-  color: var(--text-muted);
-  padding: 0.3rem 0;
-  border-radius: 6px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  text-transform: uppercase;
-}
-
-.miniBtnRow button:hover {
-  background: var(--surface-lighter);
-  color: var(--text-color);
-  border-color: var(--tint);
+@media (max-width: 480px) {
+  .diceRow {
+    gap: 0.5rem;
+  }
+  
+  .boxDie {
+    width: 42px;
+    height: 42px;
+    border-radius: 8px;
+  }
+  
+  .dieImage {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .chip {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.7rem;
+  }
 }
