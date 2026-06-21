@@ -1,5 +1,5 @@
 // src/pages/Admin.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import api from '../api';
 import styles from '../styles/Admin.module.css';
 import 'leaflet/dist/leaflet.css';
@@ -23,17 +23,116 @@ import AdminDiscordTab from '../components/admin/AdminDiscordTab.jsx';
 import AdminNpcEmailTab from '../components/admin/AdminNpcEmailTab.jsx';
 import AdminMasterTab from '../components/admin/AdminMasterTab.jsx';
 
+/* ---------------- Sidebar navigation config ---------------- */
+const NAV_SECTIONS = [
+  {
+    label: 'Players',
+    items: [
+      { id: 'users',      icon: '👤', label: 'Users' },
+      { id: 'characters', icon: '🧛', label: 'Characters' },
+      { id: 'claims',     icon: '🏰', label: 'Claims' },
+      { id: 'downtimes',  icon: '🕰️', label: 'Downtimes' },
+      { id: 'xp',         icon: '✨', label: 'XP Tools' },
+    ],
+  },
+  {
+    label: 'Story',
+    items: [
+      { id: 'npcs',      icon: '🎭', label: 'NPCs' },
+      { id: 'npc_email', icon: '✉️', label: 'NPC Email' },
+    ],
+  },
+  {
+    label: 'Intelligence',
+    items: [
+      { id: 'chat',    icon: '💬', label: 'Chat Logs' },
+      { id: 'stats',   icon: '📊', label: 'Stats' },
+      { id: 'dice',    icon: '🎲', label: 'Dice Logs' },
+      { id: 'discord', icon: '📡', label: 'Discord' },
+    ],
+  },
+  {
+    label: 'System',
+    items: [
+      { id: 'master', icon: '⚙️', label: 'Master' },
+      { id: 'logs',   icon: '📜', label: 'Server Logs' },
+    ],
+  },
+];
+const TAB_LABELS = NAV_SECTIONS.flatMap(s => s.items).reduce(
+  (acc, i) => ({ ...acc, [i.id]: i.label }), {}
+);
 
-
-/* ---------------- UI bits ---------------- */
-function TabButton({ active, onClick, children }) {
+/* ---------------- Sidebar ---------------- */
+function Sidebar({ tab, setTab, collapsed, onToggleCollapse }) {
   return (
-    <button
-      onClick={onClick}
-      className={`${styles.tab} ${active ? styles.tabActive : ''}`}
-    >
-      {children}
-    </button>
+    <nav className={`${styles.sidebar} ${collapsed ? styles.sidebarCollapsed : ''}`} aria-label="Admin navigation">
+      <div className={styles.sidebarLogo}>
+        <div className={styles.sidebarLogoIcon} aria-hidden="true">🩸</div>
+        <span className={styles.sidebarLogoText}>SchreckNet</span>
+      </div>
+
+      <div className={styles.sidebarNav}>
+        {NAV_SECTIONS.map((section) => (
+          <React.Fragment key={section.label}>
+            <div className={styles.sidebarSectionLabel}>{section.label}</div>
+            {section.items.map(({ id, icon, label }) => (
+              <button
+                key={id}
+                type="button"
+                className={`${styles.sidebarNavItem} ${tab === id ? styles.sidebarNavItemActive : ''}`}
+                onClick={() => setTab(id)}
+                data-tooltip={label}
+                aria-current={tab === id ? 'page' : undefined}
+              >
+                <span className={styles.sidebarNavIcon} aria-hidden="true">{icon}</span>
+                <span className={styles.sidebarNavLabel}>{label}</span>
+              </button>
+            ))}
+          </React.Fragment>
+        ))}
+      </div>
+
+      <button
+        type="button"
+        className={styles.sidebarCollapseBtn}
+        onClick={onToggleCollapse}
+        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        data-tooltip="Expand"
+      >
+        <span className={styles.sidebarCollapseIcon} aria-hidden="true">{collapsed ? '→' : '←'}</span>
+        <span className={styles.sidebarCollapseLabel}>Collapse</span>
+      </button>
+    </nav>
+  );
+}
+
+/* ---------------- Top bar ---------------- */
+function TopBar({ tab, loading, onReload }) {
+  return (
+    <header className={styles.topbar}>
+      <div className={styles.topbarBreadcrumb}>
+        <span>Admin</span>
+        <span className={styles.topbarBreadcrumbSep}>›</span>
+        <span className={styles.topbarBreadcrumbActive}>{TAB_LABELS[tab] || tab}</span>
+      </div>
+      <div className={styles.topbarActions}>
+        <div className={styles.statusPill}>
+          <span className={styles.statusDot} />
+          Online
+        </div>
+        <button
+          type="button"
+          className={styles.reloadBtn}
+          onClick={onReload}
+          disabled={loading}
+          aria-label="Reload data"
+        >
+          <span className={`${styles.reloadIcon} ${loading ? styles.reloadIconSpin : ''}`} aria-hidden="true">↻</span>
+          Reload
+        </button>
+      </div>
+    </header>
   );
 }
 
@@ -41,6 +140,7 @@ function TabButton({ active, onClick, children }) {
 export default function Admin() {
   const [tab, setTab] = useState('users'); // users | characters | claims | downtimes | xp | npcs | chat | stats | dice | discord | logs
   const [loading, setLoading] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // All data state lives here
   const [users, setUsers] = useState([]);
@@ -68,7 +168,7 @@ export default function Admin() {
   const [err, setErr] = useState('');
 
   // Central data loader
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true); setErr(''); setMsg('');
     try {
       const xp = await api.get('/admin/xp-logs?limit=al');
@@ -169,8 +269,8 @@ try {
     } finally {
       setLoading(false);
     }
-  }
-  useEffect(() => { load(); }, []);
+  }, []);
+  useEffect(() => { load(); }, [load]);
 
   // ========= API FUNCTIONS (passed as props) =========
 
@@ -654,120 +754,125 @@ async function grantXP(character_id, delta) {
   // ========= RENDER =========
   return (
     <div className={styles.adminRoot}>
-      <div className={styles.container}>
-        <h2 className={styles.title}>Admin Console</h2>
-        {loading && <Loading />}
-        {err && <div className={`${styles.alert} ${styles.alertError}`}>{err}</div>}
-        {msg && <div className={`${styles.alert} ${styles.alertInfo}`}>{msg}</div>}
+      <Sidebar
+        tab={tab}
+        setTab={setTab}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(c => !c)}
+      />
 
-        <div className={styles.toolbar}>
-          <TabButton active={tab==='users'} onClick={()=>setTab('users')}>Users</TabButton>
-          <TabButton active={tab==='characters'} onClick={()=>setTab('characters')}>Characters</TabButton>
-          <TabButton active={tab==='claims'} onClick={()=>setTab('claims')}>Claims</TabButton>
-          <TabButton active={tab==='downtimes'} onClick={()=>setTab('downtimes')}>Downtimes</TabButton>
-          <TabButton active={tab==='xp'} onClick={()=>setTab('xp')}>XP Tools</TabButton>
-          <TabButton active={tab==='npcs'} onClick={()=>setTab('npcs')}>NPCs</TabButton>
-          <TabButton active={tab === 'npc_email'} onClick={() => setTab('npc_email')}>NPC Email</TabButton>
-          <TabButton active={tab==='chat'} onClick={()=>setTab('chat')}>Chat Logs</TabButton>
-          <TabButton active={tab==='stats'} onClick={()=>setTab('stats')}>Stats</TabButton>
-          <TabButton active={tab==='dice'} onClick={()=>setTab('dice')}>Dice Logs</TabButton>
-          <TabButton active={tab==='discord'} onClick={()=>setTab('discord')}>Discord</TabButton>
-          <TabButton active={tab==='master'} onClick={()=>setTab('master')}>Master</TabButton>
-          <TabButton active={tab==='logs'} onClick={()=>setTab('logs')}>Server Logs</TabButton>
-          <button className={`${styles.btn} ${styles.btnGhost} ${styles.rowEnd}`} onClick={load}>Reload</button>
-        </div>
+      <div className={`${styles.main} ${sidebarCollapsed ? styles.mainExpanded : ''}`}>
+        {loading && <div className={styles.loadingStrip} aria-live="polite" aria-label="Loading" />}
 
-        {/* Conditional Tab Rendering */}
-        {tab === 'users' && (
-          <AdminUsersTab 
-            users={users} 
-            onSave={saveUser} 
-          />
+        <TopBar tab={tab} loading={loading} onReload={load} />
+
+        {(err || msg) && (
+          <div className={styles.toastBar} role="status" aria-live="polite">
+            {err && (
+              <div className={`${styles.alert} ${styles.alertError}`}>
+                <span aria-hidden="true">⚠</span> {err}
+              </div>
+            )}
+            {msg && (
+              <div className={`${styles.alert} ${styles.alertInfo}`}>
+                <span aria-hidden="true">✓</span> {msg}
+              </div>
+            )}
+          </div>
         )}
-        {tab === 'characters' && (
-          <AdminCharactersTab
-            users={users}
-            onSave={saveCharacter}
-            onDelete={deleteCharacter}
-            onGeneratePDF={handleGeneratePDF}
-            onOpenEditor={setEditorTarget}
-          />
-        )}
-        {tab === 'claims' && (
-          <AdminClaimsTab
-            claims={claims}
-            characters={charIndex}
-            onSave={saveClaim}
-            onDelete={deleteClaim}
-          />
-        )}
-        {tab === 'downtimes' && (
-          <AdminDowntimesTab
-            rows={downtimes}
-            onSave={saveDowntime}
-          />
-        )}
-{tab === 'xp' && (
-          <AdminXPTab 
-            users={users} 
-            onGrant={grantXP} 
-            onBulkGrant={grantBulkXP}
-            adminxp={adminxp} 
-          />
-        )}
-        {tab === 'npcs' && (
-          <AdminNPCsTab
-            npcs={npcs}
-            onReload={load}
-            onDelete={deleteNPC}
-          />
-        )}
-        {tab === 'npc_email' && (
+
+        <main className={styles.content}>
+          {/* Conditional Tab Rendering */}
+          {tab === 'users' && (
+            <AdminUsersTab 
+              users={users} 
+              onSave={saveUser} 
+            />
+          )}
+          {tab === 'characters' && (
+            <AdminCharactersTab
+              users={users}
+              onSave={saveCharacter}
+              onDelete={deleteCharacter}
+              onGeneratePDF={handleGeneratePDF}
+              onOpenEditor={setEditorTarget}
+            />
+          )}
+          {tab === 'claims' && (
+            <AdminClaimsTab
+              claims={claims}
+              characters={charIndex}
+              onSave={saveClaim}
+              onDelete={deleteClaim}
+            />
+          )}
+          {tab === 'downtimes' && (
+            <AdminDowntimesTab
+              rows={downtimes}
+              onSave={saveDowntime}
+            />
+          )}
+          {tab === 'xp' && (
+            <AdminXPTab 
+              users={users} 
+              onGrant={grantXP} 
+              onBulkGrant={grantBulkXP}
+              adminxp={adminxp} 
+            />
+          )}
+          {tab === 'npcs' && (
+            <AdminNPCsTab
+              npcs={npcs}
+              onReload={load}
+              onDelete={deleteNPC}
+            />
+          )}
+          {tab === 'npc_email' && (
             <AdminNpcEmailTab npcs={npcs} />
           )}
-
-        {tab === 'chat' && (
-          <AdminChatLogsTab 
-            messages={allMessages} 
-            charIndex={charIndex} 
-          />
-        )}
-        {tab === 'stats' && (
-        <ChatStatsTab
-          directMessages={allMessages}
-          npcMessages={allNpcMessages}
-          groupMessages={allGroupMessages}
-          emailMessages={allEmailMessages}
-          chatGroups={chatGroups}
-          npcs={npcs}
-          users={users}
-          xpLogs={xpLogs}
-          premonitions={premonitions}
-          diceRolls={diceRolls}
-          downtimes={downtimes}
-          characters={characters}
-        />
-        )}
-        {tab === 'dice' && (
-          <AdminDiceLogsTab />
-        )}
-        {tab === 'discord' && (
-          <AdminDiscordTab users={users} />
-        )}
-        {tab === 'master' && (            
-          <AdminMasterTab />
-        )}
-        {tab === 'logs' && <AdminLogs />}
-
-        {/* Modal remains here */}
-        {editorTarget && (
-         <CharacterEditor
-            character={editorTarget}
-            onClose={() => setEditorTarget(null)}
-            onSaved={() => { setEditorTarget(null); load(); }} // Close and reload
-          />
-        )}
+          {tab === 'chat' && (
+            <AdminChatLogsTab 
+              messages={allMessages} 
+              charIndex={charIndex} 
+            />
+          )}
+          {tab === 'stats' && (
+            <ChatStatsTab
+              directMessages={allMessages}
+              npcMessages={allNpcMessages}
+              groupMessages={allGroupMessages}
+              emailMessages={allEmailMessages}
+              chatGroups={chatGroups}
+              npcs={npcs}
+              users={users}
+              xpLogs={xpLogs}
+              premonitions={premonitions}
+              diceRolls={diceRolls}
+              downtimes={downtimes}
+              characters={characters}
+            />
+          )}
+          {tab === 'dice' && (
+            <AdminDiceLogsTab />
+          )}
+          {tab === 'discord' && (
+            <AdminDiscordTab users={users} />
+          )}
+          {tab === 'master' && (            
+            <AdminMasterTab />
+          )}
+          {tab === 'logs' && <AdminLogs />}
+        </main>
       </div>
+
+      {/* Modal remains here */}
+      {editorTarget && (
+       <CharacterEditor
+          character={editorTarget}
+          onClose={() => setEditorTarget(null)}
+          onSaved={() => { setEditorTarget(null); load(); }} // Close and reload
+        />
+      )}
     </div>
   );
 }

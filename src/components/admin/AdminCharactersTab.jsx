@@ -3,6 +3,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import api from '../../api';
 import styles from '../../styles/Admin.module.css';
 import generateVTMCharacterSheetPDF from '../../utils/pdfGenerator';
+import { ALL_DISCIPLINE_NAMES } from '../../data/disciplines';
 
 /* ---------- VTM Lookups ---------- */
 const CLAN_COLORS = {
@@ -25,12 +26,6 @@ const TrackerDisplay = ({ label, currentObj, max, onUpdate, isValueTracker = fal
   for (let i = 0; i < trackSize; i++) {
     let content = '';
     let isFilled = false;
-    let boxStyle = {
-      width: '24px', height: '24px', border: '1px solid var(--glass-border)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: '16px', fontWeight: 'bold', backgroundColor: 'var(--glass-inset)',
-      cursor: 'default', color: 'var(--text-primary)', lineHeight: 1, borderRadius: '4px'
-    };
 
     if (isValueTracker) {
       if (i < value) isFilled = true;
@@ -38,53 +33,67 @@ const TrackerDisplay = ({ label, currentObj, max, onUpdate, isValueTracker = fal
       if (isFilled) {
          if (label === 'Hunger') {
            content = '🩸';
-           boxStyle.fontSize = '14px';
          } else {
-           boxStyle.backgroundColor = 'var(--accent-purple)';
-           boxStyle.color = '#fff';
-           boxStyle.borderColor = 'var(--accent-purple)';
+           // We'll handle filled state via className
          }
       }
     } else {
-      if (i < agg) { content = 'X'; boxStyle.color = '#ff4d4d'; boxStyle.borderColor = '#ff4d4d'; }
-      else if (i < agg + sup) { content = '/'; boxStyle.color = '#ffc107'; }
+      if (i < agg) { content = 'X'; }
+      else if (i < agg + sup) { content = '/'; }
     }
 
-    boxes.push(<div key={i} style={boxStyle} title={`Box ${i+1}`}>{content}</div>);
+    // Determine box class based on state
+    let boxClass = styles.trackerBox;
+    if (isValueTracker && isFilled) {
+      if (label === 'Hunger') {
+        boxClass += ` ${styles.trackerBoxFilledHunger}`;
+      } else {
+        boxClass += ` ${styles.trackerBoxFilled}`;
+      }
+    } else if (!isValueTracker) {
+      if (i < agg) {
+        boxClass += ` ${styles.trackerBoxAggravated}`;
+      } else if (i < agg + sup) {
+        boxClass += ` ${styles.trackerBoxSuperficial}`;
+      }
+    }
+
+    boxes.push(<div key={i} className={boxClass} title={`Box ${i+1}`}>{content}</div>);
   }
 
   return (
-    <div style={{ marginBottom: '1rem', flex: '1 1 200px' }}>
-      <div style={{ fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '6px', display:'flex', justifyContent:'space-between', color: 'var(--text-secondary)' }}>
-        <span>{label}</span><span style={{ opacity: 0.6, fontSize: '0.75rem', fontFamily: 'monospace' }}>MAX: {trackSize}</span>
+    <div className={styles.trackerContainer}>
+      <div className={styles.trackerLabel}>
+        <span>{label}</span>
+        <span className={styles.trackerMax}>MAX: {trackSize}</span>
       </div>
-      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '8px' }}>{boxes}</div>
-      <div style={{ display: 'flex', gap: '8px', fontSize: '0.8rem' }}>
+      <div className={styles.trackerBoxes}>{boxes}</div>
+      <div className={styles.trackerControls}>
         {!isValueTracker ? (
           <>
-            <div className={styles.row} style={{ gap: '4px', background: 'var(--glass-inset)', padding: '2px 6px', borderRadius: '4px' }}>
-              <span style={{ opacity: 0.7 }}>SUP:</span>
-              <button className={`${styles.btn} ${styles.btnGhost}`} style={{ padding: '2px 6px', minWidth: '24px' }} onClick={() => onUpdate('superficial', -1)}>-</button>
-              <button className={`${styles.btn} ${styles.btnGhost}`} style={{ padding: '2px 6px', minWidth: '24px' }} onClick={() => onUpdate('superficial', 1)}>+</button>
+            <div className={styles.trackerControl}>
+              <span className={styles.trackerControlLabel}>SUP:</span>
+              <button className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`} onClick={() => onUpdate('superficial', -1)}>−</button>
+              <button className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`} onClick={() => onUpdate('superficial', 1)}>+</button>
             </div>
-            <div className={styles.row} style={{ gap: '4px', background: 'var(--glass-inset)', padding: '2px 6px', borderRadius: '4px' }}>
-              <span style={{ opacity: 0.7 }}>AGG:</span>
-              <button className={`${styles.btn} ${styles.btnGhost}`} style={{ padding: '2px 6px', minWidth: '24px' }} onClick={() => onUpdate('aggravated', -1)}>-</button>
-              <button className={`${styles.btn} ${styles.btnGhost}`} style={{ padding: '2px 6px', minWidth: '24px' }} onClick={() => onUpdate('aggravated', 1)}>+</button>
+            <div className={styles.trackerControl}>
+              <span className={styles.trackerControlLabel}>AGG:</span>
+              <button className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`} onClick={() => onUpdate('aggravated', -1)}>−</button>
+              <button className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`} onClick={() => onUpdate('aggravated', 1)}>+</button>
             </div>
           </>
         ) : (
           <>
-            <div className={styles.row} style={{ gap: '4px', background: 'var(--glass-inset)', padding: '2px 6px', borderRadius: '4px' }}>
-              <span style={{ opacity: 0.7 }}>VAL:</span>
-              <button className={`${styles.btn} ${styles.btnGhost}`} style={{ padding: '2px 6px', minWidth: '24px' }} onClick={() => onUpdate('value', -1)}>-</button>
-              <button className={`${styles.btn} ${styles.btnGhost}`} style={{ padding: '2px 6px', minWidth: '24px' }} onClick={() => onUpdate('value', 1)}>+</button>
+            <div className={styles.trackerControl}>
+              <span className={styles.trackerControlLabel}>VAL:</span>
+              <button className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`} onClick={() => onUpdate('value', -1)}>−</button>
+              <button className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`} onClick={() => onUpdate('value', 1)}>+</button>
             </div>
             {label === 'Humanity' && (
-              <div className={styles.row} style={{ gap: '4px', background: 'var(--glass-inset)', padding: '2px 6px', borderRadius: '4px' }}>
-                <span style={{ opacity: 0.7 }}>STAINS:</span>
-                <button className={`${styles.btn} ${styles.btnGhost}`} style={{ padding: '2px 6px', minWidth: '24px' }} onClick={() => onUpdate('stains', -1)}>-</button>
-                <button className={`${styles.btn} ${styles.btnGhost}`} style={{ padding: '2px 6px', minWidth: '24px' }} onClick={() => onUpdate('stains', 1)}>+</button>
+              <div className={styles.trackerControl}>
+                <span className={styles.trackerControlLabel}>STAINS:</span>
+                <button className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`} onClick={() => onUpdate('stains', -1)}>−</button>
+                <button className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`} onClick={() => onUpdate('stains', 1)}>+</button>
               </div>
             )}
           </>
@@ -105,6 +114,8 @@ export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEdit
   const [expandedCards, setExpandedCards] = useState(new Set());
   const [filterText, setFilterText] = useState('');
   const [confirmDialog, setConfirmDialog] = useState(null);
+  const [upgradeDisciplineState, setUpgradeDisciplineState] = useState(null); // {charId, charName, discipline}
+  const [removeDisciplineState, setRemoveDisciplineState] = useState(null); // {charId, charName, discipline}
 
   useEffect(() => {
     const newStates = {};
@@ -252,14 +263,102 @@ export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEdit
   const handleReset = (char) => { if(window.confirm(`Allow Re-Roll?`)) updateSheetData(char, d => { d.allow_reset = true; return d; }); };
   const handleRevokeReset = (char) => { if(window.confirm(`Revoke Re-Roll?`)) updateSheetData(char, d => { d.allow_reset = false; return d; }); };
 
+  const handleUpgradeDiscipline = (char) => {
+    setUpgradeDisciplineState({
+      charId: char.id,
+      charName: char.name,
+      discipline: null,
+    });
+  };
+
+  const handleDisciplineSelect = (discipline) => {
+    setUpgradeDisciplineState(prev => ({
+      ...prev,
+      discipline: discipline
+    }));
+  };
+
+  const handleUpgradeConfirm = () => {
+    if (!upgradeDisciplineState.discipline || !upgradeDisciplineState.charId) {
+      return;
+    }
+
+    // Find the character to update
+    const char = baseChars.find(c => c.id === upgradeDisciplineState.charId);
+    if (!char) {
+      setUpgradeDisciplineState(null);
+      return;
+    }
+
+    updateSheetData(char, (data) => {
+      // Ensure disciplines object exists
+      const disciplines = data.disciplines || {};
+      // Create a new disciplines object with the update
+      const updatedDisciplines = {
+        ...disciplines,
+        [upgradeDisciplineState.discipline]: 6
+      };
+      return {
+        ...data,
+        disciplines: updatedDisciplines
+      };
+    });
+
+    setUpgradeDisciplineState(null);
+  };
+
+  const handleRemoveDisciplineLevel6 = (char) => {
+    setRemoveDisciplineState({
+      charId: char.id,
+      charName: char.name,
+      discipline: null,
+    });
+  };
+
+  const handleRemoveDisciplineSelect = (discipline) => {
+    setRemoveDisciplineState(prev => ({
+      ...prev,
+      discipline: discipline
+    }));
+  };
+
+  const handleRemoveDisciplineConfirm = () => {
+    if (!removeDisciplineState.discipline || !removeDisciplineState.charId) {
+      return;
+    }
+
+    // Find the character to update
+    const char = baseChars.find(c => c.id === removeDisciplineState.charId);
+    if (!char) {
+      setRemoveDisciplineState(null);
+      return;
+    }
+
+    updateSheetData(char, (data) => {
+      // Ensure disciplines object exists
+      const disciplines = data.disciplines || {};
+      // Create a new disciplines object with the update: set to 5 (removing the sixth dot)
+      const updatedDisciplines = {
+        ...disciplines,
+        [removeDisciplineState.discipline]: 5
+      };
+      return {
+        ...data,
+        disciplines: updatedDisciplines
+      };
+    });
+
+    setRemoveDisciplineState(null);
+  };
+
   return (
     <div className={styles.stack12}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
-        <h3>Characters & Inventory</h3>
-        
+      <div className={styles.row} style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+        <h3 style={{ margin: 0 }}>Characters & Inventory</h3>
+
         {filteredChars.length > 0 && (
-          <div style={{ display: 'flex', gap: '10px', background: 'var(--glass-inset)', border: '1px solid var(--glass-border-highlight)', padding: '10px', borderRadius: 'var(--radius-sm)', alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--accent-purple)' }}>GLOBAL ACTIONS:</span>
+          <div className={`${styles.alert} ${styles.alertInfo}`} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px', marginBottom: 0 }}>
+            <span className={styles.hl} style={{ fontSize: '0.8rem' }}>GLOBAL ACTIONS:</span>
             <button className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`} onClick={() => requestGlobalReset(['health'])}>Heal All</button>
             <button className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`} onClick={() => requestGlobalReset(['willpower'])}>Restore WP</button>
             <button className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`} onClick={() => requestGlobalReset(['hunger'])}>Reset Hunger</button>
@@ -268,11 +367,11 @@ export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEdit
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+      <div className={styles.row}>
         <input type="text" placeholder="Filter by name, clan, or owner..." value={filterText} onChange={e => setFilterText(e.target.value)} className={styles.input} style={{ flex: 1, maxWidth: '400px' }} />
       </div>
 
-      <div className={styles.characterCardGrid} style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))' }}>
+      <div className={styles.characterCardGrid}>
         {filteredChars.map(c => {
           const clanColor = CLAN_COLORS[c.clan] || 'var(--accent-purple)';
           const clanLogoUrl = symlogo(c.clan);
@@ -282,35 +381,42 @@ export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEdit
           const isActive = data.is_active !== false; // Default to true if undefined
 
           return (
-            <div key={c.id} className={styles.characterCard} style={{ '--clan-color': clanColor, '--clan-logo-url': clanLogoUrl ? `url(${clanLogoUrl})` : 'none', opacity: isActive ? 1 : 0.6 }}>
-              
+            <div
+              key={c.id}
+              className={`${styles.characterCard} ${!isActive ? styles.charCardInactive : ''}`}
+              style={{ '--clan-color': clanColor, '--clan-logo-url': clanLogoUrl ? `url(${clanLogoUrl})` : 'none' }}
+            >
+
               {/* CARD HEADER */}
-              <div className={styles.cardHeader} style={{ cursor: 'pointer' }} onClick={() => toggleExpand(c.id)}>
+              <div className={styles.charCardHeader} onClick={() => toggleExpand(c.id)}>
                 <div className={styles.cardOwnerInfo}>
-                  <div className={styles.cardOwnerLabel}>Owner: {c.owner} {!isActive && <span style={{color: 'var(--color-error)'}}>(INACTIVE)</span>}</div>
-                  <div className={styles.cardOwnerName} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    {c.name} 
-                    <span style={{ fontSize: '0.8rem', background: clanColor, padding: '2px 8px', borderRadius: '12px' }}>{c.clan}</span>
+                  <div className={styles.charCardOwnerLabel}>
+                    Owner: {c.owner}
+                    {!isActive && <span className={styles.charInactiveTag}>INACTIVE</span>}
+                  </div>
+                  <div className={styles.charCardName}>
+                    {c.name}
+                    <span className={styles.charCardClanPill} style={{ background: clanColor }}>{c.clan}</span>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                  {clanLogoUrl && <div className={styles.clanLogo} style={{ width: '32px', height: '32px', backgroundSize: 'contain' }}></div>}
-                  <span style={{ color: 'var(--text-secondary)', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }}>▼</span>
+                <div className={styles.charCardHeaderRight}>
+                  {clanLogoUrl && <div className={styles.charCardClanLogo} />}
+                  <span className={`${styles.charCardChevron} ${isExpanded ? styles.charCardChevronOpen : ''}`}>▼</span>
                 </div>
               </div>
 
               {/* CARD BODY */}
-              <div className={styles.cardBody} style={{ padding: '1rem' }}>
+              <div className={styles.charCardBody}>
                 {/* Vitals Summary */}
-                <div className={styles.row} style={{ gap: '10px', marginBottom: '1rem', flexWrap: 'wrap', fontSize: '0.85rem' }}>
-                  <div style={{ background: 'var(--glass-inset)', padding: '4px 10px', borderRadius: '12px' }}><b>XP:</b> {c.xp}</div>
-                  <div style={{ background: 'var(--glass-inset)', padding: '4px 10px', borderRadius: '12px' }}><b>Gen:</b> {data.generation || '?'}</div>
-                  <div style={{ background: 'var(--glass-inset)', padding: '4px 10px', borderRadius: '12px' }}><b>BP:</b> {data.blood_potency || 1}</div>
-                  <div style={{ background: 'var(--glass-inset)', padding: '4px 10px', borderRadius: '12px' }}><b>Sire:</b> {data.sire || 'Unknown'}</div>
+                <div className={styles.charVitalsRow}>
+                  <div className={styles.charVitalChip}><b>XP:</b> {c.xp}</div>
+                  <div className={styles.charVitalChip}><b>Gen:</b> {data.generation || '?'}</div>
+                  <div className={styles.charVitalChip}><b>BP:</b> {data.blood_potency || 1}</div>
+                  <div className={styles.charVitalChip}><b>Sire:</b> {data.sire || 'Unknown'}</div>
                 </div>
 
                 {/* Trackers (Always Visible) */}
-                <div style={{ padding: '1rem', background: 'var(--glass-bg)', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                <div className={styles.charTrackersPanel}>
                   <TrackerDisplay label="Health" max={maxHealth} currentObj={data.health || {}} onUpdate={(type, delta) => updateTracker(c, 'health', type, delta)} />
                   <TrackerDisplay label="Willpower" max={maxWillpower} currentObj={data.willpower || {}} onUpdate={(type, delta) => updateTracker(c, 'willpower', type, delta)} />
                   <TrackerDisplay label="Humanity" max={10} isValueTracker={true} value={data.morality?.humanity ?? data.humanity ?? 7} stains={data.stains || 0} onUpdate={(type, delta) => updateTracker(c, 'humanity', type, delta)} />
@@ -319,39 +425,41 @@ export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEdit
 
                 {/* EXPANDED CONTENT */}
                 {isExpanded && (
-                  <div style={{ marginTop: '1.5rem', animation: 'floatIn 0.3s' }}>
-                    
+                  <div className={styles.charExpandedPanel}>
+
                     {/* Inventory Section */}
-                    <div style={{ marginBottom: '1.5rem' }}>
-                      <div className={styles.row} style={{ justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                        <h4 style={{ margin: 0, color: 'var(--accent-purple)' }}>Inventory</h4>
+                    <div className={styles.charSectionBlock}>
+                      <div className={styles.charSectionTitleRow}>
+                        <h4 className={styles.charSectionTitle}>Inventory</h4>
                         <button className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`} onClick={() => handleAddInventory(c)}>+ Add Item</button>
                       </div>
-                      
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        {(!data.inventory || data.inventory.length === 0) && <div className={styles.subtle} style={{ fontStyle: 'italic' }}>No items in inventory.</div>}
-                        
+
+                      <div className={styles.charInventoryList}>
+                        {(!data.inventory || data.inventory.length === 0) && (
+                          <div className={styles.charInventoryEmpty}>No items in inventory.</div>
+                        )}
+
                         {(data.inventory || []).map((item, idx) => (
-                          <div key={idx} className={styles.row} style={{ gap: '0.5rem', background: 'var(--glass-inset)', padding: '0.5rem', borderRadius: 'var(--radius-sm)' }}>
-                            <input type="text" className={styles.input} style={{ flex: 2, padding: '0.5rem' }} value={item.name} onChange={(e) => handleUpdateInventory(c, idx, 'name', e.target.value)} placeholder="Item Name" />
-                            <input type="number" className={styles.input} style={{ flex: 1, padding: '0.5rem', minWidth: '60px' }} value={item.qty} onChange={(e) => handleUpdateInventory(c, idx, 'qty', parseInt(e.target.value)||0)} title="Quantity" />
-                            <input type="text" className={styles.input} style={{ flex: 3, padding: '0.5rem' }} value={item.notes || ''} onChange={(e) => handleUpdateInventory(c, idx, 'notes', e.target.value)} placeholder="Notes/Effects" />
-                            <button className={`${styles.btn} ${styles.btnDanger}`} style={{ padding: '0.5rem 0.8rem' }} onClick={() => handleRemoveInventory(c, idx)}>×</button>
+                          <div key={idx} className={styles.charInventoryRow}>
+                            <input type="text" className={styles.input} style={{ flex: 2 }} value={item.name} onChange={(e) => handleUpdateInventory(c, idx, 'name', e.target.value)} placeholder="Item Name" />
+                            <input type="number" className={styles.input} style={{ flex: '0 0 70px' }} value={item.qty} onChange={(e) => handleUpdateInventory(c, idx, 'qty', parseInt(e.target.value)||0)} title="Quantity" />
+                            <input type="text" className={styles.input} style={{ flex: 3 }} value={item.notes || ''} onChange={(e) => handleUpdateInventory(c, idx, 'notes', e.target.value)} placeholder="Notes/Effects" />
+                            <button className={`${styles.btn} ${styles.btnDanger} ${styles.btnSmall}`} onClick={() => handleRemoveInventory(c, idx)}>×</button>
                           </div>
                         ))}
                       </div>
                     </div>
 
                     {/* Admin Notes Section */}
-                    <div style={{ marginBottom: '1.5rem' }}>
-                      <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--color-warning)' }}>Admin Notes (Hidden from Player)</h4>
-                      <textarea className={styles.textarea} style={{ minHeight: '80px', padding: '0.8rem' }} value={data.admin_notes || ''} onChange={(e) => updateSheetData(c, d => { d.admin_notes = e.target.value; return d; })} placeholder="Add story notes, warnings, or plot hooks here..." />
+                    <div className={styles.charSectionBlock}>
+                      <h4 className={styles.charSectionTitle} style={{ color: 'var(--color-warn)' }}>Admin Notes (Hidden from Player)</h4>
+                      <textarea className={`${styles.textarea} ${styles.charNotesArea}`} value={data.admin_notes || ''} onChange={(e) => updateSheetData(c, d => { d.admin_notes = e.target.value; return d; })} placeholder="Add story notes, warnings, or plot hooks here..." />
                     </div>
 
                     {/* Raw JSON Toggle */}
-                    <details>
-                      <summary style={{ cursor: 'pointer', color: 'var(--text-secondary)', fontWeight: 'bold' }}>View/Edit Raw Sheet JSON</summary>
-                      <textarea value={sheetStates[c.id] || ''} onChange={(e) => setSheetState(c.id, JSON.parse(e.target.value))} className={`${styles.textarea} ${styles.inputMono}`} style={{ marginTop: '0.5rem', minHeight: '150px' }} />
+                    <details className={styles.charJsonDetails}>
+                      <summary>View/Edit Raw Sheet JSON</summary>
+                      <textarea value={sheetStates[c.id] || ''} onChange={(e) => setSheetState(c.id, JSON.parse(e.target.value))} className={`${styles.textarea} ${styles.inputMono} ${styles.charJsonTextarea}`} />
                     </details>
 
                   </div>
@@ -359,25 +467,35 @@ export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEdit
               </div>
 
               {/* CARD FOOTER */}
-              <div className={styles.cardFooter} style={{ gap: '0.5rem' }}>
-                <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => { try { onSave({ id: c.id, name: c.name, clan: c.clan, sheet: getSheetObj(c.id) }); } catch { alert('Invalid JSON in sheet'); } }}>Save</button>
-                <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => onOpenEditor({ ...c, sheet: getSheetObj(c.id) })}>Editor Modal</button>
-                <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => generateVTMCharacterSheetPDF(c)}>PDF</button>
+              <div className={styles.charCardFooter}>
+                {/* Primary Actions */}
+                <div className={styles.charCardFooterRow}>
+                  <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => { try { onSave({ id: c.id, name: c.name, clan: c.clan, sheet: getSheetObj(c.id) }); } catch { alert('Invalid JSON in sheet'); } }}>Save</button>
+                  <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => onOpenEditor({ ...c, sheet: getSheetObj(c.id) })}>Editor Modal</button>
+                  <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => generateVTMCharacterSheetPDF(c)}>PDF</button>
+                </div>
 
-                <div className={styles.rowEnd} style={{ display: 'flex', gap: '0.5rem' }}>
+                {/* Secondary Actions */}
+                <div className={styles.charCardFooterRow}>
                   <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => handleToggleActive(c)}>
                     {isActive ? 'Deactivate' : 'Activate'}
                   </button>
                   <button className={`${styles.btn} ${data.allow_reset ? styles.btnGhost : styles.btnWarning}`} onClick={() => data.allow_reset ? handleRevokeReset(c) : handleReset(c)}>
                     {data.allow_reset ? 'Revoke Re-Roll' : 'Allow Re-Roll'}
                   </button>
+                  <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => handleUpgradeDiscipline(c)}>
+                    Upgrade Disc to 6
+                  </button>
+                  <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => handleRemoveDisciplineLevel6(c)}>
+                    Remove Lvl 6
+                  </button>
                   <button className={`${styles.btn} ${styles.btnDanger}`} onClick={() => onDelete(c.id)}>Delete</button>
                 </div>
               </div>
             </div>
           );
-        })}  
-      </div> 
+        })}
+      </div>
 
       {/* CONFIRM DIALOG */}
       {confirmDialog && (
@@ -392,6 +510,112 @@ export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEdit
             <div className={styles.modalFooter}>
               <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => setConfirmDialog(null)}>Cancel</button>
               <button className={`${styles.btn} ${styles.btnDanger}`} onClick={() => { confirmDialog.onConfirm(); setConfirmDialog(null); }}>Confirm</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DISCIPLINE UPGRADE MODAL */}
+      {upgradeDisciplineState && (
+        <div className={styles.modalBackdrop}>
+          <div className={styles.modalCard} style={{ maxWidth: '480px' }}>
+            <div className={styles.modalHeader}>
+              <h3 className={styles.inputMono} style={{ color: 'var(--accent-purple)' }}>
+                Upgrade Discipline to Level 6
+              </h3>
+            </div>
+            <div className={styles.modalBody}>
+              <p>
+                Select a discipline to upgrade to level 6 for <strong>{upgradeDisciplineState.charName}</strong>:
+              </p>
+              <div className={styles.row} style={{ margin: '1.5rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {ALL_DISCIPLINE_NAMES.map(disc => (
+                  <label key={disc} className={styles.row} style={{ alignItems: 'center', gap: '0.5rem' }}>
+                    <input
+                      type="radio"
+                      name="discipline"
+                      value={disc}
+                      checked={upgradeDisciplineState.discipline === disc}
+                      onChange={() => handleDisciplineSelect(disc)}
+                      className={styles.input}
+                    />
+                    {disc}
+                  </label>
+                ))}
+              </div>
+              {!upgradeDisciplineState.discipline && (
+                <p className={styles.subtle} style={{ marginTop: '1rem' }}>
+                  Please select a discipline
+                </p>
+              )}
+            </div>
+            <div className={styles.modalFooter}>
+              <button
+                className={`${styles.btn} ${styles.btnSecondary}`}
+                onClick={() => setUpgradeDisciplineState(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className={`${styles.btn} ${styles.btnPrimary}`}
+                onClick={handleUpgradeConfirm}
+                disabled={!upgradeDisciplineState.discipline}
+              >
+                Confirm Upgrade
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* REMOVE DISCIPLINE LEVEL 6 MODAL */}
+      {removeDisciplineState && (
+        <div className={styles.modalBackdrop}>
+          <div className={styles.modalCard} style={{ maxWidth: '480px' }}>
+            <div className={styles.modalHeader}>
+              <h3 className={styles.inputMono} style={{ color: 'var(--color-warning)' }}>
+                Remove Discipline Level 6
+              </h3>
+            </div>
+            <div className={styles.modalBody}>
+              <p>
+                Select a discipline to remove the sixth dot (set to level 5) for <strong>{removeDisciplineState.charName}</strong>:
+              </p>
+              <div className={styles.row} style={{ margin: '1.5rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {ALL_DISCIPLINE_NAMES.map(disc => (
+                  <label key={disc} className={styles.row} style={{ alignItems: 'center', gap: '0.5rem' }}>
+                    <input
+                      type="radio"
+                      name="discipline"
+                      value={disc}
+                      checked={removeDisciplineState.discipline === disc}
+                      onChange={() => handleRemoveDisciplineSelect(disc)}
+                      className={styles.input}
+                    />
+                    {disc}
+                  </label>
+                ))}
+              </div>
+              {!removeDisciplineState.discipline && (
+                <p className={styles.subtle} style={{ marginTop: '1rem' }}>
+                  Please select a discipline
+                </p>
+              )}
+            </div>
+            <div className={styles.modalFooter}>
+              <button
+                className={`${styles.btn} ${styles.btnSecondary}`}
+                onClick={() => setRemoveDisciplineState(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className={`${styles.btn} ${styles.btnPrimary}`}
+                onClick={handleRemoveDisciplineConfirm}
+                disabled={!removeDisciplineState.discipline}
+              >
+                Confirm Remove
+              </button>
             </div>
           </div>
         </div>

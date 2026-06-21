@@ -19,35 +19,83 @@ const XP_RULES = {
 };
 
 const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds }) => {
-  // Helper functions from original code
+  // Dot-spec parsing helpers (mirrors CharacterView.jsx so both surfaces agree)
+  const bulletCount = useCallback((s = '') => {
+    const m = String(s).match(/•/g);
+    return m ? m.length : 0;
+  }, []);
+
+  const parseDotSpec = useCallback((spec = '') => {
+    const src = String(spec).trim();
+    if (!src) return [];
+    if (/\bor\b/i.test(src)) {
+      const opts = src.split(/\bor\b/i).map(s => bulletCount(s)).filter(n => n > 0);
+      return Array.from(new Set(opts)).sort((a, b) => a - b);
+    }
+    if (src.includes('-')) {
+      const [lo, hi] = src.split('-').map(s => bulletCount(s));
+      if (lo > 0 && hi >= lo) { const out = []; for (let i = lo; i <= hi; i++) out.push(i); return out; }
+    }
+    if (src.includes('+')) {
+      const min = bulletCount(src);
+      return min > 0 ? [min] : [];
+    }
+    const n = bulletCount(src);
+    return n > 0 ? [n] : [];
+  }, [bulletCount]);
+
+  // Helper functions — walks the real { merits, flaws, groups } shape of
+  // MERITS_AND_FLAWS (matches the working flattener in CharacterView.jsx).
+  // Each top-level entry is an object, not an array, and sub-categories
+  // live under `.groups`, so a flat Array.isArray(payload) check always
+  // failed here and silently produced an empty list.
   const allSelectableMerits = useMemo(() => {
     const out = [];
     const seen = new Set();
+    const pushIt = (item, category) => {
+      if (seen.has(item.id)) return;
+      const allowed = parseDotSpec(item.dots);
+      if (!allowed.length) return;
+      seen.add(item.id);
+      out.push({ id: item.id, name: item.name, dotsSpec: item.dots, description: item.description, category, allowed });
+    };
     for (const [cat, payload] of Object.entries(MERITS_AND_FLAWS)) {
       if (['Caitiff', 'Thin-blood', 'Ghouls', 'Cults'].includes(cat)) continue;
-      for (const merit of Array.isArray(payload) ? payload : []) {
-        if (seen.has(merit.id)) continue;
-        seen.add(merit.id);
-        out.push(merit);
+      (payload.merits || []).forEach(m => pushIt(m, cat));
+      if (payload.groups) {
+        for (const [sub, grp] of Object.entries(payload.groups)) {
+          (grp.merits || []).forEach(m => pushIt(m, `${cat} / ${sub}`));
+        }
       }
     }
     return out;
-  }, []);
+  }, [parseDotSpec]);
 
   const allSelectableFlaws = useMemo(() => {
     const out = [];
+    const seen = new Set();
+    const pushIt = (item, category) => {
+      if (seen.has(item.id)) return;
+      const allowed = parseDotSpec(item.dots);
+      if (!allowed.length) return;
+      seen.add(item.id);
+      out.push({ id: item.id, name: item.name, dotsSpec: item.dots, description: item.description, category, allowed });
+    };
     for (const [cat, payload] of Object.entries(MERITS_AND_FLAWS)) {
       if (['Caitiff', 'Thin-blood', 'Ghouls', 'Cults'].includes(cat)) continue;
-      for (const flaw of Array.isArray(payload) ? payload : []) {
-        out.push(flaw);
+      (payload.flaws || []).forEach(f => pushIt(f, cat));
+      if (payload.groups) {
+        for (const [sub, grp] of Object.entries(payload.groups)) {
+          (grp.flaws || []).forEach(f => pushIt(f, `${cat} / ${sub}`));
+        }
       }
     }
     return out;
-  }, []);
+  }, [parseDotSpec]);
 
   // Memoize all merits and flaws so we can look up their full descriptions later
-  const allMeritsFlat = useMemo(() => allSelectableMerits, [allSelectableMerits]);
-  const allFlawsFlat = useMemo(() => allSelectableFlaws, [allSelectableFlaws]);
+  const allMeritsFlat = allSelectableMerits;
+  const allFlawsFlat = allSelectableFlaws;
 
   // Fetch all items from data to identify what is truly a Flaw
   const allDataItems = useMemo(() => listAllItems(), []);
@@ -162,7 +210,7 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds }) => {
       .reduce((max, m) => Math.max(max, Number(m.dots || 0)), 0);
   }, [meritSel, meritsList, backgroundsList]);
 
-  useCallback(() => {
+  useEffect(() => {
     const allowed = meritSel?.allowed || [1];
     const nextAllowed = allowed.find(n => n > meritCurrentOwnedForSel) ?? allowed[allowed.length - 1];
     setMeritDots(nextAllowed || 1);
@@ -199,14 +247,26 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds }) => {
       if (xp < cost) return;
 
       const instance = sameMerits.length + sameBgs.length + 1;
+      const isRetainerMerit = merit.id === 'backgrounds_retainers__retainers';
+      let notesObj = {};
+      if (options.notes) {
+        try {
+          notesObj = JSON.parse(options.notes);
+        } catch (e) {
+          notesObj = {};
+        }
+      }
+      if (isRetainerMerit) {
+        notesObj.ghoulLevel = 0;
+      }
       const newEntry = {
         id: merit.id,
         name: merit.name,
         dots: Number(targetDots),
         from: 'xp_shop',
         instance,
+        notes: JSON.stringify(notesObj),
       };
-      if (options.notes) newEntry.notes = JSON.stringify(options.notes);
 
       if (preferBackgrounds) bgsArr.push(newEntry);
       else meritsArr.push(newEntry);
@@ -230,8 +290,32 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds }) => {
       for (let i = 0; i < arr.length; i++) {
         const entry = arr[i];
         if (entry.id === merit.id && Number(entry.dots || 0) === currentDots) {
-          arr[i] = { ...entry, dots: Number(targetDots) };
-          if (options.notes) arr[i].notes = JSON.stringify(options.notes);
+          let notesObj = {};
+          if (entry.notes) {
+            try {
+              notesObj = JSON.parse(entry.notes);
+            } catch (e) {
+              notesObj = {};
+            }
+          }
+          if (options.notes) {
+            try {
+              const optsNotes = JSON.parse(options.notes);
+              Object.assign(notesObj, optsNotes);
+            } catch (e) {
+              // ignore invalid options.notes
+            }
+          }
+          // For Retainers merits, ensure ghoulLevel is present (though it should be from initialization)
+          const isRetainerMerit = entry.id === 'backgrounds_retainers__retainers';
+          if (isRetainerMerit && typeof notesObj.ghoulLevel !== 'number') {
+            notesObj.ghoulLevel = 0;
+          }
+          arr[i] = {
+            ...entry,
+            dots: Number(targetDots),
+            notes: JSON.stringify(notesObj),
+          };
           return true;
         }
       }
@@ -244,14 +328,26 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds }) => {
     }
 
     if (!upgraded) {
+      const isRetainerMerit = merit.id === 'backgrounds_retainers__retainers';
+      let notesObj = {};
+      if (options.notes) {
+        try {
+          notesObj = JSON.parse(options.notes);
+        } catch (e) {
+          notesObj = {};
+        }
+      }
+      if (isRetainerMerit) {
+        notesObj.ghoulLevel = 0;
+      }
       const newMerit = {
         id: merit.id,
         name: merit.name,
         dots: Number(targetDots),
         from: 'xp_shop',
         instance: sameMerits.length + sameBgs.length + 1,
+        notes: JSON.stringify(notesObj),
       };
-      if (options.notes) newMerit.notes = JSON.stringify(options.notes);
       meritsArr.push(newMerit);
     }
 
@@ -457,8 +553,13 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds }) => {
             <div className={styles.subhead}>Owned Merits & Backgrounds</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {[...meritsList, ...backgroundsList].map((m, i) => {
-                const details = allMeritsFlat.find(x => x.id === m.id);
-                const desc = details?.description || 'No description available.';
+                const details = allMeritsFlat.find(x => x.id === m.id) || allDataItems.find(x => x.id === m.id);
+                // Prefer a custom description an admin set directly on this
+                // character's owned entry (m.description) over the generic
+                // dictionary text (details.description). Admin edits to a
+                // specific instance were being silently overridden by the
+                // generic lookup before this fix.
+                const desc = m.description || details?.description || 'No description available.';
                 const notesStr = m.notes ? JSON.parse(m.notes) : '';
 
                 return (
@@ -568,8 +669,11 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds }) => {
             <div className={styles.subhead}>Known Flaws</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {flawsList.map((f, i) => {
-                const details = allFlawsFlat.find(x => x.id === f.id);
-                const desc = details?.description || 'No description available.';
+                const details = allFlawsFlat.find(x => x.id === f.id) || allDataItems.find(x => x.id === f.id);
+                // Same fix as merits: a custom description set directly on
+                // this owned flaw entry (f.description) takes priority over
+                // the generic dictionary text.
+                const desc = f.description || details?.description || 'No description available.';
 
                 return (
                   <div key={f.id || f.name + i}>

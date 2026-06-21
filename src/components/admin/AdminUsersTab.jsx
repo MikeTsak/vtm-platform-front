@@ -9,47 +9,6 @@ const CLAN_COLORS = {
   Salubri: '#7f3f7f', Tzimisce: '#3f7f7f', Caitiff: '#666666', Thinblood: '#444444'
 };
 
-const headerStyle = {
-  display: 'grid',
-  gridTemplateColumns: '64px 1fr 1.3fr 0.8fr 1fr 1fr 0.7fr 120px',
-  gap: '10px',
-  padding: '10px 12px',
-  borderBottom: '1px solid var(--glass-border)',
-  color: 'var(--accent-purple)',
-  fontWeight: 800,
-  fontSize: '0.85rem',
-  textTransform: 'uppercase',
-  letterSpacing: '1px'
-};
-
-const rowStyle = {
-  display: 'grid',
-  gridTemplateColumns: '64px 1fr 1.3fr 0.8fr 1fr 1fr 0.7fr 120px',
-  gap: '10px',
-  alignItems: 'center',
-  padding: '12px',
-  borderBottom: '1px solid rgba(255,255,255,0.05)',
-  transition: 'background 0.2s ease',
-};
-
-const pill = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 8,
-  padding: '6px 10px',
-  borderRadius: '8px',
-  background: 'var(--glass-inset)',
-  border: '1px solid var(--glass-border)',
-  color: 'var(--text-primary)',
-  width: '100%',
-  minHeight: 36,
-  boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.3)',
-};
-
-const tinyChip = (hex) => ({
-  width: 12, height: 12, borderRadius: 999, background: hex || '#7F5AF0', boxShadow: `0 0 10px ${hex || '#7F5AF0'}`, border: '1px solid rgba(255,255,255,0.2)'
-});
-
 export default function AdminUsersTab({ users = [], onSave }) {
   const [drafts, setDrafts] = useState(() => new Map((users || []).map((u) => [u.id, { display_name: u.display_name ?? '', email: u.email ?? '', role: u.role ?? 'user', discord_id: u.discord_id ?? '' }])));
 
@@ -62,43 +21,70 @@ export default function AdminUsersTab({ users = [], onSave }) {
   const roleChoices = useMemo(() => ['user', 'courtuser', 'admin'], []);
 
   return (
-    <div style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', overflow: 'hidden', boxShadow: 'var(--glass-shadow)' }}>
-      <div style={{ padding: '15px 20px', borderBottom: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.3)' }}>
-        <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#fff' }}>Admin • Users</h3>
-        <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Edit user accounts. Character data is read-only.</p>
+    <div className={`${styles.editorSection} ${styles.characterCard}`}>
+      <div className={styles.sectionHeader}>
+        <h3 className={styles.hl}>Admin • Users</h3>
+        <p className={styles.subtle}>Edit user accounts. Character data is read-only.</p>
       </div>
 
-      <div style={headerStyle}>
-        <div>ID</div><div>Display Name</div><div>Email</div><div>Role</div><div>Discord ID</div><div>Character</div><div>Clan / XP</div><div>Actions</div>
-      </div>
-
-      <div>
-        {users.map((u) => {
-          const draft = getRow(u);
-          const clanColor = CLAN_COLORS[u.clan] || '#7F5AF0';
-          return (
-            <div key={u.id} style={rowStyle} onMouseEnter={e => e.currentTarget.style.background = 'var(--glass-bg-hover)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-              <div style={{ color: 'var(--accent-purple)', fontFamily: 'Fira Code, monospace', fontWeight: 'bold' }}>#{u.id}</div>
-              <div><input className={styles.input} style={{ ...pill, height: 36 }} value={draft.display_name} onChange={(e) => setRow(u, { display_name: e.target.value })} /></div>
-              <div><input className={styles.input} style={{ ...pill, height: 36 }} value={draft.email} onChange={(e) => setRow(u, { email: e.target.value })} /></div>
-              <div><select className={styles.select} style={{ ...pill, height: 36 }} value={draft.role} onChange={(e) => setRow(u, { role: e.target.value })}>{roleChoices.map((r) => <option key={r} value={r}>{r}</option>)}</select></div>
-              <div><input className={styles.input} style={{ ...pill, height: 36, fontFamily: 'monospace' }} value={draft.discord_id} onChange={(e) => setRow(u, { discord_id: e.target.value })} /></div>
-              <div>
-                {u.character_id ? (
-                  <div style={{ ...pill, justifyContent: 'space-between', borderLeft: `3px solid ${clanColor}` }}><span title={`Character ID: ${u.character_id}`}>{u.char_name || '—'}</span><span style={{ fontSize: 12, opacity: 0.6 }}>#{u.character_id}</span></div>
-                ) : (<div style={{ ...pill, opacity: 0.5, fontStyle: 'italic' }}>None</div>)}
-              </div>
-              <div>
-                <div style={{ ...pill, gap: 10 }}><span style={tinyChip(clanColor)} /><span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.clan || '—'}</span><span style={{ marginLeft: 'auto', opacity: 0.85, fontWeight: 'bold' }}>XP: {u.xp ?? 0}</span></div>
-              </div>
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                <button className={`${styles.btn} ${styles.btnPrimary}`} style={{ height: 36, padding: '0 12px' }} onClick={() => onSave?.({ id: u.id, ...draft })}>Save</button>
-                <button className={`${styles.btn} ${styles.btnSecondary}`} style={{ height: 36, padding: '0 12px' }} onClick={() => resetRow(u)}>Reset</button>
-              </div>
+      <div className={styles.tableContainer}>
+        <div className={styles.table}>
+          <div className={styles.thead}>
+            <div className={styles.userHeader}>
+              <div className={styles.th}>ID</div>
+              <div className={styles.th}>Display Name</div>
+              <div className={styles.th}>Email</div>
+              <div className={styles.th}>Role</div>
+              <div className={styles.th}>Discord ID</div>
+              <div className={styles.th}>Character</div>
+              <div className={styles.th}>Clan / XP</div>
+              <div className={styles.th}>Actions</div>
             </div>
-          );
-        })}
-        {users.length === 0 && <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-secondary)' }}>No users found.</div>}
+          </div>
+          <div className={styles.tbody}>
+            {users.map((u) => {
+              const draft = getRow(u);
+              const clanColor = CLAN_COLORS[u.clan] || '#7F5AF0';
+              return (
+                <div key={u.id} className={styles.userRow} onMouseEnter={(e) => e.currentTarget.classList.add(styles.hover)} onMouseLeave={(e) => e.currentTarget.classList.remove(styles.hover)}>
+                  <div className={styles.td}><span className={styles.idCell}>#{u.id}</span></div>
+                  <div className={styles.td}><input className={styles.input} value={draft.display_name} onChange={(e) => setRow(u, { display_name: e.target.value })} /></div>
+                  <div className={styles.td}><input className={styles.input} value={draft.email} onChange={(e) => setRow(u, { email: e.target.value })} /></div>
+                  <div className={styles.td}><select className={styles.select} value={draft.role} onChange={(e) => setRow(u, { role: e.target.value })}>{roleChoices.map((r) => <option key={r} value={r}>{r}</option>)}</select></div>
+                  <div className={styles.td}><input className={styles.input} className={styles.inputMono} value={draft.discord_id} onChange={(e) => setRow(u, { discord_id: e.target.value })} /></div>
+                  <div className={styles.td}>
+                    {u.character_id ? (
+                      <div className={styles.row} style={{ gap: '8px', alignItems: 'center' }}>
+                        <span title={`Character ID: ${u.character_id}`}>{u.char_name || '—'}</span>
+                        <span className={styles.subtle}>#{u.character_id}</span>
+                      </div>
+                    ) : (
+                      <div className={styles.subtle}><em>None</em></div>
+                    )}
+                  </div>
+                  <div className={styles.td}>
+                    <div className={styles.row} style={{ gap: '10px', alignItems: 'center' }}>
+                      <span className={styles.tinyChip} style={{ '--chip-color': clanColor }}></span>
+                      <span>{u.clan || '—'}</span>
+                      <span className={styles.idCell} style={{ marginLeft: 'auto' }}>XP: {u.xp ?? 0}</span>
+                    </div>
+                  </div>
+                  <div className={styles.td} className={styles.rowEnd}>
+                    <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => onSave?.({ id: u.id, ...draft })}>Save</button>
+                    <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => resetRow(u)}>Reset</button>
+                  </div>
+                </div>
+              );
+            })}
+            {users.length === 0 && (
+              <div className={styles.userRow}>
+                <div className={styles.td} colSpan="8" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-secondary)' }}>
+                  No users found.
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
