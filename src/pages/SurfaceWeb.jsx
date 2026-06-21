@@ -3,10 +3,12 @@ import { AuthCtx } from '../AuthContext';
 import api from '../api';
 import EmailSystem from '../components/EmailSystem';
 import styles from '../styles/Comms.module.css'; // reuse Comms styling for banner
+import { Skeleton } from 'boneyard-js/react';
 
 export default function SurfaceWeb() {
   const { user } = useContext(AuthCtx);
   const [commsEnabled, setCommsEnabled] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Master Comms Polling (same as in Comms.jsx)
   useEffect(() => {
@@ -14,8 +16,10 @@ export default function SurfaceWeb() {
       try {
         const { data } = await api.get('/comms/status');
         setCommsEnabled(data.comms_enabled);
+        setIsLoading(false);
       } catch (e) {
         // ignore errors, keep previous state
+        setIsLoading(false);
       }
     };
 
@@ -25,7 +29,8 @@ export default function SurfaceWeb() {
   }, []);
 
   return (
-    <div className={styles.wrapper} data-mode="email">
+    <Skeleton loading={isLoading} name="surfaceweb-page">
+      <div className={styles.wrapper} data-mode="email">
       {/* BANNER */}
       <div className={styles.modeSwitch}>
         <button className={styles.activeMode} disabled>
@@ -38,5 +43,6 @@ export default function SurfaceWeb() {
         <EmailSystem user={user} isMobile={false} commsEnabled={commsEnabled} />
       )}
     </div>
+  </Skeleton>
   );
 }

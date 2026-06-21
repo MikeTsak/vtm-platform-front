@@ -7,6 +7,7 @@ import { NEWS_OUTLETS } from '../constants/newsConstants';
 import { apiJoin, isVideoUrl } from '../utils/newsUtils';
 import CreateNewsModal from '../components/CreateNewsModal';
 import FullscreenArticleModal from '../components/FullscreenArticleModal';
+import { Skeleton } from 'boneyard-js/react';
 
 export default function News() {
   const { user } = useContext(AuthCtx);
@@ -20,7 +21,7 @@ export default function News() {
   const isAdmin = user?.role === 'admin';
   const isCourt = user?.role === 'courtuser';
 
-  // --- Fetch active character to check rumor permissions ---
+  // --- Fetch active character to check permissions ---
   const [myChar, setMyChar] = useState(null);
 
   useEffect(() => {
@@ -28,8 +29,18 @@ export default function News() {
     api.get('/characters/me').then(r => setMyChar(r.data.character)).catch(()=>{});
   }, [isAdmin, isCourt]);
 
-  // Can post rumor if Admin, Court, or they successfully fetched their character
-  const canPostRumor = isAdmin || isCourt || !!myChar;
+  // Check if character is active (similar to DownTimes logic)
+  const isCharActive = isAdmin || isCourt || (myChar && myChar.sheet && myChar.sheet.is_active === true);
+
+  // If the user's character is fetched but deactivated, force them into 'news' mode
+  useEffect(() => {
+    if (myChar && !myChar.sheet?.is_active && viewMode !== 'news') {
+      setViewMode('news');
+    }
+  }, [myChar, viewMode]);
+
+  // Can post rumor only if they are an Admin, Court, or an ACTIVE character
+  const canPostRumor = isCharActive;
 
   const fetchNews = async () => {
     setLoading(true);
@@ -55,7 +66,8 @@ export default function News() {
   const rumorItems = items.filter(item => item.theme === 'RUMOR');
 
   return (
-    <div className={styles.page}>
+    <Skeleton loading={loading} name="news-page">
+      <div className={styles.page}>
       <header className={styles.header}>
         <h1 className={styles.pageTitle}>Human World News</h1>
         <div className={styles.headerActions}>
@@ -75,14 +87,16 @@ export default function News() {
         </div>
       </header>
 
-      <div>
-        {loading && <Loading />}
 
-        {/* View Mode Menus / Tabs */}
+          {/* View Mode Menus / Tabs */}
         <div className={styles.viewModeTabs}>
-          <button onClick={() => setViewMode('split')} className={`${styles.viewTab} ${viewMode === 'split' ? styles.viewTabActive : ''}`}>Split View</button>
+          {isCharActive && (
+            <button onClick={() => setViewMode('split')} className={`${styles.viewTab} ${viewMode === 'split' ? styles.viewTabActive : ''}`}>Split View</button>
+          )}
           <button onClick={() => setViewMode('news')} className={`${styles.viewTab} ${viewMode === 'news' ? styles.viewTabActive : ''}`}>News Only</button>
-          <button onClick={() => setViewMode('rumors')} className={`${styles.viewTab} ${styles.rumorTab} ${viewMode === 'rumors' ? styles.rumorTabActive : ''}`}>Rumors Only</button>
+          {isCharActive && (
+            <button onClick={() => setViewMode('rumors')} className={`${styles.viewTab} ${styles.rumorTab} ${viewMode === 'rumors' ? styles.rumorTabActive : ''}`}>Rumors Only</button>
+          )}
         </div>
 
         {/* Layout Container */}
@@ -153,8 +167,8 @@ export default function News() {
             </div>
           )}
 
-          {/* Rumors Section */}
-          {(viewMode === 'split' || viewMode === 'rumors') && (
+          {/* Rumors Section - Completely hidden if character is not active */}
+          {isCharActive && (viewMode === 'split' || viewMode === 'rumors') && (
             <div className={styles.column}>
               {viewMode === 'split' && <h2 className={styles.sectionHeadingRumor}>🤫 Whispers & Rumors</h2>}
               <div className={styles.masonry}>
@@ -193,6 +207,6 @@ export default function News() {
       {fullscreenArticle && (
         <FullscreenArticleModal item={fullscreenArticle} onClose={() => setFullscreenArticle(null)} />
       )}
-    </div>
+  </Skeleton>
   );
 }

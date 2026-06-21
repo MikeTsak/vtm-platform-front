@@ -2,8 +2,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import api from '../api';
 import { Link, useNavigate } from 'react-router-dom';
+import { Skeleton } from 'boneyard-js/react';
 import styles from '../styles/Home.module.css';
-import Loading from '../components/Loading';
 
 /* ── Clan tint colors ───────────────────────────────────────────── */
 const CLAN_COLORS = {
@@ -264,7 +264,6 @@ export default function Home() {
     })();
   }, [nav]);
 
-  if (loading) return <Loading />;
   if (!me) return <div className={styles.loadingScreen}>Please log in.</div>;
 
   if (!ch) return (
@@ -307,7 +306,8 @@ export default function Home() {
   ];
 
   return (
-    <main className={styles.homePage}>
+    <Skeleton name="home-page" loading={loading}>
+      <main className={styles.homePage}>
 
       {/* ── SHATTER OVERLAY ── */}
       {isShattering && (
@@ -578,5 +578,6 @@ export default function Home() {
         </div>
       </section>
     </main>
+    </Skeleton>
   );
 }

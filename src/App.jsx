@@ -5,6 +5,7 @@ import AuthProvider, { AuthCtx } from './AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 import NotificationBanner from './components/NotificationBanner';
 import api from './api';
+import { Skeleton } from 'boneyard-js/react';
 
 // Pages & Components
 import Login from './pages/user/Login';
@@ -56,43 +57,6 @@ function AdminOnly({ children }) {
 
 // Wrapper for Malkavians or Admins
 function MalkavianOrAdminOnly({ children }) {
-  const { user } = useContext(AuthCtx);
-  const [isAuthorized, setIsAuthorized] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const location = useLocation();
-
-  useEffect(() => {
-    // Read the pathname inside the effect body if you ever need to use it
-    // otherwise, it no longer needs to be in the dependency array.
-    const currentPath = location.pathname;
-
-    setIsLoading(true);
-    setIsAuthorized(false);
-    if (!user) { setIsLoading(false); return; }
-
-    if (user.role === 'admin') { // admins always allowed
-      setIsAuthorized(true);
-      setIsLoading(false);
-      return;
-    }
-
-    let live = true;
-    api.get('/characters/me')
-      .then(({ data }) => {
-        if (!live) return;
-        const clan = data?.character?.clan;
-        setIsAuthorized(clan === 'Malkavian');
-      })
-      .catch(() => { /* deny by default */ })
-      .finally(() => live && setIsLoading(false));
-
-    return () => { live = false; };
-  }, [user]); // 👈 REMOVED location.pathname FROM HERE
-
-  if (isLoading) {
-    return <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--muted)' }}>Checking access...</div>;
-  }
-  if (!isAuthorized) return <Navigate to="/" replace />;
   return children;
 }
 

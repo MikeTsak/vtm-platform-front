@@ -48,7 +48,7 @@ export default function AdminClaimsTab({ claims, characters, onSave, onDelete })
           properties: {
             ...f?.properties,
             __division: divisionNumber,
-            __name: DIVISION_NAMES[divisionNumber] || `Division ${divisionNumber}`,
+            __name: f?.properties?.name || DIVISION_NAMES[divisionNumber] || `Division ${divisionNumber}`,
           },
         };
       }),

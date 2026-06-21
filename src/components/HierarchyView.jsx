@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../api';
 import styles from '../styles/Court.module.css';
 import Loading from './Loading';
+import { Skeleton } from 'boneyard-js/react';
 
 /* --- Clan assets logic --- */
 const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim', 'Thin-blood': 'Thinblood' };
@@ -84,7 +85,7 @@ export default function HierarchyView({ canEdit }) {
     setSelectedClan("");
   };
 
-  if (loading) return <Loading />;
+  // if (loading) return <Loading />;
 
   // Get unique clans for the dropdown
   const uniqueClans = [...new Set(roster.map(r => r.clan))].filter(Boolean).sort();
@@ -135,7 +136,8 @@ export default function HierarchyView({ canEdit }) {
     .sort((a, b) => (b.status || 0) - (a.status || 0));
 
   return (
-    <div className={styles.hierarchyWrapper}>
+    <Skeleton loading={loading} name="court-hierarchy">
+      <div className={styles.hierarchyWrapper}>
       
       {/* Admin Controls */}
       {canEdit && (
@@ -277,6 +279,7 @@ export default function HierarchyView({ canEdit }) {
         </div>
       )}
     </div>
+    </Skeleton>
   );
 }
 

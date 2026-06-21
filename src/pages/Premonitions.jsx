@@ -4,6 +4,7 @@ import { AuthCtx } from "../AuthContext";
 import AdminPremonitionsTab from "../components/admin/AdminPremonitionsTab";
 import s from "../styles/Premonitions.module.css";
 import Loading from "../components/Loading";
+import { Skeleton } from "boneyard-js/react";
 
 /**
  * API base helper
@@ -158,52 +159,42 @@ function PlayerPremonitions() {
     return objUrl;
   }, [token]);
 
-  if (loading) {
-    return (
+  return (
+    <Skeleton loading={loading} name="premonitions-page">
       <main className={s.page}>
         <header className={s.header}>
           <h2 className={s.title}>Your Premonitions</h2>
           <p className={s.subtitle}>Listen to the static...</p>
+          <button
+            type="button"
+            onClick={handleRefresh}
+            className={s.refreshButton}
+            disabled={loading}
+          >
+            Refresh
+          </button>
         </header>
-        <Loading />
-      </main>
-    );
-  }
 
-  return (
-    <main className={s.page}>
-      <header className={s.header}>
-        <h2 className={s.title}>Your Premonitions</h2>
-        <p className={s.subtitle}>Listen to the static...</p>
-        <button
-          type="button"
-          onClick={handleRefresh}
-          className={s.refreshButton}
-          disabled={loading}
-        >
-          Refresh
-        </button>
-      </header>
+        {err && <div className={s.errorBox}>{err}</div>}
 
-      {err && <div className={s.errorBox}>{err}</div>}
+        {!items.length && !err && (
+          <div className={s.loadingBox}>
+            No visions yet. That’s… suspicious.
+          </div>
+        )}
 
-      {!items.length && !err && (
-        <div className={s.loadingBox}>
-          No visions yet. That’s… suspicious.
+        <div className={s.visionGrid}>
+          {items.map((it, index) => (
+            <PremonitionItem
+              key={it.id}
+              item={it}
+              index={index}
+              fetchMediaBlob={fetchMediaBlob}
+            />
+          ))}
         </div>
-      )}
-
-      <div className={s.visionGrid}>
-        {items.map((it, index) => (
-          <PremonitionItem
-            key={it.id}
-            item={it}
-            index={index}
-            fetchMediaBlob={fetchMediaBlob}
-          />
-        ))}
-      </div>
-    </main>
+      </main>
+    </Skeleton>
   );
 }
 

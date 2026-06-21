@@ -8,6 +8,7 @@ import styles from '../styles/Domains.module.css';
 import domainsRaw from '../data/Domains.json';
 import api from '../api';
 import Loading from '../components/Loading';
+import { Skeleton } from 'boneyard-js/react';
 
 // --- Division Names Mapping ---
 const DIVISION_NAMES = {
@@ -44,14 +45,13 @@ export default function Domains() {
     const domains  = [];
     const features = domainsRaw.features.map((f, i) => {
       const divisionNumber = f?.properties?.division != null ? Number(f.properties.division) : (i + 1);
-      const divisionName   = DIVISION_NAMES[divisionNumber] || `Division ${divisionNumber}`;
+      const divisionName = f?.properties?.name || DIVISION_NAMES[divisionNumber] || `Division ${divisionNumber}`;
       domains.push({ number: divisionNumber, name: divisionName });
       return { ...f, properties: { ...f?.properties, __division: divisionNumber, __name: divisionName } };
     });
     return { geoJsonData: { ...domainsRaw, features }, allDomainsList: domains };
   }, []);
 
-  const bounds     = useMemo(() => (geoJsonData ? L.geoJSON(geoJsonData).getBounds() : null), [geoJsonData]);
   const claimByDiv = useMemo(() => new Map(claims.map(c => [Number(c.division), c])), [claims]);
   const numOr      = (v, fallback) => (Number.isFinite(parseFloat(v)) ? parseFloat(v) : fallback);
 
@@ -191,7 +191,7 @@ export default function Domains() {
   }, [allDomainsList, searchQuery]);
 
   if (isLoading) return <Loading />;
-  if (!geoJsonData || !bounds) {
+  if (!geoJsonData) {
     return (
       <div className={styles.wrap}>
         <div className={styles.alertError}>Error: Invalid or missing map data.</div>
@@ -200,7 +200,8 @@ export default function Domains() {
   }
 
   return (
-    <div className={styles.wrap}>
+    <Skeleton name="domains-page" loading={isLoading}>
+      <div className={styles.wrap}>
 
       {/* ── Status toast ── */}
       {(err || msg) && (
@@ -212,7 +213,8 @@ export default function Domains() {
       {/* ── MAP ── */}
       <MapContainer
         whenCreated={(m) => { mapRef.current = m; }}
-        bounds={bounds}
+        center={[37.9838, 23.7275]} // Athens Coordinates
+        zoom={12}
         className={styles.map}
         scrollWheelZoom={true}
         preferCanvas={true}
@@ -352,5 +354,6 @@ export default function Domains() {
         </div>
       )}
     </div>
+    </Skeleton>
   );
 }

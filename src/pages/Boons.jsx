@@ -4,6 +4,7 @@ import api from '../api';
 import { AuthCtx } from '../AuthContext';
 import styles from '../styles/Boons.module.css';
 import Loading from '../components/Loading';
+import { Skeleton } from 'boneyard-js/react';
 
 const BOON_LEVELS  = ['trivial', 'minor', 'major', 'life'];
 const BOON_STATUSES = ['owed', 'paid', 'excused'];
@@ -213,7 +214,8 @@ export default function Boons() {
         </div>
       )}
 
-      <div className={styles.container}>
+      <Skeleton loading={loading} name="boons-page">
+        <div className={styles.container}>
 
         {/* ── Page header ── */}
         <div className={styles.pageHeader}>
@@ -307,8 +309,6 @@ export default function Boons() {
         </div>
 
         {/* ── Boon list ── */}
-        {loading && <Loading />}
-
         {!loading && processedBoons.length === 0 && (
           <div className={styles.emptyState}>
             <span className={styles.emptyIcon}>⚖️</span>
@@ -403,6 +403,7 @@ export default function Boons() {
         </div>
 
       </div>
+      </Skeleton>
     </div>
   );
 }

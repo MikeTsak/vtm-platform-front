@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api from '../api';
 import styles from '../styles/Court.module.css';
+import { Skeleton } from 'boneyard-js/react';
 
 // --- Dedicated component to fetch and render DB Blobs ---
 function BlobImage({ url }) {
@@ -54,6 +55,7 @@ function BlobImage({ url }) {
 export default function AnnouncementsView({ canEdit }) {
   const [items, setItems] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [loading, setLoading] = useState(true);
   
   // Upload states
   const [selectedFile, setSelectedFile] = useState(null);
@@ -63,11 +65,14 @@ export default function AnnouncementsView({ canEdit }) {
   const contentRef = useRef(null);
 
   const fetchItems = async () => {
+    setLoading(true);
     try {
       const { data } = await api.get('/news');
       setItems((data.items || []).filter(i => i.type === 'announcement'));
-    } catch (e) { 
-      console.error("Decree fetch error", e); 
+    } catch (e) {
+      console.error("Decree fetch error", e);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -141,7 +146,8 @@ export default function AnnouncementsView({ canEdit }) {
   };
 
   return (
-    <div className={styles.announcementsContainer}>
+    <Skeleton loading={loading} name="announcements-view">
+      <div className={styles.announcementsContainer}>
       {canEdit && (
         <button className={styles.decreeBtn} onClick={() => setShowModal(true)}>
           + Issue Decree
@@ -222,5 +228,6 @@ export default function AnnouncementsView({ canEdit }) {
         </div>
       )}
     </div>
+  </Skeleton>
   );
 }

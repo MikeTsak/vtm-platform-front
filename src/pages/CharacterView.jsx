@@ -15,6 +15,7 @@ import AttributesSection from '../components/AttributesSection';
 import SkillsDisplaySection from '../components/SkillsDisplaySection';
 import DisciplinesDisplaySection from '../components/DisciplinesDisplaySection';
 import MeritsBackgroundsSection from '../components/MeritsBackgroundsSection';
+import { Skeleton } from 'boneyard-js/react';
 
 /* ---------- Clan tint colors ---------- */
 const CLAN_COLORS = {
@@ -1007,44 +1008,46 @@ const knownPowerNamesAndIds = useMemo(() => {
 
   if (!ch) {
     return (
-      <div className={styles.emptyWrap} style={{ '--tint': tint }}>
-        {(err || msg) && (
-          <div className={err ? styles.alertError : styles.alertOk}>
-            {err || msg}
-          </div>
-        )}
+      <Skeleton name="character-view-loading" loading={true}>
+        <div className={styles.emptyWrap} style={{ '--tint': tint }}>
+          {(err || msg) && (
+            <div className={err ? styles.alertError : styles.alertOk}>
+              {err || msg}
+            </div>
+          )}
 
-        <div className={styles.loadingSwap}>
-          <div className={styles.loadingPhase}>
-            <div className={styles.spinner} aria-label="Loading" />
-            <div className={styles.loadingText}>Loading character…</div>
+          <div className={styles.loadingSwap}>
+            <div className={styles.loadingPhase}>
+              <div className={styles.spinner} aria-label="Loading" />
+              <div className={styles.loadingText}>Loading character…</div>
+            </div>
+            {!adminNPCId && !loadPath && (
+              <div className={styles.emptyPhase}>
+                <h2 className={styles.cardHead}>No character found</h2>
+                <p className={styles.muted}>Create your character to continue.</p>
+                <button className={styles.cta} onClick={() => setShowSetup(true)}>
+                  Create Character
+                </button>
+              </div>
+            )}
           </div>
-          {!adminNPCId && !loadPath && (
-            <div className={styles.emptyPhase}>
-              <h2 className={styles.cardHead}>No character found</h2>
-              <p className={styles.muted}>Create your character to continue.</p>
-              <button className={styles.cta} onClick={() => setShowSetup(true)}>
-                Create Character
+
+          {!adminNPCId && !loadPath && showSetup && (
+            <div className={styles.setupOverlay} role="dialog" aria-modal="true">
+              <button
+                className={styles.setupClose}
+                aria-label="Close"
+                onClick={() => setShowSetup(false)}
+              >
+                ×
               </button>
+              <div className={styles.setupOverlayInner}>
+                <CharacterSetup onDone={() => window.location.reload()} />
+              </div>
             </div>
           )}
         </div>
-
-        {!adminNPCId && !loadPath && showSetup && (
-          <div className={styles.setupOverlay} role="dialog" aria-modal="true">
-            <button
-              className={styles.setupClose}
-              aria-label="Close"
-              onClick={() => setShowSetup(false)}
-            >
-              ×
-            </button>
-            <div className={styles.setupOverlayInner}>
-              <CharacterSetup onDone={() => window.location.reload()} />
-            </div>
-          </div>
-        )}
-      </div>
+      </Skeleton>
     );
   }
 
@@ -1060,6 +1063,7 @@ const knownPowerNamesAndIds = useMemo(() => {
   const maxWillpower = (Number(sheet.attributes?.Composure) || 1) + (Number(sheet.attributes?.Resolve) || 1);
 
   return (
+    <Skeleton name="character-view" loading={!ch}>
     <div className={styles.root} style={{ '--tint': tint }}>
       <div className={styles.wrap}>
         <header className={styles.head}>
@@ -1556,6 +1560,7 @@ const knownPowerNamesAndIds = useMemo(() => {
         />
       )}
     </div>
+    </Skeleton>
   );
 }
 
