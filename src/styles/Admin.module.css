@@ -1187,18 +1187,30 @@ tr:hover .clanIcon, .npcNameCell:hover .clanIcon { opacity: 1; }
 
 
 /* ═══════════════════════════════════════════════
-   19. CLAIMS LAYOUT
+   19. CLAIMS LAYOUT — single source of truth, no
+   competing grid classes. Fixed height on the outer
+   layout so the map panel can actually fill it.
    ═══════════════════════════════════════════════ */
-.claimsLayout { display: grid; grid-template-columns: 1fr 340px; gap: 1.25rem; align-items: start; }
-@media (max-width: 900px) { .claimsLayout { grid-template-columns: 1fr; } }
-
-/* Container for the claims tab with specific dimensions */
-.claimsContainer {
+.claimsLayout {
   display: grid;
-  grid-template-columns: 1fr 450px;
-  gap: 2rem;
-  height: 80vh;
+  grid-template-columns: 1fr 380px;
+  gap: 1.5rem;
+  align-items: stretch;
+  height: calc(100vh - var(--topbar-h) - 130px);
+  min-height: 560px;
 }
+@media (max-width: 1000px) {
+  .claimsLayout {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+}
+
+/* Deprecated alias kept only so older markup referencing claimsContainer
+   doesn't silently lose all styling; new markup should use claimsLayout
+   alone — do not apply both classes to the same element. */
+.claimsContainer { display: contents; }
+
 .mapMainPanel {
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
@@ -1207,9 +1219,22 @@ tr:hover .clanIcon, .npcNameCell:hover .clanIcon { opacity: 1; }
   border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: var(--glass-shadow);
-  min-height: 500px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
 }
-.mapCanvas { width: 100%; height: 520px; display: block; }
+.mapCanvas {
+  width: 100%;
+  height: 100%;
+  flex: 1;
+  min-height: 0;
+  display: block;
+}
+@media (max-width: 1000px) {
+  .mapMainPanel { height: 60vh; min-height: 420px; }
+}
+
 .claimList {
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
@@ -1220,8 +1245,17 @@ tr:hover .clanIcon, .npcNameCell:hover .clanIcon { opacity: 1; }
   box-shadow: var(--glass-shadow);
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
-.controlSidebar { display: flex; flex-direction: column; gap: 1rem; }
+
+.controlSidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  height: 100%;
+  min-height: 0;
+}
+
 .sidePanel {
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
@@ -1230,9 +1264,16 @@ tr:hover .clanIcon, .npcNameCell:hover .clanIcon { opacity: 1; }
   border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: var(--glass-shadow);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
+
 .sideHeader {
-  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.1em;
@@ -1240,6 +1281,145 @@ tr:hover .clanIcon, .npcNameCell:hover .clanIcon { opacity: 1; }
   color: var(--accent-purple);
   background: rgba(0, 0, 0, 0.24);
   border-bottom: 1px solid var(--glass-border);
+  flex-shrink: 0;
+}
+
+/* Filter row beneath the search/sort header */
+.claimFilterRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 18px;
+  background: var(--glass-inset);
+  flex-shrink: 0;
+}
+.claimFilterToggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+/* The scrollable list of claims itself */
+.claimListBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  min-height: 0;
+}
+
+.claimListItem {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  margin-bottom: 0.5rem;
+  border-radius: var(--radius-md);
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+  font-family: inherit;
+  color: var(--text-primary);
+}
+.claimListItem:hover { background: var(--glass-bg-hover); }
+.claimListItemActive {
+  background: var(--glass-inset);
+  border-color: var(--accent-purple);
+  box-shadow: 0 0 15px var(--accent-purple-glow);
+}
+
+.claimListItemDivision {
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: var(--accent-purple);
+  flex-shrink: 0;
+}
+
+.claimListItemInfo {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  gap: 2px;
+}
+.claimListItemOwner {
+  color: var(--text-primary);
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.claimListItemChar {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.claimListItemSwatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.claimListEmpty {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-secondary);
+}
+
+/* Editor area — sits in the second sidebar panel, scrolls independently */
+.claimEditorPanel {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--glass-shadow);
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.claimEmptyState {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  opacity: 0.5;
+  gap: 0.5rem;
+}
+
+.claimSwatchLarge {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+  flex-shrink: 0;
+}
+
+.claimColorInput {
+  width: 100%;
+  height: 48px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
 }
 .sidebarList { display: flex; flex-direction: column; max-height: 420px; overflow-y: auto; }
 

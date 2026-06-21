@@ -106,10 +106,10 @@ export default function AdminClaimsTab({ claims, characters, onSave, onDelete })
   );
 
   return (
-    <div className={`${styles.claimsLayout} ${styles.claimsContainer}`}>
-      
+    <div className={styles.claimsLayout}>
+
       {/* MAP PANEL */}
-      <section className={`${styles.mapMainPanel} ${styles.modalCard}`}>
+      <section className={styles.mapMainPanel}>
         {divisionsGeo ? (
           <ClaimsMap
             geo={divisionsGeo}
@@ -121,7 +121,7 @@ export default function AdminClaimsTab({ claims, characters, onSave, onDelete })
             edits={edits}
           />
         ) : (
-          <div className={`${styles.loading} ${styles.h_full}`}>
+          <div className={styles.loading} style={{ height: '100%' }}>
             <span className={styles.subtle}>{mapError}</span>
           </div>
         )}
@@ -129,9 +129,9 @@ export default function AdminClaimsTab({ claims, characters, onSave, onDelete })
 
       {/* SIDEBAR */}
       <aside className={styles.controlSidebar}>
-        
-        <div className={`${styles.sidePanel} ${styles.modalCard} ${styles.overflow_hidden}`} style={{ flex: 1 }}>
-          <div className={`${styles.sideHeader} ${styles.border_b} ${styles.flex} ${styles.gap_1} ${styles.p_4}`}>
+
+        <div className={styles.sidePanel} style={{ flex: 1 }}>
+          <div className={styles.sideHeader}>
             <input
               className={styles.input}
               placeholder="Search #division / owner…"
@@ -139,65 +139,58 @@ export default function AdminClaimsTab({ claims, characters, onSave, onDelete })
               onChange={e => setFilter(e.target.value)}
               style={{ flex: 1 }}
             />
-            <button className={`${styles.btn} ${styles.btnSecondary} ${styles.pt_0} ${styles.pb_0} ${styles.px_3}`} onClick={() => setSortAsc(s => !s)} title="Sort">
+            <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => setSortAsc(s => !s)} title="Sort">
               {sortAsc ? '↓' : '↑'}
             </button>
           </div>
 
-          <div className={`${styles.row} ${styles.justify_between} ${styles.pt_3} ${styles.pb_3} ${styles.px_4}`} style={{ background: 'var(--glass-inset)' }}>
-            <label className={`${styles.flex} ${styles.items_center} ${styles.text_secondary}`} style={{ gap: '0.8rem', cursor: 'pointer' }}>
+          <div className={styles.claimFilterRow}>
+            <label className={styles.claimFilterToggle}>
               <input type="checkbox" checked={onlyUnowned} onChange={e => setOnlyUnowned(e.target.checked)} style={{ width: '18px', height: '18px', accentColor: 'var(--accent-purple)' }} />
-              <span style={{ fontWeight: 600 }}>Unowned only</span>
+              <span>Unowned only</span>
             </label>
             <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => setSelected('new')}>
               + New Claim
             </button>
           </div>
 
-          <div className={styles.claimList} style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}>
+          <div className={styles.claimListBody}>
             {filtered.map(c => {
               const isActive = selected === c.division;
               return (
                 <button
                   key={c.division}
                   onClick={() => setSelected(Number(c.division))}
-                  style={{
-                    width: '100%', textAlign: 'left', padding: '1rem', marginBottom: '0.5rem',
-                    background: isActive ? 'var(--glass-inset)' : 'transparent',
-                    border: `1px solid ${isActive ? 'var(--accent-purple)' : 'var(--glass-border)'}`,
-                    borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: '1rem',
-                    cursor: 'pointer', transition: 'all 0.2s',
-                    boxShadow: isActive ? '0 0 15px var(--accent-purple-glow)' : 'none'
-                  }}
+                  className={`${styles.claimListItem} ${isActive ? styles.claimListItemActive : ''}`}
                 >
-                  <span className={`${styles.hl} ${styles.text_lg}`} style={{ fontWeight: 800 }}>#{c.division}</span>
-                  <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-                    <b style={{ color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.owner_name || '—'}</b>
-                    <small className={`${styles.text_muted} ${styles.overflow_hidden}`} style={{ whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                  <span className={styles.claimListItemDivision}>#{c.division}</span>
+                  <div className={styles.claimListItemInfo}>
+                    <b className={styles.claimListItemOwner}>{c.owner_name || '—'}</b>
+                    <small className={styles.claimListItemChar}>
                       {c.owner_character_id ? characters[c.owner_character_id]?.char_name || 'unknown' : 'no character'}
                     </small>
                   </div>
-                  <span className={styles.rounded_full} style={{ width: '24px', height: '24px', background: colorForDivision(c.division), border: '2px solid rgba(255,255,255,0.2)', boxShadow: '0 2px 5px rgba(0,0,0,0.5)' }} />
+                  <span className={styles.claimListItemSwatch} style={{ background: colorForDivision(c.division) }} />
                 </button>
               );
             })}
-            {!filtered.length && <div className={styles.subtle} style={{ textAlign: 'center', padding: '2rem' }}>No claims match your filters.</div>}
+            {!filtered.length && <div className={styles.claimListEmpty}>No claims match your filters.</div>}
           </div>
         </div>
 
         {/* EDITOR AREA */}
-        <section className={`${styles.editorSection} ${styles.p_4}`} style={{ minHeight: '300px' }}>
-          
+        <section className={styles.claimEditorPanel}>
+
           {selected === 'new' && (
             <div className={styles.stack12}>
-              <h3 className={`${styles.hl} ${styles.border_b} ${styles.pb_2}`}>Create Claim</h3>
-              <div className={`${styles.grid} ${styles.gap_1}`} style={{ gridTemplateColumns: '1fr 1fr' }}>
+              <h3 className={styles.hl} style={{ margin: 0, paddingBottom: '0.75rem', borderBottom: '1px solid var(--glass-border)' }}>Create Claim</h3>
+              <div className={styles.formGrid} style={{ gridTemplateColumns: '1fr 1fr' }}>
                 <label className={styles.labeledInput}><span>Division #</span><input className={styles.input} value={newDraft.division} onChange={e => setNewDraft(d => ({ ...d, division: e.target.value }))} placeholder="e.g., 12" /></label>
                 <label className={styles.labeledInput}><span>Owner Name</span><input className={styles.input} value={newDraft.owner_name} onChange={e => setNewDraft(d => ({ ...d, owner_name: e.target.value }))} placeholder="FirstName LastName" /></label>
               </div>
-              <div className={`${styles.grid} ${styles.gap_1}`} style={{ gridTemplateColumns: 'auto 1fr' }}>
+              <div className={styles.formGrid} style={{ gridTemplateColumns: 'auto 1fr' }}>
                 <label className={styles.labeledInput}><span>Color</span>
-                  <input type="color" className={`${styles.w_full} ${styles.border} ${styles.rounded} ${styles.h_48}`} value={newDraft.color} onChange={e => setNewDraft(d => ({ ...d, color: e.target.value }))} style={{ background: 'transparent', cursor: 'pointer' }} />
+                  <input type="color" className={styles.claimColorInput} value={newDraft.color} onChange={e => setNewDraft(d => ({ ...d, color: e.target.value }))} />
                 </label>
                 <label className={styles.labeledInput}><span>Owner Character</span>
                   <select className={styles.select} value={newDraft.owner_character_id} onChange={e => setNewDraft(d => ({ ...d, owner_character_id: e.target.value }))}>
@@ -206,7 +199,7 @@ export default function AdminClaimsTab({ claims, characters, onSave, onDelete })
                   </select>
                 </label>
               </div>
-              <div className={`${styles.row} ${styles.gap_1} ${styles.mt_3}`}>
+              <div className={styles.row} style={{ marginTop: '0.75rem' }}>
                 <button className={`${styles.btn} ${styles.btnPrimary}`} style={{ flex: 1 }} onClick={() => {
                   const div = Number(newDraft.division);
                   if (!Number.isInteger(div)) return alert('Division must be an integer');
@@ -233,10 +226,10 @@ export default function AdminClaimsTab({ claims, characters, onSave, onDelete })
           )}
 
           {selected === null && (
-            <div className={`${styles.h_full} ${styles.flex} ${styles.flex_col} ${styles.items_center} ${styles.justify_center} ${styles.text_center} ${styles.opacity_50}`}>
-              <span className={`${styles.mb_3}`} style={{ fontSize: '3rem' }}>🗺️</span>
-              <h3 className={`${styles.m_0} ${styles.text_primary}`}>Select a Claim</h3>
-              <p className={`${styles.mt_2} ${styles.text_secondary}`}>Click a division on the map or select from the list above.</p>
+            <div className={styles.claimEmptyState}>
+              <span style={{ fontSize: '3rem' }}>🗺️</span>
+              <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>Select a Claim</h3>
+              <p className={styles.subtle} style={{ margin: 0 }}>Click a division on the map or select from the list above.</p>
             </div>
           )}
         </section>
@@ -254,17 +247,17 @@ function ExistingClaimEditor({ selected, claims, characters, getRow, setRow, res
 
   return (
     <div className={styles.stack12}>
-      <div className={`${styles.flex} ${styles.items_center} ${styles.gap_1} ${styles.border_b} ${styles.pb_3}`}>
-        <div className={`${styles.rounded_full} ${styles.w_40} ${styles.h_40}`} style={{ background: row.color, border: '2px solid rgba(255,255,255,0.2)', boxShadow: '0 4px 10px rgba(0,0,0,0.5)' }} />
+      <div className={styles.row} style={{ gap: '1rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.75rem' }}>
+        <div className={styles.claimSwatchLarge} style={{ background: row.color }} />
         <div>
-          <h3 className={`${styles.m_0} ${styles.text_lg} ${styles.text_primary}`}>Division #{selectedClaim.division}</h3>
-          <div className={`${styles.text_sm} ${styles.text_muted}`}>
+          <h3 style={{ margin: 0, fontSize: '1.125rem', color: 'var(--text-primary)' }}>Division #{selectedClaim.division}</h3>
+          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
             {selectedClaim.owner_character_id ? `Char ID ${selectedClaim.owner_character_id} · ${characters[selectedClaim.owner_character_id]?.char_name || 'unknown'}` : 'No character linked'}
           </div>
         </div>
       </div>
 
-      <div className={`${styles.grid} ${styles.gap_1}`} style={{ gridTemplateColumns: '1fr 1fr' }}>
+      <div className={styles.formGrid} style={{ gridTemplateColumns: '1fr 1fr' }}>
         <label className={styles.labeledInput}><span>Owner Name</span><input className={styles.input} value={row.owner_name} onChange={e => setRow(selectedClaim, { owner_name: e.target.value })} /></label>
         <label className={styles.labeledInput}><span>Owner Character</span>
           <select className={styles.select} value={row.owner_character_id} onChange={e => setRow(selectedClaim, { owner_character_id: e.target.value })}>
@@ -274,22 +267,22 @@ function ExistingClaimEditor({ selected, claims, characters, getRow, setRow, res
         </label>
       </div>
 
-      <div className={`${styles.grid} ${styles.gap_1}`} style={{ gridTemplateColumns: 'auto 1fr' }}>
+      <div className={styles.formGrid} style={{ gridTemplateColumns: 'auto 1fr' }}>
         <label className={styles.labeledInput}><span>Color</span>
-          <input type="color" className={`${styles.w_full} ${styles.border} ${styles.rounded} ${styles.h_48}`} value={row.color} onChange={e => setRow(selectedClaim, { color: e.target.value })} style={{ background: 'transparent', cursor: 'pointer' }} />
+          <input type="color" className={styles.claimColorInput} value={row.color} onChange={e => setRow(selectedClaim, { color: e.target.value })} />
         </label>
         <label className={styles.labeledInput}><span>Hex Code</span>
           <input className={`${styles.input} ${styles.inputMono}`} value={row.color} onChange={e => setRow(selectedClaim, { color: e.target.value })} placeholder="#RRGGBB" />
         </label>
       </div>
 
-      <div className={`${styles.flex} ${styles.mt_3} ${styles.gap_0_5}`}>
+      <div className={styles.row} style={{ marginTop: '0.75rem' }}>
         <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => {
           onSave(Number(selectedClaim.division), { owner_name: row.owner_name || 'Admin Set', color: row.color, owner_character_id: row.owner_character_id === '' ? null : Number(row.owner_character_id) });
           resetRow(Number(selectedClaim.division));
         }}>Save</button>
         <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => resetRow(Number(selectedClaim.division))} disabled={!isDirty}>Reset</button>
-        <button className={`${styles.btn} ${styles.btnDanger} ${styles.ml_auto}`} onClick={() => {
+        <button className={`${styles.btn} ${styles.btnDanger}`} style={{ marginLeft: 'auto' }} onClick={() => {
           if (window.prompt(`Type DELETE to remove claim for division #${selectedClaim.division}`) === 'DELETE') onDelete(Number(selectedClaim.division));
         }}>Delete</button>
       </div>
@@ -376,14 +369,21 @@ function ClaimsMap({ geo, bounds, selected, onSelect, colorForDivision, claimByD
 
   const key = useMemo(() => `geo-${selected}-${claimByDiv.size}-${edits ? Object.keys(edits).length : 0}`, [selected, claimByDiv, edits]);
 
-  return (
+return (
     <>
       <style>{`
         .leaflet-popup-content-wrapper { background: transparent !important; box-shadow: none !important; padding: 0 !important; }
         .leaflet-popup-tip { display: none !important; }
         .mapGlassTooltip { background: rgba(0,0,0,0.6) !important; border: 1px solid rgba(255,255,255,0.1) !important; color: #fff !important; backdrop-filter: blur(4px) !important; font-weight: bold; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.5) !important; }
       `}</style>
-      <MapContainer className={styles.mapCanvas} whenCreated={(m) => { mapRef.current = m; }} bounds={bounds || undefined} center={!bounds ? [37.975, 23.735] : undefined} zoom={!bounds ? 12 : undefined} scrollWheelZoom style={{ height: '100%', width: '100%', background: '#050507' }}>
+      <MapContainer 
+        className={styles.mapCanvas} 
+        whenCreated={(m) => { mapRef.current = m; }} 
+        center={[37.975, 23.735]} /* Hardcoded Athens coordinates */
+        zoom={13} /* Increased from 12 to start more zoomed in */
+        scrollWheelZoom 
+        style={{ height: '100%', width: '100%', background: '#050507' }}
+      >
         <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" attribution="&copy; OpenStreetMap contributors &copy; CARTO" />
         <GeoJSON key={key} data={geo} ref={geoRef} style={style} onEachFeature={onEach} />
       </MapContainer>
