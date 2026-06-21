@@ -1,6 +1,6 @@
 // src/App.jsx
 import React, { useContext, useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AuthProvider, { AuthCtx } from './AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 import NotificationBanner from './components/NotificationBanner';
@@ -57,6 +57,36 @@ function AdminOnly({ children }) {
 
 // Wrapper for Malkavians or Admins
 function MalkavianOrAdminOnly({ children }) {
+  const { user } = useContext(AuthCtx);
+  const [loading, setLoading] = useState(true);
+  const [isAllowed, setIsAllowed] = useState(false);
+
+  useEffect(() => {
+    if (!user) {
+      setLoading(false);
+      setIsAllowed(false);
+      return;
+    }
+    api.get('/characters/me')
+      .then(({ data }) => {
+        const isMalkavian = data.character?.clan?.toLowerCase() === 'malkavian';
+        setIsAllowed(!!user && (user.role === 'admin' || isMalkavian));
+        setLoading(false);
+      })
+      .catch(() => {
+        setLoading(false);
+        setIsAllowed(false);
+      });
+  }, [user]);
+
+  if (loading) {
+    return <Skeleton name="malkavian-admin-only-loading" loading={true} />;
+  }
+
+  if (!isAllowed) {
+    return <Navigate to="/" replace />;
+  }
+
   return children;
 }
 
