@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import api from '../api';
+import api from '../core/api';
 import styles from '../styles/Sheet.module.css';
 import { useNavigate } from 'react-router-dom';
 import { PREDATOR_TYPES } from '../data/predator_types';

@@ -1,8 +1,8 @@
 // src/pages/EmailSystem.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import api from '../api';
+import api from '../core/api';
 import styles from '../styles/EmailSystem.module.css';
-import Loading from './Loading';
+import Loading from '../ui/Loading';
 
 // --- Internal Rich Text Editor Components ---
 const EditorToolbar = ({ onCmd }) => (

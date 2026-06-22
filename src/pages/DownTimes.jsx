@@ -1,9 +1,9 @@
 // src/pages/DownTimes.jsx
 import React, { useEffect, useMemo, useState, useContext } from 'react';
-import { AuthCtx } from '../AuthContext'; 
-import api from '../api';
+import { AuthCtx } from '../core/AuthContext'; 
+import api from '../core/api';
 import styles from '../styles/DownTimes.module.css';
-import Loading from '../components/Loading';
+import Loading from '../ui/Loading';
 
 let tempIdCounter = 0;
 const generateTempId = () => {

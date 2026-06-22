@@ -1,6 +1,6 @@
 // src/pages/Home.jsx
 import React, { useEffect, useState, useRef } from 'react';
-import api from '../api';
+import api from '../core/api';
 import { Link, useNavigate } from 'react-router-dom';
 import { Skeleton } from 'boneyard-js/react';
 import styles from '../styles/Home.module.css';

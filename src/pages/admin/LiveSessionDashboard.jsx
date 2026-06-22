@@ -1,6 +1,6 @@
 // src/pages/admin/LiveSessionDashboard.jsx
 import React, { useEffect, useState } from 'react';
-import api from '../../api';
+import api from '../../core/api';
 import { getLiveSession, getLiveSessionPlayers, getLiveSessionRolls, createLiveSession, updateLiveSessionPlayer, sendLiveSessionBroadcast } from '../../api/liveSession';
 import styles from '../../styles/LiveSession.module.css';
 

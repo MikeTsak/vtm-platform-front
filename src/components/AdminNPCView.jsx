@@ -2,7 +2,7 @@
 import React from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import CharacterView from '../pages/CharacterView';
-import { AuthCtx } from '../AuthContext';
+import { AuthCtx } from '../core/AuthContext';
 
 export default function AdminNPCView() {
   const { user } = React.useContext(AuthCtx);

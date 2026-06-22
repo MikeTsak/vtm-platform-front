@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import api from '../api';
+import api from '../core/api';
 import InventoryItemModal from './InventoryItemModal';
 import styles from '../styles/Inventory.module.css';
 

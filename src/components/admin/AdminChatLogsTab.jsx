@@ -1,7 +1,7 @@
 // src/pages/AdminChatLogsTab.jsx
 import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown'; 
-import api from '../../api';
+import api from '../../core/api';
 import styles from '../../styles/Admin.module.css';
 
 /* ---------- VTM Lookups ---------- */

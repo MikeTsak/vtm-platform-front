@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import api from '../api';
+import api from '../core/api';
 import { NEWS_OUTLETS, GREEK_REPORTERS } from '../constants/newsConstants';
 import { apiJoin, isVideoUrl } from '../utils/newsUtils';
 import styles from '../styles/News.module.css';

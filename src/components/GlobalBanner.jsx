@@ -1,6 +1,6 @@
 // src/components/GlobalBanner.jsx
 import React, { useState, useEffect } from 'react';
-import api from '../api';
+import api from '../core/api';
 
 export default function GlobalBanner() {
   const [config, setConfig] = useState({ enabled: false, message: '', countdown: '' });

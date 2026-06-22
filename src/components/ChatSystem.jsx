@@ -1,9 +1,9 @@
 // src/components/ChatSystem.jsx
 import React, { useState, useEffect, useContext, useRef, useMemo, useLayoutEffect, useCallback } from 'react';
-import { AuthCtx } from '../AuthContext';
-import api from '../api';
+import { AuthCtx } from '../core/AuthContext';
+import api from '../core/api';
 import styles from '../styles/ChatSystem.module.css';
-import Loading from './Loading';
+import Loading from '../ui/Loading';
 import EmojiPicker from 'emoji-picker-react';
 
 /* --- Clan assets & colors --- */

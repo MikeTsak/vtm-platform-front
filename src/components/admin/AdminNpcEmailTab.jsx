@@ -1,6 +1,6 @@
 // src/components/admin/AdminNpcEmailTab.jsx
 import React, { useEffect, useState, useRef } from 'react';
-import api from '../../api';
+import api from '../../core/api';
 import styles from '../../styles/Admin.module.css';
 
 const EditorToolbar = ({ onCmd }) => (

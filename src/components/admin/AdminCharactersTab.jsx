@@ -1,6 +1,6 @@
 // src/components/admin/AdminCharactersTab.jsx
 import React, { useMemo, useState, useEffect } from 'react';
-import api from '../../api';
+import api from '../../core/api';
 import styles from '../../styles/Admin.module.css';
 import generateVTMCharacterSheetPDF from '../../utils/pdfGenerator';
 import { ALL_DISCIPLINE_NAMES } from '../../data/disciplines';

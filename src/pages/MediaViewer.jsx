@@ -1,7 +1,7 @@
 // src/pages/MediaViewer.jsx
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import api from '../api';
+import api from '../core/api';
 import s from '../styles/Premonitions.module.css';
 
 export default function MediaViewer() {

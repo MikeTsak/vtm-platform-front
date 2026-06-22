@@ -6,8 +6,8 @@ import 'leaflet/dist/leaflet.css';
 
 import styles from '../styles/Domains.module.css';
 import domainsRaw from '../data/Domains.json';
-import api from '../api';
-import Loading from '../components/Loading';
+import api from '../core/api';
+import Loading from '../ui/Loading';
 import { Skeleton } from 'boneyard-js/react';
 
 // --- Division Names Mapping ---

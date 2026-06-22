@@ -1,7 +1,7 @@
 // src/components/DiceRoller.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import api from '../api'; 
+import api from '../core/api';
 import styles from '../styles/DiceRoller.module.css';
 
 /**

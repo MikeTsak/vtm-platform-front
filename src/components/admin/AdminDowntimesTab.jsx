@@ -1,6 +1,6 @@
 // src/components/admin/AdminDowntimesTab.jsx
 import React, { useEffect, useMemo, useState } from 'react';
-import api from "../../api";
+import api from "../../core/api";
 import styles from '../../styles/Admin.module.css';
 
 /* ---------- VTM Lookups ---------- */

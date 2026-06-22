@@ -1,6 +1,6 @@
 // src/pages/CharacterEditor.jsx
 import React, { useEffect, useMemo, useState } from 'react';
-import api from '../api';
+import api from '../core/api';
 import styles from '../styles/Admin.module.css';
 
 // --- Data libraries (must stay at top!) ---

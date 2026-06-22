@@ -1,7 +1,7 @@
-// src/pages/Footer.jsx
+// src/ui/Footer.jsx
 import React from 'react';
 import { Link } from 'react-router-dom';
-import styles from '../styles/Footer.module.css';
+import styles from '../styles/ui/Footer.module.css';
 
 export default function Footer() {
   

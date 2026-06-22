@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 // CHANGED: Import the CSS module
 import s from "../../styles/AdminPremonitionsTab.module.css";
-import Loading from "../Loading";
+import Loading from "../../ui/Loading";
 
 /**
  * API base:

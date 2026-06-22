@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { AuthCtx } from '../AuthContext';
-import api from '../api';
+import { AuthCtx } from '../core/AuthContext';
+import api from '../core/api';
 import ChatSystem from '../components/ChatSystem';
 import styles from '../styles/Comms.module.css'; // reuse Comms styling for banner
 import { Skeleton } from 'boneyard-js/react';

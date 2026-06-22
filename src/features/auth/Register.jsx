@@ -1,8 +1,8 @@
 // src/pages/auth/Register.jsx
 import React, { useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import api from '../../api';
-import styles from '../../styles/Login.module.css';
+import api from '../../core/api';
+import styles from '../../styles/auth/Login.module.css';
 
 export default function Register() {
   const [email, setEmail] = useState('');

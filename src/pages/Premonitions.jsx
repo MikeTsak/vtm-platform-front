@@ -1,9 +1,9 @@
 // src/pages/Premonitions.jsx
 import React, { useEffect, useMemo, useRef, useState, useContext, useCallback } from "react";
-import { AuthCtx } from "../AuthContext";
+import { AuthCtx } from "../core/AuthContext";
 import AdminPremonitionsTab from "../components/admin/AdminPremonitionsTab";
 import s from "../styles/Premonitions.module.css";
-import Loading from "../components/Loading";
+import Loading from "../ui/Loading";
 import { Skeleton } from "boneyard-js/react";
 
 /**

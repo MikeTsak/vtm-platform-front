@@ -1,6 +1,6 @@
 // src/pages/AdminLogs.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import api from "../../api";
+import api from "../../core/api";
 import styles from '../../styles/Admin.module.css';
 
 const EMO = { start: "🚀", auth: "🔐", char: "🧛", xp: "✨", dt: "🕰️", dom: "🏰", adm: "🛡️", ok: "✅", warn: "⚠️", err: "💥", req: "➡️", res: "⬅️", mail: "✉️", db: "🗄️", info: "ℹ️", http: "🌐", dbg: "🐛", sys: "⚙️" };

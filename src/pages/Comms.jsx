@@ -1,7 +1,7 @@
 // src/pages/Comms.jsx
 import React, { useState, useEffect, useContext, useRef } from 'react';
-import { AuthCtx } from '../AuthContext';
-import api from '../api';
+import { AuthCtx } from '../core/AuthContext';
+import api from '../core/api';
 import styles from '../styles/Comms.module.css';
 import ChatSystem from '../components/ChatSystem';
 import EmailSystem from '../components/EmailSystem';

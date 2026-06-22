@@ -1,6 +1,6 @@
 // src/pages/LiveSession.jsx
 import React, { useEffect, useMemo, useState } from 'react';
-import api from '../api';
+import api from '../core/api';
 import { DISCIPLINES, iconPath } from '../data/disciplines';
 import {
   COMMON_ROLLS,

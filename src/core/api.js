@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { publish } from './utils/notification';
+import { publish } from '../utils/notification';
 
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL,

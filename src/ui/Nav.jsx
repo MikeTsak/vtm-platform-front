@@ -1,9 +1,9 @@
-// src/components/Nav.jsx
+// src/ui/Nav.jsx
 import React, { useContext, useState, useEffect } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { AuthCtx } from '../AuthContext';
-import api from '../api';
-import styles from '../styles/Nav.module.css';
+import { AuthCtx } from '../core/AuthContext';
+import api from '../core/api';
+import styles from '../styles/ui/Nav.module.css';
 
 function NavDropdown({ title, children }) {
   const [isOpen, setIsOpen] = useState(false);

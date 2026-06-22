@@ -1,8 +1,8 @@
 // src/pages/CharacterView.jsx
 import React, { useEffect, useMemo, useState, useCallback, useRef, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import api from '../api';
-import { AuthCtx } from '../AuthContext';
+import api from '../core/api';
+import { AuthCtx } from '../core/AuthContext';
 import { DISCIPLINES, ALL_DISCIPLINE_NAMES, iconPath } from '../data/disciplines';
 import { RITUALS } from '../data/rituals';
 import styles from '../styles/CharacterView.module.css';

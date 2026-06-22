@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useRef, useState } from 'react';
-import { AuthCtx } from '../../AuthContext';
+import { AuthCtx } from '../../core/AuthContext'
 import { Link, useNavigate } from 'react-router-dom';
-import styles from '../../styles/Login.module.css';
+import styles from '../../styles/auth/Login.module.css';
 
 export default function Login() {
   const { login } = useContext(AuthCtx);

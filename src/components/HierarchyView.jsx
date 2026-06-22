@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import api from '../api';
+import api from '../core/api';
 import styles from '../styles/Court.module.css';
-import Loading from './Loading';
+import Loading from '../ui/Loading';
 import { Skeleton } from 'boneyard-js/react';
 
 /* --- Clan assets logic --- */

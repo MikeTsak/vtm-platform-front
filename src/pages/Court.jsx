@@ -1,5 +1,5 @@
 // import React, { useState, useContext } from 'react';
-// import { AuthCtx } from '../AuthContext';
+// import { AuthCtx } from '../core/AuthContext';
 // import HierarchyView from '../components/HierarchyView';
 // import AnnouncementsView from '../components/AnnouncementsView';
 // import CoterieManager from '../components/CoterieManager'; 

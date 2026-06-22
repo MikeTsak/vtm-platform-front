@@ -1,7 +1,7 @@
 // src/components/admin/AdminDiceLogsTab.jsx
 import React, { useEffect, useState, useCallback } from "react";
 import styles from '../../styles/AdminDiceLogsTab.module.css';
-import api from '../../api'; // Import the central api module
+import api from '../../core/api'; // Import the central api module
 
 const IMG = {
   normal: (v) => `/img/dice/normal-${v}.png`,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import api from '../api';
+import api from '../core/api';
 import styles from '../styles/Court.module.css';
 import { Skeleton } from 'boneyard-js/react';
 

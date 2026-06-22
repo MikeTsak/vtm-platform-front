@@ -1,6 +1,6 @@
 // src/pages/Coteries.jsx
 import React, { useEffect, useMemo, useState } from 'react';
-import api from '../api';
+import api from '../core/api';
 import {
   COTERIE_DOC,
   ALL_COTERIE_NAMES,

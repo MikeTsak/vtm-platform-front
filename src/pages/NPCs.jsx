@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import api from '../api';
+import api from '../core/api';
 import CharacterSetup from './CharacterSetup';
 import { Link } from 'react-router-dom';
 

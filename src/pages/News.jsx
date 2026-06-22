@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useContext } from 'react';
-import api from '../api';
-import { AuthCtx } from '../AuthContext';
+import api from '../core/api';
+import { AuthCtx } from '../core/AuthContext';
 import styles from '../styles/News.module.css';
-import Loading from '../components/Loading';
+import Loading from '../ui/Loading';
 import { NEWS_OUTLETS } from '../constants/newsConstants';
 import { apiJoin, isVideoUrl } from '../utils/newsUtils';
 import CreateNewsModal from '../components/CreateNewsModal';
