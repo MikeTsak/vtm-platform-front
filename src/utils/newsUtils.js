@@ -1,7 +1,6 @@
 // Utility functions for News module
 export const apiJoin = (path) => {
-  const RAW_BASE = process.env.REACT_APP_API_URL || (window.location.port === "3000" ? "http://localhost:3001/api" : "/api");
-  const API_BASE = RAW_BASE ? RAW_BASE.replace(/\/+$/, "") : "";
+  const API_BASE = process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL.replace(/\/+$/, "") : "";
   if (!path) return "";
   if (path.startsWith("http")) return path;
   if (API_BASE.endsWith("/api") && path.startsWith("/api/")) return `${API_BASE}${path.slice(4)}`;

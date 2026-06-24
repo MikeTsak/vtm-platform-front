@@ -15,7 +15,7 @@ const RAW_BASE =
     (import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_URL)) ||
   process.env.REACT_APP_API_BASE ||
   process.env.REACT_APP_API_URL ||
-  (window.location.port === "3000" ? "http://localhost:3001" : "");
+  "";
 
 const API_BASE = RAW_BASE ? RAW_BASE.replace(/\/+$/, "") : "";
 const AUTH_TOKEN_KEY = "token";

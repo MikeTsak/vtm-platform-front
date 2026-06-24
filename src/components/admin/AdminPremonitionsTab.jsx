@@ -10,17 +10,14 @@ import Loading from "../../ui/Loading";
  * - then CRA envs
  * - then dev fallback
  */
-const DEV_FALLBACK = (typeof window !== "undefined" && window.location.port === "3000")
-  ? "http://localhost:3001"
-  : "";
-
 const RAW_BASE =
   (typeof import.meta !== "undefined" &&
     import.meta.env &&
     (import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_URL)) ||
-  process.env.REACT_APP_API_BASE ||
-  process.env.REACT_APP_API_URL ||
-  DEV_FALLBACK;
+  (typeof process !== "undefined" &&
+    process.env &&
+    (process.env.REACT_APP_API_BASE || process.env.REACT_APP_API_URL)) ||
+  "";
 
 // normalize (remove trailing slashes)
 const API_BASE = RAW_BASE ? RAW_BASE.replace(/\/+$/, "") : "";
