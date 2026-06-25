@@ -1,43 +1,112 @@
 import React from 'react';
-import styles from '../styles/CharacterView.module.css';
+import styles from '../styles/Touchstones.module.css';
 
-const TouchstonesConvictionsSection = ({ sheet, setProfileModalOpen }) => {
+const parseText = (text) => {
+  if (!text) return { title: 'Unknown', desc: '' };
+  // split by first colon or dash
+  const splitIdx = text.search(/[:\-]/);
+  if (splitIdx !== -1) {
+    return {
+      title: text.substring(0, splitIdx).trim(),
+      desc: text.substring(splitIdx + 1).trim()
+    };
+  }
+  return { title: text, desc: '' };
+};
+
+const TouchstonesConvictionsSection = ({ sheet, setMoralityModalOpen }) => {
+  const convictions = sheet?.convictions || [];
+  const touchstones = sheet?.touchstones || [];
+
   return (
-    <>
-      <div className={styles.card}>
-        <div className={styles.cardHead} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <b>Touchstones & Convictions</b>
-          <button
-            className={styles.ghostBtn}
-            onClick={() => setProfileModalOpen(true)}
-            style={{ fontSize: '0.8rem', padding: '2px 8px' }}
-          >
-            ✎ Edit
-          </button>
+    <div style={{ marginTop: '24px', marginBottom: '24px' }}>
+      {/* Section Header */}
+      <div className={styles.sectionHeader}>
+        <div>
+          <h2 className={styles.headerTitle}>Morality & Anchors</h2>
+          <p className={styles.headerSubtitle}>The threads that bind the beast</p>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginTop: '12px' }}>
-
-          <div style={{ padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-            <div style={{ fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '6px', marginBottom: '8px' }}>Touchstones</div>
-            {sheet.touchstones && sheet.touchstones.length > 0 ? (
-              <ul style={{ margin: 0, paddingLeft: 20, fontSize: '0.95rem', opacity: 0.9 }}>
-                {sheet.touchstones.map((t, i) => <li key={i} style={{ marginBottom: '4px' }}>{t}</li>)}
-              </ul>
-            ) : <div className={styles.muted} style={{ fontSize: '0.9rem' }}>No touchstones defined.</div>}
-          </div>
-
-          <div style={{ padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-            <div style={{ fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '6px', marginBottom: '8px' }}>Convictions</div>
-            {sheet.convictions && sheet.convictions.length > 0 ? (
-              <ul style={{ margin: 0, paddingLeft: 20, fontSize: '0.95rem', opacity: 0.9 }}>
-                {sheet.convictions.map((c, i) => <li key={i} style={{ marginBottom: '4px' }}>{c}</li>)}
-              </ul>
-            ) : <div className={styles.muted} style={{ fontSize: '0.9rem' }}>No convictions defined.</div>}
-          </div>
-
-        </div>
+        <button
+          aria-label="Edit Convictions and Touchstones"
+          className={styles.editBtn}
+          onClick={() => setMoralityModalOpen(true)}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>edit</span>
+          <span className="hidden sm:inline">EDIT</span>
+        </button>
       </div>
-    </>
+
+      {/* Two Column Layout */}
+      <div className={styles.gridContainer}>
+        
+        {/* Convictions Column */}
+        <section className={styles.columnBox}>
+          <div className={styles.columnHeader}>
+            <span className="material-symbols-outlined" style={{ color: 'var(--primary-container)' }}>balance</span>
+            <h3>Convictions</h3>
+          </div>
+          <div className={styles.columnBody}>
+            {convictions.length > 0 ? (
+              <ul className={styles.convictionsList}>
+                {convictions.map((c, i) => {
+                  const { title, desc } = parseText(c);
+                  return (
+                    <li key={i} className={styles.convictionItem}>
+                      <div className={styles.convictionIconBox}>
+                        <span className={styles.convictionIcon}>/</span>
+                      </div>
+                      <div>
+                        <h4 className={styles.convictionTitle}>{title}</h4>
+                        {desc && <p className={styles.convictionDesc}>{desc}</p>}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className={styles.emptyState}>No convictions defined.</p>
+            )}
+          </div>
+        </section>
+
+        {/* Touchstones Column */}
+        <section className={styles.columnBox}>
+          <div className={styles.columnHeader}>
+            <span className="material-symbols-outlined" style={{ color: 'var(--primary-container)' }}>favorite</span>
+            <h3>Touchstones</h3>
+          </div>
+          <div className={styles.columnBody}>
+            {touchstones.length > 0 ? (
+              <div className={styles.touchstonesList}>
+                {touchstones.map((t, i) => {
+                  const { title, desc } = parseText(t);
+                  return (
+                    <div key={i} className={styles.touchstoneCard}>
+                      <div className={styles.touchstoneImgBox}>
+                        {/* Default silhouette icon since no images in DB */}
+                        <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>person</span>
+                      </div>
+                      <div className={styles.touchstoneContent}>
+                        <div className={styles.touchstoneHeader}>
+                          <h4 className={styles.touchstoneTitle}>{title}</h4>
+                          <span className={styles.badgeHealthy}>HEALTHY</span>
+                        </div>
+                        {/* No Anchor mapping in DB yet, so we omit or put generic text */}
+                        <p className={styles.touchstoneAnchor}>ANCHOR</p>
+                        {desc && <p className={styles.touchstoneDesc}>{desc}</p>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className={styles.emptyState}>No touchstones defined.</p>
+            )}
+          </div>
+        </section>
+
+      </div>
+    </div>
   );
 };
 

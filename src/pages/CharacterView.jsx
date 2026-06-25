@@ -6,6 +6,7 @@ import { AuthCtx } from '../core/AuthContext';
 import { DISCIPLINES, ALL_DISCIPLINE_NAMES, iconPath } from '../data/disciplines';
 import { RITUALS } from '../data/rituals';
 import styles from '../styles/CharacterView.module.css';
+import homeStyles from '../styles/Home.module.css';
 import CharacterSetup from './CharacterSetup';
 import { MERITS_AND_FLAWS, listAllItems } from '../data/merits_flaws';
 import generateVTMCharacterSheetPDF from '../utils/pdfGenerator';
@@ -15,6 +16,7 @@ import AttributesSection from '../components/AttributesSection';
 import SkillsDisplaySection from '../components/SkillsDisplaySection';
 import DisciplinesDisplaySection from '../components/DisciplinesDisplaySection';
 import MeritsBackgroundsSection from '../components/MeritsBackgroundsSection';
+import MeritsFlawsDisplay from '../components/MeritsFlawsDisplay';
 import { Skeleton } from 'boneyard-js/react';
 
 /* ---------- Clan tint colors ---------- */
@@ -39,18 +41,28 @@ const NAME_OVERRIDES = {
   'Banu Haqim': 'Banu_Haqim',
   'Thin-blood': 'Thinblood'
 };
-const symlogo = (c) => `/img/clans/330px-${(NAME_OVERRIDES[c]||c).replace(/\s+/g,'_')}_symbol.png`;
+const fileify = (c) => (NAME_OVERRIDES[c] || c).replace(/\s+/g, '_');
+const symlogo = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.png` : '');
+const textlogo = (c) => (c ? `/img/clans/text/300px-${fileify(c)}_Logo.png` : '');
+
+const buildImageUrl = (val) => {
+  if (!val) return null;
+  const trimmed = val.trim();
+  if (trimmed.startsWith('http')) return trimmed;
+  const cleanName = trimmed.replace(/\.jpg$/i, '');
+  return `https://portal.attlarp.gr/images.court/${encodeURIComponent(cleanName)}.jpg`;
+};
 
 const ATTRS = [
-  ['Strength','Dexterity','Stamina'],
-  ['Charisma','Manipulation','Composure'],
-  ['Intelligence','Wits','Resolve'],
+  ['Strength', 'Dexterity', 'Stamina'],
+  ['Charisma', 'Manipulation', 'Composure'],
+  ['Intelligence', 'Wits', 'Resolve'],
 ];
 
 const SKILLS = {
-  Physical: ['Athletics','Brawl','Craft','Drive','Firearms','Larceny','Melee','Stealth','Survival'],
-  Social: ['Animal Ken','Etiquette','Insight','Intimidation','Leadership','Performance','Persuasion','Streetwise','Subterfuge'],
-  Mental: ['Academics','Awareness','Finance','Investigation','Medicine','Occult','Politics','Science','Technology'],
+  Physical: ['Athletics', 'Brawl', 'Craft', 'Drive', 'Firearms', 'Larceny', 'Melee', 'Stealth', 'Survival'],
+  Social: ['Animal Ken', 'Etiquette', 'Insight', 'Intimidation', 'Leadership', 'Performance', 'Persuasion', 'Streetwise', 'Subterfuge'],
+  Mental: ['Academics', 'Awareness', 'Finance', 'Investigation', 'Medicine', 'Occult', 'Politics', 'Science', 'Technology'],
 };
 
 /* ======================================================
@@ -88,7 +100,7 @@ function allSelectableMerits() {
     if (['Caitiff', 'Thin-blood', 'Ghouls', 'Cults'].includes(cat)) continue;
     const pushIt = (item, category) => {
       const allowed = parseDotSpec(item.dots);
-      if (!allowed.length) return; 
+      if (!allowed.length) return;
       out.push({ id: item.id, name: item.name, dotsSpec: item.dots, description: item.description, category, allowed });
     };
     (payload.merits || []).forEach(m => pushIt(m, cat));
@@ -108,7 +120,7 @@ function allSelectableFlaws() {
     if (['Caitiff', 'Thin-blood', 'Ghouls', 'Cults'].includes(cat)) continue;
     const pushIt = (item, category) => {
       const allowed = parseDotSpec(item.dots);
-      if (!allowed.length) return; 
+      if (!allowed.length) return;
       out.push({ id: item.id, name: item.name, dotsSpec: item.dots, description: item.description, category, allowed });
     };
     (payload.flaws || []).forEach(f => pushIt(f, cat));
@@ -178,8 +190,8 @@ function normalizeFromFlatAny(source) {
   sheet.sire = flat.sire || '';
   sheet.ambition = flat.ambition || '';
   sheet.desire = flat.desire || '';
-  
-// Normalizing Touchstones and Convictions
+
+  // Normalizing Touchstones and Convictions
   const normalizeStringArray = (arr) => {
     if (!Array.isArray(arr)) return [];
     return arr.map(item => {
@@ -227,11 +239,11 @@ function normalizeFromFlatAny(source) {
   if (hasResilience) {
     healthMax += fortitudeDots;
   }
-  
+
   sheet.health_max = healthMax;
 
   const hSuperficial = Number(flat?.health?.superficial ?? 0);
-  const hAggravated  = Number(flat?.health?.aggravated  ?? 0);
+  const hAggravated = Number(flat?.health?.aggravated ?? 0);
   const legacyHealth = Number(flat?.health_current);
 
   if (Number.isFinite(legacyHealth)) {
@@ -244,14 +256,14 @@ function normalizeFromFlatAny(source) {
 
 
   const compRaw = getCaseInsensitive(sheet.attributes, 'Composure') ?? getCaseInsensitive(flat.attributes, 'Composure') ?? 1;
-  const resoRaw = getCaseInsensitive(sheet.attributes, 'Resolve')   ?? getCaseInsensitive(flat.attributes, 'Resolve')   ?? 1;
-  
+  const resoRaw = getCaseInsensitive(sheet.attributes, 'Resolve') ?? getCaseInsensitive(flat.attributes, 'Resolve') ?? 1;
+
   const comp = Number(compRaw);
   const reso = Number(resoRaw);
   sheet.willpower_max = comp + reso;
 
   const wpSuperficial = Number(flat?.willpower?.superficial ?? 0);
-  const wpAggravated  = Number(flat?.willpower?.aggravated  ?? 0);
+  const wpAggravated = Number(flat?.willpower?.aggravated ?? 0);
   const legacyWpCurrent = Number(flat?.willpower_current);
 
   if (Number.isFinite(legacyWpCurrent)) {
@@ -268,7 +280,7 @@ function normalizeFromFlatAny(source) {
     blood_sorcery: Array.isArray(flat.rituals?.blood_sorcery) ? flat.rituals.blood_sorcery : [],
     oblivion: Array.isArray(flat.rituals?.oblivion) ? flat.rituals.oblivion : [],
   };
-  
+
   if (flat.xp_spent !== undefined) sheet.xp_spent = flat.xp_spent;
   if (flat.experience !== undefined) sheet.experience = flat.experience;
 
@@ -296,9 +308,9 @@ function attachStructured(raw) {
         const lvl = Number(lvlStr);
         (arr || []).forEach(p => {
           if (!p) return;
-          if (p.id)   byId.set(String(p.id).toLowerCase(), lvl);
+          if (p.id) byId.set(String(p.id).toLowerCase(), lvl);
           if (p.slug) byId.set(String(p.slug).toLowerCase(), lvl);
-          if (p.key)  byId.set(String(p.key).toLowerCase(), lvl);
+          if (p.key) byId.set(String(p.key).toLowerCase(), lvl);
           if (p.name) byName.set(String(p.name).toLowerCase(), lvl);
         });
       }
@@ -402,7 +414,7 @@ const XP_RULES = {
   disciplineCaitiff: newLevel => newLevel * 6,
   ritual: lvl => lvl * 3,
   ceremony: lvl => lvl * 3,
-  bloodPotency: newLevel => newLevel * 10, 
+  bloodPotency: newLevel => newLevel * 10,
 };
 
 function disciplineKindFor(ch, name) {
@@ -442,54 +454,58 @@ function Drawer({ title, subtitle, defaultOpen = false, children }) {
   );
 }
 
-function TrackerBlock({ label, val, max, agg=0, sup=0, filled=0, stains=0 }) {
+function TrackerBlock({ label, val, max, agg = 0, sup = 0, filled = 0, stains = 0 }) {
+  if (label === 'Hunger') {
+    const drops = [];
+    for (let i = 0; i < max; i++) {
+      const isFilled = i < filled;
+      drops.push(
+        <span key={i} className={`material-symbols-outlined ${styles.hungerDroplet} ${isFilled ? styles.active : ''}`}>
+          water_drop
+        </span>
+      );
+    }
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', boxSizing: 'border-box' }}>
+        <div className={styles.trackerLabel} style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span>{label}</span>
+          <span style={{ fontWeight: 'normal' }}>{val} / {max}</span>
+        </div>
+        <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>{drops}</div>
+      </div>
+    );
+  }
+
   const boxes = [];
-  for(let i=0; i<max; i++){
+  for (let i = 0; i < max; i++) {
     let content = '';
     let isFilled = false;
-    
+
     if (agg > 0 || sup > 0) {
-      if(i < agg) content = 'X';
-      else if(i < agg + sup) content = '/';
+      if (i < agg) content = 'X';
+      else if (i < agg + sup) content = '/';
     } else {
       if (i < filled) isFilled = true;
       if (i >= max - stains) content = '/';
     }
 
-    let bg = isFilled ? 'var(--text-color, #222)' : 'rgba(0,0,0,0.05)';
-    let border = isFilled ? 'var(--text-color, #222)' : 'rgba(128,128,128,0.5)';
-    let fSize = 18;
-
-    if (label === 'Hunger' && isFilled) {
-      content = '🩸';
-      bg = 'rgba(0,0,0,0.05)'; 
-      border = 'rgba(128,128,128,0.5)';
-      fSize = 14;
-    }
+    let extraClass = '';
+    if (content === 'X') extraClass = styles.aggravated;
+    else if (content === '/') extraClass = styles.superficial;
+    else if (isFilled) extraClass = styles.filled;
 
     boxes.push(
-      <div 
-         key={i} 
-         style={{
-           width: 24, height: 24, border: `1px solid ${border}`,
-           display: 'flex', alignItems: 'center', justifyContent: 'center',
-           fontSize: fSize, fontWeight: 'bold', lineHeight: 0,
-           color: content === 'X' ? '#b40f1f' : 'inherit',
-           backgroundColor: bg,
-           borderRadius: '4px',
-           boxSizing: 'border-box',
-           flexShrink: 0 
-         }}
-      >
-        {content}
-      </div>
+      <div
+        key={i}
+        className={`${styles.trackerBox} ${extraClass}`}
+      />
     );
   }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', boxSizing: 'border-box' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', textTransform: 'uppercase', opacity: 0.8, fontWeight: 'bold' }}>
-        <span>{label}</span> 
-        <span style={{ fontWeight: 'normal' }}>{val} / {max}</span>
+      <div className={styles.trackerLabel} style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <span>{label}</span>
+        <span style={{ fontWeight: 'normal', color: 'var(--tint)', fontFamily: 'var(--font-body)', fontSize: '18px' }}>{val}</span>
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', justifyContent: 'center' }}>{boxes}</div>
     </div>
@@ -499,99 +515,121 @@ function TrackerBlock({ label, val, max, agg=0, sup=0, filled=0, stains=0 }) {
 /* ===========================
    Profile Edit Modal
    =========================== */
-function ProfileEditModal({ sheet, onClose, onSave, busy }) {
+function IdentityEditModal({ sheet, onClose, onSave, busy }) {
   const [ambition, setAmbition] = useState(sheet.ambition || '');
   const [desire, setDesire] = useState(sheet.desire || '');
+
+  return (
+    <div className={styles.modalOverlay} role="dialog">
+      <div className={`${styles.card} ${styles.modalCard}`} style={{ width: 'min(92vw, 500px)', background: 'var(--surface-container)' }}>
+        <div className={styles.modalHeader} style={{ borderBottom: '1px solid var(--border-color)', padding: '16px' }}>
+          <h3 className={styles.modalTitle} style={{ margin: 0, fontFamily: 'var(--font-title)', fontSize: '24px' }}>Edit Identity</h3>
+        </div>
+        <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div>
+            <label style={{ display: 'block', fontWeight: '600', marginBottom: 6, color: 'var(--text-muted)' }}>Ambition</label>
+            <input
+              className={styles.input}
+              value={ambition}
+              onChange={e => setAmbition(e.target.value)}
+              placeholder="e.g. Become Prince"
+              style={{ width: '100%', boxSizing: 'border-box', background: 'var(--surface-lowest)', border: '1px solid var(--border-color)', color: 'var(--text-color)', padding: '10px', borderRadius: '4px' }}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontWeight: '600', marginBottom: 6, color: 'var(--text-muted)' }}>Desire</label>
+            <input
+              className={styles.input}
+              value={desire}
+              onChange={e => setDesire(e.target.value)}
+              placeholder="e.g. Drink from a celebrity"
+              style={{ width: '100%', boxSizing: 'border-box', background: 'var(--surface-lowest)', border: '1px solid var(--border-color)', color: 'var(--text-color)', padding: '10px', borderRadius: '4px' }}
+            />
+          </div>
+        </div>
+        <div className={styles.modalFooter} style={{ padding: '16px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+          <button className={styles.ghostBtn} onClick={onClose} disabled={busy}>Cancel</button>
+          <button className={styles.cta} onClick={() => onSave({ ambition, desire })} disabled={busy}>{busy ? 'Saving...' : 'Save Changes'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MoralityEditModal({ sheet, onClose, onSave, busy }) {
   const [touchstones, setTouchstones] = useState([...(sheet.touchstones || [])]);
   const [convictions, setConvictions] = useState([...(sheet.convictions || [])]);
 
   return (
     <div className={styles.modalOverlay} role="dialog">
-      <div className={`${styles.card} ${styles.modalCard}`} style={{ width: 'min(92vw, 600px)', maxHeight: '90vh', overflowY: 'auto' }}>
-        <div className={styles.modalHeader}>
-          <h3 className={styles.modalTitle}>Edit Profile & Morality</h3>
+      <div className={`${styles.card} ${styles.modalCard}`} style={{ width: 'min(92vw, 600px)', maxHeight: '90vh', overflowY: 'auto', background: 'var(--surface-container)' }}>
+        <div className={styles.modalHeader} style={{ borderBottom: '1px solid var(--border-color)', padding: '16px' }}>
+          <h3 className={styles.modalTitle} style={{ margin: 0, fontFamily: 'var(--font-title)', fontSize: '24px', color: 'var(--text-color)' }}>Edit Morality & Anchors</h3>
         </div>
-        <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          
-          <div>
-            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: 6 }}>Ambition</label>
-            <input 
-              className={styles.input} 
-              value={ambition} 
-              onChange={e => setAmbition(e.target.value)} 
-              placeholder="e.g. Become Prince" 
-              style={{ width: '100%', boxSizing: 'border-box' }} 
-            />
-          </div>
-          <div>
-            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: 6 }}>Desire</label>
-            <input 
-              className={styles.input} 
-              value={desire} 
-              onChange={e => setDesire(e.target.value)} 
-              placeholder="e.g. Drink from a celebrity" 
-              style={{ width: '100%', boxSizing: 'border-box' }} 
-            />
-          </div>
-
-          <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)', margin: '12px 0' }} />
-
-          {/* Touchstones List */}
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              <label style={{ fontWeight: 'bold' }}>Touchstones</label>
-              <button className={styles.ghostBtn} style={{ padding: '4px 10px', fontSize: '0.85rem' }} onClick={() => setTouchstones([...touchstones, ''])}>+ Add Touchstone</button>
-            </div>
-            {touchstones.map((t, i) => (
-              <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                <input 
-                  className={styles.input} 
-                  value={t} 
-                  onChange={e => { const n=[...touchstones]; n[i]=e.target.value; setTouchstones(n); }} 
-                  style={{ flex: 1 }} 
-                  placeholder="Touchstone description..." 
-                />
-                <button 
-                  className={styles.ghostBtn} 
-                  style={{ color: '#b40f1f', fontWeight: 'bold', padding: '0 12px' }} 
-                  onClick={() => setTouchstones(touchstones.filter((_, idx) => idx !== i))}
-                  title="Remove Touchstone"
-                >×</button>
-              </div>
-            ))}
-            {touchstones.length === 0 && <div className={styles.muted} style={{ fontSize: '0.9rem' }}>No touchstones added.</div>}
-          </div>
+        <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
           {/* Convictions List */}
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              <label style={{ fontWeight: 'bold' }}>Convictions</label>
-              <button className={styles.ghostBtn} style={{ padding: '4px 10px', fontSize: '0.85rem' }} onClick={() => setConvictions([...convictions, ''])}>+ Add Conviction</button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <label style={{ fontWeight: '600', color: 'var(--text-color)', fontSize: '18px' }}>Convictions</label>
+              <button className={styles.ghostBtn} style={{ padding: '4px 12px', fontSize: '12px', borderRadius: '4px' }} onClick={() => setConvictions([...convictions, ''])}>+ Add Conviction</button>
             </div>
-            {convictions.map((c, i) => (
-              <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                <input 
-                  className={styles.input} 
-                  value={c} 
-                  onChange={e => { const n=[...convictions]; n[i]=e.target.value; setConvictions(n); }} 
-                  style={{ flex: 1 }} 
-                  placeholder="Conviction description..." 
-                />
-                <button 
-                  className={styles.ghostBtn} 
-                  style={{ color: '#b40f1f', fontWeight: 'bold', padding: '0 12px' }} 
-                  onClick={() => setConvictions(convictions.filter((_, idx) => idx !== i))}
-                  title="Remove Conviction"
-                >×</button>
-              </div>
-            ))}
-            {convictions.length === 0 && <div className={styles.muted} style={{ fontSize: '0.9rem' }}>No convictions added.</div>}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {convictions.map((c, i) => (
+                <div key={i} style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    className={styles.input}
+                    value={c}
+                    onChange={e => { const n = [...convictions]; n[i] = e.target.value; setConvictions(n); }}
+                    style={{ flex: 1, background: 'var(--surface-lowest)', border: '1px solid var(--border-color)', color: 'var(--text-color)', padding: '10px', borderRadius: '4px' }}
+                    placeholder="Title: Description..."
+                  />
+                  <button
+                    className={styles.ghostBtn}
+                    style={{ color: 'var(--tint)', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '0 12px' }}
+                    onClick={() => setConvictions(convictions.filter((_, idx) => idx !== i))}
+                    title="Remove Conviction"
+                  >✕</button>
+                </div>
+              ))}
+              {convictions.length === 0 && <div className={styles.muted} style={{ fontSize: '14px' }}>No convictions added.</div>}
+            </div>
+          </div>
+
+          <hr style={{ border: 'none', borderTop: '1px solid var(--surface-variant)', margin: 0 }} />
+
+          {/* Touchstones List */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <label style={{ fontWeight: '600', color: 'var(--text-color)', fontSize: '18px' }}>Touchstones</label>
+              <button className={styles.ghostBtn} style={{ padding: '4px 12px', fontSize: '12px', borderRadius: '4px' }} onClick={() => setTouchstones([...touchstones, ''])}>+ Add Touchstone</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {touchstones.map((t, i) => (
+                <div key={i} style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    className={styles.input}
+                    value={t}
+                    onChange={e => { const n = [...touchstones]; n[i] = e.target.value; setTouchstones(n); }}
+                    style={{ flex: 1, background: 'var(--surface-lowest)', border: '1px solid var(--border-color)', color: 'var(--text-color)', padding: '10px', borderRadius: '4px' }}
+                    placeholder="Name - Description..."
+                  />
+                  <button
+                    className={styles.ghostBtn}
+                    style={{ color: 'var(--tint)', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '0 12px' }}
+                    onClick={() => setTouchstones(touchstones.filter((_, idx) => idx !== i))}
+                    title="Remove Touchstone"
+                  >✕</button>
+                </div>
+              ))}
+              {touchstones.length === 0 && <div className={styles.muted} style={{ fontSize: '14px' }}>No touchstones added.</div>}
+            </div>
           </div>
 
         </div>
-        <div className={styles.modalFooter} style={{ padding: '16px 20px' }}>
+        <div className={styles.modalFooter} style={{ padding: '16px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
           <button className={styles.ghostBtn} onClick={onClose} disabled={busy}>Cancel</button>
-          <button className={styles.cta} onClick={() => onSave({ ambition, desire, touchstones, convictions })} disabled={busy}>{busy ? 'Saving...' : 'Save Changes'}</button>
+          <button className={styles.cta} onClick={() => onSave({ touchstones, convictions })} disabled={busy}>{busy ? 'Saving...' : 'Save Changes'}</button>
         </div>
       </div>
     </div>
@@ -654,8 +692,15 @@ export default function CharacterView({
   const [msg, setMsg] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [modalCfg, setModalCfg] = useState(null);
-  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [identityModalOpen, setIdentityModalOpen] = useState(false);
+  const [moralityModalOpen, setMoralityModalOpen] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
+
+  // New tab state for the XP Shop
+  const [activeShopTab, setActiveShopTab] = useState('Disciplines');
+  const [shopSearch, setShopSearch] = useState('');
+  const [shopFilter, setShopFilter] = useState('all');
+
   const [pendingFixes, setPendingFixes] = useState([]);
   const [xpTotals, setXpTotals] = useState(null);
   const shopRef = useRef(null);
@@ -677,10 +722,10 @@ export default function CharacterView({
         if (adminNPCId || loadPath) obj = r.data.npc || r.data.character || r.data[paths.pickFrom] || null;
         else obj = r.data.character || r.data[paths.pickFrom] || r.data.npc || null;
         if (!mounted) return;
-        
+
         const structured = attachStructured(obj);
         setCh(structured);
-        
+
         if (structured && structured.sheet) {
           setTempHealth({ superficial: structured.sheet.health?.superficial || 0, aggravated: structured.sheet.health?.aggravated || 0 });
           setTempWillpower({ superficial: structured.sheet.willpower?.superficial || 0, aggravated: structured.sheet.willpower?.aggravated || 0 });
@@ -701,7 +746,7 @@ export default function CharacterView({
     if (!paths.totals || !ch) return;
     api.get(paths.totals)
       .then(r => setXpTotals(r.data))
-      .catch(() => {});
+      .catch(() => { });
   }, [paths.totals, ch]);
 
 
@@ -735,7 +780,7 @@ export default function CharacterView({
   useEffect(() => {
     if (isInitialTrackerLoad.current || !ch || !isAdmin) return;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    
+
     saveTimeoutRef.current = setTimeout(() => {
       const nextSheet = JSON.parse(JSON.stringify(ch.sheet || {}));
       nextSheet.health = tempHealth;
@@ -747,25 +792,25 @@ export default function CharacterView({
       nextSheet.morality.humanity = tempHumanity;
 
       const payload = {
-          name: ch.name,
-          clan: ch.clan,
-          sheet: nextSheet
+        name: ch.name,
+        clan: ch.clan,
+        sheet: nextSheet
       };
 
       api.put(paths.update, payload).catch(() => {
-         api.patch(paths.update, payload).catch(()=>{});
+        api.patch(paths.update, payload).catch(() => { });
       })
-      .then(() => setSaveStatus('Saved'))
-      .catch(() => setSaveStatus('Error'))
-      .finally(() => setTimeout(() => setSaveStatus(''), 2000));
+        .then(() => setSaveStatus('Saved'))
+        .catch(() => setSaveStatus('Error'))
+        .finally(() => setTimeout(() => setSaveStatus(''), 2000));
 
     }, 1000);
-    
+
     return () => clearTimeout(saveTimeoutRef.current);
   }, [tempHealth, tempWillpower, tempHunger, tempHumanity, tempStains, ch, paths.update, isAdmin]);
 
   const updateTracker = (type, kind, delta) => {
-    if (!isAdmin) return; 
+    if (!isAdmin) return;
     if (type === 'health') {
       setTempHealth(prev => ({ ...prev, [kind]: Math.max(0, (prev[kind] || 0) + delta) }));
     } else if (type === 'willpower') {
@@ -782,7 +827,7 @@ export default function CharacterView({
       setCh(attachStructured(obj));
       setMsg(`Action successful.`);
       if (paths.totals) {
-        try { const t = await api.get(paths.totals); setXpTotals(t.data); } catch {}
+        try { const t = await api.get(paths.totals); setXpTotals(t.data); } catch { }
       }
     } catch (e) {
       setErr(e.response?.data?.error || 'Failed to update character sheet');
@@ -793,29 +838,36 @@ export default function CharacterView({
   async function saveProfileData(newData) {
     setSavingProfile(true);
     const nextSheet = JSON.parse(JSON.stringify(sheet));
-    nextSheet.ambition = newData.ambition;
-    nextSheet.desire = newData.desire;
-    nextSheet.touchstones = newData.touchstones;
-    nextSheet.convictions = newData.convictions;
-    
-    nextSheet.morality = nextSheet.morality || {};
-    nextSheet.morality.touchstones = newData.touchstones;
-    nextSheet.morality.convictions = newData.convictions;
+    if (newData.ambition !== undefined) nextSheet.ambition = newData.ambition;
+    if (newData.desire !== undefined) nextSheet.desire = newData.desire;
+
+    if (newData.touchstones !== undefined || newData.convictions !== undefined) {
+      nextSheet.morality = nextSheet.morality || {};
+      if (newData.touchstones !== undefined) {
+        nextSheet.touchstones = newData.touchstones;
+        nextSheet.morality.touchstones = newData.touchstones;
+      }
+      if (newData.convictions !== undefined) {
+        nextSheet.convictions = newData.convictions;
+        nextSheet.morality.convictions = newData.convictions;
+      }
+    }
 
     try {
-       await api.put(paths.update, {
-          name: ch.name,
-          clan: ch.clan,
-          sheet: nextSheet
-       });
-       setCh(prev => ({ ...prev, sheet: nextSheet }));
-       setProfileModalOpen(false);
-       setMsg('Profile details updated successfully.');
-       setTimeout(() => setMsg(''), 3000);
-    } catch(e) {
-       setErr('Failed to update profile details.');
+      await api.put(paths.update, {
+        name: ch.name,
+        clan: ch.clan,
+        sheet: nextSheet
+      });
+      setCh(prev => ({ ...prev, sheet: nextSheet }));
+      setIdentityModalOpen(false);
+      setMoralityModalOpen(false);
+      setMsg('Profile details updated successfully.');
+      setTimeout(() => setMsg(''), 3000);
+    } catch (e) {
+      setErr('Failed to update profile details.');
     } finally {
-       setSavingProfile(false);
+      setSavingProfile(false);
     }
   }
 
@@ -842,7 +894,7 @@ export default function CharacterView({
     return q;
   }, [sheet]);
 
-useEffect(() => {
+  useEffect(() => {
     if (!ch) return;
     const q = computeMissingPicks();
     setPendingFixes(q);
@@ -860,7 +912,7 @@ useEffect(() => {
       });
       setModalOpen(true);
     }
-  }, [ch, computeMissingPicks, modalOpen, sheet]); 
+  }, [ch, computeMissingPicks, modalOpen, sheet]);
 
   async function confirmDisciplinePurchase({ name, selectedPowerId, selectedPowerName, current, next, kind, assignOnly }) {
     const nextSheet = JSON.parse(JSON.stringify(sheet));
@@ -887,7 +939,7 @@ useEffect(() => {
       } else {
         await spendXP({
           type: 'discipline',
-          disciplineKind: kind, 
+          disciplineKind: kind,
           target: name,
           currentLevel: current,
           newLevel: next,
@@ -902,7 +954,7 @@ useEffect(() => {
       setModalOpen(false);
       setModalCfg(null);
 
-if (assignOnly) {
+      if (assignOnly) {
         const rest = computeMissingPicks();
         setPendingFixes(rest);
         if (rest.length) {
@@ -931,13 +983,13 @@ if (assignOnly) {
     ...(sheet.rituals?.blood_sorcery || []).map(r => r.id),
     ...(sheet.rituals?.oblivion || []).map(r => r.id),
   ]), [sheet.rituals]);
-const knownPowerNamesAndIds = useMemo(() => {
+  const knownPowerNamesAndIds = useMemo(() => {
     const powers = sheet.disciplinePowers || {};
     const known = new Set();
-    
+
     // Aggressive normalizer: strips spaces, underscores, dashes, and (errata) tags
     const superNorm = (v) => String(v ?? '').toLowerCase().replace(/\(errata\)/g, '').replace(/[\s_\-]+/g, '');
-  
+
     Object.values(powers).flat().forEach(p => {
       if (p?.id) known.add(superNorm(p.id));
       if (p?.name) known.add(superNorm(p.name));
@@ -953,7 +1005,7 @@ const knownPowerNamesAndIds = useMemo(() => {
         if (Array.isArray(ghostPowers)) {
           ghostPowers.forEach(gp => known.add(superNorm(gp)));
         }
-      } catch (e) {}
+      } catch (e) { }
     }
 
     return known;
@@ -1058,508 +1110,586 @@ const knownPowerNamesAndIds = useMemo(() => {
   let maxHealth = stamina + 3;
   const fortitudePowers = sheet.disciplinePowers?.Fortitude || [];
   if (Array.isArray(fortitudePowers) && fortitudePowers.some(p => String(p.name || p.id).toLowerCase().includes('resilience'))) {
-     maxHealth += Number(sheet.disciplines?.Fortitude || 0);
+    maxHealth += Number(sheet.disciplines?.Fortitude || 0);
   }
   const maxWillpower = (Number(sheet.attributes?.Composure) || 1) + (Number(sheet.attributes?.Resolve) || 1);
 
   return (
     <Skeleton name="character-view" loading={!ch}>
-    <div className={styles.root} style={{ '--tint': tint }}>
-      <div className={styles.wrap}>
-        <header className={styles.head}>
-          <div className={styles.headerTop}>
-            <h2 className={styles.title}>
-              {ch.name} <span className={styles.clanTag}>({ch.clan})</span>
-            </h2>
-            <div className={styles.xpBadge}>
-              XP: <b>{xp}</b>
-            </div>
-          </div>
-
-          {paths.totals && xpTotals && (
-            <div className={styles.xpTotals}>
-              <span>Granted: <b>{xpTotals.granted}</b></span>
-              <span>Spent: <b>{xpTotals.spent}</b></span>
-              <span>Remaining: <b>{xpTotals.remaining}</b></span>
-            </div>
-          )}
-
-          <div className={styles.metaRow}>
-            <span>Predator: <b>{sheet?.predator_type || sheet?.predatorType || '—'}</b></span>
-            <span>Sire: <b>{sheet?.sire || '—'}</b></span>
-            <span>Ambition: <b>{sheet?.ambition || '—'}</b></span>
-            <span>Desire: <b>{sheet?.desire || '—'}</b></span>
-            <button 
-              className={styles.ghostBtn} 
-              onClick={() => setProfileModalOpen(true)} 
-              style={{ padding: '2px 10px', fontSize: '0.85rem', marginLeft: 'auto', border: '1px solid var(--border-color)', borderRadius: '4px' }}
-            >
-              ✎ Edit Details
-            </button>
-          </div>
-
-          {err && <div className={styles.alertError}>{err}</div>}
-          {msg && <div className={styles.alertOk}>{msg}</div>}
-        </header>
-
-        {/* ===== Overview ===== */}
-        <section className={styles.section}>
-          <div className={styles.sectionTitleWrap}>
-            <h3 className={styles.sectionTitle}>Character Overview</h3>
-            <button className={styles.cta} onClick={() => shopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
-              Go to XP Shop
-            </button>
-          </div>
-
-          <div className={`${styles.card} ${styles.sheetWide} ${styles.bleedEdge}`}>
-            
-            {sheet.allow_reset && (
-              <div style={{ padding: '20px', background: 'rgba(217, 119, 6, 0.1)', border: '1px solid #d97706', borderRadius: '8px', marginBottom: '25px', textAlign: 'center' }}>
-                <h3 style={{ color: '#d97706', margin: '0 0 10px 0', fontSize: '1.5rem' }}>Re-Roll Authorized</h3>
-                <p style={{ margin: '0 0 20px 0', fontSize: '1rem', color: 'var(--text-color)', opacity: 0.9 }}>
-                  An admin has granted you permission to rebuild your character. This will reset your sheet and XP, but preserve your chat history.
+      <div className={styles.root} style={{ '--tint': tint }}>
+        {/* --- Top App Bar --- */}
+        <header className={styles.topAppBar}>
+          <div className={styles.topAppBarContent}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div className={styles.avatarBox}>
+                <img src={buildImageUrl(ch.image_url) || "/img/ATT-logo(1).png"} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </div>
+              <div>
+                <h1 className={styles.charTitle}>{ch.name}</h1>
+                <p className={styles.charSubtitle} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {symlogo(ch.clan) && <img src={symlogo(ch.clan)} alt={ch.clan} style={{ height: '24px', opacity: 0.8 }} />}
+                  {textlogo(ch.clan) ? <img src={textlogo(ch.clan)} alt={ch.clan} style={{ height: '20px', opacity: 0.9 }} /> : <span>{ch.clan}</span>}
+                  <span style={{ opacity: 0.5 }}>•</span>
+                  <span>{sheet?.bloodPotency || 'Unspecified'}</span>
                 </p>
-                <button
-                  className={styles.actionBtn}
-                  style={{ background: '#d97706', color: '#fff', border: 'none', padding: '12px 24px', fontSize: '1.1rem', cursor: 'pointer', borderRadius: '4px', fontWeight: 'bold' }}
-                  onClick={() => navigate('/make')}
-                >
-                  Start Re-Roll Wizard
+              </div>
+            </div>
+
+            <div className={styles.topAppBarActionRow} style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+              {/* Hunger Tracker */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <span key={i} className={`material-symbols-outlined ${styles.hungerDroplet} ${i < tempHunger ? styles.active : ''}`} style={i < tempHunger ? { fontVariationSettings: "'FILL' 1" } : {}}>water_drop</span>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button className={styles.navActionBtn} title="Notifications">
+                  <span className="material-symbols-outlined">notifications</span>
+                </button>
+                <button className={styles.navActionBtn} onClick={() => setIdentityModalOpen(true)} title="Edit Identity">
+                  <span className="material-symbols-outlined">settings</span>
                 </button>
               </div>
-            )}
-            
-            <div className={styles.rowForm} style={{ gap: 12, flexWrap: 'wrap' }}>
-              <Pill label="Blood Potency" value={sheet?.blood_potency ?? 1} />
-              {sheet.generation && <Pill label="Generation" value={sheet.generation} />}
             </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%', marginTop: '20px', boxSizing: 'border-box' }}>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', boxSizing: 'border-box' }}>
-                {/* Health */}
-                <div style={{ boxSizing: 'border-box', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                   <TrackerBlock label="Health" val={maxHealth} max={maxHealth} agg={tempHealth.aggravated} sup={tempHealth.superficial} />
-                   {isAdmin && (
-                     <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '15px', marginTop: '12px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '12px' }}>
-                         <div style={{ display: 'flex', alignItems: 'center' }}>
-                             <span style={{ fontSize: '0.8rem', opacity: 0.7, marginRight: '5px' }}>Sup:</span>
-                             <button className={styles.ghostBtn} style={{ padding: '2px 8px', minWidth: '30px' }} onClick={()=>updateTracker('health','superficial',-1)}>-</button>
-                             <button className={styles.ghostBtn} style={{ padding: '2px 8px', minWidth: '30px', marginLeft: '4px' }} onClick={()=>updateTracker('health','superficial',1)}>+</button>
-                         </div>
-                         <div style={{ display: 'flex', alignItems: 'center' }}>
-                             <span style={{ fontSize: '0.8rem', opacity: 0.7, marginRight: '5px' }}>Agg:</span>
-                             <button className={styles.ghostBtn} style={{ padding: '2px 8px', minWidth: '30px' }} onClick={()=>updateTracker('health','aggravated',-1)}>-</button>
-                             <button className={styles.ghostBtn} style={{ padding: '2px 8px', minWidth: '30px', marginLeft: '4px' }} onClick={()=>updateTracker('health','aggravated',1)}>+</button>
-                         </div>
-                     </div>
-                   )}
-                </div>
-
-                {/* Willpower */}
-                <div style={{ boxSizing: 'border-box', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                   <TrackerBlock label="Willpower" val={maxWillpower} max={maxWillpower} agg={tempWillpower.aggravated} sup={tempWillpower.superficial} />
-                   {isAdmin && (
-                     <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '15px', marginTop: '12px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '12px' }}>
-                         <div style={{ display: 'flex', alignItems: 'center' }}>
-                             <span style={{ fontSize: '0.8rem', opacity: 0.7, marginRight: '5px' }}>Sup:</span>
-                             <button className={styles.ghostBtn} style={{ padding: '2px 8px', minWidth: '30px' }} onClick={()=>updateTracker('willpower','superficial',-1)}>-</button>
-                             <button className={styles.ghostBtn} style={{ padding: '2px 8px', minWidth: '30px', marginLeft: '4px' }} onClick={()=>updateTracker('willpower','superficial',1)}>+</button>
-                         </div>
-                         <div style={{ display: 'flex', alignItems: 'center' }}>
-                             <span style={{ fontSize: '0.8rem', opacity: 0.7, marginRight: '5px' }}>Agg:</span>
-                             <button className={styles.ghostBtn} style={{ padding: '2px 8px', minWidth: '30px' }} onClick={()=>updateTracker('willpower','aggravated',-1)}>-</button>
-                             <button className={styles.ghostBtn} style={{ padding: '2px 8px', minWidth: '30px', marginLeft: '4px' }} onClick={()=>updateTracker('willpower','aggravated',1)}>+</button>
-                         </div>
-                     </div>
-                   )}
-                </div>
-              </div>
-
-              {/* Row 2: Humanity */}
-              <div style={{ boxSizing: 'border-box', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', width: '100%' }}>
-                 <TrackerBlock label="Humanity" val={tempHumanity} max={10} filled={tempHumanity} stains={tempStains} />
-                 {isAdmin && (
-                   <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '15px', marginTop: '12px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '12px' }}>
-                       <div style={{ display: 'flex', alignItems: 'center' }}>
-                           <span style={{ fontSize: '0.8rem', opacity: 0.7, marginRight: '5px' }}>Hum:</span>
-                           <button className={styles.ghostBtn} style={{ padding: '2px 8px', minWidth: '30px' }} onClick={()=>setTempHumanity(h=>Math.max(0, h-1))}>-</button>
-                           <button className={styles.ghostBtn} style={{ padding: '2px 8px', minWidth: '30px', marginLeft: '4px' }} onClick={()=>setTempHumanity(h=>Math.min(10, h+1))}>+</button>
-                       </div>
-                       <div style={{ display: 'flex', alignItems: 'center' }}>
-                           <span style={{ fontSize: '0.8rem', opacity: 0.7, marginRight: '5px' }}>Stains:</span>
-                           <button className={styles.ghostBtn} style={{ padding: '2px 8px', minWidth: '30px' }} onClick={()=>setTempStains(s=>Math.max(0, s-1))}>-</button>
-                           <button className={styles.ghostBtn} style={{ padding: '2px 8px', minWidth: '30px', marginLeft: '4px' }} onClick={()=>setTempStains(s=>Math.min(10, s+1))}>+</button>
-                       </div>
-                   </div>
-                 )}
-              </div>
-
-              {/* Row 3: Hunger */}
-              <div style={{ boxSizing: 'border-box', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', padding: '16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', width: '100%' }}>
-                 <TrackerBlock label="Hunger" val={tempHunger} max={5} filled={tempHunger} />
-                 {isAdmin && (
-                   <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '15px', marginTop: '12px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '12px' }}>
-                       <div style={{ display: 'flex', alignItems: 'center' }}>
-                           <span style={{ fontSize: '0.8rem', opacity: 0.7, marginRight: '5px' }}>Lvl:</span>
-                           <button className={styles.ghostBtn} style={{ padding: '2px 8px', minWidth: '30px' }} onClick={()=>setTempHunger(h=>Math.max(0, h-1))}>-</button>
-                           <button className={styles.ghostBtn} style={{ padding: '2px 8px', minWidth: '30px', marginLeft: '4px' }} onClick={()=>setTempHunger(h=>Math.min(5, h+1))}>+</button>
-                       </div>
-                   </div>
-                 )}
-              </div>
-
-            </div>
-            
-            {saveStatus && isAdmin && <div style={{ marginTop: '10px', fontSize: '0.85rem', color: 'var(--text-color)', opacity: 0.7, textAlign: 'center' }}>{saveStatus}</div>}
-
           </div>
-          
-          <TouchstonesConvictionsSection sheet={sheet} setProfileModalOpen={setProfileModalOpen} />
-          <Inventory characterId={ch?.id} />
-          {/* ----- END INVENTORY DISPLAY */}
-          <AttributesSection sheet={sheet} />
+        </header>
 
-          <SkillsDisplaySection sheet={sheet} />
+        {/* --- Mobile Bottom Nav --- */}
+        <nav className={styles.mobileNav}>
+          <button className={`${styles.mobileNavBtn} ${styles.mobileNavBtnActive}`} onClick={() => window.scrollTo(0, 0)}>
+            <span className="material-symbols-outlined" style={{ marginBottom: '4px' }}>person</span>
+            <span className={styles.mobileNavLabel}>Character</span>
+          </button>
+          <button className={styles.mobileNavBtn} onClick={() => document.getElementById('inventory-section')?.scrollIntoView({ behavior: 'smooth' })}>
+            <span className="material-symbols-outlined" style={{ marginBottom: '4px' }}>backpack</span>
+            <span className={styles.mobileNavLabel}>Inventory</span>
+          </button>
+          <button className={styles.mobileNavBtn} onClick={() => document.getElementById('merits-section')?.scrollIntoView({ behavior: 'smooth' })}>
+            <span className="material-symbols-outlined" style={{ marginBottom: '4px', fontVariationSettings: "'FILL' 1" }}>workspace_premium</span>
+            <span className={styles.mobileNavLabel}>Merits & Flaws</span>
+          </button>
+          <button className={styles.mobileNavBtn} onClick={() => shopRef.current?.scrollIntoView({ behavior: 'smooth' })}>
+            <span className="material-symbols-outlined" style={{ marginBottom: '4px' }}>shopping_cart</span>
+            <span className={styles.mobileNavLabel}>XP Shop</span>
+          </button>
+        </nav>
 
-          <DisciplinesDisplaySection sheet={sheet} />
+        {/* --- Desktop Nav (Sidebar) --- */}
+        <nav className={styles.desktopNav}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+            <button className={`${styles.desktopNavBtn} ${styles.desktopNavBtnActive}`} onClick={() => window.scrollTo(0, 0)} title="Character">
+              <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>person</span>
+              <span style={{ fontSize: '10px', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Character</span>
+            </button>
 
+            <button className={styles.desktopNavBtn} onClick={() => document.getElementById('inventory-section')?.scrollIntoView({ behavior: 'smooth' })} title="Inventory">
+              <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>backpack</span>
+              <span style={{ fontSize: '10px', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Inventory</span>
+            </button>
 
-          <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
-            <button 
-              className={styles.cta} 
-              onClick={() => generateVTMCharacterSheetPDF(ch)}
-              title="Download a generated PDF of your character sheet"
-            >
-              Download PDF Sheet
+            <button className={styles.desktopNavBtn} onClick={() => document.getElementById('merits-section')?.scrollIntoView({ behavior: 'smooth' })} title="Merits & Flaws">
+              <span className="material-symbols-outlined" style={{ fontSize: '24px', fontVariationSettings: "'FILL' 1" }}>workspace_premium</span>
+              <span style={{ fontSize: '10px', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Merits</span>
+            </button>
+
+            <button className={styles.desktopNavBtn} onClick={() => shopRef.current?.scrollIntoView({ behavior: 'smooth' })} title="XP Shop">
+              <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>shopping_cart</span>
+              <span style={{ fontSize: '10px', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Shop</span>
+            </button>
+          </div>
+        </nav>
+
+        {/* --- Main Bento Layout --- */}
+        <main className={styles.mainLayout}>
+          {err && <div className={styles.alertError}>{err}</div>}
+          {msg && <div className={styles.alertOk}>{msg}</div>}
+          {saveStatus && isAdmin && <div style={{ fontSize: '0.85rem', color: 'var(--accent)', opacity: 0.8, textAlign: 'center' }}>{saveStatus}</div>}
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
+            <div>
+              <h2 style={{ fontFamily: 'var(--font-title)', margin: 0 }}>Meta Data</h2>
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                Predator: {sheet?.predator_type || sheet?.predatorType || '—'} | Sire: {sheet?.sire || '—'} | Ambition: {sheet?.ambition || '—'} | Desire: {sheet?.desire || '—'}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <span style={{ color: 'var(--text-muted)' }}>XP: <b style={{ color: 'var(--tint)' }}>{xp}</b></span>
+            </div>
+          </div>
+
+          {/* Health & Willpower Tracker Grid */}
+          <section className={styles.bentoGrid} style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
+            {/* Health */}
+            <div className={`${styles.level1} ${styles.glassCard}`} style={{ padding: '24px' }}>
+              <TrackerBlock label="Health" val={maxHealth} max={maxHealth} agg={tempHealth.aggravated} sup={tempHealth.superficial} />
+              {isAdmin && (
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '16px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>Sup:</span>
+                    <button className={styles.ghostBtn} style={{ padding: '2px 8px' }} onClick={() => updateTracker('health', 'superficial', -1)}>-</button>
+                    <button className={styles.ghostBtn} style={{ padding: '2px 8px' }} onClick={() => updateTracker('health', 'superficial', 1)}>+</button>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>Agg:</span>
+                    <button className={styles.ghostBtn} style={{ padding: '2px 8px' }} onClick={() => updateTracker('health', 'aggravated', -1)}>-</button>
+                    <button className={styles.ghostBtn} style={{ padding: '2px 8px' }} onClick={() => updateTracker('health', 'aggravated', 1)}>+</button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Willpower */}
+            <div className={`${styles.level1} ${styles.glassCard}`} style={{ padding: '24px' }}>
+              <TrackerBlock label="Willpower" val={maxWillpower} max={maxWillpower} agg={tempWillpower.aggravated} sup={tempWillpower.superficial} />
+              {isAdmin && (
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '16px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>Sup:</span>
+                    <button className={styles.ghostBtn} style={{ padding: '2px 8px' }} onClick={() => updateTracker('willpower', 'superficial', -1)}>-</button>
+                    <button className={styles.ghostBtn} style={{ padding: '2px 8px' }} onClick={() => updateTracker('willpower', 'superficial', 1)}>+</button>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>Agg:</span>
+                    <button className={styles.ghostBtn} style={{ padding: '2px 8px' }} onClick={() => updateTracker('willpower', 'aggravated', -1)}>-</button>
+                    <button className={styles.ghostBtn} style={{ padding: '2px 8px' }} onClick={() => updateTracker('willpower', 'aggravated', 1)}>+</button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Humanity */}
+            <div className={`${styles.level1} ${styles.glassCard}`} style={{ padding: '24px' }}>
+              <TrackerBlock label="Humanity" val={tempHumanity} max={10} filled={tempHumanity} stains={tempStains} />
+              {isAdmin && (
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '16px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>Hum:</span>
+                    <button className={styles.ghostBtn} style={{ padding: '2px 8px' }} onClick={() => setTempHumanity(h => Math.max(0, h - 1))}>-</button>
+                    <button className={styles.ghostBtn} style={{ padding: '2px 8px' }} onClick={() => setTempHumanity(h => Math.min(10, h + 1))}>+</button>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>Stains:</span>
+                    <button className={styles.ghostBtn} style={{ padding: '2px 8px' }} onClick={() => setTempStains(s => Math.max(0, s - 1))}>-</button>
+                    <button className={styles.ghostBtn} style={{ padding: '2px 8px' }} onClick={() => setTempStains(s => Math.min(10, s + 1))}>+</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Bento Data Grid */}
+          <section className={styles.bentoGrid}>
+            <div className={styles.bentoSpan2} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              {/* Attributes */}
+              <AttributesSection sheet={sheet} />
+
+              {/* Skills & Others */}
+              <SkillsDisplaySection sheet={sheet} />
+
+              <div className={`${styles.level1} ${styles.glassCard}`} style={{ padding: '24px' }}>
+                <div id="inventory-section">
+                  <Inventory characterId={ch?.id} />
+                </div>
+                <div style={{ marginTop: '24px' }}>
+                  <MeritsFlawsDisplay
+                    sheet={sheet}
+                    allMeritsFlat={allMeritsFlat}
+                    allFlawsFlat={allFlawsFlat}
+                    flawIds={flawIds}
+                  />
+                </div>
+                <div style={{ marginTop: '24px' }}>
+                  <TouchstonesConvictionsSection sheet={sheet} setMoralityModalOpen={setMoralityModalOpen} />
+                </div>
+              </div>
+
+              {/* Overrides and Resets */}
+              {sheet.allow_reset && (
+                <div style={{ padding: '20px', background: 'rgba(217, 119, 6, 0.1)', border: '1px solid var(--tint)', borderRadius: '0px', textAlign: 'center' }}>
+                  <h3 style={{ color: 'var(--tint)', margin: '0 0 10px 0', fontSize: '1.5rem', fontFamily: 'var(--font-title)' }}>System Re-Roll Authorized</h3>
+                  <p style={{ margin: '0 0 20px 0', fontSize: '1rem', color: 'var(--text-color)', opacity: 0.9 }}>
+                    Admin override granted. Rebuild sequence initiated. Core data will be wiped but communication logs preserved.
+                  </p>
+                  <button className={styles.cta} onClick={() => navigate('/make')}>Execute Re-Roll</button>
+                </div>
+              )}
+            </div>
+
+            <div className={`${styles.level1} ${styles.glassCard}`} style={{ padding: '0', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ padding: '24px', borderBottom: '1px solid var(--border-color)' }}>
+                <h3 style={{ margin: 0, fontFamily: 'var(--font-title)', fontSize: '24px', color: 'var(--text-color)' }}>Disciplines</h3>
+              </div>
+              <div style={{ flex: 1, padding: '24px' }}>
+                <DisciplinesDisplaySection sheet={sheet} />
+              </div>
+              <div style={{ padding: '24px', marginTop: 'auto' }}>
+                <button
+                  className={`${styles.gothicBtn} ${styles.bloodPulse}`}
+                  style={{ width: '100%', padding: '16px', fontSize: '16px', background: 'var(--primary-container)', color: '#fff', boxShadow: '0 0 15px rgba(180,15,31,0.2)' }}
+                  onClick={() => setTempHunger(h => Math.min(5, h + 1))}
+                >
+                  ROUSE BLOOD
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
+            <button className={styles.ghostBtn} onClick={() => generateVTMCharacterSheetPDF(ch)}>
+              Export PDF Record
             </button>
           </div>
 
-        </section>
-
-        {/* ===== XP SHOP ===== */}
-        <section ref={shopRef} className={styles.section}>
-          <div className={styles.sectionTitleWrap}>
-            <h3 className={styles.sectionTitle}>XP Shop</h3>
-            <span className={styles.muted}>You have <b>{xp}</b> XP</span>
-          </div>
-
-          {/* Blood Potency */}
-          <Card>
-            <div className={styles.cardHead}><b>Blood Potency</b></div>
-            <div className={styles.grid}>
-              {(() => {
-                const current = Number(sheet.blood_potency ?? 1);
-                const max = 10; 
-                const next = Math.min(current + 1, max);
-                const canRaise = current < max;
-                const cost = XP_RULES.bloodPotency(next);
-                const afford = xp >= cost;
-                return (
-                  <ShopRow
-                    title={`Blood Potency (${current})`}
-                    subtitle={canRaise ? `Raise to ${next}` : 'Max reached'}
-                    cost={cost}
-                    disabled={!canRaise || !afford}
-                    hint={!canRaise ? `Max ${max}` : (!afford ? 'Not enough XP' : '')}
-                    onBuy={async () => {
-                      const nextSheet = JSON.parse(JSON.stringify(sheet));
-                      nextSheet.blood_potency = next;
-                      await spendXP({
-                        type: 'blood_potency',
-                        target: 'Blood Potency',
-                        currentLevel: current,
-                        newLevel: next,
-                        patchSheet: nextSheet,
-                      });
-                    }}
-                  />
-                );
-              })()}
+          {/* ===== XP SHOP ===== */}
+          <section ref={shopRef} className={styles.section} style={{ padding: 0 }}>
+            {/* New Balance Header */}
+            <div className={styles.xpBalanceHeader}>
+              <h1 className={styles.xpBalanceLabel}>Current Balance</h1>
+              <div className={styles.xpBalanceNumber}>
+                {xp} <span className={styles.xpBalanceUnit}>XP</span>
+              </div>
             </div>
-          </Card>
 
-          {/* Attributes */}
-          <Card>
-            <div className={styles.cardHead}><b>Attributes</b></div>
-            <div className={styles.grid3Col}>
-              {ATTRS.flat().map(attr => {
-                const current = Number(sheet.attributes?.[attr] ?? 1);
-                const next = Math.min(current + 1, 5);
-                const canRaise = current < 5;
-                const cost = XP_RULES.attribute(next);
-                const afford = xp >= cost;
-                return (
-                  <ShopRow
-                    key={attr}
-                    title={attr}
-                    subtitle={`Raise to ${next}`}
-                    cost={cost}
-                    disabled={!canRaise || !afford}
-                    hint={!canRaise ? 'Max 5' : (!afford ? 'Not enough XP' : '')}
-                    onBuy={async () => {
-                      const nextSheet = JSON.parse(JSON.stringify(sheet));
-                      nextSheet.attributes = { ...(nextSheet.attributes || {}), [attr]: next };
-                      await spendXP({
-                        type: 'attribute',
-                        target: attr,
-                        currentLevel: current,
-                        newLevel: next,
-                        patchSheet: nextSheet,
-                      });
-                    }}
-                  />
-                );
-              })}
+            {/* Filter/Search Controls */}
+            <div className={styles.shopSearchRow}>
+              <div className={styles.searchWrap}>
+                <span className={`material-symbols-outlined ${styles.searchIcon}`}>search</span>
+                <input
+                  type="text"
+                  className={styles.searchInput}
+                  placeholder="Search abilities..."
+                  value={shopSearch}
+                  onChange={(e) => setShopSearch(e.target.value)}
+                />
+              </div>
+              {activeShopTab === 'Disciplines' && (
+                <div className={styles.selectWrap}>
+                  <select
+                    className={styles.shopSelect}
+                    value={shopFilter}
+                    onChange={(e) => setShopFilter(e.target.value)}
+                  >
+                    <option value="all">All Disciplines</option>
+                    <option value="in_clan">In Clan</option>
+                    <option value="out_of_clan">Out of Clan</option>
+                  </select>
+                  <span className={`material-symbols-outlined ${styles.searchIcon}`} style={{ left: 'auto', right: '1rem' }}>expand_more</span>
+                </div>
+              )}
             </div>
-          </Card>
 
-          {/* Skills */}
-          <Card>
-            <div className={styles.cardHead}><b>Skills</b></div>
-            <div className={styles.grid3Col}>
-              {Object.values(SKILLS).flat().map(skill => {
-                const raw = sheet.skills?.[skill];
-                const current = typeof raw === 'object' ? Number(raw.dots || 0) : Number(raw || 0);
-                const next = Math.min(current + 1, 5);
-                const canRaise = current < 5;
-                const cost = XP_RULES.skill(next);
-                const afford = xp >= cost;
-                return (
-                  <ShopRow
-                    key={skill}
-                    title={skill}
-                    subtitle={`Raise to ${next}`}
-                    cost={cost}
-                    disabled={!canRaise || !afford}
-                    hint={!canRaise ? 'Max 5' : (!afford ? 'Not enough XP' : '')}
-                    onBuy={async () => {
+            {/* Sticky Tabs */}
+            <nav className={styles.shopTabsNav}>
+              <div className={styles.shopTabsContainer}>
+                {['Disciplines', 'Attributes', 'Skills', 'Advantages', 'Rituals', 'Blood Potency'].map(tab => (
+                  <button
+                    key={tab}
+                    className={`${styles.shopTabBtn} ${activeShopTab === tab ? styles.shopTabBtnActive : ''}`}
+                    onClick={() => setActiveShopTab(tab)}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+            </nav>
+
+            <div className={styles.shopGrid}>
+              {activeShopTab === 'Blood Potency' && (
+                <>
+                  {(() => {
+                    const current = Number(sheet.blood_potency ?? 1);
+                    const max = 10;
+                    const next = Math.min(current + 1, max);
+                    const canRaise = current < max;
+                    const cost = XP_RULES.bloodPotency(next);
+                    const afford = xp >= cost;
+                    return (
+                      <ShopRow
+                        title={`Blood Potency (${current})`}
+                        subtitle={canRaise ? `Raise to ${next}` : 'Max reached'}
+                        cost={cost}
+                        disabled={!canRaise || !afford}
+                        hint={!canRaise ? `Max ${max}` : (!afford ? 'Not enough XP' : '')}
+                        onBuy={async () => {
+                          const nextSheet = JSON.parse(JSON.stringify(sheet));
+                          nextSheet.blood_potency = next;
+                          await spendXP({
+                            type: 'blood_potency',
+                            target: 'Blood Potency',
+                            currentLevel: current,
+                            newLevel: next,
+                            patchSheet: nextSheet,
+                          });
+                        }}
+                      />
+                    );
+                  })()}
+                </>
+              )}
+
+              {activeShopTab === 'Attributes' && (
+                <>
+                  {ATTRS.flat().map(attr => {
+                    const current = Number(sheet.attributes?.[attr] ?? 1);
+                    const next = Math.min(current + 1, 5);
+                    const canRaise = current < 5;
+                    const cost = XP_RULES.attribute(next);
+                    const afford = xp >= cost;
+                    return (
+                      <ShopRow
+                        key={attr}
+                        title={attr}
+                        subtitle={`Raise to ${next}`}
+                        cost={cost}
+                        disabled={!canRaise || !afford}
+                        hint={!canRaise ? 'Max 5' : (!afford ? 'Not enough XP' : '')}
+                        onBuy={async () => {
+                          const nextSheet = JSON.parse(JSON.stringify(sheet));
+                          nextSheet.attributes = { ...(nextSheet.attributes || {}), [attr]: next };
+                          await spendXP({
+                            type: 'attribute',
+                            target: attr,
+                            currentLevel: current,
+                            newLevel: next,
+                            patchSheet: nextSheet,
+                          });
+                        }}
+                      />
+                    );
+                  })}
+                </>
+              )}
+
+              {activeShopTab === 'Skills' && (
+                <>
+                  {Object.values(SKILLS).flat().map(skill => {
+                    const raw = sheet.skills?.[skill];
+                    const current = typeof raw === 'object' ? Number(raw.dots || 0) : Number(raw || 0);
+                    const next = Math.min(current + 1, 5);
+                    const canRaise = current < 5;
+                    const cost = XP_RULES.skill(next);
+                    const afford = xp >= cost;
+                    return (
+                      <ShopRow
+                        key={skill}
+                        title={skill}
+                        subtitle={`Raise to ${next}`}
+                        cost={cost}
+                        disabled={!canRaise || !afford}
+                        hint={!canRaise ? 'Max 5' : (!afford ? 'Not enough XP' : '')}
+                        onBuy={async () => {
+                          const nextSheet = JSON.parse(JSON.stringify(sheet));
+                          nextSheet.skills = nextSheet.skills || {};
+                          const node = (nextSheet.skills[skill] && typeof nextSheet.skills[skill] === 'object')
+                            ? { ...nextSheet.skills[skill] }
+                            : { dots: Number(nextSheet.skills[skill] || 0), specialties: [] };
+                          node.dots = next;
+                          nextSheet.skills[skill] = node;
+                          await spendXP({
+                            type: 'skill',
+                            target: skill,
+                            currentLevel: current,
+                            newLevel: next,
+                            patchSheet: nextSheet,
+                          });
+                        }}
+                      />
+                    );
+                  })}
+                </>
+              )}
+
+              {activeShopTab === 'Disciplines' && (
+                <>
+                  {inClanDisciplines.filter(name => {
+                    if (shopSearch && !name.toLowerCase().includes(shopSearch.toLowerCase())) return false;
+                    if (shopFilter === 'out_of_clan') return false;
+                    return true;
+                  }).map(name => {
+                    const current = Number(sheet.disciplines?.[name] || 0);
+                    const next = Math.min(current + 1, 5);
+                    const canRaise = next > 0 && next <= 5;
+                    const cost = XP_RULES.disciplineClan(next);
+                    const afford = xp >= cost;
+                    const isKnown = current > 0;
+                    const title = isKnown ? `${name} (${current})` : name;
+                    return (
+                      <ShopRow
+                        key={name}
+                        title={title}
+                        subtitle={isKnown ? `Raise to ${next} • clan` : `Buy • clan`}
+                        cost={cost}
+                        leftIcon={iconPath(name)}
+                        disabled={!canRaise || !afford}
+                        hint={!canRaise ? 'Max 5' : (!afford ? 'Not enough XP' : '')}
+                        noConfirm={true}
+                        onBuy={() => {
+                          setModalCfg({
+                            name,
+                            current,
+                            next,
+                            kind: 'clan',
+                            assignOnly: false,
+                            characterClan: ch.clan,
+                            disciplineDots: sheet.disciplines,
+                            ownedPowers: sheet.disciplinePowers?.[name] || []
+                          });
+                          setModalOpen(true);
+                        }}
+                      />
+                    );
+                  })}
+                  {outOfClanDisciplines.filter(name => {
+                    if (shopSearch && !name.toLowerCase().includes(shopSearch.toLowerCase())) return false;
+                    if (shopFilter === 'in_clan') return false;
+                    return true;
+                  }).map(name => {
+                    const current = Number(sheet.disciplines?.[name] || 0);
+                    const next = Math.min(current + 1, 5);
+                    const kind = disciplineKindFor(ch, name);
+                    const isKnown = current > 0;
+                    const title = isKnown ? `${name} (${current})` : name;
+                    return (
+                      <ShopRow
+                        key={name}
+                        title={title}
+                        subtitle={isKnown ? `Raise to ${next} • ${kind}` : `Buy • ${kind}`}
+                        cost={'-'}
+                        leftIcon={iconPath(name)}
+                        disabled={true}
+                        hint={'Communicate with your ST to get them'}
+                        locked={true}
+                        onBuy={async () => { }}
+                      />
+                    );
+                  })}
+                </>
+              )}
+
+              {activeShopTab === 'Rituals' && (
+                <>
+                  {Object.entries(RITUALS?.blood_sorcery?.levels || {}).map(([lvlStr, list]) => {
+                    const level = Number(lvlStr);
+                    return list.map(rit => {
+                      const owned = knownRitualIds.has(rit.id);
+                      const allowed = canLearnRitual(level);
+                      const cost = XP_RULES.ritual(level);
+                      const afford = xp >= cost;
+                      const { unmet } = ritualPrereqStatus(rit, knownPowerNamesAndIds);
+                      return (
+                        <RitualRow
+                          key={rit.id}
+                          item={rit}
+                          level={level}
+                          cost={cost}
+                          owned={owned}
+                          allowed={allowed}
+                          afford={afford}
+                          prereqUnmet={unmet}
+                          onBuy={() => buyRitual(rit, level, cost)}
+                        />
+                      );
+                    });
+                  })}
+                  {Object.entries((RITUALS.oblivion?.levels || {})).map(([lvlStr, list]) => {
+                    const level = Number(lvlStr);
+                    return list.map(cer => {
+                      const owned = knownRitualIds.has(cer.id);
+                      const allowed = canLearnCeremony(level);
+                      const cost = XP_RULES.ceremony(level);
+                      const afford = xp >= cost;
+                      const { unmet } = ritualPrereqStatus(cer, knownPowerNamesAndIds);
+                      return (
+                        <RitualRow
+                          key={cer.id}
+                          item={cer}
+                          level={level}
+                          cost={cost}
+                          owned={owned}
+                          allowed={allowed}
+                          afford={afford}
+                          prereqUnmet={unmet}
+                          onBuy={() => buyCeremony(cer, level, cost)}
+                        />
+                      );
+                    });
+                  })}
+                </>
+              )}
+            </div>
+
+            {activeShopTab === 'Advantages' && (
+              <div style={{ marginTop: '2rem' }}>
+                <MeritsBackgroundsSection
+                  sheet={sheet}
+                  xp={xp}
+                  ch={ch}
+                  knownPowerNamesAndIds={knownPowerNamesAndIds}
+                />
+              </div>
+            )}
+
+            {activeShopTab === 'Skills' && (
+              <div style={{ marginTop: '2rem' }}>
+                <Card>
+                  <div className={styles.cardHead}><b>Skill Specialties</b></div>
+                  <SpecialtyAdder
+                    xp={xp}
+                    onAdd={async (skillName, spec) => {
+                      const cost = XP_RULES.specialty();
+                      if (xp < cost) return;
+
                       const nextSheet = JSON.parse(JSON.stringify(sheet));
                       nextSheet.skills = nextSheet.skills || {};
-                      const node = (nextSheet.skills[skill] && typeof nextSheet.skills[skill] === 'object')
-                        ? { ...nextSheet.skills[skill] }
-                        : { dots: Number(nextSheet.skills[skill] || 0), specialties: [] };
-                      node.dots = next;
-                      nextSheet.skills[skill] = node;
+                      const node = (nextSheet.skills[skillName] && typeof nextSheet.skills[skillName] === 'object')
+                        ? { ...nextSheet.skills[skillName] }
+                        : { dots: Number(nextSheet.skills[skillName] || 0), specialties: [] };
+
+                      node.specialties = Array.isArray(node.specialties) ? node.specialties : [];
+                      if (!node.specialties.includes(spec)) node.specialties.push(spec);
+                      nextSheet.skills[skillName] = node;
+
                       await spendXP({
-                        type: 'skill',
-                        target: skill,
-                        currentLevel: current,
-                        newLevel: next,
+                        type: 'specialty',
+                        target: skillName,
+                        specialty: spec,
                         patchSheet: nextSheet,
                       });
                     }}
                   />
-                );
-              })}
-            </div>
-          </Card>
-
-          {/* Specialties */}
-          <Card>
-            <div className={styles.cardHead}><b>Skill Specialties</b></div>
-          <SpecialtyAdder
-            xp={xp}
-            onAdd={async (skillName, spec) => {
-              const cost = XP_RULES.specialty(); 
-              if (xp < cost) return;
-
-              const nextSheet = JSON.parse(JSON.stringify(sheet));
-              nextSheet.skills = nextSheet.skills || {};
-              const node = (nextSheet.skills[skillName] && typeof nextSheet.skills[skillName] === 'object')
-                ? { ...nextSheet.skills[skillName] }
-                : { dots: Number(nextSheet.skills[skillName] || 0), specialties: [] };
-
-              node.specialties = Array.isArray(node.specialties) ? node.specialties : [];
-              if (!node.specialties.includes(spec)) node.specialties.push(spec);
-              nextSheet.skills[skillName] = node;
-
-              await spendXP({
-                type: 'specialty',
-                target: skillName,
-                specialty: spec,
-                patchSheet: nextSheet,
-              });
-            }}
-          />
-          </Card>
-
-          {/* Disciplines */}
-          <Card>
-            <div className={styles.cardHead}><b>Disciplines</b></div>
-
-            <div className={styles.subhead}>In-Clan</div>
-            <div className={styles.grid}>
-              {inClanDisciplines.length === 0 && (
-                <div className={styles.muted}>No in-clan disciplines for {ch.clan}.</div>
-              )}
-              {inClanDisciplines.map(name => {
-                const current = Number(sheet.disciplines?.[name] || 0);
-                const next = Math.min(current + 1, 5);
-                const canRaise = next > 0 && next <= 5;
-                const cost = XP_RULES.disciplineClan(next);
-                const afford = xp >= cost;
-                const isKnown = current > 0;
-                const title = isKnown ? `${name} (${current})` : name;
-                return (
-                  <ShopRow
-                    key={name}
-                    title={title}
-                    subtitle={isKnown ? `Raise to ${next} • clan` : `Buy • clan`}
-                    cost={cost}
-                    leftIcon={iconPath(name)}
-                    disabled={!canRaise || !afford}
-                    hint={!canRaise ? 'Max 5' : (!afford ? 'Not enough XP' : '')}
-                    onBuy={async () => {
-                      const nextSheet = JSON.parse(JSON.stringify(sheet));
-                      nextSheet.disciplines = { ...(nextSheet.disciplines || {}), [name]: next };
-                      await spendXP({
-                        type: 'discipline',
-                        disciplineKind: 'clan',
-                        target: name,
-                        currentLevel: current,
-                        newLevel: next,
-                        patchSheet: nextSheet,
-                      });
-                    }}
-                  />
-                );
-              })}
-            </div>
-
-            <Drawer title="Out-of-Clan" subtitle="check with your ST before spending XP" defaultOpen={false}>
-              <div className={styles.grid}>
-                {outOfClanDisciplines.map(name => {
-                  const current = Number(sheet.disciplines?.[name] || 0);
-                  const next = Math.min(current + 1, 5);
-                  const canRaise = next > 0 && next <= 5;
-                  const kind = disciplineKindFor(ch, name); 
-                  const cost = estimateDisciplineCost(ch, name, current, next);
-                  const afford = xp >= cost;
-                  const isKnown = current > 0;
-                  const title = isKnown ? `${name} (${current})` : name;
-                  return (
-                    <ShopRow
-                      key={name}
-                      title={title}
-                      subtitle={isKnown ? `Raise to ${next} • ${kind}` : `Buy • ${kind}`}
-                      cost={cost}
-                      leftIcon={iconPath(name)}
-                      disabled={!canRaise || !afford}
-                      hint={!canRaise ? 'Max 5' : (!afford ? 'Not enough XP' : '')}
-                      onBuy={async () => {
-                        const nextSheet = JSON.parse(JSON.stringify(sheet));
-                        nextSheet.disciplines = { ...(nextSheet.disciplines || {}), [name]: next };
-                        await spendXP({
-                          type: 'discipline',
-                          disciplineKind: kind === 'other' ? 'other' : 'caitiff',
-                          target: name,
-                          currentLevel: current,
-                          newLevel: next,
-                          patchSheet: nextSheet,
-                        });
-                      }}
-                    />
-                  );
-                })}
+                </Card>
               </div>
-            </Drawer>
-          </Card>
+            )}
+          </section>
+        </main>
 
-          <MeritsBackgroundsSection
+        {/* ----- Modals ----- */}
+        {modalOpen && modalCfg && (
+          <DisciplinePowerModal
+            cfg={modalCfg}
+            onClose={() => { setModalOpen(false); setModalCfg(null); }}
+            onConfirm={(sel) => confirmDisciplinePurchase({ ...modalCfg, ...sel })}
+          />
+        )}
+
+        {identityModalOpen && (
+          <IdentityEditModal
             sheet={sheet}
-            xp={xp}
-            ch={ch}
-            knownPowerNamesAndIds={knownPowerNamesAndIds}
+            onClose={() => setIdentityModalOpen(false)}
+            onSave={saveProfileData}
+            busy={savingProfile}
           />
+        )}
 
-
-          {/* Rituals & Ceremonies */}
-          <Card>
-            <Drawer title="Blood Sorcery Rituals & Oblivion Ceremonies" defaultOpen={false}>
-              <div className={styles.grid} style={{ gap: 12 }}>
-                {/* Blood Sorcery */}
-                <Drawer title="Blood Sorcery Rituals" defaultOpen={false}>
-                  <div className={styles.grid} style={{ gap: 12 }}>
-                    {Object.entries(RITUALS?.blood_sorcery?.levels || {}).map(([lvlStr, list]) => {
-                      const level = Number(lvlStr);
-                      return list.map(rit => {
-                        const owned = knownRitualIds.has(rit.id);
-                        const allowed = canLearnRitual(level);
-                        const cost = XP_RULES.ritual(level);
-                        const afford = xp >= cost;
-                        const { unmet } = ritualPrereqStatus(rit, knownPowerNamesAndIds);
-                        return (
-                          <RitualRow
-                            key={rit.id}
-                            item={rit}
-                            level={level}
-                            cost={cost}
-                            owned={owned}
-                            allowed={allowed}
-                            afford={afford}
-                            prereqUnmet={unmet}
-                            onBuy={() => buyRitual(rit, level, cost)}
-                          />
-                        );
-                      });
-                    })}
-                  </div>
-                </Drawer>
-
-                {/* Oblivion */}
-                <Drawer title="Oblivion Ceremonies" defaultOpen={false}>
-                  <div className={styles.grid} style={{ gap: 12 }}>
-                    {Object.entries((RITUALS.oblivion?.levels || {})).map(([lvlStr, list]) => {
-                      const level = Number(lvlStr);
-                      return list.map(cer => {
-                        const owned = knownRitualIds.has(cer.id);
-                        const allowed = canLearnCeremony(level);
-                        const cost = XP_RULES.ceremony(level);
-                        const afford = xp >= cost;
-                        const { unmet } = ritualPrereqStatus(cer, knownPowerNamesAndIds);
-                        return (
-                          <RitualRow
-                            key={cer.id}
-                            item={cer}
-                            level={level}
-                            cost={cost}
-                            owned={owned}
-                            allowed={allowed}
-                            afford={afford}
-                            prereqUnmet={unmet}
-                            onBuy={() => buyCeremony(cer, level, cost)}
-                          />
-                        );
-                      });
-                    })}
-                  </div>
-                </Drawer>
-              </div>
-            </Drawer>
-          </Card>
-
-        </section>
+        {moralityModalOpen && (
+          <MoralityEditModal
+            sheet={sheet}
+            onClose={() => setMoralityModalOpen(false)}
+            onSave={saveProfileData}
+            busy={savingProfile}
+          />
+        )}
       </div>
-
-      {/* ----- Modals ----- */}
-      {modalOpen && modalCfg && (
-        <DisciplinePowerModal
-          cfg={modalCfg}
-          onClose={() => { setModalOpen(false); setModalCfg(null); }}
-          onConfirm={(sel) => confirmDisciplinePurchase({ ...modalCfg, ...sel })}
-        />
-      )}
-
-      {profileModalOpen && (
-        <ProfileEditModal
-          sheet={sheet}
-          onClose={() => setProfileModalOpen(false)}
-          onSave={saveProfileData}
-          busy={savingProfile}
-        />
-      )}
-    </div>
     </Skeleton>
   );
 }
@@ -1601,9 +1731,10 @@ function ConfirmModal({ title = 'Confirm Purchase', children, onConfirm, onCance
   );
 }
 
-function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, leftIcon }) {
+function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, leftIcon, description = '', noConfirm = false }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [working, setWorking] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   async function handleConfirm() {
     setWorking(true);
@@ -1615,28 +1746,55 @@ function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, leftIcon }
     }
   }
 
+  // Attempt to parse the target level from subtitle to render dots
+  const match = subtitle?.match(/\d+/);
+  const targetLevel = match ? parseInt(match[0], 10) : 0;
+
+  // Clean up title if it contains "(X)" like Blood Potency
+  const cleanTitle = title.replace(/\s*\(\d+\)$/, '');
+
   return (
-    <div className={styles.rowForm} style={{ justifyContent: 'space-between' }}>
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center', minWidth: 0 }}>
-        {leftIcon && <img src={leftIcon} alt="" width={26} height={26} style={{ borderRadius: 6, opacity: .9 }} />}
-        <div style={{ display: 'grid', minWidth: 0 }}>
-          <div style={{ fontWeight: 600, opacity: (disabled && !confirmOpen) ? 0.6 : 1 }}>{title}</div>
-          <div className={styles.muted} style={{ fontSize: 13 }}>
-            {subtitle}{hint ? ` • ${hint}` : ''}
+    <article className={`${styles.shopCard} ${isExpanded ? styles.shopCardExpanded : ''} ${disabled ? styles.shopCardLocked : ''}`}>
+      <div className={styles.shopCardHeader} onClick={() => setIsExpanded(!isExpanded)}>
+        <div className={styles.shopCardTitleRow}>
+          <div>
+            <h2 className={styles.shopCardTitle}>{cleanTitle}</h2>
+            <p className={styles.shopCardSubtitle}>{subtitle}</p>
           </div>
+          <span className={`material-symbols-outlined ${styles.expandIcon}`}>expand_more</span>
+        </div>
+
+        <div className={styles.shopCardDots}>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className={`${styles.shopDot} ${i < targetLevel ? styles.shopDotFilled : ''}`}>
+              {i < targetLevel - 1 && <span className={styles.shopDotX}>X</span>}
+            </div>
+          ))}
+        </div>
+
+        <div className={styles.shopCardFooter}>
+          <span className={styles.shopCardPrice}>{cost} XP</span>
+          <button
+            className={styles.shopCardAcquireBtn}
+            disabled={disabled || working}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (noConfirm) {
+                onBuy?.();
+              } else {
+                setConfirmOpen(true);
+              }
+            }}
+          >
+            Acquire
+          </button>
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span className={styles.costText}>Cost: <b>{cost}</b></span>
-        <button
-          className={styles.cta}
-          disabled={disabled || working}
-          onClick={() => setConfirmOpen(true)}
-          aria-haspopup="dialog"
-        >
-          Buy
-        </button>
+      <div className={styles.shopCardContent}>
+        <p className={styles.shopCardText}>
+          {description || hint || `Purchase ${title} for ${cost} Experience Points.`}
+        </p>
       </div>
 
       {confirmOpen && (
@@ -1652,7 +1810,7 @@ function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, leftIcon }
           </p>
         </ConfirmModal>
       )}
-    </div>
+    </article>
   );
 }
 
@@ -1660,6 +1818,7 @@ function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, leftIcon }
 function RitualRow({ item, level, cost, owned, allowed, afford, prereqUnmet = [], onBuy }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [working, setWorking] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const disabled = owned || !allowed || !afford || prereqUnmet.length > 0;
 
@@ -1673,55 +1832,61 @@ function RitualRow({ item, level, cost, owned, allowed, afford, prereqUnmet = []
     }
   }
 
+  // Determine hint logic
+  let hint = '';
+  if (owned) hint = 'Known';
+  else if (!allowed) hint = `Requires Discipline ${level}`;
+  else if (prereqUnmet.length > 0) hint = `Needs: ${prereqUnmet.join(', ')}`;
+  else if (!afford) hint = 'Not enough XP';
+
   return (
-    <div className={styles.paneCard} style={{ padding: 12 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'start' }}>
-        <div style={{ display: 'grid', gap: 4 }}>
-          <div style={{ fontWeight: 700 }}>{item.name}</div>
-          <div className={styles.muted} style={{ fontSize: 13 }}>
-            Level {level}{item.source ? ` • Source: ${item.source}` : ''}
+    <article className={`${styles.shopCard} ${isExpanded ? styles.shopCardExpanded : ''} ${disabled ? styles.shopCardLocked : ''}`}>
+      <div className={styles.shopCardHeader} onClick={() => setIsExpanded(!isExpanded)}>
+        <div className={styles.shopCardTitleRow}>
+          <div>
+            <h2 className={styles.shopCardTitle}>{item.name}</h2>
+            <p className={styles.shopCardSubtitle}>Level {level}{item.source ? ` • ${item.source}` : ''}</p>
+          </div>
+          <span className={`material-symbols-outlined ${styles.expandIcon}`}>expand_more</span>
+        </div>
+
+        <div className={styles.shopCardDots}>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className={`${styles.shopDot} ${i < level ? styles.shopDotFilled : ''}`}>
+              {i < level - 1 && <span className={styles.shopDotX}>X</span>}
+            </div>
+          ))}
+        </div>
+
+        <div className={styles.shopCardFooter}>
+          <span className={styles.shopCardPrice}>{cost} XP</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {hint && <span style={{ color: 'rgba(255,180,171, 0.8)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{hint}</span>}
+            <button
+              className={styles.shopCardAcquireBtn}
+              disabled={disabled || working}
+              onClick={(e) => {
+                e.stopPropagation();
+                setConfirmOpen(true);
+              }}
+            >
+              Acquire
+            </button>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {owned && <span className={`${styles.powerBadgeMuted} badge-owned`}>Known</span>}
-          {!allowed && <span className={`${styles.powerBadgeMuted} badge-warn`}>Requires Discipline {level}</span>}
-          {prereqUnmet.length > 0 && (
-            <span className={`${styles.powerBadgeMuted} badge-warn`}>Needs: {prereqUnmet.join(', ')}</span>
-          )}
-          {!afford && <span className={`${styles.powerBadgeMuted} badge-warn`}>Not enough XP</span>}
-        </div>
       </div>
 
-      <div className={styles.detailTags} style={{ marginTop: 8 }}>
-        <span className={styles.powerTag}><b>Level:</b> {level}</span>
-        <span className={styles.powerTag}><b>Cost:</b> {item.cost || '—'}</span>
-        {item.dice_pool && <span className={styles.powerTag}><b>Dice Pool:</b> {item.dice_pool}</span>}
-        {item.difficulty && <span className={styles.powerTag}><b>Difficulty:</b> {item.difficulty}</span>}
-        {item.prereq && <span className={styles.powerTag}><b>Prereq:</b> {item.prereq}</span>}
-      </div>
-
-      {item.effect && (
-        <div className={styles.powerNotes} style={{ marginTop: 8 }}>
-          <b>Effect:</b> {item.effect}
+      <div className={styles.shopCardContent}>
+        <div className={styles.shopCardText}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+            {item.dice_pool && <span style={{ padding: '2px 8px', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '12px' }}><b>Dice Pool:</b> {item.dice_pool}</span>}
+            {item.difficulty && <span style={{ padding: '2px 8px', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '12px' }}><b>Difficulty:</b> {item.difficulty}</span>}
+            {item.prereq && <span style={{ padding: '2px 8px', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '12px' }}><b>Prereq:</b> {item.prereq}</span>}
+          </div>
+          {item.effect && <div style={{ marginBottom: '8px' }}><b>Effect:</b> {item.effect}</div>}
+          {item.notes && <div>{item.notes}</div>}
+          {(!item.effect && !item.notes) && `Learn ${item.name} for ${cost} Experience Points.`}
         </div>
-      )}
-      {item.notes && (
-        <div className={styles.powerNotes} style={{ marginTop: 8 }}>
-          {item.notes}
-        </div>
-      )}
-
-      <div className={styles.modalFooter} style={{ borderTop: 'none', padding: 0, marginTop: 10 }}>
-        <div className={styles.muted} style={{ marginRight: 'auto' }}>
-          XP Cost: <b>{cost}</b>
-        </div>
-        <button
-          className={styles.cta}
-          disabled={disabled || working}
-          onClick={() => setConfirmOpen(true)}
-        >
-          Buy
-        </button>
       </div>
 
       {confirmOpen && (
@@ -1739,7 +1904,7 @@ function RitualRow({ item, level, cost, owned, allowed, afford, prereqUnmet = []
           )}
         </ConfirmModal>
       )}
-    </div>
+    </article>
   );
 }
 
@@ -1766,7 +1931,7 @@ function ritualPrereqStatus(rit, knownPowerSet) {
     for (const part of parts) {
       const p = part.trim();
       if (p && !knownPowerSet.has(superNorm(p))) {
-        unmetList.push(p.replace(/\s+\(Errata\)$/i, '')); 
+        unmetList.push(p.replace(/\s+\(Errata\)$/i, ''));
       }
     }
   } else {
@@ -1775,18 +1940,28 @@ function ritualPrereqStatus(rit, knownPowerSet) {
       unmetList.push(p);
     }
   }
-  
+
   return { unmet: unmetList };
 }
 
 
 /* ===== Discipline power picker modal ===== */
 function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
-  // Destructure characterClan from cfg
-  const { 
-    name, next, assignOnly, characterClan, 
-    ownedPowerIds = [], ownedPowerNames = [], ownedPowers = [], disciplineDots = {} 
+  const {
+    name, next, assignOnly, characterClan,
+    ownedPowerIds = [], ownedPowerNames = [], ownedPowers = [], disciplineDots = {}
   } = cfg;
+
+  const [isOpen, setIsOpen] = useState(false);
+  useEffect(() => {
+    // Slight delay to allow CSS transition to trigger after mount
+    requestAnimationFrame(() => setIsOpen(true));
+  }, []);
+
+  const handleClose = () => {
+    setIsOpen(false);
+    setTimeout(() => onClose?.(), 300);
+  };
 
   const fullPool = useMemo(() => {
     const out = [];
@@ -1831,9 +2006,9 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
         const discName = (nameMatch ? nameMatch[0] : part).trim().replace(/[:.-]+$/, '');
         return { disc: discName, dots: countDots(part) };
       })
-  , [countDots]);
+    , [countDots]);
 
-const annotated = useMemo(() => {
+  const annotated = useMemo(() => {
     return fullPool.map(p => {
       const candidates = [
         norm(p?.id), norm(p?.name), norm(p?.slug), norm(p?.key), norm(p?.code), norm(p?.power_id)
@@ -1861,35 +2036,10 @@ const annotated = useMemo(() => {
     });
   }, [fullPool, ownedCanon, dotsByDisc, normDisc, parseAmalgam, characterClan]);
 
-  const [query, setQuery] = useState('');
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return annotated;
-    return annotated.filter(p =>
-      p.name?.toLowerCase().includes(q) ||
-      p.notes?.toLowerCase().includes(q) ||
-      p.source?.toLowerCase().includes(q) ||
-      String(p.__level).includes(q)
-    );
-  }, [annotated, query]);
-
-  const firstAvailable = useMemo(() => filtered.find(p => p.__available)?.id || '', [filtered]);
-  const [selectedId, setSelectedId] = useState(firstAvailable);
-  useEffect(() => {
-    if (!filtered.length) return setSelectedId('');
-    if (!filtered.some(p => p.id === selectedId)) {
-      setSelectedId(filtered.find(p => p.__available)?.id || filtered[0].id);
-    }
-  }, [filtered, selectedId]);
-
-  const sel = useMemo(
-    () => filtered.find(p => p.id === selectedId) || annotated.find(p => p.id === selectedId),
-    [filtered, annotated, selectedId]
-  );
-
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState('');
-  const confirm = async () => {
+
+  const confirm = async (sel) => {
     if (!sel || !sel.__available) return;
     setSaving(true);
     setSaveErr('');
@@ -1900,7 +2050,7 @@ const annotated = useMemo(() => {
         selectedPowerLevel: sel.__level
       });
       if (maybe && typeof maybe.then === 'function') await maybe;
-      onClose?.();
+      handleClose();
     } catch (e) {
       setSaveErr(e?.response?.data?.error || e?.message || 'Failed to assign power.');
     } finally {
@@ -1908,189 +2058,111 @@ const annotated = useMemo(() => {
     }
   };
 
-  const rows = [];
-  let lastLevel = null;
-  for (const p of filtered) {
-    if (p.__level !== lastLevel) {
-      rows.push({ __type: 'hdr', level: p.__level, key: `hdr-${p.__level}` });
-      lastLevel = p.__level;
-    }
-    rows.push({ __type: 'item', power: p, key: p.id });
-  }
-
   return (
-    <div
-      className={styles.modalOverlay}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="powerModalTitle"
-      onClick={(e) => { if (!saving && e.target === e.currentTarget) onClose?.(); }}
-      onKeyDown={(e) => {
-        if (e.key === 'Escape' && !saving) onClose?.();
-        if (e.key === 'Enter' && !saving && sel?.__available) confirm();
-      }}
-    >
-      <div className={`${styles.card} ${styles.modalCard}`} style={{ width:'min(92vw, 800px)' }}>
-        <div className={styles.modalHeader}>
+    <>
+      <div
+        className={`${styles.drawerOverlay} ${isOpen ? styles.open : ''}`}
+        onClick={(e) => { if (!saving) handleClose(); }}
+      />
+
+      <div className={`${styles.disciplineDrawer} ${isOpen ? styles.open : ''}`}>
+        <div className={styles.drawerHandleWrap}>
+          <div className={styles.drawerHandle}></div>
+        </div>
+
+        <div className={styles.drawerHeader}>
           <div>
-            <h3 id="powerModalTitle" className={styles.modalTitle}>
-              {assignOnly ? 'Select Missing Power' : 'Choose New Power'}
-            </h3>
-            <div className={styles.muted}>
-              Discipline: <b>{name}</b> • Level <b>{next}</b>
+            <h2 className={styles.drawerTitle}>{name} Powers</h2>
+            <p className={styles.drawerSubtitle}>{assignOnly ? 'Select Missing Power' : 'Choose New Power'}</p>
+          </div>
+          <div className={styles.drawerControls}>
+            <button className={styles.drawerClose} onClick={handleClose}>
+              <span className="material-symbols-outlined">close</span>
+            </button>
+            <div className={styles.drawerXpBadge}>
+              <span className="material-symbols-outlined" style={{ color: 'var(--primary-container)', fontSize: '16px', fontVariationSettings: "'FILL' 1" }}>stars</span>
+              <span className={styles.drawerXpBadgeText}>Level {next}</span>
             </div>
           </div>
         </div>
 
-        <div className={styles.muted} role="note" style={{ padding: '8px 16px 0' }}>
-          Each dot in a discipline grants <b>one power</b> of its level or below. Choose any <b>level ≤ {next}</b> you don’t already have.
-        </div>
+        <div className={styles.drawerContent}>
+          {saveErr && <div className={styles.alert} style={{ marginBottom: '16px' }}>{saveErr}</div>}
+          {!annotated.length ? (
+            <div className={styles.alertWarning}>
+              No power data found up to level <b>{next}</b> for <b>{name}</b>.
+            </div>
+          ) : (
+            annotated.map(p => {
+              const isOwned = p.__flags.owned;
+              const isRestricted = !p.__available && !isOwned;
+              const isAvailable = p.__available;
 
-        {!annotated.length ? (
-          <div className={styles.alertWarning} style={{ margin: '10px 16px 0' }}>
-            No power data found up to level <b>{next}</b> for <b>{name}</b>. You can still buy the dot; pick later.
-          </div>
-        ) : (
-          <div className={styles.modalGrid}>
-            <div className={styles.paneCard}>
-              <aside className={styles.powerListPane}>
-                <input
-                  className={styles.input}
-                  placeholder="Search powers… (name, notes, source, level)"
-                  value={query}
-                  onChange={e => setQuery(e.target.value)}
-                  disabled={saving}
-                />
-                <div className={styles.powerList} role="listbox" aria-label="Available powers">
-                  {rows.map(row => {
-                    if (row.__type === 'hdr') {
-                      return <div key={row.key} className={styles.levelHeader}>Level {row.level}</div>;
-                    }
-const p = row.power;
-                    const active = p.id === selectedId;
-                    const disabled = !p.__available;
-                    
-                    // Improved reason logic
-                    let reason = '';
-                    if (p.__flags.owned) reason = 'Owned';
-                    else if (p.__flags.clanLockUnmet) reason = `Requires Clan: ${p.clan}`;
-                    else if (p.__flags.unmet.length) reason = `Needs: ${p.__flags.unmet.join(', ')}`;
+              const cardClass = isOwned ? styles.powerCardOwned
+                : (isAvailable ? styles.powerCardAvailable : styles.powerCardRestricted);
 
-                    return (
-                      <button
-                        key={row.key}
-                        className={
-                          `${styles.powerItem} ` +
-                          `${active ? styles.powerItemActive : ''} ` +
-                          `${disabled ? styles.powerItemDisabled : ''}`
-                        }
-                        onClick={() => setSelectedId(p.id)}
-                        onDoubleClick={() => !saving && p.__available && confirm()}
-                        role="option"
-                        aria-selected={active}
-                        title={p.name}
-                        aria-disabled={disabled || undefined}
-                        disabled={saving}
-                      >
-                        <div className={styles.powerItemTitle}>
+              return (
+                <div key={p.id} className={cardClass}>
+                  <div className={styles.powerCardHeaderRow}>
+                    <div>
+                      <div className={styles.powerCardTitleWrap}>
+                        {isOwned && (
+                          <span className="material-symbols-outlined" style={{ color: 'var(--primary-container)', fontSize: '16px', fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                        )}
+                        {isRestricted && (
+                          <span className="material-symbols-outlined" style={{ color: 'var(--text-muted)', fontSize: '16px' }}>lock</span>
+                        )}
+                        <h3 className={isOwned || isAvailable ? styles.powerCardTitle : styles.powerCardTitleMuted}>
                           {p.name}
-                          {!p.__available && (
-                            <span className={`${styles.powerBadgeMuted} ${p.__flags.owned ? 'badge-owned' : 'badge-warn'}`}>
-                              {reason}
-                            </span>
-                          )}
-                        </div>
-                        <div className={styles.powerItemMeta}>
-                          <span className={styles.powerTag}><b>Level:</b> {p.__level}</span>
-                          {p.cost && <span className={styles.powerTag}><b>Cost:</b> {p.cost}</span>}
-                          {p.duration && <span className={styles.powerTag}><b>Duration:</b> {p.duration}</span>}
-                          {p.dice_pool && <span className={styles.powerTag}><b>Dice:</b> {p.dice_pool}</span>}
-                        </div>
-                      </button>
-                    );
-                  })}
-                  {!rows.length && <div className={styles.emptyNote}>No powers match “{query}”.</div>}
-                </div>
-              </aside>
-            </div>
-
-            <div className={styles.paneCard}>
-              <section className={styles.powerDetailPane}>
-                {!sel ? (
-                  <div className={styles.emptyNote}>Select a power on the left to see details.</div>
-                ) : (
-                  <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: 8 }}>
-                      <div>
-                        <div style={{ fontSize: 18, fontWeight: 700 }}>{sel.name}</div>
-                        <div className={styles.muted} style={{ fontSize: 13 }}>
-                          Level {sel.__level}{sel.source ? ` • Source: ${sel.source}` : ''}
-                        </div>
+                        </h3>
                       </div>
-
-<div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    {sel.__flags?.owned && (
-                      <span className={`${styles.powerBadgeMuted} badge-owned`}>Owned</span>
-                    )}
-                    {sel.__flags?.clanLockUnmet && (
-                      <span className={`${styles.powerBadgeMuted} badge-warn`}>
-                        Requires Clan: {sel.clan}
+                      <span className={isOwned || isAvailable ? styles.powerCardLevel : styles.powerCardLevelMuted}>
+                        Level {p.__level} • {isOwned ? 'Owned' : (isAvailable ? 'Available' : 'Restricted')}
                       </span>
-                    )}
-                    {Array.isArray(sel.__flags?.unmet) && sel.__flags.unmet.length > 0 && (
-                      <span className={`${styles.powerBadgeMuted} badge-warn`}>
-                        Needs: {sel.__flags.unmet.join(', ')}
-                      </span>
-                    )}
+                    </div>
                   </div>
-                    </div>
 
-                    <div className={styles.detailTags} style={{ marginTop: 10 }}>
-                      {sel.cost && (
-                        <span className={styles.powerTag}><b>Cost:</b> {sel.cost}</span>
-                      )}
-                      {sel.duration && (
-                        <span className={styles.powerTag}><b>Duration:</b> {sel.duration}</span>
-                      )}
-                      {sel.dice_pool && (
-                        <span className={styles.powerTag}><b>Dice Pool:</b> {sel.dice_pool}</span>
-                      )}
-                      {sel.opposing_pool && (
-                        <span className={styles.powerTag}><b>Opposing Pool:</b> {sel.opposing_pool}</span>
-                      )}
-                      {sel.prerequisite && (
-                        <span className={styles.powerTag}><b>Prerequisite:</b> {sel.prerequisite}</span>
-                      )}
-                      {sel.amalgam && (
-                        <span className={styles.powerTag}><b>Amalgam:</b> {sel.amalgam}</span>
-                      )}
-                    </div>
+                  <p className={isOwned || isAvailable ? styles.powerCardDesc : styles.powerCardDescMuted}>
+                    {p.notes || `Power of ${name} at level ${p.__level}.`}
+                    {p.amalgam && <><br /><b>Amalgam:</b> {p.amalgam}</>}
+                    {p.prerequisite && <><br /><b>Prerequisite:</b> {p.prerequisite}</>}
+                  </p>
 
-                    {sel.notes && (
-                      <div className={styles.powerNotes} style={{ marginTop: 10 }}>
-                        <b>Notes:</b> {sel.notes}
+                  {isOwned && (
+                    <div className={styles.powerCardActiveIndicator}>
+                      <span className={styles.powerCardActiveText}>Power Active</span>
+                      <div className={styles.powerCardActiveIcon}>
+                        <div className={styles.powerCardActiveDot}></div>
                       </div>
-                    )}
-                  </>
-                )}
-              </section>
-            </div>
+                    </div>
+                  )}
 
-          </div>
-        )}
+                  {isAvailable && (
+                    <button
+                      className={styles.powerAcquireBtn}
+                      onClick={() => confirm(p)}
+                      disabled={saving}
+                    >
+                      {saving ? 'Acquiring...' : 'Acquire Power'}
+                    </button>
+                  )}
 
-        <div className={styles.modalFooter}>
-          {saveErr && <div className={styles.alert} style={{ marginRight: 'auto' }}>{saveErr}</div>}
-          <button
-            className={styles.cta}
-            onClick={confirm}
-            disabled={saving || !sel || !sel.__available}
-          >
-            {saving ? 'Saving…' : 'Select Power'}
-          </button>
+                  {isRestricted && (
+                    <div className={styles.powerCardWarning}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>warning</span>
+                      {p.__flags.clanLockUnmet && <span>Requires Clan: {p.clan}</span>}
+                      {Array.isArray(p.__flags.unmet) && p.__flags.unmet.length > 0 && (
+                        <span>Needs: {p.__flags.unmet.join(', ')}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -2102,33 +2174,39 @@ function SpecialtyAdder({ xp, onAdd }) {
   const afford = xp >= cost;
 
   return (
-    <div className={styles.rowForm}>
-      <select
-        className={styles.input}
-        value={skill}
-        onChange={e => setSkill(e.target.value)}
-      >
-        {Object.values(SKILLS).flat().map(name => (
-          <option key={name} value={name}>{name}</option>
-        ))}
-      </select>
+    <div className={styles.gothicRow}>
+      <div style={{ display: 'flex', gap: '10px', flex: 1, minWidth: 0 }}>
+        <select
+          className={styles.input}
+          value={skill}
+          onChange={e => setSkill(e.target.value)}
+          style={{ flex: 1, minWidth: 0 }}
+        >
+          {Object.values(SKILLS).flat().map(name => (
+            <option key={name} value={name}>{name}</option>
+          ))}
+        </select>
 
-      <input
-        className={styles.input}
-        placeholder="e.g., Technology (Firmware)"
-        value={spec}
-        onChange={e => setSpec(e.target.value)}
-      />
+        <input
+          className={styles.input}
+          placeholder="e.g., Technology (Firmware)"
+          value={spec}
+          onChange={e => setSpec(e.target.value)}
+          style={{ flex: 2, minWidth: 0 }}
+        />
+      </div>
 
-      <span className={styles.costText}>Cost: <b>{cost}</b></span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+        <span className={styles.gothicCost}>[ COST: {cost} XP ]</span>
 
-      <button
-        className={styles.cta}
-        disabled={!afford || !spec.trim()}
-        onClick={() => onAdd(skill, spec.trim())}
-      >
-        Add Specialty
-      </button>
+        <button
+          className={styles.gothicBtn}
+          disabled={!afford || !spec.trim()}
+          onClick={() => onAdd(skill, spec.trim())}
+        >
+          Unlock
+        </button>
+      </div>
     </div>
   );
 }
@@ -2137,12 +2215,12 @@ function SpecialtyAdder({ xp, onAdd }) {
 function MeritAdder({ xp, clan, knownPowerNamesAndIds, existing = [], onAdd }) {
   const all = useMemo(() => allSelectableMerits(), []);
   const [q, setQ] = useState('');
-  const [addSeparate, setAddSeparate] = useState(false); 
+  const [addSeparate, setAddSeparate] = useState(false);
   const [selId, setSelId] = useState(all[0]?.id || '');
   const sel = useMemo(() => all.find(m => m.id === selId) || null, [all, selId]);
 
   const [mysticSelections, setMysticSelections] = useState([]);
-  
+
   useEffect(() => { setMysticSelections([]); }, [selId]);
 
   const isMystic = sel?.id === 'other__mystic_of_the_void';
@@ -2197,29 +2275,29 @@ function MeritAdder({ xp, clan, knownPowerNamesAndIds, existing = [], onAdd }) {
     const allowed = sel?.allowed || [1];
     const nextAllowed = allowed.find(n => n > currentOwnedForSel) ?? allowed[allowed.length - 1];
     setDots(nextAllowed || 1);
-  }, [selId, existing, sel, currentOwnedForSel]); 
+  }, [selId, existing, sel, currentOwnedForSel]);
 
   const delta = Math.max(0, Number(dots || 0) - currentOwnedForSel);
   const cost = addSeparate
-    ? XP_RULES.advantageDot(Number(dots || 0)) 
-    : XP_RULES.advantageDot(delta);            
+    ? XP_RULES.advantageDot(Number(dots || 0))
+    : XP_RULES.advantageDot(delta);
   const afford = xp >= cost;
   const blocked = !sel || (addSeparate ? Number(dots || 0) <= 0 : delta <= 0) || !afford || (isMystic && mysticSelections.length === 0);
 
   return (
     <div className={styles.grid} style={{ gap: 12 }}>
-      <div className={styles.rowForm}>
+      <div className={styles.gothicRow}>
         <input
           className={styles.input}
           placeholder="Search merits… (name or category)"
           value={q}
           onChange={e => setQ(e.target.value)}
-          style={{ flex: 1 }}
+          style={{ flex: 1, borderBottom: '1px solid var(--tint)' }}
         />
-        <span className={styles.muted}>Cost: <b>{cost}</b> XP</span>
+        <span className={styles.gothicCost}>[ COST: {cost} XP ]</span>
       </div>
 
-      <div className={styles.rowForm} style={{ flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         <select
           className={styles.input}
           value={selId}
@@ -2247,7 +2325,7 @@ function MeritAdder({ xp, clan, knownPowerNamesAndIds, existing = [], onAdd }) {
         </select>
 
         <button
-          className={styles.cta}
+          className={styles.gothicBtn}
           disabled={blocked}
           onClick={() => onAdd(sel, dots, { separate: addSeparate, notes: isMystic ? mysticSelections : undefined })}
           title={
@@ -2259,12 +2337,12 @@ function MeritAdder({ xp, clan, knownPowerNamesAndIds, existing = [], onAdd }) {
           {addSeparate
             ? `Add another (${dots} dot${Number(dots) === 1 ? '' : 's'})`
             : (currentOwnedForSel > 0
-                ? `Upgrade to ${dots} dot${Number(dots) === 1 ? '' : 's'}`
-                : `Add ${dots} dot${Number(dots) === 1 ? '' : 's'}`)}
+              ? `Upgrade to ${dots} dot${Number(dots) === 1 ? '' : 's'}`
+              : `Add ${dots} dot${Number(dots) === 1 ? '' : 's'}`)}
         </button>
-        
+
         {allowMulti && sel && (
-          <label className={styles.checkboxRow} style={{ display:'flex', gap:8, alignItems:'center', marginTop:8 }}>
+          <label className={styles.checkboxRow} style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
             <input
               type="checkbox"
               checked={addSeparate}

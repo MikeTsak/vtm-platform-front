@@ -3,14 +3,14 @@ import styles from '../styles/CharacterView.module.css';
 
 function DotRow({ label, value = 0, max = 5, rightExtra = null }) {
   return (
-    <div className={styles.dotRow}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span>{label}</span>
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: '16px', color: 'var(--text-muted)' }}>{label}</span>
         {rightExtra}
       </div>
-      <div className={styles.dots}>
+      <div className={styles.dotTracker}>
         {Array.from({ length: max }).map((_, i) => (
-          <span key={i} className={`${styles.dot} ${i < value ? styles.dotOn : ''}`} />
+          <div key={i} className={`${styles.dot} ${i < value ? styles.filled : ''}`} />
         ))}
       </div>
     </div>

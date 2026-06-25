@@ -1,360 +1,336 @@
 .inventoryContainer {
-  background-color: var(--bg-dark, #1a1a1a);
-  border: 1px solid var(--border-color, #333);
-  border-radius: 8px;
-  padding: 1.5rem;
-  color: var(--text-light, #eee);
-  margin-bottom: 24px;
+  width: 100%;
+  max-width: 56rem;
+  /* max-w-4xl */
+  margin: 0 auto;
+  padding: 1.5rem 0;
+  /* padding-top 24 */
 }
 
+/* Header & Controls */
 .headerRow {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1.5rem;
-  border-bottom: 1px solid var(--border-color, #333);
-  padding-bottom: 1rem;
+  padding: 0 1rem;
 }
 
 .headerRow h3 {
+  font-family: var(--font-title, 'Playfair Display', serif);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 32px;
+  color: var(--text-color, #e5e2e1);
   margin: 0;
-  color: var(--vampire-red, #8b0000);
-  font-family: 'Cinzel', serif;
-  font-size: 1.5rem;
-}
-
-.addBtn {
-  background-color: var(--vampire-red, #8b0000);
-  color: #fff;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: background-color 0.2s;
-}
-
-.addBtn:hover {
-  background-color: #a00000;
-}
-
-/* --- Controls & Toggles --- */
-.controlsRow {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.tabs {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.tabBtn {
-  background-color: transparent;
-  color: #aaa;
-  border: 1px solid #444;
-  padding: 0.4rem 1rem;
-  border-radius: 20px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.tabBtn:hover {
-  border-color: #888;
-  color: #ddd;
-}
-
-.activeTab {
-  background-color: #333;
-  color: #fff;
-  border-color: var(--vampire-red, #8b0000);
 }
 
 .viewToggles {
   display: flex;
-  background-color: rgba(0,0,0,0.4);
-  border: 1px solid #333;
-  border-radius: 6px;
-  overflow: hidden;
+  background-color: var(--surface-low, #131313);
+  border-radius: 0.5rem;
+  padding: 0.25rem;
+  border: 1px solid var(--border-color, #333);
 }
 
 .viewBtn {
-  background: transparent;
+  padding: 0.375rem;
+  border-radius: 0.25rem;
   border: none;
-  color: #888;
-  padding: 0.4rem 1rem;
+  background: transparent;
+  color: var(--text-muted, #ab8986);
   cursor: pointer;
-  font-size: 0.9rem;
   transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .viewBtn:hover {
-  color: #ccc;
+  color: var(--text-color, #e5e2e1);
 }
 
 .activeView {
-  background-color: #333;
-  color: #fff;
-  font-weight: bold;
+  background-color: var(--surface-highest, #2a2a2a);
+  color: var(--tint, #ffb3ae);
+  box-shadow: 0 0 10px rgba(180, 15, 31, 0.1);
 }
 
-/* --- Layout Containers --- */
-.itemGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.5rem;
+/* Categories Tabs */
+.tabs {
+  display: flex;
+  overflow-x: auto;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+  padding-bottom: 0.5rem;
+  padding: 0 1rem;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.tabBtn {
+  white-space: nowrap;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--text-muted, #ab8986);
+  border: 1px solid var(--border-color, #333);
+  font-family: var(--font-label, 'JetBrains Mono', monospace);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.tabBtn:hover {
+  background-color: var(--surface-container, #201f1f);
+}
+
+.activeTab {
+  background-color: var(--primary-container, #b40f1f);
+  color: #ffc3be;
+  /* on-primary-container */
+  border-color: var(--primary-container, #b40f1f);
+}
+
+/* Inventory List */
 .itemList {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  padding: 0 1rem;
 }
 
-/* --- Shared Content Styles --- */
-.itemHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 0.25rem;
-}
-
-.itemName {
-  margin: 0;
-  font-size: 1.2rem;
-  color: #fff;
-}
-
-.itemQuantity {
-  background-color: #333;
-  color: #ccc;
-  padding: 0.1rem 0.5rem;
-  border-radius: 12px;
-  font-size: 0.85rem;
-  font-weight: bold;
-}
-
-.itemType {
-  font-size: 0.8rem;
-  color: var(--vampire-red, #8b0000);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-bottom: 1rem;
-}
-
-.itemImage {
-  width: 100%;
-  height: 100%;
-  object-fit: cover; 
-  display: block;
-}
-
-/* --- Grid Mode (Card) --- */
+/* Item Card */
 .itemCard {
-  background-color: rgba(0, 0, 0, 0.3);
-  border: 1px solid #333;
-  border-radius: 6px;
-  padding: 1.25rem;
-  display: flex;
-  flex-direction: column;
-  transition: border-color 0.2s;
+  background-color: var(--surface-container, #201f1f);
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-color, #333);
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
 
-.itemCard:hover { border-color: #555; }
-
-.itemCard .itemImageContainer {
-  width: 100%;
-  height: 180px; 
-  margin-bottom: 1rem;
-  border-radius: 4px;
-  overflow: hidden;
-  background-color: rgba(10, 10, 10, 0.8); 
-  border-bottom: 1px solid #333;
+.itemCard.expanded {
+  background-color: var(--surface-high, #2a2a2a);
+  box-shadow: 0 0 15px rgba(180, 15, 31, 0.1);
+  border-color: var(--border-color, #5b403e);
+  /* outline-variant */
 }
 
-.itemCard .itemContent {
-  display: flex;
-  flex-direction: column;
-  flex-grow: 1;
-}
-
-.itemCard .itemDescription {
-  margin: 0 0 1rem 0;
-  font-size: 0.95rem;
-  line-height: 1.4;
-  color: #ccc;
-  flex-grow: 1;
-}
-
-.itemCard .itemMechanics {
-  background-color: rgba(139, 0, 0, 0.1);
-  border-left: 3px solid var(--vampire-red, #8b0000);
-  padding: 0.75rem;
-  font-size: 0.9rem;
-  color: #ddd;
-  margin-bottom: 1rem;
-}
-
-.itemCard .itemActions {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: auto;
-  padding-top: 1rem;
-  border-top: 1px solid #333;
-}
-
-/* --- List Mode (Row) --- */
-.itemRow {
-  background-color: rgba(0, 0, 0, 0.3);
-  border: 1px solid #333;
-  border-radius: 6px;
+/* Card Header */
+.itemCardHeader {
   padding: 1rem;
   display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  gap: 1.25rem;
-  transition: border-color 0.2s;
+  align-items: center;
+  justify-content: space-between;
 }
 
-.itemRow:hover { border-color: #555; }
-
-.itemRow .itemImageContainer {
-  width: 100px;
-  height: 100px;
-  flex-shrink: 0;
-  border-radius: 4px;
-  overflow: hidden;
-  background-color: rgba(10, 10, 10, 0.8);
-  border: 1px solid #333;
-}
-
-.itemRow .itemContent {
+.itemCardLeft {
   display: flex;
-  flex-direction: column;
-  flex-grow: 1;
+  align-items: center;
+  gap: 1rem;
+}
+
+.itemIcon {
+  width: 3rem;
+  height: 3rem;
+  background-color: var(--surface-lowest, #0e0e0e);
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-color, #333);
+  display: flex;
+  align-items: center;
   justify-content: center;
 }
 
-.itemRow .itemDescription {
-  margin: 0 0 0.5rem 0;
-  font-size: 0.95rem;
-  line-height: 1.4;
-  color: #ccc;
+.itemIcon span {
+  font-size: 1.5rem;
+  color: var(--tint, #ffb3ae);
 }
 
-.itemRow .itemMechanics {
-  background-color: rgba(139, 0, 0, 0.1);
-  border-left: 3px solid var(--vampire-red, #8b0000);
-  padding: 0.5rem 0.75rem;
-  font-size: 0.9rem;
-  color: #ddd;
-  margin-bottom: 0;
+.itemCardTitle {
+  font-family: var(--font-body, 'Inter', sans-serif);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 24px;
+  color: var(--text-color, #e5e2e1);
+  margin: 0 0 0.125rem 0;
 }
 
-.itemRow .itemActions {
+.itemCardSub {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 0.5rem;
-  justify-content: center;
-  min-width: 80px;
-  border-left: 1px solid #333;
-  padding-left: 1rem;
 }
 
-/* --- Action Buttons --- */
-.editBtn, .deleteBtn {
-  flex: 1;
-  padding: 0.4rem;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: all 0.2s;
+.itemCardSubText {
+  font-family: var(--font-label, 'JetBrains Mono', monospace);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: var(--text-muted, #ab8986);
+}
+
+.itemCardDot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: var(--border-color, #5b403e);
+}
+
+.itemCardRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+/* Badges */
+.badgeResearched {
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 10px;
+  font-family: var(--font-label, 'JetBrains Mono', monospace);
+  letter-spacing: 0.05em;
+  color: #8ab4f8;
+  border: 1px solid rgba(138, 180, 248, 0.3);
+  background: rgba(138, 180, 248, 0.1);
+}
+
+.badgeUnknown {
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 10px;
+  font-family: var(--font-label, 'JetBrains Mono', monospace);
+  letter-spacing: 0.05em;
+  color: var(--tint, #ffb3ae);
+  border: 1px solid var(--tint, #ffb3ae);
+  background: rgba(255, 179, 174, 0.1);
+}
+
+.expandIcon {
+  color: var(--text-muted, #ab8986);
+  transition: transform 0.3s;
+}
+
+.itemCard.expanded .expandIcon {
+  transform: rotate(180deg);
+}
+
+/* Details Section */
+.itemDetails {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-in-out;
+}
+
+.itemCard.expanded .itemDetails {
+  max-height: 500px;
+}
+
+.itemDetailsInner {
+  padding: 0.5rem 1rem 1rem 1rem;
+  border-top: 1px solid rgba(91, 64, 62, 0.5);
+  margin-top: 0.5rem;
+}
+
+.itemDescription {
+  font-family: var(--font-body, 'Inter', sans-serif);
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--text-muted, #ab8986);
+  margin: 0 0 1rem 0;
+}
+
+.itemMechanics {
+  font-family: var(--font-body, 'Inter', sans-serif);
+  font-size: 14px;
+  color: var(--text-muted, #ab8986);
+  margin-bottom: 1rem;
+  background: rgba(180, 15, 31, 0.05);
+  padding: 0.5rem;
+  border-left: 2px solid var(--primary-container, #b40f1f);
+}
+
+/* Action Buttons */
+.itemActions {
+  display: flex;
+  gap: 0.5rem;
 }
 
 .editBtn {
-  background-color: #333;
-  color: #ddd;
-  border: 1px solid #444;
+  flex: 1;
+  padding: 0.5rem 0;
+  border-radius: 0.25rem;
+  background-color: var(--primary-container, #b40f1f);
+  color: #ffc3be;
+  font-family: var(--font-label, 'JetBrains Mono', monospace);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
 }
 
 .editBtn:hover {
-  background-color: #444;
-  border-color: #555;
+  background-color: #8b0c18;
 }
 
 .deleteBtn {
+  flex: 1;
+  padding: 0.5rem 0;
+  border-radius: 0.25rem;
   background-color: transparent;
-  color: #ff4444;
-  border: 1px solid #ff4444;
-}
-
-.deleteBtn:hover { background-color: rgba(255, 68, 68, 0.1); }
-
-/* --- Drawer / Preview Styling --- */
-.previewLabel {
-  font-size: 0.85rem;
-  color: #888;
-  margin-bottom: 0.5rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.drawerBtn {
-  width: 100%;
-  background: rgba(139, 0, 0, 0.1);
-  border: 1px dashed var(--vampire-red, #8b0000);
-  color: var(--vampire-red, #8b0000);
-  padding: 0.75rem;
-  margin-top: 1.5rem;
-  border-radius: 6px;
+  color: var(--tint, #ffb3ae);
+  border: 1px solid var(--tint, #ffb3ae);
+  font-family: var(--font-label, 'JetBrains Mono', monospace);
+  font-size: 12px;
+  letter-spacing: 0.1em;
   cursor: pointer;
-  font-weight: bold;
-  font-size: 0.95rem;
-  transition: background 0.2s;
+  transition: background-color 0.2s;
 }
 
-.drawerBtn:hover {
-  background: rgba(139, 0, 0, 0.2);
+.deleteBtn:hover {
+  background-color: rgba(255, 179, 174, 0.1);
+}
+
+/* Grid Mode Specific */
+.itemGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+  padding: 0 1rem;
 }
 
 .emptyState {
   text-align: center;
   padding: 3rem 1rem;
   color: #888;
-  background-color: rgba(0, 0, 0, 0.2);
-  border-radius: 8px;
-  border: 1px dashed #444;
+  font-family: var(--font-body, 'Inter', sans-serif);
+  border-radius: 0.5rem;
+  border: 1px dashed var(--border-color, #333);
+  margin: 0 1rem;
 }
 
-.addBtnLarge {
-  margin-top: 1rem;
-  background-color: transparent;
-  color: var(--vampire-red, #8b0000);
-  border: 1px solid var(--vampire-red, #8b0000);
-  padding: 0.75rem 1.5rem;
-  border-radius: 4px;
+/* Add Item Button at top */
+.addBtn {
+  background-color: var(--surface-low, #131313);
+  color: var(--text-muted, #ab8986);
+  border: 1px solid var(--border-color, #333);
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
   cursor: pointer;
-  font-size: 1.1rem;
+  font-family: var(--font-label, 'JetBrains Mono', monospace);
+  font-size: 12px;
+  letter-spacing: 0.1em;
   transition: all 0.2s;
+  margin-left: auto;
 }
 
-.addBtnLarge:hover { background-color: rgba(139, 0, 0, 0.1); }
-.loading { text-align: center; padding: 2rem; color: #888; }
-
-/* Responsive break for List rows on small screens */
-@media (max-width: 600px) {
-  .itemRow { flex-direction: column; }
-  .itemRow .itemImageContainer { width: 100%; height: 150px; }
-  .itemRow .itemActions {
-    flex-direction: row;
-    border-left: none;
-    border-top: 1px solid #333;
-    padding-left: 0;
-    padding-top: 1rem;
-  }
+.addBtn:hover {
+  border-color: rgba(255, 179, 174, 0.5);
+  color: var(--tint, #ffb3ae);
 }

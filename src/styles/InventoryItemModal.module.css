@@ -1,17 +1,18 @@
 /* InventoryItemModal.module.css */
 :root {
-  --tint: #8a0f1a;
-  --bg-color: #0d0d0f;
-  --surface-color: #141417;
-  --surface-lighter: #1a1b1f;
-  --border-color: #2f3138;
-  --text-color: #e8e8ed;
-  --text-muted: #9398a0;
-  --radius: 12px;
-  --shadow: 0 8px 32px rgb(0 0 0 / 50%);
-  --font-title: 'Cinzel', serif;
-  --font-body: 'Inter', system-ui, sans-serif;
-  --accent: #6ea8ff;
+  --tint: #b8860b;
+  --accent: #00f5ff;
+  --bg-color: #0a0a0b;
+  --surface-color: transparent;
+  --surface-lighter: transparent;
+  --border-color: #b8860b;
+  --text-color: #e0e0e0;
+  --text-muted: #8b8b8b;
+  --radius: 0px;
+  --shadow: none;
+  --font-title: 'Libre Caslon Text', serif;
+  --font-body: 'Geist', system-ui, sans-serif;
+  --font-label: 'Space Mono', monospace;
   --success: #1faa70;
 }
 
@@ -30,10 +31,10 @@
 
 /* Base card styling */
 .card {
-  background: linear-gradient(180deg, var(--surface-lighter), var(--surface-color));
+  background: #0a0a0b;
   border: 1px solid var(--border-color);
-  border-radius: calc(var(--radius) + 4px);
-  box-shadow: inset 0 1px 2px rgb(0 0 0 / 30%);
+  border-radius: var(--radius);
+  box-shadow: none;
 }
 
 /* Structural Modal Flexbox */
@@ -126,11 +127,12 @@
 .input {
   width: 100%;
   box-sizing: border-box;
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px solid var(--border-color);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-color);
   color: var(--text-color);
   padding: .6rem .75rem;
-  border-radius: 6px;
+  border-radius: var(--radius);
   font-family: var(--font-body);
   font-size: .95rem;
   transition: border-color .2s;
@@ -138,8 +140,8 @@
 
 .input:focus {
   outline: none;
-  border-color: var(--tint);
-  background: rgba(0, 0, 0, 0.4);
+  border-bottom-color: var(--accent);
+  box-shadow: 0 1px 0 0 var(--accent);
 }
 
 textarea.input {
@@ -178,7 +180,7 @@ textarea.input {
 /* Buttons */
 .ghostBtn, .cta {
   font-family: var(--font-body);
-  border-radius: 8px;
+  border-radius: var(--radius);
   padding: .6rem 1.2rem;
   transition: all .2s ease;
   cursor: pointer;
@@ -188,26 +190,31 @@ textarea.input {
 
 .ghostBtn {
   background: transparent;
-  border-color: var(--border-color);
-  color: var(--text-muted);
+  border-color: var(--tint);
+  color: var(--tint);
 }
 
 .ghostBtn:hover {
-  color: #fff;
-  border-color: var(--tint);
-  background: color-mix(in srgb, var(--tint) 20%, transparent);
+  color: var(--accent);
+  border-color: var(--accent);
+  background: transparent;
+  box-shadow: inset 0 0 8px rgba(0,245,255,0.3);
 }
 
 .cta {
-  background: linear-gradient(145deg, color-mix(in srgb, var(--tint) 90%, #000), var(--tint));
-  color: #fff;
-  border: 1px solid color-mix(in srgb, var(--tint) 40%, transparent);
-  box-shadow: 0 4px 15px rgb(0 0 0 / 40%);
+  background: var(--tint);
+  color: #0a0a0b;
+  border: 1px solid var(--tint);
+  box-shadow: none;
 }
 
 .cta:hover:not(:disabled) {
-  transform: translateY(-1px);
-  filter: brightness(1.1);
+  background: rgba(184, 134, 11, 0.8);
+  backdrop-filter: blur(4px);
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 10px rgba(0, 245, 255, 0.5);
+  transform: none; 
 }
 
 .cta:disabled, .ghostBtn:disabled {

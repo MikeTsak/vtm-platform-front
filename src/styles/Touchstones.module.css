@@ -1,0 +1,249 @@
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem; /* mb-gutter */
+  border-bottom: 1px solid var(--border-color, #333);
+  padding-bottom: 0.5rem; /* pb-unit */
+}
+
+.headerTitle {
+  font-family: var(--font-title, 'Playfair Display', serif);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 32px;
+  color: var(--text-color, #e5e2e1);
+  margin: 0 0 0.25rem 0;
+}
+
+.headerSubtitle {
+  font-family: var(--font-label, 'JetBrains Mono', monospace);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: var(--text-muted, #ab8986);
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.editBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--tint, #ffb3ae);
+  background: transparent;
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-family: var(--font-label, 'JetBrains Mono', monospace);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.editBtn:hover {
+  background-color: rgba(255, 179, 174, 0.1);
+}
+
+.gridContainer {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+  .gridContainer {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Common Column Styling */
+.columnBox {
+  background-color: var(--surface-low, #131313);
+  border-radius: 0.5rem;
+  border: 1px solid var(--surface-variant, #353534);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.columnHeader {
+  background-color: var(--surface-container, #201f1f);
+  padding: 1rem;
+  border-bottom: 1px solid var(--surface-variant, #353534);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.columnHeader h3 {
+  font-family: var(--font-title, 'Playfair Display', serif);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 32px;
+  color: var(--text-color, #e5e2e1);
+  margin: 0;
+}
+
+.columnBody {
+  padding: 1rem;
+  flex-grow: 1;
+}
+
+/* Convictions List */
+.convictionsList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.convictionItem {
+  border-bottom: 1px solid var(--surface-variant, #353534);
+  padding-bottom: 1rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.convictionItem:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.convictionIconBox {
+  margin-top: 0.25rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+  border: 1px solid var(--border-color, #5b403e);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: box-shadow 0.3s;
+}
+
+.convictionItem:hover .convictionIconBox {
+  box-shadow: 0 0 8px rgba(180, 15, 31, 0.4);
+}
+
+.convictionIcon {
+  color: var(--primary-container, #b40f1f);
+  font-size: 12px;
+}
+
+.convictionTitle {
+  font-family: var(--font-body, 'Inter', sans-serif);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 24px;
+  color: var(--text-color, #e5e2e1);
+  margin: 0 0 0.25rem 0;
+}
+
+.convictionDesc {
+  font-family: var(--font-body, 'Inter', sans-serif);
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--text-muted, #ab8986);
+  margin: 0;
+}
+
+/* Touchstones List */
+.touchstonesList {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.touchstoneCard {
+  background-color: var(--surface-container, #201f1f);
+  padding: 1rem;
+  border-radius: 0.25rem;
+  border-left: 2px solid var(--primary-container, #b40f1f);
+  transition: background-color 0.2s;
+  display: flex;
+  gap: 1rem;
+}
+
+.touchstoneCard:hover {
+  background-color: var(--surface-high, #2a2a2a);
+}
+
+.touchstoneImgBox {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 0.25rem;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 1px solid var(--surface-variant, #353534);
+  background-color: var(--surface-lowest, #0e0e0e);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.touchstoneImgBox span {
+  font-size: 2rem;
+  color: var(--text-muted, #ab8986);
+}
+
+.touchstoneContent {
+  flex-grow: 1;
+}
+
+.touchstoneHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.25rem;
+}
+
+.touchstoneTitle {
+  font-family: var(--font-body, 'Inter', sans-serif);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 24px;
+  color: var(--text-color, #e5e2e1);
+  margin: 0;
+}
+
+.badgeHealthy {
+  font-family: var(--font-label, 'JetBrains Mono', monospace);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: var(--tint, #ffb3ae);
+  background-color: rgba(255, 179, 174, 0.1);
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  text-transform: uppercase;
+}
+
+.touchstoneAnchor {
+  font-family: var(--font-label, 'JetBrains Mono', monospace);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: var(--text-muted, #ab8986);
+  margin: 0 0 0.5rem 0;
+  text-transform: uppercase;
+}
+
+.touchstoneDesc {
+  font-family: var(--font-body, 'Inter', sans-serif);
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--text-color, #e5e2e1);
+  margin: 0;
+}
+
+.emptyState {
+  font-family: var(--font-body, 'Inter', sans-serif);
+  font-size: 16px;
+  color: var(--text-muted, #ab8986);
+  font-style: italic;
+  padding: 1rem 0;
+}
