@@ -43,13 +43,15 @@ import DiceRoller from '../components/DiceRoller';
 import Footer from '../ui/Footer';
 
 function Private({ children }) {
-  const { user } = useContext(AuthCtx);
+  const { user, loading } = useContext(AuthCtx);
+  if (loading) return <Skeleton name="app-loading" loading={true} />;
   if (!user) return <Navigate to="/login" replace />;
   return children;
 }
 
 function AdminOnly({ children }) {
-  const { user } = useContext(AuthCtx);
+  const { user, loading } = useContext(AuthCtx);
+  if (loading) return <Skeleton name="app-loading" loading={true} />;
   if (!user) return <Navigate to="/login" replace />;
   if (user.role !== 'admin') return <Navigate to="/" replace />;
   return children;
@@ -57,11 +59,12 @@ function AdminOnly({ children }) {
 
 // Wrapper for Malkavians or Admins
 function MalkavianOrAdminOnly({ children }) {
-  const { user } = useContext(AuthCtx);
+  const { user, loading: authLoading } = useContext(AuthCtx);
   const [loading, setLoading] = useState(true);
   const [isAllowed, setIsAllowed] = useState(false);
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user) {
       setLoading(false);
       setIsAllowed(false);
@@ -77,7 +80,7 @@ function MalkavianOrAdminOnly({ children }) {
         setLoading(false);
         setIsAllowed(false);
       });
-  }, [user]);
+  }, [user, authLoading]);
 
   if (loading) {
     return <Skeleton name="malkavian-admin-only-loading" loading={true} />;

@@ -3,7 +3,7 @@ import React, { useState, useEffect, useContext, useRef, useMemo, useLayoutEffec
 import { AuthCtx } from '../core/AuthContext';
 import api from '../core/api';
 import styles from '../styles/ChatSystem.module.css';
-import Loading from '../ui/Loading';
+import { Skeleton } from 'boneyard-js/react';
 import EmojiPicker from 'emoji-picker-react';
 
 /* --- Clan assets & colors --- */
@@ -209,7 +209,7 @@ const ChatImage = ({ attachmentId }) => {
     };
   }, [attachmentId]);
 
-  if (loading) return <Loading />;
+  if (loading) return <Skeleton name="chat-image-loader" loading={true}><div style={{width: 100, height: 100}} /></Skeleton>;
   if (error) return <div className={styles.imageError}>⚠ Image failed to load</div>;
 
   return (
@@ -998,7 +998,7 @@ export default function ChatSystem({ commsEnabled = true }) {
     });
   }, [npcConvos, users]);
 
-  if (loading) return <Loading />;
+
 
   const currentAccent = (() => {
     if (!selectedContact) return 'var(--tint)';
@@ -1149,7 +1149,7 @@ export default function ChatSystem({ commsEnabled = true }) {
         <div className={styles.modal}>
           <h3>Manage: {selectedContact?.name}</h3>
           
-          {groupMembersLoading ? <Loading /> : (
+          {groupMembersLoading ? <Skeleton loading={true} name="group-members-loader" /> : (
             <>
               <div className={styles.sectionLabel} style={{position:'static'}}>Current Members</div>
               <div className={styles.memberSelect}>
@@ -1194,7 +1194,8 @@ export default function ChatSystem({ commsEnabled = true }) {
   ].filter(Boolean).join(' ');
 
   return (
-    <div ref={containerRef} className={containerClasses} style={{ '--accent': currentAccent }}>
+    <Skeleton loading={loading} name="chat-system">
+      <div ref={containerRef} className={containerClasses} style={{ '--accent': currentAccent }}>
       {creatingGroup && renderCreateGroupModal()}
       {managingGroup && renderManageGroupModal()}
 
@@ -1524,6 +1525,7 @@ export default function ChatSystem({ commsEnabled = true }) {
         )}
         {error && <div className={styles.errorBanner}>{error}</div>}
       </main>
-    </div>
+      </div>
+    </Skeleton>
   );
 }

@@ -3,7 +3,6 @@ import React, { useEffect, useState, useCallback } from 'react';
 import api from '../core/api';
 import styles from '../styles/Admin.module.css';
 import 'leaflet/dist/leaflet.css';
-import Loading from '../ui/Loading';
 
 // Core Components (already exist, unchanged)
 import CharacterEditor from './CharacterEditor.jsx';

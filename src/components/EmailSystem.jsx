@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api from '../core/api';
 import styles from '../styles/EmailSystem.module.css';
-import Loading from '../ui/Loading';
+import { Skeleton } from 'boneyard-js/react';
 
 // --- Internal Rich Text Editor Components ---
 const EditorToolbar = ({ onCmd }) => (
@@ -170,7 +170,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled = true }) {
           </div>
         </div>
         <div className={styles.threadList}>
-          {loading && <Loading />}
+          {loading && <Skeleton loading={true} name="email-system-loader" />}
           {threads.map(t => {
             const senderName = isAdmin ? t.user_name : t.from_name;
             const avatarColor = getColor(senderName || 'Unknown');

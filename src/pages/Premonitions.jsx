@@ -3,7 +3,6 @@ import React, { useEffect, useMemo, useRef, useState, useContext, useCallback } 
 import { AuthCtx } from "../core/AuthContext";
 import AdminPremonitionsTab from "../components/admin/AdminPremonitionsTab";
 import s from "../styles/Premonitions.module.css";
-import Loading from "../ui/Loading";
 import { Skeleton } from "boneyard-js/react";
 
 /**
@@ -324,7 +323,9 @@ function PremonitionItem({ item, index, fetchMediaBlob }) {
                   }}
                 >
                   {status === "loading" ? (
-                     <Loading />
+                    <Skeleton loading={true} name="premonition-video-loader">
+                      <div style={{ width: '100px', height: '100px' }}></div>
+                    </Skeleton>
                   ) : (
                     <>
                       <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>▶</div>

@@ -2,8 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../core/api';
 import styles from '../../styles/Admin.module.css';
-import Loading from '../../ui/Loading';
-
+import { Skeleton } from 'boneyard-js/react';
 export default function AdminMasterTab() {
   const [commsEnabled, setCommsEnabled] = useState(true);
   const [bannerEnabled, setBannerEnabled] = useState(false);
@@ -48,7 +47,7 @@ export default function AdminMasterTab() {
     } catch (e) { setErr('Failed to save banner config.'); } finally { setActionLoading(false); }
   };
 
-  if (loading && !msg && !err) return <div className={styles.loading}><span className={styles.spinner}/> Accessing Mainframe...</div>;
+
 
   const isOnline = commsEnabled;
   const themeColor = isOnline ? 'var(--color-success)' : 'var(--color-error)';
@@ -57,7 +56,8 @@ export default function AdminMasterTab() {
   const bannerColor = isBannerOnline ? 'var(--accent-purple)' : 'var(--glass-border)';
 
   return (
-    <div style={{ maxWidth: '900px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+    <Skeleton loading={loading && !msg && !err} name="admin-master-tab">
+      <div style={{ maxWidth: '900px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       
       {msg && <div className={`${styles.alert} ${styles.alertInfo}`}>{msg}</div>}
       {err && <div className={`${styles.alert} ${styles.alertError}`}>{err}</div>}
@@ -117,6 +117,7 @@ export default function AdminMasterTab() {
           </button>
         </div>
       </div>
-    </div>
+      </div>
+    </Skeleton>
   );
 }

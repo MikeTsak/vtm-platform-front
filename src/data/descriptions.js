@@ -1,0 +1,41 @@
+export const ATTR_DESCRIPTIONS = {
+  Strength: "How strong the character is, how much they can lift, and how much force they can exert.",
+  Dexterity: "How agile a character is, how graceful they can be, or how nimble those fingers are.",
+  Stamina: "The character's physical resistance, how long they can persevere through hazards and other strenuous activities, or how much damage they can absorb.",
+  Charisma: "Determines the character's natural appeal, charm and grace. With this attribute they'll be able to draw people into them although do not mistake this for good looks, that is a merit all on it's own.",
+  Manipulation: "Showcases how skilled the character is at being an effective liar, their ability to twist others to a winning point of view, and how deceptive they are.",
+  Composure: "Reflects how well the character can maintain and command their own emotions. As well as how easily they can calm nerves and the anxieties of others. It also represents their ability to stay calm-headed in heated situations such as verbal fights and even firefights.",
+  Intelligence: "Represents the character's ability to gather knowledge through research or reason as well as apply logic to an ongoing problem. They have an easier time recalling information they have gathered before and can analyze information from the world around them or the books they've read.",
+  Wits: "Reflects the character's ability to think quickly on their feet and make decisions based on the information around them or from prior knowledge. Wits allow the character to pick up sounds and smells around them, perhaps preventing a possible ambush from happening without warning. It is also representative of a character's street smarts and know what to say in the heat of the moment.",
+  Resolve: "Measures the raw determination of a character and how strong their focus truly is. This Attribute powers the all-night stakeouts. Allowing the character to create a mental block from any distractions, showcasing their mental fortitude and concentration."
+};
+
+export const SKILL_DESCRIPTIONS = {
+  Athletics: "Running, jumping, and climbing are all actions within Athletics. Dodging a well-thrown punch in the heat of combat and throwing an item or weapon is also Athletics.",
+  Brawl: "Combat focused on using the body as a weapon rather than an item.",
+  Craft: "Creating, building, or shaping items such as artwork but also making a makeshift catapult.",
+  Drive: "Driving vehicles specifically under duress and adverse or difficult conditions. Also used for working on cars or general mechanic skills.",
+  Firearms: "Using ranged weaponry such as bows and guns as well as gunsmithing and repair of said items.",
+  Larceny: "Lockpicking a locked door or breaking in other ways, pickpocketing and sleight of hand.",
+  Melee: "Combat focused around using handheld weaponry such as a lead pipe or a baseball bat.",
+  Stealth: "Blending into surroundings to either not be seen or not be recognized, allows characters to move around without alerting anyone of their presence either by sight or sound.",
+  Survival: "Using nature to find shelter, tracking animals or people, and general survival in the wilderness.",
+  'Animal Ken': "Understanding and reading animal behavior to handle them and work with them.",
+  Etiquette: "The ability to interact in social settings or blend into different groups.",
+  Insight: "Reading body language and other cues to discern emotions, thoughts, or motives.",
+  Intimidation: "Using menacing presence or direct force to ensure compliance, submission, or fear from others. As well as using threats to persuade them to back down.",
+  Leadership: "Motivating, inspiring, or commanding the character's followers.",
+  Performance: "Showcasing the character's art in front of a crowd regardless of size. Singing, acting, and oration are all examples of this.",
+  Persuasion: "Convincing or swaying others to do the character's will or at least agree with their stance.",
+  Streetwise: "Knowledge of the streets in criminal and urban societies, being able to locate a gang or dealer, knowing which shortcut will be the fastest.",
+  Subterfuge: "Deceiving others to complete the character's desires or agree with them or manipulating the truth to further their goals.",
+  Academics: "Topics surrounding the humanities and liberal arts.",
+  Awareness: "Vigilant to their surroundings and the ability to understand/react to threats.",
+  Finance: "Knowing how to move and make money legally or not, being able to handle finances and their taxes.",
+  Investigation: "Being able to find and follow clues, decipher their meaning and solve a mystery.",
+  Medicine: "Handling mortal injuries and diagnosing/treating diseases.",
+  Occult: "Mystical knowledge of the supernatural and rituals, Kindred related or not.",
+  Politics: "Knowing the inner workings of the government, mortal or not.",
+  Science: "Scientific knowledge and theory of the real world.",
+  Technology: "Internet and computer comprehension, hacking and breaking into secure information through the use of technology."
+};

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../core/api';
 import styles from '../styles/Court.module.css';
-import Loading from '../ui/Loading';
 import { Skeleton } from 'boneyard-js/react';
 
 /* --- Clan assets logic --- */
@@ -85,7 +84,7 @@ export default function HierarchyView({ canEdit }) {
     setSelectedClan("");
   };
 
-  // if (loading) return <Loading />;
+
 
   // Get unique clans for the dropdown
   const uniqueClans = [...new Set(roster.map(r => r.clan))].filter(Boolean).sort();

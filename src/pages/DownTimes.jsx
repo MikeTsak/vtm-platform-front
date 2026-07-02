@@ -3,7 +3,9 @@ import React, { useEffect, useMemo, useState, useContext } from 'react';
 import { AuthCtx } from '../core/AuthContext'; 
 import api from '../core/api';
 import styles from '../styles/DownTimes.module.css';
-import Loading from '../ui/Loading';
+import { Skeleton } from 'boneyard-js/react';
+import MiniSearch from 'minisearch';
+
 
 let tempIdCounter = 0;
 const generateTempId = () => {
@@ -40,7 +42,7 @@ function useCountdown(targetDate, isEndOfDay = false) {
   }, [now, targetDate, isEndOfDay]);
 }
 
-function CountdownDisplay({ title, countdown, pastText, futureText, isProject }) {
+const CountdownDisplay = ({ title, countdown, pastText, futureText, isProject }) => {
   const { isPast, days, hours, minutes, seconds, totalHours } = countdown;
 
   let wrapperClass = styles.countdownBox;
@@ -417,21 +419,34 @@ export default function DownTimes() {
   
   const list = useMemo(() => {
     const source = (filter === 'past') ? past : active;
-    const qq = q.trim().toLowerCase();
+    const qq = q.trim();
     if (!qq) return source;
-    return source.filter(dt => 
-      (dt.title || '').toLowerCase().includes(qq) ||
-      (dt.body || '').toLowerCase().includes(qq) ||
-      (dt.gm_notes || '').toLowerCase().includes(qq) ||
-      (dt.gm_resolution || '').toLowerCase().includes(qq)
-    );
+    
+    const ms = new MiniSearch({
+      fields: ['title', 'body', 'gm_notes', 'gm_resolution'],
+      searchOptions: { prefix: true, fuzzy: 0.2, combineWith: 'AND' }
+    });
+    
+    const docs = source.map((dt, idx) => ({
+      id: idx,
+      title: dt.title || '',
+      body: dt.body || '',
+      gm_notes: dt.gm_notes || '',
+      gm_resolution: dt.gm_resolution || ''
+    }));
+    ms.addAll(docs);
+    
+    const results = ms.search(qq);
+    const resultIds = new Set(results.map(r => r.id));
+    return source.filter((_, idx) => resultIds.has(idx));
   }, [active, past, filter, q]);
 
   const activeCount = active.length;
   const pastCount = past.length;
 
   return (
-    <main className={styles.page}>
+    <Skeleton loading={loading} name="downtimes-page">
+      <main className={styles.page}>
       
       {/* MODE SWITCHER */}
       <div className={styles.modeSwitcher}>
@@ -508,7 +523,7 @@ export default function DownTimes() {
 
       {/* List */}
       <section className={styles.list}>
-        {loading && <Loading />}
+
         {!loading && list.length === 0 && (
           <div className={styles.empty}>
             <div className={`${styles.emptyIcon} ${viewMode === 'project' ? styles.emptyIconProject : ''}`}>{viewMode === 'standard' ? '☾' : '📜'}</div>
@@ -526,6 +541,7 @@ export default function DownTimes() {
           />
         ))}
       </section>
-    </main>
+      </main>
+    </Skeleton>
   );
 }

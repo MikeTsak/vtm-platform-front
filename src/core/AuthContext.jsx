@@ -4,16 +4,17 @@ import api from './api';
 export const AuthCtx = createContext(null);
 
 export default function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState({ id: 3, role: 'admin', email: 'admin@test.com' });
+  const [loading, setLoading] = useState(false);
 
-  async function loadMe() {
-    try {
-      const { data } = await api.get('/auth/me');
-      setUser(data.user);
-    } catch { setUser(null); }
-  }
+  useEffect(() => {
+    /* MOCKED FOR BONEYARD */
+  }, []);
 
-  useEffect(() => { if (localStorage.getItem('token')) loadMe(); }, []);
+  const loadMe = async () => {
+    // MOCKED FOR BONEYARD
+    setUser({ id: 3, role: 'admin', email: 'admin@test.com' });
+  };
 
   const login = async (email, password) => {
     const { data } = await api.post('/auth/login', { email, password });

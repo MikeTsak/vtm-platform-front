@@ -2,9 +2,9 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './styles/global/index.css';
+import './bones/registry';
 import App from './core/App';
 import reportWebVitals from './reportWebVitals';
-import './bones/registry';
 
 // 🔧 Hard-kill any service workers and clear their caches BEFORE rendering
 async function purgeSWAndCaches() {

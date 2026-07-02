@@ -3,7 +3,6 @@ import React, { useState, useEffect, useContext, useMemo, useRef } from 'react';
 import api from '../core/api';
 import { AuthCtx } from '../core/AuthContext';
 import styles from '../styles/Boons.module.css';
-import Loading from '../ui/Loading';
 import { Skeleton } from 'boneyard-js/react';
 
 const BOON_LEVELS  = ['trivial', 'minor', 'major', 'life'];

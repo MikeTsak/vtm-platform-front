@@ -33,7 +33,7 @@ export const MERITS_AND_FLAWS = {
   // ===== Linguistics =====
   'Linguistics': {
     blurb:
-      'Merits covering language and the ability to communicate/understand spoken or written language. [1]',
+      'Merits covering language and the ability to communicate/understand spoken or written language.  (Source: Vampire: The Masquerade Corebook, page 179)',
     merits: [
       {
         id: idFor('Linguistics', 'Linguistics'),
@@ -57,7 +57,7 @@ export const MERITS_AND_FLAWS = {
   // ===== Looks =====
   'Looks': {
     blurb:
-      'Related to appearance—supernaturally influenced or not. [1]',
+      'Related to appearance—supernaturally influenced or not.  (Source: Vampire: The Masquerade Corebook, page 179)',
     merits: [
       {
         id: idFor('Looks', 'Beautiful'),
@@ -76,42 +76,42 @@ export const MERITS_AND_FLAWS = {
         name: 'Semblance of the Methuselah',
         dots: '• - ••',
         description:
-          'A striking resemblance to a methuselah grants +1 die to impress/intimidate/attract those who recognize the face (plus situational bonuses at ST discretion).',
+          'A striking resemblance to a methuselah grants +1 die to impress/intimidate/attract those who recognize the face (plus situational bonuses at ST discretion). (Source: Vampire: The Masquerade Forbidden Religions, page 85)',
       },
       {
         id: idFor('Looks', 'Famous Face'),
         name: 'Famous Face',
         dots: '•',
         description:
-          'Resemble someone famous: +2 dice in social tests where this helps; −2 dice to avoid recognition/hide in a crowd.',
+          'Resemble someone famous: +2 dice in social tests where this helps; −2 dice to avoid recognition/hide in a crowd. (Source: Vampire: The Masquerade Players Guide, page 118)',
       },
       {
         id: idFor('Looks', 'Ingénue'),
         name: 'Ingénue',
         dots: '•',
         description:
-          'Appear innocent and blameless: +2 dice to avoid suspicion or deflect blame (ST discretion).',
+          'Appear innocent and blameless: +2 dice to avoid suspicion or deflect blame (ST discretion). (Source: Vampire: The Masquerade Players Guide, page 118)',
       },
       {
         id: idFor('Looks', 'Remarkable Feature'),
         name: 'Remarkable Feature',
         dots: '•',
         description:
-          'Rare/memorable feature: +2 dice with strangers; −1 die to disguise.',
+          'Rare/memorable feature: +2 dice with strangers; −1 die to disguise. (Source: Vampire: The Masquerade Players Guide, page 118)',
       },
       {
         id: idFor('Looks', 'Up All Night'),
         name: 'Up All Night',
         dots: '•• or ••••',
         description:
-          'Treat Humanity as +1 (max 10), or +2 at four dots, for Blush of Life, eating, drinking, or sex.',
+          'Treat Humanity as +1 (max 10), or +2 at four dots, for Blush of Life, eating, drinking, or sex. (Source: Blood Stained Love, page 151)',
       },
       {
         id: idFor('Looks', 'Scene Kid'),
         name: 'Scene Kid',
         dots: '•',
         description:
-          "The player's style embodies that of a particular subculture. Add one die to all appropriate Social pools when dealing with that subculture.",
+          "The player's style embodies that of a particular subculture. Add one die to all appropriate Social pools when dealing with that subculture. (Source: Vampire: The Masquerade Live from the Succubus Club, page 26)",
       },
     ],
     flaws: [
@@ -146,7 +146,7 @@ export const MERITS_AND_FLAWS = {
         name: 'Unblinking Visage',
         dots: '••',
         description:
-          'Treat Humanity as −2 (min 0) for Blush of Life, eating, drinking, sex.',
+          'Treat Humanity as −2 (min 0) for Blush of Life, eating, drinking, sex. (Source: Vampire: The Masquerade Gehenna War, page 45)',
       },
     ],
   },
@@ -154,7 +154,7 @@ export const MERITS_AND_FLAWS = {
   // ===== Substance Use =====
   'Substance Use': {
     blurb:
-      'Merits/Flaws revolving around prey with drugs in their system; substance effects still apply. [1]',
+      'Merits/Flaws revolving around prey with drugs in their system; substance effects still apply.  (Source: Vampire: The Masquerade Corebook, page 179)',
     merits: [
       {
         id: idFor('Substance Use', 'High Functioning Addict'),
@@ -184,14 +184,14 @@ export const MERITS_AND_FLAWS = {
 
   // ===== Archaic =====
   'Archaic': {
-    blurb: 'Flaws/merits for Ancilla or older vampires. [6]',
+    blurb: 'Flaws/merits for Ancilla or older vampires.  (Source: Vampire: The Masquerade Live from the Succubus Club, page 26)',
     merits: [
       {
         id: idFor('Archaic', 'Custodian of History'),
         name: 'Custodian of History',
         dots: '•',
         description:
-          '+1 to relevant Skill tests about a chosen period/figure in Kindred lore.',
+          '+1 to relevant Skill tests about a chosen period/figure in Kindred lore. (Source: Vampire: The Masquerade In Memoriam, page 20-21)',
       },
     ],
     flaws: [
@@ -214,14 +214,14 @@ export const MERITS_AND_FLAWS = {
         name: 'Grief Phobia',
         dots: '•',
         description:
-          '−1 die to all tests while in the presence of the phobic stimulus.',
+          '−1 die to all tests while in the presence of the phobic stimulus. (Source: Vampire: The Masquerade In Memoriam, page 21)',
       },
       {
         id: idFor('Archaic', 'Old Tricks'),
         name: 'Old Tricks',
         dots: '•',
         description:
-          'All specialties must be archaic (period-appropriate).',
+          'All specialties must be archaic (period-appropriate). (Source: Vampire: The Masquerade In Memoriam, page 21)',
       },
     ],
   },
@@ -229,7 +229,7 @@ export const MERITS_AND_FLAWS = {
   // ===== Bonding =====
   'Bonding': {
     blurb:
-      'Used to tweak Blood Bond behavior. [6] (Some from Gehenna War)',
+      'Used to tweak Blood Bond behavior.  (Source: Vampire: The Masquerade Live from the Succubus Club, page 26) (Some from Gehenna War)',
     merits: [
       {
         id: idFor('Bonding', 'Bond Resistance'),
@@ -255,13 +255,13 @@ export const MERITS_AND_FLAWS = {
         name: 'Bonds of Fealty',
         dots: '•••',
         description:
-          'Dominate does not require eye contact on those bound to you (requires Dominate).',
+          'Dominate does not require eye contact on those bound to you (requires Dominate). (Source: Vampire: The Masquerade Gehenna War, page 44)',
       },
       {
         id: idFor('Bonding', 'Enduring Bond'),
         name: 'Enduring Bond',
         dots: '•',
-        description: 'Bonds you create fade slower (weaken every other month).',
+        description: 'Bonds you create fade slower (weaken every other month). (Source: Vampire: The Masquerade Gehenna War, page 44)',
       },
     ],
     flaws: [
@@ -287,7 +287,7 @@ export const MERITS_AND_FLAWS = {
         id: idFor('Bonding', 'Two Masters'),
         name: 'Two Masters',
         dots: '•',
-        description: 'Can be Blood Bound to two individuals at once.',
+        description: 'Can be Blood Bound to two individuals at once. (Source: Blood Stained Love, page 151)',
       },
     ],
   },
@@ -295,7 +295,7 @@ export const MERITS_AND_FLAWS = {
   // ===== Feeding =====
   'Feeding': {
     blurb:
-      'Merits/Flaws related to the act of feeding; taking one does not require others. [10]',
+      'Merits/Flaws related to the act of feeding; taking one does not require others.  (Source: Vampire: The Masquerade Gehenna War, page 44)',
     merits: [
       {
         id: idFor('Feeding', 'Bloodhound'),
@@ -315,21 +315,21 @@ export const MERITS_AND_FLAWS = {
         name: 'Vessel Recognition',
         dots: '•',
         description:
-          'Resolve + Awareness (Diff 2) to tell if a mortal was fed on recently; crit reveals if feed recurs.',
+          'Resolve + Awareness (Diff 2) to tell if a mortal was fed on recently; crit reveals if feed recurs. (Source: Vampire: The Masquerade Players Guide, page 118)',
       },
       {
         id: idFor('Feeding', 'Drive-thru'),
         name: 'Drive-thru',
         dots: '•',
         description:
-          'Safely complete a hunt within minutes while on the move by increasing the difficulty by 1.',
+          'Safely complete a hunt within minutes while on the move by increasing the difficulty by 1. (Source: Vampire: The Masquerade Live from the Succubus Club, page 25)',
       },
       {
         id: idFor('Feeding', 'Vein Tapper'),
         name: 'Vein Tapper',
         dots: '•',
         description:
-          'Prefers personal/unaware feeding (drugged, unconscious, etc.).',
+          'Prefers personal/unaware feeding (drugged, unconscious, etc.). (Source: Vampire: The Masquerade Players Guide, page 120)',
       },
     ],
     flaws: [
@@ -364,42 +364,42 @@ export const MERITS_AND_FLAWS = {
         name: 'Outdated Preference',
         dots: '••',
         description:
-          'Either force mortals to fit preference or always spend 1 WP to feed.',
+          'Either force mortals to fit preference or always spend 1 WP to feed. (Source: Vampire: The Masquerade In Memoriam, page 21)',
       },
       {
         id: idFor('Feeding', 'Resonance Sensitivity'),
         name: 'Resonance Sensitivity',
         dots: '•',
         description:
-          'One resonance really messes with the character, causing a unique compulsion.',
+          'One resonance really messes with the character, causing a unique compulsion. (Source: Vampire: The Masquerade Live from the Succubus Club, page 25)',
       },
       {
         id: idFor('Feeding', 'Resonance Mimic'),
         name: 'Resonance Mimic',
         dots: '••',
         description:
-          'The character gets influenced and penalized from the memories of their victim.',
+          'The character gets influenced and penalized from the memories of their victim. (Source: Vampire: The Masquerade Live from the Succubus Club, page 25)',
       },
       {
         id: idFor('Feeding', 'Sloppy Feeder'),
         name: 'Sloppy Feeder',
         dots: '••',
         description:
-          'The pattern of attacks when feeding is telltale enough to identify. One attack can be linked to previous attacks.',
+          'The pattern of attacks when feeding is telltale enough to identify. One attack can be linked to previous attacks. (Source: Vampire: The Masquerade Live from the Succubus Club, page 25)',
       },
       {
         id: idFor('Feeding', 'Starving Decay'),
         name: 'Starving Decay',
         dots: '••',
         description:
-          'At Hunger 3+, body shrivels; −2 dice Physical tests & mortal socials; risks Masquerade.',
+          'At Hunger 3+, body shrivels; −2 dice Physical tests & mortal socials; risks Masquerade. (Source: Vampire: The Masquerade Players Guide, page 120)',
       },
     ],
   },
 
   // ===== Mythic =====
   'Mythic': {
-    blurb: 'Tied to vampire mythos. [13]',
+    blurb: 'Tied to vampire mythos.  (Source: Vampire: The Masquerade Players Guide, page 120)',
     merits: [
       {
         id: idFor('Mythic', 'Eat Food'),
@@ -411,49 +411,49 @@ export const MERITS_AND_FLAWS = {
         id: idFor('Mythic', 'Cold Dead Hunger'),
         name: 'Cold Dead Hunger',
         dots: '•••',
-        description: '+2 dice to resist Hunger Frenzy.',
+        description: '+2 dice to resist Hunger Frenzy. (Source: Vampire: The Masquerade Forbidden Religions, page 87)',
       },
       {
         id: idFor('Mythic', 'Pack Diablerie'),
         name: 'Pack Diablerie',
         dots: '••',
         description:
-          'You take the soul during Diablerie unless you choose otherwise; helping another grants 5 XP as if you had committed it.',
+          'You take the soul during Diablerie unless you choose otherwise; helping another grants 5 XP as if you had committed it. (Source: Vampire: The Masquerade Forbidden Religions, page 87)',
       },
       {
         id: idFor('Mythic', 'Luck of the Devil'),
         name: 'Luck of the Devil',
         dots: '••••',
         description:
-          'Once per session redirect misfortune to someone close to the victim.',
+          'Once per session redirect misfortune to someone close to the victim. (Source: Vampire: The Masquerade Players Guide, page 119)',
       },
       {
         id: idFor('Mythic', 'Nuit Mode'),
         name: 'Nuit Mode',
         dots: '••',
         description:
-          "Body doesn't revert each night; keep new haircuts/body mods (mend like Aggravated). Not for BP > 1.",
+          "Body doesn't revert each night; keep new haircuts/body mods (mend like Aggravated). Not for BP > 1. (Source: Vampire: The Masquerade Players Guide, page 119)",
       },
       {
         id: idFor('Mythic', 'Object of Power'),
         name: 'Object of Power',
         dots: '• - •••',
         description:
-          '• Reroll 1 die per story (excl. Hunger). •• +1 die to all L1 Rituals. ••• Free danger premonition once/session.',
+          '• Reroll 1 die per story (excl. Hunger). •• +1 die to all L1 Rituals. ••• Free danger premonition once/session. (Source: Vampire: The Masquerade In Memoriam, page 21)',
       },
       {
         id: idFor('Mythic', 'Ley Line Leach'),
         name: 'Ley Line Leach',
         dots: '•',
         description:
-          'Follow ancient paths of power while traveling. After traveling to a different city/locale, negate the need for a Rouse Check for the next night.',
+          'Follow ancient paths of power while traveling. After traveling to a different city/locale, negate the need for a Rouse Check for the next night. (Source: Vampire: The Masquerade Live from the Succubus Club, page 26)',
       },
       {
         id: idFor('Mythic', 'Persistent Blush'),
         name: 'Persistent Blush',
         dots: '•••',
         description:
-          'A single activation of Blush of Life lasts 1 week.',
+          'A single activation of Blush of Life lasts 1 week. (Source: Vampire: The Masquerade Live from the Succubus Club, page 26)',
       },
     ],
     flaws: [
@@ -490,28 +490,28 @@ export const MERITS_AND_FLAWS = {
         name: 'Twice Cursed',
         dots: '••',
         description:
-          "Gain a second Clan's variant Bane in addition to your own (ST approval).",
+          "Gain a second Clan's variant Bane in addition to your own (ST approval). (Source: Vampire: The Masquerade Players Guide, page 121)",
       },
       {
         id: idFor('Mythic', 'Land Locked'),
         name: 'Land Locked',
         dots: '•',
         description:
-          'Unable to leave the land, the player must make a Fear Frenzy test at Difficulty 3 to board a boat or plane.',
+          'Unable to leave the land, the player must make a Fear Frenzy test at Difficulty 3 to board a boat or plane. (Source: Vampire: The Masquerade Live from the Succubus Club, page 26)',
       },
       {
         id: idFor('Mythic', 'Resistant Blush'),
         name: 'Resistant Blush',
         dots: '•',
         description:
-          'When rolling a Rouse Check for Blush of Life, roll twice and take the lowest result.',
+          'When rolling a Rouse Check for Blush of Life, roll twice and take the lowest result. (Source: Vampire: The Masquerade Live from the Succubus Club, page 26)',
       },
       {
         id: idFor('Mythic', 'Corpse Flesh'),
         name: 'Corpse Flesh',
         dots: '•',
         description:
-          'Unable to use Blush of Life.',
+          'Unable to use Blush of Life. (Source: Vampire: The Masquerade Live from the Succubus Club, page 26)',
       },
     ],
   },
@@ -519,7 +519,7 @@ export const MERITS_AND_FLAWS = {
   // ===== Psychological =====
   'Psychological': {
     blurb:
-      'Belief/cult-adjacent merits. Some from Blood Stained Love. [19]',
+      'Belief/cult-adjacent merits. Some from Blood Stained Love.  (Source: Vampire: The Masquerade Forbidden Religions, page 87)',
     merits: [
       {
         id: idFor('Psychological', 'Unholy Will'),
@@ -547,14 +547,14 @@ export const MERITS_AND_FLAWS = {
         name: 'Soothed Beast',
         dots: '•',
         description:
-          'With an SPC obsession: once/session ignore one Bestial or Messy Critical (gain 3 Stains if SPC dies).',
+          'With an SPC obsession: once/session ignore one Bestial or Messy Critical (gain 3 Stains if SPC dies). (Source: Blood Stained Love, page 151)',
       },
       {
         id: idFor('Psychological', 'False Love'),
         name: 'False Love',
         dots: '•',
         description:
-          "With an SPC obsession: treat Humanity as +1 (max 10) for Blush/eat/drink/sex near them; gain 3 Stains if they die.",
+          "With an SPC obsession: treat Humanity as +1 (max 10) for Blush/eat/drink/sex near them; gain 3 Stains if they die. (Source: Blood Stained Love, page 151)",
       },
     ],
     flaws: [
@@ -591,7 +591,7 @@ export const MERITS_AND_FLAWS = {
 
   // ===== Contagion =====
   'Contagion': {
-    blurb: 'Blood-borne illness themed. [20] (Flaws only)',
+    blurb: 'Blood-borne illness themed.  (Source: Vampire: The Masquerade Players Guide, page 119) (Flaws only)',
     merits: [],
     flaws: [
       {
@@ -621,21 +621,21 @@ export const MERITS_AND_FLAWS = {
         name: 'Consanguineous Sense',
         dots: '••',
         description:
-          'Detect whether another Kindred is in your direct bloodline (not their Generation).',
+          'Detect whether another Kindred is in your direct bloodline (not their Generation). (Source: Vampire: The Masquerade Gehenna War, page 44)',
       },
       {
         id: idFor('Blood Ties', 'Consanguineous Influence'),
         name: 'Consanguineous Influence',
         dots: '••',
         description:
-          'Bonus dice on Mental Disciplines vs own Clan/ancestor/descendant (+2 dice within ±2 generations).',
+          'Bonus dice on Mental Disciplines vs own Clan/ancestor/descendant (+2 dice within ±2 generations). (Source: Vampire: The Masquerade Gehenna War, page 44)',
       },
       {
         id: idFor('Blood Ties', 'Sins of the Father'),
         name: 'Sins of the Father',
         dots: '•• or •••',
         description:
-          'Show no signs after diablerizing a direct ancestor/descendant; at ••• extends to entire clan.',
+          'Show no signs after diablerizing a direct ancestor/descendant; at ••• extends to entire clan. (Source: Vampire: The Masquerade Gehenna War, page 44)',
       },
     ],
     flaws: [],
@@ -652,14 +652,14 @@ export const MERITS_AND_FLAWS = {
         name: 'Blatant Diablerist',
         dots: '•',
         description:
-          'Powers/Merits sensing Diablerie always reveal it on you.',
+          'Powers/Merits sensing Diablerie always reveal it on you. (Source: Vampire: The Masquerade Gehenna War, page 45)',
       },
       {
         id: idFor('Diablerie', 'Inherited Bane'),
         name: 'Inherited Bane',
         dots: '••',
         description:
-          "Gain another Clan's Bane in addition to your own (Tremere can use this to gain Salubri Bane).",
+          "Gain another Clan's Bane in addition to your own (Tremere can use this to gain Salubri Bane). (Source: Vampire: The Masquerade Gehenna War, page 45)",
       },
     ],
   },
@@ -701,7 +701,7 @@ export const MERITS_AND_FLAWS = {
         name: 'Mystic of the Void',
         dots: '• or ••',
         description:
-          'Count as knowing one Oblivion Power for ceremony prerequisites (Hecata/Lasombra choose three instead of one).',
+          'Count as knowing one Oblivion Power for ceremony prerequisites (Hecata/Lasombra choose three instead of one). (Source: Vampire: The Masquerade Tattered Façade, page 100)',
         requiresPowerSelection: true,
         targetDiscipline: 'Oblivion',
       },
@@ -712,14 +712,14 @@ export const MERITS_AND_FLAWS = {
         name: 'Knowledge Hungry',
         dots: '•',
         description:
-          'Pick a topic at creation; when learning it, must roll Willpower (Diff 3) to resist pursuing.',
+          'Pick a topic at creation; when learning it, must roll Willpower (Diff 3) to resist pursuing. (Source: Vampire: The Masquerade Players Guide, page 121)',
       },
       {
         id: idFor('Other', 'Prestation Debts'),
         name: 'Prestation Debts',
         dots: '•',
         description:
-          'Owe Kindred boons; boon-holder gains +1 die in Social conflict against you while leveraging this.',
+          'Owe Kindred boons; boon-holder gains +1 die in Social conflict against you while leveraging this. (Source: Vampire: The Masquerade Players Guide, page 121)',
       },
       {
         id: idFor('Other', 'Risk-Taker Errata'),
@@ -740,7 +740,7 @@ export const MERITS_AND_FLAWS = {
 
   // ===== Caitiff (only) =====
   'Caitiff': {
-    blurb: 'Only available to Caitiff. [22]',
+    blurb: 'Only available to Caitiff.  (Source: Vampire: The Masquerade Players Guide, page 121)',
     merits: [
       {
         id: idFor('Caitiff', 'Favored Blood'),
@@ -838,7 +838,7 @@ export const MERITS_AND_FLAWS = {
 
   // ===== Thin-blood (only) =====
   'Thin-blood': {
-    blurb: 'Only Thin-bloods may take these. [23]',
+    blurb: 'Only Thin-bloods may take these.  (Source: Vampire: The Masquerade Tattered Facade, page 108)',
     merits: [
       { id: idFor('Thin-blood', 'Anarch Comrades'), name: 'Anarch Comrades', dots: '—', description: 'Acts as 1-dot Anarch Mawla.' },
       { id: idFor('Thin-blood', 'Camarilla Contact'), name: 'Camarilla Contact', dots: '—', description: 'Acts as 1-dot Camarilla Mawla.' },
@@ -848,12 +848,12 @@ export const MERITS_AND_FLAWS = {
       { id: idFor('Thin-blood', 'Lifelike'), name: 'Lifelike', dots: '—', description: 'Heartbeat, can eat food, enjoy sex; most medical checks pass at night.' },
       { id: idFor('Thin-blood', 'Thin-blood Alchemist'), name: 'Thin-blood Alchemist', dots: '—', description: 'Gain 1 dot and 1 formula of Thin-blood Alchemy.' },
       { id: idFor('Thin-blood', 'Vampiric Resilience'), name: 'Vampiric Resilience', dots: '—', description: 'Take damage like a full vampire.' },
-      { id: idFor('Thin-blood', 'Abhorrent Blood'), name: 'Abhorrent Blood', dots: '—', description: 'Vampires must spend 2 WP each turn to drink from you (mortals/TBA unaffected).' },
-      { id: idFor('Thin-blood', 'Faith-Proof'), name: 'Faith-Proof', dots: '—', description: 'Too close to mortality for True Faith to affect you.' },
-      { id: idFor('Thin-blood', 'Low Appetite'), name: 'Low Appetite', dots: '—', description: 'At sunset with Hunger 0–1, roll 2 dice for Rouse and take the highest.' },
-      { id: idFor('Thin-blood', 'Lucid Dreamer'), name: 'Lucid Dreamer', dots: '—', description: 'Once/session receive a clue from prior night or a hint about the story.' },
-      { id: idFor('Thin-blood', "Mortality's Mien"), name: "Mortality's Mien", dots: '—', description: "Auras don't reveal vampiric nature; +2 dice to appear mortal via other methods." },
-      { id: idFor('Thin-blood', 'Swift Feeder'), name: 'Swift Feeder', dots: '—', description: 'Slake 1 Hunger in a turn and lick closed once/scene.' },
+      { id: idFor('Thin-blood', 'Abhorrent Blood'), name: 'Abhorrent Blood', dots: '—', description: 'Vampires must spend 2 WP each turn to drink from you (mortals/TBA unaffected). (Source: Vampire: The Masquerade Players Guide, page 135)' },
+      { id: idFor('Thin-blood', 'Faith-Proof'), name: 'Faith-Proof', dots: '—', description: 'Too close to mortality for True Faith to affect you. (Source: Vampire: The Masquerade Players Guide, page 135)' },
+      { id: idFor('Thin-blood', 'Low Appetite'), name: 'Low Appetite', dots: '—', description: 'At sunset with Hunger 0–1, roll 2 dice for Rouse and take the highest. (Source: Vampire: The Masquerade Players Guide, page 135)' },
+      { id: idFor('Thin-blood', 'Lucid Dreamer'), name: 'Lucid Dreamer', dots: '—', description: 'Once/session receive a clue from prior night or a hint about the story. (Source: Vampire: The Masquerade Players Guide, page 135)' },
+      { id: idFor('Thin-blood', "Mortality's Mien"), name: "Mortality's Mien", dots: '—', description: "Auras don't reveal vampiric nature; +2 dice to appear mortal via other methods. (Source: Vampire: The Masquerade Players Guide, page 135)" },
+      { id: idFor('Thin-blood', 'Swift Feeder'), name: 'Swift Feeder', dots: '—', description: 'Slake 1 Hunger in a turn and lick closed once/scene. (Source: Vampire: The Masquerade Players Guide, page 135)' },
     ],
     flaws: [
       { id: idFor('Thin-blood', 'Shunned by the Anarchs'), name: 'Shunned by the Anarchs', dots: '—', description: 'Anarchs avoid you; more likely to throw you to Camarilla.' },
@@ -878,7 +878,7 @@ export const MERITS_AND_FLAWS = {
   // ===== Ghouls =====
   'Ghouls': {
     blurb:
-      'Only ghouls may take these. ST decides if lost after Embrace/major changes. [26]',
+      'Only ghouls may take these. ST decides if lost after Embrace/major changes.  (Source: Vampire: The Masquerade Tattered Façade, page 100)',
     merits: [
       {
         id: idFor('Ghouls', 'Blood Empathy'),
@@ -925,7 +925,7 @@ export const MERITS_AND_FLAWS = {
   // ===== Cults =====
   'Cults': {
     blurb:
-      'Some items tied to specific cults; adapt as needed. [27]',
+      'Some items tied to specific cults; adapt as needed.  (Source: Vampire: The Masquerade Players Guide, page 126)',
     merits: [
       {
         id: idFor('Cults', 'Apocryphal Texts'),
@@ -1070,7 +1070,7 @@ export const MERITS_AND_FLAWS = {
   // ===== Backgrounds =====
   'Backgrounds': {
     blurb:
-      'Foundations from mortal life; Flaws can be taken independently. [28]',
+      'Foundations from mortal life; Flaws can be taken independently.  (Source: Vampire: The Masquerade Corebook, page 184)',
     groups: {
       'Allies': {
         merits: [
@@ -1111,27 +1111,27 @@ export const MERITS_AND_FLAWS = {
             name: 'Fame',
             dots: '• - •••••',
             description:
-              'Public notoriety; benefits and obvious Masquerade risks (also available for Kindred society).',
+              'Public notoriety; benefits and obvious Masquerade risks (also available for Kindred society). (Source: Vampire: The Masquerade In Memoriam, page 21)',
           },
           {
             id: idFor('Backgrounds Fame', 'Influencer'),
             name: 'Influencer',
             dots: '•',
             description:
-              'Requires Fame ••+. Have the equivalent Influence rating equal to your Fame minus one towards a fan or related field once per story.',
+              'Requires Fame ••+. Have the equivalent Influence rating equal to your Fame minus one towards a fan or related field once per story. (Source: Vampire: The Masquerade Live from the Succubus Club, page 25)',
           },
           {
             id: idFor('Backgrounds Fame', 'Enduring Fame'),
             name: 'Enduring Fame',
             dots: '•',
             description:
-              'Requires Fame •••+. Fame lost during the story fully recovers at the start of the next story.',
+              'Requires Fame •••+. Fame lost during the story fully recovers at the start of the next story. (Source: Vampire: The Masquerade Live from the Succubus Club, page 25)',
           },
         ],
         flaws: [
-          { id: idFor('Backgrounds Fame', 'Dark Secret'), name: 'Dark Secret', dots: '• +', description: 'A dangerous secret known to a few dedicated enemies.' },
-          { id: idFor('Backgrounds Fame', 'Infamy'), name: 'Infamy', dots: '• +', description: 'You did something atrocious and others know.' },
-          { id: idFor('Backgrounds Fame', 'Banned From'), name: 'Banned From', dots: '• - •••', description: 'Barred from a city; small=•, medium=••, large=•••.' },
+          { id: idFor('Backgrounds Fame', 'Dark Secret'), name: 'Dark Secret', dots: '• +', description: 'A dangerous secret known to a few dedicated enemies. (Source: Vampire: The Masquerade In Memoriam, page 21)' },
+          { id: idFor('Backgrounds Fame', 'Infamy'), name: 'Infamy', dots: '• +', description: 'You did something atrocious and others know. (Source: Vampire: The Masquerade In Memoriam, page 21)' },
+          { id: idFor('Backgrounds Fame', 'Banned From'), name: 'Banned From', dots: '• - •••', description: 'Barred from a city; small=•, medium=••, large=•••. (Source: Vampire: The Masquerade In Memoriam, page 21)' },
         ],
       },
       'Influence': {
@@ -1157,24 +1157,24 @@ export const MERITS_AND_FLAWS = {
           { id: idFor('Backgrounds Haven', 'Security System'), name: 'Security System', dots: '• +', description: '+1 die per dot to resist unwelcome guests.' },
           { id: idFor('Backgrounds Haven', 'Surgery'), name: 'Surgery', dots: '•', description: '+2 dice to relevant medical tests in the haven.' },
           { id: idFor('Backgrounds Haven', 'Warding'), name: 'Warding', dots: '• +', description: 'Magical warding; +1 die per dot vs scrying/supernatural intrusion.' },
-          { id: idFor('Backgrounds Haven', 'Holy Ground'), name: 'Holy Ground', dots: '•', description: 'Call upon a large group of cultists to defend the haven once per story.' },
-          { id: idFor('Backgrounds Haven', 'Shrine'), name: 'Shrine', dots: '• - •••', description: 'Bonus to searching/preparing/obtaining Ritual/Ceremony ingredients equal to dots.' },
-          { id: idFor('Backgrounds Haven', 'Business Establishment'), name: 'Business Establishment', dots: '•• - •••', description: 'Run/rent as a business; stream of income but higher visibility; −1 base Haven for privacy/defense vs (choose) financial or criminal intrusions.' },
-          { id: idFor('Backgrounds Haven', 'Furcus'), name: 'Furcus', dots: '• - •••', description: 'Sits on veins of the earth/frayed Veil; +1 die per dot to Ritual/Ceremony here.' },
-          { id: idFor('Backgrounds Haven', 'Machine Shop'), name: 'Machine Shop', dots: '• +', description: '+1 die per dot to Craft/build/repair/disassemble machinery.' },
-          { id: idFor('Backgrounds Haven', 'Mobile'), name: 'Mobile', dots: '• - •••', description: 'Mobile haven (car, van, boat, plane, etc.). Size equals the number of dots. (Coterie dots may be used for this merit).' },
-          { id: idFor('Backgrounds Haven', 'Armored'), name: 'Armored', dots: '•', description: 'Requires Mobile Haven merit. Mobile Haven has reinforced panels/locks/tires/glass. Can sustain 10 points of damage.' },
-          { id: idFor('Backgrounds Haven', 'Smugglers Stash'), name: 'Smugglers Stash', dots: '• - ••', description: 'Requires Mobile Haven merit. Secret stash within the haven to hide contraband. Searches done at +2 difficulty.' },
-          { id: idFor('Backgrounds Haven', 'Spare Plates'), name: 'Spare Plates', dots: '••', description: 'Requires Mobile Haven merit. Spare set of plates/stickers/identifiers switchable within a turn.' },
+          { id: idFor('Backgrounds Haven', 'Holy Ground'), name: 'Holy Ground', dots: '•', description: 'Call upon a large group of cultists to defend the haven once per story. (Source: Vampire: The Masquerade Children of the Blood, page 99)' },
+          { id: idFor('Backgrounds Haven', 'Shrine'), name: 'Shrine', dots: '• - •••', description: 'Bonus to searching/preparing/obtaining Ritual/Ceremony ingredients equal to dots. (Source: Vampire: The Masquerade Children of the Blood, page 99)' },
+          { id: idFor('Backgrounds Haven', 'Business Establishment'), name: 'Business Establishment', dots: '•• - •••', description: 'Run/rent as a business; stream of income but higher visibility; −1 base Haven for privacy/defense vs (choose) financial or criminal intrusions. (Source: Vampire: The Masquerade Players Guide, page 112)' },
+          { id: idFor('Backgrounds Haven', 'Furcus'), name: 'Furcus', dots: '• - •••', description: 'Sits on veins of the earth/frayed Veil; +1 die per dot to Ritual/Ceremony here. (Source: Vampire: The Masquerade Players Guide, page 112)' },
+          { id: idFor('Backgrounds Haven', 'Machine Shop'), name: 'Machine Shop', dots: '• +', description: '+1 die per dot to Craft/build/repair/disassemble machinery. (Source: Vampire: The Masquerade Players Guide, page 113)' },
+          { id: idFor('Backgrounds Haven', 'Mobile'), name: 'Mobile', dots: '• - •••', description: 'Mobile haven (car, van, boat, plane, etc.). Size equals the number of dots. (Coterie dots may be used for this merit). (Source: Vampire: The Masquerade Live from the Succubus Club, page 25)' },
+          { id: idFor('Backgrounds Haven', 'Armored'), name: 'Armored', dots: '•', description: 'Requires Mobile Haven merit. Mobile Haven has reinforced panels/locks/tires/glass. Can sustain 10 points of damage. (Source: Vampire: The Masquerade Live from the Succubus Club, page 25)' },
+          { id: idFor('Backgrounds Haven', 'Smugglers Stash'), name: 'Smugglers Stash', dots: '• - ••', description: 'Requires Mobile Haven merit. Secret stash within the haven to hide contraband. Searches done at +2 difficulty. (Source: Vampire: The Masquerade Live from the Succubus Club, page 25)' },
+          { id: idFor('Backgrounds Haven', 'Spare Plates'), name: 'Spare Plates', dots: '••', description: 'Requires Mobile Haven merit. Spare set of plates/stickers/identifiers switchable within a turn. (Source: Vampire: The Masquerade Live from the Succubus Club, page 25)' },
         ],
         flaws: [
           { id: idFor('Backgrounds Haven', 'No Haven'), name: 'No Haven', dots: '•', description: 'Must make basic test nightly to find secure rest.' },
           { id: idFor('Backgrounds Haven', 'Creepy'), name: 'Creepy', dots: '•', description: '−2 dice to Social pools with mortals while inside the haven.' },
           { id: idFor('Backgrounds Haven', 'Haunted'), name: 'Haunted', dots: '• +', description: 'Supernatural manifestation haunts the haven.' },
           { id: idFor('Backgrounds Haven', 'Compromised'), name: 'Compromised', dots: '••', description: 'On a watchlist / possibly raided.' },
-          { id: idFor('Backgrounds Haven', 'Shared'), name: 'Shared', dots: '• or ••', description: 'Haven is co-owned / has a landlord. (Coteries typically ignore this.)' },
-          { id: idFor('Backgrounds Haven', 'On the Rails'), name: 'On the Rails', dots: '•', description: 'Requires Mobile Haven. Haven\'s movement isn\'t under Player control (destinations scheduled/fixed).' },
-          { id: idFor('Backgrounds Haven', 'Temperamental'), name: 'Temperamental', dots: '•', description: 'Requires Mobile Haven. Vehicle is mechanically unreliable; failed Drive tests halt the vehicle.' },
+          { id: idFor('Backgrounds Haven', 'Shared'), name: 'Shared', dots: '• or ••', description: 'Haven is co-owned / has a landlord. (Coteries typically ignore this.) (Source: Vampire: The Masquerade Players Guide, page 113)' },
+          { id: idFor('Backgrounds Haven', 'On the Rails'), name: 'On the Rails', dots: '•', description: 'Requires Mobile Haven. Haven\'s movement isn\'t under Player control (destinations scheduled/fixed). (Source: Vampire: The Masquerade Live from the Succubus Club, page 26)' },
+          { id: idFor('Backgrounds Haven', 'Temperamental'), name: 'Temperamental', dots: '•', description: 'Requires Mobile Haven. Vehicle is mechanically unreliable; failed Drive tests halt the vehicle. (Source: Vampire: The Masquerade Live from the Succubus Club, page 26)' },
         ],
       },
       'Herd': {
@@ -1199,12 +1199,12 @@ export const MERITS_AND_FLAWS = {
       'Mawla': {
         merits: [
           { id: idFor('Backgrounds Mawla', 'Mawla'), name: 'Mawla', dots: '• - •••••', description: 'A Kindred mentor who takes you under their wing.' },
-          { id: idFor('Backgrounds Mawla', 'Secret Master'), name: 'Secret Master', dots: '•', description: 'Your Mawla assigns covert tasks. (Requires Mawla.)' },
+          { id: idFor('Backgrounds Mawla', 'Secret Master'), name: 'Secret Master', dots: '•', description: 'Your Mawla assigns covert tasks. (Requires Mawla.) (Source: Vampire: The Masquerade Gehenna War, page 45)' },
         ],
         flaws: [
           { id: idFor('Backgrounds Mawla', 'Adversary'), name: 'Adversary', dots: '• +', description: 'An enemy who actively works against you; rated two levels higher than Mawla.' },
-          { id: idFor('Backgrounds Mawla', 'Shameful Childe'), name: 'Shameful Childe', dots: '•', description: 'You Embraced a childe and abandoned them.' },
-          { id: idFor('Backgrounds Mawla', 'Touchstone Embraced by your Enemies'), name: 'Touchstone Embraced by your Enemies', dots: '••', description: 'A former Touchstone was Embraced by enemies; confronting risks Stains.' },
+          { id: idFor('Backgrounds Mawla', 'Shameful Childe'), name: 'Shameful Childe', dots: '•', description: 'You Embraced a childe and abandoned them. (Source: Vampire: The Masquerade In Memoriam, page 20)' },
+          { id: idFor('Backgrounds Mawla', 'Touchstone Embraced by your Enemies'), name: 'Touchstone Embraced by your Enemies', dots: '••', description: 'A former Touchstone was Embraced by enemies; confronting risks Stains. (Source: Vampire: The Masquerade In Memoriam, page 20)' },
         ],
       },
       'Resources': {
@@ -1226,12 +1226,12 @@ export const MERITS_AND_FLAWS = {
       'Status': {
         merits: [
           { id: idFor('Backgrounds Status', 'Status'), name: 'Status', dots: '• - •••••', description: 'Standing within your Faction.' },
-          { id: idFor('Backgrounds Status', 'City Secrets'), name: 'City Secrets', dots: '• - •••', description: 'Valuable knowledge of Kindred power structures in a city; can be sold or used as protection.' },
+          { id: idFor('Backgrounds Status', 'City Secrets'), name: 'City Secrets', dots: '• - •••', description: 'Valuable knowledge of Kindred power structures in a city; can be sold or used as protection. (Source: Vampire: The Masquerade Players Guide, page 118)' },
         ],
         flaws: [
           { id: idFor('Backgrounds Status', 'Suspect'), name: 'Suspect', dots: '•', description: 'You angered a Sect; −2 dice to Social with offended Factions until you prove worth.' },
           { id: idFor('Backgrounds Status', 'Shunned'), name: 'Shunned', dots: '••', description: 'Despised by a Sect; they actively work against you.' },
-          { id: idFor('Backgrounds Status', 'Mortal Pretender'), name: 'Mortal Pretender', dots: '•', description: 'You go out of your way to lead a mortal life, unsettling your vampiric peers. Suffer a two-dice penalty to Social tests against vampires dedicated to upholding the Masquerade.' },
+          { id: idFor('Backgrounds Status', 'Mortal Pretender'), name: 'Mortal Pretender', dots: '•', description: 'You go out of your way to lead a mortal life, unsettling your vampiric peers. Suffer a two-dice penalty to Social tests against vampires dedicated to upholding the Masquerade. (Source: Vampire: The Masquerade Live from the Succubus Club, page 26)' },
         ],
       },
     },

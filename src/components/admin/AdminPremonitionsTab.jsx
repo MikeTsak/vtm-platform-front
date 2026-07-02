@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 // CHANGED: Import the CSS module
 import s from "../../styles/AdminPremonitionsTab.module.css";
-import Loading from "../../ui/Loading";
+import { Skeleton } from "boneyard-js/react";
 
 /**
  * API base:
@@ -317,7 +317,7 @@ export default function AdminPremonitionsTab() {
           </label>
         </div>
 
-        {loading && <Loading />}
+        {loading && <Skeleton loading={true} name="admin-premonitions-loader" />}
         {err && <div className={s.error}>⚠️ {err}</div>}
 
         {!loading && !err && (
@@ -464,7 +464,7 @@ export default function AdminPremonitionsTab() {
           </div>
 
           {historyErr && <div className={s.error}>⚠️ {historyErr}</div>}
-          {historyLoading && <Loading />}
+          {historyLoading && <Skeleton loading={true} name="admin-history-loader" />}
 
           {!historyLoading && !historyErr && (
             <ul className={s.historyList}>

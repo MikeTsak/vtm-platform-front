@@ -1636,6 +1636,58 @@ select.input:focus {
   font-weight: 600;
 }
 
+/* Filter/Search Controls */
+.shopSearchRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  position: relative;
+  z-index: 20;
+}
+
+.searchWrap,
+.selectWrap {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  align-items: center;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 1rem;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.searchInput,
+.shopSelect {
+  width: 100%;
+  background: rgba(30, 30, 30, 0.8);
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+  padding: 0.75rem 1rem 0.75rem 2.5rem;
+  border-radius: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 1rem;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  appearance: none;
+}
+
+.shopSelect {
+  padding: 0.75rem 2.5rem 0.75rem 1rem;
+  cursor: pointer;
+}
+
+.searchInput:focus,
+.shopSelect:focus {
+  outline: none;
+  border-color: var(--tint);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--tint) 20%, transparent);
+}
+
 /* Category Tabs */
 .shopTabsNav {
   width: 100%;
@@ -1824,21 +1876,55 @@ select.input:focus {
   cursor: not-allowed;
 }
 
-.shopCardContent {
-  max-height: 0;
-  opacity: 0;
+.shopGridSingle {
+  grid-template-columns: 1fr !important;
+}
+
+.shopCardContentWrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.shopCardExpanded .shopCardContentWrap {
+  grid-template-rows: 1fr;
+}
+
+.shopCardContentInner {
   overflow: hidden;
-  transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+}
+
+.shopCardContent {
   background: var(--surface-lowest);
-  padding: 0 1.5rem;
+  padding: 1.5rem;
   border-top: 1px solid transparent;
+  max-height: 400px;
+  overflow-y: auto;
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
 }
 
 .shopCardExpanded .shopCardContent {
-  max-height: 500px;
   opacity: 1;
   border-color: var(--border-color);
-  padding: 1.5rem;
+}
+
+.shopCardContent::-webkit-scrollbar {
+  width: 8px;
+}
+
+.shopCardContent::-webkit-scrollbar-track {
+  background: var(--surface-lowest);
+  border-radius: 4px;
+}
+
+.shopCardContent::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+.shopCardContent::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }
 
 .shopCardExpanded .expandIcon {
@@ -2221,4 +2307,68 @@ select.input:focus {
 .hungerDroplet.active {
   color: var(--tint) !important;
   filter: drop-shadow(0 0 5px var(--tint));
+}
+
+.meritsSplitPane {
+  display: flex;
+  gap: 24px;
+  height: 600px;
+  background-color: var(--surface-color);
+  border: 1px solid var(--border-color);
+}
+
+@media (max-width: 1024px) {
+  .meritsSplitPane {
+    flex-direction: column;
+    height: auto;
+  }
+  .meritsListPane {
+    height: 400px !important;
+  }
+  .meritsDetailPane {
+    height: auto !important;
+    min-height: 400px !important;
+  }
+}
+
+
+.advSplitPane {
+  display: flex;
+  gap: 24px;
+  min-height: 600px;
+}
+.advExplorer {
+  display: flex;
+  flex: 2;
+  gap: 24px;
+}
+.advDetail {
+  flex: 1;
+  min-width: 300px;
+  position: sticky;
+  top: 120px;
+  height: 600px;
+}
+@media (max-width: 1024px) {
+  .advSplitPane {
+    flex-direction: column-reverse;
+  }
+  .advExplorer {
+    flex-direction: column;
+  }
+  .advDetail {
+    position: relative;
+    top: 0;
+    height: auto;
+  }
+}
+
+
+.advDetail {
+  display: flex;
+  flex-direction: column;
+  background-color: rgba(28, 27, 27, 0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color);
+  max-height: 600px;
 }

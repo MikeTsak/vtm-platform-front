@@ -7,7 +7,9 @@ import { DISCIPLINES, ALL_DISCIPLINE_NAMES, iconPath } from '../data/disciplines
 import { RITUALS } from '../data/rituals';
 import styles from '../styles/CharacterView.module.css';
 import homeStyles from '../styles/Home.module.css';
+
 import CharacterSetup from './CharacterSetup';
+import { ATTR_DESCRIPTIONS, SKILL_DESCRIPTIONS } from '../data/descriptions';
 import { MERITS_AND_FLAWS, listAllItems } from '../data/merits_flaws';
 import generateVTMCharacterSheetPDF from '../utils/pdfGenerator';
 import Inventory from '../components/Inventory';
@@ -18,7 +20,14 @@ import DisciplinesDisplaySection from '../components/DisciplinesDisplaySection';
 import MeritsBackgroundsSection from '../components/MeritsBackgroundsSection';
 import MeritsFlawsDisplay from '../components/MeritsFlawsDisplay';
 import { Skeleton } from 'boneyard-js/react';
-
+import MiniSearch from 'minisearch';
+import { ShopRow, ConfirmModal } from '../components/ShopRow';
+const msSearchText = (arr, query) => {
+  const ms = new MiniSearch({ fields: ['text'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
+  const docs = arr.map((text, id) => ({ id, text }));
+  ms.addAll(docs);
+  return ms.search(query).map(r => ({ item: docs[r.id].text }));
+};
 /* ---------- Clan tint colors ---------- */
 const CLAN_COLORS = {
   Brujah: '#b40f1f',
@@ -699,7 +708,7 @@ export default function CharacterView({
   // New tab state for the XP Shop
   const [activeShopTab, setActiveShopTab] = useState('Disciplines');
   const [shopSearch, setShopSearch] = useState('');
-  const [shopFilter, setShopFilter] = useState('all');
+  const [shopFilter, setShopFilter] = useState('in_clan');
 
   const [pendingFixes, setPendingFixes] = useState([]);
   const [xpTotals, setXpTotals] = useState(null);
@@ -1113,6 +1122,7 @@ export default function CharacterView({
     maxHealth += Number(sheet.disciplines?.Fortitude || 0);
   }
   const maxWillpower = (Number(sheet.attributes?.Composure) || 1) + (Number(sheet.attributes?.Resolve) || 1);
+  const isSearching = (shopSearch || '').trim().length > 0;
 
   return (
     <Skeleton name="character-view" loading={!ch}>
@@ -1379,24 +1389,29 @@ export default function CharacterView({
             </div>
 
             {/* Sticky Tabs */}
-            <nav className={styles.shopTabsNav}>
-              <div className={styles.shopTabsContainer}>
-                {['Disciplines', 'Attributes', 'Skills', 'Advantages', 'Rituals', 'Blood Potency'].map(tab => (
-                  <button
-                    key={tab}
-                    className={`${styles.shopTabBtn} ${activeShopTab === tab ? styles.shopTabBtnActive : ''}`}
-                    onClick={() => setActiveShopTab(tab)}
-                  >
-                    {tab}
-                  </button>
-                ))}
-              </div>
-            </nav>
+            {!isSearching && (
+              <nav className={styles.shopTabsNav}>
+                <div className={styles.shopTabsContainer}>
+                  {['Disciplines', 'Attributes', 'Skills', 'Merits & Flaws', 'Rituals', 'Blood Potency'].map(tab => (
+                    <button
+                      key={tab}
+                      className={`${styles.shopTabBtn} ${activeShopTab === tab ? styles.shopTabBtnActive : ''}`}
+                      onClick={() => setActiveShopTab(tab)}
+                    >
+                      {tab}
+                    </button>
+                  ))}
+                </div>
+              </nav>
+            )}
 
-            <div className={styles.shopGrid}>
-              {activeShopTab === 'Blood Potency' && (
+            <div className={`${styles.shopGrid} ${isSearching || ['Disciplines', 'Rituals'].includes(activeShopTab) ? styles.shopGridSingle : ''}`}>
+              {(activeShopTab === 'Blood Potency' || isSearching) && (
                 <>
                   {(() => {
+                    if (isSearching) {
+                      if (msSearchText(['Blood Potency'], shopSearch).length === 0) return null;
+                    }
                     const current = Number(sheet.blood_potency ?? 1);
                     const max = 10;
                     const next = Math.min(current + 1, max);
@@ -1427,209 +1442,313 @@ export default function CharacterView({
                 </>
               )}
 
-              {activeShopTab === 'Attributes' && (
+              {(activeShopTab === 'Attributes' || isSearching) && (
                 <>
-                  {ATTRS.flat().map(attr => {
-                    const current = Number(sheet.attributes?.[attr] ?? 1);
-                    const next = Math.min(current + 1, 5);
-                    const canRaise = current < 5;
-                    const cost = XP_RULES.attribute(next);
-                    const afford = xp >= cost;
-                    return (
-                      <ShopRow
-                        key={attr}
-                        title={attr}
-                        subtitle={`Raise to ${next}`}
-                        cost={cost}
-                        disabled={!canRaise || !afford}
-                        hint={!canRaise ? 'Max 5' : (!afford ? 'Not enough XP' : '')}
-                        onBuy={async () => {
-                          const nextSheet = JSON.parse(JSON.stringify(sheet));
-                          nextSheet.attributes = { ...(nextSheet.attributes || {}), [attr]: next };
-                          await spendXP({
-                            type: 'attribute',
-                            target: attr,
-                            currentLevel: current,
-                            newLevel: next,
-                            patchSheet: nextSheet,
-                          });
-                        }}
-                      />
-                    );
-                  })}
-                </>
-              )}
-
-              {activeShopTab === 'Skills' && (
-                <>
-                  {Object.values(SKILLS).flat().map(skill => {
-                    const raw = sheet.skills?.[skill];
-                    const current = typeof raw === 'object' ? Number(raw.dots || 0) : Number(raw || 0);
-                    const next = Math.min(current + 1, 5);
-                    const canRaise = current < 5;
-                    const cost = XP_RULES.skill(next);
-                    const afford = xp >= cost;
-                    return (
-                      <ShopRow
-                        key={skill}
-                        title={skill}
-                        subtitle={`Raise to ${next}`}
-                        cost={cost}
-                        disabled={!canRaise || !afford}
-                        hint={!canRaise ? 'Max 5' : (!afford ? 'Not enough XP' : '')}
-                        onBuy={async () => {
-                          const nextSheet = JSON.parse(JSON.stringify(sheet));
-                          nextSheet.skills = nextSheet.skills || {};
-                          const node = (nextSheet.skills[skill] && typeof nextSheet.skills[skill] === 'object')
-                            ? { ...nextSheet.skills[skill] }
-                            : { dots: Number(nextSheet.skills[skill] || 0), specialties: [] };
-                          node.dots = next;
-                          nextSheet.skills[skill] = node;
-                          await spendXP({
-                            type: 'skill',
-                            target: skill,
-                            currentLevel: current,
-                            newLevel: next,
-                            patchSheet: nextSheet,
-                          });
-                        }}
-                      />
-                    );
-                  })}
-                </>
-              )}
-
-              {activeShopTab === 'Disciplines' && (
-                <>
-                  {inClanDisciplines.filter(name => {
-                    if (shopSearch && !name.toLowerCase().includes(shopSearch.toLowerCase())) return false;
-                    if (shopFilter === 'out_of_clan') return false;
-                    return true;
-                  }).map(name => {
-                    const current = Number(sheet.disciplines?.[name] || 0);
-                    const next = Math.min(current + 1, 5);
-                    const canRaise = next > 0 && next <= 5;
-                    const cost = XP_RULES.disciplineClan(next);
-                    const afford = xp >= cost;
-                    const isKnown = current > 0;
-                    const title = isKnown ? `${name} (${current})` : name;
-                    return (
-                      <ShopRow
-                        key={name}
-                        title={title}
-                        subtitle={isKnown ? `Raise to ${next} • clan` : `Buy • clan`}
-                        cost={cost}
-                        leftIcon={iconPath(name)}
-                        disabled={!canRaise || !afford}
-                        hint={!canRaise ? 'Max 5' : (!afford ? 'Not enough XP' : '')}
-                        noConfirm={true}
-                        onBuy={() => {
-                          setModalCfg({
-                            name,
-                            current,
-                            next,
-                            kind: 'clan',
-                            assignOnly: false,
-                            characterClan: ch.clan,
-                            disciplineDots: sheet.disciplines,
-                            ownedPowers: sheet.disciplinePowers?.[name] || []
-                          });
-                          setModalOpen(true);
-                        }}
-                      />
-                    );
-                  })}
-                  {outOfClanDisciplines.filter(name => {
-                    if (shopSearch && !name.toLowerCase().includes(shopSearch.toLowerCase())) return false;
-                    if (shopFilter === 'in_clan') return false;
-                    return true;
-                  }).map(name => {
-                    const current = Number(sheet.disciplines?.[name] || 0);
-                    const next = Math.min(current + 1, 5);
-                    const kind = disciplineKindFor(ch, name);
-                    const isKnown = current > 0;
-                    const title = isKnown ? `${name} (${current})` : name;
-                    return (
-                      <ShopRow
-                        key={name}
-                        title={title}
-                        subtitle={isKnown ? `Raise to ${next} • ${kind}` : `Buy • ${kind}`}
-                        cost={'-'}
-                        leftIcon={iconPath(name)}
-                        disabled={true}
-                        hint={'Communicate with your ST to get them'}
-                        locked={true}
-                        onBuy={async () => { }}
-                      />
-                    );
-                  })}
-                </>
-              )}
-
-              {activeShopTab === 'Rituals' && (
-                <>
-                  {Object.entries(RITUALS?.blood_sorcery?.levels || {}).map(([lvlStr, list]) => {
-                    const level = Number(lvlStr);
-                    return list.map(rit => {
-                      const owned = knownRitualIds.has(rit.id);
-                      const allowed = canLearnRitual(level);
-                      const cost = XP_RULES.ritual(level);
-                      const afford = xp >= cost;
-                      const { unmet } = ritualPrereqStatus(rit, knownPowerNamesAndIds);
+                  {(() => {
+                    return ATTRS.map((group, i) => {
+                      const groupNames = ['Physical', 'Social', 'Mental'];
+                      const groupName = groupNames[i];
+                      
+                      let filteredGroup = group;
+                      if (isSearching) {
+                        const res = msSearchText([...group, groupName], shopSearch);
+                        if (res.length === 0) return null;
+                        
+                        // If they matched the group name, show all attributes in group
+                        const matchedGroup = res.some(r => r.item === groupName);
+                        if (!matchedGroup) {
+                          const matchedAttrNames = new Set(res.map(r => r.item));
+                          filteredGroup = group.filter(a => matchedAttrNames.has(a));
+                        }
+                      }
+                      
+                      if (filteredGroup.length === 0) return null;
                       return (
-                        <RitualRow
-                          key={rit.id}
-                          item={rit}
-                          level={level}
-                          cost={cost}
-                          owned={owned}
-                          allowed={allowed}
-                          afford={afford}
-                          prereqUnmet={unmet}
-                          onBuy={() => buyRitual(rit, level, cost)}
-                        />
+                        <div key={groupName} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                          <h3 className={styles.sectionTitle} style={{ margin: 0, paddingBottom: '0.5rem', borderBottom: '1px solid var(--border-color)', color: 'var(--tint)' }}>
+                            {groupName}
+                          </h3>
+                          {filteredGroup.map(attr => {
+                            const current = Number(sheet.attributes?.[attr] ?? 1);
+                            const next = Math.min(current + 1, 5);
+                            const canRaise = current < 5;
+                            const cost = XP_RULES.attribute(next);
+                            const afford = xp >= cost;
+                            return (
+                              <ShopRow
+                                key={attr}
+                                title={attr}
+                                subtitle={`Raise to ${next}`}
+                                cost={cost}
+                                disabled={!canRaise || !afford}
+                                hint={!canRaise ? 'Max 5' : (!afford ? 'Not enough XP' : '')}
+                                description={ATTR_DESCRIPTIONS[attr]}
+                                onBuy={async () => {
+                                  const nextSheet = JSON.parse(JSON.stringify(sheet));
+                                  nextSheet.attributes = { ...(nextSheet.attributes || {}), [attr]: next };
+                                  await spendXP({
+                                    type: 'attribute',
+                                    target: attr,
+                                    currentLevel: current,
+                                    newLevel: next,
+                                    patchSheet: nextSheet,
+                                  });
+                                }}
+                              />
+                            );
+                          })}
+                        </div>
                       );
                     });
-                  })}
-                  {Object.entries((RITUALS.oblivion?.levels || {})).map(([lvlStr, list]) => {
-                    const level = Number(lvlStr);
-                    return list.map(cer => {
-                      const owned = knownRitualIds.has(cer.id);
-                      const allowed = canLearnCeremony(level);
-                      const cost = XP_RULES.ceremony(level);
-                      const afford = xp >= cost;
-                      const { unmet } = ritualPrereqStatus(cer, knownPowerNamesAndIds);
+                  })()}
+                </>
+              )}
+
+              {(activeShopTab === 'Skills' || isSearching) && (
+                <>
+                  {(() => {
+                    return Object.entries(SKILLS).map(([groupName, groupSkills]) => {
+                      let filteredSkills = groupSkills;
+                      if (isSearching) {
+                        const res = msSearchText([...groupSkills, groupName], shopSearch);
+                        if (res.length === 0) return null;
+                        
+                        const matchedGroup = res.some(r => r.item === groupName);
+                        if (!matchedGroup) {
+                          const matchedSkillNames = new Set(res.map(r => r.item));
+                          filteredSkills = groupSkills.filter(s => matchedSkillNames.has(s));
+                        }
+                      }
+                      
+                      if (filteredSkills.length === 0) return null;
                       return (
-                        <RitualRow
-                          key={cer.id}
-                          item={cer}
-                          level={level}
-                          cost={cost}
-                          owned={owned}
-                          allowed={allowed}
-                          afford={afford}
-                          prereqUnmet={unmet}
-                          onBuy={() => buyCeremony(cer, level, cost)}
-                        />
+                        <div key={groupName} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                          <h3 className={styles.sectionTitle} style={{ margin: 0, paddingBottom: '0.5rem', borderBottom: '1px solid var(--border-color)', color: 'var(--tint)' }}>
+                            {groupName}
+                          </h3>
+                          {filteredSkills.map(skill => {
+                            const raw = sheet.skills?.[skill];
+                            const current = typeof raw === 'object' ? Number(raw.dots || 0) : Number(raw || 0);
+                            const next = Math.min(current + 1, 5);
+                            const canRaise = current < 5;
+                            const cost = XP_RULES.skill(next);
+                            const afford = xp >= cost;
+                            return (
+                              <ShopRow
+                                key={skill}
+                                title={skill}
+                                subtitle={`Raise to ${next}`}
+                                cost={cost}
+                                disabled={!canRaise || !afford}
+                                hint={!canRaise ? 'Max 5' : (!afford ? 'Not enough XP' : '')}
+                                description={SKILL_DESCRIPTIONS[skill]}
+                                onBuy={async () => {
+                                  const nextSheet = JSON.parse(JSON.stringify(sheet));
+                                  nextSheet.skills = nextSheet.skills || {};
+                                  const node = (nextSheet.skills[skill] && typeof nextSheet.skills[skill] === 'object')
+                                    ? { ...nextSheet.skills[skill] }
+                                    : { dots: Number(nextSheet.skills[skill] || 0), specialties: [] };
+                                  node.dots = next;
+                                  nextSheet.skills[skill] = node;
+                                  await spendXP({
+                                    type: 'skill',
+                                    target: skill,
+                                    currentLevel: current,
+                                    newLevel: next,
+                                    patchSheet: nextSheet,
+                                  });
+                                }}
+                              />
+                            );
+                          })}
+                        </div>
                       );
                     });
-                  })}
+                  })()}
+                </>
+              )}
+
+              {(activeShopTab === 'Disciplines' || isSearching) && (
+                <>
+                  {(() => {
+                    const matchDiscipline = (name) => {
+                      if (!isSearching) return true;
+                      const allTerms = [name];
+                      const levels = DISCIPLINES?.[name]?.levels || {};
+                      for (let lvl = 1; lvl <= 5; lvl++) {
+                        for (const p of (levels[lvl] || [])) {
+                          if (p.name) allTerms.push(p.name);
+                        }
+                      }
+                      return msSearchText(allTerms, shopSearch).length > 0;
+                    };
+                    
+                    return (
+                      <>
+                        {inClanDisciplines.filter(name => {
+                          if (!matchDiscipline(name)) return false;
+                          if (shopFilter === 'out_of_clan') return false;
+                          return true;
+                        }).map(name => {
+                          const current = Number(sheet.disciplines?.[name] || 0);
+                          const next = Math.min(current + 1, 5);
+                          const canRaise = next > 0 && next <= 5;
+                          const cost = XP_RULES.disciplineClan(next);
+                          const afford = xp >= cost;
+                          const isKnown = current > 0;
+                          const title = isKnown ? `${name} (${current})` : name;
+                          return (
+                            <ShopRow
+                              key={name}
+                              title={title}
+                              subtitle={isKnown ? `Raise to ${next} • clan` : `Buy • clan`}
+                              cost={cost}
+                              leftIcon={iconPath(name)}
+                              disabled={!canRaise || !afford}
+                              hint={!canRaise ? 'Max 5' : (!afford ? 'Not enough XP' : 'Expand to select a power')}
+                              noConfirm={true}
+                              forceExpanded={isSearching}
+                            >
+                              {canRaise && afford && (
+                                <InlineDisciplinePicker
+                                  cfg={{
+                                    name,
+                                    current,
+                                    next,
+                                    kind: 'clan',
+                                    assignOnly: false,
+                                    characterClan: ch.clan,
+                                    disciplineDots: sheet.disciplines,
+                                    ownedPowers: sheet.disciplinePowers?.[name] || []
+                                  }}
+                                  searchQuery={shopSearch}
+                                  onConfirm={(sel) => confirmDisciplinePurchase({
+                                    name,
+                                    current,
+                                    next,
+                                    kind: 'clan',
+                                    assignOnly: false,
+                                    ...sel
+                                  })}
+                                />
+                              )}
+                            </ShopRow>
+                          );
+                        })}
+                        {outOfClanDisciplines.filter(name => {
+                          if (!matchDiscipline(name)) return false;
+                          if (shopFilter === 'in_clan') return false;
+                          return true;
+                        }).map(name => {
+                          const current = Number(sheet.disciplines?.[name] || 0);
+                          const next = Math.min(current + 1, 5);
+                          const kind = disciplineKindFor(ch, name);
+                          const isKnown = current > 0;
+                          const title = isKnown ? `${name} (${current})` : name;
+                          return (
+                            <ShopRow
+                              key={name}
+                              title={title}
+                              subtitle={isKnown ? `Raise to ${next} • ${kind}` : `Buy • ${kind}`}
+                              cost={'-'}
+                              leftIcon={iconPath(name)}
+                              disabled={true}
+                              hint={'Communicate with your ST to get them'}
+                              locked={true}
+                              onBuy={async () => { }}
+                              forceExpanded={isSearching}
+                            />
+                          );
+                        })}
+                      </>
+                    );
+                  })()}
+                </>
+              )}
+
+              {(activeShopTab === 'Rituals' || isSearching) && (
+                <>
+                  {(() => {
+                    const matchRitualCategory = (catName, itemsObj) => {
+                      if (!isSearching) return true;
+                      const allTerms = [catName];
+                      Object.values(itemsObj || {}).flat().forEach(r => {
+                        if (r.name) allTerms.push(r.name);
+                      });
+                      return msSearchText(allTerms, shopSearch).length > 0;
+                    };
+                    
+                    const showBloodSorcery = matchRitualCategory('Blood Sorcery Rituals', RITUALS?.blood_sorcery?.levels);
+                    const showOblivion = matchRitualCategory('Oblivion Ceremonies', RITUALS?.oblivion?.levels);
+                    
+                    return (
+                      <>
+                        {showBloodSorcery && (
+                          <ShopRow
+                            title="Blood Sorcery Rituals"
+                            subtitle="View and acquire rituals"
+                            cost="-"
+                            disabled={false}
+                            hint="Expand to browse"
+                            noConfirm={true}
+                            forceExpanded={isSearching}
+                          >
+                            <InlineRitualPicker 
+                              type="blood_sorcery" 
+                              itemsObj={RITUALS?.blood_sorcery?.levels}
+                              knownIds={knownRitualIds}
+                              knownPowerNamesAndIds={knownPowerNamesAndIds}
+                              canLearnFn={canLearnRitual}
+                              onBuy={buyRitual}
+                              xp={xp}
+                              searchQuery={shopSearch}
+                            />
+                          </ShopRow>
+                        )}
+                        
+                        {showOblivion && (
+                          <ShopRow
+                            title="Oblivion Ceremonies"
+                            subtitle="View and acquire ceremonies"
+                            cost="-"
+                            disabled={false}
+                            hint="Expand to browse"
+                            noConfirm={true}
+                            forceExpanded={isSearching}
+                          >
+                            <InlineRitualPicker 
+                              type="oblivion" 
+                              itemsObj={RITUALS?.oblivion?.levels}
+                              knownIds={knownRitualIds}
+                              knownPowerNamesAndIds={knownPowerNamesAndIds}
+                              canLearnFn={canLearnCeremony}
+                              onBuy={buyCeremony}
+                              xp={xp}
+                              searchQuery={shopSearch}
+                            />
+                          </ShopRow>
+                        )}
+                      </>
+                    );
+                  })()}
                 </>
               )}
             </div>
 
-            {activeShopTab === 'Advantages' && (
+            {(activeShopTab === 'Merits & Flaws' || isSearching) && (
               <div style={{ marginTop: '2rem' }}>
                 <MeritsBackgroundsSection
                   sheet={sheet}
                   xp={xp}
                   ch={ch}
                   knownPowerNamesAndIds={knownPowerNamesAndIds}
+                  searchQuery={shopSearch}
+                  spendXP={spendXP}
                 />
               </div>
             )}
 
-            {activeShopTab === 'Skills' && (
+            {activeShopTab === 'Skills' && !isSearching && (
               <div style={{ marginTop: '2rem' }}>
                 <Card>
                   <div className={styles.cardHead}><b>Skill Specialties</b></div>
@@ -1715,104 +1834,6 @@ function renderSpecs(specs = []) {
   return <span className={styles.specsText}>({specs.join(', ')})</span>;
 }
 
-
-function ConfirmModal({ title = 'Confirm Purchase', children, onConfirm, onCancel, busy = false }) {
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', display: 'grid', placeItems: 'center', zIndex: 50 }}>
-      <div className={styles.card} style={{ maxWidth: 520, width: 'min(92vw,520px)' }}>
-        <div className={styles.cardHead}><b>{title}</b></div>
-        <div className={styles.grid} style={{ gap: 12 }}>{children}</div>
-        <div className={styles.rowForm} style={{ justifyContent: 'flex-end' }}>
-          <button className={styles.ghostBtn} onClick={onCancel} disabled={busy}>No</button>
-          <button className={styles.cta} onClick={onConfirm} disabled={busy}>{busy ? 'Working…' : 'Yes'}</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, leftIcon, description = '', noConfirm = false }) {
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [working, setWorking] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  async function handleConfirm() {
-    setWorking(true);
-    try {
-      await onBuy?.();
-      setConfirmOpen(false);
-    } finally {
-      setWorking(false);
-    }
-  }
-
-  // Attempt to parse the target level from subtitle to render dots
-  const match = subtitle?.match(/\d+/);
-  const targetLevel = match ? parseInt(match[0], 10) : 0;
-
-  // Clean up title if it contains "(X)" like Blood Potency
-  const cleanTitle = title.replace(/\s*\(\d+\)$/, '');
-
-  return (
-    <article className={`${styles.shopCard} ${isExpanded ? styles.shopCardExpanded : ''} ${disabled ? styles.shopCardLocked : ''}`}>
-      <div className={styles.shopCardHeader} onClick={() => setIsExpanded(!isExpanded)}>
-        <div className={styles.shopCardTitleRow}>
-          <div>
-            <h2 className={styles.shopCardTitle}>{cleanTitle}</h2>
-            <p className={styles.shopCardSubtitle}>{subtitle}</p>
-          </div>
-          <span className={`material-symbols-outlined ${styles.expandIcon}`}>expand_more</span>
-        </div>
-
-        <div className={styles.shopCardDots}>
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className={`${styles.shopDot} ${i < targetLevel ? styles.shopDotFilled : ''}`}>
-              {i < targetLevel - 1 && <span className={styles.shopDotX}>X</span>}
-            </div>
-          ))}
-        </div>
-
-        <div className={styles.shopCardFooter}>
-          <span className={styles.shopCardPrice}>{cost} XP</span>
-          <button
-            className={styles.shopCardAcquireBtn}
-            disabled={disabled || working}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (noConfirm) {
-                onBuy?.();
-              } else {
-                setConfirmOpen(true);
-              }
-            }}
-          >
-            Acquire
-          </button>
-        </div>
-      </div>
-
-      <div className={styles.shopCardContent}>
-        <p className={styles.shopCardText}>
-          {description || hint || `Purchase ${title} for ${cost} Experience Points.`}
-        </p>
-      </div>
-
-      {confirmOpen && (
-        <ConfirmModal
-          title="Confirm Purchase"
-          onCancel={() => setConfirmOpen(false)}
-          onConfirm={handleConfirm}
-          busy={working}
-        >
-          <p>
-            Are you sure you want to buy <b>{title}</b>
-            {subtitle ? <> — {subtitle}</> : null} for <b>{cost}</b> XP?
-          </p>
-        </ConfirmModal>
-      )}
-    </article>
-  );
-}
 
 /* ---------- Ritual/Ceremony row with prereq/recall info ---------- */
 function RitualRow({ item, level, cost, owned, allowed, afford, prereqUnmet = [], onBuy }) {
@@ -1944,6 +1965,381 @@ function ritualPrereqStatus(rit, knownPowerSet) {
   return { unmet: unmetList };
 }
 
+/* ===== Inline Ritual Picker ===== */
+function InlineRitualPicker({ type, itemsObj, knownIds, knownPowerNamesAndIds, canLearnFn, onBuy, xp, searchQuery }) {
+  const [expandedId, setExpandedId] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [saveErr, setSaveErr] = useState('');
+
+  // Flatten the rituals/ceremonies into a single array
+  const fullPool = useMemo(() => {
+    const out = [];
+    Object.entries(itemsObj || {}).forEach(([lvlStr, list]) => {
+      const level = Number(lvlStr);
+      list.forEach(rit => out.push({ ...rit, __level: level }));
+    });
+    out.sort((a, b) => (a.__level - b.__level) || String(a.name).localeCompare(String(b.name)));
+    return out;
+  }, [itemsObj]);
+
+  const annotated = useMemo(() => {
+    let res = fullPool.map(r => {
+      const isOwned = knownIds.has(r.id);
+      const isAllowed = canLearnFn(r.__level);
+      const cost = type === 'blood_sorcery' ? XP_RULES.ritual(r.__level) : XP_RULES.ceremony(r.__level);
+      const afford = xp >= cost;
+      const { unmet } = ritualPrereqStatus(r, knownPowerNamesAndIds);
+      
+      const isAvailable = !isOwned && isAllowed && unmet.length === 0;
+
+      return {
+        ...r,
+        __cost: cost,
+        __afford: afford,
+        __flags: { owned: isOwned, unmet, allowed: isAllowed },
+        __available: isAvailable
+      };
+    });
+    
+    if (searchQuery) {
+      const q = searchQuery.trim();
+      res = msSearchText(res.map(r => r.name), q).map(match => res.find(p => p.name === match.item)).filter(Boolean);
+    }
+    
+    return res;
+  }, [fullPool, knownIds, canLearnFn, knownPowerNamesAndIds, xp, type, searchQuery]);
+
+  const confirm = async (sel) => {
+    if (!sel || !sel.__available || !sel.__afford) return;
+    setSaving(true);
+    setSaveErr('');
+    try {
+      const maybe = onBuy?.(sel, sel.__level, sel.__cost);
+      if (maybe && typeof maybe.then === 'function') await maybe;
+    } catch (e) {
+      setSaveErr(e?.response?.data?.error || e?.message || 'Failed to assign ritual.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      {saveErr && <div className={styles.alert} style={{ marginBottom: '16px' }}>{saveErr}</div>}
+      {!annotated.length ? (
+        <div className={styles.alertWarning}>
+          No items found.
+        </div>
+      ) : (
+        annotated.map(r => {
+          const isOwned = r.__flags.owned;
+          const isAvailable = r.__available;
+          const isAfford = r.__afford;
+          const isExpanded = expandedId === r.id;
+
+          const cardClass = isOwned ? styles.powerCardOwned
+            : (isAvailable ? styles.powerCardAvailable : styles.powerCardRestricted);
+            
+          const isRestricted = !isAvailable && !isOwned;
+
+          return (
+            <div key={r.id} className={cardClass}>
+              <div 
+                className={styles.powerCardHeaderRow} 
+                onClick={() => setExpandedId(isExpanded ? null : r.id)}
+                style={{ cursor: 'pointer', marginBottom: isExpanded ? '8px' : '0' }}
+              >
+                <div>
+                  <div className={styles.powerCardTitleWrap}>
+                    {isOwned && (
+                      <span className="material-symbols-outlined" style={{ color: 'var(--primary-container)', fontSize: '16px', fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                    )}
+                    {isRestricted && (
+                      <span className="material-symbols-outlined" style={{ color: 'var(--text-muted)', fontSize: '16px' }}>lock</span>
+                    )}
+                    <h3 className={isOwned || isAvailable ? styles.powerCardTitle : styles.powerCardTitleMuted}>
+                      {r.name}
+                    </h3>
+                  </div>
+                  <span className={isOwned || isAvailable ? styles.powerCardLevel : styles.powerCardLevelMuted}>
+                    Level {r.__level} • {isOwned ? 'Owned' : (isAvailable ? 'Available' : 'Restricted')}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                   {!isOwned && <span className={styles.shopCardPrice}>{r.__cost} XP</span>}
+                   <span 
+                     className={`material-symbols-outlined ${styles.expandIcon}`} 
+                     style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s ease' }}
+                   >
+                     expand_more
+                   </span>
+                </div>
+              </div>
+
+              <div className={styles.shopCardContentWrap} style={{ gridTemplateRows: isExpanded ? '1fr' : '0fr' }}>
+                <div className={styles.shopCardContentInner} style={{ padding: 0 }}>
+                  <div style={{ paddingTop: '8px', opacity: isExpanded ? 1 : 0, transition: 'opacity 0.3s ease' }}>
+                    <div className={isOwned || isAvailable ? styles.powerCardDesc : styles.powerCardDescMuted}>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+                        {r.dice_pool && <span style={{ padding: '2px 8px', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '12px' }}><b>Dice Pool:</b> {r.dice_pool}</span>}
+                        {r.difficulty && <span style={{ padding: '2px 8px', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '12px' }}><b>Difficulty:</b> {r.difficulty}</span>}
+                        {r.prereq && <span style={{ padding: '2px 8px', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '12px' }}><b>Prereq:</b> {r.prereq}</span>}
+                      </div>
+                      {r.effect && <div style={{ marginBottom: '8px' }}><b>Effect:</b> {r.effect}</div>}
+                      {r.notes && <div>{r.notes}</div>}
+                      {(!r.effect && !r.notes) && `Learn ${r.name}.`}
+                    </div>
+
+                    {isOwned && (
+                      <div className={styles.powerCardActiveIndicator}>
+                        <span className={styles.powerCardActiveText}>Known</span>
+                        <div className={styles.powerCardActiveIcon}>
+                          <div className={styles.powerCardActiveDot}></div>
+                        </div>
+                      </div>
+                    )}
+
+                    {isAvailable && (
+                      <button
+                        className={styles.powerAcquireBtn}
+                        onClick={() => confirm(r)}
+                        disabled={saving || !isAfford}
+                        style={{ marginTop: '12px' }}
+                      >
+                        {saving ? 'Acquiring...' : (!isAfford ? 'Not Enough XP' : 'Acquire')}
+                      </button>
+                    )}
+
+                    {isRestricted && (
+                      <div className={styles.powerCardWarning}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>warning</span>
+                        {!r.__flags.allowed && <span>Requires Discipline Level {r.__level}</span>}
+                        {r.__flags.unmet.length > 0 && <span>Needs: {r.__flags.unmet.join(', ')}</span>}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+}
+/* ===== Inline Discipline Power Picker ===== */
+function InlineDisciplinePicker({ cfg, onConfirm, searchQuery }) {
+  const {
+    name, next, assignOnly, characterClan,
+    ownedPowerIds = [], ownedPowerNames = [], ownedPowers = [], disciplineDots = {}
+  } = cfg;
+
+  const fullPool = useMemo(() => {
+    const out = [];
+    const levels = DISCIPLINES?.[name]?.levels || {};
+    const cap = Number(next || 0);
+    for (let lvl = 1; lvl <= cap; lvl++) {
+      for (const p of (levels[lvl] || [])) out.push({ ...p, __level: lvl });
+    }
+    out.sort((a, b) => (a.__level - b.__level) || String(a.name).localeCompare(String(b.name)));
+    return out;
+  }, [name, next]);
+
+  const norm = (v) => String(v ?? '').trim().toLowerCase();
+  const normDisc = useCallback((s) => norm(s).replace(/\s+/g, ' '), []);
+
+  const ownedCanon = useMemo(() => {
+    const ids = ownedPowerIds.map(norm);
+    const names = ownedPowerNames.map(norm);
+    const objs = ownedPowers.flatMap(p => [norm(p?.id), norm(p?.name), norm(p?.slug), norm(p?.key), norm(p?.code), norm(p?.power_id)]);
+    return new Set([...ids, ...names, ...objs].filter(Boolean));
+  }, [ownedPowerIds, ownedPowerNames, ownedPowers]);
+
+  const dotsByDisc = useMemo(() => {
+    const m = new Map();
+    Object.entries(disciplineDots || {}).forEach(([k, v]) => m.set(normDisc(k), Number(v) || 0));
+    return m;
+  }, [disciplineDots, normDisc]);
+
+  const countDots = useCallback((s = '') => {
+    const bullets = (s.match(/[•●○]/g) || []).length;
+    const matchResult = s.match(/\b(\d+)\b/);
+    const digits = matchResult ? parseInt(matchResult[1], 10) : 0;
+    return Math.max(bullets, digits || 1);
+  }, []);
+
+  const parseAmalgam = useCallback((s = '') =>
+    s.split(/(?:,|&|\+|and)/i)
+      .map(part => part.trim())
+      .filter(Boolean)
+      .map(part => {
+        const nameMatch = part.match(/^[^\d•●○]+/);
+        const discName = (nameMatch ? nameMatch[0] : part).trim().replace(/[:.-]+$/, '');
+        return { disc: discName, dots: countDots(part) };
+      })
+    , [countDots]);
+
+  const annotated = useMemo(() => {
+    let res = fullPool.map(p => {
+      const candidates = [
+        norm(p?.id), norm(p?.name), norm(p?.slug), norm(p?.key), norm(p?.code), norm(p?.power_id)
+      ].filter(Boolean);
+      const owned = candidates.some(c => ownedCanon.has(c));
+
+      const unmet = [];
+      const clanLockUnmet = p.clan && p.clan !== characterClan;
+
+      if (p.amalgam) {
+        const reqs = parseAmalgam(String(p.amalgam));
+        for (const req of reqs) {
+          const have = dotsByDisc.get(normDisc(req.disc)) || 0;
+          if (have < (req.dots || 1)) {
+            unmet.push(`${req.disc} ${'•'.repeat(req.dots || 1)}`);
+          }
+        }
+      }
+
+      return {
+        ...p,
+        __flags: { owned, unmet, clanLockUnmet },
+        __available: !owned && unmet.length === 0 && !clanLockUnmet,
+      };
+    });
+    
+    if (searchQuery) {
+      const q = searchQuery.trim();
+      res = msSearchText(res.map(p => p.name), q).map(match => res.find(p => p.name === match.item)).filter(Boolean);
+    }
+    
+    return res;
+  }, [fullPool, ownedCanon, dotsByDisc, normDisc, parseAmalgam, characterClan, searchQuery]);
+
+  const [saving, setSaving] = useState(false);
+  const [saveErr, setSaveErr] = useState('');
+  const [expandedPowerId, setExpandedPowerId] = useState(null);
+
+  const confirm = async (sel) => {
+    if (!sel || !sel.__available) return;
+    setSaving(true);
+    setSaveErr('');
+    try {
+      const maybe = onConfirm?.({
+        selectedPowerId: sel.id,
+        selectedPowerName: sel.name,
+        selectedPowerLevel: sel.__level
+      });
+      if (maybe && typeof maybe.then === 'function') await maybe;
+    } catch (e) {
+      setSaveErr(e?.response?.data?.error || e?.message || 'Failed to assign power.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      {saveErr && <div className={styles.alert} style={{ marginBottom: '16px' }}>{saveErr}</div>}
+      {!annotated.length ? (
+        <div className={styles.alertWarning}>
+          No power data found up to level <b>{next}</b> for <b>{name}</b>.
+        </div>
+      ) : (
+        annotated.map(p => {
+          const isOwned = p.__flags.owned;
+          const isRestricted = !p.__available && !isOwned;
+          const isAvailable = p.__available;
+          const isExpanded = expandedPowerId === p.id;
+
+          const cardClass = isOwned ? styles.powerCardOwned
+            : (isAvailable ? styles.powerCardAvailable : styles.powerCardRestricted);
+
+          return (
+            <div key={p.id} className={cardClass}>
+              <div 
+                className={styles.powerCardHeaderRow} 
+                onClick={() => setExpandedPowerId(isExpanded ? null : p.id)}
+                style={{ cursor: 'pointer', marginBottom: isExpanded ? '8px' : '0' }}
+              >
+                <div>
+                  <div className={styles.powerCardTitleWrap}>
+                    {isOwned && (
+                      <span className="material-symbols-outlined" style={{ color: 'var(--primary-container)', fontSize: '16px', fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                    )}
+                    {isRestricted && (
+                      <span className="material-symbols-outlined" style={{ color: 'var(--text-muted)', fontSize: '16px' }}>lock</span>
+                    )}
+                    <h3 className={isOwned || isAvailable ? styles.powerCardTitle : styles.powerCardTitleMuted}>
+                      {p.name}
+                    </h3>
+                  </div>
+                  <span className={isOwned || isAvailable ? styles.powerCardLevel : styles.powerCardLevelMuted}>
+                    Level {p.__level} • {isOwned ? 'Owned' : (isAvailable ? 'Available' : 'Restricted')}
+                  </span>
+                </div>
+                <span 
+                  className={`material-symbols-outlined ${styles.expandIcon}`} 
+                  style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s ease' }}
+                >
+                  expand_more
+                </span>
+              </div>
+
+              <div className={styles.shopCardContentWrap} style={{ gridTemplateRows: isExpanded ? '1fr' : '0fr' }}>
+                <div className={styles.shopCardContentInner} style={{ padding: 0 }}>
+                  <div style={{ paddingTop: '8px', opacity: isExpanded ? 1 : 0, transition: 'opacity 0.3s ease' }}>
+                    <div className={isOwned || isAvailable ? styles.powerCardDesc : styles.powerCardDescMuted}>
+                      <p style={{ marginTop: 0 }}>{p.notes || `Power of ${name} at level ${p.__level}.`}</p>
+                      {(p.cost || p.dice_pool || p.duration || p.system || p.amalgam || p.prerequisite) && (
+                        <div className={styles.powerDetailGrid}>
+                          {p.cost && <div><b style={{ color: 'var(--text-color)' }}>Cost:</b> {p.cost}</div>}
+                          {p.dice_pool && <div><b style={{ color: 'var(--text-color)' }}>Dice Pool:</b> {p.dice_pool} {p.opposing_pool && p.opposing_pool !== '—' ? `vs ${p.opposing_pool}` : ''}</div>}
+                          {p.duration && <div><b style={{ color: 'var(--text-color)' }}>Duration:</b> {p.duration}</div>}
+                          {p.amalgam && <div><b style={{ color: 'var(--text-color)' }}>Amalgam:</b> {p.amalgam}</div>}
+                          {p.prerequisite && <div><b style={{ color: 'var(--text-color)' }}>Prerequisite:</b> {p.prerequisite}</div>}
+                          {p.system && <div style={{ gridColumn: '1 / -1', marginTop: '4px' }}><b style={{ color: 'var(--text-color)' }}>System:</b> {p.system}</div>}
+                        </div>
+                      )}
+                    </div>
+
+                    {isOwned && (
+                      <div className={styles.powerCardActiveIndicator}>
+                        <span className={styles.powerCardActiveText}>Power Active</span>
+                        <div className={styles.powerCardActiveIcon}>
+                          <div className={styles.powerCardActiveDot}></div>
+                        </div>
+                      </div>
+                    )}
+
+                    {isAvailable && (
+                      <button
+                        className={styles.powerAcquireBtn}
+                        onClick={() => confirm(p)}
+                        disabled={saving}
+                        style={{ marginTop: '12px' }}
+                      >
+                        {saving ? 'Acquiring...' : 'Acquire Power'}
+                      </button>
+                    )}
+
+                    {isRestricted && (
+                      <div className={styles.powerCardWarning}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>warning</span>
+                        {p.__flags.clanLockUnmet && <span>Requires Clan: {p.clan}</span>}
+                        {Array.isArray(p.__flags.unmet) && p.__flags.unmet.length > 0 && (
+                          <span>Needs: {p.__flags.unmet.join(', ')}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+}
 
 /* ===== Discipline power picker modal ===== */
 function DisciplinePowerModal({ cfg, onClose, onConfirm }) {

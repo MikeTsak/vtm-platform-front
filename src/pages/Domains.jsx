@@ -2,12 +2,12 @@
 import React, { useMemo, useEffect, useState, useRef, useCallback } from 'react';
 import L from 'leaflet';
 import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
+import MiniSearch from 'minisearch';
 import 'leaflet/dist/leaflet.css';
 
 import styles from '../styles/Domains.module.css';
 import domainsRaw from '../data/Domains.json';
 import api from '../core/api';
-import Loading from '../ui/Loading';
 import { Skeleton } from 'boneyard-js/react';
 
 // --- Division Names Mapping ---
@@ -183,14 +183,19 @@ export default function Domains() {
   }, []);
 
   const filteredDomains = useMemo(() => {
-    const q = searchQuery.toLowerCase();
-    return allDomainsList
-      .slice()
-      .sort((a, b) => a.number - b.number)
-      .filter(d => !q || d.name.toLowerCase().includes(q) || String(d.number).includes(q));
+    const q = searchQuery.trim();
+    let sorted = allDomainsList.slice().sort((a, b) => a.number - b.number);
+    if (!q) return sorted;
+    
+    const ms = new MiniSearch({ fields: ['name', 'numberString'], searchOptions: { prefix: true, fuzzy: 0.2, combineWith: 'AND' } });
+    const docs = sorted.map((d, id) => ({ id, name: d.name, numberString: String(d.number) }));
+    ms.addAll(docs);
+    
+    const results = ms.search(q);
+    const resultIds = new Set(results.map(r => r.id));
+    return sorted.filter((d, id) => resultIds.has(id));
   }, [allDomainsList, searchQuery]);
 
-  if (isLoading) return <Loading />;
   if (!geoJsonData) {
     return (
       <div className={styles.wrap}>

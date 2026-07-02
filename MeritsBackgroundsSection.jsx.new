@@ -159,32 +159,11 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
   const [localSearch, setLocalSearch] = useState('');
   const [activeTab, setActiveTab] = useState('ALL');
   const [selectedAdvantage, setSelectedAdvantage] = useState(null); // { type: 'merit' | 'flaw', item }
-  const [expandedAdvantageId, setExpandedAdvantageId] = useState(null);
 
   // Details pane state
-  const detailItem = selectedAdvantage?.item;
-  const detailType = selectedAdvantage?.type;
-  const detailAllowed = detailItem?.allowed || [1];
-
   const [detailDots, setDetailDots] = useState(1);
   const [detailAddSeparate, setDetailAddSeparate] = useState(false);
   const [detailMysticSelections, setDetailMysticSelections] = useState([]);
-
-  const meritAvailableOblivion = useMemo(() => {
-    const out = [];
-    const isMystic = selectedAdvantage?.item?.id === 'other__mystic_of_the_void';
-    if (!isMystic || typeof DISCIPLINES === 'undefined' || !DISCIPLINES['Oblivion']) return out;
-    Object.entries(DISCIPLINES['Oblivion'].levels || {}).forEach(([lvlStr, list]) => {
-      const level = Number(lvlStr);
-      (list || []).forEach(p => {
-        const normId = String(p.id ?? '').toLowerCase();
-        if (!knownPowerNamesAndIds.has(normId)) {
-          out.push({ ...p, level });
-        }
-      });
-    });
-    return out;
-  }, [selectedAdvantage, knownPowerNamesAndIds]);
 
   // Reset detail state when selection changes
   useEffect(() => {
@@ -457,10 +436,10 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
       )}
 
       {/* Split Pane Layout */}
-      <div className={styles.advSplitPane}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', minHeight: '600px' }}>
         
         {/* Explorer Panels */}
-        <div className={styles.advExplorer}>
+        <div style={{ display: 'flex', flex: '2', gap: '24px', flexWrap: 'wrap' }}>
           
           {/* Merits Column */}
           <div style={{ flex: '1', display: 'flex', flexDirection: 'column', backgroundColor: 'rgba(28, 27, 27, 0.6)', backdropFilter: 'blur(12px)', border: '1px solid var(--border-color)', minWidth: '250px', maxHeight: '600px' }}>
@@ -545,7 +524,7 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
         </div>
 
         {/* Detail Pane */}
-        <div className={styles.advDetail}>
+        <div style={{ flex: '1', minWidth: '300px', display: 'flex', flexDirection: 'column', backgroundColor: 'rgba(28, 27, 27, 0.6)', backdropFilter: 'blur(12px)', border: '1px solid var(--border-color)', maxHeight: '600px', position: 'relative' }}>
           {selectedAdvantage ? (() => {
             const item = detailItem;
             const isFlaw = detailType === 'flaw';
@@ -672,133 +651,68 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
       </div>
 
       {/* Owned Registry */}
-      {(!searchQuery && (meritsList.length > 0 || backgroundsList.length > 0 || flawsList.length > 0)) && (() => {
-        const getIconForAdvantage = (item, isFlaw) => {
-          const name = (item.name || '').toLowerCase();
-          if (name.includes('allies')) return 'groups';
-          if (name.includes('fame')) return 'public';
-          if (name.includes('resources')) return 'payments';
-          if (name.includes('influence')) return 'account_balance';
-          if (name.includes('status')) return 'workspace_premium';
-          if (name.includes('haven')) return 'home';
-          if (name.includes('retainer')) return 'person';
-          if (name.includes('herd')) return 'bloodtype';
-          if (name.includes('contact')) return 'contact_phone';
-          if (name.includes('mask')) return 'masks';
-          if (name.includes('looks') || name.includes('beautiful')) return 'face_2';
-          if (name.includes('linguistics')) return 'translate';
-          if (name.includes('blood') || name.includes('addiction')) return 'bloodtype';
-          if (name.includes('bane')) return 'warning';
-          if (name.includes('prey')) return 'restaurant';
-          if (name.includes('stigmata')) return 'water_drop';
-          if (name.includes('dark secret')) return 'lock';
+      {(!searchQuery && (meritsList.length > 0 || backgroundsList.length > 0 || flawsList.length > 0)) && (
+        <div style={{ backgroundColor: 'rgba(28, 27, 27, 0.6)', backdropFilter: 'blur(12px)', border: '1px solid var(--border-color)', padding: '24px', marginTop: '24px' }}>
+          <h2 style={{ fontSize: '24px', fontWeight: 600, color: 'var(--text-color)', fontFamily: "'Playfair Display', serif", marginBottom: '24px', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>YOUR ADVANTAGES</h2>
           
-          const cat = (item.category || '').toLowerCase();
-          if (cat.includes('mental')) return 'psychology';
-          if (cat.includes('physical')) return 'fitness_center';
-          if (cat.includes('social')) return 'forum';
-          if (cat.includes('supernatural')) return 'auto_awesome';
-          if (cat.includes('ghoul')) return 'bloodtype';
-          
-          return isFlaw ? 'visibility_off' : 'star';
-        };
-
-        const renderNotes = (notes) => {
-          if (!notes) return null;
-          const notesStr = typeof notes === 'string' ? notes : JSON.stringify(notes);
-          if (!notesStr || notesStr === '{}' || notesStr === '[]') return null;
-          return (
-            <div style={{ marginTop: '12px', padding: '8px', backgroundColor: 'var(--surface-variant)', borderRadius: '4px', fontSize: '12px', color: 'var(--text-color)', opacity: 0.9 }}>
-              <strong style={{ color: 'var(--primary-color)' }}>Notes:</strong> {notesStr}
-            </div>
-          );
-        };
-
-        return (
-          <div style={{ backgroundColor: 'rgba(28, 27, 27, 0.6)', backdropFilter: 'blur(12px)', border: '1px solid var(--border-color)', padding: '24px', marginTop: '24px' }}>
-            <h2 style={{ fontSize: '24px', fontWeight: 600, color: 'var(--text-color)', fontFamily: "'Playfair Display', serif", marginBottom: '24px', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>YOUR ADVANTAGES</h2>
-            
-            {([...meritsList, ...backgroundsList].length > 0) && (
-              <>
-                <h3 style={{ fontSize: '14px', letterSpacing: '0.1em', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '16px', textTransform: 'uppercase' }}>Merits & Backgrounds</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px', marginBottom: '32px' }}>
-                  {[...meritsList, ...backgroundsList].map((m, i) => {
-                    const details = allMeritsFlat.find(x => x.id === m.id) || allDataItems.find(x => x.id === m.id) || {};
-                    const icon = getIconForAdvantage({ ...m, category: details.category }, false);
-                    const isExpanded = expandedAdvantageId === `merit_${m.id}_${i}`;
-                    return (
-                      <div 
-                        key={`merit_${m.id}_${i}`} 
-                        onClick={() => setExpandedAdvantageId(isExpanded ? null : `merit_${m.id}_${i}`)}
-                        style={{ border: isExpanded ? '1px solid var(--primary-color)' : '1px solid var(--border-color)', padding: '16px', display: 'flex', gap: '16px', backgroundColor: 'var(--surface-container-low)', position: 'relative', cursor: 'pointer', transition: 'border-color 0.2s' }}
-                      >
-                        <div style={{ width: '64px', height: '64px', backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <span className="material-symbols-outlined" style={{ color: 'var(--text-muted)', fontSize: '32px' }}>{icon}</span>
-                        </div>
-                        <div style={{ flexGrow: 1 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <h4 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--text-color)' }}>{m.name}</h4>
-                            <div style={{ display: 'flex', gap: '4px' }}>
-                              {Array.from({ length: m.dots || 0 }).map((_, j) => <span key={j} className="dot-filled" style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: 'var(--primary-color)', border: '1px solid var(--primary-color)' }}></span>)}
-                            </div>
-                          </div>
-                          <div style={{ fontSize: '12px', letterSpacing: '0.1em', color: 'var(--text-muted)', marginTop: '4px', textTransform: 'uppercase' }}>{details.category || 'MERIT'}</div>
-                          {isExpanded && details.description && (
-                            <div style={{ marginTop: '12px', fontSize: '13px', lineHeight: 1.4, color: 'var(--text-muted)', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
-                              {details.description}
-                            </div>
-                          )}
-                          {renderNotes(m.notes)}
-                        </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
+            {[...meritsList, ...backgroundsList].map((m, i) => {
+              const details = allMeritsFlat.find(x => x.id === m.id) || allDataItems.find(x => x.id === m.id);
+              return (
+                <div key={m.id + i} style={{ border: '1px solid var(--border-color)', padding: '16px', display: 'flex', gap: '16px', backgroundColor: 'var(--surface-container-low)', position: 'relative' }}>
+                  <div style={{ width: '64px', height: '64px', backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span className="material-symbols-outlined" style={{ color: 'var(--text-muted)', fontSize: '32px' }}>star</span>
+                  </div>
+                  <div style={{ flexGrow: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <h4 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--text-color)' }}>{m.name}</h4>
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        {Array.from({ length: m.dots || 0 }).map((_, j) => <span key={j} className="dot-filled" style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: 'var(--primary-color)', border: '1px solid var(--primary-color)' }}></span>)}
                       </div>
-                    );
-                  })}
+                    </div>
+                    <div style={{ fontSize: '12px', letterSpacing: '0.1em', color: 'var(--text-muted)', marginTop: '4px', textTransform: 'uppercase' }}>{details?.category || 'MERIT'}</div>
+                    <input 
+                      type="text" 
+                      placeholder="Add notes..." 
+                      defaultValue={m.notes ? (typeof m.notes === 'string' ? m.notes : JSON.stringify(m.notes)) : ''}
+                      readOnly
+                      style={{ width: '100%', backgroundColor: 'transparent', border: 'none', borderBottom: '1px solid var(--border-color)', color: 'var(--text-color)', marginTop: '8px', fontSize: '14px', outline: 'none' }}
+                    />
+                  </div>
                 </div>
-              </>
-            )}
+              );
+            })}
             
-            {(flawsList.length > 0) && (
-              <>
-                {([...meritsList, ...backgroundsList].length > 0) && <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)', margin: '0 0 32px 0' }} />}
-                <h3 style={{ fontSize: '14px', letterSpacing: '0.1em', fontWeight: 600, color: 'var(--error)', marginBottom: '16px', textTransform: 'uppercase' }}>Flaws</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
-                  {flawsList.map((f, i) => {
-                    const details = allFlawsFlat.find(x => x.id === f.id) || allDataItems.find(x => x.id === f.id) || {};
-                    const icon = getIconForAdvantage({ ...f, category: details.category }, true);
-                    const isExpanded = expandedAdvantageId === `flaw_${f.id}_${i}`;
-                    return (
-                      <div 
-                        key={`flaw_${f.id}_${i}`} 
-                        onClick={() => setExpandedAdvantageId(isExpanded ? null : `flaw_${f.id}_${i}`)}
-                        style={{ border: '1px solid var(--border-color)', borderLeft: '4px solid var(--error)', padding: '16px', display: 'flex', gap: '16px', backgroundColor: isExpanded ? 'var(--surface-container-high)' : 'var(--surface-container-low)', position: 'relative', cursor: 'pointer', transition: 'background-color 0.2s' }}
-                      >
-                        <div style={{ width: '64px', height: '64px', backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <span className="material-symbols-outlined" style={{ color: 'var(--error)', fontSize: '32px' }}>{icon}</span>
-                        </div>
-                        <div style={{ flexGrow: 1 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <h4 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--text-color)' }}>{f.name}</h4>
-                            <div style={{ display: 'flex', gap: '4px' }}>
-                              {Array.from({ length: f.dots || 0 }).map((_, j) => <span key={j} className="dot-filled" style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: 'var(--error)', border: '1px solid var(--error)' }}></span>)}
-                            </div>
-                          </div>
-                          <div style={{ fontSize: '12px', letterSpacing: '0.1em', color: 'var(--text-muted)', marginTop: '4px', textTransform: 'uppercase' }}>{details.category || 'FLAW'}</div>
-                          {isExpanded && details.description && (
-                            <div style={{ marginTop: '12px', fontSize: '13px', lineHeight: 1.4, color: 'var(--text-muted)', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
-                              {details.description}
-                            </div>
-                          )}
-                          {renderNotes(f.notes)}
-                        </div>
+            {flawsList.map((f, i) => {
+              const details = allFlawsFlat.find(x => x.id === f.id) || allDataItems.find(x => x.id === f.id);
+              return (
+                <div key={f.id + i} style={{ border: '1px solid var(--border-color)', borderLeft: '4px solid var(--error)', padding: '16px', display: 'flex', gap: '16px', backgroundColor: 'var(--surface-container-low)', position: 'relative' }}>
+                  <div style={{ width: '64px', height: '64px', backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span className="material-symbols-outlined" style={{ color: 'var(--error)', fontSize: '32px' }}>visibility_off</span>
+                  </div>
+                  <div style={{ flexGrow: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <h4 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--text-color)' }}>{f.name}</h4>
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        {Array.from({ length: f.dots || 0 }).map((_, j) => <span key={j} className="dot-filled" style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: 'var(--error)', border: '1px solid var(--error)' }}></span>)}
                       </div>
-                    );
-                  })}
+                    </div>
+                    <div style={{ fontSize: '12px', letterSpacing: '0.1em', color: 'var(--text-muted)', marginTop: '4px', textTransform: 'uppercase' }}>{details?.category || 'FLAW'}</div>
+                    {f.notes && (
+                      <input 
+                        type="text" 
+                        defaultValue={f.notes}
+                        readOnly
+                        style={{ width: '100%', backgroundColor: 'transparent', border: 'none', borderBottom: '1px solid var(--border-color)', color: 'var(--text-color)', marginTop: '8px', fontSize: '14px', outline: 'none' }}
+                      />
+                    )}
+                  </div>
                 </div>
-              </>
-            )}
+              );
+            })}
           </div>
-        );
-      })()}
+        </div>
+      )}
     </div>
   );
 };

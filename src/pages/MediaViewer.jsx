@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import api from '../core/api';
 import s from '../styles/Premonitions.module.css';
+import { Skeleton } from 'boneyard-js/react';
 
 export default function MediaViewer() {
   const { id } = useParams(); // this is now the PREMONITION id
@@ -61,20 +62,7 @@ export default function MediaViewer() {
     };
   }, [id, navigate]);
 
-  if (loading) {
-    return (
-      <main className={s.page}>
-        <header className={s.header}>
-          <h2 className={s.title}>Premonition Vision</h2>
-          <p className={s.subtitle}>Reading the static...</p>
-        </header>
 
-        <div className={s.loadingBox}>
-          <div className={s.glitchText}>🧠 Receiving the vision...</div>
-        </div>
-      </main>
-    );
-  }
 
   if (error) {
     return (
@@ -103,7 +91,8 @@ export default function MediaViewer() {
   }
 
   return (
-    <main className={s.page}>
+    <Skeleton loading={loading} name="media-viewer">
+      <main className={s.page}>
       <header className={s.header}>
         <h2 className={s.title}>Premonition Vision</h2>
         <p className={s.subtitle}>Listen to the static...</p>
@@ -180,6 +169,7 @@ export default function MediaViewer() {
           ← Back to Premonitions
         </button>
       </div>
-    </main>
+      </main>
+    </Skeleton>
   );
 }

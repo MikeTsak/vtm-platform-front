@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../core/api';
 import styles from '../../styles/Admin.module.css';
-import Loading from '../../ui/Loading';
+import { Skeleton } from 'boneyard-js/react';
 
 export default function AdminDiscordTab({ users = [] }) {
   const [config, setConfig] = useState({
@@ -104,7 +104,8 @@ export default function AdminDiscordTab({ users = [] }) {
   };
 
   return (
-    <div className={styles.editorSection} style={{ maxWidth: '800px', margin: '0 auto' }}>
+    <Skeleton loading={loading} name="admin-discord-tab">
+      <div style={{ maxWidth: '800px', margin: '0 auto', paddingBottom: '50px' }}>
       <div className={styles.sectionHeader}>
         <h4>Discord Integration</h4>
         <span className={styles.subtle}>
@@ -240,10 +241,8 @@ export default function AdminDiscordTab({ users = [] }) {
         </button>
       </div>
 
-      <br /><br />
-      <div style={{display: 'flex', justifyContent: 'center', opacity: 0.5}}>
-        <Loading />
+
       </div>
-    </div>
+    </Skeleton>
   );
 }
