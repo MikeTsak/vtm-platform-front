@@ -94,7 +94,7 @@ export default function AdminLogs() {
 
   return (
     <div style={{ padding: '2rem', background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', boxShadow: 'var(--glass-shadow)' }}>
-      <h2 style={{ margin: '0 0 1.5rem 0', color: '#fff', fontSize: '1.8rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem' }}>📜 System Terminal</h2>
+      <h2 style={{ margin: '0 0 1.5rem 0', color: 'var(--text-color)', fontSize: '1.8rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem' }}>📜 System Terminal</h2>
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', background: 'var(--glass-inset)', padding: '0.5rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)' }}>
@@ -108,9 +108,9 @@ export default function AdminLogs() {
         </button>
 
         <div style={{ display: 'flex', gap: '15px', background: 'var(--glass-inset)', padding: '0.6rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)', marginLeft: 'auto' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#fff', fontSize: '0.9rem', cursor: 'pointer' }}><input type="checkbox" checked={auto} onChange={(e) => setAuto(e.target.checked)} style={{accentColor: 'var(--accent-purple)'}} /> Auto-Tail</label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#fff', fontSize: '0.9rem', cursor: 'pointer' }}><input type="checkbox" checked={follow} onChange={(e) => setFollow(e.target.checked)} style={{accentColor: 'var(--accent-purple)'}} /> Scroll</label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#fff', fontSize: '0.9rem', cursor: 'pointer' }}><input type="checkbox" checked={wrap} onChange={(e) => setWrap(e.target.checked)} style={{accentColor: 'var(--accent-purple)'}} /> Wrap</label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-color)', fontSize: '0.9rem', cursor: 'pointer' }}><input type="checkbox" checked={auto} onChange={(e) => setAuto(e.target.checked)} style={{accentColor: 'var(--accent-purple)'}} /> Auto-Tail</label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-color)', fontSize: '0.9rem', cursor: 'pointer' }}><input type="checkbox" checked={follow} onChange={(e) => setFollow(e.target.checked)} style={{accentColor: 'var(--accent-purple)'}} /> Scroll</label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-color)', fontSize: '0.9rem', cursor: 'pointer' }}><input type="checkbox" checked={wrap} onChange={(e) => setWrap(e.target.checked)} style={{accentColor: 'var(--accent-purple)'}} /> Wrap</label>
           <label style={{ display: 'flex', alignItems: 'center', gap: '6px', color: showSystem ? "var(--accent-purple)" : "var(--text-muted)", fontSize: '0.9rem', cursor: 'pointer' }} title="Show logs of the log-fetching itself"><input type="checkbox" checked={showSystem} onChange={(e) => setShowSystem(e.target.checked)} style={{accentColor: 'var(--accent-purple)'}} /> Trace</label>
         </div>
       </div>
@@ -152,7 +152,7 @@ function LogRow({ log, wrap }) {
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         {timeLocal && <span style={{ color: "var(--text-muted)", fontSize: 11, minWidth: 110 }}>{timeLocal}</span>}
         <Chip style={{ background: "rgba(0,0,0,0.3)", color: sty.fg, border: `1px solid ${sty.border}` }}>{sty.label}</Chip>
-        <span style={{ color: "#fff", fontWeight: 800 }}>{emoji ? `${emoji} ` : ""}{log.cat}</span>
+        <span style={{ color: "var(--text-color)", fontWeight: 800 }}>{emoji ? `${emoji} ` : ""}{log.cat}</span>
         <span style={{ color: "#e0e0e0", whiteSpace: wrap ? "pre-wrap" : "pre", wordBreak: wrap ? "break-word" : "normal", flex: 1 }}>{log.msg}</span>
         <button className={styles.btnGhost} style={{ padding: "4px 8px", fontSize: '0.8rem', borderRadius: '6px' }} onClick={() => copyToClipboard(log.source === "json" ? JSON.stringify({ time: log.time, level: log.level, cat: log.cat, msg: log.msg, ...(log.ctx || {}) }, null, 2) : `${log.time || ""} [${(log.level || "").toUpperCase()}] ${log.cat}: ${log.msg}${log.ctx ? ` | ${JSON.stringify(log.ctx)}` : ""}`)}>⧉ Copy</button>
       </div>

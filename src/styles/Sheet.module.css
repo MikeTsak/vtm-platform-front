@@ -4,13 +4,12 @@
 
 .sheetRoot {
   /* Theme variables */
-  --bg-color: #121212;
-  --surface-color: #1e1e1e;
-  --surface-lighter: #2a2a2a;
-  --border-color: #383838;
+  --surface-color: var(--surface-color);
+  --surface-lighter: var(--border-color);
+  --border-color: var(--surface-lighter);
   --text-color: #e0e0e0;
   --text-muted: #8e8e8e;
-  --primary-color: #8a0f1a;
+  --primary-color: var(--tint);
   --primary-hover: #a4131f;
   --font-body: system-ui, -apple-system, segoe ui, inter, roboto, arial, sans-serif;
   --font-title: ui-serif, georgia, "Times New Roman", serif;
@@ -146,7 +145,7 @@
 }
 
 .cta:disabled {
-  background-color: #444;
+  background-color: var(--border-color);
   color: #888;
   cursor: not-allowed;
 }
@@ -240,7 +239,7 @@
 .sheetRoot textarea:focus {
   outline: none;
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 2px rgb(138 15 26 / 50%);
+  box-shadow: 0 0 0 2px var(--tint);
 }
 
 .field {
@@ -398,7 +397,7 @@
 
 .discCard.picked {
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 2px rgb(138 15 26 / 50%);
+  box-shadow: 0 0 0 2px var(--tint);
 }
 
 .favRow {

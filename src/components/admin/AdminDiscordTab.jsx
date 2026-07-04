@@ -178,7 +178,7 @@ export default function AdminDiscordTab({ users = [] }) {
         </button>
       </div>
 
-      <hr style={{ borderColor: '#333', margin: '30px 0' }} />
+      <hr style={{ borderColor: 'var(--surface-lighter)', margin: '30px 0' }} />
 
       {/* --- NEW: CUSTOM DM TOOL --- */}
       <div className={styles.sectionHeader}>
@@ -219,7 +219,7 @@ export default function AdminDiscordTab({ users = [] }) {
         </button>
       </div>
 
-      <hr style={{ borderColor: '#333', margin: '30px 0' }} />
+      <hr style={{ borderColor: 'var(--surface-lighter)', margin: '30px 0' }} />
 
       {/* --- TESTING & CONTROLS --- */}
       <div className={styles.sectionHeader}>

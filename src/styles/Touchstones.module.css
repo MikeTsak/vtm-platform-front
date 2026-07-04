@@ -3,7 +3,7 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 1.5rem; /* mb-gutter */
-  border-bottom: 1px solid var(--border-color, #333);
+  border-bottom: 1px solid var(--border-color, var(--border-color));
   padding-bottom: 0.5rem; /* pb-unit */
 }
 
@@ -12,7 +12,7 @@
   font-size: 24px;
   font-weight: 600;
   line-height: 32px;
-  color: var(--text-color, #e5e2e1);
+  color: var(--text-color, var(--text-color));
   margin: 0 0 0.25rem 0;
 }
 
@@ -20,7 +20,7 @@
   font-family: var(--font-label, 'JetBrains Mono', monospace);
   font-size: 12px;
   letter-spacing: 0.1em;
-  color: var(--text-muted, #ab8986);
+  color: var(--text-muted, var(--text-muted));
   margin: 0;
   text-transform: uppercase;
 }
@@ -29,7 +29,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: var(--tint, #ffb3ae);
+  color: var(--tint, var(--tint));
   background: transparent;
   padding: 0.5rem 1rem;
   border-radius: 0.25rem;
@@ -60,7 +60,7 @@
 
 /* Common Column Styling */
 .columnBox {
-  background-color: var(--surface-low, #131313);
+  background-color: var(--surface-low, var(--surface-color));
   border-radius: 0.5rem;
   border: 1px solid var(--surface-variant, #353534);
   overflow: hidden;
@@ -83,7 +83,7 @@
   font-size: 24px;
   font-weight: 600;
   line-height: 32px;
-  color: var(--text-color, #e5e2e1);
+  color: var(--text-color, var(--text-color));
   margin: 0;
 }
 
@@ -132,7 +132,7 @@
 }
 
 .convictionIcon {
-  color: var(--primary-container, #b40f1f);
+  color: var(--primary-container, var(--tint));
   font-size: 12px;
 }
 
@@ -141,7 +141,7 @@
   font-size: 20px;
   font-weight: 600;
   line-height: 24px;
-  color: var(--text-color, #e5e2e1);
+  color: var(--text-color, var(--text-color));
   margin: 0 0 0.25rem 0;
 }
 
@@ -149,7 +149,7 @@
   font-family: var(--font-body, 'Inter', sans-serif);
   font-size: 16px;
   line-height: 24px;
-  color: var(--text-muted, #ab8986);
+  color: var(--text-muted, var(--text-muted));
   margin: 0;
 }
 
@@ -164,14 +164,14 @@
   background-color: var(--surface-container, #201f1f);
   padding: 1rem;
   border-radius: 0.25rem;
-  border-left: 2px solid var(--primary-container, #b40f1f);
+  border-left: 2px solid var(--primary-container, var(--tint));
   transition: background-color 0.2s;
   display: flex;
   gap: 1rem;
 }
 
 .touchstoneCard:hover {
-  background-color: var(--surface-high, #2a2a2a);
+  background-color: var(--surface-high, var(--border-color));
 }
 
 .touchstoneImgBox {
@@ -189,7 +189,7 @@
 
 .touchstoneImgBox span {
   font-size: 2rem;
-  color: var(--text-muted, #ab8986);
+  color: var(--text-muted, var(--text-muted));
 }
 
 .touchstoneContent {
@@ -208,7 +208,7 @@
   font-size: 20px;
   font-weight: 600;
   line-height: 24px;
-  color: var(--text-color, #e5e2e1);
+  color: var(--text-color, var(--text-color));
   margin: 0;
 }
 
@@ -216,7 +216,7 @@
   font-family: var(--font-label, 'JetBrains Mono', monospace);
   font-size: 12px;
   letter-spacing: 0.1em;
-  color: var(--tint, #ffb3ae);
+  color: var(--tint, var(--tint));
   background-color: rgba(255, 179, 174, 0.1);
   padding: 0.25rem 0.5rem;
   border-radius: 0.25rem;
@@ -227,7 +227,7 @@
   font-family: var(--font-label, 'JetBrains Mono', monospace);
   font-size: 12px;
   letter-spacing: 0.1em;
-  color: var(--text-muted, #ab8986);
+  color: var(--text-muted, var(--text-muted));
   margin: 0 0 0.5rem 0;
   text-transform: uppercase;
 }
@@ -236,14 +236,14 @@
   font-family: var(--font-body, 'Inter', sans-serif);
   font-size: 16px;
   line-height: 24px;
-  color: var(--text-color, #e5e2e1);
+  color: var(--text-color, var(--text-color));
   margin: 0;
 }
 
 .emptyState {
   font-family: var(--font-body, 'Inter', sans-serif);
   font-size: 16px;
-  color: var(--text-muted, #ab8986);
+  color: var(--text-muted, var(--text-muted));
   font-style: italic;
   padding: 1rem 0;
 }

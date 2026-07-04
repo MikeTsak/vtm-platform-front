@@ -221,7 +221,7 @@
 
 .railItemActive {
   background: color-mix(in srgb, var(--tint) 15%, transparent) !important;
-  color: #fff !important;
+  color: var(--text-color) !important;
 }
 
 .railDot {
@@ -487,7 +487,7 @@
 .hudOwner {
   font-size: 1rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-color);
 }
 
 .hudClose {
@@ -509,7 +509,7 @@
 .hudClose:hover {
   background: color-mix(in srgb, var(--tint) 15%, transparent);
   border-color: var(--tint);
-  color: #fff;
+  color: var(--text-color);
 }
 
 /* ============================================================

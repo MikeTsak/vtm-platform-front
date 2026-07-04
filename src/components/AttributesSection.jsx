@@ -28,7 +28,7 @@ export default function AttributesSection({ sheet }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '32px' }}>
         {ATTRS.map(group => (
           <div key={group.category} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <h4 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', fontWeight: 500, letterSpacing: '0.1em', color: '#ffb3ae', textTransform: 'uppercase', textAlign: 'center', borderBottom: '1px solid #333', paddingBottom: '4px', margin: 0 }}>
+            <h4 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', fontWeight: 500, letterSpacing: '0.1em', color: '#ffb3ae', textTransform: 'uppercase', textAlign: 'center', borderBottom: '1px solid var(--surface-lighter)', paddingBottom: '4px', margin: 0 }}>
               {group.category}
             </h4>
             {group.items.map(name => {

@@ -14,7 +14,7 @@
   --border: #2b2330;
   --text: #e7e2ea;
   --muted: #a393a8;
-  --primary: #8a0f1a;      /* deep blood red */
+  --primary: var(--tint);      /* deep blood red */
   --primary-2: #be1200;    /* brighter blood */
   --accent: #d71f3c;       /* highlight red */
   --glow: #ff2c52;         /* glow edge */
@@ -138,7 +138,7 @@
   background:
     linear-gradient(180deg, rgb(255 255 255 / 2%), rgb(255 255 255 / 0%) 60%) padding-box,
     radial-gradient(120% 160% at 0% 0%, rgb(208 24 50 / 25%), rgb(208 24 50 / 0%) 40%) padding-box,
-    linear-gradient(145deg, rgb(255 44 82 / 65%), rgb(138 15 26 / 10%) 35%, rgb(138 15 26 / 0%) 65%) border-box,
+    linear-gradient(145deg, rgb(255 44 82 / 65%), var(--tint) 35%, var(--tint) 65%) border-box,
     linear-gradient(180deg, #1a151d, #161218) padding-box;
   border: 1px solid transparent;
   box-shadow: var(--shadow-1), inset 0 0 0 1px rgb(255 255 255 / 3%);
@@ -202,8 +202,8 @@
   inline-size: 10px;
   block-size: 10px;
   border-radius: 999px;
-  background: radial-gradient(circle at 30% 30%, #fff, #f9a 45%, #ff274f 70%);
-  box-shadow: 0 0 12px rgb(255 44 82 / 90%), 0 0 2px #fff inset;
+  background: radial-gradient(circle at 30% 30%, var(--text-color), #f9a 45%, #ff274f 70%);
+  box-shadow: 0 0 12px rgb(255 44 82 / 90%), 0 0 2px var(--text-color) inset;
 }
 
 /* Field / Inputs */

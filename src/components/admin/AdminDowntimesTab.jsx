@@ -69,7 +69,7 @@ function StatusToggle({ status, checked, onChange }) {
           cursor: 'pointer'
         }} 
       />
-      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: checked ? 'var(--text-muted)' : '#ffffff' }}>
+      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: checked ? 'var(--text-muted)' : 'var(--text-color)' }}>
         Hide {status}
       </span>
     </label>
@@ -264,7 +264,7 @@ export default function AdminDowntimesTab() {
           className={styles.tab}
           style={{ 
             background: viewMode === 'standard' ? 'linear-gradient(135deg, var(--accent-purple-dark) 0%, var(--accent-purple) 100%)' : 'transparent', 
-            color: viewMode === 'standard' ? '#ffffff' : 'var(--text-secondary)',
+            color: viewMode === 'standard' ? 'var(--text-color)' : 'var(--text-secondary)',
             boxShadow: viewMode === 'standard' ? '0 4px 15px var(--accent-purple-glow)' : 'none',
             padding: '0.8rem 1.8rem', 
             borderRadius: 'var(--radius-md)', 
@@ -278,7 +278,7 @@ export default function AdminDowntimesTab() {
           className={styles.tab}
           style={{ 
             background: viewMode === 'project' ? 'linear-gradient(135deg, #1b4c8c 0%, #4da6ff 100%)' : 'transparent', 
-            color: viewMode === 'project' ? '#ffffff' : 'var(--text-secondary)',
+            color: viewMode === 'project' ? 'var(--text-color)' : 'var(--text-secondary)',
             boxShadow: viewMode === 'project' ? '0 4px 15px rgba(77, 166, 255, 0.4)' : 'none',
             padding: '0.8rem 1.8rem', 
             borderRadius: 'var(--radius-md)', 
@@ -305,14 +305,14 @@ export default function AdminDowntimesTab() {
 
         {/* --- SYSTEM PHASE INTERACTIVE OVERRIDE --- */}
         <div style={{ background: 'var(--glass-inset)', padding: '1.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)', borderLeft: masterPhase === 'project' ? '4px solid #4da6ff' : '4px solid var(--accent-purple)', marginBottom: '2rem', boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.4)' }}>
-          <h4 style={{ margin: '0 0 6px 0', fontSize: '1.1rem', fontWeight: 700, color: '#ffffff' }}>🌍 Master Active Phase Target</h4>
+          <h4 style={{ margin: '0 0 6px 0', fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-color)' }}>🌍 Master Active Phase Target</h4>
           <p style={{ margin: '0 0 15px 0', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
             Sets the default baseline view shown to all users inside their action panels.
           </p>
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
             <button 
               className={styles.btn}
-              style={{ background: masterPhase === 'standard' ? 'linear-gradient(135deg, var(--accent-purple-dark) 0%, var(--accent-purple) 100%)' : 'rgba(255,255,255,0.03)', border: `1px solid ${masterPhase === 'standard' ? 'transparent' : 'var(--glass-border)'}`, color: '#ffffff', fontWeight: 700 }}
+              style={{ background: masterPhase === 'standard' ? 'linear-gradient(135deg, var(--accent-purple-dark) 0%, var(--accent-purple) 100%)' : 'rgba(255,255,255,0.03)', border: `1px solid ${masterPhase === 'standard' ? 'transparent' : 'var(--glass-border)'}`, color: 'var(--text-color)', fontWeight: 700 }}
               onClick={() => handlePhaseToggle('standard')}
               disabled={cfgSaving}
             >
@@ -320,7 +320,7 @@ export default function AdminDowntimesTab() {
             </button>
             <button 
               className={styles.btn}
-              style={{ background: masterPhase === 'project' ? 'linear-gradient(135deg, #1b4c8c 0%, #4da6ff 100%)' : 'rgba(255,255,255,0.03)', border: `1px solid ${masterPhase === 'project' ? 'transparent' : 'var(--glass-border)'}`, color: '#ffffff', fontWeight: 700 }}
+              style={{ background: masterPhase === 'project' ? 'linear-gradient(135deg, #1b4c8c 0%, #4da6ff 100%)' : 'rgba(255,255,255,0.03)', border: `1px solid ${masterPhase === 'project' ? 'transparent' : 'var(--glass-border)'}`, color: 'var(--text-color)', fontWeight: 700 }}
               onClick={() => handlePhaseToggle('project')}
               disabled={cfgSaving}
             >
@@ -425,7 +425,7 @@ export default function AdminDowntimesTab() {
                   <header style={{ padding: '1.25rem 1.5rem', background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', gap: '1.5rem', borderBottom: '1px solid var(--glass-border)' }}>
                     <div style={{ width: '44px', height: '44px', backgroundImage: clanLogoUrl ? `url(${clanLogoUrl})` : 'none', backgroundSize: 'cover', borderRadius: '50%', border: `2px solid ${clanColor}`, backgroundColor: 'rgba(255,255,255,0.95)', boxShadow: `0 0 15px ${clanColor}44` }}></div>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <span style={{ fontWeight: 800, fontSize: '1.2rem', color: '#ffffff', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>{group.char_name || '(No Character)'}</span>
+                      <span style={{ fontWeight: 800, fontSize: '1.2rem', color: 'var(--text-color)', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>{group.char_name || '(No Character)'}</span>
                       <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: 'Fira Code, monospace', opacity: 0.8 }}>{group.player_name}</span>
                     </div>
                   </header>
@@ -486,9 +486,9 @@ function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel }
     >
       <header style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-          <div style={{ fontSize: '1.25rem', color: '#ffffff', fontWeight: 800, letterSpacing: '-0.02em' }}>
+          <div style={{ fontSize: '1.25rem', color: 'var(--text-color)', fontWeight: 800, letterSpacing: '-0.02em' }}>
             <b style={{ color: isProj ? '#4da6ff' : 'var(--accent-purple)', fontFamily: 'Fira Code, monospace', marginRight: '8px' }}>#{r.id}</b> {displayTitle || '(no title)'} 
-            {isProj && <span style={{fontSize: '0.7rem', background: '#1b4c8c', border: '1px solid #4da6ff', color: '#ffffff', padding: '2px 8px', borderRadius: '4px', marginLeft: '12px', verticalAlign: 'middle', fontWeight: 900, letterSpacing: '1px'}}>LONG-TERM PROJECT</span>}
+            {isProj && <span style={{fontSize: '0.7rem', background: '#1b4c8c', border: '1px solid #4da6ff', color: 'var(--text-color)', padding: '2px 8px', borderRadius: '4px', marginLeft: '12px', verticalAlign: 'middle', fontWeight: 900, letterSpacing: '1px'}}>LONG-TERM PROJECT</span>}
           </div>
           <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
             <span>Account: <b style={{ color: 'var(--text-secondary)' }}>{r.player_name || r.email}</b></span>
@@ -538,7 +538,7 @@ function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel }
               <button className={`${styles.btn} ${styles.btnWarning} ${styles.btnSmall}`} type="button" onClick={() => onSave(r.id, { status: 'Needs a Scene' })}>Needs Scene</button>
               <button className={`${styles.btn} ${styles.btnDanger} ${styles.btnSmall}`} type="button" onClick={() => onSave(r.id, { status: 'rejected' })}>Reject</button>
               <button className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSmall}`} type="button" onClick={() => onSave(r.id, { status: 'resolved' })}>Resolve</button>
-              <button className={styles.btn} style={{ background: 'linear-gradient(135deg, #1b4c8c 0%, #4da6ff 100%)', color: '#ffffff', padding: '0.4rem 0.8rem', fontSize: '0.8rem', fontWeight: 700, borderRadius: 'var(--radius-sm)' }} type="button" onClick={() => onSave(r.id, { status: 'Resolved in scene' })}>In Scene</button>
+              <button className={styles.btn} style={{ background: 'linear-gradient(135deg, #1b4c8c 0%, #4da6ff 100%)', color: 'var(--text-color)', padding: '0.4rem 0.8rem', fontSize: '0.8rem', fontWeight: 700, borderRadius: 'var(--radius-sm)' }} type="button" onClick={() => onSave(r.id, { status: 'Resolved in scene' })}>In Scene</button>
             </div>
           </div>
         </div>

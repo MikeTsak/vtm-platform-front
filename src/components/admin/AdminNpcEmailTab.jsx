@@ -6,7 +6,7 @@ import styles from '../../styles/Admin.module.css';
 const EditorToolbar = ({ onCmd }) => (
   <div style={{ display: 'flex', gap: '4px', background: 'rgba(0,0,0,0.4)', padding: '6px', borderBottom: '1px solid var(--glass-border)' }}>
     {[['B', 'bold'], ['I', 'italic'], ['U', 'underline'], ['H3', 'formatBlock', 'H3']].map(([lbl, cmd, val]) => (
-      <button key={lbl} type="button" onClick={() => onCmd(cmd, val)} style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: '#fff', padding: '4px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>{lbl}</button>
+      <button key={lbl} type="button" onClick={() => onCmd(cmd, val)} style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-color)', padding: '4px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>{lbl}</button>
     ))}
   </div>
 );
@@ -77,7 +77,7 @@ export default function AdminNpcEmailTab() {
     <div className={styles.stack12}>
       {/* Identities Configuration Panel */}
       <div style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-lg)', padding: '1.5rem', boxShadow: 'var(--glass-shadow)' }}>
-        <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff', margin: 0 }}>Human Mapped Identities</h3>
+        <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-color)', margin: 0 }}>Human Mapped Identities</h3>
         <p className={styles.subtle} style={{ marginTop: '4px', marginBottom: '1.5rem' }}>Configures external out-of-bounds communication target entry matrix nodes.</p>
         
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '2rem', alignItems: 'start' }}>
@@ -95,7 +95,7 @@ export default function AdminNpcEmailTab() {
                 {identities.length === 0 && <tr><td colSpan="3" style={{ textAlign: 'center', opacity: 0.4, padding: '2rem' }}>No address configurations detected.</td></tr>}
                 {identities.map(id => (
                   <tr key={id.id}>
-                    <td style={{ fontWeight: 700, color: '#fff' }}>{id.display_name}</td>
+                    <td style={{ fontWeight: 700, color: 'var(--text-color)' }}>{id.display_name}</td>
                     <td style={{ color: 'var(--accent-purple)', fontFamily: 'monospace' }}>{id.email_address}</td>
                     <td><button className={styles.btnDanger} style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '4px' }} onClick={() => handleDeleteIdentity(id.id)}>Purge</button></td>
                   </tr>
@@ -110,11 +110,11 @@ export default function AdminNpcEmailTab() {
       <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', height: '620px', background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', boxShadow: 'var(--glass-shadow)' }}>
         {/* Inbox Left List Track */}
         <div style={{ borderRight: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', background: 'rgba(0,0,0,0.2)' }}>
-          <div style={{ padding: '1.2rem 1.5rem', background: 'rgba(0,0,0,0.2)', borderBottom: '1px solid var(--glass-border)', fontWeight: 800, color: '#fff', fontSize: '1rem', letterSpacing: '0.5px' }}>SCHRECKNET RECEPTACLE BUFFER</div>
+          <div style={{ padding: '1.2rem 1.5rem', background: 'rgba(0,0,0,0.2)', borderBottom: '1px solid var(--glass-border)', fontWeight: 800, color: 'var(--text-color)', fontSize: '1rem', letterSpacing: '0.5px' }}>SCHRECKNET RECEPTACLE BUFFER</div>
           <div style={{ flex: 1, overflowY: 'auto' }}>
             {threads.map(t => (
               <div key={t.id} onClick={() => loadThreadMessages(t.id)} style={{ padding: '1.25rem', cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.03)', background: selectedThreadId === t.id ? 'var(--glass-bg-hover)' : 'transparent', borderLeft: `3px solid ${selectedThreadId === t.id ? 'var(--accent-purple)' : 'transparent'}`, transition: 'all 0.2s' }}>
-                <div style={{ fontWeight: t.unread_count > 0 ? 800 : 600, color: t.unread_count > 0 ? 'var(--accent-purple)' : '#fff', textShadow: t.unread_count > 0 ? '0 0 10px var(--accent-purple-glow)' : 'none', fontSize: '0.95rem' }}>{t.subject}</div>
+                <div style={{ fontWeight: t.unread_count > 0 ? 800 : 600, color: t.unread_count > 0 ? 'var(--accent-purple)' : 'var(--text-color)', textShadow: t.unread_count > 0 ? '0 0 10px var(--accent-purple-glow)' : 'none', fontSize: '0.95rem' }}>{t.subject}</div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>{t.user_name} ➔ {t.identity_name}</div>
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '6px', textAlign: 'right', fontFamily: 'monospace' }}>{new Date(t.updated_at).toLocaleDateString()}</div>
               </div>
@@ -128,8 +128,8 @@ export default function AdminNpcEmailTab() {
           {selectedThreadId && activeThread ? (
             <>
               <div style={{ padding: '1.25rem 2rem', background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid var(--glass-border)' }}>
-                <h3 style={{ margin: 0, fontSize: '1.25rem', color: '#fff' }}>{activeThread.subject}</h3>
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '6px' }}>Source Node: <span style={{ color: '#fff', fontWeight: 700 }}>{activeThread.user_name} [{activeThread.char_name || 'Kindred'}]</span> ➔ Endpoint: <span style={{ color: 'var(--accent-purple)', fontFamily: 'monospace' }}>{activeThread.email_address}</span></div>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-color)' }}>{activeThread.subject}</h3>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '6px' }}>Source Node: <span style={{ color: 'var(--text-color)', fontWeight: 700 }}>{activeThread.user_name} [{activeThread.char_name || 'Kindred'}]</span> ➔ Endpoint: <span style={{ color: 'var(--accent-purple)', fontFamily: 'monospace' }}>{activeThread.email_address}</span></div>
               </div>
 
               <div style={{ flex: 1, overflowY: 'auto', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>

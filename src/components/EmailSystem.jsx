@@ -51,7 +51,7 @@ const getInitials = (name) => {
 };
 
 const getColor = (str) => {
-  if (!str) return '#333'; // Fallback color to prevent crash
+  if (!str) return 'var(--surface-lighter)'; // Fallback color to prevent crash
   const colors = ['#b71c1c', '#880e4f', '#4a148c', '#311b92', '#1a237e', '#01579b', '#006064', '#004d40', '#1b5e20', '#33691e', '#827717', '#f57f17', '#ff6f00', '#e65100', '#bf360c'];
   let hash = 0;
   for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
@@ -238,7 +238,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled = true }) {
             </div>
 
             {!commsEnabled && (
-              <div style={{ padding: '8px', background: '#FF4444', color: '#fff', textAlign: 'center', fontSize: '0.85rem', fontWeight: 'bold' }}>
+              <div style={{ padding: '8px', background: '#FF4444', color: 'var(--text-color)', textAlign: 'center', fontSize: '0.85rem', fontWeight: 'bold' }}>
                 ⚠️ SURFACE WEB COMMS ARE CURRENTLY OFFLINE. MESSAGE SENDING IS DISABLED. ⚠️
               </div>
             )}

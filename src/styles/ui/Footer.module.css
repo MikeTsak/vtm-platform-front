@@ -1,15 +1,15 @@
 .footer {
   --bg: #0f0f0f;
   --surface: #171717;
-  --border: #2a2a2a;
+  --border: var(--border-color);
   --muted: #9a9a9a;
   --text: #e7e7e7;
-  --primary: #8a0f1a;
+  --primary: var(--tint);
 
   background:
     radial-gradient(900px 140px at 10% 0%, color-mix(in oklab, var(--primary) 14%, transparent), transparent 60%),
     radial-gradient(700px 120px at 84% 0%, color-mix(in oklab, var(--primary) 10%, transparent), transparent 60%),
-    linear-gradient(180deg, var(--surface), #111);
+    linear-gradient(180deg, var(--surface), var(--bg-color));
   border-top: 1px solid var(--border);
   color: var(--text);
   padding: 18px clamp(16px, 3vw, 28px);
@@ -36,7 +36,7 @@
   border-radius: 8px;
   object-fit: contain;
   filter: drop-shadow(0 2px 8px rgb(0 0 0 / 60%));
-  background: #0b0b0b;
+  background: var(--surface-color);
   border: 1px solid var(--border);
   padding: 4px;
 }
@@ -110,7 +110,7 @@
 
 .footerLink:hover {
   text-decoration: underline;
-  color: #fff;
+  color: var(--text-color);
 }
 
 /* Mobile adjustments */

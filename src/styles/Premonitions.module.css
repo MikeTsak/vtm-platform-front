@@ -306,7 +306,7 @@
 .mediaContainer {
   display: grid;
   place-items: center;
-  background: #000;
+  background: var(--bg-color);
   border-bottom: 1px solid var(--border);
   overflow: hidden;
   min-height: 180px;
@@ -335,7 +335,7 @@
   width: 100%;
   height: auto;
   display: block;
-  background: #000;
+  background: var(--bg-color);
   
   /* * NEW: The "MADNESS" effect
    * Constant, subtle shaking and filter corruption
@@ -473,9 +473,9 @@
 
 /* NEW: The burn */
 @keyframes burn-pulse {
-  0%   { box-shadow: inset 0 0 15px 8px rgb(0 0 0 / 70%), inset 0 0 5px 2px color-mix(in srgb, var(--malkavian-error) 20%, #000 50%); }
-  50%  { box-shadow: inset 0 0 25px 15px rgb(0 0 0 / 90%), inset 0 0 10px 4px color-mix(in srgb, var(--malkavian-error) 40%, #000 50%); }
-  100% { box-shadow: inset 0 0 15px 8px rgb(0 0 0 / 70%), inset 0 0 5px 2px color-mix(in srgb, var(--malkavian-error) 20%, #000 50%); }
+  0%   { box-shadow: inset 0 0 15px 8px rgb(0 0 0 / 70%), inset 0 0 5px 2px color-mix(in srgb, var(--malkavian-error) 20%, var(--bg-color) 50%); }
+  50%  { box-shadow: inset 0 0 25px 15px rgb(0 0 0 / 90%), inset 0 0 10px 4px color-mix(in srgb, var(--malkavian-error) 40%, var(--bg-color) 50%); }
+  100% { box-shadow: inset 0 0 15px 8px rgb(0 0 0 / 70%), inset 0 0 5px 2px color-mix(in srgb, var(--malkavian-error) 20%, var(--bg-color) 50%); }
 }
 
 @keyframes pulse-text {

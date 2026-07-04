@@ -9,7 +9,7 @@
   --dr-text-muted: #a3a3ad;
   --dr-border: #33333d;
   --dr-success: #dedede;
-  --dr-crit: #fff;
+  --dr-crit: var(--text-color);
   --dr-fail: #666;
   --dr-hunger-bg: #5e0a0a;
   --dr-bestial: #f00; 
@@ -44,7 +44,7 @@
 
 .fabOpen {
   transform: rotate(45deg) scale(0.9);
-  background: #333;
+  background: var(--surface-lighter);
 }
 
 /* Force items to overlap */
@@ -291,7 +291,7 @@
   font-size: 1.4rem;
   font-weight: 800;
   line-height: 1.2;
-  background: linear-gradient(to bottom right, #fff, #aaa);
+  background: linear-gradient(to bottom right, var(--text-color), var(--text-muted));
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -354,12 +354,12 @@
 .die.success {
   color: var(--dr-success);
   border-color: #555;
-  background: #333;
+  background: var(--surface-lighter);
 }
 
 .die.ten {
   color: var(--dr-crit);
-  background: linear-gradient(135deg, #444, #222);
+  background: linear-gradient(135deg, var(--border-color), var(--surface-color));
   border-color: var(--dr-text);
   text-shadow: 0 0 8px rgb(255 255 255 / 50%);
 }
@@ -371,18 +371,18 @@
 }
 
 .die.hunger.success {
-  color: #fff;
+  color: var(--text-color);
   background: linear-gradient(135deg, #7f1d1d, #450a0a);
 }
 
 .die.hunger.ten {
-  color: #fff;
+  color: var(--text-color);
   text-shadow: 0 0 10px rgb(255 0 0 / 80%);
   border-color: #f44;
 }
 
 .die.hunger.bestial {
-  color: #000;
+  color: var(--bg-color);
   background: var(--dr-bestial);
   border-color: #991b1b;
   box-shadow: 0 0 12px rgb(255 0 0 / 60%);
@@ -401,7 +401,7 @@
 
 .selected {
   background: #eab308 !important;
-  color: #000 !important;
+  color: var(--bg-color) !important;
   border-color: #ca8a04 !important;
   box-shadow: 0 0 16px rgb(234 179 8 / 50%) !important;
   animation: pulse 1.5s infinite ease-in-out;
@@ -469,14 +469,14 @@
   background: transparent;
   color: var(--dr-text-muted);
 }
-.wpCancel:hover { color: var(--dr-text); background: #333; }
+.wpCancel:hover { color: var(--dr-text); background: var(--surface-lighter); }
 
 .wpConfirm {
   background: #eab308;
   color: black;
 }
 .wpConfirm:hover:not(:disabled) { filter: brightness(1.1); }
-.wpConfirm:disabled { opacity: 0.5; cursor: not-allowed; background: #555; color: #aaa; }
+.wpConfirm:disabled { opacity: 0.5; cursor: not-allowed; background: #555; color: var(--text-muted); }
 
 .wpUsed {
   width: 100%;

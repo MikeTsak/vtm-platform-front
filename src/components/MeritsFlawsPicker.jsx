@@ -271,7 +271,7 @@ export default function MeritsFlawsPicker({
                   alignItems: 'start',
                   gap: 10,
                   opacity: locked ? .55 : 1,
-                  border: '1px solid var(--border, #333)',
+                  border: '1px solid var(--border, var(--surface-lighter))',
                   borderRadius: 10,
                   padding: 10,
                   background: 'rgba(255,255,255,0.02)'
@@ -331,7 +331,7 @@ export default function MeritsFlawsPicker({
                   alignItems: 'start',
                   gap: 10,
                   opacity: wouldExceed ? .55 : 1,
-                  border: '1px solid var(--border, #333)',
+                  border: '1px solid var(--border, var(--surface-lighter))',
                   borderRadius: 10,
                   padding: 10,
                   background: 'rgba(255,255,255,0.02)'

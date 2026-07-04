@@ -53,7 +53,7 @@
 
 .rumorBtn {
   background: #fbbf24;
-  color: #000;
+  color: var(--bg-color);
   border-color: #f59e0b;
 }
 
@@ -154,8 +154,8 @@
    OFFICIAL NEWS CARD (Newspaper Aesthetic)
    ========================================= */
 .browserCard {
-  background: #fff; /* Classic Newspaper White */
-  color: #111;      /* Crisp dark ink */
+  background: var(--text-color); /* Classic Newspaper White */
+  color: var(--bg-color);      /* Crisp dark ink */
   border: 1px solid var(--border-color);
   border-radius: 4px;  /* Sharper edges for paper feel */
   overflow: hidden;
@@ -177,7 +177,7 @@
   flex: 1;
   font-size: 0.75rem;
   padding: 4px 8px;
-  background: #fff;
+  background: var(--text-color);
   border-radius: 12px;
   border: 1px solid #e5e7eb;
   color: #4b5563 !important; /* Force dark gray URL */
@@ -192,7 +192,7 @@
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
-  background-color: #fff;
+  background-color: var(--text-color);
   position: relative;
   border-bottom: 2px solid #e5e7eb;
 }
@@ -200,23 +200,23 @@
 .headerOverlay {
   position: absolute;
   bottom: 0; left: 0; right: 0;
-  background: linear-gradient(transparent, rgb(255 255 255 / 90%) 70%, #fff);
+  background: linear-gradient(transparent, rgb(255 255 255 / 90%) 70%, var(--text-color));
   padding: 8px 12px;
 }
 .headerTitleGroup { display: flex; gap: 8px; align-items: center; }
-.live { color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
+.live { color: var(--text-color); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
 .outletName { color: var(--theme-color); font-weight: 800; font-size: 0.95rem; text-shadow: none; }
 
 .newsBody {
   padding: 16px 20px;
-  background: #fff;
+  background: var(--text-color);
 }
 
 .newsBody h2 {
   margin: 0 0 8px;
   font-size: 1.4rem;
   font-family: 'Playfair Display', var(--font-title), serif; /* Serif for newspaper headlines */
-  color: #000;
+  color: var(--bg-color);
   font-weight: 800;
   line-height: 1.2;
 }
@@ -236,7 +236,7 @@
   border-bottom: 1px solid #e5e7eb;
   padding-bottom: 8px;
 }
-.journalist { font-weight: 800; color: #111; }
+.journalist { font-weight: 800; color: var(--bg-color); }
 .date { color: #6b7280; }
 
 .mediaFrame {
@@ -256,7 +256,7 @@
 .bodyHtml {
   font-size: 0.95rem;
   line-height: 1.6;
-  color: #333; /* Dark gray article text */
+  color: var(--surface-lighter); /* Dark gray article text */
   font-family: Georgia, serif; /* Classic newspaper body font */
 }
 
@@ -264,7 +264,7 @@
   position: absolute;
   top: 10px; right: 10px;
   background: rgb(220 38 38 / 90%);
-  color: #fff;
+  color: var(--text-color);
   border: none;
   width: 24px; height: 24px;
   border-radius: 50%;
@@ -340,9 +340,9 @@
   max-width: 900px;
   width: 95%;
   max-height: 90vh;
-  background-color: #fff; /* Newspaper White */
+  background-color: var(--text-color); /* Newspaper White */
   border-radius: 4px;
-  color: #111;
+  color: var(--bg-color);
   box-shadow: 0 25px 50px -12px rgb(0 0 0 / 80%);
   overflow-y: auto;
   border-top: 8px solid var(--theme-color);
@@ -365,17 +365,17 @@
 .modalHeaderControl button {
   background: transparent; border: none;
   font-size: 2.5rem; cursor: pointer;
-  color: #9ca3af; transition: 0.2s;
+  color: var(--text-muted); transition: 0.2s;
   line-height: 0.8;
 }
-.modalHeaderControl button:hover { color: #111; }
-.fullscreenModalRumor .modalHeaderControl button:hover { color: #fff; }
+.modalHeaderControl button:hover { color: var(--bg-color); }
+.fullscreenModalRumor .modalHeaderControl button:hover { color: var(--text-color); }
 
 .modalContentPadding { padding: 0 40px 40px; }
 
 .rumorBadge {
   background-color: #fbbf24;
-  color: #000;
+  color: var(--bg-color);
   padding: 4px 10px;
   border-radius: 4px;
   font-size: 0.85rem;
@@ -387,7 +387,7 @@
 .fsTitle {
   font-size: 2.8rem;
   margin: 0 0 15px;
-  color: #000;
+  color: var(--bg-color);
   line-height: 1.1;
   font-family: 'Playfair Display', var(--font-title), serif;
   font-weight: 800;
@@ -410,7 +410,7 @@
 
 .fullscreenModalRumor .fsMediaContainer {
   background-color: #111827;
-  border-color: #374151;
+  border-color: var(--border-color);
 }
 
 .fsMediaContainer img, .fsMediaContainer video {
@@ -420,7 +420,7 @@
 .fsBody {
   font-size: 1.15rem;
   line-height: 1.8;
-  color: #333;
+  color: var(--surface-lighter);
   font-family: Georgia, serif;
 }
 
@@ -436,7 +436,7 @@
   background: transparent;
 }
 .fsOutletHeader img { height: 50px; max-width: 180px; object-fit: contain; }
-.fsOutletHeader span { color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
+.fsOutletHeader span { color: var(--text-color); padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
 
 .fsMeta {
   display: flex; gap: 10px; color: #6b7280;
@@ -513,4 +513,4 @@
 .btnCancel:hover { color: var(--text-color); border-color: var(--text-muted); }
 .btnSubmit { padding: 10px 24px; border-radius: 6px; border: 1px solid var(--tint); background-color: var(--tint); color: var(--bg-color); cursor: pointer; font-weight: bold; }
 .btnSubmit:disabled { filter: grayscale(1) brightness(0.5); cursor: not-allowed; }
-.btnSubmitRumor { background-color: #fbbf24; border-color: #fbbf24; color: #000; }
+.btnSubmitRumor { background-color: #fbbf24; border-color: #fbbf24; color: var(--bg-color); }

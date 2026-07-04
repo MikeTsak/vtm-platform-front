@@ -4,6 +4,8 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: var(--bg-color);
+  color: var(--text-color);
 }
 
 /* --------------------------- */
@@ -101,7 +103,9 @@ body {
 
 /* --------------------------- */
 
-:root, [data-theme='camarilla'] {
+:root,
+:root[data-theme='camarilla'],
+:root[data-theme='clan'] {
   --tint: #8a0f1a;
   --bg-color: #0d0d0f;
   --surface-color: #141417;
@@ -111,7 +115,7 @@ body {
   --text-muted: #9398a0;
 }
 
-[data-theme='schrecknet'] {
+:root[data-theme='schrecknet'] {
   --tint: #0ea5e9;
   --bg-color: #030712;
   --surface-color: #111827;
@@ -121,7 +125,7 @@ body {
   --text-muted: #9ca3af;
 }
 
-[data-theme='anarch'] {
+:root[data-theme='anarch'] {
   --tint: #ea580c;
   --bg-color: #18181b;
   --surface-color: #27272a;
@@ -131,9 +135,9 @@ body {
   --text-muted: #a1a1aa;
 }
 
-[data-theme='Giannakis'] {
+:root[data-theme='Giannakis'] {
   --tint: #0d9488;
-  --bg-color: #022c22;
+  --bg-color: #057057;
   --surface-color: #0f766e;
   --surface-lighter: #134e4a;
   --border-color: #115e59;

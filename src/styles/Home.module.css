@@ -108,7 +108,7 @@
 .charName {
   font-size: 2.75rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-color);
   margin: 0;
   line-height: 1.1;
 }
@@ -126,7 +126,7 @@
 
 .clanLabel {
   font-weight: 600;
-  color: color-mix(in srgb, var(--tint) 70%, #fff);
+  color: color-mix(in srgb, var(--tint) 70%, var(--text-color));
 }
 
 .separator {
@@ -205,7 +205,7 @@
 }
 
 .quotaPipUsed {
-  background: color-mix(in srgb, var(--tint) 40%, #18181b);
+  background: color-mix(in srgb, var(--tint) 40%, var(--bg-color));
 }
 
 .quotaCount {
@@ -343,7 +343,7 @@
 
 .feedLinkBtn:hover {
   background: color-mix(in srgb, var(--tint) 20%, transparent);
-  color: #fff;
+  color: var(--text-color);
   border-color: var(--tint);
 }
 
@@ -551,7 +551,7 @@
 .badgePending {
   background: #2a2b31;
   color: #eaeaea;
-  border: 1px solid #444;
+  border: 1px solid var(--border-color);
   font-size: 0.65rem;
   text-transform: uppercase;
   padding: 2px 6px;
@@ -671,7 +671,7 @@
 .navCardTitle {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-color);
   margin-bottom: 0.1rem;
 }
 
@@ -714,7 +714,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--text-color);
   top: var(--click-y);
   left: var(--click-x);
   box-shadow: 0 0 40px 20px #a2ffe0, 0 0 120px 60px #50d6c9, 0 0 200px 100px #1a5668;
@@ -734,7 +734,7 @@
   width: 100%;
   height: 100%;
   background: var(--tint);
-  box-shadow: 0 0 2px var(--edge) inset, 0 0 0 1px #000;
+  box-shadow: 0 0 2px var(--edge) inset, 0 0 0 1px var(--bg-color);
   animation: cv_shardDim 300ms linear forwards;
 }
 
@@ -810,12 +810,12 @@
 
 .noCharBtn {
   background: var(--tint);
-  color: #fff;
+  color: var(--text-color);
   padding: 0.75rem 1.5rem;
   border-radius: 8px;
   font-size: 1rem;
   font-weight: 600;
-  border: 1px solid color-mix(in srgb, var(--tint) 60%, #000);
+  border: 1px solid color-mix(in srgb, var(--tint) 60%, var(--bg-color));
   cursor: pointer;
   transition: background 0.2s ease;
   width: 100%;
@@ -823,7 +823,7 @@
 }
 
 .noCharBtn:hover {
-  background: color-mix(in srgb, var(--tint) 60%, #000);
+  background: color-mix(in srgb, var(--tint) 60%, var(--bg-color));
 }
 
 .pageSection {
@@ -927,7 +927,7 @@
 .themeBtnActive {
   background: color-mix(in srgb, var(--theme-color) 10%, transparent);
   border-color: var(--theme-color);
-  color: #fff;
+  color: var(--text-color);
   box-shadow: 0 4px 16px color-mix(in srgb, var(--theme-color) 20%, transparent);
 }
 

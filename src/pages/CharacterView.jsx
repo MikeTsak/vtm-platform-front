@@ -1335,7 +1335,7 @@ export default function CharacterView({
               <div style={{ padding: '24px', marginTop: 'auto' }}>
                 <button
                   className={`${styles.gothicBtn} ${styles.bloodPulse}`}
-                  style={{ width: '100%', padding: '16px', fontSize: '16px', background: 'var(--primary-container)', color: '#fff', boxShadow: '0 0 15px rgba(180,15,31,0.2)' }}
+                  style={{ width: '100%', padding: '16px', fontSize: '16px', background: 'var(--primary-container)', color: 'var(--text-color)', boxShadow: '0 0 15px rgba(180,15,31,0.2)' }}
                   onClick={() => setTempHunger(h => Math.min(5, h + 1))}
                 >
                   ROUSE BLOOD

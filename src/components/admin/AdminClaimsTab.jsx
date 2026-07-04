@@ -305,7 +305,7 @@ function ClaimsMap({ geo, bounds, selected, onSelect, colorForDivision, claimByD
     const baseOpacity = (claim || hasUnsaved) ? 0.60 : numOr(feature?.properties?.['fill-opacity'], 0.35);
 
     return {
-      color: isSelected ? 'var(--accent-purple)' : (claim?.color || feature?.properties?.stroke || '#444444'),
+      color: isSelected ? 'var(--accent-purple)' : (claim?.color || feature?.properties?.stroke || 'var(--border-color)'),
       weight: isSelected ? 3.5 : 1.5,
       opacity: numOr(feature?.properties?.['stroke-opacity'], 1),
       fillColor: fill,
@@ -341,11 +341,11 @@ function ClaimsMap({ geo, bounds, selected, onSelect, colorForDivision, claimByD
     
     // Glassy Popup Styling
     const popupHtml = `
-      <div style="background: rgba(15,15,20,0.9); backdrop-filter: blur(8px); padding: 12px; border-radius: 8px; border: 1px solid rgba(157, 124, 255, 0.4); color: #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+      <div style="background: rgba(15,15,20,0.9); backdrop-filter: blur(8px); padding: 12px; border-radius: 8px; border: 1px solid rgba(157, 124, 255, 0.4); color: var(--text-color); box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
         <b style="color: #9d7cff; font-size: 1.1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px; display: block; margin-bottom: 8px;">Division ${n}: ${escapeHtml(name)}</b>
         ${claim ? `
-          <div style="margin-bottom: 4px; color: #ccc;">Owner: <strong style="color: #fff;">${escapeHtml(claim.owner_name || '')}</strong></div>
-          ${claim.color ? `<div style="display: flex; align-items: center; gap: 8px; color: #ccc;">Color: <span style="display:inline-block;width:14px;height:14px;background:${escapeHtml(claim.color)};border-radius:4px;border:1px solid rgba(255,255,255,0.3);box-shadow: 0 0 5px ${escapeHtml(claim.color)}"></span><code>${escapeHtml(claim.color)}</code></div>` : ''}
+          <div style="margin-bottom: 4px; color: var(--text-muted);">Owner: <strong style="color: var(--text-color);">${escapeHtml(claim.owner_name || '')}</strong></div>
+          ${claim.color ? `<div style="display: flex; align-items: center; gap: 8px; color: var(--text-muted);">Color: <span style="display:inline-block;width:14px;height:14px;background:${escapeHtml(claim.color)};border-radius:4px;border:1px solid rgba(255,255,255,0.3);box-shadow: 0 0 5px ${escapeHtml(claim.color)}"></span><code>${escapeHtml(claim.color)}</code></div>` : ''}
         ` : `<div style="color: #a8a8b3; font-style: italic;">Unclaimed Territory</div>`}
       </div>
     `;
@@ -374,7 +374,7 @@ return (
       <style>{`
         .leaflet-popup-content-wrapper { background: transparent !important; box-shadow: none !important; padding: 0 !important; }
         .leaflet-popup-tip { display: none !important; }
-        .mapGlassTooltip { background: rgba(0,0,0,0.6) !important; border: 1px solid rgba(255,255,255,0.1) !important; color: #fff !important; backdrop-filter: blur(4px) !important; font-weight: bold; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.5) !important; }
+        .mapGlassTooltip { background: rgba(0,0,0,0.6) !important; border: 1px solid rgba(255,255,255,0.1) !important; color: var(--text-color) !important; backdrop-filter: blur(4px) !important; font-weight: bold; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.5) !important; }
       `}</style>
       <MapContainer 
         className={styles.mapCanvas} 

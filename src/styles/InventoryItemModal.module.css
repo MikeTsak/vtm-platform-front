@@ -2,14 +2,7 @@
 :root {
   --tint: #b8860b;
   --accent: #00f5ff;
-  --bg-color: #0a0a0b;
-  --surface-color: transparent;
-  --surface-lighter: transparent;
-  --border-color: #b8860b;
-  --text-color: #e0e0e0;
-  --text-muted: #8b8b8b;
   --radius: 0px;
-  --shadow: none;
   --font-title: 'Libre Caslon Text', serif;
   --font-body: 'Geist', system-ui, sans-serif;
   --font-label: 'Space Mono', monospace;

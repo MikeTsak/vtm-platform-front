@@ -4,12 +4,12 @@
 .emailContainer {
   display: flex;
   height: 100%;
-  background: #1e1e1e; /* Classic dark email bg */
+  background: var(--surface-color); /* Classic dark email bg */
   color: #e0e0e0;
   font-family: 'Segoe UI', system-ui, sans-serif;
   overflow: hidden;
   border-radius: 8px; /* If nested inside Comms wrapper */
-  border: 1px solid #333;
+  border: 1px solid var(--border-color);
   position: relative;
 }
 
@@ -80,8 +80,8 @@
 
 .threadCard:hover { background: #2d2d30; }
 .threadCard.active { background: #37373d; border-left: 4px solid #0078d4; padding-left: 12px; }
-.threadCard.unread { background: #1e1e1e; }
-.threadCard.unread .threadSender, .threadCard.unread .threadSubject { font-weight: 700; color: #fff; }
+.threadCard.unread { background: var(--surface-color); }
+.threadCard.unread .threadSender, .threadCard.unread .threadSubject { font-weight: 700; color: var(--text-color); }
 
 .threadAvatar {
   width: 40px;
@@ -91,7 +91,7 @@
   align-items: center;
   justify-content: center;
   font-weight: bold;
-  color: #fff;
+  color: var(--text-color);
   font-size: 0.9rem;
   flex-shrink: 0;
 }
@@ -127,7 +127,7 @@
 
 .threadSubject {
   font-size: 0.9rem;
-  color: #ccc;
+  color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -146,7 +146,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: #1e1e1e;
+  background: var(--surface-color);
   z-index: 10;
 }
 
@@ -166,21 +166,21 @@
   margin: 0;
   font-size: 1.4rem;
   font-weight: 600;
-  color: #fff;
+  color: var(--text-color);
   line-height: 1.2;
 }
 
 .emailParticipants {
   margin-top: 8px;
   font-size: 0.9rem;
-  color: #aaa;
+  color: var(--text-muted);
 }
 
 .particChip {
   background: #3e3e42;
   padding: 4px 8px;
   border-radius: 4px;
-  color: #fff;
+  color: var(--text-color);
   font-size: 0.8rem;
 }
 
@@ -217,7 +217,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--text-color);
   font-size: 0.8rem;
   font-weight: bold;
 }
@@ -227,7 +227,7 @@
   flex-direction: column;
 }
 
-.msgAuthor { font-weight: 600; color: #fff; font-size: 0.9rem; }
+.msgAuthor { font-weight: 600; color: var(--text-color); font-size: 0.9rem; }
 .msgTime { font-size: 0.75rem; color: #888; }
 
 .emailMsgContent {
@@ -236,7 +236,7 @@
   color: #d4d4d4;
   overflow-wrap: break-word;
 }
-.emailMsgContent blockquote { border-left: 3px solid #555; margin: 10px 0; padding-left: 10px; color: #888; }
+.emailMsgContent blockquote { border-left: 3px solid var(--border-color); margin: 10px 0; padding-left: 10px; color: #888; }
 .emailMsgContent a { color: #3794ff; text-decoration: none; }
 
 /* Reply Area */
@@ -250,16 +250,16 @@
 }
 
 .btnPri {
-  background: #0078d4; color: #fff; border: none; padding: 10px 24px; border-radius: 4px; font-weight: 600; cursor: pointer;
+  background: #0078d4; color: var(--text-color); border: none; padding: 10px 24px; border-radius: 4px; font-weight: 600; cursor: pointer;
   min-height: 44px;
 }
 .btnPri:hover { background: #006cc1; }
 
 .btnSec {
-  background: transparent; border: 1px solid #555; color: #ccc; padding: 10px 16px; border-radius: 4px; cursor: pointer;
+  background: transparent; border: 1px solid var(--border-color); color: var(--text-muted); padding: 10px 16px; border-radius: 4px; cursor: pointer;
   min-height: 44px;
 }
-.btnSec:hover { border-color: #888; color: #fff; }
+.btnSec:hover { border-color: #888; color: var(--text-color); }
 
 /* Placeholder */
 .placeholderLight {
@@ -269,15 +269,15 @@
 
 /* Editor Styles override */
 .editorContainer {
-  border: 1px solid #444; border-radius: 4px; background: #1e1e1e;
+  border: 1px solid var(--border-color); border-radius: 4px; background: var(--surface-color);
 }
 
 .toolbar {
-  background: #2d2d30; padding: 8px; border-bottom: 1px solid #444; display: flex; gap: 8px; flex-wrap: wrap;
+  background: #2d2d30; padding: 8px; border-bottom: 1px solid var(--border-color); display: flex; gap: 8px; flex-wrap: wrap;
 }
 
 .toolbar button {
-  background: transparent; color: #ccc; border: 1px solid #444; padding: 6px 12px; border-radius: 2px; cursor: pointer; font-weight: bold;
+  background: transparent; color: var(--text-muted); border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 2px; cursor: pointer; font-weight: bold;
   min-height: 36px;
 }
 .toolbar button:hover { background: #3e3e42; }
@@ -292,17 +292,17 @@
 }
 
 .modal {
-  background: #252526; width: 600px; max-width: 90vw; border-radius: 8px; padding: 24px; box-shadow: 0 20px 50px rgb(0 0 0 / 50%); border: 1px solid #444; display: flex; flex-direction: column; gap: 12px;
+  background: #252526; width: 600px; max-width: 90vw; border-radius: 8px; padding: 24px; box-shadow: 0 20px 50px rgb(0 0 0 / 50%); border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 12px;
 }
-.modal h3, .modal h4 { margin: 0 0 10px; color: #fff; }
+.modal h3, .modal h4 { margin: 0 0 10px; color: var(--text-color); }
 
 .input {
-  background: #1e1e1e; border: 1px solid #444; padding: 12px; color: #fff; border-radius: 4px; width: 100%; box-sizing: border-box; font-size: 16px;
+  background: var(--surface-color); border: 1px solid var(--border-color); padding: 12px; color: var(--text-color); border-radius: 4px; width: 100%; box-sizing: border-box; font-size: 16px;
 }
 .input:focus { border-color: #0078d4; outline: none; }
 .modalActions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; }
 .modalSeparator { border-top: 1px solid #3e3e42; margin: 10px 0; }
-.identityRow { display: flex; justify-content: space-between; align-items: center; padding: 8px; background: #1e1e1e; margin-bottom: 4px; border-radius: 4px; min-height: 44px;}
+.identityRow { display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--surface-color); margin-bottom: 4px; border-radius: 4px; min-height: 44px;}
 
 /* Mobile Back Button */
 .mobileBackBtn { display: none; }
@@ -328,7 +328,7 @@
   
   /* Default: Show Sidebar, Hide Main */
   .emailSidebar { transform: translateX(0); z-index: 10; }
-  .emailMain { transform: translateX(100%); z-index: 20; background: #1e1e1e; }
+  .emailMain { transform: translateX(100%); z-index: 20; background: var(--surface-color); }
   
   /* Active State: Show Main */
   .mobileViewActive .emailSidebar { transform: translateX(-30%); }

@@ -28,17 +28,17 @@ export default function LiveSessionRollHistory({ rolls = [] }) {
           >
             <div style={{ width: '100%' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                <strong style={{ fontSize: '1rem', color: '#ffffff', margin: 0 }}>{name}</strong>
+                <strong style={{ fontSize: '1rem', color: 'var(--text-color)', margin: 0 }}>{name}</strong>
                 <span style={{ fontWeight: 700, color: hasBestial || hasMessy ? '#e11d48' : '#fbbf24', fontSize: '0.95rem' }}>
                   {result}
                 </span>
               </div>
               
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <p style={{ margin: 0, fontSize: '0.85rem', color: '#a1a1aa', textTransform: 'capitalize' }}>
+                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
                   {roll.roll_type || roll.rollType || 'roll'} {note ? `— ${note}` : ''}
                 </p>
-                <small style={{ color: '#52525b', fontSize: '0.75rem' }}>
+                <small style={{ color: 'var(--border-color)', fontSize: '0.75rem' }}>
                   {createdAt ? new Date(createdAt).toLocaleTimeString() : '-'}
                 </small>
               </div>
@@ -54,12 +54,12 @@ export default function LiveSessionRollHistory({ rolls = [] }) {
               {roll.results && (roll.results.normal || roll.results.hunger || roll.results.rouse) && (
                 <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '8px' }}>
                   {(roll.results.normal || []).map((die, i) => (
-                    <div key={`n-${i}`} style={{ width: 18, height: 18, borderRadius: 4, background: die >= 6 ? '#e4e4e7' : 'rgba(255,255,255,0.1)', color: die >= 6 ? '#000' : '#a1a1aa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 'bold' }}>
+                    <div key={`n-${i}`} style={{ width: 18, height: 18, borderRadius: 4, background: die >= 6 ? '#e4e4e7' : 'rgba(255,255,255,0.1)', color: die >= 6 ? 'var(--bg-color)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 'bold' }}>
                       {die}
                     </div>
                   ))}
                   {(roll.results.hunger || roll.results.rouse || []).map((die, i) => (
-                    <div key={`h-${i}`} style={{ width: 18, height: 18, borderRadius: 4, background: die >= 6 ? '#e11d48' : 'transparent', border: '1px solid #e11d48', color: die >= 6 ? '#fff' : '#e11d48', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 'bold' }}>
+                    <div key={`h-${i}`} style={{ width: 18, height: 18, borderRadius: 4, background: die >= 6 ? '#e11d48' : 'transparent', border: '1px solid #e11d48', color: die >= 6 ? 'var(--text-color)' : '#e11d48', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 'bold' }}>
                       {die}
                     </div>
                   ))}

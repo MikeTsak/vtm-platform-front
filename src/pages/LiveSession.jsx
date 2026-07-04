@@ -93,7 +93,7 @@ function HumanityTooltip({ value }) {
   const getColor = (v) => v >= 8 ? '#22c55e' : v >= 6 ? '#eab308' : v >= 4 ? '#f97316' : '#e11d48';
   return (
     <div style={{ position: 'relative', display: 'inline-block' }}>
-      <button onClick={() => setOpen(o => !o)} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer', width: 20, height: 20, borderRadius: '50%', color: '#a1a1aa', fontSize: '0.7rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>?</button>
+      <button onClick={() => setOpen(o => !o)} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer', width: 20, height: 20, borderRadius: '50%', color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>?</button>
       {open && (
         <>
           <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 49 }} />
@@ -121,23 +121,23 @@ function StatusBar({ label, sup = 0, agg = 0, max = 1 }) {
     <div className={styles.trackerCard}>
       <div className={styles.trackerHeader}>
         <span>{label}</span>
-        <span style={{ color: total >= safeMax ? '#e11d48' : '#a1a1aa' }}>{safeMax - total} / {safeMax}</span>
+        <span style={{ color: total >= safeMax ? '#e11d48' : 'var(--text-muted)' }}>{safeMax - total} / {safeMax}</span>
       </div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: '0.5rem' }}>
         {Array.from({ length: safeMax }).map((_, i) => {
           const isAgg = i < aggCount;
           const isSup = !isAgg && i < aggCount + supCount;
           return (
-            <div key={i} style={{ width: 22, height: 22, borderRadius: 4, border: isAgg ? '2px solid #e11d48' : isSup ? '2px solid #a1a1aa' : '2px solid rgba(255,255,255,0.12)', background: isAgg ? '#e11d48' : isSup ? 'rgba(161,161,170,0.35)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {isAgg && <svg width="10" height="10" viewBox="0 0 10 10"><line x1="1" y1="1" x2="9" y2="9" stroke="#fff" strokeWidth="2" strokeLinecap="round"/><line x1="9" y1="1" x2="1" y2="9" stroke="#fff" strokeWidth="2" strokeLinecap="round"/></svg>}
-              {isSup && <div style={{ width: 8, height: 2, background: '#a1a1aa', borderRadius: 1 }} />}
+            <div key={i} style={{ width: 22, height: 22, borderRadius: 4, border: isAgg ? '2px solid #e11d48' : isSup ? '2px solid var(--text-muted)' : '2px solid rgba(255,255,255,0.12)', background: isAgg ? '#e11d48' : isSup ? 'rgba(161,161,170,0.35)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {isAgg && <svg width="10" height="10" viewBox="0 0 10 10"><line x1="1" y1="1" x2="9" y2="9" stroke="var(--text-color)" strokeWidth="2" strokeLinecap="round"/><line x1="9" y1="1" x2="1" y2="9" stroke="var(--text-color)" strokeWidth="2" strokeLinecap="round"/></svg>}
+              {isSup && <div style={{ width: 8, height: 2, background: 'var(--text-muted)', borderRadius: 1 }} />}
             </div>
           );
         })}
       </div>
       <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
-        <span style={{ fontSize: '0.7rem', color: '#a1a1aa', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: 'rgba(161,161,170,0.35)', border: '1px solid #a1a1aa', display: 'inline-block' }} />Superficial</span>
-        <span style={{ fontSize: '0.7rem', color: '#a1a1aa', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: '#e11d48', border: '1px solid #e11d48', display: 'inline-block' }} />Aggravated</span>
+        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: 'rgba(161,161,170,0.35)', border: '1px solid var(--text-muted)', display: 'inline-block' }} />Superficial</span>
+        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: '#e11d48', border: '1px solid #e11d48', display: 'inline-block' }} />Aggravated</span>
       </div>
     </div>
   );
@@ -178,14 +178,14 @@ function FrenzyDisplay({ charName, frenzyState, isAdmin, onChangeFrenzy }) {
   const activeFrenzy = FRENZY_TYPES.find(f => f.key === frenzyState) || null;
   return (
     <div className={styles.trackerCard} style={{ border: activeFrenzy ? `1px solid ${activeFrenzy.color}` : '1px solid rgba(255,255,255,0.08)', transition: 'border-color 0.3s' }}>
-      <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.02em', marginBottom: '0.5rem' }}>{charName || 'Character'}</div>
+      <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-color)', letterSpacing: '-0.02em', marginBottom: '0.5rem' }}>{charName || 'Character'}</div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         {/* <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0.3rem 0.8rem', borderRadius: 20, background: activeFrenzy ? `${activeFrenzy.color}22` : 'rgba(34,197,94,0.12)', border: `1px solid ${activeFrenzy ? activeFrenzy.color : '#22c55e'}`, fontSize: '0.82rem', fontWeight: 700, color: activeFrenzy ? activeFrenzy.color : '#22c55e', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
           {activeFrenzy ? `${activeFrenzy.icon} ${activeFrenzy.label}` : '✓ Calm'}
         </div> */}
         {isAdmin && <button className={styles.btnGhost} style={{ fontSize: '0.75rem', padding: '0.3rem 0.7rem' }} onClick={() => setOpen(o => !o)}>{open ? 'Close' : 'Change State'}</button>}
       </div>
-      {activeFrenzy && <p style={{ margin: '0.6rem 0 0 0', fontSize: '0.8rem', color: '#a1a1aa', lineHeight: 1.5, borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '0.6rem' }}>{activeFrenzy.desc}</p>}
+      {activeFrenzy && <p style={{ margin: '0.6rem 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.5, borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '0.6rem' }}>{activeFrenzy.desc}</p>}
       {isAdmin && open && (
         <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: 6, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '0.75rem' }}>
           <button onClick={() => { onChangeFrenzy(null); setOpen(false); }} style={{ padding: '0.45rem 0.75rem', borderRadius: 8, background: frenzyState === null ? 'rgba(34,197,94,0.2)' : 'transparent', border: '1px solid #22c55e', color: '#22c55e', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}>✓ Calm</button>
@@ -215,14 +215,14 @@ function DisciplineConfirmModal({ power, discName, rouseCount, currentHunger, on
       <div onClick={onCancel} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 100, backdropFilter: 'blur(4px)' }} />
 
       {/* Modal */}
-      <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', zIndex: 101, width: 'min(90vw, 420px)', background: '#18181b', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 24px 64px rgba(0,0,0,0.8)' }}>
+      <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', zIndex: 101, width: 'min(90vw, 420px)', background: 'var(--bg-color)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 24px 64px rgba(0,0,0,0.8)' }}>
         
         {/* Header */}
         <div style={{ background: 'rgba(225,29,72,0.08)', borderBottom: '1px solid rgba(225,29,72,0.2)', padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           {iconSrc && <img src={iconSrc} alt={discName} style={{ width: 36, height: 36, objectFit: 'contain', filter: 'drop-shadow(0 2px 6px rgba(225,29,72,0.4))' }} draggable="false" />}
           <div>
             <div style={{ fontSize: '0.7rem', color: '#e11d48', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>{discName}</div>
-            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff' }}>{power.name}</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-color)' }}>{power.name}</div>
           </div>
           {power.level !== undefined && (
             <div style={{ marginLeft: 'auto', fontSize: '0.8rem', color: '#71717a', fontWeight: 600 }}>Lv. {power.level}</div>
@@ -233,7 +233,7 @@ function DisciplineConfirmModal({ power, discName, rouseCount, currentHunger, on
 
           {/* Notes / description */}
           {(power.notes || power.description) && (
-            <p style={{ margin: 0, fontSize: '0.875rem', color: '#a1a1aa', lineHeight: 1.6, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 8, padding: '0.75rem' }}>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: 1.6, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 8, padding: '0.75rem' }}>
               {power.notes || power.description}
             </p>
           )}
@@ -267,13 +267,13 @@ function DisciplineConfirmModal({ power, discName, rouseCount, currentHunger, on
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
-                <div style={{ color: '#a1a1aa' }}>
+                <div style={{ color: 'var(--text-muted)' }}>
                   Current Hunger:
                   <span style={{ color: currentHunger >= 4 ? '#e11d48' : '#f4f4f5', fontWeight: 700, marginLeft: 4 }}>
                     {'●'.repeat(currentHunger)}{'○'.repeat(5 - currentHunger)}
                   </span>
                 </div>
-                <div style={{ color: '#a1a1aa' }}>
+                <div style={{ color: 'var(--text-muted)' }}>
                   Max possible:
                   <span style={{ color: projectedHunger >= 4 ? '#e11d48' : '#f4f4f5', fontWeight: 700, marginLeft: 4 }}>
                     {'●'.repeat(projectedHunger)}{'○'.repeat(5 - projectedHunger)}
@@ -476,7 +476,7 @@ function DisciplinePanel({ sheet, trackers, onActivate }) {
                 ) : (
                   <div style={{ width: 32, height: 32, borderRadius: 8, background: isActive ? 'rgba(225,29,72,0.2)' : 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', color: isActive ? '#e11d48' : '#71717a', fontWeight: 700 }}>{discName.slice(0, 2).toUpperCase()}</div>
                 )}
-                <span style={{ fontSize: '0.6rem', color: isActive ? '#e11d48' : '#52525b', letterSpacing: '0.05em', fontWeight: isActive ? 700 : 400 }}>
+                <span style={{ fontSize: '0.6rem', color: isActive ? '#e11d48' : 'var(--border-color)', letterSpacing: '0.05em', fontWeight: isActive ? 700 : 400 }}>
                   {'•'.repeat(level)}
                 </span>
               </button>
@@ -488,9 +488,9 @@ function DisciplinePanel({ sheet, trackers, onActivate }) {
         {activeDisc && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '0.75rem', paddingBottom: '0.75rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
             {discIcon(activeDisc) && <img src={discIcon(activeDisc)} alt={activeDisc} style={{ width: 20, height: 20, objectFit: 'contain', opacity: 0.8 }} draggable="false" />}
-            <span style={{ fontWeight: 800, fontSize: '1rem', color: '#fff' }}>{activeDisc}</span>
+            <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-color)' }}>{activeDisc}</span>
             <span style={{ fontSize: '0.75rem', color: '#e11d48', fontWeight: 600 }}>{'•'.repeat(Number(charDisciplines[activeDisc] || 0))}</span>
-            <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: '#52525b' }}>Tap a power to activate</span>
+            <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: 'var(--border-color)' }}>Tap a power to activate</span>
           </div>
         )}
 
@@ -513,7 +513,7 @@ function DisciplinePanel({ sheet, trackers, onActivate }) {
                 }}
               >
                 {/* Level indicator */}
-                <div style={{ fontSize: '0.65rem', color: '#52525b', fontWeight: 700, width: 16, textAlign: 'center', flexShrink: 0 }}>
+                <div style={{ fontSize: '0.65rem', color: 'var(--border-color)', fontWeight: 700, width: 16, textAlign: 'center', flexShrink: 0 }}>
                   {p.level}
                 </div>
 
@@ -555,7 +555,7 @@ function DisciplinePanel({ sheet, trackers, onActivate }) {
         {hoveredPower && (
           <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '0.875rem', borderLeft: '3px solid #e11d48' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <span style={{ fontWeight: 800, color: '#fff', fontSize: '0.95rem' }}>{hoveredPower.name}</span>
+              <span style={{ fontWeight: 800, color: 'var(--text-color)', fontSize: '0.95rem' }}>{hoveredPower.name}</span>
               <span style={{ fontSize: '0.7rem', color: '#71717a' }}>Level {hoveredPower.level}</span>
               {disciplineRequiresRouse(hoveredPower) && (
                 <span style={{ fontSize: '0.62rem', padding: '2px 6px', borderRadius: 6, background: 'rgba(225,29,72,0.12)', border: '1px solid rgba(225,29,72,0.3)', color: '#e11d48', fontWeight: 700 }}>🩸 Rouse</span>
@@ -563,33 +563,33 @@ function DisciplinePanel({ sheet, trackers, onActivate }) {
             </div>
             {/* notes is the main description field in disciplines.js */}
             {(hoveredPower.notes || hoveredPower.description) && (
-              <p style={{ margin: '0 0 6px 0', fontSize: '0.82rem', color: '#a1a1aa', lineHeight: 1.5 }}>
+              <p style={{ margin: '0 0 6px 0', fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
                 {hoveredPower.notes || hoveredPower.description}
               </p>
             )}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1.25rem', marginTop: 6, borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: 6 }}>
               {hoveredPower.cost && (
-                <div style={{ fontSize: '0.78rem', color: '#a1a1aa' }}>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                   <span style={{ color: '#71717a' }}>Cost: </span>{hoveredPower.cost}
                 </div>
               )}
               {hoveredPower.dice_pool && hoveredPower.dice_pool !== '—' && (
-                <div style={{ fontSize: '0.78rem', color: '#a1a1aa' }}>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                   <span style={{ color: '#71717a' }}>Pool: </span>{hoveredPower.dice_pool}
                 </div>
               )}
               {hoveredPower.duration && (
-                <div style={{ fontSize: '0.78rem', color: '#a1a1aa' }}>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                   <span style={{ color: '#71717a' }}>⏱ Duration: </span>{hoveredPower.duration}
                 </div>
               )}
               {hoveredPower.amalgam && (
-                <div style={{ fontSize: '0.78rem', color: '#a1a1aa' }}>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                   <span style={{ color: '#71717a' }}>Amalgam: </span>{hoveredPower.amalgam}
                 </div>
               )}
               {hoveredPower.source && (
-                <div style={{ fontSize: '0.75rem', color: '#52525b' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--border-color)' }}>
                   {hoveredPower.source}
                 </div>
               )}
@@ -771,10 +771,10 @@ export default function LiveSession() {
             <div className={styles.trackerHeader} style={{ color: FRENZY_ALERTS[sheet.frenzyState].color, margin: 0 }}>
               <span>⚠️ Frenzy State Active</span>
             </div>
-            <h3 style={{ margin: '0.5rem 0 0 0', fontSize: '1.2rem', color: '#ffffff' }}>
+            <h3 style={{ margin: '0.5rem 0 0 0', fontSize: '1.2rem', color: 'var(--text-color)' }}>
               {FRENZY_ALERTS[sheet.frenzyState].label}
             </h3>
-            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: '#a1a1aa' }}>
+            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
               {FRENZY_ALERTS[sheet.frenzyState].desc}
             </p>
           </div>
@@ -918,7 +918,7 @@ export default function LiveSession() {
             <div className={styles.resultCard}>
               <img src={art} alt={labelText} className={styles.outcomeImage} draggable="false" />
               <h2 style={{ color: lastRoll.outcome.hasMessyCritical || lastRoll.outcome.hasBestialFailure || (isRouse && successes === 0) ? '#e11d48' : 'inherit', margin: '0.5rem 0' }}>{labelText}</h2>
-              {isRouse ? <p className={styles.subtle} style={{ color: successes > 0 ? '#a1a1aa' : '#e11d48' }}>{lastRoll.note}</p> : <p className={styles.subtle}>Target Diff {difficulty}</p>}
+              {isRouse ? <p className={styles.subtle} style={{ color: successes > 0 ? 'var(--text-muted)' : '#e11d48' }}>{lastRoll.note}</p> : <p className={styles.subtle}>Target Diff {difficulty}</p>}
               <div className={styles.diceRow}>
                 {lastRoll.normalDice.map((die, i) => {
                   const isSuccess = die >= 6;
@@ -953,7 +953,7 @@ export default function LiveSession() {
                 const canAfford = remainingWp > 0;
                 return (
                   <div style={{ marginTop: '1rem', width: '100%', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10, fontSize: '0.85rem', fontWeight: 700, color: '#a1a1aa' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10, fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)' }}>
                       <span style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>Willpower</span>
                       <span style={{ color: canAfford ? '#f4f4f5' : '#ef4444' }}>{remainingWp} / {maxWp} Remaining</span>
                     </div>

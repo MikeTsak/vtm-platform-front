@@ -83,7 +83,7 @@
 }
 
 .activeMode .modeTitle {
-  color: #fff;
+  color: var(--text-color);
   text-shadow: 0 0 15px rgb(176 20 35 / 60%);
 }
 
@@ -114,13 +114,13 @@
     /* Full viewport height on mobile, specifically dynamic for address bars */
     height: 100dvh; 
     max-width: none;
-    background: #000;
+    background: var(--bg-color);
   }
 
   .modeSwitch {
     margin: 0;
     background: #050505;
-    border-bottom: 1px solid #333;
+    border-bottom: 1px solid var(--surface-lighter);
     padding: 0;
     gap: 0;
     justify-content: space-between;

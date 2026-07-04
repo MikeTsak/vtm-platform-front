@@ -83,7 +83,7 @@ export default function AdminXPTab({ users, onGrant, onBulkGrant, adminxp }) {
       {totalCharacters > 0 && (
         <div style={{ background: 'var(--glass-inset)', padding: '20px', borderRadius: 'var(--radius-lg)', marginBottom: '16px', display: 'flex', gap: '15px', alignItems: 'center', border: '1px solid var(--glass-border)', boxShadow: 'var(--glass-shadow)', backdropFilter: 'blur(10px)' }}>
           <div style={{ flexGrow: 1 }}>
-            <strong style={{ display: 'block', marginBottom: '4px', fontSize: '1.2rem', color: '#fff' }}>Bulk Grant Session XP</strong>
+            <strong style={{ display: 'block', marginBottom: '4px', fontSize: '1.2rem', color: 'var(--text-color)' }}>Bulk Grant Session XP</strong>
             <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Apply XP to EVERY character simultaneously ({totalCharacters} active characters).</span>
           </div>
           <input type="number" placeholder="+/-" className={styles.input} style={{ width: '100px', fontSize: '1.2rem', textAlign: 'center' }} value={bulkDelta} onChange={e => setBulkDelta(e.target.value)} disabled={isApplying} />
@@ -147,8 +147,8 @@ export default function AdminXPTab({ users, onGrant, onBulkGrant, adminxp }) {
           <div className={styles.modalCard} onClick={e => e.stopPropagation()} style={{ maxWidth: '700px' }}>
             <div className={styles.modalHeader}>
               <div className={styles.modalHeaderContent}>
-                <h3 style={{ color: CLAN_COLORS[charModal.clan] || '#fff' }}>{charModal.name}'s XP History</h3>
-                <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Current Balance: <strong style={{color: '#fff'}}>{charModal.xp} XP</strong></div>
+                <h3 style={{ color: CLAN_COLORS[charModal.clan] || 'var(--text-color)' }}>{charModal.name}'s XP History</h3>
+                <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Current Balance: <strong style={{color: 'var(--text-color)'}}>{charModal.xp} XP</strong></div>
               </div>
               <button className={`${styles.btn} ${styles.btnSecondary}`} style={{ borderRadius: '50%', width: '40px', height: '40px', padding: 0 }} onClick={() => setCharModal(null)}>✕</button>
             </div>
@@ -161,7 +161,7 @@ export default function AdminXPTab({ users, onGrant, onBulkGrant, adminxp }) {
                   return (
                     <div key={log.id} style={{ display: 'flex', justifyContent: 'space-between', background: 'var(--glass-inset)', padding: '15px', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)', borderLeft: `4px solid ${isGrant ? 'var(--color-success)' : 'var(--color-error)'}` }}>
                       <div>
-                        <div style={{ fontWeight: 'bold', fontSize: '1rem', marginBottom: '4px', color: '#fff' }}>{log.reason}</div>
+                        <div style={{ fontWeight: 'bold', fontSize: '1rem', marginBottom: '4px', color: 'var(--text-color)' }}>{log.reason}</div>
                         <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{new Date(log.created_at).toLocaleString()} • <span style={{color: 'var(--accent-purple)'}}>{log.action_type.replace(/_/g, ' ')}</span></div>
                       </div>
                       <div style={{ fontWeight: '900', color: isGrant ? 'var(--color-success)' : 'var(--color-error)', fontSize: '1.4rem', alignSelf: 'center', textShadow: `0 0 10px ${isGrant ? 'rgba(0,230,118,0.4)' : 'rgba(255,77,77,0.4)'}` }}>

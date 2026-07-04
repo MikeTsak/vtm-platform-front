@@ -190,7 +190,7 @@ export default function AnnouncementsView({ canEdit }) {
                 className={styles.editor} 
                 contentEditable={!isUploading} 
                 ref={contentRef} 
-                style={{ minHeight: '100px', border: '1px solid #ccc', padding: '8px', marginBottom: '10px' }}
+                style={{ minHeight: '100px', border: '1px solid var(--text-muted)', padding: '8px', marginBottom: '10px' }}
               />
 
               <div style={{ marginBottom: '15px' }}>

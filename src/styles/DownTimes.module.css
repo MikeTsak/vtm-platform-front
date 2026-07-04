@@ -48,7 +48,7 @@
   font-family: var(--font-title);
   font-size: clamp(24px, 4vw, 36px);
   margin: 0 0 4px;
-  color: color-mix(in srgb, var(--dt-red) 85%, #fff 15%);
+  color: color-mix(in srgb, var(--dt-red) 85%, var(--text-color) 15%);
   text-shadow: 0 0 14px color-mix(in srgb, var(--dt-red) 45%, transparent);
 }
 .subtitle { color: var(--muted); margin: 0; }
@@ -135,9 +135,9 @@
 }
 
 .cta {
-  background: linear-gradient(145deg, color-mix(in srgb, var(--dt-red) 60%, #000), var(--dt-red));
-  color: #fff;
-  border-color: color-mix(in srgb, var(--dt-red) 55%, #000);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--dt-red) 60%, var(--bg-color)), var(--dt-red));
+  color: var(--text-color);
+  border-color: color-mix(in srgb, var(--dt-red) 55%, var(--bg-color));
   text-shadow: 0 1px 2px rgb(0 0 0 / 45%);
   box-shadow: 0 4px 10px rgb(0 0 0 / 45%);
 }
@@ -584,7 +584,7 @@
 .projectTag {
   font-size: 0.75rem;
   background: var(--proj-blue);
-  color: #fff;
+  color: var(--text-color);
   padding: 3px 8px;
   border-radius: 4px;
   margin-left: 12px;
@@ -596,7 +596,7 @@
 
 .chipCountProject {
   background: var(--proj-blue) !important;
-  color: #fff !important;
+  color: var(--text-color) !important;
 }
 
 .emptyIconProject {

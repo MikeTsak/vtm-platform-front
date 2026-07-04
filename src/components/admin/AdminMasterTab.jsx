@@ -65,7 +65,7 @@ export default function AdminMasterTab() {
       {/* COMMS KILLSWITCH */}
       <div style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', padding: '2rem', boxShadow: 'var(--glass-shadow)' }}>
         <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
-          <h4 style={{ margin: 0, fontSize: '1.5rem', color: '#fff' }}>⚙️ Network Infrastructure</h4>
+          <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-color)' }}>⚙️ Network Infrastructure</h4>
           <p style={{ margin: '5px 0 0 0', color: 'var(--text-secondary)' }}>Global overrides for the SchreckNet communications grid.</p>
         </div>
 
@@ -73,10 +73,10 @@ export default function AdminMasterTab() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
               <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: themeColor, boxShadow: `0 0 15px ${themeColor}`, animation: isOnline ? 'pulseGlow 2s infinite' : 'none' }} />
-              <h3 style={{ margin: 0, fontSize: '1.4rem', color: '#fff' }}>SchreckNet Comms</h3>
+              <h3 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--text-color)' }}>SchreckNet Comms</h3>
             </div>
             <div style={{ position: 'relative', width: '60px', height: '32px', background: isOnline ? 'var(--color-success)' : 'var(--glass-border)', borderRadius: '32px', transition: 'background 0.3s ease' }}>
-              <div style={{ position: 'absolute', top: '4px', left: isOnline ? '32px' : '4px', width: '24px', height: '24px', background: '#fff', borderRadius: '50%', transition: 'left 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }} />
+              <div style={{ position: 'absolute', top: '4px', left: isOnline ? '32px' : '4px', width: '24px', height: '24px', background: 'var(--text-color)', borderRadius: '50%', transition: 'left 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }} />
             </div>
           </div>
           <div style={{ background: bgColor, borderRadius: '8px', padding: '15px', borderLeft: `4px solid ${themeColor}` }}>
@@ -89,7 +89,7 @@ export default function AdminMasterTab() {
       {/* BANNER CONTROLS */}
       <div style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', padding: '2rem', boxShadow: 'var(--glass-shadow)' }}>
         <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
-          <h4 style={{ margin: 0, fontSize: '1.5rem', color: '#fff' }}>📢 Global Announcement Banner</h4>
+          <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-color)' }}>📢 Global Announcement Banner</h4>
           <p style={{ margin: '5px 0 0 0', color: 'var(--text-secondary)' }}>Displays a site-wide banner at the absolute top of the portal. Use this for critical event countdowns.</p>
         </div>
 
@@ -97,7 +97,7 @@ export default function AdminMasterTab() {
           <div onClick={() => setBannerEnabled(!bannerEnabled)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', background: 'var(--glass-inset)', padding: '1.2rem 1.5rem', borderRadius: 'var(--radius-md)', borderLeft: `4px solid ${bannerColor}`, border: '1px solid var(--glass-border)' }}>
             <h3 style={{ margin: 0, fontSize: '1.2rem', color: isBannerOnline ? 'var(--accent-purple)' : 'var(--text-secondary)' }}>Enable Banner System</h3>
             <div style={{ position: 'relative', width: '60px', height: '32px', background: isBannerOnline ? 'var(--accent-purple)' : 'var(--glass-border)', borderRadius: '32px', transition: 'background 0.3s ease' }}>
-              <div style={{ position: 'absolute', top: '4px', left: isBannerOnline ? '32px' : '4px', width: '24px', height: '24px', background: '#fff', borderRadius: '50%', transition: 'left 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }} />
+              <div style={{ position: 'absolute', top: '4px', left: isBannerOnline ? '32px' : '4px', width: '24px', height: '24px', background: 'var(--text-color)', borderRadius: '50%', transition: 'left 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }} />
             </div>
           </div>
 

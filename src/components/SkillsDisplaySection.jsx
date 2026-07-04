@@ -40,7 +40,7 @@ export default function SkillsDisplaySection({ sheet }) {
     .slice(0, 8);
 
   return (
-    <div style={{ background: '#1a1a1a', padding: '24px', borderBottom: '1px solid #222' }}>
+    <div style={{ background: 'var(--surface-color)', padding: '24px', borderBottom: '1px solid var(--surface-color)' }}>
       {!expanded ? (
         <>
           <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '24px', fontWeight: 600, color: '#e5e2e1', margin: '0 0 16px 0' }}>
@@ -91,7 +91,7 @@ export default function SkillsDisplaySection({ sheet }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '32px' }}>
             {Object.entries(SKILLS).map(([group, list]) => (
               <div key={group} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <h4 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', fontWeight: 500, letterSpacing: '0.1em', color: '#ffb3ae', textTransform: 'uppercase', borderBottom: '1px solid #333', paddingBottom: '4px', margin: 0 }}>
+                <h4 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', fontWeight: 500, letterSpacing: '0.1em', color: '#ffb3ae', textTransform: 'uppercase', borderBottom: '1px solid var(--surface-lighter)', paddingBottom: '4px', margin: 0 }}>
                   {group}
                 </h4>
                 {list.map(name => {

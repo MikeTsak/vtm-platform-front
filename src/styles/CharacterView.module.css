@@ -27,25 +27,6 @@
 
 /* Root variables and base styles */
 .root {
-  --tint: #b40f1f;
-  --accent: #ffb3ae;
-  --bg-color: #0a0a0a;
-  --surface-color: #1a1a1a;
-  --surface-lighter: #252525;
-  --surface-low: #131313;
-  --surface-lowest: #0d0d0d;
-  --surface-highest: #2a2a2a;
-  --primary-container: color-mix(in srgb, var(--tint) 80%, black);
-  --border-color: #333333;
-  --text-color: #e5e2e1;
-  --text-muted: #ab8986;
-  --radius: 0px;
-  --shadow: none;
-  --font-title: 'Playfair Display', serif;
-  --font-body: 'Inter', system-ui, sans-serif;
-  --font-label: 'JetBrains Mono', monospace;
-  --font-display: 'Playfair Display', serif;
-
   display: flex;
   flex-direction: column;
   color: var(--text-color);
@@ -116,7 +97,7 @@
   gap: 24px;
   border: 1px solid var(--border-color);
   padding: 24px;
-  background: rgba(26, 26, 26, 0.8);
+  background: color-mix(in srgb, var(--surface-color) 80%, transparent);
   backdrop-filter: blur(8px);
 }
 
@@ -144,7 +125,7 @@
   top: 65px;
   z-index: 50;
   width: 100%;
-  background: rgba(42, 42, 42, 0.95);
+  background: color-mix(in srgb, var(--surface-color) 95%, transparent);
   backdrop-filter: blur(12px);
   border: 1px solid var(--border-color);
   border-radius: 12px;
@@ -236,7 +217,7 @@
     top: 195px;
     height: calc(100vh - 220px);
     width: 100%;
-    background: rgba(10, 10, 10, 0.8);
+    background: color-mix(in srgb, var(--bg-color) 80%, transparent);
     backdrop-filter: blur(12px);
     z-index: 40;
   }
@@ -275,7 +256,7 @@
   padding-bottom: env(safe-area-inset-bottom);
   padding-left: 16px;
   padding-right: 16px;
-  background: rgba(53, 53, 52, 0.9);
+  background: color-mix(in srgb, var(--surface-lighter) 90%, transparent);
   backdrop-filter: blur(12px);
   border-top-left-radius: 12px;
   border-top-right-radius: 12px;
@@ -368,7 +349,7 @@
   font-family: 'Playfair Display', serif;
   font-weight: 600;
   font-size: 1.15rem;
-  color: #fff;
+  color: var(--text-color);
 }
 
 .subhead {
@@ -408,7 +389,7 @@
 
 .cta {
   background: var(--tint);
-  color: #fff;
+  color: var(--text-color);
   border-color: var(--tint);
   text-shadow: none;
   font-weight: bold;
@@ -422,9 +403,9 @@
 }
 
 .cta:disabled {
-  background: #1a1a1a;
-  border-color: #333;
-  color: #555;
+  background: var(--surface-color);
+  border-color: var(--border-color);
+  color: var(--border-color);
   cursor: not-allowed;
   box-shadow: none;
 }
@@ -462,7 +443,7 @@
 .gothicBtn {
   font-family: Inter, sans-serif;
   background: var(--tint);
-  color: #fff;
+  color: var(--text-color);
   border: none;
   padding: 6px 16px;
   border-radius: 0;
@@ -477,9 +458,9 @@
 }
 
 .gothicBtn:disabled {
-  background: #1a1a1a;
-  border: 1px solid #333;
-  color: #555;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  color: var(--border-color);
   cursor: not-allowed;
 }
 
@@ -576,7 +557,7 @@ select.input:focus {
   border-radius: 6px;
   background: color-mix(in srgb, var(--tint) 25%, transparent);
   border: 1px solid var(--tint);
-  color: color-mix(in srgb, var(--tint) 90%, #fff);
+  color: color-mix(in srgb, var(--tint) 90%, var(--text-color));
 }
 
 .powerDetailGrid {
@@ -739,7 +720,7 @@ select.input:focus {
 }
 
 .xpBadge {
-  background: color-mix(in srgb, var(--tint) 25%, #000);
+  background: color-mix(in srgb, var(--tint) 25%, var(--bg-color));
   border: 1px solid var(--border-color);
   padding: .3rem .7rem;
   border-radius: var(--radius);
@@ -850,7 +831,7 @@ select.input:focus {
   border-radius: 999px;
   font-size: .75rem;
   font-weight: 700;
-  background: color-mix(in srgb, var(--tint) 35%, #000);
+  background: color-mix(in srgb, var(--tint) 35%, var(--bg-color));
   border: 1px solid var(--border-color);
 }
 
@@ -966,7 +947,7 @@ select.input:focus {
 }
 
 .closeBtn:hover {
-  color: #fff;
+  color: var(--text-color);
   background: #111622;
   border-color: #334;
 }
@@ -1183,15 +1164,15 @@ select.input:focus {
 }
 
 .ghostBtn:hover {
-  color: #fff;
+  color: var(--text-color);
   background: #101522;
   border-color: #33405e;
 }
 
 .cta {
-  background: linear-gradient(180deg, color-mix(in oklab, var(--accent) 85%, #000), color-mix(in oklab, var(--accent) 60%, #000));
-  border: 1px solid color-mix(in oklab, var(--accent) 60%, #000);
-  color: #fff;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--accent) 85%, var(--bg-color)), color-mix(in oklab, var(--accent) 60%, var(--bg-color)));
+  border: 1px solid color-mix(in oklab, var(--accent) 60%, var(--bg-color));
+  color: var(--text-color);
   border-radius: 12px;
   padding: 10px 14px;
   cursor: pointer;
@@ -1360,7 +1341,7 @@ select.input:focus {
   height: 28px;
   border-radius: 50%;
   border: 3px solid rgb(255 255 255 / 18%);
-  border-top-color: var(--tint, #8a0f1a);
+  border-top-color: var(--tint, var(--tint));
   animation: cv_spin .8s linear infinite;
 }
 
@@ -1400,7 +1381,7 @@ select.input:focus {
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: #0a0a0a;
+  background: var(--bg-color);
   /* solid; change to rgba(0,0,0,.85) if you want a dim backdrop */
   overflow: auto;
   display: grid;
@@ -1410,7 +1391,7 @@ select.input:focus {
 .setupClose {
   appearance: none;
   background: transparent;
-  color: #fff;
+  color: var(--text-color);
   font-size: 28px;
   line-height: 1;
   padding: 10px 16px;
@@ -1507,16 +1488,16 @@ select.input:focus {
 }
 
 .level0 {
-  background-color: #0a0a0a;
+  background-color: var(--bg-color);
 }
 
 .level1 {
-  background-color: #1a1a1a;
+  background-color: var(--surface-color);
 }
 
 .level2 {
-  background-color: #252525;
-  border: 1px solid #333;
+  background-color: var(--surface-lighter);
+  border: 1px solid var(--border-color);
 }
 
 .glassCard {
@@ -1531,7 +1512,7 @@ select.input:focus {
 .trackerBox {
   width: 24px;
   height: 24px;
-  border: 1px solid #333;
+  border: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1547,7 +1528,7 @@ select.input:focus {
 
 .superficial::after {
   content: "/";
-  color: #b40f1f;
+  color: var(--tint);
   font-family: 'JetBrains Mono', monospace;
   font-size: 18px;
   font-weight: bold;
@@ -1555,7 +1536,7 @@ select.input:focus {
 
 .aggravated::after {
   content: "X";
-  color: #b40f1f;
+  color: var(--tint);
   font-family: 'JetBrains Mono', monospace;
   font-size: 18px;
   font-weight: bold;
@@ -1568,7 +1549,7 @@ select.input:focus {
 }
 
 .hungerDroplet.active {
-  color: #b40f1f;
+  color: var(--tint);
   text-shadow: 0 0 8px rgba(180, 15, 31, 0.6);
 }
 
@@ -1586,8 +1567,8 @@ select.input:focus {
 }
 
 .dot.filled {
-  background-color: #b40f1f;
-  border-color: #b40f1f;
+  background-color: var(--tint);
+  border-color: var(--tint);
   box-shadow: 0 0 5px color-mix(in srgb, var(--tint) 40%, transparent);
 }
 
@@ -1723,7 +1704,7 @@ select.input:focus {
   letter-spacing: 0.1em;
   padding: 0.75rem 1.5rem;
   border-radius: 9999px;
-  background: var(--surface-low);
+  background: var(--bg-color);
   color: var(--text-muted);
   border: 1px solid var(--border-color);
   transition: all 0.2s ease;
@@ -1834,7 +1815,7 @@ select.input:focus {
 }
 
 .shopCardPrice {
-  background: var(--surface-highest);
+  background: var(--surface-lighter);
   color: var(--tint);
   border: 1px solid color-mix(in srgb, var(--tint) 30%, transparent);
   padding: 0.25rem 0.75rem;
@@ -1895,7 +1876,7 @@ select.input:focus {
 }
 
 .shopCardContent {
-  background: var(--surface-lowest);
+  background: var(--bg-color);
   padding: 1.5rem;
   border-top: 1px solid transparent;
   max-height: 400px;
@@ -1914,7 +1895,7 @@ select.input:focus {
 }
 
 .shopCardContent::-webkit-scrollbar-track {
-  background: var(--surface-lowest);
+  background: var(--bg-color);
   border-radius: 4px;
 }
 
@@ -1955,7 +1936,7 @@ select.input:focus {
 }
 
 .shopCardLocked .shopCardPrice {
-  background: var(--surface-lowest);
+  background: var(--bg-color);
   color: rgba(255, 180, 171, 0.8);
   border-color: rgba(255, 180, 171, 0.2);
 }
@@ -1982,7 +1963,7 @@ select.input:focus {
   bottom: 0;
   left: 0;
   width: 100%;
-  background: var(--surface-container);
+  background: var(--surface-color);
   z-index: 70;
   border-top-left-radius: 12px;
   border-top-right-radius: 12px;
@@ -2299,7 +2280,7 @@ select.input:focus {
 .charTitle {
   font-family: 'Playfair Display', serif;
   font-size: 32px;
-  color: #fff;
+  color: var(--text-color);
   margin: 0 0 4px 0;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }

@@ -9,7 +9,7 @@ function VtmTracker({ label, max = 1, sup = 0, agg = 0, value = 0, isSimple = fa
 
   return (
     <div style={{ marginBottom: '0.75rem', background: 'rgba(255,255,255,0.02)', padding: '0.5rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#a1a1aa', textTransform: 'uppercase', marginBottom: '0.4rem', fontWeight: 700 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.4rem', fontWeight: 700 }}>
         <span>{label}</span>
         <span>
           {!isSimple ? `${safeMax - (aggCount + supCount)} / ${safeMax}` : `${valCount} / ${safeMax}`}
@@ -29,11 +29,11 @@ function VtmTracker({ label, max = 1, sup = 0, agg = 0, value = 0, isSimple = fa
               <div key={i} style={{ 
                 flex: 1, minWidth: '10px', height: '14px', borderRadius: '2px', 
                 background: isAgg ? '#e11d48' : isSup ? 'rgba(161,161,170,0.3)' : 'transparent',
-                border: isAgg ? '1px solid #e11d48' : isSup ? '1px solid #a1a1aa' : '1px solid rgba(255,255,255,0.15)',
+                border: isAgg ? '1px solid #e11d48' : isSup ? '1px solid var(--text-muted)' : '1px solid rgba(255,255,255,0.15)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center'
               }}>
-                {isAgg && <svg width="8" height="8" viewBox="0 0 10 10"><line x1="1" y1="1" x2="9" y2="9" stroke="#fff" strokeWidth="2" strokeLinecap="round"/><line x1="9" y1="1" x2="1" y2="9" stroke="#fff" strokeWidth="2" strokeLinecap="round"/></svg>}
-                {isSup && <div style={{ width: '60%', height: '2px', background: '#a1a1aa', borderRadius: '1px' }} />}
+                {isAgg && <svg width="8" height="8" viewBox="0 0 10 10"><line x1="1" y1="1" x2="9" y2="9" stroke="var(--text-color)" strokeWidth="2" strokeLinecap="round"/><line x1="9" y1="1" x2="1" y2="9" stroke="var(--text-color)" strokeWidth="2" strokeLinecap="round"/></svg>}
+                {isSup && <div style={{ width: '60%', height: '2px', background: 'var(--text-muted)', borderRadius: '1px' }} />}
               </div>
             );
           }

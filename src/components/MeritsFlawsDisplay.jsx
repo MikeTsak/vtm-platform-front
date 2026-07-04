@@ -65,7 +65,7 @@ export default function MeritsFlawsDisplay({ sheet, allMeritsFlat, allFlawsFlat,
             {meritsList.map((m, idx) => {
               const full = getFullItem(m, false);
               return (
-                <div key={idx} className={styles.glassCard} style={{ padding: '24px', border: '1px solid var(--border-color)', position: 'relative', overflow: 'hidden', background: '#1a1a1a' }}>
+                <div key={idx} className={styles.glassCard} style={{ padding: '24px', border: '1px solid var(--border-color)', position: 'relative', overflow: 'hidden', background: 'var(--surface-color)' }}>
                   <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: 'var(--primary-container)', opacity: 0.4, transition: 'opacity 0.2s' }}></div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                     <div>
@@ -94,7 +94,7 @@ export default function MeritsFlawsDisplay({ sheet, allMeritsFlat, allFlawsFlat,
             {flawsList.map((f, idx) => {
               const full = getFullItem(f, true);
               return (
-                <div key={idx} className={styles.glassCard} style={{ padding: '24px', border: '1px solid var(--border-color)', position: 'relative', overflow: 'hidden', background: '#1a1a1a' }}>
+                <div key={idx} className={styles.glassCard} style={{ padding: '24px', border: '1px solid var(--border-color)', position: 'relative', overflow: 'hidden', background: 'var(--surface-color)' }}>
                   <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: 'var(--text-muted)', opacity: 0.2, transition: 'opacity 0.2s' }}></div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                     <div>

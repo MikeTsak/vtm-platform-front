@@ -330,7 +330,7 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
                   flex: 1, padding: '0.6rem 0.5rem', border: 'none', borderRadius: 'var(--radius-sm)',
                   cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, 
                   background: viewMode === m ? 'linear-gradient(135deg, var(--accent-purple-dark) 0%, var(--accent-purple) 100%)' : 'transparent',
-                  color: viewMode === m ? '#ffffff' : 'var(--text-secondary)', 
+                  color: viewMode === m ? 'var(--text-color)' : 'var(--text-secondary)', 
                   transition: 'all 0.2s',
                   boxShadow: viewMode === m ? '0 4px 15px var(--accent-purple-glow)' : 'none'
                 }}
@@ -417,8 +417,8 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
 const ConversationList = ({ list, selected, onSelect, query }) => list.map(c => {
   const isSelected = c.key === selected;
   const renderName = (name, clan) => (
-    <span style={{ color: CLAN_COLORS[clan] || '#ffffff', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-      {symlogo(clan) && <img src={symlogo(clan)} alt="" style={{ width:'16px', height:'16px', filter: `drop-shadow(0 0 4px ${CLAN_COLORS[clan] || '#fff'})` }} />}
+    <span style={{ color: CLAN_COLORS[clan] || 'var(--text-color)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+      {symlogo(clan) && <img src={symlogo(clan)} alt="" style={{ width:'16px', height:'16px', filter: `drop-shadow(0 0 4px ${CLAN_COLORS[clan] || 'var(--text-color)'})` }} />}
       <Highlight text={name} query={query}/>
     </span>
   );
@@ -461,8 +461,8 @@ const NpcList = ({ list, selected, onSelect, query }) => list.map(n => {
       onMouseEnter={e => { if(!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.03)' }}
       onMouseLeave={e => { if(!isSelected) e.currentTarget.style.background = 'transparent' }}
     >
-      {symlogo(n.clan) && <img src={symlogo(n.clan)} style={{ width: '26px', height: '26px', borderRadius: '50%', background: '#fff', padding: '2px', border: `2px solid ${CLAN_COLORS[n.clan] || '#fff'}` }} alt=""/>}
-      <span style={{ color: CLAN_COLORS[n.clan] || '#ffffff', fontWeight: 800, fontSize: '1.05rem' }}>
+      {symlogo(n.clan) && <img src={symlogo(n.clan)} style={{ width: '26px', height: '26px', borderRadius: '50%', background: 'var(--text-color)', padding: '2px', border: `2px solid ${CLAN_COLORS[n.clan] || 'var(--text-color)'}` }} alt=""/>}
+      <span style={{ color: CLAN_COLORS[n.clan] || 'var(--text-color)', fontWeight: 800, fontSize: '1.05rem' }}>
         <Highlight text={n.name} query={query}/>
       </span>
     </button>
@@ -484,9 +484,9 @@ const NpcConvoList = ({ list, selected, onSelect, query }) => list.map(c => {
       onMouseEnter={e => { if(!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.03)' }}
       onMouseLeave={e => { if(!isSelected) e.currentTarget.style.background = 'transparent' }}
     >
-      {symlogo(c.charClan) && <img src={symlogo(c.charClan)} style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#fff', padding: '2px', border: `2px solid ${CLAN_COLORS[c.charClan] || '#fff'}` }} alt=""/>}
+      {symlogo(c.charClan) && <img src={symlogo(c.charClan)} style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--text-color)', padding: '2px', border: `2px solid ${CLAN_COLORS[c.charClan] || 'var(--text-color)'}` }} alt=""/>}
       <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
-        <span style={{ color: CLAN_COLORS[c.charClan] || '#ffffff', fontWeight: 700, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+        <span style={{ color: CLAN_COLORS[c.charClan] || 'var(--text-color)', fontWeight: 700, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
           <Highlight text={c.charName||c.userName} query={query}/>
         </span>
         <span className={styles.messageTime} style={{ marginTop: '4px', textAlign: 'left', color: 'var(--text-secondary)' }}>{formatTimestamp(c.lastMessageAt, true)}</span>
@@ -510,7 +510,7 @@ const GroupList = ({ list, selected, onSelect, query }) => list.map(g => {
       onMouseEnter={e => { if(!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.03)' }}
       onMouseLeave={e => { if(!isSelected) e.currentTarget.style.background = 'transparent' }}
     >
-      <div style={{ fontWeight: 800, color: '#ffffff', fontSize: '1.05rem' }}><Highlight text={g.name} query={query}/></div>
+      <div style={{ fontWeight: 800, color: 'var(--text-color)', fontSize: '1.05rem' }}><Highlight text={g.name} query={query}/></div>
     </button>
   );
 });
@@ -522,7 +522,7 @@ function GlobalSummaryModal({ summary, onClose }) {
       <div className={styles.modalCard} onClick={e => e.stopPropagation()} style={{ maxWidth: '800px', height: 'auto', maxHeight: '90vh' }}>
         <div className={styles.modalHeader}>
           <div>
-            <h3 style={{ margin: 0, color: '#fff' }}>🌍 Global Activity Recap</h3>
+            <h3 style={{ margin: 0, color: 'var(--text-color)' }}>🌍 Global Activity Recap</h3>
             <p className={styles.subtle} style={{ margin: '4px 0 0 0' }}>AI summary of the last 100 messages across all operational grid frequencies.</p>
           </div>
           <button className={`${styles.btn} ${styles.btnSecondary}`} style={{ padding: '0.4rem', width: '36px', height: '36px', borderRadius: '50%' }} onClick={onClose}>✕</button>
@@ -588,18 +588,18 @@ function MessagePanel({ messages, participants, loading, mode }) {
       const c1 = participants.user1Clan; const c2 = participants.user2Clan;
       return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.25rem', fontWeight: 800 }}>
-          <span style={{color: CLAN_COLORS[c1] || '#ffffff'}}>{participants.user1Char||participants.user1}</span>
+          <span style={{color: CLAN_COLORS[c1] || 'var(--text-color)'}}>{participants.user1Char||participants.user1}</span>
           <span style={{color:'var(--text-muted)'}}>↔</span>
-          <span style={{color: CLAN_COLORS[c2] || '#ffffff'}}>{participants.user2Char||participants.user2}</span>
+          <span style={{color: CLAN_COLORS[c2] || 'var(--text-color)'}}>{participants.user2Char||participants.user2}</span>
         </div>
       );
     }
-    if (mode === 'group') return <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ffffff' }}>{participants.groupName}</span>;
+    if (mode === 'group') return <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-color)' }}>{participants.groupName}</span>;
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.25rem', fontWeight: 800 }}>
-        <span style={{color: CLAN_COLORS[participants.npcClan] || '#ffffff'}}>{participants.npc}</span>
+        <span style={{color: CLAN_COLORS[participants.npcClan] || 'var(--text-color)'}}>{participants.npc}</span>
         <span style={{color:'var(--text-muted)'}}>↔</span>
-        <span style={{color: CLAN_COLORS[participants.userClan] || '#ffffff'}}>{participants.user}</span>
+        <span style={{color: CLAN_COLORS[participants.userClan] || 'var(--text-color)'}}>{participants.user}</span>
       </div>
     );
   };
@@ -636,7 +636,7 @@ function MessagePanel({ messages, participants, loading, mode }) {
               <div className={styles.messageBubble}>
                 {showSender && <div className={styles.senderName} style={{ color: CLAN_COLORS[clan] || 'var(--text-secondary)' }}>{name}</div>}
                 {msg.attachment_id && <ChatImage attachmentId={msg.attachment_id} />}
-                <div style={{ color: isSent ? '#ffffff' : 'var(--text-primary)', wordBreak: 'break-word', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{msg.body}</div>
+                <div style={{ color: isSent ? 'var(--text-color)' : 'var(--text-primary)', wordBreak: 'break-word', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{msg.body}</div>
                 <div className={styles.messageTime}>{formatTimestamp(msg.created_at, false)}</div>
               </div>
             </div>

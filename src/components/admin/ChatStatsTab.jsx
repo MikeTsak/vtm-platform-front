@@ -64,11 +64,11 @@ function DiceImage({ v, imgFn, isExporting }) {
         display: 'inline-flex', 
         alignItems: 'center', 
         justifyContent: 'center', 
-        background: '#222', 
+        background: 'var(--surface-color)', 
         border: '1px solid #555', 
         borderRadius: '4px', 
         fontSize: '13px', 
-        color: '#fff', 
+        color: 'var(--text-color)', 
         fontWeight: 'bold' 
       }}>
         {v}
@@ -84,7 +84,7 @@ function DiceImage({ v, imgFn, isExporting }) {
         width: isExporting ? '36px' : '28px', 
         height: isExporting ? '36px' : '28px', 
         objectFit: 'contain',
-        backgroundColor: '#ffffff', /* Added white background */
+        backgroundColor: 'var(--text-color)', /* Added white background */
         borderRadius: '6px',        /* Rounded edges for the white box */
         padding: '2px'              /* Small padding to keep it looking clean */
       }}
@@ -125,7 +125,7 @@ function StatCard({ title, value, subtext, highlight, isExporting }) {
       wordWrap: 'break-word'
     }}>
       <h4 style={{ margin: '0 0 0.5rem 0', color: highlight ? '#ffb8b8' : 'var(--text-secondary)', fontSize: isExporting ? '1rem' : '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>{title}</h4>
-      <div style={{ fontSize: isExporting ? '2rem' : '1.6rem', fontWeight: '900', color: highlight ? '#fff' : 'var(--fg)', lineHeight: '1.2' }}>{value}</div>
+      <div style={{ fontSize: isExporting ? '2rem' : '1.6rem', fontWeight: '900', color: highlight ? 'var(--text-color)' : 'var(--fg)', lineHeight: '1.2' }}>{value}</div>
       {subtext && <div style={{ fontSize: isExporting ? '1rem' : '0.8rem', color: highlight ? '#ff8c8c' : 'var(--muted)', marginTop: '0.5rem' }}>{subtext}</div>}
     </div>
   );
@@ -702,7 +702,7 @@ const popStats = useMemo(() => {
           <button 
             onClick={handleExport} 
             disabled={isExporting}
-            style={{ background: 'var(--ok)', color: '#000', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: isExporting ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+            style={{ background: 'var(--ok)', color: 'var(--bg-color)', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: isExporting ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
           >
             {isExporting ? <span className={styles.spinner} style={{ borderColor: 'black', borderTopColor: 'transparent' }}/> : '📸'} 
             {isExporting ? 'Generating...' : 'Export Graphic'}
@@ -752,7 +752,7 @@ const popStats = useMemo(() => {
                <img src="/img/ATT-logo(1).png" alt="ATT Logo" style={{ height: '40px' }} />
                <span style={{ fontSize: '1.5rem', fontWeight: '900', color: '#d4af37', letterSpacing: '2px', textTransform: 'uppercase' }}>Erebus Portal Stats</span>
             </div>
-            <h1 style={{ color: '#fff', fontSize: '3.5rem', margin: '20px 0 10px 0', textTransform: 'uppercase', textShadow: '0 0 20px rgba(138,3,3,0.8)', lineHeight: '1.1' }}>{customTitle}</h1>
+            <h1 style={{ color: 'var(--text-color)', fontSize: '3.5rem', margin: '20px 0 10px 0', textTransform: 'uppercase', textShadow: '0 0 20px rgba(138,3,3,0.8)', lineHeight: '1.1' }}>{customTitle}</h1>
             <p style={{ color: '#ffb8b8', fontSize: '1.4rem', margin: 0, fontWeight: 'bold', letterSpacing: '1px' }}>{subtextDisplay}</p>
           </div>
         )}

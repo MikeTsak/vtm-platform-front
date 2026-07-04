@@ -274,7 +274,7 @@
   width: 8px;
   flex-shrink: 0;
 }
-.level_trivial .levelStripe { background: #555; }
+.level_trivial .levelStripe { background: var(--border-color); }
 .level_minor .levelStripe   { background: #3a5f8a; }
 .level_major .levelStripe   { background: #d09328; }
 .level_life .levelStripe    { background: #b23a48; }
@@ -300,14 +300,14 @@
   text-transform: uppercase;
   letter-spacing: 1px;
 }
-.lvBadge_trivial { background: rgb(85 85 85 / 20%); color: #aaa; border: 1px solid #555; }
+.lvBadge_trivial { background: rgb(85 85 85 / 20%); color: var(--text-muted); border: 1px solid var(--border-color); }
 .lvBadge_minor   { background: rgb(58 95 138 / 20%); color: #8ab4f8; border: 1px solid #3a5f8a; }
 .lvBadge_major   { background: rgb(208 147 40 / 20%); color: #ffdca6; border: 1px solid #d09328; }
 .lvBadge_life    { background: rgb(178 58 72 / 20%); color: #ffb3b8; border: 1px solid #b23a48; }
 
 .stBadge_owed    { background: rgb(46 136 58 / 20%); color: #81c784; border: 1px solid #2e883a; }
-.stBadge_paid    { background: rgb(255 255 255 / 5%); color: #888; border: 1px solid #444; }
-.stBadge_excused { background: rgb(255 255 255 / 5%); color: #888; border: 1px solid #444; }
+.stBadge_paid    { background: rgb(255 255 255 / 5%); color: #888; border: 1px solid var(--border-color); }
+.stBadge_excused { background: rgb(255 255 255 / 5%); color: #888; border: 1px solid var(--border-color); }
 
 .cardDate {
   color: var(--text-muted);
@@ -331,7 +331,7 @@
 
 .actionBtn:hover {
   background: rgb(255 255 255 / 10%);
-  color: #fff;
+  color: var(--text-color);
 }
 
 .actionBtnDelete:hover {
@@ -452,7 +452,7 @@
   font-size: 1.5rem;
   cursor: pointer;
 }
-.formClose:hover { color: #fff; }
+.formClose:hover { color: var(--text-color); }
 
 .formSection {
   margin-bottom: 1.5rem;
@@ -549,7 +549,7 @@
   font-family: var(--font-title);
   font-size: 1.2rem;
 }
-.legendTitle_trivial { color: #aaa; }
+.legendTitle_trivial { color: var(--text-muted); }
 .legendTitle_minor { color: #8ab4f8; }
 .legendTitle_major { color: #ffdca6; }
 .legendTitle_life { color: #ffb3b8; }

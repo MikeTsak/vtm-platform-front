@@ -75,7 +75,7 @@ export default function Domains() {
     const fill        = claim?.color || feature?.properties?.fill || '#888888';
     const baseOpacity = claim ? 0.60 : numOr(feature?.properties?.['fill-opacity'], 0.35);
     return {
-      color:       isSelected ? '#c084fc' : (claim?.color || feature?.properties?.stroke || '#444444'),
+      color:       isSelected ? '#c084fc' : (claim?.color || feature?.properties?.stroke || 'var(--border-color)'),
       weight:      isSelected ? 3.5 : 1.5,
       opacity:     numOr(feature?.properties?.['stroke-opacity'], 1),
       fillColor:   fill,
@@ -144,7 +144,7 @@ export default function Domains() {
       layer.bindPopup(
         `<b>Division ${n}: ${esc(name)}</b><br/>` +
         `Owner: ${esc(claim.owner_name)}<br/>` +
-        (claim.color ? `Color: <span style="display:inline-block;width:12px;height:12px;background-color:${esc(claim.color)};border:1px solid #fff;margin-right:4px;vertical-align:middle;"></span><code>${esc(claim.color)}</code>` : '')
+        (claim.color ? `Color: <span style="display:inline-block;width:12px;height:12px;background-color:${esc(claim.color)};border:1px solid var(--text-color);margin-right:4px;vertical-align:middle;"></span><code>${esc(claim.color)}</code>` : '')
       );
     } else {
       layer.bindPopup(`<b>Division ${n}: ${esc(name)}</b><br/>Unclaimed`);

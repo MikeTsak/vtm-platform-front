@@ -21,16 +21,16 @@
   font-size: 24px;
   font-weight: 600;
   line-height: 32px;
-  color: var(--text-color, #e5e2e1);
+  color: var(--text-color, var(--text-color));
   margin: 0;
 }
 
 .viewToggles {
   display: flex;
-  background-color: var(--surface-low, #131313);
+  background-color: var(--surface-low, var(--surface-color));
   border-radius: 0.5rem;
   padding: 0.25rem;
-  border: 1px solid var(--border-color, #333);
+  border: 1px solid var(--border-color, var(--border-color));
 }
 
 .viewBtn {
@@ -38,7 +38,7 @@
   border-radius: 0.25rem;
   border: none;
   background: transparent;
-  color: var(--text-muted, #ab8986);
+  color: var(--text-muted, var(--text-muted));
   cursor: pointer;
   transition: all 0.2s;
   display: flex;
@@ -47,12 +47,12 @@
 }
 
 .viewBtn:hover {
-  color: var(--text-color, #e5e2e1);
+  color: var(--text-color, var(--text-color));
 }
 
 .activeView {
-  background-color: var(--surface-highest, #2a2a2a);
-  color: var(--tint, #ffb3ae);
+  background-color: var(--surface-highest, var(--border-color));
+  color: var(--tint, var(--tint));
   box-shadow: 0 0 10px rgba(180, 15, 31, 0.1);
 }
 
@@ -77,8 +77,8 @@
   padding: 0.5rem 1rem;
   border-radius: 9999px;
   background: transparent;
-  color: var(--text-muted, #ab8986);
-  border: 1px solid var(--border-color, #333);
+  color: var(--text-muted, var(--text-muted));
+  border: 1px solid var(--border-color, var(--border-color));
   font-family: var(--font-label, 'JetBrains Mono', monospace);
   font-size: 12px;
   letter-spacing: 0.1em;
@@ -92,10 +92,10 @@
 }
 
 .activeTab {
-  background-color: var(--primary-container, #b40f1f);
+  background-color: var(--primary-container, var(--tint));
   color: #ffc3be;
   /* on-primary-container */
-  border-color: var(--primary-container, #b40f1f);
+  border-color: var(--primary-container, var(--tint));
 }
 
 /* Inventory List */
@@ -110,13 +110,13 @@
 .itemCard {
   background-color: var(--surface-container, #201f1f);
   border-radius: 0.75rem;
-  border: 1px solid var(--border-color, #333);
+  border: 1px solid var(--border-color, var(--border-color));
   cursor: pointer;
   transition: all 0.3s ease;
 }
 
 .itemCard.expanded {
-  background-color: var(--surface-high, #2a2a2a);
+  background-color: var(--surface-high, var(--border-color));
   box-shadow: 0 0 15px rgba(180, 15, 31, 0.1);
   border-color: var(--border-color, #5b403e);
   /* outline-variant */
@@ -141,7 +141,7 @@
   height: 3rem;
   background-color: var(--surface-lowest, #0e0e0e);
   border-radius: 0.5rem;
-  border: 1px solid var(--border-color, #333);
+  border: 1px solid var(--border-color, var(--border-color));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -149,7 +149,7 @@
 
 .itemIcon span {
   font-size: 1.5rem;
-  color: var(--tint, #ffb3ae);
+  color: var(--tint, var(--tint));
 }
 
 .itemCardTitle {
@@ -157,7 +157,7 @@
   font-size: 20px;
   font-weight: 600;
   line-height: 24px;
-  color: var(--text-color, #e5e2e1);
+  color: var(--text-color, var(--text-color));
   margin: 0 0 0.125rem 0;
 }
 
@@ -171,7 +171,7 @@
   font-family: var(--font-label, 'JetBrains Mono', monospace);
   font-size: 12px;
   letter-spacing: 0.1em;
-  color: var(--text-muted, #ab8986);
+  color: var(--text-muted, var(--text-muted));
 }
 
 .itemCardDot {
@@ -206,13 +206,13 @@
   font-size: 10px;
   font-family: var(--font-label, 'JetBrains Mono', monospace);
   letter-spacing: 0.05em;
-  color: var(--tint, #ffb3ae);
-  border: 1px solid var(--tint, #ffb3ae);
+  color: var(--tint, var(--tint));
+  border: 1px solid var(--tint, var(--tint));
   background: rgba(255, 179, 174, 0.1);
 }
 
 .expandIcon {
-  color: var(--text-muted, #ab8986);
+  color: var(--text-muted, var(--text-muted));
   transition: transform 0.3s;
 }
 
@@ -241,18 +241,18 @@
   font-family: var(--font-body, 'Inter', sans-serif);
   font-size: 16px;
   line-height: 24px;
-  color: var(--text-muted, #ab8986);
+  color: var(--text-muted, var(--text-muted));
   margin: 0 0 1rem 0;
 }
 
 .itemMechanics {
   font-family: var(--font-body, 'Inter', sans-serif);
   font-size: 14px;
-  color: var(--text-muted, #ab8986);
+  color: var(--text-muted, var(--text-muted));
   margin-bottom: 1rem;
   background: rgba(180, 15, 31, 0.05);
   padding: 0.5rem;
-  border-left: 2px solid var(--primary-container, #b40f1f);
+  border-left: 2px solid var(--primary-container, var(--tint));
 }
 
 /* Action Buttons */
@@ -265,7 +265,7 @@
   flex: 1;
   padding: 0.5rem 0;
   border-radius: 0.25rem;
-  background-color: var(--primary-container, #b40f1f);
+  background-color: var(--primary-container, var(--tint));
   color: #ffc3be;
   font-family: var(--font-label, 'JetBrains Mono', monospace);
   font-size: 12px;
@@ -284,8 +284,8 @@
   padding: 0.5rem 0;
   border-radius: 0.25rem;
   background-color: transparent;
-  color: var(--tint, #ffb3ae);
-  border: 1px solid var(--tint, #ffb3ae);
+  color: var(--tint, var(--tint));
+  border: 1px solid var(--tint, var(--tint));
   font-family: var(--font-label, 'JetBrains Mono', monospace);
   font-size: 12px;
   letter-spacing: 0.1em;
@@ -311,15 +311,15 @@
   color: #888;
   font-family: var(--font-body, 'Inter', sans-serif);
   border-radius: 0.5rem;
-  border: 1px dashed var(--border-color, #333);
+  border: 1px dashed var(--border-color, var(--border-color));
   margin: 0 1rem;
 }
 
 /* Add Item Button at top */
 .addBtn {
-  background-color: var(--surface-low, #131313);
-  color: var(--text-muted, #ab8986);
-  border: 1px solid var(--border-color, #333);
+  background-color: var(--surface-low, var(--surface-color));
+  color: var(--text-muted, var(--text-muted));
+  border: 1px solid var(--border-color, var(--border-color));
   padding: 0.5rem 1rem;
   border-radius: 9999px;
   cursor: pointer;
@@ -332,5 +332,5 @@
 
 .addBtn:hover {
   border-color: rgba(255, 179, 174, 0.5);
-  color: var(--tint, #ffb3ae);
+  color: var(--tint, var(--tint));
 }

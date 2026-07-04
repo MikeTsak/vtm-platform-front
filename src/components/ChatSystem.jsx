@@ -1437,11 +1437,11 @@ export default function ChatSystem({ commsEnabled = true }) {
 
             {/* --- REPLACED WARNING BANNER LOGIC --- */}
             {!commsEnabled ? (
-              <div style={{ padding: '8px', background: 'var(--err)', color: '#fff', textAlign: 'center', fontSize: '0.85rem', fontWeight: 'bold' }}>
+              <div style={{ padding: '8px', background: 'var(--err)', color: 'var(--text-color)', textAlign: 'center', fontSize: '0.85rem', fontWeight: 'bold' }}>
                 ⚠️ SCHRECKNET IS CURRENTLY OFFLINE. MESSAGE SENDING IS DISABLED. ⚠️
               </div>
             ) : !isCharActive ? (
-              <div style={{ padding: '8px', background: 'var(--err)', color: '#fff', textAlign: 'center', fontSize: '0.85rem', fontWeight: 'bold' }}>
+              <div style={{ padding: '8px', background: 'var(--err)', color: 'var(--text-color)', textAlign: 'center', fontSize: '0.85rem', fontWeight: 'bold' }}>
                 Your character is waiting for ST approval. You cannot send messages yet.
               </div>
             ) : null}

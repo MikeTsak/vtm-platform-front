@@ -1,28 +1,6 @@
 /* --- Admin.module.css --- */
 
-:root {
-  /* Color Palette - Dark Theme */
-  --color-primary: #a11; /* A deep, characteristic red */
-  --color-text: #ddd;
-  --color-background: #1e1e1e;
-  --color-card-bg: #282828;
-  --color-border: #444;
-  --color-subtle-text: #999;
-  --color-alert-error: #e57373;
-  --color-alert-info: #64b5f6;
-
-  /* Button Colors */
-  --btn-bg: #383838;
-  --btn-fg: var(--color-text);
-  --btn-hover-bg: #4c4c4c;
-  --btnPrimaryBg: var(--color-primary);
-  --btnPrimaryFg: #fff;
-  --btnPrimaryHoverBg: #c11;
-
-  /* Form Elements */
-  --input-bg: #333;
-  --input-border: #555;
-}
+/* Root removed to defer to global themes */
 
 /* Global resets for the component context */
 .modalBackdrop * {
@@ -110,7 +88,7 @@ textarea:focus,
 select:focus {
   border-color: var(--color-primary);
   outline: none;
-  background-color: #383838;
+  background-color: var(--surface-lighter);
 }
 
 textarea {
