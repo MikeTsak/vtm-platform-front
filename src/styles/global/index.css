@@ -118,29 +118,29 @@ body {
 :root[data-theme='schrecknet'] {
   --tint: #0ea5e9;
   --bg-color: #030712;
-  --surface-color: #111827;
-  --surface-lighter: #1f2937;
-  --border-color: #374151;
-  --text-color: #38bdf8;
-  --text-muted: #9ca3af;
+  --surface-color: #0f172a;
+  --surface-lighter: #1e293b;
+  --border-color: #334155;
+  --text-color: #f1f5f9;
+  --text-muted: #94a3b8;
 }
 
 :root[data-theme='anarch'] {
   --tint: #ea580c;
-  --bg-color: #18181b;
-  --surface-color: #27272a;
-  --surface-lighter: #3f3f46;
-  --border-color: #52525b;
-  --text-color: #f97316;
-  --text-muted: #a1a1aa;
+  --bg-color: #110e0c;
+  --surface-color: #1c1917;
+  --surface-lighter: #292524;
+  --border-color: #44403c;
+  --text-color: #fafaf9;
+  --text-muted: #a8a29e;
 }
 
 :root[data-theme='Giannakis'] {
-  --tint: #0d9488;
-  --bg-color: #057057;
-  --surface-color: #0f766e;
-  --surface-lighter: #134e4a;
-  --border-color: #115e59;
-  --text-color: #99f6e4;
-  --text-muted: #ccfbf1;
+  --tint: #14b8a6;
+  --bg-color: #051a17;
+  --surface-color: #0b2b26;
+  --surface-lighter: #113f38;
+  --border-color: #1d5951;
+  --text-color: #e6f7f4;
+  --text-muted: #8eb3ae;
 }

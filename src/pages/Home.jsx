@@ -142,6 +142,7 @@ export default function Home() {
   const [isShattering, setIsShattering] = useState(false);
   const [clickPoint, setClickPoint] = useState(null);
   const [shards, setShards] = useState([]);
+  const [activeFeedTab, setActiveFeedTab] = useState('chronicle');
   const overlayRef = useRef(null);
   const nav = useNavigate();
 
@@ -325,259 +326,290 @@ export default function Home() {
         </div>
       )}
 
-      {/* ════════════════════════════════════════════
-          1. IDENTITY HEADER
-      ════════════════════════════════════════════ */}
-      <header className={styles.identityHeader} style={{ '--dynamic-tint': dynamicClanTint }}>
-        <span className={`${styles.corner} ${styles.cornerTL}`} />
-        <span className={`${styles.corner} ${styles.cornerTR}`} />
-        <span className={`${styles.corner} ${styles.cornerBL}`} />
-        <span className={`${styles.corner} ${styles.cornerBR}`} />
-
-        <div className={styles.headerInner}>
-          <div className={styles.clanRing}>
-            <img
-              src={symlogo(ch.clan)}
-              alt={ch.clan}
-              className={styles.clanSymbol}
-              onError={e => { e.target.style.display = 'none'; }}
-            />
-          </div>
-
-          <div className={styles.headerMeta}>
-            <h1 className={styles.charName}>{ch.name}</h1>
-            <p className={styles.charSub}>
-              <span className={styles.clanLabel}>{ch.clan || 'Caitiff'}</span>
-              <span className={styles.separator}>·</span>
-              <span className={styles.xpChip}>{ch.xp ?? 0} XP</span>
-            </p>
-          </div>
-
-          <div className={styles.clanWatermark} aria-hidden>
-            <img
-              src={textlogo(ch.clan)}
-              alt=""
-              className={styles.clanLogo}
-              onError={e => { e.target.parentElement.style.display = 'none'; }}
-            />
-          </div>
-        </div>
-
-        <div className={styles.quotaBar}>
-          <span className={styles.quotaLabel}>Actions this period</span>
-          <div className={styles.quotaTrack}>
-            <div className={styles.quotaFill} style={{ width: `${quotaPct}%` }} />
-            {Array.from({ length: quota.limit }).map((_, i) => (
-              <div
-                key={i}
-                className={`${styles.quotaPip} ${i < quota.used ? styles.quotaPipUsed : ''}`}
-              />
-            ))}
-          </div>
-          <span className={styles.quotaCount}>{quota.used}/{quota.limit}</span>
-        </div>
-      </header>
-
-      {fetchError && <div className={styles.errorBanner}>{fetchError}</div>}
-
-      {/* ════════════════════════════════════════════
-          CHRONICLE EVENT COUNTDOWN & TRACKERS
-      ══════════════════�═════════════════════════ */}
-      <div className={`${styles.pageSection} ${styles.dashboardGrid}`} style={{ gridTemplateColumns: '1fr 1fr' }}>
-        <section className={styles.feedCard} style={{ textAlign: 'center', justifyContent: 'center' }}>
-          <h3 style={{ margin: 0, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>Next Modern Event</h3>
-          <div style={{ fontSize: '1.5rem', fontWeight: 700, fontFamily: 'var(--font-title)', color: 'var(--tint)', marginTop: '4px' }}>
-            {niceDate(openingDate)}
-          </div>
-          {!eventCd.isPast ? (
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '12px', fontFamily: 'monospace', fontSize: '1.2rem', fontWeight: 700 }}>
-              <div>{eventCd.days} <span style={{fontSize:'0.7rem', display:'block', color:'var(--text-muted)'}}>Days</span></div>
-              <div>{String(eventCd.hours).padStart(2,'0')} <span style={{fontSize:'0.7rem', display:'block', color:'var(--text-muted)'}}>Hours</span></div>
-              <div>{String(eventCd.mins).padStart(2,'0')} <span style={{fontSize:'0.7rem', display:'block', color:'var(--text-muted)'}}>Mins</span></div>
-            </div>
-          ) : (
-            <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '12px' }}>Event is underway or concluded.</div>
-          )}
-        </section>
-
-        <section className={styles.feedCard} style={{ justifyContent: 'center', gap: '10px' }}>
-          <h3 style={{ margin: 0, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', textAlign: 'center' }}>Status Summaries</h3>
-          <MiniVtmBar
-            label="Health"
-            max={sheetObj.health?.max || 5}
-            sup={sheetObj.health?.superficial || 0}
-            agg={sheetObj.health?.aggravated || 0}
-          />
-          <MiniVtmBar
-            label="Willpower"
-            max={Number(sheetObj.attributes?.Composure) + Number(sheetObj.attributes?.Resolve) || 5}
-            sup={sheetObj.willpower?.superficial || 0}
-            agg={sheetObj.willpower?.aggravated || 0}
-          />
-        </section>
-      </div>
-
-      {/* ════════════════════════════════════════════
-          THEME CUSTOMIZATION INTERFACE
-      ════════════════════════════════════════════ */}
-      <section className={`${styles.pageSection} ${styles.feedCard}`} style={{ height: 'fit-content' }}>
-        <h2 className={styles.feedHeading} style={{ fontSize: '1.15rem' }}>Interface Protocol</h2>
-        <p style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Synchronize your terminal aesthetic to your preferred lineage or faction.</p>
-
-        <div className={styles.themeGrid}>
-          {availableThemes.map(t => (
-            <button
-              key={t.id}
-              onClick={() => handleThemeChange(t.id)}
-              className={`${styles.themeBtn} ${activeTheme === t.id ? styles.themeBtnActive : ''}`}
-              style={{ '--theme-color': t.hex }}
-            >
-              <span className={styles.themeDot} />
-              <div className={styles.themeInfo}>
-                <span className={styles.themeName}>{t.label}</span>
-                <span className={styles.themeSub}>{t.sub}</span>
+      <div className={styles.dashboardLayout}>
+        
+        {/* ── LEFT MAIN COLUMN ── */}
+        <div className={styles.mainColumn}>
+          
+          {/* 1. IDENTITY HEADER */}
+          <header className={styles.identityHeader} style={{ '--dynamic-tint': dynamicClanTint }}>
+            <span className={`${styles.corner} ${styles.cornerTL}`} />
+            <span className={`${styles.corner} ${styles.cornerTR}`} />
+            <span className={`${styles.corner} ${styles.cornerBL}`} />
+            <span className={`${styles.corner} ${styles.cornerBR}`} />
+            
+            <div className={styles.headerInner}>
+              <div className={styles.clanRing}>
+                <img
+                  src={symlogo(ch.clan)}
+                  alt={ch.clan}
+                  className={styles.clanSymbol}
+                  onError={e => { e.target.style.display = 'none'; }}
+                />
               </div>
-            </button>
-          ))}
+
+              <div className={styles.headerMeta}>
+                <span className={styles.neonateLabel}>NEONATE</span>
+                <h1 className={styles.charName}>{ch.name}</h1>
+                <p className={styles.charSub}>
+                  <span className={styles.clanLabel}>♁ Clan {ch.clan || 'Caitiff'}</span>
+                </p>
+              </div>
+
+              <div className={styles.headerStats}>
+                <div className={styles.statBox}>
+                  <span className={styles.statLabel}>AVAILABLE XP</span>
+                  <span className={styles.statValue}>{ch.xp ?? 0}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.clanWatermark} aria-hidden>
+              <img
+                src={textlogo(ch.clan)}
+                alt=""
+                className={styles.clanLogo}
+                onError={e => { e.target.parentElement.style.display = 'none'; }}
+              />
+            </div>
+            
+            <div className={styles.quotaBar}>
+              <span className={styles.quotaLabel}>ACTIONS THIS PERIOD</span>
+              <div className={styles.quotaTrackWrapper}>
+                <div className={styles.quotaTrack}>
+                  <div className={styles.quotaFill} style={{ width: `${quotaPct}%` }} />
+                </div>
+                <span className={styles.quotaCount}>{quota.used} / {quota.limit} USED</span>
+              </div>
+            </div>
+          </header>
+
+          {fetchError && <div className={styles.errorBanner}>{fetchError}</div>}
+
+          {/* 2. NEXT MODERN EVENT */}
+          <section className={styles.eventCard}>
+            <div className={styles.eventInfo}>
+              <h3 className={styles.eventHeader}>NEXT MODERN EVENT</h3>
+              <h2 className={styles.eventTitle}>{openingDate ? 'Elysium Gathering' : 'No Current Event'}</h2>
+              <p className={styles.eventLocation}>Location: Elysium Hall</p>
+            </div>
+            <button className={styles.rsvpBtn}>RSVP</button>
+          </section>
+
+          {/* 3. NAV GRID */}
+          <section className={styles.navGrid}>
+            {NAV_CARDS.map(({ to, icon, title, sub }) => (
+              <Link key={to} to={to} className={styles.navCard}>
+                <div className={styles.navCardIcon}>{icon}</div>
+                <span className={styles.navCardTitle}>{title}</span>
+              </Link>
+            ))}
+
+            {/* The Cobweb */}
+            {showCobweb && (
+              <a
+                href="/premonitions"
+                onClick={handlePremonitionClick}
+                className={`${styles.navCard} ${styles.malkCard}`}
+                title="Enter the Cobweb"
+              >
+                <div className={styles.glitchBg}></div>
+                <div className={styles.navCardIcon}>👁️</div>
+                <span className={styles.navCardTitle}>THE COBWEB</span>
+              </a>
+            )}
+          </section>
+
+          {/* 4. BOTTOM ROW (Chronicle Entry & Restricted Access) */}
+          <div className={styles.bottomRowGrid}>
+            <div className={styles.chronicleEntryCard}>
+              <h4 className={styles.chronicleEntryLabel}>LATEST CHRONICLE ENTRY</h4>
+              <p className={styles.chronicleEntryText}>
+                There are only forces the anthmromice nove: and forted reaches with she amam, 
+                and pace tted mest and change inmout something to tumeranaltina...
+              </p>
+              <span className={styles.readMore}>READ MORE</span>
+            </div>
+            <div className={styles.restrictedCard}>
+               <span className={styles.restrictedText}>RESTRICTED ACCESS</span>
+            </div>
+          </div>
+
+          {/* 5. THEMES PROTOCOL */}
+          <section className={styles.themeSection}>
+            <h2 className={styles.feedHeading} style={{ fontSize: '1.15rem' }}>Interface Protocol</h2>
+            <div className={styles.themeGrid}>
+              {availableThemes.map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => handleThemeChange(t.id)}
+                  className={`${styles.themeBtn} ${activeTheme === t.id ? styles.themeBtnActive : ''}`}
+                  style={{ '--theme-color': t.hex }}
+                >
+                  <span className={styles.themeDot} />
+                  <div className={styles.themeInfo}>
+                    <span className={styles.themeName}>{t.label}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </section>
+
         </div>
-      </section>
 
-      {/* ═══════════════════════════════════════════
-          2. FEEDS (Chronicle, Comms, Action Log)
-      ═══════════════════════════════════════════ */}
-      <div className={styles.dashboardGrid}>
-
-        {/* ── THE CHRONICLE (News) ── */}
-        <section className={styles.compactFeedCard}>
-          <h2 className={styles.feedHeading}>The Erebus Chronicle</h2>
-          {recentNews.length === 0 ? (
-            <p className={styles.emptyFeedText}>No headlines tonight.</p>
-          ) : (
-            <div className={styles.feedListScroll}>
-              <ul className={styles.newsList}>
-                {recentNews.slice(0, 3).map(item => {
-                  const tag = item.type === 'announcement' ? 'DECREE' : (item.theme || 'NEWS').toUpperCase();
-                  const tagKey = (item.theme || item.type || '').toUpperCase();
-                  return (
-                    <li key={item.id} className={styles.newsItem}>
-                      <Link to="/news" className={styles.newsLink}>
-                        <span className={`${styles.newsTag} ${styles[`tag${tagKey}`] || ''}`}>{tag}</span>
-                        <div className={styles.newsContent}>
-                          <h3 className={styles.newsTitle}>{item.title}</h3>
-                          <time className={styles.newsDate}>{formatTimestamp(item.created_at)}</time>
-                        </div>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
+        {/* ── RIGHT SIDEBAR ── */}
+        <aside className={styles.sidebarColumn}>
+          
+          {/* STATUS PROTOCOL */}
+          <section className={styles.statusProtocolCard}>
+            <h3 className={styles.sidebarHeader}>STATUS PROTOCOL</h3>
+            <div className={styles.statusBars}>
+              <MiniVtmBar
+                label="Health"
+                max={sheetObj.health?.max || 5}
+                sup={sheetObj.health?.superficial || 0}
+                agg={sheetObj.health?.aggravated || 0}
+              />
+              <MiniVtmBar
+                label="Willpower"
+                max={Number(sheetObj.attributes?.Composure) + Number(sheetObj.attributes?.Resolve) || 5}
+                sup={sheetObj.willpower?.superficial || 0}
+                agg={sheetObj.willpower?.aggravated || 0}
+              />
             </div>
-          )}
-          <Link to="/news" className={styles.feedLinkBtn}>Full Edition ›</Link>
-        </section>
 
-        {/* ── WHISPERS (Comms / Recent Chats) ── */}
-        <section className={styles.compactFeedCard}>
-          <h2 className={styles.feedHeading}>Recent Whispers</h2>
-          {recentChats.length === 0 ? (
-            <p className={styles.emptyFeedText}>No recent correspondence.</p>
-          ) : (
-            <div className={styles.feedListScroll}>
-              <ul className={styles.chatList}>
-                {recentChats.slice(0, 4).map(chat => (
-                  <li key={chat.id} className={styles.chatItem}>
-                    <Link to="/comms" className={styles.chatLink}>
-                      <div className={styles.chatHead}>
-                        <span className={styles.chatPartner}>
-                          {chat.isNPC && <span className={styles.npcTag}>NPC</span>}
-                          {chat.partnerName}
-                        </span>
-                        <time className={styles.chatTime}>{formatTimestamp(chat.timestamp)}</time>
-                      </div>
-                      <p className={styles.chatSnippet}>
-                        {(chat.lastMessage || '').substring(0, 50)}
-                        {(chat.lastMessage || '').length > 50 ? '…' : ''}
-                      </p>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+            <div className={styles.hungerSection}>
+              <span className={styles.hungerLabel}>HUNGER</span>
+              <div className={styles.hungerDrops}>
+                <span className={styles.dropActive}>🩸</span>
+                <span className={styles.dropActive}>🩸</span>
+                <span className={styles.dropActive}>🩸</span>
+                <span className={styles.dropInactive}>💧</span>
+                <span className={styles.dropInactive}>💧</span>
+              </div>
             </div>
-          )}
-          <Link to="/comms" className={styles.feedLinkBtn}>Open Comms ›</Link>
-        </section>
 
-        {/* ── ACTION LOG (Downtimes) ── */}
-        <section className={styles.compactFeedCard}>
-          <h2 className={styles.feedHeading}>Action Log</h2>
-          {recentDowntimes.length === 0 ? (
-            <p className={styles.emptyFeedText}>No recent actions recorded.</p>
-          ) : (
-            <div className={styles.feedListScroll}>
-              <ul className={styles.dtList}>
-                {recentDowntimes.map(dt => {
-                  const status = (dt.status || 'submitted').toLowerCase();
-                  let badgeClass = styles.badgePending;
-                  if (status === 'approved') badgeClass = styles.badgeApproved;
-                  if (status === 'needs a scene') badgeClass = styles.badgeNeedsScene;
-                  if (status === 'rejected') badgeClass = styles.badgeRejected;
-                  if (status === 'resolved' || status === 'resolved in scene') badgeClass = styles.badgeReview;
-
-                  return (
-                    <li key={dt.id} className={styles.dtItem}>
-                      <Link to="/downtimes" className={styles.dtLink}>
-                        <div className={styles.dtHead}>
-                          <span className={`${styles.statusBadge} ${badgeClass}`}>
-                            {dt.status}
-                          </span>
-                          <time className={styles.dtTime}>{formatTimestamp(dt.created_at)}</time>
-                        </div>
-                        <p className={styles.dtTitle}>{dt.title}</p>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
+            <div className={styles.quickStatsSection}>
+              <span className={styles.quickStatsLabel}>QUICK STATS</span>
+              <div className={styles.quickStatsGrid}>
+                <div className={styles.qsItem}>
+                  <span className={styles.qsName}>PHYSICAL</span>
+                  <div className={styles.qsDots}>●●○○○</div>
+                </div>
+                <div className={styles.qsItem}>
+                  <span className={styles.qsName}>SOCIAL</span>
+                  <div className={styles.qsDots}>●●●○○</div>
+                </div>
+                <div className={styles.qsItem}>
+                  <span className={styles.qsName}>MENTAL</span>
+                  <div className={styles.qsDots}>●●●●○</div>
+                </div>
+              </div>
             </div>
-          )}
-          <Link to="/downtimes" className={styles.feedLinkBtn}>Review Downtimes ›</Link>
-        </section>
+          </section>
 
+          {/* CHRONICLE / WHISPERS / LOG */}
+          <section className={styles.sidebarFeedCard}>
+            <div className={styles.feedTabs}>
+              <button
+                className={`${styles.feedTab} ${activeFeedTab === 'chronicle' ? styles.feedTabActive : ''}`}
+                onClick={() => setActiveFeedTab('chronicle')}
+              >
+                CHRONICLE
+              </button>
+              <button
+                className={`${styles.feedTab} ${activeFeedTab === 'whispers' ? styles.feedTabActive : ''}`}
+                onClick={() => setActiveFeedTab('whispers')}
+              >
+                WHISPERS
+              </button>
+              <button
+                className={`${styles.feedTab} ${activeFeedTab === 'log' ? styles.feedTabActive : ''}`}
+                onClick={() => setActiveFeedTab('log')}
+              >
+                LOG
+              </button>
+            </div>
+            
+            <div className={styles.feedContent}>
+              {activeFeedTab === 'chronicle' && (
+                <ul className={styles.newsList}>
+                  {recentNews.length === 0 ? (
+                    <p className={styles.emptyFeedText}>No headlines tonight.</p>
+                  ) : (
+                    recentNews.slice(0, 3).map(item => {
+                      const tag = item.type === 'announcement' ? 'DECREE' : (item.theme || 'NEWS').toUpperCase();
+                      const tagKey = (item.theme || item.type || '').toUpperCase();
+                      return (
+                        <li key={item.id} className={styles.newsItem}>
+                          <Link to="/news" className={styles.newsLink}>
+                            <div className={styles.newsHeader}>
+                               <span className={`${styles.newsTag} ${styles[`tag${tagKey}`] || ''}`}>{tag}</span>
+                               <time className={styles.newsDate}>{formatTimestamp(item.created_at)}</time>
+                            </div>
+                            <h3 className={styles.newsTitle}>{item.title}</h3>
+                          </Link>
+                        </li>
+                      );
+                    })
+                  )}
+                </ul>
+              )}
+
+              {activeFeedTab === 'whispers' && (
+                <ul className={styles.chatList}>
+                  {recentChats.length === 0 ? (
+                    <p className={styles.emptyFeedText}>No recent correspondence.</p>
+                  ) : (
+                    recentChats.slice(0, 4).map(chat => (
+                      <li key={chat.id} className={styles.chatItem}>
+                        <Link to="/comms" className={styles.chatLink}>
+                          <div className={styles.chatHead}>
+                            <span className={styles.chatPartner}>
+                              {chat.isNPC && <span className={styles.npcTag}>NPC</span>}
+                              {chat.partnerName}
+                            </span>
+                            <time className={styles.chatTime}>{formatTimestamp(chat.timestamp)}</time>
+                          </div>
+                          <p className={styles.chatSnippet}>
+                            {(chat.lastMessage || '').substring(0, 50)}
+                            {(chat.lastMessage || '').length > 50 ? '…' : ''}
+                          </p>
+                        </Link>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              )}
+
+              {activeFeedTab === 'log' && (
+                <ul className={styles.dtList}>
+                  {recentDowntimes.length === 0 ? (
+                    <p className={styles.emptyFeedText}>No recent actions recorded.</p>
+                  ) : (
+                    recentDowntimes.map(dt => (
+                      <li key={dt.id} className={styles.dtItem}>
+                        <Link to="/downtimes" className={styles.dtLink}>
+                          <div className={styles.dtHead}>
+                            <span className={styles.dtTitle}>{dt.title}</span>
+                          </div>
+                          <div className={styles.dtFooter}>
+                            <span className={styles.dtStatus}>Status: {dt.status}</span>
+                            <time className={styles.dtTime}>{formatTimestamp(dt.created_at)}</time>
+                          </div>
+                        </Link>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              )}
+            </div>
+          </section>
+
+        </aside>
       </div>
 
-      {/* ════════════════════════════════════════════
-          3. NAVIGATION GRID
-      ════════════════════════════════════════════ */}
-      <section className={styles.navSection} aria-label="Quick navigation">
-        <div className={styles.dividerLine}>
-          <span className={styles.dividerIcon}>✦</span>
-        </div>
-
-        <div className={styles.navGrid}>
-          {NAV_CARDS.map(({ to, icon, title, sub }) => (
-            <Link key={to} to={to} className={styles.navCard}>
-              <span className={styles.navCardIcon}>{icon}</span>
-              <span className={styles.navCardTitle}>{title}</span>
-              <span className={styles.navCardSub}>{sub}</span>
-            </Link>
-          ))}
-
-          {/* Malkavian / Admin: The Cobweb */}
-          {showCobweb && (
-            <a
-              href="/premonitions"
-              onClick={handlePremonitionClick}
-              className={`${styles.navCard} ${styles.malkCard}`}
-              title="Enter the Cobweb"
-            >
-              <span className={`${styles.navCardIcon} ${styles.malkIcon}`}>👁️</span>
-              <span className={`${styles.navCardTitle} ${styles.malkTitle}`}>The Cobweb</span>
-              <span className={`${styles.navCardSub} ${styles.malkSub}`}>Visions & Whispers</span>
-            </a>
-          )}
-        </div>
-      </section>
-    </main>
+      </main>
     </Skeleton>
   );
 }
