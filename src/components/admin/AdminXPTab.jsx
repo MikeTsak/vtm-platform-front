@@ -1,6 +1,7 @@
 // src/components/admin/AdminXPTab.jsx
 import React, { useState, useMemo, useEffect } from 'react';
 import styles from '../../styles/Admin.module.css';
+import MiniSearch from 'minisearch';
 
 /* ---------- VTM Lookups ---------- */
 const CLAN_COLORS = { Brujah: '#b40f1f', Gangrel: '#2f7a3a', Malkavian: '#713c8b', Nosferatu: '#6a4b2b', Toreador: '#b8236b', Tremere: '#7b1113', Ventrue: '#1b4c8c', 'Banu Haqim': '#7a2f57', Hecata: '#2b6b6b', Lasombra: '#191a5a', 'The Ministry': '#865f12', Caitiff: '#636363', 'Thin-blood': '#6e6e2b' };
@@ -35,8 +36,12 @@ export default function AdminXPTab({ users, onGrant, onBulkGrant, adminxp }) {
   const characters = useMemo(() => {
     const allChars = users.filter(u => u.character_id).map(u => ({ id: u.character_id, owner: `${u.display_name} <${u.email}>`, name: u.char_name || 'Unnamed', clan: u.clan || 'Unknown', xp: u.xp || 0 }));
     if (!searchTerm.trim()) return allChars;
-    const lowerSearch = searchTerm.toLowerCase();
-    return allChars.filter(c => c.name.toLowerCase().includes(lowerSearch) || c.owner.toLowerCase().includes(lowerSearch) || c.clan.toLowerCase().includes(lowerSearch));
+    const q = searchTerm.trim();
+    const ms = new MiniSearch({ fields: ['name', 'owner', 'clan'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
+    ms.addAll(allChars);
+    const results = ms.search(q);
+    const idSet = new Set(results.map(r => r.id));
+    return allChars.filter(c => idSet.has(c.id));
   }, [users, searchTerm]);
   const totalCharacters = users.filter(u => u.character_id).length;
 
@@ -56,16 +61,21 @@ export default function AdminXPTab({ users, onGrant, onBulkGrant, adminxp }) {
   }
 
   const filteredGlobalLogs = useMemo(() => {
-    return logs.filter(l => {
+    let result = logs.filter(l => {
       if (logFilterChar !== 'All' && l.character_name !== logFilterChar) return false;
       if (logFilterType === 'Grants' && l.amount <= 0) return false;
       if (logFilterType === 'Spends' && l.amount >= 0) return false;
-      if (logSearch.trim()) {
-        const term = logSearch.toLowerCase();
-        if (!(l.reason || '').toLowerCase().includes(term) && !(l.action_type || '').toLowerCase().includes(term)) return false;
-      }
       return true;
     });
+    if (logSearch.trim()) {
+      const mapped = result.map((l, i) => ({ ...l, __msId: l.id || i }));
+      const ms = new MiniSearch({ idField: '__msId', fields: ['reason', 'action_type'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
+      ms.addAll(mapped);
+      const results = ms.search(logSearch.trim());
+      const idSet = new Set(results.map(r => r.id));
+      result = mapped.filter(l => idSet.has(l.__msId));
+    }
+    return result;
   }, [logs, logFilterChar, logFilterType, logSearch]);
 
   const uniqueLogCharacters = ['All', ...new Set(logs.map(l => l.character_name).filter(Boolean))];

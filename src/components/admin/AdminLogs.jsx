@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import api from "../../core/api";
 import styles from '../../styles/Admin.module.css';
+import MiniSearch from 'minisearch';
 
 const EMO = { start: "🚀", auth: "🔐", char: "🧛", xp: "✨", dt: "🕰️", dom: "🏰", adm: "🛡️", ok: "✅", warn: "⚠️", err: "💥", req: "➡️", res: "⬅️", mail: "✉️", db: "🗄️", info: "ℹ️", http: "🌐", dbg: "🐛", sys: "⚙️" };
 const LEVELS = ["debug", "info", "warn", "error"];
@@ -30,11 +31,7 @@ function formatClockLocal(iso) {
   if (!iso) return "";
   try { const d = new Date(iso); return d.toLocaleString("el-GR", { hour12: false, year: "2-digit", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Europe/Athens" }); } catch { return String(iso); }
 }
-function matchesSearch(log, q) {
-  if (!q) return true;
-  const hay = (log.time || "") + " " + (log.level || "") + " " + (log.cat || "") + " " + (log.msg || "") + " " + (log.ctx ? JSON.stringify(log.ctx) : "");
-  return hay.toLowerCase().includes(q.toLowerCase());
-}
+
 
 function Chip({ style, children, title }) { return <span title={title} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "2px 8px", borderRadius: 20, fontSize: 11, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase", backdropFilter: 'blur(4px)', ...style }}>{children}</span>; }
 function copyToClipboard(text) { try { navigator.clipboard?.writeText(text); } catch {} }
@@ -85,11 +82,26 @@ export default function AdminLogs() {
   useEffect(() => { if (!follow) return; const el = scrollRef.current; if (el) el.scrollTop = el.scrollHeight; }, [lines, follow]);
 
   const normalized = useMemo(() => {
-    return lines.map(normalizeLog).filter(l => {
+    let filtered = lines.map(normalizeLog).filter(l => {
       const isSystem = (l.msg && (l.msg.includes("/api/admin/logs") || l.msg.includes("/api/health"))) || (l.ctx && JSON.stringify(l.ctx).includes("/api/admin/logs"));
       if (!showSystem && isSystem) return false;
-      return levelFilter.has(l.level) && matchesSearch(l, query);
+      return levelFilter.has(l.level);
     });
+
+    if (query.trim()) {
+      const mapped = filtered.map((l, i) => ({
+        ...l,
+        __msId: i,
+        haystack: (l.time || "") + " " + (l.level || "") + " " + (l.cat || "") + " " + (l.msg || "") + " " + (l.ctx ? JSON.stringify(l.ctx) : "")
+      }));
+      const ms = new MiniSearch({ idField: '__msId', fields: ['haystack'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
+      ms.addAll(mapped);
+      const results = ms.search(query.trim());
+      const idSet = new Set(results.map(r => r.id));
+      filtered = mapped.filter(l => idSet.has(l.__msId));
+    }
+
+    return filtered;
   }, [lines, levelFilter, query, showSystem]);
 
   return (

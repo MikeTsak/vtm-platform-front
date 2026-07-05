@@ -6,6 +6,7 @@ import styles from '../styles/Admin.module.css';
 // --- Data libraries (must stay at top!) ---
 import * as DiscDataNS from '../data/disciplines';
 import { MERITS_AND_FLAWS } from '../data/merits_flaws';
+import MiniSearch from 'minisearch';
 
 // --- Discipline names fallback logic ---
 let ALL_DISCIPLINE_NAMES =
@@ -972,11 +973,14 @@ function MFPicker({ kind, onPick }) {
   const [sel, setSel] = useState(null);
 
   const filtered = useMemo(() => {
-    const qq = q.toLowerCase();
-    return MF_CATALOG.filter(e =>
-      e.type === (kind === 'merit' ? 'merit' : 'flaw') &&
-      (!qq || e.name?.toLowerCase().includes(qq) || e.category?.toLowerCase().includes(qq))
-    ).slice(0, 100);
+    const baseList = MF_CATALOG.filter(e => e.type === (kind === 'merit' ? 'merit' : 'flaw'));
+    const qq = q.trim();
+    if (!qq) return baseList.slice(0, 100);
+    const ms = new MiniSearch({ fields: ['name', 'category'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
+    ms.addAll(baseList);
+    const results = ms.search(qq);
+    const idSet = new Set(results.map(r => r.id));
+    return baseList.filter(e => idSet.has(e.id)).slice(0, 100);
   }, [q, kind]);
 
   return (

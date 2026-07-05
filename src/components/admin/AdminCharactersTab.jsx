@@ -4,6 +4,7 @@ import api from '../../core/api';
 import styles from '../../styles/Admin.module.css';
 import generateVTMCharacterSheetPDF from '../../utils/pdfGenerator';
 import { ALL_DISCIPLINE_NAMES } from '../../data/disciplines';
+import MiniSearch from 'minisearch';
 
 /* ---------- VTM Lookups ---------- */
 const CLAN_COLORS = {
@@ -125,10 +126,12 @@ export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEdit
 
   const filteredChars = useMemo(() => {
     if (!filterText.trim()) return baseChars;
-    const filter = filterText.toLowerCase().trim();
-    return baseChars.filter(c =>
-      c.name.toLowerCase().includes(filter) || c.clan.toLowerCase().includes(filter) || c.owner.toLowerCase().includes(filter)
-    );
+    const q = filterText.trim();
+    const ms = new MiniSearch({ fields: ['name', 'clan', 'owner'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
+    ms.addAll(baseChars);
+    const results = ms.search(q);
+    const idSet = new Set(results.map(r => r.id));
+    return baseChars.filter(c => idSet.has(c.id));
   }, [baseChars, filterText]);
 
   const getSheetObj = (charId) => {

@@ -5,6 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
 import domainsRaw from '../../data/Domains.json';
+import MiniSearch from 'minisearch';
 
 /* ==================== CLAIMS — Split View + MAP (Domains clickability) ==================== */
 
@@ -75,14 +76,19 @@ export default function AdminClaimsTab({ claims, characters, onSave, onDelete })
   }
 
   const filtered = useMemo(() => {
-    const q = filter.trim().toLowerCase();
     let arr = [...claims];
+    const q = filter.trim();
     if (q) {
-      arr = arr.filter(c =>
-        String(c.division).includes(q) ||
-        (c.owner_name || '').toLowerCase().includes(q) ||
-        (characters[c.owner_character_id]?.char_name || '').toLowerCase().includes(q)
-      );
+      const mapped = arr.map(c => ({
+        ...c,
+        __divStr: String(c.division),
+        __charName: characters[c.owner_character_id]?.char_name || ''
+      }));
+      const ms = new MiniSearch({ idField: 'division', fields: ['__divStr', 'owner_name', '__charName'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
+      ms.addAll(mapped);
+      const results = ms.search(q);
+      const idSet = new Set(results.map(r => String(r.id)));
+      arr = arr.filter(c => idSet.has(String(c.division)));
     }
     if (onlyUnowned) arr = arr.filter(c => !c.owner_name && !c.owner_character_id);
     arr.sort((a, b) => (sortAsc ? a.division - b.division : b.division - a.division));

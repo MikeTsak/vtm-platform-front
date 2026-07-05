@@ -5,6 +5,7 @@ import api from '../core/api';
 import styles from '../styles/ChatSystem.module.css';
 import { Skeleton } from 'boneyard-js/react';
 import EmojiPicker from 'emoji-picker-react';
+import MiniSearch from 'minisearch';
 
 /* --- Clan assets & colors --- */
 const CLAN_COLORS = {
@@ -54,55 +55,18 @@ const NPCTag = () => (
   </span>
 );
 
-/* --- PUSH HELPERS --- */
-const VAPID_PUBLIC_KEY = (window.__VAPID_PUBLIC_KEY__ || (document.querySelector('meta[name="vapid-public-key"]')?.content) || process.env.REACT_APP_VAPID_PUBLIC_KEY || '').trim();
+/* --- PUSH HELPERS (ntfy.sh) --- */
 
-const urlBase64ToUint8Array = (base64String) => {
-  if (!base64String) return new Uint8Array();
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const raw = atob(base64);
-  const output = new Uint8Array(raw.length);
-  for (let i = 0; i < raw.length; ++i) output[i] = raw.charCodeAt(i);
-  return output;
-};
-
-async function ensureServiceWorker() {
-  if (!('serviceWorker' in navigator)) return null;
+async function getNtfyTopic() {
   try {
-    const reg = await navigator.serviceWorker.register('/sw.js').catch(() => navigator.serviceWorker.register('/service-worker.js'));
-    return reg || null;
-  } catch { return null; }
+    const res = await api.get('/push/ntfy-topic');
+    return res.data?.topic || null;
+  } catch (err) {
+    console.error('Failed to get ntfy topic:', err);
+    return null;
+  }
 }
 
-async function subscribePush() {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
-  if (!VAPID_PUBLIC_KEY) return null;
-  const reg = await ensureServiceWorker();
-  if (!reg) return null;
-  let sub = await reg.pushManager.getSubscription();
-  if (!sub) {
-    sub = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-    });
-  }
-  try { await api.post('/push/subscribe', { subscription: sub }); } catch { /* ignore */ }
-  return sub;
-}
-
-async function unsubscribePush() {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
-  const reg = await navigator.serviceWorker.getRegistration();
-  const sub = await reg?.pushManager.getSubscription();
-  if (sub) {
-    const endpoint = sub.endpoint;
-    try { await sub.unsubscribe(); } catch {}
-    try { await api.post('/push/unsubscribe', { endpoint }); } catch {}
-    return true;
-  }
-  return false;
-}
 
 /* --- Contact Objects --- */
 const asUserContact = (u) => ({
@@ -370,7 +334,8 @@ export default function ChatSystem({ commsEnabled = true }) {
   const [notifOn, setNotifOn] = useState(() => localStorage.getItem('comms_notifs') === '1');
   const notifSupported = typeof window !== 'undefined' && 'Notification' in window;
   const [notifDenied, setNotifDenied] = useState(false);
-  const canPush = () => ('serviceWorker' in navigator) && ('PushManager' in window);
+  const [ntfyTopic, setNtfyTopic] = useState(null);
+  const [showNtfyModal, setShowNtfyModal] = useState(false);
 
   const [isMobile, setIsMobile] = useState(false);
   const containerRef = useRef(null);
@@ -449,22 +414,12 @@ export default function ChatSystem({ commsEnabled = true }) {
     };
   }, []);
 
-  useEffect(() => { localStorage.setItem('comms_notifs', notifOn ? '1' : '0'); }, [notifOn]);
   useEffect(() => {
-    let mounted = true;
-    (async () => {
-      if (!notifOn) return;
-      if (!canPush()) return;
-      if (Notification.permission !== 'granted') return;
-      try {
-        const reg = await ensureServiceWorker();
-        if (!mounted || !reg) return;
-        const sub = await reg.pushManager.getSubscription();
-        if (!sub) await subscribePush();
-      } catch { /* ignore */ }
-    })();
-    return () => { mounted = false; };
-  }, [notifOn]);
+    localStorage.setItem('comms_notifs', notifOn ? '1' : '0');
+    if (notifOn && !ntfyTopic) {
+      getNtfyTopic().then(t => setNtfyTopic(t));
+    }
+  }, [notifOn, ntfyTopic]);
 
   const toggleNotifications = async () => {
     if (!notifSupported) return;
@@ -472,21 +427,15 @@ export default function ChatSystem({ commsEnabled = true }) {
       let perm = Notification.permission;
       if (perm === 'default') { try { perm = await Notification.requestPermission(); } catch { perm = 'denied'; } }
       if (perm !== 'granted') { setNotifDenied(true); setNotifOn(false); return; }
-      try {
-        if (canPush() && VAPID_PUBLIC_KEY) {
-          const sub = await subscribePush();
-          if (sub) { try { await api.post('/push/test'); } catch {} }
-        }
-      } catch { /* ignore */ }
+      
+      const topic = await getNtfyTopic();
+      if (topic) {
+        setNtfyTopic(topic);
+        setShowNtfyModal(true);
+        try { await api.post('/push/test'); } catch {}
+      }
       setNotifDenied(false); setNotifOn(true);
     } else {
-      try {
-        const reg = await navigator.serviceWorker.getRegistration();
-        const sub = await reg?.pushManager.getSubscription();
-        const endpoint = sub?.endpoint;
-        try { await unsubscribePush(); } catch {}
-        if (endpoint) { try { await api.post('/push/unsubscribe', { endpoint }); } catch {} }
-      } catch {}
       setNotifOn(false); setNotifDenied(false);
     }
   };
@@ -950,34 +899,50 @@ export default function ChatSystem({ commsEnabled = true }) {
   }, [messages]);
 
   const filteredUsers = useMemo(() => {
-    const q = filter.trim().toLowerCase();
+    const q = filter.trim();
     const list = users || [];
     if (!q) return list;
-    return list.filter(u => (u.display_name || '').toLowerCase().includes(q) || (u.char_name || '').toLowerCase().includes(q));
+    const ms = new MiniSearch({ fields: ['display_name', 'char_name'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
+    ms.addAll(list);
+    const results = ms.search(q);
+    const idSet = new Set(results.map(r => r.id));
+    return list.filter(u => idSet.has(u.id));
   }, [users, filter]);
 
   const usersNoChar = useMemo(() => filteredUsers.filter(u => !u.char_id || Number(u.char_id) === 1), [filteredUsers]);
   const usersWithChar = useMemo(() => filteredUsers.filter(u => u.char_id && Number(u.char_id) !== 1), [filteredUsers]);
   
   const filteredNpcs = useMemo(() => {
-    const q = filter.trim().toLowerCase();
+    const q = filter.trim();
     const list = npcs || [];
     if (!q) return list;
-    return list.filter(n => (n.name || '').toLowerCase().includes(q));
+    const ms = new MiniSearch({ fields: ['name'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
+    ms.addAll(list);
+    const results = ms.search(q);
+    const idSet = new Set(results.map(r => r.id));
+    return list.filter(n => idSet.has(n.id));
   }, [npcs, filter]);
 
   const filteredGroups = useMemo(() => {
-    const q = filter.trim().toLowerCase();
+    const q = filter.trim();
     const list = groups || [];
     if (!q) return list;
-    return list.filter(g => (g.name || '').toLowerCase().includes(q));
+    const ms = new MiniSearch({ fields: ['name'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
+    ms.addAll(list);
+    const results = ms.search(q);
+    const idSet = new Set(results.map(r => r.id));
+    return list.filter(g => idSet.has(g.id));
   }, [groups, filter]);
 
   const adminAllPlayersFiltered = useMemo(() => {
-    const q = adminPlayerFilter.trim().toLowerCase();
+    const q = adminPlayerFilter.trim();
     const list = users || [];
     if (!q) return list;
-    return list.filter(u => (u.char_name || '').toLowerCase().includes(q) || (u.display_name || '').toLowerCase().includes(q));
+    const ms = new MiniSearch({ fields: ['display_name', 'char_name'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
+    ms.addAll(list);
+    const results = ms.search(q);
+    const idSet = new Set(results.map(r => r.id));
+    return list.filter(u => idSet.has(u.id));
   }, [users, adminPlayerFilter]);
 
   const adminRecentPlayers = useMemo(() => {
@@ -1188,6 +1153,30 @@ export default function ChatSystem({ commsEnabled = true }) {
     );
   };
 
+  const renderNtfyModal = () => (
+    <div className={styles.modalBackdrop}>
+      <div className={styles.modal}>
+        <h3>Push Notifications Enabled!</h3>
+        <p style={{ marginTop: '10px', lineHeight: '1.4' }}>
+          Your browser will now show notifications while this page is open. 
+          To receive background notifications on your phone or desktop, use the <strong>ntfy</strong> app.
+        </p>
+        <div style={{ background: 'var(--bg-tertiary)', padding: '15px', borderRadius: '8px', margin: '15px 0', textAlign: 'center' }}>
+          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '5px' }}>Your unique ntfy topic:</div>
+          <strong style={{ fontSize: '1.2rem', wordBreak: 'break-all', userSelect: 'all' }}>{ntfyTopic}</strong>
+        </div>
+        <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+          1. Install the <a href="https://ntfy.sh" target="_blank" rel="noreferrer" style={{color: 'var(--accent)'}}>ntfy app</a> (iOS/Android).<br/>
+          2. Tap <strong>+</strong> to subscribe to a topic.<br/>
+          3. Enter the exact topic name above.
+        </p>
+        <div className={styles.modalActions} style={{ marginTop: '20px' }}>
+          <button onClick={() => setShowNtfyModal(false)} className={styles.btnPri}>Got it</button>
+        </div>
+      </div>
+    </div>
+  );
+
   const containerClasses = [
     styles.commsContainer,
     isMobile && selectedContact ? styles.mobileChatActive : ''
@@ -1196,6 +1185,7 @@ export default function ChatSystem({ commsEnabled = true }) {
   return (
     <Skeleton loading={loading} name="chat-system">
       <div ref={containerRef} className={containerClasses} style={{ '--accent': currentAccent }}>
+      {showNtfyModal && renderNtfyModal()}
       {creatingGroup && renderCreateGroupModal()}
       {managingGroup && renderManageGroupModal()}
 

@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'; 
 import api from '../../core/api';
 import styles from '../../styles/Admin.module.css';
+import MiniSearch from 'minisearch';
 
 /* ---------- VTM Lookups ---------- */
 const CLAN_COLORS = {
@@ -214,13 +215,17 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
   }, [messages, getCharInfoByUserId, charIndex]);
 
   const filteredDirect = useMemo(() => {
-    const q = debouncedDirectSearch.toLowerCase();
+    const q = debouncedDirectSearch.trim();
     if (!q) return directConversations;
-    return directConversations.filter(c => 
-      (c.user1Name||'').toLowerCase().includes(q) || (c.user2Name||'').toLowerCase().includes(q) ||
-      (c.user1CharName||'').toLowerCase().includes(q) || (c.user2CharName||'').toLowerCase().includes(q) ||
-      c.messages.some(m => (m.body||'').toLowerCase().includes(q))
-    );
+    const ms = new MiniSearch({ idField: 'key', fields: ['user1Name', 'user2Name', 'user1CharName', 'user2CharName', 'messagesBody'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
+    const mapped = directConversations.map(c => ({
+      ...c,
+      messagesBody: c.messages.map(m => m.body).join(' ')
+    }));
+    ms.addAll(mapped);
+    const results = ms.search(q);
+    const idSet = new Set(results.map(r => r.id));
+    return directConversations.filter(c => idSet.has(c.key));
   }, [directConversations, debouncedDirectSearch]);
 
   // --- LOADERS & EFFECTS ---
@@ -287,18 +292,34 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
 
   // --- FILTER LISTS ---
   const filteredNpcs = useMemo(() => {
-    const q = debouncedNpcSearch.toLowerCase();
-    return npcList.filter(n => (n.name||'').toLowerCase().includes(q));
+    const q = debouncedNpcSearch.trim();
+    if (!q) return npcList;
+    const ms = new MiniSearch({ fields: ['name'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
+    ms.addAll(npcList);
+    const results = ms.search(q);
+    const idSet = new Set(results.map(r => r.id));
+    return npcList.filter(n => idSet.has(n.id));
   }, [npcList, debouncedNpcSearch]);
 
   const filteredConvos = useMemo(() => {
-    const q = debouncedNpcConvoSearch.toLowerCase();
-    return convos.filter(c => (c.charName||'').toLowerCase().includes(q) || (c.userName||'').toLowerCase().includes(q));
+    const q = debouncedNpcConvoSearch.trim();
+    if (!q) return convos;
+    const mapped = convos.map((c, i) => ({ ...c, __msId: c.userId || i }));
+    const ms = new MiniSearch({ idField: '__msId', fields: ['charName', 'userName'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
+    ms.addAll(mapped);
+    const results = ms.search(q);
+    const idSet = new Set(results.map(r => r.id));
+    return mapped.filter(c => idSet.has(c.__msId));
   }, [convos, debouncedNpcConvoSearch]);
 
   const filteredGroups = useMemo(() => {
-    const q = debouncedGroupSearch.toLowerCase();
-    return groupList.filter(g => (g.name||'').toLowerCase().includes(q));
+    const q = debouncedGroupSearch.trim();
+    if (!q) return groupList;
+    const ms = new MiniSearch({ fields: ['name'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
+    ms.addAll(groupList);
+    const results = ms.search(q);
+    const idSet = new Set(results.map(r => r.id));
+    return groupList.filter(g => idSet.has(g.id));
   }, [groupList, debouncedGroupSearch]);
 
   const handleModeChange = (m) => {

@@ -4,6 +4,7 @@ import api from '../core/api';
 import { AuthCtx } from '../core/AuthContext';
 import styles from '../styles/Boons.module.css';
 import { Skeleton } from 'boneyard-js/react';
+import MiniSearch from 'minisearch';
 
 const BOON_LEVELS  = ['trivial', 'minor', 'major', 'life'];
 const BOON_STATUSES = ['owed', 'paid', 'excused'];
@@ -116,8 +117,12 @@ export default function Boons() {
 
   const filteredNames = useMemo(() => {
     if (!searchQuery) return [];
-    const q = searchQuery.toLowerCase();
-    return uniqueNames.filter(n => n.toLowerCase().includes(q)).slice(0, 8);
+    const q = searchQuery.trim();
+    const mapped = uniqueNames.map((name, i) => ({ id: i, name }));
+    const ms = new MiniSearch({ fields: ['name'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
+    ms.addAll(mapped);
+    const results = ms.search(q);
+    return results.map(r => mapped[r.id].name).slice(0, 8);
   }, [searchQuery, uniqueNames]);
 
   const processedBoons = useMemo(() => {
@@ -147,12 +152,12 @@ export default function Boons() {
 
     // Search Query Filter
     if (searchQuery) {
-      const sq = searchQuery.toLowerCase();
-      result = result.filter(b => 
-        (b.from_name && b.from_name.toLowerCase().includes(sq)) || 
-        (b.to_name && b.to_name.toLowerCase().includes(sq)) ||
-        (b.description && b.description.toLowerCase().includes(sq))
-      );
+      const sq = searchQuery.trim();
+      const ms = new MiniSearch({ fields: ['from_name', 'to_name', 'description'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
+      ms.addAll(result);
+      const results = ms.search(sq);
+      const idSet = new Set(results.map(r => r.id));
+      result = result.filter(b => idSet.has(b.id));
     }
 
     

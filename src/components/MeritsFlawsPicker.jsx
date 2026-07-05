@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import styles from '../styles/Sheet.module.css';
 import { MERITS_AND_FLAWS } from '../data/merits_flaws';
+import MiniSearch from 'minisearch';
 
 /* ===========================
    Helpers (no assumptions)
@@ -148,13 +149,13 @@ export default function MeritsFlawsPicker({
 
   const allItems = useMemo(() => flattenData(), []);
   const filtered = useMemo(() => {
-    const s = q.trim().toLowerCase();
+    const s = q.trim();
     if (!s) return allItems;
-    return allItems.filter(it =>
-      (it.name || '').toLowerCase().includes(s) ||
-      (it.category || '').toLowerCase().includes(s) ||
-      (it.description || '').toLowerCase().includes(s)
-    );
+    const ms = new MiniSearch({ fields: ['name', 'category', 'description'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
+    ms.addAll(allItems);
+    const results = ms.search(s);
+    const idSet = new Set(results.map(r => r.id));
+    return allItems.filter(it => idSet.has(it.id));
   }, [allItems, q]);
 
   const meritsSpent = useMemo(() => merits.reduce((a, m) => a + (Number(m.dots) || 0), 0), [merits]);

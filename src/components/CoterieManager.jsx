@@ -7,6 +7,7 @@ import {
   getCoterie,
 } from '../data/cotteries';
 import styles from '../styles/Coteries.module.css';
+import MiniSearch from 'minisearch';
 
 /* ===== Pull domains the same way as Domains.jsx ===== */
 import domainsRaw from '../data/Domains.json';
@@ -144,12 +145,13 @@ function ManualAdder({ onAdd }) {
 function MembersPicker({ members, setMembers, roster }) {
   const [q, setQ] = useState('');
   const filtered = useMemo(() => {
-    const s = q.trim().toLowerCase();
+    const s = q.trim();
     if (!s) return roster || [];
-    return (roster || []).filter((u) =>
-      (u.display_name || '').toLowerCase().includes(s) ||
-      (u.char_name || '').toLowerCase().includes(s)
-    );
+    const ms = new MiniSearch({ fields: ['display_name', 'char_name'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
+    ms.addAll(roster || []);
+    const results = ms.search(s);
+    const idSet = new Set(results.map(r => r.id));
+    return (roster || []).filter(u => idSet.has(u.id));
   }, [q, roster]);
 
   function addMember(u) {
@@ -297,9 +299,13 @@ function BackgroundsEditor({ items, setItems }) {
 function TypesBrowser({ onPick }) {
   const [q, setQ] = useState('');
   const list = useMemo(() => {
-    const s = q.trim().toLowerCase();
+    const s = q.trim();
     if (!s) return ALL_COTERIE_NAMES;
-    return ALL_COTERIE_NAMES.filter((n) => n.toLowerCase().includes(s));
+    const mapped = ALL_COTERIE_NAMES.map((name, i) => ({ id: i, name }));
+    const ms = new MiniSearch({ fields: ['name'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
+    ms.addAll(mapped);
+    const results = ms.search(s);
+    return results.map(r => mapped[r.id].name);
   }, [q]);
 
   const bonus = COTERIE_DOC.bonus_eligible;
