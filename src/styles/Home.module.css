@@ -1135,6 +1135,7 @@
   font-size: 0.9rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  color: inherit;
 }
 
 .malkCard {
@@ -1321,4 +1322,31 @@
 }
 .feedContent::-webkit-scrollbar-thumb {
   background: #333;
+}
+
+/* STITCH REDESIGN MOBILE RESPONSIVENESS OVERRIDES */
+@media (width <= 1024px) {
+  .dashboardLayout {
+    grid-template-columns: 1fr;
+  }
+  .navGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (width <= 768px) {
+  .navGrid {
+    grid-template-columns: 1fr;
+  }
+  .bottomRowGrid {
+    grid-template-columns: 1fr;
+  }
+  .quickStatsGrid {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .quotaTrackWrapper {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }

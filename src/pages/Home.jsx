@@ -143,6 +143,7 @@ export default function Home() {
   const [clickPoint, setClickPoint] = useState(null);
   const [shards, setShards] = useState([]);
   const [activeFeedTab, setActiveFeedTab] = useState('chronicle');
+  const [showRsvp, setShowRsvp] = useState(false);
   const overlayRef = useRef(null);
   const nav = useNavigate();
 
@@ -297,6 +298,30 @@ export default function Home() {
     // ignore parse error
   }
 
+  const renderDots = (value, max = 5) => {
+    const v = Number(value) || 0;
+    let dots = '';
+    for (let i = 0; i < max; i++) dots += i < v ? '●' : '○';
+    return dots;
+  };
+
+  const getHighestAttr = (sheet, list) => {
+    if (!sheet?.attributes) return { name: list[0], value: 0 };
+    let maxName = list[0];
+    let maxVal = 0;
+    for (const attr of list) {
+      const v = Number(sheet.attributes[attr]) || 0;
+      if (v >= maxVal) { maxVal = v; maxName = attr; }
+    }
+    return { name: maxName, value: maxVal };
+  };
+
+  const topPhys = getHighestAttr(sheetObj, ['Strength', 'Dexterity', 'Stamina']);
+  const topSoc = getHighestAttr(sheetObj, ['Charisma', 'Manipulation', 'Composure']);
+  const topMent = getHighestAttr(sheetObj, ['Intelligence', 'Wits', 'Resolve']);
+
+  const latestChronicle = recentNews.find(n => n.theme === 'chronicle') || recentNews[0] || null;
+
   // Construct Themes Array dynamically to insert Character's Clan
   const availableThemes = [
     { id: 'clan', label: clan ? `${clan}` : 'Default', sub: 'Bloodline', hex: dynamicClanTint },
@@ -352,7 +377,10 @@ export default function Home() {
                 <span className={styles.neonateLabel}>NEONATE</span>
                 <h1 className={styles.charName}>{ch.name}</h1>
                 <p className={styles.charSub}>
-                  <span className={styles.clanLabel}>♁ Clan {ch.clan || 'Caitiff'}</span>
+                  <span className={styles.clanLabel}>
+                    <img src={symlogo(ch.clan)} alt={ch.clan || 'Clan Logo'} style={{ width: '16px', height: '16px', objectFit: 'contain', marginRight: '4px', verticalAlign: 'middle', filter: 'brightness(0) invert(1) drop-shadow(0 0 2px rgba(0,0,0,0.5))' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                    Clan {ch.clan || 'Caitiff'}
+                  </span>
                 </p>
               </div>
 
@@ -391,10 +419,39 @@ export default function Home() {
             <div className={styles.eventInfo}>
               <h3 className={styles.eventHeader}>NEXT MODERN EVENT</h3>
               <h2 className={styles.eventTitle}>{openingDate ? 'Elysium Gathering' : 'No Current Event'}</h2>
-              <p className={styles.eventLocation}>Location: Elysium Hall</p>
+              {openingDate && !eventCd.isPast ? (
+                <p className={styles.eventLocation} style={{ color: 'var(--tint)' }}>
+                  Starts in: {eventCd.days}d {eventCd.hours}h {eventCd.mins}m
+                </p>
+              ) : (
+                <p className={styles.eventLocation}>Location: Elysium Hall</p>
+              )}
             </div>
-            <button className={styles.rsvpBtn}>RSVP</button>
+            <button className={styles.rsvpBtn} onClick={() => setShowRsvp(true)}>RSVP</button>
           </section>
+
+          {showRsvp && (
+            <div 
+              className={styles.rsvpModalOverlay} 
+              onClick={() => setShowRsvp(false)} 
+              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <div 
+                className={styles.rsvpModal} 
+                onClick={e => e.stopPropagation()} 
+                style={{ background: 'var(--surface-color)', padding: '2rem', borderRadius: '12px', border: '1px solid var(--tint)', maxWidth: '400px', textAlign: 'center', boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}
+              >
+                <h3 style={{ marginTop: 0, fontFamily: 'Playfair Display, serif', color: 'var(--tint)' }}>RSVP Confirmed</h3>
+                <p style={{ color: 'var(--text-muted)' }}>The Harpy has noted your intent to attend the upcoming gathering. Do not be late.</p>
+                <button 
+                  onClick={() => setShowRsvp(false)} 
+                  style={{ marginTop: '1.5rem', background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-color)', padding: '0.5rem 1.5rem', borderRadius: '4px', cursor: 'pointer' }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* 3. NAV GRID */}
           <section className={styles.navGrid}>
@@ -424,11 +481,18 @@ export default function Home() {
           <div className={styles.bottomRowGrid}>
             <div className={styles.chronicleEntryCard}>
               <h4 className={styles.chronicleEntryLabel}>LATEST CHRONICLE ENTRY</h4>
-              <p className={styles.chronicleEntryText}>
-                There are only forces the anthmromice nove: and forted reaches with she amam, 
-                and pace tted mest and change inmout something to tumeranaltina...
-              </p>
-              <span className={styles.readMore}>READ MORE</span>
+              {latestChronicle ? (
+                <>
+                  <p className={styles.chronicleEntryText}>
+                    {latestChronicle.title}
+                  </p>
+                  <Link to="/news" className={styles.readMore} style={{ textDecoration: 'none' }}>READ MORE</Link>
+                </>
+              ) : (
+                <p className={styles.chronicleEntryText}>
+                  No recent entries found in the chronicle.
+                </p>
+              )}
             </div>
             <div className={styles.restrictedCard}>
                <span className={styles.restrictedText}>RESTRICTED ACCESS</span>
@@ -493,16 +557,16 @@ export default function Home() {
               <span className={styles.quickStatsLabel}>QUICK STATS</span>
               <div className={styles.quickStatsGrid}>
                 <div className={styles.qsItem}>
-                  <span className={styles.qsName}>PHYSICAL</span>
-                  <div className={styles.qsDots}>●●○○○</div>
+                  <span className={styles.qsName}>{topPhys.name.toUpperCase()}</span>
+                  <div className={styles.qsDots}>{renderDots(topPhys.value)}</div>
                 </div>
                 <div className={styles.qsItem}>
-                  <span className={styles.qsName}>SOCIAL</span>
-                  <div className={styles.qsDots}>●●●○○</div>
+                  <span className={styles.qsName}>{topSoc.name.toUpperCase()}</span>
+                  <div className={styles.qsDots}>{renderDots(topSoc.value)}</div>
                 </div>
                 <div className={styles.qsItem}>
-                  <span className={styles.qsName}>MENTAL</span>
-                  <div className={styles.qsDots}>●●●●○</div>
+                  <span className={styles.qsName}>{topMent.name.toUpperCase()}</span>
+                  <div className={styles.qsDots}>{renderDots(topMent.value)}</div>
                 </div>
               </div>
             </div>
