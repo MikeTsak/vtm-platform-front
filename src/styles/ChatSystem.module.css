@@ -404,7 +404,8 @@
 }
 
 .replyHint {
-  color: #e2a846; /* warning yellow/gold */
+  color: #e2a846;
+  /* warning yellow/gold */
 }
 
 .adminRosterList {
@@ -628,9 +629,19 @@
   display: inline-flex;
 }
 
-.statusSeen { color: #4facfe; font-weight: bold; }
-.statusDelivered { color: var(--text-muted); font-weight: bold;}
-.statusSent { color: var(--text-muted); }
+.statusSeen {
+  color: #4facfe;
+  font-weight: bold;
+}
+
+.statusDelivered {
+  color: var(--text-muted);
+  font-weight: bold;
+}
+
+.statusSent {
+  color: var(--text-muted);
+}
 
 .actionBtn {
   background: transparent;
@@ -783,7 +794,8 @@
 
 .sendIcon {
   font-size: 1.2rem;
-  margin-left: 2px; /* optical centering */
+  margin-left: 2px;
+  /* optical centering */
 }
 
 /* Image Preview */
@@ -1016,11 +1028,11 @@
 }
 
 /* --- Mobile Responsiveness --- */
-@media (width <= 768px) {
+@media (width <=768px) {
   .commsContainer {
-    height: calc(100dvh - 56px); 
+    height: calc(100dvh - 56px);
   }
-  
+
   .userList {
     width: 100%;
   }

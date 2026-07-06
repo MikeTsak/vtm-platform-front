@@ -29,9 +29,13 @@ export default function SchreckNet() {
   }, []);
 
   return (
-    <div className={styles.wrapper} data-mode="chat">
+    <div
+      className={styles.wrapper}
+      data-mode="chat"
+      style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, overflow: 'hidden' }}
+    >
       {/* BANNER */}
-      <div className={styles.modeSwitch}>
+      <div className={styles.modeSwitch} style={{ flexShrink: 0 }}>
         <button className={styles.activeMode} disabled>
           <span className={styles.modeTitle}>SchreckNet</span>
           <span className={styles.modeSubtitle}>Everything here is safe.</span>
@@ -39,9 +43,11 @@ export default function SchreckNet() {
       </div>
 
       {user && (
-        <Skeleton loading={isLoading} name="schrecknet-page">
-          <ChatSystem user={user} isMobile={false} commsEnabled={commsEnabled} />
-        </Skeleton>
+        <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <Skeleton loading={isLoading} name="schrecknet-page">
+            <ChatSystem user={user} isMobile={false} commsEnabled={commsEnabled} />
+          </Skeleton>
+        </div>
       )}
     </div>
   );

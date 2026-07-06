@@ -3,6 +3,7 @@ import React, { useState, useEffect, useContext, useRef, useMemo, useLayoutEffec
 import { AuthCtx } from '../core/AuthContext';
 import api from '../core/api';
 import styles from '../styles/ChatSystem.module.css';
+import '../styles/SchreckNetChat.css';
 import { Skeleton } from 'boneyard-js/react';
 import EmojiPicker from 'emoji-picker-react';
 import MiniSearch from 'minisearch';
@@ -15,39 +16,30 @@ const CLAN_COLORS = {
   Caitiff: '#636363', 'Thin-blood': '#6e6e2b',
 };
 const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim', 'Thin-blood': 'Thinblood' };
+const getApiOrigin = () => {
+  try {
+    const base = api?.defaults?.baseURL;
+    if (!base) return '';
+    // baseURL may be a full origin ("https://host/api") or already relative ("/api")
+    return base.replace(/\/+$/, '').replace(/\/api$/, '');
+  } catch {
+    return '';
+  }
+};
+
 const symlogo = (c) =>
-  (c ? `/img/clans/330px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g, '_')}_symbol.png` : '');
-
-/* --- Icons --- */
-const ImageIcon = () => (
-<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" />
-    <polyline points="21 15 16 10 5 21" />
-    <circle cx="8" cy="9" r="2" />
-    <line x1="16" y1="13" x2="16" y2="3" />
-    <polyline points="12 7 16 3 20 7" />
-  </svg>
-);
-
-const SmileIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10"></circle>
-    <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
-    <line x1="9" y1="9" x2="9.01" y2="9"></line>
-    <line x1="15" y1="9" x2="15.01" y2="9"></line>
-  </svg>
-);
+  (c ? `${getApiOrigin()}/img/clans/330px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g, '_')}_symbol.png` : '');
 
 /* --- Gold NPC Tag Component --- */
 const NPCTag = () => (
-  <span style={{ 
-    color: '#ffd700', 
-    fontSize: '0.75rem', 
-    fontWeight: 'bold', 
-    marginLeft: '6px', 
-    verticalAlign: 'middle', 
-    background: 'rgba(255,215,0,0.1)', 
-    padding: '2px 4px', 
+  <span style={{
+    color: '#ffd700',
+    fontSize: '0.75rem',
+    fontWeight: 'bold',
+    marginLeft: '6px',
+    verticalAlign: 'middle',
+    background: 'rgba(255,215,0,0.1)',
+    padding: '2px 4px',
     borderRadius: '4px',
     textTransform: 'uppercase'
   }}>
@@ -56,7 +48,6 @@ const NPCTag = () => (
 );
 
 /* --- PUSH HELPERS (ntfy.sh) --- */
-
 async function getNtfyTopic() {
   try {
     const res = await api.get('/push/ntfy-topic');
@@ -66,7 +57,6 @@ async function getNtfyTopic() {
     return null;
   }
 }
-
 
 /* --- Contact Objects --- */
 const asUserContact = (u) => ({
@@ -79,17 +69,19 @@ const asUserContact = (u) => ({
   permission_level: u.permission_level,
   is_admin: typeof u.is_admin !== 'undefined' ? !!u.is_admin : (u.role === 'admin' || u.permission_level === 'admin'),
   char_id: u.char_id ?? null,
+  image_url: u.image_url ?? null,
   unread_count: u.unread_count || 0,
   last_message_at: u.last_message_at ? new Date(u.last_message_at).getTime() : 0
 });
 
-const asNpcContact = (n) => ({ 
-  type: 'npc', 
-  id: n.id, 
-  name: n.name, 
+const asNpcContact = (n) => ({
+  type: 'npc',
+  id: n.id,
+  name: n.name,
   clan: n.clan,
+  image_url: n.image_url ?? null,
   last_message_at: n.last_message_at ? new Date(n.last_message_at).getTime() : 0,
-  unread_count: n.unread_count || 0 
+  unread_count: n.unread_count || 0
 });
 
 const asGroupContact = (g) => ({
@@ -108,15 +100,15 @@ const sortContacts = (list) => {
   return [...list].sort((a, b) => {
     const unreadA = a.unread_count || 0;
     const unreadB = b.unread_count || 0;
-    if (unreadA !== unreadB) return unreadB - unreadA; // Unread first
-    
+    if (unreadA !== unreadB) return unreadB - unreadA;
+
     const timeA = a.last_message_at || 0;
     const timeB = b.last_message_at || 0;
-    if (timeA !== timeB) return timeB - timeA; // Newest first
-    
+    if (timeA !== timeB) return timeB - timeA;
+
     const nameA = a.display_name || a.name || '';
     const nameB = b.display_name || b.name || '';
-    return nameA.localeCompare(nameB); // Alphabetical fallback
+    return nameA.localeCompare(nameB);
   });
 };
 
@@ -124,7 +116,7 @@ const sortContacts = (list) => {
 const StatusIcon = ({ msg }) => {
   if (!msg || !msg.created_at) return null;
   if (msg.read_at) {
-    return <span title={`Seen: ${new Date(msg.read_at).toLocaleString()}`} className={styles.statusSeen}>✓✓</span>; 
+    return <span title={`Seen: ${new Date(msg.read_at).toLocaleString()}`} className={styles.statusSeen}>✓✓</span>;
   }
   if (msg.delivered_at) {
     return <span title={`Delivered: ${new Date(msg.delivered_at).toLocaleString()}`} className={styles.statusDelivered}>✓✓</span>;
@@ -139,7 +131,6 @@ const ChatImage = ({ attachmentId }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  // 1. Adjust state inline during render if the prop changes
   if (attachmentId !== prevId) {
     setPrevId(attachmentId);
     setImageUrl(null);
@@ -151,8 +142,6 @@ const ChatImage = ({ attachmentId }) => {
     let active = true;
     let urlToRevoke = null;
 
-    // 2. State resets removed from here!
-    
     api.get(`/chat/media/${attachmentId}`, { responseType: 'blob' })
       .then((response) => {
         if (!active) return;
@@ -173,14 +162,18 @@ const ChatImage = ({ attachmentId }) => {
     };
   }, [attachmentId]);
 
-  if (loading) return <Skeleton name="chat-image-loader" loading={true}><div style={{width: 100, height: 100}} /></Skeleton>;
-  if (error) return <div className={styles.imageError}>⚠ Image failed to load</div>;
+  if (loading) return (
+    <Skeleton name="chat-image-loader" loading={true}>
+      <div className="w-48 h-48 max-w-full rounded bg-surface-variant/30 animate-pulse" />
+    </Skeleton>
+  );
+  if (error) return <div className="p-4 bg-error/20 text-error rounded-lg text-sm text-center border border-dashed border-error">⚠ Image failed to load</div>;
 
   return (
-    <img 
-      src={imageUrl} 
-      alt="Attachment" 
-      className={styles.chatImage} 
+    <img
+      src={imageUrl}
+      alt="Attachment"
+      className="w-auto h-auto max-w-full max-h-[300px] object-contain rounded cursor-pointer block"
       onClick={() => window.open(imageUrl, '_blank')}
     />
   );
@@ -201,34 +194,34 @@ export default function ChatSystem({ commsEnabled = true }) {
 
   const [users, setUsers] = useState([]);
   const [npcs, setNpcs] = useState([]);
-  const [groups, setGroups] = useState([]); 
+  const [groups, setGroups] = useState([]);
   const [filter, setFilter] = useState('');
   const [noCharOpen, setNoCharOpen] = useState(false);
 
   const [myChar, setMyChar] = useState(null);
   useEffect(() => {
     if (isAdmin) return;
-    api.get('/characters/me').then(r => setMyChar(r.data.character)).catch(()=>{});
+    api.get('/characters/me').then(r => setMyChar(r.data.character)).catch(() => { });
   }, [isAdmin]);
 
   const isCharActive = isAdmin || (myChar && myChar.sheet && myChar.sheet.is_active === true);
 
   const [selectedContact, setSelectedContact] = useState(null);
-  const [selectedPlayerId, setSelectedPlayerId] = useState(null); 
+  const [selectedPlayerId, setSelectedPlayerId] = useState(null);
   const [npcConvos, setNpcConvos] = useState([]);
   const [adminPlayerTab, setAdminPlayerTab] = useState('recent');
   const [adminPlayerFilter, setAdminPlayerFilter] = useState('');
 
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
-  
+
   // EDIT/DELETE STATES
   const [editingMsgId, setEditingMsgId] = useState(null);
   const [editBody, setEditBody] = useState('');
 
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const onEmojiClick = (emojiObject) => setNewMessage(prevInput => prevInput + emojiObject.emoji);
-  
+
   const [attachment, setAttachment] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const fileInputRef = useRef(null);
@@ -248,7 +241,7 @@ export default function ChatSystem({ commsEnabled = true }) {
   const [managingGroup, setManagingGroup] = useState(false);
   const [currentGroupMembers, setCurrentGroupMembers] = useState([]);
   const [groupMembersLoading, setGroupMembersLoading] = useState(false);
-  
+
   const [headerGroupMembers, setHeaderGroupMembers] = useState([]);
 
   // Fetch group members dynamically for header rendering
@@ -257,7 +250,7 @@ export default function ChatSystem({ commsEnabled = true }) {
       let live = true;
       api.get(`/chat/groups/${selectedContact.id}/members`).then(res => {
         if (live) setHeaderGroupMembers(res.data.members || []);
-      }).catch(() => {});
+      }).catch(() => { });
       return () => { live = false; };
     } else {
       setHeaderGroupMembers([]);
@@ -270,7 +263,7 @@ export default function ChatSystem({ commsEnabled = true }) {
     try {
       const { data } = await api.get(`/chat/groups/${selectedContact.id}/members`);
       setCurrentGroupMembers(data.members || []);
-    } catch(e) {
+    } catch (e) {
       console.error(e);
     } finally {
       setGroupMembersLoading(false);
@@ -280,15 +273,15 @@ export default function ChatSystem({ commsEnabled = true }) {
   const handleAddMemberToGroup = async (userId) => {
     try {
       await api.post(`/chat/groups/${selectedContact.id}/members`, { members: [userId] });
-      openManageGroup(); 
-    } catch(e) { alert('Failed to add member'); }
+      openManageGroup();
+    } catch (e) { alert('Failed to add member'); }
   };
 
   const handleRemoveMemberFromGroup = async (userId) => {
     try {
       await api.delete(`/chat/groups/${selectedContact.id}/members/${userId}`);
-      openManageGroup(); 
-    } catch(e) { alert('Failed to remove member'); }
+      openManageGroup();
+    } catch (e) { alert('Failed to remove member'); }
   };
 
   const handleDeleteGroup = async () => {
@@ -296,18 +289,18 @@ export default function ChatSystem({ commsEnabled = true }) {
     try {
       await api.delete(`/chat/groups/${selectedContact.id}`);
       setManagingGroup(false);
-      setSelectedContact(null); 
+      setSelectedContact(null);
       fetchContacts();
-    } catch(e) { alert('Failed to delete group'); }
+    } catch (e) { alert('Failed to delete group'); }
   };
 
   const handleLeaveGroup = async () => {
     if (!window.confirm("Are you sure you want to leave this group chat?")) return;
     try {
       await api.delete(`/chat/groups/${selectedContact.id}/members/${currentUser.id}`);
-      setSelectedContact(null); 
+      setSelectedContact(null);
       fetchContacts();
-    } catch(e) { alert('Failed to leave group'); }
+    } catch (e) { alert('Failed to leave group'); }
   };
 
   const handleDeleteMessage = async (msgId) => {
@@ -333,13 +326,12 @@ export default function ChatSystem({ commsEnabled = true }) {
 
   const [notifOn, setNotifOn] = useState(() => localStorage.getItem('comms_notifs') === '1');
   const notifSupported = typeof window !== 'undefined' && 'Notification' in window;
-  const [notifDenied, setNotifDenied] = useState(false);
   const [ntfyTopic, setNtfyTopic] = useState(null);
   const [showNtfyModal, setShowNtfyModal] = useState(false);
 
   const [isMobile, setIsMobile] = useState(false);
   const containerRef = useRef(null);
-  
+
   const textareaRef = useRef(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
 
@@ -369,9 +361,9 @@ export default function ChatSystem({ commsEnabled = true }) {
   useEffect(() => {
     const el = messagesListRef.current;
     if (!el) return;
-    const onScroll = () => { 
-        userScrollingRef.current = !isNearBottom(el);
-        setShowScrollBtn(!isNearBottom(el, 300));
+    const onScroll = () => {
+      userScrollingRef.current = !isNearBottom(el);
+      setShowScrollBtn(!isNearBottom(el, 300));
     };
     el.addEventListener('scroll', onScroll);
     return () => el.removeEventListener('scroll', onScroll);
@@ -384,8 +376,8 @@ export default function ChatSystem({ commsEnabled = true }) {
   useEffect(() => {
     userScrollingRef.current = false;
     scrollToBottom(false);
-    if(textareaRef.current) {
-        textareaRef.current.style.height = 'auto';
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
     }
     clearAttachment();
   }, [selectedContact, clearAttachment]);
@@ -426,17 +418,17 @@ export default function ChatSystem({ commsEnabled = true }) {
     if (!notifOn) {
       let perm = Notification.permission;
       if (perm === 'default') { try { perm = await Notification.requestPermission(); } catch { perm = 'denied'; } }
-      if (perm !== 'granted') { setNotifDenied(true); setNotifOn(false); return; }
-      
+      if (perm !== 'granted') { setNotifOn(false); return; }
+
       const topic = await getNtfyTopic();
       if (topic) {
         setNtfyTopic(topic);
         setShowNtfyModal(true);
-        try { await api.post('/push/test'); } catch {}
+        try { await api.post('/push/test'); } catch { }
       }
-      setNotifDenied(false); setNotifOn(true);
+      setNotifOn(true);
     } else {
-      setNotifOn(false); setNotifDenied(false);
+      setNotifOn(false);
     }
   };
 
@@ -460,19 +452,19 @@ export default function ChatSystem({ commsEnabled = true }) {
       setDrafts(prev => ({ ...prev, [prevThreadKeyRef.current]: newMessage }));
       setNewMessage((prevDrafts => (prevDrafts[threadKey] || ''))(drafts));
       prevThreadKeyRef.current = threadKey;
-      if(!isMobile && textareaRef.current) textareaRef.current.focus();
+      if (!isMobile && textareaRef.current) textareaRef.current.focus();
     }
   }, [threadKey, drafts, newMessage, isMobile]);
 
   const lastTsRef = useRef(0);
   const initialSyncRef = useRef(true);
-  
+
   useEffect(() => {
     loadSeqRef.current += 1;
     initialSyncRef.current = true;
     lastTsRef.current = 0;
     setMessages([]);
-    setNpcConvos([]); 
+    setNpcConvos([]);
     setError('');
   }, [threadKey]);
 
@@ -498,22 +490,22 @@ export default function ChatSystem({ commsEnabled = true }) {
     const t = localStorage.getItem('token');
     if (t) api.defaults.headers.common['Authorization'] = `Bearer ${t}`;
     const id = api.interceptors.response.use(res => res, err => {
-        if (err?.response?.status === 401) setError('Your session expired. Please log in again.');
-        return Promise.reject(err);
+      if (err?.response?.status === 401) setError('Your session expired. Please log in again.');
+      return Promise.reject(err);
     });
     return () => api.interceptors.response.eject(id);
   }, []);
 
   const hasAuthHeader = !!api?.defaults?.headers?.common?.Authorization;
 
-  // Background Contacts Fetcher (Updates sidebars dynamically)
+  // Background Contacts Fetcher
   const fetchContacts = useCallback(async () => {
     if (!hasAuthHeader) return;
     try {
       const [{ data: u }, { data: n }, { data: g }] = await Promise.all([
         api.get('/chat/users'),
         api.get('/chat/npcs'),
-        api.get('/chat/groups') 
+        api.get('/chat/groups')
       ]);
       setUsers(sortContacts((u.users || []).map(asUserContact)));
       setNpcs(sortContacts((n.npcs || []).map(asNpcContact)));
@@ -523,20 +515,19 @@ export default function ChatSystem({ commsEnabled = true }) {
     }
   }, [hasAuthHeader]);
 
-  // Initial Load & Polling setup for Contacts
+  // Initial Load & Polling setup
   useEffect(() => {
     setLoading(true);
     fetchContacts().finally(() => setLoading(false));
-    
-    const contactInterval = setInterval(fetchContacts, 10000); // 10s background poll
+
+    const contactInterval = setInterval(fetchContacts, 10000);
     return () => clearInterval(contactInterval);
   }, [fetchContacts, creatingGroup]);
-
 
   // Active Conversation Message Polling
   useEffect(() => {
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
-    
+
     const load = async () => {
       if (!selectedContact) return;
       const mySeq = loadSeqRef.current;
@@ -545,28 +536,27 @@ export default function ChatSystem({ commsEnabled = true }) {
         let hasNewMessages = false;
         let isInitialLoad = initialSyncRef.current;
 
-        // ONLY FETCH MESSAGES IF WE HAVE A VALID TARGET
         const shouldFetchMessages = !(isAdmin && selectedContact.type === 'npc' && !selectedPlayerId);
 
         if (shouldFetchMessages) {
           if (selectedContact.type === 'group') {
-             const res = await api.get(`/chat/groups/${selectedContact.id}/history`);
-             msgs = (res.data.messages || []).map(m => ({
-               id: m.id, body: m.body, created_at: m.created_at, sender_id: m.sender_id,
-               sender_name: m.char_name || m.display_name, sender_clan: m.clan,
-               attachment_id: m.attachment_id, edited: m.edited
-             }));
+            const res = await api.get(`/chat/groups/${selectedContact.id}/history`);
+            msgs = (res.data.messages || []).map(m => ({
+              id: m.id, body: m.body, created_at: m.created_at, sender_id: m.sender_id,
+              sender_name: m.char_name || m.display_name, sender_clan: m.clan,
+              attachment_id: m.attachment_id, edited: m.edited
+            }));
           } else if (selectedContact.type === 'user') {
             const res = await api.get(`/chat/history/${selectedContact.id}`);
             msgs = (res.data.messages || []).map(m => ({
-              id: m.id, body: m.body, created_at: m.created_at, 
+              id: m.id, body: m.body, created_at: m.created_at,
               read_at: m.read_at, delivered_at: m.delivered_at,
               sender_id: m.sender_id,
               attachment_id: m.attachment_id, edited: m.edited
             }));
           } else {
             if (isAdmin) {
-              if (selectedPlayerId && hasAuthHeader) { 
+              if (selectedPlayerId && hasAuthHeader) {
                 const res = await api.get(`/admin/chat/npc-history/${selectedContact.id}/${selectedPlayerId}`);
                 msgs = (res.data.messages || []).map(m => ({
                   id: m.id, body: m.body, created_at: m.created_at, sender_id: m.from_side === 'npc' ? 'npc' : selectedPlayerId, _from: m.from_side,
@@ -576,10 +566,10 @@ export default function ChatSystem({ commsEnabled = true }) {
             } else {
               const res = await api.get(`/chat/npc-history/${selectedContact.id}`);
               msgs = (res.data.messages || []).map(m => ({
-                id: m.id, 
-                body: m.body, 
-                created_at: m.created_at, 
-                sender_id: m.from_side === 'user' ? currentUser.id : 'npc', 
+                id: m.id,
+                body: m.body,
+                created_at: m.created_at,
+                sender_id: m.from_side === 'user' ? currentUser.id : 'npc',
                 _from: m.from_side,
                 attachment_id: m.attachment_id, edited: m.edited
               }));
@@ -588,7 +578,7 @@ export default function ChatSystem({ commsEnabled = true }) {
 
           msgs.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
           const newestTs = msgs.reduce((t, m) => Math.max(t, new Date(m.created_at).getTime()), 0);
-          
+
           hasNewMessages = newestTs > lastTsRef.current;
 
           if (loadSeqRef.current !== mySeq) return;
@@ -600,7 +590,7 @@ export default function ChatSystem({ commsEnabled = true }) {
                 const latest = inboundNew[inboundNew.length - 1];
                 let title = 'New Message';
                 let icon = '/img/ATT-logo(1).png';
-                
+
                 if (selectedContact.type === 'group') {
                   title = `${selectedContact.name}: ${latest.sender_name || 'Someone'}`;
                 } else if (selectedContact.type === 'user') {
@@ -622,12 +612,12 @@ export default function ChatSystem({ commsEnabled = true }) {
             });
 
             if (selectedContact.type === 'user' && !isAdmin && msgs.length > 0) {
-               api.post('/chat/delivered', { sender_id: selectedContact.id }).catch(() => {});
+              api.post('/chat/delivered', { sender_id: selectedContact.id }).catch(() => { });
             }
           }
         }
-        
-        // ---> Admin Roster Sync (ALWAYS RUNS if NPC is selected) <---
+
+        // ---> Admin Roster Sync <---
         if (isAdmin && selectedContact.type === 'npc' && hasAuthHeader) {
           try {
             const res = await api.get(`/admin/chat/npc-conversations/${selectedContact.id}`);
@@ -639,7 +629,6 @@ export default function ChatSystem({ commsEnabled = true }) {
               last_message_at: r.last_message_at || null,
               unread_count: r.unread_count || 0
             }));
-            // Sort by unread_count first, then recent
             rows.sort((a, b) => {
               const unreadDiff = (b.unread_count || 0) - (a.unread_count || 0);
               if (unreadDiff !== 0) return unreadDiff;
@@ -655,31 +644,29 @@ export default function ChatSystem({ commsEnabled = true }) {
       } catch (e) {
         if (loadSeqRef.current !== mySeq) return;
         if (initialSyncRef.current) {
-            setError(e?.response?.status === 401 ? 'Your session expired. Please log in again.' : 'Could not load messages.');
+          setError(e?.response?.status === 401 ? 'Your session expired. Please log in again.' : 'Could not load messages.');
         }
       }
     };
 
     load();
-    pollRef.current = setInterval(load, 4000); // 4s active message poll
+    pollRef.current = setInterval(load, 4000);
     return () => clearInterval(pollRef.current);
   }, [selectedContact, selectedPlayerId, isAdmin, hasAuthHeader, currentUser?.id, users, threadKey, isInbound, notify]);
 
-/* --- File Handling --- */
+  /* --- File Handling --- */
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    
-    // Match the backend: Allow both Images and Audio
+
     if (!file.type.startsWith('image/') && !file.type.startsWith('audio/')) {
       alert('Only images and audio files are allowed');
       return;
     }
 
-    // Increase frontend limit to 50MB
-    const MAX_MB = 50;  
+    const MAX_MB = 50;
     const MAX_BYTES = MAX_MB * 1024 * 1024;
-    if (file.size > MAX_BYTES) { 
+    if (file.size > MAX_BYTES) {
       alert(`File size too large (max ${MAX_MB}MB)`);
       return;
     }
@@ -687,19 +674,19 @@ export default function ChatSystem({ commsEnabled = true }) {
     setAttachment(file);
     const url = URL.createObjectURL(file);
     setPreviewUrl(url);
-    
-    if(textareaRef.current) textareaRef.current.focus();
+
+    if (textareaRef.current) textareaRef.current.focus();
   };
 
-/* --- Sending Logic --- */
+  /* --- Sending Logic --- */
   const doSend = async () => {
     if (!commsEnabled) return;
     const body = newMessage.trim();
-    
+
     if ((!body && !attachment) || !selectedContact) return;
     if (isAdmin && selectedContact.type === 'npc' && !selectedPlayerId) return;
     if (sendingRef.current) return;
-    
+
     sendingRef.current = true;
     let attachmentId = null;
 
@@ -709,13 +696,6 @@ export default function ChatSystem({ commsEnabled = true }) {
         formData.append('file', attachment);
 
         try {
-          // IMPORTANT: if the shared `api` axios instance sets a default
-          // 'Content-Type: application/json' header (common in api.js setups),
-          // it overrides FormData's multipart boundary and the server gets an
-          // empty body -> multer sees "no file". Setting Content-Type to
-          // undefined here removes it from this request's merged headers so
-          // axios's default adapter can auto-detect FormData and set the
-          // correct 'multipart/form-data; boundary=...' itself.
           const res = await api.post('/chat/upload', formData, {
             headers: { 'Content-Type': undefined },
           });
@@ -760,27 +740,27 @@ export default function ChatSystem({ commsEnabled = true }) {
             attachment_id: attachmentId
           };
         }
-        
+
         setUsers(prev => {
-           const updated = prev.map(u => 
-             u.id === selectedContact.id ? { ...u, last_message_at: Date.now(), unread_count: 0 } : u
-           );
-           return sortContacts(updated);
+          const updated = prev.map(u =>
+            u.id === selectedContact.id ? { ...u, last_message_at: Date.now(), unread_count: 0 } : u
+          );
+          return sortContacts(updated);
         });
-        
-        api.post('/chat/read', { sender_id: selectedContact.id }).catch(()=>{});
-      } 
+
+        api.post('/chat/read', { sender_id: selectedContact.id }).catch(() => { });
+      }
       else {
         if (isAdmin) {
           const { data } = await api.post('/admin/chat/npc/messages', { npc_id: selectedContact.id, user_id: selectedPlayerId, ...payload });
           if (data && data.message) {
-            newMsg = { 
-              id: data.message.id, 
-              body: data.message.body, 
-              created_at: data.message.created_at, 
-              sender_id: 'npc', 
-              _from: 'npc', 
-              attachment_id: data.message.attachment_id 
+            newMsg = {
+              id: data.message.id,
+              body: data.message.body,
+              created_at: data.message.created_at,
+              sender_id: 'npc',
+              _from: 'npc',
+              attachment_id: data.message.attachment_id
             };
           } else {
             newMsg = {
@@ -795,13 +775,13 @@ export default function ChatSystem({ commsEnabled = true }) {
         } else {
           const { data } = await api.post('/chat/npc/messages', { npc_id: selectedContact.id, ...payload });
           if (data && data.message) {
-            newMsg = { 
-              id: data.message.id, 
-              body: data.message.body, 
-              created_at: data.message.created_at, 
-              sender_id: currentUser.id, 
-              _from: 'user', 
-              attachment_id: data.message.attachment_id 
+            newMsg = {
+              id: data.message.id,
+              body: data.message.body,
+              created_at: data.message.created_at,
+              sender_id: currentUser.id,
+              _from: 'user',
+              attachment_id: data.message.attachment_id
             };
           } else {
             newMsg = {
@@ -813,12 +793,12 @@ export default function ChatSystem({ commsEnabled = true }) {
               attachment_id: attachmentId
             };
           }
-          
+
           setNpcs(prev => {
-             const updated = prev.map(n => 
-               n.id === selectedContact.id ? { ...n, last_message_at: Date.now() } : n
-             );
-             return sortContacts(updated);
+            const updated = prev.map(n =>
+              n.id === selectedContact.id ? { ...n, last_message_at: Date.now() } : n
+            );
+            return sortContacts(updated);
           });
         }
       }
@@ -835,13 +815,13 @@ export default function ChatSystem({ commsEnabled = true }) {
       setShowEmojiPicker(false);
       clearAttachment();
       setDrafts(prev => ({ ...prev, [threadKey]: '' }));
-      if(textareaRef.current) textareaRef.current.style.height = 'auto'; 
-      
+      if (textareaRef.current) textareaRef.current.style.height = 'auto';
+
     } catch (err) {
       setError(err?.response?.status === 401 ? 'Your session expired. Please log in again.' : 'Failed to send message.');
     } finally {
       sendingRef.current = false;
-      if(!isMobile) setTimeout(() => textareaRef.current?.focus(), 10);
+      if (!isMobile) setTimeout(() => textareaRef.current?.focus(), 10);
     }
   };
 
@@ -869,9 +849,9 @@ export default function ChatSystem({ commsEnabled = true }) {
   };
 
   const copyToClipboard = (text) => {
-      if(navigator.clipboard && text) {
-          navigator.clipboard.writeText(text);
-      }
+    if (navigator.clipboard && text) {
+      navigator.clipboard.writeText(text);
+    }
   };
 
   /* --- Render & Filters --- */
@@ -911,7 +891,7 @@ export default function ChatSystem({ commsEnabled = true }) {
 
   const usersNoChar = useMemo(() => filteredUsers.filter(u => !u.char_id || Number(u.char_id) === 1), [filteredUsers]);
   const usersWithChar = useMemo(() => filteredUsers.filter(u => u.char_id && Number(u.char_id) !== 1), [filteredUsers]);
-  
+
   const filteredNpcs = useMemo(() => {
     const q = filter.trim();
     const list = npcs || [];
@@ -949,27 +929,19 @@ export default function ChatSystem({ commsEnabled = true }) {
     const byId = new Map((users || []).map(u => [u.id, u]));
     return (npcConvos || []).map(r => {
       const u = byId.get(r.user_id);
-      return u 
-        ? { ...u, last_message_at: r.last_message_at, unread_count: r.unread_count } 
-        : { 
-            type: 'user', 
-            id: r.user_id, 
-            display_name: r.display_name || 'Unknown', 
-            char_name: r.char_name || 'Unknown', 
-            clan: undefined, 
-            last_message_at: r.last_message_at,
-            unread_count: r.unread_count || 0
-          };
+      return u
+        ? { ...u, last_message_at: r.last_message_at, unread_count: r.unread_count }
+        : {
+          type: 'user',
+          id: r.user_id,
+          display_name: r.display_name || 'Unknown',
+          char_name: r.char_name || 'Unknown',
+          clan: undefined,
+          last_message_at: r.last_message_at,
+          unread_count: r.unread_count || 0
+        };
     });
   }, [npcConvos, users]);
-
-
-
-  const currentAccent = (() => {
-    if (!selectedContact) return 'var(--tint)';
-    if (selectedContact.type === 'group') return 'var(--tint)'; 
-    return CLAN_COLORS[selectedContact.clan] || 'var(--tint)';
-  })();
 
   const headerLabel = (() => {
     if (!selectedContact) return null;
@@ -977,8 +949,8 @@ export default function ChatSystem({ commsEnabled = true }) {
     if (selectedContact.type === 'group') return <>{selectedContact.name}</>;
     if (isAdmin && selectedContact.type === 'npc') {
       const selUser = users.find(u => u.id === selectedPlayerId);
-      return selUser 
-        ? <>{selectedContact.name} <NPCTag /> ➜ {selUser.char_name || selUser.display_name}</> 
+      return selUser
+        ? <>{selectedContact.name} <NPCTag /> ➜ {selUser.char_name || selUser.display_name}</>
         : <>{selectedContact.name} <NPCTag /></>;
     }
     if (selectedContact.type === 'npc') return <>{selectedContact.name} <NPCTag /></>;
@@ -999,22 +971,22 @@ export default function ChatSystem({ commsEnabled = true }) {
 
     setDrafts(prev => ({ ...prev, [threadKey]: newMessage }));
     setSelectedContact(contact);
-    
+
     if (isAdmin && contact?.type === 'user') setSelectedPlayerId(null);
-    
+
     const nextKey = buildThreadKey(contact, isAdmin && contact?.type === 'npc' ? selectedPlayerId : null);
     setNewMessage(drafts[nextKey] || '');
     setError('');
-    
+
     if (contact.type === 'user') {
       setUsers(prev => prev.map(u => u.id === contact.id ? { ...u, unread_count: 0 } : u));
-      api.post('/chat/read', { sender_id: contact.id }).catch(()=>{});
+      api.post('/chat/read', { sender_id: contact.id }).catch(() => { });
     } else if (contact.type === 'npc' && !isAdmin) {
       setNpcs(prev => prev.map(n => n.id === contact.id ? { ...n, unread_count: 0 } : n));
-      api.post('/chat/read', { npc_id: contact.id }).catch(()=>{});
+      api.post('/chat/read', { npc_id: contact.id }).catch(() => { });
     } else if (contact.type === 'group') {
       setGroups(prev => prev.map(g => g.id === contact.id ? { ...g, unread_count: 0 } : g));
-      api.post(`/chat/groups/${contact.id}/read`).catch(()=>{});
+      api.post(`/chat/groups/${contact.id}/read`).catch(() => { });
     }
 
     if (!isMobile) window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1025,497 +997,604 @@ export default function ChatSystem({ commsEnabled = true }) {
     setSelectedPlayerId(userId);
     const nextKey = buildThreadKey(selectedContact, userId);
     setNewMessage(drafts[nextKey] || '');
-    
-    // Clear unread counts visually for the selected player's thread with this NPC
+
     setNpcConvos(prev => prev.map(c => c.user_id === userId ? { ...c, unread_count: 0 } : c));
-    api.post('/chat/read', { npc_id: selectedContact.id, sender_id: userId, is_admin_reading_npc: true }).catch(()=>{});
+    api.post('/chat/read', { npc_id: selectedContact.id, sender_id: userId, is_admin_reading_npc: true }).catch(() => { });
   };
 
-  const renderUserRow = (u, keyPrefix = 'u') => {
-    const active = selectedContact?.type === 'user' && selectedContact?.id === u.id;
-    const showAdminIcon = isContactAdmin(u);
-    const crest = showAdminIcon ? '/img/dice/MessyCrit.png' : symlogo(u.clan);
-    const initials = (u.display_name || '?').split(' ').map(p => p[0]).slice(0,2).join('').toUpperCase();
-    const tint = CLAN_COLORS[u.clan] || 'var(--tint)';
-    
-    let timeStr = '';
-    if (u.last_message_at) {
-       const d = new Date(u.last_message_at);
-       const now = new Date();
-       if (d.toDateString() === now.toDateString()) timeStr = d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-       else timeStr = d.toLocaleDateString([], {month:'short', day:'numeric'});
-    }
-
-    return (
-      <button
-        type="button"
-        key={`${keyPrefix}-${u.id}`}
-        className={`${styles.userCard} ${active ? styles.selected : ''}`}
-        onClick={() => selectContact(u)}
-        style={{ '--accent': tint }}
-      >
-        <span className={styles.avatar} aria-hidden="true">
-          {crest
-            ? <img className={styles.avatarImg} src={crest} alt={showAdminIcon ? 'Admin' : `${u.clan || 'Unknown'} crest`} />
-            : <span className={styles.initials}>{initials}</span>}
-        </span>
-        <span className={styles.userMeta}>
-          <span className={styles.userName}>
-            {u.char_name || 'No character'}
-            {u.clan && <span className={styles.clanChip} style={{ '--chip': tint }}>{u.clan}</span>}
-            {timeStr && <span style={{marginLeft:'auto', fontSize:'0.7rem', opacity:0.6, fontWeight:'normal'}}>{timeStr}</span>}
-          </span>
-          <span className={styles.charName}>
-            {u.display_name}{showAdminIcon ? ' • Admin' : ''}
-          </span>
-        </span>
-        {u.unread_count > 0 && (
-          <span className={styles.unreadBadge}>{u.unread_count}</span>
-        )}
-      </button>
-    );
-  };
-
-  // Group Create Modal
-  const renderCreateGroupModal = () => (
-    <div className={styles.modalBackdrop}>
-      <div className={styles.modal}>
-        <h3>Create Group Chat</h3>
-        <input type="text" placeholder="Group Name" className={styles.input} value={newGroupName} onChange={e => setNewGroupName(e.target.value)} />
-        <div className={styles.memberSelect}>
-          {usersWithChar.map(u => (
-            <label key={u.id} className={styles.memberRow}>
-              <input type="checkbox" 
-                checked={newGroupMembers.includes(u.id)}
-                onChange={e => {
-                  if(e.target.checked) setNewGroupMembers(p => [...p, u.id]);
-                  else setNewGroupMembers(p => p.filter(id => id !== u.id));
-                }}
-              />
-              <span>{u.char_name} <small>({u.display_name})</small></span>
-            </label>
-          ))}
-        </div>
-        <div className={styles.modalActions}>
-          <button onClick={() => setCreatingGroup(false)} className={styles.btnSec}>Cancel</button>
-          <button onClick={handleCreateGroup} className={styles.btnPri} disabled={!newGroupName || !newGroupMembers.length}>Create</button>
-        </div>
-      </div>
-    </div>
-  );
-
-  // Group Manage Modal
-  const renderManageGroupModal = () => {
+  const renderManageGroupModalTailwind = () => {
     const memberIds = currentGroupMembers.map(m => m.id);
     const nonMembers = usersWithChar.filter(u => !memberIds.includes(u.id));
 
     return (
-      <div className={styles.modalBackdrop}>
-        <div className={styles.modal}>
-          <h3>Manage: {selectedContact?.name}</h3>
-          
-          {groupMembersLoading ? <Skeleton loading={true} name="group-members-loader" /> : (
-            <>
-              <div className={styles.sectionLabel} style={{position:'static'}}>Current Members</div>
-              <div className={styles.memberSelect}>
-                {currentGroupMembers.map(m => (
-                  <div key={m.id} className={styles.memberRow} style={{justifyContent: 'space-between', padding: '6px 10px'}}>
-                    <span>{m.char_name || 'No char'} <small>({m.display_name})</small></span>
-                    {/* Only show remove button if the user is NOT the group creator */}
-                    {m.id !== selectedContact.created_by && (
-                      <button className={styles.btnSec} style={{padding: '4px 8px', fontSize: '0.75rem'}} onClick={() => handleRemoveMemberFromGroup(m.id)}>Remove</button>
-                    )}
-                    {m.id === selectedContact.created_by && <small style={{color: 'var(--text-muted)'}}>Creator</small>}
-                  </div>
-                ))}
+      <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div className="bg-surface-container border border-outline-variant rounded-lg w-full max-w-md p-6 flex flex-col gap-4 shadow-[0_0_20px_rgba(27,76,140,0.3)]">
+          <h3 className="text-xl font-headline-md text-primary tracking-tight border-b border-outline-variant/50 pb-2">Manage: {selectedContact?.name}</h3>
+          {groupMembersLoading ? <div className="text-on-surface-variant">Loading...</div> : (
+            <div className="flex flex-col gap-4 max-h-[60vh] overflow-y-auto pr-2" style={{ scrollbarWidth: 'thin' }}>
+              <div>
+                <div className="text-[10px] text-on-surface-variant/50 font-bold tracking-widest mb-2 uppercase">Current Members</div>
+                <div className="flex flex-col gap-2">
+                  {currentGroupMembers.map(m => (
+                    <div key={m.id} className="flex items-center justify-between bg-surface-container-highest p-2 rounded border border-outline-variant/30">
+                      <span className="text-sm">{m.char_name || 'No char'} <small className="opacity-60">({m.display_name})</small></span>
+                      {m.id !== selectedContact.created_by && (
+                        <button className="text-[10px] bg-error-container/20 text-error border border-error/30 px-2 py-1 rounded hover:bg-error/20 transition-colors" onClick={() => handleRemoveMemberFromGroup(m.id)}>Remove</button>
+                      )}
+                      {m.id === selectedContact.created_by && <small className="text-on-surface-variant/50">Creator</small>}
+                    </div>
+                  ))}
+                </div>
               </div>
-
-              <div className={styles.sectionLabel} style={{position:'static', marginTop:'10px'}}>Add Members</div>
-              <div className={styles.memberSelect}>
-                {nonMembers.length === 0 ? (
-                  <div style={{padding:'10px', color:'var(--text-muted)', textAlign: 'center'}}>All players are in the group.</div>
-                ) : nonMembers.map(u => (
-                  <div key={u.id} className={styles.memberRow} style={{justifyContent: 'space-between', padding: '6px 10px'}}>
-                    <span>{u.char_name} <small>({u.display_name})</small></span>
-                    <button className={styles.btnPri} style={{padding: '4px 8px', fontSize: '0.75rem'}} onClick={() => handleAddMemberToGroup(u.id)}>Add</button>
-                  </div>
-                ))}
+              <div>
+                <div className="text-[10px] text-on-surface-variant/50 font-bold tracking-widest mb-2 uppercase">Add Members</div>
+                <div className="flex flex-col gap-2">
+                  {nonMembers.length === 0 ? (
+                    <div className="text-center text-on-surface-variant/50 text-sm py-2">All players are in the group.</div>
+                  ) : nonMembers.map(u => (
+                    <div key={u.id} className="flex items-center justify-between bg-surface-container-highest p-2 rounded border border-outline-variant/30">
+                      <span className="text-sm">{u.char_name} <small className="opacity-60">({u.display_name})</small></span>
+                      <button className="text-[10px] bg-primary/20 text-primary border border-primary/30 px-2 py-1 rounded hover:bg-primary/40 transition-colors" onClick={() => handleAddMemberToGroup(u.id)}>Add</button>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </>
+            </div>
           )}
-          
-          <div className={styles.modalActions} style={{justifyContent: 'space-between', marginTop: '16px'}}>
-            <button onClick={handleDeleteGroup} className={styles.btnSec} style={{borderColor: 'var(--err)', color: 'var(--err)'}}>Delete Group</button>
-            <button onClick={() => setManagingGroup(false)} className={styles.btnPri}>Done</button>
+          <div className="flex justify-between mt-4 pt-4 border-t border-outline-variant/50">
+            <button onClick={handleDeleteGroup} className="text-error hover:text-error-container text-sm font-bold transition-colors">Delete Group</button>
+            <button onClick={() => setManagingGroup(false)} className="bg-primary text-on-primary px-4 py-1.5 rounded hover:bg-primary-container transition-colors font-bold text-sm shadow-[0_0_10px_rgba(255,179,174,0.2)]">Done</button>
           </div>
         </div>
       </div>
     );
   };
 
-  const renderNtfyModal = () => (
-    <div className={styles.modalBackdrop}>
-      <div className={styles.modal}>
-        <h3>Push Notifications Enabled!</h3>
-        <p style={{ marginTop: '10px', lineHeight: '1.4' }}>
-          Your browser will now show notifications while this page is open. 
-          To receive background notifications on your phone or desktop, use the <strong>ntfy</strong> app.
-        </p>
-        <div style={{ background: 'var(--bg-tertiary)', padding: '15px', borderRadius: '8px', margin: '15px 0', textAlign: 'center' }}>
-          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '5px' }}>Your unique ntfy topic:</div>
-          <strong style={{ fontSize: '1.2rem', wordBreak: 'break-all', userSelect: 'all' }}>{ntfyTopic}</strong>
+  const renderCreateGroupModalTailwind = () => (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+      <div className="bg-surface-container border border-outline-variant rounded-lg w-full max-w-md p-6 flex flex-col gap-4 shadow-[0_0_20px_rgba(27,76,140,0.3)]">
+        <h3 className="text-xl font-headline-md text-primary tracking-tight border-b border-outline-variant/50 pb-2">Create Group Chat</h3>
+        <input type="text" placeholder="Group Name" className="w-full bg-surface-dim border border-outline-variant rounded p-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary/50 transition-colors font-system-code" value={newGroupName} onChange={e => setNewGroupName(e.target.value)} />
+        <div className="flex flex-col gap-2 max-h-[40vh] overflow-y-auto pr-2" style={{ scrollbarWidth: 'thin' }}>
+          {usersWithChar.map(u => (
+            <label key={u.id} className="flex items-center gap-3 bg-surface-container-highest p-2 rounded border border-outline-variant/30 cursor-pointer hover:bg-surface-variant/30 transition-colors">
+              <input type="checkbox" className="rounded border-outline-variant bg-surface-dim text-primary focus:ring-primary focus:ring-offset-surface-container" checked={newGroupMembers.includes(u.id)} onChange={e => {
+                if (e.target.checked) setNewGroupMembers(p => [...p, u.id]);
+                else setNewGroupMembers(p => p.filter(id => id !== u.id));
+              }} />
+              <span className="text-sm">{u.char_name} <small className="opacity-60">({u.display_name})</small></span>
+            </label>
+          ))}
         </div>
-        <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-          1. Install the <a href="https://ntfy.sh" target="_blank" rel="noreferrer" style={{color: 'var(--accent)'}}>ntfy app</a> (iOS/Android).<br/>
-          2. Tap <strong>+</strong> to subscribe to a topic.<br/>
-          3. Enter the exact topic name above.
-        </p>
-        <div className={styles.modalActions} style={{ marginTop: '20px' }}>
-          <button onClick={() => setShowNtfyModal(false)} className={styles.btnPri}>Got it</button>
+        <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-outline-variant/50">
+          <button onClick={() => setCreatingGroup(false)} className="text-on-surface-variant hover:text-on-surface text-sm transition-colors px-3 py-1.5">Cancel</button>
+          <button onClick={handleCreateGroup} disabled={!newGroupName || !newGroupMembers.length} className="bg-primary text-on-primary px-4 py-1.5 rounded hover:bg-primary-container disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-bold text-sm shadow-[0_0_10px_rgba(255,179,174,0.2)]">Create</button>
         </div>
       </div>
     </div>
   );
 
-  const containerClasses = [
-    styles.commsContainer,
-    isMobile && selectedContact ? styles.mobileChatActive : ''
-  ].filter(Boolean).join(' ');
+  const renderNtfyModalTailwind = () => (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+      <div className="bg-surface-container border border-outline-variant rounded-lg w-full max-w-md p-6 flex flex-col gap-4 text-center shadow-[0_0_20px_rgba(27,76,140,0.3)]">
+        <div className="mx-auto w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center mb-2">
+          <span className="material-symbols-outlined text-primary text-2xl">notifications_active</span>
+        </div>
+        <h3 className="text-xl font-headline-md text-on-surface tracking-tight">Push Notifications Enabled!</h3>
+        <p className="text-sm text-on-surface-variant leading-relaxed">
+          Your browser will now show notifications while this page is open.
+          To receive background notifications on your phone or desktop, use the <strong>ntfy</strong> app.
+        </p>
+        <div className="bg-surface-dim border border-outline-variant/50 p-4 rounded-lg my-2">
+          <div className="text-xs text-on-surface-variant uppercase tracking-widest mb-1">Your unique ntfy topic:</div>
+          <strong className="text-lg font-system-code text-primary break-all select-all">{ntfyTopic}</strong>
+        </div>
+        <div className="text-left text-sm text-on-surface-variant/80 bg-surface-container-highest p-4 rounded border border-outline-variant/30">
+          <ol className="list-decimal pl-4 flex flex-col gap-1">
+            <li>Install the <a href="https://ntfy.sh" target="_blank" rel="noreferrer" className="text-primary hover:underline">ntfy app</a> (iOS/Android).</li>
+            <li>Tap <strong>+</strong> to subscribe to a topic.</li>
+            <li>Enter the exact topic name above.</li>
+          </ol>
+        </div>
+        <button onClick={() => setShowNtfyModal(false)} className="mt-4 bg-primary text-on-primary w-full py-2 rounded hover:bg-primary-container transition-colors font-bold shadow-[0_0_10px_rgba(255,179,174,0.2)]">Got it</button>
+      </div>
+    </div>
+  );
 
   return (
-    <Skeleton loading={loading} name="chat-system">
-      <div ref={containerRef} className={containerClasses} style={{ '--accent': currentAccent }}>
-      {showNtfyModal && renderNtfyModal()}
-      {creatingGroup && renderCreateGroupModal()}
-      {managingGroup && renderManageGroupModal()}
+    <div className="bg-surface text-on-surface font-body-md relative selection:bg-primary-container selection:text-white flex-1 min-h-0 h-full w-full flex flex-col overflow-hidden" ref={containerRef}>
+      {/* CRT Overlay */}
+      <div className="fixed inset-0 crt-overlay z-[100] mix-blend-overlay pointer-events-none hidden md:block"></div>
 
-      <aside className={styles.userList} id="comms-contacts">
-        <div className={styles.listHeader}>
-          <div className={styles.listTitle}>Contacts</div>
-          
-          {/* ONLY ACTIVE CHARACTERS CAN CREATE GROUPS */}
-          {isCharActive && (
-            <button className={styles.addGroupBtn} onClick={() => setCreatingGroup(true)} title="Create Group">+</button>
-          )}
-        </div>
-        <div className={styles.searchWrap}>
-          <input type="text" className={styles.search} placeholder="Search..." value={filter} onChange={(e) => setFilter(e.target.value)} />
-        </div>
+      {/* Modals */}
+      {showNtfyModal && renderNtfyModalTailwind()}
+      {creatingGroup && renderCreateGroupModalTailwind()}
+      {managingGroup && renderManageGroupModalTailwind()}
 
-        <div className={styles.usersScroll}>
-          {/* Group List */}
-          {filteredGroups.length > 0 && (
-            <>
-              <div className={styles.sectionLabel}>Groups</div>
-              {filteredGroups.map(g => (
-                <button key={`g-${g.id}`} className={`${styles.userCard} ${selectedContact?.id === g.id && selectedContact.type==='group' ? styles.selected : ''}`}
-                  onClick={() => selectContact(g)}>
-                  <span className={styles.avatar}><span className={styles.initials}>#</span></span>
-                  <span className={styles.userMeta}>
-                    <span className={styles.userName}>{g.name}</span>
-                  </span>
-                  {g.unread_count > 0 && (
-                    <span className={styles.unreadBadge}>{g.unread_count}</span>
-                  )}
-                </button>
-              ))}
-            </>
-          )}
+      <div className="flex flex-1 min-h-0 w-full relative overflow-hidden">
 
-          <div className={styles.sectionLabel}>Players</div>
-          {usersWithChar.map(u => renderUserRow(u, 'wch'))}
-
-          <button type="button" onClick={() => setNoCharOpen(v => !v)} className={styles.drawerHeader}>
-            <span className={styles.caret} data-open={noCharOpen ? '1' : '0'}>▸</span>
-            <span>No Character</span>
-            <span className={styles.countBubble}>{usersNoChar.length}</span>
-          </button>
-          {noCharOpen && (
-            <div id="nochar-list">
-              {usersNoChar.map(u => renderUserRow(u, 'nch'))}
-            </div>
-          )}
-
-          <div className={styles.sectionLabel}>NPCs</div>
-          {filteredNpcs.map(n => {
-            const active = selectedContact?.type === 'npc' && selectedContact?.id === n.id;
-            const crest = symlogo(n.clan);
-            const tint = CLAN_COLORS[n.clan] || 'var(--tint)';
-            let timeStr = '';
-            if (n.last_message_at) {
-               const d = new Date(n.last_message_at);
-               const now = new Date();
-               if (d.toDateString() === now.toDateString()) timeStr = d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-               else timeStr = d.toLocaleDateString([], {month:'short', day:'numeric'});
-            }
-            return (
-              <button type="button" key={`n-${n.id}`} className={`${styles.userCard} ${active ? styles.selected : ''}`} onClick={() => selectContact(n)} style={{ '--accent': tint }}>
-                <span className={styles.avatar}>
-                  {crest ? <img className={styles.avatarImg} src={crest} alt="crest"/> : <span className={styles.initials}>{(n.name||'?').slice(0,2)}</span>}
-                </span>
-                <span className={styles.userMeta}>
-                  <span className={styles.userName}>
-                    {n.name} <NPCTag />
-                    {n.clan && <span className={styles.clanChip} style={{'--chip':tint}}>{n.clan}</span>}
-                    {timeStr && <span style={{marginLeft:'auto', fontSize:'0.7rem', opacity:0.6, fontWeight:'normal'}}>{timeStr}</span>}
-                  </span>
-                  <span className={styles.charName}>NPC</span>
-                </span>
-                {n.unread_count > 0 && (
-                  <span className={styles.unreadBadge}>{n.unread_count}</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </aside>
-
-      <main className={styles.chatWindow}>
-        {selectedContact ? (
-          <>
-            <header className={styles.chatHeader} style={{ '--accent': currentAccent }}>
-              <div className={styles.chatWith}>
-                {/* Mobile Back Button */}
-                <button type="button" className={styles.mobileContactsBtn} onClick={() => setSelectedContact(null)}>{'<'}</button>
-                <span className={styles.chatDot} />
-                <div style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', flex:1, display: 'flex', flexDirection: 'column', justifyContent: 'center'}}>
-                   <span>Chat with <b>{headerLabel}</b></span>
-                   {selectedContact?.type === 'group' && headerGroupMembers.length > 0 && (
-                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 'normal', marginTop: '2px' }}>
-                       {headerGroupMembers.map(m => m.char_name || m.display_name).join(', ')}
-                     </span>
-                   )}
-                </div>
-                
-                {/* GROUP BUTTON LOGIC */}
-                {selectedContact.type === 'group' && (
-                  <>
-                    {(selectedContact.created_by === currentUser?.id || isAdmin) ? (
-                      <button 
-                        onClick={openManageGroup} 
-                        className={styles.btnSec} 
-                        style={{padding: '2px 8px', fontSize: '0.75rem', marginLeft: '10px'}}
-                      >
-                        ⚙️ Manage
-                      </button>
-                    ) : (
-                      <button 
-                        onClick={handleLeaveGroup} 
-                        className={styles.btnSec} 
-                        style={{padding: '2px 8px', fontSize: '0.75rem', marginLeft: '10px', borderColor: 'var(--err)', color: 'var(--err)'}}
-                      >
-                        🚪 Leave
-                      </button>
-                    )}
-                  </>
-                )}
-
-                {selectedContact.type === 'npc' && selectedContact.clan && (
-                  <span className={styles.charTag}>{selectedContact.clan}</span>
-                )}
-                <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-                  <button type="button" className={`${styles.notifBtn} ${notifOn ? styles.notifOn : ''}`} onClick={toggleNotifications}>
-                    {notifOn ? '🔔' : '🔕'}
-                  </button>
-                </div>
+        {/* SideNavBar (Desktop) & Full View (Mobile when no contact selected) */}
+        <aside className={`${selectedContact ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-64 z-40 bg-surface-container-low border-r border-outline-variant font-system-code text-system-code h-full shrink-0 overflow-hidden`}>
+          {/* Header */}
+          <div className="p-4 md:p-6 border-b border-outline-variant/50 shrink-0">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded bg-surface-container-highest border border-outline-variant flex items-center justify-center overflow-hidden shrink-0">
+                <span className="material-symbols-outlined text-primary">dns</span>
               </div>
-              {notifDenied && (
-                <div className={styles.errorBanner} style={{ margin:'8px 0 0' }}>Notifications blocked. Allow in browser settings.</div>
-              )}
+              <div className="min-w-0">
+                <div className="font-bold text-on-surface text-[14px] truncate">NODE_01</div>
+                <div className="text-on-surface-variant text-[10px] opacity-70 truncate">Secure Blood Channel</div>
+              </div>
+            </div>
+            {isCharActive && (
+              <button onClick={() => setCreatingGroup(true)} className="w-full py-2 bg-transparent border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary hover:shadow-[0_0_8px_rgba(140,27,27,0.2)] transition-all rounded text-[12px] font-bold tracking-wider flex items-center justify-center gap-2 group">
+                <span className="material-symbols-outlined text-[16px] group-hover:animate-spin">add</span>
+                NEW UPLOAD
+              </button>
+            )}
 
-              {isAdmin && selectedContact.type === 'npc' && (
-                <div className={styles.adminRosterWrap}>
-                  <div className={styles.adminRosterHeader}>
-                    <div className={styles.adminRosterTabs}>
-                      <button type="button" className={`${styles.rosterTab} ${adminPlayerTab === 'recent' ? styles.active : ''}`} onClick={() => setAdminPlayerTab('recent')}>Recent</button>
-                      <button type="button" className={`${styles.rosterTab} ${adminPlayerTab === 'all' ? styles.active : ''}`} onClick={() => setAdminPlayerTab('all')}>All</button>
-                    </div>
-                    {adminPlayerTab === 'all' && (
-                      <div className={styles.rosterSearchWrap}>
-                        <input className={styles.rosterSearch} placeholder="Search players…" value={adminPlayerFilter} onChange={(e)=>setAdminPlayerFilter(e.target.value)} />
-                      </div>
-                    )}
-                    <div className={styles.replyingTo}>
-                      {selectedPlayerId
-                        ? <><span>To: </span><b>{users.find(u => u.id === selectedPlayerId)?.char_name || 'Unknown'}</b><button type="button" className={styles.clearTargetBtn} onClick={() => setSelectedPlayerId(null)}>Clear</button></>
-                        : <span className={styles.replyHint}>Pick a player to reply as <b>{selectedContact.name} <NPCTag /></b></span>
-                      }
-                    </div>
-                  </div>
-                  <div className={styles.adminRosterList}>
-                    {(adminPlayerTab === 'recent' ? adminRecentPlayers : adminAllPlayersFiltered).map(u => {
-                      const tint = CLAN_COLORS[u.clan] || 'var(--tint)';
-                      return (
-                        <button type="button" key={`sel-${u.id}`} className={`${styles.rosterItem} ${selectedPlayerId === u.id ? styles.selected : ''}`} onClick={() => selectAdminTarget(u.id)} style={{ '--accent': tint }}>
-                          <span className={styles.rosterAvatar}>{symlogo(u.clan) ? <img className={styles.rosterAvatarImg} src={symlogo(u.clan)} alt="crest"/> : <span className={styles.rosterInitials}>{(u.display_name||'?').slice(0,2)}</span>}</span>
-                          <span className={styles.rosterMeta}>
-                            <span className={styles.rosterName}>{u.char_name || 'No character'}</span>
-                            <span className={styles.rosterSub}>{u.display_name}</span>
-                          </span>
-                          {u.unread_count > 0 && (
-                            <span className={styles.unreadBadge} style={{ marginLeft: '8px', minWidth: '18px', padding: '1px 5px' }}>{u.unread_count}</span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
+            <div className="mt-4 relative">
+              <span className="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-on-surface-variant/50 text-[16px]">search</span>
+              <input
+                type="text"
+                className="w-full bg-surface-dim border border-outline-variant/50 rounded py-1.5 pl-8 pr-2 text-[12px] text-on-surface focus:border-primary focus:ring-1 focus:ring-primary/50 transition-colors"
+                placeholder="Search network..."
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Scrollable Nav */}
+          <div className="flex-1 min-h-0 overflow-y-auto py-4 custom-scrollbar">
+
+            {/* Groups */}
+            {filteredGroups.length > 0 && (
+              <div className="mb-6">
+                <div className="px-4 text-[10px] text-on-surface-variant/50 mb-2 font-bold tracking-widest flex items-center justify-between">
+                  GROUPS
+                  <span className="material-symbols-outlined text-[14px]">expand_more</span>
                 </div>
-              )}
-            </header>
-
-            <div className={styles.messageList} ref={messagesListRef}>
-              {grouped.map(item => {
-                if (item.type === 'day') return <div key={item.id} className={styles.dayDivider}><span>{item.day}</span></div>;
-                const mine = selectedContact.type === 'user' ? item.sender_id === currentUser.id : (selectedContact.type === 'group' ? item.sender_id === currentUser.id : (isAdmin ? item.sender_id==='npc' : item.sender_id===currentUser.id));
-                const timeSinceSent = Date.now() - new Date(item.created_at).getTime();
-                const canEditDelete = mine && timeSinceSent < 4 * 60 * 60 * 1000 && !String(item.id).startsWith('temp_');
-
-                return (
-                  <div key={item.id} className={`${styles.messageRow} ${mine ? styles.right : styles.left}`}>
-                    <div className={`${styles.messageBubble} ${mine ? styles.sent : styles.received}`} style={mine ? { '--accent': currentAccent } : undefined}>
-                      {selectedContact.type === 'group' && !mine && (
-                        <div className={styles.groupSender} style={{ color: CLAN_COLORS[item.sender_clan] || 'var(--text-muted)' }}>
-                          {item.sender_name}
+                <ul className="flex flex-col">
+                  {filteredGroups.map(g => {
+                    const isActive = selectedContact?.type === 'group' && selectedContact?.id === g.id;
+                    return (
+                      <li key={`g-${g.id}`} onClick={() => selectContact(g)} className={`${isActive ? 'blood-active border-l-4 translate-x-1' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all`}>
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="material-symbols-outlined text-[18px] opacity-70 shrink-0">group</span>
+                          <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate`}>{g.name}</span>
                         </div>
-                      )}
-                      
-                      {editingMsgId === item.id ? (
-                        <div className={styles.editMessageWrapper}>
-                          <textarea value={editBody} onChange={e => setEditBody(e.target.value)} className={styles.editMessageInput} />
-                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '6px' }}>
-                             <button onClick={() => setEditingMsgId(null)} className={styles.actionBtn}>Cancel</button>
-                             <button onClick={submitEditMessage} className={styles.actionBtn} style={{ color: 'var(--text-color)', fontWeight: 'bold' }}>Save</button>
+                        {g.unread_count > 0 && <div className="w-4 h-4 rounded-full bg-primary-container text-white flex items-center justify-center text-[10px] font-bold shrink-0">{g.unread_count}</div>}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+
+            {/* Players */}
+            <div className="mb-6">
+              <div className="px-4 text-[10px] text-on-surface-variant/50 mb-2 font-bold tracking-widest flex items-center justify-between">
+                CONTACTS
+                <span className="material-symbols-outlined text-[14px]">expand_more</span>
+              </div>
+              <ul className="flex flex-col">
+                {usersWithChar.map(u => {
+                  const isActive = selectedContact?.type === 'user' && selectedContact?.id === u.id;
+                  const showAdminIcon = isContactAdmin(u);
+                  const crest = showAdminIcon ? '/img/dice/MessyCrit.png' : symlogo(u.clan);
+                  return (
+                    <li key={`u-${u.id}`} onClick={() => selectContact(u)} className={`${isActive ? 'blood-active border-l-4 translate-x-1' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all`}>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="relative shrink-0">
+                          <div className="w-6 h-6 rounded-full bg-surface-container flex items-center justify-center overflow-hidden border border-outline-variant/50">
+                            {crest ? <img src={crest} alt="crest" className={showAdminIcon ? "w-full h-full object-cover" : "w-4 h-4 object-contain brightness-0 invert"} /> : <span className="material-symbols-outlined text-[14px] opacity-50">person</span>}
                           </div>
                         </div>
-                      ) : (
-                        <>
-                          {item.attachment_id && (
-                            <div className={styles.chatImageWrapper}>
-                              <ChatImage attachmentId={item.attachment_id} />
-                            </div>
-                          )}
-                          {item.body && <div className={styles.messageBody}>{item.body}</div>}
-                        </>
-                      )}
-
-                      <div className={styles.messageMetaLine}>
-                        <span className={styles.messageTimestamp}>
-                            {formatTime(item.created_at)}
-                            {item.edited && <span style={{fontSize:'0.65rem', opacity:0.6}}>(edited)</span>}
-                            {mine && <span className={styles.statusWrapper}><StatusIcon msg={item} /></span>}
+                        <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate flex flex-col`}>
+                          <span className="truncate">{u.char_name}</span>
+                          <span className="text-[9px] opacity-60 truncate">{u.display_name}</span>
                         </span>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          {canEditDelete && !editingMsgId && (
-                            <>
-                              <button className={styles.actionBtn} onClick={() => { setEditingMsgId(item.id); setEditBody(item.body); }}>Edit</button>
-                              <button className={styles.actionBtn} onClick={() => handleDeleteMessage(item.id)}>Delete</button>
-                            </>
-                          )}
-                          {!mine && item.body && <button className={styles.actionBtn} onClick={() => copyToClipboard(item.body)} title="Copy">Copy</button>}
-                        </div>
                       </div>
-                      <span className={`${styles.tail} ${mine ? styles.tailRight : styles.tailLeft}`} />
-                    </div>
-                  </div>
-                );
-              })}
-              <div ref={messagesEndRef} />
-              {showScrollBtn && (
-                 <button className={styles.scrollBtn} onClick={() => scrollToBottom(true)}>↓</button>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {u.clan && <span className="text-[9px] bg-surface-dim px-1 rounded border border-outline-variant/30 uppercase max-w-[40px] truncate">{u.clan.slice(0, 3)}</span>}
+                        {u.unread_count > 0 && <div className="w-2 h-2 rounded-full bg-primary-container animate-pulse"></div>}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+
+            {/* No Char Toggle */}
+            <div className="mb-6">
+              <div onClick={() => setNoCharOpen(!noCharOpen)} className="px-4 text-[10px] text-on-surface-variant/50 mb-2 font-bold tracking-widest flex items-center justify-between cursor-pointer hover:text-on-surface transition-colors">
+                <div className="flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[14px] transition-transform" style={{ transform: noCharOpen ? 'rotate(180deg)' : 'none' }}>expand_more</span>
+                  NO CHARACTER ({usersNoChar.length})
+                </div>
+              </div>
+              {noCharOpen && (
+                <ul className="flex flex-col">
+                  {usersNoChar.map(u => {
+                    const isActive = selectedContact?.type === 'user' && selectedContact?.id === u.id;
+                    return (
+                      <li key={`u-${u.id}`} onClick={() => selectContact(u)} className={`${isActive ? 'blood-active border-l-4 translate-x-1' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all opacity-80`}>
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-6 h-6 rounded-full bg-surface-container flex items-center justify-center shrink-0 border border-outline-variant/30">
+                            <span className="material-symbols-outlined text-[14px] opacity-50">person</span>
+                          </div>
+                          <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate flex flex-col`}>
+                            <span className="truncate">{u.display_name}</span>
+                          </span>
+                        </div>
+                        {u.unread_count > 0 && <div className="w-2 h-2 rounded-full bg-primary-container animate-pulse shrink-0"></div>}
+                      </li>
+                    );
+                  })}
+                </ul>
               )}
             </div>
 
-            {/* --- REPLACED WARNING BANNER LOGIC --- */}
-            {!commsEnabled ? (
-              <div style={{ padding: '8px', background: 'var(--err)', color: 'var(--text-color)', textAlign: 'center', fontSize: '0.85rem', fontWeight: 'bold' }}>
-                ⚠️ SCHRECKNET IS CURRENTLY OFFLINE. MESSAGE SENDING IS DISABLED. ⚠️
+            {/* NPCs */}
+            <div className="mb-6">
+              <div className="px-4 text-[10px] text-on-surface-variant/50 mb-2 font-bold tracking-widest flex items-center justify-between">
+                ASSETS (NPCs)
+                <span className="material-symbols-outlined text-[14px]">expand_more</span>
               </div>
-            ) : !isCharActive ? (
-              <div style={{ padding: '8px', background: 'var(--err)', color: 'var(--text-color)', textAlign: 'center', fontSize: '0.85rem', fontWeight: 'bold' }}>
-                Your character is waiting for ST approval. You cannot send messages yet.
-              </div>
-            ) : null}
-
-            <form className={styles.messageInputForm} onSubmit={handleSendMessage} style={{ position: 'relative', opacity: !commsEnabled ? 0.6 : 1 }}>
-                {previewUrl && attachment && (
-                  <div className={styles.previewContainer}>
-                    <div className={styles.previewWrapper}>
-                      {attachment.type.startsWith('audio/') ? (
-                        <div className={styles.audioPreview}>
-                          <span className={styles.audioPreviewIcon}>🎵</span>
-                          <span className={styles.audioPreviewName}>{attachment.name}</span>
-                          <audio controls src={previewUrl} style={{ maxWidth: '200px', height: '32px' }} />
+              <ul className="flex flex-col">
+                {filteredNpcs.map(n => {
+                  const isActive = selectedContact?.type === 'npc' && selectedContact?.id === n.id;
+                  const crest = symlogo(n.clan);
+                  return (
+                    <li key={`n-${n.id}`} onClick={() => selectContact(n)} className={`${isActive ? 'blood-active border-l-4 translate-x-1' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all`}>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="relative shrink-0">
+                          <div className="w-6 h-6 rounded-sm bg-surface-container-highest flex items-center justify-center overflow-hidden border border-outline-variant/50">
+                            {crest ? <img src={crest} alt="crest" className="w-4 h-4 object-contain brightness-0 invert opacity-80" /> : <span className="material-symbols-outlined text-[14px] opacity-50">smart_toy</span>}
+                          </div>
                         </div>
+                        <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate flex items-center gap-1`}>
+                          {n.name}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[8px] bg-tertiary-container/20 text-tertiary px-1 rounded border border-tertiary/30 uppercase">NPC</span>
+                        {n.unread_count > 0 && <div className="w-2 h-2 rounded-full bg-primary-container animate-pulse"></div>}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+
+          </div>
+
+          {/* Footer */}
+          <div className="p-4 border-t border-outline-variant/50 flex flex-col gap-2 shrink-0">
+            <div className="flex items-center gap-3 text-on-surface-variant hover:text-on-surface cursor-pointer p-1 rounded hover:bg-surface-variant/10 transition-colors">
+              <span className="material-symbols-outlined text-[16px]">wifi_tethering</span>
+              <span className="text-[11px] font-bold tracking-widest uppercase">Signal: Strong</span>
+            </div>
+            <div onClick={toggleNotifications} className={`flex items-center gap-3 ${notifOn ? 'text-green-500' : 'text-on-surface-variant'} cursor-pointer p-1 rounded hover:bg-surface-variant/10 transition-colors`}>
+              <span className="material-symbols-outlined text-[16px]">{notifOn ? 'notifications_active' : 'notifications_off'}</span>
+              <span className="text-[11px] font-bold tracking-widest uppercase">Notifs: {notifOn ? 'On' : 'Off'}</span>
+            </div>
+          </div>
+        </aside>
+
+        {/* Main Content (Canvas) */}
+        <main className={`${!selectedContact ? 'hidden md:flex' : 'flex'} flex-1 flex-col relative bg-surface-dim overflow-hidden h-full min-h-0 min-w-0`}>
+          {/* Background Texture */}
+          <div className="absolute inset-0 opacity-10 pointer-events-none z-0" style={{ backgroundImage: 'url(https://lh3.googleusercontent.com/aida-public/AB6AXuDz3Mcw2U6fsZNx0VJQG8NcTN2exzxDyiHV-_HLNxDDjI3u19AfS60V0CnwhPUJghibt_HovewDaryCkBMUVJEJRAfS8TKjuzs5IgFiOceN2QX--PCw8xTYpDh5XxOph0RxFlftYhcsNkHEwCotKlu3vHYHhHDl06mooR8ZsVJrXZ4C4isw52uJ6r04mxrjQoOef6pJC_pEK3cs6MoMRIOVqqm8nIceFuFcrTEhAuEjb4BMBKbX0zgbIolzy_kAVWK_LLCcQpO375yd)' }}></div>
+
+          {selectedContact ? (
+            <>
+              {/* Chat Header */}
+              <header className="h-16 border-b border-surface-container-highest bg-surface/80 backdrop-blur-md flex items-center justify-between px-4 md:px-6 z-10 shrink-0">
+                <div className="flex items-center gap-3 md:gap-4 min-w-0">
+                  {/* Mobile Back */}
+                  <button className="mr-2 md:hidden text-on-surface-variant hover:text-primary transition-colors focus:outline-none shrink-0" onClick={() => setSelectedContact(null)}>
+                    <span className="material-symbols-outlined">arrow_back</span>
+                  </button>
+                  <div className="relative shrink-0">
+                    <div className="w-10 h-10 rounded-sm bg-surface-container-highest overflow-hidden border border-outline-variant/50 flex items-center justify-center">
+                      {symlogo(selectedContact.clan) ? (
+                        <img src={symlogo(selectedContact.clan)} alt="Avatar" className="w-6 h-6 object-contain brightness-0 invert" />
                       ) : (
-                        <img src={previewUrl} alt="Preview" />
+                        <span className="material-symbols-outlined text-on-surface-variant">
+                          {selectedContact.type === 'group' ? 'group' : (selectedContact.type === 'npc' ? 'smart_toy' : 'person')}
+                        </span>
                       )}
-                      <button type="button" onClick={clearAttachment} className={styles.removePreviewBtn}>×</button>
+                    </div>
+                    <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-surface rounded-full shadow-[0_0_4px_#22c55e]"></div>
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h2 className="font-headline-md text-[16px] md:text-[18px] font-semibold text-on-surface m-0 leading-tight truncate">{headerLabel}</h2>
+                      {selectedContact.type === 'npc' && !isAdmin && <span className="text-[9px] font-system-code bg-tertiary-container/20 text-tertiary px-1.5 py-0.5 rounded border border-tertiary/30 shrink-0">NPC</span>}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[10px] md:text-[12px] font-system-code text-on-surface-variant/70 mt-0.5 truncate">
+                      <span className="material-symbols-outlined text-[12px] md:text-[14px] text-green-500/70">shield</span>
+                      Encrypted - AES-256
+                      {selectedContact.type === 'group' && headerGroupMembers.length > 0 && (
+                        <span className="ml-2 hidden md:inline truncate opacity-70">
+                          • {headerGroupMembers.map(m => m.char_name || m.display_name).join(', ')}
+                        </span>
+                      )}
                     </div>
                   </div>
-                )}
+                </div>
+                <div className="flex items-center gap-2 md:gap-4 text-on-surface-variant/70 shrink-0">
+                  {selectedContact.type === 'group' && (
+                    (selectedContact.created_by === currentUser?.id || isAdmin) ? (
+                      <button onClick={openManageGroup} className="hover:text-primary transition-colors flex items-center gap-1 border border-outline-variant/50 px-2 py-1 rounded text-[10px] md:text-xs font-system-code uppercase tracking-widest bg-surface-container-low hover:bg-surface-variant/50">
+                        <span className="material-symbols-outlined text-[14px] md:text-[16px]">settings</span>
+                        <span className="hidden md:inline">Manage</span>
+                      </button>
+                    ) : (
+                      <button onClick={handleLeaveGroup} className="text-error/80 hover:text-error transition-colors flex items-center gap-1 border border-error/30 px-2 py-1 rounded text-[10px] md:text-xs font-system-code uppercase tracking-widest bg-error-container/10 hover:bg-error-container/30">
+                        <span className="material-symbols-outlined text-[14px] md:text-[16px]">logout</span>
+                        <span className="hidden md:inline">Leave</span>
+                      </button>
+                    )
+                  )}
+                </div>
+              </header>
 
-                {/* Emoji Picker Popup */}
+              {/* Admin Roster Banner for NPCs */}
+              {isAdmin && selectedContact.type === 'npc' && (
+                <div className="bg-surface-container border-b border-surface-container-highest p-2 z-10 shrink-0">
+                  <div className="flex flex-col md:flex-row gap-2 justify-between items-start md:items-center mb-2">
+                    <div className="flex bg-surface-dim rounded border border-outline-variant/50 overflow-hidden text-xs font-system-code">
+                      <button className={`px-3 py-1 ${adminPlayerTab === 'recent' ? 'bg-primary/20 text-primary font-bold' : 'text-on-surface-variant hover:bg-surface-variant/30'}`} onClick={() => setAdminPlayerTab('recent')}>Recent</button>
+                      <button className={`px-3 py-1 ${adminPlayerTab === 'all' ? 'bg-primary/20 text-primary font-bold' : 'text-on-surface-variant hover:bg-surface-variant/30'}`} onClick={() => setAdminPlayerTab('all')}>All</button>
+                    </div>
+                    {adminPlayerTab === 'all' && (
+                      <input className="bg-surface-dim border border-outline-variant/50 rounded px-2 py-1 text-xs text-on-surface focus:border-primary w-full md:w-auto" placeholder="Search players…" value={adminPlayerFilter} onChange={(e) => setAdminPlayerFilter(e.target.value)} />
+                    )}
+                    <div className="text-xs font-system-code flex items-center gap-2">
+                      {selectedPlayerId ? (
+                        <>
+                          <span className="text-on-surface-variant">To:</span>
+                          <b className="text-primary">{users.find(u => u.id === selectedPlayerId)?.char_name || 'Unknown'}</b>
+                          <button className="text-[10px] bg-outline-variant/30 px-1.5 py-0.5 rounded hover:bg-outline-variant/50 transition-colors" onClick={() => setSelectedPlayerId(null)}>Clear</button>
+                        </>
+                      ) : (
+                        <span className="text-error text-[10px] uppercase tracking-widest flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">warning</span> Select target player</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                    {(adminPlayerTab === 'recent' ? adminRecentPlayers : adminAllPlayersFiltered).map(u => (
+                      <button key={`sel-${u.id}`} onClick={() => selectAdminTarget(u.id)} className={`flex items-center gap-2 px-3 py-1.5 rounded border shrink-0 transition-colors ${selectedPlayerId === u.id ? 'bg-primary/10 border-primary text-primary' : 'bg-surface-container-highest border-outline-variant/30 text-on-surface-variant hover:border-outline-variant'}`}>
+                        <span className="text-xs truncate max-w-[100px]">{u.char_name || u.display_name}</span>
+                        {u.unread_count > 0 && <span className="bg-primary-container text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">{u.unread_count}</span>}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* System Warning (Offline / No Char) */}
+              {!commsEnabled ? (
+                <div className="w-full bg-error-container/20 border-b border-error/50 p-2 text-center flex items-center justify-center gap-2 z-10 shrink-0">
+                  <span className="material-symbols-outlined text-error text-sm">warning</span>
+                  <span className="font-system-code text-[11px] md:text-sm text-error tracking-widest uppercase font-bold">SCHRECKNET PROTOCOL OFFLINE</span>
+                </div>
+              ) : !isCharActive ? (
+                <div className="w-full bg-error-container/20 border-b border-error/50 p-2 text-center flex items-center justify-center gap-2 z-10 shrink-0">
+                  <span className="material-symbols-outlined text-error text-sm">hourglass_empty</span>
+                  <span className="font-system-code text-[11px] md:text-sm text-error tracking-widest uppercase font-bold">Awaiting ST Approval</span>
+                </div>
+              ) : null}
+
+              {/* Chat History Area */}
+              <div className="flex-1 overflow-y-auto p-4 md:p-6 z-10 flex flex-col gap-6 font-body-md custom-scrollbar min-h-0" ref={messagesListRef}>
+                <div className="text-center text-[10px] md:text-[12px] font-system-code text-on-surface-variant/40 my-2">
+                  [ END OF ENCRYPTED HISTORY ]
+                </div>
+
+                {grouped.map(item => {
+                  if (item.type === 'day') return (
+                    <div key={item.id} className="flex items-center justify-center w-full my-4 opacity-50">
+                      <div className="h-px bg-outline-variant/50 flex-1"></div>
+                      <span className="font-system-code text-[10px] text-on-surface-variant px-4 bg-transparent">{item.day.toUpperCase()}</span>
+                      <div className="h-px bg-outline-variant/50 flex-1"></div>
+                    </div>
+                  );
+
+                  const mine = selectedContact.type === 'user' ? item.sender_id === currentUser.id : (selectedContact.type === 'group' ? item.sender_id === currentUser.id : (isAdmin ? item.sender_id === 'npc' : item.sender_id === currentUser.id));
+                  const timeSinceSent = Date.now() - new Date(item.created_at).getTime();
+                  const canEditDelete = mine && timeSinceSent < 4 * 60 * 60 * 1000 && !String(item.id).startsWith('temp_');
+                  const isGroupNotMine = selectedContact.type === 'group' && !mine;
+
+                  return (
+                    <div key={item.id} className={`flex gap-2 md:gap-3 max-w-[90%] md:max-w-[85%] ${mine ? 'self-end flex-row-reverse group' : 'self-start group'}`}>
+                      {/* Avatar */}
+                      {!mine ? (
+                        <div className="w-6 h-6 md:w-8 md:h-8 rounded-sm md:rounded-full bg-surface-container-high border border-outline-variant flex-shrink-0 flex items-center justify-center overflow-hidden blood-glow opacity-80 mt-auto md:mt-0">
+                          {(() => {
+                            let avatar = null;
+                            if (selectedContact.type === 'user' || selectedContact.type === 'npc') {
+                              avatar = symlogo(selectedContact.clan);
+                            } else if (selectedContact.type === 'group') {
+                              const sender = currentGroupMembers.find(m => m.id === item.sender_id);
+                              avatar = symlogo(item.sender_clan || sender?.clan);
+                            }
+                            if (avatar) {
+                              return <img src={avatar} className="w-4 h-4 md:w-5 md:h-5 object-contain brightness-0 invert" alt="Avatar" loading="lazy" />;
+                            }
+                            return <span className="material-symbols-outlined text-[14px] text-on-surface-variant">person</span>;
+                          })()}
+                        </div>
+                      ) : (
+                        <div className="hidden md:flex w-8 h-8 rounded-full opacity-0 shrink-0"></div>
+                      )}
+
+                      {/* Bubble Container */}
+                      <div className={`flex flex-col gap-1 min-w-0 ${mine ? 'items-end' : 'items-start'}`}>
+
+                        {/* Sender Name for Groups */}
+                        {isGroupNotMine && (
+                          <div className="text-[10px] font-system-code ml-1" style={{ color: CLAN_COLORS[item.sender_clan] || 'var(--on-surface-variant)' }}>
+                            {item.sender_name}
+                          </div>
+                        )}
+
+                        {editingMsgId === item.id ? (
+                          <div className="bg-surface-container-high p-3 rounded-lg border border-primary/50 shadow-[0_0_15px_rgba(255,179,174,0.1)] w-full max-w-sm">
+                            <textarea value={editBody} onChange={e => setEditBody(e.target.value)} className="w-full bg-surface-dim border border-outline-variant rounded p-2 text-on-surface text-sm focus:border-primary focus:ring-0 resize-none font-system-code" rows={3} />
+                            <div className="flex justify-end gap-2 mt-2">
+                              <button onClick={() => setEditingMsgId(null)} className="text-xs text-on-surface-variant hover:text-on-surface px-2 py-1">Cancel</button>
+                              <button onClick={submitEditMessage} className="text-xs bg-primary text-on-primary px-3 py-1 rounded font-bold hover:bg-primary-container">Save</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className={`relative chat-glass p-2 md:p-3 w-fit max-w-full shadow-[0_4px_12px_rgba(0,0,0,0.5)] ${mine ? 'bg-blood-accent/90 text-white rounded-l-lg rounded-br-lg bubble-right border-l border-t border-b border-[#b01423]' : 'bg-surface-container-high border border-outline-variant/30 text-on-surface rounded-r-lg rounded-bl-lg bubble-left'}`}>
+
+                            {/* Attachment */}
+                            {item.attachment_id && (
+                              <div className="mb-2 relative rounded overflow-hidden border border-outline-variant/50 bg-black/50 group/img cursor-pointer w-fit max-w-full">
+                                <ChatImage attachmentId={item.attachment_id} />
+                                <div className="absolute inset-0 bg-blood-accent/10 pointer-events-none mix-blend-overlay"></div>
+                              </div>
+                            )}
+
+                            {/* Body */}
+                            {item.body && <p className="text-[14px] md:text-[15px] leading-relaxed whitespace-pre-wrap break-words">{item.body}</p>}
+                          </div>
+                        )}
+
+                        {/* Meta Line (Time, Status, Actions) */}
+                        <div className={`flex items-center gap-2 mt-0.5 ${mine ? 'mr-1 flex-row-reverse' : 'ml-1'}`}>
+                          <span className="font-system-code text-[9px] md:text-[10px] text-on-surface-variant/60">{formatTime(item.created_at)}</span>
+
+                          {item.edited && <span className="font-system-code text-[9px] text-on-surface-variant/40">(edited)</span>}
+
+                          {mine && (
+                            <span className="text-[12px] md:text-[14px] text-primary flex items-center">
+                              <StatusIcon msg={item} />
+                            </span>
+                          )}
+
+                          {/* Action Buttons (Hover) */}
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {canEditDelete && !editingMsgId && (
+                              <>
+                                <button onClick={() => { setEditingMsgId(item.id); setEditBody(item.body); }} className="text-[10px] text-on-surface-variant hover:text-primary transition-colors">Edit</button>
+                                <button onClick={() => handleDeleteMessage(item.id)} className="text-[10px] text-on-surface-variant hover:text-error transition-colors">Del</button>
+                              </>
+                            )}
+                            {!mine && item.body && (
+                              <button onClick={() => copyToClipboard(item.body)} className="text-[10px] text-on-surface-variant hover:text-primary transition-colors">Copy</button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Invisible element to scroll to */}
+                <div ref={messagesEndRef} className="h-4"></div>
+              </div>
+
+              {showScrollBtn && (
+                <button className="absolute bottom-24 right-6 w-10 h-10 rounded-full bg-surface-container-highest border border-outline-variant text-primary shadow-[0_0_15px_rgba(0,0,0,0.8)] flex items-center justify-center z-20 hover:bg-surface-variant transition-colors" onClick={() => scrollToBottom(true)}>
+                  <span className="material-symbols-outlined">arrow_downward</span>
+                </button>
+              )}
+
+              {/* Bottom Input Area */}
+              <div className="p-3 md:p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-surface-container/90 backdrop-blur-md border-t border-surface-container-highest z-20 shrink-0 relative">
+                {/* Emoji Picker */}
                 {showEmojiPicker && (
-                  <div style={{ position: 'absolute', bottom: '100%', left: '0', zIndex: 50, marginBottom: '10px' }}>
-                    <EmojiPicker 
-                      onEmojiClick={onEmojiClick} 
-                      theme="dark" 
-                      searchDisabled={false}
-                    />
+                  <div className="absolute bottom-[100%] left-1/2 -translate-x-1/2 md:left-auto md:right-4 md:translate-x-0 z-50 mb-2 shadow-[0_0_20px_rgba(0,0,0,0.8)] rounded-lg overflow-hidden border border-outline-variant w-[min(92vw,320px)]">
+                    <EmojiPicker onEmojiClick={onEmojiClick} theme="dark" searchDisabled={false} width="100%" />
                   </div>
                 )}
 
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  style={{display:'none'}} 
-                  accept="image/*,audio/*"
-                  onChange={handleFileSelect} 
-                />
+                <div className="max-w-4xl mx-auto relative flex items-end gap-2 bg-surface-container-lowest border border-outline-variant rounded-md p-1.5 md:p-2 focus-within:border-primary focus-within:shadow-[0_0_8px_rgba(180,15,31,0.2)] transition-all">
 
-                <button 
-                  type="button" 
-                  className={styles.uploadBtn} 
-                  onClick={() => setShowEmojiPicker(val => !val)}
-                  title="Add Emoji"
-                  disabled={!isCharActive || !commsEnabled}
-                >
-                  <SmileIcon />
-                </button>
+                  {/* Attachments & Previews */}
+                  <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="image/*,audio/*" onChange={handleFileSelect} />
 
-                <button 
-                  type="button" 
-                  className={styles.uploadBtn} 
-                  onClick={() => fileInputRef.current?.click()}
-                  title="Attach Image"
-                  disabled={!isCharActive || !commsEnabled}
-                >
-                  <ImageIcon />
-                </button>
+                  <button type="button" onClick={() => fileInputRef.current?.click()} disabled={!isCharActive || !commsEnabled} className="p-2 text-on-surface-variant hover:text-primary transition-colors shrink-0 rounded hover:bg-surface-variant/30 disabled:opacity-30">
+                    <span className="material-symbols-outlined text-[20px] md:text-[24px]">attach_file</span>
+                  </button>
 
-                <div className={styles.inputWrapper}>
-                    <textarea 
-                        ref={textareaRef}
-                        value={newMessage} 
-                        onChange={e => setNewMessage(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        placeholder={!commsEnabled ? "System Offline..." : (!isCharActive ? "Waiting for ST approval..." : "Type a message...")} 
-                        className={styles.messageInput} 
-                        disabled={!commsEnabled || !isCharActive || (isAdmin && selectedContact.type === 'npc' && !selectedPlayerId)} 
-                        rows={1}
+                  <div className="flex-1 flex flex-col min-w-0">
+                    {previewUrl && attachment && (
+                      <div className="mb-2 p-2 bg-surface-container-highest rounded border border-outline-variant/50 flex items-center justify-between">
+                        <div className="flex items-center gap-2 truncate">
+                          {attachment.type.startsWith('audio/') ? (
+                            <>
+                              <span className="material-symbols-outlined text-primary text-sm shrink-0">audio_file</span>
+                              <span className="text-xs truncate">{attachment.name}</span>
+                            </>
+                          ) : (
+                            <>
+                              <img src={previewUrl} alt="Preview" className="h-8 w-8 object-cover rounded border border-outline-variant shrink-0" />
+                              <span className="text-xs truncate">{attachment.name}</span>
+                            </>
+                          )}
+                        </div>
+                        <button type="button" onClick={clearAttachment} className="text-on-surface-variant hover:text-error shrink-0 ml-2">
+                          <span className="material-symbols-outlined text-[18px]">close</span>
+                        </button>
+                      </div>
+                    )}
+                    <textarea
+                      ref={textareaRef}
+                      value={newMessage}
+                      onChange={e => setNewMessage(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      placeholder={!commsEnabled ? "System Offline..." : (!isCharActive ? "Waiting for ST approval..." : "Transmit response...")}
+                      className="w-full bg-transparent border-none text-on-surface font-system-code text-[13px] md:text-[14px] placeholder-on-surface-variant/40 focus:ring-0 resize-none py-2 px-1 max-h-32 custom-scrollbar break-words"
+                      rows={1}
+                      style={{ minHeight: '40px' }}
+                      disabled={!commsEnabled || !isCharActive || (isAdmin && selectedContact.type === 'npc' && !selectedPlayerId)}
                     />
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button type="button" onClick={() => setShowEmojiPicker(val => !val)} disabled={!isCharActive || !commsEnabled} className="p-2 text-on-surface-variant hover:text-primary transition-colors rounded hover:bg-surface-variant/30 hidden md:flex disabled:opacity-30">
+                      <span className="material-symbols-outlined text-[20px] md:text-[24px]">mood</span>
+                    </button>
+                    <button type="button" onClick={handleSendMessage} disabled={!commsEnabled || !isCharActive || sendingRef.current || (!newMessage.trim() && !attachment) || (isAdmin && selectedContact.type === 'npc' && !selectedPlayerId)} className="p-2 bg-primary/10 text-primary border border-primary/30 hover:bg-primary hover:text-on-primary transition-colors rounded shadow-[0_0_8px_rgba(255,179,174,0.1)] group flex items-center justify-center h-10 w-10 disabled:opacity-30 disabled:hover:bg-primary/10 disabled:hover:text-primary">
+                      <span className="material-symbols-outlined text-[18px] md:text-[20px] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform">send</span>
+                    </button>
+                  </div>
                 </div>
-                <button type="submit" className={styles.sendButton} disabled={!commsEnabled || !isCharActive || sendingRef.current || (!newMessage.trim() && !attachment) || (isAdmin && selectedContact.type === 'npc' && !selectedPlayerId)}>
-                    <span className={styles.sendIcon}>➤</span>
-                </button>
-            </form>
-          </>
-        ) : (
-          <div className={styles.placeholder}>Select a contact to start a conversation</div>
-        )}
-        {error && <div className={styles.errorBanner}>{error}</div>}
-      </main>
+
+                <div className="max-w-4xl mx-auto flex justify-between mt-2 px-1">
+                  <span className="text-[9px] md:text-[10px] font-system-code text-on-surface-variant/40 hidden md:inline">Enter to send, Shift+Enter for new line</span>
+                  <span className="text-[9px] md:text-[10px] font-system-code text-green-500/60 flex items-center gap-1 ml-auto">
+                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+                    Uplink Stable
+                  </span>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-on-surface-variant/50 p-6 text-center z-10">
+              <span className="material-symbols-outlined text-[64px] mb-4 opacity-20">terminal</span>
+              <p className="font-system-code text-sm tracking-widest uppercase mb-2 text-glow-active">SchreckNet Node 01 Online</p>
+              <p className="text-xs max-w-md">Select a contact from the secure roster to initiate an encrypted channel.</p>
+            </div>
+          )}
+
+          {error && (
+            <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-error-container text-on-error-container px-4 py-2 rounded shadow-lg z-50 flex items-center gap-2 border border-error/50">
+              <span className="material-symbols-outlined text-sm">error</span>
+              <span className="text-sm font-bold">{error}</span>
+              <button onClick={() => setError('')} className="ml-2 hover:opacity-80"><span className="material-symbols-outlined text-sm">close</span></button>
+            </div>
+          )}
+        </main>
       </div>
-    </Skeleton>
+    </div>
   );
 }

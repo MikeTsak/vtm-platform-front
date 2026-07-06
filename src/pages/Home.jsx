@@ -86,15 +86,15 @@ function makeShardPoly(cell) {
 
 /* ── Nav card data ──────────────────────────────────────────────── */
 const NAV_CARDS = [
-  { to: '/character', icon: '🩸', title: 'Character',    sub: 'Sheet & XP'        },
-  { to: '/downtimes', icon: '🌑', title: 'Downtimes',   sub: 'Monthly Actions'    },
-  { to: '/schrecknet', icon: '📜', title: 'SchreckNet',   sub: 'Everything here is safe.'},
-  { to: '/surfaceweb', icon: '🌐', title: 'Surface Web',  sub: 'Be careful, you are not safe.'},
-  { to: '/domains',   icon: '🏛️', title: 'Domains',      sub: 'Territory Map'     },
-  { to: '/boons',     icon: '⚖️', title: 'Boons',        sub: 'Blood Registry'    },
-  { to: '/court/coteries', icon: '🥀', title: 'Coteries', sub: 'Manage Group'     },
-  { to: '/court/hierarchy', icon: '👑', title: 'Court',  sub: 'Hierarchy'         },
-  { to: '/news',      icon: '🌍', title: 'News',          sub: 'Archive'           },
+  { to: '/character', icon: 'bloodtype', title: 'Character',    sub: 'Sheet & XP', img: 'marble_char'        },
+  { to: '/downtimes', icon: 'schedule', title: 'Downtimes',   sub: 'Monthly Actions', img: 'marble_down'    },
+  { to: '/schrecknet', icon: 'terminal', title: 'SchreckNet',   sub: 'Everything here is safe.', img: 'marble_schreck'},
+  { to: '/surfaceweb', icon: 'language', title: 'Surface Web',  sub: 'Be careful, you are not safe.', img: 'marble_surface'},
+  { to: '/domains',   icon: 'account_balance', title: 'Domains',      sub: 'Territory Map', img: 'marble_domains'     },
+  { to: '/boons',     icon: 'handshake', title: 'Boons',        sub: 'Blood Registry', img: 'marble_boons'    },
+  { to: '/court/coteries', icon: 'groups', title: 'Coteries', sub: 'Manage Group', img: 'marble_coteries'     },
+  { to: '/court/hierarchy', icon: 'gavel', title: 'Court',  sub: 'Hierarchy', img: 'marble_court'         },
+  { to: '/news',      icon: 'article', title: 'News',          sub: 'Archive', img: 'marble_news'           },
 ];
 
 /* ── Mini Split Damage Bar ──────────────────────────────────────── */
@@ -109,22 +109,69 @@ function MiniVtmBar({ label, sup, agg, max }) {
         <span>{label}</span>
         <span>{safeMax - (aggCount + supCount)} / {safeMax}</span>
       </div>
-      <div style={{ display: 'flex', gap: '2px' }}>
+      <div style={{ display: 'flex', gap: '4px' }}>
         {Array.from({ length: safeMax }).map((_, i) => {
           const isAgg = i < aggCount;
           const isSup = !isAgg && i < aggCount + supCount;
           return (
             <div key={i} style={{
-              flex: 1, height: '10px', borderRadius: '2px',
-              background: isAgg ? 'var(--tint)' : isSup ? 'var(--text-muted)' : 'rgba(255,255,255,0.05)',
-              border: '1px solid var(--border-color)'
-            }} />
+              flex: 1, height: '24px', borderRadius: '3px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid var(--border-color)',
+              color: isAgg ? 'var(--tint)' : isSup ? '#ccc' : 'transparent',
+              fontWeight: 800,
+              fontFamily: 'monospace',
+              fontSize: '16px',
+              lineHeight: 1
+            }}>
+              {isAgg ? 'X' : isSup ? '/' : ''}
+            </div>
           );
         })}
       </div>
     </div>
   );
 }
+
+/* ── Blood Splatter Avatar ──────────────────────────────────────── */
+const BloodSplatterAvatar = () => {
+  const drops = [
+    { a: 0.2, d: 45, s: 15 }, { a: 0.6, d: 52, s: 10 }, { a: 1.1, d: 40, s: 20 },
+    { a: 1.8, d: 48, s: 12 }, { a: 2.5, d: 55, s: 8 }, { a: 3.1, d: 42, s: 18 },
+    { a: 3.8, d: 50, s: 14 }, { a: 4.4, d: 38, s: 22 }, { a: 5.1, d: 47, s: 11 },
+    { a: 5.8, d: 54, s: 9 }
+  ];
+  
+  return (
+    <div style={{ position: 'relative', width: '110px', height: '110px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+      <svg style={{ width: 0, height: 0, position: 'absolute' }}>
+        <filter id="bloodGoo">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur" />
+          <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7" result="goo" />
+          <feBlend in="SourceGraphic" in2="goo" />
+        </filter>
+      </svg>
+      
+      {/* Blood Splatter Background */}
+      <div style={{ position: 'absolute', inset: -20, filter: 'url(#bloodGoo)', pointerEvents: 'none' }}>
+        {/* Central blood blob */}
+        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '85px', height: '85px', background: 'var(--tint, #8a0f1a)', borderRadius: '50%' }} />
+        {/* Droplets */}
+        {drops.map((d, i) => {
+           const left = `calc(50% + ${Math.cos(d.a) * d.d}px)`;
+           const top = `calc(50% + ${Math.sin(d.a) * d.d}px)`;
+           return <div key={i} style={{ position: 'absolute', left, top, width: `${d.s}px`, height: `${d.s}px`, transform: 'translate(-50%, -50%)', background: 'var(--tint, #8a0f1a)', borderRadius: '50%' }} />
+        })}
+      </div>
+      
+      {/* The Avatar Circle */}
+      <div style={{ position: 'relative', width: '80px', height: '80px', background: '#1c1c1c', borderRadius: '50%', zIndex: 2, overflow: 'hidden' }}>
+        <span className="material-symbols-outlined" style={{ position: 'absolute', bottom: '-12px', left: '50%', transform: 'translateX(-50%)', color: 'var(--tint, #fca5a5)', fontSize: '5.5rem', fontVariationSettings: "'FILL' 1", opacity: 0.8, display: 'block', textAlign: 'center' }}>person</span>
+      </div>
+    </div>
+  );
+};
 
 export default function Home() {
   const [me, setMe] = useState(null);
@@ -324,11 +371,11 @@ export default function Home() {
 
   // Construct Themes Array dynamically to insert Character's Clan
   const availableThemes = [
-    { id: 'clan', label: clan ? `${clan}` : 'Default', sub: 'Bloodline', hex: dynamicClanTint },
-    { id: 'camarilla', label: 'Camarilla', sub: 'Crimson', hex: '#8a0f1a' },
-    { id: 'schrecknet',  label: 'SchreckNet', sub: 'Blue', hex: '#0ea5e9' },
-    { id: 'anarch',      label: 'Anarch', sub: 'Gold', hex: '#ea580c' },
-    { id: 'Giannakis',      label: 'Giannakis', sub: 'Teal', hex: '#0d9488' },
+    { id: 'clan', label: clan ? `${clan}` : 'Default', sub: 'Bloodline', hex: dynamicClanTint, img: 'theme_clan' },
+    { id: 'camarilla', label: 'Camarilla', sub: 'Crimson', hex: '#8a0f1a', img: 'theme_camarilla' },
+    { id: 'schrecknet',  label: 'SchreckNet', sub: 'Blue', hex: '#0ea5e9', img: 'theme_schrecknet' },
+    { id: 'anarch',      label: 'Anarch', sub: 'Gold', hex: '#ea580c', img: 'theme_anarch' },
+    { id: 'Giannakis',      label: 'Giannakis', sub: 'Teal', hex: '#0d9488', img: 'theme_giannakis' },
   ];
 
   return (
@@ -364,14 +411,7 @@ export default function Home() {
             <span className={`${styles.corner} ${styles.cornerBR}`} />
             
             <div className={styles.headerInner}>
-              <div className={styles.clanRing}>
-                <img
-                  src={symlogo(ch.clan)}
-                  alt={ch.clan}
-                  className={styles.clanSymbol}
-                  onError={e => { e.target.style.display = 'none'; }}
-                />
-              </div>
+              <BloodSplatterAvatar />
 
               <div className={styles.headerMeta}>
                 <span className={styles.neonateLabel}>NEONATE</span>
@@ -455,10 +495,12 @@ export default function Home() {
 
           {/* 3. NAV GRID */}
           <section className={styles.navGrid}>
-            {NAV_CARDS.map(({ to, icon, title, sub }) => (
-              <Link key={to} to={to} className={styles.navCard}>
-                <div className={styles.navCardIcon}>{icon}</div>
-                <span className={styles.navCardTitle}>{title}</span>
+            {NAV_CARDS.map(({ to, icon, title, sub, img }) => (
+              <Link key={to} to={to} className={styles.navCard} style={{ '--card-bg': `url('/img/ui/${img}.png')` }}>
+                <div className={styles.navCardIcon}>
+                  <span className="material-symbols-outlined" style={{ position: 'relative', zIndex: 2 }}>{icon}</span>
+                </div>
+                <span className={styles.navCardTitle} style={{ position: 'relative', zIndex: 2 }}>{title}</span>
               </Link>
             ))}
 
@@ -469,10 +511,13 @@ export default function Home() {
                 onClick={handlePremonitionClick}
                 className={`${styles.navCard} ${styles.malkCard}`}
                 title="Enter the Cobweb"
+                style={{ '--card-bg': `url('/img/ui/cobweb_static.png')` }}
               >
                 <div className={styles.glitchBg}></div>
-                <div className={styles.navCardIcon}>👁️</div>
-                <span className={styles.navCardTitle}>THE COBWEB</span>
+                <div className={styles.navCardIcon} style={{ position: 'relative', zIndex: 2 }}>
+                  <span className="material-symbols-outlined" style={{ color: '#fca5a5' }}>visibility</span>
+                </div>
+                <span className={styles.navCardTitle} style={{ position: 'relative', zIndex: 2 }}>THE COBWEB</span>
               </a>
             )}
           </section>
@@ -494,7 +539,12 @@ export default function Home() {
                 </p>
               )}
             </div>
-            <div className={styles.restrictedCard}>
+            <div className={styles.restrictedCard} style={{ backgroundImage: `url('/img/ui/restricted_glass.png')` }}>
+               <div className={styles.matrixCode}>
+                 ERR:: UNAUTHORIZED ACCESS ATTEMPT<br/>
+                 SYS_OVERRIDE_FAIL: CODE 99x8F<br/>
+                 TRACE_ROUTE: ... ENCRYPTED
+               </div>
                <span className={styles.restrictedText}>RESTRICTED ACCESS</span>
             </div>
           </div>
@@ -508,10 +558,10 @@ export default function Home() {
                   key={t.id}
                   onClick={() => handleThemeChange(t.id)}
                   className={`${styles.themeBtn} ${activeTheme === t.id ? styles.themeBtnActive : ''}`}
-                  style={{ '--theme-color': t.hex }}
+                  style={{ '--theme-color': t.hex, '--theme-bg': `url('/img/ui/${t.img}.png')` }}
                 >
-                  <span className={styles.themeDot} />
-                  <div className={styles.themeInfo}>
+                  <span className={styles.themeDot} style={{ position: 'relative', zIndex: 2 }} />
+                  <div className={styles.themeInfo} style={{ position: 'relative', zIndex: 2 }}>
                     <span className={styles.themeName}>{t.label}</span>
                   </div>
                 </button>
@@ -544,29 +594,37 @@ export default function Home() {
 
             <div className={styles.hungerSection}>
               <span className={styles.hungerLabel}>HUNGER</span>
-              <div className={styles.hungerDrops}>
-                <span className={styles.dropActive}>🩸</span>
-                <span className={styles.dropActive}>🩸</span>
-                <span className={styles.dropActive}>🩸</span>
-                <span className={styles.dropInactive}>💧</span>
-                <span className={styles.dropInactive}>💧</span>
+              <div className={styles.hungerDrops} style={{ display: 'flex', gap: '8px' }}>
+                {[1, 2, 3, 4, 5].map((drop) => {
+                  const isHungry = drop <= (sheetObj?.hunger || 0);
+                  return (
+                    <span 
+                      key={drop} 
+                      className="material-symbols-outlined" 
+                      style={{ 
+                        color: isHungry ? '#fca5a5' : 'rgba(255,255,255,0.2)', 
+                        fontSize: '1.8rem',
+                        fontVariationSettings: isHungry ? "'FILL' 1" : "'FILL' 0",
+                        transition: 'all 0.3s ease'
+                      }}
+                    >
+                      water_drop
+                    </span>
+                  );
+                })}
               </div>
             </div>
 
             <div className={styles.quickStatsSection}>
-              <span className={styles.quickStatsLabel}>QUICK STATS</span>
-              <div className={styles.quickStatsGrid}>
-                <div className={styles.qsItem}>
-                  <span className={styles.qsName}>{topPhys.name.toUpperCase()}</span>
-                  <div className={styles.qsDots}>{renderDots(topPhys.value)}</div>
+              <span className={styles.quickStatsLabel}>AMBITION & DESIRE</span>
+              <div className={styles.quickStatsGrid} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div className={styles.qsItem} style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+                  <span className={styles.qsName} style={{ opacity: 0.6, fontSize: '0.7rem' }}>AMBITION</span>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-color)', lineHeight: 1.3 }}>{sheetObj?.ambition || '—'}</span>
                 </div>
-                <div className={styles.qsItem}>
-                  <span className={styles.qsName}>{topSoc.name.toUpperCase()}</span>
-                  <div className={styles.qsDots}>{renderDots(topSoc.value)}</div>
-                </div>
-                <div className={styles.qsItem}>
-                  <span className={styles.qsName}>{topMent.name.toUpperCase()}</span>
-                  <div className={styles.qsDots}>{renderDots(topMent.value)}</div>
+                <div className={styles.qsItem} style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+                  <span className={styles.qsName} style={{ opacity: 0.6, fontSize: '0.7rem' }}>DESIRE</span>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-color)', lineHeight: 1.3 }}>{sheetObj?.desire || '—'}</span>
                 </div>
               </div>
             </div>

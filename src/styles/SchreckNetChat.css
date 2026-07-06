@@ -1,0 +1,83 @@
+/* src/styles/SchreckNetChat.css */
+/* SchreckNet CRT/Glow Effects */
+.crt-overlay {
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 0, 0.06));
+    background-size: 100% 2px, 3px 100%;
+    pointer-events: none;
+}
+.crt::before {
+    content: " ";
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    z-index: 2;
+    background-size: 100% 2px, 3px 100%;
+    pointer-events: none;
+}
+
+.text-glow-active { text-shadow: 0 0 8px rgba(176, 20, 35, 0.6); } /* Blood Red */
+.text-glow-alert { text-shadow: 0 0 8px rgba(180, 15, 31, 0.8); } /* Deep Blood Red */
+
+.glow-sm {
+    text-shadow: 0 0 4px rgba(255, 179, 174, 0.5);
+}
+.blood-glow {
+    box-shadow: 0 0 12px rgba(176, 20, 35, 0.3);
+}
+.blood-border-glow {
+    border: 1px solid #b01423;
+    box-shadow: inset 0 0 8px rgba(176, 20, 35, 0.2), 0 0 8px rgba(176, 20, 35, 0.2);
+}
+
+/* Glassmorphism Chat */
+.chat-glass {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+.bubble-left::after {
+    content: '';
+    position: absolute;
+    left: -8px;
+    top: 0;
+    width: 0;
+    height: 0;
+    border-top: 12px solid #2a2a2a;
+    border-left: 12px solid transparent;
+}
+.bubble-right::after {
+    content: '';
+    position: absolute;
+    right: -8px;
+    top: 0;
+    width: 0;
+    height: 0;
+    border-top: 12px solid #b01423;
+    border-right: 12px solid transparent;
+}
+
+/* Custom scrollbar for terminal feel */
+::-webkit-scrollbar {
+    width: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #131313;
+}
+::-webkit-scrollbar-thumb {
+    background: #4a0d13;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #7a151d;
+}
+
+/* Specific active color for the requested layout */
+.blood-active {
+    background-color: rgba(176, 20, 35, 0.2);
+    border-left-color: #b01423;
+    color: #f7a8b0;
+}

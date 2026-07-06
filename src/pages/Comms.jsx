@@ -37,28 +37,33 @@ export default function Comms() {
       try {
         const { data } = await api.get('/comms/status');
         setCommsEnabled(data.comms_enabled);
-      } catch (e) {}
+      } catch (e) { }
     };
-    
+
     checkComms();
     const interval = setInterval(checkComms, 10000); // 10s poll
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <div className={styles.wrapper} ref={containerRef} data-mode={commsMode}>
+    <div
+      className={styles.wrapper}
+      ref={containerRef}
+      data-mode={commsMode}
+      style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, overflow: 'hidden' }}
+    >
       {/* MODE SWITCHER */}
-      <div className={styles.modeSwitch}>
-        <button 
-          className={commsMode === 'chat' ? styles.activeMode : ''} 
+      <div className={styles.modeSwitch} style={{ flexShrink: 0 }}>
+        <button
+          className={commsMode === 'chat' ? styles.activeMode : ''}
           onClick={() => setCommsMode('chat')}
         >
           <span className={styles.modeTitle}>SchreckNet</span>
           <span className={styles.modeSubtitle}>Everything here is safe.</span>
         </button>
-        
-        <button 
-          className={commsMode === 'email' ? styles.activeMode : ''} 
+
+        <button
+          className={commsMode === 'email' ? styles.activeMode : ''}
           onClick={() => setCommsMode('email')}
         >
           <span className={styles.modeTitle}>Surface Web</span>
@@ -66,11 +71,13 @@ export default function Comms() {
         </button>
       </div>
 
-      {commsMode === 'chat' ? (
-        <ChatSystem user={user} isMobile={isMobile} commsEnabled={commsEnabled} />
-      ) : (
-        <EmailSystem user={user} isMobile={isMobile} commsEnabled={commsEnabled} />
-      )}
+      <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {commsMode === 'chat' ? (
+          <ChatSystem user={user} isMobile={isMobile} commsEnabled={commsEnabled} />
+        ) : (
+          <EmailSystem user={user} isMobile={isMobile} commsEnabled={commsEnabled} />
+        )}
+      </div>
     </div>
   );
 }

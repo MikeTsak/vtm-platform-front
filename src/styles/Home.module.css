@@ -909,26 +909,47 @@
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  background: rgb(255 255 255 / 2%);
+  background-color: #111;
   border: 1px solid var(--border-color);
   border-radius: 12px;
   cursor: pointer;
   text-align: left;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   color: var(--text-muted);
+  position: relative;
+  overflow: hidden;
+}
+
+.themeBtn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: var(--theme-bg);
+  background-size: cover;
+  background-position: center;
+  opacity: 0.25;
+  transition: opacity 0.3s;
+  pointer-events: none;
 }
 
 .themeBtn:hover {
-  background: rgb(255 255 255 / 5%);
   border-color: color-mix(in srgb, var(--theme-color) 50%, var(--border-color));
   color: var(--text-color);
 }
 
+.themeBtn:hover::before {
+  opacity: 0.5;
+}
+
 .themeBtnActive {
-  background: color-mix(in srgb, var(--theme-color) 10%, transparent);
+  background-color: color-mix(in srgb, var(--theme-color) 10%, #111);
   border-color: var(--theme-color);
   color: var(--text-color);
   box-shadow: 0 4px 16px color-mix(in srgb, var(--theme-color) 20%, transparent);
+}
+
+.themeBtnActive::before {
+  opacity: 0.7;
 }
 
 .themeDot {
@@ -1108,7 +1129,8 @@
 }
 
 .navCard {
-  background: #ddd;
+  background-color: #f4f4f4;
+  background-image: url('https://www.transparenttextures.com/patterns/white-wall.png'), linear-gradient(135deg, #ffffff 0%, #e0e0e0 100%);
   color: #111;
   display: flex;
   flex-direction: column;
@@ -1119,11 +1141,25 @@
   text-decoration: none;
   font-weight: 600;
   transition: all 0.2s;
-  box-shadow: inset 0 0 20px rgba(255,255,255,0.5);
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.05), 0 2px 5px rgba(0,0,0,0.2);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #ccc;
+}
+/* Adding a marble-like texture effect */
+.navCard::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: var(--card-bg);
+  background-size: cover;
+  background-position: center;
+  opacity: 1;
+  pointer-events: none;
 }
 .navCard:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(255,255,255,0.2);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.4);
 }
 
 .navCardIcon {
@@ -1139,10 +1175,23 @@
 }
 
 .malkCard {
-  background: #111;
+  background: #050505;
   color: #fca5a5;
   border: 1px solid #fca5a5;
   box-shadow: 0 0 15px rgba(252, 165, 165, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.glitchBg {
+  position: absolute;
+  inset: 0;
+  background-image: url('https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExYzRkYzRkYzRkYzRkYzRkYzRkYzRkYzRkYzRkYzRkYzRkYzRkYzRkMyZlcD12MV9pbnRlcm5hbF9naWZzX2dpZklkJmN0PWc/3o7aD2d7qc9qQBqGVS/giphy.gif');
+  background-size: cover;
+  background-position: center;
+  opacity: 0.4;
+  mix-blend-mode: screen;
+  pointer-events: none;
 }
 
 /* BOTTOM ROW */
@@ -1181,15 +1230,50 @@
 }
 
 .restrictedCard {
-  background: #111;
+  background-color: #050505;
+  background-size: cover;
+  background-position: center;
   border: 1px solid #333;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   border-radius: 4px;
-  color: #f00;
+  color: #d93025;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.15em;
+  position: relative;
+  overflow: hidden;
+  padding: 2rem;
+}
+
+.restrictedCard::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+}
+
+.restrictedText {
+  position: relative;
+  z-index: 2;
+  font-size: 1.5rem;
+  font-family: 'Inter', sans-serif;
+  text-shadow: 0 0 10px rgba(217, 48, 37, 0.8);
+}
+
+.matrixCode {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  color: #0f0;
+  font-family: monospace;
+  font-size: 0.5rem;
+  opacity: 0.5;
+  z-index: 1;
+  white-space: pre;
+  text-align: left;
 }
 
 /* STATUS PROTOCOL SIDEBAR */
