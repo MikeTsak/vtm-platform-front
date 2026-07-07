@@ -2,16 +2,18 @@ import React, { useState, useRef } from 'react';
 import api from '../core/api'; // our axios instance
 import styles from './Avatar.module.css';
 
-export default function Avatar({ userId, size = 80, editable = false, onUploadSuccess, style = {}, className = "", imgClassName = "", imgStyle = {}, fallback = '/img/ATT-logo(1).png' }) {
+export default function Avatar({ userId, npcId, size = 80, editable = false, onUploadSuccess, style = {}, className = "", imgClassName = "", imgStyle = {}, fallback = '/img/ATT-logo(1).png' }) {
   const [timestamp, setTimestamp] = useState(Date.now());
   const [isUploading, setIsUploading] = useState(false);
   const [imgError, setImgError] = useState(false);
   const fileInputRef = useRef(null);
 
   const baseUrl = process.env.REACT_APP_API_URL || '';
-  const srcUrl = !imgError && userId 
-    ? `${baseUrl}/users/${userId}/avatar?t=${timestamp}`
-    : fallback;
+  let srcUrl = fallback;
+  if (!imgError) {
+    if (userId) srcUrl = `${baseUrl}/users/${userId}/avatar?t=${timestamp}`;
+    else if (npcId) srcUrl = `${baseUrl}/npcs/${npcId}/avatar?t=${timestamp}`;
+  }
 
   const handleClick = () => {
     if (editable && fileInputRef.current) {
@@ -34,7 +36,8 @@ export default function Avatar({ userId, size = 80, editable = false, onUploadSu
       const formData = new FormData();
       formData.append('avatar', file);
 
-      await api.put(`/users/${userId}/avatar`, formData, {
+      const endpoint = userId ? `/users/${userId}/avatar` : `/npcs/${npcId}/avatar`;
+      await api.put(endpoint, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },

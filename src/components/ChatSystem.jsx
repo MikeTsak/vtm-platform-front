@@ -5,6 +5,7 @@ import api from '../core/api';
 import styles from '../styles/ChatSystem.module.css';
 import '../styles/SchreckNetChat.css';
 import { Skeleton } from 'boneyard-js/react';
+import Avatar from './Avatar';
 import EmojiPicker from 'emoji-picker-react';
 import MiniSearch from 'minisearch';
 
@@ -29,6 +30,8 @@ const getApiOrigin = () => {
 
 const symlogo = (c) =>
   (c ? `${getApiOrigin()}/img/clans/330px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g, '_')}_symbol.png` : '');
+const localSymlogo = (c) =>
+  (c ? `/img/clans/330px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g, '_')}_symbol.png` : '');
 
 /* --- Gold NPC Tag Component --- */
 const NPCTag = () => (
@@ -1181,15 +1184,11 @@ export default function ChatSystem({ commsEnabled = true }) {
               <ul className="flex flex-col">
                 {usersWithChar.map(u => {
                   const isActive = selectedContact?.type === 'user' && selectedContact?.id === u.id;
-                  const showAdminIcon = isContactAdmin(u);
-                  const crest = showAdminIcon ? '/img/dice/MessyCrit.png' : symlogo(u.clan);
                   return (
                     <li key={`u-${u.id}`} onClick={() => selectContact(u)} className={`${isActive ? 'blood-active border-l-4 translate-x-1' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all`}>
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="relative shrink-0">
-                          <div className="w-6 h-6 rounded-full bg-surface-container flex items-center justify-center overflow-hidden border border-outline-variant/50">
-                            {crest ? <img src={crest} alt="crest" className={showAdminIcon ? "w-full h-full object-cover" : "w-4 h-4 object-contain brightness-0 invert"} /> : <span className="material-symbols-outlined text-[14px] opacity-50">person</span>}
-                          </div>
+                        <div className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center overflow-hidden border border-outline-variant/50 relative">
+                            <Avatar userId={u.id} size="100%" style={{ width: '100%', height: '100%' }} imgClassName="opacity-80" fallback={localSymlogo(u.clan) || '/img/ATT-logo(1).png'} />
                         </div>
                         <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate flex flex-col`}>
                           <span className="truncate">{u.char_name}</span>
@@ -1221,8 +1220,8 @@ export default function ChatSystem({ commsEnabled = true }) {
                     return (
                       <li key={`u-${u.id}`} onClick={() => selectContact(u)} className={`${isActive ? 'blood-active border-l-4 translate-x-1' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all opacity-80`}>
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-6 h-6 rounded-full bg-surface-container flex items-center justify-center shrink-0 border border-outline-variant/30">
-                            <span className="material-symbols-outlined text-[14px] opacity-50">person</span>
+                          <div className="w-6 h-6 rounded-full bg-surface-container flex items-center justify-center shrink-0 border border-outline-variant/30 overflow-hidden">
+                            <Avatar userId={u.id} size="100%" style={{ width: '100%', height: '100%' }} imgClassName="opacity-80" fallback="/img/ATT-logo(1).png" />
                           </div>
                           <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate flex flex-col`}>
                             <span className="truncate">{u.display_name}</span>
@@ -1245,13 +1244,13 @@ export default function ChatSystem({ commsEnabled = true }) {
               <ul className="flex flex-col">
                 {filteredNpcs.map(n => {
                   const isActive = selectedContact?.type === 'npc' && selectedContact?.id === n.id;
-                  const crest = symlogo(n.clan);
+                  const crest = localSymlogo(n.clan);
                   return (
                     <li key={`n-${n.id}`} onClick={() => selectContact(n)} className={`${isActive ? 'blood-active border-l-4 translate-x-1' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all`}>
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="relative shrink-0">
                           <div className="w-6 h-6 rounded-sm bg-surface-container-highest flex items-center justify-center overflow-hidden border border-outline-variant/50">
-                            {crest ? <img src={crest} alt="crest" className="w-4 h-4 object-contain brightness-0 invert opacity-80" /> : <span className="material-symbols-outlined text-[14px] opacity-50">smart_toy</span>}
+                            <Avatar npcId={n.id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="opacity-80" fallback={crest || '/img/ATT-logo(1).png'} />
                           </div>
                         </div>
                         <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate flex items-center gap-1`}>
@@ -1299,12 +1298,12 @@ export default function ChatSystem({ commsEnabled = true }) {
                   </button>
                   <div className="relative shrink-0">
                     <div className="w-10 h-10 rounded-sm bg-surface-container-highest overflow-hidden border border-outline-variant/50 flex items-center justify-center">
-                      {symlogo(selectedContact.clan) ? (
-                        <img src={symlogo(selectedContact.clan)} alt="Avatar" className="w-6 h-6 object-contain brightness-0 invert" />
+                      {selectedContact.type === 'user' ? (
+                        <Avatar userId={selectedContact.id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="opacity-80" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).png'} />
+                      ) : selectedContact.type === 'npc' ? (
+                        <Avatar npcId={selectedContact.id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="opacity-80" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).png'} />
                       ) : (
-                        <span className="material-symbols-outlined text-on-surface-variant">
-                          {selectedContact.type === 'group' ? 'group' : (selectedContact.type === 'npc' ? 'smart_toy' : 'person')}
-                        </span>
+                        <span className="material-symbols-outlined text-on-surface-variant text-[24px]">group</span>
                       )}
                     </div>
                     <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-surface rounded-full shadow-[0_0_4px_#22c55e]"></div>
@@ -1416,17 +1415,14 @@ export default function ChatSystem({ commsEnabled = true }) {
                       {!mine ? (
                         <div className="w-6 h-6 md:w-8 md:h-8 rounded-sm md:rounded-full bg-surface-container-high border border-outline-variant flex-shrink-0 flex items-center justify-center overflow-hidden blood-glow opacity-80 mt-auto md:mt-0">
                           {(() => {
-                            let avatar = null;
-                            if (selectedContact.type === 'user' || selectedContact.type === 'npc') {
-                              avatar = symlogo(selectedContact.clan);
-                            } else if (selectedContact.type === 'group') {
+                            if (selectedContact.type === 'group') {
                               const sender = currentGroupMembers.find(m => m.id === item.sender_id);
-                              avatar = symlogo(item.sender_clan || sender?.clan);
+                              return <Avatar userId={item.sender_id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="" fallback={localSymlogo(item.sender_clan || sender?.clan) || '/img/ATT-logo(1).png'} />;
+                            } else if (item.sender_id === 'npc') {
+                              return <Avatar npcId={selectedContact.id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).png'} />;
+                            } else {
+                              return <Avatar userId={item.sender_id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).png'} />;
                             }
-                            if (avatar) {
-                              return <img src={avatar} className="w-4 h-4 md:w-5 md:h-5 object-contain brightness-0 invert" alt="Avatar" loading="lazy" />;
-                            }
-                            return <span className="material-symbols-outlined text-[14px] text-on-surface-variant">person</span>;
                           })()}
                         </div>
                       ) : (

@@ -334,8 +334,10 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles, onImageCl
 
   const prefix = ent.is_ex ? "Ex-" : "";
   const primaryTitle = (ent.titles && ent.titles.length > 0) ? `${prefix}${ent.titles[0]}` : null;
-    const baseUrl = process.env.REACT_APP_API_URL || '';
-    const avatarUrl = ent.user_id ? `${baseUrl}/api/users/${ent.user_id}/avatar` : null;
+  const baseUrl = process.env.REACT_APP_API_URL || '';
+  let avatarUrl = null;
+  if (ent.type === 'player' && ent.user_id) avatarUrl = `${baseUrl}/users/${ent.user_id}/avatar`;
+  else if (ent.type === 'npc') avatarUrl = `${baseUrl}/npcs/${ent.id}/avatar`;
 
   const clanLogoUrl = symlogo(ent.clan); 
   const clanTextUrl = textlogo(ent.clan);
@@ -367,9 +369,16 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles, onImageCl
       )}
 
       <div className={styles.imgContainer}>
-        {ent.user_id ? (
+        {ent.type === 'player' || ent.type === 'npc' ? (
           <div className={styles.imgWrapper} onClick={() => onImageClick(avatarUrl)}>
-            <Avatar userId={ent.user_id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName={imgClass} />
+            <Avatar 
+               userId={ent.type === 'player' ? ent.user_id : null} 
+               npcId={ent.type === 'npc' ? ent.id : null}
+               size="100%" 
+               editable={canEdit}
+               style={{ width: '100%', height: '100%', borderRadius: 0 }} 
+               imgClassName={imgClass} 
+            />
             {ent.is_bloodhunted && <div className={styles.targetLabel}>Target</div>}
           </div>
         ) : (
