@@ -113,6 +113,17 @@ body {
   --border-color: #2f3138;
   --text-color: #e8e8ed;
   --text-muted: #9398a0;
+
+  --theme-primary: var(--tint);
+  --theme-background: var(--bg-color);
+  --theme-surface-container-lowest: #0a0a0c;
+  --theme-surface-container-low: var(--bg-color);
+  --theme-surface-container: var(--surface-color);
+  --theme-surface-container-high: var(--surface-lighter);
+  --theme-surface-container-highest: #222329;
+  --theme-outline: var(--border-color);
+  --theme-on-surface: var(--text-color);
+  --theme-on-surface-variant: var(--text-muted);
 }
 
 :root[data-theme='schrecknet'] {
@@ -123,6 +134,17 @@ body {
   --border-color: #334155;
   --text-color: #f1f5f9;
   --text-muted: #94a3b8;
+
+  --theme-primary: var(--tint);
+  --theme-background: var(--bg-color);
+  --theme-surface-container-lowest: #02040a;
+  --theme-surface-container-low: var(--bg-color);
+  --theme-surface-container: var(--surface-color);
+  --theme-surface-container-high: var(--surface-lighter);
+  --theme-surface-container-highest: #27364f;
+  --theme-outline: var(--border-color);
+  --theme-on-surface: var(--text-color);
+  --theme-on-surface-variant: var(--text-muted);
 }
 
 :root[data-theme='anarch'] {
@@ -133,6 +155,17 @@ body {
   --border-color: #44403c;
   --text-color: #fafaf9;
   --text-muted: #a8a29e;
+
+  --theme-primary: var(--tint);
+  --theme-background: var(--bg-color);
+  --theme-surface-container-lowest: #090706;
+  --theme-surface-container-low: var(--bg-color);
+  --theme-surface-container: var(--surface-color);
+  --theme-surface-container-high: var(--surface-lighter);
+  --theme-surface-container-highest: #383230;
+  --theme-outline: var(--border-color);
+  --theme-on-surface: var(--text-color);
+  --theme-on-surface-variant: var(--text-muted);
 }
 
 :root[data-theme='Giannakis'] {
@@ -143,4 +176,40 @@ body {
   --border-color: #1d5951;
   --text-color: #e6f7f4;
   --text-muted: #8eb3ae;
+
+  --theme-primary: var(--tint);
+  --theme-background: var(--bg-color);
+  --theme-surface-container-lowest: #020d0b;
+  --theme-surface-container-low: var(--bg-color);
+  --theme-surface-container: var(--surface-color);
+  --theme-surface-container-high: var(--surface-lighter);
+  --theme-surface-container-highest: #18544b;
+  --theme-outline: var(--border-color);
+  --theme-on-surface: var(--text-color);
+  --theme-on-surface-variant: var(--text-muted);
+}
+
+/* ═══════════════════════════════════════════════
+   ADMIN THEME (Purple Liquid Glass)
+   ═══════════════════════════════════════════════ */
+.admin-theme {
+  --theme-primary: #9d7cff;
+  --theme-primary-container: rgba(157, 124, 255, 0.12);
+  --theme-on-primary-container: #e8e6f0;
+  
+  --theme-background: #0a0a0f;
+  --theme-surface: #0a0a0f;
+  
+  --theme-surface-container-lowest: #050508;
+  --theme-surface-container-low: #0a0a0f;
+  --theme-surface-container: rgba(255, 255, 255, 0.04);
+  --theme-surface-container-high: rgba(255, 255, 255, 0.08);
+  --theme-surface-container-highest: rgba(255, 255, 255, 0.12);
+  
+  --theme-outline: rgba(157, 124, 255, 0.48);
+  --theme-outline-variant: rgba(157, 124, 255, 0.18);
+  
+  --theme-on-surface: #e8e6f0;
+  --theme-on-surface-variant: #9896a8;
+  --theme-secondary: #c8c6c5;
 }

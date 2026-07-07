@@ -408,8 +408,11 @@ export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEdit
                 </div>
               </div>
 
-              {/* CARD BODY */}
-              <div className={styles.charCardBody}>
+              {/* EXPANDED CONTENT (BODY & FOOTER) */}
+              {isExpanded && (
+                <>
+                  {/* CARD BODY */}
+                  <div className={styles.charCardBody}>
                 {/* Vitals Summary */}
                 <div className={styles.charVitalsRow}>
                   <div className={styles.charVitalChip}><b>XP:</b> {c.xp}</div>
@@ -426,8 +429,6 @@ export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEdit
                   <TrackerDisplay label="Hunger" max={5} isValueTracker={true} value={data.hunger || 0} onUpdate={(type, delta) => updateTracker(c, 'hunger', type, delta)} />
                 </div>
 
-                {/* EXPANDED CONTENT */}
-                {isExpanded && (
                   <div className={styles.charExpandedPanel}>
 
                     {/* Inventory Section */}
@@ -466,7 +467,6 @@ export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEdit
                     </details>
 
                   </div>
-                )}
               </div>
 
               {/* CARD FOOTER */}
@@ -495,6 +495,8 @@ export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEdit
                   <button className={`${styles.btn} ${styles.btnDanger}`} onClick={() => onDelete(c.id)}>Delete</button>
                 </div>
               </div>
+                </>
+              )}
             </div>
           );
         })}

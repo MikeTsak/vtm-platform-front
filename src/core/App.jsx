@@ -98,6 +98,15 @@ const IMMERSIVE_ROUTES = ['/schrecknet', '/surfaceweb'];
 function AppLayout() {
   const location = useLocation();
   const isImmersive = IMMERSIVE_ROUTES.includes(location.pathname);
+  const { user } = useContext(AuthCtx);
+
+  useEffect(() => {
+    if (user && user.role === 'admin') {
+      document.body.classList.add('admin-theme');
+    } else {
+      document.body.classList.remove('admin-theme');
+    }
+  }, [user]);
 
   return (
     <div

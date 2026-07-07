@@ -27,34 +27,34 @@ const NAV_SECTIONS = [
   {
     label: 'Players',
     items: [
-      { id: 'users',      icon: '👤', label: 'Users' },
-      { id: 'characters', icon: '🧛', label: 'Characters' },
-      { id: 'claims',     icon: '🏰', label: 'Claims' },
-      { id: 'downtimes',  icon: '🕰️', label: 'Downtimes' },
-      { id: 'xp',         icon: '✨', label: 'XP Tools' },
+      { id: 'users',      icon: 'person', label: 'Users' },
+      { id: 'characters', icon: 'account_circle', label: 'Characters' },
+      { id: 'claims',     icon: 'fort', label: 'Claims' },
+      { id: 'downtimes',  icon: 'schedule', label: 'Downtimes' },
+      { id: 'xp',         icon: 'auto_awesome', label: 'XP Tools' },
     ],
   },
   {
     label: 'Story',
     items: [
-      { id: 'npcs',      icon: '🎭', label: 'NPCs' },
-      { id: 'npc_email', icon: '✉️', label: 'NPC Email' },
+      { id: 'npcs',      icon: 'masks', label: 'NPCs' },
+      { id: 'npc_email', icon: 'mail', label: 'NPC Email' },
     ],
   },
   {
     label: 'Intelligence',
     items: [
-      { id: 'chat',    icon: '💬', label: 'Chat Logs' },
-      { id: 'stats',   icon: '📊', label: 'Stats' },
-      { id: 'dice',    icon: '🎲', label: 'Dice Logs' },
-      { id: 'discord', icon: '📡', label: 'Discord' },
+      { id: 'chat',    icon: 'chat', label: 'Chat Logs' },
+      { id: 'stats',   icon: 'bar_chart', label: 'Stats' },
+      { id: 'dice',    icon: 'casino', label: 'Dice Logs' },
+      { id: 'discord', icon: 'sensors', label: 'Discord' },
     ],
   },
   {
     label: 'System',
     items: [
-      { id: 'master', icon: '⚙️', label: 'Master' },
-      { id: 'logs',   icon: '📜', label: 'Server Logs' },
+      { id: 'master', icon: 'settings', label: 'Master' },
+      { id: 'logs',   icon: 'receipt_long', label: 'Server Logs' },
     ],
   },
 ];
@@ -67,8 +67,10 @@ function Sidebar({ tab, setTab, collapsed, onToggleCollapse }) {
   return (
     <nav className={`${styles.sidebar} ${collapsed ? styles.sidebarCollapsed : ''}`} aria-label="Admin navigation">
       <div className={styles.sidebarLogo}>
-        <div className={styles.sidebarLogoIcon} aria-hidden="true">🩸</div>
-        <span className={styles.sidebarLogoText}>SchreckNet</span>
+        <div className={styles.sidebarLogoIcon} aria-hidden="true" style={{background: 'transparent', border: 'none'}}>
+           <img src="/img/ATT-logo(1).png" alt="Logo" style={{width: '28px', height: '28px', objectFit: 'contain'}} />
+        </div>
+        <span className={styles.sidebarLogoText} style={{fontFamily: "'Playfair Display', serif", fontSize: '18px', fontWeight: 'bold', textTransform: 'none', letterSpacing: 'normal'}}>Erebus Portal</span>
       </div>
 
       <div className={styles.sidebarNav}>
@@ -84,7 +86,7 @@ function Sidebar({ tab, setTab, collapsed, onToggleCollapse }) {
                 data-tooltip={label}
                 aria-current={tab === id ? 'page' : undefined}
               >
-                <span className={styles.sidebarNavIcon} aria-hidden="true">{icon}</span>
+                <span className={`material-symbols-outlined ${styles.sidebarNavIcon}`} aria-hidden="true">{icon}</span>
                 <span className={styles.sidebarNavLabel}>{label}</span>
               </button>
             ))}
