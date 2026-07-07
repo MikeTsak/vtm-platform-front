@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthCtx } from '../core/AuthContext';
+import Avatar from './Avatar';
 import api from '../core/api';
 import styles from '../styles/Court.module.css';
 import { Skeleton } from 'boneyard-js/react';
@@ -12,13 +13,6 @@ const textlogo = (c) =>
   (c ? `/img/clans/text/300px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g, '_')}_logo.png` : '');
 
 // --- URL BUILDER HELPER ---
-const buildImageUrl = (val) => {
-  if (!val) return null;
-  const trimmed = val.trim();
-  if (trimmed.startsWith('http')) return trimmed;
-  const cleanName = trimmed.replace(/\.jpg$/i, '');
-  return `https://portal.attlarp.gr/images.court/${encodeURIComponent(cleanName)}.jpg`;
-};
 
 export default function HierarchyView({ canEdit: propCanEdit }) {
   const { user } = useContext(AuthCtx);
@@ -326,6 +320,7 @@ export default function HierarchyView({ canEdit: propCanEdit }) {
 }
 
 function MemberCard({ ent, specialClass = "", canEdit, update, titles, onImageClick }) {
+  const { user } = useContext(AuthCtx);
   const toggleTitle = (title) => {
     const currentTitles = ent.titles || [];
     let newTitles;
@@ -339,7 +334,9 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles, onImageCl
 
   const prefix = ent.is_ex ? "Ex-" : "";
   const primaryTitle = (ent.titles && ent.titles.length > 0) ? `${prefix}${ent.titles[0]}` : null;
-  const displayImageUrl = buildImageUrl(ent.image_url);
+    const baseUrl = process.env.REACT_APP_API_URL || '';
+    const avatarUrl = ent.user_id ? `${baseUrl}/api/users/${ent.user_id}/avatar` : null;
+
   const clanLogoUrl = symlogo(ent.clan); 
   const clanTextUrl = textlogo(ent.clan);
 
@@ -370,14 +367,9 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles, onImageCl
       )}
 
       <div className={styles.imgContainer}>
-        {displayImageUrl ? (
-          <div className={styles.imgWrapper}>
-            <img 
-              src={displayImageUrl} 
-              alt={ent.name} 
-              className={imgClass} 
-              onClick={() => onImageClick(displayImageUrl)}
-            />
+        {ent.user_id ? (
+          <div className={styles.imgWrapper} onClick={() => onImageClick(avatarUrl)}>
+            <Avatar userId={ent.user_id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName={imgClass} />
             {ent.is_bloodhunted && <div className={styles.targetLabel}>Target</div>}
           </div>
         ) : (
@@ -399,6 +391,9 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles, onImageCl
         <div className={styles.name}>
           {primaryTitle && <span className={styles.honorific} style={{ marginRight: '8px' }}>{primaryTitle}</span>}
           {ent.name}
+          {user && String(ent.user_id) === String(user.id) && (
+            <span style={{ marginLeft: '8px', fontSize: '0.65em', color: '#60a5fa', fontWeight: 'bold' }}>(YOU)</span>
+          )}
         </div>
         
         <div className={styles.tags}>

@@ -1,0 +1,93 @@
+import React, { useState, useRef } from 'react';
+import api from '../core/api'; // our axios instance
+import styles from './Avatar.module.css';
+
+export default function Avatar({ userId, size = 80, editable = false, onUploadSuccess, style = {}, className = "", imgClassName = "", imgStyle = {}, fallback = '/img/ATT-logo(1).png' }) {
+  const [timestamp, setTimestamp] = useState(Date.now());
+  const [isUploading, setIsUploading] = useState(false);
+  const [imgError, setImgError] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const baseUrl = process.env.REACT_APP_API_URL || '';
+  const srcUrl = !imgError && userId 
+    ? `${baseUrl}/users/${userId}/avatar?t=${timestamp}`
+    : fallback;
+
+  const handleClick = () => {
+    if (editable && fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate size (e.g., 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File is too large. Maximum size is 5MB.');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('avatar', file);
+
+      await api.put(`/users/${userId}/avatar`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      setTimestamp(Date.now()); // Force reload image
+      setImgError(false); // Reset error state in case it was a fallback before
+      if (onUploadSuccess) {
+        onUploadSuccess();
+      }
+    } catch (err) {
+      console.error('Failed to upload avatar', err);
+      alert('Failed to upload avatar: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setIsUploading(false);
+      e.target.value = null; // reset input
+    }
+  };
+
+  return (
+    <div 
+      className={`${styles.avatarContainer} ${editable ? styles.editable : ''} ${isUploading ? styles.uploading : ''} ${className}`}
+      style={{ width: size, height: size, ...style }}
+      onClick={handleClick}
+      title={editable ? "Click to change avatar" : ""}
+    >
+      <img 
+        src={srcUrl} 
+        alt="User Avatar" 
+        className={`${styles.avatarImage} ${imgClassName}`}
+        style={imgStyle}
+        onError={() => setImgError(true)}
+      />
+      {editable && (
+        <div className={styles.editOverlay}>
+          <span className="material-symbols-outlined">edit</span>
+        </div>
+      )}
+      {isUploading && (
+        <div className={styles.spinnerOverlay}>
+          <span className="material-symbols-outlined spin">progress_activity</span>
+        </div>
+      )}
+      
+      {editable && (
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          style={{ display: 'none' }} 
+          accept="image/*"
+          onChange={handleFileChange}
+        />
+      )}
+    </div>
+  );
+}

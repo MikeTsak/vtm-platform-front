@@ -2,6 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import styles from '../../styles/Admin.module.css';
 import { Skeleton } from 'boneyard-js/react';
+import Avatar from '../Avatar';
 
 const CLAN_COLORS = {
   Brujah: '#b40f1f', Gangrel: '#2f7a3a', Malkavian: '#713c8b', Nosferatu: '#6a4b2b',
@@ -50,7 +51,10 @@ export default function AdminUsersTab({ users = [], onSave, loading = false }) {
                 return (
                   <div key={u.id} className={styles.userRow} onMouseEnter={(e) => e.currentTarget.classList.add(styles.hover)} onMouseLeave={(e) => e.currentTarget.classList.remove(styles.hover)}>
                     <div className={styles.td}><span className={styles.idCell}>#{u.id}</span></div>
-                    <div className={styles.td}><input className={styles.input} value={draft.display_name} onChange={(e) => setRow(u, { display_name: e.target.value })} /></div>
+                    <div className={styles.td} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Avatar userId={u.id} size={32} editable={true} />
+                      <input className={styles.input} value={draft.display_name} onChange={(e) => setRow(u, { display_name: e.target.value })} />
+                    </div>
                     <div className={styles.td}><input className={styles.input} value={draft.email} onChange={(e) => setRow(u, { email: e.target.value })} /></div>
                     <div className={styles.td}><select className={styles.select} value={draft.role} onChange={(e) => setRow(u, { role: e.target.value })}>{roleChoices.map((r) => <option key={r} value={r}>{r}</option>)}</select></div>
                     <div className={styles.td}><input className={styles.input} className={styles.inputMono} value={draft.discord_id} onChange={(e) => setRow(u, { discord_id: e.target.value })} /></div>

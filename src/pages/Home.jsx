@@ -4,6 +4,7 @@ import api from '../core/api';
 import { Link, useNavigate } from 'react-router-dom';
 import { Skeleton } from 'boneyard-js/react';
 import styles from '../styles/Home.module.css';
+import Avatar from '../components/Avatar';
 
 /* ── Clan tint colors ───────────────────────────────────────────── */
 const CLAN_COLORS = {
@@ -134,44 +135,6 @@ function MiniVtmBar({ label, sup, agg, max }) {
   );
 }
 
-/* ── Blood Splatter Avatar ──────────────────────────────────────── */
-const BloodSplatterAvatar = () => {
-  const drops = [
-    { a: 0.2, d: 45, s: 15 }, { a: 0.6, d: 52, s: 10 }, { a: 1.1, d: 40, s: 20 },
-    { a: 1.8, d: 48, s: 12 }, { a: 2.5, d: 55, s: 8 }, { a: 3.1, d: 42, s: 18 },
-    { a: 3.8, d: 50, s: 14 }, { a: 4.4, d: 38, s: 22 }, { a: 5.1, d: 47, s: 11 },
-    { a: 5.8, d: 54, s: 9 }
-  ];
-  
-  return (
-    <div style={{ position: 'relative', width: '110px', height: '110px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-      <svg style={{ width: 0, height: 0, position: 'absolute' }}>
-        <filter id="bloodGoo">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur" />
-          <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7" result="goo" />
-          <feBlend in="SourceGraphic" in2="goo" />
-        </filter>
-      </svg>
-      
-      {/* Blood Splatter Background */}
-      <div style={{ position: 'absolute', inset: -20, filter: 'url(#bloodGoo)', pointerEvents: 'none' }}>
-        {/* Central blood blob */}
-        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '85px', height: '85px', background: 'var(--tint, #8a0f1a)', borderRadius: '50%' }} />
-        {/* Droplets */}
-        {drops.map((d, i) => {
-           const left = `calc(50% + ${Math.cos(d.a) * d.d}px)`;
-           const top = `calc(50% + ${Math.sin(d.a) * d.d}px)`;
-           return <div key={i} style={{ position: 'absolute', left, top, width: `${d.s}px`, height: `${d.s}px`, transform: 'translate(-50%, -50%)', background: 'var(--tint, #8a0f1a)', borderRadius: '50%' }} />
-        })}
-      </div>
-      
-      {/* The Avatar Circle */}
-      <div style={{ position: 'relative', width: '80px', height: '80px', background: '#1c1c1c', borderRadius: '50%', zIndex: 2, overflow: 'hidden' }}>
-        <span className="material-symbols-outlined" style={{ position: 'absolute', bottom: '-12px', left: '50%', transform: 'translateX(-50%)', color: 'var(--tint, #fca5a5)', fontSize: '5.5rem', fontVariationSettings: "'FILL' 1", opacity: 0.8, display: 'block', textAlign: 'center' }}>person</span>
-      </div>
-    </div>
-  );
-};
 
 export default function Home() {
   const [me, setMe] = useState(null);
@@ -411,7 +374,7 @@ export default function Home() {
             <span className={`${styles.corner} ${styles.cornerBR}`} />
             
             <div className={styles.headerInner}>
-              <BloodSplatterAvatar />
+              <Avatar userId={me?.id} size={110} editable={true} />
 
               <div className={styles.headerMeta}>
                 <span className={styles.neonateLabel}>NEONATE</span>

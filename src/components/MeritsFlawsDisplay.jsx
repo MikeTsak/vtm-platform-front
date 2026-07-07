@@ -113,21 +113,6 @@ export default function MeritsFlawsDisplay({ sheet, allMeritsFlat, allFlawsFlat,
         </div>
       </div>
 
-      {/* Atmospheric Image Inset */}
-      <div style={{ marginTop: '96px', height: '256px', width: '100%', position: 'relative', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }} className={styles.glassCard}>
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, var(--bg-color), transparent, transparent)', zIndex: 10 }}></div>
-        <img
-          src="https://lh3.googleusercontent.com/aida-public/AB6AXuCfTvrFH4Cf-t-vuDD2i6NbFTmhiJG4Ii5Riux8TnySvTDUa1gYA5CTmXRuAKIK1hmQUvDGdireSWYlKe0v9vXG4hazs_nI0tn9wbs8b_lrDCQt9vS58wiXU96OFUot7wTbHBWRJkqd6CGMcsS6uvFXlzyRDjZe3rTK_kp1p2H-wJc_WOv7-MZKqMefg-LC5Zt3cxpafRJIuFcyIB1aVbpN1gTNAccHwAI11N8UO91XoITke9FSJ0Wc930fKDwXFHTennjiWYr4RaA"
-          alt="Atmosphere"
-          style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'grayscale(100%) brightness(0.5)', transition: 'all 0.7s ease' }}
-          onMouseEnter={(e) => { e.currentTarget.style.filter = 'grayscale(0%) brightness(1)'; e.currentTarget.style.transform = 'scale(1.05)'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.filter = 'grayscale(100%) brightness(0.5)'; e.currentTarget.style.transform = 'scale(1)'; }}
-        />
-        <div style={{ position: 'absolute', bottom: '32px', left: '32px', zIndex: 20 }}>
-          <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', fontWeight: 500, color: 'var(--primary-container)', textTransform: 'uppercase', letterSpacing: '0.3em', margin: '0 0 8px 0' }}>The Eternal Night</p>
-          <p style={{ fontFamily: "'Inter', sans-serif", fontSize: '16px', fontWeight: 400, color: 'var(--text-muted)', opacity: 0.6, fontStyle: 'italic', margin: 0 }}>"The scars we bear are the maps of our survival."</p>
-        </div>
-      </div>
     </div>
   );
 }

@@ -18,6 +18,7 @@ import AttributesSection from '../components/AttributesSection';
 import SkillsDisplaySection from '../components/SkillsDisplaySection';
 import DisciplinesDisplaySection from '../components/DisciplinesDisplaySection';
 import MeritsBackgroundsSection from '../components/MeritsBackgroundsSection';
+import Avatar from '../components/Avatar';
 import MeritsFlawsDisplay from '../components/MeritsFlawsDisplay';
 import { Skeleton } from 'boneyard-js/react';
 import MiniSearch from 'minisearch';
@@ -54,13 +55,7 @@ const fileify = (c) => (NAME_OVERRIDES[c] || c).replace(/\s+/g, '_');
 const symlogo = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.png` : '');
 const textlogo = (c) => (c ? `/img/clans/text/300px-${fileify(c)}_Logo.png` : '');
 
-const buildImageUrl = (val) => {
-  if (!val) return null;
-  const trimmed = val.trim();
-  if (trimmed.startsWith('http')) return trimmed;
-  const cleanName = trimmed.replace(/\.jpg$/i, '');
-  return `https://portal.attlarp.gr/images.court/${encodeURIComponent(cleanName)}.jpg`;
-};
+
 
 const ATTRS = [
   ['Strength', 'Dexterity', 'Stamina'],
@@ -1135,7 +1130,7 @@ export default function CharacterView({
           <div className="flex justify-between items-center px-4 h-16 w-full">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-full border overflow-hidden" style={{ borderColor: 'var(--tint)', boxShadow: '0 0 10px color-mix(in srgb, var(--tint) 30%, transparent)' }}>
-                <img className="w-full h-full object-cover" src={buildImageUrl(ch.image_url) || "/img/ATT-logo(1).png"} alt="Avatar" />
+                <Avatar userId={ch?.user_id} size="100%" editable={String(user?.id) === String(ch?.user_id) || isAdmin} />
               </div>
               <h1 className="font-['Playfair_Display'] text-xl font-semibold" style={{ color: 'var(--tint)' }}>{ch.name}</h1>
             </div>
@@ -1152,7 +1147,7 @@ export default function CharacterView({
           <div className={styles.topAppBarContent}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               <div className={styles.avatarBox}>
-                <img src={buildImageUrl(ch.image_url) || "/img/ATT-logo(1).png"} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <Avatar userId={ch?.user_id} size="100%" editable={String(user?.id) === String(ch?.user_id) || isAdmin} />
               </div>
               <div>
                 <h1 className={styles.charTitle}>{ch.name}</h1>
