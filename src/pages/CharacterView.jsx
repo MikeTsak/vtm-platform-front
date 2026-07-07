@@ -506,8 +506,10 @@ function TrackerBlock({ label, val, max, agg = 0, sup = 0, filled = 0, stains = 
     boxes.push(
       <div
         key={i}
-        className={`${styles.trackerBox} ${extraClass}`}
-      />
+        className={`${styles.trackerSquare} ${isFilled ? styles.filled : ''}`}
+      >
+        {content}
+      </div>
     );
   }
   return (
@@ -707,7 +709,7 @@ export default function CharacterView({
 
   // New tab state for the XP Shop
   const [activeShopTab, setActiveShopTab] = useState('Disciplines');
-  const [shopSearch, setShopSearch] = useState('');
+  const [currentSearches, setShopSearches] = useState({});
   const [shopFilter, setShopFilter] = useState('in_clan');
 
   const [pendingFixes, setPendingFixes] = useState([]);
@@ -1122,13 +1124,31 @@ export default function CharacterView({
     maxHealth += Number(sheet.disciplines?.Fortitude || 0);
   }
   const maxWillpower = (Number(sheet.attributes?.Composure) || 1) + (Number(sheet.attributes?.Resolve) || 1);
-  const isSearching = (shopSearch || '').trim().length > 0;
+  const currentSearch = currentSearches[activeShopTab] || '';
+  const isSearching = currentSearch.trim().length > 0;
 
   return (
     <Skeleton name="character-view" loading={!ch}>
       <div className={styles.root} style={{ '--tint': tint }}>
-        {/* --- Top App Bar --- */}
-        <header className={styles.topAppBar}>
+        {/* --- Stitch Mobile Header --- */}
+        <header className="md:hidden fixed top-0 w-full z-50 backdrop-blur-xl border-b border-white/10 shadow-lg" style={{ backgroundColor: 'color-mix(in srgb, var(--bg-color) 60%, transparent)' }}>
+          <div className="flex justify-between items-center px-4 h-16 w-full">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full border overflow-hidden" style={{ borderColor: 'var(--tint)', boxShadow: '0 0 10px color-mix(in srgb, var(--tint) 30%, transparent)' }}>
+                <img className="w-full h-full object-cover" src={buildImageUrl(ch.image_url) || "/img/ATT-logo(1).png"} alt="Avatar" />
+              </div>
+              <h1 className="font-['Playfair_Display'] text-xl font-semibold" style={{ color: 'var(--tint)' }}>{ch.name}</h1>
+            </div>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <span key={i} className={`material-symbols-outlined ${styles.hungerDroplet} ${i < tempHunger ? styles.active : ''}`} style={i < tempHunger ? { fontVariationSettings: "'FILL' 1" } : {}}>water_drop</span>
+              ))}
+            </div>
+          </div>
+        </header>
+
+        {/* --- Top App Bar (Desktop) --- */}
+        <header className={`hidden md:block ${styles.topAppBar}`}>
           <div className={styles.topAppBarContent}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               <div className={styles.avatarBox}>
@@ -1136,9 +1156,9 @@ export default function CharacterView({
               </div>
               <div>
                 <h1 className={styles.charTitle}>{ch.name}</h1>
-                <p className={styles.charSubtitle} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {symlogo(ch.clan) && <img src={symlogo(ch.clan)} alt={ch.clan} style={{ height: '24px', opacity: 0.8 }} />}
-                  {textlogo(ch.clan) ? <img src={textlogo(ch.clan)} alt={ch.clan} style={{ height: '20px', opacity: 0.9 }} /> : <span>{ch.clan}</span>}
+                <p className={styles.charSubtitle} style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  {symlogo(ch.clan) && <img src={symlogo(ch.clan)} alt={ch.clan} style={{ height: '24px', opacity: 0.8, filter: 'brightness(0) invert(1)' }} />}
+                  {textlogo(ch.clan) ? <img src={textlogo(ch.clan)} alt={ch.clan} style={{ height: '20px', opacity: 0.9, filter: 'brightness(0) invert(1)' }} /> : <span>{ch.clan}</span>}
                   <span style={{ opacity: 0.5 }}>•</span>
                   <span>{sheet?.bloodPotency || 'Unspecified'}</span>
                 </p>
@@ -1215,14 +1235,40 @@ export default function CharacterView({
           {msg && <div className={styles.alertOk}>{msg}</div>}
           {saveStatus && isAdmin && <div style={{ fontSize: '0.85rem', color: 'var(--accent)', opacity: 0.8, textAlign: 'center' }}>{saveStatus}</div>}
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
-            <div>
-              <h2 style={{ fontFamily: 'var(--font-title)', margin: 0 }}>Meta Data</h2>
-              <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                Predator: {sheet?.predator_type || sheet?.predatorType || '—'} | Sire: {sheet?.sire || '—'} | Ambition: {sheet?.ambition || '—'} | Desire: {sheet?.desire || '—'}
+          {/* --- Stitch Mobile Meta Data --- */}
+          <section className="md:hidden grid grid-cols-1 gap-3 mt-8">
+            <div className={styles.glassPanel + " p-4 rounded-lg"}>
+              <span className="font-['JetBrains_Mono'] text-[10px] tracking-widest text-white/70 block mb-1 uppercase">Predator Type</span>
+              <div className={styles.inputUnderline}>{sheet?.predator_type || sheet?.predatorType || '—'}</div>
+            </div>
+            <div className={styles.glassPanel + " p-4 rounded-lg"}>
+              <span className="font-['JetBrains_Mono'] text-[10px] tracking-widest text-white/70 block mb-1 uppercase">Sire</span>
+              <div className={styles.inputUnderline}>{sheet?.sire || '—'}</div>
+            </div>
+            <div className={styles.glassPanel + " p-4 rounded-lg"}>
+              <span className="font-['JetBrains_Mono'] text-[10px] tracking-widest text-white/70 block mb-1 uppercase">Ambition & Desire</span>
+              <div className="space-y-3 mt-2">
+                <div className={styles.inputUnderline + " text-sm"}>{sheet?.ambition || '—'}</div>
+                <div className={styles.inputUnderline + " text-sm"}>{sheet?.desire || '—'}</div>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          </section>
+
+          {/* --- Desktop Meta Data --- */}
+          <div className="hidden md:flex justify-between items-end flex-wrap gap-4 border-b border-white/10 pb-3 mt-8">
+            <div style={{ flex: '1 1 min-content' }}>
+              <h2 style={{ fontFamily: 'var(--font-title)', margin: 0, marginBottom: '6px' }}>Meta Data</h2>
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.6', display: 'flex', flexWrap: 'wrap', columnGap: '8px' }}>
+                <span>Predator: {sheet?.predator_type || sheet?.predatorType || '—'}</span>
+                <span style={{opacity: 0.5}}>|</span>
+                <span>Sire: {sheet?.sire || '—'}</span>
+                <span style={{opacity: 0.5}}>|</span>
+                <span>Ambition: {sheet?.ambition || '—'}</span>
+                <span style={{opacity: 0.5}}>|</span>
+                <span>Desire: {sheet?.desire || '—'}</span>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', whiteSpace: 'nowrap' }}>
               <span style={{ color: 'var(--text-muted)' }}>XP: <b style={{ color: 'var(--tint)' }}>{xp}</b></span>
             </div>
           </div>
@@ -1360,57 +1406,40 @@ export default function CharacterView({
               </div>
             </div>
 
-            {/* Filter/Search Controls */}
-            <div className={styles.shopSearchRow}>
-              <div className={styles.searchWrap}>
-                <span className={`material-symbols-outlined ${styles.searchIcon}`}>search</span>
-                <input
-                  type="text"
-                  className={styles.searchInput}
-                  placeholder="Search abilities..."
-                  value={shopSearch}
-                  onChange={(e) => setShopSearch(e.target.value)}
-                />
-              </div>
-              {activeShopTab === 'Disciplines' && (
-                <div className={styles.selectWrap}>
-                  <select
-                    className={styles.shopSelect}
-                    value={shopFilter}
-                    onChange={(e) => setShopFilter(e.target.value)}
-                  >
-                    <option value="all">All Disciplines</option>
-                    <option value="in_clan">In Clan</option>
-                    <option value="out_of_clan">Out of Clan</option>
-                  </select>
-                  <span className={`material-symbols-outlined ${styles.searchIcon}`} style={{ left: 'auto', right: '1rem' }}>expand_more</span>
-                </div>
-              )}
-            </div>
-
             {/* Sticky Tabs */}
-            {!isSearching && (
-              <nav className={styles.shopTabsNav}>
-                <div className={styles.shopTabsContainer}>
-                  {['Disciplines', 'Attributes', 'Skills', 'Merits & Flaws', 'Rituals', 'Blood Potency'].map(tab => (
-                    <button
-                      key={tab}
-                      className={`${styles.shopTabBtn} ${activeShopTab === tab ? styles.shopTabBtnActive : ''}`}
-                      onClick={() => setActiveShopTab(tab)}
-                    >
-                      {tab}
-                    </button>
-                  ))}
-                </div>
-              </nav>
-            )}
+            <nav className={styles.shopTabsNav}>
+              <div className={styles.shopTabsContainer}>
+                {['Disciplines', 'Attributes', 'Skills', 'Merits & Flaws', 'Rituals', 'Blood Potency'].map(tab => (
+                  <button
+                    key={tab}
+                    className={`${styles.shopTabBtn} ${activeShopTab === tab ? styles.shopTabBtnActive : ''}`}
+                    onClick={() => setActiveShopTab(tab)}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+            </nav>
 
-            <div className={`${styles.shopGrid} ${isSearching || ['Disciplines', 'Rituals'].includes(activeShopTab) ? styles.shopGridSingle : ''}`}>
+            <div className={`${styles.shopGrid} ${['Disciplines', 'Rituals'].includes(activeShopTab) ? styles.shopGridSingle : ''}`}>
+              {/* Category Search Bar */}
+              <div className={styles.shopSearchRow} style={{ gridColumn: '1 / -1', marginBottom: '16px' }}>
+                <div className={styles.searchWrap} style={{ width: '100%' }}>
+                  <span className={`material-symbols-outlined ${styles.searchIcon}`}>search</span>
+                  <input
+                    type="text"
+                    className={styles.searchInput}
+                    placeholder={`Search ${activeShopTab}...`}
+                    value={currentSearches[activeShopTab] || ''}
+                    onChange={(e) => setShopSearches(prev => ({ ...prev, [activeShopTab]: e.target.value }))}
+                  />
+                </div>
+              </div>
               {(activeShopTab === 'Blood Potency' || isSearching) && (
                 <>
                   {(() => {
                     if (isSearching) {
-                      if (msSearchText(['Blood Potency'], shopSearch).length === 0) return null;
+                      if (msSearchText(['Blood Potency'], currentSearch).length === 0) return null;
                     }
                     const current = Number(sheet.blood_potency ?? 1);
                     const max = 10;
@@ -1451,7 +1480,7 @@ export default function CharacterView({
                       
                       let filteredGroup = group;
                       if (isSearching) {
-                        const res = msSearchText([...group, groupName], shopSearch);
+                        const res = msSearchText([...group, groupName], currentSearch);
                         if (res.length === 0) return null;
                         
                         // If they matched the group name, show all attributes in group
@@ -1510,7 +1539,7 @@ export default function CharacterView({
                     return Object.entries(SKILLS).map(([groupName, groupSkills]) => {
                       let filteredSkills = groupSkills;
                       if (isSearching) {
-                        const res = msSearchText([...groupSkills, groupName], shopSearch);
+                        const res = msSearchText([...groupSkills, groupName], currentSearch);
                         if (res.length === 0) return null;
                         
                         const matchedGroup = res.some(r => r.item === groupName);
@@ -1580,16 +1609,17 @@ export default function CharacterView({
                           if (p.name) allTerms.push(p.name);
                         }
                       }
-                      return msSearchText(allTerms, shopSearch).length > 0;
+                      return msSearchText(allTerms, currentSearch).length > 0;
                     };
                     
                     return (
                       <>
-                        {inClanDisciplines.filter(name => {
-                          if (!matchDiscipline(name)) return false;
-                          if (shopFilter === 'out_of_clan') return false;
-                          return true;
-                        }).map(name => {
+                        {inClanDisciplines.filter(name => matchDiscipline(name)).length > 0 && (
+                          <div style={{ gridColumn: '1 / -1', marginTop: '16px', borderBottom: '1px solid color-mix(in srgb, var(--tint) 40%, transparent)', paddingBottom: '8px' }}>
+                            <h3 style={{ fontFamily: 'var(--font-title)', margin: 0, color: 'var(--tint)' }}>In Clan Disciplines</h3>
+                          </div>
+                        )}
+                        {inClanDisciplines.filter(name => matchDiscipline(name)).map(name => {
                           const current = Number(sheet.disciplines?.[name] || 0);
                           const next = Math.min(current + 1, 5);
                           const canRaise = next > 0 && next <= 5;
@@ -1621,7 +1651,7 @@ export default function CharacterView({
                                     disciplineDots: sheet.disciplines,
                                     ownedPowers: sheet.disciplinePowers?.[name] || []
                                   }}
-                                  searchQuery={shopSearch}
+                                  searchQuery={currentSearch}
                                   onConfirm={(sel) => confirmDisciplinePurchase({
                                     name,
                                     current,
@@ -1635,11 +1665,12 @@ export default function CharacterView({
                             </ShopRow>
                           );
                         })}
-                        {outOfClanDisciplines.filter(name => {
-                          if (!matchDiscipline(name)) return false;
-                          if (shopFilter === 'in_clan') return false;
-                          return true;
-                        }).map(name => {
+                        {outOfClanDisciplines.filter(name => matchDiscipline(name)).length > 0 && (
+                          <div style={{ gridColumn: '1 / -1', marginTop: '16px', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
+                            <h3 style={{ fontFamily: 'var(--font-title)', margin: 0, color: 'var(--text-muted)' }}>Out of Clan Disciplines</h3>
+                          </div>
+                        )}
+                        {outOfClanDisciplines.filter(name => matchDiscipline(name)).map(name => {
                           const current = Number(sheet.disciplines?.[name] || 0);
                           const next = Math.min(current + 1, 5);
                           const kind = disciplineKindFor(ch, name);
@@ -1675,7 +1706,7 @@ export default function CharacterView({
                       Object.values(itemsObj || {}).flat().forEach(r => {
                         if (r.name) allTerms.push(r.name);
                       });
-                      return msSearchText(allTerms, shopSearch).length > 0;
+                      return msSearchText(allTerms, currentSearch).length > 0;
                     };
                     
                     const showBloodSorcery = matchRitualCategory('Blood Sorcery Rituals', RITUALS?.blood_sorcery?.levels);
@@ -1701,7 +1732,7 @@ export default function CharacterView({
                               canLearnFn={canLearnRitual}
                               onBuy={buyRitual}
                               xp={xp}
-                              searchQuery={shopSearch}
+                              searchQuery={currentSearch}
                             />
                           </ShopRow>
                         )}
@@ -1724,7 +1755,7 @@ export default function CharacterView({
                               canLearnFn={canLearnCeremony}
                               onBuy={buyCeremony}
                               xp={xp}
-                              searchQuery={shopSearch}
+                              searchQuery={currentSearch}
                             />
                           </ShopRow>
                         )}
@@ -1742,7 +1773,7 @@ export default function CharacterView({
                   xp={xp}
                   ch={ch}
                   knownPowerNamesAndIds={knownPowerNamesAndIds}
-                  searchQuery={shopSearch}
+                  searchQuery={currentSearch}
                   spendXP={spendXP}
                 />
               </div>
@@ -1808,6 +1839,31 @@ export default function CharacterView({
             busy={savingProfile}
           />
         )}
+        {/* --- Stitch Mobile Bottom Nav --- */}
+        <nav className="md:hidden fixed bottom-0 left-0 w-full z-50 rounded-t-xl backdrop-blur-2xl border-t border-white/10 shadow-[0_-4px_20px_rgba(0,0,0,0.5)]" style={{ backgroundColor: 'color-mix(in srgb, var(--bg-color) 80%, transparent)' }}>
+          <div className="flex justify-around items-center h-20 w-full px-4" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+            <button className="flex flex-col items-center justify-center transition-all duration-200" style={{ color: 'var(--tint)' }}>
+              <span className="material-symbols-outlined mb-1 text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>person</span>
+              <span className="font-['JetBrains_Mono'] text-[10px] tracking-widest uppercase font-medium">Sheet</span>
+            </button>
+            <button className="flex flex-col items-center justify-center opacity-60 hover:opacity-100 transition-all duration-200" style={{ color: 'var(--text-muted)' }}>
+              <span className="material-symbols-outlined mb-1 text-2xl">book</span>
+              <span className="font-['JetBrains_Mono'] text-[10px] tracking-widest uppercase font-medium">Lore</span>
+            </button>
+            <button className="flex flex-col items-center justify-center opacity-60 hover:opacity-100 transition-all duration-200" style={{ color: 'var(--text-muted)' }}>
+              <span className="material-symbols-outlined mb-1 text-2xl">inventory_2</span>
+              <span className="font-['JetBrains_Mono'] text-[10px] tracking-widest uppercase font-medium">Gear</span>
+            </button>
+            <button className="flex flex-col items-center justify-center opacity-60 hover:opacity-100 transition-all duration-200" style={{ color: 'var(--text-muted)' }}>
+              <span className="material-symbols-outlined mb-1 text-2xl">groups</span>
+              <span className="font-['JetBrains_Mono'] text-[10px] tracking-widest uppercase font-medium">Coterie</span>
+            </button>
+            <button className="flex flex-col items-center justify-center opacity-60 hover:opacity-100 transition-all duration-200" style={{ color: 'var(--text-muted)' }}>
+              <span className="material-symbols-outlined mb-1 text-2xl">casino</span>
+              <span className="font-['JetBrains_Mono'] text-[10px] tracking-widest uppercase font-medium">Roll</span>
+            </button>
+          </div>
+        </nav>
       </div>
     </Skeleton>
   );

@@ -144,11 +144,14 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 120px;
+  min-height: 120px;
+  height: auto;
+  flex-wrap: wrap;
+  gap: 16px;
   width: 100%;
   max-width: 1400px;
   margin: 0 auto;
-  padding: 0 clamp(16px, 4vw, 48px);
+  padding: 16px clamp(16px, 4vw, 48px);
 }
 
 .avatarBox {
@@ -161,7 +164,7 @@
 
 .charTitle {
   font-family: 'Playfair Display', serif;
-  font-size: 48px;
+  font-size: clamp(24px, 6vw, 48px);
   color: var(--tint);
   margin: 0;
   padding: 0;
@@ -533,15 +536,15 @@ select.input:focus {
 .dot {
   width: 12px;
   height: 12px;
-  border-radius: 0;
+  border-radius: 50%;
   border: 1px solid var(--tint);
   background: #0a0a0b;
 }
 
 .dotOn {
-  background: var(--accent);
-  border-color: var(--accent);
-  box-shadow: 0 0 4px 1px rgba(0, 245, 255, 0.4);
+  background: var(--tint);
+  border-color: var(--tint);
+  box-shadow: 0 0 4px 1px color-mix(in srgb, var(--tint) 50%, transparent);
 }
 
 .specsText {
@@ -1449,9 +1452,9 @@ select.input:focus {
 }
 
 .trackerBox.filled {
-  background-color: var(--accent) !important;
-  border-color: var(--accent) !important;
-  box-shadow: 0 0 4px 1px rgba(0, 245, 255, 0.5);
+  background-color: var(--tint) !important;
+  border-color: var(--tint) !important;
+  box-shadow: 0 0 4px 1px color-mix(in srgb, var(--tint) 50%, transparent);
   color: #0a0a0b !important;
 }
 
@@ -1465,7 +1468,7 @@ select.input:focus {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.8rem;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--tint);
   font-weight: bold;
   letter-spacing: 0.1em;
 }
@@ -1522,7 +1525,7 @@ select.input:focus {
 
 .trackerBox:hover {
   box-shadow: inset 0 0 10px color-mix(in srgb, var(--tint) 30%, transparent);
-  border-color: #5b403e;
+  border-color: color-mix(in srgb, var(--tint) 40%, transparent);
   cursor: pointer;
 }
 
@@ -1562,7 +1565,7 @@ select.input:focus {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  border: 1px solid #5b403e;
+  border: 1px solid color-mix(in srgb, var(--tint) 40%, transparent);
   transition: all 0.2s;
 }
 
@@ -2353,3 +2356,71 @@ select.input:focus {
   border: 1px solid var(--border-color);
   max-height: 600px;
 }
+
+/* --- Stitch UI Additions --- */
+.glassPanel {
+    background-color: rgba(26, 26, 26, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.trackerDot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    display: inline-block;
+    margin-right: 4px;
+}
+
+.trackerDot.filled {
+    background-color: var(--tint);
+    border-color: var(--tint);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--tint) 50%, transparent);
+}
+
+.trackerSquare {
+    width: 14px;
+    height: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 4px;
+    font-family: monospace;
+    font-size: 12px;
+    color: var(--tint);
+}
+
+.trackerSquare.filled {
+    background-color: var(--tint);
+    border-color: var(--tint);
+    color: #000;
+}
+
+.hungerDropletStitch {
+    width: 16px;
+    height: 20px;
+    margin-right: 6px;
+    display: inline-block;
+}
+
+.inputUnderline {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--text-color);
+    font-family: 'Playfair Display', serif;
+    font-size: 16px;
+    width: 100%;
+    padding: 4px 0;
+    border-radius: 0;
+}
+
+.inputUnderline:focus {
+    outline: none;
+    border-bottom-color: var(--tint);
+    box-shadow: none;
+}
+
