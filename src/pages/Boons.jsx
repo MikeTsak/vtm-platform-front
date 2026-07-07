@@ -4,6 +4,7 @@ import api from '../core/api';
 import { AuthCtx } from '../core/AuthContext';
 import { Skeleton } from 'boneyard-js/react';
 import MiniSearch from 'minisearch';
+import Avatar from '../components/Avatar';
 
 const BOON_LEVELS  = ['trivial', 'minor', 'major', 'life'];
 const BOON_STATUSES = ['owed', 'paid', 'excused'];
@@ -107,6 +108,41 @@ export default function Boons() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const getAvatarProps = (id, name) => {
+    if (!id && !name) return null;
+    let type = null;
+    let targetId = id;
+
+    if (!targetId) {
+      const base = (name || '').split(' (')[0].trim();
+      const byName = entities.find(e => (e.name || '').split(' (')[0].trim() === base);
+      if (byName) {
+        type = byName.type;
+        targetId = byName.id;
+      }
+    } else {
+      // Even if we have ID, we need to know the type to fetch the correct avatar endpoint
+      // We can try to guess based on ID if it exists in entities
+      const byIdUser = entities.find(e => e.type === 'user' && String(e.id) === String(id));
+      if (byIdUser) type = 'user';
+      else {
+        const byIdNpc = entities.find(e => e.type === 'npc' && String(e.id) === String(id));
+        if (byIdNpc) type = 'npc';
+      }
+      
+      // If we still don't know the type, fallback to name matching
+      if (!type) {
+         const base = (name || '').split(' (')[0].trim();
+         const byName = entities.find(e => (e.name || '').split(' (')[0].trim() === base);
+         if (byName) type = byName.type;
+      }
+    }
+
+    if (type === 'user') return { userId: targetId };
+    if (type === 'npc') return { npcId: targetId };
+    return null;
+  };
 
   // Scroll handler for mobile toolbar
   useEffect(() => {
@@ -452,8 +488,10 @@ export default function Boons() {
                   </div>
                   
                   <div className="flex items-center gap-3 relative z-10">
-                    <div className={`w-10 h-10 rounded-full border border-outline-variant/30 flex items-center justify-center text-on-surface-variant text-sm font-bold shrink-0 bg-surface-container-highest`}>
-                      {getInitials(boon.from_name)}
+                    <div className={`w-10 h-10 rounded-full border border-outline-variant/30 flex items-center justify-center text-on-surface-variant text-sm font-bold shrink-0 bg-surface-container-highest overflow-hidden`}>
+                      {getAvatarProps(boon.from_id, boon.from_name) ? (
+                        <Avatar {...getAvatarProps(boon.from_id, boon.from_name)} size="100%" style={{ width: '100%', height: '100%' }} />
+                      ) : getInitials(boon.from_name)}
                     </div>
                     
                     <div className="flex-1">
@@ -467,6 +505,12 @@ export default function Boons() {
                     <div className="text-right">
                       <p className="text-[12px] font-bold text-on-surface-variant">Creditor</p>
                       <p className={`text-[16px] font-bold ${levelStyle.text}`}>{boon.to_name}</p>
+                    </div>
+                    
+                    <div className={`w-10 h-10 rounded-full border border-outline-variant/30 flex items-center justify-center text-on-surface-variant text-sm font-bold shrink-0 bg-surface-container-highest overflow-hidden`}>
+                      {getAvatarProps(boon.to_id, boon.to_name) ? (
+                        <Avatar {...getAvatarProps(boon.to_id, boon.to_name)} size="100%" style={{ width: '100%', height: '100%' }} />
+                      ) : getInitials(boon.to_name)}
                     </div>
                   </div>
                   

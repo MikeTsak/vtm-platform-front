@@ -3,6 +3,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import styles from '../../styles/Admin.module.css';
 import CharacterSetup from '../../pages/CharacterSetup';
+import Avatar from '../Avatar';
 
 const CLAN_COLORS = {
   Brujah: '#b40f1f', Gangrel: '#2f7a3a', Malkavian: '#713c8b', Nosferatu: '#6a4b2b',
@@ -53,8 +54,10 @@ export default function AdminNPCsTab({ npcs, onReload, onDelete }) {
                   >
                     <td className={styles.idCell}>#{n.id}</td>
                     <td className={styles.npcNameCell}>
-                      <div className={styles.clanIcon} />
-                      <span style={{ fontWeight: 700, fontSize: '1.05rem' }}>{n.name}</span>
+                      <div style={{ width: 32, height: 32, marginRight: 12, display: 'inline-block', verticalAlign: 'middle' }}>
+                        <Avatar npcId={n.id} size="100%" style={{ width: '100%', height: '100%' }} fallback={symlogo(n.clan)} />
+                      </div>
+                      <span style={{ fontWeight: 700, fontSize: '1.05rem', verticalAlign: 'middle' }}>{n.name}</span>
                     </td>
                     <td className={styles.clanCell} style={{ color: clanColor, fontWeight: 700, fontStyle: 'normal' }}>{n.clan}</td>
                     <td style={{ fontFamily: 'Fira Code, monospace', fontWeight: 'bold', color: 'var(--accent-purple)' }}>{n.xp}</td>

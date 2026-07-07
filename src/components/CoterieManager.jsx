@@ -8,6 +8,7 @@ import {
 } from '../data/cotteries';
 import styles from '../styles/Coteries.module.css';
 import MiniSearch from 'minisearch';
+import Avatar from './Avatar';
 
 /* ===== Pull domains the same way as Domains.jsx ===== */
 import domainsRaw from '../data/Domains.json';
@@ -207,6 +208,11 @@ function MembersPicker({ members, setMembers, roster }) {
           <ul className={styles.currentMembersList}>
             {members.map((m) => (
               <li key={m.id} className={styles.currentMemberItem}>
+                {m.id > 0 && (
+                  <div style={{ width: 24, height: 24, borderRadius: '50%', overflow: 'hidden', marginRight: 8, flexShrink: 0 }}>
+                    <Avatar userId={m.id} size="100%" style={{ width: '100%', height: '100%' }} />
+                  </div>
+                )}
                 <span className={styles.currentMemberName}>{m.name}</span>
                 <button
                   onClick={() => removeMember(m.id)}
