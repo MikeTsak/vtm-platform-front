@@ -65,10 +65,9 @@ export default function Boons() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   
-  const [legendOpen, setLegendOpen]   = useState(false);
   const searchRef = useRef(null);
-  const toolbarRef = useRef(null);
   const [toolbarVisible, setToolbarVisible] = useState(false);
+  const [legendOpen, setLegendOpen] = useState(false);
 
   const isAdmin  = user?.role === 'admin' || user?.permission_level === 'admin';
   const isCourt  = user?.role === 'courtuser';
@@ -180,10 +179,10 @@ export default function Boons() {
     const statusRank = { owed: 1, paid: 2, excused: 3 };
     switch (sortMode) {
       case 'level':
-        result.sort((a, b) => (levelRank[b.level] || 0) - (levelRank[a.level] || 0) || new Date(b.created_at) - new Date(a.created_at));
+        result.sort((a, b) => (levelRank[String(b.level).toLowerCase()] || 0) - (levelRank[String(a.level).toLowerCase()] || 0) || new Date(b.created_at) - new Date(a.created_at));
         break;
       case 'status':
-        result.sort((a, b) => (statusRank[a.status] || 0) - (statusRank[b.status] || 0) || new Date(b.created_at) - new Date(a.created_at));
+        result.sort((a, b) => (statusRank[String(a.status).toLowerCase()] || 0) - (statusRank[String(b.status).toLowerCase()] || 0) || new Date(b.created_at) - new Date(a.created_at));
         break;
       case 'from':
         result.sort((a, b) => (a.from_name || '').localeCompare(b.from_name || ''));
@@ -221,39 +220,51 @@ export default function Boons() {
   // Helper for card styling
   const getBoonColorClasses = (level) => {
     switch (level) {
-      case 'life': return { border: 'border-primary', text: 'text-primary', bg: 'bg-primary/20', glow: 'shadow-[0_4px_12px_rgba(74,4,4,0.4)]' };
-      case 'major': return { border: 'border-tertiary', text: 'text-tertiary', bg: 'bg-tertiary/20', glow: '' };
-      case 'minor': return { border: 'border-blue-500', text: 'text-blue-400', bg: 'bg-blue-500/20', glow: '' };
-      default: return { border: 'border-on-surface-variant', text: 'text-on-surface-variant', bg: 'bg-surface-variant', glow: '' };
+      case 'life': return { bgSolid: 'bg-primary-container', bgLight: 'bg-primary-container/20', text: 'text-primary-container', borderLight: 'border-primary-container/30' };
+      case 'major': return { bgSolid: 'bg-tertiary', bgLight: 'bg-tertiary/20', text: 'text-tertiary', borderLight: 'border-tertiary/30' };
+      case 'minor': return { bgSolid: 'bg-blue-500', bgLight: 'bg-blue-500/20', text: 'text-blue-400', borderLight: 'border-blue-500/30' };
+      default: return { bgSolid: 'bg-on-surface-variant', bgLight: 'bg-on-surface-variant/20', text: 'text-on-surface-variant', borderLight: 'border-on-surface-variant/30' };
     }
   };
 
   return (
-    <div className="bg-background text-on-background min-h-screen selection:bg-primary/30 font-body-md">
+    <div className="bg-background text-on-surface min-h-screen selection:bg-primary-container selection:text-on-primary-container boons-page">
+      <style>{`
+        .boons-page {
+          font-family: 'Inter', sans-serif;
+        }
+        .boons-page h1, .boons-page h2, .boons-page h3, .boons-page h4, .boons-page h5, .boons-page h6, .font-headline-md, .font-headline-lg, .font-display-lg {
+          font-family: 'Playfair Display', serif;
+        }
+        .gothic-etched-border { border: 1px solid rgba(224, 224, 224, 0.1); }
+        .paid-stamp {
+            text-transform: uppercase;
+            font-family: 'Playfair Display', serif;
+            letter-spacing: 0.2em;
+            transform: rotate(-15deg);
+            opacity: 0.15;
+            user-select: none;
+            pointer-events: none;
+        }
+      `}</style>
       
       {/* ── Slide-in form sheet ── */}
       {showForm && canManage && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={closeForm}>
-          <div className="bg-surface-container-high border border-outline-variant/20 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+          <div className="bg-surface-container-high gothic-etched-border rounded-xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <BoonForm entities={entities} boon={editTarget} onSave={handleSave} onCancel={closeForm} />
           </div>
         </div>
       )}
 
       {/* Top App Bar */}
-      <header className="fixed top-0 w-full z-40 bg-surface-container-highest border-b border-outline-variant/10 h-16 flex items-center justify-between px-4 lg:px-8">
-        <h1 className="font-headline-md text-[20px] lg:text-[24px] font-bold text-primary">Blood Registry</h1>
+      <header className="fixed top-0 w-full z-40 bg-surface-container-highest border-b border-outline-variant/10 h-16 flex items-center justify-between px-4 lg:px-8 lg:hidden">
+        <h1 className="font-headline-md text-[20px] font-bold text-primary">Blood Registry</h1>
         <div className="flex items-center gap-4">
-          <button className="text-on-surface-variant active:opacity-80 transition-colors flex lg:hidden" onClick={() => setToolbarVisible(v => !v)}>
+          <button className="text-on-surface-variant active:opacity-80 transition-colors flex" onClick={() => setToolbarVisible(v => !v)}>
             <span className="material-symbols-outlined">search</span>
           </button>
-          {canManage && (
-            <button onClick={openCreate} className="bg-primary-container text-on-primary-container font-label-md px-3 py-1.5 rounded shadow-lg hover:brightness-110 active:scale-95 transition-transform flex items-center gap-2 tracking-widest uppercase">
-              <span className="material-symbols-outlined text-[18px]">add</span>
-              <span className="hidden sm:inline">Record Boon</span>
-              <span className="sm:hidden">Record</span>
-            </button>
-          )}
+          <span className="material-symbols-outlined text-on-surface-variant">history_edu</span>
         </div>
       </header>
 
@@ -262,10 +273,10 @@ export default function Boons() {
         className={`fixed top-16 w-full bg-surface-container-high border-b border-outline-variant/10 z-30 transition-all duration-300 transform lg:hidden ${toolbarVisible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 pointer-events-none'}`} 
       >
         <div className="p-4 space-y-4">
-          <div className="flex bg-surface-container-lowest rounded-lg border border-outline-variant/20 p-2 relative" ref={searchRef}>
+          <div className="flex bg-surface-container-lowest rounded-lg gothic-etched-border p-2 relative" ref={searchRef}>
             <span className="material-symbols-outlined text-on-surface-variant mr-2">search</span>
             <input 
-              className="bg-transparent border-none focus:ring-0 text-body-md w-full outline-none" 
+              className="bg-transparent border-none focus:ring-0 text-sm w-full outline-none" 
               placeholder="Search lineages..." 
               type="text"
               value={searchQuery}
@@ -273,7 +284,7 @@ export default function Boons() {
               onFocus={() => setShowSuggestions(true)}
             />
             {showSuggestions && filteredNames.length > 0 && (
-              <div className="absolute top-full left-0 right-0 bg-surface-container-high border border-outline-variant/20 rounded shadow-xl mt-1 max-h-48 overflow-y-auto z-50">
+              <div className="absolute top-full left-0 right-0 bg-surface-container-high gothic-etched-border rounded shadow-xl mt-1 max-h-48 overflow-y-auto z-50">
                 {filteredNames.map(name => (
                   <div key={name} className="px-4 py-2 hover:bg-surface-variant cursor-pointer text-sm" onClick={() => { setSearchQuery(name); setShowSuggestions(false); setToolbarVisible(false); }}>
                     {name}
@@ -284,12 +295,12 @@ export default function Boons() {
           </div>
           <div className="flex justify-between items-center gap-2">
              <button
-                className={`px-3 py-1 rounded-full text-[12px] font-bold whitespace-nowrap border ${filterActive ? 'bg-primary-container text-on-primary-container border-primary-container' : 'bg-surface-container-lowest text-on-surface-variant border-outline-variant/30'}`}
+                className={`px-3 py-1 rounded-full text-[12px] font-bold whitespace-nowrap gothic-etched-border ${filterActive ? 'bg-primary-container text-on-primary-container' : 'bg-surface-container-lowest text-on-surface-variant'}`}
                 onClick={() => setFilterActive(f => !f)}
               >
                 {filterLabel}
               </button>
-              <select className="bg-surface-container-lowest border border-outline-variant/30 rounded px-2 py-1 text-[12px] text-on-surface-variant focus:outline-none" value={sortMode} onChange={e => setSortMode(e.target.value)}>
+              <select className="bg-surface-container-lowest gothic-etched-border rounded px-2 py-1 text-[12px] text-on-surface-variant focus:outline-none" value={sortMode} onChange={e => setSortMode(e.target.value)}>
                 <option value="date">Newest</option>
                 <option value="level">Highest Value</option>
                 <option value="status">Active First</option>
@@ -301,48 +312,62 @@ export default function Boons() {
       </div>
 
       <Skeleton loading={loading} name="boons-page">
-        <main className="pt-20 pb-32 px-4 lg:px-8 max-w-[1200px] mx-auto">
+        <main className="pt-20 lg:pt-0 pb-32 max-w-7xl mx-auto px-4 lg:px-12 lg:py-12">
           
           {error && <div className="bg-error-container text-on-error px-4 py-3 rounded mb-6 text-sm">{error}</div>}
 
+          {/* Header Section */}
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+            <div className="space-y-2">
+              <h2 className="font-headline-lg text-[32px] font-bold text-primary tracking-tight">Blood Registry</h2>
+              <p className="text-on-surface-variant text-sm md:text-base italic border-l border-primary/30 pl-4">Debts of honour recorded before the gathered Kindred.</p>
+            </div>
+            {canManage && (
+              <button onClick={openCreate} className="flex items-center justify-center gap-2 bg-primary-container text-on-primary-container px-6 py-3 rounded-sm font-bold tracking-widest uppercase hover:brightness-110 transition-colors active:scale-95 text-xs">
+                <span className="material-symbols-outlined">add_circle</span>
+                Record Boon
+              </button>
+            )}
+          </div>
+
           {/* Stats Bar */}
           {!loading && (
-            <div className="flex gap-4 overflow-x-auto custom-scrollbar py-4 -mx-4 px-4 lg:mx-0 lg:px-0 mb-2">
-              <div className="flex-shrink-0 min-w-[140px] bg-surface-container p-4 rounded-xl border border-outline-variant/10 shadow-md">
-                <p className="text-[11px] text-on-surface-variant uppercase tracking-widest mb-1">Total Owed</p>
-                <h3 className="text-[28px] font-bold text-on-surface">{stats.total}</h3>
+            <div className="flex gap-4 overflow-x-auto custom-scrollbar py-4 -mx-4 px-4 lg:-mx-12 lg:px-12 mb-6">
+              <div className="flex-shrink-0 min-w-[120px] bg-surface-container p-4 rounded-xl gothic-etched-border">
+                <p className="text-[12px] font-bold text-on-surface-variant uppercase">Total Owed</p>
+                <h3 className="text-headline-md text-[24px] font-bold text-primary">{stats.total}</h3>
               </div>
-              <div className="flex-shrink-0 min-w-[140px] bg-surface-container p-4 rounded-xl border border-outline-variant/10 shadow-md">
-                <p className="text-[11px] text-on-surface-variant uppercase tracking-widest mb-1">Active</p>
-                <h3 className="text-[28px] font-bold text-primary">{stats.active}</h3>
+              <div className="flex-shrink-0 min-w-[120px] bg-surface-container p-4 rounded-xl gothic-etched-border">
+                <p className="text-[12px] font-bold text-on-surface-variant uppercase">Active</p>
+                <h3 className="text-headline-md text-[24px] font-bold text-tertiary">{stats.active}</h3>
               </div>
-              <div className="flex-shrink-0 min-w-[140px] bg-surface-container p-4 rounded-xl border border-outline-variant/10 shadow-md">
-                <p className="text-[11px] text-on-surface-variant uppercase tracking-widest mb-1">Major Owed</p>
-                <h3 className="text-[28px] font-bold text-tertiary">{stats.major}</h3>
+              <div className="flex-shrink-0 min-w-[120px] bg-surface-container p-4 rounded-xl gothic-etched-border">
+                <p className="text-[12px] font-bold text-on-surface-variant uppercase">Major Owed</p>
+                <h3 className="text-headline-md text-[24px] font-bold text-secondary">{stats.major}</h3>
               </div>
-              <div className="flex-shrink-0 min-w-[140px] bg-surface-container p-4 rounded-xl border border-outline-variant/10 shadow-md">
-                <p className="text-[11px] text-on-surface-variant uppercase tracking-widest mb-1">Life Owed</p>
-                <h3 className="text-[28px] font-bold text-primary-container">{stats.life}</h3>
+              <div className="flex-shrink-0 min-w-[120px] bg-surface-container p-4 rounded-xl gothic-etched-border">
+                <p className="text-[12px] font-bold text-on-surface-variant uppercase">Life Boons</p>
+                <h3 className="text-headline-md text-[24px] font-bold text-primary-container">{stats.life}</h3>
               </div>
             </div>
           )}
 
           {/* Desktop Search & Filter */}
-          <div className="hidden lg:flex items-center justify-between gap-4 mb-8 bg-surface-container p-4 rounded-xl border border-outline-variant/10">
-            <div className="relative flex-1 max-w-md" ref={searchRef}>
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+          <div className="hidden lg:flex flex-col md:flex-row gap-4 mb-8">
+            <div className="relative flex-grow" ref={searchRef}>
+              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
               <input 
-                type="text" 
-                className="w-full bg-surface-container-lowest border border-outline-variant/20 rounded focus:border-primary px-10 py-2 text-sm outline-none text-on-surface"
-                placeholder="Search kindred or circumstances..." 
+                className="w-full bg-surface-container-lowest gothic-etched-border focus:border-primary px-12 py-3 text-sm outline-none text-on-surface transition-colors"
+                placeholder="Search Kindred names or circumstances..." 
+                type="text"
                 value={searchQuery}
                 onChange={e => { setSearchQuery(e.target.value); setShowSuggestions(true); }}
                 onFocus={() => setShowSuggestions(true)}
               />
               {showSuggestions && filteredNames.length > 0 && (
-                <div className="absolute top-full left-0 right-0 bg-surface-container-high border border-outline-variant/20 rounded shadow-xl mt-1 max-h-64 overflow-y-auto z-50">
+                <div className="absolute top-full left-0 right-0 bg-surface-container-high gothic-etched-border rounded shadow-xl mt-1 max-h-64 overflow-y-auto z-50">
                   {filteredNames.map(name => (
-                    <div key={name} className="px-4 py-2 hover:bg-surface-variant cursor-pointer text-sm" onClick={() => { setSearchQuery(name); setShowSuggestions(false); }}>
+                    <div key={name} className="px-4 py-3 hover:bg-surface-variant cursor-pointer text-sm" onClick={() => { setSearchQuery(name); setShowSuggestions(false); }}>
                       {name}
                     </div>
                   ))}
@@ -350,14 +375,16 @@ export default function Boons() {
               )}
             </div>
             
-            <div className="flex items-center gap-3">
-              <button
-                className={`px-4 py-2 rounded text-[12px] font-bold uppercase tracking-widest border transition-colors ${filterActive ? 'bg-primary-container text-on-primary-container border-primary-container' : 'bg-surface-container-lowest text-on-surface-variant border-outline-variant/30 hover:text-on-surface'}`}
-                onClick={() => setFilterActive(f => !f)}
-              >
-                {filterLabel}
-              </button>
-              <select className="bg-surface-container-lowest border border-outline-variant/30 rounded text-[12px] font-bold uppercase tracking-widest px-4 py-2 outline-none text-on-surface-variant cursor-pointer hover:border-outline-variant/60" value={sortMode} onChange={e => setSortMode(e.target.value)}>
+            <div className="flex gap-2">
+              <div className="flex bg-surface-container-lowest gothic-etched-border p-1">
+                <button
+                  className={`px-4 py-2 text-xs font-bold uppercase tracking-widest transition-colors ${filterActive ? 'bg-primary-container text-on-primary-container' : 'text-on-surface-variant hover:text-on-surface'}`}
+                  onClick={() => setFilterActive(f => !f)}
+                >
+                  {filterLabel}
+                </button>
+              </div>
+              <select className="bg-surface-container-lowest gothic-etched-border text-on-surface-variant text-xs font-bold uppercase tracking-widest px-4 py-2 outline-none cursor-pointer" value={sortMode} onChange={e => setSortMode(e.target.value)}>
                 <option value="date">Newest</option>
                 <option value="level">Highest Value</option>
                 <option value="status">Active First</option>
@@ -368,137 +395,156 @@ export default function Boons() {
           </div>
 
           {/* Section Header */}
-          <div className="flex items-center justify-between mb-4 mt-6 lg:mt-0">
-            <h2 className="font-headline-md text-[20px] text-on-surface">Registry Entries</h2>
-            <span className="text-[12px] text-on-surface-variant">Showing {processedBoons.length} entries</span>
-          </div>
+          {!loading && processedBoons.length > 0 && (
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-headline-md text-[24px] font-bold text-on-surface">Active Debts</h2>
+              <span className="text-[12px] font-bold text-on-surface-variant">Showing {processedBoons.length} entries</span>
+            </div>
+          )}
 
           {/* Empty State */}
           {!loading && processedBoons.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-outline-variant/30 rounded-xl bg-surface-container-lowest/50">
-              <span className="material-symbols-outlined text-[48px] text-on-surface-variant/30 mb-4">balance</span>
-              <h3 className="font-headline-md text-[20px] text-on-surface-variant mb-2">The registry is silent</h3>
-              <p className="text-on-surface-variant/60 text-sm">
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <span className="material-symbols-outlined text-[80px] text-on-surface-variant/20 mb-6">balance</span>
+              <h3 className="font-headline-md text-[24px] text-on-surface-variant mb-2">The registry is silent</h3>
+              <p className="text-on-surface-variant/60 text-sm md:text-base">
                 {searchQuery 
                   ? 'No boons match your search criteria.'
                   : filterActive
                     ? (isAdmin ? 'No NPC records found.' : 'No personal boons on record.')
-                    : 'No debts recorded in the registry.'}
+                    : 'No debts of blood currently remain unrecorded.'}
               </p>
             </div>
           )}
 
           {/* Boon List */}
-          <div className="space-y-4">
+          <div className="space-y-3 mb-12">
             {processedBoons.map(boon => {
-              const settled = boon.status === 'paid' || boon.status === 'excused';
+              const statusStr = String(boon.status).toLowerCase();
+              const settled = statusStr === 'paid' || statusStr === 'excused';
               const levelStyle = getBoonColorClasses(String(boon.level).toLowerCase());
               
+              const borderClass = `border-l-4 ${levelStyle.bgSolid.replace('bg-', 'border-')}`;
+              const glowClass = (String(boon.level).toLowerCase() === 'life' && !settled) ? 'shadow-[0_4px_12px_rgba(74,4,4,0.4)]' : '';
+              
               return (
-                <div key={boon.id} className={`bg-surface-container p-4 md:p-5 rounded-xl border border-outline-variant/10 border-l-4 ${levelStyle.border} ${levelStyle.glow} relative overflow-hidden transition-colors hover:bg-surface-variant/20 ${settled ? 'opacity-60' : ''}`}>
+                <div key={boon.id} className={`bg-surface-container p-4 rounded-xl gothic-etched-border ${borderClass} ${glowClass} relative overflow-hidden ${settled ? 'opacity-60' : ''}`}>
                   
                   {settled && (
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
-                      <span className="text-5xl md:text-7xl font-black uppercase font-headline-md tracking-[0.2em] -rotate-12 opacity-[0.03] text-on-surface select-none">
-                        {boon.status}
-                      </span>
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+                      <span className="paid-stamp text-5xl font-black">{boon.status}</span>
                     </div>
                   )}
-
-                  <div className="flex justify-between items-start mb-4 relative z-10">
-                    <span className={`${levelStyle.bg} ${levelStyle.text} text-[10px] font-bold px-2.5 py-1 rounded tracking-[0.1em] uppercase border border-current/20`}>
-                      {LEVEL_LABELS[String(boon.level).toLowerCase()] || boon.level} Boon
+                  
+                  <div className="flex justify-between items-start mb-2 relative z-10">
+                    <span className={`${levelStyle.bgLight} ${levelStyle.text} text-[10px] font-bold px-2 py-0.5 rounded tracking-widest uppercase`}>
+                      {LEVEL_LABELS[String(boon.level).toLowerCase()]} Boon
                     </span>
-                    
-                    <div className="flex items-center gap-3">
-                      <span className="text-on-surface-variant font-label-md">#{boon.id}</span>
+                    <div className="flex items-center gap-2">
                       {canManage && (
-                        <div className="flex gap-1 ml-2">
-                          <button className="text-on-surface-variant hover:text-primary transition-colors p-1" onClick={() => openEdit(boon)} title="Edit"><span className="material-symbols-outlined text-[18px]">edit</span></button>
-                          <button className="text-on-surface-variant hover:text-error transition-colors p-1" onClick={() => handleDelete(boon.id)} title="Delete"><span className="material-symbols-outlined text-[18px]">delete</span></button>
+                        <div className="flex gap-2 mr-2 border-r border-outline-variant/20 pr-2">
+                          <button onClick={() => openEdit(boon)} className="material-symbols-outlined text-[16px] text-on-surface-variant hover:text-primary transition-colors">edit</button>
+                          <button onClick={() => handleDelete(boon.id)} className="material-symbols-outlined text-[16px] text-on-surface-variant hover:text-error transition-colors">delete</button>
                         </div>
                       )}
+                      <span className="text-on-surface-variant text-[12px] font-bold">#{boon.id}</span>
                     </div>
                   </div>
-
-                  <div className="flex flex-col md:flex-row md:items-center gap-4 relative z-10">
+                  
+                  <div className="flex items-center gap-3 relative z-10">
+                    <div className={`w-10 h-10 rounded-full border border-outline-variant/30 flex items-center justify-center text-on-surface-variant text-sm font-bold shrink-0 bg-surface-container-highest`}>
+                      {getInitials(boon.from_name)}
+                    </div>
                     
-                    {/* Parties */}
-                    <div className="flex items-center flex-wrap gap-x-4 gap-y-2 flex-1">
-                      
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full border border-outline-variant/30 bg-surface-container-highest flex items-center justify-center text-on-surface-variant font-bold text-sm shrink-0">
-                          {getInitials(boon.from_name)}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-1.5 mb-0.5">
-                            <p className="text-[10px] text-on-surface-variant uppercase tracking-widest">Debtor</p>
-                          </div>
-                          <p className="font-bold text-on-surface text-sm md:text-base leading-tight">{boon.from_name}</p>
-                        </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-[12px] font-bold text-on-surface-variant">Debtor</p>
+                        <span className="material-symbols-outlined text-[14px] text-on-surface-variant">arrow_forward</span>
                       </div>
-                      
-                      <span className="material-symbols-outlined text-[20px] text-on-surface-variant/40 hidden md:block">arrow_forward</span>
-                      
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full border border-outline-variant/30 bg-surface-container-highest flex items-center justify-center text-on-surface-variant font-bold text-sm shrink-0">
-                          {getInitials(boon.to_name)}
-                        </div>
-                        <div>
-                          <p className="text-[10px] text-on-surface-variant uppercase tracking-widest mb-0.5 text-right md:text-left">Creditor</p>
-                          <p className={`font-bold text-sm md:text-base leading-tight ${levelStyle.text}`}>{boon.to_name}</p>
-                        </div>
-                      </div>
-
+                      <p className="text-[16px] font-bold text-on-surface">{boon.from_name}</p>
+                    </div>
+                    
+                    <div className="text-right">
+                      <p className="text-[12px] font-bold text-on-surface-variant">Creditor</p>
+                      <p className={`text-[16px] font-bold ${levelStyle.text}`}>{boon.to_name}</p>
                     </div>
                   </div>
-
-                  {/* Description & Status Footer */}
-                  <div className="mt-4 pt-4 border-t border-outline-variant/10 flex flex-col md:flex-row md:justify-between md:items-start gap-3 relative z-10">
-                    <div className="flex items-center gap-2 shrink-0">
-                      {!settled && <span className="w-2 h-2 rounded-full bg-primary pulsing-eye"></span>}
-                      <span className={`text-[11px] uppercase font-bold tracking-wider ${settled ? 'text-on-surface-variant' : 'text-on-surface'}`}>
-                        {STATUS_LABELS[String(boon.status).toLowerCase()] || boon.status}
-                      </span>
-                      <span className="text-on-surface-variant/40 mx-1">•</span>
-                      <span className="text-[11px] text-on-surface-variant uppercase tracking-wider">{relDate(boon.created_at)}</span>
+                  
+                  <div className="mt-3 pt-3 border-t border-outline-variant/10 flex justify-between items-start md:items-center flex-col md:flex-row gap-2 relative z-10">
+                    <div className="flex items-center gap-2">
+                      {!settled ? (
+                        <>
+                          <span className="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+                          <span className="text-[12px] font-bold text-on-surface uppercase">Active</span>
+                        </>
+                      ) : (
+                        <span className="bg-surface-variant px-2 py-0.5 text-[10px] text-on-surface uppercase rounded font-bold">
+                          {boon.status}
+                        </span>
+                      )}
                     </div>
-                    {boon.description && (
-                      <p className="text-sm text-on-surface-variant italic md:text-right max-w-2xl leading-relaxed">
-                        {boon.description}
+                    
+                    <div className="text-right">
+                      <p className="text-[12px] font-bold text-on-surface-variant text-right">
+                        <span className="hidden md:inline">Desc: </span>
+                        {boon.description || 'No details provided'}
                       </p>
-                    )}
+                      <p className="text-[10px] text-on-surface-variant/70 mt-1 text-right">
+                        Rec: {relDate(boon.created_at)} {settled && boon.updated_at ? ` | Set: ${relDate(boon.updated_at)}` : ''}
+                      </p>
+                    </div>
                   </div>
-
+                  
                 </div>
               );
             })}
           </div>
 
-          {/* Legend Section */}
+          {/* Legend Section (Collapsible) */}
           <div className="mt-12 mb-8">
             <button 
-              className="w-full bg-surface-container-high p-4 rounded-xl flex items-center justify-between border border-outline-variant/10 hover:bg-surface-variant/30 transition-colors"
+              className="w-full bg-surface-container-high p-4 rounded-xl flex items-center justify-between border border-outline-variant/10" 
               onClick={() => setLegendOpen(!legendOpen)}
             >
-              <span className="font-headline-md text-[18px] text-on-surface flex items-center gap-3">
-                <span className="material-symbols-outlined text-primary">balance</span>
-                Registry Legend
-              </span>
-              <span className={`material-symbols-outlined transition-transform duration-300 ${legendOpen ? 'rotate-180' : ''}`}>expand_more</span>
+              <span className="font-headline-md text-[24px] font-bold text-on-surface">Registry Legend</span>
+              <span className={`material-symbols-outlined transition-transform duration-300 ${legendOpen ? 'rotate-180' : 'rotate-0'}`}>expand_more</span>
             </button>
             
-            <div className={`overflow-hidden transition-all duration-300 ${legendOpen ? 'max-h-[1000px] opacity-100 mt-2' : 'max-h-0 opacity-0'}`}>
-              <div className="bg-surface-container-low border border-outline-variant/10 p-5 md:p-6 rounded-xl grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-                {LEGEND.map(item => (
-                  <div key={item.level} className="flex gap-4">
-                    <div className={`w-1 shrink-0 bg-opacity-80 rounded-full ${item.colorClass}`}></div>
-                    <div>
-                      <p className={`font-bold text-sm mb-1 ${item.colorClass.replace('bg-', 'text-')}`}>{item.title}</p>
-                      <p className="text-[13px] text-on-surface-variant leading-relaxed">{item.body}</p>
-                    </div>
-                  </div>
-                ))}
+            <div className={`overflow-hidden transition-all duration-300 bg-surface-container-low border-x border-b border-outline-variant/10 rounded-b-xl space-y-4 ${legendOpen ? 'max-h-[1000px] p-4 border-t-0' : 'max-h-0 p-0 border-transparent opacity-0'}`}>
+              <div className="flex gap-4">
+                <div className="w-1 h-12 bg-primary-container rounded"></div>
+                <div>
+                  <p className="text-[16px] font-bold text-primary-container">Life Boon</p>
+                  <p className="text-[14px] text-on-surface-variant">The debtor owes their very existence to the creditor. Non-transferable.</p>
+                </div>
+              </div>
+              <div className="flex gap-4">
+                <div className="w-1 h-12 bg-tertiary rounded"></div>
+                <div>
+                  <p className="text-[16px] font-bold text-tertiary">Major Boon</p>
+                  <p className="text-[14px] text-on-surface-variant">Involves territory, significant status, or survival of progeny.</p>
+                </div>
+              </div>
+              <div className="flex gap-4">
+                <div className="w-1 h-12 bg-blue-500 rounded"></div>
+                <div>
+                  <p className="text-[16px] font-bold text-blue-400">Minor Boon</p>
+                  <p className="text-[14px] text-on-surface-variant">Significant effort required. Access to territory, physical protection, or political influence.</p>
+                </div>
+              </div>
+              <div className="flex gap-4">
+                <div className="w-1 h-12 bg-on-surface-variant rounded"></div>
+                <div>
+                  <p className="text-[16px] font-bold text-on-surface-variant">Trivial Boon</p>
+                  <p className="text-[14px] text-on-surface-variant">Minor favors, small pieces of information, or temporary shelter. Rarely lasts beyond a month.</p>
+                </div>
+              </div>
+              <div className="pt-4 border-t border-outline-variant/10">
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 bg-primary rounded-full animate-pulse"></span>
+                  <p className="text-[12px] text-on-surface uppercase font-bold">Active</p>
+                </div>
+                <p className="text-[14px] text-on-surface-variant mt-1">Boon is actively owed and has not been settled or excused.</p>
               </div>
             </div>
           </div>
@@ -513,7 +559,6 @@ export default function Boons() {
    BOON FORM
 ══════════════════════════════════════════════ */
 function BoonForm({ entities, boon, onSave, onCancel }) {
-  const [prevBoon, setPrevBoon] = useState(boon);
   const [formData, setFormData] = useState({
     from_key: 'npc', from_id: '', from_name: '',
     to_key:   'npc', to_id:   '', to_name: '',
@@ -535,18 +580,17 @@ function BoonForm({ entities, boon, onSave, onCancel }) {
     return byName ? `${byName.type}-${byName.id}` : 'npc';
   };
 
-  if (boon !== prevBoon) {
-    setPrevBoon(boon);
+  useEffect(() => {
     if (boon) {
       setFormData({
         from_key: deriveKey(boon.from_id, boon.from_name), from_id: boon.from_id || '', from_name: boon.from_name || '',
         to_key:   deriveKey(boon.to_id,   boon.to_name),   to_id:   boon.to_id   || '', to_name:   boon.to_name   || '',
-        level: boon.level || 'trivial', status: boon.status || 'owed', description: boon.description || '',
+        level: String(boon.level || 'trivial').toLowerCase(), status: String(boon.status || 'owed').toLowerCase(), description: boon.description || '',
       });
     } else {
       setFormData({ from_key: 'npc', from_id: '', from_name: '', to_key: 'npc', to_id: '', to_name: '', level: 'trivial', status: 'owed', description: '' });
     }
-  }
+  }, [boon, entities]);
 
   const handleEntityChange = (e, prefix) => {
     const val = e.target.value;
@@ -584,7 +628,7 @@ function BoonForm({ entities, boon, onSave, onCancel }) {
   return (
     <>
       <div className="flex items-center justify-between p-4 md:p-6 border-b border-outline-variant/10">
-        <h3 className="font-headline-md text-[20px] font-bold text-on-surface">{boon ? 'Edit record' : 'Record new boon'}</h3>
+        <h3 className="font-headline-md text-[24px] font-bold text-on-surface">{boon ? 'Edit record' : 'Record new boon'}</h3>
         <button className="text-on-surface-variant hover:text-on-surface transition-colors p-1" onClick={onCancel}><span className="material-symbols-outlined">close</span></button>
       </div>
 
@@ -595,34 +639,34 @@ function BoonForm({ entities, boon, onSave, onCancel }) {
           
           <div className="space-y-1.5">
             <label className="text-[12px] font-bold text-on-surface-variant uppercase tracking-widest">Debtor <span className="lowercase font-normal opacity-70">(owes the boon)</span></label>
-            <select className="w-full bg-surface-container-lowest border border-outline-variant/30 rounded px-3 py-2.5 text-sm outline-none focus:border-primary text-on-surface" value={formData.from_key} onChange={e => handleEntityChange(e, 'from')}>
+            <select className="w-full bg-surface-container-lowest gothic-etched-border rounded px-3 py-2.5 text-sm outline-none focus:border-primary text-on-surface" value={formData.from_key} onChange={e => handleEntityChange(e, 'from')}>
               {entityOptions.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
             </select>
             {formData.from_key === 'npc' && (
-              <input className="w-full bg-surface-container-lowest border border-outline-variant/30 rounded px-3 py-2.5 text-sm outline-none focus:border-primary text-on-surface mt-2" type="text" placeholder="Enter custom name…" value={formData.from_name} onChange={e => handleNameChange(e, 'from')} />
+              <input className="w-full bg-surface-container-lowest gothic-etched-border rounded px-3 py-2.5 text-sm outline-none focus:border-primary text-on-surface mt-2" type="text" placeholder="Enter custom name…" value={formData.from_name} onChange={e => handleNameChange(e, 'from')} />
             )}
           </div>
 
           <div className="space-y-1.5">
             <label className="text-[12px] font-bold text-on-surface-variant uppercase tracking-widest">Creditor <span className="lowercase font-normal opacity-70">(holds the boon)</span></label>
-            <select className="w-full bg-surface-container-lowest border border-outline-variant/30 rounded px-3 py-2.5 text-sm outline-none focus:border-primary text-on-surface" value={formData.to_key} onChange={e => handleEntityChange(e, 'to')}>
+            <select className="w-full bg-surface-container-lowest gothic-etched-border rounded px-3 py-2.5 text-sm outline-none focus:border-primary text-on-surface" value={formData.to_key} onChange={e => handleEntityChange(e, 'to')}>
               {entityOptions.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
             </select>
             {formData.to_key === 'npc' && (
-              <input className="w-full bg-surface-container-lowest border border-outline-variant/30 rounded px-3 py-2.5 text-sm outline-none focus:border-primary text-on-surface mt-2" type="text" placeholder="Enter custom name…" value={formData.to_name} onChange={e => handleNameChange(e, 'to')} />
+              <input className="w-full bg-surface-container-lowest gothic-etched-border rounded px-3 py-2.5 text-sm outline-none focus:border-primary text-on-surface mt-2" type="text" placeholder="Enter custom name…" value={formData.to_name} onChange={e => handleNameChange(e, 'to')} />
             )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-[12px] font-bold text-on-surface-variant uppercase tracking-widest" htmlFor="level">Level</label>
-              <select className="w-full bg-surface-container-lowest border border-outline-variant/30 rounded px-3 py-2.5 text-sm outline-none focus:border-primary text-on-surface" id="level" name="level" value={formData.level} onChange={handleChange}>
+              <select className="w-full bg-surface-container-lowest gothic-etched-border rounded px-3 py-2.5 text-sm outline-none focus:border-primary text-on-surface" id="level" name="level" value={formData.level} onChange={handleChange}>
                 {BOON_LEVELS.map(l => <option key={l} value={l}>{LEVEL_LABELS[l]}</option>)}
               </select>
             </div>
             <div className="space-y-1.5">
               <label className="text-[12px] font-bold text-on-surface-variant uppercase tracking-widest" htmlFor="status">Status</label>
-              <select className="w-full bg-surface-container-lowest border border-outline-variant/30 rounded px-3 py-2.5 text-sm outline-none focus:border-primary text-on-surface" id="status" name="status" value={formData.status} onChange={handleChange}>
+              <select className="w-full bg-surface-container-lowest gothic-etched-border rounded px-3 py-2.5 text-sm outline-none focus:border-primary text-on-surface" id="status" name="status" value={formData.status} onChange={handleChange}>
                 {BOON_STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>)}
               </select>
             </div>
@@ -630,7 +674,7 @@ function BoonForm({ entities, boon, onSave, onCancel }) {
 
           <div className="space-y-1.5">
             <label className="text-[12px] font-bold text-on-surface-variant uppercase tracking-widest" htmlFor="description">Description</label>
-            <textarea className="w-full bg-surface-container-lowest border border-outline-variant/30 rounded px-3 py-2.5 text-sm outline-none focus:border-primary text-on-surface resize-y" id="description" name="description" value={formData.description} onChange={handleChange} rows={4} placeholder="Detailed circumstances..." />
+            <textarea className="w-full bg-surface-container-lowest gothic-etched-border rounded px-3 py-2.5 text-sm outline-none focus:border-primary text-on-surface resize-y" id="description" name="description" value={formData.description} onChange={handleChange} rows={4} placeholder="Detailed circumstances..." />
           </div>
 
         </form>
