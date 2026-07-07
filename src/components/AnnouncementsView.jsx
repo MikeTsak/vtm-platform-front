@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import api from '../core/api';
 import styles from '../styles/Court.module.css';
 import { Skeleton } from 'boneyard-js/react';
+import { AuthCtx } from '../core/AuthContext';
 
 // --- Dedicated component to fetch and render DB Blobs ---
 function BlobImage({ url }) {
@@ -10,16 +11,11 @@ function BlobImage({ url }) {
 
   useEffect(() => {
     let objectUrl = null;
-
-    // Extract the ID from the saved URL (e.g., "/api/news/media/123" -> "123")
-    // This prevents Axios from accidentally double-stacking the "/api" prefix.
     const mediaId = url.split('/').pop(); 
     const requestUrl = `/news/media/${mediaId}`;
 
-    // Fetch the raw blob data from the backend
     api.get(requestUrl, { responseType: 'blob' })
       .then(response => {
-        // Create a local browser URL from the binary blob
         objectUrl = URL.createObjectURL(response.data);
         setImgSrc(objectUrl);
       })
@@ -28,38 +24,53 @@ function BlobImage({ url }) {
         setError(true);
       });
 
-    // Cleanup memory when component unmounts or URL changes
     return () => {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [url]);
 
-  if (error) {
-    return <div style={{ color: '#ff6b6b', fontSize: '13px', margin: '15px 0' }}>Failed to load attachment.</div>;
-  }
-  
-  if (!imgSrc) {
-    return <div style={{ color: '#a3a3ad', fontSize: '13px', margin: '15px 0' }}>Loading attachment...</div>;
-  }
+  if (error) return null;
+  if (!imgSrc) return <div style={{ color: 'var(--outline)', fontSize: '13px', margin: '15px 0' }}>Loading attachment...</div>;
 
   return (
-    <img 
-      src={imgSrc} 
-      alt="Decree Attachment" 
-      style={{ maxWidth: '100%', borderRadius: '8px', margin: '15px 0' }} 
-    />
+    <div className={styles.decreeImageWrapper}>
+      <img src={imgSrc} alt="Decree Attachment" />
+    </div>
   );
 }
 
+const TITLES = ["Prince", "Seneschal", "Primogen", "Sheriff", "Scourge", "Keeper", "Harpy", "Assistant Harpy", "Hound", "Shadow", "Whip"];
+
+const getTopRole = (titlesStr) => {
+  try {
+    const titles = JSON.parse(titlesStr);
+    if (Array.isArray(titles) && titles.length > 0) {
+      const sorted = [...titles].sort((a, b) => {
+        let aIdx = TITLES.indexOf(a);
+        let bIdx = TITLES.indexOf(b);
+        if(aIdx === -1) aIdx = 99;
+        if(bIdx === -1) bIdx = 99;
+        return aIdx - bIdx;
+      });
+      return sorted[0];
+    }
+  } catch(e) {}
+  return "Court Member";
+};
+
 // --- Main View ---
-export default function AnnouncementsView({ canEdit }) {
+export default function AnnouncementsView({ canEdit: propCanEdit }) {
+  const { user } = useContext(AuthCtx);
+  const isCourtOrAdmin = user?.role === 'admin' || user?.role === 'courtuser';
+  const canEdit = propCanEdit !== undefined ? propCanEdit : isCourtOrAdmin;
+
   const [items, setItems] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(true);
   
   // Upload states
   const [selectedFile, setSelectedFile] = useState(null);
-  const [previewBlob, setPreviewBlob] = useState(null); // Local preview before uploading
+  const [previewBlob, setPreviewBlob] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   
   const contentRef = useRef(null);
@@ -94,8 +105,6 @@ export default function AnnouncementsView({ canEdit }) {
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     setSelectedFile(file || null);
-    
-    // Create a temporary local blob for previewing the upload
     if (file) {
       setPreviewBlob(URL.createObjectURL(file));
     } else {
@@ -109,8 +118,6 @@ export default function AnnouncementsView({ canEdit }) {
     
     try {
       let media_url = null;
-
-      // 1. Upload the file to your backend's Blob storage table
       if (selectedFile) {
         const formData = new FormData();
         formData.append('file', selectedFile);
@@ -121,11 +128,10 @@ export default function AnnouncementsView({ canEdit }) {
         media_url = uploadRes.data.url; 
       }
 
-      // 2. Post the announcement, linking the media route
       await api.post('/news', { 
         type: 'announcement', 
         title: e.target.title.value, 
-        body: contentRef.current.innerHTML,
+        body: contentRef.current.value || contentRef.current.innerHTML, // Support either input or contentEditable
         media_url: media_url 
       });
 
@@ -147,87 +153,136 @@ export default function AnnouncementsView({ canEdit }) {
 
   return (
     <Skeleton loading={loading} name="announcements-view">
-      <div className={styles.announcementsContainer}>
-      {canEdit && (
-        <button className={styles.decreeBtn} onClick={() => setShowModal(true)}>
-          + Issue Decree
-        </button>
-      )}
-      
-      <div className={styles.list}>
-        {items.map(item => (
-          <div key={item.id} className={styles.decreeCard}>
-            <div className={styles.decreeHeader}>
-              <span className={styles.decreeAuthor}>📢 {item.author_real_name}</span>
-              <span className={styles.decreeDate}>{new Date(item.created_at).toLocaleDateString()}</span>
-            </div>
-            
-            <h3 className={styles.decreeTitle}>{item.title}</h3>
-            
-            {/* Render the image explicitly as a fetched Blob */}
-            {item.media_url && <BlobImage url={item.media_url} />}
-
-            <div className={styles.decreeBody} dangerouslySetInnerHTML={{__html: item.body}} />
-            
-            {canEdit && (
-              <button onClick={() => handleDelete(item.id)} className={styles.deleteBtn}>
-                Revoke
-              </button>
-            )}
+      <div className={styles.announcementsWrapper}>
+        <div className={styles.decreeHeaderBar}>
+          <div>
+            <p className={styles.decreeHeaderSubtitle}>City Archive</p>
+            <h1 className={styles.decreeHeaderTitle}>Decrees</h1>
           </div>
-        ))}
-        {items.length === 0 && <div className={styles.empty}>The Court is silent. No decrees have been issued.</div>}
-      </div>
-      
-      {showModal && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.modal}>
-            <h2>Issue Decree</h2>
-            <form onSubmit={handlePost} className={styles.form}>
-              <input name="title" placeholder="Subject" required disabled={isUploading} />
-              
-              <div 
-                className={styles.editor} 
-                contentEditable={!isUploading} 
-                ref={contentRef} 
-                style={{ minHeight: '100px', border: '1px solid var(--text-muted)', padding: '8px', marginBottom: '10px' }}
-              />
+          {canEdit && (
+            <button className={styles.issueBtn} onClick={() => setShowModal(true)}>
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add</span>
+              ISSUE DECREE
+            </button>
+          )}
+        </div>
+        
+        <div className={styles.decreeList}>
+          {items.map(item => {
+            const authorRole = getTopRole(item.char_titles);
+            const authorName = item.char_name || item.author_real_name;
+            const authorImg = item.char_image || null;
 
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9em' }}>
-                  Attach Image File
-                </label>
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  onChange={handleFileSelect}
-                  disabled={isUploading}
-                />
+            return (
+              <article key={item.id} className={styles.decreeCard}>
+                <div className={styles.decreeAccent}></div>
                 
-                {/* Local Blob Preview Before Upload */}
-                {previewBlob && (
-                  <div style={{ marginTop: '10px' }}>
-                    <span style={{ fontSize: '12px', color: '#a3a3ad' }}>Preview:</span>
-                    <img 
-                      src={previewBlob} 
-                      alt="Upload Preview" 
-                      style={{ display: 'block', maxWidth: '100px', borderRadius: '4px', marginTop: '5px' }} 
-                    />
+                <div className={styles.decreeContent}>
+                  <header className={styles.decreeMeta}>
+                    <div className={styles.decreeAuthorInfo}>
+                      {authorImg ? (
+                        <img src={authorImg} alt={authorName} className={styles.decreeAuthorAvatar} />
+                      ) : (
+                        <div className={styles.decreeAuthorAvatar}>
+                          <span className="material-symbols-outlined">campaign</span>
+                        </div>
+                      )}
+                      <div>
+                        <h3 className={styles.decreeAuthorName}>{authorName}</h3>
+                        <p className={styles.decreeAuthorRole}>{authorRole}</p>
+                      </div>
+                    </div>
+                    <time className={styles.decreeDate}>
+                      {new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </time>
+                  </header>
+                  
+                  <h2 className={styles.decreeSubject}>{item.title}</h2>
+                  
+                  {item.media_url && <BlobImage url={item.media_url} />}
+
+                  <div className={styles.decreeBodyText} dangerouslySetInnerHTML={{__html: item.body.replace(/\n/g, '<br/>')}} />
+                </div>
+
+                {canEdit && (
+                  <div className={styles.decreeFooter}>
+                    <button onClick={() => handleDelete(item.id)} className={styles.revokeBtn}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>cancel</span>
+                      Revoke Decree
+                    </button>
                   </div>
                 )}
-              </div>
-
-              <div className={styles.modalActions}>
-                <button type="button" onClick={closeModal} disabled={isUploading}>Cancel</button>
-                <button type="submit" disabled={isUploading}>
-                  {isUploading ? 'Publishing...' : 'Publish'}
-                </button>
-              </div>
-            </form>
-          </div>
+              </article>
+            );
+          })}
+          {items.length === 0 && <div style={{ textAlign: 'center', color: 'var(--outline)' }}>The Court is silent. No decrees have been issued.</div>}
         </div>
-      )}
-    </div>
-  </Skeleton>
+        
+        {showModal && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+            <div className={styles.modalInner}>
+              <header className={styles.modalHeader}>
+                <div>
+                  <h2 className={styles.modalTitle}>Draft New Decree</h2>
+                  <p className={styles.modalSubtitle}>Speak with authority. All domain members will be notified.</p>
+                </div>
+                <button className={styles.modalCloseBtn} onClick={closeModal}>
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </header>
+              
+              <form onSubmit={handlePost} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+                <div className={styles.modalBody}>
+                  <div className={styles.inputGroup}>
+                    <label>Subject Title</label>
+                    <input name="title" className={styles.decreeInput} placeholder="e.g., Declaration of Elysium..." required disabled={isUploading} />
+                  </div>
+                  
+                  <div className={styles.inputGroup}>
+                    <label>Proclamation Body</label>
+                    <textarea 
+                      ref={contentRef} 
+                      className={`${styles.decreeInput} ${styles.decreeTextarea}`} 
+                      placeholder="Draft your message here..." 
+                      required 
+                      disabled={isUploading}
+                    />
+                  </div>
+
+                  <div className={styles.inputGroup}>
+                    <label>Attachment (Optional)</label>
+                    <label className={styles.uploadZone}>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={handleFileSelect}
+                        disabled={isUploading}
+                        style={{ display: 'none' }}
+                      />
+                      <span className="material-symbols-outlined" style={{ fontSize: '32px', color: 'var(--outline-variant)', marginBottom: '8px' }}>upload_file</span>
+                      <p style={{ margin: 0, fontSize: '0.85rem' }}>Click to attach official document or seal</p>
+                      <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--outline-variant)' }}>PNG, JPG up to 5MB</p>
+                    </label>
+                    {previewBlob && (
+                      <div style={{ marginTop: '10px', textAlign: 'center' }}>
+                        <img src={previewBlob} alt="Preview" style={{ maxWidth: '100px', borderRadius: '4px' }} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <footer className={styles.modalFooter}>
+                  <button type="button" className={styles.cancelBtn} onClick={closeModal} disabled={isUploading}>Cancel</button>
+                  <button type="submit" className={styles.submitBtn} disabled={isUploading}>
+                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>send</span>
+                    {isUploading ? 'Publishing...' : 'Publish Decree'}
+                  </button>
+                </footer>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    </Skeleton>
   );
 }
