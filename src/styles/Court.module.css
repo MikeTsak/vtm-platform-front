@@ -49,202 +49,316 @@
 
 /* --- Hierarchy Grid --- */
 .hierarchyWrapper {
-  max-width: 1200px;
+  max-width: 1440px;
   margin: 0 auto;
-}
-
-.throneRoom {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 4rem;
-}
-
-.councilRow {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 3rem;
-  margin-bottom: 4rem;
-  max-width: 900px;
-  margin-left: auto;
-  margin-right: auto;
 }
 
 .courtGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-  gap: 2rem;
-}
-
-/* --- Member Card Styling --- */
-.memberCard {
-  background: var(--surface-color);
-  border: 1px solid var(--border-color);
-  padding: 1.5rem;
-  position: relative;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 15px rgb(0 0 0 / 50%);
-  overflow: hidden; 
-  display: flex;
-  flex-direction: row;
+  grid-template-columns: 1fr;
   gap: 1.5rem;
-  align-items: flex-start;
 }
 
-.memberCard:hover {
-  border-color: var(--tint);
-  box-shadow: 0 10px 25px color-mix(in srgb, var(--tint) 15%, transparent);
+@media (min-width: 768px) {
+  .courtGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
-/* --- CLAN BACKGROUND WATERMARK --- */
-.clanWatermark {
-  position: absolute;
-  top: 50%;
-  right: -5%;
-  transform: translateY(-50%);
-  height: 120%; 
-  opacity: 0.15; 
-  z-index: 0; 
-  pointer-events: none; 
-  transition: opacity 0.3s ease, transform 0.3s ease;
+@media (min-width: 1280px) {
+  .courtGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
-.memberCard:hover .clanWatermark {
-  opacity: 0.25; 
-  transform: translateY(-50%) scale(1.05); 
+/* Section Box */
+.sectionBox {
+  margin-bottom: 4rem;
 }
 
-/* Ensure text and content sits ABOVE the watermark */
-.polaroid, .memberInfo {
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.sectionTitle {
+  font-family: var(--font-title, 'Playfair Display');
+  font-size: 2rem;
+  color: var(--on-surface);
+}
+
+.bloodhuntTitle {
+  font-family: var(--font-title, 'Playfair Display');
+  font-size: 2rem;
+  color: var(--primary-container);
+}
+
+.divider {
+  height: 1px;
+  flex: 1;
+  margin-left: 1rem;
+}
+.dividerMain {
+  background: linear-gradient(to right, color-mix(in srgb, var(--outline-variant) 50%, transparent), transparent);
+}
+.dividerBloodhunt {
+  background: linear-gradient(to right, color-mix(in srgb, var(--primary-container) 50%, transparent), transparent);
+}
+
+/* Glass Card */
+.glassCard {
+  background: linear-gradient(145deg, rgba(26,26,26,0.9) 0%, rgba(13,13,13,0.95) 100%);
+  border: 1px solid rgba(224,224,224,0.1);
+  border-radius: var(--radius-lg, 0.5rem);
+  padding: 1rem;
   position: relative;
-  z-index: 2; 
+  overflow: hidden;
+  display: flex;
+  gap: 1rem;
 }
 
-
-/* --- UPDATED PRINCE CARD --- */
 .princeCard {
   border: 1px solid #d4af37;
-  background: linear-gradient(135deg, var(--surface-lighter) 0%, var(--bg-color) 100%);
-  box-shadow: 0 0 30px rgb(212 175 55 / 15%);
-  grid-column: 1 / -1; 
-  justify-self: center;
+  box-shadow: 0 0 15px rgb(212 175 55 / 15%) inset;
+}
+
+.highRankCard {
+  border-left: 3px solid var(--tint);
+}
+
+.bloodhuntCard {
+  background: linear-gradient(145deg, rgba(74,4,4,0.2) 0%, rgba(13,13,13,0.95) 100%);
+  border: 1px solid rgba(136,8,8,0.5);
+  box-shadow: 0 0 15px rgba(136,8,8,0.2) inset;
+  border-radius: var(--radius-lg, 0.5rem);
+  padding: 1rem;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  gap: 1rem;
+}
+
+/* Watermarks */
+.cardWatermark {
+  position: absolute;
+  inset: 0;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+  background-size: cover;
+  background-position: center;
+}
+
+.bloodhuntIcon {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 4rem;
+  height: 4rem;
+  background: linear-gradient(to bottom left, color-mix(in srgb, var(--primary-container) 20%, transparent), transparent);
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 0.5rem;
+  z-index: 10;
+}
+
+.bloodhuntIcon span {
+  color: var(--primary);
+  font-size: 1.2rem;
+  animation: pulse 2s infinite;
+}
+
+/* Image Container */
+.imgContainer {
+  width: 6rem;
+  height: 8rem;
+  flex-shrink: 0;
+  background: #0D0D0D;
+  border: 1px solid color-mix(in srgb, var(--outline-variant) 30%, transparent);
+  padding: 0.25rem;
+  position: relative;
+  z-index: 10;
+}
+
+.imgWrapper {
   width: 100%;
-  max-width: 600px;
+  height: 100%;
+  position: relative;
+}
+
+.sharpImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.imgBloodhunted {
+  filter: grayscale(100%) sepia(20%) hue-rotate(-50deg) saturate(200%);
+}
+
+.targetLabel {
+  position: absolute;
+  bottom: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.8);
+  padding: 0.125rem 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--primary-container) 50%, transparent);
+  font-size: 0.65rem;
+  font-weight: bold;
+  letter-spacing: 0.1em;
+  color: var(--primary-container);
+  text-transform: uppercase;
+  z-index: 20;
+}
+
+.imgPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #1a1a1a;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-style: italic;
+  text-align: center;
+}
+
+.placeholderLogo {
+  width: 48px;
+  height: 48px;
+  opacity: 0.6;
+  margin-bottom: 4px;
+  object-fit: contain;
+}
+
+/* Info Column */
+.infoCol {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  z-index: 10;
+  min-width: 0;
+}
+
+.name {
+  font-family: var(--font-title, 'Playfair Display');
+  font-size: 1.5rem;
+  line-height: 1.2;
+  color: var(--on-surface);
+  margin-bottom: 0.25rem;
+}
+
+.honorific {
+  color: var(--primary);
+  font-weight: 600;
+  margin-right: 8px;
 }
 
 .princeCard .name {
-  font-size: 2.2rem;
   color: #d4af37;
   text-shadow: 0 0 12px rgb(212 175 55 / 40%);
 }
 
-.highRankCard {
-  border-left: 5px solid var(--tint);
-  background: linear-gradient(to right, var(--surface-lighter), var(--surface-color));
-}
-
-/* --- THE POLAROID --- */
-.polaroid {
-  flex-shrink: 0;
-  width: 140px;
-  background: var(--surface-color); 
-  padding: 8px 8px 24px; 
-  border-radius: 2px;
-  border: 1px solid var(--border-color);
-  box-shadow: 2px 5px 15px rgb(0 0 0 / 80%);
-  transform: rotate(-3deg); 
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.memberCard:hover .polaroid {
-  transform: scale(1.05) rotate(0deg); 
-  box-shadow: 0 10px 20px rgb(0 0 0 / 90%);
-}
-
-.polaroidImg {
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  object-fit: cover;
-  border: 1px solid var(--border-color); 
-  display: block;
-}
-
-.polaroidPlaceholder {
-  width: 100%;
-  aspect-ratio: 1 / 1;
+.tags {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-color);
-  color: var(--text-muted);
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.tagClan {
+  padding: 0.125rem 0.5rem;
+  background: var(--surface-container-highest);
+  color: var(--on-surface-variant);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid color-mix(in srgb, var(--outline-variant) 20%, transparent);
+}
+
+.tagSect {
+  padding: 0.125rem 0.5rem;
+  background: color-mix(in srgb, var(--primary-container) 20%, transparent);
+  color: var(--primary);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid color-mix(in srgb, var(--primary-container) 30%, transparent);
+}
+
+.description {
+  font-family: var(--font-body, 'Inter');
   font-size: 0.85rem;
+  color: var(--on-surface-variant);
   font-style: italic;
-  border: 1px solid var(--border-color);
-}
-
-/* --- RIGHT SIDE INFO CONTAINER --- */
-.memberInfo {
-  display: flex;
-  flex-direction: column;
-  flex-grow: 1;
-  min-width: 0; 
-  min-height: 140px; 
-}
-
-.cardHeader {
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: 0.8rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
   margin-bottom: 1rem;
 }
 
-.honorific {
-  color: #d4af37; 
-  margin-right: 0.5rem;
-  font-size: 0.9em;
-  font-weight: normal;
-  font-variant: small-caps;
-  letter-spacing: 1px;
+.footer {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid color-mix(in srgb, var(--outline-variant) 10%, transparent);
+  padding-top: 0.75rem;
 }
 
-.name { 
-  font-size: 1.3rem; 
-  font-weight: bold; 
-  color: var(--text-color); 
-  font-family: var(--font-title);
+.statusDrops {
+  display: flex;
+  gap: 0.25rem;
+  color: var(--primary-container);
 }
 
-.clan { 
-  font-size: 0.85rem; 
-  color: var(--tint); 
-  text-transform: uppercase; 
-  font-style: italic; 
+.btnAdmin {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--primary);
+  background: rgba(0,0,0,0.5);
+  border: 1px solid color-mix(in srgb, var(--primary-container) 30%, transparent);
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition: color 0.2s;
 }
 
-.cardBody {
-  flex-grow: 1;
+.btnAdmin:hover {
+  color: #fff;
+}
+
+/* Edit Mode specific */
+.editContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  width: 100%;
 }
 
 .imageInput {
   width: 100%;
-  padding: 8px;
-  margin-bottom: 1rem;
+  padding: 0.5rem;
   background: var(--bg-color);
   border: 1px solid var(--border-color);
   color: var(--text-color);
   border-radius: 4px;
-  font-family: inherit;
   font-size: 0.85rem;
-  transition: border-color 0.2s;
 }
 
-.imageInput:focus {
-  border-color: var(--tint);
-  outline: none;
-}
-
-.tagGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 5px;
+.statusToggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .checkboxLabel {
@@ -252,61 +366,89 @@
   color: var(--text-muted);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   cursor: pointer;
-  padding: 2px;
-  transition: color 0.2s;
 }
-
-.checkboxLabel:hover { color: var(--text-color); }
 .checkboxLabel input { accent-color: var(--tint); }
 
-.displayTitles {
+.tagGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(0,0,0,0.2);
+  border-radius: 4px;
+}
+
+.bloodhuntTag, .hideTag, .exTag, .deadTag {
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+.bloodhuntTag { color: var(--primary); }
+.hideTag { color: var(--info, #4a90e2); }
+.exTag { color: #d4af37; }
+.deadTag { color: var(--text-muted); }
+
+/* --- Admin Controls --- */
+.adminControls {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 5px;
+  justify-content: flex-end;
+  margin-bottom: 2rem;
+  padding-right: 1rem;
 }
 
-.titleTag {
-  padding: 4px 12px;
-  background: var(--surface-color);
-  border: 1px solid var(--border-color);
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  border-radius: 2px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.muted {
-  color: var(--text-muted);
-  font-style: italic;
-  font-size: 0.8rem;
-}
-
-.cardFooter {
-  margin-top: auto; 
-  padding-top: 1rem;
-  border-top: 1px solid var(--border-color);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.statusDisplay {
+.toggleViewBtn {
+  background: var(--surface-lighter);
+  border: 1px solid var(--tint);
   color: var(--tint);
-  letter-spacing: 4px;
-  font-size: 1.1rem;
-  text-shadow: 0 0 5px color-mix(in srgb, var(--tint) 50%, transparent);
+  padding: 8px 20px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
 }
 
-.statusSlider {
-  width: 70px;
-  height: 4px;
-  background: var(--border-color);
-  outline: none;
-  accent-color: var(--tint);
+.toggleViewBtn:hover {
+  background: var(--tint);
+  color: var(--bg-color);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--tint) 40%, transparent);
+}
+
+.bulkActionRow {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.clanSelect {
+  background: var(--bg-color);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.bulkBloodhuntBtn {
+  background: rgba(220, 20, 60, 0.2);
+  border: 1px solid crimson;
+  color: crimson;
+  padding: 8px 16px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.bulkBloodhuntBtn:hover:not(:disabled) {
+  background: crimson;
+  color: white;
+}
+
+.bulkBloodhuntBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* --- Announcements Styles --- */
@@ -493,46 +635,6 @@
 
   /* Grid Layouts */
   .princeCard { width: 100%; grid-column: auto; }
-  .councilRow { grid-template-columns: 1fr; gap: 1.5rem; padding: 0; }
-  .courtGrid { grid-template-columns: 1fr; gap: 1.5rem; }
-
-  /* Member Card adjustments */
-  .memberCard {
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    padding: 1.2rem;
-  }
-
-  .polaroid {
-    transform: rotate(0deg); 
-    margin-bottom: 1rem;
-    width: 120px; 
-  }
-
-  .memberInfo {
-    width: 100%; 
-  }
-
-  .displayTitles {
-    justify-content: center; 
-  }
-
-  .tagGrid {
-    grid-template-columns: 1fr; 
-  }
-
-  .statusToggles {
-    flex-wrap: wrap; 
-    justify-content: center;
-    gap: 0.8rem;
-  }
-
-  .cardFooter {
-    flex-direction: column; 
-    gap: 15px;
-    justify-content: center;
-  }
 }
 
 /* --- Deceased & Ex Modifiers --- */
