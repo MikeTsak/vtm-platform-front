@@ -5,6 +5,10 @@ import './styles/global/index.css';
 import './bones/registry';
 import App from './core/App';
 import reportWebVitals from './reportWebVitals';
+import { initCookieConsent } from './cookieconsent';
+
+// Initialize cookie consent
+initCookieConsent();
 
 // 🔧 Hard-kill any service workers and clear their caches BEFORE rendering
 async function purgeSWAndCaches() {

@@ -1,6 +1,7 @@
 // src/pages/Home.jsx
 import React, { useEffect, useState, useRef } from 'react';
 import api from '../core/api';
+import { trackEvent } from '../utils/analytics';
 import { Link, useNavigate } from 'react-router-dom';
 import { Skeleton } from 'boneyard-js/react';
 import styles from '../styles/Home.module.css';
@@ -183,6 +184,7 @@ export default function Home() {
   // Handler for Theme Clicks
   const handleThemeChange = async (themeId) => {
     setActiveTheme(themeId);
+    trackEvent('theme_change', { theme: themeId });
     try {
       await api.put('/auth/theme', { theme: themeId });
     } catch (error) {
@@ -275,6 +277,17 @@ export default function Home() {
       }
     })();
   }, [nav]);
+
+  /* ── AdSense Init ── */
+  useEffect(() => {
+    if (me && ch && !loading) {
+      try {
+        (window.adsbygoogle = window.adsbygoogle || []).push({});
+      } catch (e) {
+        console.error("AdSense error", e);
+      }
+    }
+  }, [me, ch, loading]);
 
   if (!me) return <div className={styles.loadingScreen}>Please log in.</div>;
 
@@ -483,6 +496,16 @@ export default function Home() {
                 <span className={styles.navCardTitle} style={{ position: 'relative', zIndex: 2 }}>THE COBWEB</span>
               </a>
             )}
+          </section>
+
+          {/* GOOGLE AD BLOCK */}
+          <section style={{ margin: '20px 0', textAlign: 'center', background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+            <ins className="adsbygoogle"
+                 style={{ display: 'block' }}
+                 data-ad-client="ca-pub-6753590372675915"
+                 data-ad-slot="4211124757"
+                 data-ad-format="auto"
+                 data-full-width-responsive="true"></ins>
           </section>
 
           {/* 4. BOTTOM ROW (Chronicle Entry & Restricted Access) */}

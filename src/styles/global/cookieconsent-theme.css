@@ -1,0 +1,31 @@
+/* Custom Theme for CookieConsent matching Vampire Portal */
+:root {
+  --cc-bg: var(--bg-color);
+  --cc-text: var(--text-color);
+  --cc-btn-primary-bg: var(--tint);
+  --cc-btn-primary-text: #ffffff;
+  --cc-btn-primary-hover-bg: color-mix(in srgb, var(--tint) 80%, black);
+  --cc-btn-primary-hover-text: #ffffff;
+  --cc-btn-secondary-bg: var(--surface-color);
+  --cc-btn-secondary-text: var(--text-color);
+  --cc-btn-secondary-hover-bg: var(--border-color);
+  --cc-btn-secondary-hover-text: var(--text-color);
+  --cc-toggle-bg-off: var(--border-color);
+  --cc-toggle-bg-on: var(--tint);
+  --cc-toggle-bg-readonly: var(--surface-color);
+  --cc-toggle-knob-bg: var(--text-color);
+  --cc-toggle-knob-icon-color: var(--bg-color);
+  --cc-block-text: var(--text-muted);
+  --cc-cookie-category-block-bg: var(--surface-color);
+  --cc-cookie-category-block-bg-hover: var(--surface-lighter);
+  --cc-section-border: var(--border-color);
+  --cc-cookie-table-border: var(--border-color);
+  --cc-overlay-bg: rgba(0, 0, 0, 0.85);
+  --cc-webkit-scrollbar-bg: var(--bg-color);
+  --cc-webkit-scrollbar-bg-hover: var(--surface-color);
+  --cc-primary-color: var(--tint);
+}
+
+#cc-main {
+  font-family: inherit;
+}

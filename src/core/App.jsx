@@ -6,6 +6,7 @@ import { NotificationProvider } from '../context/NotificationContext';
 import NotificationBanner from '../components/NotificationBanner';
 import api from './api';
 import { Skeleton } from 'boneyard-js/react';
+import { trackPageView, setUserId, setUserProperties } from '../utils/analytics';
 
 // Pages & Components
 import Login from '../features/auth/Login';
@@ -106,7 +107,27 @@ function AppLayout() {
     } else {
       document.body.classList.remove('admin-theme');
     }
+
+    // Google Analytics: Track User Identity
+    if (user) {
+      setUserId(user.id);
+      
+      // Fetch character to get Clan and Sect for tracking demographics
+      api.get('/characters/me').then(({ data }) => {
+        if (data.character) {
+          setUserProperties({
+            clan: data.character.clan || 'Unknown',
+            sect: data.character.sect || 'Unknown'
+          });
+        }
+      }).catch(() => { /* skip if err */ });
+    }
   }, [user]);
+
+  // Google Analytics: Track Page Views
+  useEffect(() => {
+    trackPageView(location.pathname);
+  }, [location]);
 
   return (
     <div

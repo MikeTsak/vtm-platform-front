@@ -23,6 +23,7 @@ import MeritsFlawsDisplay from '../components/MeritsFlawsDisplay';
 import { Skeleton } from 'boneyard-js/react';
 import MiniSearch from 'minisearch';
 import { ShopRow, ConfirmModal } from '../components/ShopRow';
+import { getPushSettings, updatePushSettings, subscribeToWebPush } from '../utils/push';
 const msSearchText = (arr, query) => {
   const ms = new MiniSearch({ fields: ['text'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
   const docs = arr.map((text, id) => ({ id, text }));
@@ -720,6 +721,38 @@ export default function CharacterView({
   const saveTimeoutRef = useRef(null);
   const isInitialTrackerLoad = useRef(true);
 
+  // System Notifications State
+  const [sysNotifOn, setSysNotifOn] = useState(false);
+  const [pushSettingsLoading, setPushSettingsLoading] = useState(true);
+  const notifSupported = typeof window !== 'undefined' && 'Notification' in window;
+
+  useEffect(() => {
+    getPushSettings().then(settings => {
+      setSysNotifOn(!!settings.system);
+      setPushSettingsLoading(false);
+    }).catch(() => setPushSettingsLoading(false));
+  }, []);
+
+  const toggleSysNotifications = async () => {
+    if (!notifSupported || pushSettingsLoading) return;
+    if (!sysNotifOn) {
+      try {
+        await subscribeToWebPush();
+        await updatePushSettings({ system: true });
+        setSysNotifOn(true);
+      } catch (err) {
+        alert('Could not enable system notifications: ' + err.message);
+      }
+    } else {
+      try {
+        await updatePushSettings({ system: false });
+        setSysNotifOn(false);
+      } catch (err) {
+        console.error('Failed to disable system push:', err);
+      }
+    }
+  };
+
   useEffect(() => {
     let mounted = true;
     api.get(paths.load)
@@ -1138,6 +1171,15 @@ export default function CharacterView({
               {Array.from({ length: 5 }).map((_, i) => (
                 <span key={i} className={`material-symbols-outlined ${styles.hungerDroplet} ${i < tempHunger ? styles.active : ''}`} style={i < tempHunger ? { fontVariationSettings: "'FILL' 1" } : {}}>water_drop</span>
               ))}
+              {(!adminNPCId && String(user?.id) === String(ch?.user_id)) && (
+                <button 
+                  onClick={toggleSysNotifications} 
+                  title={sysNotifOn ? "Disable System Notifications" : "Enable System Notifications"}
+                  style={{ background: 'none', border: 'none', padding: '4px', cursor: 'pointer', color: sysNotifOn ? 'var(--tint)' : 'var(--text-muted)', display: 'flex', alignItems: 'center' }}
+                >
+                  <span className="material-symbols-outlined">{sysNotifOn ? 'notifications_active' : 'notifications_off'}</span>
+                </button>
+              )}
             </div>
           </div>
         </header>
@@ -1168,9 +1210,16 @@ export default function CharacterView({
                 ))}
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button className={styles.navActionBtn} title="Notifications">
-                  <span className="material-symbols-outlined">notifications</span>
-                </button>
+                {(!adminNPCId && String(user?.id) === String(ch?.user_id)) && (
+                  <button 
+                    className={styles.navActionBtn} 
+                    onClick={toggleSysNotifications}
+                    title={sysNotifOn ? "Disable System Notifications" : "Enable System Notifications"}
+                    style={{ color: sysNotifOn ? 'var(--tint)' : 'inherit' }}
+                  >
+                    <span className="material-symbols-outlined">{sysNotifOn ? 'notifications_active' : 'notifications_off'}</span>
+                  </button>
+                )}
                 <button className={styles.navActionBtn} onClick={() => setIdentityModalOpen(true)} title="Edit Identity">
                   <span className="material-symbols-outlined">settings</span>
                 </button>

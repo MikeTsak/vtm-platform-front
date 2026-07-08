@@ -8,6 +8,7 @@ import { Skeleton } from 'boneyard-js/react';
 import Avatar from './Avatar';
 import EmojiPicker from 'emoji-picker-react';
 import MiniSearch from 'minisearch';
+import { getPushSettings, updatePushSettings, subscribeToWebPush } from '../utils/push';
 
 /* --- Clan assets & colors --- */
 const CLAN_COLORS = {
@@ -50,16 +51,7 @@ const NPCTag = () => (
   </span>
 );
 
-/* --- PUSH HELPERS (ntfy.sh) --- */
-async function getNtfyTopic() {
-  try {
-    const res = await api.get('/push/ntfy-topic');
-    return res.data?.topic || null;
-  } catch (err) {
-    console.error('Failed to get ntfy topic:', err);
-    return null;
-  }
-}
+
 
 /* --- Contact Objects --- */
 const asUserContact = (u) => ({
@@ -327,10 +319,9 @@ export default function ChatSystem({ commsEnabled = true }) {
     }
   };
 
-  const [notifOn, setNotifOn] = useState(() => localStorage.getItem('comms_notifs') === '1');
-  const notifSupported = typeof window !== 'undefined' && 'Notification' in window;
-  const [ntfyTopic, setNtfyTopic] = useState(null);
-  const [showNtfyModal, setShowNtfyModal] = useState(false);
+  const [notifSupported] = useState(typeof window !== 'undefined' && 'Notification' in window);
+  const [notifOn, setNotifOn] = useState(false);
+  const [pushSettingsLoading, setPushSettingsLoading] = useState(true);
 
   const [isMobile, setIsMobile] = useState(false);
   const containerRef = useRef(null);
@@ -420,7 +411,8 @@ export default function ChatSystem({ commsEnabled = true }) {
       textareaRef.current.style.height = 'auto';
     }
     clearAttachment();
-  }, [selectedContact, clearAttachment]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedContact]);
 
   useLayoutEffect(() => {
     if (textareaRef.current) {
@@ -447,28 +439,34 @@ export default function ChatSystem({ commsEnabled = true }) {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('comms_notifs', notifOn ? '1' : '0');
-    if (notifOn && !ntfyTopic) {
-      getNtfyTopic().then(t => setNtfyTopic(t));
-    }
-  }, [notifOn, ntfyTopic]);
+    // Load push settings on mount
+    getPushSettings().then(settings => {
+      setNotifOn(!!settings.chat);
+      setPushSettingsLoading(false);
+    }).catch(() => {
+      setPushSettingsLoading(false);
+    });
+  }, []);
 
   const toggleNotifications = async () => {
-    if (!notifSupported) return;
+    if (!notifSupported || pushSettingsLoading) return;
+    
     if (!notifOn) {
-      let perm = Notification.permission;
-      if (perm === 'default') { try { perm = await Notification.requestPermission(); } catch { perm = 'denied'; } }
-      if (perm !== 'granted') { setNotifOn(false); return; }
-
-      const topic = await getNtfyTopic();
-      if (topic) {
-        setNtfyTopic(topic);
-        setShowNtfyModal(true);
-        try { await api.post('/push/test'); } catch { }
+      try {
+        await subscribeToWebPush();
+        await updatePushSettings({ chat: true });
+        setNotifOn(true);
+      } catch (err) {
+        console.error('Failed to enable push:', err);
+        alert('Could not enable notifications: ' + err.message);
       }
-      setNotifOn(true);
     } else {
-      setNotifOn(false);
+      try {
+        await updatePushSettings({ chat: false });
+        setNotifOn(false);
+      } catch (err) {
+        console.error('Failed to disable push:', err);
+      }
     }
   };
 
@@ -736,9 +734,7 @@ export default function ChatSystem({ commsEnabled = true }) {
         formData.append('file', attachment);
 
         try {
-          const res = await api.post('/chat/upload', formData, {
-            headers: { 'Content-Type': undefined },
-          });
+          const res = await api.post('/chat/upload', formData);
           attachmentId = res.data.id;
         } catch (err) {
           console.error('Upload error:', err?.response?.data || err);
@@ -1114,524 +1110,486 @@ export default function ChatSystem({ commsEnabled = true }) {
     </div>
   );
 
-  const renderNtfyModalTailwind = () => (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="bg-surface-container border border-outline-variant rounded-lg w-full max-w-md p-6 flex flex-col gap-4 text-center shadow-[0_0_20px_rgba(27,76,140,0.3)]">
-        <div className="mx-auto w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center mb-2">
-          <span className="material-symbols-outlined text-primary text-2xl">notifications_active</span>
-        </div>
-        <h3 className="text-xl font-headline-md text-on-surface tracking-tight">Push Notifications Enabled!</h3>
-        <p className="text-sm text-on-surface-variant leading-relaxed">
-          Your browser will now show notifications while this page is open.
-          To receive background notifications on your phone or desktop, use the <strong>ntfy</strong> app.
-        </p>
-        <div className="bg-surface-dim border border-outline-variant/50 p-4 rounded-lg my-2">
-          <div className="text-xs text-on-surface-variant uppercase tracking-widest mb-1">Your unique ntfy topic:</div>
-          <strong className="text-lg font-system-code text-primary break-all select-all">{ntfyTopic}</strong>
-        </div>
-        <div className="text-left text-sm text-on-surface-variant/80 bg-surface-container-highest p-4 rounded border border-outline-variant/30">
-          <ol className="list-decimal pl-4 flex flex-col gap-1">
-            <li>Install the <a href="https://ntfy.sh" target="_blank" rel="noreferrer" className="text-primary hover:underline">ntfy app</a> (iOS/Android).</li>
-            <li>Tap <strong>+</strong> to subscribe to a topic.</li>
-            <li>Enter the exact topic name above.</li>
-          </ol>
-        </div>
-        <button onClick={() => setShowNtfyModal(false)} className="mt-4 bg-primary text-on-primary w-full py-2 rounded hover:bg-primary-container transition-colors font-bold shadow-[0_0_10px_rgba(255,179,174,0.2)]">Got it</button>
-      </div>
-    </div>
-  );
-
   return (
     <div
-      className="bg-surface text-on-surface font-body-md relative selection:bg-primary-container selection:text-white w-full"
-      style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}
+      className={`${styles.commsContainer} ${selectedContact ? styles.mobileChatActive : ''}`}
       ref={containerRef}
     >
       {/* Modals */}
-      {showNtfyModal && renderNtfyModalTailwind()}
       {creatingGroup && renderCreateGroupModalTailwind()}
       {managingGroup && renderManageGroupModalTailwind()}
 
-      <div className="w-full relative" style={{ display: 'flex', flex: '1 1 auto', minHeight: 0, overflow: 'hidden' }}>
+      {/* SideNavBar (Desktop) & Full View (Mobile when no contact selected) */}
+      <aside className={styles.userList}>
+        {/* Header */}
+        <div className={styles.listHeader} style={{ flexDirection: 'column', alignItems: 'stretch', gap: '12px' }}>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded bg-surface-container-highest border border-outline-variant flex items-center justify-center overflow-hidden shrink-0">
+              <span className="material-symbols-outlined text-primary">dns</span>
+            </div>
+            <div className="min-w-0">
+              <div className="font-bold text-on-surface text-[14px] truncate">NODE_01</div>
+              <div className="text-on-surface-variant text-[10px] opacity-70 truncate">Secure Blood Channel</div>
+            </div>
+          </div>
+          {isCharActive && (
+            <button onClick={() => setCreatingGroup(true)} className="w-full py-2 bg-transparent border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary hover:shadow-[0_0_8px_rgba(140,27,27,0.2)] transition-all rounded text-[12px] font-bold tracking-wider flex items-center justify-center gap-2 group">
+              <span className="material-symbols-outlined text-[16px] group-hover:animate-spin">add</span>
+              NEW UPLOAD
+            </button>
+          )}
 
-        {/* SideNavBar (Desktop) & Full View (Mobile when no contact selected) */}
-        <aside
-          className={`${selectedContact ? 'hidden md:flex' : 'flex'} w-full md:w-64 z-40 bg-surface-container-low border-r border-outline-variant font-system-code text-system-code`}
-          style={{ flexDirection: 'column', flexShrink: 0, height: '100%', overflow: 'hidden' }}
-        >
-          {/* Header */}
-          <div className="p-4 md:p-6 border-b border-outline-variant/50" style={{ flexShrink: 0 }}>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded bg-surface-container-highest border border-outline-variant flex items-center justify-center overflow-hidden shrink-0">
-                <span className="material-symbols-outlined text-primary">dns</span>
+          <div className="mt-4 relative">
+            <span className="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-on-surface-variant/50 text-[16px]">search</span>
+            <input
+              type="text"
+              className="w-full bg-surface-dim border border-outline-variant/50 rounded py-1.5 pl-8 pr-2 text-[12px] text-on-surface focus:border-primary focus:ring-1 focus:ring-primary/50 transition-colors"
+              placeholder="Search network..."
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* Scrollable Nav */}
+        <div className={`${styles.usersScroll} custom-scrollbar`}>
+
+          {/* Groups */}
+          {filteredGroups.length > 0 && (
+            <div className="mb-6">
+              <div className="px-4 text-[10px] text-on-surface-variant/50 mb-2 font-bold tracking-widest flex items-center justify-between">
+                GROUPS
+                <span className="material-symbols-outlined text-[14px]">expand_more</span>
               </div>
-              <div className="min-w-0">
-                <div className="font-bold text-on-surface text-[14px] truncate">NODE_01</div>
-                <div className="text-on-surface-variant text-[10px] opacity-70 truncate">Secure Blood Channel</div>
+              <ul className="flex flex-col">
+                {filteredGroups.map(g => {
+                  const isActive = selectedContact?.type === 'group' && selectedContact?.id === g.id;
+                  return (
+                    <li key={`g-${g.id}`} onClick={() => selectContact(g)} className={`${isActive ? 'blood-active border-l-4 translate-x-1' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all`}>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="material-symbols-outlined text-[18px] opacity-70 shrink-0">group</span>
+                        <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate`}>{g.name}</span>
+                      </div>
+                      {g.unread_count > 0 && <div className="w-4 h-4 rounded-full bg-primary-container text-white flex items-center justify-center text-[10px] font-bold shrink-0">{g.unread_count}</div>}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+
+          {/* Players */}
+          <div className="mb-6">
+            <div className="px-4 text-[10px] text-on-surface-variant/50 mb-2 font-bold tracking-widest flex items-center justify-between">
+              CONTACTS
+              <span className="material-symbols-outlined text-[14px]">expand_more</span>
+            </div>
+            <ul className="flex flex-col">
+              {usersWithChar.map(u => {
+                const isActive = selectedContact?.type === 'user' && selectedContact?.id === u.id;
+                return (
+                  <li key={`u-${u.id}`} onClick={() => selectContact(u)} className={`${isActive ? 'blood-active border-l-4 translate-x-1' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all`}>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center overflow-hidden border border-outline-variant/50 relative">
+                        <Avatar userId={u.id} size="100%" style={{ width: '100%', height: '100%' }} imgClassName="opacity-80" fallback={localSymlogo(u.clan) || '/img/ATT-logo(1).png'} />
+                      </div>
+                      <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate flex flex-col`}>
+                        <span className="truncate">{u.char_name}</span>
+                        <span className="text-[9px] opacity-60 truncate">{u.display_name}</span>
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {u.clan && <span className="text-[9px] bg-surface-dim px-1 rounded border border-outline-variant/30 uppercase max-w-[40px] truncate">{u.clan.slice(0, 3)}</span>}
+                      {u.unread_count > 0 && <div className="w-2 h-2 rounded-full bg-primary-container animate-pulse"></div>}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+
+          {/* No Char Toggle */}
+          <div className="mb-6">
+            <div onClick={() => setNoCharOpen(!noCharOpen)} className="px-4 text-[10px] text-on-surface-variant/50 mb-2 font-bold tracking-widest flex items-center justify-between cursor-pointer hover:text-on-surface transition-colors">
+              <div className="flex items-center gap-1">
+                <span className="material-symbols-outlined text-[14px] transition-transform" style={{ transform: noCharOpen ? 'rotate(180deg)' : 'none' }}>expand_more</span>
+                NO CHARACTER ({usersNoChar.length})
               </div>
             </div>
-            {isCharActive && (
-              <button onClick={() => setCreatingGroup(true)} className="w-full py-2 bg-transparent border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary hover:shadow-[0_0_8px_rgba(140,27,27,0.2)] transition-all rounded text-[12px] font-bold tracking-wider flex items-center justify-center gap-2 group">
-                <span className="material-symbols-outlined text-[16px] group-hover:animate-spin">add</span>
-                NEW UPLOAD
+            {noCharOpen && (
+              <ul className="flex flex-col">
+                {usersNoChar.map(u => {
+                  const isActive = selectedContact?.type === 'user' && selectedContact?.id === u.id;
+                  return (
+                    <li key={`u-${u.id}`} onClick={() => selectContact(u)} className={`${isActive ? 'blood-active border-l-4 translate-x-1' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all opacity-80`}>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-6 h-6 rounded-full bg-surface-container flex items-center justify-center shrink-0 border border-outline-variant/30 overflow-hidden">
+                          <Avatar userId={u.id} size="100%" style={{ width: '100%', height: '100%' }} imgClassName="opacity-80" fallback="/img/ATT-logo(1).png" />
+                        </div>
+                        <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate flex flex-col`}>
+                          <span className="truncate">{u.display_name}</span>
+                        </span>
+                      </div>
+                      {u.unread_count > 0 && <div className="w-2 h-2 rounded-full bg-primary-container animate-pulse shrink-0"></div>}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
+          {/* NPCs */}
+          <div className="mb-6">
+            <div className="px-4 text-[10px] text-on-surface-variant/50 mb-2 font-bold tracking-widest flex items-center justify-between">
+              ASSETS (NPCs)
+              <span className="material-symbols-outlined text-[14px]">expand_more</span>
+            </div>
+            <ul className="flex flex-col">
+              {filteredNpcs.map(n => {
+                const isActive = selectedContact?.type === 'npc' && selectedContact?.id === n.id;
+                const crest = localSymlogo(n.clan);
+                return (
+                  <li key={`n-${n.id}`} onClick={() => selectContact(n)} className={`${isActive ? 'blood-active border-l-4 translate-x-1' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all`}>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="relative shrink-0">
+                        <div className="w-6 h-6 rounded-sm bg-surface-container-highest flex items-center justify-center overflow-hidden border border-outline-variant/50">
+                          <Avatar npcId={n.id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="opacity-80" fallback={crest || '/img/ATT-logo(1).png'} />
+                        </div>
+                      </div>
+                      <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate flex items-center gap-1`}>
+                        {n.name}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-[8px] bg-tertiary-container/20 text-tertiary px-1 rounded border border-tertiary/30 uppercase">NPC</span>
+                      {n.unread_count > 0 && <div className="w-2 h-2 rounded-full bg-primary-container animate-pulse"></div>}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-outline-variant/50 flex flex-col gap-2 shrink-0">
+          <div className="flex items-center gap-3 text-on-surface-variant hover:text-on-surface cursor-pointer p-1 rounded hover:bg-surface-variant/10 transition-colors">
+            <span className="material-symbols-outlined text-[16px]">wifi_tethering</span>
+            <span className="text-[11px] font-bold tracking-widest uppercase">Signal: Strong</span>
+          </div>
+          <div onClick={toggleNotifications} className={`flex items-center gap-3 ${notifOn ? 'text-green-500' : 'text-on-surface-variant'} cursor-pointer p-1 rounded hover:bg-surface-variant/10 transition-colors`}>
+            <span className="material-symbols-outlined text-[16px]">{notifOn ? 'notifications_active' : 'notifications_off'}</span>
+            <span className="text-[11px] font-bold tracking-widest uppercase">Notifs: {notifOn ? 'On' : 'Off'}</span>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content (Canvas) */}
+      <main className={styles.chatWindow}>
+        {selectedContact ? (
+          <>
+            {/* Chat Header */}
+            <header className={styles.chatHeader} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: '64px' }}>
+              <div className="flex items-center gap-3 md:gap-4 min-w-0">
+                {/* Mobile Back */}
+                <button className="mr-2 md:hidden text-on-surface-variant hover:text-primary transition-colors focus:outline-none shrink-0" onClick={() => setSelectedContact(null)}>
+                  <span className="material-symbols-outlined">arrow_back</span>
+                </button>
+                <div className="relative shrink-0">
+                  <div className="w-10 h-10 rounded-sm bg-surface-container-highest overflow-hidden border border-outline-variant/50 flex items-center justify-center">
+                    {selectedContact.type === 'user' ? (
+                      <Avatar userId={selectedContact.id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="opacity-80" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).png'} />
+                    ) : selectedContact.type === 'npc' ? (
+                      <Avatar npcId={selectedContact.id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="opacity-80" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).png'} />
+                    ) : (
+                      <span className="material-symbols-outlined text-on-surface-variant text-[24px]">group</span>
+                    )}
+                  </div>
+                  <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-surface rounded-full shadow-[0_0_4px_#22c55e]"></div>
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-headline-md text-[16px] md:text-[18px] font-semibold text-on-surface m-0 leading-tight truncate">{headerLabel}</h2>
+                    {selectedContact.type === 'npc' && !isAdmin && <span className="text-[9px] font-system-code bg-tertiary-container/20 text-tertiary px-1.5 py-0.5 rounded border border-tertiary/30 shrink-0">NPC</span>}
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[10px] md:text-[12px] font-system-code text-on-surface-variant/70 mt-0.5 truncate">
+                    <span className="material-symbols-outlined text-[12px] md:text-[14px] text-green-500/70">shield</span>
+                    Encrypted - AES-256
+                    {selectedContact.type === 'group' && headerGroupMembers.length > 0 && (
+                      <span className="ml-2 hidden md:inline truncate opacity-70">
+                        • {headerGroupMembers.map(m => m.char_name || m.display_name).join(', ')}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 md:gap-4 text-on-surface-variant/70 shrink-0">
+                {selectedContact.type === 'group' && (
+                  (selectedContact.created_by === currentUser?.id || isAdmin) ? (
+                    <button onClick={openManageGroup} className="hover:text-primary transition-colors flex items-center gap-1 border border-outline-variant/50 px-2 py-1 rounded text-[10px] md:text-xs font-system-code uppercase tracking-widest bg-surface-container-low hover:bg-surface-variant/50">
+                      <span className="material-symbols-outlined text-[14px] md:text-[16px]">settings</span>
+                      <span className="hidden md:inline">Manage</span>
+                    </button>
+                  ) : (
+                    <button onClick={handleLeaveGroup} className="text-error/80 hover:text-error transition-colors flex items-center gap-1 border border-error/30 px-2 py-1 rounded text-[10px] md:text-xs font-system-code uppercase tracking-widest bg-error-container/10 hover:bg-error-container/30">
+                      <span className="material-symbols-outlined text-[14px] md:text-[16px]">logout</span>
+                      <span className="hidden md:inline">Leave</span>
+                    </button>
+                  )
+                )}
+              </div>
+            </header>
+
+            {/* Admin Roster Banner for NPCs */}
+            {isAdmin && selectedContact.type === 'npc' && (
+              <div className="bg-surface-container border-b border-surface-container-highest p-2 z-10 shrink-0">
+                <div className="flex flex-col md:flex-row gap-2 justify-between items-start md:items-center mb-2">
+                  <div className="flex bg-surface-dim rounded border border-outline-variant/50 overflow-hidden text-xs font-system-code">
+                    <button className={`px-3 py-1 ${adminPlayerTab === 'recent' ? 'bg-primary/20 text-primary font-bold' : 'text-on-surface-variant hover:bg-surface-variant/30'}`} onClick={() => setAdminPlayerTab('recent')}>Recent</button>
+                    <button className={`px-3 py-1 ${adminPlayerTab === 'all' ? 'bg-primary/20 text-primary font-bold' : 'text-on-surface-variant hover:bg-surface-variant/30'}`} onClick={() => setAdminPlayerTab('all')}>All</button>
+                  </div>
+                  {adminPlayerTab === 'all' && (
+                    <input className="bg-surface-dim border border-outline-variant/50 rounded px-2 py-1 text-xs text-on-surface focus:border-primary w-full md:w-auto" placeholder="Search players…" value={adminPlayerFilter} onChange={(e) => setAdminPlayerFilter(e.target.value)} />
+                  )}
+                  <div className="text-xs font-system-code flex items-center gap-2">
+                    {selectedPlayerId ? (
+                      <>
+                        <span className="text-on-surface-variant">To:</span>
+                        <b className="text-primary">{users.find(u => u.id === selectedPlayerId)?.char_name || 'Unknown'}</b>
+                        <button className="text-[10px] bg-outline-variant/30 px-1.5 py-0.5 rounded hover:bg-outline-variant/50 transition-colors" onClick={() => setSelectedPlayerId(null)}>Clear</button>
+                      </>
+                    ) : (
+                      <span className="text-error text-[10px] uppercase tracking-widest flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">warning</span> Select target player</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                  {(adminPlayerTab === 'recent' ? adminRecentPlayers : adminAllPlayersFiltered).map(u => (
+                    <button key={`sel-${u.id}`} onClick={() => selectAdminTarget(u.id)} className={`flex items-center gap-2 px-3 py-1.5 rounded border shrink-0 transition-colors ${selectedPlayerId === u.id ? 'bg-primary/10 border-primary text-primary' : 'bg-surface-container-highest border-outline-variant/30 text-on-surface-variant hover:border-outline-variant'}`}>
+                      <span className="text-xs truncate max-w-[100px]">{u.char_name || u.display_name}</span>
+                      {u.unread_count > 0 && <span className="bg-primary-container text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">{u.unread_count}</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* System Warning (Offline / No Char) */}
+            {!commsEnabled ? (
+              <div className="w-full bg-error-container/20 border-b border-error/50 p-2 text-center flex items-center justify-center gap-2 z-10 shrink-0">
+                <span className="material-symbols-outlined text-error text-sm">warning</span>
+                <span className="font-system-code text-[11px] md:text-sm text-error tracking-widest uppercase font-bold">SCHRECKNET PROTOCOL OFFLINE</span>
+              </div>
+            ) : !isCharActive ? (
+              <div className="w-full bg-error-container/20 border-b border-error/50 p-2 text-center flex items-center justify-center gap-2 z-10 shrink-0">
+                <span className="material-symbols-outlined text-error text-sm">hourglass_empty</span>
+                <span className="font-system-code text-[11px] md:text-sm text-error tracking-widest uppercase font-bold">Awaiting ST Approval</span>
+              </div>
+            ) : null}
+
+            {/* Chat History Area */}
+            <div className={`${styles.messageList} custom-scrollbar`} ref={messagesListRef}>
+              <div className="text-center text-[10px] md:text-[12px] font-system-code text-on-surface-variant/40 my-2">
+                [ END OF ENCRYPTED HISTORY ]
+              </div>
+
+              {grouped.map(item => {
+                if (item.type === 'day') return (
+                  <div key={item.id} className="flex items-center justify-center w-full my-4 opacity-50">
+                    <div className="h-px bg-outline-variant/50 flex-1"></div>
+                    <span className="font-system-code text-[10px] text-on-surface-variant px-4 bg-transparent">{item.day.toUpperCase()}</span>
+                    <div className="h-px bg-outline-variant/50 flex-1"></div>
+                  </div>
+                );
+
+                const mine = selectedContact.type === 'user' ? item.sender_id === currentUser.id : (selectedContact.type === 'group' ? item.sender_id === currentUser.id : (isAdmin ? item.sender_id === 'npc' : item.sender_id === currentUser.id));
+                const timeSinceSent = Date.now() - new Date(item.created_at).getTime();
+                const canEditDelete = mine && timeSinceSent < 4 * 60 * 60 * 1000 && !String(item.id).startsWith('temp_');
+                const isGroupNotMine = selectedContact.type === 'group' && !mine;
+
+                return (
+                  <div key={item.id} className={`flex gap-2 md:gap-3 max-w-[90%] md:max-w-[85%] ${mine ? 'self-end flex-row-reverse group' : 'self-start group'}`}>
+                    {/* Avatar */}
+                    {!mine ? (
+                      <div className="w-6 h-6 md:w-8 md:h-8 rounded-sm md:rounded-full bg-surface-container-high border border-outline-variant flex-shrink-0 flex items-center justify-center overflow-hidden blood-glow opacity-80 mt-auto md:mt-0">
+                        {(() => {
+                          if (selectedContact.type === 'group') {
+                            const sender = currentGroupMembers.find(m => m.id === item.sender_id);
+                            return <Avatar userId={item.sender_id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="" fallback={localSymlogo(item.sender_clan || sender?.clan) || '/img/ATT-logo(1).png'} />;
+                          } else if (item.sender_id === 'npc') {
+                            return <Avatar npcId={selectedContact.id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).png'} />;
+                          } else {
+                            return <Avatar userId={item.sender_id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).png'} />;
+                          }
+                        })()}
+                      </div>
+                    ) : (
+                      <div className="hidden md:flex w-8 h-8 rounded-full opacity-0 shrink-0"></div>
+                    )}
+
+                    {/* Bubble Container */}
+                    <div className={`flex flex-col gap-1 min-w-0 ${mine ? 'items-end' : 'items-start'}`}>
+
+                      {/* Sender Name for Groups */}
+                      {isGroupNotMine && (
+                        <div className="text-[10px] font-system-code ml-1" style={{ color: CLAN_COLORS[item.sender_clan] || 'var(--on-surface-variant)' }}>
+                          {item.sender_name}
+                        </div>
+                      )}
+
+                      {editingMsgId === item.id ? (
+                        <div className="bg-surface-container-high p-3 rounded-lg border border-primary/50 shadow-[0_0_15px_rgba(255,179,174,0.1)] w-full max-w-sm">
+                          <textarea value={editBody} onChange={e => setEditBody(e.target.value)} className="w-full bg-surface-dim border border-outline-variant rounded p-2 text-on-surface text-sm focus:border-primary focus:ring-0 resize-none font-system-code" rows={3} />
+                          <div className="flex justify-end gap-2 mt-2">
+                            <button onClick={() => setEditingMsgId(null)} className="text-xs text-on-surface-variant hover:text-on-surface px-2 py-1">Cancel</button>
+                            <button onClick={submitEditMessage} className="text-xs bg-primary text-on-primary px-3 py-1 rounded font-bold hover:bg-primary-container">Save</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className={`relative chat-glass p-2 md:p-3 w-fit max-w-full shadow-[0_4px_12px_rgba(0,0,0,0.5)] ${mine ? 'bg-blood-accent/90 text-white rounded-l-lg rounded-br-lg bubble-right border-l border-t border-b border-[#b01423]' : 'bg-surface-container-high border border-outline-variant/30 text-on-surface rounded-r-lg rounded-bl-lg bubble-left'}`}>
+
+                          {/* Attachment */}
+                          {item.attachment_id && (
+                            <div className="mb-2 relative rounded overflow-hidden border border-outline-variant/50 bg-black/50 group/img cursor-pointer w-fit max-w-full">
+                              <ChatImage attachmentId={item.attachment_id} />
+                              <div className="absolute inset-0 bg-blood-accent/10 pointer-events-none mix-blend-overlay"></div>
+                            </div>
+                          )}
+
+                          {/* Body */}
+                          {item.body && <p className="text-[14px] md:text-[15px] leading-relaxed whitespace-pre-wrap break-words">{item.body}</p>}
+                        </div>
+                      )}
+
+                      {/* Meta Line (Time, Status, Actions) */}
+                      <div className={`flex items-center gap-2 mt-0.5 ${mine ? 'mr-1 flex-row-reverse' : 'ml-1'}`}>
+                        <span className="font-system-code text-[9px] md:text-[10px] text-on-surface-variant/60">{formatTime(item.created_at)}</span>
+
+                        {item.edited && <span className="font-system-code text-[9px] text-on-surface-variant/40">(edited)</span>}
+
+                        {mine && (
+                          <span className="text-[12px] md:text-[14px] text-primary flex items-center">
+                            <StatusIcon msg={item} />
+                          </span>
+                        )}
+
+                        {/* Action Buttons (Hover) */}
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {canEditDelete && !editingMsgId && (
+                            <>
+                              <button onClick={() => { setEditingMsgId(item.id); setEditBody(item.body); }} className="text-[10px] text-on-surface-variant hover:text-primary transition-colors">Edit</button>
+                              <button onClick={() => handleDeleteMessage(item.id)} className="text-[10px] text-on-surface-variant hover:text-error transition-colors">Del</button>
+                            </>
+                          )}
+                          {!mine && item.body && (
+                            <button onClick={() => copyToClipboard(item.body)} className="text-[10px] text-on-surface-variant hover:text-primary transition-colors">Copy</button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Invisible element to scroll to */}
+              <div ref={messagesEndRef} className="h-4"></div>
+            </div>
+
+            {showScrollBtn && (
+              <button className="absolute bottom-24 right-6 w-10 h-10 rounded-full bg-surface-container-highest border border-outline-variant text-primary shadow-[0_0_15px_rgba(0,0,0,0.8)] flex items-center justify-center z-20 hover:bg-surface-variant transition-colors" onClick={() => scrollToBottom(true)}>
+                <span className="material-symbols-outlined">arrow_downward</span>
               </button>
             )}
 
-            <div className="mt-4 relative">
-              <span className="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-on-surface-variant/50 text-[16px]">search</span>
-              <input
-                type="text"
-                className="w-full bg-surface-dim border border-outline-variant/50 rounded py-1.5 pl-8 pr-2 text-[12px] text-on-surface focus:border-primary focus:ring-1 focus:ring-primary/50 transition-colors"
-                placeholder="Search network..."
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-              />
-            </div>
-          </div>
-
-          {/* Scrollable Nav */}
-          <div className="custom-scrollbar" style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', padding: '16px 0' }}>
-
-            {/* Groups */}
-            {filteredGroups.length > 0 && (
-              <div className="mb-6">
-                <div className="px-4 text-[10px] text-on-surface-variant/50 mb-2 font-bold tracking-widest flex items-center justify-between">
-                  GROUPS
-                  <span className="material-symbols-outlined text-[14px]">expand_more</span>
-                </div>
-                <ul className="flex flex-col">
-                  {filteredGroups.map(g => {
-                    const isActive = selectedContact?.type === 'group' && selectedContact?.id === g.id;
-                    return (
-                      <li key={`g-${g.id}`} onClick={() => selectContact(g)} className={`${isActive ? 'blood-active border-l-4 translate-x-1' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all`}>
-                        <div className="flex items-center gap-3 min-w-0">
-                          <span className="material-symbols-outlined text-[18px] opacity-70 shrink-0">group</span>
-                          <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate`}>{g.name}</span>
-                        </div>
-                        {g.unread_count > 0 && <div className="w-4 h-4 rounded-full bg-primary-container text-white flex items-center justify-center text-[10px] font-bold shrink-0">{g.unread_count}</div>}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            )}
-
-            {/* Players */}
-            <div className="mb-6">
-              <div className="px-4 text-[10px] text-on-surface-variant/50 mb-2 font-bold tracking-widest flex items-center justify-between">
-                CONTACTS
-                <span className="material-symbols-outlined text-[14px]">expand_more</span>
-              </div>
-              <ul className="flex flex-col">
-                {usersWithChar.map(u => {
-                  const isActive = selectedContact?.type === 'user' && selectedContact?.id === u.id;
-                  return (
-                    <li key={`u-${u.id}`} onClick={() => selectContact(u)} className={`${isActive ? 'blood-active border-l-4 translate-x-1' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all`}>
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center overflow-hidden border border-outline-variant/50 relative">
-                          <Avatar userId={u.id} size="100%" style={{ width: '100%', height: '100%' }} imgClassName="opacity-80" fallback={localSymlogo(u.clan) || '/img/ATT-logo(1).png'} />
-                        </div>
-                        <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate flex flex-col`}>
-                          <span className="truncate">{u.char_name}</span>
-                          <span className="text-[9px] opacity-60 truncate">{u.display_name}</span>
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        {u.clan && <span className="text-[9px] bg-surface-dim px-1 rounded border border-outline-variant/30 uppercase max-w-[40px] truncate">{u.clan.slice(0, 3)}</span>}
-                        {u.unread_count > 0 && <div className="w-2 h-2 rounded-full bg-primary-container animate-pulse"></div>}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-
-            {/* No Char Toggle */}
-            <div className="mb-6">
-              <div onClick={() => setNoCharOpen(!noCharOpen)} className="px-4 text-[10px] text-on-surface-variant/50 mb-2 font-bold tracking-widest flex items-center justify-between cursor-pointer hover:text-on-surface transition-colors">
-                <div className="flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[14px] transition-transform" style={{ transform: noCharOpen ? 'rotate(180deg)' : 'none' }}>expand_more</span>
-                  NO CHARACTER ({usersNoChar.length})
-                </div>
-              </div>
-              {noCharOpen && (
-                <ul className="flex flex-col">
-                  {usersNoChar.map(u => {
-                    const isActive = selectedContact?.type === 'user' && selectedContact?.id === u.id;
-                    return (
-                      <li key={`u-${u.id}`} onClick={() => selectContact(u)} className={`${isActive ? 'blood-active border-l-4 translate-x-1' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all opacity-80`}>
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-6 h-6 rounded-full bg-surface-container flex items-center justify-center shrink-0 border border-outline-variant/30 overflow-hidden">
-                            <Avatar userId={u.id} size="100%" style={{ width: '100%', height: '100%' }} imgClassName="opacity-80" fallback="/img/ATT-logo(1).png" />
-                          </div>
-                          <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate flex flex-col`}>
-                            <span className="truncate">{u.display_name}</span>
-                          </span>
-                        </div>
-                        {u.unread_count > 0 && <div className="w-2 h-2 rounded-full bg-primary-container animate-pulse shrink-0"></div>}
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
-
-            {/* NPCs */}
-            <div className="mb-6">
-              <div className="px-4 text-[10px] text-on-surface-variant/50 mb-2 font-bold tracking-widest flex items-center justify-between">
-                ASSETS (NPCs)
-                <span className="material-symbols-outlined text-[14px]">expand_more</span>
-              </div>
-              <ul className="flex flex-col">
-                {filteredNpcs.map(n => {
-                  const isActive = selectedContact?.type === 'npc' && selectedContact?.id === n.id;
-                  const crest = localSymlogo(n.clan);
-                  return (
-                    <li key={`n-${n.id}`} onClick={() => selectContact(n)} className={`${isActive ? 'blood-active border-l-4 translate-x-1' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all`}>
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="relative shrink-0">
-                          <div className="w-6 h-6 rounded-sm bg-surface-container-highest flex items-center justify-center overflow-hidden border border-outline-variant/50">
-                            <Avatar npcId={n.id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="opacity-80" fallback={crest || '/img/ATT-logo(1).png'} />
-                          </div>
-                        </div>
-                        <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate flex items-center gap-1`}>
-                          {n.name}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-[8px] bg-tertiary-container/20 text-tertiary px-1 rounded border border-tertiary/30 uppercase">NPC</span>
-                        {n.unread_count > 0 && <div className="w-2 h-2 rounded-full bg-primary-container animate-pulse"></div>}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-
-          </div>
-
-          {/* Footer */}
-          <div className="p-4 border-t border-outline-variant/50 flex flex-col gap-2 shrink-0">
-            <div className="flex items-center gap-3 text-on-surface-variant hover:text-on-surface cursor-pointer p-1 rounded hover:bg-surface-variant/10 transition-colors">
-              <span className="material-symbols-outlined text-[16px]">wifi_tethering</span>
-              <span className="text-[11px] font-bold tracking-widest uppercase">Signal: Strong</span>
-            </div>
-            <div onClick={toggleNotifications} className={`flex items-center gap-3 ${notifOn ? 'text-green-500' : 'text-on-surface-variant'} cursor-pointer p-1 rounded hover:bg-surface-variant/10 transition-colors`}>
-              <span className="material-symbols-outlined text-[16px]">{notifOn ? 'notifications_active' : 'notifications_off'}</span>
-              <span className="text-[11px] font-bold tracking-widest uppercase">Notifs: {notifOn ? 'On' : 'Off'}</span>
-            </div>
-          </div>
-        </aside>
-
-        {/* Main Content (Canvas) */}
-        <main
-          className={`${!selectedContact ? 'hidden md:flex' : 'flex'} bg-surface-dim relative`}
-          style={{ flex: '1 1 auto', flexDirection: 'column', minHeight: 0, minWidth: 0, height: '100%', overflow: 'hidden' }}
-        >
-          {selectedContact ? (
-            <>
-              {/* Chat Header */}
-              <header className="h-16 border-b border-surface-container-highest bg-surface/80 backdrop-blur-md flex items-center justify-between px-4 md:px-6 z-10" style={{ flexShrink: 0 }}>
-                <div className="flex items-center gap-3 md:gap-4 min-w-0">
-                  {/* Mobile Back */}
-                  <button className="mr-2 md:hidden text-on-surface-variant hover:text-primary transition-colors focus:outline-none shrink-0" onClick={() => setSelectedContact(null)}>
-                    <span className="material-symbols-outlined">arrow_back</span>
-                  </button>
-                  <div className="relative shrink-0">
-                    <div className="w-10 h-10 rounded-sm bg-surface-container-highest overflow-hidden border border-outline-variant/50 flex items-center justify-center">
-                      {selectedContact.type === 'user' ? (
-                        <Avatar userId={selectedContact.id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="opacity-80" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).png'} />
-                      ) : selectedContact.type === 'npc' ? (
-                        <Avatar npcId={selectedContact.id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="opacity-80" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).png'} />
-                      ) : (
-                        <span className="material-symbols-outlined text-on-surface-variant text-[24px]">group</span>
-                      )}
-                    </div>
-                    <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-surface rounded-full shadow-[0_0_4px_#22c55e]"></div>
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h2 className="font-headline-md text-[16px] md:text-[18px] font-semibold text-on-surface m-0 leading-tight truncate">{headerLabel}</h2>
-                      {selectedContact.type === 'npc' && !isAdmin && <span className="text-[9px] font-system-code bg-tertiary-container/20 text-tertiary px-1.5 py-0.5 rounded border border-tertiary/30 shrink-0">NPC</span>}
-                    </div>
-                    <div className="flex items-center gap-1.5 text-[10px] md:text-[12px] font-system-code text-on-surface-variant/70 mt-0.5 truncate">
-                      <span className="material-symbols-outlined text-[12px] md:text-[14px] text-green-500/70">shield</span>
-                      Encrypted - AES-256
-                      {selectedContact.type === 'group' && headerGroupMembers.length > 0 && (
-                        <span className="ml-2 hidden md:inline truncate opacity-70">
-                          • {headerGroupMembers.map(m => m.char_name || m.display_name).join(', ')}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 md:gap-4 text-on-surface-variant/70 shrink-0">
-                  {selectedContact.type === 'group' && (
-                    (selectedContact.created_by === currentUser?.id || isAdmin) ? (
-                      <button onClick={openManageGroup} className="hover:text-primary transition-colors flex items-center gap-1 border border-outline-variant/50 px-2 py-1 rounded text-[10px] md:text-xs font-system-code uppercase tracking-widest bg-surface-container-low hover:bg-surface-variant/50">
-                        <span className="material-symbols-outlined text-[14px] md:text-[16px]">settings</span>
-                        <span className="hidden md:inline">Manage</span>
-                      </button>
-                    ) : (
-                      <button onClick={handleLeaveGroup} className="text-error/80 hover:text-error transition-colors flex items-center gap-1 border border-error/30 px-2 py-1 rounded text-[10px] md:text-xs font-system-code uppercase tracking-widest bg-error-container/10 hover:bg-error-container/30">
-                        <span className="material-symbols-outlined text-[14px] md:text-[16px]">logout</span>
-                        <span className="hidden md:inline">Leave</span>
-                      </button>
-                    )
-                  )}
-                </div>
-              </header>
-
-              {/* Admin Roster Banner for NPCs */}
-              {isAdmin && selectedContact.type === 'npc' && (
-                <div className="bg-surface-container border-b border-surface-container-highest p-2 z-10 shrink-0">
-                  <div className="flex flex-col md:flex-row gap-2 justify-between items-start md:items-center mb-2">
-                    <div className="flex bg-surface-dim rounded border border-outline-variant/50 overflow-hidden text-xs font-system-code">
-                      <button className={`px-3 py-1 ${adminPlayerTab === 'recent' ? 'bg-primary/20 text-primary font-bold' : 'text-on-surface-variant hover:bg-surface-variant/30'}`} onClick={() => setAdminPlayerTab('recent')}>Recent</button>
-                      <button className={`px-3 py-1 ${adminPlayerTab === 'all' ? 'bg-primary/20 text-primary font-bold' : 'text-on-surface-variant hover:bg-surface-variant/30'}`} onClick={() => setAdminPlayerTab('all')}>All</button>
-                    </div>
-                    {adminPlayerTab === 'all' && (
-                      <input className="bg-surface-dim border border-outline-variant/50 rounded px-2 py-1 text-xs text-on-surface focus:border-primary w-full md:w-auto" placeholder="Search players…" value={adminPlayerFilter} onChange={(e) => setAdminPlayerFilter(e.target.value)} />
-                    )}
-                    <div className="text-xs font-system-code flex items-center gap-2">
-                      {selectedPlayerId ? (
-                        <>
-                          <span className="text-on-surface-variant">To:</span>
-                          <b className="text-primary">{users.find(u => u.id === selectedPlayerId)?.char_name || 'Unknown'}</b>
-                          <button className="text-[10px] bg-outline-variant/30 px-1.5 py-0.5 rounded hover:bg-outline-variant/50 transition-colors" onClick={() => setSelectedPlayerId(null)}>Clear</button>
-                        </>
-                      ) : (
-                        <span className="text-error text-[10px] uppercase tracking-widest flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">warning</span> Select target player</span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
-                    {(adminPlayerTab === 'recent' ? adminRecentPlayers : adminAllPlayersFiltered).map(u => (
-                      <button key={`sel-${u.id}`} onClick={() => selectAdminTarget(u.id)} className={`flex items-center gap-2 px-3 py-1.5 rounded border shrink-0 transition-colors ${selectedPlayerId === u.id ? 'bg-primary/10 border-primary text-primary' : 'bg-surface-container-highest border-outline-variant/30 text-on-surface-variant hover:border-outline-variant'}`}>
-                        <span className="text-xs truncate max-w-[100px]">{u.char_name || u.display_name}</span>
-                        {u.unread_count > 0 && <span className="bg-primary-container text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">{u.unread_count}</span>}
-                      </button>
-                    ))}
-                  </div>
+            {/* Bottom Input Area */}
+            <div className={styles.messageInputForm} style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))', flexDirection: 'column', alignItems: 'stretch' }}>
+              {/* Emoji Picker */}
+              {showEmojiPicker && (
+                <div className="absolute bottom-[100%] left-1/2 -translate-x-1/2 md:left-auto md:right-4 md:translate-x-0 z-50 mb-2 shadow-[0_0_20px_rgba(0,0,0,0.8)] rounded-lg overflow-hidden border border-outline-variant w-[min(92vw,320px)]">
+                  <EmojiPicker onEmojiClick={onEmojiClick} theme="dark" searchDisabled={false} width="100%" />
                 </div>
               )}
 
-              {/* System Warning (Offline / No Char) */}
-              {!commsEnabled ? (
-                <div className="w-full bg-error-container/20 border-b border-error/50 p-2 text-center flex items-center justify-center gap-2 z-10 shrink-0">
-                  <span className="material-symbols-outlined text-error text-sm">warning</span>
-                  <span className="font-system-code text-[11px] md:text-sm text-error tracking-widest uppercase font-bold">SCHRECKNET PROTOCOL OFFLINE</span>
-                </div>
-              ) : !isCharActive ? (
-                <div className="w-full bg-error-container/20 border-b border-error/50 p-2 text-center flex items-center justify-center gap-2 z-10 shrink-0">
-                  <span className="material-symbols-outlined text-error text-sm">hourglass_empty</span>
-                  <span className="font-system-code text-[11px] md:text-sm text-error tracking-widest uppercase font-bold">Awaiting ST Approval</span>
-                </div>
-              ) : null}
+              <div className="max-w-4xl mx-auto relative flex items-end gap-2 bg-surface-container-lowest border border-outline-variant rounded-md p-1.5 md:p-2 focus-within:border-primary focus-within:shadow-[0_0_8px_rgba(180,15,31,0.2)] transition-all">
 
-              {/* Chat History Area */}
-              <div className="p-4 md:p-6 z-10 flex flex-col gap-6 font-body-md custom-scrollbar" style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto' }} ref={messagesListRef}>
-                <div className="text-center text-[10px] md:text-[12px] font-system-code text-on-surface-variant/40 my-2">
-                  [ END OF ENCRYPTED HISTORY ]
-                </div>
+                {/* Attachments & Previews */}
+                <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="image/*,audio/*" onChange={handleFileSelect} />
 
-                {grouped.map(item => {
-                  if (item.type === 'day') return (
-                    <div key={item.id} className="flex items-center justify-center w-full my-4 opacity-50">
-                      <div className="h-px bg-outline-variant/50 flex-1"></div>
-                      <span className="font-system-code text-[10px] text-on-surface-variant px-4 bg-transparent">{item.day.toUpperCase()}</span>
-                      <div className="h-px bg-outline-variant/50 flex-1"></div>
-                    </div>
-                  );
-
-                  const mine = selectedContact.type === 'user' ? item.sender_id === currentUser.id : (selectedContact.type === 'group' ? item.sender_id === currentUser.id : (isAdmin ? item.sender_id === 'npc' : item.sender_id === currentUser.id));
-                  const timeSinceSent = Date.now() - new Date(item.created_at).getTime();
-                  const canEditDelete = mine && timeSinceSent < 4 * 60 * 60 * 1000 && !String(item.id).startsWith('temp_');
-                  const isGroupNotMine = selectedContact.type === 'group' && !mine;
-
-                  return (
-                    <div key={item.id} className={`flex gap-2 md:gap-3 max-w-[90%] md:max-w-[85%] ${mine ? 'self-end flex-row-reverse group' : 'self-start group'}`}>
-                      {/* Avatar */}
-                      {!mine ? (
-                        <div className="w-6 h-6 md:w-8 md:h-8 rounded-sm md:rounded-full bg-surface-container-high border border-outline-variant flex-shrink-0 flex items-center justify-center overflow-hidden blood-glow opacity-80 mt-auto md:mt-0">
-                          {(() => {
-                            if (selectedContact.type === 'group') {
-                              const sender = currentGroupMembers.find(m => m.id === item.sender_id);
-                              return <Avatar userId={item.sender_id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="" fallback={localSymlogo(item.sender_clan || sender?.clan) || '/img/ATT-logo(1).png'} />;
-                            } else if (item.sender_id === 'npc') {
-                              return <Avatar npcId={selectedContact.id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).png'} />;
-                            } else {
-                              return <Avatar userId={item.sender_id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).png'} />;
-                            }
-                          })()}
-                        </div>
-                      ) : (
-                        <div className="hidden md:flex w-8 h-8 rounded-full opacity-0 shrink-0"></div>
-                      )}
-
-                      {/* Bubble Container */}
-                      <div className={`flex flex-col gap-1 min-w-0 ${mine ? 'items-end' : 'items-start'}`}>
-
-                        {/* Sender Name for Groups */}
-                        {isGroupNotMine && (
-                          <div className="text-[10px] font-system-code ml-1" style={{ color: CLAN_COLORS[item.sender_clan] || 'var(--on-surface-variant)' }}>
-                            {item.sender_name}
-                          </div>
-                        )}
-
-                        {editingMsgId === item.id ? (
-                          <div className="bg-surface-container-high p-3 rounded-lg border border-primary/50 shadow-[0_0_15px_rgba(255,179,174,0.1)] w-full max-w-sm">
-                            <textarea value={editBody} onChange={e => setEditBody(e.target.value)} className="w-full bg-surface-dim border border-outline-variant rounded p-2 text-on-surface text-sm focus:border-primary focus:ring-0 resize-none font-system-code" rows={3} />
-                            <div className="flex justify-end gap-2 mt-2">
-                              <button onClick={() => setEditingMsgId(null)} className="text-xs text-on-surface-variant hover:text-on-surface px-2 py-1">Cancel</button>
-                              <button onClick={submitEditMessage} className="text-xs bg-primary text-on-primary px-3 py-1 rounded font-bold hover:bg-primary-container">Save</button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className={`relative chat-glass p-2 md:p-3 w-fit max-w-full shadow-[0_4px_12px_rgba(0,0,0,0.5)] ${mine ? 'bg-blood-accent/90 text-white rounded-l-lg rounded-br-lg bubble-right border-l border-t border-b border-[#b01423]' : 'bg-surface-container-high border border-outline-variant/30 text-on-surface rounded-r-lg rounded-bl-lg bubble-left'}`}>
-
-                            {/* Attachment */}
-                            {item.attachment_id && (
-                              <div className="mb-2 relative rounded overflow-hidden border border-outline-variant/50 bg-black/50 group/img cursor-pointer w-fit max-w-full">
-                                <ChatImage attachmentId={item.attachment_id} />
-                                <div className="absolute inset-0 bg-blood-accent/10 pointer-events-none mix-blend-overlay"></div>
-                              </div>
-                            )}
-
-                            {/* Body */}
-                            {item.body && <p className="text-[14px] md:text-[15px] leading-relaxed whitespace-pre-wrap break-words">{item.body}</p>}
-                          </div>
-                        )}
-
-                        {/* Meta Line (Time, Status, Actions) */}
-                        <div className={`flex items-center gap-2 mt-0.5 ${mine ? 'mr-1 flex-row-reverse' : 'ml-1'}`}>
-                          <span className="font-system-code text-[9px] md:text-[10px] text-on-surface-variant/60">{formatTime(item.created_at)}</span>
-
-                          {item.edited && <span className="font-system-code text-[9px] text-on-surface-variant/40">(edited)</span>}
-
-                          {mine && (
-                            <span className="text-[12px] md:text-[14px] text-primary flex items-center">
-                              <StatusIcon msg={item} />
-                            </span>
-                          )}
-
-                          {/* Action Buttons (Hover) */}
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {canEditDelete && !editingMsgId && (
-                              <>
-                                <button onClick={() => { setEditingMsgId(item.id); setEditBody(item.body); }} className="text-[10px] text-on-surface-variant hover:text-primary transition-colors">Edit</button>
-                                <button onClick={() => handleDeleteMessage(item.id)} className="text-[10px] text-on-surface-variant hover:text-error transition-colors">Del</button>
-                              </>
-                            )}
-                            {!mine && item.body && (
-                              <button onClick={() => copyToClipboard(item.body)} className="text-[10px] text-on-surface-variant hover:text-primary transition-colors">Copy</button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {/* Invisible element to scroll to */}
-                <div ref={messagesEndRef} className="h-4"></div>
-              </div>
-
-              {showScrollBtn && (
-                <button className="absolute bottom-24 right-6 w-10 h-10 rounded-full bg-surface-container-highest border border-outline-variant text-primary shadow-[0_0_15px_rgba(0,0,0,0.8)] flex items-center justify-center z-20 hover:bg-surface-variant transition-colors" onClick={() => scrollToBottom(true)}>
-                  <span className="material-symbols-outlined">arrow_downward</span>
+                <button type="button" onClick={() => fileInputRef.current?.click()} disabled={!isCharActive || !commsEnabled} className="p-2 text-on-surface-variant hover:text-primary transition-colors shrink-0 rounded hover:bg-surface-variant/30 disabled:opacity-30">
+                  <span className="material-symbols-outlined text-[20px] md:text-[24px]">attach_file</span>
                 </button>
-              )}
 
-              {/* Bottom Input Area */}
-              <div className="p-3 md:p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-surface-container/90 backdrop-blur-md border-t border-surface-container-highest z-20 relative" style={{ flexShrink: 0 }}>
-                {/* Emoji Picker */}
-                {showEmojiPicker && (
-                  <div className="absolute bottom-[100%] left-1/2 -translate-x-1/2 md:left-auto md:right-4 md:translate-x-0 z-50 mb-2 shadow-[0_0_20px_rgba(0,0,0,0.8)] rounded-lg overflow-hidden border border-outline-variant w-[min(92vw,320px)]">
-                    <EmojiPicker onEmojiClick={onEmojiClick} theme="dark" searchDisabled={false} width="100%" />
-                  </div>
-                )}
-
-                <div className="max-w-4xl mx-auto relative flex items-end gap-2 bg-surface-container-lowest border border-outline-variant rounded-md p-1.5 md:p-2 focus-within:border-primary focus-within:shadow-[0_0_8px_rgba(180,15,31,0.2)] transition-all">
-
-                  {/* Attachments & Previews */}
-                  <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="image/*,audio/*" onChange={handleFileSelect} />
-
-                  <button type="button" onClick={() => fileInputRef.current?.click()} disabled={!isCharActive || !commsEnabled} className="p-2 text-on-surface-variant hover:text-primary transition-colors shrink-0 rounded hover:bg-surface-variant/30 disabled:opacity-30">
-                    <span className="material-symbols-outlined text-[20px] md:text-[24px]">attach_file</span>
-                  </button>
-
-                  <div className="flex-1 flex flex-col min-w-0">
-                    {previewUrl && attachment && (
-                      <div className="mb-2 p-2 bg-surface-container-highest rounded border border-outline-variant/50 flex items-center justify-between">
-                        <div className="flex items-center gap-2 truncate">
-                          {attachment.type.startsWith('audio/') ? (
-                            <>
-                              <span className="material-symbols-outlined text-primary text-sm shrink-0">audio_file</span>
-                              <span className="text-xs truncate">{attachment.name}</span>
-                            </>
-                          ) : (
-                            <>
-                              <img src={previewUrl} alt="Preview" className="h-8 w-8 object-cover rounded border border-outline-variant shrink-0" />
-                              <span className="text-xs truncate">{attachment.name}</span>
-                            </>
-                          )}
-                        </div>
-                        <button type="button" onClick={clearAttachment} className="text-on-surface-variant hover:text-error shrink-0 ml-2">
-                          <span className="material-symbols-outlined text-[18px]">close</span>
-                        </button>
+                <div className="flex-1 flex flex-col min-w-0">
+                  {previewUrl && attachment && (
+                    <div className="mb-2 p-2 bg-surface-container-highest rounded border border-outline-variant/50 flex items-center justify-between">
+                      <div className="flex items-center gap-2 truncate">
+                        {attachment.type.startsWith('audio/') ? (
+                          <>
+                            <span className="material-symbols-outlined text-primary text-sm shrink-0">audio_file</span>
+                            <span className="text-xs truncate">{attachment.name}</span>
+                          </>
+                        ) : (
+                          <>
+                            <img src={previewUrl} alt="Preview" className="h-8 w-8 object-cover rounded border border-outline-variant shrink-0" />
+                            <span className="text-xs truncate">{attachment.name}</span>
+                          </>
+                        )}
                       </div>
-                    )}
-                    <textarea
-                      ref={textareaRef}
-                      value={newMessage}
-                      onChange={e => setNewMessage(e.target.value)}
-                      onKeyDown={handleKeyDown}
-                      placeholder={!commsEnabled ? "System Offline..." : (!isCharActive ? "Waiting for ST approval..." : "Transmit response...")}
-                      className="w-full bg-transparent border-none text-on-surface font-system-code text-[13px] md:text-[14px] placeholder-on-surface-variant/40 focus:ring-0 resize-none py-2 px-1 max-h-32 custom-scrollbar break-words"
-                      rows={1}
-                      style={{ minHeight: '40px' }}
-                      disabled={!commsEnabled || !isCharActive || (isAdmin && selectedContact.type === 'npc' && !selectedPlayerId)}
-                    />
-                  </div>
-
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button type="button" onClick={() => setShowEmojiPicker(val => !val)} disabled={!isCharActive || !commsEnabled} className="p-2 text-on-surface-variant hover:text-primary transition-colors rounded hover:bg-surface-variant/30 hidden md:flex disabled:opacity-30">
-                      <span className="material-symbols-outlined text-[20px] md:text-[24px]">mood</span>
-                    </button>
-                    <button type="button" onClick={handleSendMessage} disabled={!commsEnabled || !isCharActive || sendingRef.current || (!newMessage.trim() && !attachment) || (isAdmin && selectedContact.type === 'npc' && !selectedPlayerId)} className="p-2 bg-primary/10 text-primary border border-primary/30 hover:bg-primary hover:text-on-primary transition-colors rounded shadow-[0_0_8px_rgba(255,179,174,0.1)] group flex items-center justify-center h-10 w-10 disabled:opacity-30 disabled:hover:bg-primary/10 disabled:hover:text-primary">
-                      <span className="material-symbols-outlined text-[18px] md:text-[20px] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform">send</span>
-                    </button>
-                  </div>
+                      <button type="button" onClick={clearAttachment} className="text-on-surface-variant hover:text-error shrink-0 ml-2">
+                        <span className="material-symbols-outlined text-[18px]">close</span>
+                      </button>
+                    </div>
+                  )}
+                  <textarea
+                    ref={textareaRef}
+                    value={newMessage}
+                    onChange={e => setNewMessage(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder={!commsEnabled ? "System Offline..." : (!isCharActive ? "Waiting for ST approval..." : "Transmit response...")}
+                    className="w-full bg-transparent border-none text-on-surface font-system-code text-[13px] md:text-[14px] placeholder-on-surface-variant/40 focus:ring-0 resize-none py-2 px-1 max-h-32 custom-scrollbar break-words"
+                    rows={1}
+                    style={{ minHeight: '40px' }}
+                    disabled={!commsEnabled || !isCharActive || (isAdmin && selectedContact.type === 'npc' && !selectedPlayerId)}
+                  />
                 </div>
 
-                <div className="max-w-4xl mx-auto flex justify-between mt-2 px-1">
-                  <span className="text-[9px] md:text-[10px] font-system-code text-on-surface-variant/40 hidden md:inline">Enter to send, Shift+Enter for new line</span>
-                  <span className="text-[9px] md:text-[10px] font-system-code text-green-500/60 flex items-center gap-1 ml-auto">
-                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
-                    Uplink Stable
-                  </span>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button type="button" onClick={() => setShowEmojiPicker(val => !val)} disabled={!isCharActive || !commsEnabled} className="p-2 text-on-surface-variant hover:text-primary transition-colors rounded hover:bg-surface-variant/30 hidden md:flex disabled:opacity-30">
+                    <span className="material-symbols-outlined text-[20px] md:text-[24px]">mood</span>
+                  </button>
+                  <button type="button" onClick={handleSendMessage} disabled={!commsEnabled || !isCharActive || sendingRef.current || (!newMessage.trim() && !attachment) || (isAdmin && selectedContact.type === 'npc' && !selectedPlayerId)} className="p-2 bg-primary/10 text-primary border border-primary/30 hover:bg-primary hover:text-on-primary transition-colors rounded shadow-[0_0_8px_rgba(255,179,174,0.1)] group flex items-center justify-center h-10 w-10 disabled:opacity-30 disabled:hover:bg-primary/10 disabled:hover:text-primary">
+                    <span className="material-symbols-outlined text-[18px] md:text-[20px] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform">send</span>
+                  </button>
                 </div>
               </div>
-            </>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-on-surface-variant/50 p-6 text-center z-10">
-              <span className="material-symbols-outlined text-[64px] mb-4 opacity-20">terminal</span>
-              <p className="font-system-code text-sm tracking-widest uppercase mb-2 text-glow-active">SchreckNet Node 01 Online</p>
-              <p className="text-xs max-w-md">Select a contact from the secure roster to initiate an encrypted channel.</p>
-            </div>
-          )}
 
-          {error && (
-            <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-error-container text-on-error-container px-4 py-2 rounded shadow-lg z-50 flex items-center gap-2 border border-error/50">
-              <span className="material-symbols-outlined text-sm">error</span>
-              <span className="text-sm font-bold">{error}</span>
-              <button onClick={() => setError('')} className="ml-2 hover:opacity-80"><span className="material-symbols-outlined text-sm">close</span></button>
+              <div className="max-w-4xl mx-auto flex justify-between mt-2 px-1">
+                <span className="text-[9px] md:text-[10px] font-system-code text-on-surface-variant/40 hidden md:inline">Enter to send, Shift+Enter for new line</span>
+                <span className="text-[9px] md:text-[10px] font-system-code text-green-500/60 flex items-center gap-1 ml-auto">
+                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+                  Uplink Stable
+                </span>
+              </div>
             </div>
-          )}
-        </main>
-      </div>
+          </>
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center text-on-surface-variant/50 p-6 text-center z-10">
+            <span className="material-symbols-outlined text-[64px] mb-4 opacity-20">terminal</span>
+            <p className="font-system-code text-sm tracking-widest uppercase mb-2 text-glow-active">SchreckNet Node 01 Online</p>
+            <p className="text-xs max-w-md">Select a contact from the secure roster to initiate an encrypted channel.</p>
+          </div>
+        )}
+
+        {error && (
+          <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-error-container text-on-error-container px-4 py-2 rounded shadow-lg z-50 flex items-center gap-2 border border-error/50">
+            <span className="material-symbols-outlined text-sm">error</span>
+            <span className="text-sm font-bold">{error}</span>
+            <button onClick={() => setError('')} className="ml-2 hover:opacity-80"><span className="material-symbols-outlined text-sm">close</span></button>
+          </div>
+        )}
+      </main>
     </div>
   );
 }

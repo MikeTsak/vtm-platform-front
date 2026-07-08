@@ -125,6 +125,32 @@ function TopBar({ tab, loading, onReload }) {
         <button
           type="button"
           className={styles.reloadBtn}
+          onClick={() => {
+            api.post('/push/test', { category: 'system' })
+              .then(() => alert('System push sent!'))
+              .catch(e => alert('Push failed: ' + e.message));
+          }}
+          title="Test System Push"
+        >
+          <span className="material-symbols-outlined">notifications</span>
+          Test System
+        </button>
+        <button
+          type="button"
+          className={styles.reloadBtn}
+          onClick={() => {
+            api.post('/push/test', { category: 'chat' })
+              .then(() => alert('Chat push sent!'))
+              .catch(e => alert('Push failed: ' + e.message));
+          }}
+          title="Test Chat Push"
+        >
+          <span className="material-symbols-outlined">forum</span>
+          Test Chat
+        </button>
+        <button
+          type="button"
+          className={styles.reloadBtn}
           onClick={onReload}
           disabled={loading}
           aria-label="Reload data"
