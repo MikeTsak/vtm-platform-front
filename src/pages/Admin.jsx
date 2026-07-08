@@ -803,6 +803,7 @@ async function grantXP(character_id, delta) {
             <AdminClaimsTab
               claims={claims}
               characters={charIndex}
+              npcs={npcs}
               onSave={saveClaim}
               onDelete={deleteClaim}
             />

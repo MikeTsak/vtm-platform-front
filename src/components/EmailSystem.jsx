@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import api from '../core/api';
 import styles from '../styles/EmailSystem.module.css';
 import { Skeleton } from 'boneyard-js/react';
+import Avatar from './Avatar';
 
 // --- Internal Rich Text Editor Components ---
 const EditorToolbar = ({ onCmd }) => (
@@ -173,12 +174,10 @@ export default function EmailSystem({ user, isMobile, commsEnabled = true }) {
           {loading && <Skeleton loading={true} name="email-system-loader" />}
           {threads.map(t => {
             const senderName = isAdmin ? t.user_name : t.from_name;
-            const avatarColor = getColor(senderName || 'Unknown');
+            const avatarProps = isAdmin ? { userId: t.user_id } : { identityId: t.identity_id };
             return (
               <div key={t.id} className={`${styles.threadCard} ${selectedThread?.id===t.id?styles.active:''} ${t.unread_count>0?styles.unread:''}`} onClick={()=>openEmailThread(t)}>
-                <div className={styles.threadAvatar} style={{backgroundColor: avatarColor}}>
-                  {getInitials(senderName)}
-                </div>
+                <Avatar {...avatarProps} size={40} className={styles.threadAvatar} fallback={`https://ui-avatars.com/api/?name=${encodeURIComponent(senderName)}&background=random`} />
                 <div className={styles.threadContent}>
                   <div className={styles.threadTopRow}>
                     <span className={styles.threadSender}>{senderName}</span>
@@ -213,18 +212,19 @@ export default function EmailSystem({ user, isMobile, commsEnabled = true }) {
             <div className={styles.emailBodyScroll}>
               {emailMessages.map(m => {
                 let msgName = 'Unknown';
+                let avatarProps = {};
                 if (m.sender_type === 'user') {
                     msgName = isAdmin ? selectedThread.user_name : 'Me';
+                    avatarProps = { userId: selectedThread.user_id };
                 } else {
                     msgName = isAdmin ? selectedThread.identity_name : selectedThread.from_name;
+                    avatarProps = { identityId: selectedThread.identity_id };
                 }
 
                 return (
                   <div key={m.id} className={styles.emailMsg}>
                     <div className={styles.msgHeader}>
-                      <div className={styles.msgAvatar} style={{backgroundColor: getColor(msgName)}}>
-                        {getInitials(msgName)}
-                      </div>
+                      <Avatar {...avatarProps} size={36} className={styles.msgAvatar} style={{ borderRadius: '50%' }} fallback={`https://ui-avatars.com/api/?name=${encodeURIComponent(msgName)}&background=random`} />
                       <div className={styles.msgMeta}>
                         <span className={styles.msgAuthor}>{msgName}</span>
                         <span className={styles.msgTime}>{new Date(m.created_at).toLocaleString()}</span>

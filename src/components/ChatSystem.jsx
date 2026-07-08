@@ -1105,21 +1105,25 @@ export default function ChatSystem({ commsEnabled = true }) {
   );
 
   return (
-    <div className="bg-surface text-on-surface font-body-md relative selection:bg-primary-container selection:text-white flex-1 min-h-0 h-full w-full flex flex-col overflow-hidden" ref={containerRef}>
-      {/* CRT Overlay */}
-      <div className="fixed inset-0 crt-overlay z-[100] mix-blend-overlay pointer-events-none hidden md:block"></div>
-
+    <div
+      className="bg-surface text-on-surface font-body-md relative selection:bg-primary-container selection:text-white w-full"
+      style={{ display: 'flex', flexDirection: 'column', flex: '1 1 auto', minHeight: 0, height: '100%', overflow: 'hidden' }}
+      ref={containerRef}
+    >
       {/* Modals */}
       {showNtfyModal && renderNtfyModalTailwind()}
       {creatingGroup && renderCreateGroupModalTailwind()}
       {managingGroup && renderManageGroupModalTailwind()}
 
-      <div className="flex flex-1 min-h-0 w-full relative overflow-hidden">
+      <div className="w-full relative" style={{ display: 'flex', flex: '1 1 auto', minHeight: 0, overflow: 'hidden' }}>
 
         {/* SideNavBar (Desktop) & Full View (Mobile when no contact selected) */}
-        <aside className={`${selectedContact ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-64 z-40 bg-surface-container-low border-r border-outline-variant font-system-code text-system-code h-full shrink-0 overflow-hidden`}>
+        <aside
+          className={`${selectedContact ? 'hidden md:flex' : 'flex'} w-full md:w-64 z-40 bg-surface-container-low border-r border-outline-variant font-system-code text-system-code`}
+          style={{ flexDirection: 'column', flexShrink: 0, height: '100%', overflow: 'hidden' }}
+        >
           {/* Header */}
-          <div className="p-4 md:p-6 border-b border-outline-variant/50 shrink-0">
+          <div className="p-4 md:p-6 border-b border-outline-variant/50" style={{ flexShrink: 0 }}>
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded bg-surface-container-highest border border-outline-variant flex items-center justify-center overflow-hidden shrink-0">
                 <span className="material-symbols-outlined text-primary">dns</span>
@@ -1149,7 +1153,7 @@ export default function ChatSystem({ commsEnabled = true }) {
           </div>
 
           {/* Scrollable Nav */}
-          <div className="flex-1 min-h-0 overflow-y-auto py-4 custom-scrollbar">
+          <div className="custom-scrollbar" style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', padding: '16px 0' }}>
 
             {/* Groups */}
             {filteredGroups.length > 0 && (
@@ -1188,7 +1192,7 @@ export default function ChatSystem({ commsEnabled = true }) {
                     <li key={`u-${u.id}`} onClick={() => selectContact(u)} className={`${isActive ? 'blood-active border-l-4 translate-x-1' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all`}>
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center overflow-hidden border border-outline-variant/50 relative">
-                            <Avatar userId={u.id} size="100%" style={{ width: '100%', height: '100%' }} imgClassName="opacity-80" fallback={localSymlogo(u.clan) || '/img/ATT-logo(1).png'} />
+                          <Avatar userId={u.id} size="100%" style={{ width: '100%', height: '100%' }} imgClassName="opacity-80" fallback={localSymlogo(u.clan) || '/img/ATT-logo(1).png'} />
                         </div>
                         <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate flex flex-col`}>
                           <span className="truncate">{u.char_name}</span>
@@ -1283,14 +1287,14 @@ export default function ChatSystem({ commsEnabled = true }) {
         </aside>
 
         {/* Main Content (Canvas) */}
-        <main className={`${!selectedContact ? 'hidden md:flex' : 'flex'} flex-1 flex-col relative bg-surface-dim overflow-hidden h-full min-h-0 min-w-0`}>
-          {/* Background Texture */}
-          <div className="absolute inset-0 opacity-10 pointer-events-none z-0" style={{ backgroundImage: 'url(https://lh3.googleusercontent.com/aida-public/AB6AXuDz3Mcw2U6fsZNx0VJQG8NcTN2exzxDyiHV-_HLNxDDjI3u19AfS60V0CnwhPUJghibt_HovewDaryCkBMUVJEJRAfS8TKjuzs5IgFiOceN2QX--PCw8xTYpDh5XxOph0RxFlftYhcsNkHEwCotKlu3vHYHhHDl06mooR8ZsVJrXZ4C4isw52uJ6r04mxrjQoOef6pJC_pEK3cs6MoMRIOVqqm8nIceFuFcrTEhAuEjb4BMBKbX0zgbIolzy_kAVWK_LLCcQpO375yd)' }}></div>
-
+        <main
+          className={`${!selectedContact ? 'hidden md:flex' : 'flex'} bg-surface-dim relative`}
+          style={{ flex: '1 1 auto', flexDirection: 'column', minHeight: 0, minWidth: 0, height: '100%', overflow: 'hidden' }}
+        >
           {selectedContact ? (
             <>
               {/* Chat Header */}
-              <header className="h-16 border-b border-surface-container-highest bg-surface/80 backdrop-blur-md flex items-center justify-between px-4 md:px-6 z-10 shrink-0">
+              <header className="h-16 border-b border-surface-container-highest bg-surface/80 backdrop-blur-md flex items-center justify-between px-4 md:px-6 z-10" style={{ flexShrink: 0 }}>
                 <div className="flex items-center gap-3 md:gap-4 min-w-0">
                   {/* Mobile Back */}
                   <button className="mr-2 md:hidden text-on-surface-variant hover:text-primary transition-colors focus:outline-none shrink-0" onClick={() => setSelectedContact(null)}>
@@ -1390,7 +1394,7 @@ export default function ChatSystem({ commsEnabled = true }) {
               ) : null}
 
               {/* Chat History Area */}
-              <div className="flex-1 overflow-y-auto p-4 md:p-6 z-10 flex flex-col gap-6 font-body-md custom-scrollbar min-h-0" ref={messagesListRef}>
+              <div className="p-4 md:p-6 z-10 flex flex-col gap-6 font-body-md custom-scrollbar" style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto' }} ref={messagesListRef}>
                 <div className="text-center text-[10px] md:text-[12px] font-system-code text-on-surface-variant/40 my-2">
                   [ END OF ENCRYPTED HISTORY ]
                 </div>
@@ -1504,7 +1508,7 @@ export default function ChatSystem({ commsEnabled = true }) {
               )}
 
               {/* Bottom Input Area */}
-              <div className="p-3 md:p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-surface-container/90 backdrop-blur-md border-t border-surface-container-highest z-20 shrink-0 relative">
+              <div className="p-3 md:p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-surface-container/90 backdrop-blur-md border-t border-surface-container-highest z-20 relative" style={{ flexShrink: 0 }}>
                 {/* Emoji Picker */}
                 {showEmojiPicker && (
                   <div className="absolute bottom-[100%] left-1/2 -translate-x-1/2 md:left-auto md:right-4 md:translate-x-0 z-50 mb-2 shadow-[0_0_20px_rgba(0,0,0,0.8)] rounded-lg overflow-hidden border border-outline-variant w-[min(92vw,320px)]">

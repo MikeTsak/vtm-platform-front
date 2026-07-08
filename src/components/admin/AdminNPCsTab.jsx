@@ -20,9 +20,9 @@ export default function AdminNPCsTab({ npcs, onReload, onDelete }) {
   return (
     <div className={styles.stack12}>
       <div className={styles.row} style={{ justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem' }}>
-        <h3 style={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Static NPC Ledger Assets</h3>
+        <h3 style={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>NPCs</h3>
         {mode === 'list' && (
-          <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => setMode('create')}>+ Instantiate Profile Node</button>
+          <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => setMode('create')}>+ Create NPC</button>
         )}
       </div>
 
@@ -31,12 +31,12 @@ export default function AdminNPCsTab({ npcs, onReload, onDelete }) {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Identifier</th>
-                <th>Asset Descriptor</th>
-                <th>Lineage Vector</th>
-                <th>XP Alloc</th>
-                <th>Timestamp Initialization</th>
-                <th style={{ textAlign: 'right' }}>Directives</th>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Clan</th>
+                <th>XP</th>
+                <th>Created At</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -54,8 +54,8 @@ export default function AdminNPCsTab({ npcs, onReload, onDelete }) {
                   >
                     <td className={styles.idCell}>#{n.id}</td>
                     <td className={styles.npcNameCell}>
-                      <div style={{ width: 32, height: 32, marginRight: 12, display: 'inline-block', verticalAlign: 'middle' }}>
-                        <Avatar npcId={n.id} size="100%" style={{ width: '100%', height: '100%' }} fallback={symlogo(n.clan)} />
+                      <div style={{ width: 40, height: 40, marginRight: 12, display: 'inline-block', verticalAlign: 'middle' }}>
+                        <Avatar npcId={n.id} size="100%" style={{ width: '100%', height: '100%', borderRadius: '50%' }} fallback={symlogo(n.clan)} editable={true} />
                       </div>
                       <span style={{ fontWeight: 700, fontSize: '1.05rem', verticalAlign: 'middle' }}>{n.name}</span>
                     </td>
@@ -65,14 +65,14 @@ export default function AdminNPCsTab({ npcs, onReload, onDelete }) {
                     <td>
                       <div className={styles.row} style={{ gap: '8px', justifyContent: 'flex-end' }}>
                         <Link className={`${styles.btn} ${styles.btnSecondary}`} style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }} to={`/admin/npcs/${n.id}`}>
-                          Inspect Terminal
+                          Edit
                         </Link>
                         <button
                           className={`${styles.btn} ${styles.btnDanger}`}
                           style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
                           onClick={() => onDelete(n.id)}
                         >
-                          Purge Asset
+                          Delete
                         </button>
                       </div>
                     </td>
@@ -82,7 +82,7 @@ export default function AdminNPCsTab({ npcs, onReload, onDelete }) {
               {!npcs.length && (
                 <tr>
                   <td colSpan="6" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                    No assets currently loaded in registry framework.
+                    No NPCs found.
                   </td>
                 </tr>
               )}
@@ -94,8 +94,8 @@ export default function AdminNPCsTab({ npcs, onReload, onDelete }) {
       {mode === 'create' && (
         <div style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-lg)', padding: '2rem', boxShadow: 'var(--glass-shadow)' }}>
           <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem' }}>
-            <h4 style={{ margin: 0, color: 'var(--accent-purple)', fontSize: '1.4rem', fontWeight: 800 }}>Instantiate Asset Entity</h4>
-            <p className={styles.subtle}>Compiles a new base profile character sheet flagged for system story-automation routing.</p>
+            <h4 style={{ margin: 0, color: 'var(--accent-purple)', fontSize: '1.4rem', fontWeight: 800 }}>Create NPC</h4>
+            <p className={styles.subtle}>Creates a new NPC character sheet.</p>
           </div>
           <div style={{ background: 'var(--glass-inset)', padding: '1.5rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem' }}>
             <CharacterSetup
@@ -105,7 +105,7 @@ export default function AdminNPCsTab({ npcs, onReload, onDelete }) {
           </div>
           <div style={{ display: 'flex', gap: '1rem' }}>
             <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => setMode('list')}>
-              Abort Operations
+              Cancel
             </button>
           </div>
         </div>

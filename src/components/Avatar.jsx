@@ -2,8 +2,11 @@ import React, { useState, useRef } from 'react';
 import api from '../core/api'; // our axios instance
 import styles from './Avatar.module.css';
 
-export default function Avatar({ userId, npcId, size = 80, editable = false, onUploadSuccess, style = {}, className = "", imgClassName = "", imgStyle = {}, fallback = '/img/ATT-logo(1).png' }) {
-  const [timestamp, setTimestamp] = useState(Date.now());
+const avatarTimestamps = new Map();
+
+export default function Avatar({ userId, npcId, identityId, size = 80, editable = false, onUploadSuccess, style = {}, className = "", imgClassName = "", imgStyle = {}, fallback = '/img/ATT-logo(1).png' }) {
+  const entityKey = userId ? `u_${userId}` : (npcId ? `n_${npcId}` : `i_${identityId}`);
+  const [timestamp, setTimestamp] = useState(() => avatarTimestamps.get(entityKey) || '');
   const [isUploading, setIsUploading] = useState(false);
   const [imgError, setImgError] = useState(false);
   const fileInputRef = useRef(null);
@@ -11,8 +14,10 @@ export default function Avatar({ userId, npcId, size = 80, editable = false, onU
   const baseUrl = process.env.REACT_APP_API_URL || '';
   let srcUrl = fallback;
   if (!imgError) {
-    if (userId) srcUrl = `${baseUrl}/users/${userId}/avatar?t=${timestamp}`;
-    else if (npcId) srcUrl = `${baseUrl}/npcs/${npcId}/avatar?t=${timestamp}`;
+    const q = timestamp ? `?t=${timestamp}` : '';
+    if (userId) srcUrl = `${baseUrl}/users/${userId}/avatar${q}`;
+    else if (npcId) srcUrl = `${baseUrl}/npcs/${npcId}/avatar${q}`;
+    else if (identityId) srcUrl = `${baseUrl}/identities/${identityId}/avatar${q}`;
   }
 
   const handleClick = () => {
@@ -36,14 +41,16 @@ export default function Avatar({ userId, npcId, size = 80, editable = false, onU
       const formData = new FormData();
       formData.append('avatar', file);
 
-      const endpoint = userId ? `/users/${userId}/avatar` : `/npcs/${npcId}/avatar`;
+      const endpoint = userId ? `/users/${userId}/avatar` : (npcId ? `/npcs/${npcId}/avatar` : `/identities/${identityId}/avatar`);
       await api.put(endpoint, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
 
-      setTimestamp(Date.now()); // Force reload image
+      const newTs = Date.now();
+      avatarTimestamps.set(entityKey, newTs);
+      setTimestamp(newTs); // Force reload image
       setImgError(false); // Reset error state in case it was a fallback before
       if (onUploadSuccess) {
         onUploadSuccess();

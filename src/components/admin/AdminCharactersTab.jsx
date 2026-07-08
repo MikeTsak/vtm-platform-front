@@ -5,6 +5,7 @@ import styles from '../../styles/Admin.module.css';
 import generateVTMCharacterSheetPDF from '../../utils/pdfGenerator';
 import { ALL_DISCIPLINE_NAMES } from '../../data/disciplines';
 import MiniSearch from 'minisearch';
+import Avatar from '../Avatar';
 
 /* ---------- VTM Lookups ---------- */
 const CLAN_COLORS = {
@@ -392,14 +393,19 @@ export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEdit
 
               {/* CARD HEADER */}
               <div className={styles.charCardHeader} onClick={() => toggleExpand(c.id)}>
-                <div className={styles.cardOwnerInfo}>
-                  <div className={styles.charCardOwnerLabel}>
-                    Owner: {c.owner}
-                    {!isActive && <span className={styles.charInactiveTag}>INACTIVE</span>}
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <Avatar userId={c.user_id} size={48} fallback={`https://ui-avatars.com/api/?name=${encodeURIComponent(c.name)}&background=random`} style={{ borderRadius: '50%', flexShrink: 0 }} editable={true} />
                   </div>
-                  <div className={styles.charCardName}>
-                    {c.name}
-                    <span className={styles.charCardClanPill} style={{ background: clanColor }}>{c.clan}</span>
+                  <div className={styles.cardOwnerInfo}>
+                    <div className={styles.charCardOwnerLabel}>
+                      Owner: {c.owner}
+                      {!isActive && <span className={styles.charInactiveTag}>INACTIVE</span>}
+                    </div>
+                    <div className={styles.charCardName}>
+                      {c.name}
+                      <span className={styles.charCardClanPill} style={{ background: clanColor }}>{c.clan}</span>
+                    </div>
                   </div>
                 </div>
                 <div className={styles.charCardHeaderRight}>

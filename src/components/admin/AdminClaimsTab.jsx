@@ -23,7 +23,7 @@ const DIVISION_NAMES = {
   45: 'Korydallos, Nikaia, Agia Barbara', 46: 'Glyfada', 47: 'Gkyzh', 48: 'Eleysina', 49: 'Aspropirgos'
 };
 
-export default function AdminClaimsTab({ claims, characters, onSave, onDelete }) {
+export default function AdminClaimsTab({ claims, characters, npcs = [], onSave, onDelete }) {
   const [filter, setFilter] = useState('');
   const [onlyUnowned, setOnlyUnowned] = useState(false);
   const [sortAsc, setSortAsc] = useState(true);
@@ -35,6 +35,7 @@ export default function AdminClaimsTab({ claims, characters, onSave, onDelete })
     color: '#9d7cff',
     owner_name: '',
     owner_character_id: '',
+    owner_npc_id: '',
   });
 
   const divisionsGeo = useMemo(() => {
@@ -64,6 +65,7 @@ export default function AdminClaimsTab({ claims, characters, onSave, onDelete })
       owner_name: c.owner_name || '',
       color: c.color || 'var(--glass-border)',
       owner_character_id: c.owner_character_id ?? '',
+      owner_npc_id: c.owner_npc_id ?? '',
     };
   }
 
@@ -173,7 +175,7 @@ export default function AdminClaimsTab({ claims, characters, onSave, onDelete })
                   <div className={styles.claimListItemInfo}>
                     <b className={styles.claimListItemOwner}>{c.owner_name || '—'}</b>
                     <small className={styles.claimListItemChar}>
-                      {c.owner_character_id ? characters[c.owner_character_id]?.char_name || 'unknown' : 'no character'}
+                      {c.owner_character_id ? (characters[c.owner_character_id]?.char_name || 'unknown char') : c.owner_npc_id ? (npcs.find(n => n.id === c.owner_npc_id)?.name || 'unknown NPC') : 'no character/NPC'}
                     </small>
                   </div>
                   <span className={styles.claimListItemSwatch} style={{ background: colorForDivision(c.division) }} />
@@ -199,9 +201,15 @@ export default function AdminClaimsTab({ claims, characters, onSave, onDelete })
                   <input type="color" className={styles.claimColorInput} value={newDraft.color} onChange={e => setNewDraft(d => ({ ...d, color: e.target.value }))} />
                 </label>
                 <label className={styles.labeledInput}><span>Owner Character</span>
-                  <select className={styles.select} value={newDraft.owner_character_id} onChange={e => setNewDraft(d => ({ ...d, owner_character_id: e.target.value }))}>
+                  <select className={styles.select} value={newDraft.owner_character_id} onChange={e => setNewDraft(d => ({ ...d, owner_character_id: e.target.value, owner_npc_id: '' }))}>
                     <option value="">— none —</option>
                     {Object.entries(characters).map(([cid, info]) => <option key={cid} value={cid}>{`${cid} — ${info.char_name}`}</option>)}
+                  </select>
+                </label>
+                <label className={styles.labeledInput}><span>Owner NPC</span>
+                  <select className={styles.select} value={newDraft.owner_npc_id} onChange={e => setNewDraft(d => ({ ...d, owner_npc_id: e.target.value, owner_character_id: '' }))}>
+                    <option value="">— none —</option>
+                    {npcs.map(n => <option key={n.id} value={n.id}>{`${n.id} — ${n.name}`}</option>)}
                   </select>
                 </label>
               </div>
@@ -209,8 +217,8 @@ export default function AdminClaimsTab({ claims, characters, onSave, onDelete })
                 <button className={`${styles.btn} ${styles.btnPrimary}`} style={{ flex: 1 }} onClick={() => {
                   const div = Number(newDraft.division);
                   if (!Number.isInteger(div)) return alert('Division must be an integer');
-                  onSave(div, { owner_name: newDraft.owner_name || 'Admin Set', color: newDraft.color, owner_character_id: newDraft.owner_character_id === '' ? null : Number(newDraft.owner_character_id) });
-                  setNewDraft({ division: '', color: '#9d7cff', owner_name: '', owner_character_id: '' });
+                  onSave(div, { owner_name: newDraft.owner_name || 'Admin Set', color: newDraft.color, owner_character_id: newDraft.owner_character_id === '' ? null : Number(newDraft.owner_character_id), owner_npc_id: newDraft.owner_npc_id === '' ? null : Number(newDraft.owner_npc_id) });
+                  setNewDraft({ division: '', color: '#9d7cff', owner_name: '', owner_character_id: '', owner_npc_id: '' });
                   setSelected(div);
                 }}>Save Claim</button>
                 <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => setSelected(null)}>Cancel</button>
@@ -244,12 +252,12 @@ export default function AdminClaimsTab({ claims, characters, onSave, onDelete })
   );
 }
 
-function ExistingClaimEditor({ selected, claims, characters, getRow, setRow, resetRow, onSave, onDelete }) {
+function ExistingClaimEditor({ selected, claims, characters, npcs, getRow, setRow, resetRow, onSave, onDelete }) {
   const selectedClaim = claims.find(c => Number(c.division) === Number(selected));
   if (!selectedClaim) return null;
 
   const row = getRow(selectedClaim);
-  const isDirty = JSON.stringify(row) !== JSON.stringify({ owner_name: selectedClaim.owner_name || '', color: selectedClaim.color || 'var(--glass-border)', owner_character_id: selectedClaim.owner_character_id ?? '' });
+  const isDirty = JSON.stringify(row) !== JSON.stringify({ owner_name: selectedClaim.owner_name || '', color: selectedClaim.color || 'var(--glass-border)', owner_character_id: selectedClaim.owner_character_id ?? '', owner_npc_id: selectedClaim.owner_npc_id ?? '' });
 
   return (
     <div className={styles.stack12}>
@@ -258,7 +266,7 @@ function ExistingClaimEditor({ selected, claims, characters, getRow, setRow, res
         <div>
           <h3 style={{ margin: 0, fontSize: '1.125rem', color: 'var(--text-primary)' }}>Division #{selectedClaim.division}</h3>
           <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-            {selectedClaim.owner_character_id ? `Char ID ${selectedClaim.owner_character_id} · ${characters[selectedClaim.owner_character_id]?.char_name || 'unknown'}` : 'No character linked'}
+            {selectedClaim.owner_character_id ? `Char ID ${selectedClaim.owner_character_id} · ${characters[selectedClaim.owner_character_id]?.char_name || 'unknown char'}` : selectedClaim.owner_npc_id ? `NPC ID ${selectedClaim.owner_npc_id} · ${npcs?.find(n => n.id === selectedClaim.owner_npc_id)?.name || 'unknown NPC'}` : 'No character/NPC linked'}
           </div>
         </div>
       </div>
@@ -266,9 +274,15 @@ function ExistingClaimEditor({ selected, claims, characters, getRow, setRow, res
       <div className={styles.formGrid} style={{ gridTemplateColumns: '1fr 1fr' }}>
         <label className={styles.labeledInput}><span>Owner Name</span><input className={styles.input} value={row.owner_name} onChange={e => setRow(selectedClaim, { owner_name: e.target.value })} /></label>
         <label className={styles.labeledInput}><span>Owner Character</span>
-          <select className={styles.select} value={row.owner_character_id} onChange={e => setRow(selectedClaim, { owner_character_id: e.target.value })}>
+          <select className={styles.select} value={row.owner_character_id} onChange={e => setRow(selectedClaim, { owner_character_id: e.target.value, owner_npc_id: '' })}>
             <option value="">— none —</option>
             {Object.entries(characters).map(([cid, info]) => <option key={cid} value={cid}>{`${cid} — ${info.char_name}`}</option>)}
+          </select>
+        </label>
+        <label className={styles.labeledInput}><span>Owner NPC</span>
+          <select className={styles.select} value={row.owner_npc_id} onChange={e => setRow(selectedClaim, { owner_npc_id: e.target.value, owner_character_id: '' })}>
+            <option value="">— none —</option>
+            {npcs && npcs.map(n => <option key={n.id} value={n.id}>{`${n.id} — ${n.name}`}</option>)}
           </select>
         </label>
       </div>
@@ -284,7 +298,7 @@ function ExistingClaimEditor({ selected, claims, characters, getRow, setRow, res
 
       <div className={styles.row} style={{ marginTop: '0.75rem' }}>
         <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => {
-          onSave(Number(selectedClaim.division), { owner_name: row.owner_name || 'Admin Set', color: row.color, owner_character_id: row.owner_character_id === '' ? null : Number(row.owner_character_id) });
+          onSave(Number(selectedClaim.division), { owner_name: row.owner_name || 'Admin Set', color: row.color, owner_character_id: row.owner_character_id === '' ? null : Number(row.owner_character_id), owner_npc_id: row.owner_npc_id === '' ? null : Number(row.owner_npc_id) });
           resetRow(Number(selectedClaim.division));
         }}>Save</button>
         <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => resetRow(Number(selectedClaim.division))} disabled={!isDirty}>Reset</button>

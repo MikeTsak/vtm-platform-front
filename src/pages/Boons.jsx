@@ -30,25 +30,7 @@ function getInitials(name) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-/* ── Legend data ────────────────────────────── */
-const LEGEND = [
-  {
-    level: 'trivial', title: 'Trivial Boon', colorClass: 'bg-on-surface-variant',
-    body: 'Minor favors, small pieces of information, or temporary shelter. Rarely lasts beyond a month.',
-  },
-  {
-    level: 'minor', title: 'Minor Boon', colorClass: 'bg-blue-500',
-    body: 'Significant effort required. Access to territory, physical protection, or political influence.',
-  },
-  {
-    level: 'major', title: 'Major Boon', colorClass: 'bg-tertiary',
-    body: 'Life-altering favors. Protecting one from destruction, or gifting permanent domain/resources.',
-  },
-  {
-    level: 'life', title: 'Life Boon', colorClass: 'bg-primary-container',
-    body: 'The ultimate debt. Owed when a Kindred spares another\'s life or prevents Final Death.',
-  },
-];
+
 
 export default function Boons() {
   const { user } = useContext(AuthCtx);
@@ -84,7 +66,6 @@ export default function Boons() {
   }
 
   async function loadEntities() {
-    if (!canManage) return;
     try { const { data } = await api.get('/boons/entities'); setEntities(data.entities || []); }
     catch (e) { console.error('Failed to load entities', e); }
   }
@@ -124,7 +105,7 @@ export default function Boons() {
     } else {
       // Even if we have ID, we need to know the type to fetch the correct avatar endpoint
       // We can try to guess based on ID if it exists in entities
-      const byIdUser = entities.find(e => e.type === 'user' && String(e.id) === String(id));
+      const byIdUser = entities.find(e => (e.type === 'user' || e.type === 'player') && String(e.id) === String(id));
       if (byIdUser) type = 'user';
       else {
         const byIdNpc = entities.find(e => e.type === 'npc' && String(e.id) === String(id));
@@ -139,7 +120,7 @@ export default function Boons() {
       }
     }
 
-    if (type === 'user') return { userId: targetId };
+    if (type === 'user' || type === 'player') return { userId: targetId };
     if (type === 'npc') return { npcId: targetId };
     return null;
   };
@@ -615,16 +596,16 @@ function BoonForm({ entities, boon, onSave, onCancel }) {
     ...entities.map(e => ({ id: `${e.type}-${e.id}`, name: e.name })),
   ], [entities]);
 
-  const deriveKey = (id, name) => {
-    if (!id) return 'npc';
-    const byId = entities.find(e => String(e.id) === String(id));
-    if (byId) return `${byId.type}-${byId.id}`;
-    const base  = (name || '').split(' (')[0].trim();
-    const byName = entities.find(e => (e.name || '').split(' (')[0].trim() === base);
-    return byName ? `${byName.type}-${byName.id}` : 'npc';
-  };
-
   useEffect(() => {
+    const deriveKey = (id, name) => {
+      if (!id) return 'npc';
+      const byId = entities.find(e => String(e.id) === String(id));
+      if (byId) return `${byId.type}-${byId.id}`;
+      const base  = (name || '').split(' (')[0].trim();
+      const byName = entities.find(e => (e.name || '').split(' (')[0].trim() === base);
+      return byName ? `${byName.type}-${byName.id}` : 'npc';
+    };
+
     if (boon) {
       setFormData({
         from_key: deriveKey(boon.from_id, boon.from_name), from_id: boon.from_id || '', from_name: boon.from_name || '',

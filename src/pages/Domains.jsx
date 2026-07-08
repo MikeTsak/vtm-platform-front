@@ -9,6 +9,7 @@ import styles from '../styles/Domains.module.css';
 import domainsRaw from '../data/Domains.json';
 import api from '../core/api';
 import { Skeleton } from 'boneyard-js/react';
+import Avatar from '../components/Avatar';
 
 // --- Division Names Mapping ---
 const DIVISION_NAMES = {
@@ -122,6 +123,8 @@ export default function Domains() {
           name,
           owner: clickedClaim?.owner_name || 'Unclaimed',
           color: clickedClaim?.color || null,
+          user_id: clickedClaim?.user_id || null,
+          npc_id: clickedClaim?.owner_npc_id || null,
         });
         setMsg(''); setErr('');
         e.target.bringToFront();
@@ -312,7 +315,8 @@ export default function Domains() {
                     style={{ '--claim-color': c.color || '#888888' }}
                   >
                     <span className={styles.claimColorBar} />
-                    <div className={styles.claimBody}>
+                    <Avatar userId={c.user_id} npcId={c.owner_npc_id} size={36} style={{ marginLeft: '12px', flexShrink: 0, borderRadius: '50%' }} fallback={`https://ui-avatars.com/api/?name=${encodeURIComponent(c.owner_name || 'Unclaimed')}&background=random`} />
+                    <div className={styles.claimBody} style={{ marginLeft: '12px' }}>
                       <span className={styles.claimOwner}>{c.owner_name || 'Unclaimed'}</span>
                       <span className={styles.claimMeta}>
                         <span className={styles.claimDivNum}>#{c.division}</span>
@@ -340,8 +344,15 @@ export default function Domains() {
             </div>
           </div>
           <div className={styles.hudRight}>
-            <span className={styles.hudOwnerLabel}>Controlled by</span>
-            <span className={styles.hudOwner}>{selectedDivisionInfo.owner}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                <span className={styles.hudOwnerLabel}>Controlled by</span>
+                <span className={styles.hudOwner}>{selectedDivisionInfo.owner}</span>
+              </div>
+              {selectedDivisionInfo.owner !== 'Unclaimed' && (
+                 <Avatar userId={selectedDivisionInfo.user_id} npcId={selectedDivisionInfo.npc_id} size={42} style={{ borderRadius: '50%' }} fallback={`https://ui-avatars.com/api/?name=${encodeURIComponent(selectedDivisionInfo.owner)}&background=random`} />
+              )}
+            </div>
           </div>
           <button
             className={styles.hudClose}

@@ -1130,7 +1130,7 @@ export default function CharacterView({
           <div className="flex justify-between items-center px-4 h-16 w-full">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-full border overflow-hidden" style={{ borderColor: 'var(--tint)', boxShadow: '0 0 10px color-mix(in srgb, var(--tint) 30%, transparent)' }}>
-                <Avatar userId={ch?.user_id} size="100%" editable={String(user?.id) === String(ch?.user_id) || isAdmin} />
+                <Avatar userId={!adminNPCId ? ch?.user_id : undefined} npcId={adminNPCId} size="100%" editable={(!adminNPCId && String(user?.id) === String(ch?.user_id)) || isAdmin} />
               </div>
               <h1 className="font-['Playfair_Display'] text-xl font-semibold" style={{ color: 'var(--tint)' }}>{ch.name}</h1>
             </div>
@@ -1147,7 +1147,7 @@ export default function CharacterView({
           <div className={styles.topAppBarContent}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               <div className={styles.avatarBox}>
-                <Avatar userId={ch?.user_id} size="100%" editable={String(user?.id) === String(ch?.user_id) || isAdmin} />
+                <Avatar userId={!adminNPCId ? ch?.user_id : undefined} npcId={adminNPCId} size="100%" editable={(!adminNPCId && String(user?.id) === String(ch?.user_id)) || isAdmin} />
               </div>
               <div>
                 <h1 className={styles.charTitle}>{ch.name}</h1>

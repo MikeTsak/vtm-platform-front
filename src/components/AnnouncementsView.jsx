@@ -3,6 +3,7 @@ import api from '../core/api';
 import styles from '../styles/Court.module.css';
 import { Skeleton } from 'boneyard-js/react';
 import { AuthCtx } from '../core/AuthContext';
+import Avatar from './Avatar';
 
 // --- Dedicated component to fetch and render DB Blobs ---
 function BlobImage({ url }) {
@@ -180,13 +181,7 @@ export default function AnnouncementsView({ canEdit: propCanEdit }) {
                 <div className={styles.decreeContent}>
                   <header className={styles.decreeMeta}>
                     <div className={styles.decreeAuthorInfo}>
-                      {authorImg ? (
-                        <img src={authorImg} alt={authorName} className={styles.decreeAuthorAvatar} />
-                      ) : (
-                        <div className={styles.decreeAuthorAvatar}>
-                          <span className="material-symbols-outlined">campaign</span>
-                        </div>
-                      )}
+                      <Avatar userId={item.author_id} size={48} className={styles.decreeAuthorAvatar} fallback={authorImg || undefined} />
                       <div>
                         <h3 className={styles.decreeAuthorName}>{authorName}</h3>
                         <p className={styles.decreeAuthorRole}>{authorRole}</p>
