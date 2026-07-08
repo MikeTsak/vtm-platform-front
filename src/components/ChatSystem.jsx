@@ -335,6 +335,43 @@ export default function ChatSystem({ commsEnabled = true }) {
   const [isMobile, setIsMobile] = useState(false);
   const containerRef = useRef(null);
 
+  // Self-measuring height: don't trust any ancestor to hand us a correct
+  // height through flex/percentage chains (a fixed-vh wrapper above us,
+  // a third-party component that swallows flex context, etc). Instead,
+  // measure exactly where we start in the viewport and size ourselves to
+  // reach the bottom of the visible viewport. This also keeps the input
+  // bar above a mobile on-screen keyboard via the visualViewport API.
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const updateHeight = () => {
+      const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      const top = el.getBoundingClientRect().top;
+      const nextHeight = Math.max(viewportHeight - top, 320);
+      el.style.height = `${nextHeight}px`;
+    };
+
+    updateHeight();
+
+    const raf = requestAnimationFrame(updateHeight);
+    window.addEventListener('resize', updateHeight);
+    window.addEventListener('orientationchange', updateHeight);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', updateHeight);
+      window.visualViewport.addEventListener('scroll', updateHeight);
+    }
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', updateHeight);
+      window.removeEventListener('orientationchange', updateHeight);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', updateHeight);
+        window.visualViewport.removeEventListener('scroll', updateHeight);
+      }
+    };
+  }, []);
+
   const textareaRef = useRef(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
 
@@ -1107,7 +1144,7 @@ export default function ChatSystem({ commsEnabled = true }) {
   return (
     <div
       className="bg-surface text-on-surface font-body-md relative selection:bg-primary-container selection:text-white w-full"
-      style={{ display: 'flex', flexDirection: 'column', flex: '1 1 auto', minHeight: 0, height: '100%', overflow: 'hidden' }}
+      style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}
       ref={containerRef}
     >
       {/* Modals */}

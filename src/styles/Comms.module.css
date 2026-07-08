@@ -7,13 +7,15 @@
   width: 100%;
   max-width: 1400px;
 
-  /* Use dvh for mobile browsers to account for dynamic address bars */
-  height: 90vh; 
+  /* Height is intentionally NOT fixed here. GlobalBanner/Nav render above
+     this wrapper, so a hard-coded vh value never accounted for their
+     height and forced the whole page to scroll. ChatSystem measures its
+     own position and sizes itself to reach the bottom of the viewport,
+     so this wrapper just needs to size to its content. */
   margin: 0 auto;
   padding: 20px;
   box-sizing: border-box;
   font-family: Inter, system-ui, sans-serif;
-  overflow: hidden; /* Prevent body scroll */
 }
 
 /* --- Mode Switcher (Tabs) --- */
@@ -63,7 +65,7 @@
   margin-top: 4px;
   color: #555;
   font-weight: 500;
-  opacity: 0; 
+  opacity: 0;
   transform: translateY(-5px);
   transition: all 0.3s;
   pointer-events: none;
@@ -79,7 +81,8 @@
 /* --- Active State --- */
 .activeMode {
   opacity: 1 !important;
-  border-bottom-color: #b01423 !important; /* Vampire Red */
+  border-bottom-color: #b01423 !important;
+  /* Vampire Red */
 }
 
 .activeMode .modeTitle {
@@ -89,12 +92,14 @@
 
 /* Specific colors for Surface Web warning */
 .modeSwitch button:last-child.activeMode .modeSubtitle {
-  color: #d93025; /* Warning Red */
+  color: #d93025;
+  /* Warning Red */
 }
 
 /* Specific colors for SchreckNet safety */
 .modeSwitch button:first-child.activeMode .modeSubtitle {
-  color: #30d158; /* Safe Green */
+  color: #30d158;
+  /* Safe Green */
 }
 
 /* SchreckNet Green Glow Override */
@@ -107,12 +112,9 @@
 }
 
 /* --- Mobile Responsiveness --- */
-@media (width <= 768px) {
+@media (width <=768px) {
   .wrapper {
     padding: 0;
-
-    /* Full viewport height on mobile, specifically dynamic for address bars */
-    height: 100dvh; 
     max-width: none;
     background: var(--bg-color);
   }
@@ -125,7 +127,8 @@
     gap: 0;
     justify-content: space-between;
     width: 100%;
-    height: 55px; /* Fixed height for touch */
+    height: 55px;
+    /* Fixed height for touch */
   }
 
   .modeSwitch button {
@@ -139,10 +142,10 @@
     font-size: 0.9rem;
     line-height: 1.2;
   }
-  
+
   .modeSubtitle {
     font-size: 0.6rem;
-    opacity: 1; 
+    opacity: 1;
     transform: translateY(0);
     margin-top: 2px;
   }
