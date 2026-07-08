@@ -34,6 +34,46 @@ const symlogo = (c) =>
 const localSymlogo = (c) =>
   (c ? `/img/clans/330px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g, '_')}_symbol.png` : '');
 
+const customClanEmojis = Object.keys(CLAN_COLORS).map(clan => ({
+  id: clan.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+  names: [clan],
+  imgUrl: localSymlogo(clan)
+}));
+
+const renderMessageBody = (text) => {
+  if (!text) return null;
+  const clanRegex = /:([A-Za-z0-9_]+):/g;
+  const parts = [];
+  let lastIndex = 0;
+  let match;
+  while ((match = clanRegex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.substring(lastIndex, match.index));
+    }
+    const clanId = match[1];
+    const clanName = Object.keys(CLAN_COLORS).find(c => c.replace(/\s+/g, '_').toLowerCase() === clanId.toLowerCase());
+    if (clanName) {
+      parts.push(
+        <img 
+          key={`emoji-${match.index}`} 
+          src={localSymlogo(clanName)} 
+          alt={clanName} 
+          title={clanName}
+          className="inline-block w-[18px] h-[18px] mx-0.5 align-text-bottom crestImg opacity-100" 
+          style={{ filter: 'brightness(0) invert(1)' }} 
+        />
+      );
+    } else {
+      parts.push(match[0]);
+    }
+    lastIndex = clanRegex.lastIndex;
+  }
+  if (lastIndex < text.length) {
+    parts.push(text.substring(lastIndex));
+  }
+  return parts;
+};
+
 /* --- Gold NPC Tag Component --- */
 const NPCTag = () => (
   <span style={{
@@ -215,7 +255,14 @@ export default function ChatSystem({ commsEnabled = true }) {
   const [editBody, setEditBody] = useState('');
 
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const onEmojiClick = (emojiObject) => setNewMessage(prevInput => prevInput + emojiObject.emoji);
+  const onEmojiClick = (emojiObject) => {
+    const clanTag = emojiObject.isCustom && emojiObject.names && emojiObject.names[0] ? emojiObject.names[0].replace(/\s+/g, '_') : (emojiObject.unified || 'unknown');
+    const textToAdd = emojiObject.isCustom ? `:${clanTag}:` : emojiObject.emoji;
+    setNewMessage(prevInput => prevInput + textToAdd);
+    if (!isMobile && textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  };
 
   const [attachment, setAttachment] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -1459,7 +1506,7 @@ export default function ChatSystem({ commsEnabled = true }) {
                           )}
 
                           {/* Body */}
-                          {item.body && <p className="text-[14px] md:text-[15px] leading-relaxed whitespace-pre-wrap break-words">{item.body}</p>}
+                          {item.body && <p className="text-[14px] md:text-[15px] leading-relaxed whitespace-pre-wrap break-words">{renderMessageBody(item.body)}</p>}
                         </div>
                       )}
 
@@ -1504,11 +1551,29 @@ export default function ChatSystem({ commsEnabled = true }) {
             )}
 
             {/* Bottom Input Area */}
-            <div className={styles.messageInputForm} style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))', flexDirection: 'column', alignItems: 'stretch' }}>
+            <div className={`${styles.messageInputForm} relative`} style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))', flexDirection: 'column', alignItems: 'stretch' }}>
               {/* Emoji Picker */}
               {showEmojiPicker && (
                 <div className="absolute bottom-[100%] left-1/2 -translate-x-1/2 md:left-auto md:right-4 md:translate-x-0 z-50 mb-2 shadow-[0_0_20px_rgba(0,0,0,0.8)] rounded-lg overflow-hidden border border-outline-variant w-[min(92vw,320px)]">
-                  <EmojiPicker onEmojiClick={onEmojiClick} theme="dark" searchDisabled={false} width="100%" />
+                  <EmojiPicker 
+                    onEmojiClick={onEmojiClick} 
+                    theme="dark" 
+                    searchDisabled={false} 
+                    width="100%" 
+                    customEmojis={customClanEmojis}
+                    categories={[
+                      { category: 'suggested', name: 'Recently Used' },
+                      { category: 'custom', name: 'Clans' },
+                      { category: 'smileys_people', name: 'Smileys & People' },
+                      { category: 'animals_nature', name: 'Animals & Nature' },
+                      { category: 'food_drink', name: 'Food & Drink' },
+                      { category: 'travel_places', name: 'Travel & Places' },
+                      { category: 'activities', name: 'Activities' },
+                      { category: 'objects', name: 'Objects' },
+                      { category: 'symbols', name: 'Symbols' },
+                      { category: 'flags', name: 'Flags' }
+                    ]}
+                  />
                 </div>
               )}
 

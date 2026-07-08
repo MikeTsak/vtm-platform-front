@@ -81,3 +81,9 @@
     border-left-color: #b01423;
     color: #f7a8b0;
 }
+
+/* Invert custom clan logos in the Emoji Picker */
+.EmojiPickerReact img[src*="/img/clans/"] {
+    filter: brightness(0) invert(1);
+    opacity: 0.92;
+}
