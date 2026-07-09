@@ -1080,7 +1080,10 @@
 
 /* EVENT CARD */
 .eventCard {
-  background: #e8dbce;
+  background-color: #e8dbce;
+  background-image: url('/img/ui/newspaper_bg.png');
+  background-size: cover;
+  background-position: top center;
   color: #222;
   border-radius: 4px;
   padding: 1.5rem;
@@ -1088,6 +1091,22 @@
   justify-content: space-between;
   align-items: center;
   box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  position: relative;
+  overflow: hidden;
+}
+
+.eventCard::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(232, 219, 206, 0.72);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.eventCard > * {
+  position: relative;
+  z-index: 1;
 }
 
 .eventHeader {
@@ -1202,10 +1221,29 @@
 }
 
 .chronicleEntryCard {
-  background: #e8dbce;
+  background-color: #e8dbce;
+  background-image: url('/img/ui/newspaper_bg.png');
+  background-size: cover;
+  background-position: bottom center;
   color: #222;
   padding: 1.5rem;
   border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+}
+
+.chronicleEntryCard::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(232, 219, 206, 0.72);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.chronicleEntryCard > * {
+  position: relative;
+  z-index: 1;
 }
 
 .chronicleEntryLabel {
