@@ -432,7 +432,7 @@ export default function Home() {
           {fetchError && <div className={styles.errorBanner}>{fetchError}</div>}
 
           {/* 2. NEXT MODERN EVENT */}
-          <section className={styles.eventCard}>
+          <section className={styles.eventCard} style={{ backgroundImage: "url('/img/ui/newspaper_bg.png')" }}>
             <div className={styles.eventInfo}>
               <h3 className={styles.eventHeader}>NEXT MODERN EVENT</h3>
               <h2 className={styles.eventTitle}>{openingDate ? 'Elysium Gathering' : 'No Current Event'}</h2>
@@ -511,7 +511,7 @@ export default function Home() {
 
           {/* 4. BOTTOM ROW (Chronicle Entry & Restricted Access) */}
           <div className={styles.bottomRowGrid}>
-            <div className={styles.chronicleEntryCard}>
+            <div className={styles.chronicleEntryCard} style={{ backgroundImage: "url('/img/ui/newspaper_bg.png')" }}>
               <h4 className={styles.chronicleEntryLabel}>LATEST CHRONICLE ENTRY</h4>
               {latestChronicle ? (
                 <>
