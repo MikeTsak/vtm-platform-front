@@ -22,19 +22,7 @@ const CLAN_DISCIPLINES = {
   'Thin-blood': []
 };
 
-const DISCIPLINE_ICONS = {
-  Animalism: 'pets',
-  Auspex: 'visibility',
-  'Blood Sorcery': 'water_drop',
-  Celerity: 'bolt',
-  Dominate: 'psychology',
-  Fortitude: 'shield',
-  Obfuscate: 'visibility_off',
-  Oblivion: 'dark_mode',
-  Potence: 'fitness_center',
-  Presence: 'favorite',
-  Protean: 'transform',
-};
+
 
 const ATTRS = [
   ['Strength', 'Dexterity', 'Stamina'],
@@ -134,7 +122,7 @@ const MarketplaceRow = ({ title, cost, disabled, onBuy }) => (
       <h5 className={styles.shopTitle}>{title}</h5>
       <span className={styles.shopCost}>Cost: {cost} XP</span>
     </div>
-    <button className={styles.shopBtn} disabled={disabled} onClick={onBuy}>
+    <button className={styles.btnPrimary} disabled={disabled} onClick={onBuy}>
       Recruit
     </button>
   </div>
@@ -160,7 +148,7 @@ const AdvantagePicker = ({ isFlaw, onAdd, onCancel }) => {
     }, {});
   }, [filtered]);
 
-  const dotsOptions = sel?.allowed || [];
+  const dotsOptions = useMemo(() => sel?.allowed || [], [sel]);
   const [dots, setDots] = useState(dotsOptions[0] || 1);
 
   useEffect(() => {
@@ -218,51 +206,67 @@ const AdvantagePicker = ({ isFlaw, onAdd, onCancel }) => {
   );
 };
 
-const PowerSelectionModal = ({ disciplineName, onSelect, onCancel }) => {
+const PowerDetailCard = ({ power, onClear, readOnly, noMargin }) => (
+  <div style={{ background: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', marginTop: '8px', marginLeft: noMargin ? '0' : '32px', textAlign: 'left' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+      <h4 style={{ margin: 0, color: 'var(--tint)' }}>↳ {power.name}</h4>
+      {onClear && !readOnly && (
+        <button 
+          onClick={(e) => { e.stopPropagation(); onClear(); }}
+          style={{ background: 'transparent', color: 'var(--error)', border: '1px solid var(--error)', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '10px' }}
+        >
+          Change
+        </button>
+      )}
+    </div>
+    <div style={{ fontSize: '12px', color: '#ccc', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+      {power.cost && <div><strong>Cost:</strong> {power.cost}</div>}
+      {power.duration && <div><strong>Duration:</strong> {power.duration}</div>}
+      {power.dice_pool && power.dice_pool !== '—' && <div><strong>Dice:</strong> {power.dice_pool}</div>}
+      {power.opposing_pool && power.opposing_pool !== '—' && <div><strong>Opposing:</strong> {power.opposing_pool}</div>}
+    </div>
+    <p style={{ margin: 0, color: '#aaa', fontSize: '12px', lineHeight: '1.4' }}>{power.notes || power.description || 'No description available.'}</p>
+  </div>
+);
+
+const InlinePowerSelection = ({ disciplineName, onSelect, onCancel, noMargin }) => {
   const levels = DISCIPLINES[disciplineName]?.levels || {};
   const powers = levels[1] || [];
 
   if (powers.length === 0) {
-    return (
-      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-        <div style={{ background: '#1a1a1a', padding: '24px', borderRadius: '8px', maxWidth: '400px', width: '100%', border: '1px solid var(--border-color)' }}>
-          <h3 style={{ color: '#fff', marginTop: 0 }}>No Powers Found</h3>
-          <p style={{ color: '#aaa' }}>No Level 1 powers found for {disciplineName}.</p>
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button onClick={onCancel} style={{ padding: '8px 16px', background: 'var(--tint)', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Close</button>
-          </div>
-        </div>
-      </div>
-    );
+    return <div style={{ marginLeft: noMargin ? '0' : '32px', fontSize: '12px', color: '#aaa', textAlign: 'left' }}>No Level 1 powers found for {disciplineName}.</div>;
   }
 
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-      <div style={{ background: '#1a1a1a', padding: '24px', borderRadius: '8px', maxWidth: '500px', width: '100%', border: '1px solid var(--border-color)', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
-        <h3 style={{ color: '#fff', marginTop: 0, borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '12px' }}>Choose Level 1 {disciplineName} Power</h3>
-        <div style={{ overflowY: 'auto', flex: 1, paddingRight: '8px', display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px', marginBottom: '16px' }}>
-          {powers.map(p => (
-            <div key={p.id} style={{ background: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                <h4 style={{ margin: 0, color: 'var(--tint)' }}>{p.name}</h4>
-                <button 
-                  onClick={() => onSelect(p)}
-                  style={{ background: 'var(--tint)', color: '#000', border: 'none', padding: '4px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}
-                >
-                  Select
-                </button>
-              </div>
-              <p style={{ margin: 0, color: '#aaa', fontSize: '13px', lineHeight: '1.4' }}>{p.notes || p.description || 'No description available.'}</p>
+    <div style={{ marginLeft: noMargin ? '0' : '32px', marginTop: '8px', padding: '12px', background: 'rgba(0,0,0,0.3)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'left' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+        <h5 style={{ margin: 0, color: '#fff' }}>Select {disciplineName} Power</h5>
+        <button onClick={(e) => { e.stopPropagation(); onCancel(); }} style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', fontSize: '12px' }}>Cancel</button>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {powers.map(p => (
+          <div key={p.id} style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+              <h6 style={{ margin: 0, color: 'var(--tint)', fontSize: '14px' }}>{p.name}</h6>
+              <button 
+                onClick={(e) => { e.stopPropagation(); onSelect(p); }}
+                style={{ background: 'var(--tint)', color: '#000', border: 'none', padding: '4px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px' }}
+              >
+                Select
+              </button>
             </div>
-          ))}
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '16px' }}>
-          <button onClick={onCancel} style={{ padding: '8px 16px', background: 'transparent', color: '#888', border: '1px solid #888', borderRadius: '4px', cursor: 'pointer' }}>Cancel</button>
-        </div>
+            <div style={{ fontSize: '11px', color: '#ccc', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', marginBottom: '6px' }}>
+              {p.cost && <div><strong>Cost:</strong> {p.cost}</div>}
+              {p.duration && <div><strong>Duration:</strong> {p.duration}</div>}
+            </div>
+            <p style={{ margin: 0, color: '#aaa', fontSize: '11px', lineHeight: '1.4' }}>{p.notes || p.description}</p>
+          </div>
+        ))}
       </div>
     </div>
   );
 };
+
 
 const getValidationErrors = (draftSheet, tier) => {
   if (!draftSheet) return [];
@@ -612,34 +616,35 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
                       const selectedPower = (draftSheet.powers || []).find(p => p.discipline === disc);
                       return (
                         <div key={disc} style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '8px' }}>
-                          <DotRow label={disc} value={draftSheet.disciplines[disc] || 0} max={tier === 1 ? 1 : 1} onChange={(val) => handleDotClick('disciplines', disc, val)} icon={iconPath(disc)} />
+                          <DotRow label={disc} value={draftSheet.disciplines[disc] || 0} max={tier === 1 ? 1 : 1} onDotClick={(val) => handleDotClick('disciplines', disc, val)} icon={iconPath(disc)} />
                           {draftSheet.disciplines[disc] === 1 && selectedPower && (
-                            <div style={{ marginLeft: '32px', fontSize: '12px', color: 'var(--tint)' }}>
-                              ↳ {selectedPower.name}
-                            </div>
+                            <PowerDetailCard 
+                              power={selectedPower} 
+                              onClear={() => setDraftSheet(prev => ({ ...prev, powers: (prev.powers || []).filter(p => p.discipline !== disc) }))} 
+                            />
                           )}
-                          {draftSheet.disciplines[disc] === 1 && !selectedPower && (
-                            <div style={{ marginLeft: '32px', fontSize: '12px', color: 'var(--error)', cursor: 'pointer' }} onClick={() => setActiveDisciplinePowerSelection(disc)}>
+                          {draftSheet.disciplines[disc] === 1 && !selectedPower && activeDisciplinePowerSelection !== disc && (
+                            <div style={{ marginLeft: '32px', marginTop: '8px', fontSize: '12px', color: 'var(--error)', cursor: 'pointer', padding: '4px 8px', background: 'rgba(194, 24, 7, 0.1)', borderRadius: '4px', display: 'inline-block' }} onClick={() => setActiveDisciplinePowerSelection(disc)}>
                               ↳ Click to select power
                             </div>
+                          )}
+                          {draftSheet.disciplines[disc] === 1 && !selectedPower && activeDisciplinePowerSelection === disc && (
+                            <InlinePowerSelection 
+                              disciplineName={disc} 
+                              onSelect={(p) => {
+                                setDraftSheet(prev => ({ ...prev, powers: [...(prev.powers || []), { ...p, discipline: disc }] }));
+                                setActiveDisciplinePowerSelection(null);
+                              }} 
+                              onCancel={() => {
+                                setActiveDisciplinePowerSelection(null);
+                                setDraftSheet(prev => ({ ...prev, disciplines: { ...prev.disciplines, [disc]: 0 } }));
+                              }} 
+                            />
                           )}
                         </div>
                       );
                     })}
                   </ul>
-                  {activeDisciplinePowerSelection && (
-                    <PowerSelectionModal 
-                      disciplineName={activeDisciplinePowerSelection} 
-                      onSelect={(p) => {
-                        setDraftSheet(prev => ({ ...prev, powers: [...(prev.powers || []), { ...p, discipline: activeDisciplinePowerSelection }] }));
-                        setActiveDisciplinePowerSelection(null);
-                      }} 
-                      onCancel={() => {
-                        setActiveDisciplinePowerSelection(null);
-                        setDraftSheet(prev => ({ ...prev, disciplines: { ...prev.disciplines, [activeDisciplinePowerSelection]: 0 } }));
-                      }} 
-                    />
-                  )}
                 </>
              )}
 
@@ -914,21 +919,34 @@ export default function RetainersView() {
   };
 
   const handleDotClick = (type, statName, newLevel) => {
-    // Toggle logic
-    /* const baseAttr = draftSheet.targetTier === 4 ? 2 : 1; */
-    const currentLevel = draftSheet[type][statName] || (type === 'attributes' ? 1 /* baseAttr */ : 0);
-    let finalLevel = newLevel;
-    if (currentLevel === newLevel) {
-       finalLevel = type === 'attributes' ? 1 /* baseAttr */ : newLevel - 1;
+    if (type === 'attributes') {
+       const cl = draftSheet.attributes[statName] || 1;
+       const fl = (cl === newLevel) ? 1 : newLevel;
+       setDraftSheet(prev => ({ ...prev, attributes: { ...prev.attributes, [statName]: fl } }));
+       return;
     }
 
-    setDraftSheet(prev => ({
-      ...prev,
-      [type]: {
-        ...prev[type],
-        [statName]: finalLevel
+    const cl = draftSheet[type][statName] || 0;
+    const fl = (cl === newLevel) ? newLevel - 1 : newLevel;
+
+    if (type === 'disciplines') {
+      if (fl === 1) {
+        setActiveDisciplinePowerSelection(statName);
+        setDraftSheet(prev => {
+          const powers = prev.powers ? prev.powers.filter(p => p.discipline !== statName) : [];
+          return { ...prev, disciplines: { ...prev.disciplines, [statName]: 1 }, powers };
+        });
+        return;
+      } else if (fl === 0) {
+        setDraftSheet(prev => {
+          const powers = prev.powers ? prev.powers.filter(p => p.discipline !== statName) : [];
+          return { ...prev, disciplines: { ...prev.disciplines, [statName]: 0 }, powers };
+        });
+        return;
       }
-    }));
+    }
+
+    setDraftSheet(prev => ({ ...prev, [type]: { ...prev[type], [statName]: fl } }));
   };
 
   const handleAddAdvantage = (isFlaw, advObj) => {
@@ -1233,19 +1251,23 @@ export default function RetainersView() {
                   ) : clanDisciplines.length === 0 ? (
                     <p style={{ color: '#e0dedd', opacity: 0.7 }}>No in-clan disciplines available for domitor clan.</p>
                   ) : (
+                    <>
                     <div className={styles.disciplinesGrid}>
                       {clanDisciplines.map(disc => {
                         const level = (currentSheet.disciplines || {})[disc] || 0;
+                        const selectedPower = (currentSheet.powers || []).find(p => p.discipline === disc);
                         return (
                           <div 
                             key={disc} 
                             className={styles.disciplineCard} 
                             onClick={() => isEditing && handleDotClick('disciplines', disc, level + 1)}
-                            style={{ cursor: isEditing ? 'pointer' : 'default' }}
+                            style={{ cursor: isEditing ? 'pointer' : 'default', flexDirection: 'column' }}
                           >
-                            <span className={`material-symbols-outlined ${styles.disciplineIcon}`}>{DISCIPLINE_ICONS[disc] || 'auto_awesome'}</span>
-                            <h4 className={styles.disciplineName}>{disc}</h4>
-                            <div className={styles.disciplineDots}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <img src={iconPath(disc)} alt={disc} style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
+                              <h4 className={styles.disciplineName} style={{ flex: 1 }}>{disc}</h4>
+                            </div>
+                            <div className={styles.disciplineDots} style={{ marginTop: '8px' }}>
                               {Array.from({ length: 5 }).map((_, i) => (
                                 <div 
                                   key={i} 
@@ -1254,10 +1276,40 @@ export default function RetainersView() {
                                 />
                               ))}
                             </div>
+                            {level === 1 && selectedPower && (
+                              <PowerDetailCard 
+                                power={selectedPower} 
+                                onClear={isEditing ? () => setDraftSheet(prev => ({ ...prev, powers: (prev.powers || []).filter(p => p.discipline !== disc) })) : null} 
+                                readOnly={!isEditing}
+                                noMargin={true}
+                              />
+                            )}
+                            {level === 1 && !selectedPower && isEditing && activeDisciplinePowerSelection !== disc && (
+                              <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--error)', cursor: 'pointer', padding: '4px 8px', background: 'rgba(194, 24, 7, 0.1)', borderRadius: '4px', display: 'inline-block' }} onClick={(e) => { e.stopPropagation(); setActiveDisciplinePowerSelection(disc); }}>
+                                ↳ Click to select power
+                              </div>
+                            )}
+                            {level === 1 && !selectedPower && isEditing && activeDisciplinePowerSelection === disc && (
+                              <div onClick={e => e.stopPropagation()}>
+                                <InlinePowerSelection 
+                                  disciplineName={disc} 
+                                  noMargin={true}
+                                  onSelect={(p) => {
+                                    setDraftSheet(prev => ({ ...prev, powers: [...(prev.powers || []), { ...p, discipline: disc }] }));
+                                    setActiveDisciplinePowerSelection(null);
+                                  }} 
+                                  onCancel={() => {
+                                    setActiveDisciplinePowerSelection(null);
+                                    setDraftSheet(prev => ({ ...prev, disciplines: { ...prev.disciplines, [disc]: 0 } }));
+                                  }} 
+                                />
+                              </div>
+                            )}
                           </div>
                         );
                       })}
                     </div>
+                    </>
                   )}
                 </div>
 
