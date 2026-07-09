@@ -20,7 +20,10 @@ const XP_RULES = {
   bloodPotency: newLevel => newLevel * 10,
 };
 
-const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, searchQuery, spendXP }) => {
+const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, searchQuery, spendXP, onUpdateNotes }) => {
+  const [editingNoteId, setEditingNoteId] = useState(null);
+  const [editNoteText, setEditNoteText] = useState('');
+
   // Dot-spec parsing helpers (mirrors CharacterView.jsx so both surfaces agree)
   const bulletCount = useCallback((s = '') => {
     const m = String(s).match(/•/g);
@@ -703,13 +706,47 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
           return isFlaw ? 'visibility_off' : 'star';
         };
 
-        const renderNotes = (notes) => {
-          if (!notes) return null;
-          const notesStr = typeof notes === 'string' ? notes : JSON.stringify(notes);
-          if (!notesStr || notesStr === '{}' || notesStr === '[]') return null;
+        const handleSaveNote = (e, type, id, idx) => {
+          e.stopPropagation();
+          if (onUpdateNotes) onUpdateNotes(type, idx, editNoteText);
+          setEditingNoteId(null);
+        };
+
+        const renderNotes = (notes, id, type, idx) => {
+          const isEditing = editingNoteId === `${type}_${id}_${idx}`;
+          const notesStr = typeof notes === 'string' ? notes : (notes ? JSON.stringify(notes) : '');
+          
+          if (isEditing) {
+            return (
+              <div style={{ marginTop: '12px' }} onClick={e => e.stopPropagation()}>
+                <input 
+                  type="text" 
+                  value={editNoteText} 
+                  onChange={e => setEditNoteText(e.target.value)}
+                  style={{ width: '100%', padding: '6px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--primary-color)', color: '#fff', borderRadius: '4px', fontSize: '12px' }}
+                  autoFocus
+                />
+                <div style={{ display: 'flex', gap: '8px', marginTop: '6px', justifyContent: 'flex-end' }}>
+                  <button onClick={(e) => { e.stopPropagation(); setEditingNoteId(null); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '11px', cursor: 'pointer' }}>Cancel</button>
+                  <button onClick={(e) => handleSaveNote(e, type, id, idx)} style={{ background: 'var(--primary-color)', border: 'none', color: '#000', borderRadius: '4px', padding: '2px 8px', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold' }}>Save</button>
+                </div>
+              </div>
+            );
+          }
+
           return (
-            <div style={{ marginTop: '12px', padding: '8px', backgroundColor: 'var(--surface-variant)', borderRadius: '4px', fontSize: '12px', color: 'var(--text-color)', opacity: 0.9 }}>
-              <strong style={{ color: 'var(--primary-color)' }}>Notes:</strong> {notesStr}
+            <div style={{ marginTop: '12px', padding: '8px', backgroundColor: 'var(--surface-variant)', borderRadius: '4px', fontSize: '12px', color: 'var(--text-color)', opacity: 0.9, position: 'relative' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div><strong style={{ color: 'var(--primary-color)' }}>Notes:</strong> {notesStr || <span style={{ opacity: 0.5 }}>None</span>}</div>
+                {onUpdateNotes && (
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setEditingNoteId(`${type}_${id}_${idx}`); setEditNoteText(notesStr); }}
+                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>edit</span>
+                  </button>
+                )}
+              </div>
             </div>
           );
         };
@@ -748,7 +785,7 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
                               {details.description}
                             </div>
                           )}
-                          {renderNotes(m.notes)}
+                          {isExpanded && renderNotes(m.notes, m.id, 'merits', i)}
                         </div>
                       </div>
                     );
@@ -788,7 +825,7 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
                               {details.description}
                             </div>
                           )}
-                          {renderNotes(f.notes)}
+                          {isExpanded && renderNotes(f.notes, f.id, 'flaws', i)}
                         </div>
                       </div>
                     );

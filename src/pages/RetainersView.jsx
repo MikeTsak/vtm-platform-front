@@ -4,7 +4,8 @@ import api from '../core/api';
 import styles from '../styles/RetainersView.module.css';
 import Avatar from '../components/Avatar';
 import { DISCIPLINES, iconPath } from '../data/disciplines';
-import { MERITS_AND_FLAWS } from '../data/merits_flaws';
+import { RETAINER_MERITS_AND_FLAWS, allSelectableAdvantages } from '../data/merits_flaws_retainers';
+import { generateGreekName } from '../utils/nameGenerator';
 
 const CLAN_DISCIPLINES = {
   Brujah: ['Celerity', 'Potence', 'Presence'],
@@ -70,50 +71,39 @@ const SmallDots = ({ value, max = 5 }) => (
 
 // --- ADVANTAGE PICKER HELPERS ---
 
-function bulletCount(s = '') {
-  const m = String(s).match(/•/g);
-  return m ? m.length : 0;
+// --- ADVANTAGE PICKER HELPERS ---
+
+function shuffle(arr) {
+  return arr.slice().sort(() => Math.random() - 0.5);
 }
 
-function parseDotSpec(spec = '') {
-  const src = String(spec).trim();
-  if (!src) return [];
-  if (/\bor\b/i.test(src)) {
-    const opts = src.split(/\bor\b/i).map(s => bulletCount(s)).filter(n => n > 0);
-    return Array.from(new Set(opts)).sort((a, b) => a - b);
+function getRandomStats(tier) {
+  let attrDots = [];
+  let skillDots = [];
+  if (tier === 1) {
+    attrDots = [2, 2];
+    skillDots = [2, 2, 2, 1, 1, 1, 1, 1];
+  } else if (tier === 2) {
+    attrDots = [3, 3, 2, 2, 2];
+    skillDots = [3, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1];
+  } else if (tier >= 3) {
+    attrDots = [4, 3, 3, 2, 2];
+    skillDots = [4, 4, 3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1];
   }
-  if (src.includes('-')) {
-    const [lo, hi] = src.split('-').map(s => bulletCount(s));
-    if (lo > 0 && hi >= lo) { const out = []; for (let i = lo; i <= hi; i++) out.push(i); return out; }
-  }
-  if (src.includes('+')) {
-    const min = bulletCount(src);
-    return min > 0 ? [min] : [];
-  }
-  const n = bulletCount(src);
-  return n > 0 ? [n] : [];
-}
+  
+  const FLAT_ATTRS = ATTRS.flat();
+  const FLAT_SKILLS = Object.values(SKILLS).flat();
 
-function allSelectableAdvantages(isFlaw) {
-  const out = [];
-  for (const [cat, payload] of Object.entries(MERITS_AND_FLAWS)) {
-    if (['Caitiff', 'Thin-blood', 'Ghouls', 'Cults'].includes(cat)) continue;
-    const pushIt = (item, category) => {
-      const allowed = parseDotSpec(item.dots);
-      if (!allowed.length) return;
-      out.push({ id: item.id, name: item.name, dotsSpec: item.dots, description: item.description, category, allowed });
-    };
-    const list = isFlaw ? payload.flaws : payload.merits;
-    (list || []).forEach(m => pushIt(m, cat));
-    if (payload.groups) {
-      for (const [sub, grp] of Object.entries(payload.groups)) {
-        const subList = isFlaw ? grp.flaws : grp.merits;
-        (subList || []).forEach(m => pushIt(m, `${cat} / ${sub}`));
-      }
-    }
-  }
-  const seen = new Set();
-  return out.filter(m => (seen.has(m.id) ? false : (seen.add(m.id), true)));
+  const shuffledAttrs = shuffle(FLAT_ATTRS);
+  const attributes = {};
+  FLAT_ATTRS.forEach(a => attributes[a] = 1);
+  attrDots.forEach((val, i) => attributes[shuffledAttrs[i]] = val);
+
+  const shuffledSkills = shuffle(FLAT_SKILLS);
+  const skills = {};
+  skillDots.forEach((val, i) => skills[shuffledSkills[i]] = val);
+
+  return { attributes, skills };
 }
 
 const MarketplaceRow = ({ title, cost, disabled, onBuy }) => (
@@ -128,79 +118,154 @@ const MarketplaceRow = ({ title, cost, disabled, onBuy }) => (
   </div>
 );
 
-const AdvantagePicker = ({ isFlaw, onAdd, onCancel }) => {
-  const all = useMemo(() => allSelectableAdvantages(isFlaw), [isFlaw]);
+const InlineMeritsFlawsPicker = ({ isFlaw, isGhoul, selectedItems, onToggle }) => {
+  const all = useMemo(() => allSelectableAdvantages(isFlaw, isGhoul), [isFlaw, isGhoul]);
   const [q, setQ] = useState('');
-  const [selId, setSelId] = useState(all[0]?.id || '');
-  const sel = useMemo(() => all.find(m => m.id === selId) || null, [all, selId]);
   
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase();
     if (!qq) return all;
-    return all.filter(m => m.name.toLowerCase().includes(qq) || (m.category || '').toLowerCase().includes(qq));
+    return all.filter(m => 
+      m.name.toLowerCase().includes(qq) || 
+      (m.category || '').toLowerCase().includes(qq) || 
+      (m.description || '').toLowerCase().includes(qq)
+    );
   }, [q, all]);
 
-  const groupedOptions = useMemo(() => {
-    return filtered.reduce((acc, m) => {
-      acc[m.category || 'General'] = acc[m.category || 'General'] || [];
-      acc[m.category || 'General'].push(m);
-      return acc;
-    }, {});
-  }, [filtered]);
+  const [expandedId, setExpandedId] = useState(null);
+  const [notes, setNotes] = useState('');
 
-  const dotsOptions = useMemo(() => sel?.allowed || [], [sel]);
-  const [dots, setDots] = useState(dotsOptions[0] || 1);
-
-  useEffect(() => {
-    if (sel && dotsOptions.length > 0 && !dotsOptions.includes(Number(dots))) {
-      setDots(dotsOptions[0]);
+  const handleExpand = (item) => {
+    if (expandedId === item.id) {
+      setExpandedId(null);
+    } else {
+      setExpandedId(item.id);
+      const existing = selectedItems.find(s => s.id === item.id);
+      setNotes(existing?.notes || '');
     }
-  }, [selId, dots, dotsOptions, sel]);
+  };
+
+  const handleDotSelect = (item, dotVal) => {
+    const existing = selectedItems.find(s => s.id === item.id);
+    onToggle({ id: item.id, name: item.name, dots: dotVal, notes: existing ? existing.notes : '' });
+  };
 
   return (
-    <div style={{ background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '8px', marginTop: '12px', border: `1px solid ${isFlaw ? 'rgba(194,24,7,0.3)' : 'rgba(255,255,255,0.1)'}` }}>
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+    <div style={{ background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '8px', border: `1px solid ${isFlaw ? 'rgba(194,24,7,0.3)' : 'rgba(255,255,255,0.1)'}` }}>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
         <input 
           type="text" 
           placeholder={`Search ${isFlaw ? 'flaws' : 'merits'}...`} 
           value={q} 
           onChange={e => setQ(e.target.value)}
-          style={{ flex: 1, padding: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', color: '#fff', borderRadius: '4px' }}
+          style={{ flex: 1, padding: '10px 14px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-color)', color: '#fff', borderRadius: '6px' }}
         />
       </div>
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-        <select 
-          value={selId} 
-          onChange={e => setSelId(e.target.value)}
-          style={{ flex: 2, padding: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', color: '#fff', borderRadius: '4px' }}
-        >
-          {Object.entries(groupedOptions).map(([cat, list]) => (
-            <optgroup key={cat} label={cat}>
-              {list.map(m => (
-                <option key={m.id} value={m.id}>{m.name} ({m.dotsSpec})</option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
-        <select 
-          value={dots} 
-          onChange={e => setDots(Number(e.target.value))}
-          style={{ flex: 1, padding: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', color: '#fff', borderRadius: '4px' }}
-        >
-          {dotsOptions.map(d => (
-            <option key={d} value={d}>{d} Dot{d > 1 ? 's' : ''}</option>
-          ))}
-        </select>
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-        <button onClick={onCancel} style={{ padding: '6px 12px', background: 'transparent', border: '1px solid #888', color: '#888', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>Cancel</button>
-        <button 
-          onClick={() => onAdd({ id: sel?.id, name: sel?.name, dots: Number(dots) })}
-          disabled={!sel}
-          style={{ padding: '6px 12px', background: isFlaw ? 'var(--error)' : 'var(--tint)', border: 'none', color: '#000', borderRadius: '4px', cursor: !sel ? 'not-allowed' : 'pointer', fontWeight: 'bold', fontSize: '12px' }}
-        >
-          Add {isFlaw ? 'Flaw' : 'Advantage'}
-        </button>
+
+      <div style={{ maxHeight: '400px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', paddingRight: '6px' }}>
+        {filtered.length === 0 && <div style={{ color: '#888', fontStyle: 'italic', padding: '8px' }}>No matches found.</div>}
+        {filtered.map(item => {
+          const isExpanded = expandedId === item.id;
+          const existing = selectedItems.find(s => s.id === item.id);
+          const isSelected = !!existing;
+          const currentDots = existing ? existing.dots : 0;
+          const allowed = item.allowed || [1];
+
+          return (
+            <div 
+              key={item.id} 
+              style={{
+                border: `1px solid ${isSelected ? (isFlaw ? 'var(--error)' : 'var(--tint)') : 'var(--border, rgba(255,255,255,0.1))'}`,
+                borderRadius: '8px',
+                padding: '12px',
+                background: isSelected ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.02)',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+              onClick={() => handleExpand(item)}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <b style={{ color: isFlaw ? 'var(--error)' : '#fff', fontSize: '15px' }}>{item.name}</b>
+                  <small style={{ color: '#888' }}>{item.category}</small>
+                  
+                  {!isExpanded ? (
+                    isSelected ? (
+                       <div className={styles.circleDots} style={{ marginLeft: '4px' }}>
+                         {Array.from({ length: currentDots }).map((_, i) => (
+                           <div key={i} className={`${styles.circleDot} ${styles.circleDotFilled}`} style={isFlaw ? { background: 'var(--error)', boxShadow: '0 0 8px var(--error)' } : {}} />
+                         ))}
+                       </div>
+                    ) : (
+                      <small style={{ background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: '4px', fontSize: '11px' }}>
+                        {item.dotsSpec}
+                      </small>
+                    )
+                  ) : (
+                    <div className={styles.circleDots} style={{ marginLeft: '4px' }} onClick={e => e.stopPropagation()}>
+                      {Array.from({ length: Math.max(...allowed) }).map((_, i) => {
+                        const dotVal = i + 1;
+                        const isValid = allowed.includes(dotVal);
+                        const isFilled = dotVal <= currentDots;
+                        return (
+                          <div 
+                            key={dotVal}
+                            className={`${styles.circleDot} ${isFilled ? styles.circleDotFilled : ''}`}
+                            onClick={() => {
+                              if (!isValid) return;
+                              if (currentDots === dotVal) {
+                                onToggle({ id: item.id });
+                              } else {
+                                handleDotSelect(item, dotVal);
+                              }
+                            }}
+                            style={{
+                              cursor: isValid ? 'pointer' : 'not-allowed',
+                              opacity: isValid ? 1 : 0.25,
+                              ...(isFilled && isFlaw ? { background: 'var(--error)', boxShadow: '0 0 8px var(--error)' } : {})
+                            }}
+                            title={isValid ? `Select ${dotVal} dots` : `Cost ${dotVal} not available`}
+                          />
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                {isExpanded && (
+                   <button 
+                    onClick={(e) => { e.stopPropagation(); setExpandedId(null); }}
+                    style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', fontSize: '22px', padding: 0, lineHeight: 1 }}
+                   >
+                     ×
+                   </button>
+                )}
+              </div>
+              
+              {isExpanded && (
+                <div style={{ color: '#aaa', fontSize: '0.9em', marginTop: '10px', whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>
+                  {item.description}
+                </div>
+              )}
+
+              {isExpanded && isSelected && (
+                <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', gap: '12px', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
+                  <input 
+                    type="text" 
+                    placeholder="Custom description / notes (optional)" 
+                    value={notes} 
+                    onChange={e => setNotes(e.target.value)}
+                    onBlur={() => onToggle({ id: item.id, name: item.name, dots: currentDots, notes })}
+                    style={{ flex: 1, padding: '10px 14px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '6px', fontSize: '13px' }}
+                  />
+                  <div style={{ padding: '8px 12px', background: 'rgba(62, 207, 142, 0.1)', color: 'var(--success)', borderRadius: '6px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>check_circle</span>
+                    Selected
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -290,6 +355,20 @@ const getValidationErrors = (draftSheet, tier) => {
   let advPoints = (draftSheet.advantages || []).reduce((sum, a) => sum + Number(a.dots), 0);
   let flawPoints = (draftSheet.flaws || []).reduce((sum, f) => sum + Number(f.dots), 0);
 
+  let maxFlaws = 0;
+  let baseAdv = 0;
+  if (tier === 1) { maxFlaws = 0; baseAdv = 0; }
+  else if (tier === 2) { maxFlaws = 2; baseAdv = 3; }
+  else if (tier === 3) { maxFlaws = 4; baseAdv = 10; }
+
+  if (flawPoints > maxFlaws) {
+    errors.push(`Flaws: Maximum ${maxFlaws} points allowed (Have ${flawPoints})`);
+  }
+  const maxAdv = baseAdv + flawPoints;
+  if (advPoints > maxAdv) {
+    errors.push(`Advantages: Maximum ${maxAdv} points allowed (Have ${advPoints})`);
+  }
+
   let disciplineCount = 0;
   for (const val of Object.values(draftSheet.disciplines || {})) {
       if (val === 1) disciplineCount++;
@@ -350,9 +429,6 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
   const [step, setStep] = useState(1);
   const [name, setName] = useState('');
   const [draftSheet, setDraftSheet] = useState({ attributes: {}, skills: {}, disciplines: {}, advantages: [], flaws: [], isGhoul: false, powers: [] });
-  const [showAdvantagePicker, setShowAdvantagePicker] = useState(false);
-  const [showFlawPicker, setShowFlawPicker] = useState(false);
-
   const [activeDisciplinePowerSelection, setActiveDisciplinePowerSelection] = useState(null);
 
   useEffect(() => {
@@ -360,13 +436,9 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
       setStep(1);
       setName('');
       setDraftSheet({ attributes: {}, skills: {}, disciplines: {}, advantages: [], flaws: [], isGhoul: false, powers: [] });
-      setShowAdvantagePicker(false);
-      setShowFlawPicker(false);
       setActiveDisciplinePowerSelection(null);
     }
   }, [isOpen]);
-
-
 
   const canAfford = isMigration || domitorXp >= cost;
   const validationErrors = getValidationErrors(draftSheet, tier);
@@ -405,11 +477,10 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
   };
 
   const handleDotClick = (type, statName, newLevel) => {
-    /* const baseAttr = tier === 4 ? 2 : 1; */
-    const currentLevel = draftSheet[type][statName] || (type === 'attributes' ? 1 /* baseAttr */ : 0);
+    const currentLevel = draftSheet[type][statName] || (type === 'attributes' ? 1 : 0);
     let finalLevel = newLevel;
     if (currentLevel === newLevel) {
-       finalLevel = type === 'attributes' ? 1 /* baseAttr */ : newLevel - 1;
+       finalLevel = type === 'attributes' ? 1 : newLevel - 1;
     }
     setDraftSheet(prev => ({
       ...prev,
@@ -420,20 +491,19 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
     }));
   };
 
-  const handleAddAdvantage = (isFlaw, advObj) => {
+  const handleToggleAdvantage = (isFlaw, advObj) => {
     setDraftSheet(prev => {
       const arr = isFlaw ? [...prev.flaws] : [...prev.advantages];
-      arr.push(advObj);
-      return { ...prev, [isFlaw ? 'flaws' : 'advantages']: arr };
-    });
-    if (isFlaw) setShowFlawPicker(false);
-    else setShowAdvantagePicker(false);
-  };
-
-  const handleRemoveAdvantage = (index, isFlaw) => {
-    setDraftSheet(prev => {
-      const arr = isFlaw ? [...prev.flaws] : [...prev.advantages];
-      arr.splice(index, 1);
+      const idx = arr.findIndex(a => a.id === advObj.id);
+      if (idx !== -1) {
+        if (!advObj.name) {
+           arr.splice(idx, 1);
+        } else {
+           arr[idx] = advObj;
+        }
+      } else if (advObj.name) {
+        arr.push(advObj);
+      }
       return { ...prev, [isFlaw ? 'flaws' : 'advantages']: arr };
     });
   };
@@ -441,269 +511,410 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
   if (!isOpen) return null;
 
   return (
-    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, backdropFilter: 'blur(6px)' }}>
-      <div style={{ background: '#1a1a1a', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '32px', width: '900px', maxWidth: '95%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
+    <div className={styles.wizardOverlayStitch}>
+      <div className={styles.wizardModalStitch}>
         
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '12px' }}>
-          <h2 style={{ margin: 0, color: '#fff', fontSize: '20px' }}>Recruit Tier {tier} Retainer</h2>
-          <span style={{ color: 'var(--tint)', fontSize: '14px', fontWeight: 'bold' }}>Step {step} / 2</span>
+        {/* Decorative Lighting */}
+        <div className={styles.bgBlurPinkStitch} />
+        <div className={styles.bgBlurPurpleStitch} />
+
+        <div className={styles.wizardHeaderStitch}>
+          <div>
+            <h2 className={styles.wizardTitleStitch}>Retainer Creation</h2>
+            <p className={styles.wizardSubtitleStitch}>Design your loyal servant for the eternal night.</p>
+          </div>
+          <button type="button" className={styles.wizardCloseBtnStitch} onClick={onCancel}>
+            <span className="material-symbols-outlined">close</span>
+          </button>
         </div>
 
-        {/* STEP 1: Basic Info & Base Stats */}
-        {step === 1 && (
-          <div style={{ animation: 'fadeIn 0.3s ease' }}>
-            <div style={{ display: 'flex', gap: '24px', marginBottom: '32px' }}>
-              <div style={{ flex: 1 }}>
-                <label style={{ display: 'block', color: '#a0a0a0', marginBottom: '8px', fontSize: '13px' }}>Retainer Name</label>
-                <input 
-                  type="text" 
-                  value={name} 
-                  onChange={e => setName(e.target.value)} 
-                  placeholder="Enter name..."
-                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.05)', color: '#fff' }}
-                  autoFocus
-                />
+        <div className={styles.wizardContentStitch}>
+          {/* Step Indicator */}
+          <div className={styles.stepIndicatorStitch}>
+            {[1, 2, 3].map((s) => (
+              <div key={s} className={styles.stepItemStitch}>
+                <div className={`${styles.stepCircleStitch} ${step >= s ? styles.stepCircleActiveStitch : styles.stepCircleInactiveStitch}`}>
+                  {s}
+                </div>
+                <span className={`${styles.stepLabelStitch} ${step >= s ? styles.stepLabelActiveStitch : styles.stepLabelInactiveStitch}`}>
+                  {s === 1 ? 'Basic Info' : s === 2 ? 'Traits' : 'Review'}
+                </span>
+                {s < 3 && (
+                  <div className={`${styles.stepLineStitch} ${step > s ? styles.stepLineActiveStitch : styles.stepLineInactiveStitch}`} />
+                )}
               </div>
-              <div style={{ flex: 1, background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '8px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#e0dedd', cursor: 'pointer', fontSize: '14px' }}>
-                  <input type="checkbox" checked={draftSheet.isGhoul} onChange={e => setDraftSheet(p => ({...p, isGhoul: e.target.checked}))} />
-                  Is this retainer a Ghoul?
-                </label>
-                <p style={{ margin: '8px 0 0 24px', fontSize: '12px', color: '#888', lineHeight: '1.4' }}>
-                  Unlocks 1 dot of an in-clan discipline in Step 2.
-                </p>
+            ))}
+          </div>
+
+          {/* STEP 1 */}
+          {step === 1 && (
+            <div style={{ animation: 'fadeIn 0.5s ease', position: 'relative', zIndex: 10 }}>
+              <div style={{ display: 'flex', gap: '32px', marginBottom: '32px' }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '2px' }}>Retainer Name</label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input 
+                      type="text" 
+                      value={name} 
+                      onChange={e => setName(e.target.value)} 
+                      placeholder="Enter designation..."
+                      className={styles.inputStitch}
+                      autoFocus
+                    />
+                    <button className={styles.btnIconStitch} onClick={() => setName(generateGreekName())}>
+                      <span className="material-symbols-outlined">casino</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+                  <label className={styles.ghoulToggleStitch}>
+                    <div style={{ flex: 1 }}>
+                      <span style={{ display: 'block', color: 'white', fontWeight: '500' }}>Ghoul Status</span>
+                      <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>Grants Vitae to enhance capabilities.</span>
+                    </div>
+                    <div 
+                      className={styles.toggleTrackStitch} 
+                      style={{ backgroundColor: draftSheet.isGhoul ? 'var(--tint)' : 'rgba(255,255,255,0.1)' }}
+                      onClick={(e) => {
+                         e.preventDefault();
+                         setDraftSheet(p => ({...p, isGhoul: !p.isGhoul}));
+                      }}
+                    >
+                      <div className={styles.toggleThumbStitch} style={{ transform: draftSheet.isGhoul ? 'translateX(24px)' : 'translateX(0)' }} />
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {draftSheet.isGhoul && (
+                <div className={styles.lightRedGlowStitch} style={{ marginBottom: '32px' }}>
+                  <span className="material-symbols-outlined" style={{ color: '#f59e0b' }}>warning</span>
+                  <div>
+                    <strong style={{ display: 'block', marginBottom: '4px' }}>Maintenance Required:</strong>
+                    Ghouling enforces a Blood Bond (loss of free will) and Vitae addiction. Ghoul-specific Flaws are now available in Step 2.
+                  </div>
+                </div>
+              )}
+
+              {!canAfford && !isMigration && (
+                <div className={styles.errorBannerStitch} style={{ marginBottom: '24px' }}>
+                  <span className="material-symbols-outlined">error</span>
+                  Not enough XP. This requires {cost} XP, but you only have {domitorXp}.
+                </div>
+              )}
+              {isMigration && (
+                <div className={styles.successBannerStitch} style={{ marginBottom: '24px' }}>
+                   <span className="material-symbols-outlined">check_circle</span>
+                   This is a free migration to finalize your old Tier {tier} retainer's sheet.
+                </div>
+              )}
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '48px', paddingTop: '16px' }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                    <h3 className={styles.stepTitleStitch}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>insights</span> Attributes
+                    </h3>
+                    <button type="button" onClick={() => setDraftSheet(p => ({ ...p, ...getRandomStats(tier) }))} className={styles.btnIconStitch} style={{ padding: '4px 8px', borderRadius: '8px' }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>casino</span>
+                    </button>
+                  </div>
+                  
+                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginBottom: '16px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                     {tier === 1 && <><span><span style={{color: 'var(--tint)'}}>••</span> {renderTracker(attrCounts[2], 2)}</span></>}
+                     {tier === 2 && <><span><span style={{color: 'var(--tint)'}}>•••</span> {renderTracker(attrCounts[3], 2)}</span> <span><span style={{color: 'var(--tint)'}}>••</span> {renderTracker(attrCounts[2], 3)}</span></>}
+                     {tier === 3 && <><span><span style={{color: 'var(--tint)'}}>••••</span> {renderTracker(attrCounts[4], 1)}</span> <span><span style={{color: 'var(--tint)'}}>•••</span> {renderTracker(attrCounts[3], 2)}</span> <span><span style={{color: 'var(--tint)'}}>••</span> {renderTracker(attrCounts[2], 2)}</span></>}
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                    {['Physical', 'Social', 'Mental'].map((cat, idx) => (
+                      <div key={cat} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--tint)', letterSpacing: '1px', fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '4px' }}>{cat}</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {ATTRS[idx].map((attr) => {
+                            const dots = draftSheet.attributes[attr] || 1;
+                            return (
+                              <div key={attr} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <span className={styles.dotLabelStitch}>{attr}</span>
+                                <div style={{ display: 'flex', gap: '4px' }}>
+                                  {[1, 2, 3, 4, 5].map((d) => (
+                                    <div 
+                                      key={d}
+                                      onClick={() => handleDotClick('attributes', attr, d)}
+                                      className={`${styles.dotCircleStitch} ${dots >= d ? styles.dotCircleFilledStitch : styles.dotCircleEmptyStitch}`}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className={styles.stepTitleStitch}>
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>build</span> Core Skills
+                  </h3>
+                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginBottom: '16px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                     {tier === 1 && <><span><span style={{color: 'var(--tint)'}}>••</span> {renderTracker(skillCounts[2], 3)}</span> <span><span style={{color: 'var(--tint)'}}>•</span> {renderTracker(skillCounts[1], 5)}</span></>}
+                     {tier === 2 && <><span><span style={{color: 'var(--tint)'}}>•••</span> {renderTracker(skillCounts[3], 3)}</span> <span><span style={{color: 'var(--tint)'}}>••</span> {renderTracker(skillCounts[2], 4)}</span> <span><span style={{color: 'var(--tint)'}}>•</span> {renderTracker(skillCounts[1], 5)}</span></>}
+                     {tier === 3 && <><span><span style={{color: 'var(--tint)'}}>••••</span> {renderTracker(skillCounts[4], 2)}</span> <span><span style={{color: 'var(--tint)'}}>•••</span> {renderTracker(skillCounts[3], 4)}</span> <span><span style={{color: 'var(--tint)'}}>••</span> {renderTracker(skillCounts[2], 4)}</span> <span><span style={{color: 'var(--tint)'}}>•</span> {renderTracker(skillCounts[1], 4)}</span></>}
+                  </div>
+                  
+                  <div className={styles.gridThreeColStitch}>
+                    {Object.entries(SKILLS).map(([cat, skills]) => (
+                      <div key={cat} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--tint)', letterSpacing: '1px', fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '4px' }}>{cat}</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {skills.map((skill) => {
+                            const dots = draftSheet.skills[skill] || 0;
+                            return (
+                              <div key={skill} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                  <span className={styles.dotLabelStitch} style={{ fontSize: '12px' }}>{skill}</span>
+                                </div>
+                                <div style={{ display: 'flex', gap: '2px' }}>
+                                  {[1, 2, 3, 4, 5].map((d) => (
+                                    <div 
+                                      key={d}
+                                      onClick={() => handleDotClick('skills', skill, d)}
+                                      className={`${styles.dotCircleStitch} ${dots >= d ? styles.dotCircleFilledStitch : styles.dotCircleEmptyStitch}`}
+                                      style={{ width: '10px', height: '10px' }}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
+          )}
 
-            {!canAfford && !isMigration && (
-              <div style={{ background: 'rgba(194, 24, 7, 0.2)', padding: '12px', borderRadius: '8px', border: '1px solid #c21807', color: '#ffb4a7', fontSize: '13px', marginBottom: '24px' }}>
-                Not enough XP. This requires {cost} XP, but you only have {domitorXp}.
+          {/* STEP 2 */}
+          {step === 2 && (
+            <div style={{ animation: 'fadeIn 0.5s ease', position: 'relative', zIndex: 10 }}>
+              
+              <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
+                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px' }}>
+                  {tier === 1 && <span>Tier 1 retainers cannot have advantages.</span>}
+                  {tier === 2 && <><span>Advantages {renderMaxTracker(advPoints, 3)}</span> <span style={{marginLeft: '16px'}}>Flaws {renderMaxTracker(flawPoints, 2)}</span></>}
+                  {tier === 3 && <><span>Advantages {renderMaxTracker(advPoints, 10)}</span> <span style={{marginLeft: '16px'}}>Flaws {renderMaxTracker(flawPoints, 4)}</span></>}
+                </span>
               </div>
-            )}
-            {isMigration && (
-              <div style={{ background: 'rgba(62, 207, 142, 0.2)', padding: '12px', borderRadius: '8px', border: '1px solid var(--success)', color: '#fff', fontSize: '13px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                 <span className="material-symbols-outlined" style={{ color: 'var(--success)' }}>check_circle</span>
-                 This is a free migration to finalize your old Tier {tier} retainer's sheet.
-              </div>
-            )}
 
-             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '16px' }}>
-               <h3 style={{ color: '#e0dedd', margin: 0, fontSize: '16px' }}>Attributes</h3>
-               <span style={{ color: '#888', fontSize: '12px', display: 'flex', gap: '12px' }}>
-                 {tier === 1 && <><span><span style={{letterSpacing: '2px', color: '#ffb4a7'}}>••</span> {renderTracker(attrCounts[2], 2)}</span></>}
-                 {tier === 2 && <><span><span style={{letterSpacing: '2px', color: '#ffb4a7'}}>•••</span> {renderTracker(attrCounts[3], 2)}</span> <span><span style={{letterSpacing: '2px', color: '#ffb4a7'}}>••</span> {renderTracker(attrCounts[2], 3)}</span></>}
-                 {tier === 3 && <><span><span style={{letterSpacing: '2px', color: '#ffb4a7'}}>••••</span> {renderTracker(attrCounts[4], 1)}</span> <span><span style={{letterSpacing: '2px', color: '#ffb4a7'}}>•••</span> {renderTracker(attrCounts[3], 2)}</span> <span><span style={{letterSpacing: '2px', color: '#ffb4a7'}}>••</span> {renderTracker(attrCounts[2], 2)}</span></>}
-               </span>
-             </div>
-             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '32px' }}>
-               {['Physical', 'Social', 'Mental'].map((cat, idx) => (
-                 <div key={cat}>
-                   <div style={{ fontSize: '10px', textTransform: 'uppercase', color: '#e0dedd', opacity: 0.6, marginBottom: '8px', letterSpacing: '1px', fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '4px' }}>{cat}</div>
-                   <ul className={styles.statList}>
-                     {ATTRS[idx].map(attr => (
-                       <DotRow 
-                         key={attr}
-                         label={attr}
-                         value={draftSheet.attributes[attr] || 1}
-                         onDotClick={(level) => handleDotClick('attributes', attr, level)}
-                       />
-                     ))}
-                   </ul>
-                 </div>
-               ))}
-             </div>
+              {tier > 1 ? (
+                <div className={styles.gridTwoColStitch}>
+                  <div className={styles.paneBlueStitch}>
+                    <h3 className={`${styles.stepTitleStitch} ${styles.stepTitleBlueStitch}`}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>stars</span> Advantages
+                    </h3>
+                    <div style={{ overflowY: 'auto', flex: 1, paddingRight: '8px' }}>
+                      <InlineMeritsFlawsPicker 
+                        isFlaw={false} 
+                        isGhoul={draftSheet.isGhoul} 
+                        selectedItems={draftSheet.advantages} 
+                        onToggle={(adv) => handleToggleAdvantage(false, adv)} 
+                      />
+                    </div>
+                  </div>
 
-             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '16px' }}>
-               <h3 style={{ color: '#e0dedd', margin: 0, fontSize: '16px' }}>Skills</h3>
-               <span style={{ color: '#888', fontSize: '12px', display: 'flex', gap: '12px' }}>
-                 {tier === 1 && <><span><span style={{letterSpacing: '2px', color: '#ffb4a7'}}>••</span> {renderTracker(skillCounts[2], 3)}</span> <span><span style={{letterSpacing: '2px', color: '#ffb4a7'}}>•</span> {renderTracker(skillCounts[1], 5)}</span></>}
-                 {tier === 2 && <><span><span style={{letterSpacing: '2px', color: '#ffb4a7'}}>•••</span> {renderTracker(skillCounts[3], 3)}</span> <span><span style={{letterSpacing: '2px', color: '#ffb4a7'}}>••</span> {renderTracker(skillCounts[2], 4)}</span> <span><span style={{letterSpacing: '2px', color: '#ffb4a7'}}>•</span> {renderTracker(skillCounts[1], 5)}</span></>}
-                 {tier === 3 && <><span><span style={{letterSpacing: '2px', color: '#ffb4a7'}}>••••</span> {renderTracker(skillCounts[4], 2)}</span> <span><span style={{letterSpacing: '2px', color: '#ffb4a7'}}>•••</span> {renderTracker(skillCounts[3], 4)}</span> <span><span style={{letterSpacing: '2px', color: '#ffb4a7'}}>••</span> {renderTracker(skillCounts[2], 4)}</span> <span><span style={{letterSpacing: '2px', color: '#ffb4a7'}}>•</span> {renderTracker(skillCounts[1], 4)}</span></>}
-               </span>
-             </div>
-             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', paddingRight: '8px' }}>
-               {Object.entries(SKILLS).map(([cat, skills]) => (
-                 <div key={cat} style={{ marginBottom: '16px' }}>
-                   <div style={{ fontSize: '10px', textTransform: 'uppercase', color: '#e0dedd', opacity: 0.6, marginBottom: '8px', letterSpacing: '1px', fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '4px' }}>{cat}</div>
-                   <ul className={styles.statList}>
-                     {skills.map(skill => (
-                       <DotRow 
-                         key={skill}
-                         label={skill}
-                         value={draftSheet.skills[skill] || 0}
-                         onDotClick={(level) => handleDotClick('skills', skill, level)}
-                       />
-                     ))}
-                   </ul>
-                 </div>
-               ))}
-             </div>
-          </div>
-        )}
+                  <div className={styles.paneRedStitch}>
+                    <h3 className={`${styles.stepTitleStitch} ${styles.stepTitleRedStitch}`}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>heart_broken</span> Flaws
+                    </h3>
+                    <div style={{ overflowY: 'auto', flex: 1, paddingRight: '8px' }}>
+                      <InlineMeritsFlawsPicker 
+                        isFlaw={true} 
+                        isGhoul={draftSheet.isGhoul} 
+                        selectedItems={draftSheet.flaws} 
+                        onToggle={(adv) => handleToggleAdvantage(true, adv)} 
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ padding: '32px', textAlign: 'center', color: 'rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.5 }}>block</span>
+                  <p>Tier 1 retainers are basic pawns and cannot possess specialized advantages or flaws.</p>
+                </div>
+              )}
 
-        {/* STEP 2: Traits, Disciplines & Review */}
-        {step === 2 && (
-          <div style={{ animation: 'fadeIn 0.3s ease' }}>
-             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '16px' }}>
-               <h3 style={{ color: '#e0dedd', margin: 0, fontSize: '16px' }}>Advantages & Flaws</h3>
-               <span style={{ color: '#888', fontSize: '12px', display: 'flex', gap: '12px' }}>
-                 {tier === 1 && <span>Tier 1 retainers cannot have advantages.</span>}
-                 {tier === 2 && <><span>Advantages {renderMaxTracker(advPoints, 3)}</span> <span>Flaws {renderMaxTracker(flawPoints, 2)}</span></>}
-                 {tier === 3 && <><span>Advantages {renderMaxTracker(advPoints, 10)}</span> <span>Flaws {renderMaxTracker(flawPoints, 4)}</span></>}
-               </span>
-             </div>
-             
-             <div style={{ display: 'flex', gap: '24px', marginBottom: '32px' }}>
-               <div className={styles.statsBox} style={{ flex: 1, margin: 0, opacity: tier === 1 ? 0.5 : 1 }}>
-                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                   <h4 style={{ margin: 0, color: '#fff', fontSize: '14px' }}>Advantages</h4>
-                   {tier > 1 && !showAdvantagePicker && (
-                     <button onClick={() => setShowAdvantagePicker(true)} style={{ background: 'transparent', border: '1px solid var(--border-color)', color: '#fff', borderRadius: '4px', cursor: 'pointer', padding: '4px 8px', fontSize: '11px' }}>+ Add</button>
-                   )}
-                 </div>
-                 {showAdvantagePicker && <AdvantagePicker isFlaw={false} onAdd={(adv) => handleAddAdvantage(false, adv)} onCancel={() => setShowAdvantagePicker(false)} />}
-                 <ul className={styles.statList}>
-                   {draftSheet.advantages.map((adv, i) => (
-                     <li key={i} className={styles.statRow}>
-                       <span className={styles.statName}>{adv.name}</span>
-                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                         <SmallDots value={adv.dots} />
-                         <button onClick={() => handleRemoveAdvantage(i, false)} style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer' }}><span className="material-symbols-outlined" style={{ fontSize: '16px' }}>close</span></button>
-                       </div>
-                     </li>
-                   ))}
-                   {draftSheet.advantages.length === 0 && <li style={{ fontSize: '12px', color: '#888' }}>None</li>}
-                 </ul>
-               </div>
-
-               <div className={styles.statsBox} style={{ flex: 1, margin: 0, opacity: tier === 1 ? 0.5 : 1 }}>
-                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                   <h4 style={{ margin: 0, color: 'var(--error)', fontSize: '14px' }}>Flaws</h4>
-                   {tier > 1 && !showFlawPicker && (
-                     <button onClick={() => setShowFlawPicker(true)} style={{ background: 'transparent', border: '1px solid var(--error)', color: 'var(--error)', borderRadius: '4px', cursor: 'pointer', padding: '4px 8px', fontSize: '11px' }}>+ Add</button>
-                   )}
-                 </div>
-                 {showFlawPicker && <AdvantagePicker isFlaw={true} onAdd={(adv) => handleAddAdvantage(true, adv)} onCancel={() => setShowFlawPicker(false)} />}
-                 <ul className={styles.statList}>
-                   {draftSheet.flaws.map((flaw, i) => (
-                     <li key={i} className={styles.statRow}>
-                       <span className={styles.statName} style={{ color: 'var(--error)' }}>{flaw.name}</span>
-                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                         <SmallDots value={flaw.dots} />
-                         <button onClick={() => handleRemoveAdvantage(i, true)} style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer' }}><span className="material-symbols-outlined" style={{ fontSize: '16px' }}>close</span></button>
-                       </div>
-                     </li>
-                   ))}
-                   {draftSheet.flaws.length === 0 && <li style={{ fontSize: '12px', color: '#888' }}>None</li>}
-                 </ul>
-               </div>
-             </div>
-
-             <h3 style={{ color: '#e0dedd', marginBottom: '16px', fontSize: '16px' }}>Disciplines</h3>
-             {!draftSheet.isGhoul ? (
-               <div style={{ padding: '20px', textAlign: 'center', color: '#888', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', marginBottom: '32px' }}>
-                 <span className="material-symbols-outlined" style={{ fontSize: '32px', marginBottom: '8px', opacity: 0.5 }}>block</span>
-                 <p style={{ margin: 0 }}>Mortals cannot learn disciplines.<br/>You must make them a Ghoul on Step 1 to unlock this.</p>
-               </div>
-             ) : clanDisciplines.length === 0 ? (
-               <div style={{ padding: '20px', textAlign: 'center', color: '#888', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', marginBottom: '32px' }}>
-                 <p style={{ margin: 0 }}>Your clan does not have standard in-clan disciplines listed.</p>
-               </div>
-             ) : (
-                <>
-                  <ul className={styles.statList}>
-                    {clanDisciplines.map(disc => {
-                      const selectedPower = (draftSheet.powers || []).find(p => p.discipline === disc);
-                      return (
-                        <div key={disc} style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '8px' }}>
-                          <DotRow label={disc} value={draftSheet.disciplines[disc] || 0} max={tier === 1 ? 1 : 1} onDotClick={(val) => handleDotClick('disciplines', disc, val)} icon={iconPath(disc)} />
-                          {draftSheet.disciplines[disc] === 1 && selectedPower && (
-                            <PowerDetailCard 
-                              power={selectedPower} 
-                              onClear={() => setDraftSheet(prev => ({ ...prev, powers: (prev.powers || []).filter(p => p.discipline !== disc) }))} 
-                            />
-                          )}
-                          {draftSheet.disciplines[disc] === 1 && !selectedPower && activeDisciplinePowerSelection !== disc && (
-                            <div style={{ marginLeft: '32px', marginTop: '8px', fontSize: '12px', color: 'var(--error)', cursor: 'pointer', padding: '4px 8px', background: 'rgba(194, 24, 7, 0.1)', borderRadius: '4px', display: 'inline-block' }} onClick={() => setActiveDisciplinePowerSelection(disc)}>
-                              ↳ Click to select power
+              {draftSheet.isGhoul && (
+                <div style={{ backgroundColor: 'color-mix(in srgb, var(--tint) 5%, transparent)', border: '1px solid color-mix(in srgb, var(--tint) 10%, transparent)', padding: '24px', borderRadius: '16px', marginTop: '32px' }}>
+                  <h3 style={{ color: 'white', fontWeight: 'bold', fontSize: '14px', marginBottom: '16px' }}>Ghoul Disciplines</h3>
+                  
+                  {clanDisciplines.length === 0 ? (
+                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px' }}>Your clan does not have standard in-clan disciplines listed.</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      {clanDisciplines.map(disc => {
+                        const selectedPower = (draftSheet.powers || []).find(p => p.discipline === disc);
+                        return (
+                          <div key={disc}>
+                            <div style={{ display: 'flex', gap: '16px', alignItems: 'center', marginBottom: '8px' }}>
+                              <button type="button"
+                                onClick={() => handleDotClick('disciplines', disc, draftSheet.disciplines[disc] ? 0 : 1)}
+                                style={{
+                                  padding: '12px 24px',
+                                  backgroundColor: draftSheet.disciplines[disc] ? 'color-mix(in srgb, var(--tint) 10%, transparent)' : 'rgba(255,255,255,0.05)',
+                                  border: `1px solid ${draftSheet.disciplines[disc] ? 'color-mix(in srgb, var(--tint) 40%, transparent)' : 'rgba(255,255,255,0.05)'}`,
+                                  borderRadius: '12px',
+                                  color: 'white',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  transition: 'all 0.2s'
+                                }}
+                              >
+                                <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: draftSheet.disciplines[disc] ? 'var(--tint)' : 'rgba(255,255,255,0.2)' }} />
+                                {disc}
+                              </button>
+                              
+                              {draftSheet.disciplines[disc] === 1 && !selectedPower && activeDisciplinePowerSelection !== disc && (
+                                <div style={{ fontSize: '12px', color: 'var(--tint)', cursor: 'pointer', padding: '6px 12px', background: 'color-mix(in srgb, var(--tint) 10%, transparent)', borderRadius: '6px' }} onClick={() => setActiveDisciplinePowerSelection(disc)}>
+                                  Click to select power
+                                </div>
+                              )}
                             </div>
-                          )}
-                          {draftSheet.disciplines[disc] === 1 && !selectedPower && activeDisciplinePowerSelection === disc && (
-                            <InlinePowerSelection 
-                              disciplineName={disc} 
-                              onSelect={(p) => {
-                                setDraftSheet(prev => ({ ...prev, powers: [...(prev.powers || []), { ...p, discipline: disc }] }));
-                                setActiveDisciplinePowerSelection(null);
-                              }} 
-                              onCancel={() => {
-                                setActiveDisciplinePowerSelection(null);
-                                setDraftSheet(prev => ({ ...prev, disciplines: { ...prev.disciplines, [disc]: 0 } }));
-                              }} 
-                            />
-                          )}
-                        </div>
-                      );
-                    })}
-                  </ul>
-                </>
-             )}
+                            
+                            {draftSheet.disciplines[disc] === 1 && selectedPower && (
+                              <div style={{ marginLeft: '16px', padding: '16px', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                <PowerDetailCard 
+                                  power={selectedPower} 
+                                  onClear={() => setDraftSheet(prev => ({ ...prev, powers: (prev.powers || []).filter(p => p.discipline !== disc) }))} 
+                                />
+                              </div>
+                            )}
+                            
+                            {draftSheet.disciplines[disc] === 1 && !selectedPower && activeDisciplinePowerSelection === disc && (
+                              <div style={{ marginLeft: '16px', marginTop: '8px' }}>
+                                <InlinePowerSelection 
+                                  disciplineName={disc} 
+                                  onSelect={(p) => {
+                                    setDraftSheet(prev => ({ ...prev, powers: [...(prev.powers || []), { ...p, discipline: disc }] }));
+                                    setActiveDisciplinePowerSelection(null);
+                                  }} 
+                                  onCancel={() => {
+                                    setActiveDisciplinePowerSelection(null);
+                                    setDraftSheet(prev => ({ ...prev, disciplines: { ...prev.disciplines, [disc]: 0 } }));
+                                  }} 
+                                />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
-             <h3 style={{ color: '#e0dedd', marginBottom: '16px', fontSize: '16px' }}>Review & Finalize</h3>
-             {validationErrors.length === 0 ? (
-               <div style={{ background: 'rgba(62, 207, 142, 0.1)', padding: '16px', borderRadius: '8px', border: '1px solid var(--success)', textAlign: 'center' }}>
-                 <span className="material-symbols-outlined" style={{ color: 'var(--success)', fontSize: '32px', marginBottom: '8px' }}>check_circle</span>
-                 <p style={{ margin: 0, color: '#e0dedd' }}>The character sheet strictly matches the Tier {tier} V5 Template.</p>
-                 <p style={{ margin: '8px 0 0 0', color: 'var(--success)', fontWeight: 'bold' }}>Ready to finalize for {cost} XP.</p>
-               </div>
-             ) : (
-               <div style={{ background: 'rgba(194, 24, 7, 0.2)', padding: '16px', borderRadius: '8px', border: '1px solid #c21807' }}>
-                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
-                   <span className="material-symbols-outlined" style={{ color: '#ffb4a7', marginRight: '8px' }}>error</span>
-                   <strong style={{ color: '#ffb4a7', fontSize: '14px' }}>Template Violations:</strong>
-                 </div>
-                 <ul style={{ margin: 0, paddingLeft: '24px', color: '#e5e2e1', fontSize: '13px', lineHeight: '1.6', columns: 2 }}>
-                   {validationErrors.map((err, i) => <li key={i}>{err}</li>)}
-                 </ul>
-                 <p style={{ marginTop: '16px', fontSize: '12px', color: '#888', fontStyle: 'italic' }}>
-                   You cannot recruit this retainer until all rules are met.
-                 </p>
-               </div>
-             )}
-          </div>
-        )}
+          {/* STEP 3 */}
+          {step === 3 && (
+            <div style={{ animation: 'fadeIn 0.5s ease', position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '32px 0' }}>
+              <div className={styles.reviewSummaryStitch}>
+                <div className={styles.avatarGlowStitch}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '48px', color: 'white' }}>person</span>
+                </div>
+                
+                <div style={{ margin: '24px 0' }}>
+                  <h3 style={{ fontSize: '30px', fontWeight: 'bold', color: 'white', margin: 0 }}>{name || 'Unnamed Retainer'}</h3>
+                  <div style={{ display: 'inline-block', padding: '4px 12px', backgroundColor: 'color-mix(in srgb, var(--tint) 20%, transparent)', border: '1px solid color-mix(in srgb, var(--tint) 30%, transparent)', borderRadius: '99px', color: 'var(--tint)', fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '8px' }}>
+                    Tier {tier} Retainer
+                  </div>
+                </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '16px', marginTop: '24px' }}>
-          <div>
-            <button onClick={onCancel} style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', padding: '8px 0' }}>Cancel Recruitment</button>
-          </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            {step > 1 && (
-              <button onClick={() => setStep(s => s - 1)} style={{ background: 'transparent', border: '1px solid var(--border-color)', color: '#fff', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer' }}>Back</button>
-            )}
-            
-            {step < 2 ? (
-              <button 
-                onClick={() => setStep(s => s + 1)} 
-                disabled={step === 1 && (!name.trim() || !canAfford)}
-                style={{ background: 'var(--tint)', border: 'none', color: '#000', padding: '8px 24px', borderRadius: '6px', cursor: (step === 1 && (!name.trim() || !canAfford)) ? 'not-allowed' : 'pointer', fontWeight: 'bold', opacity: (step === 1 && (!name.trim() || !canAfford)) ? 0.5 : 1 }}
-              >
-                Next Step
-              </button>
-            ) : (
-              <button 
-                onClick={() => onConfirm(name, draftSheet)} 
-                disabled={validationErrors.length > 0 || !canAfford}
-                style={{ background: 'var(--tint)', border: 'none', color: '#000', padding: '8px 24px', borderRadius: '6px', cursor: (validationErrors.length > 0 || !canAfford) ? 'not-allowed' : 'pointer', fontWeight: 'bold', opacity: (validationErrors.length > 0 || !canAfford) ? 0.5 : 1 }}
-              >
-                {isMigration ? "Complete Migration" : `Confirm & Pay ${cost} XP`}
-              </button>
-            )}
-          </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', padding: '24px 0', borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ textAlign: 'left' }}>
+                    <span className={styles.summaryLabelStitch}>Attributes</span>
+                    <span className={styles.summaryValueStitch}>{Object.values(draftSheet.attributes).reduce((a, b) => a + b, 0)} points assigned</span>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <span className={styles.summaryLabelStitch}>Skills</span>
+                    <span className={styles.summaryValueStitch}>{Object.values(draftSheet.skills).reduce((a, b) => a + b, 0)} points assigned</span>
+                  </div>
+                  <div style={{ textAlign: 'left' }}>
+                    <span className={styles.summaryLabelStitch}>Advantages</span>
+                    <span className={styles.summaryValueStitch}>{draftSheet.advantages.length} ({advPoints} pts)</span>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <span className={styles.summaryLabelStitch}>Flaws</span>
+                    <span className={styles.summaryValueStitch}>{draftSheet.flaws.length} ({flawPoints} pts)</span>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: '24px' }}>
+                  {validationErrors.length === 0 ? (
+                    <div className={styles.successBannerStitch}>
+                      <span className="material-symbols-outlined" style={{ color: '#10b981' }}>check_circle</span>
+                      Ready to recruit. All parameters within bounds.
+                    </div>
+                  ) : (
+                    <div className={styles.errorBannerStitch} style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                        <span className="material-symbols-outlined">error</span>
+                        Template Violations Detected
+                      </div>
+                      <ul style={{ margin: 0, paddingLeft: '24px', fontSize: '13px', textAlign: 'left', opacity: 0.8 }}>
+                        {validationErrors.map((err, i) => <li key={i}>{err}</li>)}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className={styles.wizardFooterStitch}>
+          <button 
+            type="button"
+            onClick={() => setStep(Math.max(1, step - 1))}
+            disabled={step === 1}
+            className={styles.btnBackStitch}
+          >
+            <span className="material-symbols-outlined">arrow_back</span> Back
+          </button>
+
+          {step < 3 ? (
+            <button 
+              type="button"
+              onClick={() => setStep(Math.min(3, step + 1))}
+              disabled={step === 1 && (!name.trim() || !canAfford)}
+              className={styles.btnNextStitch}
+            >
+              Next Step
+              <span className="material-symbols-outlined">arrow_forward</span>
+            </button>
+          ) : (
+            <button 
+              type="button"
+              onClick={() => onConfirm(name, draftSheet)}
+              disabled={validationErrors.length > 0 || !canAfford}
+              className={styles.btnNextStitch}
+            >
+              {isMigration ? "Complete Migration" : `Confirm & Pay ${cost} XP`}
+              <span className="material-symbols-outlined">military_tech</span>
+            </button>
+          )}
         </div>
       </div>
     </div>
   );
 };
+
 
 
 // --- MAIN VIEW COMPONENT ---
@@ -949,20 +1160,19 @@ export default function RetainersView() {
     setDraftSheet(prev => ({ ...prev, [type]: { ...prev[type], [statName]: fl } }));
   };
 
-  const handleAddAdvantage = (isFlaw, advObj) => {
+  const handleToggleAdvantageMain = (isFlaw, advObj) => {
     setDraftSheet(prev => {
       const arr = isFlaw ? [...prev.flaws] : [...prev.advantages];
-      arr.push(advObj);
-      return { ...prev, [isFlaw ? 'flaws' : 'advantages']: arr };
-    });
-    if (isFlaw) setShowFlawPickerMain(false);
-    else setShowAdvantagePickerMain(false);
-  };
-
-  const handleRemoveAdvantage = (index, isFlaw) => {
-    setDraftSheet(prev => {
-      const arr = isFlaw ? [...prev.flaws] : [...prev.advantages];
-      arr.splice(index, 1);
+      const idx = arr.findIndex(a => a.id === advObj.id);
+      if (idx !== -1) {
+        if (!advObj.name) {
+           arr.splice(idx, 1);
+        } else {
+           arr[idx] = advObj;
+        }
+      } else if (advObj.name) {
+        arr.push(advObj);
+      }
       return { ...prev, [isFlaw ? 'flaws' : 'advantages']: arr };
     });
   };
@@ -1129,6 +1339,17 @@ export default function RetainersView() {
                         <input type="checkbox" checked={draftSheet.isGhoul} onChange={e => setDraftSheet(p => ({...p, isGhoul: e.target.checked}))} />
                         Is Ghoul? (Unlocks 1 Discipline Dot)
                       </label>
+                      {draftSheet.isGhoul && (
+                        <div style={{ flex: '1 1 100%', padding: '12px', background: 'rgba(194, 24, 7, 0.1)', borderLeft: '3px solid var(--error)', borderRadius: '0 4px 4px 0' }}>
+                          <h5 style={{ margin: '0 0 8px 0', color: '#ffb4a7', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>warning</span>
+                            The Price of the Blood
+                          </h5>
+                          <p style={{ margin: 0, color: '#ffb4a7', fontSize: '12px', lineHeight: '1.4' }}>
+                            Ghouling enforces a Blood Bond (loss of free will) and Vitae addiction. Ghoul-specific Flaws are now available below and can be used to fund extra Advantages.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -1155,7 +1376,12 @@ export default function RetainersView() {
                 
                 {/* Attributes */}
                 <div className={styles.statsBox}>
-                  <h3 className={styles.statsBoxTitle}>Attributes</h3>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <h3 className={styles.statsBoxTitle} style={{ margin: 0 }}>Attributes</h3>
+                    {isEditing && (
+                      <button type="button" onClick={() => setDraftSheet(p => ({ ...p, ...getRandomStats(targetTier) }))} style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '4px', cursor: 'pointer', padding: '4px 8px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px' }}><span className="material-symbols-outlined" style={{ fontSize: '14px' }}>casino</span> Randomize</button>
+                    )}
+                  </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
                     {['Physical', 'Social', 'Mental'].map((cat, idx) => (
                       <div key={cat}>
@@ -1204,42 +1430,54 @@ export default function RetainersView() {
                     <div className={styles.statsBox} style={{ opacity: (isEditing && targetTier === 1) ? 0.5 : 1 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                         <h4 style={{ margin: 0, color: '#fff', fontSize: '14px' }}>Advantages</h4>
-                        {isEditing && targetTier > 1 && !showAdvantagePickerMain && <button onClick={() => setShowAdvantagePickerMain(true)} style={{ background: 'transparent', border: '1px solid var(--border-color)', color: '#fff', borderRadius: '4px', cursor: 'pointer', padding: '4px 8px', fontSize: '11px' }}>+ Add</button>}
                       </div>
-                      {showAdvantagePickerMain && <AdvantagePicker isFlaw={false} onAdd={(adv) => handleAddAdvantage(false, adv)} onCancel={() => setShowAdvantagePickerMain(false)} />}
-                      <ul className={styles.statList}>
-                        {(currentSheet.advantages || []).map((adv, i) => (
-                          <li key={i} className={styles.statRow}>
-                            <span className={styles.statName}>{adv.name}</span>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <SmallDots value={adv.dots} />
-                              {isEditing && <button onClick={() => handleRemoveAdvantage(i, false)} style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer' }}><span className="material-symbols-outlined" style={{ fontSize: '16px' }}>close</span></button>}
-                            </div>
-                          </li>
-                        ))}
-                        {(!currentSheet.advantages || currentSheet.advantages.length === 0) && <li style={{ fontSize: '12px', color: '#e0dedd', opacity: 0.5 }}>No advantages</li>}
-                      </ul>
+                      {isEditing && targetTier > 1 ? (
+                        <InlineMeritsFlawsPicker 
+                          isFlaw={false} 
+                          isGhoul={draftSheet.isGhoul} 
+                          selectedItems={currentSheet.advantages || []} 
+                          onToggle={(adv) => handleToggleAdvantageMain(false, adv)} 
+                        />
+                      ) : (
+                        <ul className={styles.statList}>
+                          {(currentSheet.advantages || []).map((adv, i) => (
+                            <li key={i} className={styles.statRow}>
+                              <span className={styles.statName}>{adv.name}</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <SmallDots value={adv.dots} />
+                              </div>
+                            </li>
+                          ))}
+                          {(!currentSheet.advantages || currentSheet.advantages.length === 0) && <li style={{ fontSize: '12px', color: '#e0dedd', opacity: 0.5 }}>No advantages</li>}
+                        </ul>
+                      )}
                     </div>
 
                     {/* Flaws */}
                     <div className={styles.statsBox} style={{ opacity: (isEditing && targetTier === 1) ? 0.5 : 1 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                         <h4 style={{ margin: 0, color: 'var(--error)', fontSize: '14px' }}>Flaws</h4>
-                        {isEditing && targetTier > 1 && !showFlawPickerMain && <button onClick={() => setShowFlawPickerMain(true)} style={{ background: 'transparent', border: '1px solid var(--error)', color: 'var(--error)', borderRadius: '4px', cursor: 'pointer', padding: '4px 8px', fontSize: '11px' }}>+ Add</button>}
                       </div>
-                      {showFlawPickerMain && <AdvantagePicker isFlaw={true} onAdd={(adv) => handleAddAdvantage(true, adv)} onCancel={() => setShowFlawPickerMain(false)} />}
-                      <ul className={styles.statList}>
-                        {(currentSheet.flaws || []).map((flaw, i) => (
-                          <li key={i} className={styles.statRow}>
-                            <span className={styles.statName} style={{ color: 'var(--error)' }}>{flaw.name}</span>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <SmallDots value={flaw.dots} />
-                              {isEditing && <button onClick={() => handleRemoveAdvantage(i, true)} style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer' }}><span className="material-symbols-outlined" style={{ fontSize: '16px' }}>close</span></button>}
-                            </div>
-                          </li>
-                        ))}
-                        {(!currentSheet.flaws || currentSheet.flaws.length === 0) && <li style={{ fontSize: '12px', color: '#e0dedd', opacity: 0.5 }}>No flaws</li>}
-                      </ul>
+                      {isEditing && targetTier > 1 ? (
+                        <InlineMeritsFlawsPicker 
+                          isFlaw={true} 
+                          isGhoul={draftSheet.isGhoul} 
+                          selectedItems={currentSheet.flaws || []} 
+                          onToggle={(adv) => handleToggleAdvantageMain(true, adv)} 
+                        />
+                      ) : (
+                        <ul className={styles.statList}>
+                          {(currentSheet.flaws || []).map((flaw, i) => (
+                            <li key={i} className={styles.statRow}>
+                              <span className={styles.statName} style={{ color: 'var(--error)' }}>{flaw.name}</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <SmallDots value={flaw.dots} />
+                              </div>
+                            </li>
+                          ))}
+                          {(!currentSheet.flaws || currentSheet.flaws.length === 0) && <li style={{ fontSize: '12px', color: '#e0dedd', opacity: 0.5 }}>No flaws</li>}
+                        </ul>
+                      )}
                     </div>
                 </div>
 
@@ -1338,7 +1576,7 @@ export default function RetainersView() {
                     className={styles.btnPrimary} 
                     onClick={() => handleOpenWizard(selectedRetainer.tier, true, selectedRetainer.id)}
                     style={{ 
-                      background: 'linear-gradient(45deg, #ff00cc, #333399)', 
+                      background: 'linear-gradient(45deg, var(--tint), #333399)', 
                       border: 'none', 
                       boxShadow: '0 0 15px rgba(255,0,204,0.6), inset 0 0 10px rgba(255,255,255,0.2)', 
                       padding: '12px 32px', 

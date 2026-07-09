@@ -21,6 +21,7 @@ import AdminDiceLogsTab from '../components/admin/AdminDiceLogsTab.jsx';
 import AdminDiscordTab from '../components/admin/AdminDiscordTab.jsx'; 
 import AdminNpcEmailTab from '../components/admin/AdminNpcEmailTab.jsx';
 import AdminMasterTab from '../components/admin/AdminMasterTab.jsx';
+import AdminGhoulsTab from '../components/admin/AdminGhoulsTab.jsx';
 
 /* ---------------- Sidebar navigation config ---------------- */
 const NAV_SECTIONS = [
@@ -39,6 +40,7 @@ const NAV_SECTIONS = [
     items: [
       { id: 'npcs',      icon: 'masks', label: 'NPCs' },
       { id: 'npc_email', icon: 'mail', label: 'NPC Email' },
+      { id: 'ghouls',    icon: 'groups', label: 'Ghouls' },
     ],
   },
   {
@@ -186,6 +188,7 @@ export default function Admin() {
   const [premonitions, setPremonitions] = useState([]);
   const [diceRolls, setDiceRolls] = useState([]);
   const [characters, setCharacters] = useState([]);
+  const [ghouls, setGhouls] = useState([]);
   
   // Modal state
   const [editorTarget, setEditorTarget] = useState(null); 
@@ -277,6 +280,12 @@ try {
         const np = await api.get('/admin/npcs');
         setNPCs(np.data.npcs || []);
       } catch (e) { console.error("Failed to load NPCs", e); }
+
+      // Ghouls
+      try {
+        const gh = await api.get('/admin/ghouls');
+        setGhouls(gh.data.ghouls || []);
+      } catch (e) { console.error("Failed to load Ghouls", e); }
 
       // All chat messages (for admin)
       try {
@@ -857,6 +866,9 @@ async function grantXP(character_id, delta) {
           )}
           {tab === 'npc_email' && (
             <AdminNpcEmailTab npcs={npcs} />
+          )}
+          {tab === 'ghouls' && (
+            <AdminGhoulsTab ghouls={ghouls} />
           )}
           {tab === 'chat' && (
             <AdminChatLogsTab 

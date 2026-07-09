@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import api from '../core/api';
-import { NEWS_OUTLETS, GREEK_REPORTERS } from '../constants/newsConstants';
+import { NEWS_OUTLETS } from '../constants/newsConstants';
 import { apiJoin, isVideoUrl } from '../utils/newsUtils';
+import { generateGreekName } from '../utils/nameGenerator';
 import styles from '../styles/News.module.css';
 import EditorToolbar from './EditorToolbar';
 
@@ -12,8 +13,7 @@ export default function CreateNewsModal({ mode, onClose, onSuccess }) {
   const contentRef = useRef(null);
 
   const handleRandomizeName = () => {
-    const randomName = GREEK_REPORTERS[Math.floor(Math.random() * GREEK_REPORTERS.length)];
-    setFormData({ ...formData, journalist_name: randomName });
+    setFormData({ ...formData, journalist_name: generateGreekName() });
   };
 
   const handleSubmit = async (e) => {

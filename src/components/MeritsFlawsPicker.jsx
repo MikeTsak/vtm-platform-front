@@ -224,6 +224,24 @@ export default function MeritsFlawsPicker({
     }
   };
 
+  const onChangeNotes = (item, newNotes) => {
+    if (item.type === 'Merit') {
+      const idx = merits.findIndex(x => x.id === item.id);
+      if (idx > -1) {
+        const arr = [...merits];
+        arr[idx].notes = newNotes;
+        setMerits(arr);
+      }
+    } else {
+      const idx = flaws.findIndex(x => x.id === item.id);
+      if (idx > -1) {
+        const arr = [...flaws];
+        arr[idx].notes = newNotes;
+        setFlaws(arr);
+      }
+    }
+  };
+
   const isPicked = (id, type) =>
     type === 'Merit' ? merits.some(m => m.id === id) : flaws.some(f => f.id === id);
 
@@ -308,6 +326,16 @@ export default function MeritsFlawsPicker({
                     )}
                   </div>
                   <div className={styles.muted} style={{ whiteSpace: 'pre-wrap' }}>{it.description}</div>
+                  {picked && (
+                    <input
+                      type="text"
+                      className={styles.input}
+                      style={{ marginTop: 8, padding: '6px 12px', fontSize: '13px' }}
+                      placeholder="Custom description / notes..."
+                      value={merits.find(m => m.id === it.id)?.notes || ''}
+                      onChange={e => onChangeNotes(it, e.target.value)}
+                    />
+                  )}
                 </div>
               </div>
             );
@@ -368,6 +396,16 @@ export default function MeritsFlawsPicker({
                     )}
                   </div>
                   <div className={styles.muted} style={{ whiteSpace: 'pre-wrap' }}>{it.description}</div>
+                  {picked && (
+                    <input
+                      type="text"
+                      className={styles.input}
+                      style={{ marginTop: 8, padding: '6px 12px', fontSize: '13px' }}
+                      placeholder="Custom description / notes..."
+                      value={flaws.find(f => f.id === it.id)?.notes || ''}
+                      onChange={e => onChangeNotes(it, e.target.value)}
+                    />
+                  )}
                 </div>
               </div>
             );

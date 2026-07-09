@@ -910,6 +910,27 @@ export default function CharacterView({
     }
   }
 
+  const handleUpdateNotes = async (type, idx, newNotes) => {
+    if (!ch || !ch.sheet) return;
+    const nextSheet = JSON.parse(JSON.stringify(ch.sheet));
+    const targetArray = type === 'flaws' ? nextSheet.flaws : nextSheet.advantages;
+    if (targetArray && targetArray[idx]) {
+      targetArray[idx].notes = newNotes;
+      try {
+        await api.put(paths.update, {
+          name: ch.name,
+          clan: ch.clan,
+          sheet: nextSheet
+        });
+        setCh(prev => ({ ...prev, sheet: nextSheet }));
+        setMsg('Notes updated successfully.');
+        setTimeout(() => setMsg(''), 3000);
+      } catch (e) {
+        setErr('Failed to update notes.');
+      }
+    }
+  };
+
   const tint = useMemo(() => (ch ? CLAN_COLORS[ch.clan] || '#8a0f1a' : '#8a0f1a'), [ch]);
   const sheet = useMemo(() => ch?.sheet || {}, [ch]);
   const xp = ch?.xp ?? 0;
@@ -1824,6 +1845,7 @@ export default function CharacterView({
                   knownPowerNamesAndIds={knownPowerNamesAndIds}
                   searchQuery={currentSearch}
                   spendXP={spendXP}
+                  onUpdateNotes={handleUpdateNotes}
                 />
               </div>
             )}
