@@ -97,6 +97,7 @@ const NAV_CARDS = [
   { to: '/court/coteries', icon: 'groups', title: 'Coteries', sub: 'Manage Group', img: 'marble_coteries'     },
   { to: '/court/hierarchy', icon: 'gavel', title: 'Court',  sub: 'Hierarchy', img: 'marble_court'         },
   { to: '/news',      icon: 'article', title: 'News',          sub: 'Archive', img: 'marble_news'           },
+  { to: '/retainers', icon: 'person_add', title: 'Retainers',  sub: 'Manage Servants', img: 'marble_retainers' },
 ];
 
 /* ── Mini Split Damage Bar ──────────────────────────────────────── */

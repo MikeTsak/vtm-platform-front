@@ -150,7 +150,7 @@ function AppLayout() {
         <Routes>
           <Route path="/" element={<Private><Home /></Private>} />
           <Route path="/character" element={<Private><CharacterView /></Private>} />
-          <Route path="/character/retainers" element={<Private><RetainersView /></Private>} />
+          <Route path="/retainers" element={<Private><RetainersView /></Private>} />
           <Route path="/make" element={<Private><CharacterSetup /></Private>} />
           <Route path="/domains" element={<Private><Domains /></Private>} />
           <Route path="/downtimes" element={<Private><DownTimes /></Private>} />

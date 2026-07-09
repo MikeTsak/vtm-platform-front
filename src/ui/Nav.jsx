@@ -152,7 +152,7 @@ export default function Nav() {
                   {canSeePremonitions && (
                     <NavLink to="/premonitions" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Premonitions</NavLink>
                   )}
-                  <NavLink to="/character/retainers" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Retainers</NavLink>
+                  <NavLink to="/retainers" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Retainers</NavLink>
                 </NavDropdown>
 
                 <NavDropdown title="Athens" icon="account_balance" isMobile={false}>
@@ -227,7 +227,7 @@ export default function Nav() {
                 {canSeePremonitions && (
                   <NavLink to="/premonitions" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Premonitions</NavLink>
                 )}
-                <NavLink to="/character/retainers" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Retainers</NavLink>
+                <NavLink to="/retainers" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Retainers</NavLink>
               </NavDropdown>
 
               <NavDropdown title="Athens" icon="account_balance" isMobile={true} isOpen={openMobileDropdown === 'Athens'} toggleOpen={() => handleMobileDropdownToggle('Athens')}>

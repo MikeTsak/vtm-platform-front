@@ -1419,7 +1419,7 @@ export default function CharacterView({
                     flawIds={flawIds}
                   />
                   <div style={{ marginTop: '16px', textAlign: 'center' }}>
-                    <button className={styles.cta} onClick={() => navigate('/character/retainers', { state: { character: ch, sheet } })}>
+                    <button className={styles.cta} onClick={() => navigate('/retainers', { state: { character: ch, sheet } })}>
                       Retainer Marketplace
                     </button>
                   </div>

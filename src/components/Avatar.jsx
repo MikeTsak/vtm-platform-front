@@ -4,7 +4,7 @@ import styles from './Avatar.module.css';
 
 const avatarTimestamps = new Map();
 
-export default function Avatar({ userId, npcId, identityId, retainerId, size = 80, editable = false, onUploadSuccess, style = {}, className = "", imgClassName = "", imgStyle = {}, fallback = '/img/ATT-logo(1).png' }) {
+export default function Avatar({ userId, npcId, identityId, retainerId, size = 80, editable = false, onUploadSuccess, onFileSelect, previewUrl, style = {}, className = "", imgClassName = "", imgStyle = {}, fallback = '/img/ATT-logo(1).png' }) {
   const entityKey = userId ? `u_${userId}` : (npcId ? `n_${npcId}` : (retainerId ? `r_${retainerId}` : `i_${identityId}`));
   const [timestamp, setTimestamp] = useState(() => avatarTimestamps.get(entityKey) || '');
   const [isUploading, setIsUploading] = useState(false);
@@ -12,8 +12,8 @@ export default function Avatar({ userId, npcId, identityId, retainerId, size = 8
   const fileInputRef = useRef(null);
 
   const baseUrl = process.env.REACT_APP_API_URL || '';
-  let srcUrl = fallback;
-  if (!imgError) {
+  let srcUrl = previewUrl || fallback;
+  if (!imgError && !previewUrl) {
     const q = timestamp ? `?t=${timestamp}` : '';
     if (userId) srcUrl = `${baseUrl}/users/${userId}/avatar${q}`;
     else if (npcId) srcUrl = `${baseUrl}/npcs/${npcId}/avatar${q}`;
@@ -34,6 +34,11 @@ export default function Avatar({ userId, npcId, identityId, retainerId, size = 8
     // Validate size (e.g., 5MB)
     if (file.size > 5 * 1024 * 1024) {
       alert('File is too large. Maximum size is 5MB.');
+      return;
+    }
+
+    if (onFileSelect) {
+      onFileSelect(file);
       return;
     }
 

@@ -4,7 +4,7 @@ import api from '../core/api';
 import styles from '../styles/RetainersView.module.css';
 import Avatar from '../components/Avatar';
 import { DISCIPLINES, iconPath } from '../data/disciplines';
-import { RETAINER_MERITS_AND_FLAWS, allSelectableAdvantages } from '../data/merits_flaws_retainers';
+import { allSelectableAdvantages } from '../data/merits_flaws_retainers';
 import { generateGreekName } from '../utils/nameGenerator';
 
 const CLAN_DISCIPLINES = {
@@ -425,20 +425,23 @@ const getValidationErrors = (draftSheet, tier) => {
 
 // --- MULTI-STEP WIZARD COMPONENT ---
 
-const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel, onConfirm, isMigration }) => {
+const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel, onConfirm, isMigration, isAdminBypass, initialName, initialSheet, minTier = 1, onChangeTier }) => {
   const [step, setStep] = useState(1);
   const [name, setName] = useState('');
   const [draftSheet, setDraftSheet] = useState({ attributes: {}, skills: {}, disciplines: {}, advantages: [], flaws: [], isGhoul: false, powers: [] });
   const [activeDisciplinePowerSelection, setActiveDisciplinePowerSelection] = useState(null);
+  const [pendingAvatar, setPendingAvatar] = useState(null);
+  
 
   useEffect(() => {
     if (isOpen) {
       setStep(1);
-      setName('');
-      setDraftSheet({ attributes: {}, skills: {}, disciplines: {}, advantages: [], flaws: [], isGhoul: false, powers: [] });
+      setName(initialName || '');
+      setDraftSheet(initialSheet ? JSON.parse(JSON.stringify(initialSheet)) : { attributes: {}, skills: {}, disciplines: {}, advantages: [], flaws: [], isGhoul: false, powers: [] });
       setActiveDisciplinePowerSelection(null);
+      setPendingAvatar(null);
     }
-  }, [isOpen]);
+  }, [isOpen, initialName, initialSheet]);
 
   const canAfford = isMigration || domitorXp >= cost;
   const validationErrors = getValidationErrors(draftSheet, tier);
@@ -776,7 +779,7 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
                                   transition: 'all 0.2s'
                                 }}
                               >
-                                <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: draftSheet.disciplines[disc] ? 'var(--tint)' : 'rgba(255,255,255,0.2)' }} />
+                                <img src={iconPath(disc)} alt={disc} style={{ width: '24px', height: '24px', objectFit: 'contain', opacity: draftSheet.disciplines[disc] ? 1 : 0.3 }} />
                                 {disc}
                               </button>
                               
@@ -825,9 +828,28 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
           {step === 3 && (
             <div style={{ animation: 'fadeIn 0.5s ease', position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '32px 0' }}>
               <div className={styles.reviewSummaryStitch}>
-                <div className={styles.avatarGlowStitch}>
-                  <span className="material-symbols-outlined" style={{ fontSize: '48px', color: 'white' }}>person</span>
+                <div className={styles.avatarGlowStitch} style={{ padding: pendingAvatar ? 0 : undefined, overflow: 'hidden' }}>
+                  {pendingAvatar ? (
+                    <Avatar 
+                      retainerId={null} 
+                      editable={true} 
+                      size={100} 
+                      style={{ borderRadius: '50%' }}
+                      previewUrl={URL.createObjectURL(pendingAvatar)}
+                      onFileSelect={setPendingAvatar}
+                    />
+                  ) : (
+                    <div onClick={() => document.getElementById('newAvatarInput').click()} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '48px', color: 'white' }}>person</span>
+                      <input id="newAvatarInput" type="file" style={{ display: 'none' }} accept="image/*" onChange={(e) => { if(e.target.files[0]) setPendingAvatar(e.target.files[0]) }} />
+                    </div>
+                  )}
                 </div>
+                {!pendingAvatar && (
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px' }}>
+                    Click to add avatar
+                  </div>
+                )}
                 
                 <div style={{ margin: '24px 0' }}>
                   <h3 style={{ fontSize: '30px', fontWeight: 'bold', color: 'white', margin: 0 }}>{name || 'Unnamed Retainer'}</h3>
@@ -836,24 +858,53 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', padding: '24px 0', borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                  <div style={{ textAlign: 'left' }}>
-                    <span className={styles.summaryLabelStitch}>Attributes</span>
-                    <span className={styles.summaryValueStitch}>{Object.values(draftSheet.attributes).reduce((a, b) => a + b, 0)} points assigned</span>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <span className={styles.summaryLabelStitch}>Skills</span>
-                    <span className={styles.summaryValueStitch}>{Object.values(draftSheet.skills).reduce((a, b) => a + b, 0)} points assigned</span>
-                  </div>
-                  <div style={{ textAlign: 'left' }}>
-                    <span className={styles.summaryLabelStitch}>Advantages</span>
-                    <span className={styles.summaryValueStitch}>{draftSheet.advantages.length} ({advPoints} pts)</span>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <span className={styles.summaryLabelStitch}>Flaws</span>
-                    <span className={styles.summaryValueStitch}>{draftSheet.flaws.length} ({flawPoints} pts)</span>
-                  </div>
-                </div>
+                {(() => {
+                    const stamina = draftSheet.attributes['Stamina'] || 1;
+                    let health = stamina + 3;
+                    if (draftSheet.isGhoul && draftSheet.flaws.some(f => f.name === "Crone's Curse")) {
+                      health -= 1;
+                    }
+                    if (draftSheet.isGhoul && draftSheet.powers && draftSheet.powers.some(p => p.discipline === 'Fortitude' && p.name === 'Resilience')) {
+                      health += (draftSheet.disciplines['Fortitude'] || 1);
+                    }
+                    const willpower = (draftSheet.attributes['Composure'] || 1) + (draftSheet.attributes['Resolve'] || 1);
+                    return (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', padding: '24px 0', borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                          <div style={{ textAlign: 'left' }}>
+                            <span className={styles.summaryLabelStitch}>Health</span>
+                            <div style={{ display: 'flex', gap: '4px', marginTop: '8px' }}>
+                              {Array.from({ length: health }).map((_, i) => (
+                                <div key={i} style={{ width: '14px', height: '14px', border: '1px solid rgba(255,255,255,0.5)', backgroundColor: 'transparent' }} />
+                              ))}
+                            </div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <span className={styles.summaryLabelStitch}>Willpower</span>
+                            <div style={{ display: 'flex', gap: '4px', marginTop: '8px', justifyContent: 'flex-end' }}>
+                              {Array.from({ length: willpower }).map((_, i) => (
+                                <div key={i} style={{ width: '14px', height: '14px', border: '1px solid rgba(255,255,255,0.5)', backgroundColor: 'transparent' }} />
+                              ))}
+                            </div>
+                          </div>
+                          <div style={{ textAlign: 'left' }}>
+                            <span className={styles.summaryLabelStitch}>Attributes</span>
+                            <span className={styles.summaryValueStitch}>{Object.values(draftSheet.attributes).reduce((a, b) => a + b, 0)} points assigned</span>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <span className={styles.summaryLabelStitch}>Skills</span>
+                            <span className={styles.summaryValueStitch}>{Object.values(draftSheet.skills).reduce((a, b) => a + b, 0)} points assigned</span>
+                          </div>
+                          <div style={{ textAlign: 'left' }}>
+                            <span className={styles.summaryLabelStitch}>Advantages</span>
+                            <span className={styles.summaryValueStitch}>{draftSheet.advantages.length} ({advPoints} pts)</span>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <span className={styles.summaryLabelStitch}>Flaws</span>
+                            <span className={styles.summaryValueStitch}>{draftSheet.flaws.length} ({flawPoints} pts)</span>
+                          </div>
+                        </div>
+                    )
+                  })()}
 
                 <div style={{ marginTop: '24px' }}>
                   {validationErrors.length === 0 ? (
@@ -892,7 +943,7 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
             <button 
               type="button"
               onClick={() => setStep(Math.min(3, step + 1))}
-              disabled={step === 1 && (!name.trim() || !canAfford)}
+              disabled={step === 1 && (!name.trim() || (!isAdminBypass && !canAfford))}
               className={styles.btnNextStitch}
             >
               Next Step
@@ -901,8 +952,8 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
           ) : (
             <button 
               type="button"
-              onClick={() => onConfirm(name, draftSheet)}
-              disabled={validationErrors.length > 0 || !canAfford}
+              onClick={() => onConfirm(name, draftSheet, pendingAvatar)}
+              disabled={validationErrors.length > 0 || (!isAdminBypass && !canAfford)}
               className={styles.btnNextStitch}
             >
               {isMigration ? "Complete Migration" : `Confirm & Pay ${cost} XP`}
@@ -922,23 +973,24 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
 export default function RetainersView() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { character: stateCharacter } = location.state || {};
+  const { character: stateCharacter, preselectRetainerId, isAdminBypass } = location.state || {};
 
   const [character, setCharacter] = useState(stateCharacter || null);
   const [retainers, setRetainers] = useState([]);
-  const [selectedRetainerId, setSelectedRetainerId] = useState(null);
+  const [selectedRetainerId, setSelectedRetainerId] = useState(preselectRetainerId || null);
+  
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeDisciplinePowerSelection, setActiveDisciplinePowerSelection] = useState(null);
+  
 
   // Edit Mode State (for updating existing retainers)
   const [isEditing, setIsEditing] = useState(false);
   const [draftSheet, setDraftSheet] = useState(null);
-  const [showAdvantagePickerMain, setShowAdvantagePickerMain] = useState(false);
-  const [showFlawPickerMain, setShowFlawPickerMain] = useState(false);
+
   
   // Wizard State (for creating new retainers)
-  const [wizardConfig, setWizardConfig] = useState({ isOpen: false, tier: 1, isMigration: false, migrationId: null });
+  const [wizardConfig, setWizardConfig] = useState({ isOpen: false, tier: 1, isMigration: false, isUpgrade: false, migrationId: null });
 
   useEffect(() => {
     let active = true;
@@ -990,33 +1042,59 @@ export default function RetainersView() {
     return CLAN_DISCIPLINES[character.clan] || [];
   }, [character]);
 
-  const handleOpenWizard = (tier, isMigration = false, migrationId = null) => {
-    setWizardConfig({ isOpen: true, tier, isMigration, migrationId });
+  const handleOpenWizard = (tier, isMigration = false, migrationId = null, isUpgrade = false) => {
+    setWizardConfig({ isOpen: true, tier, isMigration, isUpgrade, migrationId });
   };
 
-  const handleWizardConfirm = async (name, newSheet) => {
+  const handleWizardConfirm = async (name, newSheet, pendingAvatar) => {
     const tier = wizardConfig.tier;
     const cost = tier * 3;
     
     try {
       setSaving(true);
 
-      if (wizardConfig.isMigration) {
-        const res = await api.put(`/retainers/${wizardConfig.migrationId}`, {
+      if (wizardConfig.isMigration || wizardConfig.isUpgrade) {
+        const oldRetainer = retainers.find(r => r.id === wizardConfig.migrationId);
+        const tierDiff = tier - (oldRetainer?.tier || 0);
+        
+        if (wizardConfig.isUpgrade && !isAdminBypass && tierDiff > 0) {
+          await api.post(`/characters/xp/spend`, {
+            type: 'advantage',
+            target: `Upgrade Retainer ${name} to Tier ${tier}`,
+            dots: tierDiff
+          });
+          setCharacter(prev => ({ ...prev, xp: prev.xp - (tierDiff * 3) }));
+        }
+
+        const endpoint = (!isAdminBypass && wizardConfig.isUpgrade) 
+          ? `/retainers/${wizardConfig.migrationId}/upgrade` 
+          : `/retainers/${wizardConfig.migrationId}`;
+          
+        const res = await api.put(endpoint, {
           name,
           tier,
           sheet: newSheet,
-          xp: 0
+          xp: oldRetainer?.xp || 0
         });
         const updatedRetainer = res.data;
         setRetainers(retainers.map(r => r.id === updatedRetainer.id ? updatedRetainer : r));
         setSelectedRetainerId(updatedRetainer.id);
+        
+        if (pendingAvatar) {
+          const formData = new FormData();
+          formData.append('avatar', pendingAvatar);
+          await api.put(`/retainers/${updatedRetainer.id}/avatar`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
+        }
       } else {
-        await api.post(`/characters/xp/spend`, {
-          type: 'advantage',
-          target: `Recruit Tier ${tier} Retainer: ${name}`,
-          dots: tier
-        });
+        if (!isAdminBypass) {
+          await api.post(`/characters/xp/spend`, {
+            type: 'advantage',
+            target: `Recruit Tier ${tier} Retainer: ${name}`,
+            dots: tier
+          });
+        }
         const res = await api.post(`/characters/${character.id}/retainers`, {
           name,
           tier,
@@ -1027,7 +1105,17 @@ export default function RetainersView() {
         const newRetainer = res.data;
         setRetainers([...retainers, newRetainer]);
         setSelectedRetainerId(newRetainer.id);
-        setCharacter(prev => ({ ...prev, xp: prev.xp - cost }));
+        if (!isAdminBypass) {
+          setCharacter(prev => ({ ...prev, xp: prev.xp - cost }));
+        }
+        
+        if (pendingAvatar) {
+          const formData = new FormData();
+          formData.append('avatar', pendingAvatar);
+          await api.put(`/retainers/${newRetainer.id}/avatar`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
+        }
       }
       
       // Close wizard
@@ -1184,7 +1272,7 @@ export default function RetainersView() {
   // Calculate upgrade cost dynamically
   const targetTier = draftSheet?.targetTier || selectedRetainer?.tier;
   const upgradeCost = targetTier > (selectedRetainer?.tier || 0) ? (targetTier - selectedRetainer.tier) * 3 : 0;
-  const canAffordUpgrade = (character?.xp || 0) >= upgradeCost;
+  const canAffordUpgrade = isAdminBypass || (character?.xp || 0) >= upgradeCost;
 
   if (loading) return <div style={{ padding: 40, color: '#fff' }}>Loading retainers...</div>;
   if (!character) return null;
@@ -1198,6 +1286,10 @@ export default function RetainersView() {
         domitorXp={character.xp || 0}
         clanDisciplines={clanDisciplines}
         isMigration={wizardConfig.isMigration}
+          isAdminBypass={isAdminBypass}
+          initialName={selectedRetainer?.name}
+          initialSheet={selectedRetainer?.sheet}
+          minTier={selectedRetainer?.tier || 1}
         onCancel={() => setWizardConfig({ isOpen: false, tier: 1, isMigration: false, migrationId: null })}
         onConfirm={handleWizardConfirm}
       />
@@ -1208,10 +1300,10 @@ export default function RetainersView() {
         <div className={styles.leftColumn}>
           
           <div className={styles.header}>
-            <h2 className={styles.title}>Retainers</h2>
+            <h2 className={styles.title}>Retainers {isAdminBypass && <span style={{fontSize:"12px", color:"var(--error)", border:"1px solid var(--error)", padding:"2px 6px", borderRadius:"4px", marginLeft:"8px", verticalAlign:"middle"}}>ADMIN MODE</span>}</h2>
             <div className={styles.xpBadge}>
               <span className="material-symbols-outlined" style={{ color: 'var(--tint)', fontSize: '16px' }}>stars</span>
-              <span className={styles.xpBadgeText}>Available XP: {character.xp || 0}</span>
+              <span className={styles.xpBadgeText}>{isAdminBypass ? "XP Costs Bypassed" : `Available XP: ${character.xp || 0}`}</span>
             </div>
           </div>
           
@@ -1325,7 +1417,7 @@ export default function RetainersView() {
                              disabled={saving || validationErrors.length > 0 || !canAffordUpgrade} 
                              style={{ backgroundColor: (validationErrors.length > 0 || !canAffordUpgrade) ? 'var(--surface-variant)' : '' }}
                            >
-                             {upgradeCost > 0 ? `Pay ${upgradeCost} XP & Save` : 'Save Sheet'}
+                             {upgradeCost > 0 && !isAdminBypass ? `Pay ${upgradeCost} XP & Save` : 'Save Sheet'}
                            </button>
                            <button className={`${styles.btnPrimary} ${styles.btnDanger}`} onClick={cancelEditing} disabled={saving}>Cancel</button>
                          </>
@@ -1382,7 +1474,7 @@ export default function RetainersView() {
                       <button type="button" onClick={() => setDraftSheet(p => ({ ...p, ...getRandomStats(targetTier) }))} style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '4px', cursor: 'pointer', padding: '4px 8px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px' }}><span className="material-symbols-outlined" style={{ fontSize: '14px' }}>casino</span> Randomize</button>
                     )}
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
+                  <div className={styles.statsGrid}>
                     {['Physical', 'Social', 'Mental'].map((cat, idx) => (
                       <div key={cat}>
                         <div style={{ fontSize: '10px', textTransform: 'uppercase', color: '#e0dedd', opacity: 0.6, marginBottom: '12px', letterSpacing: '1px', fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '4px' }}>{cat}</div>
@@ -1405,7 +1497,7 @@ export default function RetainersView() {
                 {/* Skills */}
                 <div className={styles.statsBox}>
                   <h3 className={styles.statsBoxTitle}>Skills</h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
+                  <div className={styles.statsGrid}>
                     {Object.entries(SKILLS).map(([cat, skills]) => (
                       <div key={cat}>
                         <div style={{ fontSize: '10px', textTransform: 'uppercase', color: '#e0dedd', opacity: 0.6, marginBottom: '12px', letterSpacing: '1px', fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '4px' }}>{cat}</div>
