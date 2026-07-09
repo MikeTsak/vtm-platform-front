@@ -4,8 +4,8 @@ import styles from './Avatar.module.css';
 
 const avatarTimestamps = new Map();
 
-export default function Avatar({ userId, npcId, identityId, size = 80, editable = false, onUploadSuccess, style = {}, className = "", imgClassName = "", imgStyle = {}, fallback = '/img/ATT-logo(1).png' }) {
-  const entityKey = userId ? `u_${userId}` : (npcId ? `n_${npcId}` : `i_${identityId}`);
+export default function Avatar({ userId, npcId, identityId, retainerId, size = 80, editable = false, onUploadSuccess, style = {}, className = "", imgClassName = "", imgStyle = {}, fallback = '/img/ATT-logo(1).png' }) {
+  const entityKey = userId ? `u_${userId}` : (npcId ? `n_${npcId}` : (retainerId ? `r_${retainerId}` : `i_${identityId}`));
   const [timestamp, setTimestamp] = useState(() => avatarTimestamps.get(entityKey) || '');
   const [isUploading, setIsUploading] = useState(false);
   const [imgError, setImgError] = useState(false);
@@ -17,6 +17,7 @@ export default function Avatar({ userId, npcId, identityId, size = 80, editable 
     const q = timestamp ? `?t=${timestamp}` : '';
     if (userId) srcUrl = `${baseUrl}/users/${userId}/avatar${q}`;
     else if (npcId) srcUrl = `${baseUrl}/npcs/${npcId}/avatar${q}`;
+    else if (retainerId) srcUrl = `${baseUrl}/retainers/${retainerId}/avatar${q}`;
     else if (identityId) srcUrl = `${baseUrl}/identities/${identityId}/avatar${q}`;
   }
 
@@ -41,7 +42,7 @@ export default function Avatar({ userId, npcId, identityId, size = 80, editable 
       const formData = new FormData();
       formData.append('avatar', file);
 
-      const endpoint = userId ? `/users/${userId}/avatar` : (npcId ? `/npcs/${npcId}/avatar` : `/identities/${identityId}/avatar`);
+      const endpoint = userId ? `/users/${userId}/avatar` : (npcId ? `/npcs/${npcId}/avatar` : (retainerId ? `/retainers/${retainerId}/avatar` : `/identities/${identityId}/avatar`));
       await api.put(endpoint, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',

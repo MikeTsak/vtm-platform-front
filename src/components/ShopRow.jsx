@@ -16,7 +16,7 @@ export function ConfirmModal({ title = 'Confirm Purchase', children, onConfirm, 
   );
 }
 
-export function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, leftIcon, description = '', noConfirm = false, forceExpanded = false, children }) {
+export function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, leftIcon, description = '', noConfirm = false, forceExpanded = false, hideDots = false, children }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [working, setWorking] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -51,13 +51,15 @@ export function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, lef
           <span className={`material-symbols-outlined ${styles.expandIcon}`}>expand_more</span>
         </div>
 
-        <div className={styles.shopCardDots}>
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className={`${styles.shopDot} ${i < targetLevel ? styles.shopDotFilled : ''}`}>
-              {i < targetLevel - 1 && <span className={styles.shopDotX}>X</span>}
-            </div>
-          ))}
-        </div>
+        {!hideDots && (
+          <div className={styles.shopCardDots}>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className={`${styles.shopDot} ${i < targetLevel ? styles.shopDotFilled : ''}`}>
+                {i < targetLevel - 1 && <span className={styles.shopDotX}>X</span>}
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className={styles.shopCardFooter}>
           <span className={styles.shopCardPrice}>{cost} XP</span>

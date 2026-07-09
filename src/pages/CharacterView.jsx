@@ -1397,6 +1397,11 @@ export default function CharacterView({
                     allFlawsFlat={allFlawsFlat}
                     flawIds={flawIds}
                   />
+                  <div style={{ marginTop: '16px', textAlign: 'center' }}>
+                    <button className={styles.cta} onClick={() => navigate('/character/retainers', { state: { character: ch, sheet } })}>
+                      Retainer Marketplace
+                    </button>
+                  </div>
                 </div>
                 <div style={{ marginTop: '24px' }}>
                   <TouchstonesConvictionsSection sheet={sheet} setMoralityModalOpen={setMoralityModalOpen} />

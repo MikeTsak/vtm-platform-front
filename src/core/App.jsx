@@ -35,6 +35,7 @@ import SurfaceWeb from '../pages/SurfaceWeb';
 import Admin from '../pages/Admin';
 import NPCs from '../pages/NPCs';
 import AdminNPCView from '../components/AdminNPCView.jsx';
+import RetainersView from '../pages/RetainersView';
 import ForgotPassword from '../features/auth/ForgotPassword';
 import ResetPassword from '../features/auth/ResetPassword';
 import Terms from '../pages/Terms';
@@ -149,6 +150,7 @@ function AppLayout() {
         <Routes>
           <Route path="/" element={<Private><Home /></Private>} />
           <Route path="/character" element={<Private><CharacterView /></Private>} />
+          <Route path="/character/retainers" element={<Private><RetainersView /></Private>} />
           <Route path="/make" element={<Private><CharacterSetup /></Private>} />
           <Route path="/domains" element={<Private><Domains /></Private>} />
           <Route path="/downtimes" element={<Private><DownTimes /></Private>} />

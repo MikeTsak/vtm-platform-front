@@ -147,11 +147,12 @@ export default function Nav() {
             {user && (
               <>
                 <NavDropdown title="Personal" icon="person" isMobile={false}>
-                  <NavLink to="/character" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Character Sheet</NavLink>
+                  <NavLink end to="/character" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Character Sheet</NavLink>
                   <NavLink to="/downtimes" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Actions & Projects</NavLink>
                   {canSeePremonitions && (
                     <NavLink to="/premonitions" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Premonitions</NavLink>
                   )}
+                  <NavLink to="/character/retainers" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Retainers</NavLink>
                 </NavDropdown>
 
                 <NavDropdown title="Athens" icon="account_balance" isMobile={false}>
@@ -221,11 +222,12 @@ export default function Nav() {
           {user && (
             <div className="space-y-1 flex-grow">
               <NavDropdown title="Personal" icon="person" isMobile={true} isOpen={openMobileDropdown === 'Personal'} toggleOpen={() => handleMobileDropdownToggle('Personal')}>
-                <NavLink to="/character" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Character Sheet</NavLink>
+                <NavLink end to="/character" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Character Sheet</NavLink>
                 <NavLink to="/downtimes" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Actions & Projects</NavLink>
                 {canSeePremonitions && (
                   <NavLink to="/premonitions" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Premonitions</NavLink>
                 )}
+                <NavLink to="/character/retainers" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Retainers</NavLink>
               </NavDropdown>
 
               <NavDropdown title="Athens" icon="account_balance" isMobile={true} isOpen={openMobileDropdown === 'Athens'} toggleOpen={() => handleMobileDropdownToggle('Athens')}>
