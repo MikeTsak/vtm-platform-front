@@ -1080,10 +1080,10 @@
 
 /* EVENT CARD */
 .eventCard {
-  background-color: #e8dbce;
+  background-color: #e0dcd6;
   background-size: cover;
-  background-position: top center;
-  color: #222;
+  background-position: center;
+  color: #111;
   border-radius: 4px;
   padding: 1.5rem;
   display: flex;
@@ -1098,7 +1098,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: rgba(232, 219, 206, 0.72);
+  background: rgba(240, 237, 232, 0.30);
   pointer-events: none;
   z-index: 0;
 }
