@@ -1,127 +1,79 @@
-// src/pages/auth/Register.jsx
-import React, { useRef, useState } from 'react';
+import React, { useContext, useRef, useState } from 'react';
+import { AuthCtx } from '../../core/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import api from '../../core/api';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { useMutation } from '@tanstack/react-query';
+import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 import styles from '../../styles/auth/Login.module.css';
-import { trackEvent } from '../../utils/analytics';
+
+const registerSchema = z.object({
+  email: z.string().email('Please enter a valid email address'),
+  display_name: z.string().min(2, 'Display name must be at least 2 characters'),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Za-z]/, 'Password must include a letter')
+    .regex(/[0-9]/, 'Password must include a number'),
+  agreedToTerms: z.literal(true, {
+    errorMap: () => ({ message: 'You must agree to the Terms & Conditions and Privacy Policy' })
+  }),
+});
 
 export default function Register() {
-  const [email, setEmail] = useState('');
-  const [display_name, setDisplayName] = useState('');
-  const [password, setPassword] = useState('');
-  const [errors, setErrors] = useState([]);
-  const [showPwd, setShowPwd] = useState(false);
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const { register: registerAction } = useContext(AuthCtx);
   const nav = useNavigate();
+  const [showPwd, setShowPwd] = useState(false);
   const pwdRef = useRef(null);
 
-  // --- helpers ---
-  const validate = () => {
-    const msgs = [];
-    const em = email.trim();
-    const dn = display_name.trim();
-    const pw = password;
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      email: '',
+      display_name: '',
+      password: '',
+      agreedToTerms: false,
+    },
+  });
 
-    if (!em) msgs.push('Email is required.');
-    else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) msgs.push('Email format looks invalid.');
+  const registerMutation = useMutation({
+    mutationFn: async (data) => {
+      // Passes the form data to AuthContext's register function
+      await registerAction(data.email, data.display_name, data.password);
+      return data;
+    },
+    onSuccess: () => {
+      toast.success('Registration successful! Welcome to the Court.');
+      nav('/');
+    },
+    onError: (error) => {
+      const status = error?.response?.status;
+      const data = error?.response?.data;
+      let errMsg = 'Registration failed. Please try again.';
+      
+      if (status === 409) errMsg = 'This email may already be registered.';
+      else if (data?.error) errMsg = data.error;
+      else if (data?.message) errMsg = data.message;
+      
+      toast.error(errMsg);
+    },
+  });
 
-    if (!dn) msgs.push('Display name is required.');
-    else if (dn.length < 2) msgs.push('Display name must be at least 2 characters.');
-
-    if (!pw) msgs.push('Password is required.');
-    else if (pw.length < 8) msgs.push('Password must be at least 8 characters.');
-    else {
-      if (!/[A-Za-z]/.test(pw)) msgs.push('Password must include a letter.');
-      if (!/[0-9]/.test(pw)) msgs.push('Password must include a number.');
-    }
-
-    if (!agreedToTerms) msgs.push('You must agree to the Terms & Conditions and Privacy Policy.');
-
-    return msgs;
-  };
-
-  const normalizeServerErrors = (err) => {
-    const list = [];
-    const status = err?.response?.status;
-    const data = err?.response?.data;
-
-    if (typeof data === 'string') list.push(data);
-    const msg = data?.error || data?.message || err?.message;
-    if (msg) list.push(msg);
-
-    if (data?.errors && typeof data.errors === 'object') {
-      Object.entries(data.errors).forEach(([field, val]) => {
-        if (!val) return;
-        if (Array.isArray(val)) val.forEach(v => list.push(`${field}: ${v}`));
-        else list.push(`${field}: ${val}`);
-      });
-    }
-    if (Array.isArray(data?.errors)) {
-      data.errors.forEach(e => {
-        if (e?.field && e?.msg) list.push(`${e.field}: ${e.msg}`);
-        else if (e?.msg) list.push(e.msg);
-      });
-    }
-
-    if (status === 409) list.push('This email may already be registered.');
-    if (status === 400) list.push('The server rejected some inputs. Please review and try again.');
-
-    return Array.from(new Set(list.filter(Boolean)));
+  const onSubmit = (data) => {
+    registerMutation.mutate(data);
   };
 
   const toggleShowPwd = () => {
-    const el = pwdRef.current;
-    const sel = el ? { s: el.selectionStart, e: el.selectionEnd } : null;
-    setShowPwd(v => !v);
-    requestAnimationFrame(() => {
-      if (!el) return;
-      el.focus({ preventScroll: true });
-      try { if (sel) el.setSelectionRange(sel.s, sel.e); } catch {}
-    });
+    setShowPwd((prev) => !prev);
   };
 
-  const submit = async (e) => {
-    e.preventDefault();
-    setErrors([]);
-
-    const clientIssues = validate();
-    if (clientIssues.length) {
-      setErrors(clientIssues);
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      // backend route is /api/auth/register; our axios base is /api
-      const payload = {
-        email: email.trim().toLowerCase(),
-        display_name: display_name.trim(),
-        password,
-      };
-      const { data } = await api.post('/auth/register', payload);
-
-      const token = data?.token;
-      if (!token) {
-        setErrors(['Register failed: no token returned.']);
-        setSubmitting(false);
-        return;
-      }
-
-      // store & set default header
-      localStorage.setItem('token', token);
-      api.defaults.headers.common.Authorization = `Bearer ${token}`;
-
-      trackEvent('sign_up', { method: 'email' });
-
-      nav('/'); // success
-    } catch (e) {
-      const msgs = normalizeServerErrors(e);
-      setErrors(msgs.length ? msgs : ['Register failed. Please try again.']);
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  const { ref: pwdRegisterRef, ...pwdRest } = register('password');
 
   return (
     <div className={`${styles['login-page']} ${styles['vamp-bg']}`}>
@@ -137,29 +89,26 @@ export default function Register() {
       </header>
 
       <main className={styles['login-main']}>
-        <form onSubmit={submit} className={styles['login-card']}>
+        <motion.form 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          onSubmit={handleSubmit(onSubmit)} 
+          className={styles['login-card']}
+        >
           <h2 className={styles.title}>Register</h2>
-
-          {!!errors.length && (
-            <div className={styles.error} role="alert" aria-live="assertive">
-              <ul style={{ margin: 0, paddingLeft: '1.1rem' }}>
-                {errors.map((m, i) => <li key={i}>{m}</li>)}
-              </ul>
-            </div>
-          )}
 
           <div className={styles.field}>
             <label htmlFor="email" className={styles['field-label']}>Email</label>
             <input
               type="email"
               id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
               className={styles.input}
               placeholder="vampire@domain.com"
               autoComplete="email"
-              required
+              {...register('email')}
             />
+            {errors.email && <span style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>{errors.email.message}</span>}
           </div>
 
           <div className={styles.field}>
@@ -167,67 +116,56 @@ export default function Register() {
             <input
               type="text"
               id="display_name"
-              value={display_name}
-              onChange={(e) => setDisplayName(e.target.value)}
               className={styles.input}
               placeholder="Your Real Name"
               autoComplete="nickname"
-              required
-              minLength={2}
+              {...register('display_name')}
             />
+            {errors.display_name && <span style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>{errors.display_name.message}</span>}
           </div>
 
           <div className={styles.field}>
             <label htmlFor="password" className={styles['field-label']}>Password</label>
             <div className={styles['input-group']}>
               <input
-                ref={pwdRef}
-                type={showPwd ? 'text' : 'password'}
                 id="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                type={showPwd ? 'text' : 'password'}
                 className={`${styles.input} ${styles['input-has-button']}`}
                 placeholder="••••••••"
                 autoComplete="new-password"
-                required
-                minLength={8}
+                {...pwdRest}
+                ref={(e) => {
+                  pwdRegisterRef(e);
+                  pwdRef.current = e;
+                }}
               />
               <button
                 type="button"
                 className={`${styles['ghost-btn']} ${styles['eye-btn']}`}
-                onMouseDown={(e) => e.preventDefault()} // prevent input blur
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={toggleShowPwd}
                 aria-label={showPwd ? 'Hide password' : 'Show password'}
-                aria-pressed={showPwd}
-                aria-controls="password"
                 title={showPwd ? 'Hide password' : 'Show password'}
               >
-                {/* Note: Removed unused <span className="sr-only"> */}
                 {showPwd ? (
-                  /* Eye-off icon (standard path) */
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
                     <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.12 13.12 0 0 0 2 12s3 7 10 7a9.75 9.75 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/>
                   </svg>
                 ) : (
-                  /* Eye icon (standard path) */
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
                     <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
                   </svg>
                 )}
               </button>
             </div>
-            <p className={styles.muted} style={{ marginTop: 6 }}>
-              Use at least 8 characters, with a letter and a number.
-            </p>
+            {errors.password && <span style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>{errors.password.message}</span>}
           </div>
 
           <div className={styles['captcha-and-terms']}>
             <label className={styles['terms-checkbox']}>
               <input
                 type="checkbox"
-                checked={agreedToTerms}
-                onChange={(e) => setAgreedToTerms(e.target.checked)}
-                required
+                {...register('agreedToTerms')}
               />
               <span className={styles.consentText}>
                 I agree to the{' '}
@@ -240,20 +178,22 @@ export default function Register() {
                 </Link>.
               </span>
             </label>
+            {errors.agreedToTerms && <span style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>{errors.agreedToTerms.message}</span>}
           </div>
 
           <button
             type="submit"
             className={styles.cta}
-            disabled={submitting}
+            disabled={registerMutation.isPending}
+            style={{ opacity: registerMutation.isPending ? 0.7 : 1 }}
           >
-            {submitting ? 'Registering…' : 'Register'}
+            {registerMutation.isPending ? 'Registering…' : 'Register'}
           </button>
 
           <div className={styles.muted}>
             Already have an account? <Link to="/login" className={styles.link}>Log in here.</Link>
           </div>
-        </form>
+        </motion.form>
       </main>
     </div>
   );
