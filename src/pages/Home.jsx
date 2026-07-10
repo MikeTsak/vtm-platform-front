@@ -148,6 +148,7 @@ export default function Home() {
   const [recentChats, setRecentChats] = useState([]);
   const [recentNews, setRecentNews] = useState([]);
   const [fetchError, setFetchError] = useState(null);
+  const [threatLevel, setThreatLevel] = useState(1);
 
   // ✅ DEFAULT SET TO CLAN-THEME WITH DARK ENGINE
   const [activeTheme, setActiveTheme] = useState(() => localStorage.getItem('vtm_theme') || 'clan');
@@ -253,12 +254,13 @@ export default function Home() {
         setCh(chData.character);
 
         if (chData.character) {
-          const [qR, dtR, chatR, newsR, cfgR] = await Promise.allSettled([
+          const [qR, dtR, chatR, newsR, cfgR, bannerR] = await Promise.allSettled([
             api.get('/downtimes/quota'),
             api.get('/downtimes/mine'),
             api.get('/chat/my-recent'),
             api.get('/news/recent'),
-            api.get('/downtimes/config')
+            api.get('/downtimes/config'),
+            api.get('/system/banner')
           ]);
           if (!live) return;
           if (qR.status    === 'fulfilled') setQuota(qR.value.data);
@@ -270,6 +272,11 @@ export default function Home() {
           if (chatR.status === 'fulfilled') setRecentChats(chatR.value.data?.conversations || []);
           if (newsR.status === 'fulfilled') setRecentNews(newsR.value.data?.news || []);
           if (cfgR.status  === 'fulfilled') setOpeningDate(cfgR.value.data?.downtime_opening || null);
+          if (bannerR.status === 'fulfilled') {
+            if (bannerR.value.data?.masquerade_threat_level) {
+              setThreatLevel(bannerR.value.data.masquerade_threat_level);
+            }
+          }
         }
       } catch (error) {
         if (live) setFetchError('Failed to load portal data.');
@@ -430,6 +437,16 @@ export default function Home() {
           </header>
 
           {fetchError && <div className={styles.errorBanner}>{fetchError}</div>}
+          
+          {threatLevel >= 4 && (
+            <div style={{ background: '#ff5252', color: '#fff', padding: '12px', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 15px rgba(255,82,82,0.4)', animation: 'pulse 2s infinite' }}>
+              <span className="material-symbols-outlined">warning</span>
+              <div>
+                <div style={{ fontSize: '1.1rem' }}>MASQUERADE THREAT: {threatLevel === 5 ? 'CRITICAL (PURGE)' : 'HIGH ALERT'}</div>
+                <div style={{ fontSize: '0.85rem', opacity: 0.9 }}>Second Inquisition activity is extremely high. Proceed with caution.</div>
+              </div>
+            </div>
+          )}
 
           {/* 2. NEXT MODERN EVENT */}
           <section className={styles.eventCard} style={{ backgroundImage: "url('/img/ui/newspaper_bg.png')" }}>

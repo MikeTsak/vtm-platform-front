@@ -73,6 +73,7 @@ export default function AdminLogs() {
     } catch (e) { setError(e?.message || "Failed to fetch logs"); setLines([]); } finally { setLoading(false); }
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     loadLogs();
     if (auto) pollRef.current = setInterval(loadLogs, 3000);

@@ -13,6 +13,10 @@ export default function AdminMasterTab() {
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
 
+  // Danger Zone state
+  const [dangerOpen, setDangerOpen] = useState(false);
+  const [dangerLoading, setDangerLoading] = useState(false);
+
   useEffect(() => { loadConfig(); }, []);
 
   const loadConfig = async () => {
@@ -47,7 +51,29 @@ export default function AdminMasterTab() {
     } catch (e) { setErr('Failed to save banner config.'); } finally { setActionLoading(false); }
   };
 
+  const dangerWipeDowntimes = async () => {
+    const input = window.prompt('This will permanently delete all RESOLVED downtimes older than 30 days.\n\nType DELETE to confirm:');
+    if (input !== 'DELETE') return;
+    setDangerLoading(true); setMsg(''); setErr('');
+    try {
+      const { data } = await api.delete('/admin/downtimes/resolved');
+      setMsg(`✅ Wiped ${data.deleted || 0} resolved downtime(s) older than 30 days.`);
+      setTimeout(() => setMsg(''), 5000);
+    } catch (e) { setErr(e.response?.data?.error || 'Failed to wipe downtimes.'); }
+    finally { setDangerLoading(false); }
+  };
 
+  const dangerClearDice = async () => {
+    const input = window.prompt('This will permanently DELETE ALL dice roll history for all users.\n\nThis cannot be undone. Type DELETE to confirm:');
+    if (input !== 'DELETE') return;
+    setDangerLoading(true); setMsg(''); setErr('');
+    try {
+      const { data } = await api.delete('/admin/dice/rolls/all');
+      setMsg(`✅ Cleared ${data.deleted || 0} dice roll record(s).`);
+      setTimeout(() => setMsg(''), 5000);
+    } catch (e) { setErr(e.response?.data?.error || 'Failed to clear dice logs.'); }
+    finally { setDangerLoading(false); }
+  };
 
   const isOnline = commsEnabled;
   const themeColor = isOnline ? 'var(--color-success)' : 'var(--color-error)';
@@ -117,6 +143,59 @@ export default function AdminMasterTab() {
           </button>
         </div>
       </div>
+
+      {/* DANGER ZONE */}
+      <div style={{ background: 'rgba(255, 82, 82, 0.04)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '2px solid rgba(255,82,82,0.3)', padding: '2rem', boxShadow: '0 0 30px rgba(255,82,82,0.08)' }}>
+        <div
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', paddingBottom: dangerOpen ? '1.5rem' : 0, borderBottom: dangerOpen ? '1px solid rgba(255,82,82,0.2)' : 'none', marginBottom: dangerOpen ? '1.5rem' : 0, transition: 'all 0.3s' }}
+          onClick={() => setDangerOpen(o => !o)}
+        >
+          <div>
+            <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--color-error)' }}>⚠️ Danger Zone</h4>
+            <p style={{ margin: '5px 0 0 0', color: 'var(--text-secondary)', fontSize: '0.88rem' }}>Destructive operations. Each action requires confirmation.</p>
+          </div>
+          <span style={{ color: 'var(--color-error)', fontSize: '1.4rem', transition: 'transform 0.3s', transform: dangerOpen ? 'rotate(180deg)' : 'none' }}>▼</span>
+        </div>
+
+        {dangerOpen && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {/* Wipe Resolved Downtimes */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--glass-inset)', borderRadius: 'var(--radius-md)', padding: '1.2rem 1.5rem', border: '1px solid rgba(255,82,82,0.2)' }}>
+              <div>
+                <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>🗑️ Wipe Resolved Downtimes</div>
+                <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Permanently deletes all downtimes with status "resolved" or "Resolved in scene" older than 30 days.</div>
+              </div>
+              <button
+                type="button"
+                className={styles.btn}
+                style={{ background: 'rgba(255,82,82,0.15)', border: '1px solid var(--color-error)', color: 'var(--color-error)', fontWeight: 700, minWidth: '140px', flexShrink: 0 }}
+                onClick={dangerWipeDowntimes}
+                disabled={dangerLoading}
+              >
+                {dangerLoading ? '…' : 'Wipe Records'}
+              </button>
+            </div>
+
+            {/* Clear Dice Logs */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--glass-inset)', borderRadius: 'var(--radius-md)', padding: '1.2rem 1.5rem', border: '1px solid rgba(255,82,82,0.2)' }}>
+              <div>
+                <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>🎲 Clear All Dice Logs</div>
+                <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Permanently deletes all dice roll records across all characters. Stats charts will be reset.</div>
+              </div>
+              <button
+                type="button"
+                className={styles.btn}
+                style={{ background: 'rgba(255,82,82,0.15)', border: '1px solid var(--color-error)', color: 'var(--color-error)', fontWeight: 700, minWidth: '140px', flexShrink: 0 }}
+                onClick={dangerClearDice}
+                disabled={dangerLoading}
+              >
+                {dangerLoading ? '…' : 'Clear Dice Logs'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       </div>
     </Skeleton>
   );

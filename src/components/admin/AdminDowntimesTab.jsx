@@ -394,6 +394,70 @@ export default function AdminDowntimesTab() {
         {listErr && <div className={`${styles.alert} ${styles.alertError}`} style={{ marginTop: '1.5rem' }}>{listErr}</div>}
         {listLoading && <div className={styles.loading} style={{ marginTop: '1.5rem' }}><span className={styles.spinner} /> Syncing live ledger entries…</div>}
 
+        {/* Resolution Summary Bar */}
+        {!listLoading && rows.length > 0 && (() => {
+          const counts = {};
+          rows.forEach(r => {
+            const s = r.status || 'submitted';
+            counts[s] = (counts[s] || 0) + 1;
+          });
+          const QUICK_FILTERS = [
+            { label: 'All', value: 'all', color: 'var(--text-secondary)', bg: 'var(--glass-inset)' },
+            { label: 'Submitted', value: 'submitted', color: '#9d7cff', bg: 'rgba(157,124,255,0.12)' },
+            { label: 'Approved', value: 'approved', color: '#00e676', bg: 'rgba(0,230,118,0.1)' },
+            { label: 'Needs a Scene', value: 'Needs a Scene', color: '#ffcc00', bg: 'rgba(255,204,0,0.1)' },
+            { label: 'Resolved', value: 'resolved', color: '#4da6ff', bg: 'rgba(77,166,255,0.1)' },
+            { label: 'Scene Done', value: 'Resolved in scene', color: '#4da6ff', bg: 'rgba(77,166,255,0.08)' },
+            { label: 'Rejected', value: 'rejected', color: '#ff5252', bg: 'rgba(255,82,82,0.1)' },
+          ];
+          const totalFiltered = viewMode === 'standard'
+            ? rows.filter(r => !r.title?.startsWith('[PROJECT]')).length
+            : rows.filter(r => r.title?.startsWith('[PROJECT]')).length;
+
+          return (
+            <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {/* Summary stat chips */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', alignItems: 'center' }}>
+                <span style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  Overview:
+                </span>
+                {QUICK_FILTERS.filter(f => f.value !== 'all' && counts[f.value] > 0).map(f => (
+                  <span key={f.value} style={{
+                    background: f.bg, border: `1px solid ${f.color}`,
+                    color: f.color, borderRadius: '20px', padding: '3px 12px',
+                    fontSize: '0.8rem', fontWeight: 700,
+                  }}>
+                    {f.label}: {counts[f.value] || 0}
+                  </span>
+                ))}
+                <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                  {totalFiltered} total
+                </span>
+              </div>
+              {/* Quick-filter pills */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                {QUICK_FILTERS.map(f => (
+                  <button
+                    key={f.value}
+                    type="button"
+                    onClick={() => setStatusFilter(f.value)}
+                    style={{
+                      background: statusFilter === f.value ? f.bg : 'var(--glass-inset)',
+                      border: `1px solid ${statusFilter === f.value ? f.color : 'var(--glass-border)'}`,
+                      color: statusFilter === f.value ? f.color : 'var(--text-muted)',
+                      borderRadius: '20px', padding: '4px 14px', cursor: 'pointer',
+                      fontSize: '0.8rem', fontWeight: 600, transition: 'all 0.2s',
+                      boxShadow: statusFilter === f.value ? `0 0 8px ${f.color}44` : 'none',
+                    }}
+                  >
+                    {f.label}{f.value !== 'all' && counts[f.value] ? ` (${counts[f.value]})` : ''}
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
         {!listLoading && (
           <div style={{ display: 'grid', gap: '2rem', marginTop: '2rem' }}>
             {groupedAndFiltered.length === 0 && (

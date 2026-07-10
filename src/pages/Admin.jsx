@@ -22,6 +22,17 @@ import AdminDiscordTab from '../components/admin/AdminDiscordTab.jsx';
 import AdminNpcEmailTab from '../components/admin/AdminNpcEmailTab.jsx';
 import AdminMasterTab from '../components/admin/AdminMasterTab.jsx';
 import AdminGhoulsTab from '../components/admin/AdminGhoulsTab.jsx';
+import AdminPremonitionsTab from '../components/admin/AdminPremonitionsTab.jsx';
+import AdminBoonsTab from '../components/admin/AdminBoonsTab.jsx';
+import AdminEventsTab from '../components/admin/AdminEventsTab.jsx';
+import AdminBroadcastTab from '../components/admin/AdminBroadcastTab.jsx';
+import AdminTimelineTab from '../components/admin/AdminTimelineTab.jsx';
+import AdminDomainsTab from '../components/admin/AdminDomainsTab.jsx';
+import AdminBloodWebTab from '../components/admin/AdminBloodWebTab.jsx';
+import AdminMasqueradeTab from '../components/admin/AdminMasqueradeTab.jsx';
+import AdminPrestationTab from '../components/admin/AdminPrestationTab.jsx';
+import AdminCoteriesTab from '../components/admin/AdminCoteriesTab.jsx';
+import AdminAuditTab from '../components/admin/AdminAuditTab.jsx';
 
 /* ---------------- Sidebar navigation config ---------------- */
 const NAV_SECTIONS = [
@@ -31,6 +42,8 @@ const NAV_SECTIONS = [
       { id: 'users',      icon: 'person', label: 'Users' },
       { id: 'characters', icon: 'account_circle', label: 'Characters' },
       { id: 'claims',     icon: 'fort', label: 'Claims' },
+      { id: 'coteries',   icon: 'group_work', label: 'Coteries' },
+      { id: 'ghouls',       icon: 'groups',      label: 'Ghouls' },
       { id: 'downtimes',  icon: 'schedule', label: 'Downtimes' },
       { id: 'xp',         icon: 'auto_awesome', label: 'XP Tools' },
     ],
@@ -38,25 +51,33 @@ const NAV_SECTIONS = [
   {
     label: 'Story',
     items: [
-      { id: 'npcs',      icon: 'masks', label: 'NPCs' },
-      { id: 'npc_email', icon: 'mail', label: 'NPC Email' },
-      { id: 'ghouls',    icon: 'groups', label: 'Ghouls' },
+      { id: 'npcs',         icon: 'masks',       label: 'NPCs' },
+      { id: 'npc_email',    icon: 'mail',        label: 'NPC Email' },
+      { id: 'premonitions', icon: 'visibility',  label: 'Premonitions' },
+      { id: 'boons',        icon: 'handshake',   label: 'Prestation Matrix' },
+      { id: 'events',       icon: 'event',       label: 'Events' },
+      { id: 'broadcast',    icon: 'campaign',    label: 'Broadcast' },
     ],
   },
   {
     label: 'Intelligence',
     items: [
-      { id: 'chat',    icon: 'chat', label: 'Chat Logs' },
-      { id: 'stats',   icon: 'bar_chart', label: 'Stats' },
-      { id: 'dice',    icon: 'casino', label: 'Dice Logs' },
-      { id: 'discord', icon: 'sensors', label: 'Discord' },
+      { id: 'chat',     icon: 'chat',      label: 'Chat Logs' },
+      { id: 'stats',    icon: 'bar_chart', label: 'Stats' },
+      { id: 'dice',     icon: 'casino',    label: 'Dice Logs' },
+      { id: 'discord',  icon: 'sensors',   label: 'Discord' },
+      { id: 'timeline', icon: 'timeline',  label: 'Timeline' },
+      { id: 'domains',  icon: 'map',       label: 'Domain Threats' },
+      { id: 'bloodweb', icon: 'radar',     label: 'Blood Web' },
     ],
   },
   {
     label: 'System',
     items: [
-      { id: 'master', icon: 'settings', label: 'Master' },
-      { id: 'logs',   icon: 'receipt_long', label: 'Server Logs' },
+      { id: 'master',     icon: 'admin_panel_settings', label: 'Master Control' },
+      { id: 'masquerade', icon: 'warning',              label: 'Masquerade Dial' },
+      { id: 'audit',      icon: 'policy',               label: 'Audit Logs' },
+      { id: 'logs',       icon: 'receipt_long',         label: 'System Logs' },
     ],
   },
 ];
@@ -843,6 +864,7 @@ async function grantXP(character_id, delta) {
               onDelete={deleteClaim}
             />
           )}
+          {tab === 'coteries' && <AdminCoteriesTab />}
           {tab === 'downtimes' && (
             <AdminDowntimesTab
               rows={downtimes}
@@ -870,6 +892,10 @@ async function grantXP(character_id, delta) {
           {tab === 'ghouls' && (
             <AdminGhoulsTab ghouls={ghouls} />
           )}
+          {tab === 'premonitions' && <AdminPremonitionsTab />}
+          {tab === 'boons' && <AdminPrestationTab />}
+          {tab === 'events' && <AdminEventsTab />}
+          {tab === 'broadcast' && <AdminBroadcastTab />}
           {tab === 'chat' && (
             <AdminChatLogsTab 
               messages={allMessages} 
@@ -895,12 +921,17 @@ async function grantXP(character_id, delta) {
           {tab === 'dice' && (
             <AdminDiceLogsTab />
           )}
+          {tab === 'timeline' && <AdminTimelineTab users={users} />}
+          {tab === 'domains' && <AdminDomainsTab />}
+          {tab === 'bloodweb' && <AdminBloodWebTab />}
           {tab === 'discord' && (
             <AdminDiscordTab users={users} />
           )}
           {tab === 'master' && (            
             <AdminMasterTab />
           )}
+          {tab === 'masquerade' && <AdminMasqueradeTab />}
+          {tab === 'audit' && <AdminAuditTab />}
           {tab === 'logs' && <AdminLogs />}
         </main>
       </div>

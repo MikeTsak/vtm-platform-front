@@ -17,7 +17,7 @@ export default function AdminXPTab({ users, onGrant, onBulkGrant, adminxp }) {
   const [logs, setLogs] = useState([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [charModal, setCharModal] = useState(null);
-  const [expandedLog, setExpandedLog] = useState(null);
+
   const [logFilterChar, setLogFilterChar] = useState('All');
   const [logFilterType, setLogFilterType] = useState('All');
   const [logSearch, setLogSearch] = useState('');
@@ -31,6 +31,7 @@ export default function AdminXPTab({ users, onGrant, onBulkGrant, adminxp }) {
       setLogs(normalizedLogs);
     } catch (error) { setLogs([]); } finally { setLoadingLogs(false); }
   };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchLogs(); }, []);
 
   const characters = useMemo(() => {

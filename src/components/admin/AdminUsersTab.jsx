@@ -57,7 +57,7 @@ export default function AdminUsersTab({ users = [], onSave, loading = false }) {
                     </div>
                     <div className={styles.td}><input className={styles.input} value={draft.email} onChange={(e) => setRow(u, { email: e.target.value })} /></div>
                     <div className={styles.td}><select className={styles.select} value={draft.role} onChange={(e) => setRow(u, { role: e.target.value })}>{roleChoices.map((r) => <option key={r} value={r}>{r}</option>)}</select></div>
-                    <div className={styles.td}><input className={styles.input} className={styles.inputMono} value={draft.discord_id} onChange={(e) => setRow(u, { discord_id: e.target.value })} /></div>
+                    <div className={styles.td}><input className={`${styles.input} ${styles.inputMono}`} value={draft.discord_id} onChange={(e) => setRow(u, { discord_id: e.target.value })} /></div>
                     <div className={styles.td}>
                       {u.character_id ? (
                         <div className={styles.row} style={{ gap: '8px', alignItems: 'center' }}>
@@ -75,7 +75,7 @@ export default function AdminUsersTab({ users = [], onSave, loading = false }) {
                         <span className={styles.idCell} style={{ marginLeft: 'auto' }}>XP: {u.xp ?? 0}</span>
                       </div>
                     </div>
-                    <div className={styles.td} className={styles.rowEnd}>
+                    <div className={`${styles.td} ${styles.rowEnd}`}>
                       <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => onSave?.({ id: u.id, ...draft })}>Save</button>
                       <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => resetRow(u)}>Reset</button>
                     </div>
