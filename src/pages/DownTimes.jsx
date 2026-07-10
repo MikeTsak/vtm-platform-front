@@ -1,19 +1,17 @@
 // src/pages/DownTimes.jsx
-import React, { useEffect, useMemo, useState, useContext } from 'react';
+import React, { useMemo, useState, useContext, useEffect } from 'react';
 import { AuthCtx } from '../core/AuthContext';
 import api from '../core/api';
 import styles from '../styles/DownTimes.module.css';
 import { Skeleton } from 'boneyard-js/react';
 import MiniSearch from 'minisearch';
 import { trackEvent } from '../utils/analytics';
-
-let tempIdCounter = 0;
-const generateTempId = () => {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-    return `temp_${crypto.randomUUID()}`;
-  }
-  return `temp_${Date.now()}_${++tempIdCounter}_${Math.random().toString(36).slice(2, 11)}`;
-};
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { toast } from 'sonner';
+import { motion } from 'framer-motion';
 
 function useCountdown(targetDate, isEndOfDay = false) {
   const [now, setNow] = useState(new Date().getTime());
@@ -86,35 +84,51 @@ const CountdownDisplay = ({ title, countdown, subText, isProject, icon }) => {
   );
 }
 
-function SubmitCard({ quota, onDowntimeCreated, isProject }) {
-  const [title, setTitle] = useState('');
-  const [body, setBody] = useState('');
-  const [feeding, setFeeding] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState('');
+// Zod schema for downtime submission
+const submitSchema = z.object({
+  title: z.string().min(1, 'Title is required').max(100, 'Title is too long'),
+  body: z.string().min(1, 'Description is required').max(3000, 'Description is too long'),
+  feeding: z.string().max(100, 'Feeding type is too long').optional(),
+});
 
+function SubmitCard({ quota, isProject }) {
+  const queryClient = useQueryClient();
   const isFull = quota.used >= quota.limit;
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (isFull || loading || !title || !body) return;
+  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm({
+    resolver: zodResolver(submitSchema),
+    defaultValues: { title: '', body: '', feeding: '' },
+  });
 
-    setLoading(true); setErr('');
-    try {
-      const finalTitle = isProject ? `[PROJECT] ${title.trim()}` : title.trim();
-      const payload = { title: finalTitle, body: body.trim(), feeding_type: isProject ? null : (feeding.trim() || null) };
+  const bodyValue = watch('body');
 
-      const { data } = await api.post('/downtimes', payload);
-      onDowntimeCreated(data?.downtime || { id: generateTempId(), ...payload, status: 'submitted', created_at: new Date().toISOString() });
-      
+  const submitMutation = useMutation({
+    mutationFn: async (data) => {
+      const finalTitle = isProject ? `[PROJECT] ${data.title.trim()}` : data.title.trim();
+      const payload = { 
+        title: finalTitle, 
+        body: data.body.trim(), 
+        feeding_type: isProject ? null : (data.feeding?.trim() || null) 
+      };
+      const response = await api.post('/downtimes', payload);
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success('Action submitted successfully!');
       trackEvent('submit_downtime', { type: isProject ? 'project' : 'action' });
-      
-      setTitle(''); setBody(''); setFeeding('');
-    } catch (e) {
-      setErr(e?.response?.data?.error || 'Failed to submit action.');
-    } finally {
-      setLoading(false);
+      reset();
+      // Invalidate queries to automatically refetch downtimes and quota
+      queryClient.invalidateQueries({ queryKey: ['downtimes'] });
+      queryClient.invalidateQueries({ queryKey: ['quota'] });
+    },
+    onError: (error) => {
+      toast.error(error?.response?.data?.error || 'Failed to submit action.');
     }
+  });
+
+  const onSubmit = (data) => {
+    if (isFull) return;
+    submitMutation.mutate(data);
   };
 
   return (
@@ -126,20 +140,18 @@ function SubmitCard({ quota, onDowntimeCreated, isProject }) {
         <h3 className={styles.formTitle}>Draft Action</h3>
       </div>
       <div className={styles.formBody}>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit(onSubmit)}>
           <div className={styles.formRow}>
             <div className={styles.field}>
               <label className={styles.label}>{isProject ? 'Project Name / Phase' : 'Action Title'}</label>
               <input
                 className={styles.input}
                 type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                {...register('title')}
                 placeholder={isProject ? "e.g., Secure Haven Defenses (Phase 1)" : "e.g., Secure Haven Defenses"}
-                maxLength={100}
-                required
-                disabled={isFull || loading}
+                disabled={isFull || submitMutation.isPending}
               />
+              {errors.title && <span style={{ color: '#ef4444', fontSize: '0.85rem' }}>{errors.title.message}</span>}
             </div>
             {!isProject && (
               <div className={styles.field}>
@@ -147,12 +159,11 @@ function SubmitCard({ quota, onDowntimeCreated, isProject }) {
                 <input
                   className={styles.input}
                   type="text"
-                  value={feeding}
-                  onChange={(e) => setFeeding(e.target.value)}
+                  {...register('feeding')}
                   placeholder="e.g., Herd Management"
-                  maxLength={100}
-                  disabled={isFull || loading}
+                  disabled={isFull || submitMutation.isPending}
                 />
+                {errors.feeding && <span style={{ color: '#ef4444', fontSize: '0.85rem' }}>{errors.feeding.message}</span>}
               </div>
             )}
           </div>
@@ -161,17 +172,14 @@ function SubmitCard({ quota, onDowntimeCreated, isProject }) {
             <label className={styles.label}>Detailed Description & Intent</label>
             <textarea
               className={`${styles.input} ${styles.textarea}`}
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
+              {...register('body')}
               placeholder={isProject ? "Describe exactly what you are doing, resources used, and who is involved..." : "Detail your character's actions, resources expended, and desired outcome..."}
               maxLength={isProject ? 3000 : 1500}
-              required
-              disabled={isFull || loading}
+              disabled={isFull || submitMutation.isPending}
             />
-            <span className={styles.counter}>{body.length} / {isProject ? 3000 : 1500}</span>
+            {errors.body && <span style={{ color: '#ef4444', fontSize: '0.85rem' }}>{errors.body.message}</span>}
+            <span className={styles.counter}>{(bodyValue || '').length} / {isProject ? 3000 : 1500}</span>
           </div>
-
-          {err && <div className={styles.alert} style={{ marginTop: '24px' }}>{err}</div>}
 
           <div className={styles.formFooter}>
             <div className={styles.quotaBox}>
@@ -184,10 +192,11 @@ function SubmitCard({ quota, onDowntimeCreated, isProject }) {
             <button
               type="submit"
               className={`${styles.submitBtn} ${isProject ? styles.submitBtnProject : ''}`}
-              disabled={isFull || loading || !title || !body}
+              disabled={isFull || submitMutation.isPending}
+              style={{ opacity: submitMutation.isPending ? 0.7 : 1 }}
             >
               <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>send</span>
-              {loading ? 'Submitting...' : 'Submit Action'}
+              {submitMutation.isPending ? 'Submitting...' : 'Submit Action'}
             </button>
           </div>
         </form>
@@ -196,7 +205,8 @@ function SubmitCard({ quota, onDowntimeCreated, isProject }) {
   );
 }
 
-function ActiveTrackItem({ dt, isProject, onUpdateDowntime }) {
+function ActiveTrackItem({ dt, isProject }) {
+  const queryClient = useQueryClient();
   const status = (dt.status || 'submitted').toLowerCase();
   const displayTitle = isProject ? dt.title.replace('[PROJECT] ', '') : dt.title;
 
@@ -207,30 +217,37 @@ function ActiveTrackItem({ dt, isProject, onUpdateDowntime }) {
   if (status === 'resolved' || status === 'resolved in scene') badgeClass = styles.badgeReview;
 
   const [isEditing, setIsEditing] = useState(false);
-  const [editTitle, setEditTitle] = useState(displayTitle);
-  const [editBody, setEditBody] = useState(dt.body);
-  const [saving, setSaving] = useState(false);
+  const { register, handleSubmit, reset } = useForm({
+    defaultValues: { editTitle: displayTitle, editBody: dt.body },
+  });
 
   const canEdit = status === 'submitted';
 
-  const handleSave = async () => {
-    if (!editTitle.trim() || !editBody.trim()) return;
-    setSaving(true);
-    try {
-      const finalTitle = isProject ? `[PROJECT] ${editTitle.trim()}` : editTitle.trim();
-      const payload = { title: finalTitle, body: editBody.trim() };
+  const updateMutation = useMutation({
+    mutationFn: async (data) => {
+      const finalTitle = isProject ? `[PROJECT] ${data.editTitle.trim()}` : data.editTitle.trim();
+      const payload = { title: finalTitle, body: data.editBody.trim() };
       await api.put(`/downtimes/${dt.id}`, payload);
-      onUpdateDowntime(dt.id, { ...dt, title: finalTitle, body: editBody.trim() });
+    },
+    onSuccess: () => {
+      toast.success('Action updated.');
       setIsEditing(false);
-    } catch (e) {
-      alert('Failed to update action.');
-    } finally {
-      setSaving(false);
+      queryClient.invalidateQueries({ queryKey: ['downtimes'] });
+    },
+    onError: () => {
+      toast.error('Failed to update action.');
     }
+  });
+
+  const onSave = (data) => {
+    updateMutation.mutate(data);
   };
 
   return (
-    <div className={`${styles.trackCard} ${isProject ? styles.trackCardProject : ''}`}>
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+      className={`${styles.trackCard} ${isProject ? styles.trackCardProject : ''}`}
+    >
       <div className={styles.trackCardGradient}></div>
       <div className={styles.trackCardHeader}>
         <span className={`${styles.trackTypeTag} ${isProject ? styles.trackTypeProject : styles.trackTypeAction}`}>
@@ -243,14 +260,16 @@ function ActiveTrackItem({ dt, isProject, onUpdateDowntime }) {
       </div>
 
       {isEditing ? (
-        <div className={styles.editModeContainer} style={{ position: 'relative', zIndex: 10 }}>
-          <input className={styles.input} type="text" value={editTitle} onChange={e => setEditTitle(e.target.value)} />
-          <textarea className={`${styles.input} ${styles.textarea}`} value={editBody} onChange={e => setEditBody(e.target.value)} />
+        <form onSubmit={handleSubmit(onSave)} className={styles.editModeContainer} style={{ position: 'relative', zIndex: 10 }}>
+          <input className={styles.input} type="text" {...register('editTitle', { required: true })} />
+          <textarea className={`${styles.input} ${styles.textarea}`} {...register('editBody', { required: true })} />
           <div className={styles.editActions}>
-            <button className={styles.btnSecondary} onClick={() => setIsEditing(false)} disabled={saving}>Cancel</button>
-            <button className={styles.submitBtn} onClick={handleSave} disabled={saving} style={{ padding: '8px 16px', width: 'auto' }}>Save</button>
+            <button type="button" className={styles.btnSecondary} onClick={() => { setIsEditing(false); reset(); }} disabled={updateMutation.isPending}>Cancel</button>
+            <button type="submit" className={styles.submitBtn} disabled={updateMutation.isPending} style={{ padding: '8px 16px', width: 'auto' }}>
+              {updateMutation.isPending ? 'Saving...' : 'Save'}
+            </button>
           </div>
-        </div>
+        </form>
       ) : (
         <>
           <h4 className={styles.trackTitle}>{displayTitle}</h4>
@@ -266,7 +285,7 @@ function ActiveTrackItem({ dt, isProject, onUpdateDowntime }) {
           )}
         </>
       )}
-    </div>
+    </motion.div>
   );
 }
 
@@ -283,7 +302,7 @@ function ArchiveItem({ dt, isProject }) {
   if (status === 'submitted') badgeClass = styles.badgePending;
 
   return (
-    <div className={styles.archiveCard}>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={styles.archiveCard}>
       <div className={styles.archiveCardHeader}>
         <div className={styles.archiveCardMeta}>
           <span className={styles.archiveCardDate}>{dateStr} • {isProject ? 'Project' : 'Action'}</span>
@@ -303,93 +322,79 @@ function ArchiveItem({ dt, isProject }) {
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
 export default function DownTimes() {
   const { user: currentUser } = useContext(AuthCtx);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState('');
+  
+  // React Query Fetching
+  const { data: configData, isLoading: isConfigLoading } = useQuery({
+    queryKey: ['config', 'downtimes'],
+    queryFn: async () => {
+      const res = await api.get('/downtimes/config');
+      return res.data;
+    }
+  });
+
+  const { data: mineData, isLoading: isMineLoading } = useQuery({
+    queryKey: ['downtimes', 'mine'],
+    queryFn: async () => {
+      const res = await api.get('/downtimes/mine');
+      return res.data;
+    }
+  });
+
+  const { data: quotaData, isLoading: isQuotaLoading } = useQuery({
+    queryKey: ['quota'],
+    queryFn: async () => {
+      const res = await api.get('/downtimes/quota');
+      return res.data;
+    }
+  });
+
+  const { data: charData, isLoading: isCharLoading } = useQuery({
+    queryKey: ['character', 'me'],
+    queryFn: async () => {
+      const res = await api.get('/characters/me');
+      return res.data;
+    }
+  });
+
+  const isLoading = isConfigLoading || isMineLoading || isQuotaLoading || isCharLoading;
 
   // Mode Switcher
   const [viewMode, setViewMode] = useState('standard'); // 'standard' | 'project'
-
-  // Global schedule
-  const [deadline, setDeadline] = useState('');
-  const [opening, setOpening] = useState('');
-  const [projectDeadline, setProjectDeadline] = useState('');
-
-  // My downtimes
-  const [mine, setMine] = useState([]);
-  const [quota, setQuota] = useState({ used: 0, limit: 3 });
-  const [myChar, setMyChar] = useState(null);
+  
+  // Set viewMode based on config when it loads
+  useEffect(() => {
+    if (configData?.downtime_active_phase === 'project') {
+      setViewMode('project');
+    }
+  }, [configData?.downtime_active_phase]);
 
   // UI state for archive
   const [archiveFilter, setArchiveFilter] = useState('all');
   const [q, setQ] = useState('');
 
   // Countdowns
-  const deadlineCountdown = useCountdown(deadline, true);
-  deadlineCountdown.targetDate = deadline;
+  const deadlineCountdown = useCountdown(configData?.downtime_deadline || '', true);
+  deadlineCountdown.targetDate = configData?.downtime_deadline || '';
 
-  const openingCountdown = useCountdown(opening, false);
-  openingCountdown.targetDate = opening;
+  const openingCountdown = useCountdown(configData?.downtime_opening || '', false);
+  openingCountdown.targetDate = configData?.downtime_opening || '';
 
-  const projectCountdown = useCountdown(projectDeadline, true);
-  projectCountdown.targetDate = projectDeadline;
+  const projectCountdown = useCountdown(configData?.project_deadline || '', true);
+  projectCountdown.targetDate = configData?.project_deadline || '';
 
-  // Initial load
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      setLoading(true);
-      setErr('');
-      try {
-        const [cfgP, mineP, quotaP, charP] = await Promise.allSettled([
-          api.get('/downtimes/config'),
-          api.get('/downtimes/mine'),
-          api.get('/downtimes/quota'),
-          api.get('/characters/me')
-        ]);
+  // Data processing
+  const mine = useMemo(() => {
+    return (mineData?.downtimes || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  }, [mineData]);
 
-        if (!mounted) return;
-
-        if (cfgP.status === 'fulfilled') {
-          const { downtime_deadline, downtime_opening, project_deadline, downtime_active_phase } = cfgP.value.data || {};
-          setDeadline(downtime_deadline || '');
-          setOpening(downtime_opening || '');
-          setProjectDeadline(project_deadline || '');
-
-          if (downtime_active_phase === 'project') setViewMode('project');
-        }
-
-        if (mineP.status === 'fulfilled') {
-          const dts = (mineP.value.data?.downtimes || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-          setMine(dts);
-        } else setErr('Failed to load your actions.');
-
-        if (quotaP.status === 'fulfilled') setQuota(quotaP.value.data || { used: 0, limit: 3 });
-        if (charP.status === 'fulfilled') setMyChar(charP.value.data?.character || null);
-
-      } catch (e) {
-        setErr('Failed to load your downtimes.');
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-    return () => { mounted = false; };
-  }, []);
-
-  const handleDowntimeCreated = (newDowntime) => {
-    setMine(prev => [newDowntime, ...prev]);
-    setQuota(prev => ({ ...prev, used: prev.used + 1 }));
-  };
-
-  const handleDowntimeUpdated = (id, updatedItem) => {
-    setMine(prev => prev.map(dt => dt.id === id ? updatedItem : dt));
-  };
-
+  const quota = quotaData || { used: 0, limit: 3 };
+  const myChar = charData?.character || null;
   const isCharActive = currentUser?.role === 'admin' || (myChar && myChar.sheet && myChar.sheet.is_active === true);
 
   const isProj = (dt) => dt.title && dt.title.startsWith('[PROJECT]');
@@ -428,9 +433,8 @@ export default function DownTimes() {
   }, [pastRaw, archiveFilter, q]);
 
   return (
-    <Skeleton loading={loading} name="downtimes-page">
+    <Skeleton loading={isLoading} name="downtimes-page">
       <main className={styles.page}>
-
         {/* Hero Header & Mode Switcher */}
         <section className={styles.heroSection}>
           <div className={styles.heroContent}>
@@ -487,8 +491,6 @@ export default function DownTimes() {
           )}
         </section>
 
-        {err && <div className={styles.alert}>{err}</div>}
-
         {/* Main Grid */}
         <section className={styles.mainGrid}>
           {/* Left Column: Submission Form */}
@@ -498,7 +500,7 @@ export default function DownTimes() {
                 Your character is waiting for ST approval. You cannot submit actions yet.
               </div>
             ) : (
-              <SubmitCard quota={quota} onDowntimeCreated={handleDowntimeCreated} isProject={viewMode === 'project'} />
+              <SubmitCard quota={quota} isProject={viewMode === 'project'} />
             )}
           </div>
 
@@ -519,7 +521,6 @@ export default function DownTimes() {
                     key={dt.id}
                     dt={dt}
                     isProject={viewMode === 'project'}
-                    onUpdateDowntime={handleDowntimeUpdated}
                   />
                 ))
               )}
@@ -569,7 +570,6 @@ export default function DownTimes() {
             )}
           </div>
         </section>
-
       </main>
     </Skeleton>
   );

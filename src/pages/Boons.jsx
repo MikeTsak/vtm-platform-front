@@ -5,6 +5,8 @@ import { AuthCtx } from '../core/AuthContext';
 import { Skeleton } from 'boneyard-js/react';
 import MiniSearch from 'minisearch';
 import Avatar from '../components/Avatar';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 const BOON_LEVELS  = ['trivial', 'minor', 'major', 'life'];
 const BOON_STATUSES = ['owed', 'paid', 'excused'];
@@ -34,11 +36,8 @@ function getInitials(name) {
 
 export default function Boons() {
   const { user } = useContext(AuthCtx);
-  const [boons, setBoons]             = useState([]);
-  const [loading, setLoading]         = useState(true);
-  const [error, setError]             = useState('');
-  const [myCharacter, setMyCharacter] = useState(null);
-  const [entities, setEntities]       = useState([]);
+  const queryClient = useQueryClient();
+  
   const [showForm, setShowForm]       = useState(false);
   const [editTarget, setEditTarget]   = useState(null);
   
@@ -56,28 +55,49 @@ export default function Boons() {
   const isCourt  = user?.role === 'courtuser';
   const canManage = isAdmin || isCourt;
 
-  async function loadBoons() {
-    try {
-      setLoading(true); setError('');
-      const { data } = await api.get('/boons');
-      setBoons(data.boons || []);
-    } catch (e) { setError(e.response?.data?.error || 'Failed to fetch boons'); }
-    finally { setLoading(false); }
-  }
+  // React Query Fetching
+  const { data: boonsData, isLoading: boonsLoading, error: boonsErrorObj } = useQuery({
+    queryKey: ['boons'],
+    queryFn: async () => {
+      const res = await api.get('/boons');
+      return res.data;
+    }
+  });
 
-  async function loadEntities() {
-    try { const { data } = await api.get('/boons/entities'); setEntities(data.entities || []); }
-    catch (e) { console.error('Failed to load entities', e); }
-  }
+  const { data: entitiesData, isLoading: entitiesLoading } = useQuery({
+    queryKey: ['boons', 'entities'],
+    queryFn: async () => {
+      const res = await api.get('/boons/entities');
+      return res.data;
+    }
+  });
 
-  async function loadMyCharacter() {
-    try { const { data } = await api.get('/characters/me'); setMyCharacter(data.character || null); }
-    catch (e) { console.warn('No character found'); }
-  }
+  const { data: myCharData, isLoading: myCharLoading } = useQuery({
+    queryKey: ['character', 'me'],
+    queryFn: async () => {
+      const res = await api.get('/characters/me');
+      return res.data;
+    }
+  });
 
-  useEffect(() => {
-    loadBoons(); loadMyCharacter(); loadEntities();
-  }, [canManage]);
+  const loading = boonsLoading || entitiesLoading || myCharLoading;
+  const boons = boonsData?.boons || [];
+  const entities = entitiesData?.entities || [];
+  const myCharacter = myCharData?.character || null;
+  const error = boonsErrorObj?.response?.data?.error || boonsErrorObj?.message || '';
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id) => {
+      await api.delete(`/boons/${id}`);
+    },
+    onSuccess: () => {
+      toast.success('Boon deleted');
+      queryClient.invalidateQueries({ queryKey: ['boons'] });
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.error || 'Failed to delete');
+    }
+  });
 
   // Click outside to close suggestions
   useEffect(() => {
@@ -220,11 +240,10 @@ export default function Boons() {
     major:   processedBoons.filter(b => String(b.level).toLowerCase()  === 'major' && String(b.status).toLowerCase() === 'owed').length,
   }), [processedBoons]);
 
-  const handleSave   = async () => { await loadBoons(); setShowForm(false); setEditTarget(null); };
-  const handleDelete = async (id) => {
+  const handleSave   = () => { setShowForm(false); setEditTarget(null); };
+  const handleDelete = (id) => {
     if (!window.confirm('Delete this record?')) return;
-    try { await api.delete(`/boons/${id}`); await loadBoons(); }
-    catch (e) { setError(e.response?.data?.error || 'Failed to delete'); }
+    deleteMutation.mutate(id);
   };
   const openEdit   = (b) => { setEditTarget(b); setShowForm(true); };
   const openCreate = ()  => { setEditTarget(null); setShowForm(true); };
@@ -461,7 +480,7 @@ export default function Boons() {
                       {canManage && (
                         <div className="flex gap-2 mr-2 border-r border-outline-variant/20 pr-2">
                           <button onClick={() => openEdit(boon)} className="material-symbols-outlined text-[16px] text-on-surface-variant hover:text-primary transition-colors">edit</button>
-                          <button onClick={() => handleDelete(boon.id)} className="material-symbols-outlined text-[16px] text-on-surface-variant hover:text-error transition-colors">delete</button>
+                          <button onClick={() => handleDelete(boon.id)} className="material-symbols-outlined text-[16px] text-on-surface-variant hover:text-error transition-colors" disabled={deleteMutation.isPending}>delete</button>
                         </div>
                       )}
                       <span className="text-on-surface-variant text-[12px] font-bold">#{boon.id}</span>
@@ -584,12 +603,30 @@ export default function Boons() {
    BOON FORM
 ══════════════════════════════════════════════ */
 function BoonForm({ entities, boon, onSave, onCancel }) {
+  const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
     from_key: 'npc', from_id: '', from_name: '',
     to_key:   'npc', to_id:   '', to_name: '',
     level: 'trivial', status: 'owed', description: '',
   });
-  const [error, setError] = useState('');
+  
+  const saveMutation = useMutation({
+    mutationFn: async (payload) => {
+      if (boon) {
+        await api.patch(`/boons/${boon.id}`, payload);
+      } else {
+        await api.post('/boons', payload);
+      }
+    },
+    onSuccess: () => {
+      toast.success(boon ? 'Boon updated' : 'Boon created');
+      queryClient.invalidateQueries({ queryKey: ['boons'] });
+      onSave();
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.error || 'Failed to save boon');
+    }
+  });
 
   const entityOptions = useMemo(() => [
     { id: 'npc', name: '— NPC / Manual entry —' },
@@ -636,18 +673,17 @@ function BoonForm({ entities, boon, onSave, onCancel }) {
     setFormData(p => ({ ...p, [e.target.name]: e.target.value }));
 
   const handleSubmit = async (e) => {
-    e.preventDefault(); setError('');
-    if (!formData.from_name || !formData.to_name) { setError('"From" and "To" names are required.'); return; }
+    e.preventDefault();
+    if (!formData.from_name || !formData.to_name) { 
+      toast.error('"From" and "To" names are required.'); 
+      return; 
+    }
     const payload = {
       from_id: formData.from_id || null, from_name: formData.from_name,
       to_id:   formData.to_id   || null, to_name:   formData.to_name,
       level: formData.level, status: formData.status, description: formData.description,
     };
-    try {
-      if (boon) await api.patch(`/boons/${boon.id}`, payload);
-      else      await api.post('/boons', payload);
-      onSave();
-    } catch (err) { setError(err.response?.data?.error || 'Failed to save boon'); }
+    saveMutation.mutate(payload);
   };
 
   return (
@@ -658,40 +694,38 @@ function BoonForm({ entities, boon, onSave, onCancel }) {
       </div>
 
       <div className="p-4 md:p-6 overflow-y-auto custom-scrollbar flex-1">
-        {error && <div className="bg-error-container text-on-error px-4 py-3 rounded mb-4 text-sm">{error}</div>}
-
         <form id="boonForm" onSubmit={handleSubmit} className="space-y-5">
           
           <div className="space-y-1.5">
             <label className="text-[12px] font-bold text-on-surface-variant uppercase tracking-widest">Debtor <span className="lowercase font-normal opacity-70">(owes the boon)</span></label>
-            <select className="w-full bg-surface-container-lowest gothic-etched-border rounded px-3 py-2.5 text-sm outline-none focus:border-primary text-on-surface" value={formData.from_key} onChange={e => handleEntityChange(e, 'from')}>
+            <select className="w-full bg-surface-container-lowest gothic-etched-border rounded px-3 py-2.5 text-sm outline-none focus:border-primary text-on-surface" value={formData.from_key} onChange={e => handleEntityChange(e, 'from')} disabled={saveMutation.isPending}>
               {entityOptions.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
             </select>
             {formData.from_key === 'npc' && (
-              <input className="w-full bg-surface-container-lowest gothic-etched-border rounded px-3 py-2.5 text-sm outline-none focus:border-primary text-on-surface mt-2" type="text" placeholder="Enter custom name…" value={formData.from_name} onChange={e => handleNameChange(e, 'from')} />
+              <input className="w-full bg-surface-container-lowest gothic-etched-border rounded px-3 py-2.5 text-sm outline-none focus:border-primary text-on-surface mt-2" type="text" placeholder="Enter custom name…" value={formData.from_name} onChange={e => handleNameChange(e, 'from')} disabled={saveMutation.isPending}/>
             )}
           </div>
 
           <div className="space-y-1.5">
             <label className="text-[12px] font-bold text-on-surface-variant uppercase tracking-widest">Creditor <span className="lowercase font-normal opacity-70">(holds the boon)</span></label>
-            <select className="w-full bg-surface-container-lowest gothic-etched-border rounded px-3 py-2.5 text-sm outline-none focus:border-primary text-on-surface" value={formData.to_key} onChange={e => handleEntityChange(e, 'to')}>
+            <select className="w-full bg-surface-container-lowest gothic-etched-border rounded px-3 py-2.5 text-sm outline-none focus:border-primary text-on-surface" value={formData.to_key} onChange={e => handleEntityChange(e, 'to')} disabled={saveMutation.isPending}>
               {entityOptions.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
             </select>
             {formData.to_key === 'npc' && (
-              <input className="w-full bg-surface-container-lowest gothic-etched-border rounded px-3 py-2.5 text-sm outline-none focus:border-primary text-on-surface mt-2" type="text" placeholder="Enter custom name…" value={formData.to_name} onChange={e => handleNameChange(e, 'to')} />
+              <input className="w-full bg-surface-container-lowest gothic-etched-border rounded px-3 py-2.5 text-sm outline-none focus:border-primary text-on-surface mt-2" type="text" placeholder="Enter custom name…" value={formData.to_name} onChange={e => handleNameChange(e, 'to')} disabled={saveMutation.isPending}/>
             )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-[12px] font-bold text-on-surface-variant uppercase tracking-widest" htmlFor="level">Level</label>
-              <select className="w-full bg-surface-container-lowest gothic-etched-border rounded px-3 py-2.5 text-sm outline-none focus:border-primary text-on-surface" id="level" name="level" value={formData.level} onChange={handleChange}>
+              <select className="w-full bg-surface-container-lowest gothic-etched-border rounded px-3 py-2.5 text-sm outline-none focus:border-primary text-on-surface" id="level" name="level" value={formData.level} onChange={handleChange} disabled={saveMutation.isPending}>
                 {BOON_LEVELS.map(l => <option key={l} value={l}>{LEVEL_LABELS[l]}</option>)}
               </select>
             </div>
             <div className="space-y-1.5">
               <label className="text-[12px] font-bold text-on-surface-variant uppercase tracking-widest" htmlFor="status">Status</label>
-              <select className="w-full bg-surface-container-lowest gothic-etched-border rounded px-3 py-2.5 text-sm outline-none focus:border-primary text-on-surface" id="status" name="status" value={formData.status} onChange={handleChange}>
+              <select className="w-full bg-surface-container-lowest gothic-etched-border rounded px-3 py-2.5 text-sm outline-none focus:border-primary text-on-surface" id="status" name="status" value={formData.status} onChange={handleChange} disabled={saveMutation.isPending}>
                 {BOON_STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>)}
               </select>
             </div>
@@ -699,16 +733,16 @@ function BoonForm({ entities, boon, onSave, onCancel }) {
 
           <div className="space-y-1.5">
             <label className="text-[12px] font-bold text-on-surface-variant uppercase tracking-widest" htmlFor="description">Description</label>
-            <textarea className="w-full bg-surface-container-lowest gothic-etched-border rounded px-3 py-2.5 text-sm outline-none focus:border-primary text-on-surface resize-y" id="description" name="description" value={formData.description} onChange={handleChange} rows={4} placeholder="Detailed circumstances..." />
+            <textarea className="w-full bg-surface-container-lowest gothic-etched-border rounded px-3 py-2.5 text-sm outline-none focus:border-primary text-on-surface resize-y" id="description" name="description" value={formData.description} onChange={handleChange} rows={4} placeholder="Detailed circumstances..." disabled={saveMutation.isPending} />
           </div>
 
         </form>
       </div>
 
       <div className="p-4 md:p-6 border-t border-outline-variant/10 bg-surface-container flex justify-end gap-3 shrink-0">
-        <button type="button" className="px-4 py-2 font-bold text-sm tracking-widest uppercase text-on-surface-variant hover:text-on-surface transition-colors" onClick={onCancel}>Cancel</button>
-        <button type="submit" form="boonForm" className="bg-primary-container text-on-primary-container font-bold text-sm tracking-widest uppercase px-6 py-2 rounded shadow-lg hover:brightness-110 active:scale-95 transition-all">
-          Save Record
+        <button type="button" className="px-4 py-2 font-bold text-sm tracking-widest uppercase text-on-surface-variant hover:text-on-surface transition-colors" onClick={onCancel} disabled={saveMutation.isPending}>Cancel</button>
+        <button type="submit" form="boonForm" className="bg-primary-container text-on-primary-container font-bold text-sm tracking-widest uppercase px-6 py-2 rounded shadow-lg hover:brightness-110 active:scale-95 transition-all" disabled={saveMutation.isPending} style={{opacity: saveMutation.isPending ? 0.7 : 1}}>
+          {saveMutation.isPending ? 'Saving...' : 'Save Record'}
         </button>
       </div>
     </>

@@ -10,6 +10,7 @@ import domainsRaw from '../data/Domains.json';
 import api from '../core/api';
 import { Skeleton } from 'boneyard-js/react';
 import Avatar from '../components/Avatar';
+import { useQuery } from '@tanstack/react-query';
 
 // --- Division Names Mapping ---
 const DIVISION_NAMES = {
@@ -27,16 +28,23 @@ const DIVISION_NAMES = {
 };
 
 export default function Domains() {
-  const [claims, setClaims]                             = useState([]);
-  const [err, setErr]                                   = useState('');
-  const [msg, setMsg]                                   = useState('');
   const mapRef                                          = useRef(null);
   const geoJsonRef                                      = useRef(null);
   const [selectedDivision, setSelectedDivision]         = useState(null);
   const [selectedDivisionInfo, setSelectedDivisionInfo] = useState(null);
-  const [isLoading, setIsLoading]                       = useState(true);
   const [railOpen, setRailOpen]                         = useState(false);
   const [searchQuery, setSearchQuery]                   = useState('');
+
+  const { data: claimsData, isLoading, error } = useQuery({
+    queryKey: ['domain-claims'],
+    queryFn: async () => {
+      const res = await api.get('/domain-claims');
+      return res.data;
+    }
+  });
+
+  const claims = claimsData?.claims || [];
+  const err = error?.response?.data?.error || error?.message || '';
 
   const { geoJsonData, allDomainsList } = useMemo(() => {
     if (!domainsRaw || !Array.isArray(domainsRaw.features)) {
@@ -55,19 +63,6 @@ export default function Domains() {
 
   const claimByDiv = useMemo(() => new Map(claims.map(c => [Number(c.division), c])), [claims]);
   const numOr      = (v, fallback) => (Number.isFinite(parseFloat(v)) ? parseFloat(v) : fallback);
-
-  const loadClaims = useCallback(async () => {
-    setErr(''); setMsg(''); setIsLoading(true);
-    try {
-      const { data: claimsData } = await api.get('/domain-claims');
-      setClaims(claimsData.claims || []);
-    } catch (e) {
-      console.error('Error loading claims:', e);
-      setErr(e.response?.data?.error || 'Failed to load claims');
-    } finally { setIsLoading(false); }
-  }, []);
-
-  useEffect(() => { loadClaims(); }, [loadClaims]);
 
   const style = useCallback((feature) => {
     const n           = feature?.properties?.__division;
@@ -126,7 +121,6 @@ export default function Domains() {
           user_id: clickedClaim?.user_id || null,
           npc_id: clickedClaim?.owner_npc_id || null,
         });
-        setMsg(''); setErr('');
         e.target.bringToFront();
         e.target.openPopup();
       },
@@ -212,9 +206,9 @@ export default function Domains() {
       <div className={styles.wrap}>
 
       {/* ── Status toast ── */}
-      {(err || msg) && (
-        <div className={`${styles.toast} ${err ? styles.toastError : styles.toastOk}`}>
-          {err || msg}
+      {err && (
+        <div className={`${styles.toast} ${styles.toastError}`}>
+          {err}
         </div>
       )}
 

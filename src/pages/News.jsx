@@ -7,11 +7,12 @@ import { apiJoin, isVideoUrl } from '../utils/newsUtils';
 import CreateNewsModal from '../components/CreateNewsModal';
 import FullscreenArticleModal from '../components/FullscreenArticleModal';
 import { Skeleton } from 'boneyard-js/react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 export default function News() {
   const { user } = useContext(AuthCtx);
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
   const [modalMode, setModalMode] = useState(null);
   const [fullscreenArticle, setFullscreenArticle] = useState(null);
@@ -20,13 +21,40 @@ export default function News() {
   const isAdmin = user?.role === 'admin';
   const isCourt = user?.role === 'courtuser';
 
-  // --- Fetch active character to check permissions ---
-  const [myChar, setMyChar] = useState(null);
+  // React Query Fetching
+  const { data: myCharData, isLoading: myCharLoading } = useQuery({
+    queryKey: ['character', 'me'],
+    queryFn: async () => {
+      const res = await api.get('/characters/me');
+      return res.data;
+    },
+    enabled: !isAdmin && !isCourt // Only fetch if not admin/court
+  });
 
-  useEffect(() => {
-    if (isAdmin || isCourt) return;
-    api.get('/characters/me').then(r => setMyChar(r.data.character)).catch(()=>{});
-  }, [isAdmin, isCourt]);
+  const { data: newsData, isLoading: newsLoading } = useQuery({
+    queryKey: ['news'],
+    queryFn: async () => {
+      const res = await api.get('/news');
+      return res.data;
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id) => {
+      await api.delete(`/news/${id}`);
+    },
+    onSuccess: () => {
+      toast.success('Article deleted');
+      queryClient.invalidateQueries({ queryKey: ['news'] });
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.error || 'Failed to delete article');
+    }
+  });
+
+  const loading = newsLoading || (myCharLoading && !isAdmin && !isCourt);
+
+  const myChar = myCharData?.character || null;
 
   // Check if character is active (similar to DownTimes logic)
   const isCharActive = isAdmin || isCourt || (myChar && myChar.sheet && myChar.sheet.is_active === true);
@@ -41,23 +69,12 @@ export default function News() {
   // Can post rumor only if they are an Admin, Court, or an ACTIVE character
   const canPostRumor = isCharActive;
 
-  const fetchNews = async () => {
-    setLoading(true);
-    try {
-      const { data } = await api.get('/news');
-      let fetchedNews = (data.items || []).filter(i => i.type === 'news');
-      fetchedNews.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      setItems(fetchedNews);
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
-  };
+  const rawItems = newsData?.items || [];
+  const items = rawItems.filter(i => i.type === 'news').sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-  useEffect(() => { fetchNews(); }, []);
-
-  const handleDelete = async (id) => {
+  const handleDelete = (id) => {
     if(window.confirm("Delete this article?")) {
-      await api.delete(`/news/${id}`);
-      fetchNews();
+      deleteMutation.mutate(id);
     }
   };
 
@@ -155,7 +172,7 @@ export default function News() {
                           )}
                         </div>
                         {isAdmin && (
-                          <button onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }} className={styles.deleteOverlay}>×</button>
+                          <button onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }} className={styles.deleteOverlay} disabled={deleteMutation.isPending}>×</button>
                         )}
                       </article>
                     </div>
@@ -185,7 +202,7 @@ export default function News() {
                         <div className={styles.rumorBodyText} dangerouslySetInnerHTML={{ __html: item.body }} />
                         <div className={styles.rumorMeta}>— Heard on {new Date(item.created_at).toLocaleDateString()}</div>
                         {isAdmin && (
-                          <button onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }} className={styles.deleteOverlay}>×</button>
+                          <button onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }} className={styles.deleteOverlay} disabled={deleteMutation.isPending}>×</button>
                         )}
                       </article>
                     </div>
@@ -200,7 +217,7 @@ export default function News() {
       </div>
 
       {modalMode && (
-        <CreateNewsModal mode={modalMode} onClose={() => setModalMode(null)} onSuccess={() => { setModalMode(null); fetchNews(); }} />
+        <CreateNewsModal mode={modalMode} onClose={() => setModalMode(null)} onSuccess={() => { setModalMode(null); queryClient.invalidateQueries({ queryKey: ['news'] }); }} />
       )}
 
       {fullscreenArticle && (
