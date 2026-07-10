@@ -3,6 +3,7 @@ import api from '../core/api';
 import styles from '../styles/Sheet.module.css';
 import { useNavigate } from 'react-router-dom';
 import { PREDATOR_TYPES } from '../data/predator_types';
+import { trackEvent } from '../utils/analytics';
 import ClanPicker from '../components/characterSetupSteps/ClanPicker';
 import IdentityStep from '../components/characterSetupSteps/IdentityStep';
 import PredatorStep from '../components/characterSetupSteps/PredatorStep';
@@ -426,6 +427,10 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
       // Store the created character data if returned by API
       // This ensures we have the server-generated ID and any other fields
       const createdCharacter = data?.character || data?.npc;
+
+      if (!forNPC && !isRebuilding) {
+        trackEvent('create_character', { clan });
+      }
 
       // optional callback - pass the created character if available
       if (onDone) {

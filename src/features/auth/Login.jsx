@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useRef, useState } from 'react';
 import { AuthCtx } from '../../core/AuthContext'
 import { Link, useNavigate } from 'react-router-dom';
 import styles from '../../styles/auth/Login.module.css';
+import { trackEvent } from '../../utils/analytics';
 
 export default function Login() {
   const { login } = useContext(AuthCtx);
@@ -66,6 +67,8 @@ export default function Login() {
 
       if (u?.role === 'admin') nav('/admin');
       else nav('/');
+      
+      trackEvent('login', { method: 'email' });
     } catch (e) {
       setErr(e?.response?.data?.error || 'Login failed');
     }

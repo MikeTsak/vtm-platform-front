@@ -3,6 +3,7 @@ import React, { useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../../core/api';
 import styles from '../../styles/auth/Login.module.css';
+import { trackEvent } from '../../utils/analytics';
 
 export default function Register() {
   const [email, setEmail] = useState('');
@@ -110,6 +111,8 @@ export default function Register() {
       // store & set default header
       localStorage.setItem('token', token);
       api.defaults.headers.common.Authorization = `Bearer ${token}`;
+
+      trackEvent('sign_up', { method: 'email' });
 
       nav('/'); // success
     } catch (e) {

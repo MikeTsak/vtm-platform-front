@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import api from '../core/api';
+import { trackEvent } from '../utils/analytics';
 
 /**
  * Vampire: the Masquerade v5 Dice Roller (d10)
@@ -175,6 +176,8 @@ export default function DiceRoller({ characterId }) {
     setWpSelections(new Set());
     setWpMessage('');
     setRouseVal(null); 
+
+    trackEvent('roll_dice', { pool: total, hunger: hLvl, difficulty: difficulty || 0 });
 
     await logRollToApi(normal, hunger, note);
   };

@@ -5,6 +5,7 @@ import api from '../core/api';
 import styles from '../styles/DownTimes.module.css';
 import { Skeleton } from 'boneyard-js/react';
 import MiniSearch from 'minisearch';
+import { trackEvent } from '../utils/analytics';
 
 let tempIdCounter = 0;
 const generateTempId = () => {
@@ -105,6 +106,9 @@ function SubmitCard({ quota, onDowntimeCreated, isProject }) {
 
       const { data } = await api.post('/downtimes', payload);
       onDowntimeCreated(data?.downtime || { id: generateTempId(), ...payload, status: 'submitted', created_at: new Date().toISOString() });
+      
+      trackEvent('submit_downtime', { type: isProject ? 'project' : 'action' });
+      
       setTitle(''); setBody(''); setFeeding('');
     } catch (e) {
       setErr(e?.response?.data?.error || 'Failed to submit action.');

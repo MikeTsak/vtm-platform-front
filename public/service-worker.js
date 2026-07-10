@@ -39,3 +39,10 @@ self.addEventListener('notificationclick', function(event) {
     })
   );
 });
+
+// Basic fetch listener for PWA installability
+self.addEventListener('fetch', function(event) {
+  // We are not aggressively caching right now to avoid stale data,
+  // but the presence of this listener makes the app installable.
+  event.respondWith(fetch(event.request));
+});
