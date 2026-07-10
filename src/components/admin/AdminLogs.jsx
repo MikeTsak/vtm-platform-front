@@ -61,7 +61,7 @@ export default function AdminLogs() {
   const pollRef = useRef(null);
   const scrollRef = useRef(null);
 
-  const apiBase = (api?.defaults && api.defaults.baseURL) || import.meta.env.VITE_API_BASE || process.env.REACT_APP_API_BASE || "/api";
+  const apiBase = (api?.defaults && api.defaults.baseURL) || import.meta.env.VITE_API_BASE || "/api";
 
   async function loadLogs() {
     setLoading(true); setError("");

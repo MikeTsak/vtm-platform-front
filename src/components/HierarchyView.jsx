@@ -334,7 +334,7 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles, onImageCl
 
   const prefix = ent.is_ex ? "Ex-" : "";
   const primaryTitle = (ent.titles && ent.titles.length > 0) ? `${prefix}${ent.titles[0]}` : null;
-  const baseUrl = process.env.REACT_APP_API_URL || '';
+  const baseUrl = import.meta.env.VITE_API_URL || '';
   let avatarUrl = null;
   if (ent.type === 'player' && ent.user_id) avatarUrl = `${baseUrl}/users/${ent.user_id}/avatar`;
   else if (ent.type === 'npc') avatarUrl = `${baseUrl}/npcs/${ent.id}/avatar`;

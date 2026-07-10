@@ -17,7 +17,6 @@ import CharacterSetup from '../pages/CharacterSetup';
 import Domains from '../pages/Domains';
 import DownTimes from '../pages/DownTimes';
 import Boons from '../pages/Boons';
-import Court from '../pages/Court';
 import MediaViewer from '../pages/MediaViewer';
 import Premonitions from '../pages/Premonitions';
 import News from '../pages/News';
@@ -158,7 +157,7 @@ function AppLayout() {
           <Route path="/schrecknet" element={<Private><SchreckNet /></Private>} />
           <Route path="/surfaceweb" element={<Private><SurfaceWeb /></Private>} />
           <Route path="/live-session" element={<Private><LiveSession /></Private>} />
-          <Route path="/court" element={<Private><Court /></Private>} />
+          <Route path="/court" element={<Navigate to="/court/hierarchy" replace />} />
           <Route path="/court/hierarchy" element={<Private><Hierarchy /></Private>} />
           <Route path="/court/announcements" element={<Private><Announcements /></Private>} />
           <Route path="/court/coteries" element={<Private><Coteries /></Private>} />

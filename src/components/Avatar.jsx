@@ -11,7 +11,7 @@ export default function Avatar({ userId, npcId, identityId, retainerId, size = 8
   const [imgError, setImgError] = useState(false);
   const fileInputRef = useRef(null);
 
-  const baseUrl = process.env.REACT_APP_API_URL || '';
+  const baseUrl = import.meta.env.VITE_API_URL || '';
   let srcUrl = previewUrl || fallback;
   if (!imgError && !previewUrl) {
     const q = timestamp ? `?t=${timestamp}` : '';
