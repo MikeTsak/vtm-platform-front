@@ -254,27 +254,18 @@ export default function Home() {
         setCh(chData.character);
 
         if (chData.character) {
-          const [qR, dtR, chatR, newsR, cfgR, bannerR] = await Promise.allSettled([
-            api.get('/downtimes/quota'),
-            api.get('/downtimes/mine'),
-            api.get('/chat/my-recent'),
-            api.get('/news/recent'),
-            api.get('/downtimes/config'),
-            api.get('/system/banner')
-          ]);
+          const { data: dashRes } = await api.get('/home/dashboard');
           if (!live) return;
-          if (qR.status    === 'fulfilled') setQuota(qR.value.data);
-          if (dtR.status   === 'fulfilled') setRecentDowntimes(
-            (dtR.value.data?.downtimes || [])
-              .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-              .slice(0, 5)
-          );
-          if (chatR.status === 'fulfilled') setRecentChats(chatR.value.data?.conversations || []);
-          if (newsR.status === 'fulfilled') setRecentNews(newsR.value.data?.news || []);
-          if (cfgR.status  === 'fulfilled') setOpeningDate(cfgR.value.data?.downtime_opening || null);
-          if (bannerR.status === 'fulfilled') {
-            if (bannerR.value.data?.masquerade_threat_level) {
-              setThreatLevel(bannerR.value.data.masquerade_threat_level);
+          
+          if (dashRes.success) {
+            const d = dashRes.data;
+            setQuota(d.quota);
+            setRecentDowntimes(d.downtimes || []);
+            setRecentChats(d.chats || []);
+            setRecentNews(d.news || []);
+            setOpeningDate(d.config?.downtime_opening || null);
+            if (d.banner?.masquerade_threat_level) {
+              setThreatLevel(d.banner.masquerade_threat_level);
             }
           }
         }
