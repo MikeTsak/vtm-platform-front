@@ -7,6 +7,9 @@ import * as z from 'zod';
 import { useMutation } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+import Terms from '../../pages/Terms';
+import Privacy from '../../pages/Privacy';
 import styles from '../../styles/auth/Login.module.css';
 
 const registerSchema = z.object({
@@ -27,10 +30,21 @@ export default function Register() {
   const nav = useNavigate();
   const [showPwd, setShowPwd] = useState(false);
   const pwdRef = useRef(null);
+  const { executeRecaptcha } = useGoogleReCaptcha();
+  const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
+
+  const handleScroll = (e) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.target;
+    // Increase tolerance to 150px to ensure it triggers easily when near the bottom
+    if (scrollHeight - Math.ceil(scrollTop) <= clientHeight + 150) {
+      setHasScrolledToBottom(true);
+    }
+  };
 
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(registerSchema),
@@ -45,7 +59,7 @@ export default function Register() {
   const registerMutation = useMutation({
     mutationFn: async (data) => {
       // Passes the form data to AuthContext's register function
-      await registerAction(data.email, data.display_name, data.password);
+      await registerAction(data.email, data.display_name, data.password, data.recaptchaToken);
       return data;
     },
     onSuccess: () => {
@@ -65,8 +79,13 @@ export default function Register() {
     },
   });
 
-  const onSubmit = (data) => {
-    registerMutation.mutate(data);
+  const onSubmit = async (data) => {
+    if (!executeRecaptcha) {
+      toast.error('ReCAPTCHA is not loaded yet. Please wait a moment.');
+      return;
+    }
+    const token = await executeRecaptcha('register');
+    registerMutation.mutate({ ...data, recaptchaToken: token });
   };
 
   const toggleShowPwd = () => {
@@ -161,23 +180,51 @@ export default function Register() {
             {errors.password && <span style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>{errors.password.message}</span>}
           </div>
 
+
+
+          <div 
+            onScroll={handleScroll}
+            style={{ 
+              height: '250px', 
+              overflowY: 'auto', 
+              border: '1px solid rgba(255,255,255,0.1)', 
+              marginBottom: '1rem', 
+              borderRadius: '8px', 
+              fontSize: '0.75rem', 
+              color: 'rgba(255,255,255,0.7)',
+              backgroundColor: 'rgba(0,0,0,0.5)'
+            }}
+          >
+            <div style={{ padding: '10px' }}>
+              <Terms />
+              <hr style={{ margin: '40px 0', borderColor: 'rgba(255,255,255,0.1)' }} />
+              <Privacy />
+            </div>
+          </div>
+
           <div className={styles['captcha-and-terms']}>
-            <label className={styles['terms-checkbox']}>
+            <label 
+              className={styles['terms-checkbox']} 
+              style={{ 
+                opacity: hasScrolledToBottom ? 1 : 0.5, 
+                pointerEvents: hasScrolledToBottom ? 'auto' : 'none',
+                transition: 'opacity 0.3s ease'
+              }}
+            >
               <input
                 type="checkbox"
+                disabled={!hasScrolledToBottom}
                 {...register('agreedToTerms')}
               />
               <span className={styles.consentText}>
-                I agree to the{' '}
-                <Link to="/terms" className={styles.link}>
-                  Terms &amp; Conditions
-                </Link>{' '}
-                and{' '}
-                <Link to="/privacy" className={styles.link}>
-                  Privacy Policy
-                </Link>.
+                I have scrolled through and agree to the Terms & Conditions and Privacy Policy.
               </span>
             </label>
+            {!hasScrolledToBottom && (
+              <span style={{ color: '#fbbf24', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
+                Please scroll through the terms above to enable the checkbox.
+              </span>
+            )}
             {errors.agreedToTerms && <span style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>{errors.agreedToTerms.message}</span>}
           </div>
 

@@ -28,8 +28,8 @@ export default function AuthProvider({ children }) {
     trackEvent('login', { method: 'email' });
     await loadMe();
   };
-  const register = async (email, display_name, password) => {
-    const { data } = await api.post('/auth/register', { email, display_name, password });
+  const register = async (email, display_name, password, recaptchaToken) => {
+    const { data } = await api.post('/auth/register', { email, display_name, password, recaptchaToken });
     localStorage.setItem('token', data.token); 
     trackEvent('sign_up', { method: 'email' });
     await loadMe();
