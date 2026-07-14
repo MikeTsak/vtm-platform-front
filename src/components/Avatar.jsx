@@ -11,8 +11,13 @@ export default function Avatar({ userId, npcId, identityId, retainerId, size = 8
   const [imgError, setImgError] = useState(false);
   const fileInputRef = useRef(null);
 
-  const baseUrl = import.meta.env.VITE_API_URL || '';
+  const baseUrl = import.meta.env.VITE_API_URL || '/api';
   let srcUrl = previewUrl || fallback;
+
+  React.useEffect(() => {
+    setImgError(false);
+  }, [entityKey, timestamp]);
+
   if (!imgError && !previewUrl) {
     const q = timestamp ? `?t=${timestamp}` : '';
     if (userId) srcUrl = `${baseUrl}/users/${userId}/avatar${q}`;

@@ -181,7 +181,7 @@ export default function AnnouncementsView({ canEdit: propCanEdit }) {
                 <div className={styles.decreeContent}>
                   <header className={styles.decreeMeta}>
                     <div className={styles.decreeAuthorInfo}>
-                      <Avatar userId={item.author_id} size={48} className={styles.decreeAuthorAvatar} fallback={authorImg || undefined} />
+                      <Avatar userId={item.author_id} size={48} className={styles.decreeAuthorAvatar} fallback="/img/ATT-logo(1).png" />
                       <div>
                         <h3 className={styles.decreeAuthorName}>{authorName}</h3>
                         <p className={styles.decreeAuthorRole}>{authorRole}</p>
