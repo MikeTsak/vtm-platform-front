@@ -13,6 +13,8 @@ export const COTERIE_DOC = {
   ],
   pool_rules: [
     "Start with a Coterie pool equal to members × points_per_member (default 1; ST may allow 2).",
+    "Players may also contribute their own characters' Advantage dots to the coterie pool.",
+    "The coterie can purchase coterie Flaws to get more dots for the coterie during creation. Every player must agree in order for the coterie to take a Flaw.",
     "Pay listed costs from the coterie pool. If it’s not enough, collect from characters.",
     "Increase any listed value with remaining pool; use 'Possible Extras' as sinks for leftovers.",
   ],

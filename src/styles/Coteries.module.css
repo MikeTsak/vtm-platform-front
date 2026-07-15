@@ -1,41 +1,62 @@
 /* src/styles/Coteries.module.css */
 
-/* Import fonts */
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;500;600&display=swap');
-
-/* Color Palette based on Login.module.css */
-:root {
-  --bg: #0b0a0c;
-  --surface: #141116;       /* Card background */
-  --surface-2: #1a151d;     /* Slightly lighter surface */
-  --border: #2b2330;       /* Muted border */
-  --text: #e7e2ea;         /* Off-white text */
-  --muted: #a393a8;         /* Muted purple-grey text */
-  --primary: #8a0f1a;      /* Deep blood red - Main Accent */
-  --primary-2: #be1200;    /* Brighter blood - Hover/Focus */
-  --accent: #d71f3c;       /* Highlight red */
-  --glow: #ff2c52;         /* Glow edge */
-
-  /* Adding Status colors for consistency */
-  --ok: #3ecf8e; /* Green from DownTimes example, adjust if needed */
-  --err: #ff6b6b; /* Reddish error */
-  --radius: 12px; /* Adjusted from 14px for consistency */
-  --radius-sm: 8px; /* Adjusted from 10px */
-  --font-title: 'Cinzel', serif;
-  --font-body: 'Inter', system-ui, -apple-system, segoe ui, roboto, sans-serif;
-}
+/* Import fonts (Playfair Display for titles) */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@400;500;600&display=swap');
 
 /* ---------- Base Layout & Typography ---------- */
 .wrap {
-  max-width: 980px;
+  width: 100%;
+  max-width: 1440px;
   margin: 0 auto;
-  padding: clamp(1rem, 3vw, 1.75rem);
-  display: grid;
-  gap: 1.25rem;
-  font-family: var(--font-body);
-  color: var(--text);
+  padding: clamp(16px, 3vw, 48px);
+  font-family: Inter, sans-serif;
+  color: var(--text-color);
+}
 
-  /* Background applied globally or on parent, assuming .adminRoot */
+.grid12 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+@media (min-width: 1024px) {
+  .grid12 {
+    grid-template-columns: repeat(12, 1fr);
+  }
+}
+
+.col8 { grid-column: span 12; display: flex; flex-direction: column; gap: 24px; }
+@media (min-width: 1024px) { .col8 { grid-column: span 8; } }
+
+.col4 { grid-column: span 12; display: flex; flex-direction: column; gap: 24px; }
+@media (min-width: 1024px) { .col4 { grid-column: span 4; } }
+
+.etchedBorder {
+  border: 1px solid rgba(224, 224, 224, 0.1);
+}
+
+.shadowGlow {
+  box-shadow: 0px 4px 12px rgba(74, 4, 4, 0.4);
+}
+
+.bgSurfaceContainer {
+  background-color: #201f1f; /* From Stitch */
+}
+
+.bgSurfaceDim {
+  background-color: #131313;
+}
+
+.textPrimary {
+  color: #ffb4a9;
+}
+
+.bgPrimaryContainer {
+  background-color: #880808;
+}
+
+.borderTertiary {
+  border-left-color: #f7bd48;
 }
 
 .header {
@@ -45,28 +66,28 @@
   gap: 1rem;
   flex-wrap: wrap;
   margin-bottom: 0.5rem;
-  border-bottom: 1px solid var(--border); /* Add subtle separator */
+  border-bottom: 1px solid var(--border-color);
   padding-bottom: 0.75rem;
 }
 
 .title {
-  font-family: var(--font-title);
+  font-family: 'Playfair Display', serif;
   font-size: clamp(1.8rem, 4vw, 2.5rem);
-  font-weight: 800; /* Bolder title */
+  font-weight: 700;
   margin: 0;
-  color: var(--accent); /* Use Highlight Red */
-  text-shadow: 0 0 12px var(--glow); /* Use Glow */
+  color: var(--tint);
+  text-shadow: none;
 }
 
 .text {
   margin: 0;
-  color: var(--text);
+  color: var(--text-color);
   line-height: 1.6;
 }
 
 .muted {
   margin: 0;
-  color: var(--muted);
+  color: var(--text-muted);
   line-height: 1.5;
   font-size: 0.9rem;
 }
@@ -75,35 +96,59 @@
 .summaryLink {
     cursor: pointer;
     font-weight: 600;
-    color: var(--accent); /* Use Highlight Red */
+    color: var(--tint);
     transition: color 0.2s ease, text-shadow 0.2s ease;
-    border-bottom: 1px dashed rgb(215 31 60 / 40%); /* Dashed red underline */
+    border-bottom: 1px dashed color-mix(in srgb, var(--tint) 40%, transparent);
 }
 
 .summaryLink:hover {
-    color: var(--glow);
-    text-shadow: 0 0 8px var(--glow);
+    color: var(--accent);
     border-bottom-color: var(--accent);
 }
 
 /* Horizontal Rule */
 .hr {
     border: none;
-    border-top: 1px solid var(--border); /* Use new border color */
+    border-top: 1px solid var(--border-color);
     margin: 1rem 0;
 }
 
 /* ---------- Card Styling ---------- */
 .card {
-  background: linear-gradient(170deg, var(--surface-2), var(--surface)); /* Reversed gradient */
-  border: 1px solid var(--border);
-  border-radius: var(--radius); /* Adjusted shadow */
-  padding: clamp(1rem, 2vw, 1.5rem);
-  display: grid;
-  gap: 1rem;
+  background-color: #201f1f; /* bg-surface-container */
+  border: 1px solid rgba(224, 224, 224, 0.1); /* etched-border */
+  border-radius: var(--radius);
+  padding: clamp(16px, 2.2vw, 24px);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
 
-  /* Add subtle red glow inside */
-  box-shadow: 0 8px 24px rgb(0 0 0 / 30%), inset 0 0 40px rgb(138 15 26 / 10%);
+.cardHeader {
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 1.5rem;
+  font-family: 'Playfair Display', serif;
+  font-weight: 600;
+  color: var(--text-color);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.titleAccentBar {
+  width: 4px;
+  height: 24px;
+  background-color: #ffb4a9; /* bg-primary */
+  display: block;
 }
 
 .cardHeader {
@@ -112,30 +157,31 @@
   align-items: baseline;
   gap: 0.75rem;
   padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .cardTitle {
   margin: 0;
   font-size: 1.25rem;
-  font-weight: 700; /* Bolder */
-  color: var(--text);
+  font-family: 'Playfair Display', serif;
+  font-weight: 600;
+  color: var(--text-color);
 }
 
 .cardSubtitle {
-  color: var(--muted);
+  color: var(--text-muted);
   font-size: 0.85rem;
 }
 
 /* Card Tones (Using Error/Success from new palette) */
 .card[data-tone="success"] {
-  border-left: 4px solid var(--ok);
-  background: color-mix(in srgb, var(--surface) 85%, var(--ok) 15%);
+  border-left: 4px solid #1e4d20;
+  background: color-mix(in srgb, var(--surface-color) 80%, #1e4d20 20%);
 }
 
 .card[data-tone="warn"] {
-  border-left: 4px solid var(--err);
-  background: color-mix(in srgb, var(--surface) 85%, var(--err) 15%);
+  border-left: 4px solid #4d1a20;
+  background: color-mix(in srgb, var(--surface-color) 80%, #4d1a20 20%);
 }
 
 /* ---------- Tabs (Chip Style) ---------- */
@@ -143,72 +189,72 @@
 
 .tabButton {
   padding: 0.5rem 0.9rem; border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--surface-2); /* Use lighter surface for inactive */
-  color: var(--muted);
+  border: 1px solid var(--border-color);
+  background: var(--surface-color);
+  color: var(--text-muted);
   cursor: pointer; font-weight: 600; font-size: 0.85rem;
   transition: all 0.2s ease;
 }
 
 .tabButton:hover {
-  border-color: var(--primary); /* Deep red border */
-  color: var(--text);
+  border-color: var(--tint);
+  color: var(--text-color);
 }
 
 .tabButtonActive {
-  border-color: var(--primary);
-  background: color-mix(in srgb, var(--primary) 20%, var(--surface)); /* Tinted background */
-  color: var(--accent); /* Highlight red text */
-  box-shadow: 0 0 8px rgb(138 15 26 / 50%); /* Primary red glow */
+  border-color: var(--tint);
+  background: color-mix(in srgb, var(--tint) 20%, var(--surface-color));
+  color: var(--tint);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--tint) 50%, transparent);
 }
 
 /* ---------- Dot Picker ---------- */
 .dotPicker { display: grid; gap: 0.5rem; }
-.dotLabel { font-weight: 600; display: flex; align-items: center; gap: 0.5rem; color: var(--text); }
-.dotLabelBaseline { font-size: 0.8rem; color: var(--muted); font-weight: 400; }
+.dotLabel { font-weight: 600; display: flex; align-items: center; gap: 0.5rem; color: var(--text-color); }
+.dotLabelBaseline { font-size: 0.8rem; color: var(--text-muted); font-weight: 400; }
 .dotsContainer { display: flex; gap: 0.75rem; align-items: center; }
 .dots { display: flex; gap: 0.4rem; }
 .dotButton { background: transparent; border: none; padding: 2px; cursor: pointer; border-radius: 50%; transition: box-shadow 0.2s ease; }
-.dotButtonLocked { border: 1px solid var(--ok); padding: 1px; } /* Use OK color */
+.dotButtonLocked { border: 1px solid #2e883a; padding: 1px; } /* Use OK color */
 .dotButton:focus {
     outline: none;
-    box-shadow: 0 0 0 2px var(--accent); /* Highlight red focus */
+    box-shadow: 0 0 0 2px var(--tint);
 }
 
 .dot {
   width: 14px; height: 14px; border-radius: 50%; display: block;
-  border: 1px solid var(--border); transition: background-color 0.2s ease, border-color 0.2s ease;
+  border: 1px solid var(--tint); background: #0a0a0b; transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .dotFilled {
-  background: var(--text); border-color: var(--text);
-  box-shadow: 0 0 4px rgb(231 226 234 / 40%); /* Subtle glow for filled */
+  background: #880808; border-color: #880808;
 }
 
 .dotButton:hover .dot:not(.dotFilled) {
-    border-color: var(--muted); /* Indicate hover on empty */
+    border-color: #880808;
 }
-.dotCount { color: var(--muted); font-size: 0.85rem; }
+.dotCount { color: var(--text-muted); font-size: 0.85rem; }
 
 /* ---------- Form Inputs ---------- */
 .input, .select, .textarea {
-  background: var(--bg); /* Darkest background */
-  border: 1px solid var(--border);
-  color: var(--text);
-  border-radius: var(--radius-sm); /* Use smaller radius */
-  min-height: 42px; /* Consistent height from login */
-  padding: 0.6rem 0.8rem; /* Adjusted padding */
-  font-size: 0.95rem; font-family: inherit;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--tint);
+  color: var(--text-color);
+  border-radius: var(--radius);
+  height: 42px;
+  padding: 0 .75rem;
+  font-size: 1rem;
   transition: border-color .2s, box-shadow .2s;
   width: 100%; box-sizing: border-box;
 }
 
 .input:focus, .select:focus, .textarea:focus {
   outline: none;
-  border-color: var(--primary); /* Deep red focus border */
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 30%, transparent); /* Deep red focus glow */
+  border-bottom-color: var(--accent);
+  box-shadow: 0 1px 0 0 var(--accent);
 }
-.input::placeholder { color: var(--muted); opacity: 0.6; }
+.input::placeholder { color: var(--text-muted); opacity: 0.6; }
 .textarea { min-height: 100px; resize: vertical; line-height: 1.6; }
 
 .select {
@@ -222,70 +268,67 @@
 
 /* Labeled Input Structure */
 .field { display: grid; gap: 0.5rem; }
-.fieldLabel { font-weight: 600; font-size: 0.85rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.fieldLabel { font-weight: 600; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
 
 /* ---------- Buttons ---------- */
 
-/* General Button Base (Not used directly, but composes uses it) */
+/* General Button Base */
 .button {
-  font-family: inherit; font-size: 0.9rem; font-weight: 600; padding: 0.6rem 1rem;
-  border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer;
+  font-family: inherit; font-size: 0.9rem; font-weight: 600; padding: 0.6rem 1.2rem;
+  border-radius: var(--radius); cursor: pointer;
   transition: all 0.2s ease-in-out;
+  border: 1px solid transparent;
 }
 
-/* Primary Action Button (Red) */
+/* Primary Action Button */
 .buttonPrimary {
   composes: button;
-  background: linear-gradient(180deg, var(--accent), var(--primary)); /* Red gradient */
-  color: #fff5f7; /* Light text for contrast */
-  border-color: color-mix(in srgb, var(--primary) 70%, var(--bg-color));
-  text-shadow: 0 1px 1px rgb(0 0 0 / 30%);
-  box-shadow: 0 4px 10px rgb(0 0 0 / 30%), inset 0 1px 0 rgb(255 255 255 / 5%);
+  background: var(--tint);
+  color: var(--text-color);
+  border-color: var(--tint);
 }
 
 .buttonPrimary:hover:not(:disabled) {
-  background: linear-gradient(180deg, var(--glow), var(--primary-2)); /* Brighter gradient on hover */
-  border-color: var(--primary);
-  box-shadow: 0 6px 15px rgb(138 15 26 / 40%), inset 0 1px 0 rgb(255 255 255 / 10%);
-  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--tint) 80%, black);
+  border-color: color-mix(in srgb, var(--tint) 80%, black);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--tint) 40%, transparent);
 }
 
 .buttonPrimary:disabled {
-   background: var(--surface-2); border-color: var(--border); color: var(--muted);
-   cursor: not-allowed; opacity: 0.6; box-shadow: none; text-shadow: none;
+   background: var(--surface-color); border-color: var(--border-color); color: var(--border-color);
+   cursor: not-allowed; box-shadow: none;
 }
-.buttonPrimary:disabled:hover { transform: none; }
 
 /* Secondary/Ghost Button */
 .buttonSecondary {
   composes: button;
   background: transparent;
-  border-color: var(--border);
-  color: var(--muted);
+  border-color: var(--tint);
+  color: var(--tint);
 }
 
 .buttonSecondary:hover:not(:disabled) {
-  border-color: var(--primary);
-  background: color-mix(in srgb, var(--primary) 10%, transparent);
-  color: var(--text);
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: inset 0 0 8px color-mix(in srgb, var(--tint) 20%, transparent);
 }
 
 /* Specific Button Styles */
 .applyTypeButton {
   composes: button; /* Base */
-  border-color: var(--ok);
-  background: color-mix(in srgb, var(--ok) 15%, var(--surface));
-  color: var(--ok);
+  border-color: #3ecf8e;
+  background: color-mix(in srgb, #3ecf8e 15%, var(--surface-color));
+  color: #3ecf8e;
   font-weight: 700;
 }
 
 .applyTypeButton:hover:not(:disabled) {
-   background: color-mix(in srgb, var(--ok) 25%, var(--surface));
+   background: color-mix(in srgb, #3ecf8e 25%, var(--surface-color));
    box-shadow: 0 0 10px rgb(62 207 142 / 30%); /* Green glow */
 }
 
 .applyTypeButton:disabled {
-  background: var(--surface-2); border-color: var(--border); color: var(--muted);
+  background: var(--surface-color); border-color: var(--border-color); color: var(--text-muted);
   cursor: not-allowed; opacity: 0.6; box-shadow: none;
 }
 
@@ -293,54 +336,58 @@
 .removeButton {
     composes: button; /* Base */
     padding: 0.4rem 0.8rem; font-size: 0.85rem;
-    border-color: var(--border); background: transparent; color: var(--muted);
+    border-color: var(--border-color); background: transparent; color: var(--text-muted);
 }
 
 .removeButton:hover {
-    background-color: var(--primary); /* Deep red */
-    border-color: var(--primary);
-    color: white;
+    background-color: var(--tint);
+    border-color: var(--tint);
+    color: var(--text-color);
 }
 
 /* ---------- Member Picker ---------- */
 .memberSearchInput { composes: input; flex: 1; min-width: 220px; }
 
 .memberListContainer {
-    display: grid; gap: 0.4rem; max-height: 180px; overflow-y: auto;
-    border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.5rem;
-    background: var(--bg); /* Darkest background */
+    display: flex; flex-direction: column; gap: 0.5rem; max-height: 250px; overflow-y: auto;
+    border: 1px solid rgba(224, 224, 224, 0.1); border-radius: var(--radius); padding: 0.5rem;
+    background: #131313;
 }
 
 .memberListItem {
-    text-align: left; background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius-sm); padding: 0.5rem 0.75rem; color: var(--text);
-    cursor: pointer; transition: all 0.2s ease; font-size: 0.9rem;
+    display: flex; align-items: center; justify-content: space-between;
+    background: #131313; border: 1px solid rgba(224, 224, 224, 0.1);
+    border-radius: var(--radius); padding: 0.75rem; color: var(--text-color);
+    cursor: pointer; transition: all 0.2s ease;
 }
-.memberListItem:hover { background: var(--surface-2); border-color: var(--primary); }
-.memberListItem b { color: var(--accent); } /* Highlight red name */
-.currentMembersList { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.5rem; }
-.currentMemberItem { display: flex; align-items: center; gap: 0.5rem; }
+.memberListItem:hover { background: #2a2a2a; }
+.memberListItem b { color: #ffb4a9; }
+.currentMembersList { display: flex; flex-wrap: wrap; gap: 1rem; }
+.currentMemberItem { 
+  display: flex; align-items: center; gap: 0.75rem; 
+  background: #2a2a2a; border-radius: 9999px; padding: 0.25rem; padding-right: 1rem;
+  border: 1px solid rgba(224, 224, 224, 0.1);
+}
 
 .currentMemberName {
-    background: var(--bg); border: 1px solid var(--border); padding: 0.4rem 0.8rem;
-    border-radius: var(--radius-sm); flex: 1; color: var(--text); font-size: 0.9rem;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    color: var(--text-color); font-size: 0.875rem; font-family: Inter, sans-serif;
+    white-space: nowrap;
 }
 
 /* ---------- Required / Extras List ---------- */
 .attributeList { margin: 0; padding-left: 1.2rem; display: grid; gap: 0.3rem; list-style-type: '🩸'; /* Custom bullet */ }
-.attributeList li { color: var(--text); font-size: 0.95rem; padding-left: 0.5rem; /* Space after bullet */ }
-.attributeList li::marker { color: var(--primary); /* Red bullet */ font-size: 0.8em; }
-.attributeList li b { color: var(--accent); } /* Highlight name */
+.attributeList li { color: var(--text-color); font-size: 0.95rem; padding-left: 0.5rem; /* Space after bullet */ }
+.attributeList li::marker { color: var(--tint); font-size: 0.8em; }
+.attributeList li b { color: var(--tint); }
 
 /* ---------- Backgrounds Editor ---------- */
 .backgroundInput { composes: input; flex: 1; min-width: 220px; }
 .backgroundItem { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
 
 .backgroundNameDisplay {
-    flex: 1; background: var(--bg); border: 1px solid var(--border);
-    border-radius: var(--radius-sm); padding: 0.5rem 0.75rem;
-    color: var(--text); font-weight: 600;
+    flex: 1; background: var(--bg-color); border: 1px solid var(--border-color);
+    border-radius: var(--radius); padding: 0.5rem 0.75rem;
+    color: var(--text-color); font-weight: 600;
 }
 .backgroundControls { display: flex; align-items: center; gap: 0.75rem; }
 .backgroundControls .dotPicker .dotLabel { display: none; }
@@ -349,13 +396,14 @@
 .typeSearchInput { composes: input; flex: 1; min-width: 240px; }
 
 .typeItem {
-    border: 1px solid var(--border); background: var(--surface);
-    border-radius: var(--radius); padding: 1rem; display: grid; gap: 0.5rem;
+    border: 1px solid rgba(224, 224, 224, 0.1); background: #131313;
+    border-radius: var(--radius); padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem;
+    border-left: 2px solid #ffb4a9;
     transition: all 0.2s ease;
 }
-.typeItem:hover { border-color: var(--primary); box-shadow: 0 0 10px rgb(138 15 26 / 30%); }
+.typeItem:hover { background: #2a2a2a; }
 .typeItemHeader { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: center; }
-.typeName { font-size: 1.1rem; font-weight: 700; color: var(--text); }
+.typeName { font-size: 1.1rem; font-family: 'Playfair Display', serif; font-weight: 700; color: var(--text-color); }
 
 /* ---------- Responsive Adjustments ---------- */
 @media (width <= 768px) {

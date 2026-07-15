@@ -41,18 +41,20 @@ function computeAllDomainsFromJson() {
 /* ==================================================== */
 
 /* ---------- Small UI helpers ---------- */
-function Card({ title, subtitle, children, footer, tone = 'default' }) {
+function Card({ title, subtitle, children, tone, className }) {
   return (
-    <section className={styles.card} data-tone={tone}>
+    <div className={`${styles.card} ${className || ''}`} data-tone={tone}>
       {(title || subtitle) && (
-        <header className={styles.cardHeader}>
-          {title && <h3 className={styles.cardTitle}>{title}</h3>}
-          {subtitle && <span className={styles.cardSubtitle}>{subtitle}</span>}
-        </header>
+        <div className={styles.cardHeader}>
+          {title && <div className={styles.titleAccentBar} />}
+          <div>
+            {title && <h3 className={styles.cardTitle}>{title}</h3>}
+            {subtitle && <div className={styles.cardSubtitle}>{subtitle}</div>}
+          </div>
+        </div>
       )}
       {children}
-      {footer}
-    </section>
+    </div>
   );
 }
 function Tabs({ tabs, value, onChange }) {
@@ -302,6 +304,57 @@ function BackgroundsEditor({ items, setItems }) {
     </Card>
   );
 }
+
+function FlawsEditor({ items, setItems }) {
+  const [q, setQ] = useState(''); const [dots, setDots] = useState(1);
+  function add() {
+    const name = q.trim(); if (!name) return; 
+    setItems([...items, { name, dots }]); setQ(''); setDots(1);
+  }
+  function updateDots(idx, v) {
+    const next = [...items];
+    const newDots = Math.max(1, Math.min(5, v));
+    next[idx] = { ...next[idx], dots: newDots };
+    setItems(next);
+  }
+  function remove(idx) { const next = [...items]; next.splice(idx, 1); setItems(next); }
+
+  return (
+    <Card title="Coterie Flaws" subtitle="e.g., Adversary, Enemies, Notoriety…">
+      <Muted>Flaws grant bonus dots to the Coterie Pool during creation. Every player must agree.</Muted>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <input
+          placeholder="Flaw name (e.g., Adversary)"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          className={styles.backgroundInput}
+        />
+        <NumberInput label="Dots" value={dots} setValue={setDots} min={1} max={5} width="100px" />
+        <button onClick={add} disabled={!q.trim()} className={styles.buttonPrimary}>
+          Add Flaw
+        </button>
+      </div>
+
+      <div style={{ display: 'grid', gap: 8 }}>
+        {items.length === 0 ? (
+          <Muted>No flaws yet.</Muted>
+        ) : (
+          items.map((flaw, idx) => (
+            <div key={`${flaw.name}-${idx}`} className={styles.backgroundItem}>
+              <div className={styles.backgroundNameDisplay}><b>{flaw.name}</b></div>
+              <div className={styles.backgroundControls}>
+                <DotPicker label="Dots" value={flaw.dots} setValue={(v) => updateDots(idx, v)} max={5} />
+                <button onClick={() => remove(idx)} className={styles.removeButton} title="Remove flaw">
+                  Remove
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </Card>
+  );
+}
 function TypesBrowser({ onPick }) {
   const [q, setQ] = useState('');
   const list = useMemo(() => {
@@ -427,8 +480,11 @@ export default function Coteries() {
   const [required, setRequired] = useState({});
   const [extras, setExtras] = useState([]);
   const [backgrounds, setBackgrounds] = useState([]);
+  const [flaws, setFlaws] = useState([]);
+  const [bonusPoints, setBonusPoints] = useState(0);
 
-  const poolTotal = useMemo(() => members.length * pointsPerMember, [members.length, pointsPerMember]);
+  const flawsBonus = useMemo(() => flaws.reduce((s, f) => s + (Number(f.dots) || 0), 0), [flaws]);
+  const poolTotal = useMemo(() => (members.length * pointsPerMember) + bonusPoints + flawsBonus, [members.length, pointsPerMember, bonusPoints, flawsBonus]);
   const requiredSpend = useMemo(() => Object.values(required).reduce((s, v) => s + (Number(v) || 0), 0), [required]);
   const domainSpend = useMemo(() => Math.max(0, chasse - baseline.chasse) + Math.max(0, lien - baseline.lien) + Math.max(0, portillon - baseline.portillon), [chasse, lien, portillon, baseline]);
   const backgroundsSpend = useMemo(() => backgrounds.reduce((s, b) => s + (Number(b.dots) || 0), 0), [backgrounds]);
@@ -498,6 +554,8 @@ export default function Coteries() {
     setRequired({});
     setExtras([]);
     setBackgrounds([]);
+    setFlaws([]);
+    setBonusPoints(0);
     setTab('builder');
   };
 
@@ -527,9 +585,11 @@ export default function Coteries() {
       setChasse(full.chasse || 0);
       setLien(full.lien || 0);
       setPortillon(full.portillon || 0);
+      setBonusPoints(full.bonus_points || 0);
       
       setRequired(safeParse(full.required_json, {}));
       setBackgrounds(safeParse(full.backgrounds_json, []));
+      setFlaws(safeParse(full.flaws_json, []));
       setExtras(safeParse(full.extras_json, []));
       
       setMembers(mems.map(m => ({ id: m.user_id, name: m.display_name })));
@@ -567,8 +627,10 @@ export default function Coteries() {
         traits: { chasse, lien, portillon },
         required,
         backgrounds,
+        flaws,
         extras,
         points_per_member: pointsPerMember,
+        bonus_points: bonusPoints,
         coterie_xp: coterieXP,
         members: members.map(m => ({ user_id: m.id, display_name: m.name }))
       };
@@ -634,6 +696,8 @@ export default function Coteries() {
   function resetAllocations() {
     setChasse(baseline.chasse); setLien(baseline.lien); setPortillon(baseline.portillon);
     setBackgrounds([]);
+    setFlaws([]);
+    setBonusPoints(0);
   }
 
   const coreEnglish = [
@@ -726,6 +790,14 @@ export default function Coteries() {
                         </ul>
                       </div>
                     )}
+                    {safeParse(c.flaws_json).length > 0 && (
+                      <div>
+                        <Muted><b>Flaws:</b></Muted>
+                        <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'var(--muted)', fontSize: '0.9rem' }}>
+                          {safeParse(c.flaws_json).map((f, i) => <li key={i}>{f.name} (•{f.dots})</li>)}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                   
                   <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
@@ -787,11 +859,116 @@ export default function Coteries() {
       )}
 
       {tab === 'builder' && (
-        <>
-          <Card title="Pick a Type (optional)" subtitle="Applying a type will pre-fill baseline Domain and Required costs.">
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-              <label className={styles.field} style={{flex: '1 1 280px'}}>
-                <span className={styles.fieldLabel}>Coterie Type</span>
+        <div className={styles.grid12}>
+          {/* LEFT COLUMN: 8/12 */}
+          <div className={styles.col8}>
+            
+            <Card title="Foundation" subtitle="Basic identity and configuration">
+              <label className={styles.field}>
+                <span className={styles.fieldLabel}>Coterie Name</span>
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g., Night Wardens"
+                  className={styles.input}
+                />
+              </label>
+
+              <label className={styles.field}>
+                <span className={styles.fieldLabel}>
+                  Domain Division <em className={styles.muted}>(optional)</em>
+                </span>
+                <select
+                  value={domainId}
+                  onChange={(e) => setDomainId(e.target.value)}
+                  className={styles.select}
+                >
+                  <option value="">— Select domain —</option>
+                  {domainOptions.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      #{o.value} — {o.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end', marginTop: 8 }}>
+                <NumberInput label="Points/member" value={pointsPerMember} setValue={setPointsPerMember} min={1} max={2} width="120px" />
+                <NumberInput label="Bonus Dots (players)" value={bonusPoints} setValue={setBonusPoints} min={0} max={20} width="120px" />
+                <NumberInput label="Coterie XP (starting)" value={coterieXP} setValue={setCoterieXP} min={0} max={999} width="150px" />
+              </div>
+            </Card>
+
+            <Card className={styles.borderTertiary}>
+              <h2 className={styles.cardTitle} style={{ marginBottom: '1rem' }}>
+                <span className="material-symbols-outlined" style={{ color: '#f7bd48' }}>data_usage</span>
+                Pool Calculation
+              </h2>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1rem' }}>
+                <div style={{ color: 'var(--text-muted)' }}>Resources Allocation <small>({members.length * pointsPerMember} base + {bonusPoints} bonus + {flawsBonus} flaws)</small></div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 600 }}>
+                  <span style={{ color: '#f7bd48' }}>{allocated}</span> / {poolTotal}
+                </div>
+              </div>
+              <div style={{ width: '100%', height: '8px', background: '#131313', borderRadius: '999px', overflow: 'hidden', display: 'flex' }}>
+                <div style={{ height: '100%', background: '#880808', width: `${Math.min(100, poolTotal > 0 ? (allocated / poolTotal) * 100 : 0)}%`, transition: 'width 0.3s ease' }}></div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                <span>Spent Points: {allocated}</span>
+                <span style={{ color: remaining < 0 ? '#ffb4ab' : 'inherit' }}>
+                  Remaining Points: {remaining}
+                </span>
+              </div>
+              <div style={{ marginTop: '0.5rem' }}>
+                <button onClick={resetAllocations} className={styles.buttonSecondary} style={{ fontSize: '0.8rem', padding: '4px 8px' }}>Reset allocations</button>
+              </div>
+            </Card>
+
+            <MembersPicker members={members} setMembers={setMembers} roster={users} />
+
+            <BackgroundsEditor items={backgrounds} setItems={setBackgrounds} />
+            <FlawsEditor items={flaws} setItems={setFlaws} />
+
+            <Card tone={valid ? (allocated > poolTotal ? 'warn' : 'success') : 'warn'} title="Save & Export">
+              {!valid && (
+                <div style={{ marginBottom: '10px' }}>
+                  <Muted style={{ color: '#ffb4ab', marginBottom: '4px' }}><b>Cannot save yet. Please fix the following:</b></Muted>
+                  <ul style={{ margin: 0, paddingLeft: '1.2rem', color: '#ffb4ab', fontSize: '0.9rem' }}>
+                    {validationErrors.map((err, i) => <li key={i}>{err}</li>)}
+                  </ul>
+                </div>
+              )}
+
+              {valid && allocated > poolTotal && (
+                <Muted style={{ color: '#ffb4ab' }}>
+                  <b>Notice:</b> You are overspending the pool by {Math.abs(remaining)} points. The difference must be paid by the characters' personal backgrounds!
+                </Muted>
+              )}
+
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
+                <button
+                  onClick={saveToDatabase}
+                  disabled={!valid || isSaving}
+                  className={styles.buttonPrimary}
+                  style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8 }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>save</span>
+                  {isSaving ? 'Saving...' : (editingId ? 'Update Database' : 'Save to Database')}
+                </button>
+                {editingId && (
+                  <button onClick={startNewCoterie} className={styles.buttonSecondary}>
+                    Cancel Edit
+                  </button>
+                )}
+              </div>
+            </Card>
+          </div>
+
+          {/* RIGHT COLUMN: 4/12 */}
+          <div className={styles.col4}>
+            
+            <Card title="Pick a Type" subtitle="Fills baseline Domain and Required costs">
+              <div style={{ display: 'grid', gap: 12 }}>
                 <select
                   value={selectedType}
                   onChange={(e) => setSelectedType(e.target.value)}
@@ -800,129 +977,54 @@ export default function Coteries() {
                   <option value="">— (None) —</option>
                   {ALL_COTERIE_NAMES.map((n) => <option key={n} value={n}>{n}</option>)}
                 </select>
-              </label>
-              <button
-                onClick={() => selectedType && applyType(selectedType)}
-                disabled={!selectedType}
-                className={styles.applyTypeButton}
-                style={{ alignSelf: 'flex-end' }}
-              >
-                Apply Type
-              </button>
-            </div>
-
-            {selectedType && (
-              <div style={{ display: 'grid', gap: 10 }}>
-                <Muted><b>Required (costs paid from pool):</b></Muted>
-                <RequiredList items={required} />
-                {extras?.length ? (
-                  <>
-                    <Muted style={{ marginTop: 8 }}><b>Possible Extras (suggestions):</b></Muted>
-                    <ExtrasList items={extras} />
-                  </>
-                ) : null}
+                <button
+                  onClick={() => selectedType && applyType(selectedType)}
+                  disabled={!selectedType}
+                  className={styles.applyTypeButton}
+                >
+                  Apply Type
+                </button>
               </div>
-            )}
-          </Card>
+            </Card>
 
-          <Card title="Basics">
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>Coterie Name</span>
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g., Night Wardens"
-                className={styles.input}
-              />
-            </label>
-
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>
-                Domain <em className={styles.muted}>(optional)</em>
-              </span>
-              <select
-                value={domainId}
-                onChange={(e) => setDomainId(e.target.value)}
-                className={styles.select}
-              >
-                <option value="">— Select domain (optional) —</option>
-                {domainOptions.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    #{o.value} — {o.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-              <NumberInput label="Points per member" value={pointsPerMember} setValue={setPointsPerMember} min={1} max={2} width="150px" />
-              <NumberInput label="Coterie XP (starting)" value={coterieXP} setValue={setCoterieXP} min={0} max={999} width="150px" />
-              <div style={{ flex: '1 1 auto', minWidth: '200px' }}>
-                <div style={{ fontWeight: 700, marginBottom: 6 }}>Pool</div>
-                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                  <Muted>Total: <b>{poolTotal}</b></Muted>
-                  <Muted>Spent: <b>{allocated}</b></Muted>
-                  <Muted style={{ color: remaining < 0 ? 'var(--err)' : 'inherit' }}>
-                    Remaining: <b>{remaining}</b>
-                  </Muted>
+            <Card title="Domain Traits" subtitle="Distribute from the shared pool">
+              <div style={{ display: 'grid', gap: '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(224, 224, 224, 0.1)', paddingBottom: '1rem' }}>
+                  <div>
+                    <div style={{ fontWeight: 600 }}>Chasse</div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Hunting grounds</div>
+                  </div>
+                  <DotPicker label="" value={chasse} setValue={setChasse} locked={baseline.chasse} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(224, 224, 224, 0.1)', paddingBottom: '1rem' }}>
+                  <div>
+                    <div style={{ fontWeight: 600 }}>Lien</div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Mortal integration</div>
+                  </div>
+                  <DotPicker label="" value={lien} setValue={setLien} locked={baseline.lien} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontWeight: 600 }}>Portillon</div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Domain security</div>
+                  </div>
+                  <DotPicker label="" value={portillon} setValue={setPortillon} locked={baseline.portillon} />
                 </div>
               </div>
-              <div>
-                <button onClick={resetAllocations} className={styles.buttonSecondary}>Reset allocations</button>
-              </div>
-            </div>
-          </Card>
+            </Card>
 
-          <MembersPicker members={members} setMembers={setMembers} roster={users} />
+            <Card title="Required (from Type)" subtitle="Already counted in pool spend">
+              <RequiredList items={required} />
+              {extras?.length ? (
+                <>
+                  <Muted style={{ marginTop: 16 }}><b>Possible Extras:</b></Muted>
+                  <ExtrasList items={extras} />
+                </>
+              ) : null}
+            </Card>
 
-          <Card title="Domain Traits" subtitle="Distribute from the shared pool">
-            <DotPicker label="Chasse" value={chasse} setValue={setChasse} locked={baseline.chasse} />
-            <DotPicker label="Lien" value={lien} setValue={setLien} locked={baseline.lien} />
-            <DotPicker label="Portillon" value={portillon} setValue={setPortillon} locked={baseline.portillon} />
-            <Muted>Remaining points available: <b>{remaining}</b></Muted>
-          </Card>
-
-          <Card title="Required (from chosen type)" subtitle="Already counted in pool spend">
-            <RequiredList items={required} />
-          </Card>
-
-          <BackgroundsEditor items={backgrounds} setItems={setBackgrounds} />
-
-          <Card tone={valid ? (allocated > poolTotal ? 'warn' : 'success') : 'warn'} title="Save & Export">
-            
-            {/* ΝΕΟ: Εμφάνιση συγκεκριμένων λαθών */}
-            {!valid && (
-              <div style={{ marginBottom: '10px' }}>
-                <Muted style={{ color: 'var(--err)', marginBottom: '4px' }}><b>Cannot save yet. Please fix the following:</b></Muted>
-                <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'var(--err)', fontSize: '0.9rem' }}>
-                  {validationErrors.map((err, i) => <li key={i}>{err}</li>)}
-                </ul>
-              </div>
-            )}
-
-            {valid && allocated > poolTotal && (
-              <Muted style={{ color: 'var(--err)' }}>
-                <b>Notice:</b> You are overspending the pool by {Math.abs(remaining)} points. The difference must be paid by the characters' personal backgrounds!
-              </Muted>
-            )}
-
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <button
-                onClick={saveToDatabase}
-                disabled={!valid || isSaving}
-                className={styles.buttonPrimary}
-                title={valid ? 'Save directly to the server' : 'Fix errors to save'}
-              >
-                {isSaving ? 'Saving...' : (editingId ? 'Update Database' : 'Save to Database')}
-              </button>
-              {editingId && (
-                <button onClick={startNewCoterie} className={styles.buttonSecondary}>
-                  Cancel Edit
-                </button>
-              )}
-            </div>
-          </Card>
-        </>
+          </div>
+        </div>
       )}
 
       {tab === 'types' && (
