@@ -489,6 +489,14 @@ export default function Home() {
                 <span className={styles.navCardTitle} style={{ position: 'relative', zIndex: 2 }}>{title}</span>
               </Link>
             ))}
+            {((ch && ch.sheet?.is_active === true) || me?.role === 'courtuser') && (
+              <Link key="/rumors" to="/rumors" className={styles.navCard} style={{ '--card-bg': `url('/img/ui/marble_surface.png')` }}>
+                <div className={styles.navCardIcon}>
+                  <span className="material-symbols-outlined" style={{ position: 'relative', zIndex: 2 }}>campaign</span>
+                </div>
+                <span className={styles.navCardTitle} style={{ position: 'relative', zIndex: 2 }}>Rumors</span>
+              </Link>
+            )}
 
             {/* The Cobweb */}
             {showCobweb && (

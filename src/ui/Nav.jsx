@@ -12,9 +12,8 @@ function NavDropdown({ title, icon, children, isMobile, isOpen, toggleOpen }) {
       <div className="w-full mb-2">
         <button
           onClick={toggleOpen}
-          className={`w-full flex items-center justify-between p-3 rounded-lg border border-transparent transition-colors ${
-            isOpen ? 'bg-primary-container/20 border-primary/30 text-primary' : 'bg-surface-variant/10 text-on-surface hover:bg-surface-variant/30'
-          }`}
+          className={`w-full flex items-center justify-between p-3 rounded-lg border border-transparent transition-colors ${isOpen ? 'bg-primary-container/20 border-primary/30 text-primary' : 'bg-surface-variant/10 text-on-surface hover:bg-surface-variant/30'
+            }`}
         >
           <div className="flex items-center gap-3">
             {icon && <span className="material-symbols-outlined text-[20px]">{icon}</span>}
@@ -24,10 +23,9 @@ function NavDropdown({ title, icon, children, isMobile, isOpen, toggleOpen }) {
             expand_more
           </span>
         </button>
-        <div 
-          className={`overflow-hidden transition-all duration-300 flex flex-col pl-10 border-l-2 border-primary/30 ml-4 ${
-            isOpen ? 'max-h-[500px] mt-2 opacity-100' : 'max-h-0 opacity-0'
-          }`}
+        <div
+          className={`overflow-hidden transition-all duration-300 flex flex-col pl-10 border-l-2 border-primary/30 ml-4 ${isOpen ? 'max-h-[500px] mt-2 opacity-100' : 'max-h-0 opacity-0'
+            }`}
         >
           {children}
         </div>
@@ -48,7 +46,7 @@ function NavDropdown({ title, icon, children, isMobile, isOpen, toggleOpen }) {
           expand_more
         </span>
       </div>
-      
+
       {/* Invisible bridge to prevent hover loss */}
       <div className="absolute top-[calc(100%-10px)] left-0 w-full h-[20px]"></div>
 
@@ -66,11 +64,11 @@ const getNavItemClass = ({ isActive, isDropdownItem = false, isMobile = false })
     }
     return `px-4 py-2 text-[13px] font-['Inter'] tracking-wide transition-all whitespace-nowrap border-l-2 ${isActive ? 'text-primary border-primary bg-primary/10 font-bold' : 'text-on-surface-variant border-transparent hover:text-on-surface hover:bg-surface-variant/50 hover:border-outline-variant hover:pl-5'}`;
   }
-  
+
   if (isMobile) {
     return `flex items-center gap-3 p-3 rounded-lg transition-colors w-full mb-2 ${isActive ? 'bg-primary/20 text-primary border border-primary/30 font-bold' : 'bg-surface-variant/10 text-on-surface hover:bg-surface-variant/30'}`;
   }
-  
+
   return `flex items-center gap-1.5 px-3 py-2 rounded transition-colors text-[13px] uppercase tracking-widest font-bold font-['Inter'] relative after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-0 after:h-[2px] after:bg-primary after:transition-all hover:after:w-[80%] ${isActive ? 'text-primary after:w-[80%]' : 'text-on-surface-variant hover:text-primary'}`;
 };
 
@@ -78,8 +76,9 @@ export default function Nav() {
   const { user, logout } = useContext(AuthCtx);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [canSeePremonitions, setCanSeePremonitions] = useState(false);
+  const [isCharActive, setIsCharActive] = useState(false);
   const location = useLocation();
-  
+
   const [openMobileDropdown, setOpenMobileDropdown] = useState(null);
 
   const toggleMenu = () => setIsMenuOpen(v => !v);
@@ -104,8 +103,9 @@ export default function Nav() {
     setCanSeePremonitions(false);
 
     if (!user) return;
-    if (user.role === 'admin') {
-      setCanSeePremonitions(true);
+    if (user.role === 'admin' || user.role === 'courtuser') {
+      if (user.role === 'admin') setCanSeePremonitions(true);
+      setIsCharActive(true);
       return;
     }
 
@@ -114,8 +114,9 @@ export default function Nav() {
         if (!live) return;
         const clan = data?.character?.clan;
         setCanSeePremonitions(clan === 'Malkavian');
+        setIsCharActive(data?.character?.sheet?.is_active === true);
       })
-      .catch(() => {});
+      .catch(() => { });
 
     return () => { live = false; };
   }, [user]);
@@ -125,7 +126,7 @@ export default function Nav() {
       <style>{`
         .gothic-etched-border { border: 1px solid rgba(224, 224, 224, 0.1); }
       `}</style>
-      
+
       {/* Mobile Overlay */}
       <div
         className={`fixed inset-0 bg-black/70 backdrop-blur-sm z-[998] transition-opacity duration-300 lg:hidden ${isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
@@ -135,7 +136,7 @@ export default function Nav() {
       {/* Main Top Nav */}
       <nav className="sticky top-0 z-[1000] bg-surface/90 backdrop-blur-md border-b border-outline-variant/30 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
         <div className="flex items-center justify-between px-4 lg:px-8 h-16 max-w-[1920px] mx-auto">
-          
+
           {/* Logo & Brand */}
           <Link to="/" className="flex items-center gap-3 z-[1001] group" onClick={closeMenu}>
             <img src="/img/animated.gif" alt="ATT Logo" className="w-8 h-8 object-contain rounded-md border border-outline-variant/50 bg-surface-container p-0.5 shadow-lg group-hover:border-primary transition-colors" />
@@ -161,7 +162,10 @@ export default function Nav() {
                   <NavLink to="/court/coteries" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Coteries</NavLink>
                   <NavLink to="/boons" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Boons Ledger</NavLink>
                   <NavLink to="/domains" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>City Domains</NavLink>
-                  <NavLink to="/news" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>News & Rumors</NavLink>
+                  <NavLink to="/news" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Official News</NavLink>
+                  {isCharActive && (
+                    <NavLink to="/rumors" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Rumors</NavLink>
+                  )}
                 </NavDropdown>
 
                 <NavDropdown title="Comms" icon="rss_feed" isMobile={false}>
@@ -213,10 +217,9 @@ export default function Nav() {
       </nav>
 
       {/* Mobile Side Drawer */}
-      <div 
-        className={`fixed top-0 right-0 h-[100dvh] w-72 sm:w-80 bg-surface-container shadow-[-8px_0_25px_rgba(0,0,0,0.6)] z-[999] gothic-etched-border border-r-0 border-y-0 flex flex-col pt-20 pb-8 px-4 overflow-y-auto transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] lg:hidden ${
-          isMenuOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
+      <div
+        className={`fixed top-0 right-0 h-[100dvh] w-72 sm:w-80 bg-surface-container shadow-[-8px_0_25px_rgba(0,0,0,0.6)] z-[999] gothic-etched-border border-r-0 border-y-0 flex flex-col pt-20 pb-8 px-4 overflow-y-auto transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] lg:hidden ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'
+          }`}
       >
         <div className="flex flex-col h-full">
           {user && (
@@ -236,7 +239,10 @@ export default function Nav() {
                 <NavLink to="/court/coteries" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Coteries</NavLink>
                 <NavLink to="/boons" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Boons Ledger</NavLink>
                 <NavLink to="/domains" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>City Domains</NavLink>
-                <NavLink to="/news" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>News & Rumors</NavLink>
+                <NavLink to="/news" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Official News</NavLink>
+                {isCharActive && (
+                  <NavLink to="/rumors" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Rumors</NavLink>
+                )}
               </NavDropdown>
 
               <NavDropdown title="Comms" icon="rss_feed" isMobile={true} isOpen={openMobileDropdown === 'Comms'} toggleOpen={() => handleMobileDropdownToggle('Comms')}>

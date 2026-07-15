@@ -19,6 +19,55 @@ export default function AdminMasterTab() {
   const [dangerLoading, setDangerLoading] = useState(false);
   const [dangerPin, setDangerPin] = useState('');
 
+  // Migration Runner state
+  const [migrationRunning, setMigrationRunning] = useState(false);
+  const [migrationLogs, setMigrationLogs] = useState([]);
+  const [migrationProgress, setMigrationProgress] = useState(0);
+  const [migrationTotal, setMigrationTotal] = useState(1);
+  const [migrationDone, setMigrationDone] = useState(false);
+
+  const runMigrations = () => {
+    if(!window.confirm("Are you sure you want to run all system migrations?")) return;
+    setMigrationRunning(true);
+    setMigrationLogs([]);
+    setMigrationProgress(0);
+    setMigrationDone(false);
+
+    const baseUrl = api.defaults.baseURL || import.meta.env.VITE_API_URL || '';
+    const token = localStorage.getItem('token');
+    const es = new EventSource(`${baseUrl}/admin/run-migrations/stream?token=${token}`);
+
+    es.addEventListener('start', (e) => {
+      const data = JSON.parse(e.data);
+      setMigrationTotal(data.total);
+      setMigrationLogs(prev => [...prev, `[System] Found ${data.total} migration scripts.`]);
+    });
+
+    es.addEventListener('progress', (e) => {
+      const data = JSON.parse(e.data);
+      setMigrationProgress(data.current);
+    });
+
+    es.addEventListener('log', (e) => {
+      const data = JSON.parse(e.data);
+      setMigrationLogs(prev => [...prev, data]);
+    });
+
+    es.addEventListener('done', (e) => {
+      const data = JSON.parse(e.data);
+      setMigrationLogs(prev => [...prev, `[System] ${data.message}`]);
+      setMigrationDone(true);
+      setMigrationRunning(false);
+      es.close();
+    });
+
+    es.onerror = (err) => {
+      setMigrationLogs(prev => [...prev, `[Error] Connection lost or failed to stream.`]);
+      setMigrationRunning(false);
+      es.close();
+    };
+  };
+
   useEffect(() => { loadConfig(); }, []);
 
   const loadConfig = async () => {
@@ -180,6 +229,60 @@ export default function AdminMasterTab() {
               </div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* System Tools */}
+      <div style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', padding: '2rem', boxShadow: 'var(--glass-shadow)', marginBottom: '2rem' }}>
+        <h4 style={{ margin: '0 0 1rem 0', fontSize: '1.5rem', color: 'var(--text-color)' }}>🛠️ System Tools</h4>
+        
+        <div style={{ background: 'var(--glass-inset)', padding: '1.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--text-primary)' }}>Run Database Migrations</div>
+              <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '4px' }}>Execute legacy background scripts (avatars, retainers, rumors) to update schema or data structures.</div>
+            </div>
+            <button
+              onClick={runMigrations}
+              disabled={migrationRunning}
+              className={styles.btn}
+              style={{ background: 'var(--color-primary)', color: '#fff', border: 'none', fontWeight: 700 }}
+            >
+              {migrationRunning ? 'Running...' : 'Run Migrations'}
+            </button>
+          </div>
+
+          {(migrationRunning || migrationLogs.length > 0) && (
+            <div style={{ marginTop: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '5px' }}>
+                <span>Progress: {migrationProgress} / {migrationTotal}</span>
+                <span>{Math.round((migrationProgress / migrationTotal) * 100)}%</span>
+              </div>
+              <div style={{ width: '100%', height: '8px', background: 'var(--bg-lighter)', borderRadius: '4px', overflow: 'hidden', marginBottom: '1rem' }}>
+                <div style={{ height: '100%', background: migrationDone ? 'var(--color-success)' : 'var(--color-primary)', width: `${(migrationProgress / migrationTotal) * 100}%`, transition: 'width 0.3s ease' }} />
+              </div>
+              
+              <div style={{ 
+                background: '#0d1117', 
+                color: '#c9d1d9', 
+                fontFamily: 'monospace', 
+                fontSize: '0.85rem', 
+                padding: '1rem', 
+                borderRadius: '6px',
+                height: '200px',
+                overflowY: 'auto',
+                whiteSpace: 'pre-wrap',
+                border: '1px solid #30363d'
+              }}>
+                {migrationLogs.map((log, i) => (
+                  <div key={i} style={{ color: log.includes('[ERROR]') || log.includes('[FATAL]') ? '#ff7b72' : log.includes('---') ? '#79c0ff' : 'inherit' }}>
+                    {log}
+                  </div>
+                ))}
+                {migrationRunning && <div style={{ color: '#8b949e', marginTop: '10px' }}>&gt; waiting for output...<span style={{ animation: 'blink 1s step-end infinite' }}>_</span></div>}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import api from '../../core/api';
 import styles from '../../styles/News.module.css';
 import themeStyles from '../../styles/NewsThemes.module.css';
@@ -15,12 +15,15 @@ export default function PublicArticleView() {
   const [error, setError] = useState('');
   
   const navigate = useNavigate();
+  const location = useLocation();
+  const isRumor = location.pathname.startsWith('/rumors');
 
   useEffect(() => {
     setLoading(true);
-    api.get(`/news/public/${id}`)
+    const endpoint = isRumor ? `/rumors/${id}` : `/news/public/${id}`;
+    api.get(endpoint)
       .then(res => {
-        setArticle(res.data.item);
+        setArticle(res.data.item || res.data);
         setLoading(false);
       })
       .catch(err => {
@@ -41,7 +44,7 @@ export default function PublicArticleView() {
     return (
       <div className={styles.page} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
         <h2 style={{ color: 'var(--text-color)' }}>{error || 'Article not found'}</h2>
-        <button onClick={() => navigate('/news')} className={styles.btnPrimary} style={{ marginTop: '1rem' }}>Back to News</button>
+        <button onClick={() => navigate(isRumor ? '/rumors' : '/news')} className={styles.btnPrimary} style={{ marginTop: '1rem' }}>Back to {isRumor ? 'Rumors' : 'News'}</button>
       </div>
     );
   }
@@ -51,7 +54,7 @@ export default function PublicArticleView() {
 
   // Floating back button to return to the game
   const backBtn = (
-    <button onClick={() => navigate('/news')} style={{ position: 'fixed', bottom: '20px', left: '20px', padding: '10px 20px', background: 'rgba(0,0,0,0.8)', color: '#fff', border: '1px solid #444', borderRadius: '4px', cursor: 'pointer', zIndex: 9999, fontWeight: 'bold', boxShadow: '0 4px 6px rgba(0,0,0,0.5)', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px' }}>
+    <button onClick={() => navigate(isRumor ? '/rumors' : '/news')} style={{ position: 'fixed', bottom: '20px', left: '20px', padding: '10px 20px', background: 'rgba(0,0,0,0.8)', color: '#fff', border: '1px solid #444', borderRadius: '4px', cursor: 'pointer', zIndex: 9999, fontWeight: 'bold', boxShadow: '0 4px 6px rgba(0,0,0,0.5)', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px' }}>
       ← Return to Hub
     </button>
   );

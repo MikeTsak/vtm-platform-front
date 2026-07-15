@@ -7,7 +7,15 @@ import styles from '../../styles/News.module.css';
 import EditorToolbar from '../../components/EditorToolbar';
 
 export default function CreateNewsModal({ mode, onClose, onSuccess }) {
-  const [formData, setFormData] = useState({ title: '', subtitle: '', body: '', theme: mode === 'rumor' ? 'RUMOR' : 'ERT', journalist_name: '' });
+  const [formData, setFormData] = useState({ 
+    title: '', 
+    subtitle: '', 
+    body: '', 
+    theme: mode === 'rumor' ? 'RUMOR' : 'ERT', 
+    journalist_name: '',
+    discord_prefix: mode === 'rumor' ? '🤫 A new whisper echoes in the night...' : '🔥 **Hot news from the mortal world!** 🔥'
+  });
+  const [isCustomPrefix, setIsCustomPrefix] = useState(false);
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const contentRef = useRef(null);
@@ -27,14 +35,16 @@ export default function CreateNewsModal({ mode, onClose, onSuccess }) {
         const res = await api.post('/news/upload', fd);
         mediaUrl = res.data.url + (file.type.startsWith('video') ? '#video.mp4' : '');
       }
-      await api.post('/news', {
+      const endpoint = mode === 'rumor' ? '/rumors' : '/news';
+      await api.post(endpoint, {
         type: 'news',
         title: formData.title,
         subtitle: mode === 'rumor' ? '' : formData.subtitle,
         body: contentRef.current.innerHTML,
         theme: formData.theme,
         journalist_name: formData.journalist_name,
-        media_url: mediaUrl
+        media_url: mediaUrl,
+        discord_prefix: formData.discord_prefix
       });
       onSuccess();
     } catch (e) { alert("Error posting. Ensure you have the correct permissions."); }
@@ -78,6 +88,48 @@ export default function CreateNewsModal({ mode, onClose, onSuccess }) {
                </select>
              </div>
            </div>
+
+           <div className={styles.formGroup}>
+             <label>Discord Announcement Style</label>
+             <select 
+               className={styles.inputField} 
+               value={isCustomPrefix ? 'custom' : formData.discord_prefix}
+               onChange={(e) => {
+                 if (e.target.value === 'custom') {
+                   setIsCustomPrefix(true);
+                   setFormData({...formData, discord_prefix: ''});
+                 } else {
+                   setIsCustomPrefix(false);
+                   setFormData({...formData, discord_prefix: e.target.value});
+                 }
+               }}
+             >
+               {mode === 'rumor' ? (
+                 <>
+                   <option value="🤫 A new whisper echoes in the night...">🤫 A new whisper echoes...</option>
+                   <option value="🕷️ The Cobweb twitches with new gossip...">🕷️ The Cobweb twitches...</option>
+                   <option value="📜 An unsigned note was found...">📜 An unsigned note was found...</option>
+                 </>
+               ) : (
+                 <>
+                   <option value="🔥 **Hot news from the mortal world!** 🔥">🔥 **Hot news from the mortal world!** 🔥</option>
+                   <option value="📰 **BREAKING EREBUS NEWS** 📰">📰 **BREAKING EREBUS NEWS** 📰</option>
+                   <option value="🎙️ **ANNOUNCEMENT FROM THE COURT** 🎙️">🎙️ **ANNOUNCEMENT FROM THE COURT** 🎙️</option>
+                   <option value="🩸 **KINDRED BULLETIN** 🩸">🩸 **KINDRED BULLETIN** 🩸</option>
+                 </>
+               )}
+               <option value="custom">✎ Custom Message...</option>
+             </select>
+               {isCustomPrefix && (
+                 <input 
+                   placeholder="Type your custom discord message..." 
+                   className={styles.inputField} 
+                   style={{ marginTop: '0.5rem' }}
+                   value={formData.discord_prefix}
+                   onChange={e => setFormData({...formData, discord_prefix: e.target.value})}
+                 />
+               )}
+             </div>
 
            {mode !== 'rumor' && (
              <div className={styles.formGroup}>

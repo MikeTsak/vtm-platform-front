@@ -165,6 +165,8 @@ function AppLayout() {
 
           <Route path="/news" element={<News />} />
           <Route path="/news/:id" element={<PublicArticleView />} />
+          <Route path="/rumors" element={<News />} />
+          <Route path="/rumors/:id" element={<PublicArticleView />} />
 
           <Route path="/admin" element={<AdminOnly><Admin /></AdminOnly>} />
           <Route path="/admin/live-session" element={<AdminOnly><LiveSessionDashboard /></AdminOnly>} />
