@@ -4,15 +4,18 @@ import { AuthCtx } from '../../core/AuthContext';
 import styles from '../../styles/News.module.css';
 import { NEWS_OUTLETS } from '../../constants/newsConstants';
 import { apiJoin, isVideoUrl } from '../../utils/newsUtils';
+import { useNavigate } from 'react-router-dom';
 import CreateNewsModal from './CreateNewsModal';
 import FullscreenArticleModal from '../../components/FullscreenArticleModal';
 import { Skeleton } from 'boneyard-js/react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import GoogleAd from '../../components/GoogleAd';
 
 export default function News() {
   const { user } = useContext(AuthCtx);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const [modalMode, setModalMode] = useState(null);
   const [fullscreenArticle, setFullscreenArticle] = useState(null);
@@ -28,13 +31,13 @@ export default function News() {
       const res = await api.get('/characters/me');
       return res.data;
     },
-    enabled: !isAdmin && !isCourt // Only fetch if not admin/court
+    enabled: !!user && !isAdmin && !isCourt // Only fetch if not admin/court and logged in
   });
 
   const { data: newsData, isLoading: newsLoading } = useQuery({
-    queryKey: ['news'],
+    queryKey: ['news', !!user],
     queryFn: async () => {
-      const res = await api.get('/news');
+      const res = await api.get(user ? '/news' : '/news/public');
       return res.data;
     }
   });
@@ -57,14 +60,18 @@ export default function News() {
   const myChar = myCharData?.character || null;
 
   // Check if character is active (similar to DownTimes logic)
-  const isCharActive = isAdmin || isCourt || (myChar && myChar.sheet && myChar.sheet.is_active === true);
+  const isCharActive = !!user && (isAdmin || isCourt || (myChar && myChar.sheet && myChar.sheet.is_active === true));
 
-  // If the user's character is fetched but deactivated, force them into 'news' mode
+  // If the user's character is fetched but deactivated, or user is not logged in, force them into 'news' mode
   useEffect(() => {
-    if (myChar && !myChar.sheet?.is_active && viewMode !== 'news') {
+    if (!user && viewMode !== 'news') {
+      setViewMode('news');
+      return;
+    }
+    if (user && myChar && !myChar.sheet?.is_active && viewMode !== 'news') {
       setViewMode('news');
     }
-  }, [myChar, viewMode]);
+  }, [myChar, viewMode, user]);
 
   // Can post rumor only if they are an Admin, Court, or an ACTIVE character
   const canPostRumor = isCharActive;
@@ -102,6 +109,10 @@ export default function News() {
           )}
         </div>
       </header>
+      
+      <div style={{ margin: '1rem 0' }}>
+        <GoogleAd format="horizontal" style={{ minHeight: '100px' }} />
+      </div>
 
 
           {/* View Mode Menus / Tabs */}
@@ -127,7 +138,7 @@ export default function News() {
                   const theme = NEWS_OUTLETS[item.theme] || NEWS_OUTLETS['ERT'];
                   const mediaUrl = apiJoin(item.media_url);
                   return (
-                    <div key={item.id} className={styles.masonryItem} onClick={() => setFullscreenArticle(item)}>
+                    <div key={item.id} className={styles.masonryItem} onClick={() => navigate(`/news/${item.id}`)}>
                       <article
                         className={styles.browserCard}
                         style={{ '--theme-color': theme.color }}
@@ -191,7 +202,7 @@ export default function News() {
                 {rumorItems.map(item => {
                   const mediaUrl = apiJoin(item.media_url);
                   return (
-                    <div key={item.id} className={styles.masonryItem} onClick={() => setFullscreenArticle(item)}>
+                    <div key={item.id} className={styles.masonryItem} onClick={() => navigate(`/news/${item.id}`)}>
                       <article className={styles.rumorCard}>
                         <h2 className={styles.rumorTitle}>{item.title}</h2>
                         {item.media_url && (

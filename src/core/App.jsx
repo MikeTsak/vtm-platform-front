@@ -20,6 +20,7 @@ import Boons from '../features/boons/Boons';
 import MediaViewer from '../pages/MediaViewer';
 import Premonitions from '../features/premonitions/Premonitions';
 import News from '../features/news/News';
+import PublicArticleView from '../features/news/PublicArticleView';
 import GlobalBanner from '../components/GlobalBanner';
 import Nav from '../ui/Nav';
 import NotFound from '../pages/404';
@@ -162,7 +163,8 @@ function AppLayout() {
           <Route path="/court/announcements" element={<Private><Announcements /></Private>} />
           <Route path="/court/coteries" element={<Private><Coteries /></Private>} />
 
-          <Route path="/news" element={<Private><News /></Private>} />
+          <Route path="/news" element={<News />} />
+          <Route path="/news/:id" element={<PublicArticleView />} />
 
           <Route path="/admin" element={<AdminOnly><Admin /></AdminOnly>} />
           <Route path="/admin/live-session" element={<AdminOnly><LiveSessionDashboard /></AdminOnly>} />

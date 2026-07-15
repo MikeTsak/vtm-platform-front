@@ -1,8 +1,8 @@
 // Shared constants for News module
 export const NEWS_OUTLETS = {
-  'ERT': { name: 'ERT News', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/ERT_logo_2020.svg/960px-ERT_logo_2020.svg.png', color: '#0057b7', url: 'www.ertnews.gr' },
-  'SKAI': { name: 'SKAI.gr', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/03/Skai_TV_logo.svg/1200px-Skai_TV_logo.svg.png', color: '#004d99', url: 'www.skai.gr' },
-  'ALPHA': { name: 'Alpha News', logo: 'https://upload.wikimedia.org/wikipedia/commons/e/eb/Alpha_TV_logo.svg', color: '#0093d0', url: 'www.alphatv.gr' },
+  'ERT': { name: 'ERT News', logo: 'https://www.ertnews.gr/wp-content/uploads/2025/09/ert-news-black-bg.svg', color: '#dc2626', url: 'www.ertnews.gr' },
+  'SKAI': { name: 'SKAI.gr', logo: 'https://upload.wikimedia.org/wikipedia/el/e/eb/SkaiTV-Logo.png', color: '#004d99', url: 'www.skai.gr' },
+  'ALPHA': { name: 'Alpha News', logo: 'https://www.alphatv.gr/wp-content/uploads/2026/01/alpha-logo_logo-red.svg', color: '#ff3b3b', url: 'www.alphatv.gr' },
   'MEGA': { name: 'Mega Gegonota', logo: 'https://upload.wikimedia.org/wikipedia/commons/8/83/MEGA_CHANNEL.png', color: '#222222', url: 'www.megatv.com' },
   'KATHIMERINI': { name: 'Kathimerini', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRNk0h-loKAwB5Ay_ohV5G8ItU88h7PY_RkPw&s', color: '#999999', url: 'www.kathimerini.gr' },
   'GOSSIP': { name: 'Gossip-tv', logo: 'https://cdn.gosmd.gr/img/1200/630/90/2016/05/19/1952016-14126.jpg?t=xRh4M6KRWfNTqee7gQzcuw', color: '#e6007e', url: 'www.gossip-tv.gr' },

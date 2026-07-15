@@ -6,6 +6,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Skeleton } from 'boneyard-js/react';
 import styles from '../styles/Home.module.css';
 import Avatar from '../components/Avatar';
+import GoogleAd from '../components/GoogleAd';
 
 /* ── Clan tint colors ───────────────────────────────────────────── */
 const CLAN_COLORS = {
@@ -509,12 +510,7 @@ export default function Home() {
 
           {/* GOOGLE AD BLOCK */}
           <section style={{ margin: '20px 0', textAlign: 'center', background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-            <ins className="adsbygoogle"
-                 style={{ display: 'block' }}
-                 data-ad-client="ca-pub-6753590372675915"
-                 data-ad-slot="4211124757"
-                 data-ad-format="auto"
-                 data-full-width-responsive="true"></ins>
+            <GoogleAd format="auto" />
           </section>
 
           {/* 4. BOTTOM ROW (Chronicle Entry & Restricted Access) */}
