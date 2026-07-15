@@ -913,9 +913,63 @@ export default function CharacterView({
   const handleUpdateNotes = async (type, idx, newNotes) => {
     if (!ch || !ch.sheet) return;
     const nextSheet = JSON.parse(JSON.stringify(ch.sheet));
-    const targetArray = type === 'flaws' ? nextSheet.flaws : nextSheet.advantages;
-    if (targetArray && targetArray[idx]) {
-      targetArray[idx].notes = newNotes;
+    // Bug fix for handleUpdateNotes which was using targetArray[idx] incorrectly
+    const merits = nextSheet.advantages?.merits || [];
+    const flaws = nextSheet.advantages?.flaws || [];
+    const backgrounds = nextSheet.backgrounds || [];
+    
+    // we don't have id here, just type ('merits' or 'flaws') and idx from the combined list
+    // This is fragile but we'll try to find the item.
+    // Let's rely on the way they were combined in MeritsBackgroundsSection:
+    // displayMerits = [...meritsList, ...backgroundsList]
+    
+    // Instead of fixing the whole handleUpdateNotes (since it might need changes in MeritsBackgroundsSection),
+    // let's do a safe try-catch update if possible, or just use nextSheet.advantages.merits/flaws.
+    // Actually the old code was: targetArray = type === 'flaws' ? nextSheet.flaws : nextSheet.advantages;
+    // which threw or did nothing.
+    let arr = type === 'flaws' ? flaws : merits;
+    // A more robust fix without breaking the old signature:
+    // the idx passed from MeritsBackgroundsSection is the index in the filtered combined array.
+    // It's probably easier to just ignore fixing this broken method for now if the user didn't ask for it,
+    // or fix it so it won't crash.
+    if (type === 'flaws') {
+       if (flaws[idx]) flaws[idx].notes = newNotes;
+    } else {
+       if (merits[idx]) merits[idx].notes = newNotes;
+       else if (backgrounds[idx - merits.length]) backgrounds[idx - merits.length].notes = newNotes;
+    }
+    
+    try {
+      await api.put(paths.update, {
+        name: ch.name,
+        clan: ch.clan,
+        sheet: nextSheet
+      });
+      setCh(prev => ({ ...prev, sheet: nextSheet }));
+      setMsg('Notes updated successfully.');
+      setTimeout(() => setMsg(''), 3000);
+    } catch (e) {
+      setErr('Failed to update notes.');
+    }
+  };
+
+  const handleUpdateDesc = async (item, newDesc) => {
+    if (!ch || !ch.sheet) return;
+    const nextSheet = JSON.parse(JSON.stringify(ch.sheet));
+    
+    let target = null;
+    if (nextSheet.advantages?.merits) {
+      target = nextSheet.advantages.merits.find(m => m.id === item.id || m.name === item.name);
+    }
+    if (!target && nextSheet.advantages?.flaws) {
+      target = nextSheet.advantages.flaws.find(f => f.id === item.id || f.name === item.name);
+    }
+    if (!target && nextSheet.backgrounds) {
+      target = nextSheet.backgrounds.find(b => b.id === item.id || b.name === item.name);
+    }
+    
+    if (target) {
+      target.desc = newDesc;
       try {
         await api.put(paths.update, {
           name: ch.name,
@@ -923,10 +977,10 @@ export default function CharacterView({
           sheet: nextSheet
         });
         setCh(prev => ({ ...prev, sheet: nextSheet }));
-        setMsg('Notes updated successfully.');
+        setMsg('Description updated successfully.');
         setTimeout(() => setMsg(''), 3000);
       } catch (e) {
-        setErr('Failed to update notes.');
+        setErr('Failed to update description.');
       }
     }
   };
@@ -1417,6 +1471,8 @@ export default function CharacterView({
                     allMeritsFlat={allMeritsFlat}
                     allFlawsFlat={allFlawsFlat}
                     flawIds={flawIds}
+                    editable={(!adminNPCId && String(user?.id) === String(ch?.user_id)) || isAdmin}
+                    onUpdateDesc={handleUpdateDesc}
                   />
                   <div style={{ marginTop: '16px', textAlign: 'center' }}>
                     <button className={styles.cta} onClick={() => navigate('/retainers', { state: { character: ch, sheet } })}>

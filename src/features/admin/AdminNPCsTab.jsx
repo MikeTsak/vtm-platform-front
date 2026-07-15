@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import styles from '../../styles/Admin.module.css';
 import CharacterSetup from '../character/CharacterSetup';
 import Avatar from '../../components/Avatar';
+import api from '../../core/api';
 
 const CLAN_COLORS = {
   Brujah: '#b40f1f', Gangrel: '#2f7a3a', Malkavian: '#713c8b', Nosferatu: '#6a4b2b',
@@ -64,6 +65,22 @@ export default function AdminNPCsTab({ npcs, onReload, onDelete }) {
                     <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{new Date(n.created_at).toLocaleString()}</td>
                     <td>
                       <div className={styles.row} style={{ gap: '8px', justifyContent: 'flex-end' }}>
+                        {n.is_disabled ? (
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', padding: '0.5rem 1rem' }}>DISABLED</span>
+                        ) : (
+                          <button
+                            className={`${styles.btn} ${styles.btnDanger}`}
+                            style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', background: '#e67e22' }}
+                            onClick={async () => {
+                              if (window.confirm(`Are you sure you want to disable ${n.name}? They will no longer be visible to players for messaging. This can only be undone from the database.`)) {
+                                await api.post(`/admin/npcs/${n.id}/disable`);
+                                onReload();
+                              }
+                            }}
+                          >
+                            Disable
+                          </button>
+                        )}
                         <Link className={`${styles.btn} ${styles.btnSecondary}`} style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }} to={`/admin/npcs/${n.id}`}>
                           Edit
                         </Link>
