@@ -1,0 +1,843 @@
+import React, { useMemo, useCallback, useState, useEffect } from 'react';
+import styles from '../../styles/CharacterView.module.css';
+import { listAllItems } from '../../data/merits_flaws';
+import { MERITS_AND_FLAWS } from '../../data/merits_flaws';
+import { DISCIPLINES, ALL_DISCIPLINE_NAMES, iconPath } from '../../data/disciplines';
+import MiniSearch from 'minisearch';
+import { ShopRow } from '../xp-shop/ShopRow';
+
+// Define XP_RULES locally since it's not exported from a separate file
+const XP_RULES = {
+  attribute: newLevel => newLevel * 5,
+  skill: newLevel => newLevel * 3,
+  specialty: () => 3,
+  advantageDot: dots => dots * 3,
+  disciplineClan: newLevel => newLevel * 5,
+  disciplineOther: newLevel => newLevel * 7,
+  disciplineCaitiff: newLevel => newLevel * 6,
+  ritual: lvl => lvl * 3,
+  ceremony: lvl => lvl * 3,
+  bloodPotency: newLevel => newLevel * 10,
+};
+
+const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, searchQuery, spendXP, onUpdateNotes }) => {
+  const [editingNoteId, setEditingNoteId] = useState(null);
+  const [editNoteText, setEditNoteText] = useState('');
+
+  // Dot-spec parsing helpers (mirrors CharacterView.jsx so both surfaces agree)
+  const bulletCount = useCallback((s = '') => {
+    const m = String(s).match(/•/g);
+    return m ? m.length : 0;
+  }, []);
+
+  const parseDotSpec = useCallback((spec = '') => {
+    const src = String(spec).trim();
+    if (!src) return [];
+    if (/\bor\b/i.test(src)) {
+      const opts = src.split(/\bor\b/i).map(s => bulletCount(s)).filter(n => n > 0);
+      return Array.from(new Set(opts)).sort((a, b) => a - b);
+    }
+    if (src.includes('-')) {
+      const [lo, hi] = src.split('-').map(s => bulletCount(s));
+      if (lo > 0 && hi >= lo) { const out = []; for (let i = lo; i <= hi; i++) out.push(i); return out; }
+    }
+    if (src.includes('+')) {
+      const min = bulletCount(src);
+      return min > 0 ? [min] : [];
+    }
+    const n = bulletCount(src);
+    return n > 0 ? [n] : [];
+  }, [bulletCount]);
+
+  // Helper functions — walks the real { merits, flaws, groups } shape of
+  // MERITS_AND_FLAWS (matches the working flattener in CharacterView.jsx).
+  // Each top-level entry is an object, not an array, and sub-categories
+  // live under `.groups`, so a flat Array.isArray(payload) check always
+  // failed here and silently produced an empty list.
+  const allSelectableMerits = useMemo(() => {
+    const out = [];
+    const seen = new Set();
+    const pushIt = (item, category) => {
+      if (seen.has(item.id)) return;
+      const allowed = parseDotSpec(item.dots);
+      if (!allowed.length) return;
+      seen.add(item.id);
+      out.push({ id: item.id, name: item.name, dotsSpec: item.dots, description: item.description, category, allowed });
+    };
+    for (const [cat, payload] of Object.entries(MERITS_AND_FLAWS)) {
+      if (['Caitiff', 'Thin-blood', 'Ghouls', 'Cults'].includes(cat)) continue;
+      (payload.merits || []).forEach(m => pushIt(m, cat));
+      if (payload.groups) {
+        for (const [sub, grp] of Object.entries(payload.groups)) {
+          (grp.merits || []).forEach(m => pushIt(m, `${cat} / ${sub}`));
+        }
+      }
+    }
+    return out;
+  }, [parseDotSpec]);
+
+  const allSelectableFlaws = useMemo(() => {
+    const out = [];
+    const seen = new Set();
+    const pushIt = (item, category) => {
+      if (seen.has(item.id)) return;
+      const allowed = parseDotSpec(item.dots);
+      if (!allowed.length) return;
+      seen.add(item.id);
+      out.push({ id: item.id, name: item.name, dotsSpec: item.dots, description: item.description, category, allowed });
+    };
+    for (const [cat, payload] of Object.entries(MERITS_AND_FLAWS)) {
+      if (['Caitiff', 'Thin-blood', 'Ghouls', 'Cults'].includes(cat)) continue;
+      (payload.flaws || []).forEach(f => pushIt(f, cat));
+      if (payload.groups) {
+        for (const [sub, grp] of Object.entries(payload.groups)) {
+          (grp.flaws || []).forEach(f => pushIt(f, `${cat} / ${sub}`));
+        }
+      }
+    }
+    return out;
+  }, [parseDotSpec]);
+
+  // Memoize all merits and flaws so we can look up their full descriptions later
+  const allMeritsFlat = allSelectableMerits;
+  const allFlawsFlat = allSelectableFlaws;
+
+  // Fetch all items from data to identify what is truly a Flaw
+  const allDataItems = useMemo(() => listAllItems(), []);
+
+  // Flaw ID mapping for self-healing logic
+  const flawIds = useMemo(() => new Set(
+    allDataItems
+      .filter(it => it.type === 'advantage' && it.subtype === 'flaw')
+      .map(it => it.id)
+  ), [allDataItems]);
+
+  // Flaw/Merit Rule Calculations (with Self-Healing)
+  const rawMerits = useMemo(() => Array.isArray(sheet?.advantages?.merits) ? sheet.advantages.merits : [], [sheet]);
+  const rawBackgrounds = useMemo(() => Array.isArray(sheet?.backgrounds) ? sheet.backgrounds : [], [sheet]);
+  const rawFlaws = useMemo(() => Array.isArray(sheet?.advantages?.flaws) ? sheet.advantages.flaws : [], [sheet]);
+
+  const meritsList = useMemo(() => {
+    const list = [];
+    const backgroundsList = [];
+    rawMerits.forEach(m => flawIds.has(m.id) ? backgroundsList.push(m) : list.push(m));
+    return list;
+  }, [rawMerits, flawIds]);
+
+  const backgroundsList = useMemo(() => {
+    const list = [];
+    rawBackgrounds.forEach(b => flawIds.has(b.id) ? [] : list.push(b)); // Move flawed backgrounds to flaws
+    const temp = [];
+    rawMerits.forEach(m => flawIds.has(m.id) ? temp.push(m) : null);
+    rawBackgrounds.forEach(b => flawIds.has(b.id) ? temp.push(b) : null);
+    return [...list, ...temp];
+  }, [rawBackgrounds, rawMerits, flawIds]);
+
+  const flawsList = useMemo(() => {
+    const list = [...rawFlaws];
+    rawMerits.forEach(m => flawIds.has(m.id) ? list.push(m) : null);
+    rawBackgrounds.forEach(b => flawIds.has(b.id) ? list.push(b) : null);
+    return list;
+  }, [rawFlaws, rawMerits, rawBackgrounds, flawIds]);
+
+  const totalMeritDots = useMemo(() => {
+    const displayMerits = [...meritsList, ...backgroundsList];
+    return displayMerits.reduce((sum, m) => sum + Number(m.dots || 0), 0);
+  }, [meritsList, backgroundsList]);
+
+  const totalFlawDots = useMemo(() => {
+    return flawsList.reduce((sum, f) => sum + Number(f.dots || 0), 0);
+  }, [flawsList]);
+
+  const requiredFlaws = useMemo(() => Math.floor(totalMeritDots / 7) * 2, [totalMeritDots]);
+  const flawDeficit = useMemo(() => Math.max(0, requiredFlaws - totalFlawDots), [requiredFlaws, totalFlawDots]);
+
+  const glyf = useMemo(() => {
+    const dotMap = { 0: '○', 1: '●', 2: '●●', 3: '●●●', 4: '●●●●', 5: '●●●●●' };
+    return (n) => dotMap[n] || '●●●●●';
+  }, []);
+
+  // MeritAdder function
+
+  const [localSearch, setLocalSearch] = useState('');
+  const [activeTab, setActiveTab] = useState('ALL');
+  const [selectedAdvantage, setSelectedAdvantage] = useState(null); // { type: 'merit' | 'flaw', item }
+  const [expandedAdvantageId, setExpandedAdvantageId] = useState(null);
+
+  // Details pane state
+  const detailItem = selectedAdvantage?.item;
+  const detailType = selectedAdvantage?.type;
+  const detailAllowed = detailItem?.allowed || [1];
+
+  const [detailDots, setDetailDots] = useState(1);
+  const [detailAddSeparate, setDetailAddSeparate] = useState(false);
+  const [detailMysticSelections, setDetailMysticSelections] = useState([]);
+
+  const meritAvailableOblivion = useMemo(() => {
+    const out = [];
+    const isMystic = selectedAdvantage?.item?.id === 'other__mystic_of_the_void';
+    if (!isMystic || typeof DISCIPLINES === 'undefined' || !DISCIPLINES['Oblivion']) return out;
+    Object.entries(DISCIPLINES['Oblivion'].levels || {}).forEach(([lvlStr, list]) => {
+      const level = Number(lvlStr);
+      (list || []).forEach(p => {
+        const normId = String(p.id ?? '').toLowerCase();
+        if (!knownPowerNamesAndIds.has(normId)) {
+          out.push({ ...p, level });
+        }
+      });
+    });
+    return out;
+  }, [selectedAdvantage, knownPowerNamesAndIds]);
+
+  // Reset detail state when selection changes
+  useEffect(() => {
+    if (selectedAdvantage) {
+      setDetailDots(selectedAdvantage.item.allowed?.[0] || 1);
+      setDetailAddSeparate(false);
+      setDetailMysticSelections([]);
+    }
+  }, [selectedAdvantage]);
+
+  const filterItems = useCallback((items, q, tab) => {
+    let filtered = items;
+    
+    // Filter by tab
+    if (tab !== 'ALL') {
+      filtered = filtered.filter(item => {
+        const cat = (item.category || '').toUpperCase();
+        return cat.includes(tab);
+      });
+    }
+
+    // Filter by search
+    const query = q.trim();
+    const globalQ = (searchQuery || '').trim();
+    
+    if (query) {
+      const ms = new MiniSearch({ fields: ['name', 'category'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
+      ms.addAll(filtered);
+      const results = ms.search(query);
+      const map = new Map(filtered.map(i => [i.id, i]));
+      filtered = results.map(r => map.get(r.id)).filter(Boolean);
+    }
+    
+    if (globalQ) {
+      const ms = new MiniSearch({ fields: ['name', 'category'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
+      ms.addAll(filtered);
+      const results = ms.search(globalQ);
+      const map = new Map(filtered.map(i => [i.id, i]));
+      filtered = results.map(r => map.get(r.id)).filter(Boolean);
+    }
+
+    return filtered;
+  }, [searchQuery]);
+
+  const meritFiltered = useMemo(() => filterItems(allMeritsFlat, localSearch, activeTab), [filterItems, allMeritsFlat, localSearch, activeTab]);
+  const flawFiltered = useMemo(() => filterItems(allFlawsFlat, localSearch, activeTab), [filterItems, allFlawsFlat, localSearch, activeTab]);
+
+  const handleMeritAdd = useCallback(async (merit, targetDots, options = {}) => {
+    const separate = !!options.separate;
+    const nextSheet = JSON.parse(JSON.stringify(sheet));
+
+    nextSheet.advantages = nextSheet.advantages || { merits: [], flaws: [] };
+    nextSheet.advantages.merits = Array.isArray(nextSheet.advantages.merits) ? nextSheet.advantages.merits : [];
+    nextSheet.backgrounds = Array.isArray(nextSheet.backgrounds) ? nextSheet.backgrounds : [];
+
+    const meritsArr = nextSheet.advantages.merits;
+    const bgsArr    = nextSheet.backgrounds;
+
+    const sameMerits = meritsArr.filter(m => m.id === merit.id);
+    const sameBgs    = bgsArr.filter(b => b.id === merit.id);
+    const currentDots = [...sameMerits, ...sameBgs].reduce(
+      (max, e) => Math.max(max, Number(e.dots || 0)), 0
+    );
+
+    const preferBackgrounds = sameBgs.length > 0;
+
+    if (separate) {
+      const cost = XP_RULES.advantageDot(Number(targetDots) || 0);
+      if (xp < cost) return;
+
+      const instance = sameMerits.length + sameBgs.length + 1;
+      const isRetainerMerit = merit.id === 'backgrounds_retainers__retainers';
+      let notesObj = {};
+      if (options.notes && options.notes.length) {
+        notesObj = Array.isArray(options.notes) ? options.notes : [options.notes];
+      }
+      if (isRetainerMerit) {
+        notesObj.ghoulLevel = 0;
+      }
+      const newEntry = {
+        id: merit.id,
+        name: merit.name,
+        dots: Number(targetDots),
+        from: 'xp_shop',
+        instance,
+        notes: JSON.stringify(notesObj),
+      };
+
+      if (preferBackgrounds) bgsArr.push(newEntry);
+      else meritsArr.push(newEntry);
+
+      await spendXP({
+        type: 'advantage',
+        target: merit.id,
+        dots: Number(targetDots),
+        patchSheet: nextSheet,
+      });
+      return;
+    }
+
+    const delta = Math.max(0, Number(targetDots) - currentDots);
+    const cost = XP_RULES.advantageDot(delta);
+    if (delta <= 0 || xp < cost) return;
+
+    let upgraded = false;
+
+    const tryUpgradeIn = (arr) => {
+      for (let i = 0; i < arr.length; i++) {
+        const entry = arr[i];
+        if (entry.id === merit.id && Number(entry.dots || 0) === currentDots) {
+          let notesObj = {};
+          if (entry.notes) {
+            try {
+              notesObj = JSON.parse(entry.notes);
+            } catch (e) {
+              notesObj = {};
+            }
+          }
+          if (options.notes && options.notes.length) {
+            const optsNotes = Array.isArray(options.notes) ? options.notes : [options.notes];
+            if (Array.isArray(notesObj)) notesObj = optsNotes;
+            else Object.assign(notesObj, { selectedPowers: optsNotes });
+          }
+          const isRetainerMerit = entry.id === 'backgrounds_retainers__retainers';
+          if (isRetainerMerit && typeof notesObj.ghoulLevel !== 'number') {
+            notesObj.ghoulLevel = 0;
+          }
+          arr[i] = {
+            ...entry,
+            dots: Number(targetDots),
+            notes: JSON.stringify(notesObj),
+          };
+          return true;
+        }
+      }
+      return false;
+    };
+
+    upgraded = preferBackgrounds ? tryUpgradeIn(bgsArr) : tryUpgradeIn(meritsArr);
+    if (!upgraded) {
+      upgraded = preferBackgrounds ? tryUpgradeIn(meritsArr) : tryUpgradeIn(bgsArr);
+    }
+
+    if (!upgraded) {
+      const isRetainerMerit = merit.id === 'backgrounds_retainers__retainers';
+      let notesObj = {};
+      if (options.notes && options.notes.length) {
+        notesObj = Array.isArray(options.notes) ? options.notes : [options.notes];
+      }
+      if (isRetainerMerit) {
+        notesObj.ghoulLevel = 0;
+      }
+      const newMerit = {
+        id: merit.id,
+        name: merit.name,
+        dots: Number(targetDots),
+        from: 'xp_shop',
+        instance: sameMerits.length + sameBgs.length + 1,
+        notes: JSON.stringify(notesObj),
+      };
+      meritsArr.push(newMerit);
+    }
+
+    await spendXP({
+      type: 'advantage',
+      target: merit.id,
+      dots: delta,
+      patchSheet: nextSheet,
+    });
+  }, [sheet, xp, spendXP]);
+
+  const handleFlawAdd = useCallback(async (flaw, targetDots) => {
+    const nextSheet = JSON.parse(JSON.stringify(sheet));
+    nextSheet.advantages = nextSheet.advantages || { merits: [], flaws: [] };
+    nextSheet.advantages.flaws = Array.isArray(nextSheet.advantages.flaws) ? nextSheet.advantages.flaws : [];
+
+    const newEntry = {
+      id: flaw.id,
+      name: flaw.name,
+      dots: Number(targetDots),
+      from: 'xp_shop'
+    };
+
+    nextSheet.advantages.flaws.push(newEntry);
+
+    await spendXP({
+      type: 'flaw',
+      target: flaw.id,
+      dots: Number(targetDots),
+      patchSheet: nextSheet
+    });
+  }, [sheet, xp, spendXP]);
+
+  const handlePurchase = () => {
+    if (!selectedAdvantage) return;
+    if (selectedAdvantage.type === 'merit') {
+      const isMystic = selectedAdvantage.item.id === 'other__mystic_of_the_void';
+      handleMeritAdd(selectedAdvantage.item, detailDots, { separate: detailAddSeparate, notes: isMystic ? detailMysticSelections : undefined });
+    } else {
+      handleFlawAdd(selectedAdvantage.item, detailDots);
+    }
+  };
+
+  const getOwnedDots = (item, type) => {
+    if (type === 'merit') {
+      return [...meritsList, ...backgroundsList]
+        .filter(m => m.id === item.id)
+        .reduce((max, m) => Math.max(max, Number(m.dots || 0)), 0);
+    }
+    return flawsList
+      .filter(f => f.id === item.id)
+      .reduce((max, m) => Math.max(max, Number(m.dots || 0)), 0);
+  };
+
+  if (searchQuery && meritFiltered.length === 0 && flawFiltered.length === 0) {
+    return null;
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      
+      {(!searchQuery && flawDeficit > 0) && (
+        <div style={{ padding: '16px', borderLeft: '4px solid var(--error)', backgroundColor: 'rgba(180, 15, 31, 0.1)', color: 'var(--error)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span className="material-symbols-outlined">warning</span>
+          <span style={{ fontSize: '12px', letterSpacing: '0.1em', fontWeight: 500, textTransform: 'uppercase' }}>
+            FLAW DEFICIT: YOU NEED {flawDeficit} MORE DOT{flawDeficit > 1 ? 'S' : ''} IN FLAWS TO BALANCE YOUR MERITS.
+          </span>
+        </div>
+      )}
+
+      {/* Filter Row */}
+      {!searchQuery && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative', flex: '1 1 300px', maxWidth: '400px' }}>
+              <span className="material-symbols-outlined" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>search</span>
+              <input
+                style={{ width: '100%', backgroundColor: 'var(--surface-container-high)', border: 'none', borderBottom: '1px solid var(--border-color)', color: 'var(--text-color)', padding: '8px 16px 8px 40px', fontSize: '12px', letterSpacing: '0.1em', textTransform: 'uppercase' }}
+                placeholder="SEARCH ADVANTAGES..."
+                value={localSearch}
+                onChange={e => setLocalSearch(e.target.value)}
+              />
+            </div>
+            
+            <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+              {['ALL', 'MENTAL', 'PHYSICAL', 'SOCIAL', 'SUPERNATURAL', 'BACKGROUND'].map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  style={{
+                    padding: '4px 16px',
+                    borderRadius: '9999px',
+                    fontSize: '12px',
+                    letterSpacing: '0.1em',
+                    fontWeight: 500,
+                    whiteSpace: 'nowrap',
+                    border: activeTab === tab ? '1px solid var(--primary-color)' : '1px solid var(--border-color)',
+                    color: activeTab === tab ? 'var(--primary-color)' : 'var(--text-muted)',
+                    backgroundColor: activeTab === tab ? 'rgba(180, 15, 31, 0.2)' : 'transparent',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Split Pane Layout */}
+      <div className={styles.advSplitPane}>
+        
+        {/* Explorer Panels */}
+        <div className={styles.advExplorer}>
+          
+          {/* Merits Column */}
+          <div style={{ flex: '1', display: 'flex', flexDirection: 'column', backgroundColor: 'rgba(28, 27, 27, 0.6)', backdropFilter: 'blur(12px)', border: '1px solid var(--border-color)', minWidth: '250px', maxHeight: '600px' }}>
+            <div style={{ padding: '16px', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--surface-container-low)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ fontSize: '24px', fontWeight: 600, color: 'var(--primary-color)', fontFamily: "'Playfair Display', serif" }}>MERITS</h2>
+              <span style={{ fontSize: '20px', fontWeight: 600, color: 'var(--text-muted)' }}>{totalMeritDots} ●</span>
+            </div>
+            <div style={{ overflowY: 'auto', padding: '8px', display: 'flex', flexDirection: 'column', gap: '4px', flexGrow: 1 }}>
+              {meritFiltered.map(m => {
+                const isSelected = selectedAdvantage?.item?.id === m.id && selectedAdvantage?.type === 'merit';
+                return (
+                  <div
+                    key={m.id}
+                    onClick={() => setSelectedAdvantage({ type: 'merit', item: m })}
+                    style={{
+                      padding: '12px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      borderBottom: isSelected ? 'none' : '1px solid var(--border-color)',
+                      border: isSelected ? '1px solid var(--primary-color)' : 'none',
+                      backgroundColor: isSelected ? 'rgba(180, 15, 31, 0.1)' : 'transparent',
+                      transition: 'background-color 0.2s'
+                    }}
+                    onMouseEnter={e => !isSelected && (e.currentTarget.style.backgroundColor = 'var(--surface-container-high)')}
+                    onMouseLeave={e => !isSelected && (e.currentTarget.style.backgroundColor = 'transparent')}
+                  >
+                    <div>
+                      <div style={{ fontSize: '20px', fontWeight: 600, color: isSelected ? 'var(--primary-color)' : 'var(--text-color)', transition: 'color 0.2s' }}>{m.name}</div>
+                      <div style={{ fontSize: '12px', letterSpacing: '0.1em', color: 'var(--text-muted)', marginTop: '4px', textTransform: 'uppercase' }}>
+                        {m.category} • {m.dotsSpec}
+                      </div>
+                    </div>
+                    {isSelected && <span className="material-symbols-outlined" style={{ color: 'var(--primary-color)' }}>chevron_right</span>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Flaws Column */}
+          <div style={{ flex: '1', display: 'flex', flexDirection: 'column', backgroundColor: 'rgba(28, 27, 27, 0.6)', backdropFilter: 'blur(12px)', border: '1px solid var(--border-color)', minWidth: '250px', maxHeight: '600px' }}>
+            <div style={{ padding: '16px', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--surface-container-low)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ fontSize: '24px', fontWeight: 600, color: 'var(--text-color)', fontFamily: "'Playfair Display', serif" }}>FLAWS</h2>
+              <span style={{ fontSize: '20px', fontWeight: 600, color: 'var(--error)' }}>{totalFlawDots} ●</span>
+            </div>
+            <div style={{ overflowY: 'auto', padding: '8px', display: 'flex', flexDirection: 'column', gap: '4px', flexGrow: 1 }}>
+              {flawFiltered.map(f => {
+                const isSelected = selectedAdvantage?.item?.id === f.id && selectedAdvantage?.type === 'flaw';
+                return (
+                  <div
+                    key={f.id}
+                    onClick={() => setSelectedAdvantage({ type: 'flaw', item: f })}
+                    style={{
+                      padding: '12px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      borderBottom: isSelected ? 'none' : '1px solid var(--border-color)',
+                      border: isSelected ? '1px solid var(--error)' : 'none',
+                      backgroundColor: isSelected ? 'rgba(255, 0, 0, 0.05)' : 'transparent',
+                      transition: 'background-color 0.2s'
+                    }}
+                    onMouseEnter={e => !isSelected && (e.currentTarget.style.backgroundColor = 'var(--surface-container-high)')}
+                    onMouseLeave={e => !isSelected && (e.currentTarget.style.backgroundColor = 'transparent')}
+                  >
+                    <div>
+                      <div style={{ fontSize: '20px', fontWeight: 600, color: isSelected ? 'var(--error)' : 'var(--text-color)', transition: 'color 0.2s' }}>{f.name}</div>
+                      <div style={{ fontSize: '12px', letterSpacing: '0.1em', color: 'var(--text-muted)', marginTop: '4px', textTransform: 'uppercase' }}>
+                        {f.category} • {f.dotsSpec}
+                      </div>
+                    </div>
+                    {isSelected && <span className="material-symbols-outlined" style={{ color: 'var(--error)' }}>chevron_right</span>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+        </div>
+
+        {/* Detail Pane */}
+        <div className={styles.advDetail}>
+          {selectedAdvantage ? (() => {
+            const item = detailItem;
+            const isFlaw = detailType === 'flaw';
+            const themeColor = isFlaw ? 'var(--error)' : 'var(--primary-color)';
+            const ownedDots = getOwnedDots(item, detailType);
+            const delta = Math.max(0, detailDots - ownedDots);
+            const cost = isFlaw ? 0 : (detailAddSeparate ? XP_RULES.advantageDot(detailDots) : XP_RULES.advantageDot(delta));
+            const isAfford = isFlaw || xp >= cost;
+            const isBlocked = (!detailAddSeparate && delta <= 0) || !isAfford;
+            
+            const isMystic = item.id === 'other__mystic_of_the_void';
+            const maxMystic = ['Hecata', 'Lasombra'].includes(ch?.clan || '') ? 3 : 1;
+            const isMysticValid = !isMystic || detailMysticSelections.length > 0;
+            const finalBlocked = isBlocked || !isMysticValid;
+
+            return (
+              <>
+                <div style={{ padding: '24px', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--surface-container-low)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                    <h3 style={{ fontSize: '32px', fontWeight: 700, color: themeColor, fontFamily: "'Playfair Display', serif", textTransform: 'uppercase', lineHeight: 1.1 }}>{item.name}</h3>
+                    <span style={{ padding: '4px 8px', backgroundColor: 'var(--surface-variant)', color: 'var(--text-muted)', fontSize: '12px', letterSpacing: '0.1em', fontWeight: 500, borderRadius: '4px', textTransform: 'uppercase' }}>{item.category?.split(' / ')[0]}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '4px', marginTop: '8px' }}>
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <span key={i} style={{
+                        display: 'inline-block',
+                        width: '12px',
+                        height: '12px',
+                        borderRadius: '50%',
+                        border: i < ownedDots ? `1px solid ${themeColor}` : '1px solid var(--outline-variant)',
+                        backgroundColor: i < ownedDots ? themeColor : 'transparent',
+                        boxShadow: i < ownedDots ? `0 0 8px ${themeColor}80` : 'none'
+                      }}></span>
+                    ))}
+                  </div>
+                </div>
+                
+                <div style={{ padding: '24px', overflowY: 'auto', flexGrow: 1, fontSize: '16px', lineHeight: 1.5, color: 'var(--text-muted)' }}>
+                  <p style={{ marginBottom: '16px', whiteSpace: 'pre-wrap' }}>{item.description || 'No description available.'}</p>
+                  
+                  <div style={{ marginTop: '32px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
+                    <div style={{ fontSize: '12px', letterSpacing: '0.1em', fontWeight: 500, color: 'var(--text-color)', marginBottom: '8px', textTransform: 'uppercase' }}>Select Rating:</div>
+                    
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--surface-container-high)', padding: '12px', borderRadius: '4px' }}>
+                      <select 
+                        value={detailDots} 
+                        onChange={e => setDetailDots(Number(e.target.value))}
+                        style={{ backgroundColor: 'transparent', border: 'none', color: themeColor, fontSize: '20px', fontWeight: 600, outline: 'none', cursor: 'pointer' }}
+                      >
+                        {detailAllowed.map(n => (
+                          <option key={n} value={n} style={{ color: 'initial' }}>{glyf(n)} ({n})</option>
+                        ))}
+                      </select>
+                      <span style={{ fontSize: '12px', letterSpacing: '0.1em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                        Cost: {cost} XP
+                      </span>
+                    </div>
+
+                    {!isFlaw && ['Allies', 'Contacts', 'Resources', 'Retainers', 'Influence', 'Status'].includes(item.name) && (
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '16px', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={detailAddSeparate} onChange={e => setDetailAddSeparate(e.target.checked)} />
+                        <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Add as another instance</span>
+                      </label>
+                    )}
+
+                    {isMystic && (
+                      <div style={{ marginTop: '16px' }}>
+                        <label style={{ fontSize: '12px', letterSpacing: '0.1em', color: 'var(--text-muted)' }}>Select {maxMystic} Oblivion Power(s):</label>
+                        <select
+                          multiple={maxMystic > 1}
+                          value={detailMysticSelections}
+                          onChange={e => {
+                            const opts = Array.from(e.target.selectedOptions, o => o.value);
+                            if (opts.length <= maxMystic) setDetailMysticSelections(opts);
+                          }}
+                          style={{ width: '100%', height: maxMystic > 1 ? '100px' : 'auto', marginTop: '8px', backgroundColor: 'var(--surface-container-high)', color: 'var(--text-color)', border: '1px solid var(--border-color)', padding: '8px', borderRadius: '4px' }}
+                        >
+                          <option value="" disabled={maxMystic === 1}>-- Select Power(s) --</option>
+                          {meritAvailableOblivion.map(p => (
+                            <option key={p.id} value={p.id}>{p.name} (Level {p.level})</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                  </div>
+                </div>
+
+                <div style={{ padding: '24px', backgroundColor: 'var(--surface-container-low)', borderTop: '1px solid var(--border-color)', marginTop: 'auto' }}>
+                  <button 
+                    onClick={handlePurchase}
+                    disabled={finalBlocked}
+                    style={{
+                      width: '100%',
+                      backgroundColor: finalBlocked ? 'var(--surface-variant)' : 'var(--primary-container)',
+                      color: finalBlocked ? 'var(--text-muted)' : 'white',
+                      padding: '12px',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      letterSpacing: '0.1em',
+                      fontWeight: 500,
+                      textTransform: 'uppercase',
+                      border: 'none',
+                      cursor: finalBlocked ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      gap: '8px',
+                      boxShadow: finalBlocked ? 'none' : '0 0 15px rgba(180, 15, 31, 0.2)',
+                      transition: 'background-color 0.2s'
+                    }}
+                  >
+                    PURCHASE TRAIT <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>shopping_cart</span>
+                  </button>
+                </div>
+              </>
+            );
+          })() : (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)', fontSize: '14px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+              Select a trait to view details
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Owned Registry */}
+      {(!searchQuery && (meritsList.length > 0 || backgroundsList.length > 0 || flawsList.length > 0)) && (() => {
+        const getIconForAdvantage = (item, isFlaw) => {
+          const name = (item.name || '').toLowerCase();
+          if (name.includes('allies')) return 'groups';
+          if (name.includes('fame')) return 'public';
+          if (name.includes('resources')) return 'payments';
+          if (name.includes('influence')) return 'account_balance';
+          if (name.includes('status')) return 'workspace_premium';
+          if (name.includes('haven')) return 'home';
+          if (name.includes('retainer')) return 'person';
+          if (name.includes('herd')) return 'bloodtype';
+          if (name.includes('contact')) return 'contact_phone';
+          if (name.includes('mask')) return 'masks';
+          if (name.includes('looks') || name.includes('beautiful')) return 'face_2';
+          if (name.includes('linguistics')) return 'translate';
+          if (name.includes('blood') || name.includes('addiction')) return 'bloodtype';
+          if (name.includes('bane')) return 'warning';
+          if (name.includes('prey')) return 'restaurant';
+          if (name.includes('stigmata')) return 'water_drop';
+          if (name.includes('dark secret')) return 'lock';
+          
+          const cat = (item.category || '').toLowerCase();
+          if (cat.includes('mental')) return 'psychology';
+          if (cat.includes('physical')) return 'fitness_center';
+          if (cat.includes('social')) return 'forum';
+          if (cat.includes('supernatural')) return 'auto_awesome';
+          if (cat.includes('ghoul')) return 'bloodtype';
+          
+          return isFlaw ? 'visibility_off' : 'star';
+        };
+
+        const handleSaveNote = (e, type, id, idx) => {
+          e.stopPropagation();
+          if (onUpdateNotes) onUpdateNotes(type, idx, editNoteText);
+          setEditingNoteId(null);
+        };
+
+        const renderNotes = (notes, id, type, idx) => {
+          const isEditing = editingNoteId === `${type}_${id}_${idx}`;
+          const notesStr = typeof notes === 'string' ? notes : (notes ? JSON.stringify(notes) : '');
+          
+          if (isEditing) {
+            return (
+              <div style={{ marginTop: '12px' }} onClick={e => e.stopPropagation()}>
+                <input 
+                  type="text" 
+                  value={editNoteText} 
+                  onChange={e => setEditNoteText(e.target.value)}
+                  style={{ width: '100%', padding: '6px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--primary-color)', color: '#fff', borderRadius: '4px', fontSize: '12px' }}
+                  autoFocus
+                />
+                <div style={{ display: 'flex', gap: '8px', marginTop: '6px', justifyContent: 'flex-end' }}>
+                  <button onClick={(e) => { e.stopPropagation(); setEditingNoteId(null); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '11px', cursor: 'pointer' }}>Cancel</button>
+                  <button onClick={(e) => handleSaveNote(e, type, id, idx)} style={{ background: 'var(--primary-color)', border: 'none', color: '#000', borderRadius: '4px', padding: '2px 8px', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold' }}>Save</button>
+                </div>
+              </div>
+            );
+          }
+
+          return (
+            <div style={{ marginTop: '12px', padding: '8px', backgroundColor: 'var(--surface-variant)', borderRadius: '4px', fontSize: '12px', color: 'var(--text-color)', opacity: 0.9, position: 'relative' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div><strong style={{ color: 'var(--primary-color)' }}>Notes:</strong> {notesStr || <span style={{ opacity: 0.5 }}>None</span>}</div>
+                {onUpdateNotes && (
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setEditingNoteId(`${type}_${id}_${idx}`); setEditNoteText(notesStr); }}
+                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>edit</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        };
+
+        return (
+          <div style={{ backgroundColor: 'rgba(28, 27, 27, 0.6)', backdropFilter: 'blur(12px)', border: '1px solid var(--border-color)', padding: '24px', marginTop: '24px' }}>
+            <h2 style={{ fontSize: '24px', fontWeight: 600, color: 'var(--text-color)', fontFamily: "'Playfair Display', serif", marginBottom: '24px', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>YOUR ADVANTAGES</h2>
+            
+            {([...meritsList, ...backgroundsList].length > 0) && (
+              <>
+                <h3 style={{ fontSize: '14px', letterSpacing: '0.1em', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '16px', textTransform: 'uppercase' }}>Merits & Backgrounds</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px', marginBottom: '32px' }}>
+                  {[...meritsList, ...backgroundsList].map((m, i) => {
+                    const details = allMeritsFlat.find(x => x.id === m.id) || allDataItems.find(x => x.id === m.id) || {};
+                    const icon = getIconForAdvantage({ ...m, category: details.category }, false);
+                    const isExpanded = expandedAdvantageId === `merit_${m.id}_${i}`;
+                    return (
+                      <div 
+                        key={`merit_${m.id}_${i}`} 
+                        onClick={() => setExpandedAdvantageId(isExpanded ? null : `merit_${m.id}_${i}`)}
+                        style={{ border: isExpanded ? '1px solid var(--primary-color)' : '1px solid var(--border-color)', padding: '16px', display: 'flex', gap: '16px', backgroundColor: 'var(--surface-container-low)', position: 'relative', cursor: 'pointer', transition: 'border-color 0.2s' }}
+                      >
+                        <div style={{ width: '64px', height: '64px', backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <span className="material-symbols-outlined" style={{ color: 'var(--text-muted)', fontSize: '32px' }}>{icon}</span>
+                        </div>
+                        <div style={{ flexGrow: 1 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <h4 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--text-color)' }}>{m.name}</h4>
+                            <div style={{ display: 'flex', gap: '4px' }}>
+                              {Array.from({ length: m.dots || 0 }).map((_, j) => <span key={j} className="dot-filled" style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: 'var(--primary-color)', border: '1px solid var(--primary-color)' }}></span>)}
+                            </div>
+                          </div>
+                          <div style={{ fontSize: '12px', letterSpacing: '0.1em', color: 'var(--text-muted)', marginTop: '4px', textTransform: 'uppercase' }}>{details.category || 'MERIT'}</div>
+                          {isExpanded && details.description && (
+                            <div style={{ marginTop: '12px', fontSize: '13px', lineHeight: 1.4, color: 'var(--text-muted)', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
+                              {details.description}
+                            </div>
+                          )}
+                          {isExpanded && renderNotes(m.notes, m.id, 'merits', i)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+            
+            {(flawsList.length > 0) && (
+              <>
+                {([...meritsList, ...backgroundsList].length > 0) && <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)', margin: '0 0 32px 0' }} />}
+                <h3 style={{ fontSize: '14px', letterSpacing: '0.1em', fontWeight: 600, color: 'var(--error)', marginBottom: '16px', textTransform: 'uppercase' }}>Flaws</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
+                  {flawsList.map((f, i) => {
+                    const details = allFlawsFlat.find(x => x.id === f.id) || allDataItems.find(x => x.id === f.id) || {};
+                    const icon = getIconForAdvantage({ ...f, category: details.category }, true);
+                    const isExpanded = expandedAdvantageId === `flaw_${f.id}_${i}`;
+                    return (
+                      <div 
+                        key={`flaw_${f.id}_${i}`} 
+                        onClick={() => setExpandedAdvantageId(isExpanded ? null : `flaw_${f.id}_${i}`)}
+                        style={{ border: '1px solid var(--border-color)', borderLeft: '4px solid var(--error)', padding: '16px', display: 'flex', gap: '16px', backgroundColor: isExpanded ? 'var(--surface-container-high)' : 'var(--surface-container-low)', position: 'relative', cursor: 'pointer', transition: 'background-color 0.2s' }}
+                      >
+                        <div style={{ width: '64px', height: '64px', backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <span className="material-symbols-outlined" style={{ color: 'var(--error)', fontSize: '32px' }}>{icon}</span>
+                        </div>
+                        <div style={{ flexGrow: 1 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <h4 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--text-color)' }}>{f.name}</h4>
+                            <div style={{ display: 'flex', gap: '4px' }}>
+                              {Array.from({ length: f.dots || 0 }).map((_, j) => <span key={j} className="dot-filled" style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: 'var(--error)', border: '1px solid var(--error)' }}></span>)}
+                            </div>
+                          </div>
+                          <div style={{ fontSize: '12px', letterSpacing: '0.1em', color: 'var(--text-muted)', marginTop: '4px', textTransform: 'uppercase' }}>{details.category || 'FLAW'}</div>
+                          {isExpanded && details.description && (
+                            <div style={{ marginTop: '12px', fontSize: '13px', lineHeight: 1.4, color: 'var(--text-muted)', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
+                              {details.description}
+                            </div>
+                          )}
+                          {isExpanded && renderNotes(f.notes, f.id, 'flaws', i)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+        );
+      })()}
+    </div>
+  );
+};
+
+export default MeritsBackgroundsSection;
