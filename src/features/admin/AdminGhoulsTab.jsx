@@ -84,7 +84,7 @@ export default function AdminGhoulsTab({ ghouls }) {
                 >
                   <td style={{ padding: '0.75rem 1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <Avatar retainerId={g.id} size={32} />
+                      <Avatar retainerId={g.id} size={40} editable={true} />
                       <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{g.retainer_name}</span>
                     </div>
                   </td>
