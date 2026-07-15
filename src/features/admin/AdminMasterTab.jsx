@@ -13,6 +13,9 @@ export default function AdminMasterTab() {
   const [actionLoading, setActionLoading] = useState(false);
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
+  const [ntfyTopic, setNtfyTopic] = useState('');
+  const [availableNpcs, setAvailableNpcs] = useState([]);
+  const [subscribedNpcs, setSubscribedNpcs] = useState([]);
 
   // Danger Zone state
   const [dangerOpen, setDangerOpen] = useState(false);
@@ -73,11 +76,19 @@ export default function AdminMasterTab() {
   const loadConfig = async () => {
     setLoading(true);
     try {
-      const [commsRes, bannerRes] = await Promise.all([api.get('/comms/status'), api.get('/system/banner')]);
+      const [commsRes, bannerRes, ntfyRes, npcsRes] = await Promise.all([
+        api.get('/comms/status'), 
+        api.get('/system/banner'),
+        api.get('/admin/ntfy').catch(() => ({ data: { topic: '', subscribed_npcs: [] } })),
+        api.get('/admin/npcs').catch(() => ({ data: { npcs: [] } }))
+      ]);
       setCommsEnabled(commsRes.data.comms_enabled);
       setBannerEnabled(bannerRes.data.banner_enabled);
       setBannerMessage(bannerRes.data.banner_message || '');
       setBannerCountdown(bannerRes.data.banner_countdown || '');
+      setNtfyTopic(ntfyRes.data.topic || '');
+      setSubscribedNpcs(ntfyRes.data.subscribed_npcs || []);
+      setAvailableNpcs(npcsRes.data.npcs || []);
     } catch (e) { setErr('Failed to load Master Settings'); } finally { setLoading(false); }
   };
 
@@ -100,6 +111,40 @@ export default function AdminMasterTab() {
       setMsg(`Global Banner configuration saved.`);
       setTimeout(() => setMsg(''), 3000);
     } catch (e) { setErr('Failed to save banner config.'); } finally { setActionLoading(false); }
+  };
+
+  const generateNtfyKey = async () => {
+    setActionLoading(true); setMsg(''); setErr('');
+    try {
+      const res = await api.post('/admin/ntfy/generate');
+      setNtfyTopic(res.data.topic);
+      setMsg(`New Ntfy key generated successfully.`);
+      setTimeout(() => setMsg(''), 3000);
+    } catch (e) { setErr('Failed to generate Ntfy key.'); } finally { setActionLoading(false); }
+  };
+
+  const testNtfy = async () => {
+    setActionLoading(true); setMsg(''); setErr('');
+    try {
+      await api.post('/admin/ntfy/test');
+      setMsg(`Test notification sent! Check your device.`);
+      setTimeout(() => setMsg(''), 3000);
+    } catch (e) { setErr('Failed to send test notification. Do you have a topic?'); } finally { setActionLoading(false); }
+  };
+
+  const saveNtfyPrefs = async () => {
+    setActionLoading(true); setMsg(''); setErr('');
+    try {
+      await api.post('/admin/ntfy/prefs', { npc_ids: subscribedNpcs });
+      setMsg('NPC notification preferences saved!');
+      setTimeout(() => setMsg(''), 3000);
+    } catch (e) { setErr('Failed to save NPC preferences.'); } finally { setActionLoading(false); }
+  };
+
+  const toggleNpcSub = (npcId) => {
+    setSubscribedNpcs(prev => 
+      prev.includes(npcId) ? prev.filter(id => id !== npcId) : [...prev, npcId]
+    );
   };
 
   const dangerWipeDowntimes = async () => {
@@ -192,6 +237,69 @@ export default function AdminMasterTab() {
           <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={saveBanner} disabled={actionLoading} style={{ padding: '1rem', fontSize: '1.05rem', marginTop: '1rem' }}>
             {actionLoading ? 'Saving...' : 'Save Banner Configuration'}
           </button>
+        </div>
+      </div>
+
+      {/* NTFY PUSH NOTIFICATIONS */}
+      <div style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', padding: '2rem', boxShadow: 'var(--glass-shadow)' }}>
+        <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
+          <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-color)' }}>📱 Admin Push Notifications (Ntfy)</h4>
+          <p style={{ margin: '5px 0 0 0', color: 'var(--text-secondary)' }}>Receive critical system alerts and logs directly to your phone/desktop.</p>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {ntfyTopic ? (
+            <div style={{ background: 'rgba(0, 230, 118, 0.05)', borderLeft: '4px solid var(--color-success)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
+              <div style={{ fontWeight: 700, color: 'var(--color-success)', marginBottom: '10px' }}>✅ Your Push Topic is Active</div>
+              <div style={{ color: 'var(--text-primary)', marginBottom: '10px', fontSize: '1.1rem' }}>
+                Topic Key: <strong style={{ userSelect: 'all', background: '#000', padding: '2px 8px', borderRadius: '4px', fontFamily: 'monospace' }}>{ntfyTopic}</strong>
+              </div>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: '1.4' }}>
+                1. Download the <a href="https://ntfy.sh" target="_blank" rel="noreferrer" style={{ color: 'var(--accent-purple)' }}>Ntfy app</a> (iOS/Android) or use the web app.<br/>
+                2. Tap "+" to subscribe to a new topic.<br/>
+                3. Enter your unique Topic Key above. You will now receive system crashes and logs.
+              </p>
+              
+              <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
+                <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={testNtfy} disabled={actionLoading}>
+                  🔔 Send Test Ping
+                </button>
+                <button className={`${styles.btn}`} onClick={generateNtfyKey} disabled={actionLoading} style={{ background: 'var(--glass-border)', color: 'var(--text-color)' }}>
+                  🔄 Regenerate Key
+                </button>
+              </div>
+
+              <div style={{ marginTop: '20px', borderTop: '1px solid var(--glass-border)', paddingTop: '15px' }}>
+                <h5 style={{ margin: '0 0 10px 0', color: 'var(--text-primary)' }}>NPC DM Subscriptions</h5>
+                <p style={{ margin: '0 0 10px 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Select which NPCs you want to receive push notifications for when players message them.</p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', maxHeight: '150px', overflowY: 'auto', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '4px' }}>
+                  {availableNpcs.map(npc => (
+                    <label key={npc.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: 'var(--text-color)', fontSize: '0.9rem' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={subscribedNpcs.includes(npc.id)} 
+                        onChange={() => toggleNpcSub(npc.id)} 
+                        disabled={actionLoading}
+                      />
+                      {npc.name}
+                    </label>
+                  ))}
+                  {availableNpcs.length === 0 && <span style={{ color: 'var(--text-secondary)' }}>No NPCs found.</span>}
+                </div>
+                <button className={`${styles.btn}`} onClick={saveNtfyPrefs} disabled={actionLoading} style={{ marginTop: '10px', background: 'var(--accent-purple)', color: '#fff', border: 'none' }}>
+                  💾 Save NPC Preferences
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ background: 'var(--glass-inset)', borderLeft: '4px solid var(--accent-purple)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
+              <h4 style={{ margin: '0 0 10px 0', color: 'var(--text-primary)' }}>No Ntfy Key Configured</h4>
+              <p style={{ margin: '0 0 15px 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Generate a unique key to start receiving backend server error logs and notifications on your mobile device.</p>
+              <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={generateNtfyKey} disabled={actionLoading}>
+                ✨ Generate Push Key
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
