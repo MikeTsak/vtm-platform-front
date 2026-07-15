@@ -6,7 +6,7 @@ export const AuthCtx = createContext(null);
 
 export default function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const loadMe = async () => {
     try {
@@ -14,12 +14,18 @@ export default function AuthProvider({ children }) {
       setUser(data.user);
     } catch (e) {
       setUser(null);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     const t = localStorage.getItem('token');
-    if (t) loadMe();
+    if (t) {
+      loadMe();
+    } else {
+      setLoading(false);
+    }
   }, []);
 
   const login = async (email, password) => {

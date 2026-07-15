@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import api from '../../core/api';
 import styles from '../../styles/Sheet.module.css';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { PREDATOR_TYPES } from '../../data/predator_types';
 import { trackEvent } from '../../utils/analytics';
 import ClanPicker from './characterSetupSteps/ClanPicker';
@@ -123,6 +123,8 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
   const [err, setErr] = useState('');
   const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const isTesting = new URLSearchParams(location.search).get('test') === '1';
   const [successOpen, setSuccessOpen] = useState(false);
   const [isRebuilding, setIsRebuilding] = useState(false);
 
@@ -448,7 +450,7 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
 
   /* ---------- Render ---------- */
 
-  if (existing && !isRebuilding) {
+  if (existing && !isRebuilding && !isTesting) {
     return (
       <div className={styles.sheetCard}>
         <h3 className={styles.cardTitle}>Your Character</h3>

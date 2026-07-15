@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../../core/api';
 import styles from '../../styles/Admin.module.css';
 import { Skeleton } from 'boneyard-js/react';
+import { Link } from 'react-router-dom';
 export default function AdminMasterTab() {
   const [commsEnabled, setCommsEnabled] = useState(true);
   const [bannerEnabled, setBannerEnabled] = useState(false);
@@ -16,6 +17,7 @@ export default function AdminMasterTab() {
   // Danger Zone state
   const [dangerOpen, setDangerOpen] = useState(false);
   const [dangerLoading, setDangerLoading] = useState(false);
+  const [dangerPin, setDangerPin] = useState('');
 
   useEffect(() => { loadConfig(); }, []);
 
@@ -144,6 +146,43 @@ export default function AdminMasterTab() {
         </div>
       </div>
 
+      {/* UI / ASSET TESTING SECTION */}
+      <div style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', padding: '2rem', boxShadow: 'var(--glass-shadow)' }}>
+        <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-color)' }}>🎨 UI / Asset Testing</h4>
+            <p style={{ margin: '5px 0 0 0', color: 'var(--text-secondary)' }}>Test character builders and view visual assets.</p>
+          </div>
+          <Link to="/make?test=1" className={`${styles.btn} ${styles.btnPrimary}`} style={{ textDecoration: 'none' }}>
+            Test Character Build
+          </Link>
+        </div>
+
+        <h5 style={{ color: 'var(--text-primary)', marginBottom: '1rem', fontSize: '1.2rem' }}>Clan Logos & Typography</h5>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {['Banu_Haqim', 'Brujah', 'Caitiff', 'Gangrel', 'Hecata', 'Lasombra', 'Malkavian', 'Ministry', 'Nosferatu', 'Ravnos', 'Salubri', 'Thinblood', 'Toreador', 'Tremere', 'Tzimisce', 'Ventrue'].map(clan => (
+            <div key={clan} style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', alignItems: 'center', background: 'var(--glass-inset)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)' }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '10px' }}>{clan} Symbol (Default)</div>
+                <img src={`/img/clans/330px-${clan}_symbol.png`} alt={clan} style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '10px' }}>{clan} Symbol (Inverted)</div>
+                <img src={`/img/clans/330px-${clan}_symbol.png`} alt={clan} style={{ width: '80px', height: '80px', objectFit: 'contain', filter: 'invert(1)' }} />
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '10px' }}>{clan} Text (Default)</div>
+                <img src={`/img/clans/text/300px-${clan}_logo.png`} alt={`${clan} Text`} style={{ width: '120px', height: '80px', objectFit: 'contain' }} />
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '10px' }}>{clan} Text (Inverted)</div>
+                <img src={`/img/clans/text/300px-${clan}_logo.png`} alt={`${clan} Text`} style={{ width: '120px', height: '80px', objectFit: 'contain', filter: 'invert(1)' }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* DANGER ZONE */}
       <div style={{ background: 'rgba(255, 82, 82, 0.04)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '2px solid rgba(255,82,82,0.3)', padding: '2rem', boxShadow: '0 0 30px rgba(255,82,82,0.08)' }}>
         <div
@@ -159,6 +198,20 @@ export default function AdminMasterTab() {
 
         {dangerOpen && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ background: 'var(--glass-inset)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid rgba(255,82,82,0.2)' }}>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Enter PIN to unlock destructive actions:</span>
+                <input 
+                  type="password" 
+                  className={styles.input} 
+                  style={{ maxWidth: '200px' }}
+                  value={dangerPin} 
+                  onChange={e => setDangerPin(e.target.value)} 
+                  placeholder="PIN" 
+                />
+              </label>
+            </div>
+
             {/* Wipe Resolved Downtimes */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--glass-inset)', borderRadius: 'var(--radius-md)', padding: '1.2rem 1.5rem', border: '1px solid rgba(255,82,82,0.2)' }}>
               <div>
@@ -168,9 +221,9 @@ export default function AdminMasterTab() {
               <button
                 type="button"
                 className={styles.btn}
-                style={{ background: 'rgba(255,82,82,0.15)', border: '1px solid var(--color-error)', color: 'var(--color-error)', fontWeight: 700, minWidth: '140px', flexShrink: 0 }}
+                style={{ background: 'rgba(255,82,82,0.15)', border: '1px solid var(--color-error)', color: 'var(--color-error)', fontWeight: 700, minWidth: '140px', flexShrink: 0, opacity: dangerPin !== '2151' ? 0.5 : 1, cursor: dangerPin !== '2151' ? 'not-allowed' : 'pointer' }}
                 onClick={dangerWipeDowntimes}
-                disabled={dangerLoading}
+                disabled={dangerLoading || dangerPin !== '2151'}
               >
                 {dangerLoading ? '…' : 'Wipe Records'}
               </button>
@@ -185,9 +238,9 @@ export default function AdminMasterTab() {
               <button
                 type="button"
                 className={styles.btn}
-                style={{ background: 'rgba(255,82,82,0.15)', border: '1px solid var(--color-error)', color: 'var(--color-error)', fontWeight: 700, minWidth: '140px', flexShrink: 0 }}
+                style={{ background: 'rgba(255,82,82,0.15)', border: '1px solid var(--color-error)', color: 'var(--color-error)', fontWeight: 700, minWidth: '140px', flexShrink: 0, opacity: dangerPin !== '2151' ? 0.5 : 1, cursor: dangerPin !== '2151' ? 'not-allowed' : 'pointer' }}
                 onClick={dangerClearDice}
-                disabled={dangerLoading}
+                disabled={dangerLoading || dangerPin !== '2151'}
               >
                 {dangerLoading ? '…' : 'Clear Dice Logs'}
               </button>
