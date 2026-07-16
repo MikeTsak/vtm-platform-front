@@ -4,6 +4,7 @@ import api from '../core/api';
 import { trackEvent } from '../utils/analytics';
 import { Link, useNavigate } from 'react-router-dom';
 import { Skeleton } from 'boneyard-js/react';
+import { motion } from 'framer-motion';
 import styles from '../styles/Home.module.css';
 import Avatar from '../components/Avatar';
 import GoogleAd from '../components/GoogleAd';
@@ -356,7 +357,15 @@ export default function Home() {
 
   return (
     <Skeleton name="home-page" loading={loading}>
-      <main className={styles.homePage}>
+      <motion.main 
+        className={styles.homePage}
+        initial="hidden"
+        animate="visible"
+        variants={{
+          hidden: { opacity: 0 },
+          visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+        }}
+      >
 
       {/* ── SHATTER OVERLAY ── */}
       {isShattering && (
@@ -380,7 +389,14 @@ export default function Home() {
         <div className={styles.mainColumn}>
           
           {/* 1. IDENTITY HEADER */}
-          <header className={styles.identityHeader} style={{ '--dynamic-tint': dynamicClanTint }}>
+          <motion.header 
+            className={styles.identityHeader} 
+            style={{ '--dynamic-tint': dynamicClanTint }}
+            variants={{
+              hidden: { opacity: 0, y: 30, scale: 0.95 },
+              visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 25 } }
+            }}
+          >
             <span className={`${styles.corner} ${styles.cornerTL}`} />
             <span className={`${styles.corner} ${styles.cornerTR}`} />
             <span className={`${styles.corner} ${styles.cornerBL}`} />
@@ -426,7 +442,7 @@ export default function Home() {
                 <span className={styles.quotaCount}>{quota.used} / {quota.limit} USED</span>
               </div>
             </div>
-          </header>
+          </motion.header>
 
           {fetchError && <div className={styles.errorBanner}>{fetchError}</div>}
           
@@ -441,7 +457,14 @@ export default function Home() {
           )}
 
           {/* 2. NEXT MODERN EVENT */}
-          <section className={styles.eventCard} style={{ backgroundImage: "url('/img/ui/newspaper_bg.png')" }}>
+          <motion.section 
+            className={styles.eventCard} 
+            style={{ backgroundImage: "url('/img/ui/newspaper_bg.png')" }}
+            variants={{
+              hidden: { opacity: 0, x: -30 },
+              visible: { opacity: 1, x: 0, transition: { type: 'spring', stiffness: 300, damping: 25 } }
+            }}
+          >
             <div className={styles.eventInfo}>
               <h3 className={styles.eventHeader}>NEXT MODERN EVENT</h3>
               <h2 className={styles.eventTitle}>{openingDate ? 'Elysium Gathering' : 'No Current Event'}</h2>
@@ -454,7 +477,7 @@ export default function Home() {
               )}
             </div>
             <button className={styles.rsvpBtn} onClick={() => setShowRsvp(true)}>RSVP</button>
-          </section>
+          </motion.section>
 
           {showRsvp && (
             <div 
@@ -480,41 +503,78 @@ export default function Home() {
           )}
 
           {/* 3. NAV GRID */}
-          <section className={styles.navGrid}>
+          <motion.section 
+            className={styles.navGrid}
+            variants={{
+              hidden: { opacity: 0 },
+              visible: { opacity: 1, transition: { staggerChildren: 0.05 } }
+            }}
+          >
             {NAV_CARDS.map(({ to, icon, title, sub, img }) => (
-              <Link key={to} to={to} className={styles.navCard} style={{ '--card-bg': `url('/img/ui/${img}.png')` }}>
-                <div className={styles.navCardIcon}>
-                  <span className="material-symbols-outlined" style={{ position: 'relative', zIndex: 2 }}>{icon}</span>
-                </div>
-                <span className={styles.navCardTitle} style={{ position: 'relative', zIndex: 2 }}>{title}</span>
-              </Link>
+              <motion.div 
+                key={to}
+                variants={{
+                  hidden: { opacity: 0, scale: 0.8, y: 20 },
+                  visible: { opacity: 1, scale: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 20 } }
+                }}
+                whileHover={{ scale: 1.05, y: -5 }}
+                whileTap={{ scale: 0.95 }}
+                style={{ display: 'flex' }}
+              >
+                <Link to={to} className={styles.navCard} style={{ '--card-bg': `url('/img/ui/${img}.png')`, width: '100%' }}>
+                  <div className={styles.navCardIcon}>
+                    <span className="material-symbols-outlined" style={{ position: 'relative', zIndex: 2 }}>{icon}</span>
+                  </div>
+                  <span className={styles.navCardTitle} style={{ position: 'relative', zIndex: 2 }}>{title}</span>
+                </Link>
+              </motion.div>
             ))}
             {((ch && ch.sheet?.is_active === true) || me?.role === 'courtuser') && (
-              <Link key="/rumors" to="/rumors" className={styles.navCard} style={{ '--card-bg': `url('/img/ui/marble_surface.png')` }}>
-                <div className={styles.navCardIcon}>
-                  <span className="material-symbols-outlined" style={{ position: 'relative', zIndex: 2 }}>campaign</span>
-                </div>
-                <span className={styles.navCardTitle} style={{ position: 'relative', zIndex: 2 }}>Rumors</span>
-              </Link>
+              <motion.div
+                variants={{
+                  hidden: { opacity: 0, scale: 0.8, y: 20 },
+                  visible: { opacity: 1, scale: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 20 } }
+                }}
+                whileHover={{ scale: 1.05, y: -5 }}
+                whileTap={{ scale: 0.95 }}
+                style={{ display: 'flex' }}
+              >
+                <Link key="/rumors" to="/rumors" className={styles.navCard} style={{ '--card-bg': `url('/img/ui/marble_surface.png')`, width: '100%' }}>
+                  <div className={styles.navCardIcon}>
+                    <span className="material-symbols-outlined" style={{ position: 'relative', zIndex: 2 }}>campaign</span>
+                  </div>
+                  <span className={styles.navCardTitle} style={{ position: 'relative', zIndex: 2 }}>Rumors</span>
+                </Link>
+              </motion.div>
             )}
 
             {/* The Cobweb */}
             {showCobweb && (
-              <a
-                href="/premonitions"
-                onClick={handlePremonitionClick}
-                className={`${styles.navCard} ${styles.malkCard}`}
-                title="Enter the Cobweb"
-                style={{ '--card-bg': `url('/img/ui/cobweb_static.png')` }}
+              <motion.div
+                variants={{
+                  hidden: { opacity: 0, scale: 0.8, y: 20 },
+                  visible: { opacity: 1, scale: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 20 } }
+                }}
+                whileHover={{ scale: 1.05, y: -5 }}
+                whileTap={{ scale: 0.95 }}
+                style={{ display: 'flex' }}
               >
-                <div className={styles.glitchBg}></div>
-                <div className={styles.navCardIcon} style={{ position: 'relative', zIndex: 2 }}>
-                  <span className="material-symbols-outlined" style={{ color: '#fca5a5' }}>visibility</span>
-                </div>
-                <span className={styles.navCardTitle} style={{ position: 'relative', zIndex: 2 }}>THE COBWEB</span>
-              </a>
+                <a
+                  href="/premonitions"
+                  onClick={handlePremonitionClick}
+                  className={`${styles.navCard} ${styles.malkCard}`}
+                  title="Enter the Cobweb"
+                  style={{ '--card-bg': `url('/img/ui/cobweb_static.png')`, width: '100%' }}
+                >
+                  <div className={styles.glitchBg}></div>
+                  <div className={styles.navCardIcon} style={{ position: 'relative', zIndex: 2 }}>
+                    <span className="material-symbols-outlined" style={{ color: '#fca5a5' }}>visibility</span>
+                  </div>
+                  <span className={styles.navCardTitle} style={{ position: 'relative', zIndex: 2 }}>THE COBWEB</span>
+                </a>
+              </motion.div>
             )}
-          </section>
+          </motion.section>
 
           {/* GOOGLE AD BLOCK */}
           <section style={{ margin: '20px 0', textAlign: 'center', background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
@@ -522,7 +582,13 @@ export default function Home() {
           </section>
 
           {/* 4. BOTTOM ROW (Chronicle Entry & Restricted Access) */}
-          <div className={styles.bottomRowGrid}>
+          <motion.div 
+            className={styles.bottomRowGrid}
+            variants={{
+              hidden: { opacity: 0, y: 20 },
+              visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 25 } }
+            }}
+          >
             <div className={styles.chronicleEntryCard} style={{ backgroundImage: "url('/img/ui/newspaper_bg.png')" }}>
               <h4 className={styles.chronicleEntryLabel}>LATEST CHRONICLE ENTRY</h4>
               {latestChronicle ? (
@@ -546,10 +612,16 @@ export default function Home() {
                </div>
                <span className={styles.restrictedText}>RESTRICTED ACCESS</span>
             </div>
-          </div>
+          </motion.div>
 
           {/* 5. THEMES PROTOCOL */}
-          <section className={styles.themeSection}>
+          <motion.section 
+            className={styles.themeSection}
+            variants={{
+              hidden: { opacity: 0, y: 20 },
+              visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 25 } }
+            }}
+          >
             <h2 className={styles.feedHeading} style={{ fontSize: '1.15rem' }}>Interface Protocol</h2>
             <div className={styles.themeGrid}>
               {availableThemes.map(t => (
@@ -566,12 +638,18 @@ export default function Home() {
                 </button>
               ))}
             </div>
-          </section>
+          </motion.section>
 
         </div>
 
         {/* ── RIGHT SIDEBAR ── */}
-        <aside className={styles.sidebarColumn}>
+        <motion.aside 
+          className={styles.sidebarColumn}
+          variants={{
+            hidden: { opacity: 0, x: 50 },
+            visible: { opacity: 1, x: 0, transition: { type: 'spring', stiffness: 300, damping: 25 } }
+          }}
+        >
           
           {/* STATUS PROTOCOL */}
           <section className={styles.statusProtocolCard}>
@@ -727,10 +805,10 @@ export default function Home() {
             </div>
           </section>
 
-        </aside>
+        </motion.aside>
       </div>
 
-      </main>
+      </motion.main>
     </Skeleton>
   );
 }
