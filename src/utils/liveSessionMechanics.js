@@ -66,11 +66,26 @@ export function rollPool(pool, hunger, difficulty = 0, rng = Math.random) {
   };
 }
 
-export function runRouseCheck(currentHunger, rng = Math.random) {
-  const die = rollD10(rng);
-  const success = die >= 6;
+export function getBloodPotencyStats(bp) {
+  const level = clamp(Number(bp) || 0, 0, 10);
+  const surgeBonuses = [1, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5];
+  const rouseRerollLevels = [0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5];
   return {
-    die,
+    surgeBonus: surgeBonuses[level],
+    rouseRerollLevel: rouseRerollLevels[level],
+  };
+}
+
+export function runRouseCheck(currentHunger, rng = Math.random, advantage = false) {
+  const die1 = rollD10(rng);
+  const die2 = advantage ? rollD10(rng) : 0;
+  const bestDie = Math.max(die1, die2);
+  const success = bestDie >= 6;
+  return {
+    die: bestDie,
+    die1,
+    die2,
+    advantage,
     success,
     nextHunger: success ? clamp(currentHunger, 0, 5) : clamp((Number(currentHunger) || 0) + 1, 0, 5),
   };
@@ -115,6 +130,7 @@ export function summarizeTrackers(sheet) {
 
   return {
     hunger: clamp(sheet?.hunger ?? 1, 0, 5),
+    bloodPotency: clamp(sheet?.bloodPotency ?? 1, 0, 10),
     health: {
       superficial: clamp(sheet?.health?.superficial ?? 0, 0, maxHealth),
       aggravated: clamp(sheet?.health?.aggravated ?? 0, 0, maxHealth),

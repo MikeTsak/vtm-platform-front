@@ -28,7 +28,7 @@ const CLAN_COLORS = {
 const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim' };
 const fileify = (c) => (NAME_OVERRIDES[c] || c).replace(/\s+/g, '_');
 const symlogo  = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.png`      : '');
-const textlogo = (c) => (c ? `/img/clans/text/300px-${fileify(c)}_Logo.png`   : '');
+const textlogo = (c) => (c ? `/img/clans/text/300px-${fileify(c)}_logo.png`   : '');
 
 /* ── Relative time ──────────────────────────────────────────────── */
 const formatTimestamp = (ts) => {

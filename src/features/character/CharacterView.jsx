@@ -54,7 +54,7 @@ const NAME_OVERRIDES = {
 };
 const fileify = (c) => (NAME_OVERRIDES[c] || c).replace(/\s+/g, '_');
 const symlogo = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.png` : '');
-const textlogo = (c) => (c ? `/img/clans/text/300px-${fileify(c)}_Logo.png` : '');
+const textlogo = (c) => (c ? `/img/clans/text/300px-${fileify(c)}_logo.png` : '');
 
 
 
@@ -459,6 +459,14 @@ function Drawer({ title, subtitle, defaultOpen = false, children }) {
   );
 }
 
+const SUPERFICIAL_DESC = "Superficial damage\nSuperficial damage is bruising and small cuts, but nothing that is life-threatening. Kicking, punching, and any non-lethal weapon do Superficial damage to humans. Standard weapons do Superficial damage to vampires, this includes slashing, stabbing, and piercing weapons. In general, this type of damage is halved before adding it to the tracker and this includes when converting Superficial to Aggravated.\n\nHealing damage\nMortals may remove a number of Superficial damage equal to their Stamina rating at the beginning of a session. With Aggravated damage mortals can have their damage converted from Aggravated to Superficial with an Intelligence + Medicine test. The maximum amount able to be converted is equal to half of the character's Medicine rating rounded up with the healing happening over the course of the night. A mortal being hospitalized removes the need for rolls but takes the amount of Aggravated damage received as the total number of weeks required to heal fully.";
+
+const AGGRAVATED_DESC = "Aggravated damage\nAggravated damage is broken bones, serious wounds, and other life-threatening injuries. Sharp and piercing weapons do Aggravated damage to humans. Generally, only fire, sunlight and the claws or teeth of other supernatural creatures do Aggravated damage to Kindred.\n\nHealing damage\nMortals may remove a number of Superficial damage equal to their Stamina rating at the beginning of a session. With Aggravated damage mortals can have their damage converted from Aggravated to Superficial with an Intelligence + Medicine test. The maximum amount able to be converted is equal to half of the character's Medicine rating rounded up with the healing happening over the course of the night. A mortal being hospitalized removes the need for rolls but takes the amount of Aggravated damage received as the total number of weeks required to heal fully.";
+
+const WILLPOWER_SUPERFICIAL_DESC = "Spending Willpower\nPlayers may spend their character's Willpower in a variety of ways and when doing so, must mark the tracker with one Superficial damage. Should the character hit Willpower 0, they are left Impaired and receives a -2 dice penalty for Social and Mental tests. Superficial damage is tracked with an \"/\" on one of the boxes per point taken, with Aggravated tracked using an \"X\" in each box per point taken.\n\nThey may use Willpower to reroll up to three dice (the dice cannot be Hunger dice) in any pool, except when the rules specifically exclude Willpower such as tracker rolls (Remorse tests, Frenzy tests), or One-Roll Conflict), etc.\n- Willpower may be spent to take control of their character for one turn during a frenzy or when under the influence of certain Disciplines.\n- To perform minor movements, such as movement of a finger while staked.\n- To ignore Health damage penalties, including Impairment, for one turn.\n\nRecovering Superficial Willpower damage\nCharacters may recover their Superficial Willpower damage at the beginning of a session equal to either their Composure or Resolve (whichever is highest between the two). Unless, the session ends on a cliffhanger where the dwindling supply of Willpower provides a strong dramatic tension.\n- At the Storyteller's discretion, once per session, a character who acts to fulfill their desire may immediately recover 1 point of damage.\n- At the Storyteller's discretion, a character who plays out a messy critical, bestial failure, frenzy, or Compulsion in a dramatic way can recover one or more Superficial Willpower damage.";
+
+const WILLPOWER_AGGRAVATED_DESC = "Spending Willpower\nPlayers may spend their character's Willpower in a variety of ways and when doing so, must mark the tracker with one Superficial damage. Should the character hit Willpower 0, they are left Impaired and receives a -2 dice penalty for Social and Mental tests. Superficial damage is tracked with an \"/\" on one of the boxes per point taken, with Aggravated tracked using an \"X\" in each box per point taken.\n\nThey may use Willpower to reroll up to three dice (the dice cannot be Hunger dice) in any pool, except when the rules specifically exclude Willpower such as tracker rolls (Remorse tests, Frenzy tests), or One-Roll Conflict), etc.\n- Willpower may be spent to take control of their character for one turn during a frenzy or when under the influence of certain Disciplines.\n- To perform minor movements, such as movement of a finger while staked.\n- To ignore Health damage penalties, including Impairment, for one turn.\n\nRecovering Aggravated Willpower damage\nAt the Storyteller's discretion, a character can recover one or more points of Aggravated Willpower damage when they have acted to significantly benefit a Touchstone, or by following a Conviction to their determent.";
+
 function TrackerBlock({ label, val, max, agg = 0, sup = 0, filled = 0, stains = 0 }) {
   if (label === 'Hunger') {
     const drops = [];
@@ -499,10 +507,20 @@ function TrackerBlock({ label, val, max, agg = 0, sup = 0, filled = 0, stains = 
     else if (content === '/') extraClass = styles.superficial;
     else if (isFilled) extraClass = styles.filled;
 
+    let boxTitle = undefined;
+    if (label === 'Health') {
+      if (content === '/') boxTitle = SUPERFICIAL_DESC;
+      else if (content === 'X') boxTitle = AGGRAVATED_DESC;
+    } else if (label === 'Willpower') {
+      if (content === '/') boxTitle = WILLPOWER_SUPERFICIAL_DESC;
+      else if (content === 'X') boxTitle = WILLPOWER_AGGRAVATED_DESC;
+    }
+
     boxes.push(
       <div
         key={i}
         className={`${styles.trackerSquare} ${isFilled ? styles.filled : ''}`}
+        title={boxTitle}
       >
         {content}
       </div>
@@ -864,7 +882,32 @@ export default function CharacterView({
       const { data } = await api.post(paths.spend, payload);
       const obj = data.character || data.npc || null;
       setCh(attachStructured(obj));
-      setMsg(`Action successful.`);
+      
+      let itemPurchased = payload.target || payload.type;
+      if (payload.type === 'specialty' && payload.specialty) {
+        itemPurchased = `${payload.target} (${payload.specialty})`;
+      } else if (payload.type === 'discipline_power' && payload.powerName) {
+        itemPurchased = payload.powerName;
+      }
+      
+      setMsg(`Action successful! Purchased ${itemPurchased}.`);
+      
+      setTimeout(() => setMsg(''), 2500);
+      
+      // Auto-scroll
+      setTimeout(() => {
+        let targetId = null;
+        const type = payload.type;
+        if (type === 'attribute') targetId = 'attributes-section';
+        else if (type === 'skill' || type === 'specialty') targetId = 'skills-section';
+        else if (type === 'discipline' || type === 'discipline_power') targetId = 'disciplines-section';
+        else if (type === 'merit' || type === 'flaw') targetId = 'merits-section';
+        
+        if (targetId) {
+          document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+
       if (paths.totals) {
         try { const t = await api.get(paths.totals); setXpTotals(t.data); } catch { }
       }
@@ -1272,7 +1315,7 @@ export default function CharacterView({
                   {symlogo(ch.clan) && <img src={symlogo(ch.clan)} alt={ch.clan} style={{ height: '24px', opacity: 0.8, filter: 'brightness(0) invert(1)' }} />}
                   {textlogo(ch.clan) ? <img src={textlogo(ch.clan)} alt={ch.clan} style={{ height: '20px', opacity: 0.9, filter: 'brightness(0) invert(1)' }} /> : <span>{ch.clan}</span>}
                   <span style={{ opacity: 0.5 }}>•</span>
-                  <span>{sheet?.bloodPotency || 'Unspecified'}</span>
+                  <span>BP: {sheet?.blood_potency ?? 'Unspecified'}</span>
                 </p>
               </div>
             </div>
@@ -1351,7 +1394,59 @@ export default function CharacterView({
         {/* --- Main Bento Layout --- */}
         <main className={styles.mainLayout}>
           {err && <div className={styles.alertError}>{err}</div>}
-          {msg && <div className={styles.alertOk}>{msg}</div>}
+          {msg && (
+            <>
+              <div 
+                style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)', animation: 'fadeIn 0.3s ease-out' }}
+                onClick={() => setMsg('')}
+              />
+              <div style={{
+                position: 'fixed',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                zIndex: 9999,
+                background: 'color-mix(in srgb, var(--surface-color) 70%, black)',
+                backdropFilter: 'blur(16px)',
+                color: 'var(--text-color)',
+                padding: '40px 60px',
+                borderRadius: '16px',
+                fontFamily: "'Playfair Display', serif",
+                fontSize: '28px',
+                boxShadow: '0 30px 60px rgba(0, 0, 0, 0.9), 0 0 0 1px var(--tint)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '20px',
+                textAlign: 'center',
+                animation: 'fadeIn 0.3s ease-out'
+              }}>
+                <button 
+                  onClick={() => setMsg('')} 
+                  style={{
+                    position: 'absolute',
+                    top: '16px',
+                    right: '16px',
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    padding: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'color 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-color)'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>close</span>
+                </button>
+                <span className="material-symbols-outlined" style={{ fontSize: '72px', color: 'var(--tint)' }}>verified</span>
+                <span>{msg}</span>
+              </div>
+            </>
+          )}
           {saveStatus && isAdmin && <div style={{ fontSize: '0.85rem', color: 'var(--accent)', opacity: 0.8, textAlign: 'center' }}>{saveStatus}</div>}
 
           {/* --- Stitch Mobile Meta Data --- */}
@@ -1456,10 +1551,14 @@ export default function CharacterView({
           <section className={styles.bentoGrid}>
             <div className={styles.bentoSpan2} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               {/* Attributes */}
-              <AttributesSection sheet={sheet} />
+              <div id="attributes-section">
+                <AttributesSection sheet={sheet} />
+              </div>
 
               {/* Skills & Others */}
-              <SkillsDisplaySection sheet={sheet} />
+              <div id="skills-section">
+                <SkillsDisplaySection sheet={sheet} />
+              </div>
 
               <div className={`${styles.level1} ${styles.glassCard}`} style={{ padding: '24px' }}>
                 <div id="inventory-section">
@@ -1497,7 +1596,7 @@ export default function CharacterView({
               )}
             </div>
 
-            <div className={`${styles.level1} ${styles.glassCard}`} style={{ padding: '0', display: 'flex', flexDirection: 'column' }}>
+            <div id="disciplines-section" className={`${styles.level1} ${styles.glassCard}`} style={{ padding: '0', display: 'flex', flexDirection: 'column' }}>
               <div style={{ padding: '24px', borderBottom: '1px solid var(--border-color)' }}>
                 <h3 style={{ margin: 0, fontFamily: 'var(--font-title)', fontSize: '24px', color: 'var(--text-color)' }}>Disciplines</h3>
               </div>
@@ -2749,41 +2848,145 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
 function SpecialtyAdder({ xp, onAdd }) {
   const [skill, setSkill] = useState('Academics');
   const [spec, setSpec] = useState('');
+  const [open, setOpen] = useState(false);
   const cost = 3;
   const afford = xp >= cost;
 
+  const allSkills = Object.values(SKILLS).flat().sort();
+
   return (
-    <div className={styles.gothicRow}>
-      <div style={{ display: 'flex', gap: '10px', flex: 1, minWidth: 0 }}>
-        <select
-          className={styles.input}
-          value={skill}
-          onChange={e => setSkill(e.target.value)}
-          style={{ flex: 1, minWidth: 0 }}
-        >
-          {Object.values(SKILLS).flat().map(name => (
-            <option key={name} value={name}>{name}</option>
-          ))}
-        </select>
+    <div style={{ padding: '24px', background: 'color-mix(in srgb, var(--surface-lighter) 20%, transparent)', border: '1px solid var(--border-color)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      
+      <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+        {/* Custom Dropdown for Skill Selection */}
+        <div style={{ position: 'relative', flex: '1 1 200px' }}>
+          <div 
+            onClick={() => setOpen(!open)}
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '14px 16px',
+              background: 'var(--surface-color)',
+              border: '1px solid ' + (open ? 'var(--tint)' : 'var(--border-color)'),
+              borderRadius: '6px',
+              cursor: 'pointer',
+              color: 'var(--text-color)',
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: '14px',
+              transition: 'all 0.2s ease',
+              boxShadow: open ? '0 0 10px rgba(180, 15, 31, 0.15)' : 'none'
+            }}
+          >
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '18px', color: 'var(--tint)' }}>school</span>
+              {skill}
+            </span>
+            <span className="material-symbols-outlined" style={{ 
+              transform: open ? 'rotate(180deg)' : 'none', 
+              transition: 'transform 0.2s',
+              color: 'var(--text-muted)'
+            }}>expand_more</span>
+          </div>
+          
+          {open && (
+            <>
+              <div 
+                style={{ position: 'fixed', inset: 0, zIndex: 40 }} 
+                onClick={() => setOpen(false)} 
+              />
+              <div style={{
+                position: 'absolute',
+                top: 'calc(100% + 6px)',
+                left: 0,
+                right: 0,
+                maxHeight: '280px',
+                overflowY: 'auto',
+                background: 'var(--surface-color)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '8px',
+                zIndex: 50,
+                boxShadow: '0 10px 30px rgba(0,0,0,0.6)',
+                display: 'flex',
+                flexDirection: 'column',
+                padding: '4px'
+              }}>
+                {allSkills.map(name => (
+                  <div
+                    key={name}
+                    onClick={() => { setSkill(name); setOpen(false); }}
+                    style={{
+                      padding: '10px 16px',
+                      cursor: 'pointer',
+                      background: name === skill ? 'color-mix(in srgb, var(--tint) 20%, transparent)' : 'transparent',
+                      color: name === skill ? 'var(--text-color)' : 'var(--text-muted)',
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: '13px',
+                      borderRadius: '4px',
+                      transition: 'all 0.1s'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (name !== skill) {
+                        e.currentTarget.style.background = 'var(--surface-lighter)';
+                        e.currentTarget.style.color = 'var(--text-color)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (name !== skill) {
+                        e.currentTarget.style.background = 'transparent';
+                        e.currentTarget.style.color = 'var(--text-muted)';
+                      }
+                    }}
+                  >
+                    {name}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
 
         <input
           className={styles.input}
-          placeholder="e.g., Technology (Firmware)"
+          placeholder="E.g. Firmware, Swords, Seduction..."
           value={spec}
           onChange={e => setSpec(e.target.value)}
-          style={{ flex: 2, minWidth: 0 }}
+          style={{ 
+            flex: '2 1 300px', 
+            padding: '14px 16px', 
+            fontSize: '14px', 
+            fontFamily: "'Inter', sans-serif",
+            background: 'var(--surface-color)',
+            border: '1px solid var(--border-color)',
+            borderRadius: '6px',
+            color: 'var(--text-color)',
+            boxSizing: 'border-box'
+          }}
         />
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-        <span className={styles.gothicCost}>[ COST: {cost} XP ]</span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '20px', borderTop: '1px solid var(--surface-color)', paddingTop: '16px' }}>
+        <span style={{ 
+          fontFamily: "'JetBrains Mono', monospace", 
+          color: 'var(--text-muted)', 
+          fontSize: '12px',
+          textTransform: 'uppercase',
+          letterSpacing: '0.1em'
+        }}>
+          Cost: <b style={{ color: 'var(--tint)' }}>{cost} XP</b>
+        </span>
 
         <button
-          className={styles.gothicBtn}
+          className={`${styles.gothicBtn} ${styles.bloodPulse}`}
           disabled={!afford || !spec.trim()}
           onClick={() => onAdd(skill, spec.trim())}
+          style={{ 
+            padding: '10px 24px',
+            borderRadius: '4px',
+            border: '1px solid var(--tint)'
+          }}
         >
-          Unlock
+          Unlock Specialty
         </button>
       </div>
     </div>

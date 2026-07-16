@@ -1,6 +1,7 @@
 // src/ui/Nav.jsx
 import React, { useContext, useState, useEffect } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { AuthCtx } from '../core/AuthContext';
 import api from '../core/api';
 
@@ -12,23 +13,34 @@ function NavDropdown({ title, icon, children, isMobile, isOpen, toggleOpen }) {
       <div className="w-full mb-2">
         <button
           onClick={toggleOpen}
-          className={`w-full flex items-center justify-between p-3 rounded-lg border border-transparent transition-colors ${isOpen ? 'bg-primary-container/20 border-primary/30 text-primary' : 'bg-surface-variant/10 text-on-surface hover:bg-surface-variant/30'
+          className={`w-full flex items-center justify-between p-3 rounded-lg border border-transparent transition-colors duration-300 ${isOpen ? 'bg-primary-container/20 border-primary/30 text-primary' : 'bg-surface-variant/10 text-on-surface hover:bg-surface-variant/30'
             }`}
         >
           <div className="flex items-center gap-3">
             {icon && <span className="material-symbols-outlined text-[20px]">{icon}</span>}
             <span className="font-['Playfair_Display'] font-bold text-[16px] tracking-wide">{title}</span>
           </div>
-          <span className={`material-symbols-outlined transition-transform duration-300 ${isOpen ? 'rotate-180 text-primary' : 'text-on-surface-variant'}`}>
+          <motion.span 
+            animate={{ rotate: isOpen ? 180 : 0 }}
+            transition={{ duration: 0.3 }}
+            className={`material-symbols-outlined ${isOpen ? 'text-primary' : 'text-on-surface-variant'}`}
+          >
             expand_more
-          </span>
+          </motion.span>
         </button>
-        <div
-          className={`overflow-hidden transition-all duration-300 flex flex-col pl-10 border-l-2 border-primary/30 ml-4 ${isOpen ? 'max-h-[500px] mt-2 opacity-100' : 'max-h-0 opacity-0'
-            }`}
-        >
-          {children}
-        </div>
+        <AnimatePresence>
+          {isOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className="overflow-hidden flex flex-col pl-10 border-l-2 border-primary/30 ml-4 mt-2"
+            >
+              {children}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     );
   }
@@ -39,20 +51,34 @@ function NavDropdown({ title, icon, children, isMobile, isOpen, toggleOpen }) {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className={`cursor-pointer flex items-center gap-1.5 px-3 py-2 rounded transition-colors text-[13px] uppercase tracking-widest font-bold font-['Inter'] ${isHovered ? 'text-primary bg-surface-variant/30' : 'text-on-surface-variant'}`}>
+      <div className={`cursor-pointer flex items-center gap-1.5 px-3 py-2 rounded transition-all duration-300 text-[13px] uppercase tracking-widest font-bold font-['Inter'] ${isHovered ? 'text-primary bg-surface-variant/30 scale-105' : 'text-on-surface-variant'}`}>
         {icon && <span className="material-symbols-outlined text-[18px] mb-[2px]">{icon}</span>}
         {title}
-        <span className={`material-symbols-outlined text-[16px] transition-transform duration-300 ${isHovered ? 'rotate-180 text-primary' : 'opacity-70'}`}>
+        <motion.span 
+          animate={{ rotate: isHovered ? 180 : 0 }}
+          transition={{ duration: 0.3 }}
+          className={`material-symbols-outlined text-[16px] ${isHovered ? 'text-primary' : 'opacity-70'}`}
+        >
           expand_more
-        </span>
+        </motion.span>
       </div>
 
       {/* Invisible bridge to prevent hover loss */}
       <div className="absolute top-[calc(100%-10px)] left-0 w-full h-[20px]"></div>
 
-      <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-1 min-w-[200px] bg-surface-container-high border border-outline-variant/30 rounded-lg shadow-[0_8px_24px_rgba(0,0,0,0.6)] backdrop-blur-md flex flex-col py-2 z-50 transition-all duration-200 ${isHovered ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2'}`}>
-        {children}
-      </div>
+      <AnimatePresence>
+        {isHovered && (
+          <motion.div 
+            initial={{ opacity: 0, y: 15, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 15, scale: 0.95 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className="absolute top-full left-1/2 -translate-x-1/2 mt-1 min-w-[200px] bg-surface-container-high border border-outline-variant/30 rounded-lg shadow-[0_8px_24px_rgba(0,0,0,0.6)] backdrop-blur-md flex flex-col py-2 z-50 origin-top"
+          >
+            {children}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -80,6 +106,7 @@ export default function Nav() {
   const location = useLocation();
 
   const [openMobileDropdown, setOpenMobileDropdown] = useState(null);
+  const [scrolled, setScrolled] = useState(false);
 
   const toggleMenu = () => setIsMenuOpen(v => !v);
   const closeMenu = () => { setIsMenuOpen(false); setOpenMobileDropdown(null); };
@@ -87,6 +114,12 @@ export default function Nav() {
   const handleMobileDropdownToggle = (title) => {
     setOpenMobileDropdown(openMobileDropdown === title ? null : title);
   };
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   useEffect(() => {
     closeMenu();
@@ -128,19 +161,42 @@ export default function Nav() {
       `}</style>
 
       {/* Mobile Overlay */}
-      <div
-        className={`fixed inset-0 bg-black/70 backdrop-blur-sm z-[998] transition-opacity duration-300 lg:hidden ${isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
-        onClick={closeMenu}
-      />
+      <AnimatePresence>
+        {isMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[998] lg:hidden pointer-events-auto"
+            onClick={closeMenu}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Main Top Nav */}
-      <nav className="sticky top-0 z-[1000] bg-surface/90 backdrop-blur-md border-b border-outline-variant/30 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
-        <div className="flex items-center justify-between px-4 lg:px-8 h-16 max-w-[1920px] mx-auto">
+      <motion.nav 
+        initial={{ y: -100 }}
+        animate={{ y: 0 }}
+        transition={{ type: "spring", stiffness: 120, damping: 20 }}
+        className={`sticky top-0 z-[1000] transition-colors duration-500 ${
+          scrolled 
+            ? 'bg-surface/95 backdrop-blur-xl border-b border-outline-variant/40 shadow-[0_8px_30px_rgba(0,0,0,0.6)]' 
+            : 'bg-surface/80 backdrop-blur-md border-b border-outline-variant/20 shadow-[0_4px_20px_rgba(0,0,0,0.5)]'
+        }`}
+      >
+        <div className={`flex items-center justify-between px-4 lg:px-8 max-w-[1920px] mx-auto transition-all duration-500 ${scrolled ? 'h-14' : 'h-20'}`}>
 
           {/* Logo & Brand */}
           <Link to="/" className="flex items-center gap-3 z-[1001] group" onClick={closeMenu}>
-            <img src="/img/animated.gif" alt="ATT Logo" className="w-8 h-8 object-contain rounded-md border border-outline-variant/50 bg-surface-container p-0.5 shadow-lg group-hover:border-primary transition-colors" />
-            <span className="font-['Playfair_Display'] font-bold text-[20px] tracking-wide text-on-surface group-hover:text-primary transition-colors">Erebus Portal</span>
+            <motion.img 
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              src="/img/animated.gif" 
+              alt="ATT Logo" 
+              className={`object-contain rounded-md border border-outline-variant/50 bg-surface-container p-0.5 shadow-lg group-hover:border-primary transition-all duration-500 ${scrolled ? 'w-8 h-8' : 'w-10 h-10'}`} 
+            />
+            <span className={`font-['Playfair_Display'] font-bold tracking-wide text-on-surface group-hover:text-primary transition-all duration-500 ${scrolled ? 'text-[18px]' : 'text-[22px]'}`}>Erebus Portal</span>
           </Link>
 
           {/* Desktop Links */}
@@ -206,21 +262,28 @@ export default function Nav() {
           </div>
 
           {/* Mobile Hamburger */}
-          <button
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
             className="lg:hidden z-[1001] p-2 text-on-surface-variant hover:text-primary transition-colors focus:outline-none"
             onClick={toggleMenu}
             aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
           >
             <span className="material-symbols-outlined text-[28px]">{isMenuOpen ? 'close' : 'menu'}</span>
-          </button>
+          </motion.button>
         </div>
-      </nav>
+      </motion.nav>
 
       {/* Mobile Side Drawer */}
-      <div
-        className={`fixed top-0 right-0 h-[100dvh] w-72 sm:w-80 bg-surface-container shadow-[-8px_0_25px_rgba(0,0,0,0.6)] z-[999] gothic-etched-border border-r-0 border-y-0 flex flex-col pt-20 pb-8 px-4 overflow-y-auto transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] lg:hidden ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'
-          }`}
-      >
+      <AnimatePresence>
+        {isMenuOpen && (
+          <motion.div
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="fixed top-0 right-0 h-[100dvh] w-72 sm:w-80 bg-surface-container shadow-[-8px_0_25px_rgba(0,0,0,0.6)] z-[999] gothic-etched-border border-r-0 border-y-0 flex flex-col pt-24 pb-8 px-4 overflow-y-auto lg:hidden"
+          >
         <div className="flex flex-col h-full">
           {user && (
             <div className="space-y-1 flex-grow">
@@ -286,8 +349,9 @@ export default function Nav() {
               </NavLink>
             )}
           </div>
-        </div>
-      </div>
+        </motion.div>
+      )}
+      </AnimatePresence>
     </>
   );
 }

@@ -1,5 +1,6 @@
 import React from 'react';
 import styles from '../../styles/CharacterView.module.css';
+import { ATTR_DESCRIPTIONS } from '../../data/descriptions';
 
 const ATTRS = [
   { category: 'Physical', items: ['Strength', 'Dexterity', 'Stamina'] },
@@ -34,7 +35,7 @@ export default function AttributesSection({ sheet }) {
             {group.items.map(name => {
               const val = Number(sheet?.attributes?.[name] ?? 1);
               return (
-                <div key={name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div key={name} title={ATTR_DESCRIPTIONS[name]} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontFamily: "'Inter', sans-serif", fontSize: '16px', fontWeight: 400, color: 'var(--text-muted)' }}>
                     {name}
                   </span>

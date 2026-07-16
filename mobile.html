@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Erebus Portal | Live Action Terminal</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&amp;family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-lowest": "#0e0e0e",
+                    "on-primary": "#690002",
+                    "surface-container-highest": "#353534",
+                    "outline": "#a98985",
+                    "primary-fixed": "#ffdad5",
+                    "outline-variant": "#5a413d",
+                    "on-error-container": "#ffdad6",
+                    "primary": "#ffb4a9",
+                    "on-primary-container": "#ff8f81",
+                    "primary-fixed-dim": "#ffb4a9",
+                    "on-tertiary": "#412d00",
+                    "on-secondary": "#5f1410",
+                    "error-container": "#93000a",
+                    "surface-container-high": "#2a2a2a",
+                    "surface-dim": "#131313",
+                    "secondary-fixed-dim": "#ffb4aa",
+                    "tertiary-fixed-dim": "#f7bd48",
+                    "on-secondary-fixed-variant": "#7e2b23",
+                    "on-tertiary-container": "#dba531",
+                    "background": "#131313",
+                    "secondary-container": "#812d26",
+                    "inverse-primary": "#b12b22",
+                    "primary-container": "#880808",
+                    "inverse-on-surface": "#313030",
+                    "surface-tint": "#ffb4a9",
+                    "tertiary": "#f7bd48",
+                    "surface-bright": "#3a3939",
+                    "on-background": "#e5e2e1",
+                    "inverse-surface": "#e5e2e1",
+                    "on-secondary-container": "#ff9f93",
+                    "on-primary-fixed-variant": "#8f100d",
+                    "on-surface": "#e5e2e1",
+                    "surface-variant": "#353534",
+                    "surface-container-low": "#1c1b1b",
+                    "error": "#ffb4ab",
+                    "tertiary-container": "#573d00",
+                    "surface-container": "#201f1f",
+                    "secondary": "#ffb4aa",
+                    "on-error": "#690005",
+                    "on-tertiary-fixed": "#271900",
+                    "on-surface-variant": "#e2bfba",
+                    "on-primary-fixed": "#410001",
+                    "surface": "#131313",
+                    "on-secondary-fixed": "#410001",
+                    "tertiary-fixed": "#ffdea6",
+                    "secondary-fixed": "#ffdad5",
+                    "on-tertiary-fixed-variant": "#5d4200"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "gutter": "24px",
+                    "margin-mobile": "16px",
+                    "margin-desktop": "48px",
+                    "container-max-width": "1440px",
+                    "unit": "4px"
+            },
+            "fontFamily": {
+                    "body-lg": ["Inter"],
+                    "display-lg": ["Playfair Display"],
+                    "headline-lg": ["Playfair Display"],
+                    "label-md": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "body-md": ["Inter"],
+                    "headline-md": ["Playfair Display"]
+            },
+            "fontSize": {
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "600"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { background-color: #0D0D0D; color: #e5e2e1; }
+        .etched-border { border: 1px solid rgba(224, 224, 224, 0.1); }
+        .crimson-glow { box-shadow: 0px 4px 12px rgba(74, 4, 4, 0.4); }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #0d0d0d; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #880808; }
+        .pulse-frenzy { animation: pulse 2s infinite; }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(136, 8, 8, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(136, 8, 8, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(136, 8, 8, 0); }
+        }
+        .v5-box { width: 16px; height: 16px; border: 1px solid #a98985; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+        .v5-box.filled { background-color: #880808; border-color: #880808; }
+        .v5-box.aggravated::after { content: 'X'; font-size: 10px; color: #ffb4a9; }
+        .v5-box.superficial::after { content: '/'; font-size: 12px; color: #ffb4a9; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="font-body-md text-on-surface bg-background min-h-screen flex flex-col selection:bg-primary-container selection:text-white">
+<!-- Top App Bar -->
+<header class="bg-surface-container docked full-width top-0 border-b border-outline-variant/10 shadow-[0px_4px_12px_rgba(74,4,4,0.4)] flex justify-between items-center px-6 md:px-margin-desktop py-4 w-full z-50">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">castle</span>
+<h1 class="font-headline-md text-headline-md font-bold text-primary tracking-tighter">Live Action Terminal</h1>
+</div>
+<div class="hidden md:flex items-center gap-6">
+<div class="flex items-center gap-2 bg-surface-container-low border border-outline-variant/20 rounded px-3 py-1.5">
+<span class="material-symbols-outlined text-on-surface-variant text-sm">sensors</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-24 p-0 placeholder:text-on-surface-variant/40" placeholder="Session ID" type="text"/>
+<button class="text-primary font-bold text-xs hover:text-white transition-colors">CONNECT</button>
+</div>
+<div class="flex gap-4">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors">notifications</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors">settings</span>
+</div>
+<div class="w-10 h-10 rounded-full border border-primary/30 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A moody, high-contrast portrait of an ancient vampire with piercing red eyes and elegant silver jewelry. The lighting is dramatic, casting deep shadows against a dark obsidian background, creating a predatory and prestigious aesthetic consistent with a modern gothic vampire LARP." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDv7ebKhyl752gfrRs6GfoiFG9Fs9J8fDSAL-GMHgqRPIH_f9i-QRlUwIJEQApGLZvov-ZO9z_J3aAUy4aonFHglpcvj9HSe7eS6a_LFuFJt4nDFGSk-Z0e3sufS1OdpobfcXfEw8XexOP64p5XfCPwTS9CYuXaCz4IsBZntc5epgPtMFDhudsGMWAaTt8mbRpSCKXIUXVqCE5VzS5GnJReh3g55XJ8qo77o0Mrt-TSWXEzkrZCyeuDceDMtH_MhN5OAlZcs74J9Yc"/>
+</div>
+</div>
+<button class="md:hidden material-symbols-outlined text-primary">menu</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow flex flex-col p-4 md:p-8 gap-6 max-w-container-max-width mx-auto w-full">
+<!-- Frenzy Banner (Conditional) -->
+<div class="bg-primary-container/20 border border-primary/40 rounded-lg p-4 flex items-center gap-4 pulse-frenzy">
+<div class="bg-primary-container p-2 rounded">
+<span class="material-symbols-outlined text-on-primary-container" style="font-variation-settings: 'FILL' 1;">warning</span>
+</div>
+<div>
+<h2 class="font-bold text-primary uppercase tracking-widest text-sm">Fury Frenzy Active</h2>
+<p class="text-on-surface-variant text-xs mt-0.5 italic">The Beast dictates your actions. Your only goal is the immediate destruction of the provoker.</p>
+</div>
+<button class="ml-auto text-xs font-bold border border-primary/20 px-3 py-1 rounded hover:bg-primary/10 transition-all uppercase">Attempt Control</button>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+<!-- Left Column: Identity & Trackers -->
+<aside class="lg:col-span-4 flex flex-col gap-6">
+<!-- Character Identity -->
+<div class="bg-surface-container-low etched-border p-6 rounded-xl flex items-center gap-4 relative overflow-hidden">
+<div class="absolute top-2 right-2 opacity-10 pointer-events-none">
+<span class="material-symbols-outlined text-6xl">water_drop</span>
+</div>
+<div class="w-16 h-16 rounded border-2 border-primary/20 p-0.5">
+<img class="w-full h-full object-cover" data-alt="An elegant clan crest of a stylized bat with outstretched wings, intricately detailed in silver and crimson filigree. The crest is set against a textured dark stone background, conveying a sense of ancient lineage and secretive power." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA9O9MP8WAuUF5NJIVXAXNORXQplW1vuRVS48UpkEi3llaiKW83gawk9nq97rTqOhuIQTTpeAB0nNjvG58q7FdvnMB0GriiFTD3Q3RBrcThiN4APVjjKkWk_1FxxktJ3PaN9jCLlMbKV3jw3kVvEVf-G7HWgIavAHuOH7fzB6SdBsBfMMgqMM-fSEPFArU8myxQ5HNLXXPWB5lCaBAZkr6unSfiVnA5m1EOFMFYJlmtdBNtLTpkhEPaL6Ca1CzUo3nGiskK8hjB09w"/>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Elder Valerius</h3>
+<p class="font-label-md text-label-md text-primary tracking-widest uppercase">Clan Ventrue • Ancilla</p>
+</div>
+</div>
+<!-- Status & State Toggle -->
+<div class="bg-surface-container-low etched-border p-6 rounded-xl">
+<div class="flex justify-between items-center mb-4">
+<span class="font-label-md text-on-surface-variant uppercase tracking-wider">Current State</span>
+<span class="px-2 py-0.5 bg-emerald-900/30 text-emerald-400 text-[10px] font-bold rounded uppercase flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Calm
+                        </span>
+</div>
+<div class="grid grid-cols-2 gap-2">
+<button class="bg-primary-container text-white py-2 rounded font-bold text-xs uppercase hover:brightness-110 transition-all">Go Calm</button>
+<button class="border border-outline-variant/30 text-on-surface-variant py-2 rounded font-bold text-xs uppercase hover:bg-surface-container-high transition-all">Frenzy State</button>
+</div>
+</div>
+<!-- V5 Trackers -->
+<div class="bg-surface-container-low etched-border p-6 rounded-xl flex flex-col gap-6">
+<!-- Hunger -->
+<div>
+<div class="flex justify-between items-center mb-3">
+<span class="font-label-md text-on-surface-variant uppercase tracking-wider">Hunger</span>
+<span class="text-primary font-bold">2 / 5</span>
+</div>
+<div class="flex items-center gap-2 mb-4">
+<div class="v5-box filled rounded-full"></div>
+<div class="v5-box filled rounded-full"></div>
+<div class="v5-box rounded-full"></div>
+<div class="v5-box rounded-full"></div>
+<div class="v5-box rounded-full"></div>
+<div class="flex ml-auto gap-1">
+<button class="w-8 h-8 rounded border border-outline-variant/30 flex items-center justify-center hover:bg-surface-container-high active:scale-90">-</button>
+<button class="w-8 h-8 rounded border border-outline-variant/30 flex items-center justify-center hover:bg-surface-container-high active:scale-90">+</button>
+</div>
+</div>
+<button class="w-full bg-primary-container text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 crimson-glow hover:brightness-110 active:scale-[0.98] transition-all">
+<span class="material-symbols-outlined text-sm">casino</span> ROUSE CHECK
+                        </button>
+</div>
+<!-- Health & Willpower -->
+<div class="grid grid-cols-1 gap-4">
+<div>
+<span class="font-label-md text-on-surface-variant uppercase tracking-wider block mb-2">Health</span>
+<div class="flex gap-1.5">
+<div class="v5-box aggravated"></div>
+<div class="v5-box superficial"></div>
+<div class="v5-box"></div>
+<div class="v5-box"></div>
+<div class="v5-box"></div>
+<div class="v5-box"></div>
+</div>
+</div>
+<div>
+<span class="font-label-md text-on-surface-variant uppercase tracking-wider block mb-2">Willpower</span>
+<div class="flex gap-1.5">
+<div class="v5-box superficial"></div>
+<div class="v5-box superficial"></div>
+<div class="v5-box"></div>
+<div class="v5-box"></div>
+<div class="v5-box"></div>
+</div>
+</div>
+</div>
+<!-- Humanity -->
+<div>
+<div class="flex justify-between items-center mb-2">
+<span class="font-label-md text-on-surface-variant uppercase tracking-wider flex items-center gap-1">
+                                Humanity <span class="material-symbols-outlined text-xs cursor-help">info</span>
+</span>
+<span class="text-tertiary font-bold">7</span>
+</div>
+<div class="w-full bg-surface-container-highest h-2.5 rounded-full flex overflow-hidden">
+<div class="h-full bg-tertiary" style="width: 70%"></div>
+<div class="h-full bg-error" style="width: 10%"></div>
+</div>
+<p class="text-[10px] text-on-surface-variant/60 mt-2 italic text-center">Stains: 1 of 10</p>
+</div>
+</div>
+</aside>
+<!-- Center/Right Column: Actions & Disciplines -->
+<div class="lg:col-span-8 flex flex-col gap-6">
+<!-- Disciplines Panel -->
+<div class="bg-surface-container-low etched-border rounded-xl overflow-hidden flex flex-col">
+<div class="bg-surface-container-high flex p-1 border-b border-outline-variant/10">
+<button class="flex-1 py-3 px-2 flex flex-col items-center gap-1 text-primary bg-primary-container/10 border-b-2 border-primary">
+<span class="material-symbols-outlined">psychology</span>
+<span class="text-[10px] font-bold uppercase">Dominate</span>
+</button>
+<button class="flex-1 py-3 px-2 flex flex-col items-center gap-1 text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">shield</span>
+<span class="text-[10px] font-bold uppercase">Fortitude</span>
+</button>
+<button class="flex-1 py-3 px-2 flex flex-col items-center gap-1 text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">bolt</span>
+<span class="text-[10px] font-bold uppercase">Presence</span>
+</button>
+</div>
+<div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Power Card -->
+<div class="bg-surface-container-lowest etched-border p-4 rounded group hover:border-primary/40 transition-all relative overflow-hidden">
+<div class="absolute -right-2 -bottom-2 opacity-5 pointer-events-none">
+<span class="material-symbols-outlined text-5xl">visibility</span>
+</div>
+<div class="flex justify-between items-start mb-2">
+<h4 class="font-bold text-on-surface">Sense the Unseen</h4>
+<span class="bg-surface-container-high px-2 py-0.5 rounded text-[10px] font-bold text-primary border border-primary/20">ROUSE</span>
+</div>
+<p class="text-xs text-on-surface-variant mb-4 leading-relaxed">Detect active use of Obfuscate or supernatural entities in the vicinity.</p>
+<button class="w-full border border-primary/40 text-primary py-2 rounded text-[10px] font-bold uppercase hover:bg-primary hover:text-on-primary transition-all active:scale-95">Use Power</button>
+</div>
+<!-- Power Card -->
+<div class="bg-surface-container-lowest etched-border p-4 rounded group hover:border-primary/40 transition-all">
+<div class="flex justify-between items-start mb-2">
+<h4 class="font-bold text-on-surface">Cloud Memory</h4>
+<span class="bg-surface-container-high px-2 py-0.5 rounded text-[10px] font-bold text-on-surface-variant border border-outline-variant/20">FREE</span>
+</div>
+<p class="text-xs text-on-surface-variant mb-4 leading-relaxed">Instantly erase the target's memories of the current scene after it ends.</p>
+<button class="w-full border border-primary/40 text-primary py-2 rounded text-[10px] font-bold uppercase hover:bg-primary hover:text-on-primary transition-all active:scale-95">Use Power</button>
+</div>
+</div>
+</div>
+<!-- Custom Roll & Results Section -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Roll Builder -->
+<div class="bg-surface-container-low etched-border p-6 rounded-xl flex flex-col gap-5">
+<h3 class="font-label-md text-on-surface-variant uppercase tracking-widest flex items-center justify-between">
+                            Custom Roll
+                            <span class="text-primary text-xl font-bold">8 Dice</span>
+</h3>
+<div class="flex flex-wrap gap-2">
+<span class="px-3 py-1.5 bg-primary-container text-white rounded-full text-[10px] font-bold uppercase border border-primary flex items-center gap-2">
+                                Manipulation <span class="material-symbols-outlined text-[14px] cursor-pointer">close</span>
+</span>
+<span class="px-3 py-1.5 bg-primary-container text-white rounded-full text-[10px] font-bold uppercase border border-primary flex items-center gap-2">
+                                Insight <span class="material-symbols-outlined text-[14px] cursor-pointer">close</span>
+</span>
+<button class="px-3 py-1.5 border border-outline-variant/30 text-on-surface-variant rounded-full text-[10px] font-bold uppercase hover:bg-surface-container-highest transition-colors">+ Add Trait</button>
+</div>
+<div class="mt-2">
+<label class="font-label-md text-on-surface-variant/60 uppercase text-[10px] block mb-2">Difficulty</label>
+<div class="flex justify-between items-center bg-surface-container-lowest rounded-lg p-1 border border-outline-variant/10">
+<button class="w-8 h-8 flex items-center justify-center text-on-surface-variant">-</button>
+<span class="font-bold text-primary">3</span>
+<button class="w-8 h-8 flex items-center justify-center text-on-surface-variant">+</button>
+</div>
+</div>
+<button class="w-full bg-primary py-3 rounded-lg text-on-primary font-extrabold uppercase tracking-widest shadow-[0_4px_20px_rgba(136,8,8,0.3)] hover:scale-[1.02] active:scale-95 transition-all mt-auto" onclick="document.getElementById('roll-result').classList.toggle('hidden')">
+                            Roll manipulation + insight
+                        </button>
+</div>
+<!-- Common Checks -->
+<div class="bg-surface-container-low etched-border p-6 rounded-xl">
+<h3 class="font-label-md text-on-surface-variant uppercase tracking-widest mb-4">Common Checks</h3>
+<div class="grid grid-cols-2 gap-3">
+<button class="p-3 text-left bg-surface-container-lowest etched-border rounded hover:bg-primary/5 hover:border-primary/30 transition-all flex justify-between items-center group">
+<span class="text-xs font-bold text-on-surface-variant group-hover:text-primary">Awareness</span>
+<span class="text-[10px] text-primary/60">6d</span>
+</button>
+<button class="p-3 text-left bg-surface-container-lowest etched-border rounded hover:bg-primary/5 hover:border-primary/30 transition-all flex justify-between items-center group">
+<span class="text-xs font-bold text-on-surface-variant group-hover:text-primary">Stealth</span>
+<span class="text-[10px] text-primary/60">5d</span>
+</button>
+<button class="p-3 text-left bg-primary-container/20 border border-primary/30 rounded hover:bg-primary/30 transition-all flex justify-between items-center group">
+<span class="text-xs font-bold text-primary">Resist Frenzy</span>
+<span class="text-[10px] text-primary/60">4d</span>
+</button>
+<button class="p-3 text-left bg-surface-container-lowest etched-border rounded hover:bg-primary/5 hover:border-primary/30 transition-all flex justify-between items-center group">
+<span class="text-xs font-bold text-on-surface-variant group-hover:text-primary">Hunting</span>
+<span class="text-[10px] text-primary/60">7d</span>
+</button>
+</div>
+<div class="mt-6 flex flex-col gap-2">
+<div class="flex justify-between items-center text-[10px] text-on-surface-variant uppercase font-bold tracking-tighter">
+<span>Recent Log</span>
+<span class="text-primary cursor-pointer hover:underline">View All</span>
+</div>
+<div class="text-[10px] bg-black/40 p-2 rounded italic text-on-surface-variant/50">
+                                [21:42] Success (3) on Awareness. Detected footsteps from hallway.
+                            </div>
+</div>
+</div>
+</div>
+<!-- Roll Results Overlay (Simulated) -->
+<div class="hidden animate-in fade-in zoom-in duration-300" id="roll-result">
+<div class="bg-surface-container-lowest border-2 border-primary/40 rounded-xl p-8 crimson-glow text-center relative overflow-hidden">
+<div class="absolute inset-0 opacity-10 pointer-events-none">
+
+</div>
+<span class="material-symbols-outlined text-primary text-6xl mb-2" style="font-variation-settings: 'FILL' 1;">skull</span>
+<h2 class="font-headline-lg text-headline-lg text-primary tracking-widest uppercase mb-1">Messy Critical</h2>
+<p class="text-on-surface-variant italic mb-6">Success at a terrible cost. The Beast takes the lead.</p>
+<div class="flex justify-center gap-2 mb-8">
+<!-- Hunger Dice -->
+<div class="w-10 h-10 bg-primary rounded border border-on-primary flex items-center justify-center font-bold text-on-primary text-xl shadow-[0_0_10px_rgba(136,8,8,0.5)]">10</div>
+<div class="w-10 h-10 bg-primary rounded border border-on-primary flex items-center justify-center font-bold text-on-primary text-xl shadow-[0_0_10px_rgba(136,8,8,0.5)]">4</div>
+<!-- Regular Dice -->
+<div class="w-10 h-10 bg-surface-container-high rounded border border-outline-variant flex items-center justify-center font-bold text-on-surface text-xl">10</div>
+<div class="w-10 h-10 bg-surface-container-high rounded border border-outline-variant flex items-center justify-center font-bold text-on-surface text-xl">8</div>
+<div class="w-10 h-10 bg-surface-container-high rounded border border-outline-variant flex items-center justify-center font-bold text-on-surface text-xl">2</div>
+<div class="w-10 h-10 bg-surface-container-high rounded border border-outline-variant flex items-center justify-center font-bold text-on-surface text-xl">1</div>
+</div>
+<div class="flex flex-col md:flex-row gap-3 justify-center">
+<button class="bg-surface-container-high px-6 py-3 rounded-lg font-bold text-xs uppercase flex items-center justify-center gap-2 border border-outline-variant/30 hover:bg-surface-container-highest transition-all">
+<span class="material-symbols-outlined text-sm">history</span> Spend 1 WP to Reroll
+                            </button>
+<button class="bg-primary-container px-6 py-3 rounded-lg font-bold text-xs uppercase hover:brightness-110 transition-all" onclick="document.getElementById('roll-result').classList.add('hidden')">
+                                Acknowledge Outcome
+                            </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation (Mobile) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-safe h-16 bg-surface-container-highest shadow-[0px_-4px_12px_rgba(74,4,4,0.4)] border-t border-outline-variant/20">
+<div class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full p-2 w-12 h-12">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant p-2">
+<span class="material-symbols-outlined">group</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant p-2">
+<span class="material-symbols-outlined">pending_actions</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant p-2">
+<span class="material-symbols-outlined">account_circle</span>
+</div>
+</nav>
+<!-- Visual Polish: Subtle Background Noise/Gradient -->
+<div class="fixed inset-0 pointer-events-none opacity-[0.03] z-[-1] bg-[url('https://www.transparenttextures.com/patterns/dark-matter.png')]"></div>
+<script>
+        // Simple micro-interactions for demonstration
+        document.querySelectorAll('.v5-box').forEach(box => {
+            box.addEventListener('click', function() {
+                if (this.classList.contains('aggravated')) {
+                    this.classList.remove('aggravated', 'filled');
+                } else if (this.classList.contains('superficial')) {
+                    this.classList.remove('superficial');
+                    this.classList.add('aggravated');
+                } else if (this.classList.contains('filled')) {
+                    this.classList.remove('filled');
+                    this.classList.add('superficial');
+                } else {
+                    this.classList.add('filled');
+                }
+            });
+        });
+
+        // Dynamic session ID visual feedback
+        const connectInput = document.querySelector('input[placeholder="Session ID"]');
+        connectInput?.addEventListener('input', (e) => {
+            if(e.target.value.length === 6) {
+                e.target.classList.add('text-primary');
+            } else {
+                e.target.classList.remove('text-primary');
+            }
+        });
+    </script>
+</body></html>

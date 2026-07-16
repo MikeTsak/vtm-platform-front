@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import styles from '../../styles/CharacterView.module.css';
+import { SKILL_DESCRIPTIONS } from '../../data/descriptions';
 
 const SKILLS = {
   Physical: ['Athletics', 'Brawl', 'Craft', 'Drive', 'Firearms', 'Larceny', 'Melee', 'Stealth', 'Survival'],
@@ -51,6 +52,7 @@ export default function SkillsDisplaySection({ sheet }) {
             {notableSkills.map(s => (
               <div
                 key={s.name}
+                title={SKILL_DESCRIPTIONS[s.name]}
                 style={{ display: 'flex', flexDirection: 'column', border: '1px solid color-mix(in srgb, var(--tint) 40%, transparent)', padding: '12px', borderRadius: '4px', cursor: 'pointer', transition: 'border-color 0.2s' }}
                 onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--tint)'}
                 onMouseLeave={(e) => e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--tint) 40%, transparent)'}
@@ -97,7 +99,7 @@ export default function SkillsDisplaySection({ sheet }) {
                 {list.map(name => {
                   const s = allSkillsFlat.find(x => x.name === name);
                   return (
-                    <div key={name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div key={name} title={SKILL_DESCRIPTIONS[name]} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontFamily: "'Inter', sans-serif", fontSize: '16px', fontWeight: 400, color: 'var(--text-muted)' }}>
                         {name}
                         {s.specialtiesArray.length > 0 && <span style={{ opacity: 0.7, fontSize: '0.85rem', marginLeft: '6px' }}>({s.specialtiesArray.join(', ')})</span>}

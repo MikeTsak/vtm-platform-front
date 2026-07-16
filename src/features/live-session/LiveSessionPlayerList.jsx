@@ -1,4 +1,5 @@
 import React from 'react';
+import Avatar from '../../components/Avatar';
 import styles from '../../styles/LiveSession.module.css';
 
 function VtmTracker({ label, max = 1, sup = 0, agg = 0, value = 0, isSimple = false, isHunger = false }) {
@@ -11,30 +12,22 @@ function VtmTracker({ label, max = 1, sup = 0, agg = 0, value = 0, isSimple = fa
     <div style={{ marginBottom: '0.75rem', background: 'rgba(255,255,255,0.02)', padding: '0.5rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.4rem', fontWeight: 700 }}>
         <span>{label}</span>
-        <span>
+        <span style={{ color: isHunger && valCount >= 4 ? 'var(--primary)' : 'inherit' }}>
           {!isSimple ? `${safeMax - (aggCount + supCount)} / ${safeMax}` : `${valCount} / ${safeMax}`}
         </span>
       </div>
-      <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap' }}>
+      <div className={styles.dotRow}>
         {Array.from({ length: safeMax }).map((_, i) => {
           if (isSimple) {
             const isFilled = i < valCount;
             return (
-              <div key={i} style={{ flex: 1, minWidth: '10px', height: '14px', borderRadius: '2px', background: isFilled ? (isHunger ? '#e11d48' : '#e4e4e7') : 'rgba(255,255,255,0.1)', border: isFilled && isHunger ? '1px solid #e11d48' : '1px solid rgba(255,255,255,0.05)' }} />
+              <div key={i} className={isFilled ? styles.dotFilled : styles.dotEmpty} style={{ backgroundColor: isFilled && isHunger ? 'var(--primary-container)' : undefined, borderColor: isFilled && isHunger ? 'var(--primary)' : undefined }} />
             );
           } else {
             const isAgg = i < aggCount;
             const isSup = !isAgg && i < aggCount + supCount;
             return (
-              <div key={i} style={{ 
-                flex: 1, minWidth: '10px', height: '14px', borderRadius: '2px', 
-                background: isAgg ? '#e11d48' : isSup ? 'rgba(161,161,170,0.3)' : 'transparent',
-                border: isAgg ? '1px solid #e11d48' : isSup ? '1px solid var(--text-muted)' : '1px solid rgba(255,255,255,0.15)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center'
-              }}>
-                {isAgg && <svg width="8" height="8" viewBox="0 0 10 10"><line x1="1" y1="1" x2="9" y2="9" stroke="var(--text-color)" strokeWidth="2" strokeLinecap="round"/><line x1="9" y1="1" x2="1" y2="9" stroke="var(--text-color)" strokeWidth="2" strokeLinecap="round"/></svg>}
-                {isSup && <div style={{ width: '60%', height: '2px', background: 'var(--text-muted)', borderRadius: '1px' }} />}
-              </div>
+              <div key={i} className={`${styles.healthBox} ${isAgg ? styles.healthAggravated : isSup ? styles.healthSuperficial : ''}`} />
             );
           }
         })}
@@ -43,13 +36,22 @@ function VtmTracker({ label, max = 1, sup = 0, agg = 0, value = 0, isSimple = fa
   );
 }
 
-export default function LiveSessionPlayerList({ players = [], onAdjust, onForceRouse }) {
+export default function LiveSessionPlayerList({ players = [], adminName, onAdjust, onForceRouse }) {
   if (!players.length) {
-    return <div className={styles.emptyState}>No players in this session yet.</div>;
+    return <div className={styles.textMuted} style={{ padding: '1rem', textAlign: 'center' }}>No players in this session yet.</div>;
   }
 
   return (
-    <div className={styles.playerGrid}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      {adminName && (
+        <div style={{ background: 'var(--surface-container-highest)', border: '1px solid var(--primary)', borderRadius: '8px', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+          <span style={{ fontSize: '1.2rem' }}>👑</span>
+          <div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--primary)', textTransform: 'uppercase', fontWeight: 'bold' }}>Session Storyteller</div>
+            <div style={{ fontSize: '0.95rem', color: 'var(--on-surface)', fontWeight: 'bold' }}>{adminName}</div>
+          </div>
+        </div>
+      )}
       {players.map((player) => {
         const id = player.character_id || player.characterId || player.id;
         const name = player.name || player.character_name || 'Unknown';
@@ -70,31 +72,28 @@ export default function LiveSessionPlayerList({ players = [], onAdjust, onForceR
         const wpAgg = Number(sheet.willpower?.aggravated || 0);
 
         const humanity = Number(sheet.humanity || player.humanity || sheet.morality?.humanity || 7);
-        const bloodPotency = Number(sheet.blood_potency || player.blood_potency || 1);
+        const bloodPotency = Number(sheet.blood_potency || player.blood_potency || sheet.bloodPotency || 1);
         const frenzyState = sheet.frenzyState || player.frenzyState;
-
-        const frenzyLabel = frenzyState === 'fury' ? '🔥 Fury Frenzy' : 
-                            frenzyState === 'hunger' ? '🩸 Hunger Frenzy' : 
-                            frenzyState === 'terror' ? '💀 Terror Frenzy' : null;
 
         return (
           <article 
             key={id} 
-            className={styles.playerCard} 
+            className={styles.trackerBox} 
             style={{ 
-              borderColor: frenzyState ? '#e11d48' : undefined, 
-              boxShadow: frenzyState ? '0 0 15px rgba(225, 29, 72, 0.15)' : undefined 
+              borderColor: frenzyState ? 'var(--error)' : undefined, 
+              boxShadow: frenzyState ? '0 0 15px rgba(225, 29, 72, 0.15)' : undefined,
+              padding: '1rem'
             }}
           >
-            <header className={styles.playerHead} style={{ marginBottom: '1rem' }}>
-              <div>
-                <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+            <header style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1rem' }}>
+              <Avatar userId={player.is_npc || player.isNpc ? undefined : id} npcId={player.is_npc || player.isNpc ? id : undefined} size={50} style={{ borderRadius: '50%' }} fallback={`/img/clans/330px-${clan.replace(/\s+/g, '_')}_symbol.png`} />
+              <div style={{ flex: 1 }}>
+                <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, color: 'var(--primary)', fontFamily: 'var(--font-display)', fontSize: '1.25rem' }}>
                   {name} 
-                  {frenzyState && <span style={{ fontSize: '0.75rem', background: '#e11d48', padding: '2px 6px', borderRadius: '4px', textTransform: 'uppercase' }}>{frenzyLabel}</span>}
+                  {player.is_npc || player.isNpc ? <span style={{ fontSize: '0.6rem', border: '1px solid var(--outline)', padding: '2px 4px', borderRadius: '4px', color: 'var(--text-muted)' }}>NPC</span> : null}
                 </h4>
-                <p>{clan} • BP {bloodPotency}</p>
+                <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>{clan} • BP {bloodPotency}</p>
               </div>
-              {player.is_npc || player.isNpc ? <span className={styles.npcTag}>NPC</span> : null}
             </header>
 
             <VtmTracker label="Health" max={healthMax} sup={healthSup} agg={healthAgg} />
@@ -105,18 +104,22 @@ export default function LiveSessionPlayerList({ players = [], onAdjust, onForceR
               <VtmTracker label="Humanity" max={10} value={humanity} isSimple />
             </div>
 
-            <div className={styles.quickBtns} style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginTop: '0.75rem', gap: '0.3rem' }}>
-              <button style={{ gridColumn: 'span 4' }} onClick={() => onForceRouse?.(id)}>Force Rouse Check</button>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem', marginTop: '0.75rem' }}>
+              <button className={styles.btnPrimary} style={{ gridColumn: 'span 2', fontSize: '0.75rem' }} onClick={() => onForceRouse?.(id)}>Force Rouse Check</button>
               
-              <button onClick={() => onAdjust?.(id, { hungerDelta: 1 })}>+Hung</button>
-              <button onClick={() => onAdjust?.(id, { hungerDelta: -1 })}>-Hung</button>
-              <button onClick={() => onAdjust?.(id, { humanityDelta: 1 })}>+Hum</button>
-              <button onClick={() => onAdjust?.(id, { humanityDelta: -1 })}>-Hum</button>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <button className={styles.btnOutline} style={{ flex: 1, padding: '4px', fontSize: '0.7rem' }} onClick={() => onAdjust?.(id, { hungerDelta: -1 })}>-Hung</button>
+                <button className={styles.btnOutline} style={{ flex: 1, padding: '4px', fontSize: '0.7rem' }} onClick={() => onAdjust?.(id, { hungerDelta: 1 })}>+Hung</button>
+              </div>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <button className={styles.btnOutline} style={{ flex: 1, padding: '4px', fontSize: '0.7rem' }} onClick={() => onAdjust?.(id, { humanityDelta: -1 })}>-Hum</button>
+                <button className={styles.btnOutline} style={{ flex: 1, padding: '4px', fontSize: '0.7rem' }} onClick={() => onAdjust?.(id, { humanityDelta: 1 })}>+Hum</button>
+              </div>
               
-              <button onClick={() => onAdjust?.(id, { wpSupDelta: 1 })}>+WP Sup</button>
-              <button onClick={() => onAdjust?.(id, { wpAggDelta: 1 })}>+WP Agg</button>
-              <button onClick={() => onAdjust?.(id, { healthSupDelta: 1 })}>+HP Sup</button>
-              <button onClick={() => onAdjust?.(id, { healthAggDelta: 1 })}>+HP Agg</button>
+              <button className={styles.btnOutline} style={{ padding: '4px', fontSize: '0.7rem' }} onClick={() => onAdjust?.(id, { wpSupDelta: 1 })}>+WP Sup</button>
+              <button className={styles.btnOutline} style={{ padding: '4px', fontSize: '0.7rem' }} onClick={() => onAdjust?.(id, { wpAggDelta: 1 })}>+WP Agg</button>
+              <button className={styles.btnOutline} style={{ padding: '4px', fontSize: '0.7rem' }} onClick={() => onAdjust?.(id, { healthSupDelta: 1 })}>+HP Sup</button>
+              <button className={styles.btnOutline} style={{ padding: '4px', fontSize: '0.7rem' }} onClick={() => onAdjust?.(id, { healthAggDelta: 1 })}>+HP Agg</button>
             </div>
           </article>
         );

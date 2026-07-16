@@ -46,7 +46,7 @@ const NAME_OVERRIDES = {
 const symlogo = (c) =>
   `/img/clans/330px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g,'_')}_symbol.png`;
 const textlogo = (c) =>
-  `/img/clans/text/300px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g,'_')}_Logo.png`;
+  `/img/clans/text/300px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g,'_')}_logo.png`;
 
 // Disciplines per clan
 const CLAN_DISCIPLINES = {
