@@ -6,6 +6,8 @@ import { Skeleton } from 'boneyard-js/react';
 import { Link } from 'react-router-dom';
 export default function AdminMasterTab() {
   const [commsEnabled, setCommsEnabled] = useState(true);
+  const [chatSchedule, setChatSchedule] = useState({});
+  const [currentMonth, setCurrentMonth] = useState(new Date());
   const [bannerEnabled, setBannerEnabled] = useState(false);
   const [bannerMessage, setBannerMessage] = useState('');
   const [bannerCountdown, setBannerCountdown] = useState('');
@@ -77,12 +79,13 @@ export default function AdminMasterTab() {
     setLoading(true);
     try {
       const [commsRes, bannerRes, ntfyRes, npcsRes] = await Promise.all([
-        api.get('/comms/status'), 
+        api.get('/admin/comms/config'), 
         api.get('/system/banner'),
         api.get('/admin/ntfy').catch(() => ({ data: { topic: '', subscribed_npcs: [] } })),
         api.get('/admin/npcs').catch(() => ({ data: { npcs: [] } }))
       ]);
-      setCommsEnabled(commsRes.data.comms_enabled);
+      setCommsEnabled(commsRes.data.master_enabled);
+      setChatSchedule(commsRes.data.schedule || {});
       setBannerEnabled(bannerRes.data.banner_enabled);
       setBannerMessage(bannerRes.data.banner_message || '');
       setBannerCountdown(bannerRes.data.banner_countdown || '');
@@ -102,6 +105,90 @@ export default function AdminMasterTab() {
       setMsg(`System updated: Comms are now ${newVal ? 'ONLINE' : 'OFFLINE'}.`);
       setTimeout(() => setMsg(''), 3000);
     } catch (e) { setErr('Failed to update status.'); } finally { setActionLoading(false); }
+  };
+
+  const saveSchedule = async () => {
+    setActionLoading(true); setMsg(''); setErr('');
+    try {
+      await api.post('/admin/comms/schedule', { schedule: chatSchedule });
+      setMsg('Comms schedule saved.');
+      setTimeout(() => setMsg(''), 3000);
+    } catch (e) { setErr('Failed to save comms schedule.'); } finally { setActionLoading(false); }
+  };
+
+  const toggleDay = (dateStr) => {
+    setChatSchedule(prev => {
+      const next = { ...prev };
+      if (next[dateStr] === undefined) {
+        next[dateStr] = true;
+      } else if (next[dateStr] === true) {
+        next[dateStr] = false;
+      } else {
+        delete next[dateStr];
+      }
+      return next;
+    });
+  };
+
+  const renderCalendar = () => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    const days = [];
+    for (let i = 0; i < firstDay; i++) days.push(null);
+    for (let i = 1; i <= daysInMonth; i++) days.push(i);
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <button className={styles.btn} onClick={() => setCurrentMonth(new Date(year, month - 1, 1))}>&lt; Prev</button>
+          <div style={{ fontWeight: 'bold', fontSize: '1.2rem', color: 'var(--text-primary)' }}>
+            {currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}
+          </div>
+          <button className={styles.btn} onClick={() => setCurrentMonth(new Date(year, month + 1, 1))}>Next &gt;</button>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px', textAlign: 'center' }}>
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+            <div key={d} style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{d}</div>
+          ))}
+          {days.map((d, i) => {
+            if (!d) return <div key={i} />;
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const state = chatSchedule[dateStr];
+            let bg = 'var(--glass-inset)';
+            let border = '1px solid var(--glass-border)';
+            let color = 'var(--text-primary)';
+            if (state === true) {
+              bg = 'rgba(0, 230, 118, 0.15)';
+              border = '1px solid var(--color-success)';
+              color = 'var(--color-success)';
+            } else if (state === false) {
+              bg = 'rgba(255, 77, 77, 0.15)';
+              border = '1px solid var(--color-error)';
+              color = 'var(--color-error)';
+            }
+            return (
+              <div 
+                key={i} 
+                onClick={() => toggleDay(dateStr)}
+                style={{
+                  background: bg, border: border, color: color,
+                  padding: '10px 0', borderRadius: '4px', cursor: 'pointer',
+                  userSelect: 'none', transition: 'all 0.2s', fontWeight: state !== undefined ? 'bold' : 'normal'
+                }}
+              >
+                {d}
+              </div>
+            );
+          })}
+        </div>
+        <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={saveSchedule} disabled={actionLoading} style={{ marginTop: '1rem', padding: '1rem' }}>
+          {actionLoading ? 'Saving...' : 'Save Schedule'}
+        </button>
+      </div>
+    );
   };
 
   const saveBanner = async () => {
@@ -206,6 +293,15 @@ export default function AdminMasterTab() {
             <p style={{ margin: 0, color: 'var(--text-primary)', lineHeight: '1.5' }}>{isOnline ? "All players and administrators can freely send and receive messages, create groups, and upload media across the network." : "The killswitch is engaged. The interface is locked down. Players can log in and read their chat history, but all inputs are disabled."}</p>
           </div>
         </div>
+      </div>
+
+      {/* COMMS SCHEDULE */}
+      <div style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', padding: '2rem', boxShadow: 'var(--glass-shadow)' }}>
+        <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
+          <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-color)' }}>🗓️ Comms Schedule</h4>
+          <p style={{ margin: '5px 0 0 0', color: 'var(--text-secondary)' }}>Click days to toggle exceptions: <span style={{ color: 'var(--color-success)' }}>Green = Force ON</span>, <span style={{ color: 'var(--color-error)' }}>Red = Force OFF</span>. If blank, it follows the Master Killswitch above.</p>
+        </div>
+        {renderCalendar()}
       </div>
 
       {/* BANNER CONTROLS */}
