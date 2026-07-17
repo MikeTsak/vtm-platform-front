@@ -734,10 +734,10 @@ export default function CharacterView({
   const [moralityModalOpen, setMoralityModalOpen] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
 
-  // New tab state for the XP Shop
   const [activeShopTab, setActiveShopTab] = useState('Disciplines');
   const [currentSearches, setShopSearches] = useState({});
   const [shopFilter, setShopFilter] = useState('in_clan');
+  const [activeNav, setActiveNav] = useState('stats');
 
   const [pendingFixes, setPendingFixes] = useState([]);
   const [xpTotals, setXpTotals] = useState(null);
@@ -895,18 +895,18 @@ export default function CharacterView({
       const { data } = await api.post(paths.spend, payload);
       const obj = data.character || data.npc || null;
       setCh(attachStructured(obj));
-      
+
       let itemPurchased = payload.target || payload.type;
       if (payload.type === 'specialty' && payload.specialty) {
         itemPurchased = `${payload.target} (${payload.specialty})`;
       } else if (payload.type === 'discipline_power' && payload.powerName) {
         itemPurchased = payload.powerName;
       }
-      
+
       setMsg(`Action successful! Purchased ${itemPurchased}.`);
-      
+
       setTimeout(() => setMsg(''), 2500);
-      
+
       // Auto-scroll
       setTimeout(() => {
         let targetId = null;
@@ -915,7 +915,7 @@ export default function CharacterView({
         else if (type === 'skill' || type === 'specialty') targetId = 'skills-section';
         else if (type === 'discipline' || type === 'discipline_power') targetId = 'disciplines-section';
         else if (type === 'merit' || type === 'flaw') targetId = 'merits-section';
-        
+
         if (targetId) {
           document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
@@ -973,12 +973,12 @@ export default function CharacterView({
     const merits = nextSheet.advantages?.merits || [];
     const flaws = nextSheet.advantages?.flaws || [];
     const backgrounds = nextSheet.backgrounds || [];
-    
+
     // we don't have id here, just type ('merits' or 'flaws') and idx from the combined list
     // This is fragile but we'll try to find the item.
     // Let's rely on the way they were combined in MeritsBackgroundsSection:
     // displayMerits = [...meritsList, ...backgroundsList]
-    
+
     // Instead of fixing the whole handleUpdateNotes (since it might need changes in MeritsBackgroundsSection),
     // let's do a safe try-catch update if possible, or just use nextSheet.advantages.merits/flaws.
     // Actually the old code was: targetArray = type === 'flaws' ? nextSheet.flaws : nextSheet.advantages;
@@ -989,12 +989,12 @@ export default function CharacterView({
     // It's probably easier to just ignore fixing this broken method for now if the user didn't ask for it,
     // or fix it so it won't crash.
     if (type === 'flaws') {
-       if (flaws[idx]) flaws[idx].notes = newNotes;
+      if (flaws[idx]) flaws[idx].notes = newNotes;
     } else {
-       if (merits[idx]) merits[idx].notes = newNotes;
-       else if (backgrounds[idx - merits.length]) backgrounds[idx - merits.length].notes = newNotes;
+      if (merits[idx]) merits[idx].notes = newNotes;
+      else if (backgrounds[idx - merits.length]) backgrounds[idx - merits.length].notes = newNotes;
     }
-    
+
     try {
       await api.put(paths.update, {
         name: ch.name,
@@ -1012,7 +1012,7 @@ export default function CharacterView({
   const handleUpdateDesc = async (item, newDesc) => {
     if (!ch || !ch.sheet) return;
     const nextSheet = JSON.parse(JSON.stringify(ch.sheet));
-    
+
     let target = null;
     if (nextSheet.advantages?.merits) {
       target = nextSheet.advantages.merits.find(m => m.id === item.id || m.name === item.name);
@@ -1023,7 +1023,7 @@ export default function CharacterView({
     if (!target && nextSheet.backgrounds) {
       target = nextSheet.backgrounds.find(b => b.id === item.id || b.name === item.name);
     }
-    
+
     if (target) {
       target.desc = newDesc;
       try {
@@ -1290,23 +1290,27 @@ export default function CharacterView({
     <Skeleton name="character-view" loading={!ch}>
       <div className={styles.root} style={{ '--tint': tint }}>
         {/* --- Stitch Mobile Header --- */}
-        <header className="md:hidden fixed top-0 w-full z-50 backdrop-blur-xl border-b border-white/10 shadow-lg" style={{ backgroundColor: 'color-mix(in srgb, var(--bg-color) 60%, transparent)' }}>
+        <header className="md:hidden fixed top-0 w-full z-50 backdrop-blur-xl border-b border-white/10 shadow-lg" style={{ backgroundColor: 'color-mix(in srgb, var(--bg-color) 60%, transparent)', paddingTop: 'env(safe-area-inset-top)' }}>
           <div className="flex justify-between items-center px-4 h-16 w-full">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full border overflow-hidden" style={{ borderColor: 'var(--tint)', boxShadow: '0 0 10px color-mix(in srgb, var(--tint) 30%, transparent)' }}>
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-8 h-8 shrink-0 rounded-full border overflow-hidden" style={{ borderColor: 'var(--tint)', boxShadow: '0 0 10px color-mix(in srgb, var(--tint) 30%, transparent)' }}>
                 <Avatar userId={!adminNPCId ? ch?.user_id : undefined} npcId={adminNPCId} size="100%" editable={(!adminNPCId && String(user?.id) === String(ch?.user_id)) || isAdmin} />
               </div>
-              <h1 className="font-['Playfair_Display'] text-xl font-semibold" style={{ color: 'var(--tint)' }}>{ch.name}</h1>
+              <h1 className="font-['Playfair_Display'] text-xl font-semibold truncate" style={{ color: 'var(--tint)' }}>{ch.name}</h1>
             </div>
-            <div className="flex items-center gap-1">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <span key={i} className={`material-symbols-outlined ${styles.hungerDroplet} ${i < tempHunger ? styles.active : ''}`} style={i < tempHunger ? { fontVariationSettings: "'FILL' 1" } : {}}>water_drop</span>
-              ))}
+            <div className="flex items-center gap-1 shrink-0">
+              <div className="flex items-center gap-0.5">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <span key={i} className={`material-symbols-outlined ${styles.hungerDroplet} ${i < tempHunger ? styles.active : ''}`} style={{ fontSize: '18px', ...(i < tempHunger ? { fontVariationSettings: "'FILL' 1" } : {}) }}>water_drop</span>
+                ))}
+              </div>
               {(!adminNPCId && String(user?.id) === String(ch?.user_id)) && (
-                <button 
-                  onClick={toggleSysNotifications} 
+                <button
+                  onClick={toggleSysNotifications}
                   title={sysNotifOn ? "Disable System Notifications" : "Enable System Notifications"}
-                  style={{ background: 'none', border: 'none', padding: '4px', cursor: 'pointer', color: sysNotifOn ? 'var(--tint)' : 'var(--text-muted)', display: 'flex', alignItems: 'center' }}
+                  aria-label={sysNotifOn ? "Disable System Notifications" : "Enable System Notifications"}
+                  className="flex items-center justify-center"
+                  style={{ background: 'none', border: 'none', width: '44px', height: '44px', cursor: 'pointer', color: sysNotifOn ? 'var(--tint)' : 'var(--text-muted)' }}
                 >
                   <span className="material-symbols-outlined">{sysNotifOn ? 'notifications_active' : 'notifications_off'}</span>
                 </button>
@@ -1342,8 +1346,8 @@ export default function CharacterView({
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
                 {(!adminNPCId && String(user?.id) === String(ch?.user_id)) && (
-                  <button 
-                    className={styles.navActionBtn} 
+                  <button
+                    className={styles.navActionBtn}
                     onClick={toggleSysNotifications}
                     title={sysNotifOn ? "Disable System Notifications" : "Enable System Notifications"}
                     style={{ color: sysNotifOn ? 'var(--tint)' : 'inherit' }}
@@ -1359,24 +1363,29 @@ export default function CharacterView({
           </div>
         </header>
 
-        {/* --- Mobile Bottom Nav --- */}
+        {/* --- Mobile Bottom Nav (icon-only, animated indicator) --- */}
         <nav className={styles.mobileNav}>
-          <button className={`${styles.mobileNavBtn} ${styles.mobileNavBtnActive}`} onClick={() => window.scrollTo(0, 0)}>
-            <span className="material-symbols-outlined" style={{ marginBottom: '4px' }}>person</span>
-            <span className={styles.mobileNavLabel}>Character</span>
-          </button>
-          <button className={styles.mobileNavBtn} onClick={() => document.getElementById('inventory-section')?.scrollIntoView({ behavior: 'smooth' })}>
-            <span className="material-symbols-outlined" style={{ marginBottom: '4px' }}>backpack</span>
-            <span className={styles.mobileNavLabel}>Inventory</span>
-          </button>
-          <button className={styles.mobileNavBtn} onClick={() => document.getElementById('merits-section')?.scrollIntoView({ behavior: 'smooth' })}>
-            <span className="material-symbols-outlined" style={{ marginBottom: '4px', fontVariationSettings: "'FILL' 1" }}>workspace_premium</span>
-            <span className={styles.mobileNavLabel}>Merits & Flaws</span>
-          </button>
-          <button className={styles.mobileNavBtn} onClick={() => shopRef.current?.scrollIntoView({ behavior: 'smooth' })}>
-            <span className="material-symbols-outlined" style={{ marginBottom: '4px' }}>shopping_cart</span>
-            <span className={styles.mobileNavLabel}>XP Shop</span>
-          </button>
+          {[
+            { id: 'stats', icon: 'person', scrollTo: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
+            { id: 'skills', icon: 'fitness_center', scrollTo: () => document.getElementById('skills-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) },
+            { id: 'disciplines', icon: 'auto_awesome', scrollTo: () => document.getElementById('disciplines-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) },
+            { id: 'inventory', icon: 'backpack', scrollTo: () => document.getElementById('inventory-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) },
+            { id: 'merits', icon: 'workspace_premium', scrollTo: () => document.getElementById('merits-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) },
+            { id: 'shop', icon: 'shopping_cart', scrollTo: () => shopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }) },
+          ].map(({ id, icon, scrollTo }) => (
+            <button
+              key={id}
+              className={`${styles.mobileNavItem} ${activeNav === id ? styles.mobileNavItemActive : ''}`}
+              onClick={() => { setActiveNav(id); scrollTo(); }}
+              aria-label={id}
+            >
+              <span
+                className="material-symbols-outlined"
+                style={{ fontSize: '22px', fontVariationSettings: activeNav === id ? "'FILL' 1" : "'FILL' 0" }}
+              >{icon}</span>
+              {activeNav === id && <span className={styles.mobileNavPill} />}
+            </button>
+          ))}
         </nav>
 
         {/* --- Desktop Nav (Sidebar) --- */}
@@ -1405,7 +1414,7 @@ export default function CharacterView({
         </nav>
 
         {/* --- Main Bento Layout --- */}
-        <motion.main 
+        <motion.main
           className={styles.mainLayout}
           initial="hidden"
           animate="show"
@@ -1414,7 +1423,7 @@ export default function CharacterView({
           {err && <div className={styles.alertError}>{err}</div>}
           {msg && (
             <>
-              <div 
+              <div
                 style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)', animation: 'fadeIn 0.3s ease-out' }}
                 onClick={() => setMsg('')}
               />
@@ -1439,8 +1448,8 @@ export default function CharacterView({
                 textAlign: 'center',
                 animation: 'fadeIn 0.3s ease-out'
               }}>
-                <button 
-                  onClick={() => setMsg('')} 
+                <button
+                  onClick={() => setMsg('')}
                   style={{
                     position: 'absolute',
                     top: '16px',
@@ -1492,11 +1501,11 @@ export default function CharacterView({
               <h2 style={{ fontFamily: 'var(--font-title)', margin: 0, marginBottom: '6px' }}>Meta Data</h2>
               <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.6', display: 'flex', flexWrap: 'wrap', columnGap: '8px' }}>
                 <span>Predator: {sheet?.predator_type || sheet?.predatorType || '—'}</span>
-                <span style={{opacity: 0.5}}>|</span>
+                <span style={{ opacity: 0.5 }}>|</span>
                 <span>Sire: {sheet?.sire || '—'}</span>
-                <span style={{opacity: 0.5}}>|</span>
+                <span style={{ opacity: 0.5 }}>|</span>
                 <span>Ambition: {sheet?.ambition || '—'}</span>
-                <span style={{opacity: 0.5}}>|</span>
+                <span style={{ opacity: 0.5 }}>|</span>
                 <span>Desire: {sheet?.desire || '—'}</span>
               </div>
             </div>
@@ -1506,7 +1515,7 @@ export default function CharacterView({
           </motion.div>
 
           {/* Health & Willpower Tracker Grid */}
-          <motion.section variants={itemVariants} className={styles.bentoGrid} style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
+          <motion.section variants={itemVariants} className={styles.bentoGrid} style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))' }}>
             {/* Health */}
             <div className={`${styles.level1} ${styles.glassCard}`} style={{ padding: '24px' }}>
               <TrackerBlock label="Health" val={maxHealth} max={maxHealth} agg={tempHealth.aggravated} sup={tempHealth.superficial} />
@@ -1582,7 +1591,7 @@ export default function CharacterView({
                 <div id="inventory-section">
                   <Inventory characterId={ch?.id} />
                 </div>
-                <div style={{ marginTop: '24px' }}>
+                <div id="merits-section" style={{ marginTop: '24px' }}>
                   <MeritsFlawsDisplay
                     sheet={sheet}
                     allMeritsFlat={allMeritsFlat}
@@ -1649,8 +1658,32 @@ export default function CharacterView({
               </div>
             </div>
 
-            {/* Sticky Tabs */}
+            {/* Shop Tabs — icon-grid on mobile, pill-row on desktop */}
             <nav className={styles.shopTabsNav}>
+              {/* Mobile: 3×2 icon grid */}
+              <div className={styles.shopTabsGrid}>
+                {[
+                  { key: 'Disciplines', icon: 'auto_awesome', label: 'Disciplines' },
+                  { key: 'Attributes', icon: 'monitor_heart', label: 'Attributes' },
+                  { key: 'Skills', icon: 'fitness_center', label: 'Skills' },
+                  { key: 'Merits & Flaws', icon: 'workspace_premium', label: 'Merits' },
+                  { key: 'Rituals', icon: 'local_fire_department', label: 'Rituals' },
+                  { key: 'Blood Potency', icon: 'water_drop', label: 'Potency' },
+                ].map(({ key, icon, label }) => (
+                  <button
+                    key={key}
+                    className={`${styles.shopTabsGridBtn} ${activeShopTab === key ? styles.shopTabsGridBtnActive : ''}`}
+                    onClick={() => setActiveShopTab(key)}
+                  >
+                    <span
+                      className="material-symbols-outlined"
+                      style={{ fontSize: '20px', fontVariationSettings: activeShopTab === key ? "'FILL' 1" : "'FILL' 0" }}
+                    >{icon}</span>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {/* Desktop: original scrolling pill row */}
               <div className={styles.shopTabsContainer}>
                 {['Disciplines', 'Attributes', 'Skills', 'Merits & Flaws', 'Rituals', 'Blood Potency'].map(tab => (
                   <button
@@ -1720,12 +1753,12 @@ export default function CharacterView({
                     return ATTRS.map((group, i) => {
                       const groupNames = ['Physical', 'Social', 'Mental'];
                       const groupName = groupNames[i];
-                      
+
                       let filteredGroup = group;
                       if (isSearching) {
                         const res = msSearchText([...group, groupName], currentSearch);
                         if (res.length === 0) return null;
-                        
+
                         // If they matched the group name, show all attributes in group
                         const matchedGroup = res.some(r => r.item === groupName);
                         if (!matchedGroup) {
@@ -1733,7 +1766,7 @@ export default function CharacterView({
                           filteredGroup = group.filter(a => matchedAttrNames.has(a));
                         }
                       }
-                      
+
                       if (filteredGroup.length === 0) return null;
                       return (
                         <div key={groupName} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -1784,14 +1817,14 @@ export default function CharacterView({
                       if (isSearching) {
                         const res = msSearchText([...groupSkills, groupName], currentSearch);
                         if (res.length === 0) return null;
-                        
+
                         const matchedGroup = res.some(r => r.item === groupName);
                         if (!matchedGroup) {
                           const matchedSkillNames = new Set(res.map(r => r.item));
                           filteredSkills = groupSkills.filter(s => matchedSkillNames.has(s));
                         }
                       }
-                      
+
                       if (filteredSkills.length === 0) return null;
                       return (
                         <div key={groupName} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -1854,7 +1887,7 @@ export default function CharacterView({
                       }
                       return msSearchText(allTerms, currentSearch).length > 0;
                     };
-                    
+
                     return (
                       <>
                         {inClanDisciplines.filter(name => matchDiscipline(name)).length > 0 && (
@@ -1951,10 +1984,10 @@ export default function CharacterView({
                       });
                       return msSearchText(allTerms, currentSearch).length > 0;
                     };
-                    
+
                     const showBloodSorcery = matchRitualCategory('Blood Sorcery Rituals', RITUALS?.blood_sorcery?.levels);
                     const showOblivion = matchRitualCategory('Oblivion Ceremonies', RITUALS?.oblivion?.levels);
-                    
+
                     return (
                       <>
                         {showBloodSorcery && (
@@ -1967,8 +2000,8 @@ export default function CharacterView({
                             noConfirm={true}
                             forceExpanded={isSearching}
                           >
-                            <InlineRitualPicker 
-                              type="blood_sorcery" 
+                            <InlineRitualPicker
+                              type="blood_sorcery"
                               itemsObj={RITUALS?.blood_sorcery?.levels}
                               knownIds={knownRitualIds}
                               knownPowerNamesAndIds={knownPowerNamesAndIds}
@@ -1979,7 +2012,7 @@ export default function CharacterView({
                             />
                           </ShopRow>
                         )}
-                        
+
                         {showOblivion && (
                           <ShopRow
                             title="Oblivion Ceremonies"
@@ -1990,8 +2023,8 @@ export default function CharacterView({
                             noConfirm={true}
                             forceExpanded={isSearching}
                           >
-                            <InlineRitualPicker 
-                              type="oblivion" 
+                            <InlineRitualPicker
+                              type="oblivion"
                               itemsObj={RITUALS?.oblivion?.levels}
                               knownIds={knownRitualIds}
                               knownPowerNamesAndIds={knownPowerNamesAndIds}
@@ -2083,31 +2116,6 @@ export default function CharacterView({
             busy={savingProfile}
           />
         )}
-        {/* --- Stitch Mobile Bottom Nav --- */}
-        <nav className="md:hidden fixed bottom-0 left-0 w-full z-50 rounded-t-xl backdrop-blur-2xl border-t border-white/10 shadow-[0_-4px_20px_rgba(0,0,0,0.5)]" style={{ backgroundColor: 'color-mix(in srgb, var(--bg-color) 80%, transparent)' }}>
-          <div className="flex justify-around items-center h-20 w-full px-4" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-            <button className="flex flex-col items-center justify-center transition-all duration-200" style={{ color: 'var(--tint)' }}>
-              <span className="material-symbols-outlined mb-1 text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>person</span>
-              <span className="font-['JetBrains_Mono'] text-[10px] tracking-widest uppercase font-medium">Sheet</span>
-            </button>
-            <button className="flex flex-col items-center justify-center opacity-60 hover:opacity-100 transition-all duration-200" style={{ color: 'var(--text-muted)' }}>
-              <span className="material-symbols-outlined mb-1 text-2xl">book</span>
-              <span className="font-['JetBrains_Mono'] text-[10px] tracking-widest uppercase font-medium">Lore</span>
-            </button>
-            <button className="flex flex-col items-center justify-center opacity-60 hover:opacity-100 transition-all duration-200" style={{ color: 'var(--text-muted)' }}>
-              <span className="material-symbols-outlined mb-1 text-2xl">inventory_2</span>
-              <span className="font-['JetBrains_Mono'] text-[10px] tracking-widest uppercase font-medium">Gear</span>
-            </button>
-            <button className="flex flex-col items-center justify-center opacity-60 hover:opacity-100 transition-all duration-200" style={{ color: 'var(--text-muted)' }}>
-              <span className="material-symbols-outlined mb-1 text-2xl">groups</span>
-              <span className="font-['JetBrains_Mono'] text-[10px] tracking-widest uppercase font-medium">Coterie</span>
-            </button>
-            <button className="flex flex-col items-center justify-center opacity-60 hover:opacity-100 transition-all duration-200" style={{ color: 'var(--text-muted)' }}>
-              <span className="material-symbols-outlined mb-1 text-2xl">casino</span>
-              <span className="font-['JetBrains_Mono'] text-[10px] tracking-widest uppercase font-medium">Roll</span>
-            </button>
-          </div>
-        </nav>
       </div>
     </Skeleton>
   );
@@ -2289,7 +2297,7 @@ function InlineRitualPicker({ type, itemsObj, knownIds, knownPowerNamesAndIds, c
       const cost = type === 'blood_sorcery' ? XP_RULES.ritual(r.__level) : XP_RULES.ceremony(r.__level);
       const afford = xp >= cost;
       const { unmet } = ritualPrereqStatus(r, knownPowerNamesAndIds);
-      
+
       const isAvailable = !isOwned && isAllowed && unmet.length === 0;
 
       return {
@@ -2300,12 +2308,12 @@ function InlineRitualPicker({ type, itemsObj, knownIds, knownPowerNamesAndIds, c
         __available: isAvailable
       };
     });
-    
+
     if (searchQuery) {
       const q = searchQuery.trim();
       res = msSearchText(res.map(r => r.name), q).map(match => res.find(p => p.name === match.item)).filter(Boolean);
     }
-    
+
     return res;
   }, [fullPool, knownIds, canLearnFn, knownPowerNamesAndIds, xp, type, searchQuery]);
 
@@ -2339,13 +2347,13 @@ function InlineRitualPicker({ type, itemsObj, knownIds, knownPowerNamesAndIds, c
 
           const cardClass = isOwned ? styles.powerCardOwned
             : (isAvailable ? styles.powerCardAvailable : styles.powerCardRestricted);
-            
+
           const isRestricted = !isAvailable && !isOwned;
 
           return (
             <div key={r.id} className={cardClass}>
-              <div 
-                className={styles.powerCardHeaderRow} 
+              <div
+                className={styles.powerCardHeaderRow}
                 onClick={() => setExpandedId(isExpanded ? null : r.id)}
                 style={{ cursor: 'pointer', marginBottom: isExpanded ? '8px' : '0' }}
               >
@@ -2366,13 +2374,13 @@ function InlineRitualPicker({ type, itemsObj, knownIds, knownPowerNamesAndIds, c
                   </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                   {!isOwned && <span className={styles.shopCardPrice}>{r.__cost} XP</span>}
-                   <span 
-                     className={`material-symbols-outlined ${styles.expandIcon}`} 
-                     style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s ease' }}
-                   >
-                     expand_more
-                   </span>
+                  {!isOwned && <span className={styles.shopCardPrice}>{r.__cost} XP</span>}
+                  <span
+                    className={`material-symbols-outlined ${styles.expandIcon}`}
+                    style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s ease' }}
+                  >
+                    expand_more
+                  </span>
                 </div>
               </div>
 
@@ -2505,12 +2513,12 @@ function InlineDisciplinePicker({ cfg, onConfirm, searchQuery }) {
         __available: !owned && unmet.length === 0 && !clanLockUnmet,
       };
     });
-    
+
     if (searchQuery) {
       const q = searchQuery.trim();
       res = msSearchText(res.map(p => p.name), q).map(match => res.find(p => p.name === match.item)).filter(Boolean);
     }
-    
+
     return res;
   }, [fullPool, ownedCanon, dotsByDisc, normDisc, parseAmalgam, characterClan, searchQuery]);
 
@@ -2555,8 +2563,8 @@ function InlineDisciplinePicker({ cfg, onConfirm, searchQuery }) {
 
           return (
             <div key={p.id} className={cardClass}>
-              <div 
-                className={styles.powerCardHeaderRow} 
+              <div
+                className={styles.powerCardHeaderRow}
                 onClick={() => setExpandedPowerId(isExpanded ? null : p.id)}
                 style={{ cursor: 'pointer', marginBottom: isExpanded ? '8px' : '0' }}
               >
@@ -2576,8 +2584,8 @@ function InlineDisciplinePicker({ cfg, onConfirm, searchQuery }) {
                     Level {p.__level} • {isOwned ? 'Owned' : (isAvailable ? 'Available' : 'Restricted')}
                   </span>
                 </div>
-                <span 
-                  className={`material-symbols-outlined ${styles.expandIcon}`} 
+                <span
+                  className={`material-symbols-outlined ${styles.expandIcon}`}
                   style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s ease' }}
                 >
                   expand_more
@@ -2874,11 +2882,11 @@ function SpecialtyAdder({ xp, onAdd }) {
 
   return (
     <div style={{ padding: '24px', background: 'color-mix(in srgb, var(--surface-lighter) 20%, transparent)', border: '1px solid var(--border-color)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      
+
       <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
         {/* Custom Dropdown for Skill Selection */}
         <div style={{ position: 'relative', flex: '1 1 200px' }}>
-          <div 
+          <div
             onClick={() => setOpen(!open)}
             style={{
               display: 'flex',
@@ -2900,18 +2908,18 @@ function SpecialtyAdder({ xp, onAdd }) {
               <span className="material-symbols-outlined" style={{ fontSize: '18px', color: 'var(--tint)' }}>school</span>
               {skill}
             </span>
-            <span className="material-symbols-outlined" style={{ 
-              transform: open ? 'rotate(180deg)' : 'none', 
+            <span className="material-symbols-outlined" style={{
+              transform: open ? 'rotate(180deg)' : 'none',
               transition: 'transform 0.2s',
               color: 'var(--text-muted)'
             }}>expand_more</span>
           </div>
-          
+
           {open && (
             <>
-              <div 
-                style={{ position: 'fixed', inset: 0, zIndex: 40 }} 
-                onClick={() => setOpen(false)} 
+              <div
+                style={{ position: 'fixed', inset: 0, zIndex: 40 }}
+                onClick={() => setOpen(false)}
               />
               <div style={{
                 position: 'absolute',
@@ -2969,10 +2977,10 @@ function SpecialtyAdder({ xp, onAdd }) {
           placeholder="E.g. Firmware, Swords, Seduction..."
           value={spec}
           onChange={e => setSpec(e.target.value)}
-          style={{ 
-            flex: '2 1 300px', 
-            padding: '14px 16px', 
-            fontSize: '14px', 
+          style={{
+            flex: '2 1 300px',
+            padding: '14px 16px',
+            fontSize: '14px',
             fontFamily: "'Inter', sans-serif",
             background: 'var(--surface-color)',
             border: '1px solid var(--border-color)',
@@ -2984,9 +2992,9 @@ function SpecialtyAdder({ xp, onAdd }) {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '20px', borderTop: '1px solid var(--surface-color)', paddingTop: '16px' }}>
-        <span style={{ 
-          fontFamily: "'JetBrains Mono', monospace", 
-          color: 'var(--text-muted)', 
+        <span style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          color: 'var(--text-muted)',
           fontSize: '12px',
           textTransform: 'uppercase',
           letterSpacing: '0.1em'
@@ -2998,7 +3006,7 @@ function SpecialtyAdder({ xp, onAdd }) {
           className={`${styles.gothicBtn} ${styles.bloodPulse}`}
           disabled={!afford || !spec.trim()}
           onClick={() => onAdd(skill, spec.trim())}
-          style={{ 
+          style={{
             padding: '10px 24px',
             borderRadius: '4px',
             border: '1px solid var(--tint)'

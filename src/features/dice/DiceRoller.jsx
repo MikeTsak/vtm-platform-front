@@ -273,7 +273,7 @@ export default function DiceRoller({ characterId }) {
     <>
       {/* Floating Opener (FAB) */}
       <button
-        className={`fixed bottom-6 right-6 w-16 h-16 rounded-full shadow-[0_6px_16px_rgba(0,0,0,0.5)] z-[9000] transition-all duration-300 grid place-items-center group ${open ? 'rotate-45 scale-90 bg-surface-container-high shadow-[0_2px_8px_rgba(0,0,0,0.5)]' : 'bg-gradient-to-br from-primary to-surface-container hover:scale-110 hover:-rotate-6 hover:shadow-[0_8px_24px_rgba(var(--theme-primary-rgb),0.6)]'}`}
+        className={`fixed bottom-24 md:bottom-6 right-6 w-16 h-16 rounded-full shadow-[0_6px_16px_rgba(0,0,0,0.5)] z-[9000] transition-all duration-300 grid place-items-center group ${open ? 'rotate-45 scale-90 bg-surface-container-high shadow-[0_2px_8px_rgba(0,0,0,0.5)]' : 'bg-gradient-to-br from-primary to-surface-container hover:scale-110 hover:-rotate-6 hover:shadow-[0_8px_24px_rgba(var(--theme-primary-rgb),0.6)]'}`}
         onClick={() => setOpen(o => !o)}
         aria-expanded={open}
         aria-label={open ? 'Close dice roller' : 'Open dice roller'}
@@ -285,7 +285,7 @@ export default function DiceRoller({ characterId }) {
       </button>
 
       {/* Main Panel */}
-      <div className={`fixed bottom-[100px] right-6 w-[340px] max-h-[calc(100vh-120px)] bg-surface-container border border-outline/30 rounded-2xl shadow-[0_12px_48px_rgba(0,0,0,0.75)] flex flex-col overflow-hidden z-[9000] transition-all duration-300 ease-out origin-bottom-right ${open ? 'opacity-100 pointer-events-auto scale-100 translate-y-0' : 'opacity-0 pointer-events-none scale-95 translate-y-5'} gothic-etched-border`} role="dialog" aria-label="Dice roller">
+      <div className={`fixed bottom-[168px] md:bottom-[100px] right-2 md:right-6 w-[calc(100vw-16px)] md:w-[340px] max-h-[calc(100vh-180px)] md:max-h-[calc(100vh-120px)] bg-surface-container border border-outline/30 rounded-2xl shadow-[0_12px_48px_rgba(0,0,0,0.75)] flex flex-col overflow-hidden z-[9000] transition-all duration-300 ease-out origin-bottom-right ${open ? 'opacity-100 pointer-events-auto scale-100 translate-y-0' : 'opacity-0 pointer-events-none scale-95 translate-y-5'} gothic-etched-border`} role="dialog" aria-label="Dice roller">
         
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 bg-surface-container-high border-b border-outline/20">
