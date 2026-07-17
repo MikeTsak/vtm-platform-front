@@ -1,7 +1,7 @@
 import React from 'react';
 import styles from '../../styles/LiveSession.module.css';
 
-export default function LiveSessionRollHistory({ rolls = [] }) {
+export default function LiveSessionRollHistory({ rolls = [], onBroadcast }) {
   if (!rolls.length) {
     return <div className={styles.textMuted} style={{ padding: '1rem', textAlign: 'center' }}>No rolls yet.</div>;
   }
@@ -18,6 +18,19 @@ export default function LiveSessionRollHistory({ rolls = [] }) {
         const hasCrit = roll.has_critical;
         const isFailure = roll.successes === 0;
         const note = roll.note;
+
+        if (roll.message && !roll.roll_type && !roll.rollType) {
+          return (
+            <article key={id} className={styles.historyItem} style={{ background: 'var(--surface-container-high)', border: '1px solid var(--primary-container)', padding: '0.75rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--on-surface)' }}>{roll.message}</span>
+                <small style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>
+                  {createdAt ? new Date(createdAt).toLocaleTimeString() : '-'}
+                </small>
+              </div>
+            </article>
+          );
+        }
 
         let statusClass = 'Success';
         if (hasBestial) statusClass = 'BestialFailure';
@@ -61,11 +74,25 @@ export default function LiveSessionRollHistory({ rolls = [] }) {
               </small>
             </div>
 
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', gap: '0.75rem', marginBottom: '0.5rem' }}>
-              {roll.pool !== undefined && <span>Pool: <b style={{ color: 'var(--on-surface)' }}>{roll.pool}</b></span>}
-              {roll.hunger !== undefined && <span>Hunger: <b style={{ color: 'var(--on-surface)' }}>{roll.hunger}</b></span>}
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', gap: '0.75rem', marginBottom: '0.5rem', alignItems: 'center' }}>
+              {roll.pool !== undefined && roll.pool !== null && <span>Pool: <b style={{ color: 'var(--on-surface)' }}>{roll.pool}</b></span>}
+              {roll.hunger !== undefined && roll.hunger !== null && <span>Hunger: <b style={{ color: 'var(--on-surface)' }}>{roll.hunger}</b></span>}
               {hasBestial && <span style={{ color: 'var(--error)', fontWeight: 700 }}>⚠️ Bestial</span>}
               {hasMessy && <span style={{ color: 'var(--error)', fontWeight: 700 }}>🩸 Messy Crit</span>}
+              
+              {(hasBestial || hasMessy) && onBroadcast && (
+                <button 
+                  onClick={() => {
+                    const comp = window.prompt("Assign Compulsion/Stain to " + name + ":");
+                    if (comp) {
+                      onBroadcast(`[ST Consequence] ${name} receives: ${comp}`);
+                    }
+                  }}
+                  style={{ background: 'var(--surface-hover)', border: '1px solid var(--border)', color: 'var(--on-surface)', fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer', marginLeft: 'auto' }}
+                >
+                  Assign Consequence
+                </button>
+              )}
             </div>
 
             {/* Visual Dice Output */}

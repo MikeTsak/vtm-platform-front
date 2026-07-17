@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { AuthCtx } from '../../core/AuthContext';
 import Avatar from '../../components/Avatar';
 import api from '../../core/api';
+import { motion } from 'framer-motion';
 import styles from '../../styles/Court.module.css';
 import { Skeleton } from 'boneyard-js/react';
 
@@ -13,6 +14,18 @@ const textlogo = (c) =>
   (c ? `/img/clans/text/300px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g, '_')}_logo.png` : '');
 
 // --- URL BUILDER HELPER ---
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.05 }
+  }
+};
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+};
 
 export default function HierarchyView({ canEdit: propCanEdit }) {
   const { user } = useContext(AuthCtx);
@@ -137,7 +150,12 @@ export default function HierarchyView({ canEdit: propCanEdit }) {
 
   return (
     <Skeleton loading={loading} name="court-hierarchy">
-      <div className={styles.hierarchyWrapper}>
+      <motion.div 
+        className={styles.hierarchyWrapper}
+        initial="hidden"
+        animate="show"
+        variants={containerVariants}
+      >
       
       <header className={styles.sectionBox} style={{ borderBottom: '1px solid color-mix(in srgb, var(--outline-variant) 10%, transparent)', paddingBottom: '1.5rem', position: 'relative', overflow: 'hidden' }}>
         <span className="material-symbols-outlined" style={{ position: 'absolute', right: '-1rem', top: '-2rem', fontSize: '120px', opacity: 0.03, pointerEvents: 'none', color: 'var(--on-surface)' }}>account_balance</span>
@@ -314,7 +332,7 @@ export default function HierarchyView({ canEdit: propCanEdit }) {
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
     </Skeleton>
   );
 }
@@ -354,7 +372,7 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles, onImageCl
   const baseCardClass = ent.is_bloodhunted ? styles.bloodhuntCard : styles.glassCard;
 
   return (
-    <div className={`${baseCardClass} ${specialClass} ${hiddenClass}`}>
+    <motion.div variants={itemVariants} className={`${baseCardClass} ${specialClass} ${hiddenClass}`}>
       {ent.is_bloodhunted && (
         <div className={styles.bloodhuntIcon}>
           <span className="material-symbols-outlined">priority_high</span>
@@ -520,6 +538,6 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles, onImageCl
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

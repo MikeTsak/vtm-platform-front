@@ -1,6 +1,14 @@
 import api from '../core/api';
+import { io as socketIoClient } from 'socket.io-client';
 
 const base = '/live-session';
+
+// Use the exact same base URL as the API client, but switch protocol if needed.
+// If the app is served from the same host, we can just omit the URL or use env vars.
+// The api instance knows the baseURL:
+const backendUrl = api.defaults.baseURL ? api.defaults.baseURL.replace('/api', '') : 'http://localhost:3001';
+
+export const socket = socketIoClient(backendUrl);
 
 export const createLiveSession = async (payload) => {
   const { data } = await api.post(base, payload);

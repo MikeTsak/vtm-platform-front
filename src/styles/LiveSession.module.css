@@ -139,15 +139,62 @@
   animation-delay: 0.3s;
 }
 
+.mobileNav {
+  display: none;
+}
+
 @media (max-width: 1024px) {
   .leftColumn, .rightColumn {
     width: 100%;
     border: none;
-    border-bottom: 1px solid rgba(90, 65, 61, 0.1);
     overflow: visible;
   }
   .centerColumn {
     overflow: visible;
+  }
+  
+  .mobileHidden {
+    display: none !important;
+  }
+
+  .mainContent {
+    padding-bottom: 70px; /* Space for bottom nav */
+  }
+
+  .mobileNav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 70px;
+    background-color: var(--surface-container);
+    border-top: 1px solid rgba(90, 65, 61, 0.2);
+    box-shadow: 0px -4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 100;
+  }
+
+  .mobileNavItem {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color 0.2s, background-color 0.2s;
+  }
+
+  .mobileNavItem:hover {
+    background-color: rgba(255, 255, 255, 0.02);
+  }
+
+  .mobileNavItemActive {
+    color: var(--primary);
+    font-weight: bold;
+    background-color: rgba(225, 29, 72, 0.05);
+    border-top: 2px solid var(--primary);
   }
 }
 
@@ -174,9 +221,10 @@
 .trackerBox {
   background-color: var(--surface-container-highest);
   color: var(--on-surface);
-  cursor: pointer;
-  border-radius: 4px;
+  border-radius: 8px;
+  padding: 1.5rem;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid rgba(255, 255, 255, 0.03);
 }
 
 .trackerBox:hover {
@@ -340,7 +388,7 @@
 .bentoGrid {
   display: grid;
   grid-template-columns: 5fr 7fr;
-  gap: 1rem;
+  gap: 1.5rem;
   flex: 1;
   overflow-y: auto;
 }
@@ -353,9 +401,8 @@
 
 .traitGrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(160px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
-  overflow-x: auto;
   padding-bottom: 0.5rem;
 }
 
@@ -374,23 +421,26 @@
 
 .selectableItem {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.75rem 1rem;
-  border-radius: 4px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 6px;
   cursor: pointer;
-  transition: background-color 0.2s, transform 0.15s ease;
-  border: 1px solid transparent;
+  transition: background-color 0.2s, transform 0.15s ease, border-color 0.2s ease;
+  background-color: var(--surface-container-high);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .selectableItem:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(255, 255, 255, 0.08);
   transform: translateY(-1px);
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
 .selectableItem.active {
   background-color: rgba(225, 29, 72, 0.1);
-  border-color: rgba(225, 29, 72, 0.3);
+  border-color: rgba(225, 29, 72, 0.4);
 }
 .selectableItem.active span {
   color: var(--primary);
@@ -624,4 +674,73 @@
   margin: 20px 0;
   opacity: 0.5;
   filter: blur(2px);
+}
+
+/* Modal Popup */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+  animation: modalFadeIn 0.2s ease;
+}
+
+.modalContent {
+  background: var(--surface-container-high);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  color: var(--primary);
+  margin-bottom: 0.75rem;
+}
+
+.modalBody {
+  color: var(--on-surface);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin-bottom: 1.5rem;
+}
+
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+}
+
+.btnCancel {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--on-surface);
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: background 0.2s;
+}
+
+.btnCancel:hover {
+  background: var(--surface-hover);
 }

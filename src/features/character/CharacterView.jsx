@@ -1,6 +1,7 @@
 // src/pages/CharacterView.jsx
 import React, { useEffect, useMemo, useState, useCallback, useRef, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import api from '../../core/api';
 import { AuthCtx } from '../../core/AuthContext';
 import { DISCIPLINES, ALL_DISCIPLINE_NAMES, iconPath } from '../../data/disciplines';
@@ -664,6 +665,18 @@ function MoralityEditModal({ sheet, onClose, onSave, busy }) {
 /* ===========================
    Component
    =========================== */
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+};
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+};
+
 export default function CharacterView({
   adminNPCId = null,
   loadPath,
@@ -1392,7 +1405,12 @@ export default function CharacterView({
         </nav>
 
         {/* --- Main Bento Layout --- */}
-        <main className={styles.mainLayout}>
+        <motion.main 
+          className={styles.mainLayout}
+          initial="hidden"
+          animate="show"
+          variants={containerVariants}
+        >
           {err && <div className={styles.alertError}>{err}</div>}
           {msg && (
             <>
@@ -1450,7 +1468,7 @@ export default function CharacterView({
           {saveStatus && isAdmin && <div style={{ fontSize: '0.85rem', color: 'var(--accent)', opacity: 0.8, textAlign: 'center' }}>{saveStatus}</div>}
 
           {/* --- Stitch Mobile Meta Data --- */}
-          <section className="md:hidden grid grid-cols-1 gap-3 mt-8">
+          <motion.section variants={itemVariants} className="md:hidden grid grid-cols-1 gap-3 mt-8">
             <div className={styles.glassPanel + " p-4 rounded-lg"}>
               <span className="font-['JetBrains_Mono'] text-[10px] tracking-widest text-white/70 block mb-1 uppercase">Predator Type</span>
               <div className={styles.inputUnderline}>{sheet?.predator_type || sheet?.predatorType || '—'}</div>
@@ -1466,10 +1484,10 @@ export default function CharacterView({
                 <div className={styles.inputUnderline + " text-sm"}>{sheet?.desire || '—'}</div>
               </div>
             </div>
-          </section>
+          </motion.section>
 
           {/* --- Desktop Meta Data --- */}
-          <div className="hidden md:flex justify-between items-end flex-wrap gap-4 border-b border-white/10 pb-3 mt-8">
+          <motion.div variants={itemVariants} className="hidden md:flex justify-between items-end flex-wrap gap-4 border-b border-white/10 pb-3 mt-8">
             <div style={{ flex: '1 1 min-content' }}>
               <h2 style={{ fontFamily: 'var(--font-title)', margin: 0, marginBottom: '6px' }}>Meta Data</h2>
               <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.6', display: 'flex', flexWrap: 'wrap', columnGap: '8px' }}>
@@ -1485,10 +1503,10 @@ export default function CharacterView({
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', whiteSpace: 'nowrap' }}>
               <span style={{ color: 'var(--text-muted)' }}>XP: <b style={{ color: 'var(--tint)' }}>{xp}</b></span>
             </div>
-          </div>
+          </motion.div>
 
           {/* Health & Willpower Tracker Grid */}
-          <section className={styles.bentoGrid} style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
+          <motion.section variants={itemVariants} className={styles.bentoGrid} style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
             {/* Health */}
             <div className={`${styles.level1} ${styles.glassCard}`} style={{ padding: '24px' }}>
               <TrackerBlock label="Health" val={maxHealth} max={maxHealth} agg={tempHealth.aggravated} sup={tempHealth.superficial} />
@@ -1545,10 +1563,10 @@ export default function CharacterView({
                 </div>
               )}
             </div>
-          </section>
+          </motion.section>
 
           {/* Bento Data Grid */}
-          <section className={styles.bentoGrid}>
+          <motion.section variants={itemVariants} className={styles.bentoGrid}>
             <div className={styles.bentoSpan2} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               {/* Attributes */}
               <div id="attributes-section">
@@ -1613,7 +1631,7 @@ export default function CharacterView({
                 </button>
               </div>
             </div>
-          </section>
+          </motion.section>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
             <button className={styles.ghostBtn} onClick={() => generateVTMCharacterSheetPDF(ch)}>
@@ -1622,7 +1640,7 @@ export default function CharacterView({
           </div>
 
           {/* ===== XP SHOP ===== */}
-          <section ref={shopRef} className={styles.section} style={{ padding: 0 }}>
+          <motion.section variants={itemVariants} ref={shopRef} className={styles.section} style={{ padding: 0 }}>
             {/* New Balance Header */}
             <div className={styles.xpBalanceHeader}>
               <h1 className={styles.xpBalanceLabel}>Current Balance</h1>
@@ -2036,8 +2054,8 @@ export default function CharacterView({
                 </Card>
               </div>
             )}
-          </section>
-        </main>
+          </motion.section>
+        </motion.main>
 
         {/* ----- Modals ----- */}
         {modalOpen && modalCfg && (

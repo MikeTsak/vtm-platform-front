@@ -13,7 +13,7 @@ import {
   summarizeTrackers,
   getBloodPotencyStats
 } from '../../utils/liveSessionMechanics';
-import { getLiveSession, joinLiveSession, logLiveSessionRoll, getLiveSessionBroadcasts, getLiveSessionRolls } from '../../api/liveSession';
+import { getLiveSession, joinLiveSession, logLiveSessionRoll, getLiveSessionBroadcasts, getLiveSessionRolls, socket, sendLiveSessionBroadcast } from '../../api/liveSession';
 import LiveSessionPlayerList from './LiveSessionPlayerList';
 import LiveSessionRollHistory from './LiveSessionRollHistory';
 import styles from '../../styles/LiveSession.module.css';
@@ -151,6 +151,8 @@ export default function LiveSession() {
 
   const [frenzyState, setFrenzyState] = useState(null);
   const isAdmin = session?.isAdmin || character?.role === 'admin' || character?.isST;
+  const [mobileTab, setMobileTab] = useState('action');
+  const [showBlushModal, setShowBlushModal] = useState(false);
 
   const [specialtyActive, setSpecialtyActive] = useState(false);
   const [selectedTraits, setSelectedTraits] = useState(['Wits', 'Awareness']);
@@ -166,6 +168,7 @@ export default function LiveSession() {
   const [hiddenRollsActive, setHiddenRollsActive] = useState(false);
   const [expandedPower, setExpandedPower] = useState(null);
   const [runningPowers, setRunningPowers] = useState([]);
+  const [sessionRuntime, setSessionRuntime] = useState('00:00:00');
 
   const bpStats = useMemo(() => getBloodPotencyStats(trackers?.bloodPotency || 1), [trackers?.bloodPotency]);
 
@@ -175,8 +178,25 @@ export default function LiveSession() {
     let pool = getPoolFromCharacter(sheet, trait1, trait2);
     if (bloodSurgeActive) pool += bpStats.surgeBonus;
     if (specialtyActive) pool += 1;
-    return pool;
-  }, [sheet, selectedTraits, bloodSurgeActive, bpStats.surgeBonus, specialtyActive]);
+    
+    // Apply V5 Impairment Penalties
+    if (trackers) {
+      if (trackers.health && trackers.health.superficial + trackers.health.aggravated >= trackers.health.max) {
+        if (['Strength', 'Dexterity', 'Stamina', 'Athletics', 'Brawl', 'Craft', 'Drive', 'Firearms', 'Larceny', 'Melee', 'Stealth', 'Survival'].includes(trait1) || 
+            ['Strength', 'Dexterity', 'Stamina', 'Athletics', 'Brawl', 'Craft', 'Drive', 'Firearms', 'Larceny', 'Melee', 'Stealth', 'Survival'].includes(trait2)) {
+          pool -= 2;
+        }
+      }
+      if (trackers.willpower && trackers.willpower.superficial + trackers.willpower.aggravated >= trackers.willpower.max) {
+        if (['Charisma', 'Manipulation', 'Composure', 'Intelligence', 'Wits', 'Resolve', 'AnimalKen', 'Etiquette', 'Insight', 'Intimidation', 'Leadership', 'Performance', 'Persuasion', 'Streetwise', 'Subterfuge', 'Academics', 'Awareness', 'Finance', 'Investigation', 'Medicine', 'Occult', 'Politics', 'Science', 'Technology'].includes(trait1) || 
+            ['Charisma', 'Manipulation', 'Composure', 'Intelligence', 'Wits', 'Resolve', 'AnimalKen', 'Etiquette', 'Insight', 'Intimidation', 'Leadership', 'Performance', 'Persuasion', 'Streetwise', 'Subterfuge', 'Academics', 'Awareness', 'Finance', 'Investigation', 'Medicine', 'Occult', 'Politics', 'Science', 'Technology'].includes(trait2)) {
+          pool -= 2;
+        }
+      }
+    }
+    
+    return Math.max(0, pool);
+  }, [sheet, selectedTraits, bloodSurgeActive, bpStats.surgeBonus, specialtyActive, trackers]);
 
   const activePowers = useMemo(() => {
     if (!activeDisc || !DISCIPLINES[activeDisc]) return [];
@@ -239,9 +259,28 @@ export default function LiveSession() {
       } catch (e) { }
     };
     load();
-    const int = setInterval(load, 5000);
-    return () => clearInterval(int);
+    socket.on('refresh_session', load);
+    return () => socket.off('refresh_session', load);
   }, [sessionId]);
+
+  useEffect(() => {
+    if (!session?.created_at && !session?.createdAt) return;
+    const startTimeStr = session.created_at || session.createdAt;
+    const start = new Date(startTimeStr).getTime();
+    
+    const tick = () => {
+      const diff = Math.floor((Date.now() - start) / 1000);
+      if (diff < 0) return;
+      const h = Math.floor(diff / 3600).toString().padStart(2, '0');
+      const m = Math.floor((diff % 3600) / 60).toString().padStart(2, '0');
+      const s = (diff % 60).toString().padStart(2, '0');
+      setSessionRuntime(`${h}:${m}:${s}`);
+    };
+    
+    tick();
+    const int = setInterval(tick, 1000);
+    return () => clearInterval(int);
+  }, [session?.created_at, session?.createdAt]);
 
   const applySheetUpdate = async (mutator) => {
     setSheet(prev => {
@@ -264,6 +303,7 @@ export default function LiveSession() {
   };
 
   const executeRoll = async (pool, type, note) => {
+    setMobileTab('action');
     setIsRolling(true);
     let currentHunger = trackers?.hunger ?? 0;
 
@@ -317,26 +357,30 @@ export default function LiveSession() {
     if (!lastRoll || !wpSelections.length ||
       trackers.willpower.superficial + trackers.willpower.aggravated >= trackers.willpower.max) return;
 
+    setMobileTab('action');
     setIsRolling(true);
-    await applySheetUpdate(next => {
-      if (!next.willpower) next.willpower = { superficial: 0, aggravated: 0 };
-      next.willpower.superficial += 1;
-      return next;
-    });
+    
+    try {
+      const { data } = await api.post(`/characters/${character.id}/spend-wp`);
+      setSheet(data.sheet);
+      setTrackers(summarizeTrackers(data.sheet));
+      
+      const { rerolled } = rerollNormalDice(lastRoll.normalDice, wpSelections);
+      const outcome = computeOutcome(rerolled, lastRoll.hungerDice, difficulty);
+      const updated = { ...lastRoll, normalDice: rerolled, outcome, note: 'Willpower Reroll' };
 
-    const { rerolled } = rerollNormalDice(lastRoll.normalDice, wpSelections);
-    const outcome = computeOutcome(rerolled, lastRoll.hungerDice, difficulty);
-    const updated = { ...lastRoll, normalDice: rerolled, outcome, note: 'Willpower Reroll' };
+      setLastRoll(updated);
+      setWpSelections([]);
 
-    setLastRoll(updated);
-    setWpSelections([]);
-
-    await pushRoll('willpower_reroll', {
-      characterId: character?.id, roll_type: 'willpower_reroll',
-      pool: updated.pool, hunger: updated.hunger,
-      results: { normal: updated.normalDice, hunger: updated.hungerDice },
-      successes: updated.outcome.successes, note: 'Spent 1 WP',
-    });
+      await pushRoll('willpower_reroll', {
+        characterId: character?.id, roll_type: 'willpower_reroll',
+        pool: updated.pool, hunger: updated.hunger,
+        results: { normal: updated.normalDice, hunger: updated.hungerDice },
+        successes: updated.outcome.successes, note: 'Spent 1 WP',
+      });
+    } catch (e) {
+      console.error(e);
+    }
 
     setTimeout(() => {
       setIsRolling(false);
@@ -344,44 +388,73 @@ export default function LiveSession() {
   };
 
   const handleRouse = async (source = 'rouse_check', autoActivate = null) => {
+    setMobileTab('action');
     setIsRolling(true);
+    
+    // Set a dummy roll immediately so the animation overlay renders while API fetches
+    setLastRoll({
+      normalDice: [],
+      hungerDice: [0], 
+      outcome: { successes: 0, hasCritical: false, hasMessyCritical: false, hasBestialFailure: false, label: 'Rolling...' },
+      type: source,
+      note: 'Calculating...',
+    });
+    
     let advantage = false;
     if (autoActivate && autoActivate.power?.level <= bpStats.rouseRerollLevel) {
       advantage = true;
     }
-    const result = runRouseCheck(trackers?.hunger ?? 0, Math.random, advantage);
-    await applySheetUpdate(next => { next.hunger = result.nextHunger; return next; });
+    
+    try {
+      const prevHunger = trackers?.hunger || 0;
+      const { data } = await api.post(`/characters/${character.id}/rouse`, { advantage });
+      
+      const { success, die1, die2, nextHunger, sheet: nextSheet } = data;
+      setSheet(nextSheet);
+      setTrackers(summarizeTrackers(nextSheet));
+      
+      if (!success && prevHunger === 5) {
+        setFrenzyState('hunger');
+      }
 
-    setLastRoll({
-      normalDice: [],
-      hungerDice: advantage ? [result.die1, result.die2] : [result.die],
-      outcome: { successes: result.success ? 1 : 0, hasCritical: false, hasMessyCritical: false, hasBestialFailure: false },
-      type: source,
-      note: result.success ? 'Pass (No Hunger Gained)' : 'Fail (Hunger +1)',
-    });
-    setWpSelections([]);
+      setLastRoll({
+        normalDice: [],
+        hungerDice: advantage ? [die1, die2].filter(Boolean) : [die1],
+        outcome: { successes: success ? 1 : 0, hasCritical: false, hasMessyCritical: false, hasBestialFailure: false },
+        type: source,
+        note: success ? 'Pass (No Hunger Gained)' : 'Fail (Hunger +1)',
+      });
+      setWpSelections([]);
 
-    await pushRoll(source, {
-      characterId: character?.id, roll_type: source, pool: advantage ? 2 : 1,
-      hunger: result.nextHunger,
-      results: { normal: [], rouse: advantage ? [result.die1, result.die2] : [result.die] },
-      successes: result.success ? 1 : 0,
-      note: result.success ? 'No hunger gained' : 'Hunger +1',
-    });
+      await pushRoll(source, {
+        characterId: character?.id, roll_type: source, pool: advantage ? 2 : 1,
+        hunger: nextHunger,
+        results: { normal: [], rouse: advantage ? [die1, die2].filter(Boolean) : [die1] },
+        successes: success ? 1 : 0,
+        note: success ? 'No hunger gained' : 'Hunger +1',
+      });
 
-    if (autoActivate) {
-      await pushRoll('discipline_activation', {
-        characterId: character?.id, roll_type: 'discipline_activation',
-        note: `${autoActivate.discName} • ${autoActivate.power.name}`,
-        character_name: character?.name || sheet?.name || 'Unknown',
-        disc: autoActivate.discName,
-        power_name: autoActivate.power.name,
+      if (autoActivate) {
+        await pushRoll('discipline_activation', {
+          characterId: character?.id, roll_type: 'discipline_activation',
+          note: `${autoActivate.discName} • ${autoActivate.power.name}`,
+          character_name: character?.name || sheet?.name || 'Unknown',
+          disc: autoActivate.discName,
+          power_name: autoActivate.power.name,
+        });
+      }
+    } catch (e) {
+      console.error(e);
+      setLastRoll({
+        normalDice: [],
+        hungerDice: [],
+        outcome: { successes: 0, hasCritical: false, hasMessyCritical: false, hasBestialFailure: false, label: 'Error' },
+        type: source,
+        note: 'Failed to communicate with server.',
       });
     }
-
-    setTimeout(() => {
-      setIsRolling(false);
-    }, 1500);
+    
+    setTimeout(() => setIsRolling(false), 1500);
   };
 
   const handleDisciplineActivate = async (power, discName) => {
@@ -432,12 +505,98 @@ export default function LiveSession() {
   if (!trackers) return <div className={styles.container}><div style={{ margin: 'auto' }}>Loading LARP Interface...</div></div>;
 
   const humanity = sheet?.humanity ?? sheet?.morality?.humanity ?? 7;
+  
+  const getBlushOfLifeInfo = (hum) => {
+    if (hum >= 10) return { cost: 0, text: 'You appear completely human. Blush of Life is innately active.' };
+    if (hum === 9) return { cost: 1, text: 'You appear mostly human. Blush allows food digestion & sex.' };
+    if (hum === 8) return { cost: 1, text: 'You appear pale. Blush makes you look human & allows digestion.' };
+    if (hum >= 4) return { cost: 1, text: 'You look like a corpse. Blush makes you look human & allows digestion.' };
+    return { cost: 2, text: 'You look like a hideous corpse. Blush requires 2 Rouse Checks.' };
+  };
+  const blushInfo = getBlushOfLifeInfo(humanity);
+
+  const getHumanityEffects = (hum) => {
+    if (hum >= 10) return "Can pass for mortal. Appear entirely human. Can eat food without Blush of Life. Fake sexual intercourse without a roll. Blush of Life is always active. Waking early has no penalty.";
+    if (hum === 9) return "Can pass for mortal. Appear human. Can fake sexual intercourse without a roll, but must Rouse to eat food. Blush of Life costs 1 Rouse Check.";
+    if (hum === 8) return "Can pass for mortal. Still subscribe to most social norms. Must use Blush of Life to have sexual intercourse and eat food (costs 1 Rouse Check).";
+    if (hum === 7) return "Can pass for mortal, subscribing to strong social norms like viewing murder as wrong. Blush of Life costs 1 Rouse Check. Fake sex requires Dex+Cha vs Composure/Wits. Without Blush, eating causes vomiting (Composure+Stamina vs Diff 3).";
+    if (hum >= 5) return "Noticeably pale and sickly. Blush of Life costs 1 Rouse Check. Fake sex requires Dex+Cha vs Composure/Wits. Without Blush, eating causes vomiting (Composure+Stamina vs Diff 3).";
+    if (hum === 4) return "Corpse-like and disturbing. -1 to Social dice pools vs mortals. Blush of Life costs 1 Rouse Check.";
+    if (hum >= 1) return "Hideous corpse, clearly unnatural. -2 to Social dice pools vs mortals. Blush of Life costs 2 Rouse Checks.";
+    return "Wight. You are entirely lost to the Beast.";
+  };
+  const humanityEffects = getHumanityEffects(humanity);
+
+  const handleBlushOfLifeToggle = async () => {
+    if (blushInfo.cost === 0) return; // Free at humanity 10
+    const isActivating = !sheet?.blushOfLife;
+    
+    if (isActivating && blushInfo.cost > 0) {
+      setShowBlushModal(true);
+      return;
+    }
+    
+    // Toggling off is instant and free
+    await applySheetUpdate(next => {
+      next.blushOfLife = false;
+      return next;
+    });
+
+    if (sessionId) {
+      await sendLiveSessionBroadcast(sessionId, { 
+        message: `[Status] ${character?.name || sheet?.name || 'Vampire'} deactivated Blush of Life.` 
+      });
+    }
+  };
+
+  const confirmBlushOfLife = async () => {
+    setShowBlushModal(false);
+    
+    await handleRouse('blush_of_life');
+    if (blushInfo.cost > 1) {
+      await handleRouse('blush_of_life');
+    }
+    
+    await applySheetUpdate(next => {
+      next.blushOfLife = true;
+      return next;
+    });
+
+    if (sessionId) {
+      await sendLiveSessionBroadcast(sessionId, { 
+        message: `[Status] ${character?.name || sheet?.name || 'Vampire'} activated Blush of Life.` 
+      });
+    }
+  };
+
   const bp = trackers.bloodPotency;
   const charName = character?.name || sheet?.name || 'Vampire';
   const clan = character?.clan || sheet?.clan || 'Unknown Clan';
 
   return (
     <div className={styles.container}>
+      {/* Blush of Life Modal */}
+      {showBlushModal && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent}>
+            <div className={styles.modalHeader}>
+              <span className="material-symbols-outlined">favorite</span>
+              Blush of Life
+            </div>
+            <div className={styles.modalBody}>
+              <p>Activate Blush of Life? This will cost <strong>{blushInfo.cost} Rouse Check{blushInfo.cost > 1 ? 's' : ''}</strong>.</p>
+              <p style={{ marginTop: '0.5rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                Simulates a heartbeat, warmth, and breath, helping you blend in with mortals.
+              </p>
+            </div>
+            <div className={styles.modalFooter}>
+              <button className={styles.btnCancel} onClick={() => setShowBlushModal(false)}>Cancel</button>
+              <button className={styles.btnPrimary} onClick={confirmBlushOfLife}>Activate & Rouse</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* FRENZY BANNER */}
       {frenzyState && (
         <div className={styles.frenzyBanner}>
@@ -454,7 +613,7 @@ export default function LiveSession() {
       <main className={styles.mainContent}>
 
         {/* LEFT COLUMN: IDENTITY & TRACKERS */}
-        <aside className={styles.leftColumn}>
+        <aside className={`${styles.leftColumn} ${mobileTab !== 'character' ? styles.mobileHidden : ''}`}>
           {/* Identity */}
           <section style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
             <Avatar userId={character?.user_id || character?.id} size={64} style={{ borderRadius: 8, border: '1px solid var(--outline-variant)' }} fallback={`/img/clans/330px-${clan.replace(/\s+/g, '_')}_symbol.png`} />
@@ -482,17 +641,32 @@ export default function LiveSession() {
             <div>
               <TrackerBlock label="Willpower" val="" max={trackers.willpower.max} agg={trackers.willpower.aggravated} sup={trackers.willpower.superficial} />
             </div>
+            
+            {/* Blush of Life */}
+            <div className={styles.trackerBox} style={{ padding: '1rem', background: sheet?.blushOfLife ? 'rgba(225,29,72,0.1)' : 'var(--surface-container-high)', border: sheet?.blushOfLife ? '1px solid var(--primary)' : '1px solid transparent', cursor: blushInfo.cost > 0 ? 'pointer' : 'default' }} onClick={() => blushInfo.cost > 0 && handleBlushOfLifeToggle()}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span className="material-symbols-outlined" style={{ color: sheet?.blushOfLife ? 'var(--primary)' : 'var(--text-muted)' }}>favorite</span>
+                  <span className={styles.labelMd} style={{ color: sheet?.blushOfLife ? 'var(--primary)' : 'var(--on-surface)' }}>Blush of Life</span>
+                </div>
+                {sheet?.blushOfLife ? <span style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 'bold' }}>ACTIVE</span> : (blushInfo.cost > 0 && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>OFF</span>)}
+              </div>
+              <p style={{ margin: '0 0 0.4rem 0', fontSize: '0.7rem', color: 'var(--text-muted)', fontStyle: 'italic', lineHeight: '1.4' }}>Simulates a heartbeat, warmth, breath, and avoids social penalties with mortals.</p>
+              <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--on-surface)' }}><strong>Humanity {humanity}:</strong> {blushInfo.text}</p>
+            </div>
+
             {/* Humanity */}
             <div className={styles.trackerBox} style={{ padding: '1.25rem 1.5rem', marginBottom: '1rem', background: 'var(--surface-container-high)' }}>
               <div className={styles.trackerHeader} style={{ marginBottom: '1rem' }}>
                 <span className={styles.labelMd}>Humanity</span>
                 <span style={{ color: 'var(--primary)', fontWeight: 'bold' }}>{humanity}</span>
               </div>
-              <div className={styles.dotRow} style={{ gap: '0.5rem', flexWrap: 'wrap' }}>
+              <div className={styles.dotRow} style={{ gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
                 {Array.from({ length: 10 }).map((_, i) => (
                   <div key={i} className={i < humanity ? styles.dotFilled : styles.dotEmpty} />
                 ))}
               </div>
+              <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>{humanityEffects}</p>
             </div>
           </section>
 
@@ -583,7 +757,7 @@ export default function LiveSession() {
         </aside>
 
         {/* CENTER COLUMN: ROLL ENGINE */}
-        <section className={styles.centerColumn}>
+        <section className={`${styles.centerColumn} ${mobileTab !== 'action' ? styles.mobileHidden : ''}`}>
           <div className={styles.rollEngineInner}>
 
             {/* Connection / Session Info Bar */}
@@ -611,6 +785,10 @@ export default function LiveSession() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--on-surface)', fontSize: '0.85rem' }}>
                       <span className="material-symbols-outlined" style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>group</span>
                       <span><strong>{session.players?.length || 1}</strong> Players</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--on-surface)', fontSize: '0.85rem', marginLeft: '1rem' }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>timer</span>
+                      <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>{sessionRuntime}</span>
                     </div>
                   </>
                 )}
@@ -709,18 +887,14 @@ export default function LiveSession() {
                         const dots = Number(sheet?.skills?.[skill]?.dots ?? sheet?.skills?.[skill] ?? 0);
                         const specialties = sheet?.skills?.[skill]?.specialties || [];
                         return (
-                          <div key={skill} className={`${styles.selectableItem} ${isActive ? styles.active : ''}`} onClick={() => toggleTrait(skill)} style={{ alignItems: 'flex-start' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', width: '100%' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ fontSize: '0.85rem' }}>{skill}</span>
-                                <div className={styles.dotRow}>
-                                  {Array.from({ length: 5 }).map((_, i) => <div key={i} className={i < dots ? styles.dotFilled : styles.dotEmpty} />)}
-                                </div>
-                              </div>
-                              {specialties.length > 0 && (
-                                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{specialties.map(s => s.name || s).join(', ')}</span>
-                              )}
+                          <div key={skill} className={`${styles.selectableItem} ${isActive ? styles.active : ''}`} onClick={() => toggleTrait(skill)}>
+                            <span style={{ fontSize: '0.85rem' }}>{skill}</span>
+                            <div className={styles.dotRow}>
+                              {Array.from({ length: 5 }).map((_, i) => <div key={i} className={i < dots ? styles.dotFilled : styles.dotEmpty} />)}
                             </div>
+                            {specialties.length > 0 && (
+                              <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{specialties.map(s => s.name || s).join(', ')}</span>
+                            )}
                           </div>
                         );
                       })}
@@ -796,7 +970,7 @@ export default function LiveSession() {
         </section>
 
         {/* RIGHT COLUMN: ADMIN / HISTORY */}
-        <aside className={styles.rightColumn}>
+        <aside className={`${styles.rightColumn} ${mobileTab !== 'feed' ? styles.mobileHidden : ''}`}>
           <div style={{ display: 'flex', borderBottom: '1px solid var(--outline-variant)' }}>
             <button
               style={{ flex: 1, padding: '1rem', background: showAdminTab === 'feed' ? 'var(--surface-container-high)' : 'transparent', color: showAdminTab === 'feed' ? 'var(--primary)' : 'var(--text-muted)', border: 'none', borderBottom: showAdminTab === 'feed' ? '2px solid var(--primary)' : 'none', fontWeight: 'bold', cursor: 'pointer' }}
@@ -811,10 +985,26 @@ export default function LiveSession() {
               Session Players
             </button>
           </div>
-          {showAdminTab === 'feed' && <LiveSessionRollHistory rolls={broadcasts} />}
+          {showAdminTab === 'feed' && <LiveSessionRollHistory rolls={broadcasts} onBroadcast={async (msg) => { await sendLiveSessionBroadcast(sessionId, { message: msg }); }} />}
           {showAdminTab === 'players' && <LiveSessionPlayerList players={session?.players || []} adminName={session?.admin_name} onAdjust={isAdmin ? (id, delta) => { /* Mock Admin adjustment */ } : undefined} onForceRouse={isAdmin ? (id) => { /* Mock Force Rouse */ } : undefined} />}
         </aside>
       </main>
+
+      {/* MOBILE BOTTOM NAVIGATION */}
+      <nav className={styles.mobileNav}>
+        <div className={`${styles.mobileNavItem} ${mobileTab === 'character' ? styles.mobileNavItemActive : ''}`} onClick={() => setMobileTab('character')}>
+          <span className="material-symbols-outlined">person</span>
+          <span style={{ fontSize: '0.65rem', textTransform: 'uppercase' }}>Character</span>
+        </div>
+        <div className={`${styles.mobileNavItem} ${mobileTab === 'action' ? styles.mobileNavItemActive : ''}`} onClick={() => setMobileTab('action')}>
+          <span className="material-symbols-outlined">casino</span>
+          <span style={{ fontSize: '0.65rem', textTransform: 'uppercase' }}>Action</span>
+        </div>
+        <div className={`${styles.mobileNavItem} ${mobileTab === 'feed' ? styles.mobileNavItemActive : ''}`} onClick={() => setMobileTab('feed')}>
+          <span className="material-symbols-outlined">forum</span>
+          <span style={{ fontSize: '0.65rem', textTransform: 'uppercase' }}>Feed</span>
+        </div>
+      </nav>
     </div>
   );
 }

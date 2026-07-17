@@ -86,11 +86,12 @@ export default function LiveSessionPlayerList({ players = [], adminName, onAdjus
             }}
           >
             <header style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1rem' }}>
-              <Avatar userId={player.is_npc || player.isNpc ? undefined : id} npcId={player.is_npc || player.isNpc ? id : undefined} size={50} style={{ borderRadius: '50%' }} fallback={`/img/clans/330px-${clan.replace(/\s+/g, '_')}_symbol.png`} />
+              <Avatar userId={player.user_id || undefined} npcId={player.is_npc || player.isNpc ? id : undefined} size={50} style={{ borderRadius: '50%' }} fallback={`/img/clans/330px-${clan.replace(/\s+/g, '_')}_symbol.png`} />
               <div style={{ flex: 1 }}>
                 <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, color: 'var(--primary)', fontFamily: 'var(--font-display)', fontSize: '1.25rem' }}>
                   {name} 
                   {player.is_npc || player.isNpc ? <span style={{ fontSize: '0.6rem', border: '1px solid var(--outline)', padding: '2px 4px', borderRadius: '4px', color: 'var(--text-muted)' }}>NPC</span> : null}
+                  {sheet.blushOfLife && <span title="Blush of Life Active" style={{ fontSize: '0.75rem', background: 'rgba(225,29,72,0.15)', color: 'var(--primary)', padding: '2px 6px', borderRadius: '12px', border: '1px solid rgba(225,29,72,0.3)', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '2px' }}>❤️ Blush</span>}
                 </h4>
                 <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>{clan} • BP {bloodPotency}</p>
               </div>
@@ -104,23 +105,25 @@ export default function LiveSessionPlayerList({ players = [], adminName, onAdjus
               <VtmTracker label="Humanity" max={10} value={humanity} isSimple />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem', marginTop: '0.75rem' }}>
-              <button className={styles.btnPrimary} style={{ gridColumn: 'span 2', fontSize: '0.75rem' }} onClick={() => onForceRouse?.(id)}>Force Rouse Check</button>
-              
-              <div style={{ display: 'flex', gap: '4px' }}>
-                <button className={styles.btnOutline} style={{ flex: 1, padding: '4px', fontSize: '0.7rem' }} onClick={() => onAdjust?.(id, { hungerDelta: -1 })}>-Hung</button>
-                <button className={styles.btnOutline} style={{ flex: 1, padding: '4px', fontSize: '0.7rem' }} onClick={() => onAdjust?.(id, { hungerDelta: 1 })}>+Hung</button>
+            {(onAdjust || onForceRouse) && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem', marginTop: '0.75rem' }}>
+                <button className={styles.btnPrimary} style={{ gridColumn: 'span 2', fontSize: '0.75rem' }} onClick={() => onForceRouse?.(id)}>Force Rouse Check</button>
+                
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  <button className={styles.btnOutline} style={{ flex: 1, padding: '4px', fontSize: '0.7rem' }} onClick={() => onAdjust?.(id, { hungerDelta: -1 })}>-Hung</button>
+                  <button className={styles.btnOutline} style={{ flex: 1, padding: '4px', fontSize: '0.7rem' }} onClick={() => onAdjust?.(id, { hungerDelta: 1 })}>+Hung</button>
+                </div>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  <button className={styles.btnOutline} style={{ flex: 1, padding: '4px', fontSize: '0.7rem' }} onClick={() => onAdjust?.(id, { humanityDelta: -1 })}>-Hum</button>
+                  <button className={styles.btnOutline} style={{ flex: 1, padding: '4px', fontSize: '0.7rem' }} onClick={() => onAdjust?.(id, { humanityDelta: 1 })}>+Hum</button>
+                </div>
+                
+                <button className={styles.btnOutline} style={{ padding: '4px', fontSize: '0.7rem' }} onClick={() => onAdjust?.(id, { wpSupDelta: 1 })}>+WP Sup</button>
+                <button className={styles.btnOutline} style={{ padding: '4px', fontSize: '0.7rem' }} onClick={() => onAdjust?.(id, { wpAggDelta: 1 })}>+WP Agg</button>
+                <button className={styles.btnOutline} style={{ padding: '4px', fontSize: '0.7rem' }} onClick={() => onAdjust?.(id, { healthSupDelta: 1 })}>+HP Sup</button>
+                <button className={styles.btnOutline} style={{ padding: '4px', fontSize: '0.7rem' }} onClick={() => onAdjust?.(id, { healthAggDelta: 1 })}>+HP Agg</button>
               </div>
-              <div style={{ display: 'flex', gap: '4px' }}>
-                <button className={styles.btnOutline} style={{ flex: 1, padding: '4px', fontSize: '0.7rem' }} onClick={() => onAdjust?.(id, { humanityDelta: -1 })}>-Hum</button>
-                <button className={styles.btnOutline} style={{ flex: 1, padding: '4px', fontSize: '0.7rem' }} onClick={() => onAdjust?.(id, { humanityDelta: 1 })}>+Hum</button>
-              </div>
-              
-              <button className={styles.btnOutline} style={{ padding: '4px', fontSize: '0.7rem' }} onClick={() => onAdjust?.(id, { wpSupDelta: 1 })}>+WP Sup</button>
-              <button className={styles.btnOutline} style={{ padding: '4px', fontSize: '0.7rem' }} onClick={() => onAdjust?.(id, { wpAggDelta: 1 })}>+WP Agg</button>
-              <button className={styles.btnOutline} style={{ padding: '4px', fontSize: '0.7rem' }} onClick={() => onAdjust?.(id, { healthSupDelta: 1 })}>+HP Sup</button>
-              <button className={styles.btnOutline} style={{ padding: '4px', fontSize: '0.7rem' }} onClick={() => onAdjust?.(id, { healthAggDelta: 1 })}>+HP Agg</button>
-            </div>
+            )}
           </article>
         );
       })}
