@@ -1,12 +1,10 @@
-// src/pages/Domains.jsx
 import React, { useMemo, useEffect, useState, useRef, useCallback } from 'react';
-import { createPortal } from 'react-dom';
-import L from 'leaflet';
-import { MapContainer, TileLayer, GeoJSON, Marker, Tooltip as LeafletTooltip, useMap } from 'react-leaflet';
+import MapGL, { Source, Layer } from 'react-map-gl/maplibre';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import MiniSearch from 'minisearch';
-import 'leaflet/dist/leaflet.css';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import bbox from '@turf/bbox';
 
 import styles from '../../styles/Domains.module.css';
 import domainsRaw from '../../data/Domains.json';
@@ -15,7 +13,7 @@ import { Skeleton } from 'boneyard-js/react';
 import Avatar from '../../components/Avatar';
 import { useQuery } from '@tanstack/react-query';
 
-// --- Division Names Mapping ---
+// ── Division Names ────────────────────────────────────────
 const DIVISION_NAMES = {
   1: 'Pagkrati', 2: 'Zografou/Kaisarianh', 3: 'Exarxia', 4: 'Boula', 5: 'Ampelokhpoi',
   6: 'Kalithea', 7: 'Petralona', 8: 'Plaka', 9: 'Keramikos', 10: 'Tauros, Agios Ioannis Rentis',
@@ -30,21 +28,57 @@ const DIVISION_NAMES = {
   45: 'Korydallos, Nikaia, Agia Barbara', 46: 'Glyfada', 47: 'Gkyzh', 48: 'Eleysina', 49: 'Aspropirgos'
 };
 
+// ── Bulletproof image loader ──────────────────────────────
+// Fetches avatar as a blob (bypasses CORS canvas taint),
+// draws it into an offscreen canvas at the target size,
+// and returns ImageData that MapLibre can consume via addImage().
+async function loadAvatarAsImageData(url, size = 128) {
+  const token = localStorage.getItem('token');
+  const headers = {};
+  // Same-origin API requests need the auth token
+  const apiBase = import.meta.env.VITE_API_URL || '/api';
+  if (url.startsWith(apiBase) || url.startsWith('/')) {
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(url, {
+    headers,
+    credentials: url.startsWith('http') && !url.includes(window.location.host) ? 'omit' : 'include',
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${url}`);
+  const blob = await res.blob();
+
+  // Use OffscreenCanvas if available, fallback to regular canvas
+  const bmp = await createImageBitmap(blob, { resizeWidth: size, resizeHeight: size, resizeQuality: 'high' });
+
+  let canvas, ctx;
+  if (typeof OffscreenCanvas !== 'undefined') {
+    canvas = new OffscreenCanvas(size, size);
+    ctx = canvas.getContext('2d');
+  } else {
+    canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    ctx = canvas.getContext('2d');
+  }
+  ctx.drawImage(bmp, 0, 0, size, size);
+  return ctx.getImageData(0, 0, size, size);
+}
 
 
 export default function Domains() {
   const mapRef = useRef(null);
-  const geoJsonRef = useRef(null);
   const [selectedDivision, setSelectedDivision] = useState(null);
   const [selectedDivisionInfo, setSelectedDivisionInfo] = useState(null);
   const [railOpen, setRailOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [avatarError, setAvatarError] = useState(false);
 
-  useEffect(() => {
-    setAvatarError(false);
-  }, [selectedDivision]);
+  // ── Gate: images loaded into sprite sheet ───────────────
+  const [imagesLoaded, setImagesLoaded] = useState(false);
+  const [mapInstance, setMapInstance] = useState(null);
+  const hoveredDivisionRef = useRef(null);
 
+  // ── Data ────────────────────────────────────────────────
   const { data: claimsData, isLoading: isClaimsLoading, error } = useQuery({
     queryKey: ['domain-claims'],
     queryFn: async () => {
@@ -65,6 +99,7 @@ export default function Domains() {
   const roster = rosterData?.roster || [];
   const err = error?.response?.data?.error || error?.message || '';
 
+  // ── Avatar URL resolver ─────────────────────────────────
   const getAvatarUrl = useCallback((claim) => {
     if (!claim) return '';
     const baseUrl = import.meta.env.VITE_API_URL || '/api';
@@ -92,9 +127,86 @@ export default function Domains() {
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(claim.owner_name || 'Unclaimed')}&background=random`;
   }, [roster]);
 
-  const rosterRef = useRef(roster);
-  useEffect(() => { rosterRef.current = roster; }, [roster]);
+  // ── Bulletproof image preloading ────────────────────────
+  // Runs ONCE when the map is loaded AND claims data is ready.
+  // Every avatar is fetched as a blob, drawn to canvas, and
+  // added to the map sprite sheet before imagesLoaded flips.
+  const imageLoadAttempted = useRef(false);
 
+  useEffect(() => {
+    if (!mapInstance || claims.length === 0 || imageLoadAttempted.current) return;
+    imageLoadAttempted.current = true;
+
+    const claimedDivisions = claims.filter(c => c.owner_name !== 'Unclaimed');
+
+    if (claimedDivisions.length === 0) {
+      setImagesLoaded(true);
+      return;
+    }
+
+    const promises = claimedDivisions.map(async (c) => {
+      const patternId = `avatar-${c.division}`;
+      const url = getAvatarUrl(c);
+
+      // Skip if already in the map (shouldn't happen, but guard)
+      if (mapInstance.hasImage(patternId)) return;
+
+      try {
+        const imageData = await loadAvatarAsImageData(url, 128);
+        if (!mapInstance.hasImage(patternId)) {
+          mapInstance.addImage(patternId, imageData, { pixelRatio: 0.15, sdf: false });
+        }
+      } catch (e) {
+        console.warn(`[Domains] Failed to load avatar for division ${c.division}:`, e.message);
+        // Create a fallback solid-color swatch so fill-pattern never references a missing image
+        try {
+          const fallbackSize = 64;
+          let canvas, ctx;
+          if (typeof OffscreenCanvas !== 'undefined') {
+            canvas = new OffscreenCanvas(fallbackSize, fallbackSize);
+            ctx = canvas.getContext('2d');
+          } else {
+            canvas = document.createElement('canvas');
+            canvas.width = fallbackSize;
+            canvas.height = fallbackSize;
+            ctx = canvas.getContext('2d');
+          }
+          ctx.fillStyle = c.color || '#444444';
+          ctx.fillRect(0, 0, fallbackSize, fallbackSize);
+          // Draw a subtle "?" glyph
+          ctx.fillStyle = 'rgba(255,255,255,0.3)';
+          ctx.font = 'bold 32px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('?', fallbackSize / 2, fallbackSize / 2);
+          const fallbackData = ctx.getImageData(0, 0, fallbackSize, fallbackSize);
+          if (!mapInstance.hasImage(patternId)) {
+            mapInstance.addImage(patternId, fallbackData, { pixelRatio: 0.15, sdf: false });
+          }
+        } catch (_) {
+          // Silently skip — the hover layer simply won't show a pattern for this division
+        }
+      }
+    });
+
+    Promise.all(promises).then(() => {
+      setImagesLoaded(true);
+    });
+  }, [mapInstance, claims, getAvatarUrl]);
+
+  // Re-arm the loader if claims change (e.g. roster loads late, URLs change)
+  const prevClaimsKey = useRef('');
+  useEffect(() => {
+    const key = claims.map(c => `${c.division}:${c.user_id || ''}:${c.owner_npc_id || ''}`).join('|');
+    if (prevClaimsKey.current && prevClaimsKey.current !== key && mapInstance) {
+      // Claims changed — reload images
+      imageLoadAttempted.current = false;
+      setImagesLoaded(false);
+    }
+    prevClaimsKey.current = key;
+  }, [claims, mapInstance]);
+
+  // ── Build GeoJSON with claim properties injected ────────
   const { geoJsonData, allDomainsList } = useMemo(() => {
     if (!domainsRaw || !Array.isArray(domainsRaw.features)) {
       console.error('Domains.json is missing or has incorrect structure.');
@@ -105,144 +217,103 @@ export default function Domains() {
       const divisionNumber = f?.properties?.division != null ? Number(f.properties.division) : (i + 1);
       const divisionName = f?.properties?.name || DIVISION_NAMES[divisionNumber] || `Division ${divisionNumber}`;
       domains.push({ number: divisionNumber, name: divisionName });
-      return { ...f, properties: { ...f?.properties, __division: divisionNumber, __name: divisionName } };
-    });
-    return { geoJsonData: { ...domainsRaw, features }, allDomainsList: domains };
-  }, []);
 
-  const claimByDiv = useMemo(() => new Map(claims.map(c => [Number(c.division), c])), [claims]);
-  const numOr = (v, fallback) => (Number.isFinite(parseFloat(v)) ? parseFloat(v) : fallback);
+      const claim = claims.find(c => Number(c.division) === divisionNumber);
+      let claimColor = claim?.color || '#888888';
+      let r_user_id = claim?.user_id || null;
+      let r_npc_id = claim?.owner_npc_id || null;
 
-  const claimByDivRef = useRef(claimByDiv);
-  useEffect(() => {
-    claimByDivRef.current = claimByDiv;
-  }, [claimByDiv]);
-
-  const style = useCallback((feature) => {
-    const n = feature?.properties?.__division;
-    const claim = claimByDiv.get(n);
-
-    let fill = claim?.color || feature?.properties?.fill || '#888888';
-    let baseOpacity = claim ? 0.60 : numOr(feature?.properties?.['fill-opacity'], 0.35);
-
-    return {
-      color: claim?.color || feature?.properties?.stroke || 'var(--border-color)',
-      weight: 1.5,
-      opacity: numOr(feature?.properties?.['stroke-opacity'], 1),
-      fillColor: fill,
-      fillOpacity: baseOpacity,
-      dashArray: '4',
-    };
-  }, [claimByDiv]);
-
-  const onEach = useCallback((feature, layer) => {
-    const n = feature?.properties?.__division;
-    const name = feature?.properties?.__name || `Division ${n}`;
-
-    layer.on({
-      mouseover: (e) => {
-        const tgt = e.target;
-        const clickedDivision = tgt.feature.properties.__division;
-        const clickedName = tgt.feature.properties.__name || `Division ${clickedDivision}`;
-
-        const clickedClaim = claimByDivRef.current.get(clickedDivision);
-
-        let r_user_id = clickedClaim?.user_id || null;
-        let r_npc_id = clickedClaim?.owner_npc_id || null;
-
-        if (!r_user_id && clickedClaim?.owner_name && rosterRef.current?.length > 0) {
-          let match = rosterRef.current.find(r =>
-            r.name === clickedClaim.owner_name ||
-            (r.titles && r.titles.includes(clickedClaim.owner_name))
-          );
-          if (match) {
-            if (match.type === 'player') r_user_id = match.user_id;
-            if (match.type === 'npc') r_npc_id = match.id;
-          }
-        }
-
-        tgt.setStyle({
-          fillColor: clickedClaim && clickedClaim.owner_name !== 'Unclaimed' ? `url(#pattern-${clickedDivision})` : 'url(#unclaimed-pattern)',
-          fillOpacity: 0.85,
-          weight: 4,
-          color: '#c084fc',
-          dashArray: ''
-        });
-
-        if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) tgt.bringToFront();
-
-        setSelectedDivisionInfo({
-          number: clickedDivision,
-          name: clickedName,
-          owner: clickedClaim?.owner_name || 'Unclaimed',
-          color: clickedClaim?.color || null,
-          user_id: r_user_id,
-          npc_id: r_npc_id,
-        });
-        setSelectedDivision(clickedDivision);
-      },
-      mouseout: (e) => {
-        const tgt = e.target;
-        if (geoJsonRef.current) {
-          geoJsonRef.current.resetStyle(tgt);
-        }
-        setSelectedDivision(null);
-        setSelectedDivisionInfo(null);
-      },
-      click: (e) => {
-        if (e.originalEvent) L.DomEvent.stopPropagation(e);
-        const map = mapRef.current;
-        if (map) map.fitBounds(e.target.getBounds(), { padding: [40, 40], maxZoom: 15, duration: 0.5 });
-      },
-    });
-
-    layer.bindTooltip(`${n}: ${name}`, {
-      permanent: true,
-      direction: 'center',
-      className: styles.divisionLabel,
-      opacity: 0.85,
-    });
-
-    const esc = (s = '') => s.toString()
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-
-  }, []);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    const handler = (e) => {
-      const cls = e.originalEvent.target.classList;
-      if (cls.contains('leaflet-container') || cls.contains('leaflet-tile')) {
-        if (selectedDivision !== null) {
-          const prev = Object.values(geoJsonRef.current?.getLayers() || {}).find(
-            l => l.feature.properties.__division === selectedDivision
-          );
-          if (prev && geoJsonRef.current) geoJsonRef.current.resetStyle(prev);
-          setSelectedDivision(null);
-          setSelectedDivisionInfo(null);
+      if (!r_user_id && claim?.owner_name && roster?.length > 0) {
+        let match = roster.find(r => r.name === claim.owner_name || (r.titles && r.titles.includes(claim.owner_name)));
+        if (match) {
+          if (match.type === 'player') r_user_id = match.user_id;
+          if (match.type === 'npc') r_npc_id = match.id;
         }
       }
-    };
-    map.on('click', handler);
-    return () => { map.off('click', handler); };
-  }, [mapRef, selectedDivision]);
 
-  const geoJsonKey = useMemo(() => `geojson-${claims.length}`, [claims]);
+      // The patternId MUST match the id used in map.addImage()
+      const patternId = claim && claim.owner_name !== 'Unclaimed' ? `avatar-${divisionNumber}` : '';
 
-  const handleJumpToDivision = useCallback((divisionNumber) => {
-    const map = mapRef.current;
-    const geoJsonLayer = geoJsonRef.current;
-    if (!map || !geoJsonLayer) return;
-    const target = geoJsonLayer.getLayers().find(l => l.feature?.properties?.__division === Number(divisionNumber));
-    if (target) {
-      target.fire('mouseover');
-      target.fire('click');
+      return {
+        ...f,
+        id: divisionNumber,
+        properties: {
+          ...f?.properties,
+          __division: divisionNumber,
+          __name: divisionName,
+          claimColor,
+          patternId,
+          ownerName: claim?.owner_name || 'Unclaimed',
+          userId: r_user_id,
+          npcId: r_npc_id
+        }
+      };
+    });
+    return { geoJsonData: { ...domainsRaw, features }, allDomainsList: domains };
+  }, [claims, roster]);
+
+  const claimByDiv = useMemo(() => new Map(claims.map(c => [Number(c.division), c])), [claims]);
+
+  // ── Interactions ────────────────────────────────────────
+  const onMouseMove = useCallback((e) => {
+    if (e.features && e.features.length > 0) {
+      const feature = e.features[0];
+      const divNum = feature.properties.__division;
+      if (hoveredDivisionRef.current !== divNum) {
+        hoveredDivisionRef.current = divNum;
+        setSelectedDivision(divNum);
+        setSelectedDivisionInfo({
+          number: divNum,
+          name: feature.properties.__name,
+          owner: feature.properties.ownerName,
+          color: feature.properties.claimColor,
+          user_id: feature.properties.userId,
+          npc_id: feature.properties.npcId
+        });
+      }
     }
-    else console.warn(`Layer for division ${divisionNumber} not found.`);
   }, []);
 
+  const onMouseLeave = useCallback(() => {
+    hoveredDivisionRef.current = null;
+    setSelectedDivision(null);
+    setSelectedDivisionInfo(null);
+  }, []);
+
+  const onClick = useCallback((e) => {
+    if (e.features && e.features.length > 0) {
+      const feature = e.features[0];
+      const [minLng, minLat, maxLng, maxLat] = bbox(feature);
+      mapRef.current?.fitBounds(
+        [[minLng, minLat], [maxLng, maxLat]],
+        { padding: 40, duration: 800 }
+      );
+    }
+  }, []);
+
+  const handleJumpToDivision = useCallback((divisionNumber) => {
+    const feature = geoJsonData?.features.find(f => f.properties.__division === Number(divisionNumber));
+    if (feature && mapRef.current) {
+      const [minLng, minLat, maxLng, maxLat] = bbox(feature);
+      mapRef.current.getMap().fitBounds(
+        [[minLng, minLat], [maxLng, maxLat]],
+        { padding: 40, duration: 800 }
+      );
+
+      hoveredDivisionRef.current = Number(divisionNumber);
+      setSelectedDivision(Number(divisionNumber));
+      setSelectedDivisionInfo({
+        number: feature.properties.__division,
+        name: feature.properties.__name,
+        owner: feature.properties.ownerName,
+        color: feature.properties.claimColor,
+        user_id: feature.properties.userId,
+        npc_id: feature.properties.npcId
+      });
+    }
+  }, [geoJsonData]);
+
+  // ── Search ──────────────────────────────────────────────
   const filteredDomains = useMemo(() => {
     const q = searchQuery.trim();
     let sorted = allDomainsList.slice().sort((a, b) => a.number - b.number);
@@ -257,6 +328,7 @@ export default function Domains() {
     return sorted.filter((d, id) => resultIds.has(id));
   }, [allDomainsList, searchQuery]);
 
+  // ── Error state ─────────────────────────────────────────
   if (!geoJsonData) {
     return (
       <div className={styles.wrap}>
@@ -265,26 +337,49 @@ export default function Domains() {
     );
   }
 
+  // ── Layer paint configs ─────────────────────────────────
+  const baseFillPaint = {
+    'fill-color': ['get', 'claimColor'],
+    'fill-opacity': [
+      'case',
+      ['==', ['get', '__division'], selectedDivision || -1],
+      0.15, // dim the base fill when hovered (pattern takes over)
+      0.35
+    ]
+  };
+
+  const hoverPatternPaint = {
+    'fill-pattern': ['get', 'patternId'],
+    'fill-opacity': 0.7
+  };
+
+  const borderPaint = {
+    'line-color': ['get', 'claimColor'],
+    'line-width': [
+      'case',
+      ['==', ['get', '__division'], selectedDivision || -1],
+      0, // hide base border on hovered division
+      1.5
+    ],
+    'line-dasharray': [4, 4]
+  };
+
+  const hoverBorderPaint = {
+    'line-color': ['get', 'claimColor'],
+    'line-width': 4,
+    'line-blur': 2
+  };
+
+  const hoverGlowPaint = {
+    'line-color': ['get', 'claimColor'],
+    'line-width': 12,
+    'line-blur': 8,
+    'line-opacity': 0.45
+  };
+
   return (
     <Skeleton name="domains-page" loading={isClaimsLoading}>
       <div className={styles.wrap}>
-        <style>{`
-          .epic-map-tooltip {
-            background: transparent !important;
-            border: none !important;
-            box-shadow: none !important;
-            animation: epicPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-          }
-          .epic-map-tooltip::before {
-            display: none !important;
-          }
-          .epic-avatar-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-          }
-        `}</style>
 
         {/* ── Status toast ── */}
         {err && (
@@ -293,61 +388,84 @@ export default function Domains() {
           </div>
         )}
 
-        {/* ── SVG PATTERNS ── */}
-        <svg width="0" height="0" style={{ position: 'absolute', pointerEvents: 'none' }}>
-          <defs>
-            {claims.map(c => {
-              const resolvedUrl = getAvatarUrl(c);
-              const pId = `pattern-${c.division}`;
-              return (
-                <pattern
-                  key={pId}
-                  id={pId}
-                  patternUnits="objectBoundingBox"
-                  patternContentUnits="objectBoundingBox"
-                  width="1"
-                  height="1"
-                >
-                  <rect width="1" height="1" fill={c.color || '#444'} opacity="0.8" />
-                  <image
-                    href={resolvedUrl}
-                    x="0" y="0" width="1" height="1"
-                    preserveAspectRatio="xMidYMid slice"
-                  />
-                </pattern>
-              );
-            })}
-            <pattern id="unclaimed-pattern" patternUnits="userSpaceOnUse" width="16" height="16" patternTransform="rotate(45)">
-              <rect width="16" height="16" fill="#1a1a1a" />
-              <line x1="0" y1="0" x2="0" y2="16" stroke="#2a2a2a" strokeWidth="2" />
-              <line x1="8" y1="0" x2="8" y2="16" stroke="#222" strokeWidth="2" />
-            </pattern>
-          </defs>
-        </svg>
-
         {/* ── MAP ── */}
-        <MapContainer
-          whenCreated={(m) => { mapRef.current = m; }}
-          center={[37.9838, 23.7275]} // Athens Coordinates
-          zoom={12}
-          className={styles.map}
-          scrollWheelZoom={true}
-          preferCanvas={false}
+        <MapGL
+          ref={mapRef}
+          initialViewState={{ longitude: 23.7275, latitude: 37.9838, zoom: 12 }}
+          mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+          style={{ width: '100%', height: '100%' }}
+          onLoad={(e) => setMapInstance(e.target)}
+          interactiveLayerIds={imagesLoaded ? ['domains-fill-base'] : []}
+          onMouseMove={onMouseMove}
+          onMouseLeave={onMouseLeave}
+          onClick={onClick}
           minZoom={11}
         >
-          <TileLayer
-            className={styles.darkTileLayer}
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          />
-          <GeoJSON
-            key={geoJsonKey}
-            ref={geoJsonRef}
-            data={geoJsonData}
-            style={style}
-            onEachFeature={onEach}
-          />
-        </MapContainer>
+          {/* ────────────────────────────────────────────────
+              CRITICAL: Only render Source + Layers AFTER
+              every avatar image has been loaded into the
+              map's internal sprite sheet via addImage().
+              This prevents the silent fill-pattern failure.
+             ──────────────────────────────────────────────── */}
+          {imagesLoaded && geoJsonData && (
+            <Source id="domains" type="geojson" data={geoJsonData}>
+
+              {/* ── 1. Base Fill: semi-transparent claim color ── */}
+              <Layer
+                id="domains-fill-base"
+                type="fill"
+                paint={baseFillPaint}
+              />
+
+              {/* ── 2. Hover Pattern Fill: avatar image ── */}
+              <Layer
+                id="domains-fill-hover"
+                type="fill"
+                filter={['==', '__division', selectedDivision || -1]}
+                paint={hoverPatternPaint}
+              />
+
+              {/* ── 3. Base Borders: dashed ── */}
+              <Layer
+                id="domains-borders"
+                type="line"
+                paint={borderPaint}
+              />
+
+              {/* ── 4. Hover Glow: outer bloom ── */}
+              <Layer
+                id="domains-borders-glow"
+                type="line"
+                filter={['==', '__division', selectedDivision || -1]}
+                paint={hoverGlowPaint}
+              />
+
+              {/* ── 5. Hover Border: solid crisp ── */}
+              <Layer
+                id="domains-borders-hover"
+                type="line"
+                filter={['==', '__division', selectedDivision || -1]}
+                paint={hoverBorderPaint}
+              />
+
+              {/* ── 6. Labels ── */}
+              <Layer
+                id="domains-labels"
+                type="symbol"
+                layout={{
+                  'text-field': ['concat', ['to-string', ['get', '__division']], ': ', ['get', '__name']],
+                  'text-size': 12,
+                  'text-anchor': 'center'
+                }}
+                paint={{
+                  'text-color': 'rgba(255, 255, 255, 0.85)',
+                  'text-halo-color': 'rgba(0, 0, 0, 0.8)',
+                  'text-halo-width': 2
+                }}
+              />
+            </Source>
+          )}
+        </MapGL>
 
         {/* ── LEFT RAIL: All Divisions ── */}
         <div className={`${styles.rail} ${railOpen ? styles.railOpen : ''}`}>
@@ -459,12 +577,6 @@ export default function Domains() {
                   onMouseEnter={e => e.currentTarget.style.color = 'white'}
                   onMouseLeave={e => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.5)'}
                   onClick={() => {
-                    if (selectedDivision !== null) {
-                      const prev = Object.values(geoJsonRef.current?.getLayers() || {}).find(
-                        l => l.feature.properties.__division === selectedDivision
-                      );
-                      if (prev && geoJsonRef.current) geoJsonRef.current.resetStyle(prev);
-                    }
                     setSelectedDivisionInfo(null);
                     setSelectedDivision(null);
                   }}
