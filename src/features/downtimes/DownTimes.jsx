@@ -245,7 +245,10 @@ function ActiveTrackItem({ dt, isProject }) {
 
   return (
     <motion.div 
-      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, y: 30, scale: 0.95 }}
+      whileInView={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+      viewport={{ once: false, amount: 0.1 }}
       className={`${styles.trackCard} ${isProject ? styles.trackCardProject : ''}`}
     >
       <div className={styles.trackCardGradient}></div>
@@ -302,7 +305,13 @@ function ArchiveItem({ dt, isProject }) {
   if (status === 'submitted') badgeClass = styles.badgePending;
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={styles.archiveCard}>
+    <motion.div 
+      initial={{ opacity: 0, y: 30, scale: 0.95 }}
+      whileInView={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+      viewport={{ once: false, amount: 0.1 }}
+      className={styles.archiveCard}
+    >
       <div className={styles.archiveCardHeader}>
         <div className={styles.archiveCardMeta}>
           <span className={styles.archiveCardDate}>{dateStr} • {isProject ? 'Project' : 'Action'}</span>
@@ -434,9 +443,23 @@ export default function DownTimes() {
 
   return (
     <Skeleton loading={isLoading} name="downtimes-page">
-      <main className={styles.page}>
+      <motion.main 
+        className={styles.page}
+        initial="hidden"
+        animate="visible"
+        variants={{
+          hidden: { opacity: 0 },
+          visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+        }}
+      >
         {/* Hero Header & Mode Switcher */}
-        <section className={styles.heroSection}>
+        <motion.section 
+          className={styles.heroSection}
+          variants={{
+            hidden: { opacity: 0, y: 30, scale: 0.95 },
+            visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 25 } }
+          }}
+        >
           <div className={styles.heroContent}>
             <h1 className={styles.title}>Downtime Management</h1>
             <p className={styles.subtitle}>
@@ -459,10 +482,16 @@ export default function DownTimes() {
               Long-Term Projects
             </button>
           </div>
-        </section>
+        </motion.section>
 
         {/* Deadlines Row */}
-        <section className={styles.deadlinesRow}>
+        <motion.section 
+          className={styles.deadlinesRow}
+          variants={{
+            hidden: { opacity: 0, y: 30, scale: 0.95 },
+            visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 25 } }
+          }}
+        >
           {viewMode === 'standard' ? (
             <>
               <CountdownDisplay
@@ -489,10 +518,16 @@ export default function DownTimes() {
               isProject={true}
             />
           )}
-        </section>
+        </motion.section>
 
         {/* Main Grid */}
-        <section className={styles.mainGrid}>
+        <motion.section 
+          className={styles.mainGrid}
+          variants={{
+            hidden: { opacity: 0, y: 30, scale: 0.95 },
+            visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 25 } }
+          }}
+        >
           {/* Left Column: Submission Form */}
           <div className={styles.formColumn}>
             {!isCharActive ? (
@@ -526,10 +561,16 @@ export default function DownTimes() {
               )}
             </div>
           </div>
-        </section>
+        </motion.section>
 
         {/* Submission History List */}
-        <section className={styles.archiveSection}>
+        <motion.section 
+          className={styles.archiveSection}
+          variants={{
+            hidden: { opacity: 0, y: 30, scale: 0.95 },
+            visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 25 } }
+          }}
+        >
           <div className={styles.archiveHeader}>
             <h3 className={styles.archiveTitle}>Archive & Resolutions</h3>
             <div className={styles.archiveControls}>
@@ -569,8 +610,8 @@ export default function DownTimes() {
               ))
             )}
           </div>
-        </section>
-      </main>
+        </motion.section>
+      </motion.main>
     </Skeleton>
   );
 }

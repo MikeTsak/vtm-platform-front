@@ -23,8 +23,8 @@ const containerVariants = {
   }
 };
 const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+  hidden: { opacity: 0, y: 30, scale: 0.95 },
+  show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 300, damping: 25 } }
 };
 
 export default function HierarchyView({ canEdit: propCanEdit }) {
@@ -150,20 +150,15 @@ export default function HierarchyView({ canEdit: propCanEdit }) {
 
   return (
     <Skeleton loading={loading} name="court-hierarchy">
-      <motion.div 
-        className={styles.hierarchyWrapper}
-        initial="hidden"
-        animate="show"
-        variants={containerVariants}
-      >
+      <motion.div className={styles.hierarchyWrapper}>
       
-      <header className={styles.sectionBox} style={{ borderBottom: '1px solid color-mix(in srgb, var(--outline-variant) 10%, transparent)', paddingBottom: '1.5rem', position: 'relative', overflow: 'hidden' }}>
+      <motion.header initial="hidden" whileInView="show" viewport={{ once: false, amount: 0.1 }} variants={itemVariants} className={styles.sectionBox} style={{ borderBottom: '1px solid color-mix(in srgb, var(--outline-variant) 10%, transparent)', paddingBottom: '1.5rem', position: 'relative', overflow: 'hidden' }}>
         <span className="material-symbols-outlined" style={{ position: 'absolute', right: '-1rem', top: '-2rem', fontSize: '120px', opacity: 0.03, pointerEvents: 'none', color: 'var(--on-surface)' }}>account_balance</span>
         <h2 className={styles.sectionTitle} style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>Court Hierarchy</h2>
         <p style={{ fontSize: '1.125rem', color: 'var(--on-surface-variant)', maxWidth: '42rem' }}>
           The established order of the undead domain. Manage positions, track status, and monitor those marked for final death.
         </p>
-      </header>
+      </motion.header>
       
       {/* Admin Controls */}
       {canEdit && (
@@ -372,7 +367,7 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles, onImageCl
   const baseCardClass = ent.is_bloodhunted ? styles.bloodhuntCard : styles.glassCard;
 
   return (
-    <motion.div variants={itemVariants} className={`${baseCardClass} ${specialClass} ${hiddenClass}`}>
+    <motion.div variants={itemVariants} className={`${baseCardClass} ${specialClass} ${hiddenClass}`} initial="hidden" whileInView="show" viewport={{ once: false, amount: 0.1 }}>
       {ent.is_bloodhunted && (
         <div className={styles.bloodhuntIcon}>
           <span className="material-symbols-outlined">priority_high</span>

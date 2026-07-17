@@ -4,6 +4,20 @@ import styles from '../../styles/Court.module.css';
 import { Skeleton } from 'boneyard-js/react';
 import { AuthCtx } from '../../core/AuthContext';
 import Avatar from '../../components/Avatar';
+import { motion } from 'framer-motion';
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 30, scale: 0.95 },
+  show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 300, damping: 25 } }
+};
 
 // --- Dedicated component to fetch and render DB Blobs ---
 function BlobImage({ url }) {
@@ -154,7 +168,7 @@ export default function AnnouncementsView({ canEdit: propCanEdit }) {
 
   return (
     <Skeleton loading={loading} name="announcements-view">
-      <div className={styles.announcementsWrapper}>
+      <motion.div className={styles.announcementsWrapper}>
         <div className={styles.decreeHeaderBar}>
           <div>
             <p className={styles.decreeHeaderSubtitle}>City Archive</p>
@@ -175,7 +189,7 @@ export default function AnnouncementsView({ canEdit: propCanEdit }) {
             const authorImg = item.char_image || null;
 
             return (
-              <article key={item.id} className={styles.decreeCard}>
+              <motion.article key={item.id} className={styles.decreeCard} variants={itemVariants} initial="hidden" whileInView="show" viewport={{ once: false, amount: 0.1 }}>
                 <div className={styles.decreeAccent}></div>
                 
                 <div className={styles.decreeContent}>
@@ -207,7 +221,7 @@ export default function AnnouncementsView({ canEdit: propCanEdit }) {
                     </button>
                   </div>
                 )}
-              </article>
+              </motion.article>
             );
           })}
           {items.length === 0 && <div style={{ textAlign: 'center', color: 'var(--outline)' }}>The Court is silent. No decrees have been issued.</div>}
@@ -277,7 +291,7 @@ export default function AnnouncementsView({ canEdit: propCanEdit }) {
             </div>
           </div>
         )}
-      </div>
+      </motion.div>
     </Skeleton>
   );
 }

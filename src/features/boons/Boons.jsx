@@ -7,6 +7,7 @@ import MiniSearch from 'minisearch';
 import Avatar from '../../components/Avatar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { motion } from 'framer-motion';
 
 const BOON_LEVELS  = ['trivial', 'minor', 'major', 'life'];
 const BOON_STATUSES = ['owed', 'paid', 'excused'];
@@ -464,7 +465,14 @@ export default function Boons() {
               const glowClass = (String(boon.level).toLowerCase() === 'life' && !settled) ? 'shadow-[0_4px_12px_rgba(74,4,4,0.4)]' : '';
               
               return (
-                <div key={boon.id} className={`bg-surface-container p-4 rounded-xl gothic-etched-border ${borderClass} ${glowClass} relative overflow-hidden ${settled ? 'opacity-60' : ''}`}>
+                <motion.div 
+                  key={boon.id} 
+                  className={`bg-surface-container p-4 rounded-xl gothic-etched-border ${borderClass} ${glowClass} relative overflow-hidden ${settled ? 'opacity-60' : ''}`}
+                  initial={{ opacity: 0, y: 30, scale: 0.95 }}
+                  whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                  viewport={{ once: false, amount: 0.1 }}
+                >
                   
                   {settled && (
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
@@ -539,7 +547,7 @@ export default function Boons() {
                     </div>
                   </div>
                   
-                </div>
+                </motion.div>
               );
             })}
           </div>

@@ -11,6 +11,12 @@ api.interceptors.request.use((config) => {
   config.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
   config.headers['Pragma'] = 'no-cache';
   config.headers['Expires'] = '0';
+  
+  // Add Idempotency-Key for state-modifying requests
+  if (config.method && ['post', 'put', 'patch', 'delete'].includes(config.method.toLowerCase())) {
+    config.headers['Idempotency-Key'] = crypto.randomUUID();
+  }
+  
   return config;
 });
 
