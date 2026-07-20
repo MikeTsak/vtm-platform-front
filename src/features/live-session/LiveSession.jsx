@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useContext } from 'react';
 import api from '../../core/api';
+import { AuthCtx } from '../../core/AuthContext';
 import Avatar from '../../components/Avatar';
 import { DISCIPLINES, iconPath } from '../../data/disciplines';
 import {
@@ -16,6 +17,7 @@ import {
 import { getLiveSession, joinLiveSession, logLiveSessionRoll, getLiveSessionBroadcasts, getLiveSessionRolls, socket, sendLiveSessionBroadcast } from '../../api/liveSession';
 import LiveSessionPlayerList from './LiveSessionPlayerList';
 import LiveSessionRollHistory from './LiveSessionRollHistory';
+import LiveSessionAdminDashboard from './LiveSessionAdminDashboard';
 import styles from '../../styles/LiveSession.module.css';
 
 function TrackerBlock({ label, val, max, agg = 0, sup = 0, filled = 0, stains = 0 }) {
@@ -142,6 +144,7 @@ const discIcon = (name) => {
    MAIN COMPONENT
 ───────────────────────────────────────────── */
 export default function LiveSession() {
+  const { user } = useContext(AuthCtx);
   const [character, setCharacter] = useState(null);
   const [sheet, setSheet] = useState(null);
   const [trackers, setTrackers] = useState(null);
@@ -150,7 +153,7 @@ export default function LiveSession() {
   const [broadcasts, setBroadcasts] = useState([]);
 
   const [frenzyState, setFrenzyState] = useState(null);
-  const isAdmin = session?.isAdmin || character?.role === 'admin' || character?.isST;
+  const isAdmin = session?.isAdmin || user?.role === 'admin' || character?.isST;
   const [mobileTab, setMobileTab] = useState('action');
   const [showBlushModal, setShowBlushModal] = useState(false);
 
@@ -509,6 +512,17 @@ export default function LiveSession() {
     }
   };
 
+  if (isAdmin) {
+    return (
+      <LiveSessionAdminDashboard 
+        session={session} 
+        sessionId={sessionId} 
+        broadcasts={broadcasts} 
+        character={character} 
+      />
+    );
+  }
+
   if (!trackers) return <div className={styles.container}><div style={{ margin: 'auto' }}>Loading LARP Interface...</div></div>;
 
   const humanity = sheet?.humanity ?? sheet?.morality?.humanity ?? 7;
@@ -617,7 +631,9 @@ export default function LiveSession() {
 
       {/* MODALS */}
       {/* MAIN CONTENT 3-COLUMN */}
-      <main className={styles.mainContent}>
+      <main className={styles.mainContent} style={{
+        boxShadow: session?.metadata?.ambient === 'frenzy' ? 'inset 0 0 100px rgba(239,68,68,0.1)' : session?.metadata?.ambient === 'supernatural' ? 'inset 0 0 100px rgba(168,85,247,0.1)' : 'none'
+      }}>
 
         {/* LEFT COLUMN: IDENTITY & TRACKERS */}
         <aside className={`${styles.leftColumn} ${mobileTab !== 'character' ? styles.mobileHidden : ''}`}>
@@ -822,6 +838,37 @@ export default function LiveSession() {
               </div>
             </div>
 
+            {/* Scene & Clocks Banner */}
+            {(session?.metadata?.scene || (session?.metadata?.clocks && session?.metadata?.clocks.length > 0)) && (
+              <div style={{
+                background: session?.metadata?.ambient === 'frenzy' ? 'rgba(239,68,68,0.1)' : session?.metadata?.ambient === 'supernatural' ? 'rgba(168,85,247,0.1)' : 'var(--surface-container-highest)',
+                border: session?.metadata?.ambient === 'frenzy' ? '1px solid rgba(239,68,68,0.3)' : session?.metadata?.ambient === 'supernatural' ? '1px solid rgba(168,85,247,0.3)' : '1px solid var(--outline-variant)',
+                padding: '1rem',
+                borderRadius: '8px',
+                marginBottom: '2rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1rem'
+              }}>
+                {session?.metadata?.scene && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span className="material-symbols-outlined" style={{ color: 'var(--primary)' }}>theater_comedy</span>
+                    <span style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--on-surface)' }}>{session.metadata.scene}</span>
+                  </div>
+                )}
+                {session?.metadata?.clocks && session?.metadata?.clocks.length > 0 && (
+                  <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                    {session.metadata.clocks.map((c, i) => (
+                      <div key={c.id || i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(0,0,0,0.2)', padding: '0.5rem 1rem', borderRadius: '4px' }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '1rem', color: c.value === 0 ? 'var(--error)' : 'var(--text-muted)' }}>schedule</span>
+                        <span style={{ fontSize: '0.85rem' }}>{c.name}: <strong style={{ color: c.value === 0 ? 'var(--error)' : 'var(--primary)' }}>{c.value}</strong></span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
               <div>
@@ -1017,7 +1064,7 @@ export default function LiveSession() {
               Session Players
             </button>
           </div>
-          {showAdminTab === 'feed' && <LiveSessionRollHistory rolls={broadcasts} onBroadcast={async (msg) => { await sendLiveSessionBroadcast(sessionId, { message: msg }); }} />}
+          {showAdminTab === 'feed' && <LiveSessionRollHistory rolls={broadcasts} onBroadcast={async (msg) => { await sendLiveSessionBroadcast(sessionId, { message: msg }); }} currentCharacterId={character?.id} isAdmin={isAdmin} />}
           {showAdminTab === 'players' && <LiveSessionPlayerList players={session?.players || []} adminName={session?.admin_name} onAdjust={isAdmin ? (id, delta) => { /* Mock Admin adjustment */ } : undefined} onForceRouse={isAdmin ? (id) => { /* Mock Force Rouse */ } : undefined} />}
         </aside>
       </main>

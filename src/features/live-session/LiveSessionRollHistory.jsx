@@ -1,14 +1,23 @@
 import React from 'react';
 import styles from '../../styles/LiveSession.module.css';
 
-export default function LiveSessionRollHistory({ rolls = [], onBroadcast }) {
+export default function LiveSessionRollHistory({ rolls = [], onBroadcast, currentCharacterId, isAdmin }) {
   if (!rolls.length) {
     return <div className={styles.textMuted} style={{ padding: '1rem', textAlign: 'center' }}>No rolls yet.</div>;
   }
 
+  const filteredRolls = rolls.filter(r => {
+    if (r.target_character_id) {
+      if (isAdmin) return true;
+      if (r.target_character_id === currentCharacterId) return true;
+      return false; // Hide whisper meant for someone else
+    }
+    return true;
+  });
+
   return (
     <div className={styles.historyFeed}>
-      {rolls.slice(0, 30).map((roll, idx) => {
+      {filteredRolls.slice(0, 30).map((roll, idx) => {
         const id = roll.id || `${roll.character_id}-${roll.created_at}-${idx}`;
         const name = roll.player_name || roll.character_name || roll.characterName || 'Unknown';
         const result = roll.result || roll.label || `${roll.successes ?? 0} successes`;
@@ -20,10 +29,18 @@ export default function LiveSessionRollHistory({ rolls = [], onBroadcast }) {
         const note = roll.note;
 
         if (roll.message && !roll.roll_type && !roll.rollType) {
+          const isWhisper = !!roll.target_character_id;
           return (
-            <article key={id} className={styles.historyItem} style={{ background: 'var(--surface-container-high)', border: '1px solid var(--primary-container)', padding: '0.75rem' }}>
+            <article key={id} className={styles.historyItem} style={{ 
+              background: isWhisper ? 'rgba(168,85,247,0.1)' : 'var(--surface-container-high)', 
+              border: isWhisper ? '1px dashed #a855f7' : '1px solid var(--primary-container)', 
+              padding: '0.75rem' 
+            }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.85rem', color: 'var(--on-surface)' }}>{roll.message}</span>
+                <span style={{ fontSize: '0.85rem', color: isWhisper ? '#d8b4fe' : 'var(--on-surface)' }}>
+                  {isWhisper && <strong style={{color: '#a855f7'}}>🤫 Whisper: </strong>}
+                  {roll.message}
+                </span>
                 <small style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>
                   {createdAt ? new Date(createdAt).toLocaleTimeString() : '-'}
                 </small>

@@ -39,45 +39,45 @@ const NAV_SECTIONS = [
   {
     label: 'Players',
     items: [
-      { id: 'users',      icon: 'person', label: 'Users' },
-      { id: 'characters', icon: 'account_circle', label: 'Characters' },
-      { id: 'claims',     icon: 'fort', label: 'Claims' },
-      { id: 'coteries',   icon: 'group_work', label: 'Coteries' },
-      { id: 'ghouls',       icon: 'groups',      label: 'Ghouls' },
-      { id: 'downtimes',  icon: 'schedule', label: 'Downtimes' },
-      { id: 'xp',         icon: 'auto_awesome', label: 'XP Tools' },
+      { id: 'users',      icon: 'person', label: 'Users', keywords: ['accounts', 'passwords', 'emails', 'roles', 'login', 'reset password', 'delete user', 'ban', 'unban', 'discord id', 'st role', 'vip role', 'admin role'] },
+      { id: 'characters', icon: 'account_circle', label: 'Characters', keywords: ['sheets', 'stats', 'pdf', 'inventory', 'traits', 'disciplines', 'blood potency', 'generation', 'clan', 'sect', 'sire', 'approvals', 'merits', 'flaws', 'health', 'willpower', 'humanity', 'export', 'delete', 'add character'] },
+      { id: 'claims',     icon: 'local_police', label: 'Claims', keywords: ['territory', 'domain', 'map', 'havens', 'feeding grounds', 'racks', 'businesses', 'resources', 'influence'] },
+      { id: 'coteries',   icon: 'group_work', label: 'Coteries', keywords: ['groups', 'factions', 'alliances', 'coterie type', 'domain size', 'chantry', 'shared resources', 'members'] },
+      { id: 'ghouls',     icon: 'pets', label: 'Ghouls', keywords: ['retainers', 'thralls', 'servants', 'domitor', 'blood bonds', 'ghoul sheet', 'disciplines', 'tier', 'player'] },
+      { id: 'downtimes',  icon: 'schedule', label: 'Downtimes', keywords: ['actions', 'between sessions', 'projects', 'approve', 'reject', 'needs scene', 'resolve', 'filter pipelines', 'reset configuration', 'sync records'] },
+      { id: 'xp',         icon: 'stars', label: 'XP & Rewards', keywords: ['experience', 'levels', 'progression', 'grants', 'apply to all', 'view history', 'refresh data', 'subtract xp', 'bulk grant'] },
     ],
   },
   {
-    label: 'Story',
+    label: 'World',
     items: [
-      { id: 'npcs',         icon: 'masks',       label: 'NPCs' },
-      { id: 'npc_email',    icon: 'mail',        label: 'NPC Email' },
-      { id: 'premonitions', icon: 'visibility',  label: 'Premonitions' },
-      { id: 'boons',        icon: 'handshake',   label: 'Prestation Matrix' },
-      { id: 'events',       icon: 'event',       label: 'Events' },
-      { id: 'broadcast',    icon: 'campaign',    label: 'Broadcast' },
+      { id: 'npcs',       icon: 'recent_actors', label: 'NPCs', keywords: ['spc', 'storyteller characters', 'cast', 'add temp actor', 'stats', 'disciplines', 'clans', 'generation', 'notes', 'create'] },
+      { id: 'npc_emails', icon: 'mail', label: 'NPC Comms', keywords: ['emails', 'messages', 'inbox', 'outbox', 'send reply', 'delete identity', 'create identity'] },
+      { id: 'premonitions', icon: 'visibility',  label: 'Premonitions', keywords: ['visions', 'future', 'auspex', 'dreams', 'prophecy', 'omens', 'sight', 'clues'] },
+      { id: 'prestation', icon: 'handshake', label: 'Prestation', keywords: ['boons', 'debts', 'favors', 'harpy', 'trivial', 'minor', 'major', 'blood', 'life', 'transfer', 'record', 'clear'] },
+      { id: 'events',       icon: 'event',       label: 'Events', keywords: ['calendar', 'timeline', 'schedule', 'sessions', 'dates', 'venue', 'planning'] },
+      { id: 'broadcast',    icon: 'campaign',    label: 'Broadcast', keywords: ['announcements', 'alerts', 'notifications', 'global', 'news', 'urgent', 'messages'] },
     ],
   },
   {
     label: 'Intelligence',
     items: [
-      { id: 'chat',     icon: 'chat',      label: 'Chat Logs' },
-      { id: 'stats',    icon: 'bar_chart', label: 'Stats' },
-      { id: 'dice',     icon: 'casino',    label: 'Dice Logs' },
-      { id: 'discord',  icon: 'sensors',   label: 'Discord' },
-      { id: 'timeline', icon: 'timeline',  label: 'Timeline' },
-      { id: 'domains',  icon: 'map',       label: 'Domain Threats' },
-      { id: 'bloodweb', icon: 'radar',     label: 'Blood Web' },
+      { id: 'chat',     icon: 'chat',      label: 'Chat Logs', keywords: ['messages', 'history', 'rooms', 'groups', 'transcripts', 'channel', 'direct messages', 'all time', 'last 7 days'] },
+      { id: 'stats',    icon: 'bar_chart', label: 'Stats', keywords: ['statistics', 'charts', 'activity', 'metrics', 'graphs', 'data', 'numbers'] },
+      { id: 'dice',     icon: 'casino',    label: 'Dice Logs', keywords: ['rolls', 'rng', 'botches', 'successes', 'crits', 'history', 'messy critical', 'bestial failure', 'rouse checks', 'normal dice', 'hunger dice'] },
+      { id: 'discord',  icon: 'sensors',   label: 'Discord', keywords: ['bots', 'sync', 'webhooks', 'integration', 'messages', 'channels', 'setup', 'permissions'] },
+      { id: 'timeline', icon: 'timeline',  label: 'Timeline', keywords: ['history', 'chronicle', 'events', 'past', 'log', 'chronological', 'dates'] },
+      { id: 'domains',  icon: 'map',       label: 'Domain Threats', keywords: ['map', 'territory', 'security', 'hunters', 'inquisition', 'threats', 'lupines', 'sabbat', 'danger'] },
+      { id: 'bloodweb', icon: 'radar',     label: 'Blood Web', keywords: ['radar', 'map', 'connections', 'relationships', 'conspiracy', 'nodes', 'rumors', 'secrets', 'network'] },
     ],
   },
   {
     label: 'System',
     items: [
-      { id: 'master',     icon: 'admin_panel_settings', label: 'Master Control' },
-      { id: 'masquerade', icon: 'warning',              label: 'Masquerade Dial' },
-      { id: 'audit',      icon: 'policy',               label: 'Audit Logs' },
-      { id: 'logs',       icon: 'receipt_long',         label: 'System Logs' },
+      { id: 'master',     icon: 'admin_panel_settings', label: 'Master Control', keywords: ['toggles', 'schrecknet comms', 'global settings', 'switches', 'features', 'maintenance mode', 'global configurations', 'announcements', 'time', 'calendar', 'date', 'month', 'year', 'game time', 'pause', 'stop', 'prev', 'next'] },
+      { id: 'masquerade', icon: 'warning',              label: 'Masquerade Dial', keywords: ['breaches', 'exposure', 'threat', 'danger', 'level', 'tracker', 'second inquisition', 'cleanup', 'media', 'dial'] },
+      { id: 'audit',      icon: 'policy',               label: 'Audit Logs', keywords: ['security', 'tracking', 'changes', 'admin actions', 'history', 'edits', 'deletions', 'context', 'copy'] },
+      { id: 'logs',       icon: 'receipt_long',         label: 'System Logs', keywords: ['errors', 'server', 'debug', 'traces', 'console', 'output', 'crashes', 'context'] },
     ],
   },
 ];
@@ -87,6 +87,32 @@ const TAB_LABELS = NAV_SECTIONS.flatMap(s => s.items).reduce(
 
 /* ---------------- Sidebar ---------------- */
 function Sidebar({ tab, setTab, collapsed, onToggleCollapse }) {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredNavSections = React.useMemo(() => {
+    if (!searchQuery.trim()) return NAV_SECTIONS;
+    const lowerQuery = searchQuery.toLowerCase();
+    
+    return NAV_SECTIONS.map(section => {
+      const filteredItems = section.items.map(item => {
+        let matchedKeyword = null;
+        const matchesLabel = item.label.toLowerCase().includes(lowerQuery);
+        
+        if (!matchesLabel && item.keywords) {
+          const found = item.keywords.find(k => k.toLowerCase().includes(lowerQuery));
+          if (found) matchedKeyword = found;
+        }
+
+        if (matchesLabel || matchedKeyword) {
+          return { ...item, matchedKeyword };
+        }
+        return null;
+      }).filter(Boolean);
+
+      return { ...section, items: filteredItems };
+    }).filter(section => section.items.length > 0);
+  }, [searchQuery]);
+
   return (
     <nav className={`${styles.sidebar} ${collapsed ? styles.sidebarCollapsed : ''}`} aria-label="Admin navigation">
       <div className={styles.sidebarLogo}>
@@ -96,11 +122,73 @@ function Sidebar({ tab, setTab, collapsed, onToggleCollapse }) {
         <span className={styles.sidebarLogoText} style={{fontFamily: "'Playfair Display', serif", fontSize: '18px', fontWeight: 'bold', textTransform: 'none', letterSpacing: 'normal'}}>Erebus Portal</span>
       </div>
 
+      {!collapsed && (
+        <div style={{ margin: '4px 8px 12px 8px' }}>
+          <div 
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '10px', 
+              padding: '9px 12px',
+              borderRadius: 'var(--radius-sm)',
+              borderBottom: '1px solid var(--glass-border)',
+              background: 'transparent',
+              transition: 'background 0.15s, border-color 0.15s',
+            }}
+            onFocus={(e) => {
+               e.currentTarget.style.background = 'var(--glass-bg-hover)';
+               e.currentTarget.style.borderBottomColor = 'var(--glass-border-highlight)';
+            }}
+            onBlur={(e) => {
+               e.currentTarget.style.background = 'transparent';
+               e.currentTarget.style.borderBottomColor = 'var(--glass-border)';
+            }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '17px', width: '20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+              search
+            </span>
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                flex: 1,
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-primary)',
+                fontSize: '13.5px',
+                outline: 'none',
+                padding: 0,
+                width: '100%'
+              }}
+            />
+            {searchQuery && (
+              <span 
+                className="material-symbols-outlined" 
+                onClick={() => setSearchQuery('')}
+                style={{
+                  fontSize: '15px',
+                  color: 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  opacity: 0.7,
+                  transition: 'opacity 0.15s'
+                }}
+                onMouseEnter={e => e.target.style.opacity = 1}
+                onMouseLeave={e => e.target.style.opacity = 0.7}
+              >
+                close
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className={styles.sidebarNav}>
-        {NAV_SECTIONS.map((section) => (
+        {filteredNavSections.map((section) => (
           <React.Fragment key={section.label}>
             <div className={styles.sidebarSectionLabel}>{section.label}</div>
-            {section.items.map(({ id, icon, label }) => (
+            {section.items.map(({ id, icon, label, matchedKeyword }) => (
               <button
                 key={id}
                 type="button"
@@ -108,9 +196,17 @@ function Sidebar({ tab, setTab, collapsed, onToggleCollapse }) {
                 onClick={() => setTab(id)}
                 data-tooltip={label}
                 aria-current={tab === id ? 'page' : undefined}
+                style={matchedKeyword ? { alignItems: 'flex-start' } : undefined}
               >
                 <span className={`material-symbols-outlined ${styles.sidebarNavIcon}`} aria-hidden="true">{icon}</span>
-                <span className={styles.sidebarNavLabel}>{label}</span>
+                <span className={styles.sidebarNavLabel}>
+                  <div>{label}</div>
+                  {matchedKeyword && !collapsed && (
+                    <div style={{ fontSize: '10px', color: 'var(--accent-purple)', opacity: 0.9, marginTop: '4px', textTransform: 'capitalize', fontWeight: 'normal' }}>
+                      ↳ {matchedKeyword}
+                    </div>
+                  )}
+                </span>
               </button>
             ))}
           </React.Fragment>

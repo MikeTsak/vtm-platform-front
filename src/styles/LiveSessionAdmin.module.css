@@ -1,0 +1,362 @@
+.dashboardContainer {
+  /* SchreckNet Liquid-Glass Admin Tokens */
+  --primary: #9d7cff;
+  --primary-container: rgba(157, 124, 255, 0.12);
+  --background: #0a0a0f;
+  --surface-container: rgba(255, 255, 255, 0.04);
+  --surface-container-low: rgba(0, 0, 0, 0.32);
+  --surface-container-high: rgba(255, 255, 255, 0.06);
+  --surface-container-highest: rgba(255, 255, 255, 0.08);
+  --outline: rgba(157, 124, 255, 0.48);
+  --outline-variant: rgba(157, 124, 255, 0.18);
+  --text-muted: #9896a8;
+  --on-surface: #e8e6f0;
+  --glass-border: 1px solid rgba(157, 124, 255, 0.18);
+  --glass-shadow: 0 8px 40px rgba(0, 0, 0, 0.55);
+  --glass-blur: blur(18px) saturate(1.4);
+
+  display: grid;
+  grid-template-columns: 300px 1fr 350px;
+  grid-template-rows: 100vh;
+  gap: 0;
+  width: 100vw;
+  height: 100vh;
+  background: var(--background);
+  color: var(--on-surface);
+  overflow: hidden;
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.pane {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--surface-container);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-right: var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+.pane:last-child {
+  border-right: none;
+}
+
+.paneHeader {
+  padding: 1rem 1.5rem;
+  background: var(--surface-container-high);
+  border-bottom: var(--glass-border);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 60px;
+}
+
+.paneHeader h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.paneContent {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+
+/* Center Column splits into Top and Bottom */
+.centerColumn {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.centerTop {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+  border-bottom: var(--glass-border);
+  background: transparent;
+}
+
+.centerBottom {
+  flex: 1;
+  overflow-y: hidden;
+  background: var(--surface-container-low);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  display: flex;
+  flex-direction: column;
+}
+
+.playerGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.playerCard {
+  background: var(--surface-container-highest);
+  border: var(--glass-border);
+  border-radius: 8px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  position: relative;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.playerCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: var(--glass-border);
+}
+
+.playerName {
+  font-weight: bold;
+  font-size: 1.1rem;
+  color: var(--primary);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.playerClan {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.trackerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+}
+
+.trackerLabel {
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+}
+
+.trackerDots {
+  display: flex;
+  gap: 4px;
+}
+
+.dotFilled {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary);
+}
+
+.dotEmpty {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid var(--outline-variant);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.trackerSquare {
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--outline-variant);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: bold;
+}
+.trackerSquare.filled {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+/* Tabs for Wiki */
+.wikiTabs {
+  display: flex;
+  background: var(--surface-container-high);
+  border-bottom: var(--glass-border);
+}
+
+.wikiTab {
+  flex: 1;
+  padding: 0.75rem 0;
+  text-align: center;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-weight: bold;
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+
+.wikiTab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.wikiSection {
+  margin-bottom: 1.5rem;
+}
+
+.wikiSection h3 {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--on-surface);
+  margin: 0 0 0.5rem 0;
+  border-bottom: 1px solid rgba(225, 29, 72, 0.3);
+  padding-bottom: 0.25rem;
+}
+
+.wikiSection p {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 0 0 0.5rem 0;
+}
+
+.wikiSection ul {
+  padding-left: 1.25rem;
+  margin: 0 0 1rem 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.wikiSection li {
+  margin-bottom: 0.25rem;
+}
+
+/* Form elements for NPC Generator */
+.formGroup {
+  margin-bottom: 1rem;
+}
+
+.formGroup label {
+  display: block;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--primary);
+  margin-bottom: 0.25rem;
+  font-weight: bold;
+}
+
+.formInput {
+  width: 100%;
+  padding: 0.5rem;
+  background: rgba(0, 0, 0, 0.2);
+  border: var(--glass-border);
+  border-radius: 4px;
+  color: var(--on-surface);
+  font-size: 0.85rem;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+.formInput:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.btnPrimary {
+  background: var(--primary-container);
+  color: var(--primary);
+  border: 1px solid var(--primary);
+  padding: 0.6rem 1rem;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  transition: all 0.2s;
+  width: 100%;
+  box-shadow: 0 0 10px rgba(157, 124, 255, 0.12);
+}
+
+.btnPrimary:hover {
+  background: rgba(157, 124, 255, 0.25);
+  box-shadow: 0 0 15px rgba(157, 124, 255, 0.35);
+}
+
+.btnSecondary {
+  background: transparent;
+  color: var(--primary);
+  border: 1px solid var(--primary);
+  padding: 0.6rem 1rem;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  transition: all 0.2s;
+  width: 100%;
+}
+
+.btnSecondary:hover {
+  background: rgba(225, 29, 72, 0.1);
+}
+
+
+.npcList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.npcItem {
+  background: var(--surface-container-highest);
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  border: var(--glass-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+.npcItem:hover, .npcItem.active {
+  border-color: var(--primary);
+  background: rgba(225, 29, 72, 0.05);
+}
+
+.diceRoller {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: var(--glass-border);
+}
+
+.diceGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.diceGrid .formGroup {
+  margin-bottom: 0;
+}
