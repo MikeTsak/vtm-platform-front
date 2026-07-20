@@ -188,11 +188,9 @@ export default function Nav() {
                   <NavLink 
   data-cuelume-press 
   data-cuelume-hover to="/news" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Official News</NavLink>
-                  {isCharActive && (
-                    <NavLink 
+                  <NavLink 
   data-cuelume-press 
   data-cuelume-hover to="/rumors" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Rumors</NavLink>
-                  )}
                 </NavDropdown>
 
                 <NavDropdown title="Comms" icon="rss_feed" isMobile={false}>
@@ -301,11 +299,9 @@ export default function Nav() {
                 <NavLink 
   data-cuelume-press 
   data-cuelume-hover to="/news" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Official News</NavLink>
-                {isCharActive && (
-                  <NavLink 
+                <NavLink 
   data-cuelume-press 
   data-cuelume-hover to="/rumors" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Rumors</NavLink>
-                )}
               </NavDropdown>
 
               <NavDropdown title="Comms" icon="rss_feed" isMobile={true} isOpen={openMobileDropdown === 'Comms'} toggleOpen={() => handleMobileDropdownToggle('Comms')}>

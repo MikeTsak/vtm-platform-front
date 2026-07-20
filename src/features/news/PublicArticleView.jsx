@@ -69,7 +69,7 @@ export default function PublicArticleView() {
 
   const articleDate = new Date(article.created_at).toLocaleDateString('el-GR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
-  // Render left and right ads
+  // Render left and right sidebar ads + bottom banner
   const LeftAdSidebar = () => (
     <aside className={themeStyles.sidebarLeft}>
       <div className={themeStyles.adContainer} style={{ background: 'transparent', padding: '0' }}>
@@ -88,10 +88,11 @@ export default function PublicArticleView() {
     </aside>
   );
 
+  // Only one bottom banner ad per article
   const BottomAd = () => (
-    <div className={themeStyles.adContainer} style={{ background: 'transparent', padding: '0', marginTop: '2rem', borderTop: '1px solid #ddd', paddingTop: '1rem' }}>
-      <span className={themeStyles.adLabel}>Advertisement</span>
-      <GoogleAd format="horizontal" style={{ minHeight: '200px' }} />
+    <div style={{ background: 'transparent', padding: '1rem 0', marginTop: '2rem', borderTop: '1px solid rgba(0,0,0,0.1)' }}>
+      <span style={{ display: 'block', fontSize: '0.7rem', color: '#aaa', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Advertisement</span>
+      <GoogleAd format="horizontal" style={{ minHeight: '90px' }} />
     </div>
   );
 

@@ -299,17 +299,6 @@ export default function Home() {
     })();
   }, [nav]);
 
-  /* ── AdSense Init ── */
-  useEffect(() => {
-    if (me && ch && !loading) {
-      try {
-        (window.adsbygoogle = window.adsbygoogle || []).push({});
-      } catch (e) {
-        console.error("AdSense error", e);
-      }
-    }
-  }, [me, ch, loading]);
-
   if (!me) return <div className={styles.loadingScreen}>Please log in.</div>;
 
   if (!ch) return (
@@ -687,7 +676,7 @@ export default function Home() {
             )}
           </motion.section>
 
-          {/* GOOGLE AD BLOCK */}
+          {/* AD — between marble buttons and chronicle row */}
           <section style={{ margin: '20px 0', textAlign: 'center', background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
             <GoogleAd format="auto" />
           </section>

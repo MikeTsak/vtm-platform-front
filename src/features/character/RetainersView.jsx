@@ -48,8 +48,8 @@ const DotRow = ({ label, value, max = 5, onDotClick, disabled, icon }) => (
     </div>
     <div className={styles.circleDots}>
       {Array.from({ length: max }).map((_, i) => (
-        <div 
-          key={i} 
+        <div
+          key={i}
           className={`${styles.circleDot} ${i < value ? styles.circleDotFilled : ''}`}
           onClick={() => !disabled && onDotClick(i + 1)}
           style={{ cursor: disabled ? 'default' : 'pointer', opacity: disabled && value === 0 ? 0.3 : 1 }}
@@ -62,8 +62,8 @@ const DotRow = ({ label, value, max = 5, onDotClick, disabled, icon }) => (
 const SmallDots = ({ value, max = 5 }) => (
   <div className={styles.dotRowSmall}>
     {Array.from({ length: max }).map((_, i) => (
-      <div 
-        key={i} 
+      <div
+        key={i}
         className={`${styles.dotSmall} ${i < value ? styles.dotSmallFilled : ''}`}
       />
     ))}
@@ -91,7 +91,7 @@ function getRandomStats(tier) {
     attrDots = [4, 3, 3, 2, 2];
     skillDots = [4, 4, 3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1];
   }
-  
+
   const FLAT_ATTRS = ATTRS.flat();
   const FLAT_SKILLS = Object.values(SKILLS).flat();
 
@@ -122,13 +122,13 @@ const MarketplaceRow = ({ title, cost, disabled, onBuy }) => (
 const InlineMeritsFlawsPicker = ({ isFlaw, isGhoul, selectedItems, onToggle }) => {
   const all = useMemo(() => allSelectableAdvantages(isFlaw, isGhoul), [isFlaw, isGhoul]);
   const [q, setQ] = useState('');
-  
+
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase();
     if (!qq) return all;
-    return all.filter(m => 
-      m.name.toLowerCase().includes(qq) || 
-      (m.category || '').toLowerCase().includes(qq) || 
+    return all.filter(m =>
+      m.name.toLowerCase().includes(qq) ||
+      (m.category || '').toLowerCase().includes(qq) ||
       (m.description || '').toLowerCase().includes(qq)
     );
   }, [q, all]);
@@ -154,10 +154,10 @@ const InlineMeritsFlawsPicker = ({ isFlaw, isGhoul, selectedItems, onToggle }) =
   return (
     <div style={{ background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '8px', border: `1px solid ${isFlaw ? 'rgba(194,24,7,0.3)' : 'rgba(255,255,255,0.1)'}` }}>
       <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-        <input 
-          type="text" 
-          placeholder={`Search ${isFlaw ? 'flaws' : 'merits'}...`} 
-          value={q} 
+        <input
+          type="text"
+          placeholder={`Search ${isFlaw ? 'flaws' : 'merits'}...`}
+          value={q}
           onChange={e => setQ(e.target.value)}
           style={{ flex: 1, padding: '10px 14px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-color)', color: '#fff', borderRadius: '6px' }}
         />
@@ -173,8 +173,8 @@ const InlineMeritsFlawsPicker = ({ isFlaw, isGhoul, selectedItems, onToggle }) =
           const allowed = item.allowed || [1];
 
           return (
-            <div 
-              key={item.id} 
+            <div
+              key={item.id}
               style={{
                 border: `1px solid ${isSelected ? (isFlaw ? 'var(--error)' : 'var(--tint)') : 'var(--border, rgba(255,255,255,0.1))'}`,
                 borderRadius: '8px',
@@ -189,14 +189,14 @@ const InlineMeritsFlawsPicker = ({ isFlaw, isGhoul, selectedItems, onToggle }) =
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
                   <b style={{ color: isFlaw ? 'var(--error)' : '#fff', fontSize: '15px' }}>{item.name}</b>
                   <small style={{ color: '#888' }}>{item.category}</small>
-                  
+
                   {!isExpanded ? (
                     isSelected ? (
-                       <div className={styles.circleDots} style={{ marginLeft: '4px' }}>
-                         {Array.from({ length: currentDots }).map((_, i) => (
-                           <div key={i} className={`${styles.circleDot} ${styles.circleDotFilled}`} style={isFlaw ? { background: 'var(--error)', boxShadow: '0 0 8px var(--error)' } : {}} />
-                         ))}
-                       </div>
+                      <div className={styles.circleDots} style={{ marginLeft: '4px' }}>
+                        {Array.from({ length: currentDots }).map((_, i) => (
+                          <div key={i} className={`${styles.circleDot} ${styles.circleDotFilled}`} style={isFlaw ? { background: 'var(--error)', boxShadow: '0 0 8px var(--error)' } : {}} />
+                        ))}
+                      </div>
                     ) : (
                       <small style={{ background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: '4px', fontSize: '11px' }}>
                         {item.dotsSpec}
@@ -209,7 +209,7 @@ const InlineMeritsFlawsPicker = ({ isFlaw, isGhoul, selectedItems, onToggle }) =
                         const isValid = allowed.includes(dotVal);
                         const isFilled = dotVal <= currentDots;
                         return (
-                          <div 
+                          <div
                             key={dotVal}
                             className={`${styles.circleDot} ${isFilled ? styles.circleDotFilled : ''}`}
                             onClick={() => {
@@ -233,15 +233,15 @@ const InlineMeritsFlawsPicker = ({ isFlaw, isGhoul, selectedItems, onToggle }) =
                   )}
                 </div>
                 {isExpanded && (
-                   <button 
+                  <button
                     onClick={(e) => { e.stopPropagation(); setExpandedId(null); }}
                     style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', fontSize: '22px', padding: 0, lineHeight: 1 }}
-                   >
-                     ×
-                   </button>
+                  >
+                    ×
+                  </button>
                 )}
               </div>
-              
+
               {isExpanded && (
                 <div style={{ color: '#aaa', fontSize: '0.9em', marginTop: '10px', whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>
                   {item.description}
@@ -250,10 +250,10 @@ const InlineMeritsFlawsPicker = ({ isFlaw, isGhoul, selectedItems, onToggle }) =
 
               {isExpanded && isSelected && (
                 <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', gap: '12px', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
-                  <input 
-                    type="text" 
-                    placeholder="Custom description / notes (optional)" 
-                    value={notes} 
+                  <input
+                    type="text"
+                    placeholder="Custom description / notes (optional)"
+                    value={notes}
                     onChange={e => setNotes(e.target.value)}
                     onBlur={() => onToggle({ id: item.id, name: item.name, dots: currentDots, notes })}
                     style={{ flex: 1, padding: '10px 14px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '6px', fontSize: '13px' }}
@@ -277,7 +277,7 @@ const PowerDetailCard = ({ power, onClear, readOnly, noMargin }) => (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
       <h4 style={{ margin: 0, color: 'var(--tint)' }}>↳ {power.name}</h4>
       {onClear && !readOnly && (
-        <button 
+        <button
           onClick={(e) => { e.stopPropagation(); onClear(); }}
           style={{ background: 'transparent', color: 'var(--error)', border: '1px solid var(--error)', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '10px' }}
         >
@@ -314,7 +314,7 @@ const InlinePowerSelection = ({ disciplineName, onSelect, onCancel, noMargin }) 
           <div key={p.id} style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.05)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
               <h6 style={{ margin: 0, color: 'var(--tint)', fontSize: '14px' }}>{p.name}</h6>
-              <button 
+              <button
                 onClick={(e) => { e.stopPropagation(); onSelect(p); }}
                 style={{ background: 'var(--tint)', color: '#000', border: 'none', padding: '4px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px' }}
               >
@@ -337,22 +337,22 @@ const InlinePowerSelection = ({ disciplineName, onSelect, onCancel, noMargin }) 
 const getValidationErrors = (draftSheet, tier) => {
   if (!draftSheet) return [];
   const errors = [];
-  
+
   const attrCounts = { 4: 0, 3: 0, 2: 0, 1: 0, 0: 0 }; // Tier 4: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0, 0: 0 }
   const skillCounts = { 4: 0, 3: 0, 2: 0, 1: 0 }; // Tier 4: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
   let assignedAttrs = 0;
-  
+
   for (const val of Object.values(draftSheet.attributes || {})) {
-      if (val > 0 && val <= 4) attrCounts[val]++; // Tier 4: val <= 5
-      assignedAttrs++;
+    if (val > 0 && val <= 4) attrCounts[val]++; // Tier 4: val <= 5
+    assignedAttrs++;
   }
   // /* Tier 4 logic: const baseAttr = tier === 4 ? 2 : 1; attrCounts[baseAttr] += (9 - assignedAttrs); */
   attrCounts[1] += (9 - assignedAttrs);
-  
+
   for (const val of Object.values(draftSheet.skills || {})) {
-      if (val > 0 && val <= 4) skillCounts[val]++; // Tier 4: val <= 5
+    if (val > 0 && val <= 4) skillCounts[val]++; // Tier 4: val <= 5
   }
-  
+
   let advPoints = (draftSheet.advantages || []).reduce((sum, a) => sum + Number(a.dots), 0);
   let flawPoints = (draftSheet.flaws || []).reduce((sum, f) => sum + Number(f.dots), 0);
 
@@ -372,38 +372,38 @@ const getValidationErrors = (draftSheet, tier) => {
 
   let disciplineCount = 0;
   for (const val of Object.values(draftSheet.disciplines || {})) {
-      if (val === 1) disciplineCount++;
-      else if (val > 1) errors.push("Disciplines cannot exceed 1 dot.");
+    if (val === 1) disciplineCount++;
+    else if (val > 1) errors.push("Disciplines cannot exceed 1 dot.");
   }
 
   if (draftSheet.isGhoul && disciplineCount > 1) errors.push("Ghouls max 1 Discipline.");
   if (!draftSheet.isGhoul && disciplineCount > 0) errors.push("Non-ghouls cannot have Disciplines.");
 
   if (tier === 1) {
-      if (attrCounts[2] !== 2) errors.push(`Attributes: Need two at 2 (Have ${attrCounts[2]})`);
-      if (skillCounts[2] !== 3) errors.push(`Skills: Need three at 2 (Have ${skillCounts[2]})`);
-      if (skillCounts[1] !== 5) errors.push(`Skills: Need five at 1 (Have ${skillCounts[1]})`);
-      if (advPoints > 0) errors.push("Advantages not allowed");
-  } 
+    if (attrCounts[2] !== 2) errors.push(`Attributes: Need two at 2 (Have ${attrCounts[2]})`);
+    if (skillCounts[2] !== 3) errors.push(`Skills: Need three at 2 (Have ${skillCounts[2]})`);
+    if (skillCounts[1] !== 5) errors.push(`Skills: Need five at 1 (Have ${skillCounts[1]})`);
+    if (advPoints > 0) errors.push("Advantages not allowed");
+  }
   else if (tier === 2) {
-      if (attrCounts[3] !== 2) errors.push(`Attributes: Need two at 3 (Have ${attrCounts[3]})`);
-      if (attrCounts[2] !== 3) errors.push(`Attributes: Need three at 2 (Have ${attrCounts[2]})`);
-      if (skillCounts[3] !== 3) errors.push(`Skills: Need three at 3 (Have ${skillCounts[3]})`);
-      if (skillCounts[2] !== 4) errors.push(`Skills: Need four at 2 (Have ${skillCounts[2]})`);
-      if (skillCounts[1] !== 5) errors.push(`Skills: Need five at 1 (Have ${skillCounts[1]})`);
-      if (advPoints > 3) errors.push("Max 3 pts Advantages");
-      if (flawPoints > 2) errors.push("Max 2 pts Flaws");
+    if (attrCounts[3] !== 2) errors.push(`Attributes: Need two at 3 (Have ${attrCounts[3]})`);
+    if (attrCounts[2] !== 3) errors.push(`Attributes: Need three at 2 (Have ${attrCounts[2]})`);
+    if (skillCounts[3] !== 3) errors.push(`Skills: Need three at 3 (Have ${skillCounts[3]})`);
+    if (skillCounts[2] !== 4) errors.push(`Skills: Need four at 2 (Have ${skillCounts[2]})`);
+    if (skillCounts[1] !== 5) errors.push(`Skills: Need five at 1 (Have ${skillCounts[1]})`);
+    if (advPoints > 3) errors.push("Max 3 pts Advantages");
+    if (flawPoints > 2) errors.push("Max 2 pts Flaws");
   }
   else if (tier === 3) {
-      if (attrCounts[4] !== 1) errors.push(`Attributes: Need one at 4 (Have ${attrCounts[4]})`);
-      if (attrCounts[3] !== 2) errors.push(`Attributes: Need two at 3 (Have ${attrCounts[3]})`);
-      if (attrCounts[2] !== 2) errors.push(`Attributes: Need two at 2 (Have ${attrCounts[2]})`);
-      if (skillCounts[4] !== 2) errors.push(`Skills: Need two at 4 (Have ${skillCounts[4]})`);
-      if (skillCounts[3] !== 4) errors.push(`Skills: Need four at 3 (Have ${skillCounts[3]})`);
-      if (skillCounts[2] !== 4) errors.push(`Skills: Need four at 2 (Have ${skillCounts[2]})`);
-      if (skillCounts[1] !== 4) errors.push(`Skills: Need four at 1 (Have ${skillCounts[1]})`);
-      if (advPoints > 10) errors.push("Max 10 pts Advantages");
-      if (flawPoints > 4) errors.push("Max 4 pts Flaws");
+    if (attrCounts[4] !== 1) errors.push(`Attributes: Need one at 4 (Have ${attrCounts[4]})`);
+    if (attrCounts[3] !== 2) errors.push(`Attributes: Need two at 3 (Have ${attrCounts[3]})`);
+    if (attrCounts[2] !== 2) errors.push(`Attributes: Need two at 2 (Have ${attrCounts[2]})`);
+    if (skillCounts[4] !== 2) errors.push(`Skills: Need two at 4 (Have ${skillCounts[4]})`);
+    if (skillCounts[3] !== 4) errors.push(`Skills: Need four at 3 (Have ${skillCounts[3]})`);
+    if (skillCounts[2] !== 4) errors.push(`Skills: Need four at 2 (Have ${skillCounts[2]})`);
+    if (skillCounts[1] !== 4) errors.push(`Skills: Need four at 1 (Have ${skillCounts[1]})`);
+    if (advPoints > 10) errors.push("Max 10 pts Advantages");
+    if (flawPoints > 4) errors.push("Max 4 pts Flaws");
   }
   /*
   else if (tier === 4) {
@@ -432,7 +432,7 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
   const [draftSheet, setDraftSheet] = useState({ attributes: {}, skills: {}, disciplines: {}, advantages: [], flaws: [], isGhoul: false, powers: [] });
   const [activeDisciplinePowerSelection, setActiveDisciplinePowerSelection] = useState(null);
   const [pendingAvatar, setPendingAvatar] = useState(null);
-  
+
 
   useEffect(() => {
     if (isOpen) {
@@ -452,12 +452,12 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
     const sc = { 4: 0, 3: 0, 2: 0, 1: 0 };
     let assignedAttrs = 0;
     for (const val of Object.values(draftSheet.attributes || {})) {
-        if (val > 0 && val <= 4) ac[val]++;
-        assignedAttrs++;
+      if (val > 0 && val <= 4) ac[val]++;
+      assignedAttrs++;
     }
     ac[1] += (9 - assignedAttrs);
     for (const val of Object.values(draftSheet.skills || {})) {
-        if (val > 0 && val <= 4) sc[val]++;
+      if (val > 0 && val <= 4) sc[val]++;
     }
     const ap = (draftSheet.advantages || []).reduce((sum, a) => sum + Number(a.dots), 0);
     const fp = (draftSheet.flaws || []).reduce((sum, f) => sum + Number(f.dots), 0);
@@ -484,7 +484,7 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
     const currentLevel = draftSheet[type][statName] || (type === 'attributes' ? 1 : 0);
     let finalLevel = newLevel;
     if (currentLevel === newLevel) {
-       finalLevel = type === 'attributes' ? 1 : newLevel - 1;
+      finalLevel = type === 'attributes' ? 1 : newLevel - 1;
     }
     setDraftSheet(prev => ({
       ...prev,
@@ -501,9 +501,9 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
       const idx = arr.findIndex(a => a.id === advObj.id);
       if (idx !== -1) {
         if (!advObj.name) {
-           arr.splice(idx, 1);
+          arr.splice(idx, 1);
         } else {
-           arr[idx] = advObj;
+          arr[idx] = advObj;
         }
       } else if (advObj.name) {
         arr.push(advObj);
@@ -515,18 +515,18 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
   if (!isOpen) return null;
 
   return (
-    <motion.div 
+    <motion.div
       className={styles.wizardOverlayStitch}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
-      <motion.div 
+      <motion.div
         className={styles.wizardModalStitch}
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
       >
-        
+
         {/* Decorative Lighting */}
         <div className={styles.bgBlurPinkStitch} />
         <div className={styles.bgBlurPurpleStitch} />
@@ -566,10 +566,10 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '2px' }}>Retainer Name</label>
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <input 
-                      type="text" 
-                      value={name} 
-                      onChange={e => setName(e.target.value)} 
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={e => setName(e.target.value)}
                       placeholder="Enter designation..."
                       className={styles.inputStitch}
                       autoFocus
@@ -586,12 +586,12 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
                       <span style={{ display: 'block', color: 'white', fontWeight: '500' }}>Ghoul Status</span>
                       <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>Grants Vitae to enhance capabilities.</span>
                     </div>
-                    <div 
-                      className={styles.toggleTrackStitch} 
+                    <div
+                      className={styles.toggleTrackStitch}
                       style={{ backgroundColor: draftSheet.isGhoul ? 'var(--tint)' : 'rgba(255,255,255,0.1)' }}
                       onClick={(e) => {
-                         e.preventDefault();
-                         setDraftSheet(p => ({...p, isGhoul: !p.isGhoul}));
+                        e.preventDefault();
+                        setDraftSheet(p => ({ ...p, isGhoul: !p.isGhoul }));
                       }}
                     >
                       <div className={styles.toggleThumbStitch} style={{ transform: draftSheet.isGhoul ? 'translateX(24px)' : 'translateX(0)' }} />
@@ -618,8 +618,8 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
               )}
               {isMigration && (
                 <div className={styles.successBannerStitch} style={{ marginBottom: '24px' }}>
-                   <span className="material-symbols-outlined">check_circle</span>
-                   This is a free migration to finalize your old Tier {tier} retainer's sheet.
+                  <span className="material-symbols-outlined">check_circle</span>
+                  This is a free migration to finalize your old Tier {tier} retainer's sheet.
                 </div>
               )}
 
@@ -633,11 +633,11 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
                       <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>casino</span>
                     </button>
                   </div>
-                  
+
                   <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginBottom: '16px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                     {tier === 1 && <><span><span style={{color: 'var(--tint)'}}>••</span> {renderTracker(attrCounts[2], 2)}</span></>}
-                     {tier === 2 && <><span><span style={{color: 'var(--tint)'}}>•••</span> {renderTracker(attrCounts[3], 2)}</span> <span><span style={{color: 'var(--tint)'}}>••</span> {renderTracker(attrCounts[2], 3)}</span></>}
-                     {tier === 3 && <><span><span style={{color: 'var(--tint)'}}>••••</span> {renderTracker(attrCounts[4], 1)}</span> <span><span style={{color: 'var(--tint)'}}>•••</span> {renderTracker(attrCounts[3], 2)}</span> <span><span style={{color: 'var(--tint)'}}>••</span> {renderTracker(attrCounts[2], 2)}</span></>}
+                    {tier === 1 && <><span><span style={{ color: 'var(--tint)' }}>••</span> {renderTracker(attrCounts[2], 2)}</span></>}
+                    {tier === 2 && <><span><span style={{ color: 'var(--tint)' }}>•••</span> {renderTracker(attrCounts[3], 2)}</span> <span><span style={{ color: 'var(--tint)' }}>••</span> {renderTracker(attrCounts[2], 3)}</span></>}
+                    {tier === 3 && <><span><span style={{ color: 'var(--tint)' }}>••••</span> {renderTracker(attrCounts[4], 1)}</span> <span><span style={{ color: 'var(--tint)' }}>•••</span> {renderTracker(attrCounts[3], 2)}</span> <span><span style={{ color: 'var(--tint)' }}>••</span> {renderTracker(attrCounts[2], 2)}</span></>}
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -652,7 +652,7 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
                                 <span className={styles.dotLabelStitch}>{attr}</span>
                                 <div style={{ display: 'flex', gap: '4px' }}>
                                   {[1, 2, 3, 4, 5].map((d) => (
-                                    <div 
+                                    <div
                                       key={d}
                                       onClick={() => handleDotClick('attributes', attr, d)}
                                       className={`${styles.dotCircleStitch} ${dots >= d ? styles.dotCircleFilledStitch : styles.dotCircleEmptyStitch}`}
@@ -673,11 +673,11 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
                     <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>build</span> Core Skills
                   </h3>
                   <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginBottom: '16px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                     {tier === 1 && <><span><span style={{color: 'var(--tint)'}}>••</span> {renderTracker(skillCounts[2], 3)}</span> <span><span style={{color: 'var(--tint)'}}>•</span> {renderTracker(skillCounts[1], 5)}</span></>}
-                     {tier === 2 && <><span><span style={{color: 'var(--tint)'}}>•••</span> {renderTracker(skillCounts[3], 3)}</span> <span><span style={{color: 'var(--tint)'}}>••</span> {renderTracker(skillCounts[2], 4)}</span> <span><span style={{color: 'var(--tint)'}}>•</span> {renderTracker(skillCounts[1], 5)}</span></>}
-                     {tier === 3 && <><span><span style={{color: 'var(--tint)'}}>••••</span> {renderTracker(skillCounts[4], 2)}</span> <span><span style={{color: 'var(--tint)'}}>•••</span> {renderTracker(skillCounts[3], 4)}</span> <span><span style={{color: 'var(--tint)'}}>••</span> {renderTracker(skillCounts[2], 4)}</span> <span><span style={{color: 'var(--tint)'}}>•</span> {renderTracker(skillCounts[1], 4)}</span></>}
+                    {tier === 1 && <><span><span style={{ color: 'var(--tint)' }}>••</span> {renderTracker(skillCounts[2], 3)}</span> <span><span style={{ color: 'var(--tint)' }}>•</span> {renderTracker(skillCounts[1], 5)}</span></>}
+                    {tier === 2 && <><span><span style={{ color: 'var(--tint)' }}>•••</span> {renderTracker(skillCounts[3], 3)}</span> <span><span style={{ color: 'var(--tint)' }}>••</span> {renderTracker(skillCounts[2], 4)}</span> <span><span style={{ color: 'var(--tint)' }}>•</span> {renderTracker(skillCounts[1], 5)}</span></>}
+                    {tier === 3 && <><span><span style={{ color: 'var(--tint)' }}>••••</span> {renderTracker(skillCounts[4], 2)}</span> <span><span style={{ color: 'var(--tint)' }}>•••</span> {renderTracker(skillCounts[3], 4)}</span> <span><span style={{ color: 'var(--tint)' }}>••</span> {renderTracker(skillCounts[2], 4)}</span> <span><span style={{ color: 'var(--tint)' }}>•</span> {renderTracker(skillCounts[1], 4)}</span></>}
                   </div>
-                  
+
                   <div className={styles.gridThreeColStitch}>
                     {Object.entries(SKILLS).map(([cat, skills]) => (
                       <div key={cat} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -692,7 +692,7 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
                                 </div>
                                 <div style={{ display: 'flex', gap: '2px' }}>
                                   {[1, 2, 3, 4, 5].map((d) => (
-                                    <div 
+                                    <div
                                       key={d}
                                       onClick={() => handleDotClick('skills', skill, d)}
                                       className={`${styles.dotCircleStitch} ${dots >= d ? styles.dotCircleFilledStitch : styles.dotCircleEmptyStitch}`}
@@ -714,17 +714,17 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
 
           {/* STEP 2 */}
           {step === 2 && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               style={{ position: 'relative', zIndex: 10 }}
             >
-              
+
               <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
                 <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px' }}>
                   {tier === 1 && <span>Tier 1 retainers cannot have advantages.</span>}
-                  {tier === 2 && <><span>Advantages {renderMaxTracker(advPoints, 3)}</span> <span style={{marginLeft: '16px'}}>Flaws {renderMaxTracker(flawPoints, 2)}</span></>}
-                  {tier === 3 && <><span>Advantages {renderMaxTracker(advPoints, 10)}</span> <span style={{marginLeft: '16px'}}>Flaws {renderMaxTracker(flawPoints, 4)}</span></>}
+                  {tier === 2 && <><span>Advantages {renderMaxTracker(advPoints, 3)}</span> <span style={{ marginLeft: '16px' }}>Flaws {renderMaxTracker(flawPoints, 2)}</span></>}
+                  {tier === 3 && <><span>Advantages {renderMaxTracker(advPoints, 10)}</span> <span style={{ marginLeft: '16px' }}>Flaws {renderMaxTracker(flawPoints, 4)}</span></>}
                 </span>
               </div>
 
@@ -735,11 +735,11 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
                       <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>stars</span> Advantages
                     </h3>
                     <div style={{ overflowY: 'auto', flex: 1, paddingRight: '8px' }}>
-                      <InlineMeritsFlawsPicker 
-                        isFlaw={false} 
-                        isGhoul={draftSheet.isGhoul} 
-                        selectedItems={draftSheet.advantages} 
-                        onToggle={(adv) => handleToggleAdvantage(false, adv)} 
+                      <InlineMeritsFlawsPicker
+                        isFlaw={false}
+                        isGhoul={draftSheet.isGhoul}
+                        selectedItems={draftSheet.advantages}
+                        onToggle={(adv) => handleToggleAdvantage(false, adv)}
                       />
                     </div>
                   </div>
@@ -749,11 +749,11 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
                       <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>heart_broken</span> Flaws
                     </h3>
                     <div style={{ overflowY: 'auto', flex: 1, paddingRight: '8px' }}>
-                      <InlineMeritsFlawsPicker 
-                        isFlaw={true} 
-                        isGhoul={draftSheet.isGhoul} 
-                        selectedItems={draftSheet.flaws} 
-                        onToggle={(adv) => handleToggleAdvantage(true, adv)} 
+                      <InlineMeritsFlawsPicker
+                        isFlaw={true}
+                        isGhoul={draftSheet.isGhoul}
+                        selectedItems={draftSheet.flaws}
+                        onToggle={(adv) => handleToggleAdvantage(true, adv)}
                       />
                     </div>
                   </div>
@@ -768,7 +768,7 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
               {draftSheet.isGhoul && (
                 <div style={{ backgroundColor: 'color-mix(in srgb, var(--tint) 5%, transparent)', border: '1px solid color-mix(in srgb, var(--tint) 10%, transparent)', padding: '24px', borderRadius: '16px', marginTop: '32px' }}>
                   <h3 style={{ color: 'white', fontWeight: 'bold', fontSize: '14px', marginBottom: '16px' }}>Ghoul Disciplines</h3>
-                  
+
                   {clanDisciplines.length === 0 ? (
                     <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px' }}>Your clan does not have standard in-clan disciplines listed.</p>
                   ) : (
@@ -796,35 +796,35 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
                                 <img src={iconPath(disc)} alt={disc} style={{ width: '24px', height: '24px', objectFit: 'contain', opacity: draftSheet.disciplines[disc] ? 1 : 0.3 }} />
                                 {disc}
                               </button>
-                              
+
                               {draftSheet.disciplines[disc] === 1 && !selectedPower && activeDisciplinePowerSelection !== disc && (
                                 <div style={{ fontSize: '12px', color: 'var(--tint)', cursor: 'pointer', padding: '6px 12px', background: 'color-mix(in srgb, var(--tint) 10%, transparent)', borderRadius: '6px' }} onClick={() => setActiveDisciplinePowerSelection(disc)}>
                                   Click to select power
                                 </div>
                               )}
                             </div>
-                            
+
                             {draftSheet.disciplines[disc] === 1 && selectedPower && (
                               <div style={{ marginLeft: '16px', padding: '16px', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                <PowerDetailCard 
-                                  power={selectedPower} 
-                                  onClear={() => setDraftSheet(prev => ({ ...prev, powers: (prev.powers || []).filter(p => p.discipline !== disc) }))} 
+                                <PowerDetailCard
+                                  power={selectedPower}
+                                  onClear={() => setDraftSheet(prev => ({ ...prev, powers: (prev.powers || []).filter(p => p.discipline !== disc) }))}
                                 />
                               </div>
                             )}
-                            
+
                             {draftSheet.disciplines[disc] === 1 && !selectedPower && activeDisciplinePowerSelection === disc && (
                               <div style={{ marginLeft: '16px', marginTop: '8px' }}>
-                                <InlinePowerSelection 
-                                  disciplineName={disc} 
+                                <InlinePowerSelection
+                                  disciplineName={disc}
                                   onSelect={(p) => {
                                     setDraftSheet(prev => ({ ...prev, powers: [...(prev.powers || []), { ...p, discipline: disc }] }));
                                     setActiveDisciplinePowerSelection(null);
-                                  }} 
+                                  }}
                                   onCancel={() => {
                                     setActiveDisciplinePowerSelection(null);
                                     setDraftSheet(prev => ({ ...prev, disciplines: { ...prev.disciplines, [disc]: 0 } }));
-                                  }} 
+                                  }}
                                 />
                               </div>
                             )}
@@ -844,10 +844,10 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
               <div className={styles.reviewSummaryStitch}>
                 <div className={styles.avatarGlowStitch} style={{ padding: pendingAvatar ? 0 : undefined, overflow: 'hidden' }}>
                   {pendingAvatar ? (
-                    <Avatar 
-                      retainerId={null} 
-                      editable={true} 
-                      size={100} 
+                    <Avatar
+                      retainerId={null}
+                      editable={true}
+                      size={100}
                       style={{ borderRadius: '50%' }}
                       previewUrl={URL.createObjectURL(pendingAvatar)}
                       onFileSelect={setPendingAvatar}
@@ -855,7 +855,7 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
                   ) : (
                     <div onClick={() => document.getElementById('newAvatarInput').click()} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <span className="material-symbols-outlined" style={{ fontSize: '48px', color: 'white' }}>person</span>
-                      <input id="newAvatarInput" type="file" style={{ display: 'none' }} accept="image/*" onChange={(e) => { if(e.target.files[0]) setPendingAvatar(e.target.files[0]) }} />
+                      <input id="newAvatarInput" type="file" style={{ display: 'none' }} accept="image/*" onChange={(e) => { if (e.target.files[0]) setPendingAvatar(e.target.files[0]) }} />
                     </div>
                   )}
                 </div>
@@ -864,7 +864,7 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
                     Click to add avatar
                   </div>
                 )}
-                
+
                 <div style={{ margin: '24px 0' }}>
                   <h3 style={{ fontSize: '30px', fontWeight: 'bold', color: 'white', margin: 0 }}>{name || 'Unnamed Retainer'}</h3>
                   <div style={{ display: 'inline-block', padding: '4px 12px', backgroundColor: 'color-mix(in srgb, var(--tint) 20%, transparent)', border: '1px solid color-mix(in srgb, var(--tint) 30%, transparent)', borderRadius: '99px', color: 'var(--tint)', fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '8px' }}>
@@ -873,52 +873,52 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
                 </div>
 
                 {(() => {
-                    const stamina = draftSheet.attributes['Stamina'] || 1;
-                    let health = stamina + 3;
-                    if (draftSheet.isGhoul && draftSheet.flaws.some(f => f.name === "Crone's Curse")) {
-                      health -= 1;
-                    }
-                    if (draftSheet.isGhoul && draftSheet.powers && draftSheet.powers.some(p => p.discipline === 'Fortitude' && p.name === 'Resilience')) {
-                      health += (draftSheet.disciplines['Fortitude'] || 1);
-                    }
-                    const willpower = (draftSheet.attributes['Composure'] || 1) + (draftSheet.attributes['Resolve'] || 1);
-                    return (
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', padding: '24px 0', borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                          <div style={{ textAlign: 'left' }}>
-                            <span className={styles.summaryLabelStitch}>Health</span>
-                            <div style={{ display: 'flex', gap: '4px', marginTop: '8px' }}>
-                              {Array.from({ length: health }).map((_, i) => (
-                                <div key={i} style={{ width: '14px', height: '14px', border: '1px solid rgba(255,255,255,0.5)', backgroundColor: 'transparent' }} />
-                              ))}
-                            </div>
-                          </div>
-                          <div style={{ textAlign: 'right' }}>
-                            <span className={styles.summaryLabelStitch}>Willpower</span>
-                            <div style={{ display: 'flex', gap: '4px', marginTop: '8px', justifyContent: 'flex-end' }}>
-                              {Array.from({ length: willpower }).map((_, i) => (
-                                <div key={i} style={{ width: '14px', height: '14px', border: '1px solid rgba(255,255,255,0.5)', backgroundColor: 'transparent' }} />
-                              ))}
-                            </div>
-                          </div>
-                          <div style={{ textAlign: 'left' }}>
-                            <span className={styles.summaryLabelStitch}>Attributes</span>
-                            <span className={styles.summaryValueStitch}>{Object.values(draftSheet.attributes).reduce((a, b) => a + b, 0)} points assigned</span>
-                          </div>
-                          <div style={{ textAlign: 'right' }}>
-                            <span className={styles.summaryLabelStitch}>Skills</span>
-                            <span className={styles.summaryValueStitch}>{Object.values(draftSheet.skills).reduce((a, b) => a + b, 0)} points assigned</span>
-                          </div>
-                          <div style={{ textAlign: 'left' }}>
-                            <span className={styles.summaryLabelStitch}>Advantages</span>
-                            <span className={styles.summaryValueStitch}>{draftSheet.advantages.length} ({advPoints} pts)</span>
-                          </div>
-                          <div style={{ textAlign: 'right' }}>
-                            <span className={styles.summaryLabelStitch}>Flaws</span>
-                            <span className={styles.summaryValueStitch}>{draftSheet.flaws.length} ({flawPoints} pts)</span>
-                          </div>
+                  const stamina = draftSheet.attributes['Stamina'] || 1;
+                  let health = stamina + 3;
+                  if (draftSheet.isGhoul && draftSheet.flaws.some(f => f.name === "Crone's Curse")) {
+                    health -= 1;
+                  }
+                  if (draftSheet.isGhoul && draftSheet.powers && draftSheet.powers.some(p => p.discipline === 'Fortitude' && p.name === 'Resilience')) {
+                    health += (draftSheet.disciplines['Fortitude'] || 1);
+                  }
+                  const willpower = (draftSheet.attributes['Composure'] || 1) + (draftSheet.attributes['Resolve'] || 1);
+                  return (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', padding: '24px 0', borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <div style={{ textAlign: 'left' }}>
+                        <span className={styles.summaryLabelStitch}>Health</span>
+                        <div style={{ display: 'flex', gap: '4px', marginTop: '8px' }}>
+                          {Array.from({ length: health }).map((_, i) => (
+                            <div key={i} style={{ width: '14px', height: '14px', border: '1px solid rgba(255,255,255,0.5)', backgroundColor: 'transparent' }} />
+                          ))}
                         </div>
-                    )
-                  })()}
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <span className={styles.summaryLabelStitch}>Willpower</span>
+                        <div style={{ display: 'flex', gap: '4px', marginTop: '8px', justifyContent: 'flex-end' }}>
+                          {Array.from({ length: willpower }).map((_, i) => (
+                            <div key={i} style={{ width: '14px', height: '14px', border: '1px solid rgba(255,255,255,0.5)', backgroundColor: 'transparent' }} />
+                          ))}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'left' }}>
+                        <span className={styles.summaryLabelStitch}>Attributes</span>
+                        <span className={styles.summaryValueStitch}>{Object.values(draftSheet.attributes).reduce((a, b) => a + b, 0)} points assigned</span>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <span className={styles.summaryLabelStitch}>Skills</span>
+                        <span className={styles.summaryValueStitch}>{Object.values(draftSheet.skills).reduce((a, b) => a + b, 0)} points assigned</span>
+                      </div>
+                      <div style={{ textAlign: 'left' }}>
+                        <span className={styles.summaryLabelStitch}>Advantages</span>
+                        <span className={styles.summaryValueStitch}>{draftSheet.advantages.length} ({advPoints} pts)</span>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <span className={styles.summaryLabelStitch}>Flaws</span>
+                        <span className={styles.summaryValueStitch}>{draftSheet.flaws.length} ({flawPoints} pts)</span>
+                      </div>
+                    </div>
+                  )
+                })()}
 
                 <div style={{ marginTop: '24px' }}>
                   {validationErrors.length === 0 ? (
@@ -944,7 +944,7 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
         </div>
 
         <div className={styles.wizardFooterStitch}>
-          <button 
+          <button
             type="button"
             onClick={() => setStep(Math.max(1, step - 1))}
             disabled={step === 1}
@@ -954,7 +954,7 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
           </button>
 
           {step < 3 ? (
-            <button 
+            <button
               type="button"
               onClick={() => setStep(Math.min(3, step + 1))}
               disabled={step === 1 && (!name.trim() || (!isAdminBypass && !canAfford))}
@@ -964,7 +964,7 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
               <span className="material-symbols-outlined">arrow_forward</span>
             </button>
           ) : (
-            <button 
+            <button
               type="button"
               onClick={() => onConfirm(name, draftSheet, pendingAvatar)}
               disabled={validationErrors.length > 0 || (!isAdminBypass && !canAfford)}
@@ -992,17 +992,17 @@ export default function RetainersView() {
   const [character, setCharacter] = useState(stateCharacter || null);
   const [retainers, setRetainers] = useState([]);
   const [selectedRetainerId, setSelectedRetainerId] = useState(preselectRetainerId || null);
-  
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeDisciplinePowerSelection, setActiveDisciplinePowerSelection] = useState(null);
-  
+
 
   // Edit Mode State (for updating existing retainers)
   const [isEditing, setIsEditing] = useState(false);
   const [draftSheet, setDraftSheet] = useState(null);
 
-  
+
   // Wizard State (for creating new retainers)
   const [wizardConfig, setWizardConfig] = useState({ isOpen: false, tier: 1, isMigration: false, isUpgrade: false, migrationId: null });
 
@@ -1012,9 +1012,9 @@ export default function RetainersView() {
       api.get('/characters/me').then(res => {
         if (!active) return;
         if (res.data && res.data.character) {
-           setCharacter(res.data.character);
+          setCharacter(res.data.character);
         } else {
-           navigate('/character');
+          navigate('/character');
         }
       }).catch(() => {
         if (active) navigate('/character');
@@ -1063,14 +1063,14 @@ export default function RetainersView() {
   const handleWizardConfirm = async (name, newSheet, pendingAvatar) => {
     const tier = wizardConfig.tier;
     const cost = tier * 3;
-    
+
     try {
       setSaving(true);
 
       if (wizardConfig.isMigration || wizardConfig.isUpgrade) {
         const oldRetainer = retainers.find(r => r.id === wizardConfig.migrationId);
         const tierDiff = tier - (oldRetainer?.tier || 0);
-        
+
         if (wizardConfig.isUpgrade && !isAdminBypass && tierDiff > 0) {
           await api.post(`/characters/xp/spend`, {
             type: 'advantage',
@@ -1080,10 +1080,10 @@ export default function RetainersView() {
           setCharacter(prev => ({ ...prev, xp: prev.xp - (tierDiff * 3) }));
         }
 
-        const endpoint = (!isAdminBypass && wizardConfig.isUpgrade) 
-          ? `/retainers/${wizardConfig.migrationId}/upgrade` 
+        const endpoint = (!isAdminBypass && wizardConfig.isUpgrade)
+          ? `/retainers/${wizardConfig.migrationId}/upgrade`
           : `/retainers/${wizardConfig.migrationId}`;
-          
+
         const res = await api.put(endpoint, {
           name,
           tier,
@@ -1093,7 +1093,7 @@ export default function RetainersView() {
         const updatedRetainer = res.data;
         setRetainers(retainers.map(r => r.id === updatedRetainer.id ? updatedRetainer : r));
         setSelectedRetainerId(updatedRetainer.id);
-        
+
         if (pendingAvatar) {
           const formData = new FormData();
           formData.append('avatar', pendingAvatar);
@@ -1115,14 +1115,14 @@ export default function RetainersView() {
           sheet: newSheet,
           xp: 0
         });
-        
+
         const newRetainer = res.data;
         setRetainers([...retainers, newRetainer]);
         setSelectedRetainerId(newRetainer.id);
         if (!isAdminBypass) {
           setCharacter(prev => ({ ...prev, xp: prev.xp - cost }));
         }
-        
+
         if (pendingAvatar) {
           const formData = new FormData();
           formData.append('avatar', pendingAvatar);
@@ -1131,7 +1131,7 @@ export default function RetainersView() {
           });
         }
       }
-      
+
       // Close wizard
       setWizardConfig({ isOpen: false, tier: 1, isMigration: false, migrationId: null });
     } catch (e) {
@@ -1179,18 +1179,18 @@ export default function RetainersView() {
     if (!selectedRetainer || !draftSheet) return;
     try {
       setSaving(true);
-      
+
       const targetTier = draftSheet.targetTier || selectedRetainer.tier;
       const tierDiff = targetTier - selectedRetainer.tier;
-      
+
       if (tierDiff > 0) {
-          const cost = tierDiff * 3;
-          await api.post(`/characters/xp/spend`, {
-             type: 'advantage',
-             target: `Upgrade Retainer ${selectedRetainer.name} to Tier ${targetTier}`,
-             dots: tierDiff
-          });
-          setCharacter(prev => ({ ...prev, xp: prev.xp - cost }));
+        const cost = tierDiff * 3;
+        await api.post(`/characters/xp/spend`, {
+          type: 'advantage',
+          target: `Upgrade Retainer ${selectedRetainer.name} to Tier ${targetTier}`,
+          dots: tierDiff
+        });
+        setCharacter(prev => ({ ...prev, xp: prev.xp - cost }));
       }
 
       const sheetToSave = { ...draftSheet };
@@ -1233,10 +1233,10 @@ export default function RetainersView() {
 
   const handleDotClick = (type, statName, newLevel) => {
     if (type === 'attributes') {
-       const cl = draftSheet.attributes[statName] || 1;
-       const fl = (cl === newLevel) ? 1 : newLevel;
-       setDraftSheet(prev => ({ ...prev, attributes: { ...prev.attributes, [statName]: fl } }));
-       return;
+      const cl = draftSheet.attributes[statName] || 1;
+      const fl = (cl === newLevel) ? 1 : newLevel;
+      setDraftSheet(prev => ({ ...prev, attributes: { ...prev.attributes, [statName]: fl } }));
+      return;
     }
 
     const cl = draftSheet[type][statName] || 0;
@@ -1268,9 +1268,9 @@ export default function RetainersView() {
       const idx = arr.findIndex(a => a.id === advObj.id);
       if (idx !== -1) {
         if (!advObj.name) {
-           arr.splice(idx, 1);
+          arr.splice(idx, 1);
         } else {
-           arr[idx] = advObj;
+          arr[idx] = advObj;
         }
       } else if (advObj.name) {
         arr.push(advObj);
@@ -1293,46 +1293,46 @@ export default function RetainersView() {
 
   return (
     <div className={styles.container}>
-      <WizardModal 
-        isOpen={wizardConfig.isOpen} 
-        tier={wizardConfig.tier} 
-        cost={wizardConfig.tier * 3} 
+      <WizardModal
+        isOpen={wizardConfig.isOpen}
+        tier={wizardConfig.tier}
+        cost={wizardConfig.tier * 3}
         domitorXp={character.xp || 0}
         clanDisciplines={clanDisciplines}
         isMigration={wizardConfig.isMigration}
-          isAdminBypass={isAdminBypass}
-          initialName={selectedRetainer?.name}
-          initialSheet={selectedRetainer?.sheet}
-          minTier={selectedRetainer?.tier || 1}
+        isAdminBypass={isAdminBypass}
+        initialName={selectedRetainer?.name}
+        initialSheet={selectedRetainer?.sheet}
+        minTier={selectedRetainer?.tier || 1}
         onCancel={() => setWizardConfig({ isOpen: false, tier: 1, isMigration: false, migrationId: null })}
         onConfirm={handleWizardConfirm}
       />
-      
+
       <div className={styles.contentWrapper}>
-        
+
         {/* Left Column */}
-        <motion.div 
+        <motion.div
           className={styles.leftColumn}
           initial={{ opacity: 0, x: -30 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ type: 'spring', stiffness: 300, damping: 25 }}
         >
-          
+
           <div className={styles.header}>
-            <h2 className={styles.title}>Retainers {isAdminBypass && <span style={{fontSize:"12px", color:"var(--error)", border:"1px solid var(--error)", padding:"2px 6px", borderRadius:"4px", marginLeft:"8px", verticalAlign:"middle"}}>ADMIN MODE</span>}</h2>
+            <h2 className={styles.title}>Retainers {isAdminBypass && <span style={{ fontSize: "12px", color: "var(--error)", border: "1px solid var(--error)", padding: "2px 6px", borderRadius: "4px", marginLeft: "8px", verticalAlign: "middle" }}>ADMIN MODE</span>}</h2>
             <div className={styles.xpBadge}>
               <span className="material-symbols-outlined" style={{ color: 'var(--tint)', fontSize: '16px' }}>stars</span>
               <span className={styles.xpBadgeText}>{isAdminBypass ? "XP Costs Bypassed" : `Available XP: ${character.xp || 0}`}</span>
             </div>
           </div>
-          
+
           {/* Active Thralls */}
           <div className={`${styles.glassPanel} ${styles.ambientGlow}`}>
             <h3 className={styles.panelTitle}>
               <span className="material-symbols-outlined" style={{ color: '#e0dedd' }}>group</span>
               Active Thralls
             </h3>
-            
+
             {retainers.length === 0 ? (
               <p style={{ color: '#e0dedd', opacity: 0.7 }}>You have no retainers currently serving you.</p>
             ) : (
@@ -1381,7 +1381,7 @@ export default function RetainersView() {
         </motion.div>
 
         {/* Right Main Pane */}
-        <motion.div 
+        <motion.div
           className={styles.rightColumn}
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -1390,14 +1390,14 @@ export default function RetainersView() {
           {selectedRetainer ? (
             <div className={`${styles.glassPanel} ${styles.ambientGlow} ${styles.sheetPanel}`} style={{ position: 'relative', overflow: 'hidden' }}>
               <div className={styles.bgAccent}></div>
-              
+
               <div className={styles.sheetHeader}>
                 <div className={styles.sheetAvatarWrapper}>
                   <div className={styles.sheetAvatar}>
-                     <Avatar retainerId={selectedRetainer.id} size={128} editable={true} onUploadSuccess={fetchRetainers} />
+                    <Avatar retainerId={selectedRetainer.id} size={128} editable={true} onUploadSuccess={fetchRetainers} />
                   </div>
                 </div>
-                
+
                 <div className={styles.sheetHeaderInfo}>
                   <div className={styles.sheetNameRow}>
                     <div>
@@ -1407,52 +1407,52 @@ export default function RetainersView() {
                           <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>edit</span>
                         </button>
                       </div>
-                      
+
                       {isEditing ? (
-                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                           <span className={styles.sheetTier}>Target Tier: </span>
-                           <select 
-                             value={draftSheet.targetTier || selectedRetainer.tier}
-                             onChange={(e) => setDraftSheet(p => ({ ...p, targetTier: parseInt(e.target.value) }))}
-                             style={{ background: 'rgba(0,0,0,0.5)', color: '#fff', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '2px 8px', fontSize: '12px' }}
-                           >
-                             <option value={1} disabled={selectedRetainer.tier > 1}>Tier 1</option>
-                             <option value={2} disabled={selectedRetainer.tier > 2}>Tier 2</option>
-                             <option value={3} disabled={selectedRetainer.tier > 3}>Tier 3</option>
-                             {/* <option value={4} disabled={selectedRetainer.tier > 4}>Tier 4</option> */}
-                           </select>
-                         </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                          <span className={styles.sheetTier}>Target Tier: </span>
+                          <select
+                            value={draftSheet.targetTier || selectedRetainer.tier}
+                            onChange={(e) => setDraftSheet(p => ({ ...p, targetTier: parseInt(e.target.value) }))}
+                            style={{ background: 'rgba(0,0,0,0.5)', color: '#fff', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '2px 8px', fontSize: '12px' }}
+                          >
+                            <option value={1} disabled={selectedRetainer.tier > 1}>Tier 1</option>
+                            <option value={2} disabled={selectedRetainer.tier > 2}>Tier 2</option>
+                            <option value={3} disabled={selectedRetainer.tier > 3}>Tier 3</option>
+                            {/* <option value={4} disabled={selectedRetainer.tier > 4}>Tier 4</option> */}
+                          </select>
+                        </div>
                       ) : (
-                         <p className={styles.sheetTier}>Tier {selectedRetainer.tier} {currentSheet.isGhoul ? 'Ghoul' : 'Mortal'}</p>
+                        <p className={styles.sheetTier}>Tier {selectedRetainer.tier} {currentSheet.isGhoul ? 'Ghoul' : 'Mortal'}</p>
                       )}
 
                     </div>
                     <div className={styles.sheetControls}>
-                       {!isEditing ? (
-                         <>
-                           <button className={styles.btnPrimary} onClick={startEditing} disabled={saving}>Edit Sheet</button>
-                           <button className={`${styles.btnPrimary} ${styles.btnDanger}`} onClick={() => handleDelete(selectedRetainer.id)} disabled={saving}>Dismiss</button>
-                         </>
-                       ) : (
-                         <>
-                           <button 
-                             className={styles.btnPrimary} 
-                             onClick={handleSaveSheet} 
-                             disabled={saving || validationErrors.length > 0 || !canAffordUpgrade} 
-                             style={{ backgroundColor: (validationErrors.length > 0 || !canAffordUpgrade) ? 'var(--surface-variant)' : '' }}
-                           >
-                             {upgradeCost > 0 && !isAdminBypass ? `Pay ${upgradeCost} XP & Save` : 'Save Sheet'}
-                           </button>
-                           <button className={`${styles.btnPrimary} ${styles.btnDanger}`} onClick={cancelEditing} disabled={saving}>Cancel</button>
-                         </>
-                       )}
+                      {!isEditing ? (
+                        <>
+                          <button className={styles.btnPrimary} onClick={startEditing} disabled={saving}>Edit Sheet</button>
+                          <button className={`${styles.btnPrimary} ${styles.btnDanger}`} onClick={() => handleDelete(selectedRetainer.id)} disabled={saving}>Dismiss</button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            className={styles.btnPrimary}
+                            onClick={handleSaveSheet}
+                            disabled={saving || validationErrors.length > 0 || !canAffordUpgrade}
+                            style={{ backgroundColor: (validationErrors.length > 0 || !canAffordUpgrade) ? 'var(--surface-variant)' : '' }}
+                          >
+                            {upgradeCost > 0 && !isAdminBypass ? `Pay ${upgradeCost} XP & Save` : 'Save Sheet'}
+                          </button>
+                          <button className={`${styles.btnPrimary} ${styles.btnDanger}`} onClick={cancelEditing} disabled={saving}>Cancel</button>
+                        </>
+                      )}
                     </div>
                   </div>
-                  
+
                   {isEditing && (
                     <div style={{ marginTop: '16px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                       <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#fff', cursor: 'pointer', padding: '8px 12px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                        <input type="checkbox" checked={draftSheet.isGhoul} onChange={e => setDraftSheet(p => ({...p, isGhoul: e.target.checked}))} />
+                        <input type="checkbox" checked={draftSheet.isGhoul} onChange={e => setDraftSheet(p => ({ ...p, isGhoul: e.target.checked }))} />
                         Is Ghoul? (Unlocks 1 Discipline Dot)
                       </label>
                       {draftSheet.isGhoul && (
@@ -1489,7 +1489,7 @@ export default function RetainersView() {
               </div>
 
               <div className={styles.statsGrid}>
-                
+
                 {/* Attributes */}
                 <div className={styles.statsBox}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -1504,7 +1504,7 @@ export default function RetainersView() {
                         <div style={{ fontSize: '10px', textTransform: 'uppercase', color: '#e0dedd', opacity: 0.6, marginBottom: '12px', letterSpacing: '1px', fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '4px' }}>{cat}</div>
                         <ul className={styles.statList}>
                           {ATTRS[idx].map(attr => (
-                            <DotRow 
+                            <DotRow
                               key={attr}
                               label={attr}
                               value={(currentSheet.attributes || {})[attr] || 1 /* (targetTier === 4 ? 2 : 1) */}
@@ -1527,7 +1527,7 @@ export default function RetainersView() {
                         <div style={{ fontSize: '10px', textTransform: 'uppercase', color: '#e0dedd', opacity: 0.6, marginBottom: '12px', letterSpacing: '1px', fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '4px' }}>{cat}</div>
                         <ul className={styles.statList}>
                           {skills.map(skill => (
-                            <DotRow 
+                            <DotRow
                               key={skill}
                               label={skill}
                               value={(currentSheet.skills || {})[skill] || 0}
@@ -1540,61 +1540,61 @@ export default function RetainersView() {
                     ))}
                   </div>
                 </div>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {/* Advantages */}
-                    <div className={styles.statsBox} style={{ opacity: (isEditing && targetTier === 1) ? 0.5 : 1 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                        <h4 style={{ margin: 0, color: '#fff', fontSize: '14px' }}>Advantages</h4>
-                      </div>
-                      {isEditing && targetTier > 1 ? (
-                        <InlineMeritsFlawsPicker 
-                          isFlaw={false} 
-                          isGhoul={draftSheet.isGhoul} 
-                          selectedItems={currentSheet.advantages || []} 
-                          onToggle={(adv) => handleToggleAdvantageMain(false, adv)} 
-                        />
-                      ) : (
-                        <ul className={styles.statList}>
-                          {(currentSheet.advantages || []).map((adv, i) => (
-                            <li key={i} className={styles.statRow}>
-                              <span className={styles.statName}>{adv.name}</span>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <SmallDots value={adv.dots} />
-                              </div>
-                            </li>
-                          ))}
-                          {(!currentSheet.advantages || currentSheet.advantages.length === 0) && <li style={{ fontSize: '12px', color: '#e0dedd', opacity: 0.5 }}>No advantages</li>}
-                        </ul>
-                      )}
-                    </div>
 
-                    {/* Flaws */}
-                    <div className={styles.statsBox} style={{ opacity: (isEditing && targetTier === 1) ? 0.5 : 1 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                        <h4 style={{ margin: 0, color: 'var(--error)', fontSize: '14px' }}>Flaws</h4>
-                      </div>
-                      {isEditing && targetTier > 1 ? (
-                        <InlineMeritsFlawsPicker 
-                          isFlaw={true} 
-                          isGhoul={draftSheet.isGhoul} 
-                          selectedItems={currentSheet.flaws || []} 
-                          onToggle={(adv) => handleToggleAdvantageMain(true, adv)} 
-                        />
-                      ) : (
-                        <ul className={styles.statList}>
-                          {(currentSheet.flaws || []).map((flaw, i) => (
-                            <li key={i} className={styles.statRow}>
-                              <span className={styles.statName} style={{ color: 'var(--error)' }}>{flaw.name}</span>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <SmallDots value={flaw.dots} />
-                              </div>
-                            </li>
-                          ))}
-                          {(!currentSheet.flaws || currentSheet.flaws.length === 0) && <li style={{ fontSize: '12px', color: '#e0dedd', opacity: 0.5 }}>No flaws</li>}
-                        </ul>
-                      )}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {/* Advantages */}
+                  <div className={styles.statsBox} style={{ opacity: (isEditing && targetTier === 1) ? 0.5 : 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                      <h4 style={{ margin: 0, color: '#fff', fontSize: '14px' }}>Advantages</h4>
                     </div>
+                    {isEditing && targetTier > 1 ? (
+                      <InlineMeritsFlawsPicker
+                        isFlaw={false}
+                        isGhoul={draftSheet.isGhoul}
+                        selectedItems={currentSheet.advantages || []}
+                        onToggle={(adv) => handleToggleAdvantageMain(false, adv)}
+                      />
+                    ) : (
+                      <ul className={styles.statList}>
+                        {(currentSheet.advantages || []).map((adv, i) => (
+                          <li key={i} className={styles.statRow}>
+                            <span className={styles.statName}>{adv.name}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <SmallDots value={adv.dots} />
+                            </div>
+                          </li>
+                        ))}
+                        {(!currentSheet.advantages || currentSheet.advantages.length === 0) && <li style={{ fontSize: '12px', color: '#e0dedd', opacity: 0.5 }}>No advantages</li>}
+                      </ul>
+                    )}
+                  </div>
+
+                  {/* Flaws */}
+                  <div className={styles.statsBox} style={{ opacity: (isEditing && targetTier === 1) ? 0.5 : 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                      <h4 style={{ margin: 0, color: 'var(--error)', fontSize: '14px' }}>Flaws</h4>
+                    </div>
+                    {isEditing && targetTier > 1 ? (
+                      <InlineMeritsFlawsPicker
+                        isFlaw={true}
+                        isGhoul={draftSheet.isGhoul}
+                        selectedItems={currentSheet.flaws || []}
+                        onToggle={(adv) => handleToggleAdvantageMain(true, adv)}
+                      />
+                    ) : (
+                      <ul className={styles.statList}>
+                        {(currentSheet.flaws || []).map((flaw, i) => (
+                          <li key={i} className={styles.statRow}>
+                            <span className={styles.statName} style={{ color: 'var(--error)' }}>{flaw.name}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <SmallDots value={flaw.dots} />
+                            </div>
+                          </li>
+                        ))}
+                        {(!currentSheet.flaws || currentSheet.flaws.length === 0) && <li style={{ fontSize: '12px', color: '#e0dedd', opacity: 0.5 }}>No flaws</li>}
+                      </ul>
+                    )}
+                  </div>
                 </div>
 
                 {/* Disciplines */}
@@ -1606,63 +1606,63 @@ export default function RetainersView() {
                     <p style={{ color: '#e0dedd', opacity: 0.7 }}>No in-clan disciplines available for domitor clan.</p>
                   ) : (
                     <>
-                    <div className={styles.disciplinesGrid}>
-                      {clanDisciplines.map(disc => {
-                        const level = (currentSheet.disciplines || {})[disc] || 0;
-                        const selectedPower = (currentSheet.powers || []).find(p => p.discipline === disc);
-                        return (
-                          <div 
-                            key={disc} 
-                            className={styles.disciplineCard} 
-                            onClick={() => isEditing && handleDotClick('disciplines', disc, level + 1)}
-                            style={{ cursor: isEditing ? 'pointer' : 'default', flexDirection: 'column' }}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <img src={iconPath(disc)} alt={disc} style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
-                              <h4 className={styles.disciplineName} style={{ flex: 1 }}>{disc}</h4>
-                            </div>
-                            <div className={styles.disciplineDots} style={{ marginTop: '8px' }}>
-                              {Array.from({ length: 5 }).map((_, i) => (
-                                <div 
-                                  key={i} 
-                                  className={`${styles.dotSmall} ${i < level ? styles.dotSmallFilled : ''}`}
-                                  onClick={(e) => { e.stopPropagation(); isEditing && handleDotClick('disciplines', disc, i + 1); }}
-                                />
-                              ))}
-                            </div>
-                            {level === 1 && selectedPower && (
-                              <PowerDetailCard 
-                                power={selectedPower} 
-                                onClear={isEditing ? () => setDraftSheet(prev => ({ ...prev, powers: (prev.powers || []).filter(p => p.discipline !== disc) })) : null} 
-                                readOnly={!isEditing}
-                                noMargin={true}
-                              />
-                            )}
-                            {level === 1 && !selectedPower && isEditing && activeDisciplinePowerSelection !== disc && (
-                              <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--error)', cursor: 'pointer', padding: '4px 8px', background: 'rgba(194, 24, 7, 0.1)', borderRadius: '4px', display: 'inline-block' }} onClick={(e) => { e.stopPropagation(); setActiveDisciplinePowerSelection(disc); }}>
-                                ↳ Click to select power
+                      <div className={styles.disciplinesGrid}>
+                        {clanDisciplines.map(disc => {
+                          const level = (currentSheet.disciplines || {})[disc] || 0;
+                          const selectedPower = (currentSheet.powers || []).find(p => p.discipline === disc);
+                          return (
+                            <div
+                              key={disc}
+                              className={styles.disciplineCard}
+                              onClick={() => isEditing && handleDotClick('disciplines', disc, level + 1)}
+                              style={{ cursor: isEditing ? 'pointer' : 'default', flexDirection: 'column' }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <img src={iconPath(disc)} alt={disc} style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
+                                <h4 className={styles.disciplineName} style={{ flex: 1 }}>{disc}</h4>
                               </div>
-                            )}
-                            {level === 1 && !selectedPower && isEditing && activeDisciplinePowerSelection === disc && (
-                              <div onClick={e => e.stopPropagation()}>
-                                <InlinePowerSelection 
-                                  disciplineName={disc} 
+                              <div className={styles.disciplineDots} style={{ marginTop: '8px' }}>
+                                {Array.from({ length: 5 }).map((_, i) => (
+                                  <div
+                                    key={i}
+                                    className={`${styles.dotSmall} ${i < level ? styles.dotSmallFilled : ''}`}
+                                    onClick={(e) => { e.stopPropagation(); isEditing && handleDotClick('disciplines', disc, i + 1); }}
+                                  />
+                                ))}
+                              </div>
+                              {level === 1 && selectedPower && (
+                                <PowerDetailCard
+                                  power={selectedPower}
+                                  onClear={isEditing ? () => setDraftSheet(prev => ({ ...prev, powers: (prev.powers || []).filter(p => p.discipline !== disc) })) : null}
+                                  readOnly={!isEditing}
                                   noMargin={true}
-                                  onSelect={(p) => {
-                                    setDraftSheet(prev => ({ ...prev, powers: [...(prev.powers || []), { ...p, discipline: disc }] }));
-                                    setActiveDisciplinePowerSelection(null);
-                                  }} 
-                                  onCancel={() => {
-                                    setActiveDisciplinePowerSelection(null);
-                                    setDraftSheet(prev => ({ ...prev, disciplines: { ...prev.disciplines, [disc]: 0 } }));
-                                  }} 
                                 />
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+                              )}
+                              {level === 1 && !selectedPower && isEditing && activeDisciplinePowerSelection !== disc && (
+                                <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--error)', cursor: 'pointer', padding: '4px 8px', background: 'rgba(194, 24, 7, 0.1)', borderRadius: '4px', display: 'inline-block' }} onClick={(e) => { e.stopPropagation(); setActiveDisciplinePowerSelection(disc); }}>
+                                  ↳ Click to select power
+                                </div>
+                              )}
+                              {level === 1 && !selectedPower && isEditing && activeDisciplinePowerSelection === disc && (
+                                <div onClick={e => e.stopPropagation()}>
+                                  <InlinePowerSelection
+                                    disciplineName={disc}
+                                    noMargin={true}
+                                    onSelect={(p) => {
+                                      setDraftSheet(prev => ({ ...prev, powers: [...(prev.powers || []), { ...p, discipline: disc }] }));
+                                      setActiveDisciplinePowerSelection(null);
+                                    }}
+                                    onCancel={() => {
+                                      setActiveDisciplinePowerSelection(null);
+                                      setDraftSheet(prev => ({ ...prev, disciplines: { ...prev.disciplines, [disc]: 0 } }));
+                                    }}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </>
                   )}
                 </div>
@@ -1688,17 +1688,17 @@ export default function RetainersView() {
                   <p style={{ color: '#e5e2e1', fontSize: '16px', lineHeight: '1.6', maxWidth: '400px', marginBottom: '32px' }}>
                     This retainer was migrated from your old character sheet. You must build their V5 Mortal Template to unlock their sheet.
                   </p>
-                  <button 
-                    className={styles.btnPrimary} 
+                  <button
+                    className={styles.btnPrimary}
                     onClick={() => handleOpenWizard(selectedRetainer.tier, true, selectedRetainer.id)}
-                    style={{ 
-                      background: 'linear-gradient(45deg, var(--tint), #333399)', 
-                      border: 'none', 
-                      boxShadow: '0 0 15px rgba(255,0,204,0.6), inset 0 0 10px rgba(255,255,255,0.2)', 
-                      padding: '12px 32px', 
-                      fontWeight: 'bold', 
-                      fontSize: '16px', 
-                      textTransform: 'uppercase', 
+                    style={{
+                      background: 'linear-gradient(45deg, var(--tint), #333399)',
+                      border: 'none',
+                      boxShadow: '0 0 15px rgba(255,0,204,0.6), inset 0 0 10px rgba(255,255,255,0.2)',
+                      padding: '12px 32px',
+                      fontWeight: 'bold',
+                      fontSize: '16px',
+                      textTransform: 'uppercase',
                       letterSpacing: '2px',
                       color: '#fff',
                       cursor: 'pointer'

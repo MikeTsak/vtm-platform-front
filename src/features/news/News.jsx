@@ -86,13 +86,6 @@ export default function News() {
   // Check if character is active (similar to DownTimes logic)
   const isCharActive = !!user && (isAdmin || isCourt || (myChar && myChar.sheet && myChar.sheet.is_active === true));
 
-  // If the user's character is fetched but deactivated, or user is not logged in, redirect them from rumors
-  useEffect(() => {
-    if (isRumorsPage && !isCharActive && !loading) {
-      navigate('/news');
-    }
-  }, [isRumorsPage, isCharActive, loading, navigate]);
-
   // Can post rumor only if they are an Admin, Court, or an ACTIVE character
   const canPostRumor = isCharActive;
 
@@ -205,8 +198,8 @@ export default function News() {
             </div>
           )}
 
-          {/* Rumors Section - Completely hidden if character is not active */}
-          {isCharActive && isRumorsPage && (
+          {/* Rumors Section - visible to any logged-in user */}
+          {!!user && isRumorsPage && (
             <div className={styles.column}>
               <div className={styles.masonry}>
                 {rumorItems.map(item => {
