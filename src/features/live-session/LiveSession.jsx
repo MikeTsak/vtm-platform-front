@@ -176,6 +176,13 @@ export default function LiveSession() {
     const trait1 = selectedTraits[0] || null;
     const trait2 = selectedTraits[1] || null;
     let pool = getPoolFromCharacter(sheet, trait1, trait2);
+    
+    // Add Discipline Power Bonus if rolling a Discipline
+    const hasDiscipline = (trait1 && sheet?.disciplines?.[trait1] !== undefined) || (trait2 && sheet?.disciplines?.[trait2] !== undefined);
+    if (hasDiscipline) {
+      pool += bpStats.disciplineBonus;
+    }
+
     if (bloodSurgeActive) pool += bpStats.surgeBonus;
     if (specialtyActive) pool += 1;
     
@@ -188,8 +195,8 @@ export default function LiveSession() {
         }
       }
       if (trackers.willpower && trackers.willpower.superficial + trackers.willpower.aggravated >= trackers.willpower.max) {
-        if (['Charisma', 'Manipulation', 'Composure', 'Intelligence', 'Wits', 'Resolve', 'AnimalKen', 'Etiquette', 'Insight', 'Intimidation', 'Leadership', 'Performance', 'Persuasion', 'Streetwise', 'Subterfuge', 'Academics', 'Awareness', 'Finance', 'Investigation', 'Medicine', 'Occult', 'Politics', 'Science', 'Technology'].includes(trait1) || 
-            ['Charisma', 'Manipulation', 'Composure', 'Intelligence', 'Wits', 'Resolve', 'AnimalKen', 'Etiquette', 'Insight', 'Intimidation', 'Leadership', 'Performance', 'Persuasion', 'Streetwise', 'Subterfuge', 'Academics', 'Awareness', 'Finance', 'Investigation', 'Medicine', 'Occult', 'Politics', 'Science', 'Technology'].includes(trait2)) {
+        if (['Charisma', 'Manipulation', 'Composure', 'Intelligence', 'Wits', 'Resolve', 'Animal Ken', 'Etiquette', 'Insight', 'Intimidation', 'Leadership', 'Performance', 'Persuasion', 'Streetwise', 'Subterfuge', 'Academics', 'Awareness', 'Finance', 'Investigation', 'Medicine', 'Occult', 'Politics', 'Science', 'Technology'].includes(trait1) || 
+            ['Charisma', 'Manipulation', 'Composure', 'Intelligence', 'Wits', 'Resolve', 'Animal Ken', 'Etiquette', 'Insight', 'Intimidation', 'Leadership', 'Performance', 'Persuasion', 'Streetwise', 'Subterfuge', 'Academics', 'Awareness', 'Finance', 'Investigation', 'Medicine', 'Occult', 'Politics', 'Science', 'Technology'].includes(trait2)) {
           pool -= 2;
         }
       }
@@ -829,12 +836,14 @@ export default function LiveSession() {
 
             {/* Surge & Settings */}
             <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap' }}>
-              <div className={styles.toggleContainer} onClick={() => setBloodSurgeActive(!bloodSurgeActive)}>
-                <div className={`${styles.toggleTrack} ${bloodSurgeActive ? styles.active : ''}`}>
-                  <div className={styles.toggleThumb} />
+              {bpStats.surgeBonus > 0 && (
+                <div className={styles.toggleContainer} onClick={() => setBloodSurgeActive(!bloodSurgeActive)}>
+                  <div className={`${styles.toggleTrack} ${bloodSurgeActive ? styles.active : ''}`}>
+                    <div className={styles.toggleThumb} />
+                  </div>
+                  <span style={{ fontWeight: 'bold', color: bloodSurgeActive ? 'var(--primary)' : 'var(--text-muted)' }}>Blood Surge (+{bpStats.surgeBonus})</span>
                 </div>
-                <span style={{ fontWeight: 'bold', color: bloodSurgeActive ? 'var(--primary)' : 'var(--text-muted)' }}>Blood Surge (+{bpStats.surgeBonus})</span>
-              </div>
+              )}
               <div className={styles.toggleContainer} onClick={() => setSpecialtyActive(!specialtyActive)}>
                 <div className={`${styles.toggleTrack} ${specialtyActive ? styles.active : ''}`}>
                   <div className={styles.toggleThumb} />
@@ -902,6 +911,29 @@ export default function LiveSession() {
                   ))}
                 </div>
               </div>
+
+              {/* Disciplines */}
+              {Object.keys(sheet?.disciplines || {}).filter(d => Number(sheet.disciplines[d]) > 0).length > 0 && (
+                <div className={styles.trackerBox}>
+                  <h4 className={styles.labelMd} style={{ marginBottom: '1.5rem' }}>Disciplines</h4>
+                  <div className={styles.traitGrid}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Powers</span>
+                      {Object.entries(sheet.disciplines).filter(([, dots]) => Number(dots) > 0).map(([discName, dots]) => {
+                        const isActive = selectedTraits.includes(discName);
+                        return (
+                          <div key={discName} className={`${styles.selectableItem} ${isActive ? styles.active : ''}`} onClick={() => toggleTrait(discName)}>
+                            <span style={{ fontSize: '0.85rem' }}>{discName}</span>
+                            <div className={styles.dotRow}>
+                              {Array.from({ length: 5 }).map((_, i) => <div key={i} className={i < dots ? styles.dotFilled : styles.dotEmpty} />)}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

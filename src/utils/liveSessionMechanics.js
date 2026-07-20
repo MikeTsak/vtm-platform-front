@@ -68,11 +68,18 @@ export function rollPool(pool, hunger, difficulty = 0, rng = Math.random) {
 
 export function getBloodPotencyStats(bp) {
   const level = clamp(Number(bp) || 0, 0, 10);
-  const surgeBonuses = [1, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5];
+  const surgeBonuses = [1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6];
   const rouseRerollLevels = [0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5];
+  const mendAmounts = [1, 1, 2, 2, 3, 3, 3, 3, 4, 4, 5];
+  const disciplineBonuses = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5];
+  const baneSeverities = [0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5];
+  
   return {
     surgeBonus: surgeBonuses[level],
     rouseRerollLevel: rouseRerollLevels[level],
+    mendAmount: mendAmounts[level],
+    disciplineBonus: disciplineBonuses[level],
+    baneSeverity: baneSeverities[level],
   };
 }
 
@@ -97,21 +104,22 @@ export function rerollNormalDice(normalDice, selectedIndices, rng = Math.random)
   return { rerolled: next, selectedCount: selected.length };
 }
 
-export function getPoolFromCharacter(characterSheet, attribute, skill) {
-  // Get the attribute (defaults to 0 if missing)
-  const attr = Number(characterSheet?.attributes?.[attribute]) || 0;
+export function getTraitValue(sheet, traitName) {
+  if (!traitName) return 0;
+  if (sheet?.attributes?.[traitName] !== undefined) return Number(sheet.attributes[traitName]) || 0;
   
-  // Handle the skill (it might be a raw number OR an object with a .dots property)
-  const skillData = characterSheet?.skills?.[skill];
-  let skl = 0;
-  
-  if (skillData && typeof skillData === 'object') {
-    skl = Number(skillData.dots) || 0;
-  } else {
-    skl = Number(skillData) || 0;
+  const skillData = sheet?.skills?.[traitName];
+  if (skillData !== undefined) {
+    if (typeof skillData === 'object') return Number(skillData.dots) || 0;
+    return Number(skillData) || 0;
   }
+  
+  if (sheet?.disciplines?.[traitName] !== undefined) return Number(sheet.disciplines[traitName]) || 0;
+  return 0;
+}
 
-  return Math.max(0, attr + skl);
+export function getPoolFromCharacter(sheet, trait1, trait2) {
+  return getTraitValue(sheet, trait1) + getTraitValue(sheet, trait2);
 }
 
 export function disciplineRequiresRouse(power) {
