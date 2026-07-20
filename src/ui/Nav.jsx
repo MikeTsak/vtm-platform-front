@@ -14,6 +14,8 @@ function NavDropdown({ title, icon, children, isMobile, isOpen, toggleOpen }) {
           onClick={toggleOpen}
           className={`w-full flex items-center justify-between p-3 rounded-lg border border-transparent transition-colors ${isOpen ? 'bg-primary-container/20 border-primary/30 text-primary' : 'bg-surface-variant/10 text-on-surface hover:bg-surface-variant/30'
             }`}
+          data-cuelume-press
+          data-cuelume-hover
         >
           <div className="flex items-center gap-3">
             {icon && <span className="material-symbols-outlined text-[20px]">{icon}</span>}
@@ -38,6 +40,7 @@ function NavDropdown({ title, icon, children, isMobile, isOpen, toggleOpen }) {
       className="relative group h-full flex items-center"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      data-cuelume-hover
     >
       <div className={`cursor-pointer flex items-center gap-1.5 px-3 py-2 rounded transition-colors text-[13px] uppercase tracking-widest font-bold font-['Inter'] ${isHovered ? 'text-primary bg-surface-variant/30' : 'text-on-surface-variant'}`}>
         {icon && <span className="material-symbols-outlined text-[18px] mb-[2px]">{icon}</span>}
@@ -138,7 +141,9 @@ export default function Nav() {
         <div className="flex items-center justify-between px-4 lg:px-8 h-16 max-w-[1920px] mx-auto">
 
           {/* Logo & Brand */}
-          <Link to="/" className="flex items-center gap-3 z-[1001] group" onClick={closeMenu}>
+          <Link 
+  data-cuelume-press 
+  data-cuelume-hover to="/" className="flex items-center gap-3 z-[1001] group" onClick={closeMenu}>
             <img src="/img/animated.gif" alt="ATT Logo" className="w-8 h-8 object-contain rounded-md border border-outline-variant/50 bg-surface-container p-0.5 shadow-lg group-hover:border-primary transition-colors" />
             <span className="font-['Playfair_Display'] font-bold text-[20px] tracking-wide text-on-surface group-hover:text-primary transition-colors">Erebus Portal</span>
           </Link>
@@ -148,32 +153,60 @@ export default function Nav() {
             {user && (
               <>
                 <NavDropdown title="Personal" icon="person" isMobile={false}>
-                  <NavLink end to="/character" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Character Sheet</NavLink>
-                  <NavLink to="/downtimes" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Actions & Projects</NavLink>
+                  <NavLink 
+  data-cuelume-press 
+  data-cuelume-hover end to="/character" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Character Sheet</NavLink>
+                  <NavLink 
+  data-cuelume-press 
+  data-cuelume-hover to="/downtimes" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Actions & Projects</NavLink>
                   {canSeePremonitions && (
-                    <NavLink to="/premonitions" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Premonitions</NavLink>
+                    <NavLink 
+  data-cuelume-press 
+  data-cuelume-hover to="/premonitions" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Premonitions</NavLink>
                   )}
-                  <NavLink to="/retainers" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Retainers</NavLink>
+                  <NavLink 
+  data-cuelume-press 
+  data-cuelume-hover to="/retainers" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Retainers</NavLink>
                 </NavDropdown>
 
                 <NavDropdown title="Athens" icon="account_balance" isMobile={false}>
-                  <NavLink to="/court/hierarchy" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Court Hierarchy</NavLink>
-                  <NavLink to="/court/announcements" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Announcements</NavLink>
-                  <NavLink to="/court/coteries" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Coteries</NavLink>
-                  <NavLink to="/boons" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Boons Ledger</NavLink>
-                  <NavLink to="/domains" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>City Domains</NavLink>
-                  <NavLink to="/news" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Official News</NavLink>
+                  <NavLink 
+  data-cuelume-press 
+  data-cuelume-hover to="/court/hierarchy" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Court Hierarchy</NavLink>
+                  <NavLink 
+  data-cuelume-press 
+  data-cuelume-hover to="/court/announcements" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Announcements</NavLink>
+                  <NavLink 
+  data-cuelume-press 
+  data-cuelume-hover to="/court/coteries" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Coteries</NavLink>
+                  <NavLink 
+  data-cuelume-press 
+  data-cuelume-hover to="/boons" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Boons Ledger</NavLink>
+                  <NavLink 
+  data-cuelume-press 
+  data-cuelume-hover to="/domains" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>City Domains</NavLink>
+                  <NavLink 
+  data-cuelume-press 
+  data-cuelume-hover to="/news" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Official News</NavLink>
                   {isCharActive && (
-                    <NavLink to="/rumors" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Rumors</NavLink>
+                    <NavLink 
+  data-cuelume-press 
+  data-cuelume-hover to="/rumors" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Rumors</NavLink>
                   )}
                 </NavDropdown>
 
                 <NavDropdown title="Comms" icon="rss_feed" isMobile={false}>
-                  <NavLink to="/schrecknet" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>SchreckNet</NavLink>
-                  <NavLink to="/surfaceweb" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Surface Web</NavLink>
+                  <NavLink 
+  data-cuelume-press 
+  data-cuelume-hover to="/schrecknet" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>SchreckNet</NavLink>
+                  <NavLink 
+  data-cuelume-press 
+  data-cuelume-hover to="/surfaceweb" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Surface Web</NavLink>
                 </NavDropdown>
 
-                <NavLink to="/live-session" className={({ isActive }) => getNavItemClass({ isActive, isMobile: false })}>
+                <NavLink 
+  data-cuelume-press 
+  data-cuelume-hover to="/live-session" className={({ isActive }) => getNavItemClass({ isActive, isMobile: false })}>
                   <span className="material-symbols-outlined text-[18px] mb-[2px]">play_circle</span>
                   Live Session
                 </NavLink>
@@ -182,8 +215,12 @@ export default function Nav() {
 
             {user?.role === 'admin' && (
               <NavDropdown title="Admin" icon="admin_panel_settings" isMobile={false}>
-                <NavLink to="/admin" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Admin Panel</NavLink>
-                <NavLink to="/admin/live-session" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Live Session Dashboard</NavLink>
+                <NavLink 
+  data-cuelume-press 
+  data-cuelume-hover to="/admin" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Admin Panel</NavLink>
+                <NavLink 
+  data-cuelume-press 
+  data-cuelume-hover to="/admin/live-session" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Live Session Dashboard</NavLink>
               </NavDropdown>
             )}
           </div>
@@ -196,12 +233,14 @@ export default function Nav() {
                   <span className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Logged In</span>
                   <span className="text-[14px] text-primary font-bold font-['Playfair_Display']">{user.display_name}</span>
                 </div>
-                <button type="button" onClick={logout} className="border border-outline-variant/30 text-on-surface-variant hover:text-on-surface hover:bg-error-container hover:border-error text-[12px] uppercase font-bold tracking-widest px-4 py-2 rounded transition-all">
+                <button type="button" onClick={logout} className="border border-outline-variant/30 text-on-surface-variant hover:text-on-surface hover:bg-error-container hover:border-error text-[12px] uppercase font-bold tracking-widest px-4 py-2 rounded transition-all" data-cuelume-press="pop" data-cuelume-hover>
                   Logout
                 </button>
               </>
             ) : (
-              <NavLink to="/login" className="bg-primary text-on-primary font-bold uppercase tracking-widest text-[12px] px-6 py-2.5 rounded shadow-lg hover:brightness-110 active:scale-95 transition-all">Login</NavLink>
+              <NavLink 
+  data-cuelume-press 
+  data-cuelume-hover to="/login" className="bg-primary text-on-primary font-bold uppercase tracking-widest text-[12px] px-6 py-2.5 rounded shadow-lg hover:brightness-110 active:scale-95 transition-all">Login</NavLink>
             )}
           </div>
 
@@ -210,6 +249,8 @@ export default function Nav() {
             className="lg:hidden z-[1001] p-2 text-on-surface-variant hover:text-primary transition-colors focus:outline-none"
             onClick={toggleMenu}
             aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
+            data-cuelume-press
+            data-cuelume-hover
           >
             <span className="material-symbols-outlined text-[28px]">{isMenuOpen ? 'close' : 'menu'}</span>
           </button>
@@ -225,32 +266,60 @@ export default function Nav() {
           {user && (
             <div className="space-y-1 flex-grow">
               <NavDropdown title="Personal" icon="person" isMobile={true} isOpen={openMobileDropdown === 'Personal'} toggleOpen={() => handleMobileDropdownToggle('Personal')}>
-                <NavLink end to="/character" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Character Sheet</NavLink>
-                <NavLink to="/downtimes" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Actions & Projects</NavLink>
+                <NavLink 
+  data-cuelume-press 
+  data-cuelume-hover end to="/character" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Character Sheet</NavLink>
+                <NavLink 
+  data-cuelume-press 
+  data-cuelume-hover to="/downtimes" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Actions & Projects</NavLink>
                 {canSeePremonitions && (
-                  <NavLink to="/premonitions" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Premonitions</NavLink>
+                  <NavLink 
+  data-cuelume-press 
+  data-cuelume-hover to="/premonitions" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Premonitions</NavLink>
                 )}
-                <NavLink to="/retainers" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Retainers</NavLink>
+                <NavLink 
+  data-cuelume-press 
+  data-cuelume-hover to="/retainers" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Retainers</NavLink>
               </NavDropdown>
 
               <NavDropdown title="Athens" icon="account_balance" isMobile={true} isOpen={openMobileDropdown === 'Athens'} toggleOpen={() => handleMobileDropdownToggle('Athens')}>
-                <NavLink to="/court/hierarchy" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Court Hierarchy</NavLink>
-                <NavLink to="/court/announcements" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Announcements</NavLink>
-                <NavLink to="/court/coteries" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Coteries</NavLink>
-                <NavLink to="/boons" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Boons Ledger</NavLink>
-                <NavLink to="/domains" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>City Domains</NavLink>
-                <NavLink to="/news" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Official News</NavLink>
+                <NavLink 
+  data-cuelume-press 
+  data-cuelume-hover to="/court/hierarchy" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Court Hierarchy</NavLink>
+                <NavLink 
+  data-cuelume-press 
+  data-cuelume-hover to="/court/announcements" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Announcements</NavLink>
+                <NavLink 
+  data-cuelume-press 
+  data-cuelume-hover to="/court/coteries" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Coteries</NavLink>
+                <NavLink 
+  data-cuelume-press 
+  data-cuelume-hover to="/boons" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Boons Ledger</NavLink>
+                <NavLink 
+  data-cuelume-press 
+  data-cuelume-hover to="/domains" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>City Domains</NavLink>
+                <NavLink 
+  data-cuelume-press 
+  data-cuelume-hover to="/news" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Official News</NavLink>
                 {isCharActive && (
-                  <NavLink to="/rumors" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Rumors</NavLink>
+                  <NavLink 
+  data-cuelume-press 
+  data-cuelume-hover to="/rumors" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Rumors</NavLink>
                 )}
               </NavDropdown>
 
               <NavDropdown title="Comms" icon="rss_feed" isMobile={true} isOpen={openMobileDropdown === 'Comms'} toggleOpen={() => handleMobileDropdownToggle('Comms')}>
-                <NavLink to="/schrecknet" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>SchreckNet</NavLink>
-                <NavLink to="/surfaceweb" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Surface Web</NavLink>
+                <NavLink 
+  data-cuelume-press 
+  data-cuelume-hover to="/schrecknet" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>SchreckNet</NavLink>
+                <NavLink 
+  data-cuelume-press 
+  data-cuelume-hover to="/surfaceweb" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Surface Web</NavLink>
               </NavDropdown>
 
-              <NavLink to="/live-session" className={({ isActive }) => getNavItemClass({ isActive, isMobile: true })}>
+              <NavLink 
+  data-cuelume-press 
+  data-cuelume-hover to="/live-session" className={({ isActive }) => getNavItemClass({ isActive, isMobile: true })}>
                 <span className="material-symbols-outlined text-[20px]">play_circle</span>
                 <span className="font-['Playfair_Display'] font-bold text-[16px] tracking-wide">Live Session</span>
               </NavLink>
@@ -259,8 +328,12 @@ export default function Nav() {
                 <div className="pt-4 mt-4 border-t border-outline-variant/20">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-primary-container px-3 mb-2 block">Administration</span>
                   <NavDropdown title="Admin" icon="admin_panel_settings" isMobile={true} isOpen={openMobileDropdown === 'Admin'} toggleOpen={() => handleMobileDropdownToggle('Admin')}>
-                    <NavLink to="/admin" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Admin Panel</NavLink>
-                    <NavLink to="/admin/live-session" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Live Session Dashboard</NavLink>
+                    <NavLink 
+  data-cuelume-press 
+  data-cuelume-hover to="/admin" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Admin Panel</NavLink>
+                    <NavLink 
+  data-cuelume-press 
+  data-cuelume-hover to="/admin/live-session" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Live Session Dashboard</NavLink>
                   </NavDropdown>
                 </div>
               )}
@@ -275,13 +348,15 @@ export default function Nav() {
                   <p className="text-[12px] text-on-surface-variant uppercase font-bold tracking-widest mb-1">Authenticated</p>
                   <p className="text-[18px] font-bold text-primary font-['Playfair_Display']">{user.display_name}</p>
                 </div>
-                <button type="button" onClick={logout} className="w-full bg-error-container/20 border border-error-container text-error hover:bg-error-container hover:text-on-error py-3 rounded-lg text-[14px] uppercase font-bold tracking-widest transition-colors flex items-center justify-center gap-2">
+                <button type="button" onClick={logout} className="w-full bg-error-container/20 border border-error-container text-error hover:bg-error-container hover:text-on-error py-3 rounded-lg text-[14px] uppercase font-bold tracking-widest transition-colors flex items-center justify-center gap-2" data-cuelume-press="pop" data-cuelume-hover>
                   <span className="material-symbols-outlined text-[18px]">logout</span>
                   Sever Connection
                 </button>
               </>
             ) : (
-              <NavLink to="/login" className="w-full bg-primary text-on-primary py-3 rounded-lg text-[14px] uppercase font-bold tracking-widest text-center shadow-lg active:scale-95 transition-transform">
+              <NavLink 
+  data-cuelume-press 
+  data-cuelume-hover to="/login" className="w-full bg-primary text-on-primary py-3 rounded-lg text-[14px] uppercase font-bold tracking-widest text-center shadow-lg active:scale-95 transition-transform">
                 Establish Link
               </NavLink>
             )}

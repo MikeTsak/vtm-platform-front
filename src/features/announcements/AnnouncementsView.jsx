@@ -175,7 +175,7 @@ export default function AnnouncementsView({ canEdit: propCanEdit }) {
             <h1 className={styles.decreeHeaderTitle}>Decrees</h1>
           </div>
           {canEdit && (
-            <button className={styles.issueBtn} onClick={() => setShowModal(true)}>
+            <button className={styles.issueBtn} onClick={() => setShowModal(true)} data-cuelume-press data-cuelume-hover>
               <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add</span>
               ISSUE DECREE
             </button>
@@ -215,7 +215,7 @@ export default function AnnouncementsView({ canEdit: propCanEdit }) {
 
                 {canEdit && (
                   <div className={styles.decreeFooter}>
-                    <button onClick={() => handleDelete(item.id)} className={styles.revokeBtn}>
+                    <button onClick={() => handleDelete(item.id)} className={styles.revokeBtn} data-cuelume-press="thud" data-cuelume-hover>
                       <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>cancel</span>
                       Revoke Decree
                     </button>
@@ -235,7 +235,7 @@ export default function AnnouncementsView({ canEdit: propCanEdit }) {
                   <h2 className={styles.modalTitle}>Draft New Decree</h2>
                   <p className={styles.modalSubtitle}>Speak with authority. All domain members will be notified.</p>
                 </div>
-                <button className={styles.modalCloseBtn} onClick={closeModal}>
+                <button className={styles.modalCloseBtn} onClick={closeModal} data-cuelume-press="pop" data-cuelume-hover>
                   <span className="material-symbols-outlined">close</span>
                 </button>
               </header>
@@ -260,7 +260,7 @@ export default function AnnouncementsView({ canEdit: propCanEdit }) {
 
                   <div className={styles.inputGroup}>
                     <label>Attachment (Optional)</label>
-                    <label className={styles.uploadZone}>
+                    <label className={styles.uploadZone} data-cuelume-hover>
                       <input 
                         type="file" 
                         accept="image/*" 
@@ -281,8 +281,8 @@ export default function AnnouncementsView({ canEdit: propCanEdit }) {
                 </div>
 
                 <footer className={styles.modalFooter}>
-                  <button type="button" className={styles.cancelBtn} onClick={closeModal} disabled={isUploading}>Cancel</button>
-                  <button type="submit" className={styles.submitBtn} disabled={isUploading}>
+                  <button type="button" className={styles.cancelBtn} onClick={closeModal} disabled={isUploading} data-cuelume-press="pop" data-cuelume-hover>Cancel</button>
+                  <button type="submit" className={styles.submitBtn} disabled={isUploading} data-cuelume-press data-cuelume-release="success" data-cuelume-hover>
                     <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>send</span>
                     {isUploading ? 'Publishing...' : 'Publish Decree'}
                   </button>

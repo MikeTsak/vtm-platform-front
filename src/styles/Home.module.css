@@ -831,58 +831,7 @@
   margin: 0 auto 2.5rem;
 }
 
-/* Mobile Responsiveness */
-@media (width <=1024px) {
-  .navGrid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .dashboardGrid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (width <=768px) {
-  .homePage {
-    padding: 1.5rem 0.5rem;
-  }
-
-  .identityHeader {
-    padding: 1.25rem;
-  }
-
-  .headerInner {
-    flex-direction: column;
-    text-align: center;
-    gap: 1rem;
-  }
-
-  .clanRing {
-    width: 72px;
-    height: 72px;
-  }
-
-  .clanSymbol {
-    width: 44px;
-    height: 44px;
-  }
-
-  .charName {
-    font-size: 2rem;
-  }
-
-  .clanWatermark {
-    display: none !important;
-  }
-
-  .dashboardGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .navGrid {
-    grid-template-columns: 1fr;
-  }
-}
+/* Mobile overrides moved to bottom */
 
 /* =========================================
    CONSTRAINED PAGE WRAPPER
@@ -1455,18 +1404,105 @@
 }
 
 @media (width <= 768px) {
-  .navGrid {
-    grid-template-columns: 1fr;
+  .homePage {
+    padding: 1rem 0.5rem;
   }
+  
+  .identityHeader {
+    text-align: center;
+  }
+
+  .headerInner {
+    flex-direction: column;
+    text-align: center;
+    gap: 1rem;
+  }
+
+  .clanRing {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto;
+  }
+
+  .clanSymbol {
+    width: 44px;
+    height: 44px;
+  }
+
+  .charName {
+    font-size: 2rem;
+  }
+
+  .clanWatermark {
+    display: none !important;
+  }
+  
+  .headerStats {
+    margin-left: 0;
+    text-align: center;
+    width: 100%;
+  }
+  
+  .settingsIconsContainer {
+    justify-content: center !important;
+  }
+  
+  .eventCard {
+    flex-direction: column;
+    text-align: center;
+    gap: 1.5rem;
+    padding: 1.5rem 1rem;
+  }
+  
+  .rsvpBtn {
+    width: 100%;
+  }
+
+  .navGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+  
+  .navCard {
+    padding: 1rem;
+  }
+  
+  .navCardIcon {
+    font-size: 1.75rem;
+  }
+  
+  .navCardTitle {
+    font-size: 0.85rem;
+  }
+
+  .themeGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
   .bottomRowGrid {
     grid-template-columns: 1fr;
   }
+  
   .quickStatsGrid {
     flex-direction: column;
     gap: 1rem;
   }
+  
   .quotaTrackWrapper {
     flex-direction: column;
     align-items: stretch;
+  }
+  
+  /* Touch target optimizations */
+  .themeBtn {
+    padding: 16px;
+    min-height: 48px;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@media (width <= 480px) {
+  .themeGrid {
+    grid-template-columns: 1fr;
   }
 }

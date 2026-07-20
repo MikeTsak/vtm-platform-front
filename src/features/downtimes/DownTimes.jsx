@@ -194,6 +194,9 @@ function SubmitCard({ quota, isProject }) {
               className={`${styles.submitBtn} ${isProject ? styles.submitBtnProject : ''}`}
               disabled={isFull || submitMutation.isPending}
               style={{ opacity: submitMutation.isPending ? 0.7 : 1 }}
+              data-cuelume-press
+              data-cuelume-release="success"
+              data-cuelume-hover
             >
               <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>send</span>
               {submitMutation.isPending ? 'Submitting...' : 'Submit Action'}
@@ -267,8 +270,8 @@ function ActiveTrackItem({ dt, isProject }) {
           <input className={styles.input} type="text" {...register('editTitle', { required: true })} />
           <textarea className={`${styles.input} ${styles.textarea}`} {...register('editBody', { required: true })} />
           <div className={styles.editActions}>
-            <button type="button" className={styles.btnSecondary} onClick={() => { setIsEditing(false); reset(); }} disabled={updateMutation.isPending}>Cancel</button>
-            <button type="submit" className={styles.submitBtn} disabled={updateMutation.isPending} style={{ padding: '8px 16px', width: 'auto' }}>
+            <button type="button" className={styles.btnSecondary} onClick={() => { setIsEditing(false); reset(); }} disabled={updateMutation.isPending} data-cuelume-press="pop" data-cuelume-hover>Cancel</button>
+            <button type="submit" className={styles.submitBtn} disabled={updateMutation.isPending} style={{ padding: '8px 16px', width: 'auto' }} data-cuelume-press data-cuelume-release="success" data-cuelume-hover>
               {updateMutation.isPending ? 'Saving...' : 'Save'}
             </button>
           </div>
@@ -282,6 +285,8 @@ function ActiveTrackItem({ dt, isProject }) {
               className={styles.viewAllBtn}
               style={{ position: 'relative', zIndex: 10, marginTop: '8px' }}
               onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
+              data-cuelume-press
+              data-cuelume-hover
             >
               Edit Action
             </button>
@@ -472,12 +477,16 @@ export default function DownTimes() {
             <button
               className={`${styles.modeBtn} ${viewMode === 'standard' ? styles.modeBtnActive : ''}`}
               onClick={() => { setViewMode('standard'); setQ(''); setArchiveFilter('all'); }}
+              data-cuelume-toggle
+              data-cuelume-hover
             >
               Monthly Actions
             </button>
             <button
               className={`${styles.modeBtn} ${viewMode === 'project' ? styles.modeBtnProjectActive : ''}`}
               onClick={() => { setViewMode('project'); setQ(''); setArchiveFilter('all'); }}
+              data-cuelume-toggle
+              data-cuelume-hover
             >
               Long-Term Projects
             </button>
@@ -578,6 +587,8 @@ export default function DownTimes() {
                 className={styles.filterSelect}
                 value={archiveFilter}
                 onChange={(e) => setArchiveFilter(e.target.value)}
+                data-cuelume-press
+                data-cuelume-hover
               >
                 <option value="all">All Past</option>
                 <option value="approved">Approved / Resolved</option>

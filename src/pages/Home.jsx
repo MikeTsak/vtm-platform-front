@@ -443,7 +443,7 @@ export default function Home() {
                 </div>
                 
                 {/* Settings Icons */}
-                <div style={{ display: 'flex', gap: '8px', marginTop: '12px', justifyContent: 'flex-end' }}>
+                <div className={styles.settingsIconsContainer} style={{ display: 'flex', gap: '12px', marginTop: '16px', justifyContent: 'flex-end' }}>
                   <button 
                     title={`UI Sounds ${me.ui_sounds_enabled !== false ? 'ON' : 'OFF'}`}
                     onClick={async () => {
@@ -464,13 +464,14 @@ export default function Home() {
                       border: `1px solid ${me.ui_sounds_enabled !== false ? 'var(--tint)' : 'var(--border-color)'}`,
                       color: me.ui_sounds_enabled !== false ? 'var(--tint)' : 'var(--text-muted)',
                       borderRadius: '50%',
-                      width: '36px',
-                      height: '36px',
+                      width: '48px',
+                      height: '48px',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       cursor: 'pointer',
                       transition: 'all 0.2s',
+                      WebkitTapHighlightColor: 'transparent',
                     }}
                     data-cuelume-hover
                   >
@@ -514,14 +515,15 @@ export default function Home() {
                       border: `1px solid ${pushEnabled ? 'var(--tint)' : 'var(--border-color)'}`,
                       color: pushEnabled ? 'var(--tint)' : 'var(--text-muted)',
                       borderRadius: '50%',
-                      width: '36px',
-                      height: '36px',
+                      width: '48px',
+                      height: '48px',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       cursor: pushLoading ? 'wait' : 'pointer',
                       transition: 'all 0.2s',
-                      opacity: pushLoading ? 0.5 : 1
+                      opacity: pushLoading ? 0.5 : 1,
+                      WebkitTapHighlightColor: 'transparent',
                     }}
                     data-cuelume-hover
                   >
@@ -585,25 +587,25 @@ export default function Home() {
                 <p className={styles.eventLocation}>Location: Elysium Hall</p>
               )}
             </div>
-            <button className={styles.rsvpBtn} onClick={() => setShowRsvp(true)}>RSVP</button>
+            <button className={styles.rsvpBtn} onClick={() => setShowRsvp(true)} style={{ minHeight: '48px', minWidth: '120px' }}>RSVP</button>
           </motion.section>
 
           {showRsvp && (
             <div 
               className={styles.rsvpModalOverlay} 
               onClick={() => setShowRsvp(false)} 
-              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
             >
               <div 
                 className={styles.rsvpModal} 
                 onClick={e => e.stopPropagation()} 
-                style={{ background: 'var(--surface-color)', padding: '2rem', borderRadius: '12px', border: '1px solid var(--tint)', maxWidth: '400px', textAlign: 'center', boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}
+                style={{ background: 'var(--surface-color)', padding: '2rem', borderRadius: '12px', border: '1px solid var(--tint)', maxWidth: '400px', width: '100%', textAlign: 'center', boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}
               >
                 <h3 style={{ marginTop: 0, fontFamily: 'Playfair Display, serif', color: 'var(--tint)' }}>RSVP Confirmed</h3>
                 <p style={{ color: 'var(--text-muted)' }}>The Harpy has noted your intent to attend the upcoming gathering. Do not be late.</p>
                 <button 
                   onClick={() => setShowRsvp(false)} 
-                  style={{ marginTop: '1.5rem', background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-color)', padding: '0.5rem 1.5rem', borderRadius: '4px', cursor: 'pointer' }}
+                  style={{ marginTop: '1.5rem', background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-color)', padding: '0.5rem 1.5rem', minHeight: '48px', width: '100%', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
                 >
                   Close
                 </button>

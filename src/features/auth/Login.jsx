@@ -136,6 +136,8 @@ export default function Login() {
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={toggleShowPwd}
                 aria-label={showPwd ? 'Hide password' : 'Show password'}
+                data-cuelume-press="pop"
+                data-cuelume-hover
               >
                 {showPwd ? (
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -156,15 +158,15 @@ export default function Login() {
               <input type="checkbox" {...register('remember')} />
               <span className={styles.muted}>Remember me</span>
             </label>
-            <Link to="/forgot" className={styles.link}>Forgot your password?</Link>
+            <Link to="/forgot" className={styles.link} data-cuelume-press data-cuelume-hover>Forgot your password?</Link>
           </div>
 
-          <button className={styles.cta} type="submit" disabled={loginMutation.isPending} style={{ marginTop: '0.75rem', opacity: loginMutation.isPending ? 0.7 : 1 }}>
+          <button className={styles.cta} type="submit" disabled={loginMutation.isPending} style={{ marginTop: '0.75rem', opacity: loginMutation.isPending ? 0.7 : 1 }} data-cuelume-press data-cuelume-release="success" data-cuelume-hover>
             {loginMutation.isPending ? 'Authenticating...' : 'Enter the Court'}
           </button>
 
           <p className={styles.muted}>
-            No account? <Link to="/register" className={styles.link}>Request Embrace</Link>
+            No account? <Link to="/register" className={styles.link} data-cuelume-press data-cuelume-hover>Request Embrace</Link>
           </p>
         </motion.form>
       </main>

@@ -165,6 +165,8 @@ export default function Register() {
                 onClick={toggleShowPwd}
                 aria-label={showPwd ? 'Hide password' : 'Show password'}
                 title={showPwd ? 'Hide password' : 'Show password'}
+                data-cuelume-press="pop"
+                data-cuelume-hover
               >
                 {showPwd ? (
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
@@ -233,12 +235,15 @@ export default function Register() {
             className={styles.cta}
             disabled={registerMutation.isPending}
             style={{ opacity: registerMutation.isPending ? 0.7 : 1 }}
+            data-cuelume-press
+            data-cuelume-release="success"
+            data-cuelume-hover
           >
             {registerMutation.isPending ? 'Registering…' : 'Register'}
           </button>
 
           <div className={styles.muted}>
-            Already have an account? <Link to="/login" className={styles.link}>Log in here.</Link>
+            Already have an account? <Link to="/login" className={styles.link} data-cuelume-press data-cuelume-hover>Log in here.</Link>
           </div>
         </motion.form>
       </main>
