@@ -168,7 +168,12 @@ export default function AnnouncementsView({ canEdit: propCanEdit }) {
 
   return (
     <Skeleton loading={loading} name="announcements-view">
-      <motion.div className={styles.announcementsWrapper}>
+      <motion.div 
+        className={styles.announcementsWrapper}
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+      >
         <div className={styles.decreeHeaderBar}>
           <div>
             <p className={styles.decreeHeaderSubtitle}>City Archive</p>

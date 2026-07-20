@@ -8,6 +8,7 @@ import { Skeleton } from 'boneyard-js/react';
 import Avatar from '../../components/Avatar';
 import EmojiPicker from 'emoji-picker-react';
 import MiniSearch from 'minisearch';
+import { motion, AnimatePresence } from 'framer-motion';
 import { getPushSettings, updatePushSettings, subscribeToWebPush } from '../../utils/push';
 
 /* --- Clan assets & colors --- */
@@ -1167,7 +1168,12 @@ export default function ChatSystem({ commsEnabled = true }) {
       {managingGroup && renderManageGroupModalTailwind()}
 
       {/* SideNavBar (Desktop) & Full View (Mobile when no contact selected) */}
-      <aside className={styles.userList}>
+      <motion.aside 
+        className={styles.userList}
+        initial={{ opacity: 0, x: -30 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+      >
         {/* Header */}
         <div className={styles.listHeader} style={{ flexDirection: 'column', alignItems: 'stretch', gap: '12px' }}>
           <div className="flex items-center gap-3 mb-4">
@@ -1330,10 +1336,15 @@ export default function ChatSystem({ commsEnabled = true }) {
             <span className="text-[11px] font-bold tracking-widest uppercase">Notifs: {notifOn ? 'On' : 'Off'}</span>
           </div>
         </div>
-      </aside>
+      </motion.aside>
 
       {/* Main Content (Canvas) */}
-      <main className={styles.chatWindow}>
+      <motion.main 
+        className={styles.chatWindow}
+        initial={{ opacity: 0, scale: 0.98 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 25, delay: 0.1 }}
+      >
         {selectedContact ? (
           <>
             {/* Chat Header */}
@@ -1457,7 +1468,13 @@ export default function ChatSystem({ commsEnabled = true }) {
                 const isGroupNotMine = selectedContact.type === 'group' && !mine;
 
                 return (
-                  <div key={item.id} className={`flex gap-2 md:gap-3 max-w-[90%] md:max-w-[85%] ${mine ? 'self-end flex-row-reverse group' : 'self-start group'}`}>
+                  <motion.div 
+                    key={item.id} 
+                    className={`flex gap-2 md:gap-3 max-w-[90%] md:max-w-[85%] ${mine ? 'self-end flex-row-reverse group' : 'self-start group'}`}
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                  >
                     {/* Avatar */}
                     {!mine ? (
                       <div className="w-6 h-6 md:w-8 md:h-8 rounded-sm md:rounded-full bg-surface-container-high border border-outline-variant flex-shrink-0 flex items-center justify-center overflow-hidden blood-glow opacity-80 mt-auto md:mt-0">
@@ -1536,7 +1553,7 @@ export default function ChatSystem({ commsEnabled = true }) {
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 );
               })}
 
@@ -1654,7 +1671,7 @@ export default function ChatSystem({ commsEnabled = true }) {
             <button onClick={() => setError('')} className="ml-2 hover:opacity-80"><span className="material-symbols-outlined text-sm">close</span></button>
           </div>
         )}
-      </main>
+      </motion.main>
     </div>
   );
 }

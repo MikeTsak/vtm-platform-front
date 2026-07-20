@@ -5,6 +5,7 @@ import api from '../../core/api';
 import styles from '../../styles/EmailSystem.module.css';
 import { Skeleton } from 'boneyard-js/react';
 import Avatar from '../../components/Avatar';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // --- Secure Rich Text Editor Component ---
 const EditorToolbar = ({ onCmd }) => (
@@ -230,7 +231,12 @@ export default function EmailSystem({ user, isMobile, commsEnabled = true }) {
       <div className="crt-overlay"></div>
       
       {/* SIDEBAR */}
-      <aside className={`${styles.emailSidebar} chat-glass`}>
+      <motion.aside 
+        className={`${styles.emailSidebar} chat-glass`}
+        initial={{ opacity: 0, x: -30 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+      >
         <div className={styles.emailHeader}>
           <h2>Inbox</h2>
           <div className={styles.headerActions}>
@@ -295,10 +301,15 @@ export default function EmailSystem({ user, isMobile, commsEnabled = true }) {
             );
           })}
         </div>
-      </aside>
+      </motion.aside>
 
       {/* MAIN CONTENT (Reading Pane) */}
-      <main className={styles.emailMain}>
+      <motion.main 
+        className={styles.emailMain}
+        initial={{ opacity: 0, scale: 0.98 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 25, delay: 0.1 }}
+      >
         {selectedThread ? (
           <>
             <div className={styles.emailViewHeader}>
@@ -328,7 +339,13 @@ export default function EmailSystem({ user, isMobile, commsEnabled = true }) {
                 }
 
                 return (
-                  <div key={m.id} className={styles.emailMsg}>
+                  <motion.div 
+                    key={m.id} 
+                    className={styles.emailMsg}
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                  >
                     <div className={styles.msgHeader}>
                       <Avatar 
                         {...avatarProps} 
@@ -347,7 +364,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled = true }) {
                       className={styles.emailMsgContent} 
                       dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(m.body) }} 
                     />
-                  </div>
+                  </motion.div>
                 );
               })}
               <div ref={emailEndRef} />
@@ -377,7 +394,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled = true }) {
             <p>Select an email thread to read</p>
           </div>
         )}
-      </main>
+      </motion.main>
 
       {/* Compose Email Modal */}
       {emailComposeOpen && (

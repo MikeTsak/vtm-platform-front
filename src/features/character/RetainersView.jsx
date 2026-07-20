@@ -6,6 +6,7 @@ import Avatar from '../../components/Avatar';
 import { DISCIPLINES, iconPath } from '../../data/disciplines';
 import { allSelectableAdvantages } from '../../data/merits_flaws_retainers';
 import { generateGreekName } from '../../utils/nameGenerator';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const CLAN_DISCIPLINES = {
   Brujah: ['Celerity', 'Potence', 'Presence'],
@@ -514,8 +515,17 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
   if (!isOpen) return null;
 
   return (
-    <div className={styles.wizardOverlayStitch}>
-      <div className={styles.wizardModalStitch}>
+    <motion.div 
+      className={styles.wizardOverlayStitch}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+    >
+      <motion.div 
+        className={styles.wizardModalStitch}
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+      >
         
         {/* Decorative Lighting */}
         <div className={styles.bgBlurPinkStitch} />
@@ -704,7 +714,11 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
 
           {/* STEP 2 */}
           {step === 2 && (
-            <div style={{ animation: 'fadeIn 0.5s ease', position: 'relative', zIndex: 10 }}>
+            <motion.div 
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              style={{ position: 'relative', zIndex: 10 }}
+            >
               
               <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
                 <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px' }}>
@@ -821,7 +835,7 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
                   )}
                 </div>
               )}
-            </div>
+            </motion.div>
           )}
 
           {/* STEP 3 */}
@@ -961,8 +975,8 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
             </button>
           )}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };
 
@@ -1297,7 +1311,12 @@ export default function RetainersView() {
       <div className={styles.contentWrapper}>
         
         {/* Left Column */}
-        <div className={styles.leftColumn}>
+        <motion.div 
+          className={styles.leftColumn}
+          initial={{ opacity: 0, x: -30 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+        >
           
           <div className={styles.header}>
             <h2 className={styles.title}>Retainers {isAdminBypass && <span style={{fontSize:"12px", color:"var(--error)", border:"1px solid var(--error)", padding:"2px 6px", borderRadius:"4px", marginLeft:"8px", verticalAlign:"middle"}}>ADMIN MODE</span>}</h2>
@@ -1359,10 +1378,15 @@ export default function RetainersView() {
             </div>
           </div>
 
-        </div>
+        </motion.div>
 
         {/* Right Main Pane */}
-        <div className={styles.rightColumn}>
+        <motion.div 
+          className={styles.rightColumn}
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 25, delay: 0.1 }}
+        >
           {selectedRetainer ? (
             <div className={`${styles.glassPanel} ${styles.ambientGlow} ${styles.sheetPanel}`} style={{ position: 'relative', overflow: 'hidden' }}>
               <div className={styles.bgAccent}></div>
@@ -1695,7 +1719,7 @@ export default function RetainersView() {
               </div>
             </div>
           )}
-        </div>
+        </motion.div>
 
       </div>
     </div>
