@@ -103,6 +103,19 @@ function AppLayout() {
   const { user } = useContext(AuthCtx);
 
   useEffect(() => {
+    import('cuelume').then(({ bind }) => bind());
+  }, []);
+
+  useEffect(() => {
+    if (user !== null) {
+      import('cuelume').then(({ setEnabled }) => {
+        // user.ui_sounds_enabled defaults to true if not specified
+        setEnabled(user.ui_sounds_enabled !== false);
+      });
+    }
+  }, [user]);
+
+  useEffect(() => {
     if (user && user.role === 'admin') {
       document.body.classList.add('admin-theme');
     } else {

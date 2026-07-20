@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import api from '../core/api';
 import { trackEvent } from '../utils/analytics';
+import { getPushSettings, updatePushSettings, subscribeToWebPush } from '../utils/push';
 import { Link, useNavigate } from 'react-router-dom';
 import { Skeleton } from 'boneyard-js/react';
 import { motion } from 'framer-motion';
@@ -151,6 +152,11 @@ export default function Home() {
   const [recentNews, setRecentNews] = useState([]);
   const [fetchError, setFetchError] = useState(null);
   const [threatLevel, setThreatLevel] = useState(1);
+  
+  // Push Notifications State
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushLoading, setPushLoading] = useState(true);
+  const notifSupported = 'serviceWorker' in navigator && 'PushManager' in window;
 
   // ✅ DEFAULT SET TO CLAN-THEME WITH DARK ENGINE
   const [activeTheme, setActiveTheme] = useState(() => localStorage.getItem('vtm_theme') || 'clan');
@@ -270,6 +276,20 @@ export default function Home() {
               setThreatLevel(d.banner.masquerade_threat_level);
             }
           }
+        }
+        
+        // Fetch push settings
+        if (notifSupported) {
+          try {
+            const pushData = await getPushSettings();
+            if (live) setPushEnabled(!!pushData?.chat);
+          } catch (e) {
+            console.warn('Failed to load push settings', e);
+          } finally {
+            if (live) setPushLoading(false);
+          }
+        } else {
+          if (live) setPushLoading(false);
         }
       } catch (error) {
         if (live) setFetchError('Failed to load portal data.');
@@ -420,6 +440,95 @@ export default function Home() {
                 <div className={styles.statBox}>
                   <span className={styles.statLabel}>AVAILABLE XP</span>
                   <span className={styles.statValue}>{ch.xp ?? 0}</span>
+                </div>
+                
+                {/* Settings Icons */}
+                <div style={{ display: 'flex', gap: '8px', marginTop: '12px', justifyContent: 'flex-end' }}>
+                  <button 
+                    title={`UI Sounds ${me.ui_sounds_enabled !== false ? 'ON' : 'OFF'}`}
+                    onClick={async () => {
+                      const newVal = me.ui_sounds_enabled === false ? true : false;
+                      setMe(prev => ({ ...prev, ui_sounds_enabled: newVal }));
+                      import('cuelume').then(({ setEnabled, play }) => {
+                        setEnabled(newVal);
+                        if (newVal) play('toggle');
+                      });
+                      try {
+                        await api.patch('/users/me/ui_sounds', { ui_sounds_enabled: newVal });
+                      } catch (e) {
+                        console.error('Failed to save UI sounds setting', e);
+                      }
+                    }}
+                    style={{
+                      background: 'rgba(0,0,0,0.4)',
+                      border: `1px solid ${me.ui_sounds_enabled !== false ? 'var(--tint)' : 'var(--border-color)'}`,
+                      color: me.ui_sounds_enabled !== false ? 'var(--tint)' : 'var(--text-muted)',
+                      borderRadius: '50%',
+                      width: '36px',
+                      height: '36px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                    data-cuelume-hover
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>
+                      {me.ui_sounds_enabled !== false ? 'volume_up' : 'volume_off'}
+                    </span>
+                  </button>
+
+                  <button 
+                    title={`Push Notifications ${pushEnabled ? 'ON' : 'OFF'}`}
+                    onClick={async () => {
+                      if (!notifSupported || pushLoading) return;
+                      
+                      if (!pushEnabled) {
+                        setPushLoading(true);
+                        try {
+                          await subscribeToWebPush();
+                          await updatePushSettings({ chat: true });
+                          setPushEnabled(true);
+                        } catch (err) {
+                          console.error('Failed to enable push:', err);
+                          alert('Could not enable notifications: ' + err.message);
+                        } finally {
+                          setPushLoading(false);
+                        }
+                      } else {
+                        setPushLoading(true);
+                        try {
+                          await updatePushSettings({ chat: false });
+                          setPushEnabled(false);
+                        } catch (err) {
+                          console.error('Failed to disable push:', err);
+                        } finally {
+                          setPushLoading(false);
+                        }
+                      }
+                    }}
+                    disabled={pushLoading}
+                    style={{
+                      background: 'rgba(0,0,0,0.4)',
+                      border: `1px solid ${pushEnabled ? 'var(--tint)' : 'var(--border-color)'}`,
+                      color: pushEnabled ? 'var(--tint)' : 'var(--text-muted)',
+                      borderRadius: '50%',
+                      width: '36px',
+                      height: '36px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: pushLoading ? 'wait' : 'pointer',
+                      transition: 'all 0.2s',
+                      opacity: pushLoading ? 0.5 : 1
+                    }}
+                    data-cuelume-hover
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '1.2rem', animation: pushLoading ? 'spin 1s linear infinite' : 'none' }}>
+                      {pushLoading ? 'sync' : (pushEnabled ? 'notifications_active' : 'notifications_off')}
+                    </span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -614,7 +723,7 @@ export default function Home() {
             </div>
           </motion.div>
 
-          {/* 5. THEMES PROTOCOL */}
+          {/* 5. INTERFACE PROTOCOL */}
           <motion.section 
             className={styles.themeSection}
             variants={{
@@ -623,6 +732,7 @@ export default function Home() {
             }}
           >
             <h2 className={styles.feedHeading} style={{ fontSize: '1.15rem' }}>Interface Protocol</h2>
+            
             <div className={styles.themeGrid}>
               {availableThemes.map(t => (
                 <button
@@ -630,6 +740,8 @@ export default function Home() {
                   onClick={() => handleThemeChange(t.id)}
                   className={`${styles.themeBtn} ${activeTheme === t.id ? styles.themeBtnActive : ''}`}
                   style={{ '--theme-color': t.hex, '--theme-bg': `url('/img/ui/${t.img}.png')` }}
+                  data-cuelume-toggle
+                  data-cuelume-hover
                 >
                   <span className={styles.themeDot} style={{ position: 'relative', zIndex: 2 }} />
                   <div className={styles.themeInfo} style={{ position: 'relative', zIndex: 2 }}>
