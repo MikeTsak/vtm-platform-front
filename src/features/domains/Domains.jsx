@@ -77,7 +77,6 @@ export default function Domains() {
 
   // ── Avatar image cache: division → objectURL ────────────
   const [avatarCache, setAvatarCache] = useState({});
-  const [avatarsReady, setAvatarsReady] = useState(false);
 
   // ── Data ────────────────────────────────────────────────
   const { data: claimsData, isLoading: isClaimsLoading, error } = useQuery({
@@ -128,51 +127,33 @@ export default function Domains() {
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(claim.owner_name || 'Unclaimed')}&background=random`;
   }, [roster]);
 
-  // ── Preload all avatar images as object URLs ────────────
-  const avatarLoadAttempted = useRef(false);
+  // ── Lazy-load avatar image for hovered division ─────────
   useEffect(() => {
-    if (claims.length === 0 || avatarLoadAttempted.current) return;
-    avatarLoadAttempted.current = true;
+    if (!selectedDivision || claims.length === 0) return;
+    const claim = claims.find(c => Number(c.division) === selectedDivision);
+    if (!claim || claim.owner_name === 'Unclaimed') return;
 
-    const claimedDivisions = claims.filter(c => c.owner_name !== 'Unclaimed');
-    if (claimedDivisions.length === 0) {
-      setAvatarsReady(true);
-      return;
+    if (!avatarCache[selectedDivision]) {
+      const url = getAvatarUrl(claim);
+      fetchAvatarAsObjectUrl(url)
+        .then(objectUrl => {
+          setAvatarCache(prev => ({ ...prev, [selectedDivision]: objectUrl }));
+        })
+        .catch(err => {
+          console.warn(`[Domains] Failed to lazy-load avatar for division ${selectedDivision}:`, err.message);
+        });
     }
+  }, [selectedDivision, claims, avatarCache, getAvatarUrl]);
 
-    const cache = {};
-    const promises = claimedDivisions.map(async (c) => {
-      const url = getAvatarUrl(c);
-      try {
-        cache[c.division] = await fetchAvatarAsObjectUrl(url);
-      } catch (e) {
-        console.warn(`[Domains] Failed to preload avatar for division ${c.division}:`, e.message);
-      }
-    });
-
-    Promise.all(promises).then(() => {
-      setAvatarCache(cache);
-      setAvatarsReady(true);
-    });
-
+  // Re-arm cleanup if needed
+  useEffect(() => {
     return () => {
       // Cleanup blob URLs on unmount
-      Object.values(cache).forEach(url => {
+      Object.values(avatarCache).forEach(url => {
         try { URL.revokeObjectURL(url); } catch (_) { /* noop */ }
       });
     };
-  }, [claims, getAvatarUrl]);
-
-  // Re-arm if claims change
-  const prevClaimsKey = useRef('');
-  useEffect(() => {
-    const key = claims.map(c => `${c.division}:${c.user_id || ''}:${c.owner_npc_id || ''}`).join('|');
-    if (prevClaimsKey.current && prevClaimsKey.current !== key) {
-      avatarLoadAttempted.current = false;
-      setAvatarsReady(false);
-    }
-    prevClaimsKey.current = key;
-  }, [claims]);
+  }, [avatarCache]);
 
   // ── Build GeoJSON with claim properties injected ────────
   const { geoJsonData, allDomainsList } = useMemo(() => {
@@ -226,7 +207,7 @@ export default function Domains() {
         hoveredDivisionRef.current = divNum;
         setSelectedDivision(divNum);
         setHoveredFeature(info.object);
-        setHoveredInfo({ feature: info.object, divisionId: divNum, avatarUrl: avatarCache[divNum] || null });
+        setHoveredInfo({ feature: info.object, divisionId: divNum });
         setSelectedDivisionInfo({
           number: divNum,
           name: info.object.properties.__name,
@@ -241,11 +222,11 @@ export default function Domains() {
         hoveredDivisionRef.current = null;
         setSelectedDivision(null);
         setHoveredFeature(null);
-        setHoveredInfo({ feature: null, divisionId: null, avatarUrl: null });
+        setHoveredInfo({ feature: null, divisionId: null });
         setSelectedDivisionInfo(null);
       }
     }
-  }, [avatarCache]);
+  }, []);
 
   const onDeckClick = useCallback((info) => {
     if (info.object) {
@@ -269,17 +250,17 @@ export default function Domains() {
       hoveredDivisionRef.current = Number(divisionNumber);
       setSelectedDivision(Number(divisionNumber));
       setHoveredFeature(feature);
-      setHoveredInfo({ feature, divisionId: Number(divisionNumber), avatarUrl: avatarCache[Number(divisionNumber)] || null });
-      setSelectedDivisionInfo({
-        number: feature.properties.__division,
-        name: feature.properties.__name,
-        owner: feature.properties.ownerName,
-        color: feature.properties.claimColor,
-        user_id: feature.properties.userId,
-        npc_id: feature.properties.npcId
-      });
-    }
-  }, [geoJsonData, avatarCache]);
+      setHoveredInfo({ feature, divisionId: Number(divisionNumber) });
+        setSelectedDivisionInfo({
+          number: feature.properties.__division,
+          name: feature.properties.__name,
+          owner: feature.properties.ownerName,
+          color: feature.properties.claimColor,
+          user_id: feature.properties.userId,
+          npc_id: feature.properties.npcId
+        });
+      }
+    }, [geoJsonData]);
 
   // ── Search ──────────────────────────────────────────────
   const filteredDomains = useMemo(() => {
@@ -343,7 +324,9 @@ export default function Domains() {
     // ─── Layers 2 & 3: Mask + Image Fill (on hover) ──────
     if (hoveredInfo.feature) {
       const ownerName = hoveredInfo.feature.properties?.ownerName;
-      if (hoveredInfo.avatarUrl && ownerName !== 'Unclaimed') {
+      const currentAvatarUrl = avatarCache[selectedDivision];
+      
+      if (currentAvatarUrl && ownerName !== 'Unclaimed') {
 
         // Layer 2: The Mask Layer (SolidPolygonLayer)
         layers.push(
@@ -361,7 +344,7 @@ export default function Domains() {
         layers.push(
           new BitmapLayer({
             id: 'hover-image-layer',
-            image: hoveredInfo.avatarUrl,
+            image: currentAvatarUrl,
             bounds: [minLng, minLat, maxLng, maxLat],
             extensions: [new MaskExtension()],
             maskId: 'hover-mask-layer'
@@ -371,7 +354,7 @@ export default function Domains() {
     }
 
     return layers;
-  }, [geoJsonData, selectedDivision, hoveredInfo, onDeckHover, onDeckClick]);
+  }, [geoJsonData, selectedDivision, hoveredInfo, avatarCache, onDeckHover, onDeckClick]);
 
   // ── Error state ─────────────────────────────────────────
   if (!geoJsonData) {
@@ -391,9 +374,38 @@ export default function Domains() {
     bearing: 0
   };
 
+  const isLoading = isClaimsLoading;
+
   return (
-    <Skeleton name="domains-page" loading={isClaimsLoading}>
+    <>
       <div className={styles.wrap}>
+        {/* ── LOADING OVERLAY ── */}
+        <AnimatePresence>
+          {isLoading && (
+            <motion.div
+              initial={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.8, ease: 'easeInOut' }}
+              className={styles.loadingOverlay}
+            >
+              <div className={styles.loadingContainer}>
+                <div className={styles.loadingLogo}>
+                  <span className="material-symbols-outlined">map</span>
+                </div>
+                <h2 className={styles.loadingTitle}>Establishing Cartography...</h2>
+                <div className={styles.loadingBarWrapper}>
+                  <motion.div 
+                    className={styles.loadingBarFill}
+                    initial={{ width: "0%" }}
+                    animate={{ width: "100%" }}
+                    transition={{ duration: 2, ease: "easeInOut", repeat: Infinity }}
+                  />
+                </div>
+                <p className={styles.loadingText}>Loading territory claims & residents...</p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* ── Status toast ── */}
         {err && (
@@ -595,6 +607,6 @@ export default function Domains() {
           )}
         </AnimatePresence>
       </div>
-    </Skeleton>
+    </>
   );
 }
