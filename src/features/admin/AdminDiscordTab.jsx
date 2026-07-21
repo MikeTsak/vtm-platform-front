@@ -12,6 +12,7 @@ export default function AdminDiscordTab({ users = [] }) {
     notify_mail: true,
     notify_news: true,
     notify_prems: true,
+    ai_enabled: true,
     bot_status: 'Checking...',
     bot_name: ''
   });
@@ -49,7 +50,8 @@ export default function AdminDiscordTab({ users = [] }) {
         discord_enabled: config.discord_enabled,
         notify_mail: config.notify_mail,
         notify_news: config.notify_news,
-        notify_prems: config.notify_prems
+        notify_prems: config.notify_prems,
+        ai_enabled: config.ai_enabled
       });
       setMsg('Settings saved successfully.');
       loadConfig();
@@ -169,6 +171,10 @@ export default function AdminDiscordTab({ users = [] }) {
         <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', background: '#1a1a1f', padding: '10px', borderRadius: '6px' }}>
           <input type="checkbox" checked={config.notify_prems} onChange={e => setConfig({...config, notify_prems: e.target.checked})} style={{ marginRight: '8px' }} />
           Malkavian Premonition DMs
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', background: '#1a1a1f', padding: '10px', borderRadius: '6px' }}>
+          <input type="checkbox" checked={config.ai_enabled} onChange={e => setConfig({...config, ai_enabled: e.target.checked})} style={{ marginRight: '8px' }} />
+          Enable AI Bot Features (SchreckNet Node)
         </label>
       </div>
 
