@@ -92,7 +92,7 @@ export default function AdminPremonitionsTab() {
       setLoading(true);
       setErr("");
       try {
-        const r = await fetch(apiJoin("/api/admin/premonitions/malkavians"), { headers: headersObj });
+        const r = await fetch(apiJoin("/admin/premonitions/malkavians"), { headers: headersObj });
         const j = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(j?.error || `HTTP ${r.status}`);
         setList(Array.isArray(j.malkavians) ? j.malkavians : []);
@@ -109,7 +109,7 @@ export default function AdminPremonitionsTab() {
     setHistoryLoading(true);
     setHistoryErr("");
     try {
-      const r = await fetch(apiJoin("/api/admin/premonitions"), { headers: headersObj });
+      const r = await fetch(apiJoin("/admin/premonitions"), { headers: headersObj });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j?.error || `HTTP ${r.status}`);
       setHistory(Array.isArray(j.premonitions) ? j.premonitions : []);
@@ -171,7 +171,7 @@ export default function AdminPremonitionsTab() {
 
       const xhr = new XMLHttpRequest();
       xhrRef.current = xhr;
-      xhr.open("POST", apiJoin("/api/admin/premonitions/upload"), true);
+      xhr.open("POST", apiJoin("/admin/premonitions/upload"), true);
       if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
 
       startedAtRef.current = performance.now();
@@ -249,7 +249,7 @@ export default function AdminPremonitionsTab() {
       if (!user_ids.length) throw new Error("Select recipients or use 'All Malkavians'.");
 
       // 3) Send the premonition
-      const r = await fetch(apiJoin("/api/admin/premonitions/send"), {
+      const r = await fetch(apiJoin("/admin/premonitions/send"), {
         method: "POST",
         headers: { ...headersObj, "Content-Type": "application/json" },
         body: JSON.stringify({ content_type, content_text, content_url, user_ids }),
