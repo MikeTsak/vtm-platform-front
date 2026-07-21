@@ -286,6 +286,7 @@ function TopBar({ tab, loading, onReload }) {
 export default function Admin() {
   const [tab, setTab] = useState('users'); // users | characters | claims | downtimes | xp | npcs | chat | stats | dice | discord | logs
   const [loading, setLoading] = useState(false);
+  const [loadProgress, setLoadProgress] = useState(0);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // All data state lives here
@@ -317,110 +318,51 @@ export default function Admin() {
   // Central data loader
   const load = useCallback(async () => {
     setLoading(true); setErr(''); setMsg('');
+    setLoadProgress(0);
+    
+    let completed = 0;
+    const total = 14;
+    const inc = () => {
+      completed++;
+      setLoadProgress(Math.round((completed / total) * 100));
+    };
+
+    const tasks = [
+      api.get('/admin/xp-logs?limit=al').then(res => setXpLogs(res.data.logs || res.data || [])).catch(e => console.error('Failed XP', e)).finally(inc),
+      api.get('/admin/chat/groups/messages/all').then(res => setAllGroupMessages(res.data.messages || [])).catch(e => console.error('Failed group msgs', e)).finally(inc),
+      api.get('/admin/chat/groups').then(res => setChatGroups(res.data.groups || [])).catch(e => console.error('Failed groups', e)).finally(inc),
+      api.get('/admin/emails/messages/all').then(res => setAllEmailMessages(res.data.messages || [])).catch(e => console.error('Failed emails', e)).finally(inc),
+      api.get('/admin/premonitions').then(res => setPremonitions(res.data.premonitions || [])).catch(e => console.error('Failed prems', e)).finally(inc),
+      api.get('/admin/dice/rolls?limit=all').then(res => setDiceRolls(res.data.rolls || [])).catch(e => console.error('Failed dice', e)).finally(inc),
+      api.get('/admin/characters').then(res => setCharacters(res.data.characters || [])).catch(e => console.error('Failed chars', e)).finally(inc),
+      api.get('/domain-claims').then(res => setClaims(res.data.claims || [])).catch(e => console.error('Failed claims', e)).finally(inc),
+      api.get('/admin/downtimes').then(res => setDowntimes(res.data.downtimes || [])).catch(e => console.error('Failed downtimes', e)).finally(inc),
+      api.get('/admin/npcs').then(res => setNPCs(res.data.npcs || [])).catch(e => console.error('Failed NPCs', e)).finally(inc),
+      api.get('/admin/ghouls').then(res => setGhouls(res.data.ghouls || [])).catch(e => console.error('Failed ghouls', e)).finally(inc),
+      api.get('/admin/chat/all').then(res => setAllMessages(res.data.messages || [])).catch(e => console.error('Failed chat all', e)).finally(inc),
+      api.get('/admin/chat/npc/all').then(res => setAllNpcMessages(res.data.messages || [])).catch(e => console.error('Failed NPC chat', e)).finally(inc),
+      api.get('/admin/users').then(res => {
+        setUsers(res.data.users || []);
+        const idx = {}; 
+        (res.data.users || []).forEach(u => {
+          if (u.character_id) {
+            idx[u.character_id] = {
+              user_id: u.id, display_name: u.display_name, email: u.email, role: u.role, 
+              char_name: u.char_name, clan: u.clan, xp: u.xp, sheet: u.sheet
+            };
+          }
+        });
+        setCharIndex(idx);
+      }).catch(e => console.error('Failed users', e)).finally(inc)
+    ];
+
     try {
-      const xp = await api.get('/admin/xp-logs?limit=al');
-      setXpLogs(xp.data.logs || xp.data || []);
+      await Promise.allSettled(tasks);
     } catch (e) {
-      console.error('Failed to load XP logs', e);
-    }
-
-    // All Group chat messages & groups
-      try {
-        const gMsgs = await api.get('/admin/chat/groups/messages/all');
-        setAllGroupMessages(gMsgs.data.messages || []);
-        const grps = await api.get('/admin/chat/groups');
-        setChatGroups(grps.data.groups || []);
-      } catch (e) { console.error("Failed to load group messages", e); }
-
-      // All Email messages
-      try {
-        const eMsgs = await api.get('/admin/emails/messages/all');
-        setAllEmailMessages(eMsgs.data.messages || []);
-      } catch (e) { console.error("Failed to load email messages", e); }
-
-try {
-  const prems = await api.get('/admin/premonitions');
-  setPremonitions(prems.data.premonitions || []);
-} catch (e) {
-  console.error('Failed to load premonitions', e);
-}
-
-try {
-  const dice = await api.get('/admin/dice/rolls?limit=all');
-  setDiceRolls(dice.data.rolls || []);
-} catch (e) {
-  console.error('Failed to load dice logs', e);
-}
-
-try {
-  const chars = await api.get('/admin/characters');
-  setCharacters(chars.data.characters || []);
-} catch (e) {
-  console.error('Failed to load characters', e);
-}
-    try {
-      const u = await api.get('/admin/users');
-      setUsers(u.data.users || []);
-
-      // Build character index from users
-      const idx = {}; 
-      (u.data.users || []).forEach(u => {
-        if (u.character_id) {
-          idx[u.character_id] = {
-            user_id: u.id,
-            display_name: u.display_name,
-            email: u.email,
-            role: u.role,
-            char_name: u.char_name,
-            clan: u.clan,
-            xp: u.xp,
-            sheet: u.sheet,
-          };
-        }
-      });
-      setCharIndex(idx);
-
-      // Claims
-      try {
-        const cl = await api.get('/domain-claims');
-        setClaims(cl.data.claims || []);
-      } catch (e) { console.error("Failed to load claims", e); }
-
-      // Downtimes (admin view)
-      try {
-        const dts = await api.get('/admin/downtimes');
-        setDowntimes(dts.data.downtimes || []);
-      } catch (e) { console.error("Failed to load downtimes", e); }
-
-      // NPCs
-      try {
-        const np = await api.get('/admin/npcs');
-        setNPCs(np.data.npcs || []);
-      } catch (e) { console.error("Failed to load NPCs", e); }
-
-      // Ghouls
-      try {
-        const gh = await api.get('/admin/ghouls');
-        setGhouls(gh.data.ghouls || []);
-      } catch (e) { console.error("Failed to load Ghouls", e); }
-
-      // All chat messages (for admin)
-      try {
-          const msgs = await api.get('/admin/chat/all');
-          setAllMessages(msgs.data.messages || []);
-      } catch (e) { console.error("Failed to load all messages", e); }
-// All NPC chat messages (for stats)
-      try {
-        const npcMsgs = await api.get('/admin/chat/npc/all');
-        setAllNpcMessages(npcMsgs.data.messages || []);
-      } catch (e) { 
-        console.error("Failed to load all NPC messages", e); 
-      }
-
-    } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to load primary admin data');
+      setErr(e?.response?.data?.error || 'Failed to load primary admin data');
     } finally {
       setLoading(false);
+      setLoadProgress(100);
     }
   }, []);
   useEffect(() => { load(); }, [load]);
@@ -915,7 +857,11 @@ async function grantXP(character_id, delta) {
       />
 
       <div className={`${styles.main} ${sidebarCollapsed ? styles.mainExpanded : ''}`}>
-        {loading && <div className={styles.loadingStrip} aria-live="polite" aria-label="Loading" />}
+        {loading && (
+          <div className={styles.loadingStrip} aria-live="polite" aria-label="Loading" style={{ animation: 'none', background: 'var(--glass-bg)' }}>
+            <div style={{ width: `${loadProgress}%`, height: '100%', background: 'var(--accent-purple)', transition: 'width 0.2s ease-out' }} />
+          </div>
+        )}
 
         <TopBar tab={tab} loading={loading} onReload={load} />
 
