@@ -102,6 +102,7 @@ export default function Domains() {
   // ── Avatar URL resolver ─────────────────────────────────
   const getAvatarUrl = useCallback((claim) => {
     if (!claim) return '';
+    if (claim.is_abaton) return '/img/ui/abaton.jpg';
     const baseUrl = import.meta.env.VITE_API_URL || '/api';
 
     if (claim.user_id) return `${baseUrl}/users/${claim.user_id}/avatar`;
@@ -531,9 +532,15 @@ export default function Domains() {
                       style={{ '--claim-color': c.color || '#888888' }}
                     >
                       <span className={styles.claimColorBar} />
-                      <Avatar userId={c.user_id} npcId={c.owner_npc_id} size={36} style={{ marginLeft: '12px', flexShrink: 0, borderRadius: '50%' }} fallback={`https://ui-avatars.com/api/?name=${encodeURIComponent(c.owner_name || 'Unclaimed')}&background=random`} />
+                      {c.is_abaton ? (
+                        <div style={{ marginLeft: '12px', flexShrink: 0, width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                          <img src="/img/ui/abaton.jpg" alt="Abaton" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        </div>
+                      ) : (
+                        <Avatar userId={c.user_id} npcId={c.owner_npc_id} size={36} style={{ marginLeft: '12px', flexShrink: 0, borderRadius: '50%' }} fallback={`https://ui-avatars.com/api/?name=${encodeURIComponent(c.owner_name || 'Unclaimed')}&background=random`} />
+                      )}
                       <div className={styles.claimBody} style={{ marginLeft: '12px', textAlign: 'left' }}>
-                        <span className={styles.claimOwner}>{c.owner_name || 'Unclaimed'}</span>
+                        <span className={styles.claimOwner}>{c.is_abaton ? 'Abaton' : (c.owner_name || 'Unclaimed')}</span>
                         <span className={styles.claimMeta}>
                           <span className={styles.claimDivNum}>#{c.division}</span>
                           <span className={styles.claimDivName}>{name}</span>
@@ -558,12 +565,9 @@ export default function Domains() {
             >
               <div
                 style={{
-                  backgroundColor: selectedDivisionInfo.is_abaton ? 'rgba(0, 0, 0, 0.85)' : 'rgba(20, 20, 20, 0.65)',
-                  backgroundImage: selectedDivisionInfo.is_abaton ? 'url(/img/ui/abaton.jpg)' : 'none',
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                  backdropFilter: selectedDivisionInfo.is_abaton ? 'none' : 'blur(12px)',
-                  WebkitBackdropFilter: selectedDivisionInfo.is_abaton ? 'none' : 'blur(12px)',
+                  backgroundColor: 'rgba(20, 20, 20, 0.65)',
+                  backdropFilter: 'blur(12px)',
+                  WebkitBackdropFilter: 'blur(12px)',
                   border: '1px solid rgba(255, 255, 255, 0.1)',
                   borderRadius: '1.5rem',
                   padding: '1.5rem 2rem',
@@ -576,7 +580,7 @@ export default function Domains() {
                   overflow: 'hidden'
                 }}
               >
-                {selectedDivisionInfo.is_abaton && <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 0 }} />}
+
                 <button
                   style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: 'transparent', border: 'none', color: 'rgba(255, 255, 255, 0.5)', cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '24px', height: '24px', borderRadius: '50%', zIndex: 2 }}
                   onMouseEnter={e => e.currentTarget.style.color = 'white'}
@@ -591,8 +595,8 @@ export default function Domains() {
 
                 <div style={{ flexShrink: 0, zIndex: 1 }}>
                   {selectedDivisionInfo.is_abaton ? (
-                    <div style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: 'rgba(255, 255, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255, 255, 255, 0.4)', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: '40px', color: 'rgba(255, 255, 255, 0.8)' }}>visibility_off</span>
+                    <div style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255, 255, 255, 0.4)', boxShadow: '0 4px 12px rgba(0,0,0,0.5)', overflow: 'hidden' }}>
+                      <img src="/img/ui/abaton.jpg" alt="Abaton" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
                   ) : selectedDivisionInfo.owner !== 'Unclaimed' ? (
                     <Avatar userId={selectedDivisionInfo.user_id} npcId={selectedDivisionInfo.npc_id} size={80} style={{ borderRadius: '50%', border: '2px solid rgba(255, 255, 255, 0.2)', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }} fallback={`https://ui-avatars.com/api/?name=${encodeURIComponent(selectedDivisionInfo.owner)}&background=random`} />

@@ -348,7 +348,7 @@ function ExistingClaimEditor({ selected, claims, characters, npcs = [], getRow, 
 
       <div className={styles.row} style={{ marginTop: '0.75rem' }}>
         <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => {
-          onSave(Number(selectedClaim.division), { owner_name: row.owner_name || 'Admin Set', color: row.color, owner_character_id: row.owner_character_id === '' ? null : Number(row.owner_character_id), owner_npc_id: row.owner_npc_id === '' ? null : Number(row.owner_npc_id) });
+          onSave(Number(selectedClaim.division), { owner_name: row.owner_name || (row.is_abaton ? 'Abaton' : 'Admin Set'), color: row.color, owner_character_id: row.owner_character_id === '' ? null : Number(row.owner_character_id), owner_npc_id: row.owner_npc_id === '' ? null : Number(row.owner_npc_id), is_abaton: !!row.is_abaton });
           resetRow(Number(selectedClaim.division));
         }}>Save</button>
         <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => resetRow(Number(selectedClaim.division))} disabled={!isDirty}>Reset</button>
