@@ -6,6 +6,7 @@ import L from 'leaflet';
 import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
 import domainsRaw from '../../data/Domains.json';
 import MiniSearch from 'minisearch';
+import Avatar from '../../components/Avatar';
 
 /* ==================== CLAIMS — Split View + MAP (Domains clickability) ==================== */
 
@@ -231,7 +232,8 @@ export default function AdminClaimsTab({ claims, characters, npcs = [], onSave, 
               selected={selected}
               claims={claims}
               characters={characters}
-              getRow={(c) => (edits[c.division] ?? { owner_name: c.owner_name || '', color: c.color || 'var(--glass-border)', owner_character_id: c.owner_character_id ?? '' })}
+              npcs={npcs}
+              getRow={(c) => (edits[c.division] ?? { owner_name: c.owner_name || '', color: c.color || 'var(--glass-border)', owner_character_id: c.owner_character_id ?? '', owner_npc_id: c.owner_npc_id ?? '' })}
               setRow={(c, patch) => setEdits(prev => ({ ...prev, [c.division]: { ...getRow(c), ...patch } }))}
               resetRow={(div) => resetRow(div)}
               onSave={(div, patch) => onSave(div, patch)}
@@ -252,12 +254,17 @@ export default function AdminClaimsTab({ claims, characters, npcs = [], onSave, 
   );
 }
 
-function ExistingClaimEditor({ selected, claims, characters, npcs, getRow, setRow, resetRow, onSave, onDelete }) {
+function ExistingClaimEditor({ selected, claims, characters, npcs = [], getRow, setRow, resetRow, onSave, onDelete }) {
   const selectedClaim = claims.find(c => Number(c.division) === Number(selected));
   if (!selectedClaim) return null;
 
   const row = getRow(selectedClaim);
   const isDirty = JSON.stringify(row) !== JSON.stringify({ owner_name: selectedClaim.owner_name || '', color: selectedClaim.color || 'var(--glass-border)', owner_character_id: selectedClaim.owner_character_id ?? '', owner_npc_id: selectedClaim.owner_npc_id ?? '' });
+
+  const baseUrl = import.meta.env.VITE_API_URL || '/api';
+  const previewUserId = row.owner_character_id ? Number(row.owner_character_id) : null;
+  const previewNpcId = !row.owner_character_id && row.owner_npc_id ? Number(row.owner_npc_id) : null;
+  const previewNpcName = previewNpcId ? (npcs.find(n => n.id === previewNpcId)?.name || 'NPC') : null;
 
   return (
     <div className={styles.stack12}>
@@ -266,10 +273,33 @@ function ExistingClaimEditor({ selected, claims, characters, npcs, getRow, setRo
         <div>
           <h3 style={{ margin: 0, fontSize: '1.125rem', color: 'var(--text-primary)' }}>Division #{selectedClaim.division}</h3>
           <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-            {selectedClaim.owner_character_id ? `Char ID ${selectedClaim.owner_character_id} · ${characters[selectedClaim.owner_character_id]?.char_name || 'unknown char'}` : selectedClaim.owner_npc_id ? `NPC ID ${selectedClaim.owner_npc_id} · ${npcs?.find(n => n.id === selectedClaim.owner_npc_id)?.name || 'unknown NPC'}` : 'No character/NPC linked'}
+            {selectedClaim.owner_character_id
+              ? `Char ID ${selectedClaim.owner_character_id} · ${characters[selectedClaim.owner_character_id]?.char_name || 'unknown char'}`
+              : selectedClaim.owner_npc_id
+                ? `NPC ID ${selectedClaim.owner_npc_id} · ${npcs?.find(n => n.id === selectedClaim.owner_npc_id)?.name || 'unknown NPC'}`
+                : 'No character/NPC linked'}
           </div>
         </div>
       </div>
+
+      {/* Avatar Preview */}
+      {(previewUserId || previewNpcId) && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', background: 'var(--glass-inset)', borderRadius: 'var(--radius-md)', marginBottom: '0.25rem' }}>
+          <Avatar
+            userId={previewUserId}
+            npcId={previewNpcId}
+            size={52}
+            style={{ borderRadius: '50%', border: '2px solid var(--accent-purple)', flexShrink: 0 }}
+            fallback={`https://ui-avatars.com/api/?name=${encodeURIComponent(previewNpcName || row.owner_name || 'Owner')}&background=random`}
+          />
+          <div>
+            <div style={{ fontWeight: 'bold', color: 'var(--text-primary)', fontSize: '0.9rem' }}>{row.owner_name || (previewNpcName ? previewNpcName : 'Owner')}</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              {previewNpcId ? `NPC #${previewNpcId}` : `Character #${previewUserId}`}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className={styles.formGrid} style={{ gridTemplateColumns: '1fr 1fr' }}>
         <label className={styles.labeledInput}><span>Owner Name</span><input className={styles.input} value={row.owner_name} onChange={e => setRow(selectedClaim, { owner_name: e.target.value })} /></label>
@@ -282,7 +312,7 @@ function ExistingClaimEditor({ selected, claims, characters, npcs, getRow, setRo
         <label className={styles.labeledInput}><span>Owner NPC</span>
           <select className={styles.select} value={row.owner_npc_id} onChange={e => setRow(selectedClaim, { owner_npc_id: e.target.value, owner_character_id: '' })}>
             <option value="">— none —</option>
-            {npcs && npcs.map(n => <option key={n.id} value={n.id}>{`${n.id} — ${n.name}`}</option>)}
+            {npcs.map(n => <option key={n.id} value={n.id}>{`${n.id} — ${n.name}`}</option>)}
           </select>
         </label>
       </div>
