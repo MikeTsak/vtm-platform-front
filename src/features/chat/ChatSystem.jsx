@@ -161,15 +161,15 @@ const StatusIcon = ({ msg }) => {
 };
 
 /* --- CHAT IMAGE COMPONENT (Secure Fetch) --- */
-const ChatImage = ({ attachmentId }) => {
+const ChatMedia = ({ attachmentId }) => {
   const [prevId, setPrevId] = useState(attachmentId);
-  const [imageUrl, setImageUrl] = useState(null);
+  const [mediaInfo, setMediaInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   if (attachmentId !== prevId) {
     setPrevId(attachmentId);
-    setImageUrl(null);
+    setMediaInfo(null);
     setLoading(true);
     setError(false);
   }
@@ -178,15 +178,30 @@ const ChatImage = ({ attachmentId }) => {
     let active = true;
     let urlToRevoke = null;
 
-    api.get(`/chat/media/${attachmentId}`, { responseType: 'blob' })
-      .then((response) => {
+    api.get(`/chat/media/${attachmentId}/info`)
+      .then(async (response) => {
         if (!active) return;
-        urlToRevoke = URL.createObjectURL(response.data);
-        setImageUrl(urlToRevoke);
-        setLoading(false);
+        const info = response.data;
+        if (info.url) {
+          setMediaInfo({ url: info.url, mime: info.mime });
+          setLoading(false);
+        } else {
+          // Fallback to fetch blob
+          try {
+            const blobRes = await api.get(`/chat/media/${attachmentId}`, { responseType: 'blob' });
+            if (!active) return;
+            urlToRevoke = URL.createObjectURL(blobRes.data);
+            setMediaInfo({ url: urlToRevoke, mime: info.mime || blobRes.data.type });
+            setLoading(false);
+          } catch (e) {
+             if (!active) return;
+             setError(true);
+             setLoading(false);
+          }
+        }
       })
       .catch((err) => {
-        console.error("Failed to load image", err);
+        console.error("Failed to load media info", err);
         if (!active) return;
         setError(true);
         setLoading(false);
@@ -199,18 +214,37 @@ const ChatImage = ({ attachmentId }) => {
   }, [attachmentId]);
 
   if (loading) return (
-    <Skeleton name="chat-image-loader" loading={true}>
+    <Skeleton name="chat-media-loader" loading={true}>
       <div className="w-48 h-48 max-w-full rounded bg-surface-variant/30 animate-pulse" />
     </Skeleton>
   );
-  if (error) return <div className="p-4 bg-error/20 text-error rounded-lg text-sm text-center border border-dashed border-error">⚠ Image failed to load</div>;
+  if (error) return <div className="p-4 bg-error/20 text-error rounded-lg text-sm text-center border border-dashed border-error">Media failed to load</div>;
+
+  if (mediaInfo?.mime?.startsWith('video/')) {
+    return (
+      <video
+        controls
+        src={mediaInfo.url}
+        className="w-auto h-auto max-w-full max-h-[300px] object-contain rounded block"
+      />
+    );
+  }
+  if (mediaInfo?.mime?.startsWith('audio/')) {
+    return (
+      <audio
+        controls
+        src={mediaInfo.url}
+        className="w-full max-w-[300px] rounded block"
+      />
+    );
+  }
 
   return (
     <img
-      src={imageUrl}
+      src={mediaInfo?.url}
       alt="Attachment"
       className="w-auto h-auto max-w-full max-h-[300px] object-contain rounded cursor-pointer block"
-      onClick={() => window.open(imageUrl, '_blank')}
+      onClick={() => window.open(mediaInfo?.url, '_blank')}
     />
   );
 };
@@ -275,6 +309,8 @@ export default function ChatSystem({ commsEnabled = true }) {
 
   const [drafts, setDrafts] = useState({});
   const sendingRef = useRef(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const loadSeqRef = useRef(0);
 
   const [creatingGroup, setCreatingGroup] = useState(false);
@@ -778,16 +814,24 @@ export default function ChatSystem({ commsEnabled = true }) {
 
     try {
       if (attachment) {
+        setIsUploading(true);
+        setUploadProgress(0);
         const formData = new FormData();
         formData.append('file', attachment);
 
         try {
-          const res = await api.post('/chat/upload', formData);
+          const res = await api.post('/chat/upload', formData, {
+            onUploadProgress: (e) => {
+              const p = Math.round((e.loaded * 100) / e.total);
+              setUploadProgress(p);
+            }
+          });
           attachmentId = res.data.id;
         } catch (err) {
           console.error('Upload error:', err?.response?.data || err);
           alert(err?.response?.data?.error || 'Failed to upload file. Check file size and type.');
           sendingRef.current = false;
+          setIsUploading(false);
           return;
         }
       }
@@ -905,6 +949,7 @@ export default function ChatSystem({ commsEnabled = true }) {
       setError(err?.response?.status === 401 ? 'Your session expired. Please log in again.' : 'Failed to send message.');
     } finally {
       sendingRef.current = false;
+      setIsUploading(false);
       if (!isMobile) setTimeout(() => textareaRef.current?.focus(), 10);
     }
   };
@@ -1517,7 +1562,7 @@ export default function ChatSystem({ commsEnabled = true }) {
                           {/* Attachment */}
                           {item.attachment_id && (
                             <div className="mb-2 relative rounded overflow-hidden border border-outline-variant/50 bg-black/50 group/img cursor-pointer w-fit max-w-full">
-                              <ChatImage attachmentId={item.attachment_id} />
+                              <ChatMedia attachmentId={item.attachment_id} />
                               <div className="absolute inset-0 bg-blood-accent/10 pointer-events-none mix-blend-overlay"></div>
                             </div>
                           )}
@@ -1597,31 +1642,36 @@ export default function ChatSystem({ commsEnabled = true }) {
               <div className="max-w-4xl mx-auto relative flex items-end gap-2 bg-surface-container-lowest border border-outline-variant rounded-md p-1.5 md:p-2 focus-within:border-primary focus-within:shadow-[0_0_8px_rgba(180,15,31,0.2)] transition-all">
 
                 {/* Attachments & Previews */}
-                <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="image/*,audio/*" onChange={handleFileSelect} />
+                <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="image/*,video/*,audio/*" onChange={handleFileSelect} />
 
                 <button type="button" onClick={() => fileInputRef.current?.click()} disabled={!isCharActive || !commsEnabled} className="p-2 text-on-surface-variant hover:text-primary transition-colors shrink-0 rounded hover:bg-surface-variant/30 disabled:opacity-30">
                   <span className="material-symbols-outlined text-[20px] md:text-[24px]">attach_file</span>
                 </button>
 
                 <div className="flex-1 flex flex-col min-w-0">
-                  {previewUrl && attachment && (
-                    <div className="mb-2 p-2 bg-surface-container-highest rounded border border-outline-variant/50 flex items-center justify-between">
-                      <div className="flex items-center gap-2 truncate">
-                        {attachment.type.startsWith('audio/') ? (
-                          <>
-                            <span className="material-symbols-outlined text-primary text-sm shrink-0">audio_file</span>
-                            <span className="text-xs truncate">{attachment.name}</span>
-                          </>
-                        ) : (
-                          <>
-                            <img src={previewUrl} alt="Preview" className="h-8 w-8 object-cover rounded border border-outline-variant shrink-0" />
-                            <span className="text-xs truncate">{attachment.name}</span>
-                          </>
+                  {attachment && (
+                    <div className="absolute bottom-full left-0 mb-2 p-2 bg-surface-container border border-primary/20 rounded shadow-lg flex items-center gap-3 w-full">
+                      {attachment.type.startsWith('image/') ? (
+                        <img src={previewUrl} alt="Preview" className="h-12 w-12 object-cover rounded" />
+                      ) : (
+                        <div className="h-12 w-12 bg-surface-dim flex items-center justify-center rounded text-on-surface-variant">
+                          <span className="material-symbols-outlined">attach_file</span>
+                        </div>
+                      )}
+                      <div className="flex flex-col gap-1 flex-1 min-w-0">
+                        <span className="text-xs truncate text-primary" title={attachment.name}>{attachment.name}</span>
+                        <span className="text-[10px] text-on-surface-variant">{(attachment.size / 1024).toFixed(1)} KB</span>
+                        {isUploading && (
+                          <div className="w-full bg-surface-dim h-1 rounded overflow-hidden">
+                            <div className="h-full bg-primary transition-all duration-200" style={{width: `${uploadProgress}%`}}></div>
+                          </div>
                         )}
                       </div>
-                      <button type="button" onClick={clearAttachment} className="text-on-surface-variant hover:text-error shrink-0 ml-2">
-                        <span className="material-symbols-outlined text-[18px]">close</span>
-                      </button>
+                      {!isUploading && (
+                        <button type="button" onClick={clearAttachment} className="ml-2 text-on-surface-variant hover:text-error p-1 rounded-full transition-colors" title="Remove attachment">
+                          <span className="material-symbols-outlined text-sm">close</span>
+                        </button>
+                      )}
                     </div>
                   )}
                   <textarea
