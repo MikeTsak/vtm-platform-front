@@ -174,9 +174,9 @@ export default function AdminClaimsTab({ claims, characters, npcs = [], onSave, 
                 >
                   <span className={styles.claimListItemDivision}>#{c.division}</span>
                   <div className={styles.claimListItemInfo}>
-                    <b className={styles.claimListItemOwner}>{c.owner_name || '—'}</b>
+                    <b className={styles.claimListItemOwner}>{c.is_abaton ? 'Abaton' : c.owner_name || '—'}</b>
                     <small className={styles.claimListItemChar}>
-                      {c.owner_character_id ? (characters[c.owner_character_id]?.char_name || 'unknown char') : c.owner_npc_id ? (npcs.find(n => n.id === c.owner_npc_id)?.name || 'unknown NPC') : 'no character/NPC'}
+                      {c.is_abaton ? '—' : c.owner_character_id ? (characters[c.owner_character_id]?.char_name || 'unknown char') : c.owner_npc_id ? (npcs.find(n => n.id === c.owner_npc_id)?.name || 'unknown NPC') : 'no character/NPC'}
                     </small>
                   </div>
                   <span className={styles.claimListItemSwatch} style={{ background: colorForDivision(c.division) }} />
@@ -195,20 +195,26 @@ export default function AdminClaimsTab({ claims, characters, npcs = [], onSave, 
               <h3 className={styles.hl} style={{ margin: 0, paddingBottom: '0.75rem', borderBottom: '1px solid var(--glass-border)' }}>Create Claim</h3>
               <div className={styles.formGrid} style={{ gridTemplateColumns: '1fr 1fr' }}>
                 <label className={styles.labeledInput}><span>Division #</span><input className={styles.input} value={newDraft.division} onChange={e => setNewDraft(d => ({ ...d, division: e.target.value }))} placeholder="e.g., 12" /></label>
-                <label className={styles.labeledInput}><span>Owner Name</span><input className={styles.input} value={newDraft.owner_name} onChange={e => setNewDraft(d => ({ ...d, owner_name: e.target.value }))} placeholder="FirstName LastName" /></label>
+                <label className={styles.labeledInput}><span>Owner Name</span><input className={styles.input} value={newDraft.owner_name} onChange={e => setNewDraft(d => ({ ...d, owner_name: e.target.value }))} placeholder="FirstName LastName" disabled={newDraft.is_abaton} /></label>
+              </div>
+              <div className={styles.formGrid} style={{ gridTemplateColumns: 'auto 1fr' }}>
+                <label className={styles.labeledInput} style={{ flexDirection: 'row', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={newDraft.is_abaton || false} onChange={e => setNewDraft(d => ({ ...d, is_abaton: e.target.checked, owner_name: e.target.checked ? 'Abaton' : '', owner_character_id: '', owner_npc_id: '' }))} style={{ width: '18px', height: '18px', accentColor: 'var(--accent-purple)' }} />
+                  <span>Is Abaton</span>
+                </label>
               </div>
               <div className={styles.formGrid} style={{ gridTemplateColumns: 'auto 1fr' }}>
                 <label className={styles.labeledInput}><span>Color</span>
                   <input type="color" className={styles.claimColorInput} value={newDraft.color} onChange={e => setNewDraft(d => ({ ...d, color: e.target.value }))} />
                 </label>
                 <label className={styles.labeledInput}><span>Owner Character</span>
-                  <select className={styles.select} value={newDraft.owner_character_id} onChange={e => setNewDraft(d => ({ ...d, owner_character_id: e.target.value, owner_npc_id: '' }))}>
+                  <select className={styles.select} value={newDraft.owner_character_id} disabled={newDraft.is_abaton} onChange={e => setNewDraft(d => ({ ...d, owner_character_id: e.target.value, owner_npc_id: '' }))}>
                     <option value="">— none —</option>
                     {Object.entries(characters).map(([cid, info]) => <option key={cid} value={cid}>{`${cid} — ${info.char_name}`}</option>)}
                   </select>
                 </label>
                 <label className={styles.labeledInput}><span>Owner NPC</span>
-                  <select className={styles.select} value={newDraft.owner_npc_id} onChange={e => setNewDraft(d => ({ ...d, owner_npc_id: e.target.value, owner_character_id: '' }))}>
+                  <select className={styles.select} value={newDraft.owner_npc_id} disabled={newDraft.is_abaton} onChange={e => setNewDraft(d => ({ ...d, owner_npc_id: e.target.value, owner_character_id: '' }))}>
                     <option value="">— none —</option>
                     {npcs.map(n => <option key={n.id} value={n.id}>{`${n.id} — ${n.name}`}</option>)}
                   </select>
@@ -218,8 +224,8 @@ export default function AdminClaimsTab({ claims, characters, npcs = [], onSave, 
                 <button className={`${styles.btn} ${styles.btnPrimary}`} style={{ flex: 1 }} onClick={() => {
                   const div = Number(newDraft.division);
                   if (!Number.isInteger(div)) return alert('Division must be an integer');
-                  onSave(div, { owner_name: newDraft.owner_name || 'Admin Set', color: newDraft.color, owner_character_id: newDraft.owner_character_id === '' ? null : Number(newDraft.owner_character_id), owner_npc_id: newDraft.owner_npc_id === '' ? null : Number(newDraft.owner_npc_id) });
-                  setNewDraft({ division: '', color: '#9d7cff', owner_name: '', owner_character_id: '', owner_npc_id: '' });
+                  onSave(div, { owner_name: newDraft.owner_name || (newDraft.is_abaton ? 'Abaton' : 'Admin Set'), color: newDraft.color, owner_character_id: newDraft.owner_character_id === '' ? null : Number(newDraft.owner_character_id), owner_npc_id: newDraft.owner_npc_id === '' ? null : Number(newDraft.owner_npc_id), is_abaton: !!newDraft.is_abaton });
+                  setNewDraft({ division: '', color: '#9d7cff', owner_name: '', owner_character_id: '', owner_npc_id: '', is_abaton: false });
                   setSelected(div);
                 }}>Save Claim</button>
                 <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => setSelected(null)}>Cancel</button>
@@ -233,7 +239,7 @@ export default function AdminClaimsTab({ claims, characters, npcs = [], onSave, 
               claims={claims}
               characters={characters}
               npcs={npcs}
-              getRow={(c) => (edits[c.division] ?? { owner_name: c.owner_name || '', color: c.color || 'var(--glass-border)', owner_character_id: c.owner_character_id ?? '', owner_npc_id: c.owner_npc_id ?? '' })}
+              getRow={(c) => (edits[c.division] ?? { owner_name: c.owner_name || '', color: c.color || 'var(--glass-border)', owner_character_id: c.owner_character_id ?? '', owner_npc_id: c.owner_npc_id ?? '', is_abaton: !!c.is_abaton })}
               setRow={(c, patch) => setEdits(prev => ({ ...prev, [c.division]: { ...getRow(c), ...patch } }))}
               resetRow={(div) => resetRow(div)}
               onSave={(div, patch) => onSave(div, patch)}
@@ -259,7 +265,7 @@ function ExistingClaimEditor({ selected, claims, characters, npcs = [], getRow, 
   if (!selectedClaim) return null;
 
   const row = getRow(selectedClaim);
-  const isDirty = JSON.stringify(row) !== JSON.stringify({ owner_name: selectedClaim.owner_name || '', color: selectedClaim.color || 'var(--glass-border)', owner_character_id: selectedClaim.owner_character_id ?? '', owner_npc_id: selectedClaim.owner_npc_id ?? '' });
+  const isDirty = JSON.stringify(row) !== JSON.stringify({ owner_name: selectedClaim.owner_name || '', color: selectedClaim.color || 'var(--glass-border)', owner_character_id: selectedClaim.owner_character_id ?? '', owner_npc_id: selectedClaim.owner_npc_id ?? '', is_abaton: !!selectedClaim.is_abaton });
 
   const baseUrl = import.meta.env.VITE_API_URL || '/api';
   const charInfo = row.owner_character_id ? characters[row.owner_character_id] : null;
@@ -308,16 +314,23 @@ function ExistingClaimEditor({ selected, claims, characters, npcs = [], getRow, 
         </div>
       )}
 
+      <div className={styles.formGrid} style={{ gridTemplateColumns: 'auto 1fr' }}>
+        <label className={styles.labeledInput} style={{ flexDirection: 'row', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+          <input type="checkbox" checked={row.is_abaton || false} onChange={e => setRow(selectedClaim, { is_abaton: e.target.checked, owner_name: e.target.checked ? 'Abaton' : '', owner_character_id: '', owner_npc_id: '' })} style={{ width: '18px', height: '18px', accentColor: 'var(--accent-purple)' }} />
+          <span>Is Abaton</span>
+        </label>
+      </div>
+
       <div className={styles.formGrid} style={{ gridTemplateColumns: '1fr 1fr' }}>
-        <label className={styles.labeledInput}><span>Owner Name</span><input className={styles.input} value={row.owner_name} onChange={e => setRow(selectedClaim, { owner_name: e.target.value })} /></label>
+        <label className={styles.labeledInput}><span>Owner Name</span><input className={styles.input} value={row.owner_name} disabled={row.is_abaton} onChange={e => setRow(selectedClaim, { owner_name: e.target.value })} /></label>
         <label className={styles.labeledInput}><span>Owner Character</span>
-          <select className={styles.select} value={row.owner_character_id} onChange={e => setRow(selectedClaim, { owner_character_id: e.target.value, owner_npc_id: '' })}>
+          <select className={styles.select} value={row.owner_character_id} disabled={row.is_abaton} onChange={e => setRow(selectedClaim, { owner_character_id: e.target.value, owner_npc_id: '' })}>
             <option value="">— none —</option>
             {Object.entries(characters).map(([cid, info]) => <option key={cid} value={cid}>{`${cid} — ${info.char_name}`}</option>)}
           </select>
         </label>
         <label className={styles.labeledInput}><span>Owner NPC</span>
-          <select className={styles.select} value={row.owner_npc_id} onChange={e => setRow(selectedClaim, { owner_npc_id: e.target.value, owner_character_id: '' })}>
+          <select className={styles.select} value={row.owner_npc_id} disabled={row.is_abaton} onChange={e => setRow(selectedClaim, { owner_npc_id: e.target.value, owner_character_id: '' })}>
             <option value="">— none —</option>
             {npcs.map(n => <option key={n.id} value={n.id}>{`${n.id} — ${n.name}`}</option>)}
           </select>

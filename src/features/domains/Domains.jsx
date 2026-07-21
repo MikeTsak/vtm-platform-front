@@ -190,7 +190,8 @@ export default function Domains() {
           claimColor,
           ownerName: claim?.owner_name || 'Unclaimed',
           userId: r_user_id,
-          npcId: r_npc_id
+          npcId: r_npc_id,
+          isAbaton: !!claim?.is_abaton
         }
       };
     });
@@ -214,7 +215,8 @@ export default function Domains() {
           owner: info.object.properties.ownerName,
           color: info.object.properties.claimColor,
           user_id: info.object.properties.userId,
-          npc_id: info.object.properties.npcId
+          npc_id: info.object.properties.npcId,
+          is_abaton: info.object.properties.isAbaton
         });
       }
     } else {
@@ -555,10 +557,28 @@ export default function Domains() {
               style={{ position: 'absolute', bottom: '2rem', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, pointerEvents: 'auto' }}
             >
               <div
-                style={{ backgroundColor: 'rgba(20, 20, 20, 0.65)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '1.5rem', padding: '1.5rem 2rem', minWidth: '320px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)', position: 'relative', display: 'flex', gap: '1.5rem', alignItems: 'center' }}
+                style={{
+                  backgroundColor: selectedDivisionInfo.is_abaton ? 'rgba(0, 0, 0, 0.85)' : 'rgba(20, 20, 20, 0.65)',
+                  backgroundImage: selectedDivisionInfo.is_abaton ? 'url(/img/ui/abaton.jpg)' : 'none',
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  backdropFilter: selectedDivisionInfo.is_abaton ? 'none' : 'blur(12px)',
+                  WebkitBackdropFilter: selectedDivisionInfo.is_abaton ? 'none' : 'blur(12px)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '1.5rem',
+                  padding: '1.5rem 2rem',
+                  minWidth: '320px',
+                  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+                  position: 'relative',
+                  display: 'flex',
+                  gap: '1.5rem',
+                  alignItems: 'center',
+                  overflow: 'hidden'
+                }}
               >
+                {selectedDivisionInfo.is_abaton && <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 0 }} />}
                 <button
-                  style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: 'transparent', border: 'none', color: 'rgba(255, 255, 255, 0.5)', cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '24px', height: '24px', borderRadius: '50%' }}
+                  style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: 'transparent', border: 'none', color: 'rgba(255, 255, 255, 0.5)', cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '24px', height: '24px', borderRadius: '50%', zIndex: 2 }}
                   onMouseEnter={e => e.currentTarget.style.color = 'white'}
                   onMouseLeave={e => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.5)'}
                   onClick={() => {
@@ -569,8 +589,12 @@ export default function Domains() {
                   }}
                 >✕</button>
 
-                <div style={{ flexShrink: 0 }}>
-                  {selectedDivisionInfo.owner !== 'Unclaimed' ? (
+                <div style={{ flexShrink: 0, zIndex: 1 }}>
+                  {selectedDivisionInfo.is_abaton ? (
+                    <div style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: 'rgba(255, 255, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255, 255, 255, 0.4)', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '40px', color: 'rgba(255, 255, 255, 0.8)' }}>visibility_off</span>
+                    </div>
+                  ) : selectedDivisionInfo.owner !== 'Unclaimed' ? (
                     <Avatar userId={selectedDivisionInfo.user_id} npcId={selectedDivisionInfo.npc_id} size={80} style={{ borderRadius: '50%', border: '2px solid rgba(255, 255, 255, 0.2)', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }} fallback={`https://ui-avatars.com/api/?name=${encodeURIComponent(selectedDivisionInfo.owner)}&background=random`} />
                   ) : (
                     <div style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: 'rgba(255, 255, 255, 0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed rgba(255, 255, 255, 0.2)' }}>
@@ -579,7 +603,7 @@ export default function Domains() {
                   )}
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', zIndex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
                     {selectedDivisionInfo.color
                       ? <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: selectedDivisionInfo.color, border: '1px solid rgba(255,255,255,0.2)' }} />
@@ -589,10 +613,14 @@ export default function Domains() {
                   </div>
 
                   <h3 style={{ fontSize: '1.25rem', color: 'white', margin: '0 0 0.5rem 0', fontFamily: '"Playfair Display", serif', fontWeight: 'bold' }}>
-                    {selectedDivisionInfo.owner !== 'Unclaimed' ? selectedDivisionInfo.owner : 'Unclaimed'}
+                    {selectedDivisionInfo.is_abaton ? 'Abaton' : selectedDivisionInfo.owner !== 'Unclaimed' ? selectedDivisionInfo.owner : 'Unclaimed'}
                   </h3>
 
-                  {selectedDivisionInfo.owner !== 'Unclaimed' && (
+                  {selectedDivisionInfo.is_abaton ? (
+                    <div>
+                      <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', fontStyle: 'italic', letterSpacing: '0.5px' }}>OFF LIMITS</span>
+                    </div>
+                  ) : selectedDivisionInfo.owner !== 'Unclaimed' && (
                     <div>
                       {selectedDivisionInfo.user_id ? (
                         <Link to={`/character/${selectedDivisionInfo.user_id}`} style={{ fontSize: '0.75rem', color: 'white', textDecoration: 'none', fontWeight: 'bold', padding: '0.25rem 0.75rem', borderRadius: '999px', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', display: 'inline-block', transition: 'background-color 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}>View Profile</Link>
