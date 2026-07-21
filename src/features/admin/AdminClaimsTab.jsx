@@ -262,9 +262,12 @@ function ExistingClaimEditor({ selected, claims, characters, npcs = [], getRow, 
   const isDirty = JSON.stringify(row) !== JSON.stringify({ owner_name: selectedClaim.owner_name || '', color: selectedClaim.color || 'var(--glass-border)', owner_character_id: selectedClaim.owner_character_id ?? '', owner_npc_id: selectedClaim.owner_npc_id ?? '' });
 
   const baseUrl = import.meta.env.VITE_API_URL || '/api';
-  const previewUserId = row.owner_character_id ? Number(row.owner_character_id) : null;
+  const charInfo = row.owner_character_id ? characters[row.owner_character_id] : null;
+  const previewUserId = charInfo?.user_id ? Number(charInfo.user_id) : null;
+  const previewCharName = charInfo?.char_name || null;
   const previewNpcId = !row.owner_character_id && row.owner_npc_id ? Number(row.owner_npc_id) : null;
   const previewNpcName = previewNpcId ? (npcs.find(n => n.id === previewNpcId)?.name || 'NPC') : null;
+  const hasPreview = previewUserId || previewNpcId;
 
   return (
     <div className={styles.stack12}>
@@ -283,19 +286,23 @@ function ExistingClaimEditor({ selected, claims, characters, npcs = [], getRow, 
       </div>
 
       {/* Avatar Preview */}
-      {(previewUserId || previewNpcId) && (
+      {hasPreview && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', background: 'var(--glass-inset)', borderRadius: 'var(--radius-md)', marginBottom: '0.25rem' }}>
           <Avatar
             userId={previewUserId}
             npcId={previewNpcId}
             size={52}
             style={{ borderRadius: '50%', border: '2px solid var(--accent-purple)', flexShrink: 0 }}
-            fallback={`https://ui-avatars.com/api/?name=${encodeURIComponent(previewNpcName || row.owner_name || 'Owner')}&background=random`}
+            fallback={`https://ui-avatars.com/api/?name=${encodeURIComponent(previewCharName || previewNpcName || row.owner_name || 'Owner')}&background=random`}
           />
           <div>
-            <div style={{ fontWeight: 'bold', color: 'var(--text-primary)', fontSize: '0.9rem' }}>{row.owner_name || (previewNpcName ? previewNpcName : 'Owner')}</div>
+            <div style={{ fontWeight: 'bold', color: 'var(--text-primary)', fontSize: '0.9rem' }}>
+              {row.owner_name || previewCharName || previewNpcName || 'Owner'}
+            </div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              {previewNpcId ? `NPC #${previewNpcId}` : `Character #${previewUserId}`}
+              {previewNpcId
+                ? `NPC #${previewNpcId} — ${previewNpcName || 'unknown'}`
+                : `Character #${row.owner_character_id} (User #${previewUserId})`}
             </div>
           </div>
         </div>
