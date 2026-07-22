@@ -30,7 +30,7 @@
     "inquirer": "^14.0.2",
     "jspdf": "^4.2.1",
     "maplibre-gl": "^5.24.0",
-    "mikes-php-image-handler": "^1.0.0",
+    "mikes-php-image-handler": "file:../mikes-php-image-handler",
     "minisearch": "^7.2.0",
     "pdf-lib": "^1.17.1",
     "react": "^19.1.1",
