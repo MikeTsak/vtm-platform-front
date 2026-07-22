@@ -269,6 +269,10 @@ export default function AdminPremonitionsTab() {
   // NEW: open protected media with bearer auth
   async function openMediaWithAuth(url) {
     try {
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        window.open(url, "_blank", "noopener");
+        return;
+      }
       const abs = apiJoin(url);
       if (objectUrlCache.current.has(abs)) {
         window.open(objectUrlCache.current.get(abs), "_blank", "noopener");

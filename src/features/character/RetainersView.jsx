@@ -1097,9 +1097,7 @@ export default function RetainersView() {
         if (pendingAvatar) {
           const formData = new FormData();
           formData.append('avatar', pendingAvatar);
-          await api.put(`/retainers/${updatedRetainer.id}/avatar`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-          });
+          await api.put(`/retainers/${updatedRetainer.id}/avatar`, formData);
         }
       } else {
         if (!isAdminBypass) {
@@ -1126,9 +1124,7 @@ export default function RetainersView() {
         if (pendingAvatar) {
           const formData = new FormData();
           formData.append('avatar', pendingAvatar);
-          await api.put(`/retainers/${newRetainer.id}/avatar`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-          });
+          await api.put(`/retainers/${newRetainer.id}/avatar`, formData);
         }
       }
 

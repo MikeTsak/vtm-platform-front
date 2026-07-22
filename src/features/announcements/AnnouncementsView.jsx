@@ -137,9 +137,7 @@ export default function AnnouncementsView({ canEdit: propCanEdit }) {
         const formData = new FormData();
         formData.append('file', selectedFile);
         
-        const uploadRes = await api.post('/news/upload', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
+        const uploadRes = await api.post('/news/upload', formData);
         media_url = uploadRes.data.url; 
       }
 

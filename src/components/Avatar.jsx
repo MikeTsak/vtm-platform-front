@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import api from '../core/api'; // our axios instance
 import styles from './Avatar.module.css';
+import AvatarCropperModal from './AvatarCropperModal';
 
 const avatarTimestamps = new Map();
 
@@ -10,6 +11,7 @@ export default function Avatar({ userId, npcId, identityId, retainerId, size = 8
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [imgError, setImgError] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState(null);
   const fileInputRef = useRef(null);
 
   const baseUrl = import.meta.env.VITE_API_URL || '/api';
@@ -33,18 +35,36 @@ export default function Avatar({ userId, npcId, identityId, retainerId, size = 8
     }
   };
 
-  const handleFileChange = async (e) => {
+  const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validate size (e.g., 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      alert('File is too large. Maximum size is 5MB.');
+    // Validate size (e.g., 15MB max input before crop)
+    if (file.size > 15 * 1024 * 1024) {
+      alert('File is too large. Maximum size is 15MB.');
       return;
     }
 
+    const objectUrl = URL.createObjectURL(file);
+    setCropImageSrc(objectUrl);
+    e.target.value = null; // reset input
+  };
+
+  const handleCropCancel = () => {
+    if (cropImageSrc) {
+      URL.revokeObjectURL(cropImageSrc);
+    }
+    setCropImageSrc(null);
+  };
+
+  const handleCropComplete = async (croppedFile) => {
+    if (cropImageSrc) {
+      URL.revokeObjectURL(cropImageSrc);
+    }
+    setCropImageSrc(null);
+
     if (onFileSelect) {
-      onFileSelect(file);
+      onFileSelect(croppedFile);
       return;
     }
 
@@ -52,13 +72,10 @@ export default function Avatar({ userId, npcId, identityId, retainerId, size = 8
     setUploadProgress(0);
     try {
       const formData = new FormData();
-      formData.append('avatar', file);
+      formData.append('avatar', croppedFile);
 
       const endpoint = userId ? `/users/${userId}/avatar` : (npcId ? `/npcs/${npcId}/avatar` : (retainerId ? `/retainers/${retainerId}/avatar` : `/identities/${identityId}/avatar`));
       await api.put(endpoint, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
         onUploadProgress: (progressEvent) => {
           const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
           setUploadProgress(percentCompleted);
@@ -77,47 +94,57 @@ export default function Avatar({ userId, npcId, identityId, retainerId, size = 8
       alert('Failed to upload avatar: ' + (err.response?.data?.error || err.message));
     } finally {
       setIsUploading(false);
-      e.target.value = null; // reset input
     }
   };
 
   return (
-    <div 
-      className={`${styles.avatarContainer} ${editable ? styles.editable : ''} ${isUploading ? styles.uploading : ''} ${className}`}
-      style={{ width: size, height: size, ...style }}
-      onClick={handleClick}
-      title={editable ? "Click to change avatar" : ""}
-    >
-      <img 
-        src={srcUrl} 
-        alt="User Avatar" 
-        className={`${styles.avatarImage} ${imgClassName}`}
-        style={imgStyle}
-        onError={() => setImgError(true)}
-      />
-      {editable && (
-        <div className={styles.editOverlay}>
-          <span className="material-symbols-outlined">edit</span>
-        </div>
-      )}
-      {isUploading && (
-        <div className={styles.spinnerOverlay} style={{flexDirection: 'column', padding: '5px'}}>
-          <span className="material-symbols-outlined spin" style={{marginBottom: '5px'}}>progress_activity</span>
-          <div style={{width: '100%', backgroundColor: 'rgba(255,255,255,0.3)', height: '4px', borderRadius: '2px', overflow: 'hidden'}}>
-            <div style={{width: `${uploadProgress}%`, backgroundColor: '#fff', height: '100%', transition: 'width 0.2s'}} />
+    <>
+      <div 
+        className={`${styles.avatarContainer} ${editable ? styles.editable : ''} ${isUploading ? styles.uploading : ''} ${className}`}
+        style={{ width: size, height: size, ...style }}
+        onClick={handleClick}
+        title={editable ? "Click to change avatar" : ""}
+      >
+        <img 
+          src={srcUrl} 
+          alt="User Avatar" 
+          className={`${styles.avatarImage} ${imgClassName}`}
+          style={imgStyle}
+          onError={() => setImgError(true)}
+        />
+        {editable && (
+          <div className={styles.editOverlay}>
+            <span className="material-symbols-outlined">edit</span>
           </div>
-        </div>
-      )}
-      
-      {editable && (
-        <input 
-          type="file" 
-          ref={fileInputRef} 
-          style={{ display: 'none' }} 
-          accept="image/*,video/*,audio/*"
-          onChange={handleFileChange}
+        )}
+        {isUploading && (
+          <div className={styles.spinnerOverlay} style={{flexDirection: 'column', padding: '5px'}}>
+            <span className="material-symbols-outlined spin" style={{marginBottom: '5px'}}>progress_activity</span>
+            <div style={{width: '100%', backgroundColor: 'rgba(255,255,255,0.3)', height: '4px', borderRadius: '2px', overflow: 'hidden'}}>
+              <div style={{width: `${uploadProgress}%`, backgroundColor: '#fff', height: '100%', transition: 'width 0.2s'}} />
+            </div>
+          </div>
+        )}
+        
+        {editable && (
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            style={{ display: 'none' }} 
+            accept="image/*"
+            onChange={handleFileChange}
+          />
+        )}
+      </div>
+
+      {cropImageSrc && (
+        <AvatarCropperModal
+          imageSrc={cropImageSrc}
+          onCropComplete={handleCropComplete}
+          onCancel={handleCropCancel}
         />
       )}
-    </div>
+    </>
   );
 }
+
