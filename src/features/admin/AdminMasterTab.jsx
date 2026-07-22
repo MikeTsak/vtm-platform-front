@@ -31,6 +31,14 @@ export default function AdminMasterTab() {
   const [migrationTotal, setMigrationTotal] = useState(1);
   const [migrationDone, setMigrationDone] = useState(false);
 
+  // Media Migration Runner state
+  const [mediaMigrationRunning, setMediaMigrationRunning] = useState(false);
+  const [mediaMigrationLogs, setMediaMigrationLogs] = useState([]);
+  const [mediaMigrationProgress, setMediaMigrationProgress] = useState(0);
+  const [mediaMigrationTotal, setMediaMigrationTotal] = useState(1);
+  const [mediaMigrationDone, setMediaMigrationDone] = useState(false);
+
+
   const runMigrations = () => {
     if(!window.confirm("Are you sure you want to run all system migrations?")) return;
     setMigrationRunning(true);
@@ -72,6 +80,50 @@ export default function AdminMasterTab() {
       es.close();
     };
   };
+
+  const runMediaMigration = () => {
+    if(!window.confirm("Are you sure you want to run the media migration? This will upload blobs to the image service.")) return;
+    setMediaMigrationRunning(true);
+    setMediaMigrationLogs([]);
+    setMediaMigrationProgress(0);
+    setMediaMigrationDone(false);
+
+    const baseUrl = api.defaults.baseURL || import.meta.env.VITE_API_URL || '';
+    const token = localStorage.getItem('token');
+    const es = new EventSource(`${baseUrl}/admin/migrate-media/stream?token=${token}`);
+
+    es.addEventListener('start', (e) => {
+      const data = JSON.parse(e.data);
+      setMediaMigrationTotal(data.total);
+      setMediaMigrationLogs(prev => [...prev, `[System] Starting media migration.`]);
+    });
+
+    es.addEventListener('progress', (e) => {
+      const data = JSON.parse(e.data);
+      setMediaMigrationProgress(data.current);
+    });
+
+    es.addEventListener('log', (e) => {
+      let data = e.data;
+      try { data = JSON.parse(e.data); } catch(err) {}
+      setMediaMigrationLogs(prev => [...prev, data]);
+    });
+
+    es.addEventListener('done', (e) => {
+      const data = JSON.parse(e.data);
+      setMediaMigrationLogs(prev => [...prev, `[System] ${data.message}`]);
+      setMediaMigrationDone(true);
+      setMediaMigrationRunning(false);
+      es.close();
+    });
+
+    es.onerror = (err) => {
+      setMediaMigrationLogs(prev => [...prev, `[Error] Connection lost or failed to stream.`]);
+      setMediaMigrationRunning(false);
+      es.close();
+    };
+  };
+
 
   useEffect(() => { loadConfig(); }, []);
 
@@ -484,6 +536,56 @@ export default function AdminMasterTab() {
                   </div>
                 ))}
                 {migrationRunning && <div style={{ color: '#8b949e', marginTop: '10px' }}>&gt; waiting for output...<span style={{ animation: 'blink 1s step-end infinite' }}>_</span></div>}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Media Migration Runner */}
+        <div style={{ background: 'var(--glass-inset)', padding: '1.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)', marginTop: '1.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--text-primary)' }}>Run Media Migration</div>
+              <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '4px' }}>Upload all legacy image BLOBs to the new media service while preserving original BLOBs.</div>
+            </div>
+            <button
+              onClick={runMediaMigration}
+              disabled={mediaMigrationRunning}
+              className={styles.btn}
+              style={{ background: 'var(--color-primary)', color: '#fff', border: 'none', fontWeight: 700 }}
+            >
+              {mediaMigrationRunning ? 'Running...' : 'Run Media Migration'}
+            </button>
+          </div>
+
+          {(mediaMigrationRunning || mediaMigrationLogs.length > 0) && (
+            <div style={{ marginTop: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '5px' }}>
+                <span>Progress: {mediaMigrationProgress} / {mediaMigrationTotal}</span>
+                <span>{Math.round((mediaMigrationProgress / mediaMigrationTotal) * 100)}%</span>
+              </div>
+              <div style={{ width: '100%', height: '8px', background: 'var(--bg-lighter)', borderRadius: '4px', overflow: 'hidden', marginBottom: '1rem' }}>
+                <div style={{ height: '100%', background: mediaMigrationDone ? 'var(--color-success)' : 'var(--color-primary)', width: `${(mediaMigrationProgress / mediaMigrationTotal) * 100}%`, transition: 'width 0.3s ease' }} />
+              </div>
+              
+              <div style={{ 
+                background: '#0d1117', 
+                color: '#c9d1d9', 
+                fontFamily: 'monospace', 
+                fontSize: '0.85rem', 
+                padding: '1rem', 
+                borderRadius: '6px',
+                height: '200px',
+                overflowY: 'auto',
+                whiteSpace: 'pre-wrap',
+                border: '1px solid #30363d'
+              }}>
+                {mediaMigrationLogs.map((log, i) => (
+                  <div key={i} style={{ color: typeof log === 'string' && (log.includes('[ERROR]') || log.includes('[FATAL]')) ? '#ff7b72' : typeof log === 'string' && log.includes('---') ? '#79c0ff' : 'inherit' }}>
+                    {log}
+                  </div>
+                ))}
+                {mediaMigrationRunning && <div style={{ color: '#8b949e', marginTop: '10px' }}>&gt; waiting for output...<span style={{ animation: 'blink 1s step-end infinite' }}>_</span></div>}
               </div>
             </div>
           )}

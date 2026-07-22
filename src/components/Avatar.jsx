@@ -8,6 +8,7 @@ export default function Avatar({ userId, npcId, identityId, retainerId, size = 8
   const entityKey = userId ? `u_${userId}` : (npcId ? `n_${npcId}` : (retainerId ? `r_${retainerId}` : `i_${identityId}`));
   const [timestamp, setTimestamp] = useState(() => avatarTimestamps.get(entityKey) || '');
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [imgError, setImgError] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -48,6 +49,7 @@ export default function Avatar({ userId, npcId, identityId, retainerId, size = 8
     }
 
     setIsUploading(true);
+    setUploadProgress(0);
     try {
       const formData = new FormData();
       formData.append('avatar', file);
@@ -57,6 +59,10 @@ export default function Avatar({ userId, npcId, identityId, retainerId, size = 8
         headers: {
           'Content-Type': 'multipart/form-data',
         },
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          setUploadProgress(percentCompleted);
+        }
       });
 
       const newTs = Date.now();
@@ -95,8 +101,11 @@ export default function Avatar({ userId, npcId, identityId, retainerId, size = 8
         </div>
       )}
       {isUploading && (
-        <div className={styles.spinnerOverlay}>
-          <span className="material-symbols-outlined spin">progress_activity</span>
+        <div className={styles.spinnerOverlay} style={{flexDirection: 'column', padding: '5px'}}>
+          <span className="material-symbols-outlined spin" style={{marginBottom: '5px'}}>progress_activity</span>
+          <div style={{width: '100%', backgroundColor: 'rgba(255,255,255,0.3)', height: '4px', borderRadius: '2px', overflow: 'hidden'}}>
+            <div style={{width: `${uploadProgress}%`, backgroundColor: '#fff', height: '100%', transition: 'width 0.2s'}} />
+          </div>
         </div>
       )}
       
@@ -105,7 +114,7 @@ export default function Avatar({ userId, npcId, identityId, retainerId, size = 8
           type="file" 
           ref={fileInputRef} 
           style={{ display: 'none' }} 
-          accept="image/*"
+          accept="image/*,video/*,audio/*"
           onChange={handleFileChange}
         />
       )}

@@ -18,6 +18,7 @@ export default function CreateNewsModal({ mode, onClose, onSuccess }) {
   const [isCustomPrefix, setIsCustomPrefix] = useState(false);
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const contentRef = useRef(null);
 
   const handleRandomizeName = () => {
@@ -27,13 +28,19 @@ export default function CreateNewsModal({ mode, onClose, onSuccess }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setUploading(true);
+    setUploadProgress(0);
     try {
       let mediaUrl = null;
       if (file) {
         const fd = new FormData();
         fd.append('file', file);
-        const res = await api.post('/news/upload', fd);
-        mediaUrl = res.data.url + (file.type.startsWith('video') ? '#video.mp4' : '');
+        const res = await api.post('/news/upload', fd, {
+          onUploadProgress: (e) => {
+            const p = Math.round((e.loaded * 100) / e.total);
+            setUploadProgress(p);
+          }
+        });
+        mediaUrl = res.data.url;
       }
       const endpoint = mode === 'rumor' ? '/rumors' : '/news';
       await api.post(endpoint, {
@@ -151,9 +158,14 @@ export default function CreateNewsModal({ mode, onClose, onSuccess }) {
 
            <div className={styles.uploadBox}>
              <label>
-               📷 Attach Image or Video (Optional)
-               <input type="file" onChange={e => setFile(e.target.files[0])} />
+               📷 Attach Media (Image/Video/Audio)
+               <input type="file" accept="image/*,video/*,audio/*" onChange={e => setFile(e.target.files[0])} />
              </label>
+             {uploading && uploadProgress > 0 && (
+               <div className="w-full bg-primary/20 h-1 mt-2 rounded overflow-hidden">
+                 <div className="h-full bg-primary transition-all duration-200" style={{width: `${uploadProgress}%`}}></div>
+               </div>
+             )}
            </div>
 
            <div className={styles.modalActions}>
