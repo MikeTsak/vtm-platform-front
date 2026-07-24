@@ -259,6 +259,7 @@ export default function Home() {
 
         const { data: chData } = await api.get('/characters/me');
         if (!live) return;
+        console.log('DEBUG Home loaded chData:', chData);
         setCh(chData.character);
 
         if (chData.character) {

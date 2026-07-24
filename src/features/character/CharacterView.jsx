@@ -793,7 +793,9 @@ export default function CharacterView({
         else obj = r.data.character || r.data[paths.pickFrom] || r.data.npc || null;
         if (!mounted) return;
 
+        console.log('DEBUG CharacterView loaded obj:', obj);
         const structured = attachStructured(obj);
+        console.log('DEBUG CharacterView structured:', structured);
         setCh(structured);
 
         if (structured && structured.sheet) {
