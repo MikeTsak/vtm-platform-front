@@ -1032,9 +1032,10 @@ export default function RetainersView() {
   const fetchRetainers = async () => {
     try {
       const res = await api.get(`/characters/${character.id}/retainers`);
-      setRetainers(res.data);
-      if (res.data.length > 0 && !selectedRetainerId) {
-        setSelectedRetainerId(res.data[0].id);
+      const data = Array.isArray(res.data) ? res.data : [];
+      setRetainers(data);
+      if (data.length > 0 && !selectedRetainerId) {
+        setSelectedRetainerId(data[0].id);
       }
     } catch (err) {
       console.error(err);
