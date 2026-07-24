@@ -2706,7 +2706,7 @@ select.input:focus {
    ------------------------------------------------------------------ */
 @media (max-width: 767px) {
   .root {
-    overflow-x: clip;
+    overflow-x: hidden;
     padding: 0;
     box-sizing: border-box;
     width: 100%;
@@ -2715,11 +2715,15 @@ select.input:focus {
 
   /* Prevent bentoGrid and any section containers from blowing out */
   .mainLayout,
-  .bentoGrid {
-    width: 100%;
-    max-width: 100%;
+  .bentoGrid,
+  .vitalsPane,
+  .dataPane,
+  .hudWrap {
+    width: 100% !important;
+    max-width: 100% !important;
     box-sizing: border-box;
-    overflow: hidden;
+    overflow-x: hidden;
+    grid-template-columns: minmax(0, 1fr) !important;
   }
 }
 
@@ -2761,8 +2765,8 @@ select.input:focus {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 12px;
-  height: 52px;
+  padding: 0 8px;
+  height: 50px;
   /* Tight, non-blocking sticky header height */
   width: 100%;
   box-sizing: border-box;
@@ -3012,7 +3016,7 @@ select.input:focus {
 
   .attrGrid {
     display: grid !important;
-    grid-template-columns: 1fr !important;
+    grid-template-columns: minmax(0, 1fr) !important;
     /* Vertical stack on mobile */
     gap: 16px !important;
     width: 100% !important;
@@ -3035,6 +3039,8 @@ select.input:focus {
   }
 
   .attrItem {
+    width: 100%;
+    box-sizing: border-box;
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
@@ -3051,12 +3057,16 @@ select.input:focus {
     font-size: 13.5px;
     font-weight: 500;
     color: var(--text-color);
+    flex-shrink: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   /* Trackers Grid & Cards on mobile */
   .trackersGrid {
     display: grid !important;
-    grid-template-columns: 1fr !important;
+    grid-template-columns: minmax(0, 1fr) !important;
     gap: 16px !important;
     width: 100% !important;
   }
@@ -3067,8 +3077,8 @@ select.input:focus {
 
   /* Large touch-friendly tracker squares for mobile */
   .trackerSquare {
-    width: 28px !important;
-    height: 28px !important;
+    width: clamp(20px, 6vw, 28px) !important;
+    height: clamp(20px, 6vw, 28px) !important;
     font-size: 15px !important;
     font-weight: bold;
     border-radius: 5px !important;
@@ -3077,6 +3087,8 @@ select.input:focus {
 
   .trackerBoxesRow {
     gap: 8px !important;
+    flex-wrap: wrap;
+    flex-shrink: 0;
   }
 
   .trackerLabel {
@@ -3112,7 +3124,7 @@ select.input:focus {
 
   .disciplinesGrid {
     display: grid !important;
-    grid-template-columns: 1fr !important;
+    grid-template-columns: minmax(0, 1fr) !important;
     gap: 12px !important;
     width: 100% !important;
   }
@@ -3309,19 +3321,28 @@ select.input:focus {
   /* Notable skills: 1 column on mobile to prevent overflow */
   .skillsGrid {
     display: grid !important;
-    grid-template-columns: 1fr !important;
+    grid-template-columns: minmax(0, 1fr) !important;
     gap: 10px !important;
     width: 100% !important;
   }
 
   .skillNotableItem {
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
     padding: 10px !important;
     gap: 6px;
   }
 
   .skillNotableName {
+    flex: 1;
+    min-width: 0;
     font-size: 11px !important;
-    margin-bottom: 4px;
+    margin-bottom: 0 !important;
+    padding-right: 8px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -3330,7 +3351,7 @@ select.input:focus {
   /* All skills expanded: 1 column vertical stack */
   .allSkillsGrid {
     display: grid !important;
-    grid-template-columns: 1fr !important;
+    grid-template-columns: minmax(0, 1fr) !important;
     gap: 20px !important;
     width: 100% !important;
   }
@@ -3361,9 +3382,15 @@ select.input:focus {
   }
 
   .allSkillName {
+    flex: 1;
+    min-width: 0;
     font-size: 13.5px;
     font-weight: 400;
     color: var(--text-color);
+    padding-right: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 
@@ -3507,7 +3534,7 @@ select.input:focus {
 
   .meritsGrid {
     display: grid !important;
-    grid-template-columns: 1fr !important;
+    grid-template-columns: minmax(0, 1fr) !important;
     gap: 20px !important;
     width: 100% !important;
   }
@@ -3522,6 +3549,8 @@ select.input:focus {
 
   .meritTitle {
     font-size: 16px !important;
+    min-width: 0;
+    word-break: break-word;
   }
 
   .meritCategory {
