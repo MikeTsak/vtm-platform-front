@@ -28,8 +28,7 @@ function PowerItem({ level, picked, unlocked, discName }) {
   const isClickable = !!fullData;
 
   return (
-    <li style={{ display: 'flex', flexDirection: 'column', width: '100%', marginBottom: '4px' }}>
-      
+    <li className={styles.powerItem}>
       {/* The Power Pill itself */}
       <div 
         className={cls} 
@@ -57,33 +56,22 @@ function PowerItem({ level, picked, unlocked, discName }) {
       >
         <div style={{ overflow: 'hidden' }}>
           {fullData && (
-            <div style={{ 
-              padding: '8px 12px 12px 12px', 
-              fontSize: '0.85rem', 
-              opacity: 0.85,
-              borderLeft: '2px solid rgba(255,255,255,0.1)',
-              marginLeft: '14px',
-              marginBottom: '8px',
-              color: 'var(--text-color)'
-            }}>
-              
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '6px' }}>
-                {fullData.cost && fullData.cost !== '—' && <span><b style={{opacity: 0.6}}>Cost:</b> {fullData.cost}</span>}
-                {fullData.dice_pool && fullData.dice_pool !== '—' && <span><b style={{opacity: 0.6}}>Pool:</b> {fullData.dice_pool}</span>}
-                {fullData.duration && fullData.duration !== '—' && <span><b style={{opacity: 0.6}}>Duration:</b> {fullData.duration}</span>}
+            <div className={styles.powerDetailsBody}>
+              <div className={styles.powerDetailsMeta}>
+                {fullData.cost && fullData.cost !== '—' && <span><b style={{ opacity: 0.6 }}>Cost:</b> {fullData.cost}</span>}
+                {fullData.dice_pool && fullData.dice_pool !== '—' && <span><b style={{ opacity: 0.6 }}>Pool:</b> {fullData.dice_pool}</span>}
+                {fullData.duration && fullData.duration !== '—' && <span><b style={{ opacity: 0.6 }}>Duration:</b> {fullData.duration}</span>}
               </div>
               
               {fullData.notes && (
                 <div style={{ lineHeight: '1.4', marginTop: '4px' }}>
-                  <b style={{opacity: 0.6}}>Effect:</b> {fullData.notes}
+                  <b style={{ opacity: 0.6 }}>Effect:</b> {fullData.notes}
                 </div>
               )}
-              
             </div>
           )}
         </div>
       </div>
-
     </li>
   );
 }
@@ -106,7 +94,7 @@ function DisciplineRow({ name, level = 0, powers = [] }) {
           className={styles.disciplineIcon}
         />
         <div className={styles.disciplineTitleBlock}>
-          <b>{name}</b>
+          <b className={styles.disciplineName}>{name}</b>
           <div className={styles.dots}>
             {Array.from({ length: 5 }).map((_, i) => (
               <span key={i} className={`${styles.dot} ${i < level ? styles.dotOn : ''}`} />
@@ -116,7 +104,7 @@ function DisciplineRow({ name, level = 0, powers = [] }) {
       </div>
 
       {/* Force a column layout so the accordion animations don't break horizontal flows */}
-      <ul className={styles.powerList} style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+      <ul className={styles.powerList}>
         {Array.from({ length: Math.max(displayMax, level || 0) || 0 }).map((_, i) => {
           const L = i + 1;
           const picked = byLevel.get(L);

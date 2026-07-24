@@ -7,7 +7,7 @@ import * as z from 'zod';
 import { useMutation } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+import ReCAPTCHA from 'react-google-recaptcha';
 import Terms from '../../pages/Terms';
 import Privacy from '../../pages/Privacy';
 import styles from '../../styles/auth/Login.module.css';
@@ -30,7 +30,7 @@ export default function Register() {
   const nav = useNavigate();
   const [showPwd, setShowPwd] = useState(false);
   const pwdRef = useRef(null);
-  const { executeRecaptcha } = useGoogleReCaptcha();
+  const [recaptchaToken, setRecaptchaToken] = useState(null);
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
 
   const handleScroll = (e) => {
@@ -80,12 +80,11 @@ export default function Register() {
   });
 
   const onSubmit = async (data) => {
-    if (!executeRecaptcha) {
-      toast.error('ReCAPTCHA is not loaded yet. Please wait a moment.');
+    if (!recaptchaToken) {
+      toast.error('Please verify that you are not a robot.');
       return;
     }
-    const token = await executeRecaptcha('register');
-    registerMutation.mutate({ ...data, recaptchaToken: token });
+    registerMutation.mutate({ ...data, recaptchaToken });
   };
 
   const toggleShowPwd = () => {
@@ -228,6 +227,14 @@ export default function Register() {
               </span>
             )}
             {errors.agreedToTerms && <span style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>{errors.agreedToTerms.message}</span>}
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', marginTop: '1rem' }}>
+            <ReCAPTCHA
+              sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+              onChange={(token) => setRecaptchaToken(token)}
+              theme="dark"
+            />
           </div>
 
           <button

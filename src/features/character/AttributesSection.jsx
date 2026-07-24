@@ -14,7 +14,7 @@ const RenderDotList = ({ dots }) => {
   return (
     <div className={styles.dotTracker}>
       {Array.from({ length: Math.max(total, active) }).map((_, i) => (
-        <div key={i} className={`${styles.dot} ${i < active ? styles.filled : ''}`}></div>
+        <div key={i} className={`${styles.trackerDot} ${i < active ? styles.filled : ''}`}></div>
       ))}
     </div>
   );
@@ -22,49 +22,24 @@ const RenderDotList = ({ dots }) => {
 
 export default function AttributesSection({ sheet }) {
   return (
-    <div className={styles.glassCard} style={{ padding: '24px' }}>
-      <h3 style={{
-        fontFamily: "'Playfair Display', serif",
-        fontSize: '24px',
-        fontWeight: 600,
-        color: 'var(--text-color)',
-        margin: '0 0 24px 0',
-        borderBottom: '1px solid color-mix(in srgb, var(--tint) 40%, transparent)',
-        paddingBottom: '8px'
-      }}>
+    <div className={`${styles.glassCard} ${styles.attrCard}`}>
+      <h3 className={styles.attrTitle}>
         Attributes
       </h3>
 
-      {/* 3 columns on tablet+, stacks naturally on mobile via minmax(130px) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '24px' }}>
+      {/* 3 columns on desktop, stacked vertically on mobile via attrGrid CSS */}
+      <div className={styles.attrGrid}>
         {ATTRS.map(group => (
-          <div key={group.category} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <h4 style={{
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: '10px',
-              fontWeight: 600,
-              letterSpacing: '0.12em',
-              color: 'var(--tint)',
-              textTransform: 'uppercase',
-              textAlign: 'center',
-              borderBottom: '1px solid var(--surface-lighter)',
-              paddingBottom: '6px',
-              margin: 0
-            }}>
+          <div key={group.category} className={styles.attrCategoryGroup}>
+            <h4 className={styles.attrCategoryTitle}>
               {group.category}
             </h4>
 
             {group.items.map(name => {
               const val = Number(sheet?.attributes?.[name] ?? 1);
               return (
-                /* Stack label above dots — no space-between stretching */
-                <div key={name} title={ATTR_DESCRIPTIONS[name]} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <span style={{
-                    fontFamily: "'Inter', sans-serif",
-                    fontSize: '13px',
-                    fontWeight: 400,
-                    color: 'var(--text-muted)',
-                  }}>
+                <div key={name} title={ATTR_DESCRIPTIONS[name]} className={styles.attrItem}>
+                  <span className={styles.attrName}>
                     {name}
                   </span>
                   <RenderDotList dots={val} />

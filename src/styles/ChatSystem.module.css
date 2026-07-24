@@ -1051,3 +1051,33 @@
     padding-bottom: max(16px, env(safe-area-inset-bottom));
   }
 }
+
+/* --- Mobile Optimization Wrappers --- */
+.mobileScrollWrapper {
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .mobileScrollWrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    /* Hide scrollbars for a cleaner, app-like feel while retaining swipe functionality */
+    scrollbar-width: none;
+    margin-left: -16px;
+    /* Offset parent padding to allow edge-to-edge swiping */
+    margin-right: -16px;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .mobileScrollWrapper::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Force the inner grids to maintain a minimum width so they don't squish, triggering the scroll */
+  .mobileScrollWrapper>div {
+    min-width: 550px;
+    /* Adjust this value if your specific skill/attribute cards need more or less room */
+    padding-right: 16px;
+  }
+}

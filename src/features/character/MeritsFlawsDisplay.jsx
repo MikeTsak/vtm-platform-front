@@ -42,9 +42,9 @@ export default function MeritsFlawsDisplay({ sheet, allMeritsFlat, allFlawsFlat,
     const total = 5;
     const active = Number(dots) || 0;
     return (
-      <div className={styles.dotTracker} style={{ marginTop: '2px' }}>
+      <div className={styles.dotTracker}>
         {Array.from({ length: Math.max(total, active) }).map((_, i) => (
-          <div key={i} className={`${styles.dot} ${i < active ? styles.filled : ''}`}></div>
+          <div key={i} className={`${styles.trackerDot} ${i < active ? styles.filled : ''}`}></div>
         ))}
       </div>
     );
@@ -66,36 +66,34 @@ export default function MeritsFlawsDisplay({ sheet, allMeritsFlat, allFlawsFlat,
   };
 
   return (
-    <div id="merits-section" style={{ width: '100%', marginTop: '32px' }}>
+    <div id="merits-section" className={styles.meritsContainer}>
       {/* Content Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '32px', alignItems: 'start' }}>
+      <div className={styles.meritsGrid}>
         {/* Merits Column */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', borderBottom: '1px solid var(--border-color)', paddingBottom: '16px' }}>
-            <span className="material-symbols-outlined" style={{ color: 'var(--primary-container)', fontSize: '32px', fontVariationSettings: "'FILL' 1" }}>workspace_premium</span>
-            <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '24px', fontWeight: 600, color: 'var(--primary-container)', textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>Merits</h3>
+        <div className={styles.meritsColumn}>
+          <div className={styles.meritsSectionHead}>
+            <span className="material-symbols-outlined" style={{ color: 'var(--primary-container)', fontSize: '28px', fontVariationSettings: "'FILL' 1" }}>workspace_premium</span>
+            <h3 className={styles.meritsSectionTitle} style={{ color: 'var(--primary-container)' }}>Merits</h3>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {meritsList.length === 0 && <p style={{ color: 'var(--text-muted)' }}>No merits recorded.</p>}
+          <div className={styles.meritsListGroup}>
+            {meritsList.length === 0 && <p className={styles.dim}>No merits recorded.</p>}
             {meritsList.map((m, idx) => {
               const full = getFullItem(m, false);
               return (
-                <div key={idx} className={styles.glassCard} style={{ padding: '24px', border: '1px solid var(--border-color)', position: 'relative', overflow: 'hidden', background: 'var(--surface-color)' }}>
-                  <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: 'var(--primary-container)', opacity: 0.4, transition: 'opacity 0.2s' }}></div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                    <div>
-                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', fontWeight: 500, letterSpacing: '0.1em', color: 'var(--primary-container)', textTransform: 'uppercase', opacity: 0.7, display: 'block', marginBottom: '4px' }}>{full.category}</span>
-                      <h4 style={{ fontFamily: "'Inter', sans-serif", fontSize: '20px', fontWeight: 600, color: 'var(--text-color)', margin: 0 }}>{full.name}</h4>
+                <div key={idx} className={`${styles.glassCard} ${styles.meritCard}`}>
+                  <div className={styles.meritAccentBar} style={{ background: 'var(--primary-container)' }} />
+                  <div className={styles.meritHeader}>
+                    <div className={styles.meritTitleBlock}>
+                      <span className={styles.meritCategory} style={{ color: 'var(--primary-container)' }}>{full.category}</span>
+                      <h4 className={styles.meritTitle}>{full.name}</h4>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div className={styles.meritDotsBlock}>
                       <RenderDotList dots={m.dots} />
                       {editable && (
                         <button
                           onClick={() => handleStartEdit(`merit_${idx}`, full.description)}
-                          style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px', opacity: 0.6, borderRadius: '4px', transition: 'all 0.2s' }}
+                          className={styles.meritEditBtn}
                           title="Edit Description"
-                          onMouseEnter={e => { e.currentTarget.style.opacity = 1; e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
-                          onMouseLeave={e => { e.currentTarget.style.opacity = 0.6; e.currentTarget.style.background = 'none'; }}
                         >
                           <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>edit</span>
                         </button>
@@ -116,7 +114,7 @@ export default function MeritsFlawsDisplay({ sheet, allMeritsFlat, allFlawsFlat,
                     </div>
                   ) : (
                     <div>
-                      <p style={{ fontFamily: "'Inter', sans-serif", fontSize: '16px', fontWeight: 400, color: 'var(--text-muted)', lineHeight: '24px', margin: 0, opacity: 0.8, whiteSpace: 'pre-wrap' }}>
+                      <p className={styles.meritDesc}>
                         {full.description}
                       </p>
                     </div>
@@ -128,32 +126,30 @@ export default function MeritsFlawsDisplay({ sheet, allMeritsFlat, allFlawsFlat,
         </div>
 
         {/* Flaws Column */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', borderBottom: '1px solid var(--border-color)', paddingBottom: '16px' }}>
-            <span className="material-symbols-outlined" style={{ color: 'var(--text-muted)', fontSize: '32px' }}>heart_broken</span>
-            <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '24px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>Flaws</h3>
+        <div className={styles.meritsColumn}>
+          <div className={styles.meritsSectionHead}>
+            <span className="material-symbols-outlined" style={{ color: 'var(--text-muted)', fontSize: '28px' }}>heart_broken</span>
+            <h3 className={styles.meritsSectionTitle} style={{ color: 'var(--text-muted)' }}>Flaws</h3>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {flawsList.length === 0 && <p style={{ color: 'var(--text-muted)' }}>No flaws recorded.</p>}
+          <div className={styles.meritsListGroup}>
+            {flawsList.length === 0 && <p className={styles.dim}>No flaws recorded.</p>}
             {flawsList.map((f, idx) => {
               const full = getFullItem(f, true);
               return (
-                <div key={idx} className={styles.glassCard} style={{ padding: '24px', border: '1px solid var(--border-color)', position: 'relative', overflow: 'hidden', background: 'var(--surface-color)' }}>
-                  <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: 'var(--text-muted)', opacity: 0.2, transition: 'opacity 0.2s' }}></div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                    <div>
-                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', fontWeight: 500, letterSpacing: '0.1em', color: 'var(--text-muted)', textTransform: 'uppercase', opacity: 0.7, display: 'block', marginBottom: '4px' }}>{full.category}</span>
-                      <h4 style={{ fontFamily: "'Inter', sans-serif", fontSize: '20px', fontWeight: 600, color: 'var(--text-color)', margin: 0, fontStyle: 'italic' }}>{full.name}</h4>
+                <div key={idx} className={`${styles.glassCard} ${styles.meritCard}`}>
+                  <div className={styles.meritAccentBar} style={{ background: 'var(--text-muted)', opacity: 0.2 }} />
+                  <div className={styles.meritHeader}>
+                    <div className={styles.meritTitleBlock}>
+                      <span className={styles.meritCategory} style={{ color: 'var(--text-muted)' }}>{full.category}</span>
+                      <h4 className={styles.meritTitle} style={{ fontStyle: 'italic' }}>{full.name}</h4>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div className={styles.meritDotsBlock}>
                       <RenderDotList dots={f.dots} />
                       {editable && (
                         <button
                           onClick={() => handleStartEdit(`flaw_${idx}`, full.description)}
-                          style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px', opacity: 0.6, borderRadius: '4px', transition: 'all 0.2s' }}
+                          className={styles.meritEditBtn}
                           title="Edit Description"
-                          onMouseEnter={e => { e.currentTarget.style.opacity = 1; e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
-                          onMouseLeave={e => { e.currentTarget.style.opacity = 0.6; e.currentTarget.style.background = 'none'; }}
                         >
                           <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>edit</span>
                         </button>
@@ -174,7 +170,7 @@ export default function MeritsFlawsDisplay({ sheet, allMeritsFlat, allFlawsFlat,
                     </div>
                   ) : (
                     <div>
-                      <p style={{ fontFamily: "'Inter', sans-serif", fontSize: '16px', fontWeight: 400, color: 'var(--text-muted)', lineHeight: '24px', margin: 0, opacity: 0.8, whiteSpace: 'pre-wrap' }}>
+                      <p className={styles.meritDesc}>
                         {full.description}
                       </p>
                     </div>
@@ -185,7 +181,6 @@ export default function MeritsFlawsDisplay({ sheet, allMeritsFlat, allFlawsFlat,
           </div>
         </div>
       </div>
-
     </div>
   );
 }

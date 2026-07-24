@@ -480,12 +480,12 @@ function TrackerBlock({ label, val, max, agg = 0, sup = 0, filled = 0, stains = 
       );
     }
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', boxSizing: 'border-box' }}>
-        <div className={styles.trackerLabel} style={{ display: 'flex', justifyContent: 'space-between' }}>
+      <div className={styles.trackerContainer}>
+        <div className={styles.trackerLabel}>
           <span>{label}</span>
-          <span style={{ fontWeight: 'normal' }}>{val} / {max}</span>
+          <span className={styles.trackerVal}>{val} / {max}</span>
         </div>
-        <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>{drops}</div>
+        <div className={styles.hungerDropletsRow}>{drops}</div>
       </div>
     );
   }
@@ -520,7 +520,7 @@ function TrackerBlock({ label, val, max, agg = 0, sup = 0, filled = 0, stains = 
     boxes.push(
       <div
         key={i}
-        className={`${styles.trackerSquare} ${isFilled ? styles.filled : ''}`}
+        className={`${styles.trackerSquare} ${isFilled ? styles.filled : ''} ${extraClass}`}
         title={boxTitle}
       >
         {content}
@@ -528,12 +528,12 @@ function TrackerBlock({ label, val, max, agg = 0, sup = 0, filled = 0, stains = 
     );
   }
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', boxSizing: 'border-box' }}>
-      <div className={styles.trackerLabel} style={{ display: 'flex', justifyContent: 'space-between' }}>
+    <div className={styles.trackerContainer}>
+      <div className={styles.trackerLabel}>
         <span>{label}</span>
-        <span style={{ fontWeight: 'normal', color: 'var(--tint)', fontFamily: 'var(--font-body)', fontSize: '18px' }}>{val}</span>
+        <span className={styles.trackerVal}>{val}</span>
       </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', justifyContent: 'center' }}>{boxes}</div>
+      <div className={styles.trackerBoxesRow}>{boxes}</div>
     </div>
   );
 }
@@ -1291,30 +1291,39 @@ export default function CharacterView({
   return (
     <Skeleton name="character-view" loading={!ch}>
       <div className={styles.root} style={{ '--tint': tint }}>
-        {/* --- Stitch Mobile Header --- */}
-        <header className="md:hidden fixed top-0 w-full z-50 backdrop-blur-xl border-b border-white/10 shadow-lg" style={{ backgroundColor: 'color-mix(in srgb, var(--bg-color) 60%, transparent)', paddingTop: 'env(safe-area-inset-top)' }}>
-          <div className="flex justify-between items-center px-4 h-16 w-full">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-8 h-8 shrink-0 rounded-full border overflow-hidden" style={{ borderColor: 'var(--tint)', boxShadow: '0 0 10px color-mix(in srgb, var(--tint) 30%, transparent)' }}>
+        {/* --- Mobile Header --- */}
+        <header className={styles.mobileHeader}>
+          <div className={styles.mobileHeaderInner}>
+            <div className={styles.mobileHeaderLeft}>
+              <div className={styles.mobileHeaderAvatar}>
                 <Avatar userId={!adminNPCId ? ch?.user_id : undefined} npcId={adminNPCId} size="100%" editable={(!adminNPCId && String(user?.id) === String(ch?.user_id)) || isAdmin} />
               </div>
-              <h1 className="font-['Playfair_Display'] text-xl font-semibold truncate" style={{ color: 'var(--tint)' }}>{ch.name}</h1>
+              <div className={styles.mobileHeaderMeta}>
+                <h1 className={styles.mobileHeaderName}>{ch.name}</h1>
+                <span className={styles.mobileHeaderSub}>
+                  {ch.clan}{sheet?.blood_potency ? ` · BP ${sheet.blood_potency}` : ''}{sheet?.generation ? ` · Gen ${sheet.generation}` : ''}
+                </span>
+              </div>
             </div>
-            <div className="flex items-center gap-1 shrink-0">
-              <div className="flex items-center gap-0.5">
+            <div className={styles.mobileHeaderRight}>
+              <div className={styles.mobileHeaderHunger}>
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <span key={i} className={`material-symbols-outlined ${styles.hungerDroplet} ${i < tempHunger ? styles.active : ''}`} style={{ fontSize: '18px', ...(i < tempHunger ? { fontVariationSettings: "'FILL' 1" } : {}) }}>water_drop</span>
+                  <span
+                    key={i}
+                    className={`material-symbols-outlined ${styles.hungerDroplet} ${i < tempHunger ? styles.active : ''}`}
+                    style={{ fontSize: '15px', ...(i < tempHunger ? { fontVariationSettings: "'FILL' 1" } : {}) }}
+                  >water_drop</span>
                 ))}
               </div>
               {(!adminNPCId && String(user?.id) === String(ch?.user_id)) && (
                 <button
                   onClick={toggleSysNotifications}
-                  title={sysNotifOn ? "Disable System Notifications" : "Enable System Notifications"}
-                  aria-label={sysNotifOn ? "Disable System Notifications" : "Enable System Notifications"}
-                  className="flex items-center justify-center"
-                  style={{ background: 'none', border: 'none', width: '44px', height: '44px', cursor: 'pointer', color: sysNotifOn ? 'var(--tint)' : 'var(--text-muted)' }}
+                  title={sysNotifOn ? 'Disable Notifications' : 'Enable Notifications'}
+                  aria-label={sysNotifOn ? 'Disable System Notifications' : 'Enable System Notifications'}
+                  className={styles.mobileHeaderNotifBtn}
+                  style={{ color: sysNotifOn ? 'var(--tint)' : 'var(--text-muted)' }}
                 >
-                  <span className="material-symbols-outlined">{sysNotifOn ? 'notifications_active' : 'notifications_off'}</span>
+                  <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>{sysNotifOn ? 'notifications_active' : 'notifications_off'}</span>
                 </button>
               )}
             </div>
@@ -1322,7 +1331,8 @@ export default function CharacterView({
         </header>
 
         {/* --- Top App Bar (Desktop) --- */}
-        <header className={`hidden md:block ${styles.topAppBar}`}>
+        {/* --- Top App Bar (Desktop only — hidden on mobile via CSS) --- */}
+        <header className={styles.topAppBar}>
           <div className={styles.topAppBarContent}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               <div className={styles.avatarBox}>
@@ -1478,21 +1488,23 @@ export default function CharacterView({
           )}
           {saveStatus && isAdmin && <div style={{ fontSize: '0.85rem', color: 'var(--accent)', opacity: 0.8, textAlign: 'center' }}>{saveStatus}</div>}
 
-          {/* --- Stitch Mobile Meta Data --- */}
-          <motion.section variants={itemVariants} className="md:hidden grid grid-cols-1 gap-3 mt-8">
-            <div className={styles.glassPanel + " p-4 rounded-lg"}>
-              <span className="font-['JetBrains_Mono'] text-[10px] tracking-widest text-white/70 block mb-1 uppercase">Predator Type</span>
-              <div className={styles.inputUnderline}>{sheet?.predator_type || sheet?.predatorType || '—'}</div>
-            </div>
-            <div className={styles.glassPanel + " p-4 rounded-lg"}>
-              <span className="font-['JetBrains_Mono'] text-[10px] tracking-widest text-white/70 block mb-1 uppercase">Sire</span>
-              <div className={styles.inputUnderline}>{sheet?.sire || '—'}</div>
-            </div>
-            <div className={styles.glassPanel + " p-4 rounded-lg"}>
-              <span className="font-['JetBrains_Mono'] text-[10px] tracking-widest text-white/70 block mb-1 uppercase">Ambition & Desire</span>
-              <div className="space-y-3 mt-2">
-                <div className={styles.inputUnderline + " text-sm"}>{sheet?.ambition || '—'}</div>
-                <div className={styles.inputUnderline + " text-sm"}>{sheet?.desire || '—'}</div>
+          {/* --- Mobile Meta Data Section --- */}
+          <motion.section variants={itemVariants} className={styles.mobileMetaSection}>
+            <div className={styles.mobileMetaGrid}>
+              <div className={styles.mobileMetaCard}>
+                <span className={styles.mobileMetaLabel}>Predator Type</span>
+                <div className={styles.mobileMetaValue}>{sheet?.predator_type || sheet?.predatorType || '—'}</div>
+              </div>
+              <div className={styles.mobileMetaCard}>
+                <span className={styles.mobileMetaLabel}>Sire</span>
+                <div className={styles.mobileMetaValue}>{sheet?.sire || '—'}</div>
+              </div>
+              <div className={`${styles.mobileMetaCard} ${styles.mobileMetaFull}`}>
+                <span className={styles.mobileMetaLabel}>Ambition & Desire</span>
+                <div className={styles.mobileMetaSubGrid}>
+                  <div className={styles.mobileMetaValue}><b>Ambition:</b> {sheet?.ambition || '—'}</div>
+                  <div className={styles.mobileMetaValue}><b>Desire:</b> {sheet?.desire || '—'}</div>
+                </div>
               </div>
             </div>
           </motion.section>
@@ -1517,75 +1529,74 @@ export default function CharacterView({
           </motion.div>
 
           {/* Health & Willpower Tracker Grid */}
-          <motion.section variants={itemVariants} className={styles.bentoGrid} style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))' }}>
+          <motion.section variants={itemVariants} className={`${styles.bentoGrid} ${styles.trackersGrid}`}>
             {/* Health */}
-            <div className={`${styles.level1} ${styles.glassCard}`} style={{ padding: '24px' }}>
+            <div className={`${styles.level1} ${styles.glassCard} ${styles.trackerCard}`}>
               <TrackerBlock label="Health" val={maxHealth} max={maxHealth} agg={tempHealth.aggravated} sup={tempHealth.superficial} />
               {isAdmin && (
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '16px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>Sup:</span>
-                    <button className={styles.ghostBtn} style={{ padding: '2px 8px' }} onClick={() => updateTracker('health', 'superficial', -1)}>-</button>
-                    <button className={styles.ghostBtn} style={{ padding: '2px 8px' }} onClick={() => updateTracker('health', 'superficial', 1)}>+</button>
+                <div className={styles.trackerAdminControls}>
+                  <div className={styles.trackerAdminGroup}>
+                    <span className={styles.trackerAdminLabel}>Sup:</span>
+                    <button className={styles.trackerBtn} onClick={() => updateTracker('health', 'superficial', -1)}>-</button>
+                    <button className={styles.trackerBtn} onClick={() => updateTracker('health', 'superficial', 1)}>+</button>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>Agg:</span>
-                    <button className={styles.ghostBtn} style={{ padding: '2px 8px' }} onClick={() => updateTracker('health', 'aggravated', -1)}>-</button>
-                    <button className={styles.ghostBtn} style={{ padding: '2px 8px' }} onClick={() => updateTracker('health', 'aggravated', 1)}>+</button>
+                  <div className={styles.trackerAdminGroup}>
+                    <span className={styles.trackerAdminLabel}>Agg:</span>
+                    <button className={styles.trackerBtn} onClick={() => updateTracker('health', 'aggravated', -1)}>-</button>
+                    <button className={styles.trackerBtn} onClick={() => updateTracker('health', 'aggravated', 1)}>+</button>
                   </div>
                 </div>
               )}
             </div>
 
             {/* Willpower */}
-            <div className={`${styles.level1} ${styles.glassCard}`} style={{ padding: '24px' }}>
+            <div className={`${styles.level1} ${styles.glassCard} ${styles.trackerCard}`}>
               <TrackerBlock label="Willpower" val={maxWillpower} max={maxWillpower} agg={tempWillpower.aggravated} sup={tempWillpower.superficial} />
               {isAdmin && (
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '16px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>Sup:</span>
-                    <button className={styles.ghostBtn} style={{ padding: '2px 8px' }} onClick={() => updateTracker('willpower', 'superficial', -1)}>-</button>
-                    <button className={styles.ghostBtn} style={{ padding: '2px 8px' }} onClick={() => updateTracker('willpower', 'superficial', 1)}>+</button>
+                <div className={styles.trackerAdminControls}>
+                  <div className={styles.trackerAdminGroup}>
+                    <span className={styles.trackerAdminLabel}>Sup:</span>
+                    <button className={styles.trackerBtn} onClick={() => updateTracker('willpower', 'superficial', -1)}>-</button>
+                    <button className={styles.trackerBtn} onClick={() => updateTracker('willpower', 'superficial', 1)}>+</button>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>Agg:</span>
-                    <button className={styles.ghostBtn} style={{ padding: '2px 8px' }} onClick={() => updateTracker('willpower', 'aggravated', -1)}>-</button>
-                    <button className={styles.ghostBtn} style={{ padding: '2px 8px' }} onClick={() => updateTracker('willpower', 'aggravated', 1)}>+</button>
+                  <div className={styles.trackerAdminGroup}>
+                    <span className={styles.trackerAdminLabel}>Agg:</span>
+                    <button className={styles.trackerBtn} onClick={() => updateTracker('willpower', 'aggravated', -1)}>-</button>
+                    <button className={styles.trackerBtn} onClick={() => updateTracker('willpower', 'aggravated', 1)}>+</button>
                   </div>
                 </div>
               )}
             </div>
 
             {/* Humanity */}
-            <div className={`${styles.level1} ${styles.glassCard}`} style={{ padding: '24px' }}>
+            <div className={`${styles.level1} ${styles.glassCard} ${styles.trackerCard}`}>
               <TrackerBlock label="Humanity" val={tempHumanity} max={10} filled={tempHumanity} stains={tempStains} />
               {isAdmin && (
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '16px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>Hum:</span>
-                    <button className={styles.ghostBtn} style={{ padding: '2px 8px' }} onClick={() => setTempHumanity(h => Math.max(0, h - 1))}>-</button>
-                    <button className={styles.ghostBtn} style={{ padding: '2px 8px' }} onClick={() => setTempHumanity(h => Math.min(10, h + 1))}>+</button>
+                <div className={styles.trackerAdminControls}>
+                  <div className={styles.trackerAdminGroup}>
+                    <span className={styles.trackerAdminLabel}>Hum:</span>
+                    <button className={styles.trackerBtn} onClick={() => setTempHumanity(h => Math.max(0, h - 1))}>-</button>
+                    <button className={styles.trackerBtn} onClick={() => setTempHumanity(h => Math.min(10, h + 1))}>+</button>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>Stains:</span>
-                    <button className={styles.ghostBtn} style={{ padding: '2px 8px' }} onClick={() => setTempStains(s => Math.max(0, s - 1))}>-</button>
-                    <button className={styles.ghostBtn} style={{ padding: '2px 8px' }} onClick={() => setTempStains(s => Math.min(10, s + 1))}>+</button>
+                  <div className={styles.trackerAdminGroup}>
+                    <span className={styles.trackerAdminLabel}>Stains:</span>
+                    <button className={styles.trackerBtn} onClick={() => setTempStains(s => Math.max(0, s - 1))}>-</button>
+                    <button className={styles.trackerBtn} onClick={() => setTempStains(s => Math.min(10, s + 1))}>+</button>
                   </div>
                 </div>
               )}
             </div>
           </motion.section>
-
           {/* Bento Data Grid */}
           <motion.section variants={itemVariants} className={styles.bentoGrid}>
             <div className={styles.bentoSpan2} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               {/* Attributes */}
-              <div id="attributes-section">
+              <div id="attributes-section" className={styles.mobileScrollWrapper}>
                 <AttributesSection sheet={sheet} />
               </div>
 
               {/* Skills & Others */}
-              <div id="skills-section">
+              <div id="skills-section" className={styles.mobileScrollWrapper}>
                 <SkillsDisplaySection sheet={sheet} />
               </div>
 

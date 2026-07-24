@@ -38,6 +38,13 @@
   max-width: 100vw;
   padding: 1rem;
   min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.root *,
+.root *::before,
+.root *::after {
+  box-sizing: border-box;
 }
 
 @media (min-width: 768px) {
@@ -722,6 +729,22 @@ select.input:focus {
   }
 }
 
+/* Mobile scroll wrapper — now a pure fit-to-width container.
+   Previously had overflow-x: auto, which was causing horizontal overflow.
+   Content is now scaled to fit the viewport instead of scrolling. */
+.mobileScrollWrapper {
+  /* Desktop: no-op */
+}
+
+@media (max-width: 768px) {
+  .mobileScrollWrapper {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+}
+
 .drawer {
   border: 1px solid var(--border-color);
   border-radius: calc(var(--radius) + 2px);
@@ -822,50 +845,84 @@ select.input:focus {
 }
 
 /* Discipline row layout */
-.disciplineRow {
+.disciplinesCard {
+  background: var(--surface-color);
+  padding: 24px;
+}
+
+.disciplinesGrid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: .6rem;
-  padding: .6rem .2rem;
-  border-bottom: 1px dashed var(--border-color);
+  gap: 16px;
+}
+
+.disciplineRow {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface-color) 60%, transparent);
+  border: 1px solid var(--border-color);
 }
 
 .disciplineHead {
   display: flex;
   align-items: center;
-  gap: .8rem;
+  gap: 12px;
+  width: 100%;
 }
 
 .disciplineIcon {
+  width: 28px;
+  height: 28px;
   border-radius: 6px;
   opacity: 0.9;
+  flex-shrink: 0;
 }
 
 .disciplineTitleBlock {
-  display: grid;
-  gap: .25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex: 1;
+}
+
+.disciplineName {
+  font-family: 'Playfair Display', serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-color);
 }
 
 /* Powers list */
 .powerList {
   display: flex;
-  flex-wrap: wrap;
-  gap: .4rem;
+  flex-direction: column;
+  gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
+  width: 100%;
+}
+
+.powerItem {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
 }
 
 /* Base pill */
 .powerPill {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: .4rem;
-  padding: .25rem .5rem;
-  border-radius: 999px;
-  font-size: .85rem;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
   border: 1px solid var(--border-color);
   background: color-mix(in srgb, var(--surface-lighter) 80%, transparent);
+  transition: all 0.2s ease;
 }
 
 /* Missing (you have the dot but no selection yet) */
@@ -884,27 +941,40 @@ select.input:focus {
 .levelBadge {
   display: inline-grid;
   place-items: center;
-  width: 1.3rem;
-  height: 1.3rem;
-  border-radius: 999px;
-  font-size: .75rem;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 10px;
   font-weight: 700;
   background: color-mix(in srgb, var(--tint) 35%, var(--bg-color));
   border: 1px solid var(--border-color);
+  flex-shrink: 0;
 }
 
-/* Truncate long power names nicely on mobile */
 .powerName {
-  max-width: 26ch;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  color: var(--text-color);
 }
 
-@media (width <=640px) {
-  .powerName {
-    max-width: 18ch;
-  }
+.powerDetailsBody {
+  padding: 10px 12px 12px 12px;
+  font-size: 0.85rem;
+  opacity: 0.9;
+  border-left: 2px solid var(--tint);
+  margin-left: 14px;
+  margin-top: 4px;
+  margin-bottom: 6px;
+  color: var(--text-color);
+  background: color-mix(in srgb, var(--surface-color) 70%, transparent);
+  border-radius: 0 6px 6px 0;
+}
+
+.powerDetailsMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 6px;
 }
 
 /* ===== THEME TWEAKS ===== */
@@ -2462,9 +2532,11 @@ select.input:focus {
     position: relative;
     top: 0;
     height: auto;
+    min-height: 300px;
+    min-width: 0 !important;
+    width: 100% !important;
   }
 }
-
 
 .advDetail {
   display: flex;
@@ -2489,13 +2561,47 @@ select.input:focus {
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.4);
   display: inline-block;
-  margin-right: 4px;
 }
 
 .trackerDot.filled {
   background-color: var(--tint);
   border-color: var(--tint);
   box-shadow: 0 0 8px color-mix(in srgb, var(--tint) 50%, transparent);
+}
+
+.trackerContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.trackerLabel {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.trackerVal {
+  font-weight: normal;
+  color: var(--tint);
+  font-family: var(--font-body);
+  font-size: 18px;
+}
+
+.trackerBoxesRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+
+.hungerDropletsRow {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  align-items: center;
 }
 
 .trackerSquare {
@@ -2509,12 +2615,55 @@ select.input:focus {
   font-family: monospace;
   font-size: 12px;
   color: var(--tint);
+  border-radius: 2px;
+  transition: all 0.15s ease;
 }
 
 .trackerSquare.filled {
   background-color: var(--tint);
   border-color: var(--tint);
   color: #000;
+}
+
+.trackerAdminControls {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 16px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 16px;
+}
+
+.trackerAdminGroup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.trackerAdminLabel {
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+.trackerBtn {
+  font-family: Inter, sans-serif;
+  background: transparent;
+  border: 1px solid var(--tint);
+  color: var(--tint);
+  border-radius: 6px;
+  padding: 4px 10px;
+  min-width: 32px;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.trackerBtn:hover {
+  background: color-mix(in srgb, var(--tint) 15%, transparent);
 }
 
 .hungerDropletStitch {
@@ -2540,4 +2689,847 @@ select.input:focus {
   outline: none;
   border-bottom-color: var(--tint);
   box-shadow: none;
+}
+
+/* =====================================================================
+   MOBILE REDESIGN — max-width: 767px ONLY
+   Philosophy: EVERYTHING fits the phone width. No horizontal scrolling.
+   Font sizes and padding scale down to make the info visible on-screen.
+   Desktop layout (≥768px) is 100% untouched.
+   ===================================================================== */
+
+/* ------------------------------------------------------------------
+   1. Root — contain all children within viewport, prevent any bleed.
+      overflow-x: clip is used (not hidden) so fixed-position children
+      (the mobile header) are not trapped by the ancestor stacking context
+      that the fadeIn CSS animation temporarily creates.
+   ------------------------------------------------------------------ */
+@media (max-width: 767px) {
+  .root {
+    overflow-x: clip;
+    padding: 0;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100vw;
+  }
+
+  /* Prevent bentoGrid and any section containers from blowing out */
+  .mainLayout,
+  .bentoGrid {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+}
+
+/* ------------------------------------------------------------------
+   2. Hide DESKTOP top-app-bar on mobile (now controlled by CSS only,
+      not Tailwind "hidden md:block").
+   ------------------------------------------------------------------ */
+@media (max-width: 767px) {
+  .topAppBar {
+    display: none !important;
+  }
+}
+
+/* ------------------------------------------------------------------
+   3. Mobile Header — pure CSS module, replaces old Tailwind header.
+      Hidden on desktop.
+   ------------------------------------------------------------------ */
+.mobileHeader {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobileHeader {
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 64px;
+    /* Anchors under global fixed Nav (64px height) */
+    z-index: 99;
+    background: color-mix(in srgb, var(--bg-color) 92%, transparent);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 1px solid color-mix(in srgb, var(--tint) 20%, transparent);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+  }
+}
+
+.mobileHeaderInner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 12px;
+  height: 52px;
+  /* Tight, non-blocking sticky header height */
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.mobileHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.mobileHeaderAvatar {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1.5px solid var(--tint);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--tint) 40%, transparent);
+}
+
+.mobileHeaderMeta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 1px;
+}
+
+.mobileHeaderName {
+  font-family: 'Playfair Display', serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--tint);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.15;
+}
+
+.mobileHeaderSub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9.5px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.85;
+}
+
+.mobileHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.mobileHeaderHunger {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.mobileHeaderNotifBtn {
+  background: none;
+  border: none;
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+}
+
+.mobileHeaderNotifBtn:hover {
+  background: color-mix(in srgb, var(--tint) 10%, transparent);
+}
+
+/* Mobile Metadata Section */
+.mobileMetaSection {
+  display: none;
+  margin-top: 16px;
+}
+
+@media (max-width: 768px) {
+  .mobileMetaSection {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+.mobileMetaGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+
+.mobileMetaCard {
+  background: color-mix(in srgb, var(--surface-color) 40%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid color-mix(in srgb, var(--border-color) 40%, transparent);
+  padding: 10px 12px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mobileMetaFull {
+  grid-column: span 2;
+}
+
+.mobileMetaLabel {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.mobileMetaValue {
+  font-family: 'Playfair Display', serif;
+  font-size: 13.5px;
+  color: var(--text-color);
+  word-break: break-word;
+}
+
+.mobileMetaSubGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+/* ------------------------------------------------------------------
+   4. dotTracker — was missing from CSS; added as flex row.
+      On mobile: dots shrink to 9px so 5 dots fit in a narrow column.
+   ------------------------------------------------------------------ */
+.dotTracker {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 4px;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .trackerDot {
+    width: 10px !important;
+    height: 10px !important;
+    margin-right: 0 !important;
+  }
+}
+
+/* ------------------------------------------------------------------
+   5. mobileScrollWrapper — REMOVED forced min-width.
+      This class now only provides a subtle bottom padding for visual
+      breathing room. Content fits the viewport; no horizontal scroll.
+   ------------------------------------------------------------------ */
+@media (max-width: 767px) {
+  .mobileScrollWrapper {
+    overflow: visible;
+    /* no scrolling — content scales to fit */
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+/* ------------------------------------------------------------------
+   6. AttributesSection
+      Desktop: 3 equal columns, centered category titles, vertical items.
+      Mobile (max-width: 768px): Vertical stack of Physical, Social, Mental
+      with horizontal label & dots alignment and touch-friendly padding.
+   ------------------------------------------------------------------ */
+.attrCard {
+  padding: 24px;
+}
+
+.attrTitle {
+  font-family: 'Playfair Display', serif;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-color);
+  margin: 0 0 24px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--tint) 40%, transparent);
+  padding-bottom: 8px;
+}
+
+.attrGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.attrCategoryGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.attrCategoryTitle {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--tint);
+  text-transform: uppercase;
+  text-align: center;
+  border-bottom: 1px solid var(--surface-lighter);
+  padding-bottom: 6px;
+  margin: 0;
+}
+
+.attrItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.attrName {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+@media (max-width: 768px) {
+  .attrCard {
+    padding: 16px;
+  }
+
+  .attrTitle {
+    font-size: 20px;
+    margin-bottom: 16px;
+  }
+
+  .attrGrid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    /* Vertical stack on mobile */
+    gap: 16px !important;
+    width: 100% !important;
+  }
+
+  .attrCategoryGroup {
+    gap: 4px;
+    background: color-mix(in srgb, var(--surface-color) 40%, transparent);
+    padding: 12px 14px;
+    border-radius: 8px;
+    border: 1px solid color-mix(in srgb, var(--tint) 15%, transparent);
+  }
+
+  .attrCategoryTitle {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-align: left;
+    padding-bottom: 6px;
+    margin-bottom: 6px;
+  }
+
+  .attrItem {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--border-color) 25%, transparent);
+  }
+
+  .attrItem:last-child {
+    border-bottom: none;
+    padding-bottom: 2px;
+  }
+
+  .attrName {
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text-color);
+  }
+
+  /* Trackers Grid & Cards on mobile */
+  .trackersGrid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+    width: 100% !important;
+  }
+
+  .trackerCard {
+    padding: 16px !important;
+  }
+
+  /* Large touch-friendly tracker squares for mobile */
+  .trackerSquare {
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 15px !important;
+    font-weight: bold;
+    border-radius: 5px !important;
+    margin-right: 0 !important;
+  }
+
+  .trackerBoxesRow {
+    gap: 8px !important;
+  }
+
+  .trackerLabel {
+    font-size: 16px !important;
+  }
+
+  .trackerVal {
+    font-size: 20px !important;
+  }
+
+  /* Admin touch controls for +/- */
+  .trackerAdminControls {
+    gap: 12px !important;
+    margin-top: 14px !important;
+    padding-top: 14px !important;
+  }
+
+  .trackerBtn {
+    min-width: 42px !important;
+    min-height: 42px !important;
+    font-size: 18px !important;
+    padding: 0 !important;
+  }
+
+  .trackerAdminLabel {
+    font-size: 0.9rem !important;
+  }
+
+  /* Disciplines Section on mobile */
+  .disciplinesCard {
+    padding: 16px !important;
+  }
+
+  .disciplinesGrid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+
+  .disciplineRow {
+    padding: 12px !important;
+    gap: 10px !important;
+    border-radius: 8px !important;
+  }
+
+  .disciplineHead {
+    gap: 10px !important;
+  }
+
+  .disciplineName {
+    font-size: 15px !important;
+  }
+
+  .powerPill {
+    padding: 8px 10px !important;
+    min-height: 38px !important;
+  }
+
+  .powerName {
+    font-size: 13px !important;
+    white-space: normal !important;
+    word-break: break-word;
+  }
+
+  .powerDetailsBody {
+    margin-left: 8px !important;
+    padding: 8px 10px !important;
+    font-size: 0.8rem !important;
+  }
+}
+
+/* ------------------------------------------------------------------
+   7. SkillsDisplaySection
+      Desktop: Notable 130px auto-fit grid, All Skills 200px 3-column.
+      Mobile (max-width: 768px):
+      - Notable skills: 2-column compact grid, touch-friendly.
+      - All skills: 1-column vertical stack with space-between rows.
+   ------------------------------------------------------------------ */
+
+.skillsCard {
+  background: var(--surface-color);
+  padding: 24px;
+  border-bottom: 1px solid var(--surface-color);
+}
+
+.skillsSectionTitle {
+  font-family: 'Playfair Display', serif;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-color);
+  margin: 0 0 16px 0;
+}
+
+.skillsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 16px;
+}
+
+.skillNotableItem {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border: 1px solid color-mix(in srgb, var(--tint) 40%, transparent);
+  padding: 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.skillNotableItem:hover {
+  border-color: var(--tint);
+  background-color: color-mix(in srgb, var(--tint) 5%, transparent);
+}
+
+.skillNotableName {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.skillSpecialties {
+  opacity: 0.7;
+  font-size: 10px;
+  display: block;
+  text-transform: none;
+}
+
+.skillSpecialtiesInline {
+  opacity: 0.7;
+  font-size: 0.85rem;
+  margin-left: 6px;
+}
+
+.expandSkillsBtn {
+  width: 100%;
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid var(--tint);
+  color: var(--tint);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.expandSkillsBtn:hover {
+  background-color: color-mix(in srgb, var(--tint) 10%, transparent);
+}
+
+.allSkillsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.skillsToggleBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  transition: color 0.2s;
+}
+
+.skillsToggleBtn:hover {
+  color: var(--tint);
+}
+
+.allSkillsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 32px;
+}
+
+.skillCategoryGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.skillCategoryTitle {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  color: var(--tint);
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--surface-lighter);
+  padding-bottom: 4px;
+  margin: 0;
+}
+
+.allSkillRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.allSkillName {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+@media (max-width: 768px) {
+  .skillsCard {
+    padding: 16px;
+  }
+
+  .skillsSectionTitle {
+    font-size: 20px;
+    margin-bottom: 14px;
+  }
+
+  /* Notable skills: 1 column on mobile to prevent overflow */
+  .skillsGrid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+
+  .skillNotableItem {
+    padding: 10px !important;
+    gap: 6px;
+  }
+
+  .skillNotableName {
+    font-size: 11px !important;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* All skills expanded: 1 column vertical stack */
+  .allSkillsGrid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+    width: 100% !important;
+  }
+
+  .skillCategoryGroup {
+    gap: 4px;
+    background: color-mix(in srgb, var(--surface-color) 40%, transparent);
+    padding: 12px 14px;
+    border-radius: 8px;
+    border: 1px solid color-mix(in srgb, var(--tint) 15%, transparent);
+  }
+
+  .skillCategoryTitle {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    padding-bottom: 6px;
+    margin-bottom: 6px;
+  }
+
+  .allSkillRow {
+    padding: 8px 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--border-color) 25%, transparent);
+  }
+
+  .allSkillRow:last-child {
+    border-bottom: none;
+    padding-bottom: 2px;
+  }
+
+  .allSkillName {
+    font-size: 13.5px;
+    font-weight: 400;
+    color: var(--text-color);
+  }
+}
+
+/* ------------------------------------------------------------------
+   8. Merits & Flaws — single column on mobile, non-overflowing text wrapping.
+   ------------------------------------------------------------------ */
+.meritsContainer {
+  width: 100%;
+  margin-top: 32px;
+}
+
+.meritsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 32px;
+  align-items: start;
+}
+
+.meritsColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.meritsSectionHead {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 16px;
+}
+
+.meritsSectionTitle {
+  font-family: 'Playfair Display', serif;
+  font-size: 24px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin: 0;
+}
+
+.meritsListGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.meritCard {
+  padding: 24px;
+  border: 1px solid var(--border-color);
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-color);
+}
+
+.meritAccentBar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  opacity: 0.4;
+  transition: opacity 0.2s;
+}
+
+.meritHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
+  width: 100%;
+}
+
+.meritTitleBlock {
+  flex: 1;
+  min-width: 0;
+}
+
+.meritCategory {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.7;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.meritTitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-color);
+  margin: 0;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.meritDotsBlock {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.meritEditBtn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  opacity: 0.6;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.meritEditBtn:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.meritDesc {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--text-muted);
+  line-height: 24px;
+  margin: 0;
+  opacity: 0.8;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 768px) {
+  .meritsContainer {
+    margin-top: 20px;
+  }
+
+  .meritsGrid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+    width: 100% !important;
+  }
+
+  .meritsColumn {
+    gap: 16px;
+  }
+
+  .meritCard {
+    padding: 14px 16px !important;
+  }
+
+  .meritTitle {
+    font-size: 16px !important;
+  }
+
+  .meritCategory {
+    font-size: 10.5px !important;
+  }
+
+  .meritDesc {
+    font-size: 13.5px !important;
+    line-height: 1.45 !important;
+  }
 }

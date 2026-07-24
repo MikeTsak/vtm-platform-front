@@ -4,13 +4,12 @@ import { DISCIPLINES } from '../../data/disciplines';
 import DisciplineRow from './DisciplineRow';
 
 const DisciplinesDisplaySection = ({ sheet }) => {
-  // Extract the keys directly since they are already the proper Discipline names
   const disciplineNames = Object.keys(DISCIPLINES).sort();
 
   return (
-    <div className={styles.card}>
+    <div className={`${styles.card} ${styles.disciplinesCard}`} id="disciplines-section">
       <div className={styles.cardHead}><b>Disciplines</b></div>
-      <div className={styles.grid}>
+      <div className={styles.disciplinesGrid}>
         {disciplineNames.map(name => {
           const level = Number(sheet?.disciplines?.[name] || 0);
           
