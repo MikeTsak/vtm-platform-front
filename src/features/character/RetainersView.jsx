@@ -438,7 +438,8 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
     if (isOpen) {
       setStep(1);
       setName(initialName || '');
-      setDraftSheet(initialSheet ? JSON.parse(JSON.stringify(initialSheet)) : { attributes: {}, skills: {}, disciplines: {}, advantages: [], flaws: [], isGhoul: false, powers: [] });
+      const safeSheet = initialSheet ? JSON.parse(JSON.stringify(initialSheet)) : {};
+      setDraftSheet({ attributes: {}, skills: {}, disciplines: {}, advantages: [], flaws: [], isGhoul: false, powers: [], ...safeSheet });
       setActiveDisciplinePowerSelection(null);
       setPendingAvatar(null);
     }
@@ -1081,9 +1082,9 @@ export default function RetainersView() {
           setCharacter(prev => ({ ...prev, xp: prev.xp - (tierDiff * 3) }));
         }
 
-        const endpoint = (!isAdminBypass && wizardConfig.isUpgrade)
-          ? `/retainers/${wizardConfig.migrationId}/upgrade`
-          : `/retainers/${wizardConfig.migrationId}`;
+        const endpoint = isAdminBypass
+          ? `/retainers/${wizardConfig.migrationId}`
+          : `/retainers/${wizardConfig.migrationId}/upgrade`;
 
         const res = await api.put(endpoint, {
           name,
@@ -1217,6 +1218,7 @@ export default function RetainersView() {
       disciplines: initSheet.disciplines || {},
       advantages: initSheet.advantages || [],
       flaws: initSheet.flaws || [],
+      powers: initSheet.powers || [],
       isGhoul: !!initSheet.isGhoul,
       targetTier: selectedRetainer.tier // For upgrading
     });
