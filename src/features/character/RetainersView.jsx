@@ -1159,7 +1159,7 @@ export default function RetainersView() {
     if (!newName || newName === selectedRetainer.name) return;
     try {
       setSaving(true);
-      await api.put(`/retainers/${selectedRetainer.id}`, {
+      await api.put(`/retainers/${selectedRetainer.id}/upgrade`, {
         name: newName,
         tier: selectedRetainer.tier,
         sheet: selectedRetainer.sheet,
@@ -1194,7 +1194,7 @@ export default function RetainersView() {
       const sheetToSave = { ...draftSheet };
       delete sheetToSave.targetTier;
 
-      await api.put(`/retainers/${selectedRetainer.id}`, {
+      await api.put(`/retainers/${selectedRetainer.id}/upgrade`, {
         name: selectedRetainer.name,
         tier: targetTier,
         sheet: sheetToSave,
