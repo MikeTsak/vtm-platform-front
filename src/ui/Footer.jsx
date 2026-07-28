@@ -90,6 +90,16 @@ export default function Footer() {
               <Link to="/privacy" className="text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1 group">
                 <span className="material-symbols-outlined text-[12px] opacity-60 group-hover:opacity-100">security</span> Privacy
               </Link>
+              <button 
+                type="button" 
+                onClick={() => {
+                  localStorage.removeItem('cookie_consent');
+                  window.location.reload();
+                }} 
+                className="text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1 group focus:outline-none"
+              >
+                <span className="material-symbols-outlined text-[12px] opacity-60 group-hover:opacity-100">cookie</span> Cookies
+              </button>
               <Link to="/legal" className="text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1 group">
                 <span className="material-symbols-outlined text-[12px] opacity-60 group-hover:opacity-100">info</span> Legal
               </Link>
