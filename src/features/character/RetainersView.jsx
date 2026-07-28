@@ -986,6 +986,7 @@ export default function RetainersView() {
   const [character, setCharacter] = useState(stateCharacter || null);
   const [retainers, setRetainers] = useState([]);
   const [selectedRetainerId, setSelectedRetainerId] = useState(preselectRetainerId || null);
+  const [sortBy, setSortBy] = useState('power');
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1146,6 +1147,17 @@ export default function RetainersView() {
     }
   };
 
+  const handleToggleFavorite = async (e, id, isFavorite) => {
+    e.stopPropagation();
+    try {
+      setRetainers(prev => prev.map(r => r.id === id ? { ...r, is_favorite: !isFavorite } : r));
+      await api.put(`/retainers/${id}/favorite`, { is_favorite: !isFavorite });
+    } catch (err) {
+      alert("Failed to update favorite status");
+      setRetainers(prev => prev.map(r => r.id === id ? { ...r, is_favorite: isFavorite } : r));
+    }
+  };
+
   const handleRename = async () => {
     if (!selectedRetainer) return;
     const newName = prompt("Enter a new name for your retainer:", selectedRetainer.name);
@@ -1283,6 +1295,18 @@ export default function RetainersView() {
   if (loading) return <div style={{ padding: 40, color: '#fff' }}>Loading retainers...</div>;
   if (!character) return null;
 
+  const sortedRetainers = [...retainers].sort((a, b) => {
+    if (a.is_favorite !== b.is_favorite) {
+      return a.is_favorite ? -1 : 1;
+    }
+    if (sortBy === 'power') {
+      if (a.tier !== b.tier) return b.tier - a.tier; // Higher tier first
+      return a.name.localeCompare(b.name);
+    } else {
+      return a.name.localeCompare(b.name);
+    }
+  });
+
   return (
     <div className={styles.container}>
       <WizardModal
@@ -1320,16 +1344,32 @@ export default function RetainersView() {
 
           {/* Active Thralls */}
           <div className={`${styles.glassPanel} ${styles.ambientGlow}`}>
-            <h3 className={styles.panelTitle}>
-              <span className="material-symbols-outlined" style={{ color: '#e0dedd' }}>group</span>
-              Active Thralls
-            </h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 className={styles.panelTitle} style={{ marginBottom: 0 }}>
+                <span className="material-symbols-outlined" style={{ color: '#e0dedd' }}>group</span>
+                Active Thralls
+              </h3>
+              <div style={{ display: 'flex', gap: '8px', background: 'rgba(0,0,0,0.3)', padding: '4px', borderRadius: '8px' }}>
+                <button
+                  onClick={() => setSortBy('power')}
+                  style={{ background: sortBy === 'power' ? 'var(--tint)' : 'transparent', color: sortBy === 'power' ? '#000' : '#888', border: 'none', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', cursor: 'pointer', fontWeight: sortBy === 'power' ? 'bold' : 'normal', transition: 'all 0.2s' }}
+                >
+                  Power
+                </button>
+                <button
+                  onClick={() => setSortBy('name')}
+                  style={{ background: sortBy === 'name' ? 'var(--tint)' : 'transparent', color: sortBy === 'name' ? '#000' : '#888', border: 'none', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', cursor: 'pointer', fontWeight: sortBy === 'name' ? 'bold' : 'normal', transition: 'all 0.2s' }}
+                >
+                  A-Z
+                </button>
+              </div>
+            </div>
 
             {retainers.length === 0 ? (
               <p style={{ color: '#e0dedd', opacity: 0.7 }}>You have no retainers currently serving you.</p>
             ) : (
               <div className={styles.rosterList}>
-                {retainers.map((r, idx) => (
+                {sortedRetainers.map((r, idx) => (
                   <React.Fragment key={r.id}>
                     <button
                       className={`${styles.rosterItem} ${selectedRetainerId === r.id ? styles.rosterItemActive : ''}`}
@@ -1347,9 +1387,17 @@ export default function RetainersView() {
                           </div>
                         )}
                       </div>
+                      <button 
+                        onClick={(e) => handleToggleFavorite(e, r.id, r.is_favorite)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: '20px', color: r.is_favorite ? '#f5a623' : '#444', fontVariationSettings: r.is_favorite ? "'FILL' 1" : "'FILL' 0", transition: 'color 0.2s' }}>
+                          star
+                        </span>
+                      </button>
                       <span className={`material-symbols-outlined ${styles.chevron}`}>chevron_right</span>
                     </button>
-                    {idx < retainers.length - 1 && <div className={styles.divider} />}
+                    {idx < sortedRetainers.length - 1 && <div className={styles.divider} />}
                   </React.Fragment>
                 ))}
               </div>
