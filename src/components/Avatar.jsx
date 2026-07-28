@@ -21,6 +21,16 @@ export default function Avatar({ userId, npcId, identityId, retainerId, size = 8
     setImgError(false);
   }, [entityKey, timestamp]);
 
+  React.useEffect(() => {
+    const handleAvatarUpdated = (e) => {
+      if (e.detail.entityKey === entityKey) {
+        setTimestamp(e.detail.newTs);
+      }
+    };
+    window.addEventListener('avatar-updated', handleAvatarUpdated);
+    return () => window.removeEventListener('avatar-updated', handleAvatarUpdated);
+  }, [entityKey]);
+
   if (!imgError && !previewUrl) {
     const q = timestamp ? `?t=${timestamp}` : '';
     if (userId) srcUrl = `${baseUrl}/users/${userId}/avatar${q}`;
@@ -85,6 +95,7 @@ export default function Avatar({ userId, npcId, identityId, retainerId, size = 8
       const newTs = Date.now();
       avatarTimestamps.set(entityKey, newTs);
       setTimestamp(newTs); // Force reload image
+      window.dispatchEvent(new CustomEvent('avatar-updated', { detail: { entityKey, newTs } }));
       setImgError(false); // Reset error state in case it was a fallback before
       if (onUploadSuccess) {
         onUploadSuccess();

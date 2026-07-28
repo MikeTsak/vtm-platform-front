@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import styles from './AvatarCropperModal.module.css';
 
 const VIEWPORT_SIZE = 320;
@@ -173,7 +174,7 @@ export default function AvatarCropperModal({ imageSrc, onCropComplete, onCancel 
     );
   };
 
-  return (
+  const modalContent = (
     <div className={styles.overlay} onClick={onCancel}>
       <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
@@ -276,4 +277,6 @@ export default function AvatarCropperModal({ imageSrc, onCropComplete, onCancel 
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }

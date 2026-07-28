@@ -844,21 +844,14 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
             <div style={{ animation: 'fadeIn 0.5s ease', position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '32px 0' }}>
               <div className={styles.reviewSummaryStitch}>
                 <div className={styles.avatarGlowStitch} style={{ padding: pendingAvatar ? 0 : undefined, overflow: 'hidden' }}>
-                  {pendingAvatar ? (
-                    <Avatar
-                      retainerId={null}
-                      editable={true}
-                      size={100}
-                      style={{ borderRadius: '50%' }}
-                      previewUrl={URL.createObjectURL(pendingAvatar)}
-                      onFileSelect={setPendingAvatar}
-                    />
-                  ) : (
-                    <div onClick={() => document.getElementById('newAvatarInput').click()} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: '48px', color: 'white' }}>person</span>
-                      <input id="newAvatarInput" type="file" style={{ display: 'none' }} accept="image/*" onChange={(e) => { if (e.target.files[0]) setPendingAvatar(e.target.files[0]) }} />
-                    </div>
-                  )}
+                  <Avatar
+                    retainerId={null}
+                    editable={true}
+                    size={100}
+                    style={{ borderRadius: '50%' }}
+                    previewUrl={pendingAvatar ? URL.createObjectURL(pendingAvatar) : null}
+                    onFileSelect={setPendingAvatar}
+                  />
                 </div>
                 {!pendingAvatar && (
                   <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px' }}>
@@ -1300,9 +1293,9 @@ export default function RetainersView() {
         clanDisciplines={clanDisciplines}
         isMigration={wizardConfig.isMigration}
         isAdminBypass={isAdminBypass}
-        initialName={selectedRetainer?.name}
-        initialSheet={selectedRetainer?.sheet}
-        minTier={selectedRetainer?.tier || 1}
+        initialName={wizardConfig.isMigration ? selectedRetainer?.name : ''}
+        initialSheet={wizardConfig.isMigration ? selectedRetainer?.sheet : null}
+        minTier={wizardConfig.isMigration ? (selectedRetainer?.tier || 1) : 1}
         onCancel={() => setWizardConfig({ isOpen: false, tier: 1, isMigration: false, migrationId: null })}
         onConfirm={handleWizardConfirm}
       />
