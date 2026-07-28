@@ -22,6 +22,7 @@ import Premonitions from '../features/premonitions/Premonitions';
 import News from '../features/news/News';
 import PublicArticleView from '../features/news/PublicArticleView';
 import GlobalBanner from '../components/GlobalBanner';
+import CookieConsent from '../components/CookieConsent';
 import Nav from '../ui/Nav';
 import NotFound from '../pages/404';
 import Hierarchy from '../features/court/HierarchyView';
@@ -206,6 +207,7 @@ function AppLayout() {
       </div>
       <NotificationBanner />
       <DiceRoller />
+      <CookieConsent />
       {!isImmersive && <Footer />}
     </div>
   );

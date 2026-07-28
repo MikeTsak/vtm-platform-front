@@ -62,3 +62,17 @@ export const clearUserTracking = () => {
     user_id: null
   });
 };
+
+/**
+ * Update Google Analytics consent state
+ * @param {boolean} granted - True if user accepted cookies
+ */
+export const updateConsent = (granted) => {
+  const status = granted ? 'granted' : 'denied';
+  callGtag('consent', 'update', {
+    'ad_storage': status,
+    'ad_user_data': status,
+    'ad_personalization': status,
+    'analytics_storage': status
+  });
+};
