@@ -55,13 +55,13 @@ const renderMessageBody = (text) => {
     const clanName = Object.keys(CLAN_COLORS).find(c => c.replace(/\s+/g, '_').toLowerCase() === clanId.toLowerCase());
     if (clanName) {
       parts.push(
-        <img 
-          key={`emoji-${match.index}`} 
-          src={localSymlogo(clanName)} 
-          alt={clanName} 
+        <img
+          key={`emoji-${match.index}`}
+          src={localSymlogo(clanName)}
+          alt={clanName}
           title={clanName}
-          className="inline-block w-[18px] h-[18px] mx-0.5 align-text-bottom crestImg opacity-100" 
-          style={{ filter: 'brightness(0) invert(1)' }} 
+          className="inline-block w-[18px] h-[18px] mx-0.5 align-text-bottom crestImg opacity-100"
+          style={{ filter: 'brightness(0) invert(1)' }}
         />
       );
     } else {
@@ -194,9 +194,9 @@ const ChatMedia = ({ attachmentId }) => {
             setMediaInfo({ url: urlToRevoke, mime: info.mime || blobRes.data.type });
             setLoading(false);
           } catch (e) {
-             if (!active) return;
-             setError(true);
-             setLoading(false);
+            if (!active) return;
+            setError(true);
+            setLoading(false);
           }
         }
       })
@@ -534,7 +534,7 @@ export default function ChatSystem({ commsEnabled = true }) {
 
   const toggleNotifications = async () => {
     if (!notifSupported || pushSettingsLoading) return;
-    
+
     if (!notifOn) {
       try {
         await subscribeToWebPush();
@@ -1213,7 +1213,7 @@ export default function ChatSystem({ commsEnabled = true }) {
       {managingGroup && renderManageGroupModalTailwind()}
 
       {/* SideNavBar (Desktop) & Full View (Mobile when no contact selected) */}
-      <motion.aside 
+      <motion.aside
         className={styles.userList}
         initial={{ opacity: 0, x: -30 }}
         animate={{ opacity: 1, x: 0 }}
@@ -1384,7 +1384,7 @@ export default function ChatSystem({ commsEnabled = true }) {
       </motion.aside>
 
       {/* Main Content (Canvas) */}
-      <motion.main 
+      <motion.main
         className={styles.chatWindow}
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -1513,8 +1513,8 @@ export default function ChatSystem({ commsEnabled = true }) {
                 const isGroupNotMine = selectedContact.type === 'group' && !mine;
 
                 return (
-                  <motion.div 
-                    key={item.id} 
+                  <motion.div
+                    key={item.id}
                     className={`flex gap-2 md:gap-3 max-w-[90%] md:max-w-[85%] ${mine ? 'self-end flex-row-reverse group' : 'self-start group'}`}
                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -1617,11 +1617,11 @@ export default function ChatSystem({ commsEnabled = true }) {
               {/* Emoji Picker */}
               {showEmojiPicker && (
                 <div className="absolute bottom-[100%] left-1/2 -translate-x-1/2 md:left-auto md:right-4 md:translate-x-0 z-50 mb-2 shadow-[0_0_20px_rgba(0,0,0,0.8)] rounded-lg overflow-hidden border border-outline-variant w-[min(92vw,320px)]">
-                  <EmojiPicker 
-                    onEmojiClick={onEmojiClick} 
-                    theme="dark" 
-                    searchDisabled={false} 
-                    width="100%" 
+                  <EmojiPicker
+                    onEmojiClick={onEmojiClick}
+                    theme="dark"
+                    searchDisabled={false}
+                    width="100%"
                     customEmojis={customClanEmojis}
                     categories={[
                       { category: 'suggested', name: 'Recently Used' },
@@ -1663,7 +1663,7 @@ export default function ChatSystem({ commsEnabled = true }) {
                         <span className="text-[10px] text-on-surface-variant">{(attachment.size / 1024).toFixed(1)} KB</span>
                         {isUploading && (
                           <div className="w-full bg-surface-dim h-1 rounded overflow-hidden">
-                            <div className="h-full bg-primary transition-all duration-200" style={{width: `${uploadProgress}%`}}></div>
+                            <div className="h-full bg-primary transition-all duration-200" style={{ width: `${uploadProgress}%` }}></div>
                           </div>
                         )}
                       </div>

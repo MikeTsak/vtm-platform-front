@@ -179,7 +179,7 @@ export default function LiveSession() {
     const trait1 = selectedTraits[0] || null;
     const trait2 = selectedTraits[1] || null;
     let pool = getPoolFromCharacter(sheet, trait1, trait2);
-    
+
     // Add Discipline Power Bonus if rolling a Discipline
     const hasDiscipline = (trait1 && sheet?.disciplines?.[trait1] !== undefined) || (trait2 && sheet?.disciplines?.[trait2] !== undefined);
     if (hasDiscipline) {
@@ -188,23 +188,23 @@ export default function LiveSession() {
 
     if (bloodSurgeActive) pool += bpStats.surgeBonus;
     if (specialtyActive) pool += 1;
-    
+
     // Apply V5 Impairment Penalties
     if (trackers) {
       if (trackers.health && trackers.health.superficial + trackers.health.aggravated >= trackers.health.max) {
-        if (['Strength', 'Dexterity', 'Stamina', 'Athletics', 'Brawl', 'Craft', 'Drive', 'Firearms', 'Larceny', 'Melee', 'Stealth', 'Survival'].includes(trait1) || 
-            ['Strength', 'Dexterity', 'Stamina', 'Athletics', 'Brawl', 'Craft', 'Drive', 'Firearms', 'Larceny', 'Melee', 'Stealth', 'Survival'].includes(trait2)) {
+        if (['Strength', 'Dexterity', 'Stamina', 'Athletics', 'Brawl', 'Craft', 'Drive', 'Firearms', 'Larceny', 'Melee', 'Stealth', 'Survival'].includes(trait1) ||
+          ['Strength', 'Dexterity', 'Stamina', 'Athletics', 'Brawl', 'Craft', 'Drive', 'Firearms', 'Larceny', 'Melee', 'Stealth', 'Survival'].includes(trait2)) {
           pool -= 2;
         }
       }
       if (trackers.willpower && trackers.willpower.superficial + trackers.willpower.aggravated >= trackers.willpower.max) {
-        if (['Charisma', 'Manipulation', 'Composure', 'Intelligence', 'Wits', 'Resolve', 'Animal Ken', 'Etiquette', 'Insight', 'Intimidation', 'Leadership', 'Performance', 'Persuasion', 'Streetwise', 'Subterfuge', 'Academics', 'Awareness', 'Finance', 'Investigation', 'Medicine', 'Occult', 'Politics', 'Science', 'Technology'].includes(trait1) || 
-            ['Charisma', 'Manipulation', 'Composure', 'Intelligence', 'Wits', 'Resolve', 'Animal Ken', 'Etiquette', 'Insight', 'Intimidation', 'Leadership', 'Performance', 'Persuasion', 'Streetwise', 'Subterfuge', 'Academics', 'Awareness', 'Finance', 'Investigation', 'Medicine', 'Occult', 'Politics', 'Science', 'Technology'].includes(trait2)) {
+        if (['Charisma', 'Manipulation', 'Composure', 'Intelligence', 'Wits', 'Resolve', 'Animal Ken', 'Etiquette', 'Insight', 'Intimidation', 'Leadership', 'Performance', 'Persuasion', 'Streetwise', 'Subterfuge', 'Academics', 'Awareness', 'Finance', 'Investigation', 'Medicine', 'Occult', 'Politics', 'Science', 'Technology'].includes(trait1) ||
+          ['Charisma', 'Manipulation', 'Composure', 'Intelligence', 'Wits', 'Resolve', 'Animal Ken', 'Etiquette', 'Insight', 'Intimidation', 'Leadership', 'Performance', 'Persuasion', 'Streetwise', 'Subterfuge', 'Academics', 'Awareness', 'Finance', 'Investigation', 'Medicine', 'Occult', 'Politics', 'Science', 'Technology'].includes(trait2)) {
           pool -= 2;
         }
       }
     }
-    
+
     return Math.max(0, pool);
   }, [sheet, selectedTraits, bloodSurgeActive, bpStats.surgeBonus, specialtyActive, trackers]);
 
@@ -277,7 +277,7 @@ export default function LiveSession() {
     if (!session?.created_at && !session?.createdAt) return;
     const startTimeStr = session.created_at || session.createdAt;
     const start = new Date(startTimeStr).getTime();
-    
+
     const tick = () => {
       const diff = Math.floor((Date.now() - start) / 1000);
       if (diff < 0) return;
@@ -286,7 +286,7 @@ export default function LiveSession() {
       const s = (diff % 60).toString().padStart(2, '0');
       setSessionRuntime(`${h}:${m}:${s}`);
     };
-    
+
     tick();
     const int = setInterval(tick, 1000);
     return () => clearInterval(int);
@@ -369,12 +369,12 @@ export default function LiveSession() {
 
     setMobileTab('action');
     setIsRolling(true);
-    
+
     try {
       const { data } = await api.post(`/characters/${character.id}/spend-wp`);
       setSheet(data.sheet);
       setTrackers(summarizeTrackers(data.sheet));
-      
+
       const { rerolled } = rerollNormalDice(lastRoll.normalDice, wpSelections);
       const outcome = computeOutcome(rerolled, lastRoll.hungerDice, difficulty);
       const updated = { ...lastRoll, normalDice: rerolled, outcome, note: 'Willpower Reroll' };
@@ -400,29 +400,29 @@ export default function LiveSession() {
   const handleRouse = async (source = 'rouse_check', autoActivate = null) => {
     setMobileTab('action');
     setIsRolling(true);
-    
+
     // Set a dummy roll immediately so the animation overlay renders while API fetches
     setLastRoll({
       normalDice: [],
-      hungerDice: [0], 
+      hungerDice: [0],
       outcome: { successes: 0, hasCritical: false, hasMessyCritical: false, hasBestialFailure: false, label: 'Rolling...' },
       type: source,
       note: 'Calculating...',
     });
-    
+
     let advantage = false;
     if (autoActivate && autoActivate.power?.level <= bpStats.rouseRerollLevel) {
       advantage = true;
     }
-    
+
     try {
       const prevHunger = trackers?.hunger || 0;
       const { data } = await api.post(`/characters/${character.id}/rouse`, { advantage });
-      
+
       const { success, die1, die2, nextHunger, sheet: nextSheet } = data;
       setSheet(nextSheet);
       setTrackers(summarizeTrackers(nextSheet));
-      
+
       if (!success && prevHunger === 5) {
         setFrenzyState('hunger');
       }
@@ -463,7 +463,7 @@ export default function LiveSession() {
         note: 'Failed to communicate with server.',
       });
     }
-    
+
     setTimeout(() => setIsRolling(false), 1500);
   };
 
@@ -514,11 +514,11 @@ export default function LiveSession() {
 
   if (isAdmin) {
     return (
-      <LiveSessionAdminDashboard 
-        session={session} 
-        sessionId={sessionId} 
-        broadcasts={broadcasts} 
-        character={character} 
+      <LiveSessionAdminDashboard
+        session={session}
+        sessionId={sessionId}
+        broadcasts={broadcasts}
+        character={character}
       />
     );
   }
@@ -526,7 +526,7 @@ export default function LiveSession() {
   if (!trackers) return <div className={styles.container}><div style={{ margin: 'auto' }}>Loading LARP Interface...</div></div>;
 
   const humanity = sheet?.humanity ?? sheet?.morality?.humanity ?? 7;
-  
+
   const getBlushOfLifeInfo = (hum) => {
     if (hum >= 10) return { cost: 0, text: 'You appear completely human. Blush of Life is innately active.' };
     if (hum === 9) return { cost: 1, text: 'You appear mostly human. Blush allows food digestion & sex.' };
@@ -551,12 +551,12 @@ export default function LiveSession() {
   const handleBlushOfLifeToggle = async () => {
     if (blushInfo.cost === 0) return; // Free at humanity 10
     const isActivating = !sheet?.blushOfLife;
-    
+
     if (isActivating && blushInfo.cost > 0) {
       setShowBlushModal(true);
       return;
     }
-    
+
     // Toggling off is instant and free
     await applySheetUpdate(next => {
       next.blushOfLife = false;
@@ -564,28 +564,28 @@ export default function LiveSession() {
     });
 
     if (sessionId) {
-      await sendLiveSessionBroadcast(sessionId, { 
-        message: `[Status] ${character?.name || sheet?.name || 'Vampire'} deactivated Blush of Life.` 
+      await sendLiveSessionBroadcast(sessionId, {
+        message: `[Status] ${character?.name || sheet?.name || 'Vampire'} deactivated Blush of Life.`
       });
     }
   };
 
   const confirmBlushOfLife = async () => {
     setShowBlushModal(false);
-    
+
     await handleRouse('blush_of_life');
     if (blushInfo.cost > 1) {
       await handleRouse('blush_of_life');
     }
-    
+
     await applySheetUpdate(next => {
       next.blushOfLife = true;
       return next;
     });
 
     if (sessionId) {
-      await sendLiveSessionBroadcast(sessionId, { 
-        message: `[Status] ${character?.name || sheet?.name || 'Vampire'} activated Blush of Life.` 
+      await sendLiveSessionBroadcast(sessionId, {
+        message: `[Status] ${character?.name || sheet?.name || 'Vampire'} activated Blush of Life.`
       });
     }
   };
@@ -664,7 +664,7 @@ export default function LiveSession() {
             <div>
               <TrackerBlock label="Willpower" val="" max={trackers.willpower.max} agg={trackers.willpower.aggravated} sup={trackers.willpower.superficial} />
             </div>
-            
+
             {/* Blush of Life */}
             <div className={styles.trackerBox} style={{ padding: '1rem', background: sheet?.blushOfLife ? 'rgba(225,29,72,0.1)' : 'var(--surface-container-high)', border: sheet?.blushOfLife ? '1px solid var(--primary)' : '1px solid transparent', cursor: blushInfo.cost > 0 ? 'pointer' : 'default' }} onClick={() => blushInfo.cost > 0 && handleBlushOfLifeToggle()}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
@@ -784,13 +784,13 @@ export default function LiveSession() {
           <div className={styles.rollEngineInner}>
 
             {/* Connection / Session Info Bar */}
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'space-between', 
-              background: 'var(--surface-container-high)', 
-              padding: '1rem 1.5rem', 
-              borderRadius: '8px', 
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: 'var(--surface-container-high)',
+              padding: '1rem 1.5rem',
+              borderRadius: '8px',
               marginBottom: '2rem',
               border: '1px solid var(--outline-variant)'
             }}>
@@ -798,7 +798,7 @@ export default function LiveSession() {
                 <span style={{ color: 'var(--primary)', fontWeight: 'bold', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   {session ? `Session ${session.id || sessionId}` : 'Not Connected'}
                 </span>
-                
+
                 {session && (
                   <>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--on-surface)', fontSize: '0.85rem' }}>

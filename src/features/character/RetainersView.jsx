@@ -1447,6 +1447,11 @@ export default function RetainersView() {
                         <button onClick={handleRename} style={{ background: 'none', border: 'none', color: 'var(--tint)', cursor: 'pointer', padding: 0 }} title="Rename Retainer">
                           <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>edit</span>
                         </button>
+                        {isAdminBypass && (
+                          <button onClick={() => handleDelete(selectedRetainer.id)} style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer', padding: 0 }} title="Delete Retainer (Admin Only)">
+                            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>delete</span>
+                          </button>
+                        )}
                       </div>
 
                       {isEditing ? (

@@ -43,7 +43,7 @@ const TextEditor = ({ value, onChange, placeholder, disabled = false }) => {
   return (
     <div className={`${styles.editorContainer} ${disabled ? styles.editorDisabled : ''}`}>
       <EditorToolbar onCmd={executeCmd} />
-      <div 
+      <div
         className={styles.editable}
         contentEditable={!disabled}
         ref={contentRef}
@@ -61,7 +61,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled = true }) {
   const [selectedThread, setSelectedThread] = useState(null);
   const [emailMessages, setEmailMessages] = useState([]);
   const [emailReplyBody, setEmailReplyBody] = useState('');
-  
+
   // Compose State
   const [emailComposeOpen, setEmailComposeOpen] = useState(false);
   const [emailForm, setEmailForm] = useState({ to: '', subject: '', body: '' });
@@ -110,13 +110,13 @@ export default function EmailSystem({ user, isMobile, commsEnabled = true }) {
       prevThreadsRef.current = newThreads;
       return;
     }
-    
+
     newThreads.forEach(t => {
       if (t.unread_count > 0) {
         const prevT = prevThreadsRef.current.find(pt => pt.id === t.id);
         if (!prevT || new Date(t.updated_at).getTime() > new Date(prevT.updated_at).getTime() || prevT.unread_count === 0) {
-           const senderName = isAdmin ? t.user_name : t.from_name;
-           notify(`New Email from ${senderName}`, t.subject, isAdmin ? undefined : `https://ui-avatars.com/api/?name=${encodeURIComponent(senderName)}&background=random`);
+          const senderName = isAdmin ? t.user_name : t.from_name;
+          notify(`New Email from ${senderName}`, t.subject, isAdmin ? undefined : `https://ui-avatars.com/api/?name=${encodeURIComponent(senderName)}&background=random`);
         }
       }
     });
@@ -147,14 +147,14 @@ export default function EmailSystem({ user, isMobile, commsEnabled = true }) {
     }
   }, [isAdmin, checkNewEmails]);
 
-  useEffect(() => { 
+  useEffect(() => {
     const controller = new AbortController();
-    loadEmails(false, controller.signal); 
-    
+    loadEmails(false, controller.signal);
+
     const interval = setInterval(() => {
       loadEmails(true);
     }, 15000);
-    
+
     return () => {
       clearInterval(interval);
       controller.abort();
@@ -169,8 +169,8 @@ export default function EmailSystem({ user, isMobile, commsEnabled = true }) {
       setEmailMessages(data.messages);
       setThreads(prev => prev.map(th => th.id === t.id ? { ...th, unread_count: 0 } : th));
       setTimeout(() => emailEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-    } catch(e) { 
-      alert('Failed to load email thread. Please try again.'); 
+    } catch (e) {
+      alert('Failed to load email thread. Please try again.');
     }
   };
 
@@ -184,8 +184,8 @@ export default function EmailSystem({ user, isMobile, commsEnabled = true }) {
       const { data } = await api.get(url);
       setEmailMessages(data.messages);
       setTimeout(() => emailEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-    } catch(e) { 
-      alert('Failed to reply to email.'); 
+    } catch (e) {
+      alert('Failed to reply to email.');
     }
   };
 
@@ -193,17 +193,17 @@ export default function EmailSystem({ user, isMobile, commsEnabled = true }) {
     e.preventDefault();
     if (!commsEnabled) return;
     try {
-      await api.post('/emails/send', { 
-        to_email: emailForm.to, 
-        subject: emailForm.subject, 
-        body: emailForm.body 
+      await api.post('/emails/send', {
+        to_email: emailForm.to,
+        subject: emailForm.subject,
+        body: emailForm.body
       });
       setEmailComposeOpen(false);
       setEmailForm({ to: '', subject: '', body: '' });
       loadEmails();
       alert('Email Sent Successfully.');
-    } catch(e) {
-      if(e.response?.status === 404) {
+    } catch (e) {
+      if (e.response?.status === 404) {
         alert('Delivery Status Notification: The specified email address does not exist.');
       } else {
         alert('Failed to send email.');
@@ -214,24 +214,24 @@ export default function EmailSystem({ user, isMobile, commsEnabled = true }) {
   const handleCreateIdentity = async () => {
     if (!adminIdentityForm.email || !adminIdentityForm.display) return;
     try {
-      await api.post('/admin/emails/identities', { 
+      await api.post('/admin/emails/identities', {
         email_address: adminIdentityForm.email,
         display_name: adminIdentityForm.display
       });
       setAdminIdentityForm({ email: '', display: '' });
       loadEmails();
       alert('Identity created successfully');
-    } catch(e) { 
-      alert('Error creating identity'); 
+    } catch (e) {
+      alert('Error creating identity');
     }
   };
 
   return (
     <div className={`${styles.emailContainer} ${selectedThread && isMobile ? styles.mobileViewActive : ''} crt`}>
       <div className="crt-overlay"></div>
-      
+
       {/* SIDEBAR */}
-      <motion.aside 
+      <motion.aside
         className={`${styles.emailSidebar} chat-glass`}
         initial={{ opacity: 0, x: -30 }}
         animate={{ opacity: 1, x: 0 }}
@@ -240,9 +240,9 @@ export default function EmailSystem({ user, isMobile, commsEnabled = true }) {
         <div className={styles.emailHeader}>
           <h2>Inbox</h2>
           <div className={styles.headerActions}>
-            <button 
-              onClick={toggleNotifications} 
-              className={styles.iconBtn} 
+            <button
+              onClick={toggleNotifications}
+              className={styles.iconBtn}
               title={notifOn ? 'Notifications On' : 'Notifications Off'}
               aria-label="Toggle notifications"
             >
@@ -251,9 +251,9 @@ export default function EmailSystem({ user, isMobile, commsEnabled = true }) {
               </span>
             </button>
             {isAdmin && (
-              <button 
-                className={styles.iconBtn} 
-                title="Manage Identities" 
+              <button
+                className={styles.iconBtn}
+                title="Manage Identities"
                 onClick={() => setAdminIdentitiesOpen(true)}
               >
                 <span className="material-symbols-outlined text-[20px]" style={{ verticalAlign: 'middle' }}>settings</span>
@@ -275,19 +275,19 @@ export default function EmailSystem({ user, isMobile, commsEnabled = true }) {
             const senderName = isAdmin ? t.user_name : t.from_name;
             const avatarProps = isAdmin ? { userId: t.user_id } : { identityId: t.identity_id };
             return (
-              <div 
-                key={t.id} 
-                className={`${styles.threadCard} ${selectedThread?.id === t.id ? styles.active : ''} ${t.unread_count > 0 ? styles.unread : ''}`} 
+              <div
+                key={t.id}
+                className={`${styles.threadCard} ${selectedThread?.id === t.id ? styles.active : ''} ${t.unread_count > 0 ? styles.unread : ''}`}
                 onClick={() => openEmailThread(t)}
                 role="button"
                 tabIndex={0}
-                onKeyDown={(e) => { if(e.key === 'Enter') openEmailThread(t); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') openEmailThread(t); }}
               >
-                <Avatar 
-                  {...avatarProps} 
-                  size={40} 
-                  className={styles.threadAvatar} 
-                  fallback={`https://ui-avatars.com/api/?name=${encodeURIComponent(senderName)}&background=random`} 
+                <Avatar
+                  {...avatarProps}
+                  size={40}
+                  className={styles.threadAvatar}
+                  fallback={`https://ui-avatars.com/api/?name=${encodeURIComponent(senderName)}&background=random`}
                 />
                 <div className={styles.threadContent}>
                   <div className={styles.threadTopRow}>
@@ -304,7 +304,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled = true }) {
       </motion.aside>
 
       {/* MAIN CONTENT (Reading Pane) */}
-      <motion.main 
+      <motion.main
         className={styles.emailMain}
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -318,51 +318,51 @@ export default function EmailSystem({ user, isMobile, commsEnabled = true }) {
                 <h1>{selectedThread.subject}</h1>
               </div>
               <div className={styles.emailParticipants}>
-                {isAdmin 
+                {isAdmin
                   ? <span className={styles.particChip}>👤 {selectedThread.user_name}</span>
                   : <span className={styles.particChip}>From: {selectedThread.from_name} &lt;{selectedThread.from_email}&gt;</span>
                 }
               </div>
             </div>
-            
+
             <div className={styles.emailBodyScroll}>
               {emailMessages.map(m => {
                 let msgName = 'Unknown';
                 let avatarProps = {};
-                
+
                 if (m.sender_type === 'user') {
-                    msgName = isAdmin ? selectedThread.user_name : 'Me';
-                    avatarProps = { userId: selectedThread.user_id };
+                  msgName = isAdmin ? selectedThread.user_name : 'Me';
+                  avatarProps = { userId: selectedThread.user_id };
                 } else {
-                    msgName = isAdmin ? selectedThread.identity_name : selectedThread.from_name;
-                    avatarProps = { identityId: selectedThread.identity_id };
+                  msgName = isAdmin ? selectedThread.identity_name : selectedThread.from_name;
+                  avatarProps = { identityId: selectedThread.identity_id };
                 }
 
                 return (
-                  <motion.div 
-                    key={m.id} 
+                  <motion.div
+                    key={m.id}
                     className={styles.emailMsg}
                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                   >
                     <div className={styles.msgHeader}>
-                      <Avatar 
-                        {...avatarProps} 
-                        size={36} 
-                        className={styles.msgAvatar} 
-                        style={{ borderRadius: '50%' }} 
-                        fallback={`https://ui-avatars.com/api/?name=${encodeURIComponent(msgName)}&background=random`} 
+                      <Avatar
+                        {...avatarProps}
+                        size={36}
+                        className={styles.msgAvatar}
+                        style={{ borderRadius: '50%' }}
+                        fallback={`https://ui-avatars.com/api/?name=${encodeURIComponent(msgName)}&background=random`}
                       />
                       <div className={styles.msgMeta}>
-                         <span className={styles.msgAuthor}>{msgName}</span>
-                         <span className={styles.msgTime}>{new Date(m.created_at).toLocaleString()}</span>
+                        <span className={styles.msgAuthor}>{msgName}</span>
+                        <span className={styles.msgTime}>{new Date(m.created_at).toLocaleString()}</span>
                       </div>
                     </div>
                     {/* CRITICAL SECURITY FIX: Sanitize HTML content to prevent XSS */}
-                    <div 
-                      className={styles.emailMsgContent} 
-                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(m.body) }} 
+                    <div
+                      className={styles.emailMsgContent}
+                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(m.body) }}
                     />
                   </motion.div>
                 );
@@ -375,17 +375,17 @@ export default function EmailSystem({ user, isMobile, commsEnabled = true }) {
                 ⚠️ SURFACE WEB COMMS ARE CURRENTLY OFFLINE. MESSAGE SENDING IS DISABLED. ⚠️
               </div>
             )}
-            
+
             <div className={styles.emailReplyBox} style={{ opacity: !commsEnabled ? 0.6 : 1, pointerEvents: !commsEnabled ? 'none' : 'auto' }}>
-               <TextEditor 
-                 value={emailReplyBody} 
-                 onChange={setEmailReplyBody} 
-                 placeholder={!commsEnabled ? "System Offline..." : "Reply..."} 
-                 disabled={!commsEnabled}
-               />
-               <div style={{ textAlign: 'right', marginTop:'10px' }}>
-                  <button onClick={handleEmailReply} className={styles.btnPri} disabled={!commsEnabled}>Send Reply</button>
-               </div>
+              <TextEditor
+                value={emailReplyBody}
+                onChange={setEmailReplyBody}
+                placeholder={!commsEnabled ? "System Offline..." : "Reply..."}
+                disabled={!commsEnabled}
+              />
+              <div style={{ textAlign: 'right', marginTop: '10px' }}>
+                <button onClick={handleEmailReply} className={styles.btnPri} disabled={!commsEnabled}>Send Reply</button>
+              </div>
             </div>
           </>
         ) : (
@@ -399,86 +399,86 @@ export default function EmailSystem({ user, isMobile, commsEnabled = true }) {
       {/* Compose Email Modal */}
       {emailComposeOpen && (
         <div className={styles.modalBackdrop}>
-           <div className={styles.modal}>
-              <h3>New Message</h3>
-              <input 
-                className={styles.input} 
-                placeholder="To" 
-                value={emailForm.to} 
-                onChange={e => setEmailForm({...emailForm, to: e.target.value})} 
-                autoFocus
+          <div className={styles.modal}>
+            <h3>New Message</h3>
+            <input
+              className={styles.input}
+              placeholder="To"
+              value={emailForm.to}
+              onChange={e => setEmailForm({ ...emailForm, to: e.target.value })}
+              autoFocus
+            />
+            <input
+              className={styles.input}
+              placeholder="Subject"
+              value={emailForm.subject}
+              onChange={e => setEmailForm({ ...emailForm, subject: e.target.value })}
+            />
+            <div style={{ flex: 1, minHeight: '200px', display: 'flex', flexDirection: 'column' }}>
+              <TextEditor
+                value={emailForm.body}
+                onChange={(val) => setEmailForm({ ...emailForm, body: val })}
+                placeholder="Type your message here..."
               />
-              <input 
-                className={styles.input} 
-                placeholder="Subject" 
-                value={emailForm.subject} 
-                onChange={e => setEmailForm({...emailForm, subject: e.target.value})} 
-              />
-              <div style={{ flex: 1, minHeight: '200px', display: 'flex', flexDirection: 'column' }}>
-                <TextEditor 
-                  value={emailForm.body} 
-                  onChange={(val) => setEmailForm({...emailForm, body: val})} 
-                  placeholder="Type your message here..." 
-                />
-              </div>
-              <div className={styles.modalActions}>
-                 <button onClick={() => setEmailComposeOpen(false)} className={styles.btnSec}>Discard</button>
-                 <button className={styles.btnPri} onClick={handleEmailSend} disabled={!emailForm.to || !emailForm.subject}>Send</button>
-              </div>
-           </div>
+            </div>
+            <div className={styles.modalActions}>
+              <button onClick={() => setEmailComposeOpen(false)} className={styles.btnSec}>Discard</button>
+              <button className={styles.btnPri} onClick={handleEmailSend} disabled={!emailForm.to || !emailForm.subject}>Send</button>
+            </div>
+          </div>
         </div>
       )}
-      
+
       {/* Admin Identities Modal */}
       {adminIdentitiesOpen && (
         <div className={styles.modalBackdrop}>
-           <div className={styles.modal}>
-              <h3>Email Identities</h3>
-              <div className={styles.memberSelect} style={{ maxHeight: 300, overflowY: 'auto' }}>
-                 {adminEmailIdentities.length === 0 ? (
-                   <p className={styles.emptyStateText}>No identities created yet.</p>
-                 ) : (
-                   adminEmailIdentities.map(i => (
-                      <div key={i.id} className={styles.identityRow}>
-                         <span><b>{i.display_name}</b> <br/><small>{i.email_address}</small></span>
-                         <button 
-                           className={styles.btnSec} 
-                           onClick={async () => { 
-                             await api.delete(`/admin/emails/identities/${i.id}`); 
-                             loadEmails(); 
-                           }}
-                         >
-                           Delete
-                         </button>
-                      </div>
-                   ))
-                 )}
-              </div>
-              <div className={styles.modalSeparator} />
-              <h4>Create Identity</h4>
-              <input 
-                className={styles.input} 
-                placeholder="Name (e.g. Mayor)" 
-                value={adminIdentityForm.display} 
-                onChange={e => setAdminIdentityForm({...adminIdentityForm, display: e.target.value})} 
-              />
-              <input 
-                className={styles.input} 
-                placeholder="Email (e.g. mayor@city.gov)" 
-                value={adminIdentityForm.email} 
-                onChange={e => setAdminIdentityForm({...adminIdentityForm, email: e.target.value})} 
-              />
-              <div className={styles.modalActions}>
-                 <button onClick={() => setAdminIdentitiesOpen(false)} className={styles.btnSec}>Close</button>
-                 <button 
-                   className={styles.btnPri} 
-                   onClick={handleCreateIdentity}
-                   disabled={!adminIdentityForm.display || !adminIdentityForm.email}
-                 >
-                   Create
-                 </button>
-              </div>
-           </div>
+          <div className={styles.modal}>
+            <h3>Email Identities</h3>
+            <div className={styles.memberSelect} style={{ maxHeight: 300, overflowY: 'auto' }}>
+              {adminEmailIdentities.length === 0 ? (
+                <p className={styles.emptyStateText}>No identities created yet.</p>
+              ) : (
+                adminEmailIdentities.map(i => (
+                  <div key={i.id} className={styles.identityRow}>
+                    <span><b>{i.display_name}</b> <br /><small>{i.email_address}</small></span>
+                    <button
+                      className={styles.btnSec}
+                      onClick={async () => {
+                        await api.delete(`/admin/emails/identities/${i.id}`);
+                        loadEmails();
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className={styles.modalSeparator} />
+            <h4>Create Identity</h4>
+            <input
+              className={styles.input}
+              placeholder="Name (e.g. Mayor)"
+              value={adminIdentityForm.display}
+              onChange={e => setAdminIdentityForm({ ...adminIdentityForm, display: e.target.value })}
+            />
+            <input
+              className={styles.input}
+              placeholder="Email (e.g. mayor@city.gov)"
+              value={adminIdentityForm.email}
+              onChange={e => setAdminIdentityForm({ ...adminIdentityForm, email: e.target.value })}
+            />
+            <div className={styles.modalActions}>
+              <button onClick={() => setAdminIdentitiesOpen(false)} className={styles.btnSec}>Close</button>
+              <button
+                className={styles.btnPri}
+                onClick={handleCreateIdentity}
+                disabled={!adminIdentityForm.display || !adminIdentityForm.email}
+              >
+                Create
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
