@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../../core/api';
 import styles from '../../styles/RetainersView.module.css';
@@ -1001,6 +1001,8 @@ export default function RetainersView() {
   // Wizard State (for creating new retainers)
   const [wizardConfig, setWizardConfig] = useState({ isOpen: false, tier: 1, isMigration: false, isUpgrade: false, migrationId: null });
 
+  const sheetRef = useRef(null);
+
   useEffect(() => {
     let active = true;
     if (!character) {
@@ -1374,7 +1376,14 @@ export default function RetainersView() {
                   <React.Fragment key={r.id}>
                     <button
                       className={`${styles.rosterItem} ${selectedRetainerId === r.id ? styles.rosterItemActive : ''}`}
-                      onClick={() => setSelectedRetainerId(r.id)}
+                      onClick={() => {
+                        setSelectedRetainerId(r.id);
+                        if (window.innerWidth <= 768) {
+                          setTimeout(() => {
+                            sheetRef.current?.scrollIntoView({ behavior: 'smooth' });
+                          }, 100);
+                        }
+                      }}
                     >
                       <div className={styles.rosterAvatar}>
                         <Avatar retainerId={r.id} size={48} fallback="/img/ATT-logo(1).png" />
@@ -1423,6 +1432,7 @@ export default function RetainersView() {
 
         {/* Right Main Pane */}
         <motion.div
+          ref={sheetRef}
           className={styles.rightColumn}
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -1444,9 +1454,11 @@ export default function RetainersView() {
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <h2 className={styles.sheetName}>{selectedRetainer.name}</h2>
-                        <button onClick={handleRename} style={{ background: 'none', border: 'none', color: 'var(--tint)', cursor: 'pointer', padding: 0 }} title="Rename Retainer">
-                          <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>edit</span>
-                        </button>
+                        {isAdminBypass && (
+                          <button onClick={handleRename} style={{ background: 'none', border: 'none', color: 'var(--tint)', cursor: 'pointer', padding: 0 }} title="Rename Retainer">
+                            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>edit</span>
+                          </button>
+                        )}
                         {isAdminBypass && (
                           <button onClick={() => handleDelete(selectedRetainer.id)} style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer', padding: 0 }} title="Delete Retainer (Admin Only)">
                             <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>delete</span>
@@ -1457,16 +1469,19 @@ export default function RetainersView() {
                       {isEditing ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
                           <span className={styles.sheetTier}>Target Tier: </span>
-                          <select
-                            value={draftSheet.targetTier || selectedRetainer.tier}
-                            onChange={(e) => setDraftSheet(p => ({ ...p, targetTier: parseInt(e.target.value) }))}
-                            style={{ background: 'rgba(0,0,0,0.5)', color: '#fff', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '2px 8px', fontSize: '12px' }}
-                          >
-                            <option value={1} disabled={selectedRetainer.tier > 1}>Tier 1</option>
-                            <option value={2} disabled={selectedRetainer.tier > 2}>Tier 2</option>
-                            <option value={3} disabled={selectedRetainer.tier > 3}>Tier 3</option>
-                            {/* <option value={4} disabled={selectedRetainer.tier > 4}>Tier 4</option> */}
-                          </select>
+                          {isAdminBypass ? (
+                            <select
+                              value={draftSheet.targetTier || selectedRetainer.tier}
+                              onChange={(e) => setDraftSheet(p => ({ ...p, targetTier: parseInt(e.target.value) }))}
+                              style={{ background: 'rgba(0,0,0,0.5)', color: '#fff', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '2px 8px', fontSize: '12px' }}
+                            >
+                              <option value={1} disabled={selectedRetainer.tier > 1}>Tier 1</option>
+                              <option value={2} disabled={selectedRetainer.tier > 2}>Tier 2</option>
+                              <option value={3} disabled={selectedRetainer.tier > 3}>Tier 3</option>
+                            </select>
+                          ) : (
+                            <span style={{ color: '#fff', fontSize: '13px' }}>Tier {draftSheet.targetTier || selectedRetainer.tier}</span>
+                          )}
                         </div>
                       ) : (
                         <p className={styles.sheetTier}>Tier {selectedRetainer.tier} {currentSheet.isGhoul ? 'Ghoul' : 'Mortal'}</p>
@@ -1476,7 +1491,23 @@ export default function RetainersView() {
                     <div className={styles.sheetControls}>
                       {!isEditing ? (
                         <>
-                          <button className={styles.btnPrimary} onClick={startEditing} disabled={saving}>Edit Sheet</button>
+                          {isAdminBypass && (
+                            <button className={styles.btnPrimary} onClick={startEditing} disabled={saving}>Edit Sheet</button>
+                          )}
+                          {!isAdminBypass && !currentSheet.isGhoul && (
+                            <button 
+                              className={styles.btnPrimary} 
+                              onClick={() => {
+                                if (window.confirm("Ghouling enforces a Blood Bond (loss of free will) and Vitae addiction. Ghoul-specific Flaws will become available, and they will get 1 dot in a Discipline.\n\nAre you sure you want to make them a Ghoul?")) {
+                                  startEditing();
+                                  setTimeout(() => setDraftSheet(p => ({ ...p, isGhoul: true })), 0);
+                                }
+                              }} 
+                              disabled={saving}
+                            >
+                              Make Ghoul (Optional)
+                            </button>
+                          )}
                           <button className={`${styles.btnPrimary} ${styles.btnDanger}`} onClick={() => handleDelete(selectedRetainer.id)} disabled={saving}>Dismiss</button>
                         </>
                       ) : (
@@ -1497,8 +1528,8 @@ export default function RetainersView() {
 
                   {isEditing && (
                     <div style={{ marginTop: '16px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#fff', cursor: 'pointer', padding: '8px 12px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                        <input type="checkbox" checked={draftSheet.isGhoul} onChange={e => setDraftSheet(p => ({ ...p, isGhoul: e.target.checked }))} />
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#fff', cursor: isAdminBypass ? 'pointer' : 'default', padding: '8px 12px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                        <input type="checkbox" checked={draftSheet.isGhoul} disabled={!isAdminBypass} onChange={e => setDraftSheet(p => ({ ...p, isGhoul: e.target.checked }))} />
                         Is Ghoul? (Unlocks 1 Discipline Dot)
                       </label>
                       {draftSheet.isGhoul && (
@@ -1534,17 +1565,17 @@ export default function RetainersView() {
                 </div>
               </div>
 
-              <div className={styles.statsGrid}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', flex: 1, position: 'relative', zIndex: 10 }}>
 
                 {/* Attributes */}
                 <div className={styles.statsBox}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                     <h3 className={styles.statsBoxTitle} style={{ margin: 0 }}>Attributes</h3>
-                    {isEditing && (
+                    {isEditing && isAdminBypass && (
                       <button type="button" onClick={() => setDraftSheet(p => ({ ...p, ...getRandomStats(targetTier) }))} style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '4px', cursor: 'pointer', padding: '4px 8px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px' }}><span className="material-symbols-outlined" style={{ fontSize: '14px' }}>casino</span> Randomize</button>
                     )}
                   </div>
-                  <div className={styles.statsGrid}>
+                  <div className={styles.gridThreeColResponsive}>
                     {['Physical', 'Social', 'Mental'].map((cat, idx) => (
                       <div key={cat}>
                         <div style={{ fontSize: '10px', textTransform: 'uppercase', color: '#e0dedd', opacity: 0.6, marginBottom: '12px', letterSpacing: '1px', fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '4px' }}>{cat}</div>
@@ -1555,7 +1586,7 @@ export default function RetainersView() {
                               label={attr}
                               value={(currentSheet.attributes || {})[attr] || 1 /* (targetTier === 4 ? 2 : 1) */}
                               onDotClick={(level) => handleDotClick('attributes', attr, level)}
-                              disabled={!isEditing}
+                              disabled={!isEditing || !isAdminBypass}
                             />
                           ))}
                         </ul>
@@ -1567,7 +1598,7 @@ export default function RetainersView() {
                 {/* Skills */}
                 <div className={styles.statsBox}>
                   <h3 className={styles.statsBoxTitle}>Skills</h3>
-                  <div className={styles.statsGrid}>
+                  <div className={styles.gridThreeColResponsive}>
                     {Object.entries(SKILLS).map(([cat, skills]) => (
                       <div key={cat}>
                         <div style={{ fontSize: '10px', textTransform: 'uppercase', color: '#e0dedd', opacity: 0.6, marginBottom: '12px', letterSpacing: '1px', fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '4px' }}>{cat}</div>
@@ -1578,7 +1609,7 @@ export default function RetainersView() {
                               label={skill}
                               value={(currentSheet.skills || {})[skill] || 0}
                               onDotClick={(level) => handleDotClick('skills', skill, level)}
-                              disabled={!isEditing}
+                              disabled={!isEditing || !isAdminBypass}
                             />
                           ))}
                         </ul>
