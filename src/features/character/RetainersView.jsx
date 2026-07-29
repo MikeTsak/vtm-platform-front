@@ -426,7 +426,7 @@ const getValidationErrors = (draftSheet, tier) => {
 
 // --- MULTI-STEP WIZARD COMPONENT ---
 
-const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel, onConfirm, isMigration, isAdminBypass, initialName, initialSheet, minTier = 1, onChangeTier }) => {
+const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel, onConfirm, isMigration, isAdminBypass, initialName, initialSheet, minTier = 1, onChangeTier, saving }) => {
   const [step, setStep] = useState(1);
   const [name, setName] = useState('');
   const [draftSheet, setDraftSheet] = useState({ attributes: {}, skills: {}, disciplines: {}, advantages: [], flaws: [], isGhoul: false, powers: [] });
@@ -961,10 +961,10 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
             <button
               type="button"
               onClick={() => onConfirm(name, draftSheet, pendingAvatar)}
-              disabled={validationErrors.length > 0 || (!isAdminBypass && !canAfford)}
+              disabled={validationErrors.length > 0 || (!isAdminBypass && !canAfford) || saving}
               className={styles.btnNextStitch}
             >
-              {isMigration ? "Complete Migration" : `Confirm & Pay ${cost} XP`}
+              {saving ? "Processing..." : (isMigration ? "Complete Migration" : `Confirm & Pay ${cost} XP`)}
               <span className="material-symbols-outlined">military_tech</span>
             </button>
           )}
@@ -1322,6 +1322,7 @@ export default function RetainersView() {
         minTier={wizardConfig.isMigration ? (selectedRetainer?.tier || 1) : 1}
         onCancel={() => setWizardConfig({ isOpen: false, tier: 1, isMigration: false, migrationId: null })}
         onConfirm={handleWizardConfirm}
+        saving={saving}
       />
 
       <div className={styles.contentWrapper}>
@@ -1481,7 +1482,7 @@ export default function RetainersView() {
                             disabled={saving || validationErrors.length > 0 || !canAffordUpgrade}
                             style={{ backgroundColor: (validationErrors.length > 0 || !canAffordUpgrade) ? 'var(--surface-variant)' : '' }}
                           >
-                            {upgradeCost > 0 && !isAdminBypass ? `Pay ${upgradeCost} XP & Save` : 'Save Sheet'}
+                            {saving ? 'Saving...' : (upgradeCost > 0 && !isAdminBypass ? `Pay ${upgradeCost} XP & Save` : 'Save Sheet')}
                           </button>
                           <button className={`${styles.btnPrimary} ${styles.btnDanger}`} onClick={cancelEditing} disabled={saving}>Cancel</button>
                         </>
