@@ -37,7 +37,7 @@ export default function XpShop({ character, sheet, onSpend, onPickDiscipline }) 
 function BuyAttribute({ currentXp, attributes, onBuy }) {
     const options = useMemo(() => ['Strength','Dexterity','Stamina','Charisma','Manipulation','Composure','Intelligence','Wits','Resolve'], []);
     const [target, setTarget] = useState(options[0]);
-    const current = useMemo(() => attributes?.[target] || 0, [attributes, target]);
+    const current = useMemo(() => Number(attributes?.[target]) || 0, [attributes, target]);
     const next = current + 1;
     
     const cost = xp.calculateAttributeCost(next);
@@ -61,7 +61,7 @@ function BuyAttribute({ currentXp, attributes, onBuy }) {
 function BuySkill({ currentXp, skills, onBuy }) {
     const options = useMemo(() => Object.keys(SKILLS).flatMap(g => SKILLS[g]).sort(), []);
     const [target, setTarget] = useState(options[0]);
-    const current = useMemo(() => skills?.[target]?.dots || 0, [skills, target]);
+    const current = useMemo(() => Number(skills?.[target]?.dots) || 0, [skills, target]);
     const next = current + 1;
     
     const cost = xp.calculateSkillCost(next);
@@ -104,7 +104,7 @@ function BuySimple({ label, hint, cost, currentXp, options, onBuy }) {
 function BuyDiscipline({ currentXp, disciplines, clan, onPick }) {
   const [name, setName] = useState(ALL_DISCIPLINE_NAMES[0]);
   const [kind, setKind] = useState('clan');
-  const current = useMemo(() => disciplines?.[name] || 0, [disciplines, name]);
+  const current = useMemo(() => Number(disciplines?.[name]) || 0, [disciplines, name]);
   const next = current + 1;
 
   const cost = xp.calculateDisciplineCost(next, kind);
@@ -189,7 +189,7 @@ function BuyDots({ label, hint, costPerDot, currentXp, onBuy }) {
 }
 
 function BuyLevel({ label, hint, costMultiplier, currentLevel, currentXp, onBuy }) {
-  const next = (currentLevel || 0) + 1;
+  const next = Number(currentLevel || 0) + 1;
   const cost = xp.calculateBloodPotencyCost(next);
   const canAfford = currentXp >= cost && next <= 10;
 

@@ -884,9 +884,9 @@ export default function CharacterView({
   const updateTracker = (type, kind, delta) => {
     if (!isAdmin) return;
     if (type === 'health') {
-      setTempHealth(prev => ({ ...prev, [kind]: Math.max(0, (prev[kind] || 0) + delta) }));
+      setTempHealth(prev => ({ ...prev, [kind]: Math.max(0, (Number(prev[kind]) || 0) + delta) }));
     } else if (type === 'willpower') {
-      setTempWillpower(prev => ({ ...prev, [kind]: Math.max(0, (prev[kind] || 0) + delta) }));
+      setTempWillpower(prev => ({ ...prev, [kind]: Math.max(0, (Number(prev[kind]) || 0) + delta) }));
     }
   };
 
