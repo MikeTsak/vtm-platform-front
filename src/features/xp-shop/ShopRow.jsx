@@ -27,9 +27,9 @@ export function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, lef
     setWorking(true);
     try {
       await onBuy?.();
-      setConfirmOpen(false);
     } finally {
       setWorking(false);
+      setConfirmOpen(false);
     }
   }
 

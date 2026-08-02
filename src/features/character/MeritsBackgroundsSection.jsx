@@ -599,7 +599,7 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
                         style={{ backgroundColor: 'transparent', border: 'none', color: themeColor, fontSize: '20px', fontWeight: 600, outline: 'none', cursor: 'pointer' }}
                       >
                         {detailAllowed.map(n => (
-                          <option key={n} value={n} style={{ color: 'initial' }}>{glyf(n)} ({n})</option>
+                          <option key={n} value={n} style={{ color: 'var(--text-color)', backgroundColor: 'var(--surface-container-high)' }}>{glyf(n)} ({n})</option>
                         ))}
                       </select>
                       <span style={{ fontSize: '12px', letterSpacing: '0.1em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
