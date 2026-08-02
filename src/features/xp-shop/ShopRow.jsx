@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import styles from '../../styles/CharacterView.module.css';
 
 export function ConfirmModal({ title = 'Confirm Purchase', children, onConfirm, onCancel, busy = false }) {
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', display: 'grid', placeItems: 'center', zIndex: 50 }}>
+  return createPortal(
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', display: 'grid', placeItems: 'center', zIndex: 9999 }}>
       <div className={styles.card} style={{ maxWidth: 520, width: 'min(92vw,520px)' }}>
         <div className={styles.cardHead}><b>{title}</b></div>
         <div className={styles.grid} style={{ gap: 12 }}>{children}</div>
@@ -12,7 +13,8 @@ export function ConfirmModal({ title = 'Confirm Purchase', children, onConfirm, 
           <button className={styles.cta} onClick={onConfirm} disabled={busy}>{busy ? 'Working…' : 'Yes'}</button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
