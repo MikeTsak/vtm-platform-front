@@ -224,7 +224,7 @@ function ActiveTrackItem({ dt, isProject }) {
     defaultValues: { editTitle: displayTitle, editBody: dt.body },
   });
 
-  const canEdit = status === 'submitted';
+  const canEdit = status === 'submitted' || status === 'needs a scene';
 
   const updateMutation = useMutation({
     mutationFn: async (data) => {
@@ -266,8 +266,8 @@ function ActiveTrackItem({ dt, isProject }) {
       </div>
 
       {isEditing ? (
-        <form onSubmit={handleSubmit(onSave)} className={styles.editModeContainer} style={{ position: 'relative', zIndex: 10 }}>
-          <input className={styles.input} type="text" {...register('editTitle', { required: true })} />
+        <form onSubmit={handleSubmit(onSave)} onClick={(e) => e.stopPropagation()} className={styles.editModeContainer} style={{ position: 'relative', zIndex: 10 }}>
+          <input className={styles.input} type="text" placeholder={isProject ? "Project Title" : "Action Title (Optional)"} {...register('editTitle', { required: isProject })} />
           <textarea className={`${styles.input} ${styles.textarea}`} {...register('editBody', { required: true })} />
           <div className={styles.editActions}>
             <button type="button" className={styles.btnSecondary} onClick={() => { setIsEditing(false); reset(); }} disabled={updateMutation.isPending} data-cuelume-press="pop" data-cuelume-hover>Cancel</button>
