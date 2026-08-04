@@ -14,7 +14,11 @@ api.interceptors.request.use((config) => {
   
   // Add Idempotency-Key for state-modifying requests
   if (config.method && ['post', 'put', 'patch', 'delete'].includes(config.method.toLowerCase())) {
-    config.headers['Idempotency-Key'] = crypto.randomUUID();
+    if (window.crypto && window.crypto.randomUUID) {
+      config.headers['Idempotency-Key'] = window.crypto.randomUUID();
+    } else {
+      config.headers['Idempotency-Key'] = 'idemp-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+    }
   }
   
   return config;

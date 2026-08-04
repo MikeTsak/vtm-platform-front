@@ -1,6 +1,7 @@
 // src/components/admin/AdminCharactersTab.jsx
 import React, { useMemo, useState, useEffect } from 'react';
 import api from '../../core/api';
+import Inventory from '../inventory/Inventory';
 import styles from '../../styles/Admin.module.css';
 import generateVTMCharacterSheetPDF from '../../utils/pdfGenerator';
 import { ALL_DISCIPLINE_NAMES } from '../../data/disciplines';
@@ -207,32 +208,7 @@ export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEdit
     });
   };
 
-  // Inventory logic
-  const handleAddInventory = (char) => {
-    const itemName = window.prompt("Enter item name:");
-    if (!itemName) return;
-    updateSheetData(char, (data) => {
-      data.inventory = data.inventory || [];
-      data.inventory.push({ name: itemName, qty: 1, notes: '' });
-      return data;
-    });
-  };
 
-  const handleUpdateInventory = (char, index, field, value) => {
-    updateSheetData(char, (data) => {
-      if (data.inventory && data.inventory[index]) {
-        data.inventory[index][field] = value;
-      }
-      return data;
-    });
-  };
-
-  const handleRemoveInventory = (char, index) => {
-    updateSheetData(char, (data) => {
-      if (data.inventory) data.inventory.splice(index, 1);
-      return data;
-    });
-  };
 
   // --- GLOBAL ACTIONS ---
   const requestGlobalReset = (trackersToReset) => {
@@ -439,25 +415,7 @@ export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEdit
 
                     {/* Inventory Section */}
                     <div className={styles.charSectionBlock}>
-                      <div className={styles.charSectionTitleRow}>
-                        <h4 className={styles.charSectionTitle}>Inventory</h4>
-                        <button className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`} onClick={() => handleAddInventory(c)}>+ Add Item</button>
-                      </div>
-
-                      <div className={styles.charInventoryList}>
-                        {(!data.inventory || data.inventory.length === 0) && (
-                          <div className={styles.charInventoryEmpty}>No items in inventory.</div>
-                        )}
-
-                        {(data.inventory || []).map((item, idx) => (
-                          <div key={idx} className={styles.charInventoryRow}>
-                            <input type="text" className={styles.input} style={{ flex: 2 }} value={item.name} onChange={(e) => handleUpdateInventory(c, idx, 'name', e.target.value)} placeholder="Item Name" />
-                            <input type="number" className={styles.input} style={{ flex: '0 0 70px' }} value={item.qty} onChange={(e) => handleUpdateInventory(c, idx, 'qty', parseInt(e.target.value)||0)} title="Quantity" />
-                            <input type="text" className={styles.input} style={{ flex: 3 }} value={item.notes || ''} onChange={(e) => handleUpdateInventory(c, idx, 'notes', e.target.value)} placeholder="Notes/Effects" />
-                            <button className={`${styles.btn} ${styles.btnDanger} ${styles.btnSmall}`} onClick={() => handleRemoveInventory(c, idx)}>×</button>
-                          </div>
-                        ))}
-                      </div>
+                      <Inventory characterId={c.id} />
                     </div>
 
                     {/* Admin Notes Section */}
