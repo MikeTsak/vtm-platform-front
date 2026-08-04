@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import styles from '../../styles/InventoryItemModal.module.css';
 
 const InventoryItemModal = ({ item, onClose, onSave, busy }) => {
@@ -25,7 +26,7 @@ const InventoryItemModal = ({ item, onClose, onSave, busy }) => {
     }
   };
 
-  return (
+  const modalContent = (
     <div className={styles.modalOverlay} role="dialog">
       <div className={`${styles.card} ${styles.modalCard}`}>
         
@@ -110,6 +111,8 @@ const InventoryItemModal = ({ item, onClose, onSave, busy }) => {
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
 
 export default InventoryItemModal;
