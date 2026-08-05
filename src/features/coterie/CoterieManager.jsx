@@ -145,7 +145,7 @@ function ManualAdder({ onAdd }) {
     </>
   );
 }
-function MembersPicker({ members, setMembers, roster }) {
+function MembersPicker({ members, setMembers, roster, currentUser, currentUserRole }) {
   const [q, setQ] = useState('');
   const filtered = useMemo(() => {
     const s = q.trim();
@@ -216,13 +216,15 @@ function MembersPicker({ members, setMembers, roster }) {
                   </div>
                 )}
                 <span className={styles.currentMemberName}>{m.name}</span>
-                <button
-                  onClick={() => removeMember(m.id)}
-                  className={styles.removeButton}
-                  title="Remove"
-                >
-                  Remove
-                </button>
+                {!(currentUserRole !== 'admin' && currentUser?.id === m.id) && (
+                  <button
+                    onClick={() => removeMember(m.id)}
+                    className={styles.removeButton}
+                    title="Remove"
+                  >
+                    Remove
+                  </button>
+                )}
               </li>
             ))}
           </ul>
@@ -931,7 +933,7 @@ export default function Coteries() {
               </div>
             </Card>
 
-            <MembersPicker members={members} setMembers={setMembers} roster={users} />
+            <MembersPicker members={members} setMembers={setMembers} roster={users} currentUser={currentUser} currentUserRole={currentUserRole} />
 
             <BackgroundsEditor items={backgrounds} setItems={setBackgrounds} />
             <FlawsEditor items={flaws} setItems={setFlaws} />

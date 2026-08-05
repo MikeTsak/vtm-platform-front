@@ -368,6 +368,27 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
     setRituals(path, arr);
   };
 
+  const addMystic = (value) => {
+    const v = String(value || '').trim();
+    if (!v) return;
+    const next = JSON.parse(JSON.stringify(sheet));
+    next.mystic_powers = Array.isArray(next.mystic_powers) ? [...next.mystic_powers] : [];
+    next.mystic_powers.push(v);
+    writeSheet(next);
+  };
+  const updateMystic = (i, value) => {
+    const next = JSON.parse(JSON.stringify(sheet));
+    next.mystic_powers = Array.isArray(next.mystic_powers) ? [...next.mystic_powers] : [];
+    next.mystic_powers[i] = value;
+    writeSheet(next);
+  };
+  const removeMystic = (i) => {
+    const next = JSON.parse(JSON.stringify(sheet));
+    next.mystic_powers = Array.isArray(next.mystic_powers) ? [...next.mystic_powers] : [];
+    next.mystic_powers.splice(i, 1);
+    writeSheet(next);
+  };
+
   // ======= XP IMPACT =======
   const xpImpactRaw = useMemo(() => {
     let delta = 0;
@@ -831,6 +852,13 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
                 onEdit={(i,v)=>updateRitual('oblivion', i, v)}
                 onRemove={(i)=>removeRitual('oblivion', i)}
               />
+              <RitualSection
+                title="Mystic Powers (IDs)"
+                items={sheet?.mystic_powers || []}
+                onAdd={(v)=>addMystic(v)}
+                onEdit={(i,v)=>updateMystic(i, v)}
+                onRemove={(i)=>removeMystic(i)}
+              />
             </div>
           </section>
 
@@ -1152,5 +1180,27 @@ function normalizeSheet(s) {
   sheet.touchstones = Array.isArray(sheet.touchstones) ? sheet.touchstones : [];
   // default BP
   if (sheet.blood_potency == null) sheet.blood_potency = 1;
+  
+  // Advantages
+  sheet.advantages = sheet.advantages || { merits: [], flaws: [] };
+  sheet.advantages.merits = Array.isArray(sheet.advantages.merits) ? sheet.advantages.merits : [];
+  sheet.advantages.flaws = Array.isArray(sheet.advantages.flaws) ? sheet.advantages.flaws : [];
+  
+  sheet.mystic_powers = Array.isArray(sheet.mystic_powers) ? sheet.mystic_powers : [];
+  
+  // Backward compatibility: migrate from notes inside Mystic of the Void merit
+  const mysticMerit = sheet.advantages.merits.find(m => m.id === 'other__mystic_of_the_void');
+  if (mysticMerit && typeof mysticMerit.notes === 'string' && mysticMerit.notes.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(mysticMerit.notes);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        if (sheet.mystic_powers.length === 0) sheet.mystic_powers = parsed;
+      }
+      mysticMerit.notes = '';
+    } catch (e) {
+      // Ignore
+    }
+  }
+
   return sheet;
 }

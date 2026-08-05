@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import styles from '../../styles/InventoryItemModal.module.css';
+import AvatarCropperModal from '../../components/AvatarCropperModal';
 
 const InventoryItemModal = ({ item, onClose, onSave, busy }) => {
   const [name, setName] = useState(item?.name || '');
@@ -13,17 +14,39 @@ const InventoryItemModal = ({ item, onClose, onSave, busy }) => {
   // Researched State (Defaults to false for new items)
   const [researched, setResearched] = useState(item?.researched ? true : false);
 
+  const [cropImageSrc, setCropImageSrc] = useState(null);
+
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreviewUrl(reader.result);
-      };
-      reader.readAsDataURL(file);
-    } else {
-      setImagePreviewUrl(null);
+      if (file.size > 15 * 1024 * 1024) {
+        alert('File is too large. Maximum size is 15MB.');
+        return;
+      }
+      const objectUrl = URL.createObjectURL(file);
+      setCropImageSrc(objectUrl);
+      e.target.value = null; // reset input
     }
+  };
+
+  const handleCropCancel = () => {
+    if (cropImageSrc) {
+      URL.revokeObjectURL(cropImageSrc);
+    }
+    setCropImageSrc(null);
+  };
+
+  const handleCropComplete = (croppedFile) => {
+    if (cropImageSrc) {
+      URL.revokeObjectURL(cropImageSrc);
+    }
+    setCropImageSrc(null);
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreviewUrl(reader.result);
+    };
+    reader.readAsDataURL(croppedFile);
   };
 
   const modalContent = (
@@ -112,7 +135,18 @@ const InventoryItemModal = ({ item, onClose, onSave, busy }) => {
     </div>
   );
 
-  return createPortal(modalContent, document.body);
+  return (
+    <>
+      {createPortal(modalContent, document.body)}
+      {cropImageSrc && (
+        <AvatarCropperModal
+          imageSrc={cropImageSrc}
+          onCropComplete={handleCropComplete}
+          onCancel={handleCropCancel}
+        />
+      )}
+    </>
+  );
 };
 
 export default InventoryItemModal;

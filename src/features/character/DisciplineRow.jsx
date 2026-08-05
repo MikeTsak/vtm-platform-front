@@ -76,7 +76,7 @@ function PowerItem({ level, picked, unlocked, discName }) {
   );
 }
 
-function DisciplineRow({ name, level = 0, powers = [] }) {
+function DisciplineRow({ name, level = 0, powers = [], phantomPowers = [] }) {
   const icon = iconPath(name);
   const byLevel = new Map((powers || []).map(p => [Number(p.level), { id: p.id, name: p.name }]));
   const maxPicked = Math.max(0, ...Array.from(byLevel.keys()));
@@ -120,6 +120,22 @@ function DisciplineRow({ name, level = 0, powers = [] }) {
             />
           );
         })}
+        {phantomPowers.length > 0 && (
+          <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--border-color, #444)' }}>
+            <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Mystic of the Void
+            </div>
+            {phantomPowers.map((p, idx) => (
+              <PowerItem 
+                key={`phantom-${idx}`}
+                level={p.level}
+                picked={p}
+                unlocked={true}
+                discName={name}
+              />
+            ))}
+          </div>
+        )}
       </ul>
     </div>
   );

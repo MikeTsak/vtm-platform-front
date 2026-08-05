@@ -18,6 +18,7 @@ import TouchstonesConvictionsSection from './TouchstonesConvictionsSection';
 import AttributesSection from './AttributesSection';
 import SkillsDisplaySection from './SkillsDisplaySection';
 import DisciplinesDisplaySection from './DisciplinesDisplaySection';
+import RitualsDisplaySection from './RitualsDisplaySection';
 import MeritsBackgroundsSection from './MeritsBackgroundsSection';
 import Avatar from '../../components/Avatar';
 import MeritsFlawsDisplay from './MeritsFlawsDisplay';
@@ -221,6 +222,22 @@ function normalizeFromFlatAny(source) {
     merits: Array.isArray(flat.advantages?.merits) ? flat.advantages.merits : [],
     flaws: Array.isArray(flat.advantages?.flaws) ? flat.advantages.flaws : [],
   };
+
+  sheet.mystic_powers = Array.isArray(flat.mystic_powers) ? flat.mystic_powers : [];
+
+  // Backward compatibility: migrate from notes inside Mystic of the Void merit
+  const mysticMerit = sheet.advantages.merits.find(m => m.id === 'other__mystic_of_the_void');
+  if (mysticMerit && typeof mysticMerit.notes === 'string' && mysticMerit.notes.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(mysticMerit.notes);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        if (sheet.mystic_powers.length === 0) sheet.mystic_powers = parsed;
+      }
+      mysticMerit.notes = '';
+    } catch (e) {
+      // Ignore
+    }
+  }
 
   sheet.morality = flat.morality || {};
   sheet.humanity = flat.morality?.humanity ?? flat.humanity ?? undefined;
@@ -1155,33 +1172,26 @@ export default function CharacterView({
     ...(sheet.rituals?.blood_sorcery || []).map(r => r.id),
     ...(sheet.rituals?.oblivion || []).map(r => r.id),
   ]), [sheet.rituals]);
-  const knownPowerNamesAndIds = useMemo(() => {
+  const basePowerNamesAndIds = useMemo(() => {
     const powers = sheet.disciplinePowers || {};
     const known = new Set();
-
-    // Aggressive normalizer: strips spaces, underscores, dashes, and (errata) tags
     const superNorm = (v) => String(v ?? '').toLowerCase().replace(/\(errata\)/g, '').replace(/[\s_\-]+/g, '');
-
     Object.values(powers).flat().forEach(p => {
       if (p?.id) known.add(superNorm(p.id));
       if (p?.name) known.add(superNorm(p.name));
       if (p?.slug) known.add(superNorm(p.slug));
       if (p?.key) known.add(superNorm(p.key));
     });
-
-    const merits = sheet.advantages?.merits || [];
-    const mysticMerit = merits.find(m => m.id === 'other__mystic_of_the_void');
-    if (mysticMerit && mysticMerit.notes) {
-      try {
-        const ghostPowers = JSON.parse(mysticMerit.notes);
-        if (Array.isArray(ghostPowers)) {
-          ghostPowers.forEach(gp => known.add(superNorm(gp)));
-        }
-      } catch (e) { }
-    }
-
     return known;
-  }, [sheet.disciplinePowers, sheet.advantages?.merits]);
+  }, [sheet.disciplinePowers]);
+
+  const knownPowerNamesAndIds = useMemo(() => {
+    const known = new Set(basePowerNamesAndIds);
+    const superNorm = (v) => String(v ?? '').toLowerCase().replace(/\(errata\)/g, '').replace(/[\s_\-]+/g, '');
+    const mysticPowers = sheet.mystic_powers || [];
+    mysticPowers.forEach(gp => known.add(superNorm(gp)));
+    return known;
+  }, [basePowerNamesAndIds, sheet.mystic_powers]);
 
   function canLearnRitual(level) {
     const bsLevel = Number(sheet.disciplines?.['Blood Sorcery'] || 0);
@@ -1642,6 +1652,7 @@ export default function CharacterView({
               </div>
               <div style={{ flex: 1, padding: '24px' }}>
                 <DisciplinesDisplaySection sheet={sheet} />
+                <RitualsDisplaySection sheet={sheet} />
               </div>
               <div style={{ padding: '24px', marginTop: 'auto' }}>
                 <button
@@ -2018,6 +2029,7 @@ export default function CharacterView({
                               itemsObj={RITUALS?.blood_sorcery?.levels}
                               knownIds={knownRitualIds}
                               knownPowerNamesAndIds={knownPowerNamesAndIds}
+                              basePowerNamesAndIds={basePowerNamesAndIds}
                               canLearnFn={canLearnRitual}
                               onBuy={buyRitual}
                               xp={xp}
@@ -2041,6 +2053,7 @@ export default function CharacterView({
                               itemsObj={RITUALS?.oblivion?.levels}
                               knownIds={knownRitualIds}
                               knownPowerNamesAndIds={knownPowerNamesAndIds}
+                              basePowerNamesAndIds={basePowerNamesAndIds}
                               canLearnFn={canLearnCeremony}
                               onBuy={buyCeremony}
                               xp={xp}
@@ -2287,7 +2300,7 @@ function ritualPrereqStatus(rit, knownPowerSet) {
 }
 
 /* ===== Inline Ritual Picker ===== */
-function InlineRitualPicker({ type, itemsObj, knownIds, knownPowerNamesAndIds, canLearnFn, onBuy, xp, searchQuery }) {
+function InlineRitualPicker({ type, itemsObj, knownIds, knownPowerNamesAndIds, basePowerNamesAndIds, canLearnFn, onBuy, xp, searchQuery }) {
   const [expandedId, setExpandedId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState('');
@@ -2310,15 +2323,17 @@ function InlineRitualPicker({ type, itemsObj, knownIds, knownPowerNamesAndIds, c
       const cost = type === 'blood_sorcery' ? XP_RULES.ritual(r.__level) : XP_RULES.ceremony(r.__level);
       const afford = xp >= cost;
       const { unmet } = ritualPrereqStatus(r, knownPowerNamesAndIds);
-
+      const { unmet: baseUnmet } = ritualPrereqStatus(r, basePowerNamesAndIds || new Set());
       const isAvailable = !isOwned && isAllowed && unmet.length === 0;
+      const unlockedViaMystic = isAvailable && baseUnmet.length > 0;
 
       return {
         ...r,
         __cost: cost,
         __afford: afford,
         __flags: { owned: isOwned, unmet, allowed: isAllowed },
-        __available: isAvailable
+        __available: isAvailable,
+        __unlockedViaMystic: unlockedViaMystic
       };
     });
 
@@ -2380,6 +2395,11 @@ function InlineRitualPicker({ type, itemsObj, knownIds, knownPowerNamesAndIds, c
                     )}
                     <h3 className={isOwned || isAvailable ? styles.powerCardTitle : styles.powerCardTitleMuted}>
                       {r.name}
+                      {r.__unlockedViaMystic && (
+                        <span title="Unlocked via Mystic of the Void" style={{ marginLeft: '6px', fontSize: '16px', verticalAlign: 'middle', cursor: 'help' }}>
+                          🔮
+                        </span>
+                      )}
                     </h3>
                   </div>
                   <span className={isOwned || isAvailable ? styles.powerCardLevel : styles.powerCardLevelMuted}>

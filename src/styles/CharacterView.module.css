@@ -1174,6 +1174,7 @@ select.input:focus {
   content: "";
   position: absolute;
   inset: 0;
+  pointer-events: none;
   border-left: 3px solid transparent;
   border-radius: 12px;
 }

@@ -3,6 +3,7 @@ import styles from '../../styles/CharacterView.module.css';
 import { listAllItems } from '../../data/merits_flaws';
 import { MERITS_AND_FLAWS } from '../../data/merits_flaws';
 import { DISCIPLINES, ALL_DISCIPLINE_NAMES, iconPath } from '../../data/disciplines';
+import { RITUALS } from '../../data/rituals';
 import MiniSearch from 'minisearch';
 import { ShopRow } from '../xp-shop/ShopRow';
 
@@ -189,6 +190,53 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
     return out;
   }, [selectedAdvantage, knownPowerNamesAndIds]);
 
+  const meritAvailableOblivionGrouped = useMemo(() => {
+    const grouped = {};
+    meritAvailableOblivion.forEach(p => {
+      if (!grouped[p.level]) grouped[p.level] = [];
+      grouped[p.level].push(p);
+    });
+    return grouped;
+  }, [meritAvailableOblivion]);
+
+  const mysticUnlockedCeremonies = useMemo(() => {
+    if (!selectedAdvantage || selectedAdvantage.item.id !== 'other__mystic_of_the_void') return [];
+    if (typeof RITUALS === 'undefined' || !RITUALS.oblivion) return [];
+
+    const superNorm = (v) => String(v ?? '').toLowerCase().replace(/\(errata\)/g, '').replace(/[\s_\-]+/g, '');
+
+    const selectedNorms = detailMysticSelections.map(id => {
+      const p = meritAvailableOblivion.find(x => x.id === id);
+      return p ? superNorm(p.name) : '';
+    }).filter(Boolean);
+
+    if (selectedNorms.length === 0) return [];
+
+    const out = [];
+    Object.entries(RITUALS.oblivion.levels || {}).forEach(([lvl, list]) => {
+      list.forEach(c => {
+        const prereq = c.prereq || c.prerequisite || '';
+        if (!prereq || prereq === '—') return;
+        
+        let met = false;
+        if (prereq.includes(' or ')) {
+          const parts = prereq.split(/\s+or\s+/i);
+          met = parts.some(part => selectedNorms.includes(superNorm(part)));
+        } else if (prereq.includes(';')) {
+          const parts = prereq.split(';');
+          met = parts.some(part => selectedNorms.includes(superNorm(part)));
+        } else {
+          met = selectedNorms.includes(superNorm(prereq));
+        }
+
+        if (met) {
+          out.push({ ...c, level: lvl });
+        }
+      });
+    });
+    return out;
+  }, [selectedAdvantage, detailMysticSelections, meritAvailableOblivion]);
+
   // Reset detail state when selection changes
   useEffect(() => {
     if (selectedAdvantage) {
@@ -245,6 +293,11 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
 
     const meritsArr = nextSheet.advantages.merits;
     const bgsArr    = nextSheet.backgrounds;
+
+    if (merit.id === 'other__mystic_of_the_void' && options.notes && options.notes.length) {
+      const optsNotes = Array.isArray(options.notes) ? options.notes : [options.notes];
+      nextSheet.mystic_powers = Array.from(new Set([...(nextSheet.mystic_powers || []), ...optsNotes]));
+    }
 
     const sameMerits = meritsArr.filter(m => m.id === merit.id);
     const sameBgs    = bgsArr.filter(b => b.id === merit.id);
@@ -615,24 +668,68 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
                     )}
 
                     {isMystic && (
-                      <div style={{ marginTop: '16px' }}>
-                        <label style={{ fontSize: '12px', letterSpacing: '0.1em', color: 'var(--text-muted)' }}>Select {maxMystic} Oblivion Power(s):</label>
-                        <select
-                          multiple={maxMystic > 1}
-                          value={detailMysticSelections}
-                          onChange={e => {
-                            const opts = Array.from(e.target.selectedOptions, o => o.value);
-                            if (opts.length <= maxMystic) setDetailMysticSelections(opts);
-                          }}
-                          style={{ width: '100%', height: maxMystic > 1 ? '100px' : 'auto', marginTop: '8px', backgroundColor: 'var(--surface-lighter, #113f38)', color: 'var(--text-color)', border: '1px solid var(--border-color)', padding: '8px', borderRadius: '4px' }}
-                        >
-                          <option value="" disabled={maxMystic === 1}>-- Select Power(s) --</option>
-                          {meritAvailableOblivion.map(p => (
-                            <option key={p.id} value={p.id}>{p.name} (Level {p.level})</option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
+                        <div style={{ marginTop: '24px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
+                          <label style={{ fontSize: '12px', letterSpacing: '0.1em', color: 'var(--text-color)', textTransform: 'uppercase', fontWeight: 600 }}>Select {maxMystic} Oblivion Power(s):</label>
+                          <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            {Object.entries(meritAvailableOblivionGrouped).map(([lvl, powers]) => (
+                              <div key={lvl}>
+                                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px' }}>Level {lvl}</div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                  {powers.map(p => {
+                                    const isSelected = detailMysticSelections.includes(p.id);
+                                    const isDisabled = !isSelected && detailMysticSelections.length >= maxMystic;
+                                    return (
+                                      <div
+                                        key={p.id}
+                                        onClick={() => {
+                                          if (isSelected) {
+                                            setDetailMysticSelections(prev => prev.filter(id => id !== p.id));
+                                          } else if (!isDisabled) {
+                                            setDetailMysticSelections(prev => [...prev, p.id]);
+                                          }
+                                        }}
+                                        style={{
+                                          padding: '6px 12px',
+                                          borderRadius: '16px',
+                                          border: isSelected ? '1px solid var(--primary-container)' : '1px solid var(--border-color)',
+                                          backgroundColor: isSelected ? 'var(--primary-container)' : 'var(--surface-lighter, #113f38)',
+                                          color: isSelected ? 'white' : (isDisabled ? 'var(--text-muted)' : 'var(--text-color)'),
+                                          cursor: isDisabled ? 'not-allowed' : 'pointer',
+                                          fontSize: '14px',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '6px',
+                                          transition: 'all 0.2s',
+                                          opacity: isDisabled ? 0.5 : 1
+                                        }}
+                                      >
+                                        {isSelected && <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>check</span>}
+                                        {p.name}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          {mysticUnlockedCeremonies.length > 0 && (
+                            <div style={{ marginTop: '24px', backgroundColor: 'var(--surface-color, rgba(255,255,255,0.05))', padding: '12px', borderRadius: '4px' }}>
+                              <div style={{ fontSize: '12px', letterSpacing: '0.1em', color: 'var(--text-color)', textTransform: 'uppercase', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>auto_awesome</span>
+                                Potential Ceremonies Unlocked
+                              </div>
+                              <ul style={{ margin: 0, paddingLeft: '20px', color: 'var(--text-muted)', fontSize: '14px' }}>
+                                {mysticUnlockedCeremonies.map(c => (
+                                  <li key={c.id} style={{ marginBottom: '4px' }}>
+                                    <strong style={{ color: 'var(--text-color)' }}>{c.name}</strong> (Level {c.level}) - <span style={{ fontStyle: 'italic' }}>Prereq: {c.prereq || c.prerequisite}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                   </div>
                 </div>
