@@ -430,15 +430,16 @@ export default function Coteries() {
   const [tab, setTab] = useState('all'); // Default to the saved tab
 
   // --- Role Verification ---
-  const [currentUserRole, setCurrentUserRole] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
   useEffect(() => {
     let mounted = true;
     api.get('/auth/me')
-      .then(({ data }) => { if (mounted) setCurrentUserRole(data.user?.role); })
+      .then(({ data }) => { if (mounted) setCurrentUser(data.user); })
       .catch(() => {});
     return () => { mounted = false; };
   }, []);
 
+  const currentUserRole = currentUser?.role;
   const canCreate = currentUserRole === 'admin' || currentUserRole === 'courtuser';
 
   // --- Database State ---
@@ -458,7 +459,7 @@ export default function Coteries() {
   const [users, setUsers] = useState([]);
   useEffect(() => {
     let mounted = true;
-    api.get('/chat/users')
+    api.get('/chat/users?include_self=1')
       .then(({ data }) => { if (mounted) setUsers(data?.users || []); })
       .catch(() => { if (mounted) setUsers([]); });
     return () => { mounted = false; };
@@ -544,7 +545,11 @@ export default function Coteries() {
     setName('');
     setSelectedType('');
     setDomainId('');
-    setMembers([]);
+    if (currentUserRole !== 'admin' && currentUser) {
+      setMembers([{ id: currentUser.id, name: currentUser.display_name || currentUser.username || currentUser.email || `User #${currentUser.id}` }]);
+    } else {
+      setMembers([]);
+    }
     setPointsPerMember(1);
     setCoterieXP(0);
     setChasse(0);
@@ -690,6 +695,8 @@ export default function Coteries() {
     setPortillon(v => Math.max(base.portillon, v));
     setRequired({ ...(c?.required || {}) });
     setExtras([...(c?.extras || [])]);
+    const typeFlaws = c?.flaws ? Object.entries(c.flaws).map(([k, v]) => ({ name: k, dots: Number(v) })) : [];
+    setFlaws(typeFlaws);
     // Note: We don't clear domainId here, we let the user choose if they want it
   };
 
