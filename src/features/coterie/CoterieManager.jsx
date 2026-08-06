@@ -148,28 +148,30 @@ function ManualAdder({ onAdd }) {
 function MembersPicker({ members, setMembers, roster, currentUser, currentUserRole }) {
   const [q, setQ] = useState('');
   const filtered = useMemo(() => {
-    const s = q.trim();
-    if (!s) return roster || [];
-    const ms = new MiniSearch({ fields: ['display_name', 'char_name'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
-    ms.addAll(roster || []);
-    const results = ms.search(s);
-    const idSet = new Set(results.map(r => r.id));
-    return (roster || []).filter(u => idSet.has(u.id));
+    const validRoster = (roster || []).filter(u => !!u.char_id);
+    const s = q.trim().toLowerCase();
+    if (!s) return validRoster;
+    return validRoster.filter(u => {
+      const d = (u.display_name || '').toLowerCase();
+      const c = (u.char_name || '').toLowerCase();
+      return d.includes(s) || c.includes(s);
+    });
   }, [q, roster]);
 
   function addMember(u) {
     if (!u) return;
     if (members.some((m) => m.id === u.id)) return;
-    setMembers([...members, { id: u.id, name: u.display_name || u.char_name || `User #${u.id}` }]);
+    setMembers([...members, { id: u.id, name: u.char_name || u.display_name || `User #${u.id}` }]);
   }
-  function addManual(name) {
-    const n = (name || '').trim();
-    if (!n) return;
-    const pseudoId = -Date.now();
-    setMembers([...members, { id: pseudoId, name: n }]);
-  }
+
   function removeMember(id) {
     setMembers(members.filter((m) => m.id !== id));
+  }
+
+  function getDisplayName(m) {
+    const r = (roster || []).find(u => u.id === m.id);
+    if (r) return r.char_name || r.display_name || m.name;
+    return m.name;
   }
 
   return (
@@ -191,15 +193,10 @@ function MembersPicker({ members, setMembers, roster, currentUser, currentUserRo
             className={styles.memberListItem}
             title="Add member"
           >
-            <b>{u.display_name}</b>{u.char_name ? ` — ${u.char_name}` : ''}{u.clan ? ` (${u.clan})` : ''}
+            <b>{u.char_name || u.display_name}</b>{u.char_name && u.display_name && u.char_name !== u.display_name ? ` — ${u.display_name}` : ''}{u.clan ? ` (${u.clan})` : ''}
           </button>
         ))}
         {!filtered.length && <Muted>No results.</Muted>}
-      </div>
-
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-        <Muted>Or add manual:</Muted>
-        <ManualAdder onAdd={addManual} />
       </div>
 
       <div>
@@ -215,7 +212,7 @@ function MembersPicker({ members, setMembers, roster, currentUser, currentUserRo
                     <Avatar userId={m.id} size="100%" style={{ width: '100%', height: '100%' }} />
                   </div>
                 )}
-                <span className={styles.currentMemberName}>{m.name}</span>
+                <span className={styles.currentMemberName}>{getDisplayName(m)}</span>
                 {!(currentUserRole !== 'admin' && currentUser?.id === m.id) && (
                   <button
                     onClick={() => removeMember(m.id)}
@@ -442,7 +439,7 @@ export default function Coteries() {
   }, []);
 
   const currentUserRole = currentUser?.role;
-  const canCreate = currentUserRole === 'admin' || currentUserRole === 'courtuser';
+  const canCreate = !!currentUser;
 
   // --- Database State ---
   const [coteriesList, setCoteriesList] = useState([]);
@@ -548,7 +545,9 @@ export default function Coteries() {
     setSelectedType('');
     setDomainId('');
     if (currentUserRole !== 'admin' && currentUser) {
-      setMembers([{ id: currentUser.id, name: currentUser.display_name || currentUser.username || currentUser.email || `User #${currentUser.id}` }]);
+      const me = users.find(u => u.id === currentUser.id);
+      const myName = me?.char_name || me?.display_name || currentUser.char_name || currentUser.display_name || currentUser.username || currentUser.email || `User #${currentUser.id}`;
+      setMembers([{ id: currentUser.id, name: myName }]);
     } else {
       setMembers([]);
     }
