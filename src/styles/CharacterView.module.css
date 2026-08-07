@@ -1655,20 +1655,20 @@ select.input:focus {
   cursor: pointer;
 }
 
-.superficial::after {
-  content: "/";
+.superficial {
   color: var(--tint);
   font-family: 'JetBrains Mono', monospace;
-  font-size: 18px;
+  font-size: 14px;
   font-weight: bold;
+  line-height: 1;
 }
 
-.aggravated::after {
-  content: "X";
+.aggravated {
   color: var(--tint);
   font-family: 'JetBrains Mono', monospace;
-  font-size: 18px;
+  font-size: 14px;
   font-weight: bold;
+  line-height: 1;
 }
 
 .hungerDroplet {
