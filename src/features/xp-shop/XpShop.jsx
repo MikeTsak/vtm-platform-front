@@ -108,7 +108,7 @@ function BuyDiscipline({ currentXp, disciplines, clan, onPick }) {
   const next = current + 1;
 
   const cost = xp.calculateDisciplineCost(next, kind);
-  const canAfford = currentXp >= cost && next <= 5;
+  const canAfford = currentXp >= cost && next <= 10;
 
   return (
     <div className={`${styles.card} ${!canAfford ? styles.disabled : ''}`}>

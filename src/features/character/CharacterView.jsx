@@ -1921,8 +1921,8 @@ export default function CharacterView({
                         )}
                         {inClanDisciplines.filter(name => matchDiscipline(name)).map(name => {
                           const current = Number(sheet.disciplines?.[name] || 0);
-                          const next = Math.min(current + 1, 5);
-                          const canRaise = next > 0 && next <= 5;
+                          const next = Math.min(current + 1, 10);
+                          const canRaise = next > 0 && next <= 10;
                           const cost = XP_RULES.disciplineClan(next);
                           const afford = xp >= cost;
                           const isKnown = current > 0;
@@ -1972,7 +1972,7 @@ export default function CharacterView({
                         )}
                         {outOfClanDisciplines.filter(name => matchDiscipline(name)).map(name => {
                           const current = Number(sheet.disciplines?.[name] || 0);
-                          const next = Math.min(current + 1, 5);
+                          const next = Math.min(current + 1, 10);
                           const kind = disciplineKindFor(ch, name);
                           const isKnown = current > 0;
                           const title = isKnown ? `${name} (${current})` : name;
