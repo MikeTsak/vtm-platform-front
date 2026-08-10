@@ -85,6 +85,8 @@ export default function AdminDowntimesTab() {
   const [opening, setOpening]       = useState('');
   const [projectDeadline, setProjectDeadline] = useState('');
   const [masterPhase, setMasterPhase] = useState('standard'); 
+  const [massReleaseMode, setMassReleaseMode] = useState(false);
+  const [massReleaseDate, setMassReleaseDate] = useState('');
 
   const [viewMode, setViewMode] = useState('standard');
 
@@ -114,6 +116,8 @@ export default function AdminDowntimesTab() {
         setOpening(ymd(data?.downtime_opening || ''));
         setProjectDeadline(ymd(data?.project_deadline || ''));
         setMasterPhase(data?.downtime_active_phase || 'standard'); 
+        setMassReleaseMode(data?.downtime_mass_release_mode === 'true');
+        setMassReleaseDate(data?.downtime_mass_release_date ? new Date(data.downtime_mass_release_date).toISOString().slice(0, 16) : '');
       } catch (e) {
         if (mounted) setCfgErr('Failed to load downtime config.');
       } finally {
@@ -132,12 +136,16 @@ export default function AdminDowntimesTab() {
         downtime_deadline: deadline || null,
         downtime_opening: opening || null,
         project_deadline: projectDeadline || null,
-        downtime_active_phase: phaseToSave 
+        downtime_active_phase: phaseToSave,
+        downtime_mass_release_mode: massReleaseMode,
+        downtime_mass_release_date: massReleaseDate || null
       });
       setDeadline(ymd(data?.downtime_deadline || ''));
       setOpening(ymd(data?.downtime_opening || ''));
       setProjectDeadline(ymd(data?.project_deadline || ''));
       setMasterPhase(data?.downtime_active_phase || 'standard');
+      setMassReleaseMode(data?.downtime_mass_release_mode === 'true');
+      setMassReleaseDate(data?.downtime_mass_release_date ? new Date(data.downtime_mass_release_date).toISOString().slice(0, 16) : '');
       setCfgInfo('Configuration saved successfully.');
       setTimeout(() => setCfgInfo(''), 3000);
     } catch (e) {
@@ -161,6 +169,8 @@ export default function AdminDowntimesTab() {
         setOpening(ymd(data?.downtime_opening || ''));
         setProjectDeadline(ymd(data?.project_deadline || ''));
         setMasterPhase(data?.downtime_active_phase || 'standard');
+        setMassReleaseMode(data?.downtime_mass_release_mode === 'true');
+        setMassReleaseDate(data?.downtime_mass_release_date ? new Date(data.downtime_mass_release_date).toISOString().slice(0, 16) : '');
       })
       .catch(() => setCfgErr('Failed to reload config.'))
       .finally(() => setCfgLoading(false));
@@ -346,6 +356,28 @@ export default function AdminDowntimesTab() {
                 <span>Long-Term Project Deadline</span>
                 <input type="date" className={styles.input} value={projectDeadline} onChange={(e) => setProjectDeadline(e.target.value)} />
              </label>
+          )}
+        </div>
+
+        <div style={{ background: 'var(--glass-inset)', padding: '1.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)', marginTop: '2rem', boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.4)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <div>
+              <h4 style={{ margin: '0 0 6px 0', fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-color)' }}>Mass Release Mode</h4>
+              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                Hides GM Resolutions until the target date is reached. Players will see a countdown.
+              </p>
+            </div>
+            <label className={styles.statusToggle} style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', cursor: 'pointer', background: massReleaseMode ? 'rgba(77,166,255,0.1)' : 'var(--glass-inset)', padding: '0.6rem 1.2rem', borderRadius: 'var(--radius-sm)', border: `1px solid ${massReleaseMode ? '#4da6ff' : 'var(--glass-border)'}` }}>
+              <input type="checkbox" checked={massReleaseMode} onChange={(e) => setMassReleaseMode(e.target.checked)} style={{ accentColor: '#4da6ff', width: '16px', height: '16px' }} />
+              <span style={{ fontWeight: 700, color: massReleaseMode ? '#4da6ff' : 'var(--text-muted)' }}>{massReleaseMode ? 'Active' : 'Disabled'}</span>
+            </label>
+          </div>
+          
+          {massReleaseMode && (
+            <label className={styles.labeledInput}>
+              <span>Mass Release Date & Time</span>
+              <input type="datetime-local" className={styles.input} value={massReleaseDate} onChange={(e) => setMassReleaseDate(e.target.value)} />
+            </label>
           )}
         </div>
 

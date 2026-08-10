@@ -172,9 +172,11 @@ export default function AdminMasterTab() {
     setChatSchedule(prev => {
       const next = { ...prev };
       if (next[dateStr] === undefined) {
-        next[dateStr] = true;
-      } else if (next[dateStr] === true) {
+        next[dateStr] = '17:00';
+      } else if (next[dateStr] === '17:00') {
         next[dateStr] = false;
+      } else if (next[dateStr] === false) {
+        next[dateStr] = true;
       } else {
         delete next[dateStr];
       }
@@ -212,10 +214,16 @@ export default function AdminMasterTab() {
             let bg = 'var(--glass-inset)';
             let border = '1px solid var(--glass-border)';
             let color = 'var(--text-primary)';
+            let label = d;
             if (state === true) {
               bg = 'rgba(0, 230, 118, 0.15)';
               border = '1px solid var(--color-success)';
               color = 'var(--color-success)';
+            } else if (state === '17:00') {
+              bg = 'rgba(0, 150, 255, 0.15)';
+              border = '1px solid #0096FF';
+              color = '#0096FF';
+              label = <>{d}<br/><span style={{fontSize: '0.7rem'}}>5pm</span></>;
             } else if (state === false) {
               bg = 'rgba(255, 77, 77, 0.15)';
               border = '1px solid var(--color-error)';
@@ -231,7 +239,7 @@ export default function AdminMasterTab() {
                   userSelect: 'none', transition: 'all 0.2s', fontWeight: state !== undefined ? 'bold' : 'normal'
                 }}
               >
-                {d}
+                {label}
               </div>
             );
           })}
@@ -351,7 +359,7 @@ export default function AdminMasterTab() {
       <div style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', padding: '2rem', boxShadow: 'var(--glass-shadow)' }}>
         <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
           <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-color)' }}>🗓️ Comms Schedule</h4>
-          <p style={{ margin: '5px 0 0 0', color: 'var(--text-secondary)' }}>Click days to toggle exceptions: <span style={{ color: 'var(--color-success)' }}>Green = Force ON</span>, <span style={{ color: 'var(--color-error)' }}>Red = Force OFF</span>. If blank, it follows the Master Killswitch above.</p>
+          <p style={{ margin: '5px 0 0 0', color: 'var(--text-secondary)' }}>Click days to toggle exceptions: <span style={{ color: '#0096FF' }}>Blue = 5PM Start</span>, <span style={{ color: 'var(--color-error)' }}>Red = Force OFF</span>, <span style={{ color: 'var(--color-success)' }}>Green = Midnight Start</span>. If blank, it follows the Master Killswitch above.</p>
         </div>
         {renderCalendar()}
       </div>

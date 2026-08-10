@@ -297,7 +297,7 @@ function ActiveTrackItem({ dt, isProject }) {
   );
 }
 
-function ArchiveItem({ dt, isProject }) {
+function ArchiveItem({ dt, isProject, isMassReleaseActive, massReleaseCountdown }) {
   const status = (dt.status || 'resolved').toLowerCase();
   const displayTitle = isProject ? dt.title.replace('[PROJECT] ', '') : dt.title;
 
@@ -327,14 +327,28 @@ function ArchiveItem({ dt, isProject }) {
       <div className={styles.archiveCardBody}>
         <p className={styles.archiveCardText}>{dt.body}</p>
 
-        {dt.gm_resolution && (
+        {isMassReleaseActive && ['resolved', 'approved', 'rejected', 'resolved in scene'].includes(status) ? (
+          <div className={styles.resolutionBox} style={{ textAlign: 'center', opacity: 0.85, padding: '1.5rem', background: 'var(--glass-inset)' }}>
+             <h4 style={{ color: '#4da6ff', marginBottom: '8px', marginTop: 0 }}>Resolution Pending Mass Release</h4>
+             <p className={styles.resolutionText} style={{ fontFamily: 'Fira Code, monospace', fontSize: '1.1rem' }}>
+               Releasing in {(() => {
+                  if (!massReleaseCountdown) return '00d 00h 00m 00s';
+                  const d = String(massReleaseCountdown.days).padStart(2, '0');
+                  const h = String(massReleaseCountdown.hours).padStart(2, '0');
+                  const m = String(massReleaseCountdown.minutes).padStart(2, '0');
+                  const s = String(massReleaseCountdown.seconds).padStart(2, '0');
+                  return `${d}d ${h}h ${m}m ${s}s`;
+               })()}
+             </p>
+          </div>
+        ) : dt.gm_resolution ? (
           <div className={styles.resolutionBox}>
             <span className={`${styles.resolutionLabel} ${status === 'rejected' ? styles.resolutionLabelRejected : styles.resolutionLabelApproved}`}>
               GM Resolution:
             </span>
             <p className={styles.resolutionText}>{dt.gm_resolution}</p>
           </div>
-        )}
+        ) : null}
       </div>
     </motion.div>
   );
@@ -401,6 +415,9 @@ export default function DownTimes() {
 
   const projectCountdown = useCountdown(configData?.project_deadline || '', true);
   projectCountdown.targetDate = configData?.project_deadline || '';
+
+  const massReleaseCountdown = useCountdown(configData?.downtime_mass_release_date || '', false);
+  const isMassReleaseActive = configData?.downtime_mass_release_mode === 'true' && !massReleaseCountdown.isPast;
 
   // Data processing
   const mine = useMemo(() => {
@@ -617,7 +634,7 @@ export default function DownTimes() {
               </div>
             ) : (
               archiveList.map(dt => (
-                <ArchiveItem key={dt.id} dt={dt} isProject={viewMode === 'project'} />
+                <ArchiveItem key={dt.id} dt={dt} isProject={viewMode === 'project'} isMassReleaseActive={isMassReleaseActive} massReleaseCountdown={massReleaseCountdown} />
               ))
             )}
           </div>
