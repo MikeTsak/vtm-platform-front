@@ -359,26 +359,33 @@ export default function AdminDowntimesTab() {
           )}
         </div>
 
-        <div style={{ background: 'var(--glass-inset)', padding: '1.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)', marginTop: '2rem', boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.4)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <div>
-              <h4 style={{ margin: '0 0 6px 0', fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-color)' }}>Mass Release Mode</h4>
-              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                Hides GM Resolutions until the target date is reached. Players will see a countdown.
-              </p>
-            </div>
-            <label className={styles.statusToggle} style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', cursor: 'pointer', background: massReleaseMode ? 'rgba(77,166,255,0.1)' : 'var(--glass-inset)', padding: '0.6rem 1.2rem', borderRadius: 'var(--radius-sm)', border: `1px solid ${massReleaseMode ? '#4da6ff' : 'var(--glass-border)'}` }}>
-              <input type="checkbox" checked={massReleaseMode} onChange={(e) => setMassReleaseMode(e.target.checked)} style={{ accentColor: '#4da6ff', width: '16px', height: '16px' }} />
-              <span style={{ fontWeight: 700, color: massReleaseMode ? '#4da6ff' : 'var(--text-muted)' }}>{massReleaseMode ? 'Active' : 'Disabled'}</span>
-            </label>
+        <div style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', padding: '2rem', boxShadow: 'var(--glass-shadow)', marginTop: '2rem' }}>
+          <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
+            <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-color)' }}>🕒 Mass Release System</h4>
+            <p style={{ margin: '5px 0 0 0', color: 'var(--text-secondary)' }}>Automates the simultaneous release of all GM resolutions to players.</p>
           </div>
-          
-          {massReleaseMode && (
-            <label className={styles.labeledInput}>
-              <span>Mass Release Date & Time</span>
-              <input type="datetime-local" className={styles.input} value={massReleaseDate} onChange={(e) => setMassReleaseDate(e.target.value)} />
-            </label>
-          )}
+
+          <div onClick={() => setMassReleaseMode(!massReleaseMode)} style={{ background: 'var(--glass-inset)', border: `2px solid ${massReleaseMode ? '#4da6ff' : 'var(--glass-border)'}`, borderRadius: 'var(--radius-md)', padding: '1.5rem', cursor: 'pointer', transition: 'all 0.3s ease', display: 'flex', flexDirection: 'column', gap: '1.5rem', boxShadow: massReleaseMode ? '0 0 20px rgba(77,166,255,0.1)' : 'none' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: massReleaseMode ? '#4da6ff' : 'var(--glass-border)', boxShadow: massReleaseMode ? '0 0 15px #4da6ff' : 'none', animation: massReleaseMode ? 'pulseGlow 2s infinite' : 'none' }} />
+                <h3 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--text-color)' }}>Mass Release Mode</h3>
+              </div>
+              <div style={{ position: 'relative', width: '60px', height: '32px', background: massReleaseMode ? '#4da6ff' : 'var(--glass-border)', borderRadius: '32px', transition: 'background 0.3s ease' }}>
+                <div style={{ position: 'absolute', top: '4px', left: massReleaseMode ? '32px' : '4px', width: '24px', height: '24px', background: 'var(--text-color)', borderRadius: '50%', transition: 'left 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }} />
+              </div>
+            </div>
+            
+            {massReleaseMode && (
+              <div style={{ background: 'rgba(77,166,255,0.05)', borderRadius: '8px', padding: '15px', borderLeft: `4px solid #4da6ff` }} onClick={e => e.stopPropagation()}>
+                <h4 style={{ margin: '0 0 10px 0', color: '#4da6ff', fontSize: '1.1rem', textTransform: 'uppercase', letterSpacing: '1px' }}>System Active</h4>
+                <label className={styles.labeledInput}>
+                  <span style={{ color: 'var(--text-primary)' }}>Resolutions become visible on this date:</span>
+                  <input type="datetime-local" className={styles.input} value={massReleaseDate} onChange={(e) => setMassReleaseDate(e.target.value)} style={{ marginTop: '8px' }} />
+                </label>
+              </div>
+            )}
+          </div>
         </div>
 
         <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', borderTop: '1px solid var(--glass-border)', paddingTop: '1.5rem' }}>
@@ -397,6 +404,18 @@ export default function AdminDowntimesTab() {
           </h4>
           <div className={styles.subtle}>Inspect, evaluate, modify, and process narrative logs.</div>
         </div>
+
+        {massReleaseMode && (
+          <div style={{ background: 'rgba(77,166,255,0.1)', border: '1px solid rgba(77,166,255,0.3)', borderRadius: 'var(--radius-md)', padding: '15px', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <div style={{ fontSize: '1.8rem' }}>🕒</div>
+            <div>
+              <h4 style={{ margin: '0 0 5px 0', color: '#4da6ff', fontSize: '1.1rem' }}>Mass Release Active</h4>
+              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+                Resolutions you write are currently hidden from players. They will be broadcasted on: <strong style={{ color: 'var(--text-primary)' }}>{massReleaseDate ? new Date(massReleaseDate).toLocaleString() : 'No date set'}</strong>.
+              </p>
+            </div>
+          </div>
+        )}
 
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem', alignItems: 'end', marginBottom: '1.5rem' }}>
           <label className={styles.labeledInput}>

@@ -11,7 +11,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { toast } from 'sonner';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 function useCountdown(targetDate, isEndOfDay = false) {
   const [now, setNow] = useState(new Date().getTime());
@@ -397,8 +397,8 @@ export default function DownTimes() {
   
   // Set viewMode based on config when it loads
   useEffect(() => {
-    if (configData?.downtime_active_phase === 'project') {
-      setViewMode('project');
+    if (configData?.downtime_active_phase) {
+      setViewMode(configData.downtime_active_phase);
     }
   }, [configData?.downtime_active_phase]);
 
@@ -508,9 +508,41 @@ export default function DownTimes() {
               Long-Term Projects
             </button>
           </div>
+
+          <AnimatePresence>
+            {configData?.downtime_active_phase && configData.downtime_active_phase !== viewMode && (
+              <motion.div
+                layout
+                initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                animate={{ opacity: 1, height: 'auto', marginTop: '1.2rem' }}
+                exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                transition={{ duration: 0.3, ease: 'easeInOut' }}
+                style={{ overflow: 'hidden', display: 'flex', justifyContent: 'center' }}
+              >
+                <div style={{ padding: '0.8rem 1.2rem', background: 'rgba(255,204,0,0.1)', border: '1px solid rgba(255,204,0,0.3)', borderRadius: 'var(--radius-sm)', color: '#ffcc00', fontSize: '0.95rem', display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: '500' }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>info</span>
+                  <span>The Storyteller has designated <strong>{configData.downtime_active_phase === 'project' ? 'Long-Term Projects' : 'Monthly Actions'}</strong> as the current active phase.</span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.section>
 
-        {/* Deadlines Row */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={viewMode}
+            layout
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            variants={{
+              hidden: { opacity: 0 },
+              visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
+              exit: { opacity: 0, transition: { duration: 0.2 } }
+            }}
+            style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}
+          >
+            {/* Deadlines Row */}
         <motion.section 
           className={styles.deadlinesRow}
           variants={{
@@ -559,6 +591,10 @@ export default function DownTimes() {
             {!isCharActive ? (
               <div className={styles.alert} style={{ textAlign: 'center', fontWeight: 'bold' }}>
                 Your character is waiting for ST approval. You cannot submit actions yet.
+              </div>
+            ) : configData?.downtime_active_phase && configData.downtime_active_phase !== viewMode ? (
+              <div className={styles.alert} style={{ textAlign: 'center', fontWeight: 'bold', background: 'rgba(255,204,0,0.1)', color: '#ffcc00', border: '1px solid rgba(255,204,0,0.3)' }}>
+                The Storyteller has currently closed submissions for {viewMode === 'project' ? 'Long-Term Projects' : 'Monthly Actions'}.
               </div>
             ) : (
               <SubmitCard quota={quota} isProject={viewMode === 'project'} />
@@ -639,6 +675,8 @@ export default function DownTimes() {
             )}
           </div>
         </motion.section>
+          </motion.div>
+        </AnimatePresence>
       </motion.main>
     </Skeleton>
   );
