@@ -1,6 +1,7 @@
 // src/components/admin/AdminDowntimesTab.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import api from "../../core/api";
+import { formatEuDate } from '../../utils/dateFormatter';
 import styles from '../../styles/Admin.module.css';
 
 /* ---------- VTM Lookups ---------- */
@@ -19,12 +20,7 @@ function niceDate(d) {
   if (!d) return '—';
   const dt = new Date(d);
   if (isNaN(dt.getTime())) return '—';
-  try {
-    return dt.toLocaleString('en-GB', {
-      year: 'numeric', month: 'short', day: 'numeric',
-      hour: '2-digit', minute: '2-digit'
-    });
-  } catch { return dt.toISOString(); }
+  return formatEuDate(d);
 }
 
 function ymd(d) {
@@ -411,7 +407,7 @@ export default function AdminDowntimesTab() {
             <div>
               <h4 style={{ margin: '0 0 5px 0', color: '#4da6ff', fontSize: '1.1rem' }}>Mass Release Active</h4>
               <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-                Resolutions you write are currently hidden from players. They will be published on: <strong style={{ color: 'var(--text-primary)' }}>{massReleaseDate ? new Date(massReleaseDate).toLocaleString() : 'No date set'}</strong>.
+                Resolutions you write are currently hidden from players. They will be published on: <strong style={{ color: 'var(--text-primary)' }}>{massReleaseDate ? formatEuDate(massReleaseDate) : 'No date set'}</strong>.
               </p>
             </div>
           </div>

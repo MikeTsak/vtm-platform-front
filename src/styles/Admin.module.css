@@ -631,6 +631,10 @@
   transition: border-color 0.14s, box-shadow 0.14s;
   line-height: 1.5;
 }
+.input option {
+  background-color: var(--bg-card, #1a1a1a);
+  color: var(--text-primary, #ffffff);
+}
 .input:hover { border-color: rgba(157, 124, 255, 0.32); }
 .input:focus { border-color: var(--accent-purple); box-shadow: 0 0 0 3px rgba(157, 124, 255, 0.12); }
 .input::placeholder { color: var(--text-muted); }
@@ -682,7 +686,7 @@
 }
 .select:hover { border-color: rgba(157, 124, 255, 0.32); }
 .select:focus { border-color: var(--accent-purple); box-shadow: 0 0 0 3px rgba(157, 124, 255, 0.12); }
-.select option { background: #18161f; color: var(--text-primary); }
+.select option { background: var(--bg-card, #18161f); color: var(--text-primary); }
 
 .labeledInput {
   display: flex;
@@ -1909,4 +1913,59 @@ tr:hover .clanIcon, .npcNameCell:hover .clanIcon { opacity: 1; }
 
 .editorSection, .characterCard, .tableContainer, .chatContainer, .diceLogsPanel, .statCard, .sidebar {
   border: 1px solid rgba(224, 224, 224, 0.1) !important;
+}
+
+/* ═══════════════════════════════════════════════
+   XXI. TOGGLE SWITCH
+   ═══════════════════════════════════════════════ */
+.toggleLabel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  user-select: none;
+}
+.toggleSwitch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+}
+.toggleSwitch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.toggleSlider {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(255, 68, 68, 0.15); /* Subdued red background */
+  border: 1.5px solid rgba(255, 68, 68, 0.4);
+  transition: .4s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 24px;
+  box-shadow: inset 0 1px 4px rgba(0,0,0,0.3);
+}
+.toggleSlider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 3px;
+  bottom: 2.5px;
+  background-color: #ff5555; /* Bright red dot */
+  transition: .4s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.4), 0 0 6px rgba(255, 85, 85, 0.4);
+}
+.toggleSwitch input:checked + .toggleSlider {
+  background-color: rgba(0, 200, 81, 0.15); /* Subdued green background */
+  border-color: rgba(0, 200, 81, 0.4);
+}
+.toggleSwitch input:checked + .toggleSlider:before {
+  transform: translateX(19px);
+  background-color: #00e676; /* Bright green dot */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.4), 0 0 6px rgba(0, 230, 118, 0.4);
 }

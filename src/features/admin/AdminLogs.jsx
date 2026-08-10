@@ -1,6 +1,7 @@
 // src/pages/AdminLogs.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import api from "../../core/api";
+import { formatEuDate } from "../../utils/dateFormatter";
 import styles from '../../styles/Admin.module.css';
 import MiniSearch from 'minisearch';
 
@@ -29,7 +30,7 @@ function normalizeLog(raw) {
 }
 function formatClockLocal(iso) {
   if (!iso) return "";
-  try { const d = new Date(iso); return d.toLocaleString("el-GR", { hour12: false, year: "2-digit", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Europe/Athens" }); } catch { return String(iso); }
+  try { const d = new Date(iso); return formatEuDate(d); } catch { return String(iso); }
 }
 
 

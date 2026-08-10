@@ -5,6 +5,7 @@ import styles from '../../styles/Admin.module.css';
 import CharacterSetup from '../character/CharacterSetup';
 import Avatar from '../../components/Avatar';
 import api from '../../core/api';
+import { formatEuDate } from '../../utils/dateFormatter';
 
 const CLAN_COLORS = {
   Brujah: '#b40f1f', Gangrel: '#2f7a3a', Malkavian: '#713c8b', Nosferatu: '#6a4b2b',
@@ -62,7 +63,7 @@ export default function AdminNPCsTab({ npcs, onReload, onDelete }) {
                     </td>
                     <td className={styles.clanCell} style={{ color: clanColor, fontWeight: 700, fontStyle: 'normal' }}>{n.clan}</td>
                     <td style={{ fontFamily: 'Fira Code, monospace', fontWeight: 'bold', color: 'var(--accent-purple)' }}>{n.xp}</td>
-                    <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{new Date(n.created_at).toLocaleString()}</td>
+                    <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{formatEuDate(n.created_at)}</td>
                     <td>
                       <div className={styles.row} style={{ gap: '8px', justifyContent: 'flex-end' }}>
                         {n.is_disabled ? (

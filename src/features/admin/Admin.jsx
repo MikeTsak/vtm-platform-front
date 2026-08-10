@@ -32,7 +32,10 @@ import AdminBloodWebTab from './AdminBloodWebTab';
 import AdminMasqueradeTab from './AdminMasqueradeTab';
 import AdminPrestationTab from './AdminPrestationTab';
 import AdminCoteriesTab from './AdminCoteriesTab';
-import AdminAuditTab from './AdminAuditTab';
+import { jsPDF } from "jspdf";
+import { formatEuDate } from "../../utils/dateFormatter";
+import AdminAuditTab from "./AdminAuditTab";
+import AdminNewsTab from './AdminNewsTab';
 
 /* ---------------- Sidebar navigation config ---------------- */
 const NAV_SECTIONS = [
@@ -57,6 +60,7 @@ const NAV_SECTIONS = [
       { id: 'prestation', icon: 'handshake', label: 'Prestation', keywords: ['boons', 'debts', 'favors', 'harpy', 'trivial', 'minor', 'major', 'blood', 'life', 'transfer', 'record', 'clear'] },
       { id: 'events',       icon: 'event',       label: 'Events', keywords: ['calendar', 'timeline', 'schedule', 'sessions', 'dates', 'venue', 'planning'] },
       { id: 'broadcast',    icon: 'campaign',    label: 'Broadcast', keywords: ['announcements', 'alerts', 'notifications', 'global', 'news', 'urgent', 'messages'] },
+      { id: 'news_templates', icon: 'article', label: 'News Templates', keywords: ['news', 'templates', 'writers', 'permissions', 'articles'] },
     ],
   },
   {
@@ -197,6 +201,8 @@ function Sidebar({ tab, setTab, collapsed, onToggleCollapse }) {
                 data-tooltip={label}
                 aria-current={tab === id ? 'page' : undefined}
                 style={matchedKeyword ? { alignItems: 'flex-start' } : undefined}
+                data-cuelume-press
+                data-cuelume-hover
               >
                 <span className={`material-symbols-outlined ${styles.sidebarNavIcon}`} aria-hidden="true">{icon}</span>
                 <span className={styles.sidebarNavLabel}>
@@ -219,6 +225,8 @@ function Sidebar({ tab, setTab, collapsed, onToggleCollapse }) {
         onClick={onToggleCollapse}
         aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         data-tooltip="Expand"
+        data-cuelume-press
+        data-cuelume-hover
       >
         <span className={styles.sidebarCollapseIcon} aria-hidden="true">{collapsed ? '→' : '←'}</span>
         <span className={styles.sidebarCollapseLabel}>Collapse</span>
@@ -250,6 +258,8 @@ function TopBar({ tab, loading, onReload }) {
               .catch(e => alert('Push failed: ' + e.message));
           }}
           title="Test System Push"
+          data-cuelume-press
+          data-cuelume-hover
         >
           <span className="material-symbols-outlined">notifications</span>
           Test System
@@ -263,6 +273,8 @@ function TopBar({ tab, loading, onReload }) {
               .catch(e => alert('Push failed: ' + e.message));
           }}
           title="Test Chat Push"
+          data-cuelume-press
+          data-cuelume-hover
         >
           <span className="material-symbols-outlined">forum</span>
           Test Chat
@@ -270,9 +282,26 @@ function TopBar({ tab, loading, onReload }) {
         <button
           type="button"
           className={styles.reloadBtn}
+          onClick={() => {
+            api.post('/push/test', { category: 'custom', title: 'Admin Notice', body: 'This is a test notice from admin.' })
+              .then(() => alert('Custom push sent!'))
+              .catch(e => alert('Push failed: ' + e.message));
+          }}
+          title="Test Custom Push"
+          data-cuelume-press
+          data-cuelume-hover
+        >
+          <span className="material-symbols-outlined">campaign</span>
+          Test Custom
+        </button>
+        <button
+          type="button"
+          className={styles.reloadBtn}
           onClick={onReload}
           disabled={loading}
           aria-label="Reload data"
+          data-cuelume-press
+          data-cuelume-hover
         >
           <span className={`${styles.reloadIcon} ${loading ? styles.reloadIconSpin : ''}`} aria-hidden="true">↻</span>
           Reload
@@ -786,7 +815,7 @@ async function grantXP(character_id, delta) {
             const centerX = pageW / 2;
             const rightX = pageW - M;
             doc.text(`Character ${id} | ${name}`, M, pageH - M + 22);
-            doc.text(`Generated ${new Date().toLocaleString()}`, centerX, pageH - M + 22, { align: 'center' });
+            doc.text(`Generated ${formatEuDate(new Date())}`, centerX, pageH - M + 22, { align: 'center' });
             doc.text(`Page ${i} of ${pageCount}`, rightX, pageH - M + 22, { align: 'right' });
         }
 
@@ -974,6 +1003,7 @@ async function grantXP(character_id, delta) {
           )}
           {tab === 'masquerade' && <AdminMasqueradeTab />}
           {tab === 'audit' && <AdminAuditTab />}
+          {tab === 'news_templates' && <AdminNewsTab users={users} />}
           {tab === 'logs' && <AdminLogs />}
         </main>
       </div>

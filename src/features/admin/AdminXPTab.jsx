@@ -1,5 +1,6 @@
 // src/components/admin/AdminXPTab.jsx
 import React, { useState, useMemo, useEffect } from 'react';
+import { formatEuDate } from '../../utils/dateFormatter';
 import styles from '../../styles/Admin.module.css';
 import MiniSearch from 'minisearch';
 
@@ -173,7 +174,7 @@ export default function AdminXPTab({ users, onGrant, onBulkGrant, adminxp }) {
                     <div key={log.id} style={{ display: 'flex', justifyContent: 'space-between', background: 'var(--glass-inset)', padding: '15px', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)', borderLeft: `4px solid ${isGrant ? 'var(--color-success)' : 'var(--color-error)'}` }}>
                       <div>
                         <div style={{ fontWeight: 'bold', fontSize: '1rem', marginBottom: '4px', color: 'var(--text-color)' }}>{log.reason}</div>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{new Date(log.created_at).toLocaleString()} • <span style={{color: 'var(--accent-purple)'}}>{log.action_type.replace(/_/g, ' ')}</span></div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{formatEuDate(log.created_at)} • <span style={{color: 'var(--accent-purple)'}}>{log.action_type.replace(/_/g, ' ')}</span></div>
                       </div>
                       <div style={{ fontWeight: '900', color: isGrant ? 'var(--color-success)' : 'var(--color-error)', fontSize: '1.4rem', alignSelf: 'center', textShadow: `0 0 10px ${isGrant ? 'rgba(0,230,118,0.4)' : 'rgba(255,77,77,0.4)'}` }}>
                         {isGrant ? `+${log.amount}` : log.amount}

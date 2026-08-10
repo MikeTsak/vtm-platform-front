@@ -53,43 +53,28 @@ const getTies = (map, idToNameFn = null) => {
 };
 
 /** ---------- UI Components ---------- */
-function DiceImage({ v, imgFn, isExporting }) {
-  const [hasError, setHasError] = useState(false);
-
-  if (hasError) {
-    return (
-      <div style={{ 
-        width: isExporting ? '36px' : '28px', 
-        height: isExporting ? '36px' : '28px', 
-        display: 'inline-flex', 
-        alignItems: 'center', 
-        justifyContent: 'center', 
-        background: 'var(--surface-color)', 
-        border: '1px solid #555', 
-        borderRadius: '4px', 
-        fontSize: '13px', 
-        color: 'var(--text-color)', 
-        fontWeight: 'bold' 
-      }}>
-        {v}
-      </div>
-    );
-  }
-
+function DiceImage({ v, isExporting }) {
+  // The numbered dice images (normal-X.png, hunger-X.png) do not currently exist.
+  // Rendering the img tag and waiting for it to fail causes significant slowdowns.
+  // We directly return the fallback element.
   return (
-    <img
-      src={imgFn(v)}
-      alt={String(v)}
-      style={{ 
-        width: isExporting ? '36px' : '28px', 
-        height: isExporting ? '36px' : '28px', 
-        objectFit: 'contain',
-        backgroundColor: 'var(--text-color)', /* Added white background */
-        borderRadius: '6px',        /* Rounded edges for the white box */
-        padding: '2px'              /* Small padding to keep it looking clean */
-      }}
-      onError={() => setHasError(true)}
-    />
+    <div style={{ 
+      width: isExporting ? '36px' : '28px', 
+      height: isExporting ? '36px' : '28px', 
+      display: 'inline-flex', 
+      alignItems: 'center', 
+      justifyContent: 'center', 
+      background: 'var(--surface-color)', 
+      border: '1px solid #555', 
+      borderRadius: '4px', 
+      fontSize: '13px', 
+      color: 'var(--text-color)',
+      fontFamily: 'Fira Code, monospace',
+      fontWeight: 'bold',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
+    }}>
+      {v}
+    </div>
   );
 }
 

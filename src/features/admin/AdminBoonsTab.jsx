@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../core/api';
+import { formatEuDate } from '../../utils/dateFormatter';
 import styles from '../../styles/Admin.module.css';
 import { Skeleton } from 'boneyard-js/react';
 
@@ -72,7 +73,7 @@ export default function AdminBoonsTab() {
             <tbody>
               {filtered.map((b, i) => (
                 <tr key={b.id} style={{ borderBottom: '1px solid var(--glass-border)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
-                  <td style={{ padding: '0.75rem 1rem', whiteSpace: 'nowrap' }}>{new Date(b.created_at).toLocaleDateString()}</td>
+                  <td style={{ padding: '0.75rem 1rem', whiteSpace: 'nowrap' }}>{formatEuDate(b.created_at)}</td>
                   <td style={{ padding: '0.75rem 1rem', color: '#ff5252', fontWeight: 600 }}>{b.from_name}</td>
                   <td style={{ padding: '0.75rem 1rem', color: '#00e676', fontWeight: 600 }}>{b.to_name}</td>
                   <td style={{ padding: '0.75rem 1rem', textTransform: 'capitalize' }}>{b.type.replace('_', ' ')}</td>

@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import api from '../../core/api';
+import { formatEuDate } from '../../utils/dateFormatter';
 import styles from '../../styles/Admin.module.css';
 import { Skeleton } from 'boneyard-js/react';
 import G6 from '@antv/g6';
@@ -99,7 +100,7 @@ export default function AdminTimelineTab({ users }) {
         tooltipText = item.body;
       }
 
-      const dateStr = new Date(item.timestamp).toLocaleDateString();
+      const dateStr = formatEuDate(item.timestamp).split(' ')[0];
       const nodeId = `node-${item.type}-${item.id}-${idx}`;
 
       nodes.push({

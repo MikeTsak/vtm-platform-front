@@ -147,8 +147,8 @@ textarea.input {
 }
 
 select.input option {
-  background-color: #0a0a0b;
-  color: #ffffff;
+  background-color: var(--surface-color, #0a0a0b);
+  color: var(--text-color, #ffffff);
 }
 
 .fileInput {

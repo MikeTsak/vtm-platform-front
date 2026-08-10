@@ -53,6 +53,15 @@ export default function News() {
     enabled: !!user // Only fetch rumors if logged in
   });
 
+  const { data: myThemes, isLoading: themesLoading } = useQuery({
+    queryKey: ['my-themes'],
+    queryFn: async () => {
+      const res = await api.get('/news/my-themes');
+      return res.data;
+    },
+    enabled: !!user && !isRumorsPage
+  });
+
   const deleteNewsMutation = useMutation({
     mutationFn: async (id) => {
       await api.delete(`/news/${id}`);
@@ -79,7 +88,7 @@ export default function News() {
     }
   });
 
-  const loading = newsLoading || rumorsLoading || (myCharLoading && !isAdmin && !isCourt);
+  const loading = newsLoading || rumorsLoading || themesLoading || (myCharLoading && !isAdmin && !isCourt);
 
   const myChar = myCharData?.character || null;
 
@@ -113,7 +122,7 @@ export default function News() {
         <header className={styles.header}>
           <h1 className={styles.pageTitle}>{isRumorsPage ? 'Rumors' : 'Official News'}</h1>
           <div className={styles.headerActions}>
-            {!isRumorsPage && isAdmin && (
+            {!isRumorsPage && (isAdmin || (myThemes && (myThemes.all || myThemes.length > 0))) && (
               <button className={styles.createBtn} onClick={() => setModalMode('news')}>
                 + Write Article
               </button>
@@ -231,11 +240,17 @@ export default function News() {
         </div>
       </div>
 
-      {modalMode && (
-        <CreateNewsModal mode={modalMode} onClose={() => setModalMode(null)} onSuccess={() => { setModalMode(null); queryClient.invalidateQueries({ queryKey: ['news'] }); }} />
-      )}
-
-      {fullscreenArticle && (
+        {modalMode && (
+          <CreateNewsModal
+            mode={modalMode}
+            onClose={() => setModalMode(null)}
+            onSuccess={() => {
+              setModalMode(null);
+              queryClient.invalidateQueries({ queryKey: [modalMode === 'rumor' ? 'rumors' : 'news'] });
+            }}
+            themes={myThemes}
+          />
+        )}{fullscreenArticle && (
         <FullscreenArticleModal item={fullscreenArticle} onClose={() => setFullscreenArticle(null)} />
       )}
 

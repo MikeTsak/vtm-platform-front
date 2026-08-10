@@ -5,6 +5,7 @@ import api from '../../core/api';
 import { getLiveSession, getLiveSessionPlayers, getLiveSessionRolls, createLiveSession, sendLiveSessionBroadcast, logLiveSessionRoll } from '../../api/liveSession';
 import { DISCIPLINES } from '../../data/disciplines';
 import { rollPool } from '../../utils/liveSessionMechanics';
+import { formatEuDate } from '../../utils/dateFormatter';
 import sharedStyles from '../../styles/LiveSession.module.css';
 import adminStyles from '../../styles/LiveSessionAdmin.module.css';
 
@@ -398,7 +399,7 @@ export default function LiveSessionDashboard() {
                   return (
                     <div key={arch.id} className={styles.npcItem} onClick={() => { setSessionId(code); localStorage.setItem('adminLiveSessionId', code); }}>
                       <div style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{arch.name}</div>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(arch.created_at).toLocaleDateString()} · Code: {code}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{formatEuDate(arch.created_at)} · Code: {code}</div>
                     </div>
                   );
                 })

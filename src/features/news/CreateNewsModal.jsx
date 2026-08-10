@@ -6,12 +6,12 @@ import { generateGreekName } from '../../utils/nameGenerator';
 import styles from '../../styles/News.module.css';
 import EditorToolbar from '../../components/EditorToolbar';
 
-export default function CreateNewsModal({ mode, onClose, onSuccess }) {
+export default function CreateNewsModal({ mode, onClose, onSuccess, themes }) {
   const [formData, setFormData] = useState({ 
     title: '', 
     subtitle: '', 
     body: '', 
-    theme: mode === 'rumor' ? 'RUMOR' : 'ERT', 
+    theme: mode === 'rumor' ? 'RUMOR' : (themes?.all ? 'ERT' : (themes && themes.length > 0 ? themes[0] : 'ERT')), 
     journalist_name: '',
     discord_prefix: mode === 'rumor' ? '🤫 A new whisper echoes in the night...' : '🔥 **Hot news from the mortal world!** 🔥'
   });
@@ -89,8 +89,13 @@ export default function CreateNewsModal({ mode, onClose, onSuccess }) {
                  disabled={mode === 'rumor'}
                  className={`${styles.inputField} ${mode === 'rumor' ? styles.disabledInput : ''}`}>
                  {Object.keys(NEWS_OUTLETS).map(k => {
-                   if (mode === 'rumor' && k !== 'RUMOR') return null;
-                   return <option key={k} value={k}>{NEWS_OUTLETS[k].name}</option>;
+                   if (mode === 'rumor') {
+                     return k === 'RUMOR' ? <option key={k} value={k}>{NEWS_OUTLETS[k].name}</option> : null;
+                   } else {
+                     if (k === 'RUMOR') return null;
+                     const isAllowed = themes?.all || (themes && themes.includes(k));
+                     return <option key={k} value={k} disabled={!isAllowed}>{NEWS_OUTLETS[k].name}{!isAllowed ? ' (Not Authorized)' : ''}</option>;
+                   }
                  })}
                </select>
              </div>

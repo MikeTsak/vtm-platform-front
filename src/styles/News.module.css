@@ -481,6 +481,10 @@
   width: 100%; padding: 12px; font-size: 1rem; border-radius: 6px;
   border: 1px solid var(--border-color); background-color: var(--bg-color); color: var(--text-color); box-sizing: border-box; font-family: inherit;
 }
+.inputField option {
+  background-color: var(--bg-color, #1a1a1a);
+  color: var(--text-color, #ffffff);
+}
 .inputField:focus { outline: none; border-color: var(--tint); }
 .disabledInput { opacity: 0.5; cursor: not-allowed; }
 

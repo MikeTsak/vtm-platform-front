@@ -123,15 +123,17 @@ export default function AdminDiscordTab({ users = [] }) {
       {err && <div className={`${styles.alert} ${styles.alertError}`}>{err}</div>}
 
       {/* --- MASTER SWITCH --- */}
-      <div style={{ background: '#1f1f24', padding: '15px', borderRadius: '8px', marginBottom: '20px', borderLeft: config.discord_enabled ? '4px solid #00C851' : '4px solid #FF4444' }}>
-        <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontWeight: 'bold' }}>
-          <input 
-            type="checkbox" 
-            checked={config.discord_enabled} 
-            onChange={e => setConfig({...config, discord_enabled: e.target.checked})}
-            style={{ marginRight: '10px', transform: 'scale(1.2)' }}
-          />
-          Master Switch: Bot is {config.discord_enabled ? 'Active' : 'Disabled (Ignoring commands & broadcasts)'}
+      <div style={{ background: 'var(--glass-bg)', padding: '20px', borderRadius: 'var(--radius-lg)', marginBottom: '25px', border: '1px solid var(--glass-border)', borderLeft: config.discord_enabled ? '4px solid #00C851' : '4px solid #FF4444', boxShadow: 'var(--glass-shadow)' }}>
+        <label className={styles.toggleLabel} style={{ fontSize: '1rem', fontWeight: 'bold' }}>
+          <div className={styles.toggleSwitch}>
+            <input 
+              type="checkbox" 
+              checked={config.discord_enabled} 
+              onChange={e => setConfig({...config, discord_enabled: e.target.checked})}
+            />
+            <span className={styles.toggleSlider}></span>
+          </div>
+          <span>Master Switch: Bot is {config.discord_enabled ? 'Active' : 'Disabled (Ignoring commands & broadcasts)'}</span>
         </label>
       </div>
 
@@ -159,28 +161,43 @@ export default function AdminDiscordTab({ users = [] }) {
       </div>
 
       {/* --- TOGGLES --- */}
-      <div style={{ marginTop: '20px', marginBottom: '20px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
-        <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', background: '#1a1a1f', padding: '10px', borderRadius: '6px' }}>
-          <input type="checkbox" checked={config.notify_mail} onChange={e => setConfig({...config, notify_mail: e.target.checked})} style={{ marginRight: '8px' }} />
-          Daily Mail Digests
+      <div style={{ marginTop: '25px', marginBottom: '25px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
+        <label className={styles.toggleLabel} style={{ background: 'var(--glass-inset)', padding: '14px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)' }} data-cuelume-press="pop" data-cuelume-hover>
+          <div className={styles.toggleSwitch}>
+            <input type="checkbox" checked={config.notify_mail} onChange={e => setConfig({...config, notify_mail: e.target.checked})} />
+            <span className={styles.toggleSlider}></span>
+          </div>
+          <span>Daily Mail Digests</span>
         </label>
-        <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', background: '#1a1a1f', padding: '10px', borderRadius: '6px' }}>
-          <input type="checkbox" checked={config.notify_news} onChange={e => setConfig({...config, notify_news: e.target.checked})} style={{ marginRight: '8px' }} />
-          Live News Broadcasts
+        
+        <label className={styles.toggleLabel} style={{ background: 'var(--glass-inset)', padding: '14px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)' }} data-cuelume-press="pop" data-cuelume-hover>
+          <div className={styles.toggleSwitch}>
+            <input type="checkbox" checked={config.notify_news} onChange={e => setConfig({...config, notify_news: e.target.checked})} />
+            <span className={styles.toggleSlider}></span>
+          </div>
+          <span>Live News Broadcasts</span>
         </label>
-        <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', background: '#1a1a1f', padding: '10px', borderRadius: '6px' }}>
-          <input type="checkbox" checked={config.notify_prems} onChange={e => setConfig({...config, notify_prems: e.target.checked})} style={{ marginRight: '8px' }} />
-          Malkavian Premonition DMs
+
+        <label className={styles.toggleLabel} style={{ background: 'var(--glass-inset)', padding: '14px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)' }} data-cuelume-press="pop" data-cuelume-hover>
+          <div className={styles.toggleSwitch}>
+            <input type="checkbox" checked={config.notify_prems} onChange={e => setConfig({...config, notify_prems: e.target.checked})} />
+            <span className={styles.toggleSlider}></span>
+          </div>
+          <span>Malkavian Premonition DMs</span>
         </label>
-        <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', background: '#1a1a1f', padding: '10px', borderRadius: '6px' }}>
-          <input type="checkbox" checked={config.ai_enabled} onChange={e => setConfig({...config, ai_enabled: e.target.checked})} style={{ marginRight: '8px' }} />
-          Enable AI Bot Features (SchreckNet Node)
+
+        <label className={styles.toggleLabel} style={{ background: 'var(--glass-inset)', padding: '14px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)' }} data-cuelume-press="pop" data-cuelume-hover>
+          <div className={styles.toggleSwitch}>
+            <input type="checkbox" checked={config.ai_enabled} onChange={e => setConfig({...config, ai_enabled: e.target.checked})} />
+            <span className={styles.toggleSlider}></span>
+          </div>
+          <span>Enable AI Bot Features (SchreckNet Node)</span>
         </label>
       </div>
 
       <div className={styles.cardFooter} style={{marginTop: '10px', background: 'transparent', padding: 0}}>
-        <button className={styles.btnPrimary} onClick={handleSave} disabled={loading}>
-          {loading ? 'Saving...' : 'Save Settings'}
+        <button className={`${styles.btn} ${styles.btnPrimary}`} style={{ width: '100%', maxWidth: '400px', margin: '0 auto', display: 'block', padding: '12px', fontSize: '1rem' }} onClick={handleSave} disabled={loading} data-cuelume-press data-cuelume-hover>
+          {loading ? 'Saving...' : '💾 Save Settings'}
         </button>
       </div>
 
@@ -190,8 +207,8 @@ export default function AdminDiscordTab({ users = [] }) {
       <div className={styles.sectionHeader}>
         <h4>Direct Message a Player</h4>
       </div>
-      <div style={{ background: '#1a1a1f', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
-        <div style={{ marginBottom: '10px' }}>
+      <div style={{ background: 'var(--glass-bg)', padding: '20px', borderRadius: 'var(--radius-lg)', marginBottom: '25px', border: '1px solid var(--glass-border)' }}>
+        <div style={{ marginBottom: '15px' }}>
           <select 
             className={styles.input} 
             value={dmUserId} 
@@ -199,29 +216,29 @@ export default function AdminDiscordTab({ users = [] }) {
           >
             <option value="">-- Select a Player --</option>
             {users.map(u => (
-              <option key={u.id} value={u.id}>
-                {u.display_name} {u.char_name ? `(${u.char_name})` : ''} {u.discord_id ? '🟢' : '🔴'}
-              </option>
+              <option key={u.id} value={u.id}>{u.display_name} (#{u.id})</option>
             ))}
           </select>
-          <small style={{ color: '#888', display: 'block', marginTop: '5px' }}>
-            🟢 = Discord Linked | 🔴 = No Discord Linked
-          </small>
         </div>
-        <textarea
-          className={styles.input}
-          style={{ height: '80px', resize: 'vertical' }}
-          placeholder="Type your message here. The bot will DM them instantly..."
-          value={dmMessage}
-          onChange={e => setDmMessage(e.target.value)}
-        />
+        <div style={{ marginBottom: '15px' }}>
+          <textarea
+            className={styles.input}
+            rows="3"
+            placeholder="Type your message here..."
+            value={dmMessage}
+            onChange={e => setDmMessage(e.target.value)}
+            style={{ width: '100%', resize: 'vertical' }}
+          />
+        </div>
         <button 
-          className={styles.btnPrimary} 
-          style={{ marginTop: '10px', width: '100%' }}
+          className={`${styles.btn} ${styles.btnPrimary}`} 
+          style={{ width: '100%', padding: '12px' }}
           onClick={handleSendDM} 
           disabled={loading || !dmUserId || !dmMessage}
+          data-cuelume-press
+          data-cuelume-hover
         >
-          {loading ? 'Sending...' : 'Send Direct Message via Discord'}
+          ✉️ Send Direct Message
         </button>
       </div>
 
@@ -233,16 +250,16 @@ export default function AdminDiscordTab({ users = [] }) {
       </div>
       
       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-        <button className={styles.btnGhost} onClick={() => handleTest('mail')} disabled={loading || !config.discord_channel_id}>
+        <button className={styles.btnGhost} onClick={() => handleTest('mail')} disabled={loading || !config.discord_channel_id} data-cuelume-press data-cuelume-hover>
           Test Mail Digest
         </button>
-        <button className={styles.btnGhost} onClick={() => handleTest('news')} disabled={loading || !config.discord_channel_id}>
+        <button className={styles.btnGhost} onClick={() => handleTest('news')} disabled={loading || !config.discord_channel_id} data-cuelume-press data-cuelume-hover>
           Test News Broadcast
         </button>
-        <button className={styles.btnGhost} onClick={() => handleTest('premonition')} disabled={loading}>
+        <button className={styles.btnGhost} onClick={() => handleTest('premonition')} disabled={loading} data-cuelume-press data-cuelume-hover>
           Test Premonition DM
         </button>
-        <button className={styles.btn} style={{ background: '#4a1515', color: 'white', marginLeft: 'auto' }} onClick={handleRestart} disabled={loading}>
+        <button className={`${styles.btn} ${styles.btnDanger}`} style={{ marginLeft: 'auto' }} onClick={handleRestart} disabled={loading} data-cuelume-press data-cuelume-hover>
           Hard Restart Bot
         </button>
       </div>

@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 // CHANGED: Import the CSS module
 import s from "../../styles/AdminPremonitionsTab.module.css";
 import { Skeleton } from "boneyard-js/react";
+import { formatEuDate } from "../../utils/dateFormatter";
 
 /**
  * API base:
@@ -474,7 +475,7 @@ export default function AdminPremonitionsTab() {
                   <div className={s.historyItemHeader}>
                     <span className={s.historyItemType}>{h.content_type}</span>
                     <time className={s.historyItemTime}>
-                      {h.created_at ? new Date(h.created_at).toLocaleString() : ""}
+                      {h.created_at ? formatEuDate(h.created_at) : ""}
                     </time>
                     {h.sender_name && (
                       <span className={s.historyItemSender}>
@@ -514,7 +515,7 @@ export default function AdminPremonitionsTab() {
                             ) : null}
                             {r.viewed_at ? (
                               <span className={s.recipientViewed}>
-                                viewed {new Date(r.viewed_at).toLocaleString()}
+                                viewed {formatEuDate(r.viewed_at)}
                               </span>
                             ) : (
                               <span className={s.recipientNotViewed}>

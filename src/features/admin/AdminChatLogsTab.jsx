@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown'; 
 import api from '../../core/api';
+import { formatEuDate } from '../../utils/dateFormatter';
 import styles from '../../styles/Admin.module.css';
 import MiniSearch from 'minisearch';
 
@@ -25,11 +26,9 @@ const useDebouncedValue = (value, ms = 250) => {
 
 const formatTimestamp = (ts, includeDate = true) => {
   if (!ts) return '—';
-  const date = new Date(ts);
-  const options = { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Athens' };
-  if (includeDate) { Object.assign(options, { month: 'short', day: 'numeric' }); }
-  try { return date.toLocaleString('en-US', options); } 
-  catch (e) { return date.toLocaleTimeString(); }
+  const full = formatEuDate(ts);
+  if (!includeDate) return full.split(' ')[1];
+  return full;
 };
 
 const Highlight = ({ text, query }) => {
@@ -163,7 +162,7 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
             if (info.name && info.name !== '—') sender = info.name;
           }
         }
-        return `[${new Date(m.created_at).toLocaleString()}] ${sender}: ${m.body}`;
+        return `[${formatEuDate(m.created_at)}] ${sender}: ${m.body}`;
       }).join('\n');
 
       const { data } = await api.post('/admin/chat/summarize', { 
@@ -588,7 +587,7 @@ function MessagePanel({ messages, participants, loading, mode }) {
         } else if (mode === 'group') {
           sender = m.char_name || 'Unknown Character';
         }
-        return `[${new Date(m.created_at).toLocaleTimeString()}] ${sender}: ${m.body}`;
+        return `[${formatEuDate(m.created_at).split(' ')[1]}] ${sender}: ${m.body}`;
       }).join('\n');
 
       let contextStr = '';

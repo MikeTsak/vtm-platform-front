@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import styles from '../../styles/AdminDiceLogsTab.module.css';
 import api from '../../core/api'; // Import the central api module
+import { formatEuDate } from '../../utils/dateFormatter';
 
 const IMG = {
   normal: (v) => `/img/dice/normal-${v}.png`,
@@ -126,7 +127,7 @@ export default function AdminDiceLogsTab() {
                 <div className={styles.rollHeader}>
                   <div className={styles.rollUser}>
                     <strong>{r.char_name || r.user_name || "Unknown"}</strong>
-                    <span className={styles.subtle}>· {when.toLocaleString()}</span>
+                    <span className={styles.subtle}>· {formatEuDate(when)}</span>
                   </div>
                   <div className={styles.rollSuccesses} data-result={resultType}>
                     {successes} Successes
@@ -160,16 +161,9 @@ function DiceStrip({ title, values, img }) {
       <div className={styles.diceTitle}>{title} ({values.length})</div>
       <div className={styles.diceContainer}>
         {values.map((v, i) => (
-          <img
-            key={i}
-            src={img(v)}
-            alt={String(v)}
-            className={styles.die}
-            onError={(e) => {
-              e.currentTarget.outerHTML =
-                `<div class="${styles.dieFallback}">${v}</div>`;
-            }}
-          />
+          <div key={i} className={styles.dieFallback}>
+            {v}
+          </div>
         ))}
       </div>
     </div>

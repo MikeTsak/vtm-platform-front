@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../core/api';
+import { formatEuDate } from '../../utils/dateFormatter';
 import styles from '../../styles/Admin.module.css';
 import { Skeleton } from 'boneyard-js/react';
 
@@ -42,7 +43,7 @@ export default function AdminAuditTab() {
               {logs.map(log => (
                 <tr key={log.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
                   <td style={{ padding: '12px', color: 'var(--text-muted)' }}>
-                    {new Date(log.created_at).toLocaleString()}
+                    {formatEuDate(log.created_at)}
                   </td>
                   <td style={{ padding: '12px', fontWeight: 'bold' }}>
                     {log.admin_id === 0 ? <span style={{ color: '#ff5252' }}>SYSTEM</span> : (log.admin_name || `Admin #${log.admin_id}`)}

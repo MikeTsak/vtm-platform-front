@@ -1,6 +1,7 @@
 // src/components/admin/AdminNpcEmailTab.jsx
 import React, { useEffect, useState, useRef } from 'react';
 import api from '../../core/api';
+import { formatEuDate } from '../../utils/dateFormatter';
 import styles from '../../styles/Admin.module.css';
 import Avatar from '../../components/Avatar';
 
@@ -122,7 +123,7 @@ export default function AdminNpcEmailTab() {
               <div key={t.id} onClick={() => loadThreadMessages(t.id)} style={{ padding: '1.25rem', cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.03)', background: selectedThreadId === t.id ? 'var(--glass-bg-hover)' : 'transparent', borderLeft: `3px solid ${selectedThreadId === t.id ? 'var(--accent-purple)' : 'transparent'}`, transition: 'all 0.2s' }}>
                 <div style={{ fontWeight: t.unread_count > 0 ? 800 : 600, color: t.unread_count > 0 ? 'var(--accent-purple)' : 'var(--text-color)', textShadow: t.unread_count > 0 ? '0 0 10px var(--accent-purple-glow)' : 'none', fontSize: '0.95rem' }}>{t.subject}</div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>{t.user_name} ➔ {t.identity_name}</div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '6px', textAlign: 'right', fontFamily: 'monospace' }}>{new Date(t.updated_at).toLocaleDateString()}</div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '6px', textAlign: 'right', fontFamily: 'monospace' }}>{formatEuDate(t.updated_at)}</div>
               </div>
             ))}
             {threads.length === 0 && <div style={{ padding: '3rem 1rem', textAlign: 'center', color: 'var(--text-muted)', fontStyle: 'italic' }}>No messages found.</div>}
@@ -150,7 +151,7 @@ export default function AdminNpcEmailTab() {
                       <div style={{ background: isIdentity ? 'linear-gradient(135deg, rgba(127,90,240,0.2) 0%, rgba(157,124,255,0.05) 100%)' : 'rgba(255,255,255,0.03)', padding: '1rem 1.25rem', borderRadius: 'var(--radius-md)', border: `1px solid ${isIdentity ? 'var(--glass-border-highlight)' : 'var(--glass-border)'}`, boxShadow: '0 4px 15px rgba(0,0,0,0.2)' }}>
                         <div style={{ fontSize: '0.75rem', color: isIdentity ? 'var(--accent-purple)' : 'var(--text-secondary)', fontWeight: 700, marginBottom: '6px', display: 'flex', justifyContent: 'space-between', gap: '2rem' }}>
                           <span>{msgName}</span>
-                          <span style={{ fontWeight: 'normal', fontFamily: 'monospace' }}>{new Date(m.created_at).toLocaleString()}</span>
+                          <span style={{ fontWeight: 'normal', fontFamily: 'monospace' }}>{formatEuDate(m.created_at)}</span>
                         </div>
                         <div style={{ lineHeight: '1.6', color: '#e0e0e5', fontSize: '0.95rem' }} dangerouslySetInnerHTML={{ __html: m.body }} />
                       </div>

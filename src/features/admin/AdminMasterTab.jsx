@@ -1,10 +1,12 @@
 // src/components/admin/AdminMasterTab.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import api from '../../core/api';
 import styles from '../../styles/Admin.module.css';
 import { Skeleton } from 'boneyard-js/react';
 import { Link } from 'react-router-dom';
+import { AuthCtx } from '../../core/AuthContext';
 export default function AdminMasterTab() {
+  const { me, setMe } = useContext(AuthCtx);
   const [commsEnabled, setCommsEnabled] = useState(true);
   const [chatSchedule, setChatSchedule] = useState({});
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -330,6 +332,46 @@ export default function AdminMasterTab() {
       
       {msg && <div className={`${styles.alert} ${styles.alertInfo}`}>{msg}</div>}
       {err && <div className={`${styles.alert} ${styles.alertError}`}>{err}</div>}
+
+      {/* PERSONAL ADMIN PREFS */}
+      <div style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', padding: '2rem', boxShadow: 'var(--glass-shadow)' }}>
+        <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
+          <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-color)' }}>🛠️ Personal Admin Preferences</h4>
+          <p style={{ margin: '5px 0 0 0', color: 'var(--text-secondary)' }}>Settings that only apply to your own account.</p>
+        </div>
+        <button 
+          className={styles.btnGhost}
+          onClick={async () => {
+            const newVal = me?.ui_sounds_enabled === false ? true : false;
+            setMe(prev => ({ ...prev, ui_sounds_enabled: newVal }));
+            try {
+              await api.patch('/users/me/ui_sounds', { ui_sounds_enabled: newVal });
+              import('cuelume').then(({ setEnabled, play }) => {
+                setEnabled(newVal);
+                if (newVal) play('toggle');
+              });
+            } catch (e) {
+              setErr('Failed to save UI sounds setting');
+            }
+          }}
+          style={{
+            border: `1px solid ${me?.ui_sounds_enabled !== false ? 'var(--tint)' : 'var(--glass-border)'}`,
+            color: me?.ui_sounds_enabled !== false ? 'var(--tint)' : 'var(--text-muted)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '12px 16px',
+            fontSize: '1rem'
+          }}
+          data-cuelume-press
+          data-cuelume-hover
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>
+            {me?.ui_sounds_enabled !== false ? 'volume_up' : 'volume_off'}
+          </span>
+          UI Sounds {me?.ui_sounds_enabled !== false ? 'ON' : 'OFF'}
+        </button>
+      </div>
 
       {/* COMMS KILLSWITCH */}
       <div style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', padding: '2rem', boxShadow: 'var(--glass-shadow)' }}>

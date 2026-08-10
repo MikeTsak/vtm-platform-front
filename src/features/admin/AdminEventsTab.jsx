@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../core/api';
+import { formatEuDate } from '../../utils/dateFormatter';
 import styles from '../../styles/Admin.module.css';
 import { Skeleton } from 'boneyard-js/react';
 
@@ -98,7 +99,7 @@ export default function AdminEventsTab() {
                 <div>
                   <h4 style={{ margin: '0 0 4px 0', color: 'var(--accent-purple)', fontSize: '1.2rem' }}>{ev.title}</h4>
                   <div style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.9rem', marginBottom: ev.description ? '8px' : 0 }}>
-                    {new Date(ev.date).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    {formatEuDate(ev.date)}
                   </div>
                   {ev.description && <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{ev.description}</div>}
                 </div>
