@@ -8,6 +8,11 @@ export default function AdminBloodWebTab() {
   const [loading, setLoading] = useState(true);
   const [web, setWeb] = useState([]);
   
+  const [selectedNode, setSelectedNode] = useState(null);
+  const [editHunger, setEditHunger] = useState(0);
+  const [editBP, setEditBP] = useState(0);
+  const [saving, setSaving] = useState(false);
+
   const containerRef = useRef(null);
   const graphRef = useRef(null);
 
@@ -114,6 +119,19 @@ export default function AdminBloodWebTab() {
       plugins: [tooltip],
     });
 
+    graph.on('node:click', (e) => {
+      const model = e.item.getModel();
+      if (model.id === 'center') return;
+      
+      const charId = parseInt(model.id.replace('char-', ''), 10);
+      const charData = web.find(c => c.id === charId);
+      if (charData) {
+        setSelectedNode(charData);
+        setEditHunger(charData.hunger || 0);
+        setEditBP(charData.bloodPotency || 0);
+      }
+    });
+
     graph.data({ nodes, edges });
     graph.render();
     graphRef.current = graph;
@@ -170,10 +188,76 @@ export default function AdminBloodWebTab() {
             border: '1px solid var(--glass-border)', 
             borderRadius: '8px',
             display: web.length > 0 ? 'block' : 'none',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            cursor: 'pointer'
           }} 
         />
       </Skeleton>
+
+      {selectedNode && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.8)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', padding: '2rem', borderRadius: '12px', width: '400px', maxWidth: '90%', backdropFilter: 'blur(10px)' }}>
+            <h3 style={{ marginTop: 0, color: 'var(--text-primary)', fontSize: '1.4rem' }}>Update {selectedNode.name}</h3>
+            
+            <div style={{ marginBottom: '1.2rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Hunger (0-5)</label>
+              <input 
+                type="number" 
+                min="0" 
+                max="5" 
+                value={editHunger} 
+                onChange={e => setEditHunger(parseInt(e.target.value) || 0)} 
+                className={styles.input} 
+                style={{ width: '100%' }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '2rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Blood Potency (0-10)</label>
+              <input 
+                type="number" 
+                min="0" 
+                max="10" 
+                value={editBP} 
+                onChange={e => setEditBP(parseInt(e.target.value) || 0)} 
+                className={styles.input}
+                style={{ width: '100%' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+              <button 
+                className={styles.btnSecondary} 
+                style={{ padding: '0.5rem 1rem' }} 
+                onClick={() => setSelectedNode(null)}
+              >
+                Cancel
+              </button>
+              <button 
+                className={styles.submitBtn} 
+                style={{ padding: '0.5rem 1.5rem', width: 'auto' }} 
+                disabled={saving} 
+                onClick={async () => {
+                  setSaving(true);
+                  try {
+                    await api.post('/admin/blood-web/update', { id: selectedNode.id, hunger: editHunger, bloodPotency: editBP });
+                    const res = await api.get('/admin/blood-web');
+                    setWeb(res.data.web || []);
+                    setSelectedNode(null);
+                  } catch (e) {
+                    console.error(e);
+                    alert('Failed to save changes.');
+                  } finally {
+                    setSaving(false);
+                  }
+                }}
+              >
+                {saving ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

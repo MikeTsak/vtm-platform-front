@@ -3,6 +3,20 @@ import api from '../../core/api';
 import styles from '../../styles/Admin.module.css';
 import { Skeleton } from 'boneyard-js/react';
 
+const DIVISION_NAMES = {
+  1: 'Pagkrati', 2: 'Zografou/Kaisarianh', 3: 'Exarxia', 4: 'Boula', 5: 'Ampelokhpoi',
+  6: 'Kalithea', 7: 'Petralona', 8: 'Plaka', 9: 'Keramikos', 10: 'Tauros, Agios Ioannis Rentis',
+  11: 'Thiseio', 12: 'Mosxato', 13: 'Palaio Faliro', 14: 'Nea Smyrnh', 15: 'Agios Dhmhtrios',
+  16: 'Neos Kosmos', 17: 'Nea Penteli, Melissia', 18: 'Kolonaki, Lykabhtos', 19: 'Peristeri',
+  20: 'Aigaleo', 21: 'Petroupolh, Ilion, Agioi Anargyroi, Kamatero', 22: 'Ellhniko, Argyroupolh',
+  23: 'Psyxiko, Neo Psyxiko', 24: 'Attikh', 25: 'Kypselh', 26: 'Galatsi', 27: 'Khfisia, Nea Erythraia',
+  28: 'Alimos', 29: 'Marousi, Peykh', 30: 'Hrakleio, Metamorfosi, Lykobrysh', 31: 'Xalandri, Brilissia',
+  32: 'Perama, Keratsini', 33: 'Pathsia', 34: 'Kolonos, Sepolia', 35: 'Xolargos, Agia Paraskeyh',
+  36: 'Katexakh', 37: 'Nea Philadepfia', 38: 'Hlioupolh, Byronas', 39: 'Athina', 40: 'Psyrh',
+  41: 'Ymuttos', 42: 'Parnitha', 43: 'Peiraias, Neo Faliro', 44: 'Xaidari',
+  45: 'Korydallos, Nikaia, Agia Barbara', 46: 'Glyfada', 47: 'Gkyzh', 48: 'Eleysina', 49: 'Aspropirgos'
+};
+
 export default function AdminDomainsTab() {
   const [loading, setLoading] = useState(true);
   const [domains, setDomains] = useState([]);
@@ -22,7 +36,7 @@ export default function AdminDomainsTab() {
       setDomains(data.domains || []);
       setProblems(data.problems || []);
     } catch (e) {
-      setErr('Failed to load domains data');
+      setErr(e.response?.data?.error || 'Failed to load domains data');
     } finally {
       setLoading(false);
     }
@@ -35,7 +49,7 @@ export default function AdminDomainsTab() {
       await api.post('/admin/domains/draw-problems');
       await loadData();
     } catch (e) {
-      setErr('Failed to draw monthly problems');
+      setErr(e.response?.data?.error || 'Failed to draw monthly problems');
     } finally {
       setDrawing(false);
     }
@@ -49,7 +63,7 @@ export default function AdminDomainsTab() {
       setCustomText(''); setCustomDom('');
       await loadData();
     } catch (e) {
-      setErr('Failed to add custom problem');
+      setErr(e.response?.data?.error || 'Failed to add custom problem');
     }
   };
 
@@ -58,7 +72,7 @@ export default function AdminDomainsTab() {
       await api.patch(`/admin/domains/resolve-problem/${id}`);
       setProblems(prev => prev.map(p => p.id === id ? { ...p, resolved: 1 } : p));
     } catch (e) {
-      setErr('Failed to resolve');
+      setErr(e.response?.data?.error || 'Failed to resolve');
     }
   };
 
@@ -91,7 +105,9 @@ export default function AdminDomainsTab() {
               <tbody>
                 {domains.map(d => (
                   <tr key={d.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                    <td style={{ padding: '8px', color: 'var(--text-primary)' }}>{d.name}</td>
+                    <td style={{ padding: '8px', color: 'var(--text-primary)' }}>
+                      {DIVISION_NAMES[d.id] || `Domain ${d.id}`} <span style={{ color: 'var(--text-muted)' }}>({d.name})</span>
+                    </td>
                     <td style={{ padding: '8px', textAlign: 'right', fontWeight: 'bold', color: d.safety_rating <= 3 ? '#ff5252' : d.safety_rating <= 6 ? '#ffcc00' : '#00e676' }}>
                       {d.safety_rating}
                     </td>
@@ -109,7 +125,7 @@ export default function AdminDomainsTab() {
           <form onSubmit={addCustomProblem} style={{ display: 'flex', gap: '8px', marginBottom: '1.5rem' }}>
             <select className={styles.input} value={customDom} onChange={e => setCustomDom(e.target.value)} required>
               <option value="">-- Domain --</option>
-              {domains.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+              {domains.map(d => <option key={d.id} value={d.id}>{DIVISION_NAMES[d.id] || `Domain ${d.id}`} ({d.name})</option>)}
             </select>
             <input type="text" className={styles.input} placeholder="Problem description" value={customText} onChange={e => setCustomText(e.target.value)} required style={{ flex: 1 }} />
             <button type="submit" className={`${styles.btn} ${styles.btnSecondary}`}>Add</button>
@@ -119,7 +135,8 @@ export default function AdminDomainsTab() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {problems.length === 0 && <div style={{ color: 'var(--text-muted)' }}>No problems recorded.</div>}
               {problems.map(p => {
-                const dName = domains.find(d => d.id === p.domain_id)?.name || 'Unknown';
+                const dom = domains.find(d => d.id === p.domain_id);
+                const dName = dom ? `${DIVISION_NAMES[dom.id] || `Domain ${dom.id}`} (${dom.name})` : 'Unknown';
                 return (
                   <div key={p.id} style={{ padding: '1rem', background: p.resolved ? 'rgba(0,0,0,0.2)' : 'rgba(255,82,82,0.1)', borderLeft: `3px solid ${p.resolved ? 'var(--glass-border)' : '#ff5252'}`, borderRadius: 'var(--radius-md)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
