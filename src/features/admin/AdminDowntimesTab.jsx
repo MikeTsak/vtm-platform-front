@@ -306,16 +306,16 @@ export default function AdminDowntimesTab() {
           <h4 style={{ margin: 0, color: viewMode === 'project' ? '#4da6ff' : 'var(--accent-purple)', fontSize: '1.4rem', fontWeight: 800 }}>
             {viewMode === 'standard' ? 'Downtime Configuration' : 'Project Configuration'}
           </h4>
-          <div className={styles.subtle}>Adjust parameters, view deadlines, and configure core structural settings.</div>
+          <div className={styles.subtle}>Configure deadlines and release settings.</div>
         </div>
 
-        {cfgLoading && <div className={styles.loading}><span className={styles.spinner} /> Syncing system configurations…</div>}
+        {cfgLoading && <div className={styles.loading}><span className={styles.spinner} /> Loading configuration...</div>}
         {cfgErr && <div className={`${styles.alert} ${styles.alertError}`}>{cfgErr}</div>}
         {cfgInfo && <div className={`${styles.alert} ${styles.alertInfo}`}>{cfgInfo}</div>}
 
         {/* --- SYSTEM PHASE INTERACTIVE OVERRIDE --- */}
         <div style={{ background: 'var(--glass-inset)', padding: '1.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)', borderLeft: masterPhase === 'project' ? '4px solid #4da6ff' : '4px solid var(--accent-purple)', marginBottom: '2rem', boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.4)' }}>
-          <h4 style={{ margin: '0 0 6px 0', fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-color)' }}>🌍 Master Active Phase Target</h4>
+          <h4 style={{ margin: '0 0 6px 0', fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-color)' }}>🌍 Default Phase</h4>
           <p style={{ margin: '0 0 15px 0', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
             Sets the default baseline view shown to all users inside their action panels.
           </p>
@@ -326,7 +326,7 @@ export default function AdminDowntimesTab() {
               onClick={() => handlePhaseToggle('standard')}
               disabled={cfgSaving}
             >
-              🦇 Monthly Actions Active
+              Standard
             </button>
             <button 
               className={styles.btn}
@@ -334,7 +334,7 @@ export default function AdminDowntimesTab() {
               onClick={() => handlePhaseToggle('project')}
               disabled={cfgSaving}
             >
-              📜 Projects Active
+              Projects
             </button>
           </div>
         </div>
@@ -347,7 +347,7 @@ export default function AdminDowntimesTab() {
                 <input type="date" className={styles.input} value={deadline} onChange={(e) => setDeadline(e.target.value)} />
               </label>
               <label className={styles.labeledInput}>
-                <span>Next Modern Event date</span>
+                <span>Next Event Date</span>
                 <input type="date" className={styles.input} value={opening} onChange={(e) => setOpening(e.target.value)} />
               </label>
             </>
@@ -378,7 +378,7 @@ export default function AdminDowntimesTab() {
             
             {massReleaseMode && (
               <div style={{ background: 'rgba(77,166,255,0.05)', borderRadius: '8px', padding: '15px', borderLeft: `4px solid #4da6ff` }} onClick={e => e.stopPropagation()}>
-                <h4 style={{ margin: '0 0 10px 0', color: '#4da6ff', fontSize: '1.1rem', textTransform: 'uppercase', letterSpacing: '1px' }}>System Active</h4>
+                <h4 style={{ margin: '0 0 10px 0', color: '#4da6ff', fontSize: '1.1rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Enabled</h4>
                 <label className={styles.labeledInput}>
                   <span style={{ color: 'var(--text-primary)' }}>Resolutions become visible on this date:</span>
                   <input type="datetime-local" className={styles.input} value={massReleaseDate} onChange={(e) => setMassReleaseDate(e.target.value)} style={{ marginTop: '8px' }} />
@@ -391,7 +391,7 @@ export default function AdminDowntimesTab() {
         <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', borderTop: '1px solid var(--glass-border)', paddingTop: '1.5rem' }}>
           <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={onReloadConfig}>Reset Configuration</button>
           <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => onSaveConfig()} disabled={cfgSaving}>
-            {cfgSaving ? 'Updating...' : 'Save Operations Schema'}
+            {cfgSaving ? 'Updating...' : 'Save Configuration'}
           </button>
         </div>
       </section>
@@ -400,9 +400,9 @@ export default function AdminDowntimesTab() {
       <section className={styles.editorSection} style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', padding: '2rem', boxShadow: 'var(--glass-shadow)' }}>
         <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
           <h4 style={{ margin: 0, color: 'var(--accent-purple)', fontSize: '1.4rem', fontWeight: 800 }}>
-            {viewMode === 'standard' ? 'Submissions Ledger' : 'Project Registry'}
+            {viewMode === 'standard' ? 'Downtimes' : 'Projects'}
           </h4>
-          <div className={styles.subtle}>Inspect, evaluate, modify, and process narrative logs.</div>
+          <div className={styles.subtle}>View and manage submitted downtimes and projects.</div>
         </div>
 
         {massReleaseMode && (
@@ -411,7 +411,7 @@ export default function AdminDowntimesTab() {
             <div>
               <h4 style={{ margin: '0 0 5px 0', color: '#4da6ff', fontSize: '1.1rem' }}>Mass Release Active</h4>
               <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-                Resolutions you write are currently hidden from players. They will be broadcasted on: <strong style={{ color: 'var(--text-primary)' }}>{massReleaseDate ? new Date(massReleaseDate).toLocaleString() : 'No date set'}</strong>.
+                Resolutions you write are currently hidden from players. They will be published on: <strong style={{ color: 'var(--text-primary)' }}>{massReleaseDate ? new Date(massReleaseDate).toLocaleString() : 'No date set'}</strong>.
               </p>
             </div>
           </div>
@@ -419,13 +419,13 @@ export default function AdminDowntimesTab() {
 
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem', alignItems: 'end', marginBottom: '1.5rem' }}>
           <label className={styles.labeledInput}>
-            <span>Search Pipeline</span>
-            <input className={styles.input} placeholder="Type query tags (character, action detail, clan details)..." value={q} onChange={(e) => setQ(e.target.value)} />
+            <span>Search</span>
+            <input className={styles.input} placeholder="Search by character, action detail, clan..." value={q} onChange={(e) => setQ(e.target.value)} />
           </label>
           <label className={styles.labeledInput}>
-            <span>Status Pipeline View</span>
+            <span>Filter by Status</span>
             <select className={styles.select} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-              <option value="all">Display All Operations</option>
+              <option value="all">All</option>
               {STATUS.map(s => <option key={s} value={s}>{`Only ${s}`}</option>)}
             </select>
           </label>
@@ -438,12 +438,12 @@ export default function AdminDowntimesTab() {
         </div>
 
         <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-          <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => { setQ(''); setStatusFilter('all'); }}>Clear Filter Pipelines</button>
-          <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={loadList}>Sync Records</button>
+          <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => { setQ(''); setStatusFilter('all'); }}>Clear Filters</button>
+          <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={loadList}>Refresh</button>
         </div>
 
         {listErr && <div className={`${styles.alert} ${styles.alertError}`} style={{ marginTop: '1.5rem' }}>{listErr}</div>}
-        {listLoading && <div className={styles.loading} style={{ marginTop: '1.5rem' }}><span className={styles.spinner} /> Syncing live ledger entries…</div>}
+        {listLoading && <div className={styles.loading} style={{ marginTop: '1.5rem' }}><span className={styles.spinner} /> Loading...</div>}
 
         {/* Resolution Summary Bar */}
         {!listLoading && rows.length > 0 && (() => {
@@ -515,7 +515,7 @@ export default function AdminDowntimesTab() {
               <div style={{ padding: '4rem 2rem', textAlign: 'center', background: 'var(--glass-inset)', borderRadius: 'var(--radius-lg)', border: '1px dashed var(--glass-border)', opacity: 0.7 }}>
                 <span style={{ fontSize: '3rem', display: 'block', marginBottom: '1rem' }}>🗄️</span>
                 <h3 style={{ color: 'var(--text-primary)', margin: 0, fontSize: '1.3rem' }}>No data matching parameters</h3>
-                <p className={styles.subtle} style={{ marginTop: '0.4rem' }}>Adjust queries or modify parameters to retrieve dormant records.</p>
+                <p className={styles.subtle} style={{ marginTop: '0.4rem' }}>Change your search or filters to see more results.</p>
               </div>
             )}
 
@@ -603,7 +603,7 @@ function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel }
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
           <div style={{ fontSize: '1.25rem', color: 'var(--text-color)', fontWeight: 800, letterSpacing: '-0.02em' }}>
             <b style={{ color: isProj ? '#4da6ff' : 'var(--accent-purple)', fontFamily: 'Fira Code, monospace', marginRight: '8px' }}>#{r.id}</b> {displayTitle || '(no title)'} 
-            {isProj && <span style={{fontSize: '0.7rem', background: '#1b4c8c', border: '1px solid #4da6ff', color: 'var(--text-color)', padding: '2px 8px', borderRadius: '4px', marginLeft: '12px', verticalAlign: 'middle', fontWeight: 900, letterSpacing: '1px'}}>LONG-TERM PROJECT</span>}
+            {isProj && <span style={{fontSize: '0.7rem', background: '#1b4c8c', border: '1px solid #4da6ff', color: 'var(--text-color)', padding: '2px 8px', borderRadius: '4px', marginLeft: '12px', verticalAlign: 'middle', fontWeight: 900, letterSpacing: '1px'}}>PROJECT</span>}
           </div>
           <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
             <span>Account: <b style={{ color: 'var(--text-secondary)' }}>{r.player_name || r.email}</b></span>
@@ -614,13 +614,13 @@ function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel }
 
       <div style={{ display: 'grid', gap: '1.5rem' }}>
         <label className={styles.labeledInput}>
-          <span>Kindred Activity Record Log</span>
+          <span>Description</span>
           <textarea className={styles.textarea} style={{ minHeight: isProj ? '220px' : '120px', background: 'rgba(0, 0, 0, 0.4)', borderStyle: 'dashed', opacity: 0.85, color: '#e0e0e5' }} readOnly value={r.body || ''} />
         </label>
 
         {!isProj && r.feeding_type && (
           <label className={styles.labeledInput}>
-            <span>Feeding Methodology Vector</span>
+            <span>Feeding Type</span>
             <div className={styles.input} style={{ background: 'rgba(0, 0, 0, 0.4)', borderStyle: 'dashed', opacity: 0.85, display: 'flex', alignItems: 'center', height: '44px', color: 'var(--accent-purple)', fontWeight: 700 }}>
               {r.feeding_type}
             </div>
@@ -629,25 +629,25 @@ function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel }
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
           <label className={styles.labeledInput}>
-            <span>GM Internal Infrastructure Notes</span>
-            <textarea className={styles.textarea} value={b.gm_notes} onChange={(e) => onUpdate(r.id, 'gm_notes', e.target.value)} placeholder="Write secure internal comments hidden from character dashboard logs..." />
+            <span>GM Internal Notes</span>
+            <textarea className={styles.textarea} value={b.gm_notes} onChange={(e) => onUpdate(r.id, 'gm_notes', e.target.value)} placeholder="Internal notes for GMs only..." />
           </label>
           <label className={styles.labeledInput}>
-            <span>GM Transmission Feedback (Dispatched To Character)</span>
-            <textarea className={styles.textarea} style={{ background: 'rgba(157, 124, 25ff, 0.03)', borderLeft: '3px solid var(--accent-purple)' }} value={b.gm_resolution} onChange={(e) => onUpdate(r.id, 'gm_resolution', e.target.value)} placeholder="Write resolution notes visible to character upon final completion..." />
+            <span>GM Feedback to Player</span>
+            <textarea className={styles.textarea} style={{ background: 'rgba(157, 124, 25ff, 0.03)', borderLeft: '3px solid var(--accent-purple)' }} value={b.gm_resolution} onChange={(e) => onUpdate(r.id, 'gm_resolution', e.target.value)} placeholder="Notes visible to the player..." />
           </label>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', background: 'var(--glass-bg)', padding: '1.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)', boxShadow: '0 4px 15px rgba(0,0,0,0.2)' }}>
           <label className={styles.labeledInput}>
-            <span>Registry Status State</span>
+            <span>Status</span>
             <select className={styles.select} value={b.status} onChange={(e) => onUpdate(r.id, 'status', e.target.value)}>
               {STATUS.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </label>
 
           <div className={styles.labeledInput}>
-            <span>Macro Processing Protocols</span>
+            <span>Quick Actions</span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem' }}>
               <button className={`${styles.btn} ${styles.btnSuccess} ${styles.btnSmall}`} type="button" onClick={() => onSave(r.id, { status: 'approved' })}>Approve</button>
               <button className={`${styles.btn} ${styles.btnWarning} ${styles.btnSmall}`} type="button" onClick={() => onSave(r.id, { status: 'Needs a Scene' })}>Needs Scene</button>
@@ -659,9 +659,9 @@ function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel }
         </div>
 
         <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', alignItems: 'center', borderTop: '1px solid var(--glass-border)', paddingTop: '1.5rem' }}>
-          <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => onCancel(r.id)} disabled={b.saving}>Discard & Terminate Terminal</button>
+          <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => onCancel(r.id)} disabled={b.saving}>Close</button>
           <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => onSave(r.id)} disabled={b.saving} style={{ marginLeft: 'auto' }}>
-            {b.saving ? 'Commiting Changes...' : 'Commit Operational Record'}
+            {b.saving ? 'Saving...' : 'Save'}
           </button>
           {b.error && <div className={`${styles.alertMini} ${styles.alertError}`}>{b.error}</div>}
           {b.info && <div className={`${styles.alertMini} ${styles.alertInfo}`}>{b.info}</div>}
