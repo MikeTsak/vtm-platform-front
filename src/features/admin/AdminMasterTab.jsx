@@ -20,6 +20,8 @@ export default function AdminMasterTab() {
   const [ntfyTopic, setNtfyTopic] = useState('');
   const [availableNpcs, setAvailableNpcs] = useState([]);
   const [subscribedNpcs, setSubscribedNpcs] = useState([]);
+  const [subscribeErrors, setSubscribeErrors] = useState(false);
+  const [bannerSettings, setBannerSettings] = useState({ enabled: 0, title: '', message: '', type: 'info', dismissable: 1 });
 
   // Danger Zone state
   const [dangerOpen, setDangerOpen] = useState(false);
@@ -145,6 +147,8 @@ export default function AdminMasterTab() {
       setBannerCountdown(bannerRes.data.banner_countdown || '');
       setNtfyTopic(ntfyRes.data.topic || '');
       setSubscribedNpcs(ntfyRes.data.subscribed_npcs || []);
+      setSubscribeErrors(ntfyRes.data.subscribe_errors || false);
+      setBannerSettings(bannerRes.data);
       setAvailableNpcs(npcsRes.data.npcs || []);
     } catch (e) { setErr('Failed to load Master Settings'); } finally { setLoading(false); }
   };
@@ -282,10 +286,10 @@ export default function AdminMasterTab() {
   };
 
   const saveNtfyPrefs = async () => {
-    setActionLoading(true); setMsg(''); setErr('');
+    setActionLoading(true); setErr(''); setMsg('');
     try {
-      await api.post('/admin/ntfy/prefs', { npc_ids: subscribedNpcs });
-      setMsg('NPC notification preferences saved!');
+      await api.post('/admin/ntfy/prefs', { npc_ids: subscribedNpcs, subscribe_errors: subscribeErrors });
+      setMsg(`Ntfy preferences saved.`);
       setTimeout(() => setMsg(''), 3000);
     } catch (e) { setErr('Failed to save NPC preferences.'); } finally { setActionLoading(false); }
   };
@@ -484,7 +488,19 @@ export default function AdminMasterTab() {
                   ))}
                   {availableNpcs.length === 0 && <span style={{ color: 'var(--text-secondary)' }}>No NPCs found.</span>}
                 </div>
-                <button className={`${styles.btn}`} onClick={saveNtfyPrefs} disabled={actionLoading} style={{ marginTop: '10px', background: 'var(--accent-purple)', color: '#fff', border: 'none' }}>
+                
+                <h5 style={{ margin: '15px 0 10px 0', color: 'var(--text-primary)' }}>System Subscriptions</h5>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: 'var(--text-color)', fontSize: '0.9rem' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={subscribeErrors} 
+                    onChange={(e) => setSubscribeErrors(e.target.checked)} 
+                    disabled={actionLoading}
+                  />
+                  Receive push notifications for API errors and crashes
+                </label>
+                
+                <button className={`${styles.btn}`} onClick={saveNtfyPrefs} disabled={actionLoading} style={{ marginTop: '15px', background: 'var(--accent-purple)', color: '#fff', border: 'none' }}>
                   💾 Save NPC Preferences
                 </button>
               </div>
