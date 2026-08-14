@@ -591,8 +591,8 @@ function IdentityEditModal({ sheet, onClose, onSave, busy }) {
           </div>
         </div>
         <div className={styles.modalFooter} style={{ padding: '16px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-          <button className={styles.ghostBtn} onClick={onClose} disabled={busy}>Cancel</button>
-          <button className={styles.cta} onClick={() => onSave({ ambition, desire })} disabled={busy}>{busy ? 'Saving...' : 'Save Changes'}</button>
+          <button className={styles.ghostBtn} onPointerDown={(e) => { e.preventDefault(); onClose(); }} onClick={onClose} disabled={busy}>Cancel</button>
+          <button className={styles.cta} onPointerDown={(e) => { e.preventDefault(); onSave({ ambition, desire }); }} onClick={() => onSave({ ambition, desire })} disabled={busy}>{busy ? 'Saving...' : 'Save Changes'}</button>
         </div>
       </div>
     </div>
@@ -671,8 +671,8 @@ function MoralityEditModal({ sheet, onClose, onSave, busy }) {
 
         </div>
         <div className={styles.modalFooter} style={{ padding: '16px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-          <button className={styles.ghostBtn} onClick={onClose} disabled={busy}>Cancel</button>
-          <button className={styles.cta} onClick={() => onSave({ touchstones, convictions })} disabled={busy}>{busy ? 'Saving...' : 'Save Changes'}</button>
+          <button className={styles.ghostBtn} onPointerDown={(e) => { e.preventDefault(); onClose(); }} onClick={onClose} disabled={busy}>Cancel</button>
+          <button className={styles.cta} onPointerDown={(e) => { e.preventDefault(); onSave({ touchstones, convictions }); }} onClick={() => onSave({ touchstones, convictions })} disabled={busy}>{busy ? 'Saving...' : 'Save Changes'}</button>
         </div>
       </div>
     </div>
