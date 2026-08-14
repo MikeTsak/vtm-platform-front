@@ -824,8 +824,8 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
                   autoFocus
                 />
                 <div style={{ display: 'flex', gap: '8px', marginTop: '6px', justifyContent: 'flex-end' }}>
-                  <button onClick={(e) => { e.stopPropagation(); setEditingNoteId(null); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '11px', cursor: 'pointer' }}>Cancel</button>
-                  <button onClick={(e) => handleSaveNote(e, type, id, idx)} style={{ background: 'var(--primary-color)', border: 'none', color: '#000', borderRadius: '4px', padding: '2px 8px', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold' }}>Save</button>
+                  <button onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); setEditingNoteId(null); }} onClick={(e) => { e.stopPropagation(); setEditingNoteId(null); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '11px', cursor: 'pointer' }}>Cancel</button>
+                  <button onPointerDown={(e) => { e.preventDefault(); handleSaveNote(e, type, id, idx); }} onClick={(e) => handleSaveNote(e, type, id, idx)} style={{ background: 'var(--primary-color)', border: 'none', color: '#000', borderRadius: '4px', padding: '2px 8px', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold' }}>Save</button>
                 </div>
               </div>
             );

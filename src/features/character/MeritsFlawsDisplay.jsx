@@ -108,8 +108,8 @@ export default function MeritsFlawsDisplay({ sheet, allMeritsFlat, allFlawsFlat,
                         style={{ width: '100%', minHeight: '80px', padding: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--primary-color)', color: '#fff', borderRadius: '4px', fontSize: '14px', fontFamily: "'Inter', sans-serif" }}
                       />
                       <div style={{ display: 'flex', gap: '8px', marginTop: '8px', justifyContent: 'flex-end' }}>
-                        <button onClick={() => setEditingId(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '12px', cursor: 'pointer' }}>Cancel</button>
-                        <button onClick={() => handleSaveDesc(m)} style={{ background: 'var(--primary-color)', border: 'none', color: '#000', borderRadius: '4px', padding: '4px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}>Save</button>
+                        <button onPointerDown={(e) => { e.preventDefault(); setEditingId(null); }} onClick={() => setEditingId(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '12px', cursor: 'pointer' }}>Cancel</button>
+                        <button onPointerDown={(e) => { e.preventDefault(); handleSaveDesc(m); }} onClick={() => handleSaveDesc(m)} style={{ background: 'var(--primary-color)', border: 'none', color: '#000', borderRadius: '4px', padding: '4px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}>Save</button>
                       </div>
                     </div>
                   ) : (
@@ -164,8 +164,8 @@ export default function MeritsFlawsDisplay({ sheet, allMeritsFlat, allFlawsFlat,
                         style={{ width: '100%', minHeight: '80px', padding: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--text-muted)', color: '#fff', borderRadius: '4px', fontSize: '14px', fontFamily: "'Inter', sans-serif" }}
                       />
                       <div style={{ display: 'flex', gap: '8px', marginTop: '8px', justifyContent: 'flex-end' }}>
-                        <button onClick={() => setEditingId(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '12px', cursor: 'pointer' }}>Cancel</button>
-                        <button onClick={() => handleSaveDesc(f)} style={{ background: 'var(--text-muted)', border: 'none', color: '#000', borderRadius: '4px', padding: '4px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}>Save</button>
+                        <button onPointerDown={(e) => { e.preventDefault(); setEditingId(null); }} onClick={() => setEditingId(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '12px', cursor: 'pointer' }}>Cancel</button>
+                        <button onPointerDown={(e) => { e.preventDefault(); handleSaveDesc(f); }} onClick={() => handleSaveDesc(f)} style={{ background: 'var(--text-muted)', border: 'none', color: '#000', borderRadius: '4px', padding: '4px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}>Save</button>
                       </div>
                     </div>
                   ) : (
