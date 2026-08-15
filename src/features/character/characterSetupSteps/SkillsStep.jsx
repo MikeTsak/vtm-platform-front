@@ -1,6 +1,46 @@
 import React, { useMemo } from 'react';
-import styles from '../../../styles/Sheet.module.css';
-import { Stepper, Field, QuotaBar, SpecialtiesBlock } from './StepHelpers';
+import styles from '../../../styles/CharacterSetup.module.css';
+import { Field, QuotaBar, SpecialtiesBlock, RandomizeButton, StatusIcon } from './StepHelpers';
+import DotRow from '../DotRow';
+
+const SKILLS = {
+  Physical: ['Athletics','Brawl','Craft','Drive','Firearms','Larceny','Melee','Stealth','Survival'],
+  Social:   ['Animal Ken','Etiquette','Insight','Intimidation','Leadership','Performance','Persuasion','Streetwise','Subterfuge'],
+  Mental:   ['Academics','Awareness','Finance','Investigation','Medicine','Occult','Politics','Science','Technology'],
+};
+const RULES = {
+  skillPackages: {
+    'Jack of All Trades': { '3':1, '2':8, '1':10, max:4 },
+    'Balanced':           { '3':3, '2':5, '1':7,  max:4 },
+    'Specialist':         { '4':1, '3':3, '2':3, '1':3, max:4 },
+  }
+};
+
+// Most broadly useful skills for a starting Kindred, most to least. Used to
+// build the "Suggested" fill; a shuffled copy of the same 27 names powers
+// "Randomize" instead.
+const SKILL_PRIORITY = [
+  'Awareness','Insight','Persuasion','Streetwise','Subterfuge','Etiquette','Stealth',
+  'Athletics','Brawl','Intimidation','Investigation','Leadership','Performance','Occult',
+  'Medicine','Politics','Melee','Larceny','Animal Ken','Academics','Firearms','Survival',
+  'Craft','Drive','Finance','Science','Technology',
+];
+
+// Fill skills from an ordered list of names, front-loading the highest tiers
+// first (e.g. Balanced's 3 top-tier slots get the first 3 names).
+function fillFromOrder(order, req) {
+  const tiers = Object.keys(req).filter(k => k !== 'max').map(Number).sort((a,b)=>b-a);
+  const dots = {};
+  let cursor = 0;
+  tiers.forEach(tier => {
+    const count = req[String(tier)];
+    for (let i = 0; i < count; i++) {
+      const name = order[cursor++];
+      if (name) dots[name] = tier;
+    }
+  });
+  return dots;
+}
 
 export default function SkillsStep({
   skillDots, setSkillDots,
@@ -8,25 +48,8 @@ export default function SkillsStep({
   specialties, setSpecialties,
   step, setStep
 }) {
-  const SKILLS = {
-    Physical: ['Athletics','Brawl','Craft','Drive','Firearms','Larceny','Melee','Stealth','Survival'],
-    Social:   ['Animal Ken','Etiquette','Insight','Intimidation','Leadership','Performance','Persuasion','Streetwise','Subterfuge'],
-    Mental:   ['Academics','Awareness','Finance','Investigation','Medicine','Occult','Politics','Science','Technology'],
-  };
-  const RULES = {
-    skillPackages: {
-      'Jack of All Trades': { '3':1, '2':8, '1':10, max:4 },
-      'Balanced':           { '3':3, '2':5, '1':7,  max:4 },
-      'Specialist':         { '4':1, '3':3, '2':3, '1':3, max:4 },
-    }
-  };
-
   const skillReq = useMemo(() => RULES.skillPackages[skillPackage], [skillPackage]);
-
-  const flat = (obj) => Object.values(obj).flat();
-  const baseSkills = useMemo(() => {
-    const o = {}; flat(SKILLS).forEach(s => o[s]=0); return o;
-  }, []);
+  const allSkillNames = useMemo(() => Object.values(SKILLS).flat(), []);
 
   const skillCounts = useMemo(() => {
     const c = {0:0,1:0,2:0,3:0,4:0,5:0};
@@ -44,30 +67,29 @@ export default function SkillsStep({
     return out;
   }, [skillReq, skillCounts]);
 
-  const canIncSkill = (k) => {
-    const v = skillDots[k] || 0;
-    const next = v + 1;
-    if (next > (skillReq.max || 5)) return false;
-    if (!(String(next) in skillReq)) return false;
-    const needAtNext = Number(skillReq[String(next)] || 0);
-    const haveAtNext = Number(skillCounts[next] || 0);
-    if (haveAtNext >= needAtNext) return false;
-    return true;
-  };
-
-  const canDecSkill = (k) => {
-    const v = skillDots[k] || 0;
-    return v > 0;
-  };
-
-  const incSkill = (k, d) => {
+  // Click-to-set: clicking a filled dot again drops it back a dot. There is
+  // no per-click quota gate on either direction — you can freely move a dot
+  // from any skill to any other; only "Next" is gated on the final pattern
+  // matching exactly (skillOk below). This is what fixes the old bug where
+  // dots could get stuck only movable in one direction.
+  const setSkill = (k, n) => {
     setSkillDots(p => {
       const v = p[k] || 0;
-      if (d > 0 && !canIncSkill(k)) return p;
-      if (d < 0 && !canDecSkill(k)) return p;
-      const next = Math.max(0, Math.min((skillReq.max||5), v + d));
-      return {...p, [k]: next};
+      const raw = n === v ? n - 1 : n;
+      const next = Math.max(0, Math.min(skillReq.max || 5, raw));
+      return { ...p, [k]: next };
     });
+  };
+
+  const applySuggested = () => {
+    const base = {}; allSkillNames.forEach(s => { base[s] = 0; });
+    setSkillDots({ ...base, ...fillFromOrder(SKILL_PRIORITY, skillReq) });
+  };
+
+  const randomizeSkills = () => {
+    const shuffled = [...allSkillNames].sort(() => Math.random() - 0.5);
+    const base = {}; allSkillNames.forEach(s => { base[s] = 0; });
+    setSkillDots({ ...base, ...fillFromOrder(shuffled, skillReq) });
   };
 
   const skillOk = useMemo(() => {
@@ -104,10 +126,20 @@ export default function SkillsStep({
 
   return (
     <section>
-      <h3 className={styles.sectionTitle}>Skills</h3>
-      <p className={styles.muted}>Choose a distribution package, then allocate dots. Controls lock as each tier fills.</p>
+      <div className={styles.stepHeader}>
+        <div>
+          <h3 className={styles.sectionTitle} style={{ marginBottom: 4, borderBottom: 'none', paddingBottom: 0 }}>Skills</h3>
+          <p className={styles.muted} style={{ marginBottom: 0 }}>
+            Choose a distribution package, then click a dot to set each skill's rating (click the filled dot again to lower it).
+          </p>
+        </div>
+        <div className={styles.stepHeaderActions}>
+          <button type="button" className={styles.ghostBtn} onClick={applySuggested}>Suggest</button>
+          <RandomizeButton onClick={randomizeSkills} />
+        </div>
+      </div>
 
-      <div className={styles.grid3}>
+      <div className={styles.grid3} style={{ marginTop: 10 }}>
         <Field label="Distribution">
           <select
             className={styles.input}
@@ -137,30 +169,19 @@ export default function SkillsStep({
         {Object.entries(SKILLS).map(([group, list]) => (
           <div key={group} className={`${styles.cardIsh} ${styles.bleedSoft}`}>
             <h4>{group}</h4>
-            {list.map(s => {
-              const plusDisabled = !canIncSkill(s);
-              const minusDisabled = !canDecSkill(s);
-              return (
-                <div key={s} className={styles.flexRow}>
-                  <span style={{minWidth:160}}>{s}</span>
-                  <div className={styles.dotControls}>
-                    <button
-                      type="button"
-                      className={`${styles.ghostBtn} ${minusDisabled?styles.disabled:''}`}
-                      disabled={minusDisabled}
-                      onClick={()=>incSkill(s,-1)}
-                    >−</button>
-                    <div className={`${styles.dotbox} ${styles.vitae}`}>{skillDots[s]}</div>
-                    <button
-                      type="button"
-                      className={`${styles.ghostBtn} ${plusDisabled?styles.disabled:''}`}
-                      disabled={plusDisabled}
-                      onClick={()=>incSkill(s,1)}
-                    >+</button>
-                  </div>
+            <div className={styles.dotRowGroup}>
+              {list.map(s => (
+                <div key={s} className={styles.dotRowItem}>
+                  <DotRow
+                    label={s}
+                    value={skillDots[s] || 0}
+                    max={5}
+                    cap={skillReq.max || 5}
+                    onDotClick={(n) => setSkill(s, n)}
+                  />
                 </div>
-              );
-            })}
+              ))}
+            </div>
           </div>
         ))}
       </div>
@@ -172,7 +193,7 @@ export default function SkillsStep({
         setSpecialties={setSpecialties}
       />
 
-      <p className={styles.muted}>Validation: {skillOk ? '✅' : '❌'}</p>
+      <p className={styles.muted}>Validation: <StatusIcon ok={skillOk} /></p>
 
       {!skillOk && skillWhy.length > 0 && (
         <div className={styles.alert} style={{marginTop:10}}>
@@ -187,8 +208,8 @@ export default function SkillsStep({
       )}
 
       <div className={styles.navRow}>
-        <button className={styles.ghostBtn} type="button" onClick={()=>setStep(4)}>Back</button>
-        <button className={styles.cta} type="button" onClick={()=>setStep(6)} disabled={!skillOk}>Next</button>
+        <button className={styles.ghostBtn} type="button" onClick={()=>setStep(5)}>Back</button>
+        <button className={styles.cta} type="button" onClick={()=>setStep(7)} disabled={!skillOk}>Next</button>
       </div>
     </section>
   );

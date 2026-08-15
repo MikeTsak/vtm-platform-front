@@ -1,19 +1,35 @@
 import React from 'react';
-import styles from '../../../styles/Sheet.module.css';
+import styles from '../../../styles/CharacterSetup.module.css';
 
-export function Stepper({ step, setStep, labels }) {
+// Material Symbols icon, matching the font already loaded site-wide (no emoji).
+export function Icon({ name, size = 16, style }) {
+  return (
+    <span
+      className="material-symbols-outlined"
+      style={{ fontSize: size, lineHeight: 1, verticalAlign: 'middle', ...style }}
+    >
+      {name}
+    </span>
+  );
+}
+
+// `steps`: [{ label, icon }]. Renders as a horizontal pill rail on desktop;
+// on mobile it becomes a fixed bottom bar (see .stepper mobile rules).
+export function Stepper({ step, setStep, steps }) {
   return (
     <div className={styles.stepper}>
-      {labels.map((label, i) => {
+      {steps.map((s, i) => {
         const n = i+1, active = n===step, done = n<step;
         return (
           <button
-            key={label}
+            key={s.label}
             type="button"
             className={`${styles.step} ${active?styles.active:''} ${done?styles.done:''}`}
             onClick={()=>setStep(n)}
           >
-            <span className={styles.num}>{n}</span> {label}
+            <Icon name={s.icon} size={15} style={{ marginRight: 4 }} />
+            <span className={styles.num}>{n}</span>
+            <span className={styles.stepLabel}>{s.label}</span>
           </button>
         );
       })}
@@ -30,24 +46,17 @@ export function Field({ label, children }) {
   );
 }
 
-// AdvTable component is currently unused but kept for potential future use
-/* eslint-disable no-unused-vars */
-export function AdvTable({ label, rows, setRows, cap }) {
-  const spent = rows.reduce((a,r)=>a+(Number(r.dots)||0),0);
+// A "valid / not valid" indicator used across every step's validation line.
+export function StatusIcon({ ok }) {
+  return <Icon name={ok ? 'check_circle' : 'cancel'} style={{ color: ok ? '#4caf50' : '#ff5252' }} />;
+}
+
+export function RandomizeButton({ onClick, label = 'Randomize' }) {
   return (
-    <>
-      <h4 className={styles.sectionSub}>{label} {cap!=null && <>(spent: {spent}/{cap})</>}</h4>
-      {rows.map((r,i)=>(
-        <div key={i} className={styles.flexRow}>
-          <input className={styles.input} style={{flex:2}} placeholder={label.slice(0,-1)} value={r.name}
-            onChange={e=>setRows(prev=>prev.map((x,idx)=>idx===i?{...x, name:e.target.value}:x))}/>
-          <input className={styles.input} type="number" min={0} style={{width:90}} value={r.dots}
-            onChange={e=>setRows(prev=>prev.map((x,idx)=>idx===i?{...x, dots:Number(e.target.value)||0}:x))}/>
-          <button className={styles.ghostBtn} type="button" onClick={()=>setRows(rows.filter((_,idx)=>idx!==i))}>Remove</button>
-        </div>
-      ))}
-      <button className={styles.ghostBtn} type="button" onClick={()=>setRows([...rows,{name:'',dots:0}])}>+ Add {label.slice(0,-1)}</button>
-    </>
+    <button type="button" className={styles.ghostBtn} onClick={onClick}>
+      <Icon name="casino" style={{ marginRight: 4 }} />
+      {label}
+    </button>
   );
 }
 

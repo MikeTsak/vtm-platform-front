@@ -1,34 +1,75 @@
 import React, { useMemo } from 'react';
-import styles from '../../../styles/Sheet.module.css';
-import { Stepper, Field } from './StepHelpers';
+import styles from '../../../styles/CharacterSetup.module.css';
+import { Field, RandomizeButton, StatusIcon } from './StepHelpers';
 import { PREDATOR_TYPES, PREDATOR_TYPE_NAMES } from '../../../data/predator_types';
+import { iconPath } from '../../../data/disciplines';
+
+// A chip-picker replaces a native <select> for short option lists — bigger
+// touch targets, all options visible at once, optional icon per option.
+function ChipPicker({ label, options, value, onChange, iconFor }) {
+  return (
+    <Field label={label}>
+      <div className={styles.tabs}>
+        {options.map(opt => (
+          <button
+            key={opt}
+            type="button"
+            className={`${styles.tab} ${value === opt ? styles.tabActive : ''}`}
+            onClick={() => onChange(opt)}
+          >
+            {iconFor?.(opt) && (
+              <img src={iconFor(opt)} alt="" style={{ width: 14, height: 14, objectFit: 'contain', marginRight: 6, verticalAlign: 'middle' }} />
+            )}
+            {opt}
+          </button>
+        ))}
+      </div>
+    </Field>
+  );
+}
+
+// A broadly beginner-friendly, thematically varied starting set — filtered
+// down to whichever of these are actually eligible for the chosen clan.
+const SUGGESTED_PREDATOR_TYPES = ['Alleycat', 'Cleaver', 'Sandman', 'Siren', 'Consensualist', 'Farmer'];
+
+const pickRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+function randomSplit(total, options) {
+  const out = {};
+  (options || []).forEach(o => { out[o] = 0; });
+  for (let i = 0; i < total && options?.length; i++) {
+    const o = pickRandom(options);
+    out[o] = (out[o] || 0) + 1;
+  }
+  return out;
+}
+
+function isEligible(predatorName, clan, bloodPotency) {
+  const P = PREDATOR_TYPES[predatorName];
+  try {
+    return !(P.restrict && P.restrict({ clan, bloodPotency }));
+  } catch {
+    return true;
+  }
+}
 
 export default function PredatorStep({
   predatorType, setPredatorType,
   predatorPicks, setPredatorPicks,
   clan, bloodPotency,
-  selectedDiscs, setSelectedDiscs,
-  favoredDisc, setFavoredDisc,
   setStep
 }) {
-  const CLAN_DISCIPLINES = {
-    Brujah: ['Celerity','Potence','Presence'],
-    Gangrel: ['Animalism','Fortitude','Protean'],
-    Malkavian: ['Auspex','Dominate','Obfuscate'],
-    Nosferatu: ['Animalism','Obfuscate','Potence'],
-    Toreador: ['Auspex','Celerity','Presence'],
-    Tremere: ['Auspex','Blood Sorcery','Dominate'],
-    Ventrue: ['Dominate','Fortitude','Presence'],
-    'Banu Haqim': ['Blood Sorcery','Celerity','Obfuscate'],
-    Hecata: ['Auspex','Fortitude','Oblivion'],
-    Lasombra: ['Dominate','Oblivion','Potence'],
-    'The Ministry': ['Obfuscate','Presence','Protean'],
-    Caitiff: ['Choose Any','Choose Any','Choose Any'],
-    'Thin-blood': ['Thin-blood Alchemy']
-  };
-
-  const clanDiscs = useMemo(() => CLAN_DISCIPLINES[clan] || [], [clan]);
   const currentPred = PREDATOR_TYPES[predatorType] || {};
+
+  const eligibleTypes = useMemo(
+    () => PREDATOR_TYPE_NAMES.filter(p => isEligible(p, clan, bloodPotency)),
+    [clan, bloodPotency]
+  );
+
+  const suggestedTypes = useMemo(
+    () => SUGGESTED_PREDATOR_TYPES.filter(p => eligibleTypes.includes(p)),
+    [eligibleTypes]
+  );
 
   const updatePool = (poolKey, option, value) => {
     setPredatorPicks(p => ({
@@ -40,16 +81,27 @@ export default function PredatorStep({
     }));
   };
 
-  const toggleDisc = (d) => {
-    setSelectedDiscs(prev => {
-      if (prev.includes(d)) {
-        const next = prev.filter(x => x !== d);
-        if (favoredDisc === d) setFavoredDisc(null);
-        return next;
-      }
-      if (prev.length >= 2) return prev;
-      return [...prev, d];
+  const randomizePredator = () => {
+    const pool = eligibleTypes.length ? eligibleTypes : PREDATOR_TYPE_NAMES;
+    const chosen = pickRandom(pool);
+    setPredatorType(chosen);
+    const P = PREDATOR_TYPES[chosen] || {};
+    const picks = { specialty: '', discipline: '', flawChoice: '', backgroundChoice: '', havenFlawChoice: '', pools: {} };
+    if (P.picks?.specialty) picks.specialty = pickRandom(P.picks.specialty);
+    if (P.picks?.discipline) {
+      const opts = P.picks.discipline(clan) || [];
+      if (opts.length) picks.discipline = pickRandom(opts);
+    }
+    if (P.picks?.flawChoice) picks.flawChoice = pickRandom(P.picks.flawChoice);
+    if (P.picks?.backgroundChoice) picks.backgroundChoice = pickRandom(P.picks.backgroundChoice);
+    if (P.picks?.havenFlawChoice) picks.havenFlawChoice = pickRandom(P.picks.havenFlawChoice);
+    (P.picks?.backgroundPool || []).forEach((pool, i) => {
+      picks.pools[`Pool-${i}-${pool.total}`] = randomSplit(pool.total, pool.options);
     });
+    (P.picks?.flawPool || []).forEach((pool, i) => {
+      picks.pools[`FlawPool-${i}-${pool.total}`] = randomSplit(pool.total, pool.options);
+    });
+    setPredatorPicks(picks);
   };
 
   const predatorOk = useMemo(() => {
@@ -81,20 +133,32 @@ export default function PredatorStep({
     return true;
   }, [predatorType, predatorPicks, clan, bloodPotency]);
 
-  const discOk = useMemo(() => selectedDiscs.length === 2 && favoredDisc && selectedDiscs.includes(favoredDisc), [selectedDiscs, favoredDisc]);
-
   return (
     <section>
-      <h3 className={styles.sectionTitle}>Predator & Disciplines</h3>
-      <p className={`${styles.muted} ${styles.smallFlavor}`}>
-        How you hunt, how you thrive. Choose your habits; choose your gifts.
-      </p>
+      <div className={styles.stepHeader}>
+        <div>
+          <h3 className={styles.sectionTitle} style={{ marginBottom: 4, borderBottom: 'none', paddingBottom: 0 }}>Predator Type</h3>
+          <p className={`${styles.muted} ${styles.smallFlavor}`} style={{ textAlign: 'left', marginBottom: 0 }}>
+            How you hunt shapes who you are. It grants Disciplines, Merits, Flaws, and sometimes Humanity shifts.
+          </p>
+        </div>
+        <div className={styles.stepHeaderActions}>
+          <RandomizeButton onClick={randomizePredator} />
+        </div>
+      </div>
+
+      {suggestedTypes.length > 0 && (
+        <p className={styles.muted} style={{ marginTop: 10 }}>
+          <b>Suggested for {clan || 'your clan'}:</b> {suggestedTypes.join(' • ')}
+        </p>
+      )}
 
       {/* Predator cards */}
-      <div className={styles.clanGrid}>
+      <div className={styles.clanGrid} style={{ marginTop: 10 }}>
         {PREDATOR_TYPE_NAMES.map(p => {
           const P = PREDATOR_TYPES[p];
           const active = predatorType === p;
+          const suggested = suggestedTypes.includes(p);
           let restrictMsg = null;
           try {
             restrictMsg = P.restrict ? P.restrict({ clan, bloodPotency }) : null;
@@ -109,7 +173,10 @@ export default function PredatorStep({
               title={P.desc}
             >
               <div className={styles.clanMeta} style={{textAlign:'left'}}>
-                <div className={styles.clanName}>{p}</div>
+                <div className={styles.clanName} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {p}
+                  {suggested && <span className={styles.suggestedTag}>Suggested</span>}
+                </div>
                 <div className={styles.clanBlurb}>{P.desc}</div>
                 {P.rolls && <div className={styles.clanDiscs}>{P.rolls}</div>}
                 {restrictMsg && <div className={styles.alert} style={{marginTop:8}}><span className={styles.alertDot}/>{restrictMsg}</div>}
@@ -120,83 +187,64 @@ export default function PredatorStep({
       </div>
 
       {/* Dynamic predator choices */}
-      <div className={styles.grid2} style={{marginTop:12}}>
+      <div style={{marginTop:12, display:'grid', gap: 4}}>
         {/* Specialty pick */}
         {currentPred.picks?.specialty && (
-          <Field label="Predator Specialty">
-            <select
-              className={styles.input}
-              value={predatorPicks.specialty}
-              onChange={e=>setPredatorPicks(s=>({...s, specialty:e.target.value}))}
-            >
-              <option value="">— choose —</option>
-              {currentPred.picks.specialty.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
-          </Field>
+          <ChipPicker
+            label="Predator Specialty"
+            options={currentPred.picks.specialty}
+            value={predatorPicks.specialty}
+            onChange={(opt)=>setPredatorPicks(s=>({...s, specialty:opt}))}
+          />
         )}
 
         {/* Discipline pick */}
         {(() => {
           const allowedDisc = (currentPred.picks?.discipline ? currentPred.picks.discipline(clan) : []) || [];
           return allowedDisc.length ? (
-            <Field label="Predator Discipline Dot">
-              <select
-                className={styles.input}
-                value={predatorPicks.discipline}
-                onChange={e=>setPredatorPicks(s=>({...s, discipline:e.target.value}))}
-              >
-                <option value="">— choose —</option>
-                {allowedDisc.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-              </select>
-            </Field>
+            <ChipPicker
+              label="Predator Discipline Dot"
+              options={allowedDisc}
+              value={predatorPicks.discipline}
+              onChange={(opt)=>setPredatorPicks(s=>({...s, discipline:opt}))}
+              iconFor={iconPath}
+            />
           ) : null;
         })()}
 
         {/* Single-choice picks */}
         {currentPred.picks?.flawChoice && (
-          <Field label="Pick a Flaw">
-            <select
-              className={styles.input}
-              value={predatorPicks.flawChoice}
-              onChange={e=>setPredatorPicks(s=>({...s, flawChoice:e.target.value}))}
-            >
-              <option value="">— choose —</option>
-              {currentPred.picks.flawChoice.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
-          </Field>
+          <ChipPicker
+            label="Pick a Flaw"
+            options={currentPred.picks.flawChoice}
+            value={predatorPicks.flawChoice}
+            onChange={(opt)=>setPredatorPicks(s=>({...s, flawChoice:opt}))}
+          />
         )}
 
         {currentPred.picks?.backgroundChoice && (
-          <Field label="Pick a Background">
-            <select
-              className={styles.input}
-              value={predatorPicks.backgroundChoice}
-              onChange={e=>setPredatorPicks(s=>({...s, backgroundChoice:e.target.value}))}
-            >
-              <option value="">— choose —</option>
-              {currentPred.picks.backgroundChoice.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
-          </Field>
+          <ChipPicker
+            label="Pick a Background"
+            options={currentPred.picks.backgroundChoice}
+            value={predatorPicks.backgroundChoice}
+            onChange={(opt)=>setPredatorPicks(s=>({...s, backgroundChoice:opt}))}
+          />
         )}
 
         {currentPred.picks?.havenFlawChoice && (
-          <Field label="Pick a Haven Flaw">
-            <select
-              className={styles.input}
-              value={predatorPicks.havenFlawChoice}
-              onChange={e=>setPredatorPicks(s=>({...s, havenFlawChoice:e.target.value}))}
-            >
-              <option value="">— choose —</option>
-              {currentPred.picks.havenFlawChoice.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
-          </Field>
+          <ChipPicker
+            label="Pick a Haven Flaw"
+            options={currentPred.picks.havenFlawChoice}
+            value={predatorPicks.havenFlawChoice}
+            onChange={(opt)=>setPredatorPicks(s=>({...s, havenFlawChoice:opt}))}
+          />
         )}
       </div>
 
       {/* Pools (allocate dots) */}
       {(currentPred.picks?.backgroundPool || currentPred.picks?.flawPool) && (
         <div className={styles.cardIsh} style={{marginTop:12}}>
-          <h4 className={styles.sectionSub}>Allocate Dots</h4>
+          <h4 className={styles.sectionSub} style={{marginTop:0}}>Allocate Dots</h4>
           {(currentPred.picks.backgroundPool || []).map((pool, idx) => {
             const key = `Pool-${idx}-${pool.total}`;
             const values = predatorPicks.pools?.[key] || {};
@@ -248,68 +296,14 @@ export default function PredatorStep({
         </div>
       )}
 
-      {/* Clan disciplines selection */}
-      <h4 className={styles.sectionSub} style={{marginTop:16}}>Clan Discipline Dots</h4>
-      <p className={styles.muted}>
-        Select <b>two</b> clan Disciplines. Pick which starts at <b>2 dots</b>; the other at <b>1 dot</b>.
-      </p>
-      <div className={styles.grid3}>
-        {(clanDiscs.includes('Choose Any')
-          ? [...new Set(Object.values({
-            Brujah: ['Celerity','Potence','Presence'],
-            Gangrel: ['Animalism','Fortitude','Protean'],
-            Malkavian: ['Auspex','Dominate','Obfuscate'],
-            Nosferatu: ['Animalism','Obfuscate','Potence'],
-            Toreador: ['Auspex','Celerity','Presence'],
-            Tremere: ['Auspex','Blood Sorcery','Dominate'],
-            Ventrue: ['Dominate','Fortitude','Presence'],
-            'Banu Haqim': ['Blood Sorcery','Celerity','Obfuscate'],
-            Hecata: ['Auspex','Fortitude','Oblivion'],
-            Lasombra: ['Dominate','Oblivion','Potence'],
-            'The Ministry': ['Obfuscate','Presence','Protean'],
-            Caitiff: ['Choose Any','Choose Any','Choose Any'],
-            'Thin-blood': ['Thin-blood Alchemy']
-          }).flat())]
-          : clanDiscs
-        ).map(d => {
-          const picked = selectedDiscs.includes(d);
-          return (
-            <div key={d} className={`${styles.cardIsh} ${styles.discCard} ${picked ? styles.picked : ''}`}>
-              <label className={styles.flexRow} style={{justifyContent:'space-between'}}>
-                <span>{d}</span>
-                <input type="checkbox" checked={picked} onChange={()=>toggleDisc(d)} />
-              </label>
-              <div className={styles.favRow}>
-                <label className={styles.flexRow} style={{justifyContent:'space-between', opacity: picked ? 1 : .5}}>
-                  <span>Make this the 2-dot Discipline</span>
-                  <input
-                    type="radio"
-                    name="favoredDisc"
-                    disabled={!picked}
-                    checked={favoredDisc === d}
-                    onChange={()=>setFavoredDisc(d)}
-                  />
-                </label>
-                <div className={styles.beads}>
-                  <span className={`${styles.bead} ${favoredDisc===d ? styles.on : ''}`} />
-                  <span className={`${styles.bead} ${picked ? styles.on : ''}`} />
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <p className={styles.muted}>
-        Predator selection: {predatorOk ? '✅' : '❌'} &nbsp;&nbsp; Discipline selection: {discOk ? '✅' : '❌'}
-      </p>
+      <p className={styles.muted}>Predator selection: <StatusIcon ok={predatorOk} /></p>
       <div className={styles.navRow}>
         <button className={styles.ghostBtn} type="button" onClick={()=>setStep(2)}>Back</button>
         <button
           className={styles.cta}
           type="button"
           onClick={()=>setStep(4)}
-          disabled={!(predatorOk && discOk)}
+          disabled={!predatorOk}
         >
           Next
         </button>

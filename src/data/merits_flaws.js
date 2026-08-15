@@ -40,7 +40,7 @@ export const MERITS_AND_FLAWS = {
         name: 'Linguistics',
         dots: '• +',
         description:
-          'Each dot allows the character to read, write, and speak fluently in another language beyond their native tongue and the Domain language.',
+          'Each dot allows the character to read, write, and speak fluently in another language beyond their native tongue and the Domain language. (Your character by defult only knows Modern Greek and English).',
       },
     ],
     flaws: [
@@ -1259,11 +1259,11 @@ export const listAllItems = () => {
   const items = [];
   for (const [cat, payload] of Object.entries(MERITS_AND_FLAWS)) {
     if (payload.merits) items.push(...payload.merits.map(m => ({ ...m, category: cat, type: 'Merit' })));
-    if (payload.flaws)  items.push(...payload.flaws.map(f => ({ ...f, category: cat, type: 'Flaw' })));
+    if (payload.flaws) items.push(...payload.flaws.map(f => ({ ...f, category: cat, type: 'Flaw' })));
     if (payload.groups) {
       for (const [sub, grp] of Object.entries(payload.groups)) {
         if (grp.merits) items.push(...grp.merits.map(m => ({ ...m, category: `${cat}/${sub}`, type: 'Merit' })));
-        if (grp.flaws)  items.push(...grp.flaws.map(f => ({ ...f, category: `${cat}/${sub}`, type: 'Flaw' })));
+        if (grp.flaws) items.push(...grp.flaws.map(f => ({ ...f, category: `${cat}/${sub}`, type: 'Flaw' })));
       }
     }
   }

@@ -1,19 +1,12 @@
 import React from 'react';
-import styles from '../../../styles/Sheet.module.css';
-
-const NAME_OVERRIDES = {
-  'The Ministry': 'Ministry',
-  'Banu Haqim': 'Banu_Haqim',
-  'Thin-blood': 'Thinblood'
-};
-const symlogo = (c) =>
-  `/img/clans/330px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g,'_')}_symbol.png`;
-const textlogo = (c) =>
-  `/img/clans/text/300px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g,'_')}_logo.png`;
+import styles from '../../../styles/CharacterSetup.module.css';
+import { symlogo, textlogo } from '../../../data/clans';
+import { StatusIcon } from './StepHelpers';
+import { PREDATOR_TYPES } from '../../../data/predator_types';
 
 export default function ReviewStep({
   name, clan, concept, chronicle, ambition, desire, sire, predatorType,
-  attrDots, derivedDisciplineDots,
+  attrDots, derivedDisciplineDots, disciplinePowerPicks,
   skillDots, specialties,
   merits, flaws,
   tenets, convictions, touchstones,
@@ -23,12 +16,12 @@ export default function ReviewStep({
   saving,
   step, setStep,
   onSave,
-  successOpen, setSuccessOpen
 }) {
-  const handleSave = async () => {
-    await onSave();
-    setSuccessOpen(true);
-  };
+  const health = (attrDots.Stamina ?? 1) + 3;
+  const willpower = (attrDots.Composure ?? 1) + (attrDots.Resolve ?? 1);
+  const powerNames = Object.values(disciplinePowerPicks || {}).flat().map(p => p.name);
+  const humanityMod = typeof PREDATOR_TYPES[predatorType]?.effects?.humanity === 'number' ? PREDATOR_TYPES[predatorType].effects.humanity : 0;
+  const derivedHumanity = Math.max(1, Math.min(10, (humanity ?? 7) + humanityMod));
 
   return (
     <section>
@@ -46,9 +39,12 @@ export default function ReviewStep({
         <li><b>Concept:</b> {concept || '—'}  <b>Chronicle:</b> {chronicle}</li>
         <li><b>Ambition:</b> {ambition || '—'}  <b>Desire:</b> {desire || '—'}</li>
         <li><b>Sire:</b> {sire || '—'}  <b>Predator:</b> {predatorType}</li>
+        <li><b>Health:</b> {health}  <b>Willpower:</b> {willpower}</li>
+        <li><b>Humanity:</b> {derivedHumanity}  <b>Blood Potency:</b> {bloodPotency ?? 1}</li>
         <li><b>Disciplines:</b> {Object.entries(derivedDisciplineDots).map(([k,v])=>`${k} ${'•'.repeat(v)}`).join(' , ') || '—'}</li>
-        <li><b>Attributes ok:</b> {attrOk ? '✅' : '❌'}  <b>Skills ok:</b> {skillOk ? '✅' : '❌'}</li>
-        <li><b>Predator ok:</b> {predatorOk ? '✅' : '❌'}  <b>Merits/Flaws ok:</b> {advOk ? '✅' : '❌'}</li>
+        <li><b>Starting powers:</b> {powerNames.length ? powerNames.join(', ') : 'None picked yet'}</li>
+        <li><b>Attributes ok:</b> <StatusIcon ok={attrOk} />  <b>Skills ok:</b> <StatusIcon ok={skillOk} /></li>
+        <li><b>Predator ok:</b> <StatusIcon ok={predatorOk} />  <b>Merits/Flaws ok:</b> <StatusIcon ok={advOk} /></li>
       </ul>
 
       <div className={styles.navRow}>
@@ -56,7 +52,7 @@ export default function ReviewStep({
         <button
           className={styles.cta}
           disabled={!canSubmit || saving}
-          onClick={handleSave}
+          onClick={onSave}
         >
           {saving ? 'Saving…' : 'Save Character'}
         </button>

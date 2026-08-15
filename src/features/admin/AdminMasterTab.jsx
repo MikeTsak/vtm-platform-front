@@ -5,9 +5,12 @@ import styles from '../../styles/Admin.module.css';
 import { Skeleton } from 'boneyard-js/react';
 import { Link } from 'react-router-dom';
 import { AuthCtx } from '../../core/AuthContext';
+import { CLAN_NAMES, symlogo, textlogo } from '../../data/clans';
 export default function AdminMasterTab() {
   const { me, setMe } = useContext(AuthCtx);
   const [commsEnabled, setCommsEnabled] = useState(true);
+  const [disabledClans, setDisabledClans] = useState([]);
+  const [clanSaving, setClanSaving] = useState(false);
   const [chatSchedule, setChatSchedule] = useState({});
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [bannerEnabled, setBannerEnabled] = useState(false);
@@ -134,11 +137,12 @@ export default function AdminMasterTab() {
   const loadConfig = async () => {
     setLoading(true);
     try {
-      const [commsRes, bannerRes, ntfyRes, npcsRes] = await Promise.all([
-        api.get('/admin/comms/config'), 
+      const [commsRes, bannerRes, ntfyRes, npcsRes, clansRes] = await Promise.all([
+        api.get('/admin/comms/config'),
         api.get('/system/banner'),
         api.get('/admin/ntfy').catch(() => ({ data: { topic: '', subscribed_npcs: [] } })),
-        api.get('/admin/npcs').catch(() => ({ data: { npcs: [] } }))
+        api.get('/admin/npcs').catch(() => ({ data: { npcs: [] } })),
+        api.get('/clans/config').catch(() => ({ data: { disabledClans: [] } }))
       ]);
       setCommsEnabled(commsRes.data.master_enabled);
       setChatSchedule(commsRes.data.schedule || {});
@@ -150,7 +154,22 @@ export default function AdminMasterTab() {
       setSubscribeErrors(ntfyRes.data.subscribe_errors || false);
       setBannerSettings(bannerRes.data);
       setAvailableNpcs(npcsRes.data.npcs || []);
+      setDisabledClans(clansRes.data.disabledClans || []);
     } catch (e) { setErr('Failed to load Master Settings'); } finally { setLoading(false); }
+  };
+
+  const toggleClanAvailability = async (clanName) => {
+    if (clanSaving) return;
+    const next = disabledClans.includes(clanName)
+      ? disabledClans.filter(c => c !== clanName)
+      : [...disabledClans, clanName];
+    setClanSaving(true); setMsg(''); setErr('');
+    try {
+      await api.post('/admin/clans/config', { disabledClans: next });
+      setDisabledClans(next);
+      setMsg(`${clanName} is now ${next.includes(clanName) ? 'unavailable' : 'available'} for character creation.`);
+      setTimeout(() => setMsg(''), 3000);
+    } catch (e) { setErr('Failed to update clan availability.'); } finally { setClanSaving(false); }
   };
 
   const toggleComms = async () => {
@@ -529,28 +548,52 @@ export default function AdminMasterTab() {
           </Link>
         </div>
 
-        <h5 style={{ color: 'var(--text-primary)', marginBottom: '1rem', fontSize: '1.2rem' }}>Clan Logos & Typography</h5>
+        <h5 style={{ color: 'var(--text-primary)', marginBottom: '0.25rem', fontSize: '1.2rem' }}>Clan Logos &amp; Availability</h5>
+        <p style={{ margin: '0 0 1rem 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+          Toggle which clans players can select in the character creator. Disabled clans stay visible there, greyed out with an "Unavailable" badge.
+        </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {['Banu_Haqim', 'Brujah', 'Caitiff', 'Gangrel', 'Hecata', 'Lasombra', 'Malkavian', 'Ministry', 'Nosferatu', 'Ravnos', 'Salubri', 'Thinblood', 'Toreador', 'Tremere', 'Tzimisce', 'Ventrue'].map(clan => (
-            <div key={clan} style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', alignItems: 'center', background: 'var(--glass-inset)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)' }}>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '10px' }}>{clan} Symbol (Default)</div>
-                <img src={`/img/clans/330px-${clan}_symbol.png`} alt={clan} style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
+          {CLAN_NAMES.map(clan => {
+            const isDisabled = disabledClans.includes(clan);
+            return (
+              <div key={clan} style={{ display: 'grid', gridTemplateColumns: '1fr repeat(4, 1fr) auto', gap: '1rem', alignItems: 'center', background: 'var(--glass-inset)', padding: '1rem', borderRadius: 'var(--radius-md)', border: `1px solid ${isDisabled ? 'rgba(255,82,82,0.35)' : 'var(--glass-border)'}` }}>
+                <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '1.05rem' }}>{clan}</div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '10px' }}>Symbol</div>
+                  <img src={symlogo(clan)} alt={clan} style={{ width: '64px', height: '64px', objectFit: 'contain', opacity: isDisabled ? 0.4 : 1 }} />
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '10px' }}>Symbol (Inverted)</div>
+                  <img src={symlogo(clan)} alt={clan} style={{ width: '64px', height: '64px', objectFit: 'contain', filter: 'invert(1)', opacity: isDisabled ? 0.4 : 1 }} />
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '10px' }}>Text</div>
+                  <img src={textlogo(clan)} alt={`${clan} Text`} style={{ width: '100px', height: '64px', objectFit: 'contain', opacity: isDisabled ? 0.4 : 1 }} />
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '10px' }}>Text (Inverted)</div>
+                  <img src={textlogo(clan)} alt={`${clan} Text`} style={{ width: '100px', height: '64px', objectFit: 'contain', filter: 'invert(1)', opacity: isDisabled ? 0.4 : 1 }} />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => toggleClanAvailability(clan)}
+                  disabled={clanSaving}
+                  title={isDisabled ? `Enable ${clan} for character creation` : `Disable ${clan} for character creation`}
+                  style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
+                    background: 'transparent', border: 'none', cursor: clanSaving ? 'wait' : 'pointer', padding: 0
+                  }}
+                >
+                  <div style={{ position: 'relative', width: '46px', height: '26px', background: isDisabled ? 'var(--glass-border)' : 'var(--color-success)', borderRadius: '26px', transition: 'background 0.3s ease' }}>
+                    <div style={{ position: 'absolute', top: '3px', left: isDisabled ? '3px' : '23px', width: '20px', height: '20px', background: 'var(--text-color)', borderRadius: '50%', transition: 'left 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }} />
+                  </div>
+                  <span style={{ fontSize: '0.72rem', color: isDisabled ? 'var(--color-error)' : 'var(--color-success)', fontWeight: 700 }}>
+                    {isDisabled ? 'Disabled' : 'Enabled'}
+                  </span>
+                </button>
               </div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '10px' }}>{clan} Symbol (Inverted)</div>
-                <img src={`/img/clans/330px-${clan}_symbol.png`} alt={clan} style={{ width: '80px', height: '80px', objectFit: 'contain', filter: 'invert(1)' }} />
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '10px' }}>{clan} Text (Default)</div>
-                <img src={`/img/clans/text/300px-${clan}_logo.png`} alt={`${clan} Text`} style={{ width: '120px', height: '80px', objectFit: 'contain' }} />
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '10px' }}>{clan} Text (Inverted)</div>
-                <img src={`/img/clans/text/300px-${clan}_logo.png`} alt={`${clan} Text`} style={{ width: '120px', height: '80px', objectFit: 'contain', filter: 'invert(1)' }} />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

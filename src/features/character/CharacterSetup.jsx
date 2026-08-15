@@ -1,12 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import api from '../../core/api';
-import styles from '../../styles/Sheet.module.css';
+import styles from '../../styles/CharacterSetup.module.css';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { PREDATOR_TYPES } from '../../data/predator_types';
 import { trackEvent } from '../../utils/analytics';
+import { clanTint } from '../../data/clans';
+import { Stepper, Icon } from './characterSetupSteps/StepHelpers';
+import CharacterPreview from './CharacterPreview';
 import ClanPicker from './characterSetupSteps/ClanPicker';
 import IdentityStep from './characterSetupSteps/IdentityStep';
 import PredatorStep from './characterSetupSteps/PredatorStep';
+import DisciplinesStep from './characterSetupSteps/DisciplinesStep';
 import AttributesStep from './characterSetupSteps/AttributesStep';
 import SkillsStep from './characterSetupSteps/SkillsStep';
 import AdvantagesStep from './characterSetupSteps/AdvantagesStep';
@@ -14,75 +18,6 @@ import MoralityStep from './characterSetupSteps/MoralityStep';
 import ReviewStep from './characterSetupSteps/ReviewStep';
 
 /* ---------- Config ---------- */
-// NOTE: These lists are kept for potential future use but are currently unused.
-// const CLANS = [
-//   'Brujah','Gangrel','Malkavian','Nosferatu','Toreador','Tremere','Ventrue',
-//   'Hecata', 'The Ministry',
-//   // 'Caitiff','Thin-blood','Banu Haqim','Lasombra'
-// ];
-
-// Flavor-only blurbs
-// const CLAN_BLURBS = {
-//   Brujah: 'Rebels & firebrands who turn conviction into force.',
-//   Gangrel: 'Feral survivors close to the Beast and the wild.',
-//   Malkavian: 'Cursed seers who glimpse truth Through cracks.',
-//   Nosferatu: 'Monstrous spies and info-brokers of the underbelly.',
-//   Toreador: 'Aesthetic predators intoxicated by beauty.',
-//   Tremere: 'Blood sorcerers obsessed with occult mastery.',
-//   Ventrue: 'Aristocrats of the night; command and control.',
-//   'Banu Haqim': 'Judges and hunters; blades in the dark.',
-//   Hecata: 'Necromantic consortium dealing with Death itself.',
-//   Lasombra: 'Shadow aristocrats who bend darkness to will.',
-//   'The Ministry': 'Tempters and iconoclasts who break taboos.',
-//   Caitiff: 'Clanless strays with no inherited path.',
-//   'Thin-blood': 'Faint undead spark; alchemy and ambiguity.'
-// };
-
-// Dark palettes per clan
-const CLAN_COLORS = {
-  Brujah:    ['#b40f1f','#7a0b15'],
-  Gangrel:   ['#2f7a3a','#173a1f'],
-  Malkavian: ['#713c8b','#3a1f47'],
-  Nosferatu: ['#6a4b2b','#332515'],
-  Toreador:  ['#b8236b','#5c1338'],
-  Tremere:   ['#7b1113','#37090a'],
-  Ventrue:   ['#1b4c8c','#0e2547'],
-  'Banu Haqim': ['#7a2f57','#3a1730'],
-  Hecata:    ['#2b6b6b','#123636'],
-  Lasombra:  ['#191a5a','#0c0d2e'],
-  'The Ministry': ['#865f12','#3c2a08'],
-  Caitiff:   ['#636363','#2f2f2f'],
-  'Thin-blood': ['#6e6e2b','#383813'],
-};
-
-// --- Asset helpers ---
-const NAME_OVERRIDES = {
-  'The Ministry': 'Ministry',
-  'Banu Haqim': 'Banu_Haqim',
-  'Thin-blood': 'Thinblood'
-};
-const symlogo = (c) =>
-  `/img/clans/330px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g,'_')}_symbol.png`;
-const textlogo = (c) =>
-  `/img/clans/text/300px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g,'_')}_logo.png`;
-
-// Disciplines per clan
-// const CLAN_DISCIPLINES = {
-//   Brujah: ['Celerity','Potence','Presence'],
-//   Gangrel: ['Animalism','Fortitude','Protean'],
-//   Malkavian: ['Auspex','Dominate','Obfuscate'],
-//   Nosferatu: ['Animalism','Obfuscate','Potence'],
-//   Toreador: ['Auspex','Celerity','Presence'],
-//   Tremere: ['Auspex','Blood Sorcery','Dominate'],
-//   Ventrue: ['Dominate','Fortitude','Presence'],
-//   'Banu Haqim': ['Blood Sorcery','Celerity','Obfuscate'],
-//   Hecata: ['Auspex','Fortitude','Oblivion'],
-//   Lasombra: ['Dominate','Oblivion','Potence'],
-//   'The Ministry': ['Obfuscate','Presence','Protean'],
-//   Caitiff: ['Choose Any','Choose Any','Choose Any'],
-//   'Thin-blood': ['Thin-blood Alchemy']
-// };
-
 // Attributes / Skills
 const ATTRS = {
   Physical: ['Strength','Dexterity','Stamina'],
@@ -116,10 +51,32 @@ const RULES = {
 /* ---------- Utils ---------- */
 const flat = (obj) => Object.values(obj).flat();
 
+/* ---------- Draft autosave (localStorage) ---------- */
+// Only used for the real player-facing wizard, never for admin NPC creation.
+const DRAFT_KEY = 'vtm_character_draft_v1';
+
+function loadDraft() {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+function saveDraft(data) {
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify(data)); } catch { /* quota/storage disabled — non-fatal */ }
+}
+function clearDraft() {
+  try { localStorage.removeItem(DRAFT_KEY); } catch { /* non-fatal */ }
+}
+
 /* ---------- Component ---------- */
 export default function CharacterSetup({ onDone, forNPC = false  }) {
+  const draft = useMemo(() => (forNPC ? null : loadDraft()), [forNPC]);
+  const [showDraftBanner, setShowDraftBanner] = useState(!!(draft && (draft.name || draft.clan)));
+
   const [existing, setExisting] = useState(null);
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(draft?.step ?? 1);
   const [err, setErr] = useState('');
   const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
@@ -130,19 +87,19 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
 
 
   // Identity + meta
-  const [name, setName] = useState('');
-  const [concept, setConcept] = useState('');
-  const [chronicle, setChronicle] = useState('Athens Through-Time (S1)');
-  const [ambition, setAmbition] = useState('');
-  const [desire, setDesire] = useState('');
+  const [name, setName] = useState(draft?.name ?? '');
+  const [concept, setConcept] = useState(draft?.concept ?? '');
+  const [chronicle, setChronicle] = useState(draft?.chronicle ?? 'Athens Through-Time (S2)');
+  const [ambition, setAmbition] = useState(draft?.ambition ?? '');
+  const [desire, setDesire] = useState(draft?.desire ?? '');
 
   // Clan
-  const [clan, setClan] = useState(null);
+  const [clan, setClan] = useState(draft?.clan ?? null);
 
   // Sire & Predator
-  const [sire, setSire] = useState('');
-  const [predatorType, setPredatorType] = useState('Alleycat');
-  const [predatorPicks, setPredatorPicks] = useState({
+  const [sire, setSire] = useState(draft?.sire ?? '');
+  const [predatorType, setPredatorType] = useState(draft?.predatorType ?? 'Alleycat');
+  const [predatorPicks, setPredatorPicks] = useState(draft?.predatorPicks ?? {
     specialty: '',
     discipline: '',
     flawChoice: '',
@@ -155,19 +112,23 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
   const baseAttrs = useMemo(() => {
     const o = {}; flat(ATTRS).forEach(a => o[a]=RULES.attributes.min); return o;
   }, []);
-  const [attrDots, setAttrDots] = useState(baseAttrs);
+  const [attrDots, setAttrDots] = useState(draft?.attrDots ?? baseAttrs);
 
   // Skills
   const baseSkills = useMemo(() => {
     const o = {}; flat(SKILLS).forEach(s => o[s]=0); return o;
   }, []);
-  const [skillDots, setSkillDots] = useState(baseSkills);
-  const [skillPackage, setSkillPackage] = useState('Balanced');
-  const [specialties, setSpecialties] = useState(['']);
+  const [skillDots, setSkillDots] = useState(draft?.skillDots ?? baseSkills);
+  const [skillPackage, setSkillPackage] = useState(draft?.skillPackage ?? 'Balanced');
+  const [specialties, setSpecialties] = useState(draft?.specialties ?? ['']);
 
   // Disciplines selection (2 picks, one favored at 2)
-  const [selectedDiscs, setSelectedDiscs] = useState([]);
-  const [favoredDisc, setFavoredDisc] = useState(null);
+  const [selectedDiscs, setSelectedDiscs] = useState(draft?.selectedDiscs ?? []);
+  const [favoredDisc, setFavoredDisc] = useState(draft?.favoredDisc ?? null);
+  // { [disciplineName]: [{ level, id, name }] } — same shape CharacterView.jsx
+  // reads as sheet.disciplinePowers, so powers picked here already show as
+  // known once the character exists.
+  const [disciplinePowerPicks, setDisciplinePowerPicks] = useState(draft?.disciplinePowerPicks ?? {});
   const derivedDisciplineDots = useMemo(() => {
     const map = {};
     selectedDiscs.forEach(d => { map[d] = (favoredDisc === d ? 2 : 1); });
@@ -175,15 +136,36 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
   }, [selectedDiscs, favoredDisc]);
 
   // Advantages
-  const [merits, setMerits] = useState([{ name:'', dots:0 }]);
-  const [flaws, setFlaws] = useState([{ name:'', dots:0 }]);
+  const [merits, setMerits] = useState(draft?.merits ?? [{ name:'', dots:0 }]);
+  const [flaws, setFlaws] = useState(draft?.flaws ?? [{ name:'', dots:0 }]);
 
   // Morality
-  const [tenets, setTenets] = useState('');
-  const [convictions, setConvictions] = useState(['']);
-  const [touchstones, setTouchstones] = useState(['']);
-  const [humanity, setHumanity] = useState(RULES.humanity);
-  const [bloodPotency, setBloodPotency] = useState(RULES.bloodPotency);
+  const [tenets, setTenets] = useState(draft?.tenets ?? '');
+  const [convictions, setConvictions] = useState(draft?.convictions ?? ['']);
+  const [touchstones, setTouchstones] = useState(draft?.touchstones ?? ['']);
+  const [humanity, setHumanity] = useState(draft?.humanity ?? RULES.humanity);
+  const [bloodPotency, setBloodPotency] = useState(draft?.bloodPotency ?? RULES.bloodPotency);
+
+  // Autosave every change (player-facing wizard only)
+  useEffect(() => {
+    if (forNPC) return;
+    saveDraft({
+      step, name, concept, chronicle, ambition, desire, clan, sire,
+      predatorType, predatorPicks, attrDots, skillDots, skillPackage, specialties,
+      selectedDiscs, favoredDisc, disciplinePowerPicks, merits, flaws, tenets, convictions, touchstones,
+      humanity, bloodPotency,
+    });
+  }, [
+    forNPC, step, name, concept, chronicle, ambition, desire, clan, sire,
+    predatorType, predatorPicks, attrDots, skillDots, skillPackage, specialties,
+    selectedDiscs, favoredDisc, disciplinePowerPicks, merits, flaws, tenets, convictions, touchstones,
+    humanity, bloodPotency,
+  ]);
+
+  const discardDraft = () => {
+    clearDraft();
+    window.location.reload();
+  };
 
   useEffect(() => {
     if (forNPC) return; // NPCs don't use /characters/me
@@ -191,7 +173,7 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
       const char = r.data.character;
       setExisting(char);
 
-      // ✅ If the character exists but the sheet is empty (Admin Wiped it) OR an admin allowed it, automatically open the wizard!
+      // If the character exists but the sheet is empty (Admin Wiped it) OR an admin allowed it, automatically open the wizard!
       if (char && char.sheet && char.sheet.allow_reset === true) {
         setIsRebuilding(true);
         if (char.name) setName(char.name);
@@ -413,6 +395,7 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
       skills: skillDotsOut,
       specialties: [...(specialties || []).filter(Boolean), ...extraSpecialties],
       disciplines: discMap,
+      disciplinePowers: disciplinePowerPicks,
       advantages: { merits: meritsOut, flaws: flawsOut },
       morality: {
         tenets,
@@ -439,7 +422,9 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
         onDone(createdCharacter);
       }
 
-      // ✅ show success modal instead of navigating immediately
+      if (!forNPC) clearDraft();
+
+      // show success modal instead of navigating immediately
       setSuccessOpen(true);
     } catch (e) {
       setErr(e?.response?.data?.error || 'Failed to save character');
@@ -462,22 +447,56 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
     );
   }
 
-  const tint = clan ? CLAN_COLORS[clan][0] : '#8a0f1a';
+  const tint = clanTint(clan);
   // Use imported PREDATOR_TYPES
+
+  const checklist = [
+    { step: 1, label: 'Clan', done: !!clan },
+    { step: 2, label: 'Concept', done: name.trim().length > 0 },
+    { step: 3, label: 'Predator', done: predatorOk },
+    { step: 4, label: 'Disciplines', done: discOk },
+    { step: 5, label: 'Attributes', done: attrOk },
+    { step: 6, label: 'Skills', done: skillOk },
+    { step: 7, label: 'Merits & Flaws', done: advOk },
+    { step: 8, label: 'Morality', done: convictions.some(Boolean) && touchstones.some(Boolean) },
+  ];
 
   return (
     <div className={styles.sheetRoot}>
       <div className={styles.sheetPage} data-clan={clan || '—'}>
         <div className={styles.vignette} aria-hidden="true" />
         <div className={styles.skyline} style={{'--tint': tint}} aria-hidden="true" />
+        <div className={styles.wizardGrid}>
         <div className={`${styles.sheetCard} ${styles.sheetWide} ${styles.bleedEdge}`}>
           <h2 className={styles.cardTitle}>Create Your Character</h2>
+          {showDraftBanner && (
+            <div className={styles.stepHeader} style={{ background: 'var(--glass-inset)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', padding: '0.75rem 1rem', marginBottom: '1rem' }}>
+              <span className={styles.muted}>
+                <Icon name="restore" style={{ marginRight: 6 }} />
+                Resuming your draft from earlier — nothing's been created yet.
+              </span>
+              <div className={styles.stepHeaderActions}>
+                <button type="button" className={styles.ghostBtn} onClick={()=>setShowDraftBanner(false)}>Keep it</button>
+                <button type="button" className={styles.ghostBtn} onClick={discardDraft}>Discard &amp; start over</button>
+              </div>
+            </div>
+          )}
           {err && <div className={styles.alert}><span className={styles.alertDot} />{err}</div>}
 
           <Stepper
             step={step}
             setStep={setStep}
-            labels={['Clan','Identity','Predator & Disciplines','Attributes','Skills','Advantages','Morality','Review']}
+            steps={[
+              { label: 'Clan', icon: 'account_tree' },
+              { label: 'Concept', icon: 'badge' },
+              { label: 'Predator', icon: 'visibility' },
+              { label: 'Disciplines', icon: 'auto_awesome' },
+              { label: 'Attributes', icon: 'bar_chart' },
+              { label: 'Skills', icon: 'school' },
+              { label: 'Merits & Flaws', icon: 'balance' },
+              { label: 'Morality', icon: 'favorite' },
+              { label: 'Review', icon: 'fact_check' },
+            ]}
           />
 
           {/* STEP 1: Clan Picker */}
@@ -489,7 +508,7 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
             />
           )}
 
-          {/* STEP 2: Identity */}
+          {/* STEP 2: Concept / Identity */}
           {step === 2 && (
             <IdentityStep
               name={name}
@@ -509,7 +528,7 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
             />
           )}
 
-          {/* STEP 3: Predator & Disciplines */}
+          {/* STEP 3: Predator Type */}
           {step === 3 && (
             <PredatorStep
               predatorType={predatorType}
@@ -518,16 +537,26 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
               setPredatorPicks={setPredatorPicks}
               clan={clan}
               bloodPotency={bloodPotency}
-              selectedDiscs={selectedDiscs}
-              setSelectedDiscs={setSelectedDiscs}
-              favoredDisc={favoredDisc}
-              setFavoredDisc={setFavoredDisc}
               setStep={setStep}
             />
           )}
 
-          {/* STEP 4: Attributes */}
+          {/* STEP 4: Disciplines */}
           {step === 4 && (
+            <DisciplinesStep
+              clan={clan}
+              selectedDiscs={selectedDiscs}
+              setSelectedDiscs={setSelectedDiscs}
+              favoredDisc={favoredDisc}
+              setFavoredDisc={setFavoredDisc}
+              disciplinePowerPicks={disciplinePowerPicks}
+              setDisciplinePowerPicks={setDisciplinePowerPicks}
+              setStep={setStep}
+            />
+          )}
+
+          {/* STEP 5: Attributes */}
+          {step === 5 && (
             <AttributesStep
               attrDots={attrDots}
               setAttrDots={setAttrDots}
@@ -536,8 +565,8 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
             />
           )}
 
-          {/* STEP 5: Skills */}
-          {step === 5 && (
+          {/* STEP 6: Skills */}
+          {step === 6 && (
             <SkillsStep
               skillDots={skillDots}
               setSkillDots={setSkillDots}
@@ -550,8 +579,8 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
             />
           )}
 
-          {/* STEP 6: Advantages */}
-          {step === 6 && (
+          {/* STEP 7: Merits & Flaws */}
+          {step === 7 && (
             <AdvantagesStep
               merits={merits}
               setMerits={setMerits}
@@ -564,26 +593,25 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
             />
           )}
 
-          {/* STEP 7: Morality */}
-          {step === 7 && (
+          {/* STEP 8: Touchstones & Morality */}
+          {step === 8 && (
             <MoralityStep
               tenets={tenets}
               setTenets={setTenets}
               humanity={humanity}
-              setHumanity={setHumanity}
+              predatorType={predatorType}
               convictions={convictions}
               setConvictions={setConvictions}
               touchstones={touchstones}
               setTouchstones={setTouchstones}
               bloodPotency={bloodPotency}
-              setBloodPotency={setBloodPotency}
               step={step}
               setStep={setStep}
             />
           )}
 
-          {/* STEP 8: Review */}
-          {step === 8 && (
+          {/* STEP 9: Review */}
+          {step === 9 && (
             <ReviewStep
               name={name}
               clan={clan}
@@ -595,6 +623,7 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
               predatorType={predatorType}
               attrDots={attrDots}
               derivedDisciplineDots={derivedDisciplineDots}
+              disciplinePowerPicks={disciplinePowerPicks}
               skillDots={skillDots}
               specialties={specialties}
               merits={merits}
@@ -613,10 +642,27 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
               step={step}
               setStep={setStep}
               onSave={save}
-              successOpen={successOpen}
-              setSuccessOpen={setSuccessOpen}
             />
           )}
+        </div>
+
+        <CharacterPreview
+          clan={clan}
+          name={name}
+          concept={concept}
+          predatorType={predatorType}
+          selectedDiscs={selectedDiscs}
+          favoredDisc={favoredDisc}
+          humanity={Math.max(1, Math.min(10, humanity + (typeof PREDATOR_TYPES[predatorType]?.effects?.humanity === 'number' ? PREDATOR_TYPES[predatorType].effects.humanity : 0)))}
+          bloodPotency={bloodPotency}
+          health={(attrDots.Stamina || 1) + 3}
+          willpower={(attrDots.Composure || 1) + (attrDots.Resolve || 1)}
+          meritsCount={merits.filter(m => (m.name||'').trim() && Number(m.dots||0) > 0).length}
+          flawsCount={flaws.filter(f => (f.name||'').trim() && Number(f.dots||0) > 0).length}
+          checklist={checklist}
+          step={step}
+          setStep={setStep}
+        />
         </div>
       </div>
       {successOpen && (
@@ -637,6 +683,11 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
           <p className={styles.modalBody}>
             Now see your character, select Discipline powers, and spend your first XP.
           </p>
+          {merits.some(m => m.name === 'Retainers') && (
+            <p className={styles.modalBody} style={{ marginTop: -8 }}>
+              You took the <b>Retainers</b> merit — build their full sheet on the Retainers page whenever you're ready.
+            </p>
+          )}
           <div className={styles.modalActions}>
             <button
               className={styles.cta}
@@ -645,6 +696,14 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
             >
               Go to Character
             </button>
+            {merits.some(m => m.name === 'Retainers') && (
+              <button
+                className={styles.ghostBtn}
+                onClick={() => navigate('/retainers', { replace: true })}
+              >
+                Set Up My Retainer
+              </button>
+            )}
             <button
               className={styles.ghostBtn}
               onClick={() => navigate('/', { replace: true })}
@@ -655,118 +714,6 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
         </div>
       </div>
       )}
-    </div>
-  );
-}
-
-/* ---------- Small components ---------- */
-function Stepper({ step, setStep, labels }) {
-  return (
-    <div className={styles.stepper}>
-      {labels.map((label, i) => {
-        const n = i+1, active = n===step, done = n<step;
-        return (
-          <button
-            key={label}
-            type="button"
-            className={`${styles.step} ${active?styles.active:''} ${done?styles.done:''}`}
-            onClick={()=>setStep(n)}
-          >
-            <span className={styles.num}>{n}</span> {label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-function Field({ label, children }) {
-  return (
-    <label className={styles.field}>
-      <span className={styles.fieldLabel}>{label}</span>
-      {children}
-    </label>
-  );
-}
-
-// AdvTable component is currently unused but kept for potential future use
-/* eslint-disable no-unused-vars */
-function AdvTable({ label, rows, setRows, cap }) {
-  const spent = rows.reduce((a,r)=>a+(Number(r.dots)||0),0);
-  return (
-    <>
-      <h4 className={styles.sectionSub}>{label} {cap!=null && <>(spent: {spent}/{cap})</>}</h4>
-      {rows.map((r,i)=>(
-        <div key={i} className={styles.flexRow}>
-          <input className={styles.input} style={{flex:2}} placeholder={label.slice(0,-1)} value={r.name}
-            onChange={e=>setRows(prev=>prev.map((x,idx)=>idx===i?{...x, name:e.target.value}:x))}/>
-          <input className={styles.input} type="number" min={0} style={{width:90}} value={r.dots}
-            onChange={e=>setRows(prev=>prev.map((x,idx)=>idx===i?{...x, dots:Number(e.target.value)||0}:x))}/>
-          <button className={styles.ghostBtn} type="button" onClick={()=>setRows(rows.filter((_,idx)=>idx!==i))}>Remove</button>
-        </div>
-      ))}
-      <button className={styles.ghostBtn} type="button" onClick={()=>setRows([...rows,{name:'',dots:0}])}>+ Add {label.slice(0,-1)}</button>
-    </>
-  );
-}
-
-function SpecialtiesBlock({ skillDots, specialties, setSpecialties }) {
-  const autoSkills = ['Academics','Craft','Performance','Science'];
-  const autoCount = autoSkills.reduce((n,sk)=> n + ((skillDots[sk]||0) > 0 ? 1 : 0), 0);
-  const totalNeeded = autoCount + 1; // +1 extra anywhere
-  const tooMany = specialties.filter(Boolean).length > totalNeeded;
-
-  React.useEffect(() => {
-    setSpecialties(prev => {
-      if (prev.length < totalNeeded) {
-        return [...prev, ...Array(totalNeeded - prev.length).fill('')];
-      } else if (prev.length > totalNeeded) {
-        return prev.slice(0, totalNeeded);
-      }
-      return prev;
-    });
-  }, [totalNeeded, setSpecialties]);
-
-  return (
-    <>
-      <p className={styles.muted}>
-        Free specialties: one in each of <b>Academics, Craft, Performance, Science</b> (if you have dots), plus <b>one extra</b> anywhere.
-        If Predator type grants a specialty in a Skill with 0 dots, convert it to the first dot instead.
-      </p>
-      <div className={styles.grid3}>
-        {specialties.map((sp,i)=>(
-          <Field key={i} label={`Specialty ${i+1}`}>
-            <input
-              className={styles.input}
-              value={sp}
-              onChange={e=>setSpecialties(prev=>prev.map((v,idx)=>idx===i?e.target.value:v))}
-              placeholder="e.g., Melee: Knives / Persuasion: Bargaining"
-            />
-          </Field>
-        ))}
-      </div>
-      <small className={styles.muted}>
-        Needed: {totalNeeded}. {tooMany ? 'Trim a specialty.' : 'OK'}
-      </small>
-    </>
-  );
-}
-
-/* A tiny quota bar used in Attributes & Skills */
-function QuotaBar({ label, quotas }) {
-  const keys = Object.keys(quotas).sort((a,b)=>Number(a)-Number(b));
-  const allZero = keys.every(k => (quotas[k] || 0) === 0);
-  return (
-    <div className={`${styles.quotaBar} ${styles.cardIsh}`}>
-      <div className={styles.quotaHead}>{label}</div>
-      <div className={styles.quotaPills}>
-        {keys.map(k => (
-          <span key={k} className={`${styles.pill} ${quotas[k]===0 ? styles.done : ''}`}>
-            {k} <b>× {quotas[k]}</b>
-          </span>
-        ))}
-      </div>
-      {allZero && <div className={styles.quotaOk}>All set</div>}
     </div>
   );
 }

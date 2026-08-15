@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import styles from '../../styles/Sheet.module.css';
+import styles from '../../styles/CharacterSetup.module.css';
 import { MERITS_AND_FLAWS } from '../../data/merits_flaws';
 import MiniSearch from 'minisearch';
 
@@ -8,7 +8,7 @@ import MiniSearch from 'minisearch';
    =========================== */
 
 /** Count bullets (•) in a string. */
-function bulletCount(s = '') {
+export function bulletCount(s = '') {
   const m = String(s).match(/•/g);
   return m ? m.length : 0;
 }
@@ -24,7 +24,7 @@ function bulletCount(s = '') {
  * - Open-ended "• +" -> [1]  (creation uses the minimum only)
  * - Unknown/blank -> []
  */
-function parseDotSpec(spec = '') {
+export function parseDotSpec(spec = '') {
   const src = String(spec).trim();
 
   if (!src) return [];
@@ -63,7 +63,7 @@ function parseDotSpec(spec = '') {
 }
 
 /** Flatten MERITS_AND_FLAWS into one list [{id, name, dotsSpec, type, category, description}] */
-function flattenData() {
+export function flattenData() {
   const out = [];
 
   for (const [cat, payload] of Object.entries(MERITS_AND_FLAWS)) {
@@ -132,6 +132,41 @@ function glyph(n) {
   return '•'.repeat(Math.max(0, Number(n) || 0));
 }
 
+// A small, hand-picked "good defaults" list — broadly useful, simple, and
+// LARP-friendly, spanning several categories, so new players have a quick
+// first stop instead of having to scroll the whole compendium.
+const SUGGESTED_MERIT_IDS = [
+  'linguistics__linguistics',
+  'looks__beautiful',
+  'backgrounds_resources__resources',
+  'backgrounds_contacts__contacts',
+  'backgrounds_herd__herd',
+  'backgrounds_haven__haven',
+  'backgrounds_retainers__retainers',
+  'backgrounds_status__status',
+  'other__check_the_trunk',
+  'feeding__bloodhound',
+];
+
+const SUGGESTED_FLAW_IDS = [
+  'backgrounds_haven__no_haven',
+  'backgrounds_resources__destitute',
+  'backgrounds_fame__dark_secret',
+  'backgrounds_retainers__stalkers',
+  'backgrounds_status__suspect',
+  'feeding__prey_exclusion',
+  'feeding__farmer',
+  'backgrounds_herd__obvious_predator',
+  'backgrounds_allies__enemy',
+  'other__weak-willed',
+];
+
+const TABS = [
+  { key: 'suggested', label: 'Suggested' },
+  { key: 'merits', label: 'All Merits' },
+  { key: 'flaws', label: 'All Flaws' },
+];
+
 /* ===========================
    Main Picker
    =========================== */
@@ -143,7 +178,8 @@ export default function MeritsFlawsPicker({
   meritBudget = 7,       // total dots you allow for merits
 }) {
   const [q, setQ] = useState('');
-  
+  const [tab, setTab] = useState('suggested');
+
   // Calculate Flaw Budget dynamically based on Merit Budget (2 Flaws for every 7 Merits)
   const flawBudget = Math.max(2, Math.floor(meritBudget / 7) * 2);
 
@@ -251,15 +287,92 @@ export default function MeritsFlawsPicker({
     return Number(found?.dots || 0);
   };
 
-  // split columns for a tidy layout
+  const renderRow = (it) => {
+    const allowed = parseDotSpec(it.dotsSpec);
+    if (!allowed.length) return null; // not selectable at creation
+    const picked = isPicked(it.id, it.type);
+    const curDots = pickedDots(it.id, it.type);
+    const minIfAdd = allowed[0];
+    const budgetLeft = it.type === 'Merit'
+      ? !picked && (meritsSpent + minIfAdd > meritBudget)
+      : !picked && (flawDots + minIfAdd > flawBudget);
+
+    return (
+      <div
+        key={it.id}
+        className={styles.flexRow}
+        style={{
+          alignItems: 'start',
+          gap: 10,
+          opacity: budgetLeft ? .55 : 1,
+          border: '1px solid var(--border-color)',
+          borderRadius: 10,
+          padding: 10,
+          background: 'var(--glass-inset)',
+          marginBottom: 0,
+        }}
+      >
+        <button
+          type="button"
+          className={styles.ghostBtn}
+          disabled={budgetLeft}
+          onClick={() => onToggle(it)}
+          title={picked ? 'Remove' : 'Add'}
+        >
+          {picked ? '−' : '+'}
+        </button>
+        <div style={{ display: 'grid', gap: 4, flex: 1 }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
+            <b>{it.name}</b>
+            {tab === 'suggested' && <span className={styles.suggestedTag}>Suggested</span>}
+            <small className={styles.muted}>{it.category}</small>
+            <small className={styles.pill}>{it.dotsSpec}</small>
+            {picked && (
+              allowed.length > 1 ? (
+                <select
+                  className={styles.input}
+                  style={{ width: 110, padding: '4px 8px', height: 30 }}
+                  value={curDots}
+                  onChange={e => onChangeDots(it, Number(e.target.value))}
+                >
+                  {allowed.map(n => <option key={n} value={n}>{glyph(n)} ({n})</option>)}
+                </select>
+              ) : (
+                <small className={styles.muted}>Chosen: {glyph(curDots)} ({curDots})</small>
+              )
+            )}
+          </div>
+          <div className={styles.muted} style={{ whiteSpace: 'pre-wrap' }}>{it.description}</div>
+          {picked && (
+            <input
+              type="text"
+              className={styles.input}
+              style={{ marginTop: 8, padding: '6px 12px', fontSize: '13px' }}
+              placeholder={it.name === 'Retainers' ? "Name your retainer(s) here, e.g. \"Marcus, a loyal driver\"..." : "Custom description / notes..."}
+              value={(it.type === 'Merit' ? merits.find(m => m.id === it.id) : flaws.find(f => f.id === it.id))?.notes || ''}
+              onChange={e => onChangeNotes(it, e.target.value)}
+            />
+          )}
+          {picked && it.name === 'Retainers' && (
+            <small className={styles.muted}>
+              You'll build their full sheet (stats, merits, ghoul status) on the Retainers page once your character is created.
+            </small>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const meritsList = filtered.filter(i => i.type === 'Merit');
   const flawsList = filtered.filter(i => i.type === 'Flaw');
+  const suggestedMerits = allItems.filter(i => i.type === 'Merit' && SUGGESTED_MERIT_IDS.includes(i.id));
+  const suggestedFlaws = allItems.filter(i => i.type === 'Flaw' && SUGGESTED_FLAW_IDS.includes(i.id));
 
   return (
     <div className={styles.cardIsh}>
       <div className={styles.grid2} style={{ alignItems: 'end', gap: 10 }}>
         <div>
-          <h4 className={styles.sectionSub}>Pick Merits & Flaws</h4>
+          <h4 className={styles.sectionSub} style={{ marginTop: 0 }}>Pick Merits & Flaws</h4>
           <p className={styles.muted} style={{ marginTop: 4 }}>
             Merits budget: <b>{meritsSpent}/{meritBudget}</b> • Flaws required: <b>{flawDots}/{flawBudget}</b>
           </p>
@@ -268,150 +381,49 @@ export default function MeritsFlawsPicker({
           className={styles.input}
           placeholder="Search name, category, or text…"
           value={q}
-          onChange={e => setQ(e.target.value)}
+          onChange={e => { setQ(e.target.value); if (e.target.value.trim()) setTab('merits'); }}
         />
       </div>
 
-      <div className={styles.attrSkillGrid} style={{ marginTop: 12 }}>
-        {/* Merits column */}
-        <div className={`${styles.bleedSoft}`} style={{ display: 'grid', gap: 10 }}>
-          <h5 className={styles.sectionSub}>Merits</h5>
-          {meritsList.map(it => {
-            const allowed = parseDotSpec(it.dotsSpec);
-            if (!allowed.length) return null; // not selectable at creation
-            const picked = isPicked(it.id, it.type);
-            const curDots = pickedDots(it.id, it.type);
-            const locked = !picked && (meritsSpent + allowed[0] > meritBudget);
-            return (
-              <div
-                key={it.id}
-                className={styles.flexRow}
-                style={{
-                  alignItems: 'start',
-                  gap: 10,
-                  opacity: locked ? .55 : 1,
-                  border: '1px solid var(--border, var(--surface-lighter))',
-                  borderRadius: 10,
-                  padding: 10,
-                  background: 'rgba(255,255,255,0.02)'
-                }}
-              >
-                <button
-                  type="button"
-                  className={styles.ghostBtn}
-                  disabled={locked}
-                  onClick={() => onToggle(it)}
-                  title={picked ? 'Remove' : 'Add'}
-                >
-                  {picked ? '−' : '+'}
-                </button>
-                <div style={{ display: 'grid', gap: 4, flex: 1 }}>
-                  <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                    <b>{it.name}</b>
-                    <small className={styles.muted}>{it.category}</small>
-                    <small className={styles.pill}>{it.dotsSpec}</small>
-                    {picked && (
-                      allowed.length > 1 ? (
-                        <select
-                          className={styles.input}
-                          style={{ width: 110, padding: '4px 8px', height: 30 }}
-                          value={curDots}
-                          onChange={e => onChangeDots(it, Number(e.target.value))}
-                        >
-                          {allowed.map(n => <option key={n} value={n}>{glyph(n)} ({n})</option>)}
-                        </select>
-                      ) : (
-                        <small className={styles.muted}>Chosen: {glyph(curDots)} ({curDots})</small>
-                      )
-                    )}
-                  </div>
-                  <div className={styles.muted} style={{ whiteSpace: 'pre-wrap' }}>{it.description}</div>
-                  {picked && (
-                    <input
-                      type="text"
-                      className={styles.input}
-                      style={{ marginTop: 8, padding: '6px 12px', fontSize: '13px' }}
-                      placeholder="Custom description / notes..."
-                      value={merits.find(m => m.id === it.id)?.notes || ''}
-                      onChange={e => onChangeNotes(it, e.target.value)}
-                    />
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Flaws column */}
-        <div className={`${styles.bleedSoft}`} style={{ display: 'grid', gap: 10 }}>
-          <h5 className={styles.sectionSub}>Flaws (exactly {flawBudget} dots)</h5>
-          {flawsList.map(it => {
-            const allowed = parseDotSpec(it.dotsSpec);
-            if (!allowed.length) return null;
-            const picked = isPicked(it.id, it.type);
-            const curDots = pickedDots(it.id, it.type);
-            const minIfAdd = allowed[0];
-            const wouldExceed = !picked && (flawDots + minIfAdd > flawBudget);
-            return (
-              <div
-                key={it.id}
-                className={styles.flexRow}
-                style={{
-                  alignItems: 'start',
-                  gap: 10,
-                  opacity: wouldExceed ? .55 : 1,
-                  border: '1px solid var(--border, var(--surface-lighter))',
-                  borderRadius: 10,
-                  padding: 10,
-                  background: 'rgba(255,255,255,0.02)'
-                }}
-              >
-                <button
-                  type="button"
-                  className={styles.ghostBtn}
-                  disabled={wouldExceed}
-                  onClick={() => onToggle(it)}
-                  title={picked ? 'Remove' : 'Add'}
-                >
-                  {picked ? '−' : '+'}
-                </button>
-                <div style={{ display: 'grid', gap: 4, flex: 1 }}>
-                  <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                    <b>{it.name}</b>
-                    <small className={styles.muted}>{it.category}</small>
-                    <small className={styles.pill}>{it.dotsSpec}</small>
-                    {picked && (
-                      allowed.length > 1 ? (
-                        <select
-                          className={styles.input}
-                          style={{ width: 110, padding: '4px 8px', height: 30 }}
-                          value={curDots}
-                          onChange={e => onChangeDots(it, Number(e.target.value))}
-                        >
-                          {allowed.map(n => <option key={n} value={n}>{glyph(n)} ({n})</option>)}
-                        </select>
-                      ) : (
-                        <small className={styles.muted}>Chosen: {glyph(curDots)} ({curDots})</small>
-                      )
-                    )}
-                  </div>
-                  <div className={styles.muted} style={{ whiteSpace: 'pre-wrap' }}>{it.description}</div>
-                  {picked && (
-                    <input
-                      type="text"
-                      className={styles.input}
-                      style={{ marginTop: 8, padding: '6px 12px', fontSize: '13px' }}
-                      placeholder="Custom description / notes..."
-                      value={flaws.find(f => f.id === it.id)?.notes || ''}
-                      onChange={e => onChangeNotes(it, e.target.value)}
-                    />
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+      <div className={styles.tabs} style={{ margin: '10px 0 16px' }}>
+        {TABS.map(t => (
+          <button
+            key={t.key}
+            type="button"
+            className={`${styles.tab} ${tab === t.key ? styles.tabActive : ''}`}
+            onClick={() => setTab(t.key)}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
+
+      {tab === 'suggested' && (
+        <div className={styles.attrSkillGrid} style={{ marginTop: 0 }}>
+          <div style={{ display: 'grid', gap: 10 }}>
+            <h5 className={styles.sectionSub} style={{ marginTop: 0 }}>Suggested Merits</h5>
+            {suggestedMerits.map(renderRow)}
+          </div>
+          <div style={{ display: 'grid', gap: 10 }}>
+            <h5 className={styles.sectionSub} style={{ marginTop: 0 }}>Suggested Flaws</h5>
+            {suggestedFlaws.map(renderRow)}
+          </div>
+        </div>
+      )}
+
+      {tab === 'merits' && (
+        <div style={{ display: 'grid', gap: 10 }}>
+          {meritsList.map(renderRow)}
+          {!meritsList.length && <p className={styles.muted}>No merits match your search.</p>}
+        </div>
+      )}
+
+      {tab === 'flaws' && (
+        <div style={{ display: 'grid', gap: 10 }}>
+          {flawsList.map(renderRow)}
+          {!flawsList.length && <p className={styles.muted}>No flaws match your search.</p>}
+        </div>
+      )}
 
       <div className={styles.quotaBar} style={{ marginTop: 12 }}>
         <div className={styles.quotaHead}>Totals</div>
