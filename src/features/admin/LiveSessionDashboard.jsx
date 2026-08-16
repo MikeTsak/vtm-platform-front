@@ -2,10 +2,14 @@
 import React, { useEffect, useState } from 'react';
 import MiniSearch from 'minisearch';
 import api from '../../core/api';
-import { getLiveSession, getLiveSessionPlayers, getLiveSessionRolls, createLiveSession, sendLiveSessionBroadcast, logLiveSessionRoll } from '../../api/liveSession';
+import {
+  getLiveSession, getLiveSessionPlayers, getLiveSessionRolls, getLiveSessionBroadcasts,
+  createLiveSession, sendLiveSessionBroadcast, logLiveSessionRoll, socket
+} from '../../api/liveSession';
 import { DISCIPLINES } from '../../data/disciplines';
-import { rollPool } from '../../utils/liveSessionMechanics';
+import { rollPool, summarizeTrackers } from '../../utils/liveSessionMechanics';
 import { formatEuDate } from '../../utils/dateFormatter';
+import LiveSessionRollHistory from '../live-session/LiveSessionRollHistory';
 import sharedStyles from '../../styles/LiveSession.module.css';
 import adminStyles from '../../styles/LiveSessionAdmin.module.css';
 
@@ -35,7 +39,7 @@ const RULES = [
   {
     category: 'rules',
     title: 'Frenzy',
-    content: 'Triggered by anger (Fury), hunger (Hunger), or fear (Terror).\nRoll Willpower to resist (Resolve + Composure). Difficulty varies by provocation (usually 2-4).\nFailure means the Beast takes over. You can spend Willpower to take a single action of your choice during a Frenzy.'
+    content: 'Triggered by anger (Fury), hunger (Hunger), or fear (Terror).\nRoll Willpower + (Humanity / 3) to resist. Success suppresses the frenzy.\nFailure means the Beast takes over. During Frenzy, immune to health penalties and can only use physical Disciplines.'
   }
 ];
 
@@ -86,8 +90,11 @@ const FRENZY_TYPES = [
 ];
 
 const TOOLS_INDEX = [
-  { id: 'npc',  title: 'Rapid NPC / Monsters', content: 'actor generator random ghoul vampire thug bouncer detective cultist' },
-  { id: 'dice', title: 'Dice Roller',           content: 'roll hunger normal difficulty public note action' }
+  { id: 'vibe',       title: 'Scene & Vibe',        content: 'ambient calm frenzy danger supernatural spooky metadata' },
+  { id: 'clocks',     title: 'Session Clocks',      content: 'timers time rounds countdown' },
+  { id: 'initiative', title: 'Initiative Tracker',  content: 'combat order turn' },
+  { id: 'npc',        title: 'Rapid NPC / Monsters', content: 'actor generator random ghoul vampire thug bouncer detective cultist' },
+  { id: 'dice',       title: 'Dice Roller',          content: 'roll hunger normal difficulty public note action' }
 ];
 const toolSearch = new MiniSearch({
   fields: ['title', 'content'],
@@ -146,14 +153,16 @@ function parseSheet(raw) {
   }
 }
 
-export default function LiveSessionDashboard() {
-  const [sessionId, setSessionId] = useState(localStorage.getItem('adminLiveSessionId') || '');
+export default function LiveSessionDashboard({ initialSessionId, character } = {}) {
+  const [sessionId, setSessionId] = useState(initialSessionId || localStorage.getItem('adminLiveSessionId') || '');
   const [sessionName, setSessionName] = useState('VTM Live Scene');
   const [session, setSession] = useState(null);
 
   const [players,     setPlayers]     = useState([]);
   const [rolls,       setRolls]       = useState([]);
+  const [broadcasts,  setBroadcasts]  = useState([]);
   const [broadcast,   setBroadcast]   = useState('');
+  const [broadcastTarget, setBroadcastTarget] = useState(''); // '' means global
   const [archives,    setArchives]    = useState([]);
   const [duration,    setDuration]    = useState(0);
 
@@ -174,21 +183,42 @@ export default function LiveSessionDashboard() {
   const [rollerDiff,   setRollerDiff]   = useState(0);
   const [rollerNote,   setRollerNote]   = useState('Admin Roll');
 
+  const [sceneInput, setSceneInput] = useState('');
+  const [timerName, setTimerName] = useState('');
+  const [timerRounds, setTimerRounds] = useState(3);
+
+  const [initName, setInitName] = useState('');
+  const [initInit, setInitInit] = useState(0);
+
   useEffect(() => {
     if (!sessionId) return;
+
     const poll = async () => {
-      const [sRes, pRes, rRes] = await Promise.allSettled([
+      const [sRes, pRes, rRes, bRes] = await Promise.allSettled([
         getLiveSession(sessionId),
         getLiveSessionPlayers(sessionId),
         getLiveSessionRolls(sessionId),
+        getLiveSessionBroadcasts(sessionId),
       ]);
       if (sRes.status === 'fulfilled' && sRes.value) setSession(sRes.value.session ?? sRes.value);
       if (pRes.status === 'fulfilled' && pRes.value) setPlayers(pRes.value.players ?? pRes.value ?? []);
       if (rRes.status === 'fulfilled' && rRes.value) setRolls(rRes.value.rolls ?? rRes.value ?? []);
+      if (bRes.status === 'fulfilled' && bRes.value) setBroadcasts(bRes.value.broadcasts ?? bRes.value ?? []);
     };
+
     poll();
+    // Sockets give us instant updates; the interval is a fallback in case the socket connection drops.
+    const rejoin = () => socket.emit('join_session', sessionId);
+    rejoin();
+    socket.on('connect', rejoin);
+    socket.on('refresh_session', poll);
     const id = setInterval(poll, 5000);
-    return () => clearInterval(id);
+
+    return () => {
+      socket.off('refresh_session', poll);
+      socket.off('connect', rejoin);
+      clearInterval(id);
+    };
   }, [sessionId]);
 
   useEffect(() => {
@@ -222,6 +252,12 @@ export default function LiveSessionDashboard() {
     const sData = await getLiveSession(sessionId).catch(() => null);
     if (sData) setSession(sData.session ?? sData);
     fetchArchives();
+  };
+
+  const updateMetadata = async (newMetaProps) => {
+    if (session?.status === 'ended') return;
+    const updated = { ...(session?.metadata || {}), ...newMetaProps };
+    await api.patch(`/live-session/${sessionId}/metadata`, { metadata: updated }).catch(() => {});
   };
 
   const adjustPlayer = async (charId, deltas) => {
@@ -277,7 +313,7 @@ export default function LiveSessionDashboard() {
 
   const sendBroadcast = async () => {
     if (!broadcast.trim() || session?.status === 'ended') return;
-    await sendLiveSessionBroadcast(sessionId, { message: broadcast.trim() });
+    await sendLiveSessionBroadcast(sessionId, { message: broadcast.trim(), target_character_id: broadcastTarget || null });
     setBroadcast('');
   };
 
@@ -291,13 +327,9 @@ export default function LiveSessionDashboard() {
     if (!sessionId) return alert('Must be in an active session to roll.');
     const normal = parseInt(rollerNormal) || 0;
     const hunger = parseInt(rollerHunger) || 0;
-    const results = rollPool(normal, hunger);
+    const diff = parseInt(rollerDiff) || 0;
 
-    const countSuccesses = dice => {
-      const hits = dice.filter(d => d >= 6).length;
-      const critPairs = Math.floor(dice.filter(d => d === 10).length / 2);
-      return hits + critPairs * 2;
-    };
+    const results = rollPool(normal, hunger);
 
     await logLiveSessionRoll(sessionId, {
       character_id:   null,
@@ -305,14 +337,14 @@ export default function LiveSessionDashboard() {
       roll_type:      'admin_roll',
       pool:           normal + hunger,
       hunger,
-      difficulty:     parseInt(rollerDiff) || 0,
-      results,
-      successes:      countSuccesses(results.normal) + countSuccesses(results.hunger),
+      difficulty:     diff,
+      results:        { normal: results.normalDice, hunger: results.hungerDice },
+      successes:      results.outcome.successes,
+      has_critical:        results.outcome.hasCritical,
+      has_messy_critical:  results.outcome.hasMessyCritical,
+      has_bestial_failure: results.outcome.hasBestialFailure,
       note:           rollerNote
     });
-
-    const rData = await getLiveSessionRolls(sessionId).catch(() => null);
-    if (rData) setRolls(rData.rolls ?? rData ?? []);
   };
 
   const visibleTools = React.useMemo(() => {
@@ -325,7 +357,11 @@ export default function LiveSessionDashboard() {
     return wikiSearch.search(wikiQuery.trim());
   }, [wikiQuery]);
 
-  const isDiceFirst = visibleTools[0] === 'dice';
+  const feedItems = React.useMemo(() => {
+    return [...broadcasts, ...rolls].sort(
+      (a, b) => new Date(b.created_at || b.createdAt) - new Date(a.created_at || a.createdAt)
+    );
+  }, [broadcasts, rolls]);
 
   return (
     <div className={styles.dashboardContainer}>
@@ -413,10 +449,14 @@ export default function LiveSessionDashboard() {
       <div className={styles.pane} style={{ flex: 1 }}>
 
         <div className={styles.centerTop}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
             <h2 style={{ margin: 0, fontFamily: 'var(--font-display)', color: 'var(--primary)', fontSize: '1.5rem' }}>Live Player Overview</h2>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <input className={styles.formInput} style={{ width: '250px' }} value={broadcast} onChange={e => setBroadcast(e.target.value)} placeholder="ST Broadcast message..." disabled={session?.status === 'ended'} />
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <select className={styles.formInput} value={broadcastTarget} onChange={e => setBroadcastTarget(e.target.value)} disabled={session?.status === 'ended'}>
+                <option value="">🗣️ All Players</option>
+                {players.map(p => <option key={p.character_id ?? p.id} value={p.character_id ?? p.id}>🤫 Whisper: {p.name ?? p.character_name}</option>)}
+              </select>
+              <input className={styles.formInput} style={{ width: '220px' }} value={broadcast} onChange={e => setBroadcast(e.target.value)} placeholder="ST Broadcast or Whisper..." disabled={session?.status === 'ended'} />
               <button className={styles.btnPrimary} style={{ width: 'auto' }} onClick={sendBroadcast} disabled={session?.status === 'ended'}>Send</button>
               <button className={styles.btnOutline} style={{ borderColor: '#f97316', color: '#f97316' }} onClick={() => Promise.all(players.map(p => adjustPlayer(p.character_id ?? p.id, { hungerDelta: 1 })))} disabled={session?.status === 'ended'}>+1 Ambient Hunger</button>
             </div>
@@ -428,8 +468,9 @@ export default function LiveSessionDashboard() {
               const sheet    = parseSheet(p.sheet);
               const frenzy   = FRENZY_TYPES.find(f => f.key === (sheet.frenzyState ?? p.frenzyState));
 
-              const hp = { max: Number(sheet.health?.max    ?? 5), sup: Number(sheet.health?.superficial    ?? 0), agg: Number(sheet.health?.aggravated    ?? 0) };
-              const wp = { max: Number(sheet.willpower?.max ?? 5), sup: Number(sheet.willpower?.superficial ?? 0), agg: Number(sheet.willpower?.aggravated ?? 0) };
+              const trackers = summarizeTrackers(sheet);
+              const hp = { max: trackers.health.max,    sup: trackers.health.superficial,    agg: trackers.health.aggravated };
+              const wp = { max: trackers.willpower.max, sup: trackers.willpower.superficial, agg: trackers.willpower.aggravated };
 
               const hunger   = Number(sheet.hunger ?? p.hunger ?? 0);
               const humanity = Number(sheet.humanity ?? sheet.morality?.humanity ?? p.humanity ?? 7);
@@ -505,37 +546,13 @@ export default function LiveSessionDashboard() {
           <div className={styles.paneHeader} style={{ borderTop: '1px solid var(--outline-variant)' }}>
             <h2>Live Activity Feed</h2>
           </div>
-          <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {rolls.length === 0
-              ? <div style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '2rem' }}>No rolls in feed.</div>
-              : rolls.slice(0, 50).map((r, i) => (
-                <div key={i} style={{ background: 'var(--surface-container-highest)', padding: '0.8rem', borderRadius: '8px', borderLeft: r.has_bestial_failure || r.has_messy_critical ? '4px solid #e11d48' : '4px solid #3f3f4e' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', marginBottom: '0.25rem' }}>
-                    <span style={{ fontSize: '0.9rem', color: '#fff' }}>{r.player_name ?? r.character_name}</span>
-                    <span style={{ color: '#fbbf24', fontSize: '0.9rem' }}>{r.successes} Succ</span>
-                  </div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>{r.roll_type}{r.note ? ` — ${r.note}` : ''}</div>
-
-                  {r.results && (r.results.normal || r.results.hunger || r.results.rouse) && (
-                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                      {(r.results.normal ?? []).map((die, idx) => (
-                        <div key={`n-${idx}`} style={{ width: 18, height: 18, borderRadius: 4, background: die >= 6 ? '#e4e4e7' : 'rgba(255,255,255,0.1)', color: die >= 6 ? '#000' : '#a1a1aa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 'bold' }}>{die}</div>
-                      ))}
-                      {(r.results.hunger ?? r.results.rouse ?? []).map((die, idx) => (
-                        <div key={`h-${idx}`} style={{ width: 18, height: 18, borderRadius: 4, background: die >= 6 ? '#e11d48' : 'transparent', border: '1px solid #e11d48', color: die >= 6 ? '#fff' : '#e11d48', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 'bold' }}>{die}</div>
-                      ))}
-                    </div>
-                  )}
-
-                  <div style={{ fontSize: '0.75rem', color: '#a89a9c', marginTop: '6px', display: 'flex', gap: '12px' }}>
-                    <span>Pool: {r.pool}</span>
-                    <span>Hunger: {r.hunger}</span>
-                    {r.has_bestial_failure && <span style={{ color: '#e11d48', fontWeight: 700 }}>⚠️ Bestial</span>}
-                    {r.has_messy_critical  && <span style={{ color: '#e11d48', fontWeight: 700 }}>🩸 Messy Crit</span>}
-                  </div>
-                </div>
-              ))
-            }
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            <LiveSessionRollHistory
+              rolls={feedItems}
+              isAdmin={true}
+              currentCharacterId={character?.id}
+              onBroadcast={async (msg) => { await sendLiveSessionBroadcast(sessionId, { message: msg }); }}
+            />
           </div>
         </div>
 
@@ -558,14 +575,107 @@ export default function LiveSessionDashboard() {
         </div>
         <div className={styles.paneContent} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
 
-          {visibleTools.includes('npc') && (
+          {visibleTools.includes('vibe') && (
             <div>
+              <h3 style={{ fontSize: '1rem', color: 'var(--on-surface)', marginBottom: '0.75rem' }}>Scene & Vibe</h3>
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <input type="text" className={styles.formInput} style={{ flex: 1 }} placeholder="Current Scene (e.g. Elysium)" value={sceneInput} onChange={e => setSceneInput(e.target.value)} />
+                <button className={styles.btnSecondary} onClick={() => updateMetadata({ scene: sceneInput })}>Set</button>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button className={styles.btnOutline} style={{ flex: 1, borderColor: '#3b82f6', color: '#3b82f6' }} onClick={() => updateMetadata({ ambient: 'calm' })}>Calm</button>
+                <button className={styles.btnOutline} style={{ flex: 1, borderColor: '#ef4444', color: '#ef4444' }} onClick={() => updateMetadata({ ambient: 'frenzy' })}>Danger</button>
+                <button className={styles.btnOutline} style={{ flex: 1, borderColor: '#a855f7', color: '#a855f7' }} onClick={() => updateMetadata({ ambient: 'supernatural' })}>Spooky</button>
+              </div>
+            </div>
+          )}
+
+          {visibleTools.includes('clocks') && (
+            <div style={{ paddingTop: visibleTools[0] !== 'clocks' ? '1rem' : '0', borderTop: visibleTools[0] !== 'clocks' ? '1px solid var(--outline-variant)' : 'none' }}>
+              <h3 style={{ fontSize: '1rem', color: 'var(--on-surface)', marginBottom: '0.75rem' }}>Session Clocks</h3>
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                <input type="text" className={styles.formInput} style={{ flex: 1 }} placeholder="Clock Name" value={timerName} onChange={e => setTimerName(e.target.value)} />
+                <input type="number" className={styles.formInput} style={{ width: '60px' }} value={timerRounds} onChange={e => setTimerRounds(parseInt(e.target.value))} />
+                <button className={styles.btnSecondary} onClick={() => {
+                  if (!timerName) return;
+                  const clocks = [...(session?.metadata?.clocks || []), { id: Date.now(), name: timerName, value: timerRounds }];
+                  updateMetadata({ clocks });
+                  setTimerName('');
+                }}>Add</button>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {(session?.metadata?.clocks || []).map(c => (
+                  <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '0.5rem', borderRadius: '4px' }}>
+                    <span style={{ fontSize: '0.85rem' }}>{c.name} (<strong>{c.value}</strong>)</span>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <button className={styles.btnOutline} style={{ padding: '0.1rem 0.4rem', fontSize: '0.7rem' }} onClick={() => {
+                        const clocks = session.metadata.clocks.map(clk => clk.id === c.id ? { ...clk, value: Math.max(0, clk.value - 1) } : clk);
+                        updateMetadata({ clocks });
+                      }}>-1</button>
+                      <button className={styles.btnOutline} style={{ padding: '0.1rem 0.4rem', fontSize: '0.7rem', color: '#ef4444', borderColor: '#ef4444' }} onClick={() => {
+                        const clocks = session.metadata.clocks.filter(clk => clk.id !== c.id);
+                        updateMetadata({ clocks });
+                      }}>X</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {visibleTools.includes('initiative') && (
+            <div style={{ paddingTop: visibleTools[0] !== 'initiative' ? '1rem' : '0', borderTop: visibleTools[0] !== 'initiative' ? '1px solid var(--outline-variant)' : 'none' }}>
+              <h3 style={{ fontSize: '1rem', color: 'var(--on-surface)', marginBottom: '0.75rem' }}>Initiative Tracker</h3>
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                <input type="text" className={styles.formInput} style={{ flex: 1 }} placeholder="Name" value={initName} onChange={e => setInitName(e.target.value)} />
+                <input type="number" className={styles.formInput} style={{ width: '60px' }} placeholder="Init" value={initInit} onChange={e => setInitInit(parseInt(e.target.value))} />
+                <button className={styles.btnSecondary} onClick={() => {
+                  if (!initName) return;
+                  const initList = [...(session?.metadata?.initiative || []), { id: Date.now(), name: initName, value: initInit || 0 }];
+                  initList.sort((a, b) => b.value - a.value);
+                  updateMetadata({ initiative: initList });
+                  setInitName('');
+                }}>Add</button>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                {(session?.metadata?.initiative || []).map((actor, idx) => (
+                  <div key={actor.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '0.3rem 0.5rem', borderRadius: '4px' }}>
+                    <span style={{ fontSize: '0.85rem' }}>{idx + 1}. {actor.name}</span>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.85rem', color: 'var(--primary)' }}>{actor.value}</span>
+                      <button className={styles.btnOutline} style={{ padding: '0 0.3rem', color: '#ef4444', borderColor: 'transparent' }} onClick={() => {
+                        const initList = session.metadata.initiative.filter(a => a.id !== actor.id);
+                        updateMetadata({ initiative: initList });
+                      }}>×</button>
+                    </div>
+                  </div>
+                ))}
+                {(session?.metadata?.initiative || []).length > 0 && (
+                  <button className={styles.btnOutline} style={{ marginTop: '0.5rem', fontSize: '0.75rem' }} onClick={() => updateMetadata({ initiative: [] })}>Clear Initiative</button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {visibleTools.includes('npc') && (
+            <div style={{ paddingTop: visibleTools[0] !== 'npc' ? '1rem' : '0', borderTop: visibleTools[0] !== 'npc' ? '1px solid var(--outline-variant)' : 'none' }}>
               <h3 style={{ fontSize: '1rem', color: 'var(--on-surface)', marginBottom: '0.75rem' }}>Rapid NPC / Monsters</h3>
               <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
                 <input type="text"   className={styles.formInput} style={{ flex: 1 }}       placeholder="Name (e.g. Guard)" value={newNpcName} onChange={e => setNewNpcName(e.target.value)} />
                 <input type="number" className={styles.formInput} style={{ width: '60px' }} placeholder="Pool"             value={newNpcPool} onChange={e => setNewNpcPool(e.target.value)} />
               </div>
-              <button className={styles.btnSecondary} onClick={addNPC}>Add Temp Actor</button>
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                <button className={styles.btnSecondary} onClick={addNPC} style={{ flex: 1 }}>Add</button>
+                <button className={styles.btnOutline} style={{ flex: 1, padding: '0.4rem', fontSize: '0.75rem' }} onClick={() => {
+                  const names = ['Thug', 'Bouncer', 'Ghoul', 'Detective', 'Vampire Fledgling', 'Cultist'];
+                  const pools = [3, 4, 5, 5, 6, 4];
+                  const moralities = ['Humanity 6', 'Humanity 7', 'Humanity 5', 'Path of Caine'];
+                  const idx = Math.floor(Math.random() * names.length);
+                  const morality = moralities[Math.floor(Math.random() * moralities.length)];
+                  setNewNpcName(`${names[idx]} (${morality})`);
+                  setNewNpcPool(pools[idx]);
+                }}>🎲 Gen. Random</button>
+              </div>
 
               <div className={styles.npcList} style={{ maxHeight: '200px', overflowY: 'auto' }}>
                 <div className={`${styles.npcItem} ${rollerEntity === 'Storyteller' ? styles.active : ''}`} onClick={() => { setRollerEntity('Storyteller'); setRollerNormal(5); setRollerHunger(0); }}>
@@ -582,7 +692,7 @@ export default function LiveSessionDashboard() {
           )}
 
           {visibleTools.includes('dice') && (
-            <div className={styles.diceRoller} style={{ marginTop: 0, paddingTop: isDiceFirst ? 0 : '1rem', borderTop: isDiceFirst ? 'none' : '1px solid var(--outline-variant)' }}>
+            <div className={styles.diceRoller} style={{ marginTop: 0, paddingTop: visibleTools[0] !== 'dice' ? '1rem' : '0', borderTop: visibleTools[0] !== 'dice' ? '1px solid var(--outline-variant)' : 'none' }}>
               <h3 style={{ fontSize: '1rem', color: 'var(--on-surface)', marginBottom: '1rem' }}>Roll for: <span style={{ color: 'var(--primary)' }}>{rollerEntity}</span></h3>
 
               <div className={styles.diceGrid}>

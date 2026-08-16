@@ -8,7 +8,9 @@ const base = '/live-session';
 // The api instance knows the baseURL:
 const backendUrl = api.defaults.baseURL ? api.defaults.baseURL.replace('/api', '') : window.location.origin;
 
-export const socket = socketIoClient(backendUrl);
+export const socket = socketIoClient(backendUrl, {
+  auth: (cb) => cb({ token: localStorage.getItem('token') }),
+});
 
 export const createLiveSession = async (payload) => {
   const { data } = await api.post(base, payload);

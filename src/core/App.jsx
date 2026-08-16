@@ -60,6 +60,15 @@ function AdminOnly({ children }) {
   return children;
 }
 
+// Wrapper for Admins or Court users (Storytellers running Live Sessions, Boons, etc.)
+function CourtOnly({ children }) {
+  const { user, loading } = useContext(AuthCtx);
+  if (loading) return <Skeleton name="app-loading" loading={true} />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== 'admin' && user.role !== 'courtuser') return <Navigate to="/" replace />;
+  return children;
+}
+
 // Wrapper for Malkavians or Admins
 function MalkavianOrAdminOnly({ children }) {
   const { user, loading: authLoading } = useContext(AuthCtx);
@@ -183,7 +192,7 @@ function AppLayout() {
           <Route path="/rumors/:id" element={<PublicArticleView />} />
 
           <Route path="/admin" element={<AdminOnly><Admin /></AdminOnly>} />
-          <Route path="/admin/live-session" element={<AdminOnly><LiveSessionDashboard /></AdminOnly>} />
+          <Route path="/admin/live-session" element={<CourtOnly><LiveSessionDashboard /></CourtOnly>} />
           <Route path="/admin/npcs" element={<AdminOnly><NPCs /></AdminOnly>} />
           <Route path="/admin/npcs/:id" element={<AdminOnly><AdminNPCView /></AdminOnly>} />
 

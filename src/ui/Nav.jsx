@@ -211,13 +211,15 @@ export default function Nav() {
               </>
             )}
 
-            {user?.role === 'admin' && (
+            {(user?.role === 'admin' || user?.role === 'courtuser') && (
               <NavDropdown title="Admin" icon="admin_panel_settings" isMobile={false}>
-                <NavLink 
-  data-cuelume-press 
+                {user?.role === 'admin' && (
+                  <NavLink
+  data-cuelume-press
   data-cuelume-hover to="/admin" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Admin Panel</NavLink>
-                <NavLink 
-  data-cuelume-press 
+                )}
+                <NavLink
+  data-cuelume-press
   data-cuelume-hover to="/admin/live-session" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Live Session Dashboard</NavLink>
               </NavDropdown>
             )}
@@ -320,15 +322,17 @@ export default function Nav() {
                 <span className="font-['Playfair_Display'] font-bold text-[16px] tracking-wide">Live Session</span>
               </NavLink>
 
-              {user?.role === 'admin' && (
+              {(user?.role === 'admin' || user?.role === 'courtuser') && (
                 <div className="pt-4 mt-4 border-t border-outline-variant/20">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-primary-container px-3 mb-2 block">Administration</span>
                   <NavDropdown title="Admin" icon="admin_panel_settings" isMobile={true} isOpen={openMobileDropdown === 'Admin'} toggleOpen={() => handleMobileDropdownToggle('Admin')}>
-                    <NavLink 
-  data-cuelume-press 
+                    {user?.role === 'admin' && (
+                      <NavLink
+  data-cuelume-press
   data-cuelume-hover to="/admin" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Admin Panel</NavLink>
-                    <NavLink 
-  data-cuelume-press 
+                    )}
+                    <NavLink
+  data-cuelume-press
   data-cuelume-hover to="/admin/live-session" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Live Session Dashboard</NavLink>
                   </NavDropdown>
                 </div>

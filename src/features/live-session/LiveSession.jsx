@@ -17,7 +17,7 @@ import {
 import { getLiveSession, joinLiveSession, logLiveSessionRoll, getLiveSessionBroadcasts, getLiveSessionRolls, socket, sendLiveSessionBroadcast } from '../../api/liveSession';
 import LiveSessionPlayerList from './LiveSessionPlayerList';
 import LiveSessionRollHistory from './LiveSessionRollHistory';
-import LiveSessionAdminDashboard from './LiveSessionAdminDashboard';
+import LiveSessionAdminDashboard from '../admin/LiveSessionDashboard';
 import styles from '../../styles/LiveSession.module.css';
 
 function TrackerBlock({ label, val, max, agg = 0, sup = 0, filled = 0, stains = 0 }) {
@@ -146,14 +146,14 @@ const discIcon = (name) => {
 export default function LiveSession() {
   const { user } = useContext(AuthCtx);
   const [character, setCharacter] = useState(null);
+  const [characterChecked, setCharacterChecked] = useState(false);
   const [sheet, setSheet] = useState(null);
   const [trackers, setTrackers] = useState(null);
   const [sessionId, setSessionId] = useState(localStorage.getItem('liveSessionId') || '');
   const [session, setSession] = useState(null);
   const [broadcasts, setBroadcasts] = useState([]);
 
-  const [frenzyState, setFrenzyState] = useState(null);
-  const isAdmin = session?.isAdmin || user?.role === 'admin' || character?.isST;
+  const isAdmin = session?.isAdmin || user?.role === 'admin' || user?.role === 'courtuser' || character?.isST;
   const [mobileTab, setMobileTab] = useState('action');
   const [showBlushModal, setShowBlushModal] = useState(false);
 
@@ -236,15 +236,18 @@ export default function LiveSession() {
     });
   };
 
-  useEffect(() => {
-    api.get('/characters/me').then(({ data }) => {
-      const char = data.character || data;
-      const parsedSheet = typeof char.sheet === 'string' ? JSON.parse(char.sheet) : char.sheet;
-      setCharacter(char);
-      setSheet(parsedSheet);
-      setTrackers(summarizeTrackers(parsedSheet));
-    });
-  }, []);
+  const loadCharacter = async () => {
+    const { data } = await api.get('/characters/me');
+    const char = data.character ?? null;
+    if (!char) { setCharacterChecked(true); return; }
+    const parsedSheet = typeof char.sheet === 'string' ? JSON.parse(char.sheet) : char.sheet;
+    setCharacter(char);
+    setSheet(parsedSheet);
+    setTrackers(summarizeTrackers(parsedSheet));
+    setCharacterChecked(true);
+  };
+
+  useEffect(() => { loadCharacter(); }, []);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -269,8 +272,17 @@ export default function LiveSession() {
       } catch (e) { }
     };
     load();
-    socket.on('refresh_session', load);
-    return () => socket.off('refresh_session', load);
+    // ST tracker adjustments (hunger, health, frenzy, etc.) land on our own character row too —
+    // refresh it alongside the session so changes made by the Storyteller actually show up here.
+    const onRefresh = () => { load(); loadCharacter(); };
+    const rejoin = () => socket.emit('join_session', sessionId);
+    rejoin();
+    socket.on('connect', rejoin);
+    socket.on('refresh_session', onRefresh);
+    return () => {
+      socket.off('refresh_session', onRefresh);
+      socket.off('connect', rejoin);
+    };
   }, [sessionId]);
 
   useEffect(() => {
@@ -376,7 +388,7 @@ export default function LiveSession() {
       setTrackers(summarizeTrackers(data.sheet));
 
       const { rerolled } = rerollNormalDice(lastRoll.normalDice, wpSelections);
-      const outcome = computeOutcome(rerolled, lastRoll.hungerDice, difficulty);
+      const outcome = computeOutcome(rerolled, lastRoll.hungerDice, lastRoll.difficulty);
       const updated = { ...lastRoll, normalDice: rerolled, outcome, note: 'Willpower Reroll' };
 
       setLastRoll(updated);
@@ -424,7 +436,7 @@ export default function LiveSession() {
       setTrackers(summarizeTrackers(nextSheet));
 
       if (!success && prevHunger === 5) {
-        setFrenzyState('hunger');
+        await applySheetUpdate(next => { next.frenzyState = 'hunger'; return next; });
       }
 
       setLastRoll({
@@ -512,15 +524,55 @@ export default function LiveSession() {
     }
   };
 
+  const handleResistFrenzy = async () => {
+    const currentFrenzy = sheet?.frenzyState;
+    if (!currentFrenzy) return;
+
+    setMobileTab('action');
+    setIsRolling(true);
+
+    const humanityVal = Number(sheet?.humanity ?? sheet?.morality?.humanity ?? 7);
+    const bonus = Math.floor(humanityVal / 3);
+    const willpowerRating = trackers?.willpower?.max || 0;
+    const pool = willpowerRating + bonus;
+    const frenzyLabel = FRENZY_ALERTS[currentFrenzy]?.label || 'Frenzy';
+
+    const roll = rollPool(pool, 0, 0);
+    const resisted = roll.outcome.successes > 0;
+
+    setLastRoll({
+      ...roll,
+      type: 'frenzy_resistance',
+      note: `Resisting ${frenzyLabel} (Willpower ${willpowerRating} + Humanity/3 ${bonus})`,
+    });
+    setWpSelections([]);
+
+    await pushRoll('frenzy_resistance', {
+      characterId: character?.id, roll_type: 'frenzy_resistance',
+      pool: roll.pool, hunger: 0,
+      results: { normal: roll.normalDice, hunger: [] },
+      successes: roll.outcome.successes,
+      note: resisted ? `Resisted ${frenzyLabel}` : `Failed to resist ${frenzyLabel} — the Beast holds control`,
+    });
+
+    if (resisted) {
+      await applySheetUpdate(next => { next.frenzyState = null; return next; });
+    }
+
+    setTimeout(() => setIsRolling(false), 1500);
+  };
+
   if (isAdmin) {
     return (
       <LiveSessionAdminDashboard
-        session={session}
-        sessionId={sessionId}
-        broadcasts={broadcasts}
+        initialSessionId={sessionId}
         character={character}
       />
     );
+  }
+
+  if (characterChecked && !character) {
+    return <div className={styles.container}><div style={{ margin: 'auto', textAlign: 'center' }}>You need an approved character before you can join a Live Session.</div></div>;
   }
 
   if (!trackers) return <div className={styles.container}><div style={{ margin: 'auto' }}>Loading LARP Interface...</div></div>;
@@ -593,6 +645,7 @@ export default function LiveSession() {
   const bp = trackers.bloodPotency;
   const charName = character?.name || sheet?.name || 'Vampire';
   const clan = character?.clan || sheet?.clan || 'Unknown Clan';
+  const activeFrenzy = sheet?.frenzyState || null;
 
   return (
     <div className={styles.container}>
@@ -619,13 +672,15 @@ export default function LiveSession() {
       )}
 
       {/* FRENZY BANNER */}
-      {frenzyState && (
+      {activeFrenzy && (
         <div className={styles.frenzyBanner}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <span>⚠️</span>
-            <span style={{ textTransform: 'uppercase', letterSpacing: '-0.02em' }}>{FRENZY_ALERTS[frenzyState]?.label || 'Frenzy State Active'}</span>
+            <span style={{ textTransform: 'uppercase', letterSpacing: '-0.02em' }}>{FRENZY_ALERTS[activeFrenzy]?.label || 'Frenzy State Active'}</span>
           </div>
-          <button style={{ color: 'var(--primary)', background: 'transparent', border: 'none', cursor: 'pointer' }} onClick={() => setFrenzyState(null)}>X</button>
+          <button style={{ color: 'var(--primary)', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 'bold' }} disabled={isRolling} onClick={handleResistFrenzy}>
+            Resist (Willpower + Humanity/3)
+          </button>
         </div>
       )}
 
@@ -827,6 +882,7 @@ export default function LiveSession() {
                 <button className={styles.btnPrimary} style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }} onClick={async () => {
                   try {
                     await joinLiveSession(sessionId, { characterId: character?.id });
+                    socket.emit('join_session', sessionId);
                     setConnStatus('Connected successfully!');
                     setTimeout(() => setConnStatus(''), 3000);
                   } catch (e) {
@@ -1064,8 +1120,8 @@ export default function LiveSession() {
               Session Players
             </button>
           </div>
-          {showAdminTab === 'feed' && <LiveSessionRollHistory rolls={broadcasts} onBroadcast={async (msg) => { await sendLiveSessionBroadcast(sessionId, { message: msg }); }} currentCharacterId={character?.id} isAdmin={isAdmin} />}
-          {showAdminTab === 'players' && <LiveSessionPlayerList players={session?.players || []} adminName={session?.admin_name} onAdjust={isAdmin ? (id, delta) => { /* Mock Admin adjustment */ } : undefined} onForceRouse={isAdmin ? (id) => { /* Mock Force Rouse */ } : undefined} />}
+          {showAdminTab === 'feed' && <LiveSessionRollHistory rolls={broadcasts} currentCharacterId={character?.id} isAdmin={isAdmin} />}
+          {showAdminTab === 'players' && <LiveSessionPlayerList players={session?.players || []} adminName={session?.admin_name} />}
         </aside>
       </main>
 
