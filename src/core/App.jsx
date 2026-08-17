@@ -1,6 +1,7 @@
 // src/App.jsx
 import React, { useContext, useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { HelmetProvider, Helmet } from 'react-helmet-async';
 import AuthProvider, { AuthCtx } from './AuthContext';
 import { NotificationProvider } from '../context/NotificationContext';
 import NotificationBanner from '../features/notification/NotificationBanner';
@@ -161,6 +162,9 @@ function AppLayout() {
           : { display: 'flex', flexDirection: 'column', minHeight: '100dvh' }
       }
     >
+      <Helmet>
+        <link rel="canonical" href={`https://portal.attlarp.gr${location.pathname}`} />
+      </Helmet>
       <GlobalBanner />
       <Nav />
       <div
@@ -224,12 +228,14 @@ function AppLayout() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <NotificationProvider>
-        <BrowserRouter>
-          <AppLayout />
-        </BrowserRouter>
-      </NotificationProvider>
-    </AuthProvider>
+    <HelmetProvider>
+      <AuthProvider>
+        <NotificationProvider>
+          <BrowserRouter>
+            <AppLayout />
+          </BrowserRouter>
+        </NotificationProvider>
+      </AuthProvider>
+    </HelmetProvider>
   );
 }

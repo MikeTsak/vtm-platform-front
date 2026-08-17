@@ -1,9 +1,16 @@
 import React from 'react';
+import { Helmet } from 'react-helmet-async';
 import styles from '../styles/Terms.module.css';
 
 export default function Terms() {
   return (
     <main className={styles.wrap}>
+      <Helmet>
+        <title>Terms &amp; Conditions — Erebus Portal | Athens Through Time</title>
+        <meta name="description" content="Terms and conditions for using the Erebus Portal, the Athens Through-Time Vampire: The Masquerade LARP platform." />
+        <meta name="robots" content="noindex, follow" />
+        <link rel="canonical" href="https://portal.attlarp.gr/terms" />
+      </Helmet>
       <header className={styles.header}>
         <h1>Terms &amp; Conditions</h1>
         <p className={styles.updated}>Updated: <time dateTime="2025-09-01">2025-09-01</time></p>

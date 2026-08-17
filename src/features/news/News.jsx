@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useContext } from 'react';
+import { Helmet } from 'react-helmet-async';
 import api from '../../core/api';
 import { AuthCtx } from '../../core/AuthContext';
 import styles from '../../styles/News.module.css';
 import { NEWS_OUTLETS } from '../../constants/newsConstants';
 import { apiJoin, isVideoUrl } from '../../utils/newsUtils';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import CreateNewsModal from './CreateNewsModal';
 import FullscreenArticleModal from '../../components/FullscreenArticleModal';
 import { Skeleton } from 'boneyard-js/react';
@@ -15,7 +16,6 @@ import GoogleAd from '../../components/GoogleAd';
 export default function News() {
   const { user } = useContext(AuthCtx);
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const location = useLocation();
   const isRumorsPage = location.pathname.startsWith('/rumors');
 
@@ -119,6 +119,21 @@ export default function News() {
   return (
     <Skeleton loading={loading} name="news-page">
       <div className={styles.page}>
+        {!isRumorsPage && (
+          <Helmet>
+            <title>Official News — Athens Through Time | Erebus Portal</title>
+            <meta
+              name="description"
+              content="In-character news bulletins from the Athens Through-Time Vampire: The Masquerade chronicle — Camarilla, Anarch, and city happenings reported by the Kindred press."
+            />
+            <link rel="canonical" href="https://portal.attlarp.gr/news" />
+            <meta property="og:title" content="Official News — Athens Through Time" />
+            <meta
+              property="og:description"
+              content="In-character news bulletins from the Athens Through-Time Vampire: The Masquerade chronicle."
+            />
+          </Helmet>
+        )}
         <header className={styles.header}>
           <h1 className={styles.pageTitle}>{isRumorsPage ? 'Rumors' : 'Official News'}</h1>
           <div className={styles.headerActions}>
@@ -153,7 +168,7 @@ export default function News() {
                   const theme = NEWS_OUTLETS[item.theme] || NEWS_OUTLETS['ERT'];
                   const mediaUrl = apiJoin(item.media_url);
                   return (
-                    <div key={item.id} className={styles.masonryItem} onClick={() => navigate(`/news/${item.id}`)}>
+                    <Link key={item.id} to={`/news/${item.id}`} className={styles.masonryItem} style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}>
                       <article
                         className={styles.browserCard}
                         style={{ '--theme-color': theme.color }}
@@ -196,10 +211,10 @@ export default function News() {
                           <div className={styles.bodyHtml} dangerouslySetInnerHTML={{ __html: item.body }} />
                         </div>
                         {(isAdmin || isCourt) && (
-                          <button onClick={(e) => { e.stopPropagation(); handleDeleteNews(item.id); }} className={styles.deleteOverlay} disabled={deleteNewsMutation.isPending}>×</button>
+                          <button onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleDeleteNews(item.id); }} className={styles.deleteOverlay} disabled={deleteNewsMutation.isPending}>×</button>
                         )}
                       </article>
-                    </div>
+                    </Link>
                   );
                 })}
                 {newsItems.length === 0 && <p className={styles.emptyText}>No news published yet.</p>}

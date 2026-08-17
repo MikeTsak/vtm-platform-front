@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useRef, useState } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { AuthCtx } from '../../core/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -86,6 +87,35 @@ export default function Login() {
 
   return (
     <div className={`${styles['login-page']} ${styles['vamp-bg']}`}>
+      <Helmet>
+        <title>Sign In — Erebus Portal | Athens Through Time</title>
+        <meta
+          name="description"
+          content="Sign in to the Erebus Portal, the character builder and court management tool for the Athens Through-Time Vampire: The Masquerade LARP."
+        />
+        <meta property="og:title" content="Sign In — Erebus Portal | Athens Through Time" />
+        <meta
+          property="og:description"
+          content="Sign in to the Erebus Portal, the character builder and court management tool for the Athens Through-Time Vampire: The Masquerade LARP."
+        />
+        <script type="application/ld+json">
+          {JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'WebApplication',
+            name: 'Erebus Portal',
+            applicationCategory: 'GameApplication',
+            operatingSystem: 'Web',
+            url: 'https://portal.attlarp.gr/',
+            description:
+              'Erebus Portal for the Athens Through-Time LARP. Create characters, manage downtimes, and navigate the court.',
+            isPartOf: {
+              '@type': 'Organization',
+              name: 'Athens Through Time',
+              url: 'https://attlarp.gr',
+            },
+          })}
+        </script>
+      </Helmet>
       <div className={styles.vignette} aria-hidden="true" />
       <header className={styles['login-header']} aria-label="App header">
         <img src="/img/ATT-logo(1).png" alt="ATT LARP Logo" className={styles['login-logo']} draggable="false" />

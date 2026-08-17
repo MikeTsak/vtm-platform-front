@@ -1,9 +1,16 @@
 import React from 'react';
+import { Helmet } from 'react-helmet-async';
 import styles from '../styles/Terms.module.css';
 
 export default function Legal() {
   return (
     <main className={styles.wrap}>
+      <Helmet>
+        <title>Legal Notice &amp; Disclaimer — Erebus Portal | Athens Through Time</title>
+        <meta name="description" content="Legal notice and disclaimer for the Erebus Portal, the Athens Through-Time Vampire: The Masquerade LARP platform." />
+        <meta name="robots" content="noindex, follow" />
+        <link rel="canonical" href="https://portal.attlarp.gr/legal" />
+      </Helmet>
       <header className={styles.header}>
         <h1>Legal Notice &amp; Disclaimer</h1>
         <p className={styles.updated}>

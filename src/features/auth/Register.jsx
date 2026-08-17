@@ -1,4 +1,5 @@
 import React, { useContext, useRef, useState } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { AuthCtx } from '../../core/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -89,6 +90,18 @@ export default function Register() {
 
   return (
     <div className={`${styles['login-page']} ${styles['vamp-bg']}`}>
+      <Helmet>
+        <title>Register — Erebus Portal | Athens Through Time</title>
+        <meta
+          name="description"
+          content="Create your account for the Athens Through-Time Vampire: The Masquerade LARP and start building your character in the Erebus Portal."
+        />
+        <meta property="og:title" content="Register — Erebus Portal | Athens Through Time" />
+        <meta
+          property="og:description"
+          content="Create your account for the Athens Through-Time Vampire: The Masquerade LARP and start building your character in the Erebus Portal."
+        />
+      </Helmet>
       <div className={styles.vignette} aria-hidden="true" />
       <header className={styles['login-header']} aria-label="App header">
         <img

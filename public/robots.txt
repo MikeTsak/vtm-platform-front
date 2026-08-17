@@ -67,12 +67,15 @@ User-agent: *
 # Allow everything by default
 Allow: /
 
-# But block sensitive / internal paths
+# But block sensitive / internal / no-value paths
 Disallow: /admin
 Disallow: /api
-Disallow: /login
 Disallow: /auth
 Disallow: /settings
 Disallow: /profile
+Disallow: /forgot
+Disallow: /reset
+Disallow: /media/
 
 Sitemap: https://portal.attlarp.gr/sitemap.xml
+Sitemap: https://portal.attlarp.gr/api/sitemap-news.xml

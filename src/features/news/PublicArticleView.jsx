@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import api from '../../core/api';
 import styles from '../../styles/News.module.css';
@@ -69,6 +70,49 @@ export default function PublicArticleView() {
 
   const articleDate = new Date(article.created_at).toLocaleDateString('el-GR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
+  const plainExcerpt = (article.subtitle || (article.body || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()).slice(0, 160);
+  const articleUrl = `https://portal.attlarp.gr${location.pathname}`;
+  const helmet = (
+    <Helmet>
+      <title>{`${article.title} — Athens Through Time News`}</title>
+      <meta name="description" content={plainExcerpt} />
+      <link rel="canonical" href={articleUrl} />
+      <meta property="og:type" content="article" />
+      <meta property="og:title" content={article.title} />
+      <meta property="og:description" content={plainExcerpt} />
+      <meta property="og:url" content={articleUrl} />
+      {mediaUrl && !isVideoUrl(article.media_url) && <meta property="og:image" content={mediaUrl} />}
+      <meta property="article:published_time" content={article.created_at} />
+      <script type="application/ld+json">
+        {JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'NewsArticle',
+          headline: article.title,
+          description: plainExcerpt,
+          datePublished: article.created_at,
+          dateModified: article.updated_at || article.created_at,
+          author: {
+            '@type': 'Person',
+            name: article.journalist_name || article.author_real_name || 'Athens Through Time',
+          },
+          publisher: {
+            '@type': 'Organization',
+            name: 'Athens Through Time',
+            logo: {
+              '@type': 'ImageObject',
+              url: 'https://attlarp.gr/img/logo-insta.jpg',
+            },
+          },
+          mainEntityOfPage: {
+            '@type': 'WebPage',
+            '@id': articleUrl,
+          },
+          ...(mediaUrl && !isVideoUrl(article.media_url) ? { image: [mediaUrl] } : {}),
+        })}
+      </script>
+    </Helmet>
+  );
+
   // Render left and right sidebar ads + bottom banner
   const LeftAdSidebar = () => (
     <aside className={themeStyles.sidebarLeft}>
@@ -100,6 +144,7 @@ export default function PublicArticleView() {
   if (article.theme === 'KATHIMERINI') {
     return (
       <div className={`${themeStyles.articleWrapper} ${themeStyles.kathimeriniWrapper}`}>
+        {helmet}
         {backBtn}
         <header className={themeStyles.kathimeriniHeader} style={{ flexDirection: 'column', padding: '0' }}>
           <div style={{ width: '100%', padding: '1.5rem', display: 'flex', justifyContent: 'center', borderBottom: '1px solid #ddd' }}>
@@ -135,6 +180,7 @@ export default function PublicArticleView() {
   if (article.theme === 'ALPHA') {
     return (
       <div className={`${themeStyles.articleWrapper} ${themeStyles.alphaWrapper}`}>
+        {helmet}
         {backBtn}
         <header style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{ backgroundColor: '#111', padding: '1rem 2rem', display: 'flex', alignItems: 'center' }}>
@@ -170,6 +216,7 @@ export default function PublicArticleView() {
   if (article.theme === 'ERT') {
     return (
       <div className={`${themeStyles.articleWrapper} ${themeStyles.ertWrapper}`}>
+        {helmet}
         {backBtn}
         <header className={themeStyles.ertHeader} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '0' }}>
           <div style={{ padding: '1rem 2rem', width: '100%' }}>
@@ -204,6 +251,7 @@ export default function PublicArticleView() {
   if (article.theme === 'MEGA') {
     return (
       <div className={`${themeStyles.articleWrapper} ${themeStyles.megaWrapper}`}>
+        {helmet}
         {backBtn}
         <header className={themeStyles.megaHeader}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -237,6 +285,7 @@ export default function PublicArticleView() {
   if (article.theme === 'GOSSIP') {
     return (
       <div className={`${themeStyles.articleWrapper} ${themeStyles.gossipWrapper}`}>
+        {helmet}
         {backBtn}
         <header className={themeStyles.gossipHeader} style={{ flexDirection: 'column', padding: '0' }}>
           <div style={{ width: '100%', padding: '1rem', display: 'flex', justifyContent: 'center' }}>
@@ -271,6 +320,7 @@ export default function PublicArticleView() {
   if (article.theme === 'SKAI') {
     return (
       <div className={`${themeStyles.articleWrapper} ${themeStyles.skaiWrapper}`}>
+        {helmet}
         {backBtn}
         <header className={themeStyles.skaiHeader}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -306,6 +356,7 @@ export default function PublicArticleView() {
   if (article.theme === 'OPENTV') {
     return (
       <div className={`${themeStyles.articleWrapper} ${themeStyles.openWrapper}`}>
+        {helmet}
         {backBtn}
         <header className={themeStyles.openHeader}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -337,7 +388,8 @@ export default function PublicArticleView() {
   // Fallback
   return (
     <div className={styles.page}>
-      {backBtn}
+      {helmet}
+        {backBtn}
       <h2>Unsupported Theme</h2>
     </div>
   );
