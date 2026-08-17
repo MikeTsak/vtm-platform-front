@@ -6,6 +6,39 @@
    so every theme (Camarilla, Anarch, SchreckNet…) works.
    ============================================================ */
 
+/* ── Map still initializing (3D terrain is heavy) ─────────── */
+.mapLoadingChip {
+  position: absolute;
+  top: 68px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 950;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 16px;
+  background: color-mix(in srgb, var(--surface-color) 90%, transparent);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  box-shadow: 0 6px 24px rgb(0 0 0 / 40%);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.mapLoadingSpinner {
+  font-size: 16px !important;
+  color: var(--tint);
+  animation: mapLoadingSpin 1s linear infinite;
+}
+
+@keyframes mapLoadingSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
 /* ── Root container ─────────────────────────────────────── */
 .wrap {
   position: fixed;
@@ -601,6 +634,16 @@
     left: 12px;
     transform: none;
     bottom: auto;
+    max-height: calc(100vh - 260px); /* leave room above the bottom claims strip */
+  }
+
+  .railToggle {
+    width: 40px;
+    padding: 16px 0;
+  }
+
+  .railItem {
+    padding: 9px 12px;
   }
 
   .hud {
@@ -679,4 +722,822 @@
   font-family: monospace;
   text-transform: uppercase;
   letter-spacing: 0.1em;
+}
+
+/* ============================================================
+   HOVER TOOLTIP — quick glance without opening the dossier
+   ============================================================ */
+.hoverTip {
+  position: absolute;
+  top: 68px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 850;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: color-mix(in srgb, var(--surface-color) 88%, transparent);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  box-shadow: 0 6px 24px rgb(0 0 0 / 40%);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.hoverTipNum {
+  font-family: 'Courier New', monospace;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--tint);
+}
+
+.hoverTipName {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.hoverTipOwner {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  padding-left: 8px;
+  border-left: 1px solid var(--border-color);
+}
+
+.hoverTipPending {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #f59e0b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Pending-request indicator dot in the left rail */
+.railPendingDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f59e0b;
+  box-shadow: 0 0 6px #f59e0b;
+  flex-shrink: 0;
+  margin-left: auto;
+  animation: pendingPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pendingPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* ============================================================
+   DOSSIER — Selected Division inspect panel (game "quest" HUD)
+   ============================================================ */
+.dossier {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  bottom: 12px;
+  width: 400px;
+  z-index: 1500;
+  display: flex;
+  flex-direction: column;
+  background: color-mix(in srgb, var(--surface-color) 93%, transparent);
+  backdrop-filter: blur(22px);
+  border: 1px solid color-mix(in srgb, var(--dossier-color, var(--tint)) 45%, var(--border-color));
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow:
+    0 20px 60px rgb(0 0 0 / 55%),
+    0 0 0 1px rgb(255 255 255 / 4%) inset,
+    0 0 32px color-mix(in srgb, var(--dossier-color, var(--tint)) 25%, transparent);
+}
+
+.dossierClose {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--border-color);
+  background: color-mix(in srgb, var(--bg-color) 60%, transparent);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.dossierClose:hover {
+  color: var(--text-color);
+  border-color: var(--dossier-color, var(--tint));
+}
+
+.dossierHeader {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--border-color);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--dossier-color, var(--tint)) 12%, transparent), transparent);
+  flex-shrink: 0;
+}
+
+.dossierPortraitWrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.dossierPortrait {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--bg-color) 60%, transparent);
+  border: 2px solid color-mix(in srgb, var(--dossier-color, var(--tint)) 60%, var(--border-color));
+  box-shadow: 0 0 24px color-mix(in srgb, var(--dossier-color, var(--tint)) 35%, transparent);
+}
+
+.dossierClanBadge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 34px;
+  height: 34px;
+  padding: 5px;
+  border-radius: 50%;
+  background: #0c0c0e;
+  border: 2px solid var(--clan-tint, var(--tint));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--clan-tint, var(--tint)) 60%, transparent), 0 2px 6px rgb(0 0 0 / 50%);
+  object-fit: contain;
+}
+
+.dossierTitleBadge {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #1a1206;
+  background: linear-gradient(135deg, #f4d58d, #c9971e);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 40%);
+}
+
+.npcTag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #2e1a5e;
+  background: #c4b5fd;
+  vertical-align: middle;
+}
+
+.dossierPortrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.dossierPortrait .material-symbols-outlined {
+  font-size: 30px;
+  color: var(--text-muted);
+}
+
+.dossierTitleBlock {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.dossierDivTag {
+  font-family: 'Courier New', monospace;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--dossier-color, var(--tint));
+}
+
+.dossierName {
+  margin: 0;
+  font-family: 'Playfair Display', serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dossierOwnerLine {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dossierTabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.dossierTab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 8px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.dossierTab:hover {
+  color: var(--text-color);
+}
+
+.dossierTabActive {
+  color: var(--dossier-color, var(--tint));
+  border-bottom-color: var(--dossier-color, var(--tint));
+}
+
+.dossierTabBadge {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #f59e0b;
+  color: #1a1a1a;
+  font-size: 0.62rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Desktop keeps the plain text-only tab row exactly as before — the icon
+   only appears inside the mobile bottom nav bar (see the media query). */
+.dossierTabIcon {
+  display: none;
+}
+
+.dossierTabLabel {
+  display: inline;
+}
+
+.dossierBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dossierBody::-webkit-scrollbar { width: 4px; }
+.dossierBody::-webkit-scrollbar-track { background: transparent; }
+.dossierBody::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 2px; }
+
+.dossierEmpty {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin: 0;
+}
+
+/* ── Masquerade safety: Unknown state + Court editor ── */
+.gaugeUnknown {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.safetyEditorRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border-color);
+}
+
+.safetyEditorLabel {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.safetySelect {
+  background: color-mix(in srgb, var(--bg-color) 55%, transparent);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 4px 8px;
+  color: var(--text-color);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+/* ── Abaton: dramatic, unmistakably off-limits ── */
+.dossierAbaton {
+  border-color: rgba(239, 68, 68, 0.55) !important;
+  box-shadow:
+    0 20px 60px rgb(0 0 0 / 60%),
+    0 0 0 1px rgb(255 255 255 / 4%) inset,
+    0 0 48px rgba(239, 68, 68, 0.35) !important;
+}
+
+.abatonHeader {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 22px 20px 18px;
+  border-bottom: 1px solid rgba(239, 68, 68, 0.35);
+  background:
+    repeating-linear-gradient(135deg, rgba(239,68,68,0.08) 0 14px, transparent 14px 28px),
+    radial-gradient(circle at 20% 20%, rgba(239,68,68,0.18), transparent 60%);
+}
+
+.abatonIcon {
+  font-size: 52px !important;
+  color: #ef4444;
+  flex-shrink: 0;
+  text-shadow: 0 0 18px rgba(239, 68, 68, 0.8);
+  animation: abatonPulse 1.8s ease-in-out infinite;
+}
+
+@keyframes abatonPulse {
+  0%, 100% { opacity: 0.75; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+
+.abatonBadgeText {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #fca5a5;
+  text-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
+}
+
+/* ── Codex ── */
+.codexList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.codexEntry {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg-color) 45%, transparent);
+  border: 1px solid var(--border-color);
+}
+
+.codexEntryHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.codexAuthor {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-color);
+}
+
+.codexTime {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.codexText {
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+  color: var(--text-color);
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.codexDeleteBtn {
+  margin-top: 6px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid color-mix(in srgb, #ef4444 40%, transparent);
+  color: #fca5a5;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.codexDeleteBtn:hover { background: color-mix(in srgb, #ef4444 20%, transparent); }
+.codexDeleteBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.dossierDangerBtn {
+  padding: 9px 14px;
+  border-radius: 8px;
+  background: color-mix(in srgb, #ef4444 14%, transparent);
+  border: 1px solid color-mix(in srgb, #ef4444 45%, transparent);
+  color: #fca5a5;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.dossierDangerBtn:hover {
+  background: color-mix(in srgb, #ef4444 24%, transparent);
+}
+
+.dossierDangerBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ── Stat blocks (Overview tab) ── */
+.statBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.statLabel {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.statValue {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.statSub {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+/* ── Masquerade Safety gauge ── */
+.gaugeTrack {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-color) 60%, transparent);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+}
+
+.gaugeFill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.gaugeReadout {
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+/* ── Requests tab ── */
+.requestList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.requestCard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg-color) 45%, transparent);
+  border: 1px solid var(--border-color);
+  border-left: 3px solid var(--req-color, #8b5cf6);
+}
+
+.requestCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.requestSwatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--req-color, #8b5cf6);
+  flex-shrink: 0;
+}
+
+.requestName {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-color);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.requestTime {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.requestBy {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.requestMessage {
+  margin: 2px 0 0;
+  font-size: 0.78rem;
+  color: var(--text-color);
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.requestActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.approveBtn, .rejectBtn {
+  flex: 1;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.approveBtn {
+  background: color-mix(in srgb, #22c55e 18%, transparent);
+  border: 1px solid color-mix(in srgb, #22c55e 45%, transparent);
+  color: #86efac;
+}
+
+.approveBtn:hover { background: color-mix(in srgb, #22c55e 28%, transparent); }
+
+.rejectBtn {
+  background: color-mix(in srgb, #ef4444 14%, transparent);
+  border: 1px solid color-mix(in srgb, #ef4444 40%, transparent);
+  color: #fca5a5;
+}
+
+.rejectBtn:hover { background: color-mix(in srgb, #ef4444 24%, transparent); }
+
+.approveBtn:disabled, .rejectBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.requestForm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
+}
+
+.requestTextarea {
+  width: 100%;
+  min-height: 64px;
+  resize: vertical;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-color) 55%, transparent);
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+  font-size: 0.8rem;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.requestTextarea:focus { outline: none; border-color: var(--tint); }
+
+.requestFormRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.requestColorInput {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.requestSubmitBtn {
+  flex: 1;
+  padding: 9px 14px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--tint) 22%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tint) 50%, transparent);
+  color: var(--text-color);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.requestSubmitBtn:hover { background: color-mix(in srgb, var(--tint) 32%, transparent); }
+.requestSubmitBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ── Court Intel tab ── */
+.problemList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.problemCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: color-mix(in srgb, #ef4444 8%, transparent);
+  border: 1px solid color-mix(in srgb, #ef4444 30%, transparent);
+}
+
+.problemResolved {
+  background: color-mix(in srgb, var(--bg-color) 45%, transparent);
+  border-color: var(--border-color);
+  opacity: 0.7;
+}
+
+.problemText {
+  font-size: 0.82rem;
+  color: var(--text-color);
+}
+
+.problemMeta {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+@media (width <= 768px) {
+  /* ── Dossier: bottom sheet, tabs moved to a bottom nav bar ──
+     Desktop's DOM/CSS is untouched outside this block — reordering here
+     uses flexbox `order`, which only takes effect inside this media query. */
+  .dossier {
+    inset: auto 0 0;
+    top: auto;
+    width: 100%;
+    height: 78vh;
+    max-height: 640px;
+    border-radius: 18px 18px 0 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .dossierClose {
+    top: 8px;
+    right: 8px;
+    width: 40px;
+    height: 40px;
+    font-size: 1.1rem;
+  }
+
+  /* More compact header so the bottom-nav layout still leaves room for
+     actual content between the header and the tab bar. */
+  .dossierHeader,
+  .abatonHeader {
+    order: 1;
+    padding: 14px 52px 12px 16px; /* right padding clears the bigger close button */
+    gap: 10px;
+  }
+
+  .dossierPortrait {
+    width: 64px;
+    height: 64px;
+  }
+
+  .dossierClanBadge {
+    width: 26px;
+    height: 26px;
+    padding: 4px;
+  }
+
+  .abatonIcon {
+    font-size: 38px !important;
+  }
+
+  .dossierName {
+    font-size: 1.1rem;
+  }
+
+  .dossierBody {
+    order: 2;
+    padding: 14px 16px 18px;
+  }
+
+  /* The scrollable tab content sits between the header and the bottom tab
+     bar — flex handles the sizing automatically via `order` + `flex: 1`,
+     no manual height math needed. */
+  .dossierTabs {
+    order: 3;
+    flex-shrink: 0;
+    border-bottom: none;
+    border-top: 1px solid var(--border-color);
+    background: color-mix(in srgb, var(--surface-color) 97%, transparent);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .dossierTab {
+    position: relative;
+    flex-direction: column;
+    gap: 3px;
+    min-height: 56px;
+    padding: 8px 4px;
+    border-bottom: none;
+    border-top: 2px solid transparent;
+  }
+
+  .dossierTabActive {
+    border-bottom-color: transparent;
+    border-top-color: var(--dossier-color, var(--tint));
+  }
+
+  .dossierTabIcon {
+    display: block;
+    font-size: 20px;
+  }
+
+  .dossierTabLabel {
+    font-size: 0.62rem;
+    letter-spacing: 0.02em;
+    text-transform: none;
+  }
+
+  .dossierTabBadge {
+    position: absolute;
+    top: 4px;
+    right: calc(50% - 26px);
+  }
+
+  /* Bigger touch targets for the primary actions inside the sheet. */
+  .approveBtn,
+  .rejectBtn,
+  .requestSubmitBtn,
+  .dossierDangerBtn,
+  .codexDeleteBtn {
+    min-height: 40px;
+  }
+
+  .safetySelect {
+    min-height: 36px;
+    font-size: 0.85rem;
+  }
+
+  /* Hover-only affordances don't exist on touch — hide rather than risk a
+     tooltip getting stuck open after a tap. Tapping still opens the full
+     dossier directly, which already shows everything the hover preview did. */
+  .hoverTip {
+    display: none;
+  }
 }

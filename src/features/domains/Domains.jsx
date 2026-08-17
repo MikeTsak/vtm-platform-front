@@ -1,20 +1,39 @@
-import React, { useMemo, useEffect, useState, useRef, useCallback } from 'react';
+import React, { useMemo, useEffect, useState, useRef, useCallback, useContext } from 'react';
 import { Map as MapGL, Source, Layer } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import DeckGL from '@deck.gl/react';
-import { GeoJsonLayer, BitmapLayer, SolidPolygonLayer } from '@deck.gl/layers';
+import { GeoJsonLayer, BitmapLayer, SolidPolygonLayer, TextLayer, IconLayer, ScatterplotLayer } from '@deck.gl/layers';
 import { MaskExtension } from '@deck.gl/extensions';
 import MiniSearch from 'minisearch';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link } from 'react-router-dom';
 import bbox from '@turf/bbox';
+import { toast } from 'sonner';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import styles from '../../styles/Domains.module.css';
 import domainsRaw from '../../data/Domains.json';
 import api from '../../core/api';
-import { Skeleton } from 'boneyard-js/react';
 import Avatar from '../../components/Avatar';
-import { useQuery } from '@tanstack/react-query';
+import { AuthCtx } from '../../core/AuthContext';
+import { symlogo, clanTint } from '../../data/clans';
+import { DIVISION_POPULATIONS, POPULATION_GROUP_MEMBERS } from './data/divisionPopulations';
+
+// Accent colors for real-world municipality/district groupings that span
+// more than one map division — purely informational, independent of claim
+// ownership color. Only groups with 2+ members get an outline (a single
+// standalone municipality doesn't need one; its own border already says it).
+const GROUP_ACCENT_COLORS = {
+  'athens-1': '#38bdf8',
+  'athens-2': '#a78bfa',
+  'athens-3': '#fb7185',
+  'athens-4': '#facc15',
+  'athens-7': '#34d399',
+  'moschato-tavros': '#f97316',
+};
+
+// Distinct from claim colors, the pending-request amber, and Abaton red —
+// a pale violet reads as "system/storyteller-controlled" for NPC domains.
+const NPC_ACCENT_COLOR = '#c4b5fd';
 
 // ── Division Names ────────────────────────────────────────
 const DIVISION_NAMES = {
@@ -30,6 +49,36 @@ const DIVISION_NAMES = {
   41: 'Ymuttos', 42: 'Parnitha', 43: 'Peiraias, Neo Faliro', 44: 'Xaidari',
   45: 'Korydallos, Nikaia, Agia Barbara', 46: 'Glyfada', 47: 'Gkyzh', 48: 'Eleysina', 49: 'Aspropirgos'
 };
+
+// ── Masquerade safety tiers ───────────────────────────────
+// A null rating is a distinct "Unknown" state (not assessed yet), not the
+// same as a numeric 10 — a fresh claim or untouched division hasn't been
+// vetted by the Court, so it shouldn't silently read as "Secure".
+const SAFETY_TIERS = [
+  { min: 8, label: 'Secure', color: '#22c55e' },
+  { min: 5, label: 'Stable', color: '#eab308' },
+  { min: 3, label: 'At Risk', color: '#f97316' },
+  { min: 0, label: 'Critical', color: '#ef4444' },
+];
+const UNKNOWN_TIER = { label: 'Unknown', color: '#64748b' };
+function safetyTier(rating) {
+  if (rating == null) return UNKNOWN_TIER;
+  return SAFETY_TIERS.find(t => rating >= t.min) || SAFETY_TIERS[SAFETY_TIERS.length - 1];
+}
+
+// ── Relative time ──────────────────────────────────────────
+function relTime(ts) {
+  if (!ts) return '';
+  const diffMs = Date.now() - new Date(ts).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(ts).toLocaleDateString();
+}
 
 // ── CORS-safe avatar fetcher ──────────────────────────────
 // Returns an object URL string that BitmapLayer can use as `image`.
@@ -49,11 +98,9 @@ async function fetchAvatarAsObjectUrl(url) {
   return URL.createObjectURL(blob);
 }
 
-
-
 // ── Hex to RGBA array ────────────────────────────────────
 function hexToRgba(hex, alpha = 255) {
-  const h = hex.replace('#', '');
+  const h = (hex || '888888').replace('#', '');
   const bigint = parseInt(h, 16);
   if (h.length === 3) {
     const r = ((bigint >> 8) & 0xf) * 17;
@@ -64,19 +111,105 @@ function hexToRgba(hex, alpha = 255) {
   return [(bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255, alpha];
 }
 
+// A domain_claims row is only "owned" if it actually has an owner — a bare
+// row can exist purely to hold a Court-set safety rating for a division
+// nobody has claimed yet, and must not be treated as claimed anywhere.
+function isOwnedClaim(c) {
+  // owner_name can be set on its own — staff assigning an informal NPC
+  // owner (e.g. typed straight into the admin panel) with no linked
+  // characters/npcs row at all. That still counts as claimed.
+  return !!(c && (c.owner_character_id || c.owner_npc_id || c.is_abaton || (c.owner_name && c.owner_name.trim())));
+}
+
+// An NPC-controlled domain: owned, but not by a player's own character —
+// either a proper npcs-table record, or just a bare owner_name staff typed
+// in directly with no character/npc link at all.
+function isNpcOwned(c) {
+  return !!(c && !c.is_abaton && !c.owner_character_id && (c.owner_npc_id || (c.owner_name && c.owner_name.trim())));
+}
+
+// ── Abaton hazard-stripe texture — diagonal red/black, tiled by the SVG
+// pattern itself so it reads as real stripes regardless of how large the
+// division's polygon is on screen. Draped onto the polygon via the same
+// mask+bitmap trick used for the hover avatar reveal, just always-on.
+const ABATON_STRIPE_IMG = 'data:image/svg+xml;utf8,' + encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256">
+  <defs>
+    <pattern id="s" width="22" height="22" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="22" height="22" fill="#100202"/>
+      <rect width="11" height="22" fill="#c0181c" fill-opacity="0.8"/>
+    </pattern>
+  </defs>
+  <rect width="256" height="256" fill="url(#s)"/>
+</svg>
+`);
+
+// "Απαγορευτικό" — a no-entry sign, used as the map badge for Abaton
+// divisions in place of a clan crest (Abaton has no owner/clan).
+const NO_ENTRY_ICON = 'data:image/svg+xml;utf8,' + encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64">
+  <circle cx="32" cy="32" r="27" fill="#150404" stroke="#ef4444" stroke-width="6"/>
+  <line x1="13" y1="51" x2="51" y2="13" stroke="#ef4444" stroke-width="7" stroke-linecap="round"/>
+</svg>
+`);
+
+// Two peer badges sit side by side at each claimed division's center — the
+// clan crest and the owner's avatar (a plain square photo, like the one used
+// in the dossier panel), both clearly visible on their own. Both are plain
+// deck.gl icon loads sized in screen pixels (not real-world meters — a
+// geo-sized circle was tried and came out sub-pixel and invisible at normal
+// zoom) so they stay a consistent, legible size and offset at any zoom.
 
 export default function Domains() {
+  const { user } = useContext(AuthCtx);
+  const isCourt = user?.role === 'admin' || user?.role === 'courtuser';
+  const queryClient = useQueryClient();
+
   const mapRef = useRef(null);
-  const [selectedDivision, setSelectedDivision] = useState(null);
-  const [selectedDivisionInfo, setSelectedDivisionInfo] = useState(null);
-  const [hoveredFeature, setHoveredFeature] = useState(null);
-  const [hoveredInfo, setHoveredInfo] = useState({ feature: null, divisionId: null, avatarUrl: null });
-  const [railOpen, setRailOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const hoveredDivisionRef = useRef(null);
 
-  // ── Avatar image cache: division → objectURL ────────────
+  const [hoveredDivision, setHoveredDivision] = useState(null);
+  const [hoveredFeature, setHoveredFeature] = useState(null);
+  const [selectedDivision, setSelectedDivision] = useState(null);
+  const [activeTab, setActiveTab] = useState('overview');
+
+  const [railOpen, setRailOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
   const [avatarCache, setAvatarCache] = useState({});
+  const [mapReady, setMapReady] = useState(false);
+
+  // Badges should feel like part of the 3D scene, not fixed HUD stickers —
+  // grow a bit as you zoom in, shrink as you zoom out. Rounded to quarter
+  // steps so mouse-wheel zooming doesn't trigger a state update (and layer
+  // rebuild) on every tiny delta.
+  const [zoom, setZoom] = useState(12);
+  const badgeSize = Math.max(22, Math.min(56, 34 + (zoom - 12) * 6));
+  // Clan badge stays centered on the division (offset 0); the avatar badge
+  // sits just to its right — the gap scales with badgeSize so the two can
+  // never overlap regardless of zoom.
+  const badgeOffset = badgeSize + 8;
+
+  const [reqMessage, setReqMessage] = useState('');
+  const [reqColor, setReqColor] = useState('#8b5cf6');
+  const [codexText, setCodexText] = useState('');
+
+  // ── Pulse animation driving the "pop out" glow on the selected division ──
+  const [pulse, setPulse] = useState(0);
+  useEffect(() => {
+    if (selectedDivision == null) {
+      setPulse(0);
+      return;
+    }
+    let raf;
+    const start = performance.now();
+    const tick = (t) => {
+      setPulse((Math.sin((t - start) / 450) + 1) / 2);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [selectedDivision]);
 
   // ── Data ────────────────────────────────────────────────
   const { data: claimsData, isLoading: isClaimsLoading, error } = useQuery({
@@ -87,76 +220,181 @@ export default function Domains() {
     }
   });
 
-  const { data: rosterData } = useQuery({
-    queryKey: ['camarilla-roster'],
+  const { data: requestsData } = useQuery({
+    queryKey: ['domain-claim-requests'],
     queryFn: async () => {
-      const res = await api.get('/camarilla/roster');
+      const res = await api.get('/domain-claims/requests');
       return res.data;
     }
   });
 
+  const { data: problemsData, isFetching: isProblemsLoading } = useQuery({
+    queryKey: ['domain-problems', selectedDivision],
+    queryFn: async () => {
+      const res = await api.get(`/domain-claims/${selectedDivision}/problems`);
+      return res.data;
+    },
+    enabled: isCourt && activeTab === 'court' && selectedDivision != null,
+  });
+
+  const { data: codexData, isFetching: isCodexLoading } = useQuery({
+    queryKey: ['domain-codex', selectedDivision],
+    queryFn: async () => {
+      const res = await api.get(`/domain-claims/${selectedDivision}/codex`);
+      return res.data;
+    },
+    enabled: activeTab === 'codex' && selectedDivision != null,
+  });
+
   const claims = claimsData?.claims || [];
-  const roster = rosterData?.roster || [];
+  const requests = requestsData?.requests || [];
+  const problems = problemsData?.problems || [];
+  const codexEntries = codexData?.entries || [];
   const err = error?.response?.data?.error || error?.message || '';
+
+  const ownedClaims = useMemo(() => claims.filter(isOwnedClaim), [claims]);
+
+  const requestsByDivision = useMemo(() => {
+    const map = new Map();
+    for (const r of requests) {
+      if (!map.has(r.division)) map.set(r.division, []);
+      map.get(r.division).push(r);
+    }
+    return map;
+  }, [requests]);
+
+  const pendingCountByDivision = useMemo(() => {
+    const map = new Map();
+    for (const r of requests) {
+      if (r.status !== 'pending') continue;
+      map.set(r.division, (map.get(r.division) || 0) + 1);
+    }
+    return map;
+  }, [requests]);
+
+  // ── Mutations ───────────────────────────────────────────
+  const requestMutation = useMutation({
+    mutationFn: async ({ division, message, color }) => {
+      const res = await api.post(`/domain-claims/${division}/request`, { message, color });
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Your claim was submitted to the Court');
+      setReqMessage('');
+      queryClient.invalidateQueries({ queryKey: ['domain-claim-requests'] });
+    },
+    onError: (e) => toast.error(e.response?.data?.error || 'Failed to submit request'),
+  });
+
+  const resolveMutation = useMutation({
+    mutationFn: async ({ requestId, action }) => {
+      const res = await api.post(`/domain-claims/requests/${requestId}/${action}`);
+      return res.data;
+    },
+    onSuccess: (_data, vars) => {
+      toast.success(vars.action === 'approve' ? 'Domain granted' : 'Request denied');
+      queryClient.invalidateQueries({ queryKey: ['domain-claim-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['domain-claims'] });
+    },
+    onError: (e) => toast.error(e.response?.data?.error || 'Failed to resolve request'),
+  });
+
+  const vacateMutation = useMutation({
+    mutationFn: async (division) => {
+      const res = await api.post(`/admin/domain-claims/${division}/vacate`);
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Domain released back to the city');
+      queryClient.invalidateQueries({ queryKey: ['domain-claims'] });
+    },
+    onError: (e) => toast.error(e.response?.data?.error || 'Failed to vacate domain'),
+  });
+
+  const safetyMutation = useMutation({
+    mutationFn: async ({ division, safety_rating }) => {
+      const res = await api.patch(`/domain-claims/${division}/safety`, { safety_rating });
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Masquerade safety updated');
+      queryClient.invalidateQueries({ queryKey: ['domain-claims'] });
+    },
+    onError: (e) => toast.error(e.response?.data?.error || 'Failed to update safety rating'),
+  });
+
+  const addCodexMutation = useMutation({
+    mutationFn: async ({ division, text }) => {
+      const res = await api.post(`/domain-claims/${division}/codex`, { text });
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Added to the codex');
+      setCodexText('');
+      queryClient.invalidateQueries({ queryKey: ['domain-codex', selectedDivision] });
+    },
+    onError: (e) => toast.error(e.response?.data?.error || 'Failed to add entry'),
+  });
+
+  const deleteCodexMutation = useMutation({
+    mutationFn: async (id) => {
+      const res = await api.delete(`/domain-claims/codex/${id}`);
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Entry removed');
+      queryClient.invalidateQueries({ queryKey: ['domain-codex', selectedDivision] });
+    },
+    onError: (e) => toast.error(e.response?.data?.error || 'Failed to remove entry'),
+  });
 
   // ── Avatar URL resolver ─────────────────────────────────
   const getAvatarUrl = useCallback((claim) => {
     if (!claim) return '';
     if (claim.is_abaton) return '/img/ui/abaton.jpg';
     const baseUrl = import.meta.env.VITE_API_URL || '/api';
-
     if (claim.user_id) return `${baseUrl}/users/${claim.user_id}/avatar`;
-
-    if (roster && roster.length > 0) {
-      let match = null;
-      if (claim.owner_npc_id) {
-        match = roster.find(r => r.id === claim.owner_npc_id && r.type === 'npc');
-      }
-      if (!match && claim.owner_name) {
-        match = roster.find(r =>
-          r.name === claim.owner_name ||
-          (r.titles && r.titles.includes(claim.owner_name))
-        );
-      }
-      if (match) {
-        if (match.type === 'player' && match.user_id) return `${baseUrl}/users/${match.user_id}/avatar`;
-        if (match.type === 'npc') return `${baseUrl}/npcs/${match.id}/avatar`;
-      }
-    }
-
     if (claim.owner_npc_id) return `${baseUrl}/npcs/${claim.owner_npc_id}/avatar`;
-    return `https://ui-avatars.com/api/?name=${encodeURIComponent(claim.owner_name || 'Unclaimed')}&background=random`;
-  }, [roster]);
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(claim.live_name || claim.owner_name || 'Unclaimed')}&background=random`;
+  }, []);
 
-  // ── Lazy-load avatar image for hovered division ─────────
+  // ── Eagerly load avatars for every claimed (non-Abaton) division ────────
+  // Feeds both the hover-reveal (full-polygon avatar) and the always-on map
+  // badges (small avatar+clan medallion), so it can't be hover-gated anymore
+  // — every claimed division needs its avatar ready before it's ever hovered.
   useEffect(() => {
-    if (!selectedDivision || claims.length === 0) return;
-    const claim = claims.find(c => Number(c.division) === selectedDivision);
-    if (!claim || claim.owner_name === 'Unclaimed') return;
-
-    if (!avatarCache[selectedDivision]) {
+    for (const claim of ownedClaims) {
+      if (claim.is_abaton) continue;
+      const division = Number(claim.division);
+      if (avatarCache[division]) continue;
       const url = getAvatarUrl(claim);
       fetchAvatarAsObjectUrl(url)
         .then(objectUrl => {
-          setAvatarCache(prev => ({ ...prev, [selectedDivision]: objectUrl }));
+          setAvatarCache(prev => (prev[division] ? prev : { ...prev, [division]: objectUrl }));
         })
         .catch(err => {
-          console.warn(`[Domains] Failed to lazy-load avatar for division ${selectedDivision}:`, err.message);
+          console.warn(`[Domains] Failed to load avatar for division ${division}:`, err.message);
         });
     }
-  }, [selectedDivision, claims, avatarCache, getAvatarUrl]);
+  }, [ownedClaims, avatarCache, getAvatarUrl]);
 
-  // Re-arm cleanup if needed
+  // Revoke every blob URL ever created, but only on unmount — this must NOT
+  // depend on [avatarCache], or React re-runs the cleanup (revoking
+  // everything already cached) on every single new avatar that finishes
+  // loading, breaking every badge except whichever loaded last.
+  const avatarUrlsRef = useRef(new Set());
+  useEffect(() => {
+    Object.values(avatarCache).forEach(url => avatarUrlsRef.current.add(url));
+  }, [avatarCache]);
   useEffect(() => {
     return () => {
-      // Cleanup blob URLs on unmount
-      Object.values(avatarCache).forEach(url => {
+      avatarUrlsRef.current.forEach(url => {
         try { URL.revokeObjectURL(url); } catch (_) { /* noop */ }
       });
     };
-  }, [avatarCache]);
+  }, []);
 
-  // ── Build GeoJSON with claim properties injected ────────
+  // ── Build GeoJSON with claim + request properties injected ──
   const { geoJsonData, allDomainsList } = useMemo(() => {
     if (!domainsRaw || !Array.isArray(domainsRaw.features)) {
       console.error('Domains.json is missing or has incorrect structure.');
@@ -169,17 +407,6 @@ export default function Domains() {
       domains.push({ number: divisionNumber, name: divisionName });
 
       const claim = claims.find(c => Number(c.division) === divisionNumber);
-      let claimColor = claim?.color || '#888888';
-      let r_user_id = claim?.user_id || null;
-      let r_npc_id = claim?.owner_npc_id || null;
-
-      if (!r_user_id && claim?.owner_name && roster?.length > 0) {
-        const match = roster.find(r => r.name === claim.owner_name || (r.titles && r.titles.includes(claim.owner_name)));
-        if (match) {
-          if (match.type === 'player') r_user_id = match.user_id;
-          if (match.type === 'npc') r_npc_id = match.id;
-        }
-      }
 
       return {
         ...f,
@@ -188,18 +415,82 @@ export default function Domains() {
           ...f?.properties,
           __division: divisionNumber,
           __name: divisionName,
-          claimColor,
-          ownerName: claim?.owner_name || 'Unclaimed',
-          userId: r_user_id,
-          npcId: r_npc_id,
-          isAbaton: !!claim?.is_abaton
+          claimColor: claim?.color || '#888888',
+          // owner_name is a legacy free-text snapshot; the backend now also
+          // resolves the live character/npc name (live_name) — prefer that
+          // so a renamed character never shows a stale duplicate name.
+          ownerName: claim?.live_name || claim?.owner_name || 'Unclaimed',
+          userId: claim?.user_id || null,
+          npcId: claim?.owner_npc_id || null,
+          isAbaton: !!claim?.is_abaton,
+          isNpc: isNpcOwned(claim),
+          // The one source of truth for "does this division have an owner"
+          // — covers character-linked, npc-linked, AND a bare owner_name
+          // typed in with no linked record at all (common for informal NPC
+          // assignments in this campaign). Everywhere below that used to
+          // check `userId || npcId || isAbaton` missed that third case.
+          claimed: isOwnedClaim(claim),
+          clan: claim?.clan || null,
+          titles: claim?.titles || [],
+          safetyRating: claim?.safety_rating ?? null,
+          claimedAt: claim?.claimed_at || null,
+          previousOwnerName: claim?.previous_owner_name || null,
+          previousClaimedAt: claim?.previous_claimed_at || null,
+          pendingRequests: pendingCountByDivision.get(divisionNumber) || 0,
         }
       };
     });
     return { geoJsonData: { ...domainsRaw, features }, allDomainsList: domains };
-  }, [claims, roster]);
+  }, [claims, pendingCountByDivision]);
 
   const claimByDiv = useMemo(() => new Map(claims.map(c => [Number(c.division), c])), [claims]);
+
+  // Re-derived from geoJsonData (not a click-time snapshot) so the dossier
+  // reflects live ownership — e.g. it updates itself the moment a request
+  // is approved while it's still open, instead of showing a stale owner.
+  const selectedFeature = useMemo(() => {
+    if (selectedDivision == null || !geoJsonData) return null;
+    return geoJsonData.features.find(f => f.properties.__division === selectedDivision) || null;
+  }, [selectedDivision, geoJsonData]);
+
+  // ── Derived: the open dossier's info ────────────────────
+  const selectedDivisionInfo = useMemo(() => {
+    if (!selectedFeature) return null;
+    const p = selectedFeature.properties;
+    const popInfo = DIVISION_POPULATIONS[p.__division];
+    return {
+      number: p.__division,
+      name: p.__name,
+      owner: p.ownerName,
+      color: p.claimColor,
+      user_id: p.userId,
+      npc_id: p.npcId,
+      is_abaton: p.isAbaton,
+      is_npc: p.isNpc,
+      clan: p.clan,
+      primaryTitle: p.titles?.[0] || null,
+      safety_rating: p.safetyRating,
+      claimed_at: p.claimedAt,
+      previous_owner_name: p.previousOwnerName,
+      previous_claimed_at: p.previousClaimedAt,
+      population: popInfo ? {
+        ...popInfo,
+        siblings: (POPULATION_GROUP_MEMBERS[popInfo.group] || []).filter(n => n !== p.__division),
+      } : null,
+    };
+  }, [selectedFeature]);
+
+  const selectedPendingRequests = useMemo(() => {
+    if (!selectedDivisionInfo) return [];
+    return (requestsByDivision.get(selectedDivisionInfo.number) || []).filter(r => r.status === 'pending');
+  }, [requestsByDivision, selectedDivisionInfo]);
+
+  const myPendingRequest = useMemo(() => {
+    if (!user) return null;
+    return selectedPendingRequests.find(r => r.user_id === user.id) || null;
+  }, [selectedPendingRequests, user]);
+
+  const isUnclaimed = selectedDivisionInfo && !selectedDivisionInfo.is_abaton && selectedDivisionInfo.owner === 'Unclaimed';
 
   // ── Interaction handlers ────────────────────────────────
   const onDeckHover = useCallback((info) => {
@@ -207,63 +498,57 @@ export default function Domains() {
       const divNum = info.object.properties?.__division;
       if (divNum && hoveredDivisionRef.current !== divNum) {
         hoveredDivisionRef.current = divNum;
-        setSelectedDivision(divNum);
+        setHoveredDivision(divNum);
         setHoveredFeature(info.object);
-        setHoveredInfo({ feature: info.object, divisionId: divNum });
-        setSelectedDivisionInfo({
-          number: divNum,
-          name: info.object.properties.__name,
-          owner: info.object.properties.ownerName,
-          color: info.object.properties.claimColor,
-          user_id: info.object.properties.userId,
-          npc_id: info.object.properties.npcId,
-          is_abaton: info.object.properties.isAbaton
-        });
       }
-    } else {
-      if (hoveredDivisionRef.current !== null) {
-        hoveredDivisionRef.current = null;
-        setSelectedDivision(null);
-        setHoveredFeature(null);
-        setHoveredInfo({ feature: null, divisionId: null });
-        setSelectedDivisionInfo(null);
-      }
+    } else if (hoveredDivisionRef.current !== null) {
+      hoveredDivisionRef.current = null;
+      setHoveredDivision(null);
+      setHoveredFeature(null);
     }
+  }, []);
+
+  const selectFeature = useCallback((feature) => {
+    if (!feature) return;
+    setSelectedDivision(feature.properties.__division);
+    setActiveTab('overview');
+    const [minLng, minLat, maxLng, maxLat] = bbox(feature);
+    mapRef.current?.getMap()?.fitBounds(
+      [[minLng, minLat], [maxLng, maxLat]],
+      { padding: 40, duration: 800 }
+    );
   }, []);
 
   const onDeckClick = useCallback((info) => {
-    if (info.object) {
-      const [minLng, minLat, maxLng, maxLat] = bbox(info.object);
-      mapRef.current?.getMap()?.fitBounds(
-        [[minLng, minLat], [maxLng, maxLat]],
-        { padding: 40, duration: 800 }
-      );
-    }
-  }, []);
+    if (info.object) selectFeature(info.object);
+  }, [selectFeature]);
 
   const handleJumpToDivision = useCallback((divisionNumber) => {
     const feature = geoJsonData?.features.find(f => f.properties.__division === Number(divisionNumber));
-    if (feature && mapRef.current) {
-      const [minLng, minLat, maxLng, maxLat] = bbox(feature);
-      mapRef.current.getMap().fitBounds(
-        [[minLng, minLat], [maxLng, maxLat]],
-        { padding: 40, duration: 800 }
-      );
+    if (feature) selectFeature(feature);
+  }, [geoJsonData, selectFeature]);
 
-      hoveredDivisionRef.current = Number(divisionNumber);
-      setSelectedDivision(Number(divisionNumber));
-      setHoveredFeature(feature);
-      setHoveredInfo({ feature, divisionId: Number(divisionNumber) });
-        setSelectedDivisionInfo({
-          number: feature.properties.__division,
-          name: feature.properties.__name,
-          owner: feature.properties.ownerName,
-          color: feature.properties.claimColor,
-          user_id: feature.properties.userId,
-          npc_id: feature.properties.npcId
-        });
-      }
-    }, [geoJsonData]);
+  const closeDossier = useCallback(() => {
+    setSelectedDivision(null);
+  }, []);
+
+  const submitRequest = useCallback((e) => {
+    e.preventDefault();
+    if (!selectedDivisionInfo) return;
+    requestMutation.mutate({ division: selectedDivisionInfo.number, message: reqMessage, color: reqColor });
+  }, [selectedDivisionInfo, reqMessage, reqColor, requestMutation]);
+
+  const submitCodex = useCallback((e) => {
+    e.preventDefault();
+    if (!selectedDivisionInfo || !codexText.trim()) return;
+    addCodexMutation.mutate({ division: selectedDivisionInfo.number, text: codexText });
+  }, [selectedDivisionInfo, codexText, addCodexMutation]);
+
+  const changeSafety = useCallback((e) => {
+    if (!selectedDivisionInfo) return;
+    const v = e.target.value;
+    safetyMutation.mutate({ division: selectedDivisionInfo.number, safety_rating: v === 'unknown' ? null : Number(v) });
+  }, [selectedDivisionInfo, safetyMutation]);
 
   // ── Search ──────────────────────────────────────────────
   const filteredDomains = useMemo(() => {
@@ -280,13 +565,98 @@ export default function Domains() {
     return sorted.filter((d, id) => resultIds.has(id));
   }, [allDomainsList, searchQuery]);
 
+  // ── Real-world municipality/district groupings (visual only) ───
+  // Divisions whose population figure is shared with siblings get a colored
+  // outline + label so it reads as one region, instead of looking like 5
+  // separate cities that each happen to have identical populations.
+  const groupOverlayFeatures = useMemo(() => {
+    if (!geoJsonData) return [];
+    return geoJsonData.features
+      .filter(f => (POPULATION_GROUP_MEMBERS[DIVISION_POPULATIONS[f.properties.__division]?.group] || []).length > 1)
+      .map(f => ({
+        ...f,
+        properties: {
+          ...f.properties,
+          groupAccentColor: GROUP_ACCENT_COLORS[DIVISION_POPULATIONS[f.properties.__division]?.group] || '#94a3b8',
+        }
+      }));
+  }, [geoJsonData]);
+
+  const groupLabelData = useMemo(() => {
+    if (!groupOverlayFeatures.length) return [];
+    const byGroup = new Map();
+    for (const f of groupOverlayFeatures) {
+      const group = DIVISION_POPULATIONS[f.properties.__division]?.group;
+      if (!byGroup.has(group)) {
+        byGroup.set(group, { features: [], label: DIVISION_POPULATIONS[f.properties.__division]?.groupLabel, color: f.properties.groupAccentColor });
+      }
+      byGroup.get(group).features.push(f);
+    }
+    return Array.from(byGroup.values()).map(g => {
+      const [minLng, minLat, maxLng, maxLat] = bbox({ type: 'FeatureCollection', features: g.features });
+      return { position: [(minLng + maxLng) / 2, (minLat + maxLat) / 2], text: g.label, color: g.color };
+    });
+  }, [groupOverlayFeatures]);
+
+  // ── NPC-controlled divisions get a distinct violet outline + "NPC" tag,
+  // independent of whether a clan/avatar badge is available for them (a
+  // domain owned by a bare owner_name with no linked npc/character record
+  // has no clan to show a crest for, but should still read as NPC-held).
+  const npcFeatures = useMemo(() => {
+    if (!geoJsonData) return [];
+    return geoJsonData.features.filter(f => f.properties?.isNpc);
+  }, [geoJsonData]);
+
+  const npcLabelData = useMemo(() => {
+    return npcFeatures.map(f => {
+      const [minLng, minLat, maxLng, maxLat] = bbox(f);
+      return { position: [(minLng + maxLng) / 2, (minLat + maxLat) / 2] };
+    });
+  }, [npcFeatures]);
+
+  // ── Map badges at the center of every claimed division: the clan crest
+  // AND the owner's avatar side by side (both visible at once, not one
+  // nested inside the other), a clan-name label underneath, and a no-entry
+  // sign for Abaton (which has no owner or clan to show). The clan crest
+  // can render the moment the clan is known (it's a static per-clan asset);
+  // the avatar badge only appears once its blob has actually finished
+  // fetching — the two are independent.
+  const { clanBadgeData, avatarBadgeData, clanLabelData, abatonBadgeData, abatonFeatures } = useMemo(() => {
+    if (!geoJsonData) return { clanBadgeData: [], avatarBadgeData: [], clanLabelData: [], abatonBadgeData: [], abatonFeatures: [] };
+    const clanBadges = [];
+    const avatarBadges = [];
+    const clanLabels = [];
+    const abatonBadges = [];
+    const abatonFeats = [];
+    for (const f of geoJsonData.features) {
+      if (f.properties?.isAbaton) {
+        const [minLng, minLat, maxLng, maxLat] = bbox(f);
+        abatonBadges.push({ position: [(minLng + maxLng) / 2, (minLat + maxLat) / 2] });
+        abatonFeats.push(f);
+        continue;
+      }
+      if (!f.properties?.clan) continue;
+      const division = f.properties.__division;
+      const [minLng, minLat, maxLng, maxLat] = bbox(f);
+      const position = [(minLng + maxLng) / 2, (minLat + maxLat) / 2];
+      clanBadges.push({ position, clan: f.properties.clan });
+      clanLabels.push({ position, text: f.properties.clan });
+
+      const avatarUrl = avatarCache[division];
+      if (avatarUrl) {
+        avatarBadges.push({ position, image: avatarUrl });
+      }
+    }
+    return { clanBadgeData: clanBadges, avatarBadgeData: avatarBadges, clanLabelData: clanLabels, abatonBadgeData: abatonBadges, abatonFeatures: abatonFeats };
+  }, [geoJsonData, avatarCache]);
+
   // ── Build Deck.gl layers ────────────────────────────────
   const deckLayers = useMemo(() => {
     if (!geoJsonData) return [];
 
     const layers = [];
 
-    // ─── Layer 1: Base fill + borders ────────────────────
+    // ─── Layer 1: Extruded base — fill = Masquerade safety, border = owner color ──
     layers.push(
       new GeoJsonLayer({
         id: 'domains-base',
@@ -294,27 +664,61 @@ export default function Domains() {
         pickable: true,
         stroked: true,
         filled: true,
+        extruded: true,
+        wireframe: true,
+        material: { ambient: 0.45, diffuse: 0.65, shininess: 24, specularColor: [255, 255, 255] },
+        getElevation: (f) => {
+          if (f.properties?.isAbaton) return 260; // always looms, regardless of safety
+          const claimed = !!f.properties?.claimed;
+          const heightRating = f.properties?.safetyRating ?? 5; // Unknown = mid-height
+          const base = claimed
+            ? 100 + (10 - heightRating) * 70
+            : (f.properties?.pendingRequests ? 40 : 15);
+          if (f.properties?.__division === selectedDivision) return base + 60 + pulse * 40;
+          return base;
+        },
+        elevationScale: 1,
         getFillColor: (f) => {
-          const color = f.properties?.claimColor || '#888888';
-          const isHovered = f.properties?.__division === selectedDivision;
-          return hexToRgba(color, isHovered ? 25 : 80);
+          const div = f.properties?.__division;
+          const isSelected = div === selectedDivision;
+          const isHovered = div === hoveredDivision;
+          if (f.properties?.isAbaton) {
+            return hexToRgba('#7f1d1d', isSelected ? 215 : 175);
+          }
+          const claimed = !!f.properties?.claimed;
+          const tier = safetyTier(f.properties?.safetyRating);
+          const base = f.properties?.safetyRating == null ? (claimed ? 60 : 32) : (claimed ? 140 : 85);
+          return hexToRgba(tier.color, isSelected ? base + 70 + pulse * 40 : isHovered ? base + 35 : base);
         },
         getLineColor: (f) => {
-          const color = f.properties?.claimColor || '#888888';
-          const isHovered = f.properties?.__division === selectedDivision;
-          return hexToRgba(color, isHovered ? 255 : 140);
+          const div = f.properties?.__division;
+          const claimed = !!f.properties?.claimed;
+          const hasPending = !claimed && f.properties?.pendingRequests > 0;
+          if (div === selectedDivision) return hexToRgba('#ffffff', 180 + pulse * 75);
+          if (f.properties?.isAbaton) return hexToRgba('#ef4444', div === hoveredDivision ? 255 : 210);
+          if (hasPending) return hexToRgba('#f59e0b', 220);
+          if (claimed) return hexToRgba(f.properties?.claimColor || '#888888', div === hoveredDivision ? 255 : 200);
+          return hexToRgba('#888888', div === hoveredDivision ? 140 : 70);
         },
         getLineWidth: (f) => {
-          return f.properties?.__division === selectedDivision ? 4 : 1.5;
+          const div = f.properties?.__division;
+          const claimed = !!f.properties?.claimed;
+          const hasPending = !claimed && f.properties?.pendingRequests > 0;
+          if (div === selectedDivision) return 3 + pulse * 2;
+          if (div === hoveredDivision) return 2.5;
+          if (f.properties?.isAbaton) return 2.5;
+          if (hasPending) return 2;
+          return 1.2;
         },
         lineWidthUnits: 'pixels',
         lineWidthMinPixels: 1,
         onHover: onDeckHover,
         onClick: onDeckClick,
         updateTriggers: {
-          getFillColor: [selectedDivision],
-          getLineColor: [selectedDivision],
-          getLineWidth: [selectedDivision]
+          getFillColor: [selectedDivision, hoveredDivision, pulse],
+          getLineColor: [selectedDivision, hoveredDivision, pulse],
+          getLineWidth: [selectedDivision, hoveredDivision, pulse],
+          getElevation: [selectedDivision, pulse],
         },
         transitions: {
           getFillColor: 200,
@@ -324,26 +728,280 @@ export default function Domains() {
       })
     );
 
-    // ─── Layers 2 & 3: Mask + Image Fill (on hover) ──────
-    if (hoveredInfo.feature) {
-      const ownerName = hoveredInfo.feature.properties?.ownerName;
-      const currentAvatarUrl = avatarCache[selectedDivision];
-      
-      if (currentAvatarUrl && ownerName !== 'Unclaimed') {
+    // ─── Abaton hazard stripes — draped onto each Abaton polygon the same
+    // way the hover-avatar reveal drapes a face onto a division, just
+    // always-on instead of hover-gated (see the mask+bitmap pattern below).
+    for (const feature of abatonFeatures) {
+      const division = feature.properties.__division;
+      layers.push(
+        new SolidPolygonLayer({
+          id: `abaton-mask-${division}`,
+          data: [feature],
+          getPolygon: d => d.geometry.coordinates,
+          operation: 'mask',
+          getFillColor: [255, 255, 255, 255],
+        })
+      );
+      const [minLng, minLat, maxLng, maxLat] = bbox(feature);
+      layers.push(
+        new BitmapLayer({
+          id: `abaton-stripes-${division}`,
+          image: ABATON_STRIPE_IMG,
+          bounds: [minLng, minLat, maxLng, maxLat],
+          extensions: [new MaskExtension()],
+          maskId: `abaton-mask-${division}`,
+        })
+      );
+    }
 
-        // Layer 2: The Mask Layer (SolidPolygonLayer)
+    // ─── NPC outline + tag — same glow-then-crisp treatment as the
+    // municipal-group borders, so it reads as a distinct "system" marker
+    // regardless of whether that division also has a clan/avatar badge.
+    if (npcFeatures.length) {
+      layers.push(
+        new GeoJsonLayer({
+          id: 'npc-outline-glow',
+          data: npcFeatures,
+          pickable: false,
+          stroked: true,
+          filled: false,
+          extruded: false,
+          getLineColor: hexToRgba(NPC_ACCENT_COLOR, 90),
+          getLineWidth: 6,
+          lineWidthUnits: 'pixels',
+          lineWidthMinPixels: 4,
+          parameters: { depthTest: false },
+        })
+      );
+      layers.push(
+        new GeoJsonLayer({
+          id: 'npc-outline',
+          data: npcFeatures,
+          pickable: false,
+          stroked: true,
+          filled: false,
+          extruded: false,
+          getLineColor: hexToRgba(NPC_ACCENT_COLOR, 255),
+          getLineWidth: 2,
+          lineWidthUnits: 'pixels',
+          lineWidthMinPixels: 1.5,
+          parameters: { depthTest: false },
+        })
+      );
+      layers.push(
+        new TextLayer({
+          id: 'npc-tags',
+          data: npcLabelData,
+          getPosition: d => d.position,
+          getText: () => 'NPC',
+          getSize: 11,
+          getColor: hexToRgba(NPC_ACCENT_COLOR, 255),
+          getPixelOffset: [0, -(badgeSize / 2 + 14)],
+          fontFamily: '"Courier New", monospace',
+          fontWeight: 800,
+          billboard: true,
+          background: true,
+          getBackgroundColor: [10, 10, 10, 200],
+          backgroundPadding: [6, 3],
+          pickable: false,
+          parameters: { depthTest: false },
+          updateTriggers: { getPixelOffset: [badgeSize] },
+        })
+      );
+    }
+
+    // ─── Clan badge: dark backdrop disc + masked white clan crest, at the
+    // division's center. Plain deck.gl icon loading — no canvas involved.
+    if (clanBadgeData.length) {
+      layers.push(
+        new ScatterplotLayer({
+          id: 'clan-badge-backdrop',
+          data: clanBadgeData,
+          getPosition: d => d.position,
+          getRadius: badgeSize / 2 + 3,
+          radiusUnits: 'pixels',
+          radiusMinPixels: 14,
+          stroked: true,
+          filled: true,
+          getFillColor: [10, 10, 10, 205],
+          getLineColor: d => hexToRgba(clanTint(d.clan), 255),
+          getLineWidth: 2,
+          lineWidthUnits: 'pixels',
+          pickable: false,
+          parameters: { depthTest: false },
+          updateTriggers: { getRadius: [badgeSize] },
+        })
+      );
+      layers.push(
+        new IconLayer({
+          id: 'clan-badges',
+          data: clanBadgeData,
+          getPosition: d => d.position,
+          getIcon: d => ({ url: symlogo(d.clan), width: 128, height: 128, mask: true }),
+          getSize: badgeSize * 0.6,
+          sizeUnits: 'pixels',
+          getColor: [240, 240, 245, 235],
+          pickable: false,
+          parameters: { depthTest: false },
+          updateTriggers: { getSize: [badgeSize] },
+          transitions: { getSize: 150 },
+        })
+      );
+    }
+
+    // ─── Avatar badge: the owner's actual photo — a plain square icon (like
+    // the dossier's avatar), offset to sit just right of the clan badge.
+    if (avatarBadgeData.length) {
+      layers.push(
+        new IconLayer({
+          id: 'avatar-badges',
+          data: avatarBadgeData,
+          getPosition: d => d.position,
+          getIcon: d => ({ url: d.image, width: 64, height: 64 }),
+          getSize: badgeSize,
+          sizeUnits: 'pixels',
+          getPixelOffset: [badgeOffset, 0],
+          pickable: false,
+          parameters: { depthTest: false },
+          updateTriggers: { getSize: [badgeSize], getPixelOffset: [badgeOffset] },
+          transitions: { getSize: 150 },
+        })
+      );
+    }
+
+    // ─── Clan name label, underneath the badge pair ──
+    if (clanLabelData.length) {
+      layers.push(
+        new TextLayer({
+          id: 'clan-name-labels',
+          data: clanLabelData,
+          getPosition: d => d.position,
+          getText: d => d.text,
+          getSize: 11,
+          getColor: [230, 230, 235, 235],
+          getPixelOffset: [badgeOffset / 2, badgeSize / 2 + 12],
+          fontFamily: '"Courier New", monospace',
+          fontWeight: 700,
+          billboard: true,
+          background: true,
+          getBackgroundColor: [10, 10, 10, 190],
+          backgroundPadding: [5, 3],
+          pickable: false,
+          parameters: { depthTest: false },
+          updateTriggers: { getPixelOffset: [badgeOffset, badgeSize] },
+        })
+      );
+    }
+    if (abatonBadgeData.length) {
+      layers.push(
+        new ScatterplotLayer({
+          id: 'abaton-badge-backdrop',
+          data: abatonBadgeData,
+          getPosition: d => d.position,
+          getRadius: badgeSize / 2 + 3,
+          radiusUnits: 'pixels',
+          radiusMinPixels: 14,
+          stroked: true,
+          filled: true,
+          getFillColor: [12, 4, 4, 210],
+          getLineColor: [239, 68, 68, 255],
+          getLineWidth: 2,
+          lineWidthUnits: 'pixels',
+          pickable: false,
+          parameters: { depthTest: false },
+          updateTriggers: { getRadius: [badgeSize] },
+        })
+      );
+      layers.push(
+        new IconLayer({
+          id: 'abaton-badges',
+          data: abatonBadgeData,
+          getPosition: d => d.position,
+          getIcon: () => ({ url: NO_ENTRY_ICON, width: 64, height: 64 }),
+          getSize: badgeSize,
+          sizeUnits: 'pixels',
+          pickable: false,
+          parameters: { depthTest: false },
+          updateTriggers: { getSize: [badgeSize] },
+          transitions: { getSize: 150 },
+        })
+      );
+    }
+
+    // ─── Municipality/district grouping overlay (flat, ownership-agnostic) ──
+    // depthTest is off on purpose: these are ground-level, but claimed
+    // divisions extrude upward into 3D "buildings" that would otherwise
+    // occlude a flat line/label sitting behind them from this camera angle.
+    // Treat them like a HUD annotation that always reads on top.
+    if (groupOverlayFeatures.length) {
+      // Soft outer glow pass, then a crisp bright pass on top — same trick
+      // as the selection glow, just static, so the border actually pops
+      // against a busy, colorful, already-claimed map.
+      layers.push(
+        new GeoJsonLayer({
+          id: 'municipal-groups-glow',
+          data: groupOverlayFeatures,
+          pickable: false,
+          stroked: true,
+          filled: false,
+          extruded: false,
+          getLineColor: f => hexToRgba(f.properties.groupAccentColor, 90),
+          getLineWidth: 7,
+          lineWidthUnits: 'pixels',
+          lineWidthMinPixels: 5,
+          parameters: { depthTest: false },
+        })
+      );
+      layers.push(
+        new GeoJsonLayer({
+          id: 'municipal-groups',
+          data: groupOverlayFeatures,
+          pickable: false,
+          stroked: true,
+          filled: false,
+          extruded: false,
+          getLineColor: f => hexToRgba(f.properties.groupAccentColor, 255),
+          getLineWidth: 3,
+          lineWidthUnits: 'pixels',
+          lineWidthMinPixels: 2,
+          parameters: { depthTest: false },
+        })
+      );
+      layers.push(
+        new TextLayer({
+          id: 'municipal-group-labels',
+          data: groupLabelData,
+          getPosition: d => d.position,
+          getText: d => d.text,
+          getSize: 12,
+          getColor: d => hexToRgba(d.color, 255),
+          fontFamily: '"Courier New", monospace',
+          fontWeight: 700,
+          billboard: true,
+          background: true,
+          getBackgroundColor: [10, 10, 10, 200],
+          backgroundPadding: [6, 4],
+          parameters: { depthTest: false },
+        })
+      );
+    }
+
+    // ─── Layers: Mask + Image Fill (hover reveals the owner's face) ──
+    if (hoveredFeature) {
+      const currentAvatarUrl = avatarCache[hoveredDivision];
+
+      if (currentAvatarUrl && isOwnedClaim(claimByDiv.get(hoveredDivision))) {
         layers.push(
           new SolidPolygonLayer({
             id: 'hover-mask-layer',
-            data: [hoveredInfo.feature],
+            data: [hoveredFeature],
             getPolygon: d => d.geometry.coordinates,
             operation: 'mask',
             getFillColor: [255, 255, 255, 255]
           })
         );
 
-        // Layer 3: The Image Fill Layer (BitmapLayer)
-        const [minLng, minLat, maxLng, maxLat] = bbox(hoveredInfo.feature);
+        const [minLng, minLat, maxLng, maxLat] = bbox(hoveredFeature);
         layers.push(
           new BitmapLayer({
             id: 'hover-image-layer',
@@ -357,7 +1015,7 @@ export default function Domains() {
     }
 
     return layers;
-  }, [geoJsonData, selectedDivision, hoveredInfo, avatarCache, onDeckHover, onDeckClick]);
+  }, [geoJsonData, selectedDivision, hoveredDivision, hoveredFeature, avatarCache, pulse, onDeckHover, onDeckClick, groupOverlayFeatures, groupLabelData, npcFeatures, npcLabelData, clanBadgeData, avatarBadgeData, clanLabelData, abatonBadgeData, abatonFeatures, claimByDiv, badgeSize, badgeOffset]);
 
   // ── Error state ─────────────────────────────────────────
   if (!geoJsonData) {
@@ -373,11 +1031,12 @@ export default function Domains() {
     latitude: 37.9838,
     zoom: 12,
     minZoom: 11,
-    pitch: 0,
-    bearing: 0
+    pitch: 45,
+    bearing: -12
   };
 
   const isLoading = isClaimsLoading;
+  const safety = selectedDivisionInfo ? safetyTier(selectedDivisionInfo.safety_rating) : null;
 
   return (
     <>
@@ -397,7 +1056,7 @@ export default function Domains() {
                 </div>
                 <h2 className={styles.loadingTitle}>Establishing Cartography...</h2>
                 <div className={styles.loadingBarWrapper}>
-                  <motion.div 
+                  <motion.div
                     className={styles.loadingBarFill}
                     initial={{ width: "0%" }}
                     animate={{ width: "100%" }}
@@ -417,18 +1076,40 @@ export default function Domains() {
           </div>
         )}
 
+        {/* ── Small "still rendering" chip — the 3D terrain/extrusion scene
+             can take a moment to spin up even after data has loaded ── */}
+        <AnimatePresence>
+          {!mapReady && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className={styles.mapLoadingChip}
+            >
+              <span className={`material-symbols-outlined ${styles.mapLoadingSpinner}`}>progress_activity</span>
+              Rendering 3D terrain…
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* ── DECK.GL + MAPLIBRE ── */}
         <DeckGL
           initialViewState={INITIAL_VIEW_STATE}
-          controller={true}
+          controller={{ dragRotate: true, touchRotate: true, minPitch: 0, maxPitch: 65 }}
           layers={deckLayers}
           getCursor={({ isHovering }) => isHovering ? 'pointer' : 'grab'}
+          onViewStateChange={({ viewState }) => {
+            const rounded = Math.round(viewState.zoom * 4) / 4;
+            setZoom(z => (z === rounded ? z : rounded));
+          }}
           style={{ width: '100%', height: '100%' }}
         >
           <MapGL
             ref={mapRef}
             mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
             style={{ width: '100%', height: '100%' }}
+            onLoad={() => setMapReady(true)}
           >
             {/* Native MapLibre labels — superior text rendering */}
             {geoJsonData && (
@@ -454,6 +1135,28 @@ export default function Domains() {
             )}
           </MapGL>
         </DeckGL>
+
+        {/* ── Hover tooltip: quick glance without opening the dossier ── */}
+        <AnimatePresence>
+          {hoveredFeature && hoveredDivision !== selectedDivision && (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 6 }}
+              transition={{ duration: 0.15 }}
+              className={styles.hoverTip}
+            >
+              <span className={styles.hoverTipNum}>#{hoveredFeature.properties.__division}</span>
+              <span className={styles.hoverTipName}>{hoveredFeature.properties.__name}</span>
+              <span className={styles.hoverTipOwner}>
+                {hoveredFeature.properties.isAbaton ? 'Abaton' : hoveredFeature.properties.ownerName}
+              </span>
+              {hoveredFeature.properties.pendingRequests > 0 && hoveredFeature.properties.ownerName === 'Unclaimed' && (
+                <span className={styles.hoverTipPending}>{hoveredFeature.properties.pendingRequests} request{hoveredFeature.properties.pendingRequests > 1 ? 's' : ''} pending</span>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* ── LEFT RAIL: All Divisions ── */}
         <div className={`${styles.rail} ${railOpen ? styles.railOpen : ''}`}>
@@ -483,8 +1186,9 @@ export default function Domains() {
               </div>
               <div className={styles.railList}>
                 {filteredDomains.map(domain => {
-                  const isClaimed = claimByDiv.has(domain.number);
-                  const claimColor = claimByDiv.get(domain.number)?.color;
+                  const claimRow = claimByDiv.get(domain.number);
+                  const isClaimed = isOwnedClaim(claimRow);
+                  const pendingCount = pendingCountByDivision.get(domain.number) || 0;
                   return (
                     <button
                       key={domain.number}
@@ -493,10 +1197,13 @@ export default function Domains() {
                     >
                       <span
                         className={styles.railDot}
-                        style={{ background: isClaimed ? (claimColor || '#888') : 'transparent', borderColor: isClaimed ? (claimColor || '#888') : 'rgba(255,255,255,0.15)' }}
+                        style={{ background: isClaimed ? (claimRow?.color || '#888') : 'transparent', borderColor: isClaimed ? (claimRow?.color || '#888') : 'rgba(255,255,255,0.15)' }}
                       />
                       <span className={styles.railNum}>#{domain.number}</span>
                       <span className={styles.railName}>{domain.name}</span>
+                      {!isClaimed && pendingCount > 0 && (
+                        <span className={styles.railPendingDot} title={`${pendingCount} request${pendingCount > 1 ? 's' : ''} pending`} />
+                      )}
                     </button>
                   );
                 })}
@@ -509,17 +1216,18 @@ export default function Domains() {
         <div className={styles.claimsPanel}>
           <div className={styles.claimsPanelHeader}>
             <span className={styles.claimsPanelTitle}>Territory</span>
-            <span className={styles.claimsPanelCount}>{claims.length} claimed</span>
+            <span className={styles.claimsPanelCount}>{ownedClaims.length} claimed</span>
           </div>
-          {claims.length === 0 ? (
+          {ownedClaims.length === 0 ? (
             <p className={styles.claimsPanelEmpty}>No territory claimed.</p>
           ) : (
             <div className={styles.claimsScroll}>
-              {claims
+              {ownedClaims
                 .slice()
                 .sort((a, b) => Number(a.division) - Number(b.division))
                 .map(c => {
                   const name = DIVISION_NAMES[c.division] || `Division ${c.division}`;
+                  const displayName = c.live_name || c.owner_name || 'Unclaimed';
                   return (
                     <motion.button
                       initial={{ opacity: 0, x: 20 }}
@@ -537,10 +1245,10 @@ export default function Domains() {
                           <img src="/img/ui/abaton.jpg" alt="Abaton" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         </div>
                       ) : (
-                        <Avatar userId={c.user_id} npcId={c.owner_npc_id} size={36} style={{ marginLeft: '12px', flexShrink: 0, borderRadius: '50%' }} fallback={`https://ui-avatars.com/api/?name=${encodeURIComponent(c.owner_name || 'Unclaimed')}&background=random`} />
+                        <Avatar userId={c.user_id} npcId={c.owner_npc_id} size={36} style={{ marginLeft: '12px', flexShrink: 0, borderRadius: '50%' }} fallback={`https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random`} />
                       )}
                       <div className={styles.claimBody} style={{ marginLeft: '12px', textAlign: 'left' }}>
-                        <span className={styles.claimOwner}>{c.is_abaton ? 'Abaton' : (c.owner_name || 'Unclaimed')}</span>
+                        <span className={styles.claimOwner}>{c.is_abaton ? 'Abaton' : displayName}</span>
                         <span className={styles.claimMeta}>
                           <span className={styles.claimDivNum}>#{c.division}</span>
                           <span className={styles.claimDivName}>{name}</span>
@@ -553,87 +1261,314 @@ export default function Domains() {
           )}
         </div>
 
-        {/* ── FLOATING TRANSLUCENT MODAL: Selected Division ── */}
+        {/* ── DOSSIER: Selected Division inspect panel ── */}
         <AnimatePresence>
           {selectedDivisionInfo && (
             <motion.div
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              style={{ position: 'absolute', bottom: '2rem', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, pointerEvents: 'auto' }}
+              initial={{ opacity: 0, x: 60 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 60 }}
+              transition={{ type: 'spring', stiffness: 320, damping: 30 }}
+              className={`${styles.dossier} ${selectedDivisionInfo.is_abaton ? styles.dossierAbaton : ''}`}
+              style={{ '--dossier-color': selectedDivisionInfo.is_abaton ? '#ef4444' : (selectedDivisionInfo.color || '#888888') }}
             >
-              <div
-                style={{
-                  backgroundColor: 'rgba(20, 20, 20, 0.65)',
-                  backdropFilter: 'blur(12px)',
-                  WebkitBackdropFilter: 'blur(12px)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  borderRadius: '1.5rem',
-                  padding: '1.5rem 2rem',
-                  minWidth: '320px',
-                  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-                  position: 'relative',
-                  display: 'flex',
-                  gap: '1.5rem',
-                  alignItems: 'center',
-                  overflow: 'hidden'
-                }}
-              >
+              <button className={styles.dossierClose} onClick={closeDossier}>✕</button>
 
-                <button
-                  style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: 'transparent', border: 'none', color: 'rgba(255, 255, 255, 0.5)', cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '24px', height: '24px', borderRadius: '50%', zIndex: 2 }}
-                  onMouseEnter={e => e.currentTarget.style.color = 'white'}
-                  onMouseLeave={e => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.5)'}
-                  onClick={() => {
-                    hoveredDivisionRef.current = null;
-                    setSelectedDivisionInfo(null);
-                    setSelectedDivision(null);
-                    setHoveredFeature(null);
-                  }}
-                >✕</button>
-
-                <div style={{ flexShrink: 0, zIndex: 1 }}>
-                  {selectedDivisionInfo.is_abaton ? (
-                    <div style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255, 255, 255, 0.4)', boxShadow: '0 4px 12px rgba(0,0,0,0.5)', overflow: 'hidden' }}>
-                      <img src="/img/ui/abaton.jpg" alt="Abaton" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    </div>
-                  ) : selectedDivisionInfo.owner !== 'Unclaimed' ? (
-                    <Avatar userId={selectedDivisionInfo.user_id} npcId={selectedDivisionInfo.npc_id} size={80} style={{ borderRadius: '50%', border: '2px solid rgba(255, 255, 255, 0.2)', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }} fallback={`https://ui-avatars.com/api/?name=${encodeURIComponent(selectedDivisionInfo.owner)}&background=random`} />
-                  ) : (
-                    <div style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: 'rgba(255, 255, 255, 0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed rgba(255, 255, 255, 0.2)' }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: '32px', color: 'rgba(255, 255, 255, 0.5)' }}>public_off</span>
-                    </div>
-                  )}
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', zIndex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                    {selectedDivisionInfo.color
-                      ? <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: selectedDivisionInfo.color, border: '1px solid rgba(255,255,255,0.2)' }} />
-                      : <span style={{ width: '12px', height: '12px', borderRadius: '50%', border: '1px dashed rgba(255,255,255,0.2)' }} />
-                    }
-                    <span style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.6)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 'bold' }}>Division {selectedDivisionInfo.number}: {selectedDivisionInfo.name}</span>
+              {selectedDivisionInfo.is_abaton ? (
+                <div className={styles.abatonHeader}>
+                  <span className={`material-symbols-outlined ${styles.abatonIcon}`}>block</span>
+                  <div className={styles.dossierTitleBlock}>
+                    <span className={styles.dossierDivTag}>DIVISION {selectedDivisionInfo.number}</span>
+                    <h3 className={styles.dossierName}>{selectedDivisionInfo.name}</h3>
+                    <span className={styles.abatonBadgeText}>⚠ ABATON — SACRED GROUND · OFF LIMITS ⚠</span>
                   </div>
-
-                  <h3 style={{ fontSize: '1.25rem', color: 'white', margin: '0 0 0.5rem 0', fontFamily: '"Playfair Display", serif', fontWeight: 'bold' }}>
-                    {selectedDivisionInfo.is_abaton ? 'Abaton' : selectedDivisionInfo.owner !== 'Unclaimed' ? selectedDivisionInfo.owner : 'Unclaimed'}
-                  </h3>
-
-                  {selectedDivisionInfo.is_abaton ? (
-                    <div>
-                      <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', fontStyle: 'italic', letterSpacing: '0.5px' }}>OFF LIMITS</span>
-                    </div>
-                  ) : selectedDivisionInfo.owner !== 'Unclaimed' && (
-                    <div>
-                      {selectedDivisionInfo.user_id ? (
-                        <Link to={`/character/${selectedDivisionInfo.user_id}`} style={{ fontSize: '0.75rem', color: 'white', textDecoration: 'none', fontWeight: 'bold', padding: '0.25rem 0.75rem', borderRadius: '999px', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', display: 'inline-block', transition: 'background-color 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}>View Profile</Link>
-                      ) : selectedDivisionInfo.npc_id ? (
-                        <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', fontStyle: 'italic' }}>NPC Controlled</span>
-                      ) : null}
-                    </div>
-                  )}
                 </div>
+              ) : (
+                <div className={styles.dossierHeader}>
+                  <div className={styles.dossierPortraitWrap}>
+                    <div className={styles.dossierPortrait}>
+                      {selectedDivisionInfo.owner !== 'Unclaimed' ? (
+                        <Avatar
+                          userId={selectedDivisionInfo.user_id}
+                          npcId={selectedDivisionInfo.npc_id}
+                          size={96}
+                          fallback={`https://ui-avatars.com/api/?name=${encodeURIComponent(selectedDivisionInfo.owner)}&background=random`}
+                        />
+                      ) : (
+                        <span className="material-symbols-outlined">public_off</span>
+                      )}
+                    </div>
+                    {selectedDivisionInfo.clan && (
+                      <img
+                        className={styles.dossierClanBadge}
+                        src={symlogo(selectedDivisionInfo.clan)}
+                        alt={selectedDivisionInfo.clan}
+                        title={selectedDivisionInfo.clan}
+                        style={{ '--clan-tint': clanTint(selectedDivisionInfo.clan) }}
+                      />
+                    )}
+                  </div>
+                  <div className={styles.dossierTitleBlock}>
+                    <span className={styles.dossierDivTag}>DIVISION {selectedDivisionInfo.number}</span>
+                    <h3 className={styles.dossierName}>{selectedDivisionInfo.name}</h3>
+                    <span className={styles.dossierOwnerLine}>
+                      {selectedDivisionInfo.owner}
+                      {selectedDivisionInfo.is_npc && <span className={styles.npcTag}>NPC</span>}
+                    </span>
+                    {selectedDivisionInfo.primaryTitle && (
+                      <span className={styles.dossierTitleBadge}>{selectedDivisionInfo.primaryTitle}</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className={styles.dossierTabs}>
+                <button
+                  className={`${styles.dossierTab} ${activeTab === 'overview' ? styles.dossierTabActive : ''}`}
+                  onClick={() => setActiveTab('overview')}
+                >
+                  <span className={`material-symbols-outlined ${styles.dossierTabIcon}`}>info</span>
+                  <span className={styles.dossierTabLabel}>Overview</span>
+                </button>
+                <button
+                  className={`${styles.dossierTab} ${activeTab === 'requests' ? styles.dossierTabActive : ''}`}
+                  onClick={() => setActiveTab('requests')}
+                >
+                  <span className={`material-symbols-outlined ${styles.dossierTabIcon}`}>how_to_reg</span>
+                  <span className={styles.dossierTabLabel}>Requests</span>
+                  {selectedPendingRequests.length > 0 && <span className={styles.dossierTabBadge}>{selectedPendingRequests.length}</span>}
+                </button>
+                <button
+                  className={`${styles.dossierTab} ${activeTab === 'codex' ? styles.dossierTabActive : ''}`}
+                  onClick={() => setActiveTab('codex')}
+                >
+                  <span className={`material-symbols-outlined ${styles.dossierTabIcon}`}>menu_book</span>
+                  <span className={styles.dossierTabLabel}>Codex</span>
+                </button>
+                {isCourt && (
+                  <button
+                    className={`${styles.dossierTab} ${activeTab === 'court' ? styles.dossierTabActive : ''}`}
+                    onClick={() => setActiveTab('court')}
+                  >
+                    <span className={`material-symbols-outlined ${styles.dossierTabIcon}`}>gavel</span>
+                    <span className={styles.dossierTabLabel}>Court Intel</span>
+                  </button>
+                )}
+              </div>
+
+              <div className={styles.dossierBody}>
+                {activeTab === 'overview' && (
+                  <>
+                    {!selectedDivisionInfo.is_abaton && (
+                      <div className={styles.statBlock}>
+                        <span className={styles.statLabel}>Masquerade Safety</span>
+                        {selectedDivisionInfo.safety_rating == null ? (
+                          <span className={styles.gaugeUnknown}>? Unknown — the Court has not assessed this territory</span>
+                        ) : (
+                          <>
+                            <div className={styles.gaugeTrack}>
+                              <div
+                                className={styles.gaugeFill}
+                                style={{ width: `${(selectedDivisionInfo.safety_rating / 10) * 100}%`, background: safety.color }}
+                              />
+                            </div>
+                            <span className={styles.gaugeReadout} style={{ color: safety.color }}>
+                              {selectedDivisionInfo.safety_rating}/10 — {safety.label}
+                            </span>
+                          </>
+                        )}
+                        {isCourt && (
+                          <div className={styles.safetyEditorRow}>
+                            <span className={styles.safetyEditorLabel}>Court: set rating</span>
+                            <select
+                              className={styles.safetySelect}
+                              value={selectedDivisionInfo.safety_rating ?? 'unknown'}
+                              onChange={changeSafety}
+                              disabled={safetyMutation.isPending}
+                            >
+                              <option value="unknown">Unknown</option>
+                              {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+                                <option key={n} value={n}>{n}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {selectedDivisionInfo.population && (
+                      <div className={styles.statBlock}>
+                        <span className={styles.statLabel}>Population</span>
+                        <span className={styles.statValue}>~{selectedDivisionInfo.population.population.toLocaleString()} residents</span>
+                        {selectedDivisionInfo.population.siblings.length > 0 ? (
+                          <span className={styles.statSub}>
+                            Figure covers the whole {selectedDivisionInfo.population.groupLabel}, not {selectedDivisionInfo.population.placeLabel} alone — shared with division{selectedDivisionInfo.population.siblings.length > 1 ? 's' : ''} {selectedDivisionInfo.population.siblings.map(n => `#${n}`).join(', ')}
+                          </span>
+                        ) : (
+                          <span className={styles.statSub}>{selectedDivisionInfo.population.groupLabel}</span>
+                        )}
+                      </div>
+                    )}
+
+                    {selectedDivisionInfo.claimed_at && (
+                      <div className={styles.statBlock}>
+                        <span className={styles.statLabel}>Claimed</span>
+                        <span className={styles.statValue}>{relTime(selectedDivisionInfo.claimed_at)}</span>
+                      </div>
+                    )}
+
+                    {selectedDivisionInfo.previous_owner_name && (
+                      <div className={styles.statBlock}>
+                        <span className={styles.statLabel}>Previously Held By</span>
+                        <span className={styles.statValue}>{selectedDivisionInfo.previous_owner_name}</span>
+                        {selectedDivisionInfo.previous_claimed_at && (
+                          <span className={styles.statSub}>Held until {relTime(selectedDivisionInfo.previous_claimed_at)}</span>
+                        )}
+                      </div>
+                    )}
+
+                    {isCourt && !selectedDivisionInfo.is_abaton && selectedDivisionInfo.owner !== 'Unclaimed' && (
+                      <button
+                        className={styles.dossierDangerBtn}
+                        disabled={vacateMutation.isPending}
+                        onClick={() => vacateMutation.mutate(selectedDivisionInfo.number)}
+                      >
+                        {vacateMutation.isPending ? 'Releasing…' : 'Release Domain'}
+                      </button>
+                    )}
+                  </>
+                )}
+
+                {activeTab === 'requests' && (
+                  <>
+                    {selectedPendingRequests.length === 0 ? (
+                      <p className={styles.dossierEmpty}>No open requests for this territory.</p>
+                    ) : (
+                      <div className={styles.requestList}>
+                        {selectedPendingRequests.map(r => (
+                          <div key={r.id} className={styles.requestCard} style={{ '--req-color': r.color || '#8b5cf6' }}>
+                            <div className={styles.requestCardHeader}>
+                              <span className={styles.requestSwatch} />
+                              <span className={styles.requestName}>{r.character_name}</span>
+                              <span className={styles.requestTime}>{relTime(r.created_at)}</span>
+                            </div>
+                            <span className={styles.requestBy}>petitioned by {r.requester_name}</span>
+                            {r.message && <p className={styles.requestMessage}>&ldquo;{r.message}&rdquo;</p>}
+                            {isCourt && (
+                              <div className={styles.requestActions}>
+                                <button
+                                  className={styles.approveBtn}
+                                  disabled={resolveMutation.isPending}
+                                  onClick={() => resolveMutation.mutate({ requestId: r.id, action: 'approve' })}
+                                >Approve</button>
+                                <button
+                                  className={styles.rejectBtn}
+                                  disabled={resolveMutation.isPending}
+                                  onClick={() => resolveMutation.mutate({ requestId: r.id, action: 'reject' })}
+                                >Deny</button>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {isUnclaimed && user && !myPendingRequest && (
+                      <form className={styles.requestForm} onSubmit={submitRequest}>
+                        <span className={styles.statLabel}>Petition the Court for this domain</span>
+                        <textarea
+                          className={styles.requestTextarea}
+                          placeholder="Make your case (optional)…"
+                          value={reqMessage}
+                          maxLength={500}
+                          onChange={e => setReqMessage(e.target.value)}
+                        />
+                        <div className={styles.requestFormRow}>
+                          <input
+                            type="color"
+                            className={styles.requestColorInput}
+                            value={reqColor}
+                            onChange={e => setReqColor(e.target.value)}
+                            title="Territory color if granted"
+                          />
+                          <button type="submit" className={styles.requestSubmitBtn} disabled={requestMutation.isPending}>
+                            {requestMutation.isPending ? 'Submitting…' : 'Request This Domain'}
+                          </button>
+                        </div>
+                      </form>
+                    )}
+
+                    {myPendingRequest && (
+                      <p className={styles.dossierEmpty}>Your petition is awaiting Court review.</p>
+                    )}
+                  </>
+                )}
+
+                {activeTab === 'codex' && (
+                  <>
+                    {isCodexLoading ? (
+                      <p className={styles.dossierEmpty}>Loading codex…</p>
+                    ) : codexEntries.length === 0 ? (
+                      <p className={styles.dossierEmpty}>No lore recorded yet — be the first to add something.</p>
+                    ) : (
+                      <div className={styles.codexList}>
+                        {codexEntries.map(e => (
+                          <div key={e.id} className={styles.codexEntry}>
+                            <div className={styles.codexEntryHeader}>
+                              <span className={styles.codexAuthor}>{e.character_name || e.author_name}</span>
+                              <span className={styles.codexTime}>{relTime(e.created_at)}</span>
+                            </div>
+                            <p className={styles.codexText}>{e.text}</p>
+                            {(e.user_id === user?.id || isCourt) && (
+                              <button
+                                className={styles.codexDeleteBtn}
+                                onClick={() => deleteCodexMutation.mutate(e.id)}
+                                disabled={deleteCodexMutation.isPending}
+                              >Remove</button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {user && (
+                      <form className={styles.requestForm} onSubmit={submitCodex}>
+                        <span className={styles.statLabel}>Add to the codex</span>
+                        <textarea
+                          className={styles.requestTextarea}
+                          placeholder="Rumors, history, whispers about this territory…"
+                          value={codexText}
+                          maxLength={1000}
+                          onChange={e => setCodexText(e.target.value)}
+                        />
+                        <button type="submit" className={styles.requestSubmitBtn} disabled={addCodexMutation.isPending}>
+                          {addCodexMutation.isPending ? 'Posting…' : 'Add Entry'}
+                        </button>
+                      </form>
+                    )}
+                  </>
+                )}
+
+                {activeTab === 'court' && isCourt && (
+                  <>
+                    {isProblemsLoading ? (
+                      <p className={styles.dossierEmpty}>Loading incident log…</p>
+                    ) : problems.length === 0 ? (
+                      <p className={styles.dossierEmpty}>No recorded incidents.</p>
+                    ) : (
+                      <div className={styles.problemList}>
+                        {problems.map(p => (
+                          <div key={p.id} className={`${styles.problemCard} ${p.resolved ? styles.problemResolved : ''}`}>
+                            <span className={styles.problemText}>{p.problem_text}</span>
+                            <span className={styles.problemMeta}>
+                              {p.resolved ? 'Resolved' : 'Unresolved'} · {relTime(p.created_at)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             </motion.div>
           )}
