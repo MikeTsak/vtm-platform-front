@@ -1,8 +1,10 @@
 // src/ui/Footer.jsx
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 export default function Footer() {
+  const location = useLocation();
+  const isDomains = location.pathname === '/domains';
   
   // Logic to clear service workers and cache storage
   const handleClearCache = async () => {
@@ -37,7 +39,7 @@ export default function Footer() {
         .gothic-etched-border { border: 1px solid rgba(224, 224, 224, 0.1); }
       `}</style>
 
-      <footer className="bg-surface-container-lowest border-t border-outline-variant/10 py-6 px-4 mt-12 shadow-[0_-4px_20px_rgba(0,0,0,0.6)] relative z-10">
+      <footer className={`bg-surface-container-lowest border-t border-outline-variant/10 py-6 px-4 mt-12 shadow-[0_-4px_20px_rgba(0,0,0,0.6)] relative z-10 ${isDomains ? 'hidden md:block' : ''}`}>
         <div className="max-w-[1920px] mx-auto flex flex-col gap-4">
           
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
