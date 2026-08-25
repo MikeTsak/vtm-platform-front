@@ -151,6 +151,23 @@ export default function News() {
               </button>
             )}
           </div>
+          <div style={{
+            flexBasis: '100%',
+            width: '100%',
+            marginTop: '1rem',
+            backgroundColor: 'rgba(251, 191, 36, 0.15)',
+            border: '1px solid rgba(251, 191, 36, 0.3)',
+            borderRadius: '8px',
+            padding: '0.75rem 1rem',
+            textAlign: 'center',
+            fontSize: '0.85rem',
+            color: '#fbbf24',
+            lineHeight: '1.4'
+          }}>
+            <strong>Disclaimer:</strong> This content is entirely fictional and created for the <em>Athens Through Time</em> Live Action Role-Playing (LARP) game. 
+            Any names, characters, businesses, places, events, or incidents are either the products of the author's imagination or used in a fictitious manner. 
+            Any resemblance to actual persons, living or dead, or actual events is purely coincidental.
+          </div>
         </header>
 
         <div style={{ margin: '1rem 0' }}>

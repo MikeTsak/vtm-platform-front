@@ -140,6 +140,21 @@ export default function PublicArticleView() {
     </div>
   );
 
+  const DisclaimerText = () => (
+    <div style={{ 
+      marginTop: '2rem', 
+      padding: '1rem', 
+      backgroundColor: '#fff3cd', 
+      border: '1px solid #ffeeba', 
+      borderRadius: '8px', 
+      fontSize: '0.85rem', 
+      color: '#856404', 
+      lineHeight: '1.4' 
+    }}>
+      <strong>Disclaimer:</strong> This content is entirely fictional and created for the Athens Through Time LARP game. Any names, characters, places, or incidents are the product of the author's imagination or are used fictitiously. Any resemblance to actual persons, living or dead, or actual events is purely coincidental.
+    </div>
+  );
+
   // 1. KATHIMERINI
   if (article.theme === 'KATHIMERINI') {
     return (
@@ -168,6 +183,7 @@ export default function PublicArticleView() {
             </div>
             {renderMedia()}
             <div className={styles.fsBody} dangerouslySetInnerHTML={{ __html: article.body }} style={{ marginTop: '2rem', color: 'inherit', fontFamily: 'inherit' }} />
+            <DisclaimerText />
             <BottomAd />
           </div>
           <RightAdSidebar />
@@ -204,6 +220,7 @@ export default function PublicArticleView() {
             {renderMedia('8px')}
             {article.subtitle && <h3 style={{ margin: '2rem 0 1rem', fontSize: '1.4rem', fontWeight: 'bold', color: themeObj.color }}>{article.subtitle}</h3>}
             <div className={styles.fsBody} dangerouslySetInnerHTML={{ __html: article.body }} style={{ marginTop: '1rem', color: 'inherit', fontFamily: 'inherit' }} />
+            <DisclaimerText />
             <BottomAd />
           </div>
           <RightAdSidebar />
@@ -239,6 +256,7 @@ export default function PublicArticleView() {
             </div>
             {renderMedia()}
             <div className={styles.fsBody} dangerouslySetInnerHTML={{ __html: article.body }} style={{ marginTop: '2rem', color: 'inherit', fontFamily: 'inherit' }} />
+            <DisclaimerText />
             <BottomAd />
           </div>
           <RightAdSidebar />
@@ -273,6 +291,7 @@ export default function PublicArticleView() {
             {article.subtitle && <h3 style={{ margin: '1rem 0 2rem', fontSize: '1.4rem', color: '#aaa', fontWeight: 'normal' }}>{article.subtitle}</h3>}
             {renderMedia()}
             <div className={styles.fsBody} dangerouslySetInnerHTML={{ __html: article.body }} style={{ marginTop: '2rem', color: 'inherit', fontFamily: 'inherit' }} />
+            <DisclaimerText />
             <BottomAd />
           </div>
           <RightAdSidebar />
@@ -308,6 +327,7 @@ export default function PublicArticleView() {
             {article.subtitle && <h3 style={{ margin: '1rem 0 2rem', fontSize: '1.2rem', color: '#e6007e', textAlign: 'center' }}>{article.subtitle}</h3>}
             {renderMedia('15px')}
             <div className={styles.fsBody} dangerouslySetInnerHTML={{ __html: article.body }} style={{ marginTop: '2rem', color: 'inherit', fontFamily: 'inherit' }} />
+            <DisclaimerText />
             <BottomAd />
           </div>
           <RightAdSidebar />
@@ -344,6 +364,7 @@ export default function PublicArticleView() {
             </div>
             {renderMedia()}
             <div className={styles.fsBody} dangerouslySetInnerHTML={{ __html: article.body }} style={{ marginTop: '2rem', color: 'inherit', fontFamily: 'inherit' }} />
+            <DisclaimerText />
             <BottomAd />
           </div>
           <RightAdSidebar />
@@ -377,6 +398,7 @@ export default function PublicArticleView() {
             {article.subtitle && <h3 style={{ margin: '1rem 0 2rem', fontSize: '1.4rem', color: '#444' }}>{article.subtitle}</h3>}
             {renderMedia()}
             <div className={styles.fsBody} dangerouslySetInnerHTML={{ __html: article.body }} style={{ marginTop: '2rem', color: 'inherit', fontFamily: 'inherit' }} />
+            <DisclaimerText />
             <BottomAd />
           </div>
           <RightAdSidebar />

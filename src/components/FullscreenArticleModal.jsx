@@ -28,6 +28,10 @@ export default function FullscreenArticleModal({ item, onClose }) {
               )}
 
               <div className={styles.fsBody} dangerouslySetInnerHTML={{ __html: item.body }} />
+              
+              <div style={{ marginTop: '2rem', padding: '1rem', backgroundColor: '#fff3cd', border: '1px solid #ffeeba', borderRadius: '8px', fontSize: '0.85rem', color: '#856404', lineHeight: '1.4' }}>
+                <strong>Disclaimer:</strong> This content is entirely fictional and created for the Athens Through Time LARP game. Any names, characters, places, or incidents are the product of the author's imagination or are used fictitiously. Any resemblance to actual persons, living or dead, or actual events is purely coincidental.
+              </div>
               <div className={styles.fsRumorFooter}>— Heard on {new Date(item.created_at).toLocaleDateString()}</div>
             </div>
           ) : (
@@ -53,6 +57,10 @@ export default function FullscreenArticleModal({ item, onClose }) {
               )}
 
               <div className={styles.fsBody} dangerouslySetInnerHTML={{ __html: item.body }} />
+              
+              <div style={{ marginTop: '2rem', padding: '1rem', backgroundColor: '#fff3cd', border: '1px solid #ffeeba', borderRadius: '8px', fontSize: '0.85rem', color: '#856404', lineHeight: '1.4' }}>
+                <strong>Disclaimer:</strong> This content is entirely fictional and created for the Athens Through Time LARP game. Any names, characters, places, or incidents are the product of the author's imagination or are used fictitiously. Any resemblance to actual persons, living or dead, or actual events is purely coincidental.
+              </div>
             </div>
           )}
         </div>
