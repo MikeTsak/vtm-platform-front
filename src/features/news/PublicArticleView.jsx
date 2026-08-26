@@ -8,6 +8,27 @@ import { NEWS_OUTLETS } from '../../constants/newsConstants';
 import { apiJoin, isVideoUrl } from '../../utils/newsUtils';
 import { Skeleton } from 'boneyard-js/react';
 import GoogleAd from '../../components/GoogleAd';
+import Avatar from '../../components/Avatar';
+import courtStyles from '../../styles/Court.module.css';
+
+const TITLES = ["Prince", "Seneschal", "Primogen", "Sheriff", "Scourge", "Keeper", "Harpy", "Assistant Harpy", "Hound", "Shadow", "Whip"];
+
+const getTopRole = (titlesStr) => {
+  try {
+    const titles = JSON.parse(titlesStr);
+    if (Array.isArray(titles) && titles.length > 0) {
+      const sorted = [...titles].sort((a, b) => {
+        let aIdx = TITLES.indexOf(a);
+        let bIdx = TITLES.indexOf(b);
+        if(aIdx === -1) aIdx = 99;
+        if(bIdx === -1) bIdx = 99;
+        return aIdx - bIdx;
+      });
+      return sorted[0];
+    }
+  } catch(e) {}
+  return "Court Member";
+};
 
 export default function PublicArticleView() {
   const { id } = useParams();
@@ -18,6 +39,7 @@ export default function PublicArticleView() {
   const navigate = useNavigate();
   const location = useLocation();
   const isRumor = location.pathname.startsWith('/rumors');
+  const isAnnouncement = location.pathname.includes('/court/announcements');
 
   useEffect(() => {
     setLoading(true);
@@ -45,7 +67,7 @@ export default function PublicArticleView() {
     return (
       <div className={styles.page} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
         <h2 style={{ color: 'var(--text-color)' }}>{error || 'Article not found'}</h2>
-        <button onClick={() => navigate(isRumor ? '/rumors' : '/news')} className={styles.btnPrimary} style={{ marginTop: '1rem' }}>Back to {isRumor ? 'Rumors' : 'News'}</button>
+        <button onClick={() => navigate(isRumor ? '/rumors' : (isAnnouncement ? '/court/announcements' : '/news'))} className={styles.btnPrimary} style={{ marginTop: '1rem' }}>Back to {isRumor ? 'Rumors' : (isAnnouncement ? 'Decrees' : 'News')}</button>
       </div>
     );
   }
@@ -55,7 +77,7 @@ export default function PublicArticleView() {
 
   // Floating back button to return to the game
   const backBtn = (
-    <button onClick={() => navigate(isRumor ? '/rumors' : '/news')} style={{ position: 'fixed', bottom: '20px', left: '20px', padding: '10px 20px', background: 'rgba(0,0,0,0.8)', color: '#fff', border: '1px solid #444', borderRadius: '4px', cursor: 'pointer', zIndex: 9999, fontWeight: 'bold', boxShadow: '0 4px 6px rgba(0,0,0,0.5)', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px' }}>
+    <button onClick={() => navigate(isRumor ? '/rumors' : (isAnnouncement ? '/court/announcements' : '/news'))} style={{ position: 'fixed', bottom: '20px', left: '20px', padding: '10px 20px', background: 'rgba(0,0,0,0.8)', color: '#fff', border: '1px solid #444', borderRadius: '4px', cursor: 'pointer', zIndex: 9999, fontWeight: 'bold', boxShadow: '0 4px 6px rgba(0,0,0,0.5)', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px' }}>
       ← Return to Hub
     </button>
   );
@@ -402,6 +424,45 @@ export default function PublicArticleView() {
             <BottomAd />
           </div>
           <RightAdSidebar />
+        </div>
+      </div>
+    );
+  }
+
+  // 8. COURT ANNOUNCEMENT
+  if (article.type === 'announcement') {
+    const authorRole = getTopRole(article.char_titles);
+    const authorName = article.char_name || article.author_real_name || "Court Authority";
+
+    return (
+      <div className={styles.page} style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', backgroundColor: '#0a0a0a', padding: '2rem 1rem' }}>
+        {helmet}
+        {backBtn}
+        <div style={{ maxWidth: '800px', width: '100%' }}>
+          <article className={courtStyles.decreeCard} style={{ margin: '0 auto', opacity: 1, transform: 'none' }}>
+            <div className={courtStyles.decreeAccent}></div>
+            
+            <div className={courtStyles.decreeContent}>
+              <header className={courtStyles.decreeMeta}>
+                <div className={courtStyles.decreeAuthorInfo}>
+                  <Avatar userId={article.author_id} size={48} className={courtStyles.decreeAuthorAvatar} fallback="/img/ATT-logo(1).png" />
+                  <div>
+                    <h3 className={courtStyles.decreeAuthorName}>{authorName}</h3>
+                    <p className={courtStyles.decreeAuthorRole}>{authorRole}</p>
+                  </div>
+                </div>
+                <time className={courtStyles.decreeDate}>
+                  {articleDate}
+                </time>
+              </header>
+              
+              <h2 className={courtStyles.decreeSubject}>{article.title}</h2>
+              
+              {renderMedia('8px')}
+
+              <div className={courtStyles.decreeBodyText} dangerouslySetInnerHTML={{__html: article.body.replace(/\n/g, '<br/>')}} style={{ marginTop: '1.5rem', lineHeight: '1.6' }} />
+            </div>
+          </article>
         </div>
       </div>
     );

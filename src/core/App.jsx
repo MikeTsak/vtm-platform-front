@@ -188,6 +188,7 @@ function AppLayout() {
           <Route path="/court" element={<Navigate to="/court/hierarchy" replace />} />
           <Route path="/court/hierarchy" element={<Private><Hierarchy /></Private>} />
           <Route path="/court/announcements" element={<Private><Announcements /></Private>} />
+          <Route path="/court/announcements/:id" element={<PublicArticleView />} />
           <Route path="/court/coteries" element={<Private><Coteries /></Private>} />
 
           <Route path="/news" element={<News />} />
