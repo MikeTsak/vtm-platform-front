@@ -75,6 +75,18 @@ export default function News() {
     }
   });
 
+  const broadcastNewsMutation = useMutation({
+    mutationFn: async (id) => {
+      await api.post(`/news/${id}/broadcast`);
+    },
+    onSuccess: () => {
+      toast.success('News/Announcement broadcasted to Discord');
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.error || 'Failed to broadcast');
+    }
+  });
+
   const deleteRumorMutation = useMutation({
     mutationFn: async (id) => {
       await api.delete(`/rumors/${id}`);
@@ -85,6 +97,18 @@ export default function News() {
     },
     onError: (err) => {
       toast.error(err.response?.data?.error || 'Failed to delete rumor');
+    }
+  });
+
+  const broadcastRumorMutation = useMutation({
+    mutationFn: async (id) => {
+      await api.post(`/rumors/${id}/broadcast`);
+    },
+    onSuccess: () => {
+      toast.success('Rumor broadcasted to Discord');
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.error || 'Failed to broadcast');
     }
   });
 
@@ -107,9 +131,21 @@ export default function News() {
     }
   };
 
+  const handleBroadcastNews = (id) => {
+    if (window.confirm("Resend this article to Discord?")) {
+      broadcastNewsMutation.mutate(id);
+    }
+  };
+
   const handleDeleteRumor = (id) => {
     if (window.confirm("Delete this rumor?")) {
       deleteRumorMutation.mutate(id);
+    }
+  };
+
+  const handleBroadcastRumor = (id) => {
+    if (window.confirm("Resend this rumor to Discord?")) {
+      broadcastRumorMutation.mutate(id);
     }
   };
 
@@ -228,7 +264,20 @@ export default function News() {
                           <div className={styles.bodyHtml} dangerouslySetInnerHTML={{ __html: item.body }} />
                         </div>
                         {(isAdmin || isCourt) && (
-                          <button onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleDeleteNews(item.id); }} className={styles.deleteOverlay} disabled={deleteNewsMutation.isPending}>×</button>
+                          <>
+                            {isAdmin && (
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleBroadcastNews(item.id); }} 
+                                className={styles.deleteOverlay} 
+                                disabled={broadcastNewsMutation.isPending} 
+                                style={{ right: '40px', background: '#3b82f6' }} 
+                                title="Resend to Discord"
+                              >
+                                📢
+                              </button>
+                            )}
+                            <button onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleDeleteNews(item.id); }} className={styles.deleteOverlay} disabled={deleteNewsMutation.isPending}>×</button>
+                          </>
                         )}
                       </article>
                     </Link>
@@ -258,7 +307,20 @@ export default function News() {
                         <div className={styles.rumorMeta}>— Heard on {new Date(item.created_at).toLocaleDateString()}</div>
 
                         {(isAdmin || isCourt) && (
-                          <button onClick={(e) => { e.stopPropagation(); handleDeleteRumor(item.id); }} className={styles.deleteOverlay} disabled={deleteRumorMutation.isPending}>×</button>
+                          <>
+                            {isAdmin && (
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); handleBroadcastRumor(item.id); }} 
+                                className={styles.deleteOverlay} 
+                                disabled={broadcastRumorMutation.isPending} 
+                                style={{ right: '40px', background: '#3b82f6' }} 
+                                title="Resend to Discord"
+                              >
+                                📢
+                              </button>
+                            )}
+                            <button onClick={(e) => { e.stopPropagation(); handleDeleteRumor(item.id); }} className={styles.deleteOverlay} disabled={deleteRumorMutation.isPending}>×</button>
+                          </>
                         )}
                       </article>
                     </div>

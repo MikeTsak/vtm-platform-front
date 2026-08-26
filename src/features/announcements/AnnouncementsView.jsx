@@ -117,6 +117,17 @@ export default function AnnouncementsView({ canEdit: propCanEdit }) {
     }
   };
 
+  const handleBroadcast = async (id) => {
+    if(window.confirm("Resend this decree to Discord?")) { 
+      try { 
+        await api.post(`/news/${id}/broadcast`); 
+        alert("Decree rebroadcasted successfully.");
+      } catch(e) { 
+        alert("Failed to rebroadcast decree."); 
+      }
+    }
+  };
+
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     setSelectedFile(file || null);
@@ -217,7 +228,13 @@ export default function AnnouncementsView({ canEdit: propCanEdit }) {
                 </div>
 
                 {canEdit && (
-                  <div className={styles.decreeFooter}>
+                  <div className={styles.decreeFooter} style={{ display: 'flex', gap: '10px' }}>
+                    {user?.role === 'admin' && (
+                      <button onClick={() => handleBroadcast(item.id)} className={styles.revokeBtn} style={{ color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.3)' }} data-cuelume-press="thud" data-cuelume-hover>
+                        <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>campaign</span>
+                        Resend to Discord
+                      </button>
+                    )}
                     <button onClick={() => handleDelete(item.id)} className={styles.revokeBtn} data-cuelume-press="thud" data-cuelume-hover>
                       <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>cancel</span>
                       Revoke Decree
