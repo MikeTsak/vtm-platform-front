@@ -212,7 +212,7 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
     if (!selectedAdvantage || selectedAdvantage.item.id !== 'other__mystic_of_the_void') return [];
     if (typeof RITUALS === 'undefined' || !RITUALS.oblivion) return [];
 
-    const superNorm = (v) => String(v ?? '').toLowerCase().replace(/\(errata\)/g, '').replace(/[\s_\-]+/g, '');
+    const superNorm = (v) => String(v ?? '').toLowerCase().replace(/\(errata\)/g, '').replace(/\berrata\b/g, '').replace(/'s\b/g, '').replace(/[^a-z0-9]/g, '');
 
     const selectedNorms = detailMysticSelections.map(id => {
       const p = meritAvailableOblivion.find(x => x.id === id);

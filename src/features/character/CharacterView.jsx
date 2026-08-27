@@ -262,6 +262,7 @@ function normalizeFromFlatAny(source) {
 
     if (validPowers.length !== sheet.mystic_powers.length || validPowers.length > maxMystic) {
       sheet.mystic_powers = [];
+      sheet._needsMysticFix = true;
     }
   } else if (!mysticMerit && sheet.mystic_powers?.length > 0) {
     sheet.mystic_powers = [];
@@ -585,6 +586,111 @@ function TrackerBlock({ label, val, max, agg = 0, sup = 0, filled = 0, stains = 
 }
 
 /* ===========================
+   Mystic Fix Modal
+   =========================== */
+function MysticFixModal({ maxMystic, oblivionDots, onClose, onSave, busy }) {
+  const [selections, setSelections] = useState([]);
+  
+  const availablePowers = useMemo(() => {
+    const list = [];
+    if (DISCIPLINES && DISCIPLINES['Oblivion'] && DISCIPLINES['Oblivion'].levels) {
+      for (let l = 1; l <= oblivionDots; l++) {
+        const powers = DISCIPLINES['Oblivion'].levels[l] || [];
+        powers.forEach(p => list.push({ ...p, level: l }));
+      }
+    }
+    return list;
+  }, [oblivionDots]);
+
+  const togglePower = (pId) => {
+    if (selections.includes(pId)) {
+      setSelections(prev => prev.filter(id => id !== pId));
+    } else {
+      if (selections.length < maxMystic) {
+        setSelections(prev => [...prev, pId]);
+      }
+    }
+  };
+
+  const handleSave = () => {
+    if (selections.length > 0) {
+      onSave(selections);
+    } else {
+      alert("Please select at least 1 power.");
+    }
+  };
+
+  return (
+    <div className={styles.modalOverlay} role="dialog" style={{ zIndex: 9999 }}>
+      <div className={`${styles.card} ${styles.modalCard}`} style={{ width: 'min(92vw, 500px)', background: 'var(--surface-container)' }}>
+        <div className={styles.modalHeader} style={{ borderBottom: '1px solid var(--border-color)', padding: '16px' }}>
+          <h3 className={styles.modalTitle} style={{ margin: 0, fontFamily: 'var(--font-title)', fontSize: '24px', color: 'var(--error)' }}>
+            Mystic of the Void Reset
+          </h3>
+        </div>
+        <div style={{ padding: '16px' }}>
+          <p style={{ color: 'var(--text-color)', marginBottom: '16px', lineHeight: 1.5 }}>
+            Your previous Mystic of the Void selections were invalid due to rule updates and have been reset. 
+            Please reselect your powers below to continue.
+          </p>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '16px' }}>
+            You may select up to <b style={{ color: 'var(--text-color)' }}>{maxMystic}</b> power{maxMystic > 1 ? 's' : ''} (Oblivion rating: {oblivionDots}).
+            {selections.length} / {maxMystic} selected.
+          </p>
+          
+          <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: '4px', background: 'var(--surface-color)', padding: '8px' }}>
+            {availablePowers.map(p => {
+              const isSelected = selections.includes(p.id);
+              const isDisabled = !isSelected && selections.length >= maxMystic;
+              return (
+                <div 
+                  key={p.id}
+                  onClick={() => !isDisabled && togglePower(p.id)}
+                  style={{
+                    padding: '12px',
+                    cursor: isDisabled ? 'not-allowed' : 'pointer',
+                    opacity: isDisabled ? 0.5 : 1,
+                    backgroundColor: isSelected ? 'var(--primary-container)' : 'transparent',
+                    borderBottom: '1px solid var(--border-color)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    borderRadius: '4px'
+                  }}
+                >
+                  <div style={{ 
+                    width: '16px', height: '16px', border: '1px solid var(--text-color)', 
+                    borderRadius: '2px', display: 'flex', justifyContent: 'center', alignItems: 'center',
+                    backgroundColor: isSelected ? 'var(--on-primary)' : 'transparent'
+                  }}>
+                    {isSelected && <span className="material-symbols-outlined" style={{ fontSize: '14px', color: 'var(--primary-container)' }}>check</span>}
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 600, color: isSelected ? 'var(--on-primary)' : 'var(--text-color)' }}>{p.name}</div>
+                    <div style={{ fontSize: '12px', color: isSelected ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)' }}>Level {p.level}</div>
+                  </div>
+                </div>
+              );
+            })}
+            {availablePowers.length === 0 && <p style={{ color: 'var(--text-muted)', padding: '12px' }}>No eligible Oblivion powers found.</p>}
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
+            <button 
+              className={`${styles.btn} ${styles.btnPrimary}`} 
+              onClick={handleSave}
+              disabled={busy || selections.length === 0}
+            >
+              {busy ? 'Saving...' : 'Save Selections'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ===========================
    Profile Edit Modal
    =========================== */
 function IdentityEditModal({ sheet, onClose, onSave, busy }) {
@@ -779,6 +885,8 @@ export default function CharacterView({
   const [identityModalOpen, setIdentityModalOpen] = useState(false);
   const [moralityModalOpen, setMoralityModalOpen] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [mysticFixOpen, setMysticFixOpen] = useState(false);
+  const [mysticFixBusy, setMysticFixBusy] = useState(false);
 
   const [activeShopTab, setActiveShopTab] = useState('Disciplines');
   const [currentSearches, setShopSearches] = useState({});
@@ -845,6 +953,10 @@ export default function CharacterView({
         setCh(structured);
 
         if (structured && structured.sheet) {
+          if (structured.sheet._needsMysticFix) {
+            setMysticFixOpen(true);
+          }
+          
           setTempHealth({ superficial: structured.sheet.health?.superficial || 0, aggravated: structured.sheet.health?.aggravated || 0 });
           setTempWillpower({ superficial: structured.sheet.willpower?.superficial || 0, aggravated: structured.sheet.willpower?.aggravated || 0 });
           setTempHunger(structured.sheet.hunger ?? 1);
@@ -1204,7 +1316,7 @@ export default function CharacterView({
   const basePowerNamesAndIds = useMemo(() => {
     const powers = sheet.disciplinePowers || {};
     const known = new Set();
-    const superNorm = (v) => String(v ?? '').toLowerCase().replace(/\(errata\)/g, '').replace(/[\s_\-]+/g, '');
+    const superNorm = (v) => String(v ?? '').toLowerCase().replace(/\(errata\)/g, '').replace(/\berrata\b/g, '').replace(/'s\b/g, '').replace(/[^a-z0-9]/g, '');
     Object.values(powers).flat().forEach(p => {
       if (p?.id) known.add(superNorm(p.id));
       if (p?.name) known.add(superNorm(p.name));
@@ -1216,7 +1328,7 @@ export default function CharacterView({
 
   const knownPowerNamesAndIds = useMemo(() => {
     const known = new Set(basePowerNamesAndIds);
-    const superNorm = (v) => String(v ?? '').toLowerCase().replace(/\(errata\)/g, '').replace(/[\s_\-]+/g, '');
+    const superNorm = (v) => String(v ?? '').toLowerCase().replace(/\(errata\)/g, '').replace(/\berrata\b/g, '').replace(/'s\b/g, '').replace(/[^a-z0-9]/g, '');
     const mysticPowers = sheet.mystic_powers || [];
     mysticPowers.forEach(gp => known.add(superNorm(gp)));
     return known;
@@ -2171,6 +2283,33 @@ export default function CharacterView({
             busy={savingProfile}
           />
         )}
+
+        {mysticFixOpen && sheet._needsMysticFix && (
+          <MysticFixModal
+            maxMystic={['Hecata', 'Lasombra'].includes(ch?.clan || '') && Number(sheet.advantages?.merits?.find(m => m.id === 'other__mystic_of_the_void')?.dots) === 2 ? 3 : 1}
+            oblivionDots={Number(sheet.disciplines?.oblivion || sheet.disciplines?.Oblivion || 0)}
+            busy={mysticFixBusy}
+            onSave={async (sel) => {
+              setMysticFixBusy(true);
+              const nextSheet = JSON.parse(JSON.stringify(sheet));
+              nextSheet.mystic_powers = sel;
+              delete nextSheet._needsMysticFix;
+              try {
+                await api.put(paths.update, {
+                  name: ch.name,
+                  clan: ch.clan,
+                  sheet: nextSheet
+                });
+                setCh(prev => ({ ...prev, sheet: nextSheet }));
+                setMysticFixOpen(false);
+              } catch (e) {
+                alert('Failed to save Mystic powers.');
+              } finally {
+                setMysticFixBusy(false);
+              }
+            }}
+          />
+        )}
       </div>
     </Skeleton>
   );
@@ -2301,7 +2440,7 @@ function ritualPrereqStatus(rit, knownPowerSet) {
   if (!prereq || prereq === '—') return { unmet: [] };
 
   // Use the exact same aggressive normalizer here to ensure a perfect match
-  const superNorm = (v) => String(v ?? '').toLowerCase().replace(/\(errata\)/g, '').replace(/[\s_\-]+/g, '');
+  const superNorm = (v) => String(v ?? '').toLowerCase().replace(/\(errata\)/g, '').replace(/\berrata\b/g, '').replace(/'s\b/g, '').replace(/[^a-z0-9]/g, '');
   const unmetList = [];
 
   if (prereq.includes(' or ')) {
@@ -2315,7 +2454,7 @@ function ritualPrereqStatus(rit, knownPowerSet) {
     for (const part of parts) {
       const p = part.trim();
       if (p && !knownPowerSet.has(superNorm(p))) {
-        unmetList.push(p.replace(/\s+\(Errata\)$/i, ''));
+        unmetList.push(p.replace(/\s*\(Errata\)$/i, '').trim());
       }
     }
   } else {

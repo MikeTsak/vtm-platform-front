@@ -6,6 +6,7 @@ import styles from '../../styles/Admin.module.css';
 // --- Data libraries (must stay at top!) ---
 import * as DiscDataNS from '../../data/disciplines';
 import { MERITS_AND_FLAWS } from '../../data/merits_flaws';
+import { RITUALS } from '../../data/rituals';
 import MiniSearch from 'minisearch';
 
 // --- Discipline names fallback logic ---
@@ -111,6 +112,32 @@ function normalizeDotsInput(v) {
   const bc = bulletCount(String(v));
   return bc > 0 ? Math.min(5, bc) : 1;
 }
+
+// --- Data Extracts for UI Datalists ---
+const ALL_BS_RITUALS = [];
+const ALL_OB_CEREMONIES = [];
+if (RITUALS) {
+  Object.keys(RITUALS.blood_sorcery?.levels || {}).forEach(lvl => {
+    (RITUALS.blood_sorcery.levels[lvl] || []).forEach(r => ALL_BS_RITUALS.push(r.name));
+  });
+  Object.keys(RITUALS.oblivion?.levels || {}).forEach(lvl => {
+    (RITUALS.oblivion.levels[lvl] || []).forEach(r => ALL_OB_CEREMONIES.push(r.name));
+  });
+}
+ALL_BS_RITUALS.sort();
+ALL_OB_CEREMONIES.sort();
+
+const getPowersForDiscipline = (discName) => {
+  const d = DiscDataNS.DISCIPLINES?.[discName];
+  if (!d || !d.levels) return [];
+  const list = [];
+  Object.keys(d.levels).forEach(lvl => {
+    (d.levels[lvl] || []).forEach(p => {
+      list.push({ level: Number(lvl), name: p.name });
+    });
+  });
+  return list;
+};
 
 // ---------- Component ----------
 export default function CharacterEditor({ character, onClose, onSaved }) {
@@ -427,6 +454,31 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
     writeSheet(next);
   };
 
+  // ------ discipline powers editing ------
+  const addPower = (discName) => {
+    const next = deepClone(sheet);
+    next.disciplinePowers = next.disciplinePowers || {};
+    next.disciplinePowers[discName] = next.disciplinePowers[discName] || [];
+    next.disciplinePowers[discName].push({ level: 1, name: '' });
+    writeSheet(next);
+  };
+  const updatePower = (discName, idx, patch) => {
+    const next = deepClone(sheet);
+    next.disciplinePowers = next.disciplinePowers || {};
+    const list = next.disciplinePowers[discName] || [];
+    list[idx] = { ...list[idx], ...patch };
+    next.disciplinePowers[discName] = list;
+    writeSheet(next);
+  };
+  const removePower = (discName, idx) => {
+    const next = deepClone(sheet);
+    next.disciplinePowers = next.disciplinePowers || {};
+    const list = next.disciplinePowers[discName] || [];
+    list.splice(idx, 1);
+    next.disciplinePowers[discName] = list;
+    writeSheet(next);
+  };
+
   // ======= XP IMPACT =======
   const xpImpactRaw = useMemo(() => {
     let delta = 0;
@@ -666,6 +718,7 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
               <LabeledInput label="Clan" value={charClan} onChange={setCharClan} />
               <LabeledInput label="Sire" value={sheet.sire || ''} onChange={v=>setStrField('sire', v)} />
               <LabeledInput label="Generation" type="number" value={sheet.generation || ''} onChange={v=>setStrField('generation', Number(v)||'' )} />
+              <LabeledInput label="Blood Potency" type="number" value={sheet.blood_potency || ''} onChange={v=>setStrField('blood_potency', Number(v)||'' )} />
               <LabeledInput label="Concept" value={sheet.concept || ''} onChange={v=>setStrField('concept', v)} />
               <LabeledInput label="Chronicle" value={sheet.chronicle || ''} onChange={v=>setStrField('chronicle', v)} />
               <LabeledInput label="Coterie" value={sheet.coterie || ''} onChange={v=>setStrField('coterie', v)} />
@@ -791,31 +844,49 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
             <SectionHeader title="Disciplines" hint="per dot: Clan×5 / Caitiff×6 / Out×7" />
             <div className={styles.stack12}>
               {Object.keys(sheet.disciplines || {}).sort().map(name => (
-                <div key={name} className={styles.row} style={{ gap:8, alignItems:'center', flexWrap:'wrap' }}>
-                  <b style={{minWidth:160, flex: '0 0 160px'}}>{name}</b>
-                  <input type="number" min={0} className={styles.input} value={Number(sheet.disciplines?.[name] ?? 0)} onChange={e=>setDiscipline(name, e.target.value)} style={{ width:90 }} />
-                  <select className={styles.select} value={discKinds[name] || 'other'} onChange={e=>setDiscKinds(p=>({ ...p, [name]:e.target.value }))} style={{ flex: '1 1 150px'}}>
-                    {DISC_KINDS.map(k => <option key={k.key} value={k.key}>{k.label}</option>)}
-                  </select>
-                  <button className={`${styles.btn} ${styles.btnIcon}`} onClick={()=>removeDiscipline(name)} title="Remove">×</button>
+                <div key={name} className={styles.stack12} style={{ marginBottom: 12 }}>
+                  <div className={styles.row} style={{ gap:8, alignItems:'center', flexWrap:'wrap' }}>
+                    <b style={{minWidth:160, flex: '0 0 160px'}}>{name}</b>
+                    <input type="number" min={0} className={styles.input} value={Number(sheet.disciplines?.[name] ?? 0)} onChange={e=>setDiscipline(name, e.target.value)} style={{ width:90 }} />
+                    <select className={styles.select} value={discKinds[name] || 'other'} onChange={e=>setDiscKinds(p=>({ ...p, [name]:e.target.value }))} style={{ flex: '1 1 150px'}}>
+                      {DISC_KINDS.map(k => <option key={k.key} value={k.key}>{k.label}</option>)}
+                    </select>
+                    <button className={`${styles.btn} ${styles.btnIcon}`} onClick={()=>removeDiscipline(name)} title="Remove">×</button>
+                  </div>
+                  {/* Powers Editor */}
+                  <div style={{ paddingLeft: '1rem', borderLeft: '2px solid var(--glass-border)' }}>
+                    <h5 style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Powers</h5>
+                    {(sheet.disciplinePowers?.[name] || []).map((p, idx) => {
+                       const pList = getPowersForDiscipline(name);
+                       return (
+                       <div key={`pwr_${idx}`} className={styles.row} style={{ gap:8, marginBottom: 4 }}>
+                         <input className={styles.input} type="number" value={p.level || ''} onChange={e=>updatePower(name, idx, {level: Number(e.target.value)||''})} placeholder="Lvl" style={{ width: 60 }} />
+                         <input 
+                            className={styles.input} 
+                            value={p.name || ''} 
+                            onChange={e => {
+                              const val = e.target.value;
+                              const matched = pList.find(x => x.name.toLowerCase() === val.toLowerCase());
+                              updatePower(name, idx, matched ? { name: val, level: matched.level } : { name: val });
+                            }} 
+                            placeholder="Power Name" 
+                            style={{ flex: 1 }} 
+                            list={`dl_pwr_${name}_${character.id}`}
+                         />
+                         <button className={`${styles.btn} ${styles.btnIcon}`} onClick={()=>removePower(name, idx)}>×</button>
+                       </div>
+                       );
+                    })}
+                    <datalist id={`dl_pwr_${name}_${character.id}`}>
+                      {getPowersForDiscipline(name).map(p => <option key={p.name} value={p.name}>{p.name} (L{p.level})</option>)}
+                    </datalist>
+                    <button className={`${styles.btn} ${styles.btnSecondary}`} style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem' }} onClick={()=>addPower(name)}>+ Add Power</button>
+                  </div>
                 </div>
               ))}
             </div>
-            <div className={styles.row} style={{ gap:8, marginTop:12, flexWrap:'wrap' }}>
-              <input 
-                list={dlId} 
-                className={styles.input} 
-                placeholder="Add discipline…" 
-                onKeyDown={e=>{ if (e.key==='Enter') addNewDiscipline(e.currentTarget.value); }} 
-                style={{ flex: 1 }}
-              />
-              <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={()=>{
-                const el = document.querySelector(`input[list="${dlId}"]`);
-                if (el) { addNewDiscipline(el.value); el.value=''; }
-              }}>Add</button>
-              <datalist id={dlId}>
-                {ALL_DISCIPLINE_NAMES.map(n => <option key={n} value={n} />)}
-              </datalist>
+            <div style={{ marginTop: 12 }}>
+              <AddAnyRow placeholder="Add discipline…" onAdd={addNewDiscipline} datalistId={dlId} datalistItems={ALL_DISCIPLINE_NAMES} />
             </div>
             {(!ALL_DISCIPLINE_NAMES || ALL_DISCIPLINE_NAMES.length === 0) && (
               <div className={`${styles.alert} ${styles.alertError}`} style={{marginTop:8}}>Discipline list not found; using fallback names. Check your <code>disciplines.js</code> exports.</div>
@@ -832,6 +903,7 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
                 <CurrentMFList
                   items={currentMF('merits')}
                   kind="merits"
+                  charId={character.id}
                   onChange={(i,patch)=>updateMF('merits', i, patch)}
                   onRemove={(i)=>removeMF('merits', i)}
                 />
@@ -852,6 +924,7 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
                 <CurrentMFList
                   items={currentMF('flaws')}
                   kind="flaws"
+                  charId={character.id}
                   onChange={(i,patch)=>updateMF('flaws', i, patch)}
                   onRemove={(i)=>removeMF('flaws', i)}
                 />
@@ -882,6 +955,8 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
                 onAdd={(v)=>addRitual('blood_sorcery', v)}
                 onEdit={(i,v)=>updateRitual('blood_sorcery', i, v)}
                 onRemove={(i)=>removeRitual('blood_sorcery', i)}
+                datalistId={`dl_bs_${character.id}`}
+                datalistItems={ALL_BS_RITUALS}
               />
               <RitualSection
                 title="Oblivion"
@@ -889,6 +964,8 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
                 onAdd={(v)=>addRitual('oblivion', v)}
                 onEdit={(i,v)=>updateRitual('oblivion', i, v)}
                 onRemove={(i)=>removeRitual('oblivion', i)}
+                datalistId={`dl_ob_${character.id}`}
+                datalistItems={ALL_OB_CEREMONIES}
               />
               <RitualSection
                 title="Mystic Powers (IDs)"
@@ -991,21 +1068,23 @@ function SkillRow({ name, data, onDots, onSpecs, removable=false, onRemove }) {
   );
 }
 
-function CurrentMFList({ items, kind, onChange, onRemove }) {
+function CurrentMFList({ items, kind, onChange, onRemove, charId }) {
   const empty = !items?.length;
+  const dlId = `dl_mf_${kind}_${charId}`;
   return (
     <div className={styles.stack12}>
       {empty && <div className={styles.subtle}>None</div>}
       {!empty && (
         <div className={styles.stack12}>
           {items.map((it, i) => (
-            <div key={`${it.id || it.name || 'x'}_${i}`} className={styles.mfRow}>
+            <div key={`${kind}_${i}`} className={styles.mfRow}>
               <input
                 className={styles.input}
                 style={{ flex:'1 1 150px' }}
                 value={it.name || ''}
                 onChange={e=>onChange(i, { name:e.target.value })}
                 placeholder={kind==='merits' ? 'Merit name' : 'Flaw name'}
+                list={dlId}
               />
               <input
                 className={styles.input}
@@ -1027,6 +1106,9 @@ function CurrentMFList({ items, kind, onChange, onRemove }) {
               <button className={`${styles.btn} ${styles.btnIcon}`} onClick={()=>onRemove(i)} title="Remove">×</button>
             </div>
           ))}
+          <datalist id={dlId}>
+            {MF_CATALOG.filter(e => e.type === (kind==='merits'?'merit':'flaw')).map(e => <option key={e.id} value={e.name} />)}
+          </datalist>
         </div>
       )}
     </div>
@@ -1096,7 +1178,7 @@ function MFPicker({ kind, onPick }) {
   );
 }
 
-function RitualSection({ title, items, onAdd, onEdit, onRemove }) {
+function RitualSection({ title, items, onAdd, onEdit, onRemove, datalistId, datalistItems }) {
   const [v, setV] = useState('');
   const list = Array.isArray(items) ? items : [];
   return (
@@ -1104,19 +1186,24 @@ function RitualSection({ title, items, onAdd, onEdit, onRemove }) {
       <h4 className={styles.sectionSubhead}>{title}</h4>
       {list.map((r, i) => (
         <div key={`${r}_${i}`} className={styles.row} style={{ gap:8, alignItems:'center' }}>
-          <input className={styles.input} value={r} onChange={e=>onEdit(i, e.target.value)} style={{ flex:1 }} />
+          <input className={styles.input} value={r} onChange={e=>onEdit(i, e.target.value)} list={datalistId} style={{ flex:1 }} />
           <button className={`${styles.btn} ${styles.btnIcon}`} onClick={()=>onRemove(i)} title="Remove">×</button>
         </div>
       ))}
       <div className={styles.row} style={{ gap:8 }}>
-        <input className={styles.input} placeholder={`Add ${title}…`} value={v} onChange={e=>setV(e.target.value)} style={{ flex:1 }} />
+        <input className={styles.input} placeholder={`Add ${title}…`} value={v} onChange={e=>setV(e.target.value)} list={datalistId} style={{ flex:1 }} />
         <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={()=>{ onAdd(v); setV(''); }}>Add</button>
       </div>
+      {datalistId && datalistItems && (
+        <datalist id={datalistId}>
+          {datalistItems.map(n => <option key={n} value={n} />)}
+        </datalist>
+      )}
     </div>
   );
 }
 
-function AddAnyRow({ placeholder, onAdd }) {
+function AddAnyRow({ placeholder, onAdd, datalistId, datalistItems }) {
   const [v, setV] = React.useState(''); // <--- BUG FIX 2
   return (
     <div className={styles.row} style={{ marginTop:8, gap:8 }}>
@@ -1125,6 +1212,7 @@ function AddAnyRow({ placeholder, onAdd }) {
         className={styles.input}
         value={v}
         onChange={e => setV(e.target.value)}
+        list={datalistId}
         style={{ flex:1 }}
         onKeyDown={(e) => {
           if (e.key === 'Enter') {
@@ -1133,6 +1221,11 @@ function AddAnyRow({ placeholder, onAdd }) {
           }
         }}
       />
+      {datalistId && datalistItems && (
+        <datalist id={datalistId}>
+          {datalistItems.map(n => <option key={n} value={n} />)}
+        </datalist>
+      )}
       <button
         className={`${styles.btn} ${styles.btnSecondary}`}
         onClick={() => {

@@ -115,8 +115,9 @@ export default function DisciplinesStep({
   const isPowerLocked = (discName, power) => {
     if (power.level === 1 || !power.prerequisite) return false;
     const picked = disciplinePowerPicks[discName] || [];
-    const prereqText = power.prerequisite.toLowerCase();
-    return !picked.some(p => prereqText.includes(p.name.toLowerCase()));
+    const superNorm = (v) => String(v ?? '').toLowerCase().replace(/\(errata\)/g, '').replace(/\berrata\b/g, '').replace(/'s\b/g, '').replace(/[^a-z0-9]/g, '');
+    const prereqNorm = superNorm(power.prerequisite);
+    return !picked.some(p => prereqNorm.includes(superNorm(p.name)));
   };
 
   const togglePower = (discName, power) => {
