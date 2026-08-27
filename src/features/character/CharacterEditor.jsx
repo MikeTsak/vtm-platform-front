@@ -177,12 +177,50 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
   const clanColor = CLAN_COLORS[character.clan] || 'var(--text-secondary)';
   const clanLogoUrl = symlogo(character.clan);
 
-  // No more JSON-sync useEffect required!
   // Normalize incoming weird shapes once on mount
   useEffect(() => {
-    const normalized = normalizeSheet(sheet);
+    const normalized = deepClone(normalizeSheet(sheet));
+    let prompted = false;
+
+    // Validate Mystic of the Void selections
+    const mysticMerit = normalized.advantages?.merits?.find(m => m.id === 'other__mystic_of_the_void');
+    if (mysticMerit && Array.isArray(normalized.mystic_powers) && normalized.mystic_powers.length > 0) {
+      const maxMystic = ['Hecata', 'Lasombra'].includes(character?.clan || '') && Number(mysticMerit.dots) === 2 ? 3 : 1;
+      const oblivionDots = Number(normalized.disciplines?.oblivion || normalized.disciplines?.Oblivion || 0);
+
+      const validPowers = [];
+      for (const pId of normalized.mystic_powers) {
+        let powerLevel = 99;
+        if (DiscDataNS.DISCIPLINES && DiscDataNS.DISCIPLINES['Oblivion']) {
+          for (const [lvlStr, list] of Object.entries(DiscDataNS.DISCIPLINES['Oblivion'].levels || {})) {
+            if (list.find(x => x.id === pId)) {
+              powerLevel = Number(lvlStr);
+              break;
+            }
+          }
+        }
+        if (powerLevel <= oblivionDots) {
+          validPowers.push(pId);
+        }
+      }
+
+      if (validPowers.length !== normalized.mystic_powers.length || validPowers.length > maxMystic) {
+        normalized.mystic_powers = [];
+        prompted = true;
+      }
+    } else if (!mysticMerit && normalized.mystic_powers?.length > 0) {
+      normalized.mystic_powers = [];
+      // Not prompting here because they just lost the merit, probably intentionally via other means
+    }
+
     if (JSON.stringify(normalized) !== JSON.stringify(sheet)) {
       writeSheet(normalized);
+    }
+    
+    if (prompted) {
+      setTimeout(() => {
+        alert("Your 'Mystic of the Void' selections were invalid due to rule changes and have been reset. Please select your powers again in the Advantages section.");
+      }, 500);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

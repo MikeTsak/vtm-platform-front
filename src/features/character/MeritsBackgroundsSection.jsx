@@ -178,8 +178,17 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
     const out = [];
     const isMystic = selectedAdvantage?.item?.id === 'other__mystic_of_the_void';
     if (!isMystic || typeof DISCIPLINES === 'undefined' || !DISCIPLINES['Oblivion']) return out;
+    
+    // Get current Oblivion dots
+    let oblivionDots = 0;
+    if (sheet?.disciplines) {
+      oblivionDots = Number(sheet.disciplines.oblivion || sheet.disciplines.Oblivion || 0);
+    }
+    
     Object.entries(DISCIPLINES['Oblivion'].levels || {}).forEach(([lvlStr, list]) => {
       const level = Number(lvlStr);
+      if (level > oblivionDots) return;
+      
       (list || []).forEach(p => {
         const normId = String(p.id ?? '').toLowerCase();
         if (!knownPowerNamesAndIds.has(normId)) {
@@ -188,7 +197,7 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
       });
     });
     return out;
-  }, [selectedAdvantage, knownPowerNamesAndIds]);
+  }, [selectedAdvantage, knownPowerNamesAndIds, sheet]);
 
   const meritAvailableOblivionGrouped = useMemo(() => {
     const grouped = {};
@@ -613,8 +622,8 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
             const isBlocked = (!detailAddSeparate && delta <= 0) || !isAfford;
             
             const isMystic = item.id === 'other__mystic_of_the_void';
-            const maxMystic = ['Hecata', 'Lasombra'].includes(ch?.clan || '') ? 3 : 1;
-            const isMysticValid = !isMystic || detailMysticSelections.length > 0;
+            const maxMystic = ['Hecata', 'Lasombra'].includes(ch?.clan || '') && detailDots === 2 ? 3 : 1;
+            const isMysticValid = !isMystic || (detailMysticSelections.length > 0 && detailMysticSelections.length <= maxMystic);
             const finalBlocked = isBlocked || !isMysticValid;
 
             return (

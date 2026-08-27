@@ -239,6 +239,35 @@ function normalizeFromFlatAny(source) {
     }
   }
 
+  // Validate Mystic of the Void selections for view
+  if (mysticMerit && Array.isArray(sheet.mystic_powers) && sheet.mystic_powers.length > 0) {
+    const maxMystic = ['Hecata', 'Lasombra'].includes(flat.clan || '') && Number(mysticMerit.dots) === 2 ? 3 : 1;
+    const oblivionDots = Number(sheet.disciplines?.oblivion || sheet.disciplines?.Oblivion || 0);
+
+    const validPowers = [];
+    for (const pId of sheet.mystic_powers) {
+      let powerLevel = 99;
+      if (DISCIPLINES && DISCIPLINES['Oblivion']) {
+        for (const [lvlStr, list] of Object.entries(DISCIPLINES['Oblivion'].levels || {})) {
+          if (list.find(x => x.id === pId)) {
+            powerLevel = Number(lvlStr);
+            break;
+          }
+        }
+      }
+      if (powerLevel <= oblivionDots) {
+        validPowers.push(pId);
+      }
+    }
+
+    if (validPowers.length !== sheet.mystic_powers.length || validPowers.length > maxMystic) {
+      sheet.mystic_powers = [];
+    }
+  } else if (!mysticMerit && sheet.mystic_powers?.length > 0) {
+    sheet.mystic_powers = [];
+  }
+
+
   sheet.morality = flat.morality || {};
   sheet.humanity = flat.morality?.humanity ?? flat.humanity ?? undefined;
   sheet.stains = flat.stains ?? 0;
