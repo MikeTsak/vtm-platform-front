@@ -60,7 +60,7 @@ const NAV_SECTIONS = [
       { id: 'prestation', icon: 'handshake', label: 'Prestation', keywords: ['boons', 'debts', 'favors', 'harpy', 'trivial', 'minor', 'major', 'blood', 'life', 'transfer', 'record', 'clear'] },
       { id: 'events',       icon: 'event',       label: 'Events', keywords: ['calendar', 'timeline', 'schedule', 'sessions', 'dates', 'venue', 'planning'] },
       { id: 'broadcast',    icon: 'campaign',    label: 'Broadcast', keywords: ['announcements', 'alerts', 'notifications', 'global', 'news', 'urgent', 'messages'] },
-      { id: 'news_templates', icon: 'article', label: 'News Templates', keywords: ['news', 'templates', 'writers', 'permissions', 'articles'] },
+      { id: 'news_templates', icon: 'article', label: 'News', keywords: ['news', 'templates', 'writers', 'permissions', 'articles'] },
     ],
   },
   {

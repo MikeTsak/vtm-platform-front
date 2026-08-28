@@ -13,7 +13,8 @@ export default function CreateNewsModal({ mode, onClose, onSuccess, themes }) {
     body: '', 
     theme: mode === 'rumor' ? 'RUMOR' : (themes?.all ? 'ERT' : (themes && themes.length > 0 ? themes[0] : 'ERT')), 
     journalist_name: '',
-    discord_prefix: mode === 'rumor' ? '🤫 A new whisper echoes in the night...' : '🔥 **Hot news from the mortal world!** 🔥'
+    discord_prefix: mode === 'rumor' ? '🤫 A new whisper echoes in the night...' : '🔥 **Hot news from the mortal world!** 🔥',
+    is_private: false
   });
   const [isCustomPrefix, setIsCustomPrefix] = useState(false);
   const [file, setFile] = useState(null);
@@ -51,7 +52,8 @@ export default function CreateNewsModal({ mode, onClose, onSuccess, themes }) {
         theme: formData.theme,
         journalist_name: formData.journalist_name,
         media_url: mediaUrl,
-        discord_prefix: formData.discord_prefix
+        discord_prefix: formData.discord_prefix,
+        is_private: formData.is_private
       });
       onSuccess();
     } catch (e) { alert("Error posting. Ensure you have the correct permissions."); }
@@ -150,6 +152,20 @@ export default function CreateNewsModal({ mode, onClose, onSuccess, themes }) {
                   <input placeholder="e.g. Giannis Petrou" value={formData.journalist_name} onChange={e=>setFormData({...formData, journalist_name: e.target.value})} className={styles.inputField} />
                   <button type="button" onClick={handleRandomizeName} className={styles.randomizeBtn}>🎲 Randomize</button>
                </div>
+             </div>
+           )}
+
+           {mode !== 'rumor' && (
+             <div className={styles.formGroup} style={{ flexDirection: 'row', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
+               <input 
+                 type="checkbox" 
+                 id="isPrivateCheck"
+                 checked={formData.is_private} 
+                 onChange={e => setFormData({...formData, is_private: e.target.checked})} 
+               />
+               <label htmlFor="isPrivateCheck" style={{ marginBottom: 0, fontWeight: 'normal' }}>
+                 Make this article Private (Hidden from public feed, no Discord push)
+               </label>
              </div>
            )}
 
