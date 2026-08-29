@@ -56,7 +56,10 @@ export default function CreateNewsModal({ mode, onClose, onSuccess, themes }) {
         is_private: formData.is_private
       });
       onSuccess();
-    } catch (e) { alert("Error posting. Ensure you have the correct permissions."); }
+    } catch (e) { 
+      const errorMsg = e.response?.data?.error || e.message || 'Unknown error';
+      alert(`Error posting: ${errorMsg}\n\n(Original fallback: Ensure you have the correct permissions)`); 
+    }
     finally { setUploading(false); }
   };
 
