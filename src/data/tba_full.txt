@@ -1,0 +1,708 @@
+<USER_REQUEST>
+And the last is a bit spesial:
+Thin-blood Alchemy
+[Jump to navigation](https://vtm.paradoxwikis.com/Thin-blood_Alchemy#mw-head)[Jump to search](https://vtm.paradoxwikis.com/Thin-blood_Alchemy#searchInput)Thin-blood Alchemy
+Cooking, Home Brew, the Craft, Mashup
+Clan affinity:
+[Thin-blood](https://vtm.paradoxwikis.com/Thin-blood)
+Type:Varied
+Masquerade threat:Varied
+Resonance:Varied
+Contents
+[1List of available powers](https://vtm.paradoxwikis.com/Thin-blood_Alchemy#List_of_available_powers)[1.1Level 1](https://vtm.paradoxwikis.com/Thin-blood_Alchemy#Level_1)
+[1.2Level 2](https://vtm.paradoxwikis.com/Thin-blood_Alchemy#Level_2)
+[1.3Level 3](https://vtm.paradoxwikis.com/Thin-blood_Alchemy#Level_3)
+[1.4Level 4](https://vtm.paradoxwikis.com/Thin-blood_Alchemy#Level_4)
+[1.5Level 5](https://vtm.paradoxwikis.com/Thin-blood_Alchemy#Level_5)
+[2Gallery](https://vtm.paradoxwikis.com/Thin-blood_Alchemy#Gallery)
+[3References](https://vtm.paradoxwikis.com/Thin-blood_Alchemy#References)
+Thin-blood Alchemy is a unique Discipline for Thin-bloods, created through ingredients composed of random items, Resonances, and their own vitae. Alchemy is a young Discipline, thought to be born through the street drug scene or of alchemists of the past. Certain thin-bloods have managed to utilize their weak blood to awaken powers unique to them and even create counterfeit versions of the other Disciplines. Rumors spread through kindred about these powers, speculation spreading as much truth as it does misinformation. However, the alchemists do their best to stay out of the way when plenty of elders view this new Discipline as nothing but watered-down diablerie.
+All formulae require a cost to distill and then a separate cost to activate which is the same as using other Disciplines (Free or additional Rouse Checks). The cost when creating represents the vitae of the Alchemist being used. Once the power is activated they then roll their distillation pool, defined by which method they use to determine how effective their alchemy is. Some powers might require additional rolls to use, and in cases where a power calls for a Discipline rating, they use their Alchemy Rating instead. Learning further formulae has the Alchemist's pouring through old libraries or going on tasting expeditions to learn more. A character receives one formulae for free for each dot in Thin-Blood Alchemy and more can be purchased with experience and experimentation. [\[1\]](https://vtm.paradoxwikis.com/Thin-blood_Alchemy#cite_note-1)
+Distillation methods vary from Alchemist to Alchemist, when they first begin they select which style they'd like. To learn additional styles, later on, means treating it as a separate Discipline where each formula needs to be learned or relearned in order to be used in the new style. The three styles are Athanor Corporis, Calcinatio and Fixatio.
+Athanor Corporis is the name for alchemy created through their own body by consuming the ingredients they make a distillation roll of Stamina + Alchemy together with a Rouse Check. Only one power can be activated at a time and a new power must be distilled before being activated. Distillation takes around three turns of concentrations where the Alchemist can do nothing else. [\[2\]](https://vtm.paradoxwikis.com/Thin-blood_Alchemy#cite_note-:0-2) They can tap themselves for another dose once per night without another Distillation roll, as long as they haven't fed on a different Resonance or hit Hunger 5. [\[3\]](https://vtm.paradoxwikis.com/Thin-blood_Alchemy#cite_note-:1-3)
+Calcinatio is the method where a human body is used to host the alchemy by introductions of incantations and their own blood. The alchemist feeds their vitae to the mortal and makes a Rouse Check, then a distillation roll of Manipulation + Alchemy. The entire host distills the formula and the blood of the mortal can be drunk to use the power, where the hunger slaked is equal to the power level minus 1. However, they can only distill one power per victim and the current power remains as long as they are kept in the same emotional state. Each power takes as long to activate as it takes to slake the amount of blood required. [\[2\]](https://vtm.paradoxwikis.com/Thin-blood_Alchemy#cite_note-:0-2) Tapping for elixirs does 1 Aggravated Health damage per Formula level per dose, but does not require another Distillation unless the mortal's mental state or food intake has significant changes. [\[3\]](https://vtm.paradoxwikis.com/Thin-blood_Alchemy#cite_note-:1-3)
+Fixatio is the final method, in a style similar to what most think of when they think of Alchemy. In a kiln, a meth lab, or a repurposed propane tank, the alchemist uses a conventional athanor to brew. They pour their vitae with a Rouse Check into the system with the other ingredients, then makes the distillation roll with Intelligence + Alchemy (Make the distillation roll upon use rather than upon production). The resulting formula is then able to be carried with the amount carried equal to their Wits or Dexterity. They can store a number of formulae equal to Alchemy rating * 2 plus the haven rating. Creating their alchemy requires a lab and without one they at best can only create a level 3 or less formula, and using unsuitable equipment reduces their distillation dice pool by 2. They can activate one power per turn. [\[2\]](https://vtm.paradoxwikis.com/Thin-blood_Alchemy#cite_note-:0-2)
+List of available powers
+Level 1
+Name
+Effect
+Cost
+Origin
+Resonance
+Duration
+Dice pool
+Opposing pool
+Additional Notes
+Source
+Body Paint
+Create tattoos with personal touches beyond regular tattoos
+One Rouse Check
+None
+Choleric
+Permanent, unless erased by skin coloured Body Paint
+Dexterity +Craft
+None
+After a week, the roll to alter the tattoo is Stamina + Resolve
+[Blood Sigils](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Blood_Sigils), page 73
+Checkout Time
+Enter a deep torpor where there is no difference between you or a corpse
+One Rouse Check
+None
+Phlegmatic
+A number of nights written during creation. This cannot exceed 9 nights
+N/A
+N/A
+Coming out of this Torpor does not require a Rouse Check. In this state, they have no aura, require no rouse checks and take no damage from sunlight or other banes
+[Blood Sigils](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Blood_Sigils), page 74
+Elevate
+Get high regardless of Humanity or Blush of Life. Temporarily enhances Dexterity if well made
+One Rouse Check
+None
+Sanguine
+One Scene
+Stamina + Alchemy
+N/A
+Badly made Elevate still feels great but degrades Dexterity
+[Blood Sigils](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Blood_Sigils), page 74
+Far Reach
+Push, pull, hold or grab objects or people with their mind.
+One Rouse Check
+None
+Choleric
+One turn unless held
+Resolve +Alchemy
+Strength +Athletics
+Keeping something held in the air requires a check each turn of Resolve + Alchemy Difficulty 3.
+/
+[Corebook](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Corebook), page 284
+Food Stain
+Mark someone so anyone who drinks from them becomes obvious to the alchemist when they encounter them
+One Rouse Check
+None
+Melancholic
+Persists until consumed or applied
+N/A
+N/A
+If the alchemist has Auspex 2, they become aware as soon as the feeding occurs
+[Blood Sigils](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Blood_Sigils), page 74
+Gaoler's Bane
+Receive a 2-dice bonus when freeing themselves from physical restraints or grapples.
+One Rouse Check
+None
+Sanguine
+One Scene or until ended voluntarily
+N/A
+N/A
+N/A
+[Winter's Teeth](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Winter%27s_Teeth), Page 10
+Haze
+Create a mist that follows the user, making it harder to shoot them or identify them.
+One Rouse Check
+None
+Phlegmatic
+One Scene or until ended voluntarily
+N/A
+N/A
+This can be extended to encompass up to five people with an additional Rouse Check.
+/ [Corebook](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Corebook), page 285
+Mercurian Tongue
+Speak other languages than their own.
+One Rouse Check
+None
+N/A
+One night or till they feed from someone with the same native language as themselves.
+N/A
+N/A
+The alchemist can spend Willpower and feed from another person to swap the language the alchemist currently knows.
+[Players Guide](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Players_Guide), page 103
+Plug-In
+Produce low-level electrical current from their body.
+One Rouse Check
+None
+Sanguine
+One scene if lighting one room, till half battery if charging a device.
+Resolve +Alchemy
+N/A
+It powers through touch and will stop if the connection is lost.
+[Players Guide](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Players_Guide), page 103
+Portable Shade
+Withstand the effects of Sunlight and walk in the sun.
+One Rouse Check
+[Sabbat](https://vtm.paradoxwikis.com/Sabbat)
+Sanguine
+Hours active are equal to the Stamina + Alchemy test or the next sunset, whichever is first
+Stamina +Alchemy
+N/A
+This formula was developed by the Path of the Sun Thin-bloods.
+/ [Sabbat](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Sabbat:_The_Black_Hand), page 53
+Speak From the Heart
+Place a message into someone's blood. The next vampire to drink from them gets the message
+One Rouse Check
+None
+Melancholic
+Messages take 1 minute. Lasts until death or blood is drunk
+N/A
+N/A
+Different drinks used in the creation affect the message
+[Blood Sigils](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Blood_Sigils), page 75
+Level 2
+Name
+Effect
+Cost
+Origin
+Resonance
+Duration
+Dice pool
+Opposing pool
+Additional Notes
+Source
+Advanced Torpor
+Immediately cause Torpor
+One Rouse Check
+None
+Choleric,Phlegmatic
+Until target awakens from Torpor
+N/A
+N/A
+Always heal as a vampire, regardless of flaws. Unlike regular torpor, the vampire always has a Rouse Check re-roll
+[Blood Sigils](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Blood_Sigils), page 75
+Blacklight Surprise
+Makes UV light damage vampires
+One Rouse Check
+None
+Sanguine,Choleric
+At least one hour. Light source breaking ends the effect
+N/A
+N/A
+Kindred who already take damage from UV light, take an extra point
+[Blood Sigils](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Blood_Sigils), page 75
+Blood of Mandagloire
+Infect the blood of a herd to cause those who feed from it to fall into a dreamless sleep.
+One Rouse Check
+[Second Inquisition](https://vtm.paradoxwikis.com/Second_Inquisition)
+Melancholic
+Remains active in the herd's blood for three nights
+N/A
+N/A
+Thin-bloods develop this formula within the Second Inquisition.
+/
+[Second Inquisition](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Second_Inquisition), 46
+Blue State
+Forces a target to contemplate obsessively over an ally's failure
+One Rouse Check
+None
+Melancholic,Phlegmatic
+The Stain remains until the people involved, at least, have an uncomfortable talk
+N/A
+N/A
+Kindred gain stains if an ally violates their convictions. Mortals just hold a grudge
+[Blood Sigils](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Blood_Sigils), page 76
+Envelop
+Create a mist that clings to a victim.
+One Rouse Check
+None
+Melancholic, Phlegmatic
+One scene or until ended voluntarily
+Wits +Alchemy
+Stamina +Survival
+This can only be employed on single targets one at a time.
+/
+[Corebook](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Corebook), page 285
+Friends List
+See connections between Kindred and mortals
+One Rouse Check
+None
+Phlegmatic
+One scene
+Intelligence +Alchemy
+N/A
+Stronger connections require fewer and fewer successes.
+[Players Guide](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Players_Guide), page 104
+Mirror of Trust
+Gain 3 extra dice to persuade or intimidate someone into being honest.
+One Rouse Check
+[Second Inquisition](https://vtm.paradoxwikis.com/Second_Inquisition)
+Sanguine
+One Hour
+N/A
+N/A
+Thin-bloods develop this formula within the Second Inquisition.
+/ [Second Inquisition](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Second_Inquisition), page 46
+Red's Flaming Hot Sauce
+Create a supernatural molotov cocktail
+N/A
+None
+Choleric
+Until used, the fire lasts one scene or longer based on the surroundings
+N/A
+N/A
+Fire spreading from it can be extinguished, but the supernatural source cannot.
+[Winter's Teeth](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Winter%27s_Teeth), Page 10
+Whiff-Its
+Smell and track the Kindred with the highest Blood Potency
+One Rouse Check
+None
+Phlegmatic or Sanguine
+Until Dawn
+Resolve + Awareness
+N/A
+If multiple Kindred have the same BP, a test allows the user to distinguish between them
+Gehenna War, Page 50
+Counterfeit Discipline
+Counterfeit a one-dot Discipline
+The same as the power channeled
+None
+N/A
+The same as the power channeled
+The same as the power channeled
+The same as the power channeled
+The same as the power channeled
+/ [Corebook](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Corebook), page 285
+Level 3
+Name
+Effect
+Cost
+Origin
+Resonance
+Duration
+Dice pool
+Opposing pool
+Additional Notes
+Source
+Bleed Out
+Liquefy a victim's internal organs into blood enough to feed an entire coterie of Thin-bloods
+One Rouse Check
+None
+Melancholic
+N/A
+N/A
+N/A
+Only thin-bloods can feed from the liquefied corpse. Drinkers gain at least 1 Stain.
+[Tattered Façade](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Tattered_Fa%C3%A7ade), page 107
+Chemically-Induced Flashback
+Imbue and experience a Memorium of another vampire.
+One Rouse Check in addition to the use of Ashe
+[Ashfinders](https://vtm.paradoxwikis.com/Ashfinders)
+N/A
+N/A
+N/A
+N/A
+Must use the Fixatio method. The Thin-bloods develop this formula within the Ashfinders. [Concoct Ashe](https://vtm.paradoxwikis.com/Thin-Blood_Alchemy#Thin-Blood_Alchemy#Concoct_Ashe) is a pre-requisite.
+/
+[Cults of the Blood Gods](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Cults_of_the_Blood_Gods), page 45
+Concoct Ashe
+Create Ashe from the remains of a vampire.
+Free
+[Ashfinders](https://vtm.paradoxwikis.com/Ashfinders)
+N/A
+N/A
+Intelligence +Alchemy
+N/A
+Must use the Fixatio method. The Thin-bloods develop this formula within the Ashfinders.
+/
+[Cults of the Blood Gods](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Cults_of_the_Blood_Gods), page 45
+Diamond Skin
+Reduces physical damage to the alchemist, turning Aggravated to Superficial
+One Rouse Check
+None
+Melancholic
+Until margin of Distillation roll is used up
+N/A
+N/A
+Does not affect fire, acid, sunlight or sorcery
+[Blood Sigils](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Blood_Sigils), page 76
+Defractionate
+Turn preserved blood into something palatable by any kindred.
+Free
+None
+Melancholic, Sanguine
+N/A
+N/A
+N/A
+Each Distillation style has a unique method of tapping for this elixir.
+/
+[Corebook](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Corebook), page 286
+Fang-Stinger
+Introduce blood into a mortal that causes no harm to them but harms vampire's that feed from them.
+One Rouse Check
+[Second Inquisition](https://vtm.paradoxwikis.com/Second_Inquisition)
+Choleric
+One day
+Resolve +Alchemy
+Stamina +Resolve
+Thin-bloods develop this formula within the Second Inquisition.
+/
+[Second Inquisition](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Second_Inquisition), page 47
+Fireskin
+Superheat your body
+One Rouse Check
+None
+N/A
+One Scene
+N/A
+N/A
+They gain +1 additional fire damage with strikes with their body. They are immune to fire but cold hurts more
+[Blood Sigils](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Blood_Sigils), page 76
+Freezer Fluid
+Freeze a vampire's body.
+One Rouse Check
+[Second Inquisition](https://vtm.paradoxwikis.com/Second_Inquisition)
+Melancholic, Phlegmatic
+One scene
+Resolve +Alchemy
+Stamina +Resolve
+Thin-bloods develop this formula within the Second Inquisition.
+/ [Second Inquisition](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Second_Inquisition), page 47
+Hospital Chains
+Prevent someone from healing
+One Rouse Check
+None
+Phlegmatic
+2 days per point of margin
+Distillation roll vsStamina
+N/A
+Critical wins last 2 days per success
+[Blood Sigils](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Blood_Sigils), page 76
+Mandagloire
+Emit a gas that causes rigid paralysis in mortals and supernatural creatures.
+One Rouse Check
+None
+Phlegmatic
+Three turns
+Stamina +Alchemy
+Stamina +Resolve
+For Fixatio alchemists this can be slipped into a drink or burned.
+[Players Guide](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Players_Guide), page 104
+Martian Purity
+Expel blood-borne illnesses through ignited gases
+One Rouse Check
+None
+Choleric
+Two rounds
+N/A
+N/A
+Deals 2 Aggravated Health damage
+[Blood Sigils](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Blood_Sigils), page 77
+Mask Off
+Creates an explosion of gas that causes no damage but negates the Blush of Life
+One Rouse Check
+None
+Choleric,Melancholic
+One scene
+N/A
+Stamina +Resolve
+Those affected cannot use Blush of Life for rest of the night. The opposing pool is rolled against the Distillation pool
+[Blood Sigils](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Blood_Sigils), page 77
+On-Demand Sunburn
+Become a sun battery and harm vampires they touch.
+One Rouse Check
+[Sabbat](https://vtm.paradoxwikis.com/Sabbat)
+Choleric
+Until unleashed or next sunset, whichever is first
+N/A
+N/A
+This formula was developed by the Path of the Sun Thin-bloods.
+/ [Sabbat](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Sabbat:_The_Black_Hand), page 53
+Profane Hieros Gamos
+Change their form into their ideal human shape.
+One Rouse Check or One point of Aggravated Damage for mortals
+None
+Melancholic, Phlegmatic
+Permanent.
+Stamina +Resolve
+N/A
+This cannot spare the Nosferatu from their bane. Errata
+/ [Corebook](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Corebook), page 286
+Rumor
+Make a statement and convince one person to agree.
+One Rouse Check
+None
+Phlegmatic
+One scene
+Manipulation +Alchemy
+Wits +Awareness
+It lingers till something contradicts the target’s agreement.
+[Players Guide](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Players_Guide), page 105
+Stay the Falling Sand
+Slow time
+One Rouse Check
+None
+Melancholic
+One round or more if maintained, expires after one use
+Resolve +Alchemy
+N/A
+Cannot be used on living creatures or kindred.
+[Winter's Teeth](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Winter%27s_Teeth), Page 10
+Saraimu
+Create a sentient blob of slime that acts as a familiar
+One Rouse Check
+None
+N/A
+1 - 3 weeks
+Resolve + Alchemy
+N/A
+Can only be created using Fixatio.
+[Tattered Façade](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Tattered_Fa%C3%A7ade), page 107
+Tank
+Strengthen their resistance to damage
+One Rouse Check
+None
+Choleric
+Until they take damage or the scene ends
+N/A
+N/A
+The first damage they take is reduced by five.
+[Players Guide](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Players_Guide), page 105
+TLC
+Enhances the blood of animals so it slakes the same as mortal blood
+One Rouse Check
+None
+Animal,Choleric
+Permanent
+N/A
+N/A
+Killing an animal cannot slake Hunger to zero
+[Blood Sigils](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Blood_Sigils), page 77
+Troll the Pious
+Cause negatives effects to the religious
+One Rouse Check
+None
+Melancholic
+Changes based on what it is smeared on
+N/A
+N/A
+Gives one-dice penalty to most dice pools. Those with True Faith take a two-dice penalty instead and suffer hallucinations
+[Blood Sigils](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Blood_Sigils), page 78
+Counterfeit Discipline
+Counterfeit a two-dot Discipline
+The same as the power channeled
+None
+N/A
+The same as the power channeled
+The same as the power channeled
+The same as the power channeled
+The same as the power channeled
+/ [Corebook](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Corebook), page 287
+Level 4
+Name
+Effect
+Cost
+Origin
+Resonance
+Duration
+Dice pool
+Opposing pool
+Additional Notes
+Source
+Airborne Momentum
+Achieve flight
+One Rouse Check
+None
+Choleric, Sanguine
+One scene
+Strength +Alchemy
+Strength +Athletics (if resisted)
+Can move at running speed and carrying a human-sized mass slows to walking speed. This can only be used by the alchemist.
+/
+[Corebook](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Corebook), page 287
+Copycat
+Turn into an approximate copy of someone
+One Rouse Check
+None
+Choleric,Phlegmatic
+Twenty minutes, possibly up to a scene
+N/A
+Intelligence +Awareness
+Those who know the person whose appearance is borrowed can recognise the difference by rolling the Opposing pool against the Distillation roll
+[Blood Sigils](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Blood_Sigils), page 78
+Discipline Channeling
+Imbue Ashe with Disciplines
+The same as the power channeled
+[Ashfinders](https://vtm.paradoxwikis.com/Ashfinders)
+N/A
+N/A
+N/A
+N/A
+Must use the Fixatio method. The Thin-bloods develop this formula within the Ashfinders. [Concoct Ashe](https://vtm.paradoxwikis.com/Thin-Blood_Alchemy#Thin-Blood_Alchemy#Concoct_Ashe) is a prerequisite.
+/ [Cults of the Blood Gods](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Cults_of_the_Blood_Gods), page 46
+Half-Living Conductor
+Be immune to, and redirect electrical currents
+One Rouse Check
+None
+Choleric,Sanguine
+One scene, or voluntarily ended
+Stamina +Alchemy
+N/A
+Using electricity to attack requires Dexterity + Alchemy. Deals 2 damage, Aggravated to mortals, Superficial to vampires
+[Blood Sigils](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Blood_Sigils), page 79
+Hollow Leg
+Poison another Kindred so that they are unable to slake hunger.
+Free
+None
+Non-Resonant Human Blood
+One night or until the victim suffers a hunger Frenzy
+Intelligence +Alchemy
+Stamina +Composure
+The victim must be tricked, coerced or forced into drinking this.
+[Winter's Teeth](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Winter%27s_Teeth), Page 10
+Juice Box
+Alters a Formula to be used by any vampire
+One Rouse Check
+None
+As target Formula
+As target Formula
+As target Formula
+As target Formula
+Requires Methuselah Blood
+Gehenna War, Page 51
+Red State
+Erases memories of someone's misdeeds
+One Rouse Check
+None
+Sanguine,Phlegmatic
+Permanent, until target imbibes a choleric Dyscrasia
+N/A
+N/A
+Being told of the crime makes no sense to the target
+[Blood Sigils](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Blood_Sigils), page 79
+Short Circuit
+Overload the batteries in electronics or electrical equipment.
+One Rouse Check
+None
+Melancholic
+N/A
+N/A
+N/A
+This allows for alchemists to touch either the object itself or metal connected and short it out.
+[Players Guide](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Players_Guide), page 105
+Toxic Personality
+Secrete caustic bile from their pores and orifices.
+One Rouse Check
+None
+Choleric
+One scene
+Strength/Dexterity +Alchemy
+Dexterity +Alchemy
+The alchemist may touch this without being harmed. It can either be used as a physical attack or by making another Rouse Check, spit as a ranged attack.
+[Players Guide](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Players_Guide), page 105
+Vitae MSG
+Make it hard for vampires to resist feeding off someone.
+One Rouse Check
+None
+Sanguine
+Once applied to someone, it lasts until dawn, if they survive
+N/A
+N/A
+Ventrue feeding off someone appointed with this require 1 less Willpower if they aren't in their preferred category.
+[Blood Sigils](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Blood_Sigils), page 79
+Counterfeit Discipline
+Counterfeit a three-dot Discipline
+The same as the power channeled
+None
+N/A
+The same as the power channeled
+The same as the power channeled
+The same as the power channeled
+Requires a drop of vitae from a vampire of a matching clan or who possesses the Discipline.
+/ [Corebook](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Corebook), page 287
+Level 5
+Name
+Effect
+Cost
+Origin
+Resonance
+Duration
+Dice pool
+Opposing pool
+Additional Notes
+Source
+Awaken the Sleeper
+Awaken a vampire from torpor
+One Rouse Check
+None
+Choleric or Sanguine
+N/A
+N/A
+N/A
+Each Distillation style has a unique method of tapping for this elixir.
+/
+[Corebook](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Corebook), page 287
+Beast Mode
+Gain the use of 1 Level 5 [Potence](https://vtm.paradoxwikis.com/Potence), [Celerity](https://vtm.paradoxwikis.com/Celerity) or [Fortitude](https://vtm.paradoxwikis.com/Fortitude) power
+One Rouse Check
+None
+Choleric or Sanguine
+One Scene
+N/A
+N/A
+The alchemist must succeed on a Willpower test to avoid Frenzy when consuming this
+Gehenna War, Page 51
+Da Bomb
+Turn a mortal into a walking time bomb
+One Rouse Check
+None
+Sanguine
+One week, or until activated
+N/A
+N/A
+Only works when imbibed into mortals.
+[Tattered Façade](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Tattered_Fa%C3%A7ade), page 108
+Flowering Amaranth
+Share diablerie with other thin-bloods.
+One Rouse Check made by each participant
+None
+N/A
+Used for the Diablerie
+Resolve +Alchemy
+Willpower +Blood Potency
+Upon a win they gain a Discipline as if a full-blooded though they cannot level it, they do no gain generation and still lose 1 Humanity. They also gain the black-veined aura of Diablerie.
+[Players Guide](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Players_Guide), page 106
+Moment of Clarity
+Harness the power of the Beast to support them.
+One Rouse Check
+None
+Phlegmatic
+One scene
+N/A
+N/A
+Add four dice to Mental Skill pools, Discipline Skill pools, and to Mental resistance checks when Disciplines are used on them. Immune to Messy Criticals and Frenzy.
+[Players Guide](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Players_Guide), page 106
+Saturn's Flux
+Break Blood-bonds
+One Rouse Check
+None
+Phlegmatic
+Effect kicks in one day after ingestion
+N/A
+N/A
+Removing the Blood-bond is painful but Mortals take no damage. Kindred have to take Aggravated damage to expel.
+[Blood Sigils](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Blood_Sigils), page 80
+Counterfeit Discipline
+Counterfeit a four-dot Discipline
+The same as the power channeled
+None
+N/A
+The same as the power channeled
+The same as the power channeled
+The same as the power channeled
+Requires a drop of vitae from a vampire of a matching clan or who possesses the Discipline.
+/
+[Corebook](https://vtm.paradoxwikis.com/Vampire:_The_Masquerade_Corebook), page 287
+
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-08-29T15:16:24+03:00.
+
+The user's current state is as follows:
+Active Document: x:\Projects\Vampire Platform\front\src\data\merits_flaws.js (LANGUAGE_JAVASCRIPT)
+Cursor is on line: 1
+Other open documents:
+- x:\Projects\Vampire Platform\front\src\features\announcements\AnnouncementsView.jsx (LANGUAGE_JAVASCRIPT)
+- x:\Projects\Vampire Platform\back\routes\characters.js (LANGUAGE_JAVASCRIPT)
+- x:\Projects\Vampire Platform\front\src\styles\CharacterView.module.css (LANGUAGE_CSS)
+- x:\Projects\Vampire Platform\front\src\features\character\RetainersView.jsx (LANGUAGE_JAVASCRIPT)
+- x:\Projects\Vampire Platform\wiki\src\index.css (LANGUAGE_CSS)
+Running terminal commands:
+- npm run dev (in x:\Projects\Vampire Platform\back, running for 46m16s)
+- npm run dev (in x:\Projects\Vampire Platform\front, running for 46m14s)
+</ADDITIONAL_METADATA>

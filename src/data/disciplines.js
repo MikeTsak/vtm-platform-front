@@ -2550,6 +2550,31 @@ export const DISCIPLINES = {
         },
       ],
       3: [
+
+    {
+      id: "bleed_out",
+      name: "Bleed Out",
+      cost: "One Rouse Check",
+      origin: "None",
+      resonance: "Melancholic",
+      duration: "N/A",
+      dice_pool: "N/A",
+      opposing_pool: "N/A",
+      notes: "Only thin-bloods can feed from the liquefied corpse. Drinkers gain at least 1 Stain.",
+      source: "Tattered Façade, page 107"
+    },
+    {
+      id: "saraimu",
+      name: "Saraimu",
+      cost: "One Rouse Check",
+      origin: "None",
+      resonance: "N/A",
+      duration: "1 - 3 weeks",
+      dice_pool: "Resolve + Alchemy",
+      opposing_pool: "N/A",
+      notes: "Can only be created using Fixatio.",
+      source: "Tattered Façade, page 107"
+    },
         {
           id: 'chemically_induced_flashback',
           name: 'Chemically-Induced Flashback',
@@ -2914,6 +2939,19 @@ export const DISCIPLINES = {
         },
       ],
       5: [
+
+    {
+      id: "da_bomb",
+      name: "Da Bomb",
+      cost: "One Rouse Check",
+      origin: "None",
+      resonance: "Sanguine",
+      duration: "One week, or until activated",
+      dice_pool: "N/A",
+      opposing_pool: "N/A",
+      notes: "Only works when imbibed into mortals.",
+      source: "Tattered Façade, page 108"
+    },
         {
           id: 'awaken_the_sleeper',
           name: 'Awaken the Sleeper',
