@@ -28,7 +28,7 @@ export const RITUALS = {
           cost: "One Rouse Check",
           effect:
             "Learn information such as Skills, Desires and Convictions about someone",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "If you know the correct Birth or Embrace date, you can add 1 die to the Ritual pool. This does not stack if you know both.",
@@ -40,7 +40,7 @@ export const RITUALS = {
           origin: "Sabbat",
           cost: "One Rouse Check",
           effect: "Animals avoid the area.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "Nothing prevents directed or controlled creatures from entering.",
@@ -53,7 +53,7 @@ export const RITUALS = {
           cost: "One Rouse Check",
           effect:
             "Prevent someone from communicating something negative about the caster",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "Victim can break free by rolling Composure + Resolve.",
           source: "Blood Sigils, page 60",
@@ -64,7 +64,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "Embed messages into Blood or vessels.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "The first person receives the message if they are the intended recipient or if they have A Taste For Blood.",
@@ -76,7 +76,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "Learn characters generation, name, and sire.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "Requires one Rouse Check from the subject to be performed.",
           source: "Corebook, page 276",
@@ -88,7 +88,7 @@ export const RITUALS = {
           cost: "One Rouse Check",
           effect:
             "Make a message appear to a specific type of person then disappear once read.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "Make the Ritual Roll when enchanting the surface.",
           source: "Let the Streets Run Red, page 77",
@@ -99,7 +99,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "Turn blood into water.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "Removes all traces of blood.",
           source: "Gehenna War, page 48",
@@ -110,7 +110,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "Cling to walls like an insect.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "The user must cling with both their hands and feet.",
           source: "Corebook, page 276",
@@ -121,7 +121,7 @@ export const RITUALS = {
           origin: "Bahari",
           cost: "One Rouse Check",
           effect: "Use plant life to defend.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "The plants will target anyone who isn't the caster.",
           source: "Cults of the Blood Gods, page 55",
@@ -132,7 +132,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "Craft a tracking stone.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "A caster may have up to as many stones as they have Resolve.",
           source: "Corebook, page 276",
@@ -143,7 +143,7 @@ export const RITUALS = {
           origin: "Church of Caine",
           cost: "One Rouse Check",
           effect: "Remove their fear of fire temporarily.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "The power wears off once the scene ends.",
           source: "Cults of the Blood Gods, page 67; Players Guide, page 99",
@@ -154,7 +154,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "Make a mortal more nourishing.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "This does not work on Kindred vitae.",
           source: "Forbidden Religions, page 76",
@@ -166,7 +166,7 @@ export const RITUALS = {
           cost: "One Rouse Check",
           effect:
             "Ward a single kine of a herd to prevent unauthorized feeding.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "Make the Ritual Roll when someone else feeds off the herd.",
           source: "Let the Streets Run Red, page 77",
@@ -177,7 +177,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "Place a ward on a letter",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "Make the Ritual Roll if anyone other than the intended recipient opens it.",
@@ -189,7 +189,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "Reveal traces of spilled blood.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "Very old traces require a Resolve + Awareness test.",
           source: "Gehenna War, page 48",
@@ -200,7 +200,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "Make a tattoo permanent on a vampire",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "The process inflicts 1 Superficial damage",
           source: "Players Guide, page 99",
@@ -211,7 +211,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "Observe another's Memoriam.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "Participants observe the events and can offer advice but cannot directly influence the events.",
@@ -223,7 +223,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "Awakens the caster at any signs of danger during day sleep.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "Do not make the Ritual roll until true danger appears.",
           source: "Corebook, page 276",
@@ -234,7 +234,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "Protect themselves against Ghouls.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "Uses standard rules for Wards.",
           source: "Corebook, page 277",
@@ -245,7 +245,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "Send messages through blood.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "The first person to taste the blood, receives it as if it was intended for them or they possess A Taste for Blood.",
@@ -258,7 +258,7 @@ export const RITUALS = {
           cost: "N/A",
           effect:
             "Make a message appear on a mirror when a type of person comes nearby.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "It disappears from the mirror once it's been read once.",
           source: "Live from the Succubus Club, page 29",
@@ -269,7 +269,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "Preserve an item from the passage of time.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "Only preserves the item from age, ambient elements, and minor accidents. Intentional damage still effects the item.",
@@ -282,7 +282,7 @@ export const RITUALS = {
           cost: "One Rouse Check",
           effect:
             "Magically broadcast an introduction and identification to any caster of the Foundation of the Chantry Ritual in the same city.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "Caster can withhold but not alter elements of their broadcast.",
@@ -296,7 +296,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "Walk on water silently.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "This can be ended early or kept to allow them to walk on water for the rest of the night.",
@@ -308,7 +308,7 @@ export const RITUALS = {
           origin: "Chicago",
           cost: "One Rouse Check",
           effect: "Speak with the residual aura of someone who has died.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "The aura only has memories up to the time of death.",
           source: "Chicago Folios, page 171",
@@ -319,7 +319,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check plus additional to be stored",
           effect: "Store vitae for a later use.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "Two Rouse Checks stored will slake one Hunger.",
           source: "Players Guide, page 100",
@@ -331,7 +331,7 @@ export const RITUALS = {
           cost: "One Rouse Check",
           effect:
             "Creates a long-distance telepathic link between Sire and Childe",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "Major disturbance on either side breaks the connection.",
           source: "Corebook, page 277",
@@ -343,7 +343,7 @@ export const RITUALS = {
           cost: "One Rouse Check",
           effect:
             "Temporarily gain dots and speciality in certain skills (Academics, Craft, Performance or Science)",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "Dots replace any skill that caster already has but gain an extra die if they already have the speciality. On a total failure, caster takes Aggravated Damage.",
@@ -356,7 +356,7 @@ export const RITUALS = {
           cost: "One Rouse Check",
           effect:
             "Curse someone with nightmares that cause Willpower Damage, which can't be healed during the Ritual's duration.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "On a total failure, the victim has pleasant dreams and is pointed towards the caster.",
@@ -368,7 +368,7 @@ export const RITUALS = {
           origin: "Koldunic Sorcery",
           cost: "One Rouse Check",
           effect: "Command your chosen element to interfere with a target",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "Target takes Superficial Health Damage and must make an appropriate roll to continue. Caster gains one die to their Ritual pool if the element is already active, like water during a flood.",
@@ -381,7 +381,7 @@ export const RITUALS = {
           cost: "One Rouse Check",
           effect:
             "Allow multiple Kindred to feed from one Dyscrasia without destroying it.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "Usually, they will use Enrich the Blood first.",
           source: "Forbidden Religions, page 77",
@@ -393,7 +393,7 @@ export const RITUALS = {
           cost: "One Rouse Check",
           effect:
             "By consuming the eyes and tongue of another, they gain the ability to read and speak any language known by the victim.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "This Ritual may incur Stains.",
           source: "Corebook, page 277",
@@ -404,7 +404,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "Allows the caster to follow the trail of a specific person.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "The victim's face must be known by the caster.",
           source: "Corebook, page 277",
@@ -416,7 +416,7 @@ export const RITUALS = {
           cost: "One Rouse Check",
           effect:
             "Create a connection between two people, providing they desire each other at the time the Ritual is cast",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "Both participants can use Resolve + Awareness to get an estimation of where the other is. On a total failure of the initial Ritual, this roll disorients them and their Composure is temporarily reduced by one.",
@@ -429,7 +429,7 @@ export const RITUALS = {
           cost: "One Rouse Check",
           effect:
             "Convert a dose of vitae to weaken their victim against mundane manipulations or mind-altering Disciplines.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "The Ritual Roll is made after the victim makes contact and is contested against with Stamina + Resolve.",
@@ -442,7 +442,7 @@ export const RITUALS = {
           cost: "One Rouse Check",
           effect:
             "Replicates Silence of Death (Obfuscate \u25cf), which creates a radius of silence",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "If intended for someone other than the caster, they will also have to make their own Rouse Check.",
@@ -454,7 +454,7 @@ export const RITUALS = {
           origin: "The Shepherds of Ur-Shulgi",
           cost: "One Rouse Check",
           effect: "Prevent sounds from escaping a room.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "Requires vitae from a Kindred who possesses Obfuscate",
           source: "Forbidden Religions, page 23",
@@ -465,7 +465,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "Access sire's memories.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "Can access memories of grandsire or beyond with Difficulty increase of 2 per generation past their sire.",
@@ -477,7 +477,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "Attune yourself to a place of power, like a Furcus",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "Caster gains bonuses to Rituals they cast. Only one caster can be attuned to a place of power. If someone else performs the Ritual, the original caster loses their bonus immediately.",
@@ -489,7 +489,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "The caster can discern truth from lies.",
-          dice_pool: "Resolve +Blood Sorcery",
+          dice_pool: "Resolve + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "The target rolls Composure+Occult to resist. This Ritual cannot get past memory wiping Disciplines.",
@@ -501,7 +501,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "Become invisible underground.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "Immediately ends if they go above ground, or they take hostile actions, otherwise it only lasts for one hour.",
@@ -513,7 +513,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check, additional Rouse Check of blood per month",
           effect: "Grow Blood-addicted plants that can consume corpses",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "Can be eaten by Kindred, they do not slake hunger but they stay down. Mortals who ingest a plant are more susceptible to Disciplines.",
@@ -525,7 +525,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "Protect themselves against spirits.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "Uses standard rules for Wards.",
           source: "Corebook, page 277",
@@ -536,7 +536,7 @@ export const RITUALS = {
           origin: "None",
           cost: "Three Rouse Checks",
           effect: "Protect themselves against Ghouls.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "Uses standard rules for Wards.",
           source: "Corebook, page 278",
@@ -547,7 +547,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "Avoid the pull of the Beckoning.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "Without the dagger, this ritual would be 4th level. With the dagger it can be treated as level 2.",
@@ -561,7 +561,7 @@ export const RITUALS = {
           origin: "Milwaukee",
           cost: "Two Rouse Checks",
           effect: "Sharpens the user's hands into a weapon.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "Treated as a light piercing Brawl weapon with a +2 modifier.",
           source: "Chicago Folios, page 174",
@@ -572,7 +572,7 @@ export const RITUALS = {
           origin: "The Bloodless Pilgrims",
           cost: "One Rouse Check, possible Stains",
           effect: "Purify blood, creating a clear blood-like substance.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "Those who consume the clear vitae enough are weaker to diablerie.",
@@ -584,7 +584,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "Create a tattoo on a Kindred which also contains a message",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "Can read the message with a Resolve + Occult roll or by Sense the Unseen (Auspex \u25cf). Caster can remove the Blood Sigil by spending Willpower and touching the tattoo.",
@@ -596,7 +596,7 @@ export const RITUALS = {
           origin: "Sabbat",
           cost: "One Rouse Check",
           effect: "A Pack Priest shares their Blood Potency with their pack.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "The Priest gains three bonus dice on Dominate and Presence tests against packmates.",
@@ -609,7 +609,7 @@ export const RITUALS = {
           cost: "One Rouse Check",
           effect:
             "The caster can rupture the blood vessels of a victim from afar.",
-          dice_pool: "Resolve +Blood Sorcery",
+          dice_pool: "Resolve + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "The caster can use this up to two additional times, each costing an additional Rouse Check. The opposing roll is Stamina + Resolve.",
@@ -621,7 +621,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "This ritual protects them from being staked.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "Do not roll the Ritual Roll until staked.",
           source: "Corebook, page 278",
@@ -633,7 +633,7 @@ export const RITUALS = {
           cost: "One Rouse Check",
           effect:
             "Meld with your chosen element, similar to Earth Meld (Protean \u25cf\u25cf\u25cf)",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "Fire Kolduns must resist terror frenzy before casting this ritual. Koldun's form can be seen with a Wits + Awareness roll or by Sense the Unseen (Auspex \u25cf). If bonded element is removed, such as the fire going out, the Koldun enters torpor.",
@@ -645,7 +645,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "Allows for flight.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "The Camarilla frowns upon this Ritual due to its Masquerade dangers.",
@@ -657,7 +657,7 @@ export const RITUALS = {
           origin: "Chicago",
           cost: "One Rouse Check",
           effect: "See what happened at their current location in the past.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "It only holds events within the last five years.",
           source: "Chicago Folios, page 172",
@@ -668,7 +668,7 @@ export const RITUALS = {
           origin: "Church of Caine",
           cost: "One Rouse Check",
           effect: "Create anguish of fire in one's blood to incapacitate",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "A victim can only be affected by this Ritual once per night.",
           source: "Cults of the Blood Gods, page 67 Players Guide, page 100",
@@ -680,7 +680,7 @@ export const RITUALS = {
           cost: "One Rouse Check",
           effect:
             "Allow themselves and their comrades to become resistant to fire.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "This ritual can be performed on others, but the fingertip removal must all come from the caster.",
@@ -692,7 +692,7 @@ export const RITUALS = {
           origin: "Sabbat",
           cost: "One Rouse Check",
           effect: "Short out electronics and wiring nearby.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "Generally, it only affects the range of a warehouse or three-story building, but can be extended by adding 1 Difficulty per additional building.",
@@ -704,7 +704,7 @@ export const RITUALS = {
           origin: "Chicago",
           cost: "One Rouse Check",
           effect: "Protect the mind of a target against Frenzy.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "The caster must share blood with another and cannot cast it upon themselves.",
@@ -729,7 +729,7 @@ export const RITUALS = {
           origin: "Milwaukee",
           cost: "Three Rouse Checks",
           effect: "Make a haven appear as if it's haunted.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "The effects last for 10 years.",
           source: "Chicago Folios, page 175",
@@ -741,7 +741,7 @@ export const RITUALS = {
           cost: "One Rouse Check",
           effect:
             "Ward a herd against unauthorized feeding by warding the door to protect multiple people within.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "Make the Ritual Roll when someone else feeds off the herd.",
           source: "Let the Streets Run Red, page 77",
@@ -752,7 +752,7 @@ export const RITUALS = {
           origin: "Chicago",
           cost: "One Rouse Check",
           effect: "Make a corpse appear as if it'd died a natural death.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "The body must have at least half of the body's blood to succeed.",
@@ -764,7 +764,7 @@ export const RITUALS = {
           origin: "Milwaukee",
           cost: "One Rouse Check",
           effect: "Become a nondescript person to blend into crowds.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "Similar to the ability Mask of a Thousand Faces.",
           source: "Chicago Folios, page 174",
@@ -776,7 +776,7 @@ export const RITUALS = {
           cost: "One Rouse check",
           effect:
             "Create a draught that can remove Stains, but prolonged use of it can make those Stains permanent",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "Using Nepenthe two sessions in a row causes one Stain to become permanent. This is cumulative, e.g. four sessions gives two permanent Stains.",
@@ -788,7 +788,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One or more Rouse Checks, enough to submerge the weapon.",
           effect: "Claim ownership of a weapon and protect it from damage.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "Only one weapon can hold this ritual at a time.",
           source: "Camarilla, page 168; Players Guide, page 101",
@@ -799,7 +799,7 @@ export const RITUALS = {
           origin: "Milwaukee",
           cost: "One Rouse Check",
           effect: "Create a small rat out of vitae.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "The caster can send the rat to go where they instruct to observe or steal, but the instructions must be very explicit.",
@@ -811,7 +811,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "Observe a target from above",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "Player can ask one question about location and surrounding per success roll. Critical Wins give 3 extra questions and can gain information about Ambitions, Desires, Convictions and Humanity.",
@@ -823,7 +823,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check and Aggravated Health damage",
           effect: "Find veins of the Earth",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "Critical wins discover the closest vein and points towards 2 Furcae on that vein",
@@ -835,7 +835,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "Incapacitate a vampire by drugging them.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "Make the Ritual Roll when the target is drugged.",
           source: "Let the Streets Run Red, page 77",
@@ -847,7 +847,7 @@ export const RITUALS = {
           cost: "One Rouse Check",
           effect:
             "Create a Hemonculus, a shrivelled, smaller and weaker version of the caster, who must obey your every command",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "Immune to the sun but cannot be Embraced, made into a ghoul or have a Blood Bond. Vampires slake no Hunger if they drink from it.",
@@ -860,7 +860,7 @@ export const RITUALS = {
           cost: "One Rouse Check",
           effect:
             "Dispel illusions and creatures altered via Disciplines and Rituals",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "Must throw the stone with Dexterity + Athletics. The target resists the Ritual with Resolve + Occult. On a win, illusions are dispelled, shapeshifters are painfully returned to their original form and beings made through Disciplines, like a Vozhd, are separated to their original components.",
@@ -872,7 +872,7 @@ export const RITUALS = {
           origin: "Chicago",
           cost: "Three Rouse Checks",
           effect: "Lupines entering the area are forced into Wolf Form.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "If they do not succeed on the Ritual Roll against a contested Willpower test, they enter in Lupus Form.",
@@ -885,7 +885,7 @@ export const RITUALS = {
           cost: "One Rouse Check",
           effect:
             "Allows the caster to easily sneak around a building, such as by flowing through crevices that blood can fit through",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "Unlike Incorporeal Passage, the caster can be attacked providing they are able to notice the caster.",
@@ -898,7 +898,7 @@ export const RITUALS = {
           cost: "One Rouse Check",
           effect:
             "Gather information from everyone in an area suffering from a certain disease",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "Caster must drink from someone with the disease within 24 hours before casting this Ritual.",
@@ -910,7 +910,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "Protects themselves against Werewolves.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "Uses standard rules for Wards.",
           source: "Corebook, page 279",
@@ -921,7 +921,7 @@ export const RITUALS = {
           origin: "None",
           cost: "Three Rouse Checks",
           effect: "Protect themselves against spirits.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "Uses standard rules for Wards.",
           source: "Corebook, page 279",
@@ -948,7 +948,7 @@ export const RITUALS = {
           cost: "One Rouse Check",
           effect:
             "Give a simple command to an inanimate object which it follows a few minutes later",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "The caster must remain in the same general area as the object. Sense the Unseen (Auspex \u25cf) can detect the caster with a Wits + Auspex vs. caster's Composure + Blood Sorcery roll.",
@@ -960,7 +960,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "Protect a haven with mystical darkness from the sun.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "The Ritual roll is made once the sun rises.",
           source: "Corebook, page 279",
@@ -984,7 +984,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "Take control of a carnivorous bird and act through them.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "The user can use most non-physical Disciplines through the bird.",
@@ -996,7 +996,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "Stop another Kindred from drinking blood for one night.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "The ritual roll is made against the victim\u2019s Resolve + Willpower. The victim can eat the ashes to slake hunger but only down to 3.",
@@ -1009,7 +1009,7 @@ export const RITUALS = {
           cost: "One Rouse Check",
           effect:
             "With the Blood of another vampire, experience their memories guided by them.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "This can be used to unlock Discipline powers, Merits and other gifts.",
@@ -1021,7 +1021,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "The caster's form becomes ghost-like.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "They may only interact through speech and sight.",
           source: "Corebook, page 280",
@@ -1033,7 +1033,7 @@ export const RITUALS = {
           cost: "One Rouse Check",
           effect:
             "Put up a blockade against Scry the Soul to hide diablerie and other vampiric traits.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "There's no record of Nicolai sharing this ritual with his fellow Tremere and is only learned by capturing his notes or by ST discretion.",
@@ -1056,7 +1056,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "Confine a victim to a single spot",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "The victim is unable to move from that spot for one hour per success in the margin unless the chain is destroyed or removed.",
@@ -1069,7 +1069,7 @@ export const RITUALS = {
           cost: "One Rouse Check",
           effect:
             "Feed from a place of power, turning it into a place of suffering where injuries become more severe.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "Lasts until end of the Story before needing to be renewed. Once per Session, they can automatically pass a number of Rouse Checks equal to their margin on the Ritual roll.",
@@ -1081,7 +1081,7 @@ export const RITUALS = {
           origin: "Chicago",
           cost: "One Rouse Check",
           effect: "Pull a vampire from the earth who is using Earth Meld.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "The ritual automatically awakens the other vampire unless they are in torpor or the Ritual Roll is a Critical Win.",
@@ -1093,7 +1093,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "Travel from one furcus to another random one.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "The caster has no control over where they end up. This Ritual is one way and only activates where it was first cast",
@@ -1105,7 +1105,7 @@ export const RITUALS = {
           origin: "Chicago",
           cost: "Two Rouse Check",
           effect: "Transform a target into a bat similar to Metamorphosis.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "This cannot be used on the caster.",
           source: "Chicago Folios, page 173",
@@ -1116,7 +1116,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "Protects themselves against Kindred.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "Uses standard rules for Wards. A vampire examining this ward may read the name of the caster with an Intelligence + Auspex vs Intelligence + Blood Sorcery roll.",
@@ -1128,7 +1128,7 @@ export const RITUALS = {
           origin: "None",
           cost: "Three Rouse Checks",
           effect: "Protects themselves against Werewolves.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "Uses standard rules for Wards.",
           source: "Corebook, page 280",
@@ -1140,7 +1140,7 @@ export const RITUALS = {
           cost: "N/A",
           effect:
             "Discovered gatherings of Kindred with a collective Blood Potency of 13 or higher.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "Ghouls count as 1/4th and Duskborn count as 1/2.",
           source: "Live from the Succubus Club, page 29",
@@ -1153,7 +1153,7 @@ export const RITUALS = {
           origin: "Church of Caine",
           cost: "One Rouse Check",
           effect: "Set their arms on fire",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "The user is only resistant to fire on their arms.",
           source: "Cults of the Blood Gods, page 67; Players Guide, page 102",
@@ -1164,7 +1164,7 @@ export const RITUALS = {
           origin: "None",
           cost: "One Rouse Check",
           effect: "Reverses the effects of Diablerie",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "Can be resisted with a Resolve + Blood Sorcery test.",
           source: "Gehenna War, page 49",
@@ -1176,7 +1176,7 @@ export const RITUALS = {
           cost: "One Rouse Check or more",
           effect:
             "Stop the use of Animalism, Auspex, Dominate, and Presence within a building.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "The area of effect is determined by the amount of Rouse Checks.",
@@ -1188,7 +1188,7 @@ export const RITUALS = {
           origin: "Bahari",
           cost: "One Rouse Check, possible Stains",
           effect: "Drain blood from nearby creatures",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "For the remainder of the chapter, mortals suffer 1 die penalty to Physical rolls and take 1 Aggravated health damage.",
@@ -1201,7 +1201,7 @@ export const RITUALS = {
           cost: "One Rouse Check",
           effect:
             "The Koldun commands their chosen element to attack a foe. This can be a Chain Ritual",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "If their element is already active, like Air during a storm, they get an extra die to their Ritual pool. If Chained with Elemental Grasp and Tiamat Glistens, the Ritual becomes a natural disaster, e.g. Tornado, Magma Flow or Tsunami",
@@ -1213,7 +1213,7 @@ export const RITUALS = {
           origin: "None",
           cost: "In total this ritual requires twelve Rouse Checks.",
           effect: "Create a one-way portal.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "A caster may only have one set of these circles active at a time.",
@@ -1226,7 +1226,7 @@ export const RITUALS = {
           cost: "One Rouse Check",
           effect:
             "Makes the caster one with their land, giving them access to it's secrets. This can be a Chain Ritual",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "Can make a Wits + Streetwise or Survival roll to ask questions about the land. The caster can ask one extra question per session. This Ritual lasts until the end of the story. If Chained with Land's Sustenance and Compel the Inanimate, the casters gain complete control over the land and the casters can heal a total of 5 Aggravated damage each night",
@@ -1239,7 +1239,7 @@ export const RITUALS = {
           cost: "One Rouse Check",
           effect:
             "Turns their heart to stone preventing staking. The Caster also suffers from emotional detachment, taking penalties to Remorse or active Social-related rolls.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "They are unable to use Presence during this ritual's use but gain a bonus when resisting its use on them.",
@@ -1252,7 +1252,7 @@ export const RITUALS = {
           cost: "Two Rouse Checks",
           effect:
             "A stake that will seek out another vampire's heart and will cause final death if it finds it.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "Even if an attack with this stake fails to hit the heart, if it hits, a splinter will break and move towards the heart to eradicate the victim.",
@@ -1264,7 +1264,7 @@ export const RITUALS = {
           origin: "Sabbat",
           cost: "One Rouse Check, possible Stains",
           effect: "Create a gate to teleport multiple vampires.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "There is only one of these known to exist currently.",
           source: "Sabbat, page 51",
@@ -1287,7 +1287,7 @@ export const RITUALS = {
           origin: "None",
           cost: "Three Rouse Checks",
           effect: "Protects themselves against Kindred.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes: "Uses standard rules for Wards.",
           source: "Corebook, page 282",
@@ -1299,7 +1299,7 @@ export const RITUALS = {
           cost: "One Rouse Check",
           effect:
             "Make a point of Foundation, so the caster and designees can retrieve broadcasts from Rite of Introduction and send response back.",
-          dice_pool: "Intelligence +Blood Sorcery",
+          dice_pool: "Intelligence + Blood Sorcery",
           difficulty: "Level + 1",
           notes:
             "Foundation is linked to a Vein of the Earth. Designees must be present to also receive messages. Responses may withhold, but not alter information.",
@@ -1331,7 +1331,7 @@ export const RITUALS = {
           cost: "One Rouse Check",
           effect:
             "Raise either a single corpse or a group to perform simple single or repetitive tasks.",
-          dice_pool: "Resolve +Oblivion",
+          dice_pool: "Resolve + Oblivion",
           difficulty: "Level + 1",
           notes:
             "Corpses are mindless creatures and do not defend themselves from attacks, decaying as normal for the duration of the ceremony.",
@@ -1343,7 +1343,7 @@ export const RITUALS = {
           prereq: "Ashes to Ashes, Binding Fetter",
           cost: "One Rouse Check",
           effect: "Identify the locations and existences of specific ghosts.",
-          dice_pool: "Resolve +Oblivion",
+          dice_pool: "Resolve + Oblivion",
           difficulty: "Level + 1",
           notes: "They must know the ghost's name.",
           source: "Fall of London, page 264 Errata",
@@ -1354,7 +1354,7 @@ export const RITUALS = {
           prereq: "Binding Fetter",
           cost: "One Rouse Check",
           effect: "Summon a spirit from the Underworld.",
-          dice_pool: "Resolve +Oblivion",
+          dice_pool: "Resolve + Oblivion",
           difficulty: "Level + 1",
           notes:
             "The wraith will disappear at the end of the scene unless a ceremony is used to keep them there such as Compel Spirit.",
@@ -1366,7 +1366,7 @@ export const RITUALS = {
           prereq: "Oblivion Sight",
           cost: "One Rouse Check",
           effect: "Summon another Shalimite.",
-          dice_pool: "Resolve +Oblivion",
+          dice_pool: "Resolve + Oblivion",
           difficulty: "Level + 1",
           notes:
             "The victim can choose to ignore it, taking -2 to all pools in relation to concentration for one scene. This ceremony is connected to the Cult of Shalim.",
@@ -1380,7 +1380,7 @@ export const RITUALS = {
           prereq: "Ashes to Ashes or Oblivion's Sight",
           cost: "One Rouse Check",
           effect: "Preservation of a Kindred's body.",
-          dice_pool: "Resolve +Oblivion",
+          dice_pool: "Resolve + Oblivion",
           difficulty: "Level + 1",
           notes: "Three successes in the margin preserves more.",
           source: "Book of Nod Apocrypha, page 35",
@@ -1392,7 +1392,7 @@ export const RITUALS = {
           cost: "One Rouse Check",
           effect:
             "Create spies and stalkers out of body parts or small animals.",
-          dice_pool: "Resolve +Oblivion",
+          dice_pool: "Resolve + Oblivion",
           difficulty: "Level + 1",
           notes:
             "The servant can scale or hop walls and hide, but it cannot speak. It is only able to telepathically communicate single images to its creator.",
@@ -1404,7 +1404,7 @@ export const RITUALS = {
           prereq: "Shadow Cast",
           cost: "One Rouse Check",
           effect: "Cameras cannot perceive the user clearly.",
-          dice_pool: "Resolve +Oblivion",
+          dice_pool: "Resolve + Oblivion",
           difficulty: "Level + 1",
           notes:
             "Do not make the ritual roll until the effect is active. This ceremony is connected to the Sabbat.",
@@ -1416,7 +1416,7 @@ export const RITUALS = {
           prereq: "Where the Veil Thins",
           cost: "One Rouse Check",
           effect: "Bend a wraith to a vampire's will.",
-          dice_pool: "Resolve +Oblivion",
+          dice_pool: "Resolve + Oblivion",
           difficulty: "Level + 1",
           notes:
             "The ritual roll is made against the wraith's Resolve + Composure or Willpower.",
@@ -1428,7 +1428,7 @@ export const RITUALS = {
           prereq: "\u2014",
           cost: "One Rouse Check",
           effect: "Open a portal to the Abyss, usually within their mouth.",
-          dice_pool: "Resolve +Oblivion",
+          dice_pool: "Resolve + Oblivion",
           difficulty: "Level + 1",
           notes:
             "The user cannot speak till it is either cancelled or the next sunrise.",
@@ -1466,7 +1466,7 @@ export const RITUALS = {
           prereq: "Where the Veil Thins",
           cost: "Three Rouse Checks",
           effect: "Create a barrier that harms wraiths.",
-          dice_pool: "Resolve +Oblivion",
+          dice_pool: "Resolve + Oblivion",
           difficulty: "Level + 1",
           notes:
             "Do not make the Ritual Roll until a wraith attempts to pass. This ceremony is connected to the Hecata.",
@@ -1478,7 +1478,7 @@ export const RITUALS = {
           prereq: "Aura of Decay",
           cost: "One Rouse Check, possible Stains",
           effect: "Keep unwanted visitors from their haven.",
-          dice_pool: "Resolve +Oblivion",
+          dice_pool: "Resolve + Oblivion",
           difficulty: "Level + 1",
           notes:
             "Vampires are able to enter making a fear Frenzy check each turn while inside. This ceremony is connected to the Sabbat.",
@@ -1491,7 +1491,7 @@ export const RITUALS = {
           cost: "One Rouse Check",
           effect:
             "Allows the user to open their body to a ghost for possession.",
-          dice_pool: "Resolve +Oblivion",
+          dice_pool: "Resolve + Oblivion",
           difficulty: "Level + 1",
           notes:
             "Alongside the bonus of +2 to Physical Attribute rolls and +2 health, the wraiths Skills can be substituted for the vampire\u2019s own at Storyteller discretion.",
@@ -1503,7 +1503,7 @@ export const RITUALS = {
           prereq: "Where the Veil Thins",
           cost: "One Rouse Check",
           effect: "Turn a shroud impenetrable.",
-          dice_pool: "Resolve +Oblivion",
+          dice_pool: "Resolve + Oblivion",
           difficulty: "Level + 1",
           notes:
             "When not disturbed this effect does not change for as many nights as the user's Oblivion rating.",
@@ -1516,7 +1516,7 @@ export const RITUALS = {
           cost: "One Rouse Check",
           effect:
             "Strike a victim's mind with the empty void of Oblivion, leaving them paralyzed.",
-          dice_pool: "Resolve +Oblivion",
+          dice_pool: "Resolve + Oblivion",
           difficulty: "Level + 1",
           notes:
             "The victim can spend willpower equal to the number of turns they would remain paralyzed to free themselves. This ceremony is connected to the Cult of Shalim.",
@@ -1528,7 +1528,7 @@ export const RITUALS = {
           prereq: "Passion Feast or Touch of Oblivion",
           cost: "One Rouse Check",
           effect: "Reduces time spent in torpor.",
-          dice_pool: "Resolve +Oblivion",
+          dice_pool: "Resolve + Oblivion",
           difficulty: "Level + 1",
           notes: "Can be used on self on others even when not in torpor.",
           source: "Gehenna War, page 50",
@@ -1539,7 +1539,7 @@ export const RITUALS = {
           prereq: "Aura of Decay",
           cost: "One Rouse Check, possible Stains",
           effect: "Raise a group of aggressive walking dead.",
-          dice_pool: "Resolve +Oblivion",
+          dice_pool: "Resolve + Oblivion",
           difficulty: "Level + 1",
           notes:
             "If left without commands, they attack anyone around them other than their master.",
@@ -1551,7 +1551,7 @@ export const RITUALS = {
           prereq: "Where the Veil Thins or Oblivion's Sight",
           cost: "One Rouse Check",
           effect: "Gain information from a corpse skull or head.",
-          dice_pool: "Resolve +Oblivion",
+          dice_pool: "Resolve + Oblivion",
           difficulty: "Level + 1",
           notes:
             "Add two dice to their dice pool if they are still carrying the skull/head for the rest of the night.",
@@ -1564,7 +1564,7 @@ export const RITUALS = {
           cost: "One Rouse Check",
           effect:
             "Use the power of entropy to call ruin on an enemy's Backgrounds",
-          dice_pool: "Resolve +Oblivion",
+          dice_pool: "Resolve + Oblivion",
           difficulty: "Level + 1",
           notes:
             "A target can only be affect by one casting of this Ceremony at a time.",
@@ -1578,7 +1578,7 @@ export const RITUALS = {
           prereq: "Necrotic Plague",
           cost: "One Rouse Check",
           effect: "Turn a mortal's blood into poison for other vampires.",
-          dice_pool: "Resolve +Oblivion",
+          dice_pool: "Resolve + Oblivion",
           difficulty: "Level + 1",
           notes:
             "This power leaves no trace other than the mortal dying the next night with the smell of mildew and sweat. This ceremony is connected to the Sabbat.",
@@ -1590,7 +1590,7 @@ export const RITUALS = {
           prereq: "Necrotic Plague",
           cost: "One Rouse Check, possible Stains",
           effect: "Bind a wraith to a specific location or person.",
-          dice_pool: "Resolve +Oblivion",
+          dice_pool: "Resolve + Oblivion",
           difficulty: "Level + 1",
           notes: "Bound wraiths have the same powers as spectres.",
           source: "Cults of the Blood Gods, page 212 Players Guide, page 96",
@@ -1614,7 +1614,7 @@ export const RITUALS = {
           cost: "One Rouse Check",
           effect:
             "Inflict the sensory experience of a wraith's death onto a target.",
-          dice_pool: "Resolve +Oblivion",
+          dice_pool: "Resolve + Oblivion",
           difficulty: "Level + 1",
           notes:
             "The victim contests the ritual roll with Composure + Resolve.",
@@ -1626,7 +1626,7 @@ export const RITUALS = {
           prereq: "Necrotic Plague",
           cost: "One Rouse Check, possible Stains",
           effect: "Create a tear into a shroud to allow wraiths to enter.",
-          dice_pool: "Resolve +Oblivion",
+          dice_pool: "Resolve + Oblivion",
           difficulty: "Level + 1",
           notes:
             "This Ceremony reduces the density of the veil and can reduce it to absent, allowing wraiths to come through. The veil increased to frayed after the session ends, stopping any more wraiths.",
@@ -1640,7 +1640,7 @@ export const RITUALS = {
           prereq: "Withering Spirit",
           cost: "Three Rouse Checks and one Willpower point",
           effect: "Enter the Shadowlands",
-          dice_pool: "Resolve +Oblivion",
+          dice_pool: "Resolve + Oblivion",
           difficulty: "Level + 1",
           notes:
             "The Shadowlands have several rules that do not exist in the world of the living.",
@@ -1664,7 +1664,7 @@ export const RITUALS = {
           prereq: "Skuld Fulfilled",
           cost: "One Rouse Check, possible Stains",
           effect: "Bring a fresh corpse back to life",
-          dice_pool: "Resolve +Oblivion",
+          dice_pool: "Resolve + Oblivion",
           difficulty: "Level + 1",
           notes:
             "This lasts until the body dies again or the wraith is exorcised from the host.",
@@ -1676,7 +1676,7 @@ export const RITUALS = {
           prereq: "Tenebrous Avatar",
           cost: "One Rouse Check, possible Stains",
           effect: "Cast an enemy into Oblivion itself.",
-          dice_pool: "Resolve +Oblivion",
+          dice_pool: "Resolve + Oblivion",
           difficulty: "Level + 1",
           notes:
             "Mortals sucked in are instantly killed. This ceremony is connected to the Cult of Shalim.",
