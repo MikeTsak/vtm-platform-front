@@ -1,0 +1,62 @@
+RewriteEngine On
+RewriteBase /
+
+# ----------------------------------------
+# 🚀 1. Routing Rules (SPA & API)
+# ----------------------------------------
+
+# Serve index.html normally if requested explicitly
+RewriteRule ^index\.html$ - [L]
+
+# Don't touch API routes — let Node/Express handle them
+# Note: This prevents the Rewrite rules below from messing with API calls
+RewriteCond %{REQUEST_URI} ^/api/ [NC]
+RewriteRule . - [L]
+
+# If the request matches an existing file (image, js, css) or folder, serve it directly
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule . - [L]
+
+# Otherwise, hand everything else to React (Client Side Routing)
+RewriteRule . /index.html [L]
+
+# ----------------------------------------
+# 🧠 2. Smart Caching Rules
+# ----------------------------------------
+
+# A. THE ENTRY POINT (Critical for updates)
+# We force the browser to check for a new index.html every time.
+# This ensures that as soon as you deploy, users get the new "map" of files.
+<FilesMatch "^index\.html$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+</FilesMatch>
+
+# B. THE APP FILES (JS & CSS)
+# IMPROVEMENT: We cache these for 1 year ("immutable").
+# Assumption: Your React build uses hashed filenames (e.g. main.5f2a1.js).
+# If the file content changes, the hash changes, so we don't need to re-download the old one.
+<FilesMatch "\.(js|css)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+</FilesMatch>
+
+# C. STATIC CONFIG (Optional)
+# If you use a manifest.json or config.json that changes often, DO NOT cache it.
+<FilesMatch "^(manifest\.json|service-worker\.js|config\.json)$">
+  Header set Cache-Control "no-cache, no-store, must-revalidate"
+</FilesMatch>
+
+# D. MEDIA FILES
+# Cache images/fonts for 6 months to 1 year
+<FilesMatch "\.(png|jpg|jpeg|gif|svg|ico|webp|woff|woff2|ttf|eot)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+</FilesMatch>
+
+# ----------------------------------------
+# ⚡ 3. Compression
+# ----------------------------------------
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json application/xml
+</IfModule>

@@ -62,6 +62,45 @@
   border-color: #d97706;
 }
 
+.disclaimer {
+  flex-basis: 100%;
+  width: 100%;
+  margin-top: 1rem;
+  background-color: rgba(251, 191, 36, 0.15);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: #fbbf24;
+  line-height: 1.4;
+}
+
+@media (width <= 600px) {
+  .page {
+    padding: 0.5rem;
+  }
+  .header {
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.25rem;
+    gap: 0.25rem;
+  }
+  .pageTitle {
+    font-size: 1.25rem;
+  }
+  .createBtn {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+  }
+  .disclaimer {
+    margin-top: 0;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.65rem;
+    line-height: 1.2;
+  }
+}
+
+
 /* Tabs */
 .viewModeTabs {
   display: flex;

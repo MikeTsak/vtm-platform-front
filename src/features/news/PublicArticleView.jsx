@@ -7,7 +7,7 @@ import themeStyles from '../../styles/NewsThemes.module.css';
 import { NEWS_OUTLETS } from '../../constants/newsConstants';
 import { apiJoin, isVideoUrl } from '../../utils/newsUtils';
 import { Skeleton } from 'boneyard-js/react';
-import GoogleAd from '../../components/GoogleAd';
+// import GoogleAd from '../../components/GoogleAd';
 import Avatar from '../../components/Avatar';
 import courtStyles from '../../styles/Court.module.css';
 
@@ -138,27 +138,27 @@ export default function PublicArticleView() {
   // Render left and right sidebar ads + bottom banner
   const LeftAdSidebar = () => (
     <aside className={themeStyles.sidebarLeft}>
-      <div className={themeStyles.adContainer} style={{ background: 'transparent', padding: '0' }}>
+      {/* <div className={themeStyles.adContainer} style={{ background: 'transparent', padding: '0' }}>
         <span className={themeStyles.adLabel}>Advertisement</span>
         <GoogleAd format="vertical" style={{ minHeight: '600px' }} />
-      </div>
+      </div> */}
     </aside>
   );
 
   const RightAdSidebar = () => (
     <aside className={themeStyles.sidebarRight}>
-      <div className={themeStyles.adContainer} style={{ background: 'transparent', padding: '0' }}>
+      {/* <div className={themeStyles.adContainer} style={{ background: 'transparent', padding: '0' }}>
         <span className={themeStyles.adLabel}>Advertisement</span>
         <GoogleAd format="vertical" style={{ minHeight: '600px' }} />
-      </div>
+      </div> */}
     </aside>
   );
 
   // Only one bottom banner ad per article
   const BottomAd = () => (
     <div style={{ background: 'transparent', padding: '1rem 0', marginTop: '2rem', borderTop: '1px solid rgba(0,0,0,0.1)' }}>
-      <span style={{ display: 'block', fontSize: '0.7rem', color: '#aaa', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Advertisement</span>
-      <GoogleAd format="horizontal" style={{ minHeight: '90px' }} />
+      {/* <span style={{ display: 'block', fontSize: '0.7rem', color: '#aaa', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Advertisement</span>
+      <GoogleAd format="horizontal" style={{ minHeight: '90px' }} /> */}
     </div>
   );
 
