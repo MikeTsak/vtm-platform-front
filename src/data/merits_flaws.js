@@ -23,6 +23,7 @@ export const ALL_MF_CATEGORIES = [
   'Thin-blood',
   'Ghouls',
   'Cults',
+  'Coterie Clan Merits',
   'Backgrounds',
 ];
 
@@ -1065,6 +1066,111 @@ export const MERITS_AND_FLAWS = {
         ],
       },
     },
+  },
+
+  // ===== Coterie Clan Merits =====
+  'Coterie Clan Merits': {
+    blurb:
+      'Kindred can also purchase Coterie Merits at Character Creation, these are merits tied to specific clans but they can generally be activated by anyone within the group. In some cases, only one member of the coterie can use the given Merit in a session based on who needs it the most. (Source: Players Guide, page 179)',
+    merits: [
+      {
+        id: idFor('Coterie Clan Merits', 'Call to Purpose'),
+        name: 'Call to Purpose (Banu Haqim)',
+        dots: '••',
+        description: 'Once per session, they may motivate another teammate to gain the effect of a Willpower point to be immediately used. (Source: Companion, page 31 / Players Guide, page 179)',
+      },
+      {
+        id: idFor('Coterie Clan Merits', 'Boot and Rally'),
+        name: 'Boot and Rally (Brujah)',
+        dots: '•',
+        description: 'Once per session, a coterie mate may reroll all regular dice on a failed Physical test. (Source: Companion, page 31 / Players Guide, page 180)',
+      },
+      {
+        id: idFor('Coterie Clan Merits', 'Pack Tactics'),
+        name: 'Pack Tactics (Gangrel)',
+        dots: '•••',
+        description: 'When in combat gain a single die to pools for Brawl or Melee attacks when together. (Source: Companion, page 32 / Players Guide, page 181)',
+      },
+      {
+        id: idFor('Coterie Clan Merits', 'Ars Moriendi'),
+        name: 'Ars Moriendi (Hecata)',
+        dots: '••',
+        description: 'Once per session, they can mask the corpse of someone killed. (Source: Companion, page 32 / Players Guide, page 182)',
+      },
+      {
+        id: idFor('Coterie Clan Merits', 'At Any Cost'),
+        name: 'At Any Cost (Lasombra)',
+        dots: '••',
+        description: 'Once per session, add two successes to a test. The outcome is treated as a Messy Critical. (Source: Companion, page 33 / Players Guide, page 182)',
+      },
+      {
+        id: idFor('Coterie Clan Merits', 'Everything is Connected'),
+        name: 'Everything is Connected (Malkavian)',
+        dots: '•••',
+        description: 'Once per session, another member of the coterie may substitute one skill for another on a test involving information gathering. (Source: Companion, page 34 / Players Guide, page 183)',
+      },
+      {
+        id: idFor('Coterie Clan Merits', 'Discerning'),
+        name: 'Discerning (The Ministry)',
+        dots: '•',
+        description: "Once per session the Minister character may learn something about a Storytellers character's wants as long as a member of the coterie has spoken to them. (Source: Companion, page 36 / Players Guide, page 184)",
+      },
+      {
+        id: idFor('Coterie Clan Merits', 'Contextual Contact'),
+        name: 'Contextual Contact (Nosferatu)',
+        dots: '••',
+        description: "Once per session, the Nosferatu may add the highest-rated coterie members' contact rating to any one test to recover information. (Source: Companion, page 36 / Players Guide, page 185)",
+      },
+      {
+        id: idFor('Coterie Clan Merits', 'Cryptolect'),
+        name: 'Cryptolect (Ravnos)',
+        dots: '•••',
+        description: 'Allows the coterie to communicate in coded language and hand signs. (Source: Companion, page 37 / Players Guide, page 185)',
+      },
+      {
+        id: idFor('Coterie Clan Merits', 'Restraint'),
+        name: 'Restraint (Salubri)',
+        dots: '•••',
+        description: 'Once per session, the Salubri can allow another member of their group to reroll all of their Hunger dice in a test for free. (Source: Players Guide, page 187)',
+      },
+      {
+        id: idFor('Coterie Clan Merits', 'All Access'),
+        name: 'All Access (Toreador)',
+        dots: '•',
+        description: 'One per session, they can get past bouncers to get into a mortal event by being on the list or knowing the right connections. (Source: Companion, page 38 / Players Guide, page 187)',
+      },
+      {
+        id: idFor('Coterie Clan Merits', 'Multi-Level Lorekeeping'),
+        name: 'Multi-Level Lorekeeping (Tremere)',
+        dots: '••',
+        description: "Once per session, someone can use another's loresheet within the coterie including clan specific. (Source: Companion, page 38 / Players Guide, page 188)",
+      },
+      {
+        id: idFor('Coterie Clan Merits', 'Old-World Hospitality'),
+        name: 'Old-World Hospitality (Tzimisce)',
+        dots: '••',
+        description: "When daysleeping in the Tzimisce's haven, they regain an additional Superficial Willpower damage. (Source: Companion, page 39 / Players Guide, page 189)",
+      },
+      {
+        id: idFor('Coterie Clan Merits', 'Kindred Legacies'),
+        name: 'Kindred Legacies (Ventrue)',
+        dots: '•',
+        description: "Once per session, the Ventrue may ask for relevant information about the history of a single vampire they've met. (Source: Companion, page 31 / Players Guide, page 187)",
+      },
+      {
+        id: idFor('Coterie Clan Merits', 'Versatile Vitae'),
+        name: 'Versatile Vitae (Caitiff)',
+        dots: '••',
+        description: 'Once per session, the Caitiff can enable another coterie mate to use a Discipline power they do not possess assuming they have the Discipline levels and other pre-requisites for the duration of one scene. (Source: Players Guide, page 187)',
+      },
+      {
+        id: idFor('Coterie Clan Merits', 'Mortal Heart'),
+        name: 'Mortal Heart (Thin-blood)',
+        dots: '••',
+        description: 'Once per session, the coterie may be reminded by the thin-blood what it means to be alive and count their Humanity as one dot higher for one scene. (Source: Players Guide, page 187)',
+      },
+    ],
+    flaws: [],
   },
 
   // ===== Backgrounds =====

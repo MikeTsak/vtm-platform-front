@@ -2405,6 +2405,7 @@ function RitualRow({ item, level, cost, owned, allowed, afford, prereqUnmet = []
             {item.dice_pool && <span style={{ padding: '2px 8px', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '12px' }}><b>Dice Pool:</b> {item.dice_pool}</span>}
             {item.difficulty && <span style={{ padding: '2px 8px', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '12px' }}><b>Difficulty:</b> {item.difficulty}</span>}
             {item.prereq && <span style={{ padding: '2px 8px', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '12px' }}><b>Prereq:</b> {item.prereq}</span>}
+            {item.source && <span style={{ padding: '2px 8px', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '12px' }}><b>Source:</b> {item.source}</span>}
           </div>
           {item.effect && <div style={{ marginBottom: '8px' }}><b>Effect:</b> {item.effect}</div>}
           {item.notes && <div>{item.notes}</div>}
@@ -2805,6 +2806,7 @@ function InlineDisciplinePicker({ cfg, onConfirm, searchQuery }) {
                           {p.duration && <div><b style={{ color: 'var(--text-color)' }}>Duration:</b> {p.duration}</div>}
                           {p.amalgam && <div><b style={{ color: 'var(--text-color)' }}>Amalgam:</b> {p.amalgam}</div>}
                           {p.prerequisite && <div><b style={{ color: 'var(--text-color)' }}>Prerequisite:</b> {p.prerequisite}</div>}
+                          {p.source && <div><b style={{ color: 'var(--text-color)' }}>Source:</b> {p.source}</div>}
                           {p.system && <div style={{ gridColumn: '1 / -1', marginTop: '4px' }}><b style={{ color: 'var(--text-color)' }}>System:</b> {p.system}</div>}
                         </div>
                       )}

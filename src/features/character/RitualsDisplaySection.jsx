@@ -41,6 +41,7 @@ function RitualItem({ ritual, category }) {
                 {fullData.cost && fullData.cost !== '—' && <span><b style={{ opacity: 0.6 }}>Cost:</b> {fullData.cost}</span>}
                 {fullData.dice_pool && fullData.dice_pool !== '—' && <span><b style={{ opacity: 0.6 }}>Pool:</b> {fullData.dice_pool}</span>}
                 {fullData.difficulty && fullData.difficulty !== '—' && <span><b style={{ opacity: 0.6 }}>Diff:</b> {fullData.difficulty}</span>}
+                {fullData.source && <span><b style={{ opacity: 0.6 }}>Source:</b> {fullData.source}</span>}
               </div>
               {fullData.effect && (
                 <div style={{ lineHeight: '1.4', marginTop: '4px' }}>
