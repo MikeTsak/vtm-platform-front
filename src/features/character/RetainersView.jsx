@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+﻿import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../../core/api';
 import styles from '../../styles/RetainersView.module.css';
@@ -1386,7 +1386,7 @@ export default function RetainersView() {
                       }}
                     >
                       <div className={styles.rosterAvatar}>
-                        <Avatar retainerId={r.id} size={48} fallback="/img/ATT-logo(1).png" />
+                        <Avatar retainerId={r.id} size={48} fallback="/img/ATT-logo(1).webp" />
                       </div>
                       <div className={styles.rosterInfo}>
                         <h4 className={styles.rosterName}>{r.name}</h4>

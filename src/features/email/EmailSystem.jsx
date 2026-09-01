@@ -1,4 +1,4 @@
-// src/components/EmailSystem.jsx
+﻿// src/components/EmailSystem.jsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import DOMPurify from 'dompurify';
 import api from '../../core/api';
@@ -102,7 +102,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled = true }) {
 
   const notify = useCallback((title, body, icon) => {
     if (!notifSupported || !notifOn || Notification.permission !== 'granted') return;
-    new Notification(title, { body, icon: icon || '/img/ATT-logo(1).png' });
+    new Notification(title, { body, icon: icon || '/img/ATT-logo(1).webp' });
   }, [notifSupported, notifOn]);
 
   const checkNewEmails = useCallback((newThreads) => {

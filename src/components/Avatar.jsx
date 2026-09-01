@@ -5,7 +5,7 @@ import AvatarCropperModal from './AvatarCropperModal';
 
 const avatarTimestamps = new Map();
 
-export default function Avatar({ userId, npcId, identityId, retainerId, size = 80, editable = false, onUploadSuccess, onFileSelect, previewUrl, style = {}, className = "", imgClassName = "", imgStyle = {}, fallback = '/img/ATT-logo(1).png' }) {
+export default function Avatar({ userId, npcId, identityId, retainerId, size = 80, editable = false, onUploadSuccess, onFileSelect, previewUrl, style = {}, className = "", imgClassName = "", imgStyle = {}, fallback = '/img/ATT-logo(1).webp' }) {
   const entityKey = userId ? `u_${userId}` : (npcId ? `n_${npcId}` : (retainerId ? `r_${retainerId}` : `i_${identityId}`));
   const [timestamp, setTimestamp] = useState(() => avatarTimestamps.get(entityKey) || '');
   const [isUploading, setIsUploading] = useState(false);
@@ -119,6 +119,8 @@ export default function Avatar({ userId, npcId, identityId, retainerId, size = 8
         <img 
           src={srcUrl} 
           alt="User Avatar" 
+          width={size}
+          height={size}
           className={`${styles.avatarImage} ${imgClassName}`}
           style={imgStyle}
           onError={() => setImgError(true)}

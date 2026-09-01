@@ -1,4 +1,4 @@
-// src/components/ChatSystem.jsx
+﻿// src/components/ChatSystem.jsx
 import React, { useState, useEffect, useContext, useRef, useMemo, useLayoutEffect, useCallback } from 'react';
 import { AuthCtx } from '../../core/AuthContext';
 import api from '../../core/api';
@@ -31,9 +31,9 @@ const getApiOrigin = () => {
 };
 
 const symlogo = (c) =>
-  (c ? `${getApiOrigin()}/img/clans/330px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g, '_')}_symbol.png` : '');
+  (c ? `${getApiOrigin()}/img/clans/330px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g, '_')}_symbol.webp` : '');
 const localSymlogo = (c) =>
-  (c ? `/img/clans/330px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g, '_')}_symbol.png` : '');
+  (c ? `/img/clans/330px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g, '_')}_symbol.webp` : '');
 
 const customClanEmojis = Object.keys(CLAN_COLORS).map(clan => ({
   id: clan.toLowerCase().replace(/[^a-z0-9]/g, '_'),
@@ -711,7 +711,7 @@ export default function ChatSystem({ commsEnabled = true }) {
               if (inboundNew.length && (document.hidden || !pageVisibleRef.current)) {
                 const latest = inboundNew[inboundNew.length - 1];
                 let title = 'New Message';
-                let icon = '/img/ATT-logo(1).png';
+                let icon = '/img/ATT-logo(1).webp';
 
                 if (selectedContact.type === 'group') {
                   title = `${selectedContact.name}: ${latest.sender_name || 'Someone'}`;
@@ -1289,7 +1289,7 @@ export default function ChatSystem({ commsEnabled = true }) {
                   <li key={`u-${u.id}`} onClick={() => selectContact(u)} className={`${isActive ? 'blood-active border-l-4 translate-x-1' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all`}>
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center overflow-hidden border border-outline-variant/50 relative">
-                        <Avatar userId={u.id} size="100%" style={{ width: '100%', height: '100%' }} imgClassName="opacity-80" fallback={localSymlogo(u.clan) || '/img/ATT-logo(1).png'} />
+                        <Avatar userId={u.id} size="100%" style={{ width: '100%', height: '100%' }} imgClassName="opacity-80" fallback={localSymlogo(u.clan) || '/img/ATT-logo(1).webp'} />
                       </div>
                       <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate flex flex-col`}>
                         <span className="truncate">{u.char_name}</span>
@@ -1322,7 +1322,7 @@ export default function ChatSystem({ commsEnabled = true }) {
                     <li key={`u-${u.id}`} onClick={() => selectContact(u)} className={`${isActive ? 'blood-active border-l-4 translate-x-1' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all opacity-80`}>
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="w-6 h-6 rounded-full bg-surface-container flex items-center justify-center shrink-0 border border-outline-variant/30 overflow-hidden">
-                          <Avatar userId={u.id} size="100%" style={{ width: '100%', height: '100%' }} imgClassName="opacity-80" fallback="/img/ATT-logo(1).png" />
+                          <Avatar userId={u.id} size="100%" style={{ width: '100%', height: '100%' }} imgClassName="opacity-80" fallback="/img/ATT-logo(1).webp" />
                         </div>
                         <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate flex flex-col`}>
                           <span className="truncate">{u.display_name}</span>
@@ -1351,7 +1351,7 @@ export default function ChatSystem({ commsEnabled = true }) {
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="relative shrink-0">
                         <div className="w-6 h-6 rounded-sm bg-surface-container-highest flex items-center justify-center overflow-hidden border border-outline-variant/50">
-                          <Avatar npcId={n.id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="opacity-80" fallback={crest || '/img/ATT-logo(1).png'} />
+                          <Avatar npcId={n.id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="opacity-80" fallback={crest || '/img/ATT-logo(1).webp'} />
                         </div>
                       </div>
                       <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate flex items-center gap-1`}>
@@ -1402,9 +1402,9 @@ export default function ChatSystem({ commsEnabled = true }) {
                 <div className="relative shrink-0">
                   <div className="w-10 h-10 rounded-sm bg-surface-container-highest overflow-hidden border border-outline-variant/50 flex items-center justify-center">
                     {selectedContact.type === 'user' ? (
-                      <Avatar userId={selectedContact.id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="opacity-80" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).png'} />
+                      <Avatar userId={selectedContact.id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="opacity-80" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).webp'} />
                     ) : selectedContact.type === 'npc' ? (
-                      <Avatar npcId={selectedContact.id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="opacity-80" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).png'} />
+                      <Avatar npcId={selectedContact.id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="opacity-80" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).webp'} />
                     ) : (
                       <span className="material-symbols-outlined text-on-surface-variant text-[24px]">group</span>
                     )}
@@ -1526,11 +1526,11 @@ export default function ChatSystem({ commsEnabled = true }) {
                         {(() => {
                           if (selectedContact.type === 'group') {
                             const sender = currentGroupMembers.find(m => m.id === item.sender_id);
-                            return <Avatar userId={item.sender_id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="" fallback={localSymlogo(item.sender_clan || sender?.clan) || '/img/ATT-logo(1).png'} />;
+                            return <Avatar userId={item.sender_id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="" fallback={localSymlogo(item.sender_clan || sender?.clan) || '/img/ATT-logo(1).webp'} />;
                           } else if (item.sender_id === 'npc') {
-                            return <Avatar npcId={selectedContact.id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).png'} />;
+                            return <Avatar npcId={selectedContact.id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).webp'} />;
                           } else {
-                            return <Avatar userId={item.sender_id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).png'} />;
+                            return <Avatar userId={item.sender_id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).webp'} />;
                           }
                         })()}
                       </div>

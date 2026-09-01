@@ -1,5 +1,5 @@
 // src/App.jsx
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { HelmetProvider, Helmet } from 'react-helmet-async';
 import AuthProvider, { AuthCtx } from './AuthContext';
@@ -9,42 +9,43 @@ import api from './api';
 import { Skeleton } from 'boneyard-js/react';
 import { trackPageView, setUserId, setUserProperties } from '../utils/analytics';
 
-// Pages & Components
+// Pages & Components (Critical Path)
 import Login from '../features/auth/Login';
 import Register from '../features/auth/Register';
 import Home from '../pages/Home';
-import CharacterView from '../features/character/CharacterView';
-import CharacterSetup from '../features/character/CharacterSetup';
-import Domains from '../features/domains/Domains';
-import DownTimes from '../features/downtimes/DownTimes';
-import Boons from '../features/boons/Boons';
-import MediaViewer from '../pages/MediaViewer';
-import Premonitions from '../features/premonitions/Premonitions';
-import News from '../features/news/News';
-import PublicArticleView from '../features/news/PublicArticleView';
 import GlobalBanner from '../components/GlobalBanner';
 import CookieConsent from '../components/CookieConsent';
 import Nav from '../ui/Nav';
-import NotFound from '../pages/404';
-import Hierarchy from '../features/court/HierarchyView';
-import Announcements from '../features/announcements/AnnouncementsView';
-import Coteries from '../features/coterie/CoterieManager';
-import LiveSession from '../features/live-session/LiveSession';
-import LiveSessionDashboard from '../features/admin/LiveSessionDashboard';
-import SchreckNet from '../features/comms/schrecknet/SchreckNet';
-import SurfaceWeb from '../features/comms/surfaceweb/SurfaceWeb';
-// Missing imports that were causing errors
-import Admin from '../features/admin/Admin';
-import NPCs from '../features/npcs/NPCs';
-import AdminNPCView from '../features/admin/AdminNPCView';
-import RetainersView from '../features/character/RetainersView';
-import ForgotPassword from '../features/auth/ForgotPassword';
-import ResetPassword from '../features/auth/ResetPassword';
-import Terms from '../pages/Terms';
-import Legal from '../pages/Legal';
-import Privacy from '../pages/Privacy';
-import DiceRoller from '../features/dice/DiceRoller';
 import Footer from '../ui/Footer';
+import DiceRoller from '../features/dice/DiceRoller';
+
+// Lazy Loaded Routes
+const CharacterView = React.lazy(() => import('../features/character/CharacterView'));
+const CharacterSetup = React.lazy(() => import('../features/character/CharacterSetup'));
+const Domains = React.lazy(() => import('../features/domains/Domains'));
+const DownTimes = React.lazy(() => import('../features/downtimes/DownTimes'));
+const Boons = React.lazy(() => import('../features/boons/Boons'));
+const MediaViewer = React.lazy(() => import('../pages/MediaViewer'));
+const Premonitions = React.lazy(() => import('../features/premonitions/Premonitions'));
+const News = React.lazy(() => import('../features/news/News'));
+const PublicArticleView = React.lazy(() => import('../features/news/PublicArticleView'));
+const NotFound = React.lazy(() => import('../pages/404'));
+const Hierarchy = React.lazy(() => import('../features/court/HierarchyView'));
+const Announcements = React.lazy(() => import('../features/announcements/AnnouncementsView'));
+const Coteries = React.lazy(() => import('../features/coterie/CoterieManager'));
+const LiveSession = React.lazy(() => import('../features/live-session/LiveSession'));
+const LiveSessionDashboard = React.lazy(() => import('../features/admin/LiveSessionDashboard'));
+const SchreckNet = React.lazy(() => import('../features/comms/schrecknet/SchreckNet'));
+const SurfaceWeb = React.lazy(() => import('../features/comms/surfaceweb/SurfaceWeb'));
+const Admin = React.lazy(() => import('../features/admin/Admin'));
+const NPCs = React.lazy(() => import('../features/npcs/NPCs'));
+const AdminNPCView = React.lazy(() => import('../features/admin/AdminNPCView'));
+const RetainersView = React.lazy(() => import('../features/character/RetainersView'));
+const ForgotPassword = React.lazy(() => import('../features/auth/ForgotPassword'));
+const ResetPassword = React.lazy(() => import('../features/auth/ResetPassword'));
+const Terms = React.lazy(() => import('../pages/Terms'));
+const Legal = React.lazy(() => import('../pages/Legal'));
+const Privacy = React.lazy(() => import('../pages/Privacy'));
 
 function Private({ children }) {
   const { user, loading } = useContext(AuthCtx);
@@ -174,50 +175,52 @@ function AppLayout() {
             : { flexGrow: 1 }
         }
       >
-        <Routes>
-          <Route path="/" element={<Private><Home /></Private>} />
-          <Route path="/character" element={<Private><CharacterView /></Private>} />
-          <Route path="/retainers" element={<Private><RetainersView /></Private>} />
-          <Route path="/make" element={<Private><CharacterSetup /></Private>} />
-          <Route path="/domains" element={<Private><Domains /></Private>} />
-          <Route path="/downtimes" element={<Private><DownTimes /></Private>} />
-          <Route path="/boons" element={<Private><Boons /></Private>} />
-          <Route path="/schrecknet" element={<Private><SchreckNet /></Private>} />
-          <Route path="/surfaceweb" element={<Private><SurfaceWeb /></Private>} />
-          <Route path="/live-session" element={<Private><LiveSession /></Private>} />
-          <Route path="/court" element={<Navigate to="/court/hierarchy" replace />} />
-          <Route path="/court/hierarchy" element={<Private><Hierarchy /></Private>} />
-          <Route path="/court/announcements" element={<Private><Announcements /></Private>} />
-          <Route path="/court/announcements/:id" element={<PublicArticleView />} />
-          <Route path="/court/coteries" element={<Private><Coteries /></Private>} />
+        <Suspense fallback={<Skeleton name="page-loading" loading={true} />}>
+          <Routes>
+            <Route path="/" element={<Private><Home /></Private>} />
+            <Route path="/character" element={<Private><CharacterView /></Private>} />
+            <Route path="/retainers" element={<Private><RetainersView /></Private>} />
+            <Route path="/make" element={<Private><CharacterSetup /></Private>} />
+            <Route path="/domains" element={<Private><Domains /></Private>} />
+            <Route path="/downtimes" element={<Private><DownTimes /></Private>} />
+            <Route path="/boons" element={<Private><Boons /></Private>} />
+            <Route path="/schrecknet" element={<Private><SchreckNet /></Private>} />
+            <Route path="/surfaceweb" element={<Private><SurfaceWeb /></Private>} />
+            <Route path="/live-session" element={<Private><LiveSession /></Private>} />
+            <Route path="/court" element={<Navigate to="/court/hierarchy" replace />} />
+            <Route path="/court/hierarchy" element={<Private><Hierarchy /></Private>} />
+            <Route path="/court/announcements" element={<Private><Announcements /></Private>} />
+            <Route path="/court/announcements/:id" element={<PublicArticleView />} />
+            <Route path="/court/coteries" element={<Private><Coteries /></Private>} />
 
-          <Route path="/news" element={<News />} />
-          <Route path="/news/:id" element={<PublicArticleView />} />
-          <Route path="/rumors" element={<News />} />
-          <Route path="/rumors/:id" element={<PublicArticleView />} />
+            <Route path="/news" element={<News />} />
+            <Route path="/news/:id" element={<PublicArticleView />} />
+            <Route path="/rumors" element={<News />} />
+            <Route path="/rumors/:id" element={<PublicArticleView />} />
 
-          <Route path="/admin" element={<AdminOnly><Admin /></AdminOnly>} />
-          <Route path="/admin/live-session" element={<CourtOnly><LiveSessionDashboard /></CourtOnly>} />
-          <Route path="/admin/npcs" element={<AdminOnly><NPCs /></AdminOnly>} />
-          <Route path="/admin/npcs/:id" element={<AdminOnly><AdminNPCView /></AdminOnly>} />
+            <Route path="/admin" element={<AdminOnly><Admin /></AdminOnly>} />
+            <Route path="/admin/live-session" element={<CourtOnly><LiveSessionDashboard /></CourtOnly>} />
+            <Route path="/admin/npcs" element={<AdminOnly><NPCs /></AdminOnly>} />
+            <Route path="/admin/npcs/:id" element={<AdminOnly><AdminNPCView /></AdminOnly>} />
 
-          <Route path="/forgot" element={<ForgotPassword />} />
-          <Route path="/reset" element={<ResetPassword />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/terms" element={<Terms />} />
-          <Route path="/legal" element={<Legal />} />
-          <Route path="/privacy" element={<Privacy />} />
-          <Route path="/media/:id" element={<MediaViewer />} />
+            <Route path="/forgot" element={<ForgotPassword />} />
+            <Route path="/reset" element={<ResetPassword />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/legal" element={<Legal />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/media/:id" element={<MediaViewer />} />
 
-          <Route
-            path="/premonitions"
-            element={<MalkavianOrAdminOnly><Premonitions /></MalkavianOrAdminOnly>}
-          />
+            <Route
+              path="/premonitions"
+              element={<MalkavianOrAdminOnly><Premonitions /></MalkavianOrAdminOnly>}
+            />
 
-          {/* ✅ ADDED CATCH-ALL ROUTE HERE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+            {/* ✅ ADDED CATCH-ALL ROUTE HERE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
       </div>
       <NotificationBanner />
       <DiceRoller />

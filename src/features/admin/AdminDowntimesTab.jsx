@@ -1,4 +1,4 @@
-// src/components/admin/AdminDowntimesTab.jsx
+﻿// src/components/admin/AdminDowntimesTab.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import api from "../../core/api";
 import { formatEuDate } from '../../utils/dateFormatter';
@@ -13,7 +13,7 @@ const CLAN_COLORS = {
 };
 const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim' };
 const fileify = (c) => (NAME_OVERRIDES[c] || c).replace(/\s+/g, '_');
-const symlogo = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.png` : '');
+const symlogo = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.webp` : '');
 /* ---------------------------------- */
 
 function niceDate(d) {

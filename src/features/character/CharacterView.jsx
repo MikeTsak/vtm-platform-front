@@ -1,4 +1,4 @@
-// src/pages/CharacterView.jsx
+﻿// src/pages/CharacterView.jsx
 import React, { useEffect, useMemo, useState, useCallback, useRef, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -55,8 +55,8 @@ const NAME_OVERRIDES = {
   'Thin-blood': 'Thinblood'
 };
 const fileify = (c) => (NAME_OVERRIDES[c] || c).replace(/\s+/g, '_');
-const symlogo = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.png` : '');
-const textlogo = (c) => (c ? `/img/clans/text/300px-${fileify(c)}_logo.png` : '');
+const symlogo = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.webp` : '');
+const textlogo = (c) => (c ? `/img/clans/text/300px-${fileify(c)}_logo.webp` : '');
 
 
 

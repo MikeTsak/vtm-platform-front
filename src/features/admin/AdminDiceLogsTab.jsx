@@ -1,12 +1,12 @@
-// src/components/admin/AdminDiceLogsTab.jsx
+﻿// src/components/admin/AdminDiceLogsTab.jsx
 import React, { useEffect, useState, useCallback } from "react";
 import styles from '../../styles/AdminDiceLogsTab.module.css';
 import api from '../../core/api'; // Import the central api module
 import { formatEuDate } from '../../utils/dateFormatter';
 
 const IMG = {
-  normal: (v) => `/img/dice/normal-${v}.png`,
-  hunger: (v) => `/img/dice/hunger-${v}.png`,
+  normal: (v) => `/img/dice/normal-${v}.webp`,
+  hunger: (v) => `/img/dice/hunger-${v}.webp`,
 };
 
 export default function AdminDiceLogsTab() {
@@ -92,19 +92,19 @@ export default function AdminDiceLogsTab() {
           const diff = Number(res.difficulty ?? r.difficulty ?? 0) || 0;
           const metDifficulty = diff > 0 ? successes >= diff : successes > 0;
 
-          let art = "/img/dice/Success.png";
+          let art = "/img/dice/Success.webp";
           let resultType = "success";
           if (messyCritical && metDifficulty) {
-            art = "/img/dice/MessyCrit.png";
+            art = "/img/dice/MessyCrit.webp";
             resultType = "messy";
           } else if (hasCritical && metDifficulty) {
-            art = "/img/dice/Crit.png";
+            art = "/img/dice/Crit.webp";
             resultType = "critical";
           } else if (bestialFailure) {
-            art = "/img/dice/BestialFail.png";
+            art = "/img/dice/BestialFail.webp";
             resultType = "bestial";
           } else if (!metDifficulty) {
-            art = "/img/dice/BestialFail.png";
+            art = "/img/dice/BestialFail.webp";
             resultType = "failure";
           }
 

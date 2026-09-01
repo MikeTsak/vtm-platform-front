@@ -1,4 +1,4 @@
-// src/components/admin/AdminCharactersTab.jsx
+﻿// src/components/admin/AdminCharactersTab.jsx
 import React, { useMemo, useState, useEffect } from 'react';
 import api from '../../core/api';
 import Inventory from '../inventory/Inventory';
@@ -17,7 +17,7 @@ const CLAN_COLORS = {
 };
 const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim' };
 const fileify = (c) => (NAME_OVERRIDES[c] || c).replace(/\s+/g, '_');
-const symlogo = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.png` : '');
+const symlogo = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.webp` : '');
 
 // ---------- TRACKER DISPLAY ----------
 const TrackerDisplay = ({ label, currentObj, max, onUpdate, isValueTracker = false, value = 0, stains = 0 }) => {

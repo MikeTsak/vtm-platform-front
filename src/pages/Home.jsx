@@ -29,8 +29,8 @@ const CLAN_COLORS = {
 
 const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim' };
 const fileify = (c) => (NAME_OVERRIDES[c] || c).replace(/\s+/g, '_');
-const symlogo  = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.png`      : '');
-const textlogo = (c) => (c ? `/img/clans/text/300px-${fileify(c)}_logo.png`   : '');
+const symlogo  = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.webp`      : '');
+const textlogo = (c) => (c ? `/img/clans/text/300px-${fileify(c)}_logo.webp`   : '');
 
 /* ── Relative time ──────────────────────────────────────────────── */
 const formatTimestamp = (ts) => {
@@ -252,20 +252,23 @@ export default function Home() {
     let live = true;
     (async () => {
       try {
-        const { data: meData } = await api.get('/auth/me');
+        const [meReq, chReq, dashReq] = await Promise.all([
+          api.get('/auth/me'),
+          api.get('/characters/me'),
+          api.get('/home/dashboard')
+        ]);
         if (!live) return;
+
+        const meData = meReq.data;
         setMe(meData.user);
         if (meData.user?.role === 'admin') { nav('/admin'); return; }
 
-        const { data: chData } = await api.get('/characters/me');
-        if (!live) return;
+        const chData = chReq.data;
         console.log('DEBUG Home loaded chData:', chData);
         setCh(chData.character);
 
         if (chData.character) {
-          const { data: dashRes } = await api.get('/home/dashboard');
-          if (!live) return;
-          
+          const dashRes = dashReq.data;
           if (dashRes.success) {
             const d = dashRes.data;
             setQuota(d.quota);
@@ -420,7 +423,7 @@ export default function Home() {
                 <h1 className={styles.charName}>{ch.name}</h1>
                 <p className={styles.charSub}>
                   <span className={styles.clanLabel}>
-                    <img src={symlogo(ch.clan)} alt={ch.clan || 'Clan Logo'} style={{ width: '16px', height: '16px', objectFit: 'contain', marginRight: '4px', verticalAlign: 'middle', filter: 'brightness(0) invert(1) drop-shadow(0 0 2px rgba(0,0,0,0.5))' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                    <img src={symlogo(ch.clan)} alt={ch.clan || 'Clan Logo'} width="16" height="16" style={{ width: '16px', height: '16px', objectFit: 'contain', marginRight: '4px', verticalAlign: 'middle', filter: 'brightness(0) invert(1) drop-shadow(0 0 2px rgba(0,0,0,0.5))' }} onError={(e) => { e.target.style.display = 'none'; }} />
                     Clan {ch.clan || 'Caitiff'}
                   </span>
                 </p>
@@ -529,6 +532,8 @@ export default function Home() {
               <img
                 src={textlogo(ch.clan)}
                 alt=""
+                width="300"
+                height="100"
                 className={styles.clanLogo}
                 onError={e => { e.target.parentElement.style.display = 'none'; }}
               />
@@ -560,7 +565,7 @@ export default function Home() {
           {/* 2. NEXT MODERN EVENT */}
           <motion.section 
             className={styles.eventCard} 
-            style={{ backgroundImage: "url('/img/ui/newspaper_bg.png')" }}
+            style={{ backgroundImage: "url('/img/ui/newspaper_bg.webp')" }}
             variants={{
               hidden: { opacity: 0, x: -30 },
               visible: { opacity: 1, x: 0, transition: { type: 'spring', stiffness: 300, damping: 25 } }
@@ -622,7 +627,7 @@ export default function Home() {
                 whileTap={{ scale: 0.95 }}
                 style={{ display: 'flex' }}
               >
-                <Link to={to} className={styles.navCard} style={{ '--card-bg': `url('/img/ui/${img}.png')`, width: '100%' }}>
+                <Link to={to} className={styles.navCard} style={{ '--card-bg': `url('/img/ui/${img}.webp')`, width: '100%' }}>
                   <div className={styles.navCardIcon}>
                     <span className="material-symbols-outlined" style={{ position: 'relative', zIndex: 2 }}>{icon}</span>
                   </div>
@@ -640,7 +645,7 @@ export default function Home() {
                 whileTap={{ scale: 0.95 }}
                 style={{ display: 'flex' }}
               >
-                <Link key="/rumors" to="/rumors" className={styles.navCard} style={{ '--card-bg': `url('/img/ui/marble_surface.png')`, width: '100%' }}>
+                <Link key="/rumors" to="/rumors" className={styles.navCard} style={{ '--card-bg': `url('/img/ui/marble_surface.webp')`, width: '100%' }}>
                   <div className={styles.navCardIcon}>
                     <span className="material-symbols-outlined" style={{ position: 'relative', zIndex: 2 }}>campaign</span>
                   </div>
@@ -665,7 +670,7 @@ export default function Home() {
                   onClick={handlePremonitionClick}
                   className={`${styles.navCard} ${styles.malkCard}`}
                   title="Enter the Cobweb"
-                  style={{ '--card-bg': `url('/img/ui/cobweb_static.png')`, width: '100%' }}
+                  style={{ '--card-bg': `url('/img/ui/cobweb_static.webp')`, width: '100%' }}
                 >
                   <div className={styles.glitchBg}></div>
                   <div className={styles.navCardIcon} style={{ position: 'relative', zIndex: 2 }}>
@@ -690,7 +695,7 @@ export default function Home() {
               visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 25 } }
             }}
           >
-            <div className={styles.chronicleEntryCard} style={{ backgroundImage: "url('/img/ui/newspaper_bg.png')" }}>
+            <div className={styles.chronicleEntryCard} style={{ backgroundImage: "url('/img/ui/newspaper_bg.webp')" }}>
               <h4 className={styles.chronicleEntryLabel}>LATEST CHRONICLE ENTRY</h4>
               {latestChronicle ? (
                 <>
@@ -705,7 +710,7 @@ export default function Home() {
                 </p>
               )}
             </div>
-            <div className={styles.restrictedCard} style={{ backgroundImage: `url('/img/ui/restricted_glass.png')` }}>
+            <div className={styles.restrictedCard} style={{ backgroundImage: `url('/img/ui/restricted_glass.webp')` }}>
                <div className={styles.matrixCode}>
                  ERR:: UNAUTHORIZED ACCESS ATTEMPT<br/>
                  SYS_OVERRIDE_FAIL: CODE 99x8F<br/>
@@ -731,7 +736,7 @@ export default function Home() {
                   key={t.id}
                   onClick={() => handleThemeChange(t.id)}
                   className={`${styles.themeBtn} ${activeTheme === t.id ? styles.themeBtnActive : ''}`}
-                  style={{ '--theme-color': t.hex, '--theme-bg': `url('/img/ui/${t.img}.png')` }}
+                  style={{ '--theme-color': t.hex, '--theme-bg': `url('/img/ui/${t.img}.webp')` }}
                   data-cuelume-toggle
                   data-cuelume-hover
                 >

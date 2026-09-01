@@ -1,4 +1,4 @@
-// src/utils/pdfGenerator.js
+﻿// src/utils/pdfGenerator.js
 
 export default async function generateVTMCharacterSheetPDF(character) {
   // 1. Parse the sheet data securely (Handle both wrapped and raw sheet objects)
@@ -109,7 +109,7 @@ export default async function generateVTMCharacterSheetPDF(character) {
   const hungerVal = sheet.hunger || 0;
 
   // Use the absolute URL so html2pdf and the new window can definitely find your image
-  const logoUrl = window.location.origin + '/img/ATT-logo(1).png';
+  const logoUrl = window.location.origin + '/img/ATT-logo(1).webp';
   const exportDateString = formatExportDate();
 
   // --- STRICTLY NO SPACES IN FILENAME ---

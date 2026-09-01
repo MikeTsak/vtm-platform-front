@@ -1,4 +1,4 @@
-// src/ui/Footer.jsx
+﻿// src/ui/Footer.jsx
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -46,7 +46,7 @@ export default function Footer() {
             {/* Brand / Project */}
             <div className="flex items-center gap-3">
               <img
-                src="/img/ATT-logo(1).png"
+                src="/img/ATT-logo(1).webp"
                 alt="Erebus Portal"
                 className="w-10 h-10 object-contain rounded border border-outline-variant/30 bg-surface-container p-0.5 shadow-md"
                 draggable="false"
@@ -65,10 +65,10 @@ export default function Footer() {
             {/* Logos & Legal */}
             <div className="flex items-center gap-4">
               <a href="https://cerebralproductions.eu/" target="_blank" rel="noreferrer" className="opacity-60 hover:opacity-100 transition-opacity active:scale-95" aria-label="Cerebral Productions">
-                <img src="/img/cerebralproductions.png" alt="Cerebral Productions" className="h-6 object-contain" draggable="false" />
+                <img src="/img/cerebralproductions.webp" alt="Cerebral Productions" className="h-6 object-contain" draggable="false" />
               </a>
               <a href="https://www.paradoxinteractive.com/games/world-of-darkness/community/dark-pack-agreement" target="_blank" rel="noreferrer" className="opacity-60 hover:opacity-100 transition-opacity active:scale-95" aria-label="Dark Pack Agreement">
-                <img src="/img/DarkPack_Logo2.png" alt="World of Darkness — Dark Pack" className="h-6 object-contain" draggable="false" />
+                <img src="/img/DarkPack_Logo2.webp" alt="World of Darkness — Dark Pack" className="h-6 object-contain" draggable="false" />
               </a>
             </div>
           </div>

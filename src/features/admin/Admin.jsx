@@ -1,4 +1,4 @@
-// src/pages/Admin.jsx
+﻿// src/pages/Admin.jsx
 import React, { useEffect, useState, useCallback } from 'react';
 import api from '../../core/api';
 import styles from '../../styles/Admin.module.css';
@@ -121,7 +121,7 @@ function Sidebar({ tab, setTab, collapsed, onToggleCollapse }) {
     <nav className={`${styles.sidebar} ${collapsed ? styles.sidebarCollapsed : ''}`} aria-label="Admin navigation">
       <div className={styles.sidebarLogo}>
         <div className={styles.sidebarLogoIcon} aria-hidden="true" style={{background: 'transparent', border: 'none'}}>
-           <img src="/img/ATT-logo(1).png" alt="Logo" style={{width: '28px', height: '28px', objectFit: 'contain'}} />
+           <img src="/img/ATT-logo(1).webp" alt="Logo" style={{width: '28px', height: '28px', objectFit: 'contain'}} />
         </div>
         <span className={styles.sidebarLogoText} style={{fontFamily: "'Playfair Display', serif", fontSize: '18px', fontWeight: 'bold', textTransform: 'none', letterSpacing: 'normal'}}>Erebus Portal</span>
       </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useContext } from 'react';
+﻿import React, { useState, useEffect, useRef, useContext } from 'react';
 import api from '../../core/api';
 import styles from '../../styles/Court.module.css';
 import { Skeleton } from 'boneyard-js/react';
@@ -209,7 +209,7 @@ export default function AnnouncementsView({ canEdit: propCanEdit }) {
                 <div className={styles.decreeContent}>
                   <header className={styles.decreeMeta}>
                     <div className={styles.decreeAuthorInfo}>
-                      <Avatar userId={item.author_id} size={48} className={styles.decreeAuthorAvatar} fallback="/img/ATT-logo(1).png" />
+                      <Avatar userId={item.author_id} size={48} className={styles.decreeAuthorAvatar} fallback="/img/ATT-logo(1).webp" />
                       <div>
                         <h3 className={styles.decreeAuthorName}>{authorName}</h3>
                         <p className={styles.decreeAuthorRole}>{authorRole}</p>

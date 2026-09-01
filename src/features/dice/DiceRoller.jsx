@@ -1,4 +1,4 @@
-// src/components/DiceRoller.jsx
+﻿// src/components/DiceRoller.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import api from '../../core/api';
@@ -40,11 +40,11 @@ function computeOutcome(normal, hunger, difficulty) {
   if (bestialFailure) label = 'Bestial Failure';
 
   // Art
-  let art = '/img/dice/Success.png';
-  if (messyCritical && metDifficulty) art = '/img/dice/MessyCrit.png';
-  else if (hasCritical && metDifficulty) art = '/img/dice/Crit.png';
-  else if (bestialFailure) art = '/img/dice/BestialFail.png';
-  else if (!metDifficulty) art = '/img/dice/BestialFail.png';
+  let art = '/img/dice/Success.webp';
+  if (messyCritical && metDifficulty) art = '/img/dice/MessyCrit.webp';
+  else if (hasCritical && metDifficulty) art = '/img/dice/Crit.webp';
+  else if (bestialFailure) art = '/img/dice/BestialFail.webp';
+  else if (!metDifficulty) art = '/img/dice/BestialFail.webp';
 
   return {
     successesTotal, extraFromPairs,
@@ -281,7 +281,7 @@ export default function DiceRoller({ characterId }) {
         <svg className={`w-10 h-10 opacity-80 z-10 filter drop-shadow-md col-start-1 row-start-1 pointer-events-none transition-colors ${open ? 'stroke-on-surface' : 'stroke-on-primary'}`} viewBox="0 0 100 100" aria-hidden="true">
           <polygon points="8,22 32,8 68,8 92,22 100,58 74,98 26,98 0,58" fill="none" strokeWidth="6" strokeLinejoin="round" className="stroke-current" />
         </svg>
-        <img src="/img/dice/VtM_ankh_white.png" alt="" className={`w-6 h-6 object-contain z-20 filter drop-shadow-lg col-start-1 row-start-1 pointer-events-none transition-opacity ${open ? 'opacity-50' : 'opacity-100'}`} draggable="false" />
+        <img src="/img/dice/VtM_ankh_white.webp" alt="" className={`w-6 h-6 object-contain z-20 filter drop-shadow-lg col-start-1 row-start-1 pointer-events-none transition-opacity ${open ? 'opacity-50' : 'opacity-100'}`} draggable="false" />
       </button>
 
       {/* Main Panel */}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { iconPath, DISCIPLINES } from '../../data/disciplines';
 import styles from '../../styles/CharacterView.module.css';
 
@@ -91,7 +91,7 @@ function DisciplineRow({ name, level = 0, powers = [], phantomPowers = [] }) {
           alt=""
           width={28}
           height={28}
-          onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/img/disciplines/Oblivion-rombo.png'; }}
+          onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/img/disciplines/Oblivion-rombo.webp'; }}
           className={styles.disciplineIcon}
         />
         <div className={styles.disciplineTitleBlock}>

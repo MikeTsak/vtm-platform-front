@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 
 // Mixed explicit UX terms with the vampire theme
 const phrases = [
@@ -334,7 +334,7 @@ const Loading = () => {
         
         <div className="coffin-lid">
           <img 
-            src="/img/dice/VtM_ankh_white.png" 
+            src="/img/dice/VtM_ankh_white.webp" 
             alt="Ankh" 
             className="ankh-icon" 
             draggable="false" 

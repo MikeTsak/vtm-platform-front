@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import styles from '../../styles/LiveSession.module.css';
 
 export default function LiveSessionRollHistory({ rolls = [], onBroadcast, currentCharacterId, isAdmin }) {
@@ -57,13 +57,13 @@ export default function LiveSessionRollHistory({ rolls = [], onBroadcast, curren
 
         const getDieImage = (die, isHunger) => {
           if (isHunger) {
-            if (die === 10) return '/img/dice/MessyCrit.png';
-            if (die === 1) return '/img/dice/BestialFail.png';
-            if (die >= 6) return '/img/dice/Success.png';
+            if (die === 10) return '/img/dice/MessyCrit.webp';
+            if (die === 1) return '/img/dice/BestialFail.webp';
+            if (die >= 6) return '/img/dice/Success.webp';
             return null;
           }
-          if (die === 10) return '/img/dice/Crit.png';
-          if (die >= 6) return '/img/dice/Success.png';
+          if (die === 10) return '/img/dice/Crit.webp';
+          if (die >= 6) return '/img/dice/Success.webp';
           return null;
         };
 

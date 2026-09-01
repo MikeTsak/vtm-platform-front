@@ -1,4 +1,4 @@
-// src/pages/AdminNPCsTab.jsx
+﻿// src/pages/AdminNPCsTab.jsx
 import React from 'react';
 import { Link } from 'react-router-dom';
 import styles from '../../styles/Admin.module.css';
@@ -14,7 +14,7 @@ const CLAN_COLORS = {
 };
 const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim' };
 const fileify = (c) => (NAME_OVERRIDES[c] || c).replace(/\s+/g, '_');
-const symlogo = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.png` : '');
+const symlogo = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.webp` : '');
 
 export default function AdminNPCsTab({ npcs, onReload, onDelete }) {
   const [mode, setMode] = React.useState('list');

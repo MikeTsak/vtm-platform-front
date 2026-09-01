@@ -1,4 +1,4 @@
-// src/data/clans.js
+﻿// src/data/clans.js
 // Single source of truth for the clan roster used across the character
 // creator (ClanPicker, PredatorStep, CharacterSetup, ReviewStep). Previously
 // this list was copy-pasted across those files, which is how Ravnos,
@@ -80,7 +80,7 @@ export const NAME_OVERRIDES = {
 
 const fileify = (c) => (NAME_OVERRIDES[c] || c).replace(/\s+/g, '_');
 
-export const symlogo = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.png` : '');
-export const textlogo = (c) => (c ? `/img/clans/text/300px-${fileify(c)}_logo.png` : '');
+export const symlogo = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.webp` : '');
+export const textlogo = (c) => (c ? `/img/clans/text/300px-${fileify(c)}_logo.webp` : '');
 
 export const clanTint = (clan) => (clan ? CLAN_COLORS[clan]?.[0] : null) || '#8a0f1a';

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useContext } from 'react';
+﻿import React, { useEffect, useMemo, useState, useContext } from 'react';
 import api from '../../core/api';
 import { AuthCtx } from '../../core/AuthContext';
 import Avatar from '../../components/Avatar';
@@ -694,11 +694,11 @@ export default function LiveSession() {
         <aside className={`${styles.leftColumn} ${mobileTab !== 'character' ? styles.mobileHidden : ''}`}>
           {/* Identity */}
           <section style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <Avatar userId={character?.user_id || character?.id} size={64} style={{ borderRadius: 8, border: '1px solid var(--outline-variant)' }} fallback={`/img/clans/330px-${clan.replace(/\s+/g, '_')}_symbol.png`} />
+            <Avatar userId={character?.user_id || character?.id} size={64} style={{ borderRadius: 8, border: '1px solid var(--outline-variant)' }} fallback={`/img/clans/330px-${clan.replace(/\s+/g, '_')}_symbol.webp`} />
             <div>
               <h2 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--primary)' }}>{charName}</h2>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.15rem' }}>
-                {clan !== 'Unknown Clan' && <img src={`/img/clans/330px-${clan.replace(/\s+/g, '_')}_symbol.png`} alt={clan} style={{ width: 14, height: 14, objectFit: 'contain', filter: 'brightness(0) invert(1)', opacity: 0.7 }} onError={(e) => { e.target.style.display = 'none'; }} />}
+                {clan !== 'Unknown Clan' && <img src={`/img/clans/330px-${clan.replace(/\s+/g, '_')}_symbol.webp`} alt={clan} style={{ width: 14, height: 14, objectFit: 'contain', filter: 'brightness(0) invert(1)', opacity: 0.7 }} onError={(e) => { e.target.style.display = 'none'; }} />}
                 <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>{clan} • BP {bp}</p>
               </div>
             </div>
@@ -1053,15 +1053,15 @@ export default function LiveSession() {
                   {lastRoll.normalDice.map((die, i) => {
                     const isSelected = wpSelections.includes(i);
                     const isSuccess = die >= 6;
-                    const imgSrc = die === 10 ? '/img/dice/Crit.png' : isSuccess ? '/img/dice/Success.png' : null;
+                    const imgSrc = die === 10 ? '/img/dice/Crit.webp' : isSuccess ? '/img/dice/Success.webp' : null;
                     return (
                       <div key={`n-${i}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                         <div className={`${styles.diceSlotContainer} ${styles.diceSlotNormal}`} style={{ border: isSelected && !isRolling ? '2px solid var(--primary)' : '1px solid var(--outline-variant)' }} onClick={() => { if (!isRolling) setWpSelections(prev => prev.includes(i) ? prev.filter(v => v !== i) : prev.length < 3 ? [...prev, i] : prev); }}>
                           {isRolling ? (
                             <div className={styles.diceRolling}>
-                              <img src="/img/dice/Success.png" alt="spin" />
-                              <img src="/img/dice/Crit.png" alt="spin" />
-                              <img src="/img/dice/MessyCrit.png" alt="spin" />
+                              <img src="/img/dice/Success.webp" alt="spin" />
+                              <img src="/img/dice/Crit.webp" alt="spin" />
+                              <img src="/img/dice/MessyCrit.webp" alt="spin" />
                             </div>
                           ) : (
                             imgSrc ? <img src={imgSrc} alt={`${die}`} className={styles.dieImage} /> : <span style={{ fontSize: '2rem', color: 'var(--text-muted)' }}>{die}</span>
@@ -1072,15 +1072,15 @@ export default function LiveSession() {
                     );
                   })}
                   {lastRoll.hungerDice.map((die, i) => {
-                    const imgSrc = die === 10 ? '/img/dice/MessyCrit.png' : die === 1 ? '/img/dice/BestialFail.png' : die >= 6 ? '/img/dice/Success.png' : null;
+                    const imgSrc = die === 10 ? '/img/dice/MessyCrit.webp' : die === 1 ? '/img/dice/BestialFail.webp' : die >= 6 ? '/img/dice/Success.webp' : null;
                     return (
                       <div key={`h-${i}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                         <div className={`${styles.diceSlotContainer} ${styles.diceSlotHunger}`} style={{ border: '2px solid var(--primary-container)' }}>
                           {isRolling ? (
                             <div className={styles.diceRolling}>
-                              <img src="/img/dice/Success.png" alt="spin" />
-                              <img src="/img/dice/MessyCrit.png" alt="spin" />
-                              <img src="/img/dice/BestialFail.png" alt="spin" />
+                              <img src="/img/dice/Success.webp" alt="spin" />
+                              <img src="/img/dice/MessyCrit.webp" alt="spin" />
+                              <img src="/img/dice/BestialFail.webp" alt="spin" />
                             </div>
                           ) : (
                             imgSrc ? <img src={imgSrc} alt={`${die}`} className={styles.dieImage} /> : <span style={{ fontSize: '2rem', color: 'var(--error)' }}>{die}</span>

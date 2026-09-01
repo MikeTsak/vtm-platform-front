@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import api from '../../core/api';
@@ -445,7 +445,7 @@ export default function PublicArticleView() {
             <div className={courtStyles.decreeContent}>
               <header className={courtStyles.decreeMeta}>
                 <div className={courtStyles.decreeAuthorInfo}>
-                  <Avatar userId={article.author_id} size={48} className={courtStyles.decreeAuthorAvatar} fallback="/img/ATT-logo(1).png" />
+                  <Avatar userId={article.author_id} size={48} className={courtStyles.decreeAuthorAvatar} fallback="/img/ATT-logo(1).webp" />
                   <div>
                     <h3 className={courtStyles.decreeAuthorName}>{authorName}</h3>
                     <p className={courtStyles.decreeAuthorRole}>{authorRole}</p>

@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useRef, useState } from 'react';
+﻿import React, { useContext, useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { AuthCtx } from '../../core/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
@@ -118,7 +118,7 @@ export default function Login() {
       </Helmet>
       <div className={styles.vignette} aria-hidden="true" />
       <header className={styles['login-header']} aria-label="App header">
-        <img src="/img/ATT-logo(1).png" alt="ATT LARP Logo" className={styles['login-logo']} draggable="false" />
+        <img src="/img/ATT-logo(1).webp" alt="ATT LARP Logo" className={styles['login-logo']} draggable="false" />
         <h1 className={styles.brand}>Erebus Portal</h1>
       </header>
 

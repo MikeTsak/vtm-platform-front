@@ -1,4 +1,4 @@
-// src/pages/AdminChatLogsTab.jsx
+﻿// src/pages/AdminChatLogsTab.jsx
 import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown'; 
 import api from '../../core/api';
@@ -15,7 +15,7 @@ const CLAN_COLORS = {
 };
 const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim' };
 const fileify = (c) => (NAME_OVERRIDES[c] || c).replace(/\s+/g, '_');
-const symlogo = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.png` : '');
+const symlogo = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.webp` : '');
 
 /* ==================== HELPERS ==================== */
 const useDebouncedValue = (value, ms = 250) => {

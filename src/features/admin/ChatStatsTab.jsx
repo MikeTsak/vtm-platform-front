@@ -1,4 +1,4 @@
-// src/components/admin/ChatStatsTab.jsx
+﻿// src/components/admin/ChatStatsTab.jsx
 import React, { useMemo, useState, useRef } from 'react';
 import html2canvas from 'html2canvas';
 import styles from '../../styles/Admin.module.css';
@@ -21,21 +21,21 @@ const CLAN_COLORS = {
 };
 const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim' };
 const fileify = (c) => (NAME_OVERRIDES[c] || c || '').replace(/\s+/g, '_');
-const clanSymbol = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.png` : '');
+const clanSymbol = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.webp` : '');
 
 /** ---------- Helpers ---------- */
 const getRollArt = (roll) => {
-  if (!roll) return '/img/dice/BestialFail.png'; 
-  if (roll.messy_crit) return '/img/dice/MessyCrit.png';
-  if (roll.bestial_failure) return '/img/dice/BestialFail.png';
-  if (roll.crit_pairs > 0) return '/img/dice/Crit.png';
-  if (roll.successes > 0) return '/img/dice/Success.png';
-  return '/img/dice/BestialFail.png'; 
+  if (!roll) return '/img/dice/BestialFail.webp'; 
+  if (roll.messy_crit) return '/img/dice/MessyCrit.webp';
+  if (roll.bestial_failure) return '/img/dice/BestialFail.webp';
+  if (roll.crit_pairs > 0) return '/img/dice/Crit.webp';
+  if (roll.successes > 0) return '/img/dice/Success.webp';
+  return '/img/dice/BestialFail.webp'; 
 };
 
 const IMG = {
-  normal: (v) => `/img/dice/normal-${v}.png`,
-  hunger: (v) => `/img/dice/hunger-${v}.png`,
+  normal: (v) => `/img/dice/normal-${v}.webp`,
+  hunger: (v) => `/img/dice/hunger-${v}.webp`,
 };
 
 const getTies = (map, idToNameFn = null) => {
@@ -734,7 +734,7 @@ const popStats = useMemo(() => {
         {isExporting && (
           <div style={{ textAlign: 'center', marginBottom: '50px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px', background: 'rgba(0,0,0,0.5)', padding: '10px 25px', borderRadius: '40px', border: '1px solid #8a0303' }}>
-               <img src="/img/ATT-logo(1).png" alt="ATT Logo" style={{ height: '40px' }} />
+               <img src="/img/ATT-logo(1).webp" alt="ATT Logo" style={{ height: '40px' }} />
                <span style={{ fontSize: '1.5rem', fontWeight: '900', color: '#d4af37', letterSpacing: '2px', textTransform: 'uppercase' }}>Erebus Portal Stats</span>
             </div>
             <h1 style={{ color: 'var(--text-color)', fontSize: '3.5rem', margin: '20px 0 10px 0', textTransform: 'uppercase', textShadow: '0 0 20px rgba(138,3,3,0.8)', lineHeight: '1.1' }}>{customTitle}</h1>

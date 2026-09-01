@@ -1,4 +1,4 @@
-import React, { useContext, useRef, useState } from 'react';
+﻿import React, { useContext, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { AuthCtx } from '../../core/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
@@ -105,7 +105,7 @@ export default function Register() {
       <div className={styles.vignette} aria-hidden="true" />
       <header className={styles['login-header']} aria-label="App header">
         <img
-          src="/img/ATT-logo(1).png"
+          src="/img/ATT-logo(1).webp"
           alt="ATT LARP Logo"
           className={styles['login-logo']}
           draggable="false"
