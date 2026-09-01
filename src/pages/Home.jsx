@@ -303,21 +303,13 @@ export default function Home() {
     })();
   }, [nav]);
 
-  if (loading) {
-    return (
-      <Skeleton name="home-page" loading={true}>
-        <div style={{ height: '100vh' }} />
-      </Skeleton>
-    );
-  }
+  if (!loading && !me) return <div className={styles.loadingScreen}>Please log in.</div>;
 
-  if (!me) return <div className={styles.loadingScreen}>Please log in.</div>;
-
-  if (!ch) return (
+  if (!loading && !ch) return (
     <div className={styles.noCharPage}>
       <div className={styles.noCharCard}>
         <div className={styles.noCharRose}>🥀</div>
-        <h2 className={styles.noCharTitle}>Welcome, {me.display_name}</h2>
+        <h2 className={styles.noCharTitle}>Welcome, {me?.display_name}</h2>
         <p className={styles.noCharSub}>
           You must present yourself before the gathered Kindred of Athens.<br/>
           Forge your identity. Claim your lineage.
@@ -329,16 +321,19 @@ export default function Home() {
     </div>
   );
 
-  const clan        = (ch.clan || '').trim();
+  const safeMe = me || { display_name: '', role: 'user', ui_sounds_enabled: true };
+  const safeCh = ch || { name: '', clan: 'Caitiff', xp: 0, sheet: {} };
+
+  const clan        = (safeCh.clan || '').trim();
   const isMalkavian = clan.toLowerCase() === 'malkavian';
-  const showCobweb  = isMalkavian || me.role === 'admin';
+  const showCobweb  = isMalkavian || safeMe.role === 'admin';
   const quotaPct    = Math.min((quota.used / quota.limit) * 100, 100);
 
   const dynamicClanTint = CLAN_COLORS[clan] || '#8a0f1a';
 
   let sheetObj = {};
   try {
-    sheetObj = typeof ch.sheet === 'string' ? JSON.parse(ch.sheet) : (ch.sheet || {});
+    sheetObj = typeof safeCh.sheet === 'string' ? JSON.parse(safeCh.sheet) : (safeCh.sheet || {});
   } catch (_) {
     // ignore parse error
   }
@@ -424,126 +419,117 @@ export default function Home() {
             <span className={`${styles.corner} ${styles.cornerBR}`} />
             
             <div className={styles.headerInner}>
-              <Avatar userId={me?.id} size={110} editable={true} />
+              <Avatar userId={safeMe.id} size={110} editable={true} />
 
-              <div className={styles.headerMeta}>
-                <span className={styles.neonateLabel}>NEONATE</span>
-                <h1 className={styles.charName}>{ch.name}</h1>
-                <p className={styles.charSub}>
-                  <span className={styles.clanLabel}>
-                    <img src={symlogo(ch.clan)} alt={ch.clan || 'Clan Logo'} width="16" height="16" style={{ width: '16px', height: '16px', objectFit: 'contain', marginRight: '4px', verticalAlign: 'middle', filter: 'brightness(0) invert(1) drop-shadow(0 0 2px rgba(0,0,0,0.5))' }} onError={(e) => { e.target.style.display = 'none'; }} />
-                    Clan {ch.clan || 'Caitiff'}
-                  </span>
-                </p>
+              <div className={styles.charHeaderLeft}>
+                <h1 className={styles.charName}>{safeCh.name}</h1>
+                <div className={styles.charMeta}>
+                  <div className={styles.metaBadge}>
+                    <img src={symlogo(safeCh.clan)} alt={safeCh.clan || 'Clan Logo'} width="16" height="16" style={{ width: '16px', height: '16px', objectFit: 'contain', marginRight: '4px', verticalAlign: 'middle', filter: 'brightness(0) invert(1) drop-shadow(0 0 2px rgba(0,0,0,0.5))' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                    Clan {safeCh.clan || 'Caitiff'}
+                  </div>
+                  <div className={styles.metaBadge}>
+                    <span className="material-symbols-outlined" style={{ fontSize: '1rem', marginRight: '4px' }}>hotel_class</span>
+                    XP
+                  </div>
+                  <span className={styles.statValue}>{safeCh.xp ?? 0}</span>
+                </div>
               </div>
 
-              <div className={styles.headerStats}>
-                <div className={styles.statBox}>
-                  <span className={styles.statLabel}>AVAILABLE XP</span>
-                  <span className={styles.statValue}>{ch.xp ?? 0}</span>
-                </div>
-                
-                {/* Settings Icons */}
-                <div className={styles.settingsIconsContainer} style={{ display: 'flex', gap: '12px', marginTop: '16px', justifyContent: 'flex-end' }}>
-                  <button 
-                    title={`UI Sounds ${me.ui_sounds_enabled !== false ? 'ON' : 'OFF'}`}
-                    onClick={async () => {
-                      const newVal = me.ui_sounds_enabled === false ? true : false;
-                      setMe(prev => ({ ...prev, ui_sounds_enabled: newVal }));
-                      import('cuelume').then(({ setEnabled, play }) => {
-                        setEnabled(newVal);
-                        if (newVal) play('toggle');
-                      });
-                      try {
-                        await api.patch('/users/me/ui_sounds', { ui_sounds_enabled: newVal });
-                      } catch (e) {
-                        console.error('Failed to save UI sounds setting', e);
-                      }
-                    }}
-                    style={{
-                      background: 'rgba(0,0,0,0.4)',
-                      border: `1px solid ${me.ui_sounds_enabled !== false ? 'var(--tint)' : 'var(--border-color)'}`,
-                      color: me.ui_sounds_enabled !== false ? 'var(--tint)' : 'var(--text-muted)',
-                      borderRadius: '50%',
-                      width: '48px',
-                      height: '48px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      WebkitTapHighlightColor: 'transparent',
-                    }}
-                    data-cuelume-hover
-                  >
-                    <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>
-                      {me.ui_sounds_enabled !== false ? 'volume_up' : 'volume_off'}
-                    </span>
-                  </button>
+              <div className={styles.settingsIconsContainer} style={{ display: 'flex', gap: '12px', marginTop: '16px', justifyContent: 'flex-end' }}>
+                <button 
+                  title={`UI Sounds ${safeMe.ui_sounds_enabled !== false ? 'ON' : 'OFF'}`}
+                  onClick={async () => {
+                    const newVal = safeMe.ui_sounds_enabled === false ? true : false;
+                    setMe(prev => ({ ...prev, ui_sounds_enabled: newVal }));
+                    import('cuelume').then(({ setEnabled, play }) => {
+                      setEnabled(newVal);
+                      if (newVal) play('click');
+                    });
+                    try {
+                      await api.patch('/users/me/ui_sounds', { ui_sounds_enabled: newVal });
+                    } catch (e) {
+                      console.error('Failed to update UI sounds setting', e);
+                    }
+                  }}
+                  style={{
+                    background: 'rgba(0,0,0,0.4)',
+                    border: `1px solid ${safeMe.ui_sounds_enabled !== false ? 'var(--tint)' : 'var(--border-color)'}`,
+                    color: safeMe.ui_sounds_enabled !== false ? 'var(--tint)' : 'var(--text-muted)',
+                    borderRadius: '50%',
+                    width: '48px',
+                    height: '48px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    boxShadow: safeMe.ui_sounds_enabled !== false ? '0 0 10px var(--tint)' : 'none'
+                  }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>
+                    {safeMe.ui_sounds_enabled !== false ? 'volume_up' : 'volume_off'}
+                  </span>
+                </button>
 
-                  <button 
-                    title={`Push Notifications ${pushEnabled ? 'ON' : 'OFF'}`}
-                    onClick={async () => {
-                      if (!notifSupported || pushLoading) return;
-                      
-                      if (!pushEnabled) {
-                        setPushLoading(true);
-                        try {
-                          await subscribeToWebPush();
-                          await updatePushSettings({ chat: true });
-                          setPushEnabled(true);
-                        } catch (err) {
-                          console.error('Failed to enable push:', err);
-                          alert('Could not enable notifications: ' + err.message);
-                        } finally {
-                          setPushLoading(false);
-                        }
-                      } else {
-                        setPushLoading(true);
-                        try {
-                          await updatePushSettings({ chat: false });
-                          setPushEnabled(false);
-                        } catch (err) {
-                          console.error('Failed to disable push:', err);
-                        } finally {
-                          setPushLoading(false);
-                        }
+                <button 
+                  title={`Push Notifications ${pushEnabled ? 'ON' : 'OFF'}`}
+                  onClick={async () => {
+                    if (!notifSupported || pushLoading) return;
+                    
+                    if (!pushEnabled) {
+                      setPushLoading(true);
+                      try {
+                        await subscribeToWebPush();
+                        await updatePushSettings({ chat: true });
+                        setPushEnabled(true);
+                      } catch (err) {
+                        console.error('Failed to enable push:', err);
+                        alert('Could not enable notifications: ' + err.message);
+                      } finally {
+                        setPushLoading(false);
                       }
-                    }}
-                    disabled={pushLoading}
-                    style={{
-                      background: 'rgba(0,0,0,0.4)',
-                      border: `1px solid ${pushEnabled ? 'var(--tint)' : 'var(--border-color)'}`,
-                      color: pushEnabled ? 'var(--tint)' : 'var(--text-muted)',
-                      borderRadius: '50%',
-                      width: '48px',
-                      height: '48px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: pushLoading ? 'wait' : 'pointer',
-                      transition: 'all 0.2s',
-                      opacity: pushLoading ? 0.5 : 1,
-                      WebkitTapHighlightColor: 'transparent',
-                    }}
-                    data-cuelume-hover
-                  >
-                    <span className="material-symbols-outlined" style={{ fontSize: '1.2rem', animation: pushLoading ? 'spin 1s linear infinite' : 'none' }}>
-                      {pushLoading ? 'sync' : (pushEnabled ? 'notifications_active' : 'notifications_off')}
-                    </span>
-                  </button>
-                </div>
+                    } else {
+                      setPushLoading(true);
+                      try {
+                        await updatePushSettings({ chat: false });
+                        setPushEnabled(false);
+                      } catch (err) {
+                        console.error('Failed to disable push:', err);
+                      } finally {
+                        setPushLoading(false);
+                      }
+                    }
+                  }}
+                  disabled={pushLoading}
+                  style={{
+                    background: 'rgba(0,0,0,0.4)',
+                    border: `1px solid ${pushEnabled ? 'var(--tint)' : 'var(--border-color)'}`,
+                    color: pushEnabled ? 'var(--tint)' : 'var(--text-muted)',
+                    borderRadius: '50%',
+                    width: '48px',
+                    height: '48px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: pushLoading ? 'wait' : 'pointer',
+                    transition: 'all 0.2s',
+                    opacity: pushLoading ? 0.5 : 1,
+                    WebkitTapHighlightColor: 'transparent',
+                  }}
+                  data-cuelume-hover
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '1.2rem', animation: pushLoading ? 'spin 1s linear infinite' : 'none' }}>
+                    {pushLoading ? 'sync' : (pushEnabled ? 'notifications_active' : 'notifications_off')}
+                  </span>
+                </button>
               </div>
             </div>
 
             <div className={styles.clanWatermark} aria-hidden>
-              <img
-                src={textlogo(ch.clan)}
-                alt=""
-                width="300"
-                height="100"
-                className={styles.clanLogo}
-                onError={e => { e.target.parentElement.style.display = 'none'; }}
+              <img 
+                src={textlogo(safeCh.clan)}
+                alt="Clan Logo"
+                style={{ height: '40px', objectFit: 'contain', filter: 'brightness(0) invert(1) drop-shadow(0 0 5px rgba(255,255,255,0.3))' }}
+                onError={(e) => { e.target.style.display = 'none'; }}
               />
             </div>
             
@@ -643,7 +629,13 @@ export default function Home() {
                 </Link>
               </motion.div>
             ))}
-            {((ch && ch.sheet?.is_active === true) || me?.role === 'courtuser') && (
+            {((safeCh && safeCh.sheet?.is_active === true) || safeMe?.role === 'courtuser') && (
+              <div className={styles.sectionHeader}>
+                <span className="material-symbols-outlined">gavel</span>
+                <h3>Court Actions</h3>
+              </div>
+            )}
+            {((safeCh && safeCh.sheet?.is_active === true) || safeMe?.role === 'courtuser') && (
               <motion.div
                 variants={{
                   hidden: { opacity: 0, scale: 0.8, y: 20 },
