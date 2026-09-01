@@ -14,6 +14,7 @@ import _schrecknet_page from './schrecknet-page.bones.json'
 import _surfaceweb_page from './surfaceweb-page.bones.json'
 import _admin_users_tab from './admin-users-tab.bones.json'
 import _premonitions_page from './premonitions-page.bones.json'
+import _home_page from './home-page.bones.json'
 
 configureBoneyard({"color":"#222222","darkColor":"#222222","animate":"shimmer","shimmerColor":"#333333","darkShimmerColor":"#333333"})
 
@@ -29,4 +30,5 @@ registerBones({
   "surfaceweb-page": _surfaceweb_page,
   "admin-users-tab": _admin_users_tab,
   "premonitions-page": _premonitions_page,
+  "home-page": _home_page,
 })

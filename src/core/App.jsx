@@ -217,7 +217,7 @@ function AppLayout() {
               element={<MalkavianOrAdminOnly><Premonitions /></MalkavianOrAdminOnly>}
             />
 
-            {/* ✅ ADDED CATCH-ALL ROUTE HERE */}
+            {/* ✅ Catch-all route */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>

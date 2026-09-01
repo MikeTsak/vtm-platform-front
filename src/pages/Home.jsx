@@ -303,26 +303,27 @@ export default function Home() {
     })();
   }, [nav]);
 
-  if (!loading && !me) return <div className={styles.loadingScreen}>Please log in.</div>;
-
-  if (!loading && !ch) return (
-    <div className={styles.noCharPage}>
-      <div className={styles.noCharCard}>
-        <div className={styles.noCharRose}>🥀</div>
-        <h2 className={styles.noCharTitle}>Welcome, {me?.display_name}</h2>
-        <p className={styles.noCharSub}>
-          You must present yourself before the gathered Kindred of Athens.<br/>
-          Forge your identity. Claim your lineage.
-        </p>
-        <button className={styles.noCharBtn} onClick={() => nav('/make')}>
-          Create Character
-        </button>
-      </div>
-    </div>
-  );
-
-  const safeMe = me || { display_name: '', role: 'user', ui_sounds_enabled: true };
+  const safeMe = me || { display_name: '', id: '0', role: 'user', ui_sounds_enabled: true };
   const safeCh = ch || { name: '', clan: 'Caitiff', xp: 0, sheet: {} };
+
+  if (!loading) {
+    if (!me) return <div className={styles.loadingScreen}>Please log in.</div>;
+    if (!ch) return (
+      <div className={styles.noCharPage}>
+        <div className={styles.noCharCard}>
+          <div className={styles.noCharRose}>🥀</div>
+          <h2 className={styles.noCharTitle}>Welcome, {me.display_name}</h2>
+          <p className={styles.noCharSub}>
+            You must present yourself before the gathered Kindred of Athens.<br/>
+            Forge your identity. Claim your lineage.
+          </p>
+          <button className={styles.noCharBtn} onClick={() => nav('/make')}>
+            Create Character
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const clan        = (safeCh.clan || '').trim();
   const isMalkavian = clan.toLowerCase() === 'malkavian';
@@ -429,7 +430,7 @@ export default function Home() {
                     Clan {safeCh.clan || 'Caitiff'}
                   </div>
                   <div className={styles.metaBadge}>
-                    <span className="material-symbols-outlined" style={{ fontSize: '1rem', marginRight: '4px' }}>hotel_class</span>
+                    <span className="material-symbols-outlined" style={{ fontSize: '1rem', marginRight: '4px', textTransform: 'none' }}>star</span>
                     XP
                   </div>
                   <span className={styles.statValue}>{safeCh.xp ?? 0}</span>
