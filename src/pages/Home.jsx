@@ -303,6 +303,14 @@ export default function Home() {
     })();
   }, [nav]);
 
+  if (loading) {
+    return (
+      <Skeleton name="home-page" loading={true}>
+        <div style={{ height: '100vh' }} />
+      </Skeleton>
+    );
+  }
+
   if (!me) return <div className={styles.loadingScreen}>Please log in.</div>;
 
   if (!ch) return (

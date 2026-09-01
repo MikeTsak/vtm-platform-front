@@ -1,4 +1,4 @@
-﻿// src/pages/Admin.jsx
+// src/pages/Admin.jsx
 import React, { useEffect, useState, useCallback } from 'react';
 import api from '../../core/api';
 import styles from '../../styles/Admin.module.css';
@@ -32,7 +32,7 @@ import AdminBloodWebTab from './AdminBloodWebTab';
 import AdminMasqueradeTab from './AdminMasqueradeTab';
 import AdminPrestationTab from './AdminPrestationTab';
 import AdminCoteriesTab from './AdminCoteriesTab';
-import { jsPDF } from "jspdf";
+
 import { formatEuDate } from "../../utils/dateFormatter";
 import AdminAuditTab from "./AdminAuditTab";
 import AdminNewsTab from './AdminNewsTab';

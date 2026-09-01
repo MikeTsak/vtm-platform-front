@@ -17,5 +17,12 @@ export default defineConfig({
   },
   build: {
     outDir: 'build', // CRA defaults to build, whereas vite defaults to dist. This maintains compatibility.
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom', 'framer-motion', '@tanstack/react-query', 'zod', 'react-hook-form']
+        }
+      }
+    }
   }
 });

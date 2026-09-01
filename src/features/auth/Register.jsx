@@ -1,4 +1,4 @@
-﻿import React, { useContext, useRef, useState } from 'react';
+import React, { useContext, useRef, useState, lazy, Suspense } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { AuthCtx } from '../../core/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
@@ -8,8 +8,8 @@ import * as z from 'zod';
 import { useMutation } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import Terms from '../../pages/Terms';
-import Privacy from '../../pages/Privacy';
+const Terms = lazy(() => import('../../pages/Terms'));
+const Privacy = lazy(() => import('../../pages/Privacy'));
 import styles from '../../styles/auth/Login.module.css';
 
 const registerSchema = z.object({
@@ -204,9 +204,11 @@ export default function Register() {
             }}
           >
             <div style={{ padding: '10px' }}>
-              <Terms />
-              <hr style={{ margin: '40px 0', borderColor: 'rgba(255,255,255,0.1)' }} />
-              <Privacy />
+              <Suspense fallback={<div style={{ textAlign: 'center', padding: '2rem' }}>Loading documents...</div>}>
+                <Terms />
+                <hr style={{ margin: '40px 0', borderColor: 'rgba(255,255,255,0.1)' }} />
+                <Privacy />
+              </Suspense>
             </div>
           </div>
 
