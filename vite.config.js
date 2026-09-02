@@ -1,9 +1,43 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
+const BONEYARD_ROUTES = [
+  '/',
+  '/character',
+  '/retainers',
+  '/make',
+  '/domains',
+  '/downtimes',
+  '/boons',
+  '/schrecknet',
+  '/surfaceweb',
+  '/live-session',
+  '/court/hierarchy',
+  '/court/announcements',
+  '/court/coteries',
+  '/news',
+  '/rumors',
+  '/admin',
+  '/admin/live-session',
+  '/admin/npcs',
+  '/premonitions',
+  '/media/1'
+];
+
 // https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [react()],
+export default defineConfig(async () => {
+  const { boneyardPlugin } = await import('boneyard-js/vite');
+
+  return {
+  plugins: [
+    react(),
+    boneyardPlugin({
+      out: './src/bones',
+      routes: BONEYARD_ROUTES,
+      breakpoints: [375, 768, 1280],
+      wait: 1200
+    })
+  ],
   server: {
     port: 3002,
     open: true, // open browser on start
@@ -26,4 +60,5 @@ export default defineConfig({
       }
     }
   }
+  };
 });

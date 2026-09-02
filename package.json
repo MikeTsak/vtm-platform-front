@@ -58,6 +58,7 @@
     "start": "vite",
     "dev": "vite",
     "build": "vite build",
+    "bones": "boneyard-js build --url http://localhost:3002 --force",
     "preview": "vite preview",
     "doctor": "npx react-doctor@latest"
   },
