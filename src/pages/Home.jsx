@@ -308,6 +308,7 @@ export default function Home() {
 
   if (!loading) {
     if (!me) return <div className={styles.loadingScreen}>Please log in.</div>;
+    if (me.role === 'admin') return null;
     if (!ch) return (
       <div className={styles.noCharPage}>
         <div className={styles.noCharCard}>

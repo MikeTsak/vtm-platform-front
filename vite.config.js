@@ -52,6 +52,7 @@ export default defineConfig(async () => {
   build: {
     outDir: 'build', // CRA defaults to build, whereas vite defaults to dist. This maintains compatibility.
     chunkSizeWarningLimit: 2500, // Silences the warning for chunks under 2.5MB
+    cssCodeSplit: false, // Prevents dynamic CSS chunk preload errors (the black screen bug)
     rollupOptions: {
       output: {
         manualChunks: {
