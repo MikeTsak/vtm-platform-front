@@ -37,7 +37,7 @@ const STATUS = ['submitted', 'approved', 'Needs a Scene', 'rejected', 'resolved'
 
 function StatusToggle({ status, checked, onChange }) {
   return (
-    <label 
+    <label
       className={styles.statusToggle}
       style={{
         display: 'flex',
@@ -54,16 +54,16 @@ function StatusToggle({ status, checked, onChange }) {
         userSelect: 'none'
       }}
     >
-      <input 
-        type="checkbox" 
-        checked={checked} 
-        onChange={onChange} 
-        style={{ 
-          width: '15px', 
-          height: '15px', 
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onChange}
+        style={{
+          width: '15px',
+          height: '15px',
           accentColor: 'var(--accent-purple)',
           cursor: 'pointer'
-        }} 
+        }}
       />
       <span style={{ fontSize: '0.85rem', fontWeight: 700, color: checked ? 'var(--text-muted)' : 'var(--text-color)' }}>
         Hide {status}
@@ -74,21 +74,21 @@ function StatusToggle({ status, checked, onChange }) {
 
 export default function AdminDowntimesTab() {
   const [cfgLoading, setCfgLoading] = useState(false);
-  const [cfgSaving, setCfgSaving]   = useState(false);
-  const [cfgErr, setCfgErr]         = useState('');
-  const [cfgInfo, setCfgInfo]       = useState('');
-  const [deadline, setDeadline]     = useState('');
-  const [opening, setOpening]       = useState('');
+  const [cfgSaving, setCfgSaving] = useState(false);
+  const [cfgErr, setCfgErr] = useState('');
+  const [cfgInfo, setCfgInfo] = useState('');
+  const [deadline, setDeadline] = useState('');
+  const [opening, setOpening] = useState('');
   const [projectDeadline, setProjectDeadline] = useState('');
-  const [masterPhase, setMasterPhase] = useState('standard'); 
+  const [masterPhase, setMasterPhase] = useState('standard');
   const [massReleaseMode, setMassReleaseMode] = useState(false);
   const [massReleaseDate, setMassReleaseDate] = useState('');
 
   const [viewMode, setViewMode] = useState('standard');
 
   const [listLoading, setListLoading] = useState(false);
-  const [listErr, setListErr]         = useState('');
-  const [rows, setRows]               = useState([]);
+  const [listErr, setListErr] = useState('');
+  const [rows, setRows] = useState([]);
 
   const [q, setQ] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -97,8 +97,6 @@ export default function AdminDowntimesTab() {
     submitted: false, approved: false, rejected: true,
     'Needs a Scene': false, resolved: true, 'Resolved in scene': true,
   });
-
-  const [isReleasing, setIsReleasing] = useState(false);
 
   const [buffer, setBuffer] = useState({});
 
@@ -113,7 +111,7 @@ export default function AdminDowntimesTab() {
         setDeadline(ymd(data?.downtime_deadline || ''));
         setOpening(ymd(data?.downtime_opening || ''));
         setProjectDeadline(ymd(data?.project_deadline || ''));
-        setMasterPhase(data?.downtime_active_phase || 'standard'); 
+        setMasterPhase(data?.downtime_active_phase || 'standard');
         setMassReleaseMode(data?.downtime_mass_release_mode === 'true');
         setMassReleaseDate(data?.downtime_mass_release_date ? new Date(data.downtime_mass_release_date).toISOString().slice(0, 16) : '');
       } catch (e) {
@@ -125,16 +123,8 @@ export default function AdminDowntimesTab() {
     return () => { mounted = false; };
   }, []);
 
-  async function onSaveConfig(instantOverrides = {}) {
-    // Maintain backwards compatibility if a string was passed for phase override
-    const overrides = typeof instantOverrides === 'string' 
-      ? { phase: instantOverrides } 
-      : instantOverrides;
-
-    const phaseToSave = overrides.phase || masterPhase;
-    const modeToSave = overrides.massReleaseMode !== undefined ? overrides.massReleaseMode : massReleaseMode;
-    const dateToSave = overrides.massReleaseDate !== undefined ? overrides.massReleaseDate : massReleaseDate;
-
+  async function onSaveConfig(instantPhaseOverride = null) {
+    const phaseToSave = instantPhaseOverride || masterPhase;
     setCfgSaving(true);
     setCfgErr(''); setCfgInfo('');
     try {
@@ -143,8 +133,8 @@ export default function AdminDowntimesTab() {
         downtime_opening: opening || null,
         project_deadline: projectDeadline || null,
         downtime_active_phase: phaseToSave,
-        downtime_mass_release_mode: modeToSave,
-        downtime_mass_release_date: dateToSave || null
+        downtime_mass_release_mode: massReleaseMode,
+        downtime_mass_release_date: massReleaseDate || null
       });
       setDeadline(ymd(data?.downtime_deadline || ''));
       setOpening(ymd(data?.downtime_opening || ''));
@@ -163,35 +153,7 @@ export default function AdminDowntimesTab() {
 
   function handlePhaseToggle(newPhase) {
     setMasterPhase(newPhase);
-    onSaveConfig({ phase: newPhase }); 
-  }
-
-  function handleMassReleaseModeToggle() {
-    const newMode = !massReleaseMode;
-    setMassReleaseMode(newMode);
-    onSaveConfig({ massReleaseMode: newMode });
-  }
-
-  function handleMassReleaseDateChange(newDate) {
-    setMassReleaseDate(newDate);
-    onSaveConfig({ massReleaseDate: newDate });
-  }
-
-  async function handleReleaseNow(e) {
-    e.stopPropagation();
-    if (!window.confirm("Are you sure you want to instantly release all downtimes to players now?")) return;
-    
-    setIsReleasing(true);
-    try {
-      await api.post('admin/downtimes/release-now');
-      setMassReleaseMode(false);
-      setCfgInfo('Downtimes released instantly!');
-      setTimeout(() => setCfgInfo(''), 3000);
-    } catch (err) {
-      setCfgErr('Failed to release downtimes.');
-    } finally {
-      setIsReleasing(false);
-    }
+    onSaveConfig(newPhase);
   }
 
   function onReloadConfig() {
@@ -262,7 +224,7 @@ export default function AdminDowntimesTab() {
       ...prev, [r.id]: { status: r.status || 'submitted', gm_notes: r.gm_notes || '', gm_resolution: r.gm_resolution || '', saving: false, error: '', info: '' }
     }));
   }
-  
+
   function updBuf(id, key, val) {
     setBuffer(prev => ({ ...prev, [id]: { ...(prev[id] || {}), [key]: val } }));
   }
@@ -301,32 +263,32 @@ export default function AdminDowntimesTab() {
 
   return (
     <div className={styles.stack12}>
-      
+
       {/* 1. TOP INTERACTIVE VIEW OVERVIEW OVERHAUL */}
       <div style={{ display: 'flex', gap: '0.8rem', background: 'var(--glass-inset)', padding: '5px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', width: 'fit-content' }}>
-        <button 
+        <button
           className={styles.tab}
-          style={{ 
-            background: viewMode === 'standard' ? 'linear-gradient(135deg, var(--accent-purple-dark) 0%, var(--accent-purple) 100%)' : 'transparent', 
+          style={{
+            background: viewMode === 'standard' ? 'linear-gradient(135deg, var(--accent-purple-dark) 0%, var(--accent-purple) 100%)' : 'transparent',
             color: viewMode === 'standard' ? 'var(--text-color)' : 'var(--text-secondary)',
             boxShadow: viewMode === 'standard' ? '0 4px 15px var(--accent-purple-glow)' : 'none',
-            padding: '0.8rem 1.8rem', 
-            borderRadius: 'var(--radius-md)', 
-            fontWeight: 800 
+            padding: '0.8rem 1.8rem',
+            borderRadius: 'var(--radius-md)',
+            fontWeight: 800
           }}
           onClick={() => setViewMode('standard')}
         >
           🦇 Standard Downtimes
         </button>
-        <button 
+        <button
           className={styles.tab}
-          style={{ 
-            background: viewMode === 'project' ? 'linear-gradient(135deg, #1b4c8c 0%, #4da6ff 100%)' : 'transparent', 
+          style={{
+            background: viewMode === 'project' ? 'linear-gradient(135deg, #1b4c8c 0%, #4da6ff 100%)' : 'transparent',
             color: viewMode === 'project' ? 'var(--text-color)' : 'var(--text-secondary)',
             boxShadow: viewMode === 'project' ? '0 4px 15px rgba(77, 166, 255, 0.4)' : 'none',
-            padding: '0.8rem 1.8rem', 
-            borderRadius: 'var(--radius-md)', 
-            fontWeight: 800 
+            padding: '0.8rem 1.8rem',
+            borderRadius: 'var(--radius-md)',
+            fontWeight: 800
           }}
           onClick={() => setViewMode('project')}
         >
@@ -354,7 +316,7 @@ export default function AdminDowntimesTab() {
             Sets the default baseline view shown to all users inside their action panels.
           </p>
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-            <button 
+            <button
               className={styles.btn}
               style={{ background: masterPhase === 'standard' ? 'linear-gradient(135deg, var(--accent-purple-dark) 0%, var(--accent-purple) 100%)' : 'rgba(255,255,255,0.03)', border: `1px solid ${masterPhase === 'standard' ? 'transparent' : 'var(--glass-border)'}`, color: 'var(--text-color)', fontWeight: 700 }}
               onClick={() => handlePhaseToggle('standard')}
@@ -362,7 +324,7 @@ export default function AdminDowntimesTab() {
             >
               Standard
             </button>
-            <button 
+            <button
               className={styles.btn}
               style={{ background: masterPhase === 'project' ? 'linear-gradient(135deg, #1b4c8c 0%, #4da6ff 100%)' : 'rgba(255,255,255,0.03)', border: `1px solid ${masterPhase === 'project' ? 'transparent' : 'var(--glass-border)'}`, color: 'var(--text-color)', fontWeight: 700 }}
               onClick={() => handlePhaseToggle('project')}
@@ -386,10 +348,10 @@ export default function AdminDowntimesTab() {
               </label>
             </>
           ) : (
-             <label className={styles.labeledInput}>
-                <span>Long-Term Project Deadline</span>
-                <input type="date" className={styles.input} value={projectDeadline} onChange={(e) => setProjectDeadline(e.target.value)} />
-             </label>
+            <label className={styles.labeledInput}>
+              <span>Long-Term Project Deadline</span>
+              <input type="date" className={styles.input} value={projectDeadline} onChange={(e) => setProjectDeadline(e.target.value)} />
+            </label>
           )}
         </div>
 
@@ -399,7 +361,7 @@ export default function AdminDowntimesTab() {
             <p style={{ margin: '5px 0 0 0', color: 'var(--text-secondary)' }}>Automates the simultaneous release of all GM resolutions to players.</p>
           </div>
 
-          <div onClick={handleMassReleaseModeToggle} style={{ background: 'var(--glass-inset)', border: `2px solid ${massReleaseMode ? '#4da6ff' : 'var(--glass-border)'}`, borderRadius: 'var(--radius-md)', padding: '1.5rem', cursor: 'pointer', transition: 'all 0.3s ease', display: 'flex', flexDirection: 'column', gap: '1.5rem', boxShadow: massReleaseMode ? '0 0 20px rgba(77,166,255,0.1)' : 'none' }}>
+          <div onClick={() => setMassReleaseMode(!massReleaseMode)} style={{ background: 'var(--glass-inset)', border: `2px solid ${massReleaseMode ? '#4da6ff' : 'var(--glass-border)'}`, borderRadius: 'var(--radius-md)', padding: '1.5rem', cursor: 'pointer', transition: 'all 0.3s ease', display: 'flex', flexDirection: 'column', gap: '1.5rem', boxShadow: massReleaseMode ? '0 0 20px rgba(77,166,255,0.1)' : 'none' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                 <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: massReleaseMode ? '#4da6ff' : 'var(--glass-border)', boxShadow: massReleaseMode ? '0 0 15px #4da6ff' : 'none', animation: massReleaseMode ? 'pulseGlow 2s infinite' : 'none' }} />
@@ -409,24 +371,14 @@ export default function AdminDowntimesTab() {
                 <div style={{ position: 'absolute', top: '4px', left: massReleaseMode ? '32px' : '4px', width: '24px', height: '24px', background: 'var(--text-color)', borderRadius: '50%', transition: 'left 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }} />
               </div>
             </div>
-            
+
             {massReleaseMode && (
               <div style={{ background: 'rgba(77,166,255,0.05)', borderRadius: '8px', padding: '15px', borderLeft: `4px solid #4da6ff` }} onClick={e => e.stopPropagation()}>
                 <h4 style={{ margin: '0 0 10px 0', color: '#4da6ff', fontSize: '1.1rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Enabled</h4>
                 <label className={styles.labeledInput}>
                   <span style={{ color: 'var(--text-primary)' }}>Resolutions become visible on this date:</span>
-                  <input type="datetime-local" className={styles.input} value={massReleaseDate} onChange={(e) => setMassReleaseDate(e.target.value)} onBlur={(e) => handleMassReleaseDateChange(e.target.value)} style={{ marginTop: '8px' }} />
+                  <input type="datetime-local" className={styles.input} value={massReleaseDate} onChange={(e) => setMassReleaseDate(e.target.value)} style={{ marginTop: '8px' }} />
                 </label>
-                <div style={{ marginTop: '15px' }}>
-                  <button 
-                    className={`${styles.btn} ${styles.btnPrimary}`} 
-                    onClick={handleReleaseNow} 
-                    disabled={isReleasing}
-                    style={{ background: '#4da6ff', color: '#000', fontWeight: 'bold' }}
-                  >
-                    {isReleasing ? 'Releasing...' : '⚡ Release Now'}
-                  </button>
-                </div>
               </div>
             )}
           </div>
@@ -619,9 +571,9 @@ function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel }
 
   if (!editing) {
     return (
-      <div 
+      <div
         className={styles.downtimeCompactRow}
-        style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', gap: '1.5rem', padding: '1.2rem 1.5rem', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.03)', cursor: 'pointer', background: 'transparent', transition: 'all 0.2s ease' }} 
+        style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', gap: '1.5rem', padding: '1.2rem 1.5rem', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.03)', cursor: 'pointer', background: 'transparent', transition: 'all 0.2s ease' }}
         onMouseEnter={e => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
         onClick={() => onOpen(r)}
@@ -646,8 +598,8 @@ function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel }
       <header style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
           <div style={{ fontSize: '1.25rem', color: 'var(--text-color)', fontWeight: 800, letterSpacing: '-0.02em' }}>
-            <b style={{ color: isProj ? '#4da6ff' : 'var(--accent-purple)', fontFamily: 'Fira Code, monospace', marginRight: '8px' }}>#{r.id}</b> {displayTitle || '(no title)'} 
-            {isProj && <span style={{fontSize: '0.7rem', background: '#1b4c8c', border: '1px solid #4da6ff', color: 'var(--text-color)', padding: '2px 8px', borderRadius: '4px', marginLeft: '12px', verticalAlign: 'middle', fontWeight: 900, letterSpacing: '1px'}}>PROJECT</span>}
+            <b style={{ color: isProj ? '#4da6ff' : 'var(--accent-purple)', fontFamily: 'Fira Code, monospace', marginRight: '8px' }}>#{r.id}</b> {displayTitle || '(no title)'}
+            {isProj && <span style={{ fontSize: '0.7rem', background: '#1b4c8c', border: '1px solid #4da6ff', color: 'var(--text-color)', padding: '2px 8px', borderRadius: '4px', marginLeft: '12px', verticalAlign: 'middle', fontWeight: 900, letterSpacing: '1px' }}>PROJECT</span>}
           </div>
           <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
             <span>Account: <b style={{ color: 'var(--text-secondary)' }}>{r.player_name || r.email}</b></span>
@@ -712,5 +664,34 @@ function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel }
         </div>
       </div>
     </article>
+  );
+}           <span>Status</span>
+            <select className={styles.select} value={b.status} onChange={(e) => onUpdate(r.id, 'status', e.target.value)}>
+              {STATUS.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </label >
+
+  <div className={styles.labeledInput}>
+    <span>Quick Actions</span>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem' }}>
+      <button className={`${styles.btn} ${styles.btnSuccess} ${styles.btnSmall}`} type="button" onClick={() => onSave(r.id, { status: 'approved' })}>Approve</button>
+      <button className={`${styles.btn} ${styles.btnWarning} ${styles.btnSmall}`} type="button" onClick={() => onSave(r.id, { status: 'Needs a Scene' })}>Needs Scene</button>
+      <button className={`${styles.btn} ${styles.btnDanger} ${styles.btnSmall}`} type="button" onClick={() => onSave(r.id, { status: 'rejected' })}>Reject</button>
+      <button className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSmall}`} type="button" onClick={() => onSave(r.id, { status: 'resolved' })}>Resolve</button>
+      <button className={styles.btn} style={{ background: 'linear-gradient(135deg, #1b4c8c 0%, #4da6ff 100%)', color: 'var(--text-color)', padding: '0.4rem 0.8rem', fontSize: '0.8rem', fontWeight: 700, borderRadius: 'var(--radius-sm)' }} type="button" onClick={() => onSave(r.id, { status: 'Resolved in scene' })}>In Scene</button>
+    </div>
+  </div>
+        </div >
+
+  <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', alignItems: 'center', borderTop: '1px solid var(--glass-border)', paddingTop: '1.5rem' }}>
+    <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => onCancel(r.id)} disabled={b.saving}>Close</button>
+    <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => onSave(r.id)} disabled={b.saving} style={{ marginLeft: 'auto' }}>
+      {b.saving ? 'Saving...' : 'Save'}
+    </button>
+    {b.error && <div className={`${styles.alertMini} ${styles.alertError}`}>{b.error}</div>}
+    {b.info && <div className={`${styles.alertMini} ${styles.alertInfo}`}>{b.info}</div>}
+  </div>
+      </div >
+    </article >
   );
 }

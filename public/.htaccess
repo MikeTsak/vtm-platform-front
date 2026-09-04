@@ -53,8 +53,10 @@ RewriteBase /
 # Serve index.html normally if requested explicitly
 RewriteRule ^index\.html$ - [L]
 
-# Proxy /api requests directly to the backend domain to avoid cross-site cookie blocking
-RewriteRule ^api/(.*)$ https://vtm.back.miketsak.gr/api/$1 [P,L]
+# Don't touch API routes — let Node/Express handle them
+# Note: This prevents the Rewrite rules below from messing with API calls
+RewriteCond %{REQUEST_URI} ^/api/ [NC]
+RewriteRule . - [L]
 
 # If the request matches an existing file (image, js, css) or folder, serve it directly
 RewriteCond %{REQUEST_FILENAME} -f [OR]

@@ -69,11 +69,15 @@ export default function Register() {
       const status = error?.response?.status;
       const data = error?.response?.data;
       let errMsg = 'Registration failed. Please try again.';
-      
+
       if (status === 409) errMsg = 'This email may already be registered.';
       else if (data?.error) errMsg = data.error;
       else if (data?.message) errMsg = data.message;
-      
+      // Thrown directly by AuthContext.register() when the account was
+      // created but the follow-up session check couldn't be confirmed —
+      // there's no error.response for this one, just error.message.
+      else if (error?.message) errMsg = error.message;
+
       toast.error(errMsg);
     },
   });

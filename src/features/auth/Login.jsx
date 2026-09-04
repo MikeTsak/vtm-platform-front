@@ -71,7 +71,10 @@ export default function Login() {
       nav('/');
     },
     onError: (error) => {
-      toast.error(error?.response?.data?.error || 'Login failed. Please check your credentials.');
+      // error.response.data.error is a rejected-by-the-server message (bad
+      // credentials, etc); error.message covers the "signed in but couldn't
+      // confirm the session" case thrown by login() itself.
+      toast.error(error?.response?.data?.error || error?.message || 'Login failed. Please check your credentials.');
     },
   });
 
