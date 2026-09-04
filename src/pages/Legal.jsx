@@ -44,7 +44,7 @@ export default function Legal() {
         <section id="intro">
           <h2>Disclaimer</h2>
           <p>
-            Erebus Portal hereby grants you access to <code>vtm.miketsak.gr</code> (“the Website”) and invites you to
+            Erebus Portal hereby grants you access to <code>portal.attlarp.gr</code> (“the Website”) and invites you to
             purchase the services offered here.
           </p>
           <p>
@@ -59,7 +59,7 @@ export default function Legal() {
             <li><strong>Cookie:</strong> small amount of data saved by your browser to identify the browser, provide analytics, and remember preferences.</li>
             <li><strong>Company:</strong> Agile Advisors SING, Leof. Meg. Alexandrou 13, Egaleo 122 44.</li>
             <li><strong>Service:</strong> services provided by Erebus Portal on this platform.</li>
-            <li><strong>Website:</strong> <code>vtm.miketsak.gr</code></li>
+            <li><strong>Website:</strong> <code>portal.attlarp.gr</code></li>
             <li><strong>You:</strong> a person or entity registered with Erebus Portal to use the Services.</li>
           </ul>
         </section>

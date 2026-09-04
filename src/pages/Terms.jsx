@@ -80,7 +80,7 @@ export default function Terms() {
             <li><strong>Device:</strong> any internet connected device such as a phone, tablet, computer or any other device that can be used to visit Erebus Portal and use the services.</li>
             <li><strong>Service:</strong> refers to the service provided by Erebus Portal as described in the relative terms (if available) and on this platform.</li>
             <li><strong>Third-party service:</strong> refers to advertisers, contest sponsors, promotional and marketing partners, and others who provide our content or whose products or services we think may interest you.</li>
-            <li><strong>Website:</strong> Erebus Portal’s site, which can be accessed via this URL: <code>vtm.miketsak.gr</code></li>
+            <li><strong>Website:</strong> Erebus Portal’s site, which can be accessed via this URL: <code>portal.attlarp.gr</code></li>
             <li><strong>You:</strong> a person or entity that is registered with Erebus Portal to use the Services.</li>
           </ul>
         </section>

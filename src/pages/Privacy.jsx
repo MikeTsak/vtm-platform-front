@@ -85,7 +85,7 @@ export default function Privacy() {
             <li><strong>Personal Data:</strong> information that directly or indirectly identifies a natural person (including identifiers like a personal number).</li>
             <li><strong>Service:</strong> the services provided by Erebus Portal on this platform.</li>
             <li><strong>Third-party service:</strong> advertisers, contest sponsors, promotional/marketing partners, and others who provide content or services we think may interest you.</li>
-            <li><strong>Website:</strong> Erebus Portal’s site at <code>vtm.miketsak.gr</code>.</li>
+            <li><strong>Website:</strong> Erebus Portal’s site at <code>portal.attlarp.gr</code>.</li>
             <li><strong>You:</strong> a person or entity registered with Erebus Portal to use the Services.</li>
           </ul>
         </section>
