@@ -812,13 +812,13 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
           return isFlaw ? 'visibility_off' : 'star';
         };
 
-        const handleSaveNote = (e, type, id, idx) => {
+        const handleSaveNote = (e, type, item, idx) => {
           e.stopPropagation();
-          if (onUpdateNotes) onUpdateNotes(type, idx, editNoteText);
+          if (onUpdateNotes) onUpdateNotes(type, item, editNoteText);
           setEditingNoteId(null);
         };
 
-        const renderNotes = (notes, id, type, idx) => {
+        const renderNotes = (notes, id, type, idx, item) => {
           const isEditing = editingNoteId === `${type}_${id}_${idx}`;
           const notesStr = typeof notes === 'string' ? notes : (notes ? JSON.stringify(notes) : '');
           
@@ -834,7 +834,7 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
                 />
                 <div style={{ display: 'flex', gap: '8px', marginTop: '6px', justifyContent: 'flex-end' }}>
                   <button onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); setEditingNoteId(null); }} onClick={(e) => { e.stopPropagation(); setEditingNoteId(null); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '11px', cursor: 'pointer' }}>Cancel</button>
-                  <button onPointerDown={(e) => { e.preventDefault(); handleSaveNote(e, type, id, idx); }} onClick={(e) => handleSaveNote(e, type, id, idx)} style={{ background: 'var(--primary-color)', border: 'none', color: '#000', borderRadius: '4px', padding: '2px 8px', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold' }}>Save</button>
+                  <button onPointerDown={(e) => { e.preventDefault(); handleSaveNote(e, type, item, idx); }} onClick={(e) => handleSaveNote(e, type, item, idx)} style={{ background: 'var(--primary-color)', border: 'none', color: '#000', borderRadius: '4px', padding: '2px 8px', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold' }}>Save</button>
                 </div>
               </div>
             );
@@ -891,7 +891,7 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
                               {details.description}
                             </div>
                           )}
-                          {isExpanded && renderNotes(m.notes, m.id, 'merits', i)}
+                          {isExpanded && renderNotes(m.notes, m.id, 'merits', i, m)}
                         </div>
                       </div>
                     );
@@ -931,7 +931,7 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
                               {details.description}
                             </div>
                           )}
-                          {isExpanded && renderNotes(f.notes, f.id, 'flaws', i)}
+                          {isExpanded && renderNotes(f.notes, f.id, 'flaws', i, f)}
                         </div>
                       </div>
                     );

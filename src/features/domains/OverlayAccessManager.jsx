@@ -11,28 +11,34 @@ const KEY_LABELS = {
   necropolis_new: 'New Necropolis',
 };
 
-// Admin-only modal: grant/revoke the restricted Domains-map overlays per user.
-// Admins always see everything; a Nosferatu character auto-gets both
-// necropoleis (shown as a locked "auto" chip here).
-export default function OverlayAccessManager({ onClose }) {
+// Access-management modal for the restricted Domains-map overlays.
+//  · Admins can grant/revoke anything.
+//  · A non-admin who has an overlay can hand that same overlay to another
+//    player ("spread" it), and can revoke grants they personally made.
+//  · Nosferatu characters / admins show as locked auto-grants.
+// Rows are labelled by CHARACTER name.
+export default function OverlayAccessManager({ onClose, userId }) {
   const qc = useQueryClient();
   const [q, setQ] = useState('');
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['domain-overlays-grants'],
-    queryFn: async () => (await api.get('/admin/domain-overlays/grants')).data,
+    queryKey: ['domain-overlays-directory', userId],
+    queryFn: async () => (await api.get('/domain-overlays/directory')).data,
   });
 
-  const keys = data?.keys || ['catacombs', 'necropolis_old', 'necropolis_new'];
+  const isAdmin = !!data?.me?.admin;
+  const grantable = data?.grantable || [];
+  const keys = (data?.keys || ['catacombs', 'necropolis_old', 'necropolis_new'])
+    .filter(k => isAdmin || grantable.includes(k));
 
   const grant = useMutation({
     mutationFn: ({ userId, key, on }) =>
       on
-        ? api.post('/admin/domain-overlays/grants', { user_id: userId, overlay_key: key })
-        : api.delete(`/admin/domain-overlays/grants/${userId}/${key}`),
+        ? api.post('/domain-overlays/grants', { user_id: userId, overlay_key: key })
+        : api.delete(`/domain-overlays/grants/${userId}/${key}`),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['domain-overlays-grants'] });
-      qc.invalidateQueries({ queryKey: ['domain-overlays-me'] });
+      qc.invalidateQueries({ queryKey: ['domain-overlays-directory'], exact: false });
+      qc.invalidateQueries({ queryKey: ['domain-overlays-me'], exact: false });
     },
     onError: (e) => toast.error(e.response?.data?.error || 'Failed to update access'),
   });
@@ -42,15 +48,13 @@ export default function OverlayAccessManager({ onClose }) {
     const needle = q.trim().toLowerCase();
     const filtered = needle
       ? list.filter(u =>
-          u.name.toLowerCase().includes(needle) ||
-          u.email.toLowerCase().includes(needle) ||
+          (u.name || '').toLowerCase().includes(needle) ||
+          (u.account || '').toLowerCase().includes(needle) ||
           (u.clan || '').toLowerCase().includes(needle))
       : list;
-    // users with any grant (or a Nosferatu auto-grant) float to the top
     return [...filtered].sort((a, b) => {
-      const aw = a.granted.length + (a.clan === 'Nosferatu' ? 1 : 0);
-      const bw = b.granted.length + (b.clan === 'Nosferatu' ? 1 : 0);
-      return bw - aw || a.name.localeCompare(b.name);
+      const w = (u) => u.granted.length + (u.clan === 'Nosferatu' ? 1 : 0) + (u.role === 'admin' ? 1 : 0);
+      return w(b) - w(a) || (a.name || '').localeCompare(b.name || '');
     });
   }, [data, q]);
 
@@ -74,8 +78,10 @@ export default function OverlayAccessManager({ onClose }) {
           <div>
             <h3 className={styles.accessMgrTitle}>Overlay Access</h3>
             <p className={styles.accessMgrSub}>
-              Base map &amp; Transit are open to everyone. Grant the restricted overlays per player.
-              Admins see all · Nosferatu characters get both necropoleis automatically.
+              Base map &amp; Transit are open to everyone.
+              {isAdmin
+                ? ' Grant the restricted overlays to any player. Admins see all · Nosferatu characters get both necropoleis automatically.'
+                : ' You can pass on an overlay you have to another player, and take back grants you made.'}
             </p>
           </div>
           <button type="button" className={styles.accessMgrClose} onClick={onClose}>✕</button>
@@ -84,18 +90,21 @@ export default function OverlayAccessManager({ onClose }) {
         <input
           className={styles.accessMgrSearch}
           type="text"
-          placeholder="Search name, email or clan…"
+          placeholder="Search character, account or clan…"
           value={q}
           onChange={e => setQ(e.target.value)}
         />
 
         <div className={styles.accessMgrList}>
           {isLoading && <p className={styles.accessMgrEmpty}>Loading…</p>}
-          {error && <p className={styles.accessMgrEmpty}>Failed to load users.</p>}
-          {!isLoading && !error && users.length === 0 && (
+          {error && <p className={styles.accessMgrEmpty}>Failed to load.</p>}
+          {!isLoading && !error && keys.length === 0 && (
+            <p className={styles.accessMgrEmpty}>You have no overlays to share.</p>
+          )}
+          {!isLoading && !error && keys.length > 0 && users.length === 0 && (
             <p className={styles.accessMgrEmpty}>No matching users.</p>
           )}
-          {users.map(u => {
+          {keys.length > 0 && users.map(u => {
             const isNosferatu = u.clan === 'Nosferatu';
             const isAdminUser = u.role === 'admin';
             return (
@@ -103,7 +112,7 @@ export default function OverlayAccessManager({ onClose }) {
                 <div className={styles.accessMgrWho}>
                   <span className={styles.accessMgrName}>{u.name}</span>
                   <span className={styles.accessMgrMeta}>
-                    {u.role}{u.clan ? ` · ${u.clan}` : ''}
+                    {u.clan || u.role}{u.clan && u.role !== 'user' ? ` · ${u.role}` : ''}
                   </span>
                 </div>
                 <div className={styles.accessMgrChips}>
@@ -112,6 +121,9 @@ export default function OverlayAccessManager({ onClose }) {
                       isAdminUser ||
                       (isNosferatu && (k === 'necropolis_old' || k === 'necropolis_new'));
                     const on = auto || u.granted.includes(k);
+                    // non-admins can only revoke what they personally granted
+                    const canRevoke = isAdmin || u.grantedByMe.includes(k);
+                    const locked = auto || (on && !canRevoke) || grant.isPending;
                     return (
                       <button
                         key={k}
@@ -119,11 +131,13 @@ export default function OverlayAccessManager({ onClose }) {
                         className={styles.accessMgrChip}
                         data-on={on}
                         data-auto={auto}
-                        disabled={auto || grant.isPending}
+                        disabled={locked}
                         title={
                           auto
                             ? (isAdminUser ? 'Admin — always has access' : 'Nosferatu — automatic')
-                            : (on ? 'Click to revoke' : 'Click to grant')
+                            : on
+                              ? (canRevoke ? 'Click to revoke' : 'Granted by someone else')
+                              : 'Click to grant'
                         }
                         onClick={() => grant.mutate({ userId: u.id, key: k, on: !on })}
                       >

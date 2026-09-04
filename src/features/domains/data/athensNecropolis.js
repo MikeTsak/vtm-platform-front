@@ -58,7 +58,7 @@ export const NECRO_NEW_WIDTH = 4.5;
 // Legend note per necropolis (shown under its toggle).
 export const NECRO_NOTES = {
   old: 'Sealed & inaccessible — broken, ragged lines are unconfirmed record.',
-  new: 'Small, recent — above Papagou. All confirmed.',
+  new: 'Recent — Alsos Papagou west under Cholargos to the Ministry. All confirmed.',
 };
 
 export const NECRO_SITE_COLOR = {
@@ -70,6 +70,9 @@ export const NECRO_SITE_COLOR = {
   seal:         '#e0645a',
   collapse:     '#b06a5a',
   unknown:      '#9b8bb0',
+  junction:     '#f0c000',
+  server_room:  '#39e0e0',
+  furnace:      '#ff7a1a',
 };
 
 export const NECRO_ATTRIBUTION = necropolisRaw?.note || '';

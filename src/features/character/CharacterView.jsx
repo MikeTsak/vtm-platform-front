@@ -1,4 +1,4 @@
-﻿// src/pages/CharacterView.jsx
+// src/pages/CharacterView.jsx
 import React, { useEffect, useMemo, useState, useCallback, useRef, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -1126,33 +1126,46 @@ export default function CharacterView({
     }
   }
 
-  const handleUpdateNotes = async (type, idx, newNotes) => {
+  const handleUpdateNotes = async (type, targetItem, newNotes) => {
     if (!ch || !ch.sheet) return;
     const nextSheet = JSON.parse(JSON.stringify(ch.sheet));
-    // Bug fix for handleUpdateNotes which was using targetArray[idx] incorrectly
     const merits = nextSheet.advantages?.merits || [];
     const flaws = nextSheet.advantages?.flaws || [];
     const backgrounds = nextSheet.backgrounds || [];
 
-    // we don't have id here, just type ('merits' or 'flaws') and idx from the combined list
-    // This is fragile but we'll try to find the item.
-    // Let's rely on the way they were combined in MeritsBackgroundsSection:
-    // displayMerits = [...meritsList, ...backgroundsList]
+    const isMatch = (item) => item.id === targetItem.id && item.instance === targetItem.instance;
+    let found = false;
 
-    // Instead of fixing the whole handleUpdateNotes (since it might need changes in MeritsBackgroundsSection),
-    // let's do a safe try-catch update if possible, or just use nextSheet.advantages.merits/flaws.
-    // Actually the old code was: targetArray = type === 'flaws' ? nextSheet.flaws : nextSheet.advantages;
-    // which threw or did nothing.
-    let arr = type === 'flaws' ? flaws : merits;
-    // A more robust fix without breaking the old signature:
-    // the idx passed from MeritsBackgroundsSection is the index in the filtered combined array.
-    // It's probably easier to just ignore fixing this broken method for now if the user didn't ask for it,
-    // or fix it so it won't crash.
     if (type === 'flaws') {
-      if (flaws[idx]) flaws[idx].notes = newNotes;
+      for (let i = 0; i < flaws.length; i++) {
+        if (isMatch(flaws[i])) {
+          flaws[i].notes = newNotes;
+          found = true;
+          break;
+        }
+      }
     } else {
-      if (merits[idx]) merits[idx].notes = newNotes;
-      else if (backgrounds[idx - merits.length]) backgrounds[idx - merits.length].notes = newNotes;
+      for (let i = 0; i < merits.length; i++) {
+        if (isMatch(merits[i])) {
+          merits[i].notes = newNotes;
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        for (let i = 0; i < backgrounds.length; i++) {
+          if (isMatch(backgrounds[i])) {
+            backgrounds[i].notes = newNotes;
+            found = true;
+            break;
+          }
+        }
+      }
+    }
+
+    if (!found) {
+       console.warn("Could not find advantage to update notes for", targetItem);
+       return;
     }
 
     try {

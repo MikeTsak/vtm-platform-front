@@ -340,10 +340,13 @@ export default function Domains() {
 
   // ── Restricted-overlay access (server-resolved: admin → all, Nosferatu →
   // necropoleis, plus explicit admin grants) ──
+  // Keyed by user id so a fresh login (e.g. admin → player in the same tab)
+  // never reads the previous account's cached access.
   const { data: overlayAccessData } = useQuery({
-    queryKey: ['domain-overlays-me'],
+    queryKey: ['domain-overlays-me', user?.id],
     queryFn: async () => (await api.get('/domain-overlays/me')).data,
-    staleTime: 5 * 60 * 1000,
+    enabled: !!user,
+    staleTime: 30 * 1000,
   });
   const overlayAccess = useMemo(
     () => new Set(overlayAccessData?.overlays || []),
@@ -926,8 +929,8 @@ export default function Domains() {
       if (paths.length) groups.push({ id: 'new', paths, color: NECRO_NEW_COLOR, dash: null, width: NECRO_NEW_WIDTH });
     }
     const sites = NECRO_SITES.filter(s => (s.necropolis === 'old' && necroOldOn) || (s.necropolis === 'new' && necroNewOn));
-    // Always name the entrances and the ominous markers; the rest at zoom.
-    const KEY = new Set(['new_entrance', 'entrance', 'seal', 'unknown']);
+    // Always name the entrances and the notable markers; the rest at zoom.
+    const KEY = new Set(['new_entrance', 'entrance', 'seal', 'unknown', 'server_room', 'furnace']);
     const labelAll = zoom >= TRANSIT_LABEL_ALL_ZOOM;
     const labels = sites.filter(s => labelAll || KEY.has(s.siteType));
     return { necroDrawGroups: groups, necroSiteDots: sites, necroLabelData: labels };
@@ -1540,15 +1543,15 @@ export default function Domains() {
           id: 'necro-sites',
           data: necroSiteDots,
           getPosition: d => d.position,
-          getRadius: d => (d.siteType === 'new_entrance' ? 8 : d.siteType === 'unknown' || d.siteType === 'seal' ? 5.5 : 4),
+          getRadius: d => (d.siteType === 'new_entrance' || d.siteType === 'server_room' || d.siteType === 'furnace' ? 7.5 : d.siteType === 'unknown' || d.siteType === 'seal' ? 5.5 : 4),
           radiusUnits: 'pixels',
           radiusMinPixels: 3,
           radiusMaxPixels: 10,
           stroked: true,
           filled: true,
-          getFillColor: d => hexToRgba(NECRO_SITE_COLOR[d.siteType] || '#c8d0c0', d.siteType === 'new_entrance' ? 255 : 225),
-          getLineColor: d => (d.siteType === 'new_entrance' ? [255, 255, 255, 255] : [6, 8, 6, 255]),
-          getLineWidth: d => (d.siteType === 'new_entrance' ? 2.5 : 1.5),
+          getFillColor: d => hexToRgba(NECRO_SITE_COLOR[d.siteType] || '#c8d0c0', d.siteType === 'new_entrance' || d.siteType === 'server_room' || d.siteType === 'furnace' ? 255 : 225),
+          getLineColor: d => (d.siteType === 'new_entrance' || d.siteType === 'server_room' || d.siteType === 'furnace' ? [255, 255, 255, 255] : [6, 8, 6, 255]),
+          getLineWidth: d => (d.siteType === 'new_entrance' || d.siteType === 'server_room' || d.siteType === 'furnace' ? 2.5 : 1.5),
           lineWidthUnits: 'pixels',
           parameters: { depthTest: false },
           pickable: true,
@@ -1564,9 +1567,14 @@ export default function Domains() {
           data: necroLabelData,
           getPosition: d => d.position,
           getText: d => d.name,
-          getSize: d => (d.siteType === 'new_entrance' ? 13 : 11),
-          getColor: d => (d.siteType === 'new_entrance' ? [255, 214, 92, 255] : [222, 228, 210, 255]),
-          getPixelOffset: d => [0, d.siteType === 'new_entrance' ? -16 : -12],
+          getSize: d => (d.siteType === 'new_entrance' || d.siteType === 'server_room' || d.siteType === 'furnace' ? 13 : 11),
+          getColor: d => (
+            d.siteType === 'new_entrance' ? [255, 214, 92, 255]
+            : d.siteType === 'server_room' ? [110, 240, 240, 255]
+            : d.siteType === 'furnace' ? [255, 150, 70, 255]
+            : [222, 228, 210, 255]
+          ),
+          getPixelOffset: d => [0, d.siteType === 'new_entrance' || d.siteType === 'server_room' || d.siteType === 'furnace' ? -16 : -12],
           fontFamily: '"Courier New", monospace',
           fontWeight: 700,
           billboard: true,
@@ -1849,11 +1857,11 @@ export default function Domains() {
                 <span className={styles.layersPanelTitle}>Layers</span>
                 <span className={styles.layersChevron} data-open={layersPanelOpen}>▾</span>
               </button>
-              {isAdmin && (
+              {(isAdmin || overlayAccess.size > 0) && (
                 <button
                   type="button"
                   className={styles.layersManageBtn}
-                  title="Manage which players can see the restricted overlays"
+                  title={isAdmin ? 'Manage which players can see the restricted overlays' : 'Share an overlay you have with another player'}
                   onClick={() => setAccessMgrOpen(true)}
                 >
                   <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
@@ -2340,10 +2348,10 @@ export default function Domains() {
           )}
         </AnimatePresence>
 
-        {/* ── ADMIN: manage per-player overlay access ── */}
+        {/* ── Overlay access: admins manage, holders can spread ── */}
         <AnimatePresence>
-          {isAdmin && accessMgrOpen && (
-            <OverlayAccessManager onClose={() => setAccessMgrOpen(false)} />
+          {accessMgrOpen && (
+            <OverlayAccessManager userId={user?.id} onClose={() => setAccessMgrOpen(false)} />
           )}
         </AnimatePresence>
       </div>
