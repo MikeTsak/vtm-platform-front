@@ -24,6 +24,7 @@ export default function AdminMasterTab() {
   const [availableNpcs, setAvailableNpcs] = useState([]);
   const [subscribedNpcs, setSubscribedNpcs] = useState([]);
   const [subscribeErrors, setSubscribeErrors] = useState(false);
+  const [subscribeDowntimes, setSubscribeDowntimes] = useState(false);
   const [bannerSettings, setBannerSettings] = useState({ enabled: 0, title: '', message: '', type: 'info', dismissable: 1 });
 
   // Danger Zone state
@@ -152,6 +153,7 @@ export default function AdminMasterTab() {
       setNtfyTopic(ntfyRes.data.topic || '');
       setSubscribedNpcs(ntfyRes.data.subscribed_npcs || []);
       setSubscribeErrors(ntfyRes.data.subscribe_errors || false);
+      setSubscribeDowntimes(ntfyRes.data.subscribe_downtimes || false);
       setBannerSettings(bannerRes.data);
       setAvailableNpcs(npcsRes.data.npcs || []);
       setDisabledClans(clansRes.data.disabledClans || []);
@@ -307,7 +309,11 @@ export default function AdminMasterTab() {
   const saveNtfyPrefs = async () => {
     setActionLoading(true); setErr(''); setMsg('');
     try {
-      await api.post('/admin/ntfy/prefs', { npc_ids: subscribedNpcs, subscribe_errors: subscribeErrors });
+      await api.post('/admin/ntfy/prefs', { 
+        npc_ids: subscribedNpcs, 
+        subscribe_errors: subscribeErrors,
+        subscribe_downtimes: subscribeDowntimes 
+      });
       setMsg(`Ntfy preferences saved.`);
       setTimeout(() => setMsg(''), 3000);
     } catch (e) { setErr('Failed to save NPC preferences.'); } finally { setActionLoading(false); }
@@ -517,6 +523,15 @@ export default function AdminMasterTab() {
                     disabled={actionLoading}
                   />
                   Receive push notifications for API errors and crashes
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: 'var(--text-color)', fontSize: '0.9rem', marginTop: '8px' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={subscribeDowntimes} 
+                    onChange={(e) => setSubscribeDowntimes(e.target.checked)} 
+                    disabled={actionLoading}
+                  />
+                  Receive push notifications when players read downtimes
                 </label>
                 
                 <button className={`${styles.btn}`} onClick={saveNtfyPrefs} disabled={actionLoading} style={{ marginTop: '15px', background: 'var(--accent-purple)', color: '#fff', border: 'none' }}>

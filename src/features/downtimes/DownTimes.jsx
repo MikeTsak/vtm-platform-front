@@ -300,6 +300,12 @@ function ActiveTrackItem({ dt, isProject }) {
 function ArchiveItem({ dt, isProject, isMassReleaseActive, massReleaseCountdown }) {
   const status = (dt.status || 'resolved').toLowerCase();
   const displayTitle = isProject ? dt.title.replace('[PROJECT] ', '') : dt.title;
+  
+  useEffect(() => {
+    if (dt.gm_resolution && !isMassReleaseActive && !dt.is_read) {
+      api.patch(\`/downtimes/\${dt.id}/read\`).catch(() => {});
+    }
+  }, [dt.gm_resolution, isMassReleaseActive, dt.is_read, dt.id]);
 
   const dateStr = niceDate(dt.created_at).split(' ').slice(1, 3).join(' '); // "Sep 1999" approx
 

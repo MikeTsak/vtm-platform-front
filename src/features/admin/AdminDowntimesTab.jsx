@@ -583,6 +583,7 @@ function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel }
         </div>
         <div style={{ fontFamily: 'Fira Code, monospace', fontSize: '0.8rem', color: 'var(--text-secondary)', opacity: 0.8 }}>{niceDate(r.created_at)}</div>
         <div>
+          {r.is_read ? <span style={{ marginRight: '8px', opacity: 0.6 }} title="Read by player">👁️</span> : null}
           <span className={styles.statusBadge} data-status={r.status}>{r.status}</span>
         </div>
       </div>
