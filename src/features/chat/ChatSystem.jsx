@@ -10,6 +10,7 @@ import EmojiPicker from 'emoji-picker-react';
 import MiniSearch from 'minisearch';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getPushSettings, updatePushSettings, subscribeToWebPush } from '../../utils/push';
+import { socket } from '../../api/liveSession';
 
 /* --- Clan assets & colors --- */
 const CLAN_COLORS = {
@@ -403,6 +404,7 @@ export default function ChatSystem({ commsEnabled = true }) {
     }
   };
 
+
   const [notifSupported] = useState(typeof window !== 'undefined' && 'Notification' in window);
   const [notifOn, setNotifOn] = useState(false);
   const [pushSettingsLoading, setPushSettingsLoading] = useState(true);
@@ -637,14 +639,116 @@ export default function ChatSystem({ commsEnabled = true }) {
     }
   }, [isAuthenticated]);
 
-  // Initial Load & Polling setup
+  // Initial Load & Polling setup. The interval is now a slow safety net —
+  // 'chat:refresh' (below) handles the real-time case, so this only exists
+  // to catch anything missed if the socket was ever briefly disconnected.
   useEffect(() => {
     setLoading(true);
     fetchContacts().finally(() => setLoading(false));
 
-    const contactInterval = setInterval(fetchContacts, 10000);
+    const contactInterval = setInterval(fetchContacts, 45000);
     return () => clearInterval(contactInterval);
   }, [fetchContacts, creatingGroup]);
+
+  // Socket-driven instant refresh. Deliberately a separate effect from the
+  // one above: this must NEVER toggle `loading` (that would flash the
+  // skeleton on every incoming message) — it just silently re-runs the same
+  // fetchContacts() the interval already calls in the background. Bumping
+  // socketRefreshTick (used by the message-polling effect further down) is
+  // how a single 'chat:refresh' event also re-syncs whichever thread is
+  // currently open, without duplicating that effect's fetch logic here.
+  const [socketRefreshTick, setSocketRefreshTick] = useState(0);
+  useEffect(() => {
+    // Debounced: a burst of several messages arriving within the same
+    // moment (e.g. a group conversation firing off) would otherwise queue up
+    // that many overlapping fetches — coalesce them into one.
+    let debounceTimer = null;
+    const bump = () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => setSocketRefreshTick((t) => t + 1), 300);
+    };
+    socket.on('chat:refresh', bump);
+    // Also catch up immediately after a (re)connect, in case anything
+    // happened while this tab's socket was briefly disconnected.
+    socket.on('connect', bump);
+    return () => {
+      clearTimeout(debounceTimer);
+      socket.off('chat:refresh', bump);
+      socket.off('connect', bump);
+    };
+  }, []);
+  useEffect(() => {
+    if (socketRefreshTick === 0) return; // skip the initial render — the mount effect above already does the first load
+    fetchContacts();
+  }, [socketRefreshTick, fetchContacts]);
+
+  /* --- Reactions (double-tap-to-like + emoji react) --- */
+  const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+  const LIKE_EMOJI = '❤️';
+
+  // Maps selectedContact.type to the discriminator the backend expects —
+  // must match REACTION_TABLES in server.fastify.js.
+  const reactionTable = selectedContact?.type === 'group'
+    ? 'chat_group_messages'
+    : selectedContact?.type === 'user'
+      ? 'chat_messages'
+      : selectedContact?.type === 'npc'
+        ? 'npc_messages'
+        : null;
+
+  const [reactionsByMsgId, setReactionsByMsgId] = useState({});
+  const [reactionPickerFor, setReactionPickerFor] = useState(null);
+  const lastTapRef = useRef({});
+
+  const toggleReaction = useCallback(async (msgId, emoji) => {
+    if (!reactionTable || String(msgId).startsWith('temp_')) return; // can't react to a message that hasn't finished sending yet
+    try {
+      const { data } = await api.post(`/chat/messages/${msgId}/reactions`, { table: reactionTable, emoji });
+      setReactionsByMsgId(prev => ({ ...prev, [msgId]: data.reactions || [] }));
+    } catch (e) {
+      // Reactions are a nice-to-have on top of chat — fail silently rather
+      // than surfacing an error banner for something this minor.
+    }
+    setReactionPickerFor(null);
+  }, [reactionTable]);
+
+  // Works for both mouse double-click and touch double-tap — onClick fires
+  // for both, so tracking tap timing here covers desktop and mobile with one
+  // handler instead of relying on onDoubleClick (touch-unreliable).
+  const handleBubbleTap = useCallback((msgId) => {
+    const now = Date.now();
+    const last = lastTapRef.current[msgId] || 0;
+    if (now - last < 300) {
+      lastTapRef.current[msgId] = 0;
+      toggleReaction(msgId, LIKE_EMOJI);
+    } else {
+      lastTapRef.current[msgId] = now;
+    }
+  }, [toggleReaction]);
+
+  // Batch-fetch reaction summaries for whichever messages are currently
+  // shown. Re-runs when the set of message ids changes (new message
+  // arrived), when a socket 'chat:refresh' fires (someone else may have
+  // reacted — the message content itself wouldn't have changed, so the
+  // message-polling effect alone wouldn't catch that), and on its own slow
+  // interval as a safety net if sockets are ever down.
+  const messageIdsKey = useMemo(
+    () => messages.filter(m => !String(m.id).startsWith('temp_')).map(m => m.id).join(','),
+    [messages]
+  );
+  useEffect(() => {
+    if (!reactionTable || !messageIdsKey) { setReactionsByMsgId({}); return; }
+    let active = true;
+    const fetchReactions = () => {
+      const ids = messageIdsKey.split(',').map(Number);
+      api.post('/chat/messages/reactions/batch', { table: reactionTable, ids })
+        .then(({ data }) => { if (active) setReactionsByMsgId(data.reactions || {}); })
+        .catch(() => {});
+    };
+    fetchReactions();
+    const interval = setInterval(fetchReactions, 20000);
+    return () => { active = false; clearInterval(interval); };
+  }, [messageIdsKey, reactionTable, socketRefreshTick]);
 
   // Active Conversation Message Polling
   useEffect(() => {
@@ -772,9 +876,18 @@ export default function ChatSystem({ commsEnabled = true }) {
     };
 
     load();
-    pollRef.current = setInterval(load, 4000);
+    // Slow safety net — 'chat:refresh' (see socketRefreshTick above) covers
+    // the real-time case, so this interval only needs to catch anything
+    // missed during a brief socket disconnect.
+    pollRef.current = setInterval(load, 20000);
     return () => clearInterval(pollRef.current);
-  }, [selectedContact, selectedPlayerId, isAdmin, isAuthenticated, currentUser?.id, users, threadKey, isInbound, notify]);
+    // socketRefreshTick is intentionally a dependency, not used in the body:
+    // bumping it re-runs this effect, which calls load() immediately — the
+    // same function this effect already runs on mount/selection-change and
+    // every interval tick, just triggered on-demand by the socket event
+    // instead of only on a timer.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedContact, selectedPlayerId, isAdmin, isAuthenticated, currentUser?.id, users, threadKey, isInbound, notify, socketRefreshTick]);
 
   /* --- File Handling --- */
   const handleFileSelect = (e) => {
@@ -1557,7 +1670,10 @@ export default function ChatSystem({ commsEnabled = true }) {
                           </div>
                         </div>
                       ) : (
-                        <div className={`relative chat-glass p-2 md:p-3 w-fit max-w-full shadow-[0_4px_12px_rgba(0,0,0,0.5)] ${mine ? 'bg-blood-accent/90 text-white rounded-l-lg rounded-br-lg bubble-right border-l border-t border-b border-[#b01423]' : 'bg-surface-container-high border border-outline-variant/30 text-on-surface rounded-r-lg rounded-bl-lg bubble-left'}`}>
+                        <div
+                          onClick={() => handleBubbleTap(item.id)}
+                          className={`relative chat-glass p-2 md:p-3 w-fit max-w-full shadow-[0_4px_12px_rgba(0,0,0,0.5)] select-none ${mine ? 'bg-blood-accent/90 text-white rounded-l-lg rounded-br-lg bubble-right border-l border-t border-b border-[#b01423]' : 'bg-surface-container-high border border-outline-variant/30 text-on-surface rounded-r-lg rounded-bl-lg bubble-left'}`}
+                        >
 
                           {/* Attachment */}
                           {item.attachment_id && (
@@ -1569,6 +1685,36 @@ export default function ChatSystem({ commsEnabled = true }) {
 
                           {/* Body */}
                           {item.body && <p className="text-[14px] md:text-[15px] leading-relaxed whitespace-pre-wrap break-words">{renderMessageBody(item.body)}</p>}
+                        </div>
+                      )}
+
+                      {/* Reactions */}
+                      {!String(item.id).startsWith('temp_') && (reactionsByMsgId[item.id]?.length > 0 || reactionPickerFor === item.id) && (
+                        <div className={`flex items-center gap-1 flex-wrap ${mine ? 'justify-end' : 'justify-start'}`}>
+                          {(reactionsByMsgId[item.id] || []).map(r => (
+                            <button
+                              key={r.emoji}
+                              onClick={() => toggleReaction(item.id, r.emoji)}
+                              title={r.reacted_by_me ? 'Remove your reaction' : 'React'}
+                              className={`text-[11px] leading-none px-1.5 py-0.5 rounded-full border transition-colors flex items-center gap-1 ${r.reacted_by_me ? 'bg-primary/20 border-primary text-primary' : 'bg-surface-container-highest border-outline-variant/40 text-on-surface-variant hover:border-primary/50'}`}
+                            >
+                              <span>{r.emoji}</span>
+                              <span className="font-system-code">{r.count}</span>
+                            </button>
+                          ))}
+                          {reactionPickerFor === item.id && (
+                            <div className="flex items-center gap-1 bg-surface-container-highest border border-outline-variant/40 rounded-full px-1.5 py-0.5 shadow-lg">
+                              {QUICK_REACTIONS.map(e => (
+                                <button
+                                  key={e}
+                                  onClick={() => toggleReaction(item.id, e)}
+                                  className="text-[14px] leading-none hover:scale-125 transition-transform"
+                                >
+                                  {e}
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -1586,6 +1732,15 @@ export default function ChatSystem({ commsEnabled = true }) {
 
                         {/* Action Buttons (Hover) */}
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {!String(item.id).startsWith('temp_') && (
+                            <button
+                              onClick={() => setReactionPickerFor(p => p === item.id ? null : item.id)}
+                              title="React"
+                              className="text-[10px] text-on-surface-variant hover:text-primary transition-colors"
+                            >
+                              React
+                            </button>
+                          )}
                           {canEditDelete && !editingMsgId && (
                             <>
                               <button onClick={() => { setEditingMsgId(item.id); setEditBody(item.body); }} className="text-[10px] text-on-surface-variant hover:text-primary transition-colors">Edit</button>

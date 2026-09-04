@@ -13,6 +13,7 @@ import CharacterSetup from './CharacterSetup';
 import { ATTR_DESCRIPTIONS, SKILL_DESCRIPTIONS } from '../../data/descriptions';
 import { MERITS_AND_FLAWS, listAllItems } from '../../data/merits_flaws';
 import generateVTMCharacterSheetPDF from '../../utils/pdfGenerator';
+import { buildXpSpendIdempotencyKey } from '../../utils/idempotencyKey';
 import Inventory from '../inventory/Inventory';
 import TouchstonesConvictionsSection from './TouchstonesConvictionsSection';
 import AttributesSection from './AttributesSection';
@@ -1052,7 +1053,9 @@ export default function CharacterView({
   async function spendXP(payload) {
     setErr(''); setMsg('');
     try {
-      const { data } = await api.post(paths.spend, payload);
+      const { data } = await api.post(paths.spend, payload, {
+        headers: { 'Idempotency-Key': buildXpSpendIdempotencyKey(payload) },
+      });
       const obj = data.character || data.npc || null;
       setCh(attachStructured(obj));
 
@@ -1271,13 +1274,16 @@ export default function CharacterView({
 
     try {
       if (assignOnly) {
-        await api.post(paths.spend, {
+        const assignPayload = {
           type: 'discipline',
           disciplineKind: 'select',
           target: name,
           currentLevel: Number(nextSheet.disciplines[name] || 0),
           newLevel: Number(nextSheet.disciplines[name] || 0),
           patchSheet: nextSheet
+        };
+        await api.post(paths.spend, assignPayload, {
+          headers: { 'Idempotency-Key': buildXpSpendIdempotencyKey(assignPayload) },
         });
       } else {
         await spendXP({

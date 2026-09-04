@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { updateConsent } from '../utils/analytics';
+import { loadConsentGatedScripts } from '../utils/consentGatedScripts';
 
 const CookieConsent = () => {
   const [show, setShow] = useState(false);
@@ -12,8 +13,10 @@ const CookieConsent = () => {
       // If no choice was made, show the banner
       setShow(true);
     } else if (consent === 'granted') {
-      // If they previously accepted, tell GA to grant consent
+      // If they previously accepted, tell GA to grant consent and start
+      // AdSense/Clarity — neither loads at all until this fires.
       updateConsent(true);
+      loadConsentGatedScripts();
     } else {
       // If they previously declined, tell GA to deny consent
       updateConsent(false);
@@ -23,6 +26,7 @@ const CookieConsent = () => {
   const handleAccept = () => {
     localStorage.setItem('cookie_consent', 'granted');
     updateConsent(true);
+    loadConsentGatedScripts();
     setShow(false);
   };
 

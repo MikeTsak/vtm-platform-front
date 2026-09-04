@@ -52,7 +52,14 @@ export default defineConfig(async () => {
   build: {
     outDir: 'build', // CRA defaults to build, whereas vite defaults to dist. This maintains compatibility.
     chunkSizeWarningLimit: 2500, // Silences the warning for chunks under 2.5MB
-    cssCodeSplit: false, // Prevents dynamic CSS chunk preload errors (the black screen bug)
+    // Per-route CSS code splitting (Vite's default) is back on. It was
+    // disabled as a workaround for the "black screen" bug: a dynamic
+    // import()'s CSS chunk 404ing (because a new deploy replaced the build
+    // this tab's old index.html still points at) rejected the whole lazy
+    // component with nothing catching it. The actual fix is
+    // src/utils/lazyWithRetry.js, which every lazy route now goes through —
+    // it catches that rejection (JS chunk or CSS chunk, either can 404 the
+    // same way) and reloads once to pick up the new build.
     rollupOptions: {
       output: {
         manualChunks: {

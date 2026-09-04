@@ -11,19 +11,20 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  config.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
-  config.headers['Pragma'] = 'no-cache';
-  config.headers['Expires'] = '0';
-  
-  // Add Idempotency-Key for state-modifying requests
-  if (config.method && ['post', 'put', 'patch', 'delete'].includes(config.method.toLowerCase())) {
-    if (window.crypto && window.crypto.randomUUID) {
-      config.headers['Idempotency-Key'] = window.crypto.randomUUID();
-    } else {
-      config.headers['Idempotency-Key'] = 'idemp-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-    }
-  }
-  
+  // Caching is governed by each response's own Cache-Control header (see
+  // back/server.fastify.js) — forcing no-store on every request here used to
+  // override that unconditionally, which is why re-enabling caching
+  // server-side alone wouldn't have done anything. The backend defaults to
+  // no-store for anything that hasn't explicitly opted into caching, so this
+  // is safe to leave to the server now.
+
+  // Idempotency-Key is NOT set globally anymore — a fresh random UUID on
+  // every request meant retries never shared a key, so it protected nothing
+  // while still writing a DB row per mutation. Real idempotency is now
+  // opt-in, only for the handful of endpoints where a duplicate would cause
+  // real harm (XP spend) — see utils/idempotencyKey.js, called explicitly at
+  // those call sites instead of here.
+
   return config;
 });
 

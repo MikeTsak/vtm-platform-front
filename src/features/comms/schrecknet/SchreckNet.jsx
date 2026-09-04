@@ -1,33 +1,14 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useContext } from 'react';
 import { AuthCtx } from '../../../core/AuthContext';
-import api from '../../../core/api';
 import ChatSystem from '../../chat/ChatSystem';
 import styles from '../../../styles/Comms.module.css'; // reuse Comms styling for banner
 import { Skeleton } from 'boneyard-js/react';
 import { motion } from 'framer-motion';
+import { useCommsEnabled } from '../useCommsEnabled';
 
 export default function SchreckNet() {
   const { user } = useContext(AuthCtx);
-  const [commsEnabled, setCommsEnabled] = useState(true);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Master Comms Polling (same as in Comms.jsx)
-  useEffect(() => {
-    const checkComms = async () => {
-      try {
-        const { data } = await api.get('/comms/status');
-        setCommsEnabled(data.comms_enabled);
-        setIsLoading(false);
-      } catch (e) {
-        // ignore errors, keep previous state
-        setIsLoading(false);
-      }
-    };
-
-    checkComms();
-    const interval = setInterval(checkComms, 10000); // 10s poll
-    return () => clearInterval(interval);
-  }, []);
+  const { commsEnabled, isLoading } = useCommsEnabled();
 
   return (
     <motion.div

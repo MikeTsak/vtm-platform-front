@@ -65,18 +65,29 @@
     rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&icon_names=account_balance,account_circle,account_tree,add,add_circle,admin_panel_settings,arrow_back,arrow_downward,arrow_forward,article,attach_file,auto_awesome,backpack,badge,balance,bar_chart,block,bloodtype,build,campaign,cancel,casino,chat,check,check_circle,chevron_right,close,contact_phone,cookie,crop,dark_mode,data_usage,delete,delete_sweep,description,diamond,dns,edit,edit_square,error,event,expand_more,face_2,fact_check,favorite,fitness_center,forum,gavel,grid_view,group,group_work,groups,handshake,heart_broken,help_outline,history_edu,home,hourglass_empty,how_to_reg,info,insights,inventory_2,language,local_fire_department,local_police,lock,logout,mail,map,masks,menu,menu_book,military_tech,monitor_heart,mood,notifications,notifications_active,notifications_off,payments,person,person_add,pets,play_circle,policy,priority_high,progress_activity,psychology,public,public_off,radar,recent_actors,receipt_long,restaurant,rss_feed,save,schedule,school,search,security,send,sensors,settings,shield,shield_person,shopping_cart,star,stars,swords,sync,terminal,theater_comedy,timeline,timer,translate,upload_file,verified,view_list,visibility,visibility_off,volume_off,volume_up,warning,water_drop,wifi_tethering,workspace_premium,zoom_in,zoom_out&display=swap"
     rel="stylesheet" />
-  <!-- Consent Mode + GA4 + Clarity bootstrap. Kept in an external, same-origin
-       file (not inline) so index.html can ship a strict CSP with no
+  <!-- Consent Mode bootstrap + GA4. Kept in an external, same-origin file
+       (not inline) so index.html can ship a strict CSP with no
        'unsafe-inline' in script-src — see public/analytics-init.js and
        public/.htaccess for the full rationale. Must run BEFORE the async
-       gtag.js / adsbygoogle.js tags below. -->
+       gtag.js tag below.
+
+       GA4 is the one script here that's fine to load unconditionally: it
+       implements Google Consent Mode v2, and analytics-init.js sets every
+       consent signal to 'denied' before gtag.js ever runs — no cookies are
+       set and no personal data is processed until CookieConsent.jsx calls
+       updateConsent(true). That's Google's own documented compliant
+       pattern; blocking gtag.js entirely would actually break it (Consent
+       Mode needs the tag present to send anonymous, cookieless pings before
+       consent). AdSense and Microsoft Clarity do NOT have an equivalent
+       default-denied mode, so — unlike GA — those two are not loaded here
+       at all; see src/utils/consentGatedScripts.js, which CookieConsent.jsx
+       only calls once consent is actually granted. -->
   <script src="/analytics-init.js"></script>
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-Z7VCE9MCPT"></script>
-  <!-- Google AdSense -->
+  <!-- Google AdSense site-verification meta only — the adsbygoogle.js script
+       itself is consent-gated, see the comment above. -->
   <meta name="google-adsense-account" content="ca-pub-2086654176767394">
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2086654176767394"
-    crossorigin="anonymous"></script>
   <!-- Tailwind is now compiled at build time via PostCSS (tailwind.config.js + postcss.config.js) --></head>
 
 <body>

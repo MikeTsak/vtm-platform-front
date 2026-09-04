@@ -268,7 +268,8 @@ export const COTERIES = {
     notes: "Spy/assassination/political disruption; impressive mortal reach.",
   },
   "Sbirri": {
-    domain: { /* mimics target coterie; spend one less dot overall */ },
+    domain: null,
+    domain_note: 'Mimics the Domain of the coterie it is impersonating, spending one less dot overall. Copy that type first, then remove a dot.',
     required: { Mawla: dots(2), Mask: dots(1) },
     extras: [
       "Adversaries (target city Primogen)",
@@ -345,7 +346,8 @@ export const COTERIES = {
     notes: "Patrol the city, repel intruders, colonize territory.",
   },
   "Archonium": {
-    domain: { /* Max • when arriving in new city */ },
+    domain: null,
+    domain_note: 'Maximum Chasse • on arriving in a new city; an Archonium rarely holds ground of its own.',
     required: { Status: dots(4), Mawla: dots(3), Adversary: dots(4) },
     extras: [],
     preferred_resonances: [],
@@ -353,7 +355,8 @@ export const COTERIES = {
     notes: "Justicar’s expendable enforcers; diplomats/spies operating under cover.",
   },
   "Primogen's Council": {
-    domain: { /* Usually none shared; may add +1 dot to Chasse or Portillon */ },
+    domain: null,
+    domain_note: 'Each Primogen holds their own domain. The council itself may add one free dot to Chasse or Portillon.',
     required: { Haven: dots(3) },
     extras: ["Members often donate personal Advantage dots to shared pool; ‘supervillain lair’ vibe"],
     preferred_resonances: [],
@@ -369,7 +372,8 @@ export const COTERIES = {
     notes: "Rules a smaller city or a major domain within a megacity.",
   },
   "The Decade Club": {
-    domain: { chasse: 2, portillon: 3 }, // maximums per brief
+    domain: { chasse: 2, portillon: 3 },
+    domain_note: 'Chasse •• and Portillon ••• are the ceilings for this club, not a required baseline.',
     required: { Library: dots(3) },
     extras: ["Mythic Flaw (• or ••) suitable to the era"],
     preferred_resonances: [],

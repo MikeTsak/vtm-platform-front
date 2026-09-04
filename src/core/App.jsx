@@ -8,6 +8,7 @@ import NotificationBanner from '../features/notification/NotificationBanner';
 import api from './api';
 import { Skeleton } from 'boneyard-js/react';
 import { trackPageView, setUserId, setUserProperties } from '../utils/analytics';
+import { lazyWithRetry } from '../utils/lazyWithRetry';
 
 // Pages & Components (Critical Path)
 import Login from '../features/auth/Login';
@@ -20,32 +21,32 @@ import Footer from '../ui/Footer';
 import DiceRoller from '../features/dice/DiceRoller';
 
 // Lazy Loaded Routes
-const CharacterView = React.lazy(() => import('../features/character/CharacterView'));
-const CharacterSetup = React.lazy(() => import('../features/character/CharacterSetup'));
-const Domains = React.lazy(() => import('../features/domains/Domains'));
-const DownTimes = React.lazy(() => import('../features/downtimes/DownTimes'));
-const Boons = React.lazy(() => import('../features/boons/Boons'));
-const MediaViewer = React.lazy(() => import('../pages/MediaViewer'));
-const Premonitions = React.lazy(() => import('../features/premonitions/Premonitions'));
-const News = React.lazy(() => import('../features/news/News'));
-const PublicArticleView = React.lazy(() => import('../features/news/PublicArticleView'));
-const NotFound = React.lazy(() => import('../pages/404'));
-const Hierarchy = React.lazy(() => import('../features/court/HierarchyView'));
-const Announcements = React.lazy(() => import('../features/announcements/AnnouncementsView'));
-const Coteries = React.lazy(() => import('../features/coterie/CoterieManager'));
-const LiveSession = React.lazy(() => import('../features/live-session/LiveSession'));
-const LiveSessionDashboard = React.lazy(() => import('../features/admin/LiveSessionDashboard'));
-const SchreckNet = React.lazy(() => import('../features/comms/schrecknet/SchreckNet'));
-const SurfaceWeb = React.lazy(() => import('../features/comms/surfaceweb/SurfaceWeb'));
-const Admin = React.lazy(() => import('../features/admin/Admin'));
-const NPCs = React.lazy(() => import('../features/npcs/NPCs'));
-const AdminNPCView = React.lazy(() => import('../features/admin/AdminNPCView'));
-const RetainersView = React.lazy(() => import('../features/character/RetainersView'));
-const ForgotPassword = React.lazy(() => import('../features/auth/ForgotPassword'));
-const ResetPassword = React.lazy(() => import('../features/auth/ResetPassword'));
-const Terms = React.lazy(() => import('../pages/Terms'));
-const Legal = React.lazy(() => import('../pages/Legal'));
-const Privacy = React.lazy(() => import('../pages/Privacy'));
+const CharacterView = lazyWithRetry(() => import('../features/character/CharacterView'));
+const CharacterSetup = lazyWithRetry(() => import('../features/character/CharacterSetup'));
+const Domains = lazyWithRetry(() => import('../features/domains/Domains'));
+const DownTimes = lazyWithRetry(() => import('../features/downtimes/DownTimes'));
+const Boons = lazyWithRetry(() => import('../features/boons/Boons'));
+const MediaViewer = lazyWithRetry(() => import('../pages/MediaViewer'));
+const Premonitions = lazyWithRetry(() => import('../features/premonitions/Premonitions'));
+const News = lazyWithRetry(() => import('../features/news/News'));
+const PublicArticleView = lazyWithRetry(() => import('../features/news/PublicArticleView'));
+const NotFound = lazyWithRetry(() => import('../pages/404'));
+const Hierarchy = lazyWithRetry(() => import('../features/court/HierarchyView'));
+const Announcements = lazyWithRetry(() => import('../features/announcements/AnnouncementsView'));
+const Coteries = lazyWithRetry(() => import('../features/coterie/CoterieManager'));
+const LiveSession = lazyWithRetry(() => import('../features/live-session/LiveSession'));
+const LiveSessionDashboard = lazyWithRetry(() => import('../features/admin/LiveSessionDashboard'));
+const SchreckNet = lazyWithRetry(() => import('../features/comms/schrecknet/SchreckNet'));
+const SurfaceWeb = lazyWithRetry(() => import('../features/comms/surfaceweb/SurfaceWeb'));
+const Admin = lazyWithRetry(() => import('../features/admin/Admin'));
+const NPCs = lazyWithRetry(() => import('../features/npcs/NPCs'));
+const AdminNPCView = lazyWithRetry(() => import('../features/admin/AdminNPCView'));
+const RetainersView = lazyWithRetry(() => import('../features/character/RetainersView'));
+const ForgotPassword = lazyWithRetry(() => import('../features/auth/ForgotPassword'));
+const ResetPassword = lazyWithRetry(() => import('../features/auth/ResetPassword'));
+const Terms = lazyWithRetry(() => import('../pages/Terms'));
+const Legal = lazyWithRetry(() => import('../pages/Legal'));
+const Privacy = lazyWithRetry(() => import('../pages/Privacy'));
 
 function Private({ children }) {
   const { user, loading } = useContext(AuthCtx);

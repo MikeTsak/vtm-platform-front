@@ -6,6 +6,7 @@ import Avatar from '../../components/Avatar';
 import { DISCIPLINES, iconPath } from '../../data/disciplines';
 import { allSelectableAdvantages } from '../../data/merits_flaws_retainers';
 import { generateGreekName } from '../../utils/nameGenerator';
+import { buildXpSpendIdempotencyKey } from '../../utils/idempotencyKey';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const CLAN_DISCIPLINES = {
@@ -1070,10 +1071,13 @@ export default function RetainersView() {
         const tierDiff = tier - (oldRetainer?.tier || 0);
 
         if (wizardConfig.isUpgrade && !isAdminBypass && tierDiff > 0) {
-          await api.post(`/characters/xp/spend`, {
+          const spendPayload = {
             type: 'advantage',
             target: `Upgrade Retainer ${name} to Tier ${tier}`,
             dots: tierDiff
+          };
+          await api.post(`/characters/xp/spend`, spendPayload, {
+            headers: { 'Idempotency-Key': buildXpSpendIdempotencyKey(spendPayload) },
           });
           setCharacter(prev => ({ ...prev, xp: prev.xp - (tierDiff * 3) }));
         }
@@ -1099,10 +1103,13 @@ export default function RetainersView() {
         }
       } else {
         if (!isAdminBypass) {
-          await api.post(`/characters/xp/spend`, {
+          const spendPayload = {
             type: 'advantage',
             target: `Recruit Tier ${tier} Retainer: ${name}`,
             dots: tier
+          };
+          await api.post(`/characters/xp/spend`, spendPayload, {
+            headers: { 'Idempotency-Key': buildXpSpendIdempotencyKey(spendPayload) },
           });
         }
         const res = await api.post(`/characters/${character.id}/retainers`, {
@@ -1190,10 +1197,13 @@ export default function RetainersView() {
 
       if (tierDiff > 0) {
         const cost = tierDiff * 3;
-        await api.post(`/characters/xp/spend`, {
+        const spendPayload = {
           type: 'advantage',
           target: `Upgrade Retainer ${selectedRetainer.name} to Tier ${targetTier}`,
           dots: tierDiff
+        };
+        await api.post(`/characters/xp/spend`, spendPayload, {
+          headers: { 'Idempotency-Key': buildXpSpendIdempotencyKey(spendPayload) },
         });
         setCharacter(prev => ({ ...prev, xp: prev.xp - cost }));
       }
