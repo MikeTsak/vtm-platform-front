@@ -49,3 +49,27 @@ window.__loadClarity = function () {
     y.parentNode.insertBefore(t, y);
   })(window, document, 'clarity', 'script', 'xk8cqym8o2');
 };
+
+// Vite CSS-preload safety net — Vite's __vitePreload sets crossOrigin=""
+// on dynamically injected <link rel="stylesheet"> elements. If the server
+// doesn't return the right CORS headers (or an extension intercepts the
+// request), the browser fires onerror and Vite dispatches this cancelable
+// event. If no listener calls preventDefault(), Vite re-throws the error
+// as an uncaught exception — killing the entire React tree and producing a
+// blank screen. Calling preventDefault() lets the page continue; the CSS
+// chunk usually still loads via the normal non-CORS path, so styles render
+// fine. As a recovery measure, we also reload once (same cooldown logic as
+// lazyWithRetry) in case a genuinely missing file causes a stale-deploy.
+window.addEventListener('vite:preloadError', function (e) {
+  e.preventDefault();                  // stop Vite from throwing
+
+  var key = 'css-preload-reload-at';
+  var now = Date.now();
+  var last = 0;
+  try { last = Number(sessionStorage.getItem(key)) || 0; } catch (_) {}
+  if (now - last > 10000) {
+    try { sessionStorage.setItem(key, String(now)); } catch (_) {}
+    window.location.reload();
+  }
+  // else: already reloaded recently — swallow silently, the page continues.
+});
