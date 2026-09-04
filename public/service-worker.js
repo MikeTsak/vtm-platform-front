@@ -40,9 +40,3 @@ self.addEventListener('notificationclick', function(event) {
   );
 });
 
-self.addEventListener('fetch', function(event) {
-  // Only handle same-origin requests to avoid breaking third-party scripts (like AdSense)
-  if (event.request.url.startsWith(self.location.origin)) {
-    event.respondWith(fetch(event.request).catch(() => new Response('Network Error', { status: 503 })));
-  }
-});

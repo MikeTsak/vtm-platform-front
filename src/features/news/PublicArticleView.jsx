@@ -1,10 +1,10 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import api from '../../core/api';
 import styles from '../../styles/News.module.css';
 import themeStyles from '../../styles/NewsThemes.module.css';
-import { NEWS_OUTLETS } from '../../constants/newsConstants';
+import { NEWS_OUTLETS } from '../../constants/outletConstants';
 import { apiJoin, isVideoUrl } from '../../utils/newsUtils';
 import { sanitizeHtml } from '../../utils/sanitizeHtml';
 import { Skeleton } from 'boneyard-js/react';

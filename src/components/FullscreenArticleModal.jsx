@@ -1,5 +1,5 @@
 import React from 'react';
-import { NEWS_OUTLETS } from '../constants/newsConstants';
+import { NEWS_OUTLETS } from '../constants/outletConstants';
 import { apiJoin, isVideoUrl } from '../utils/newsUtils';
 import styles from '../styles/News.module.css';
 import { sanitizeHtml } from '../utils/sanitizeHtml';

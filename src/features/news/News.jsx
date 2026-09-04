@@ -3,7 +3,7 @@ import { Helmet } from 'react-helmet-async';
 import api from '../../core/api';
 import { AuthCtx } from '../../core/AuthContext';
 import styles from '../../styles/News.module.css';
-import { NEWS_OUTLETS } from '../../constants/newsConstants';
+import { NEWS_OUTLETS } from '../../constants/outletConstants';
 import { apiJoin, isVideoUrl } from '../../utils/newsUtils';
 import { sanitizeHtml } from '../../utils/sanitizeHtml';
 import { useLocation, Link } from 'react-router-dom';

@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import api from '../../core/api';
-import { NEWS_OUTLETS } from '../../constants/newsConstants';
+import { NEWS_OUTLETS } from '../../constants/outletConstants';
 import { apiJoin, isVideoUrl } from '../../utils/newsUtils';
 import { generateGreekName } from '../../utils/nameGenerator';
 import styles from '../../styles/News.module.css';
