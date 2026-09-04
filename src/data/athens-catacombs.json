@@ -1,0 +1,1705 @@
+{
+"type": "FeatureCollection",
+"name": "athens-catacombs",
+"note": "ADMIN-ONLY. The buried rivers (Eridanos, Ilissos, Kifissos), Hadrian's Aqueduct, the Long Walls, the Sacred Way and the rock-cut caves & baths of Attica and Piraeus really run where drawn (approximately — no survey GeoJSON exists); passages marked 'speculative' are storyteller invention. Not for players.",
+"features": [
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "Eridanos — Lykabettos head",
+"basis": "river",
+"certainty": "inferred",
+"status": "flooded"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.7405,
+37.9805
+],
+[
+23.7411,
+37.9793
+],
+[
+23.735,
+37.9755
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "Eridanos — under Mitropoleos",
+"basis": "river",
+"certainty": "attested",
+"status": "open"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.735,
+37.9755
+],
+[
+23.7305,
+37.9754
+],
+[
+23.7256,
+37.9761
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "Eridanos — Monastiraki vault",
+"basis": "river",
+"certainty": "attested",
+"status": "open"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.7256,
+37.9761
+],
+[
+23.7233,
+37.9762
+],
+[
+23.723,
+37.9749
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "Eridanos — Agora to the Sacred Gate",
+"basis": "river",
+"certainty": "attested",
+"status": "open"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.7233,
+37.9762
+],
+[
+23.7185,
+37.9785
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "Eridanos — the turn west",
+"basis": "river",
+"certainty": "attested",
+"status": "flooded"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.7185,
+37.9785
+],
+[
+23.716,
+37.9793
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "Eridanos — lost channel to the Kifissos",
+"basis": "river",
+"certainty": "inferred",
+"status": "collapsed"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.716,
+37.9793
+],
+[
+23.7075,
+37.992
+],
+[
+23.683,
+37.984
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "Ilissos — Hymettos springs",
+"basis": "river",
+"certainty": "inferred",
+"status": "flooded"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.766,
+37.9615
+],
+[
+23.7705,
+37.9635
+],
+[
+23.7405,
+37.967
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "Ilissos — behind the Stadium",
+"basis": "river",
+"certainty": "attested",
+"status": "open"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.7405,
+37.967
+],
+[
+23.736,
+37.967
+],
+[
+23.7333,
+37.9694
+],
+[
+23.737,
+37.972
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "Ilissos — King Otto's bridge to Vatrachonisi",
+"basis": "river",
+"certainty": "attested",
+"status": "flooded"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.736,
+37.967
+],
+[
+23.727,
+37.9635
+],
+[
+23.729,
+37.9615
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "Ilissos — the confluence",
+"basis": "river",
+"certainty": "inferred",
+"status": "open"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.729,
+37.9615
+],
+[
+23.727,
+37.9665
+],
+[
+23.7333,
+37.9694
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "Ilissos — under Kallithea to the sea",
+"basis": "river",
+"certainty": "attested",
+"status": "collapsed"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.729,
+37.9615
+],
+[
+23.7255,
+37.9615
+],
+[
+23.704,
+37.959
+],
+[
+23.696,
+37.927
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "Kifissos — the Parnitha head",
+"basis": "river",
+"certainty": "inferred",
+"status": "flooded"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.765,
+38.135
+],
+[
+23.755,
+38.085
+],
+[
+23.725,
+38.03
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "Kifissos — through the Elaionas",
+"basis": "river",
+"certainty": "attested",
+"status": "flooded"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.725,
+38.03
+],
+[
+23.683,
+37.984
+],
+[
+23.704,
+37.959
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "Kifissos — the Faliro mouth",
+"basis": "river",
+"certainty": "attested",
+"status": "collapsed"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.704,
+37.959
+],
+[
+23.696,
+37.927
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "Hadrian's Aqueduct — the Dexameni",
+"basis": "aqueduct",
+"certainty": "attested",
+"status": "open"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.7411,
+37.9793
+],
+[
+23.7425,
+37.9815
+],
+[
+23.757,
+37.9875
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "Hadrian's Aqueduct — Ampelokipi to Chalandri",
+"basis": "aqueduct",
+"certainty": "attested",
+"status": "open"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.757,
+37.9875
+],
+[
+23.778,
+38.0005
+],
+[
+23.7985,
+38.021
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "Hadrian's Aqueduct — Chalandri to Marousi",
+"basis": "aqueduct",
+"certainty": "attested",
+"status": "open"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.7985,
+38.021
+],
+[
+23.801,
+38.043
+],
+[
+23.7655,
+38.047
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "Hadrian's Aqueduct — Marousi to the foothills",
+"basis": "aqueduct",
+"certainty": "attested",
+"status": "flooded"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.7655,
+38.047
+],
+[
+23.757,
+38.064
+],
+[
+23.787,
+38.116
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "Hadrian's Aqueduct — the Parnitha spring line",
+"basis": "aqueduct",
+"certainty": "inferred",
+"status": "collapsed"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.787,
+38.116
+],
+[
+23.765,
+38.135
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "The Long Walls — Dipylon to Piraeus",
+"basis": "wall",
+"certainty": "inferred",
+"status": "open"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.7185,
+37.9785
+],
+[
+23.716,
+37.9793
+],
+[
+23.704,
+37.959
+],
+[
+23.664,
+37.946
+],
+[
+23.639,
+37.943
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "The Phaleric Wall — Athens to old Phaleron",
+"basis": "wall",
+"certainty": "inferred",
+"status": "collapsed"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.716,
+37.9793
+],
+[
+23.704,
+37.959
+],
+[
+23.7,
+37.929
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "Neo Faliro cut — North Wall segment",
+"basis": "wall",
+"certainty": "attested",
+"status": "open"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.664,
+37.946
+],
+[
+23.7,
+37.929
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "Piraeus — the Serangeion galleries",
+"basis": "quarry",
+"certainty": "attested",
+"status": "open"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.654,
+37.9375
+],
+[
+23.6555,
+37.933
+],
+[
+23.6575,
+37.94
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "Piraeus — the Hippodamian cistern grid",
+"basis": "quarry",
+"certainty": "inferred",
+"status": "flooded"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.639,
+37.943
+],
+[
+23.644,
+37.942
+],
+[
+23.654,
+37.9375
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "Piraeus — the Eetioneia sally-passages",
+"basis": "wall",
+"certainty": "attested",
+"status": "open"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.639,
+37.943
+],
+[
+23.6255,
+37.947
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "The Deep Cut — the wall's end to the Serangeion",
+"basis": "tunnel",
+"certainty": "speculative",
+"status": "sealed"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.639,
+37.943
+],
+[
+23.644,
+37.942
+],
+[
+23.6555,
+37.933
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "The Sacred Way — Kerameikos to Eleusis",
+"basis": "tunnel",
+"certainty": "inferred",
+"status": "open"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.7185,
+37.9785
+],
+[
+23.683,
+37.984
+],
+[
+23.636,
+37.98
+],
+[
+23.5405,
+38.043
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "The Ploutonion descent",
+"basis": "quarry",
+"certainty": "attested",
+"status": "open"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.5405,
+38.043
+],
+[
+23.5395,
+38.0435
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "The Undercroft — Acropolis knot",
+"basis": "tunnel",
+"certainty": "speculative",
+"status": "open"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.7245,
+37.9725
+],
+[
+23.7261,
+37.9729
+],
+[
+23.7273,
+37.9723
+],
+[
+23.7295,
+37.9725
+],
+[
+23.7256,
+37.9744
+],
+[
+23.7256,
+37.9761
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "The Undercroft — Klepsydra stair",
+"basis": "quarry",
+"certainty": "attested",
+"status": "open"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.7245,
+37.9725
+],
+[
+23.7261,
+37.9729
+],
+[
+23.7273,
+37.9723
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "The Undercroft — Kotzia to the Kerameikos",
+"basis": "wall",
+"certainty": "inferred",
+"status": "open"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.7275,
+37.9805
+],
+[
+23.7185,
+37.9785
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "The Undercroft — the wall line to Monastiraki",
+"basis": "wall",
+"certainty": "inferred",
+"status": "collapsed"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.7275,
+37.9805
+],
+[
+23.7233,
+37.9762
+],
+[
+23.7256,
+37.9761
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "The Undercroft — Pnyx & Filopappou galleries",
+"basis": "tunnel",
+"certainty": "speculative",
+"status": "open"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.7256,
+37.9761
+],
+[
+23.723,
+37.9749
+],
+[
+23.7188,
+37.973
+],
+[
+23.7205,
+37.9701
+],
+[
+23.719,
+37.9678
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "The Undercroft — Kerameikos ossuary walk",
+"basis": "tunnel",
+"certainty": "speculative",
+"status": "open"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.723,
+37.9749
+],
+[
+23.7185,
+37.9785
+],
+[
+23.716,
+37.9793
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "The Deep Cut — Lykabettos to Penteli",
+"basis": "tunnel",
+"certainty": "speculative",
+"status": "sealed"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.7425,
+37.9815
+],
+[
+23.7985,
+38.021
+],
+[
+23.8769,
+38.0708
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "Davelis quarry galleries",
+"basis": "quarry",
+"certainty": "attested",
+"status": "open"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.8769,
+38.0708
+],
+[
+23.8795,
+38.0735
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "The Deep Cut — Ilissos to Hymettos",
+"basis": "tunnel",
+"certainty": "speculative",
+"status": "collapsed"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.727,
+37.9665
+],
+[
+23.729,
+37.9615
+],
+[
+23.7705,
+37.9635
+],
+[
+23.853,
+37.933
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "Hymettos shrine passage",
+"basis": "quarry",
+"certainty": "inferred",
+"status": "open"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.7705,
+37.9635
+],
+[
+23.766,
+37.9615
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "The Deep Cut — Hymettos to the Vari cave",
+"basis": "tunnel",
+"certainty": "speculative",
+"status": "sealed"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.853,
+37.933
+],
+[
+23.798,
+37.833
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "The Deep Cut — Parnitha vein",
+"basis": "tunnel",
+"certainty": "speculative",
+"status": "sealed"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.765,
+38.135
+],
+[
+23.728,
+38.162
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "passage",
+"name": "The Wet Road — confluence to the harbours",
+"basis": "tunnel",
+"certainty": "speculative",
+"status": "flooded"
+},
+"geometry": {
+"type": "LineString",
+"coordinates": [
+[
+23.727,
+37.9665
+],
+[
+23.704,
+37.959
+],
+[
+23.664,
+37.946
+]
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "site",
+"name": "The Dexameni",
+"siteType": "cistern",
+"certainty": "attested",
+"note": "Hadrian's covered reservoir under the Kolonaki square — the northern mouth of the whole system."
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.7411,
+37.9793
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "site",
+"name": "Sacred Gate Vault",
+"siteType": "chamber",
+"certainty": "attested",
+"note": "The Eridanos runs open air here for the only time; vaulted in stone just downstream."
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.7185,
+37.9785
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "site",
+"name": "Kerameikos Ossuary",
+"siteType": "chamber",
+"certainty": "speculative",
+"note": "Storyteller: bone-lined chamber where the buried river splits west and south."
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.716,
+37.9793
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "site",
+"name": "Monastiraki Vault",
+"siteType": "chamber",
+"certainty": "attested",
+"note": "Roman canalisation of the Eridanos, on display beneath the station."
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.7256,
+37.9761
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "site",
+"name": "Syntagma Cross-Section",
+"siteType": "entrance",
+"certainty": "attested",
+"note": "Ancient riverbed and a Roman bath sliced through by the metro dig; a maintenance stair drops in from the concourse."
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.735,
+37.9755
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "site",
+"name": "Kotzia Square",
+"siteType": "entrance",
+"certainty": "attested",
+"note": "The Acharnian Gate, a run of the Themistoclean wall and the road north, sunk below the modern square."
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.7275,
+37.9805
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "site",
+"name": "The Klepsydra",
+"siteType": "cave",
+"certainty": "attested",
+"note": "Spring-cave and Mycenaean stair cut into the north-west scarp of the Acropolis."
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.7245,
+37.9725
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "site",
+"name": "North Slope Caves",
+"siteType": "shrine",
+"certainty": "attested",
+"note": "The caves of Apollo Hypakraios, Zeus, Pan and Aphrodite strung along the Peripatos below the Acropolis wall."
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.7261,
+37.9729
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "site",
+"name": "Cave of Aglauros",
+"siteType": "cave",
+"certainty": "attested",
+"note": "Cleft in the east cliff of the Acropolis; a concealed stair once reached the summit."
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.7273,
+37.9723
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "site",
+"name": "Prison of Socrates",
+"siteType": "chamber",
+"certainty": "attested",
+"note": "Three rock-cut rooms in the south-west flank of the Hill of the Muses."
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.719,
+37.9678
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "site",
+"name": "Academy of Plato",
+"siteType": "junction",
+"certainty": "inferred",
+"note": "Where Hipparchos' wall and the Kifissos channels met, north-west of the Dipylon."
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.7075,
+37.992
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "site",
+"name": "The Confluence",
+"siteType": "junction",
+"certainty": "inferred",
+"note": "Low ground south-west of the Acropolis where the Eridanos, Ilissos and Kifissos systems tangle."
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.727,
+37.9665
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "site",
+"name": "Vatrachonisi",
+"siteType": "entrance",
+"certainty": "attested",
+"note": "\"Frog Island\" — the last open, reed-choked reach of the Ilissos before it goes under Kallithea."
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.729,
+37.9615
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "site",
+"name": "Ardittos Chamber",
+"siteType": "junction",
+"certainty": "speculative",
+"note": "Storyteller: dry gallery behind the Panathenaic Stadium linking the Ilissos to the hill."
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.7405,
+37.967
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "site",
+"name": "Elaionas Crossing",
+"siteType": "junction",
+"certainty": "attested",
+"note": "Five-arch ancient bridge of the Sacred Way over the Kifissos, uncovered under Eleonas metro station."
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.683,
+37.984
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "site",
+"name": "Kifissos Outfall",
+"siteType": "collapse",
+"certainty": "attested",
+"note": "The buried Kifissos and Ilissos reach the bay together under the Faliro delta works."
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.696,
+37.927
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "site",
+"name": "Chalandri Aqueduct Shaft",
+"siteType": "entrance",
+"certainty": "attested",
+"note": "Open inspection shaft on the restored Hadrianic line, 10-35 m deep."
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.7985,
+38.021
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "site",
+"name": "Lykabettos Knot",
+"siteType": "junction",
+"certainty": "inferred",
+"note": "The Eridanos head-waters and Hadrian's Aqueduct pass within metres under the hill."
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.7425,
+37.9815
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "site",
+"name": "Parnitha Spring Head",
+"siteType": "collapse",
+"certainty": "inferred",
+"note": "Collapsed intake where Hadrian's engineers first tapped the mountain."
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.765,
+38.135
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "site",
+"name": "Neo Faliro Wall",
+"siteType": "collapse",
+"certainty": "attested",
+"note": "A cut section of the North Long Wall exposed along the tram line at Neo Faliro."
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.664,
+37.946
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "site",
+"name": "Piraeus Kantharos",
+"siteType": "entrance",
+"certainty": "attested",
+"note": "Head of the Great Harbour and the ancient Emporion — where the Long Walls tunnel opens."
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.639,
+37.943
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "site",
+"name": "Piraeus Cisterns",
+"siteType": "junction",
+"certainty": "speculative",
+"note": "Storyteller: the flooded cistern grid under Hippodamos' Piraeus, a crossroads of every Piraeus passage."
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.644,
+37.942
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "site",
+"name": "Eetioneia Gate",
+"siteType": "entrance",
+"certainty": "attested",
+"note": "Fortified ancient gate on the north arm of the harbour; sally-passages run inside the curtain wall."
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.6255,
+37.947
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "site",
+"name": "Zea Ship-Sheds",
+"siteType": "chamber",
+"certainty": "attested",
+"note": "Ancient naval sheds of Zea harbour, now roofed over by apartment basements at Pasalimani."
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.654,
+37.9375
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "site",
+"name": "The Serangeion",
+"siteType": "cave",
+"certainty": "attested",
+"note": "Rock-cut bath and 5th-c. BCE cistern network between Zea and Munichia — two domed chambers, benches and channels cut 12 m into the cliff. Also called the Cave of Paraskevas."
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.6555,
+37.933
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "site",
+"name": "Munichia Cuttings",
+"siteType": "cistern",
+"certainty": "inferred",
+"note": "Rock-cut cisterns and stair-galleries under the Kastella hill of Profitis Ilias."
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.6575,
+37.94
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "site",
+"name": "Daphni Pass",
+"siteType": "junction",
+"certainty": "inferred",
+"note": "The Sacred Way threads the gap between Aigaleo and Poikilo here, past the monastery."
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.636,
+37.98
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "site",
+"name": "Eleusis Telesterion",
+"siteType": "chamber",
+"certainty": "attested",
+"note": "Hall of the Mysteries; the windowless Anaktoron chamber stands at its heart."
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.5405,
+38.043
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "site",
+"name": "Eleusis Ploutonion",
+"siteType": "shrine",
+"certainty": "attested",
+"note": "Cave of Hades at the Sanctuary of Demeter — the mythic mouth of the underworld, end of the Sacred Way."
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.5395,
+38.0435
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "site",
+"name": "Davelis Cave",
+"siteType": "cave",
+"certainty": "attested",
+"note": "Ancient marble quarry on Penteli riddled with cut passages; a Byzantine double church at the mouth."
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.8769,
+38.0708
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "site",
+"name": "Pan's Cave, Penteli",
+"siteType": "shrine",
+"certainty": "attested",
+"note": "Small shrine-cave of Pan and the Nymphs higher up the Penteli slope."
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.8795,
+38.0735
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "site",
+"name": "Pan's Cave, Hymettos",
+"siteType": "shrine",
+"certainty": "attested",
+"note": "Nympholyptos cave above Kaisariani — cult site from the 6th c. BCE."
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.7705,
+37.9635
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "site",
+"name": "Koutouki Cave",
+"siteType": "cave",
+"certainty": "attested",
+"note": "Stalactite cave on the east flank of Hymettos above Paiania, 510 m up."
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.853,
+37.933
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "site",
+"name": "Vari Cave",
+"siteType": "shrine",
+"certainty": "attested",
+"note": "The nympholept's cave of Archedemos on south-east Hymettos, its walls carved with reliefs and inscriptions."
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.798,
+37.833
+]
+}
+},
+{
+"type": "Feature",
+"properties": {
+"kind": "site",
+"name": "Parnitha Cave of Pan",
+"siteType": "shrine",
+"certainty": "attested",
+"note": "Lychnospilia — the lamp-cave near the Parnitha spring line."
+},
+"geometry": {
+"type": "Point",
+"coordinates": [
+23.728,
+38.162
+]
+}
+}
+]
+}

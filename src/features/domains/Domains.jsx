@@ -2,8 +2,8 @@ import React, { useMemo, useEffect, useState, useRef, useCallback, useContext } 
 import { Map as MapGL, Source, Layer } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import DeckGL from '@deck.gl/react';
-import { GeoJsonLayer, BitmapLayer, SolidPolygonLayer, TextLayer, IconLayer, ScatterplotLayer } from '@deck.gl/layers';
-import { MaskExtension } from '@deck.gl/extensions';
+import { GeoJsonLayer, BitmapLayer, SolidPolygonLayer, TextLayer, IconLayer, ScatterplotLayer, PathLayer } from '@deck.gl/layers';
+import { MaskExtension, PathStyleExtension } from '@deck.gl/extensions';
 import MiniSearch from 'minisearch';
 import { motion, AnimatePresence } from 'framer-motion';
 import bbox from '@turf/bbox';
@@ -17,6 +17,15 @@ import Avatar from '../../components/Avatar';
 import { AuthCtx } from '../../core/AuthContext';
 import { symlogo, clanTint } from '../../data/clans';
 import { DIVISION_POPULATIONS, POPULATION_GROUP_MEMBERS } from './data/divisionPopulations';
+import OverlayAccessManager from './OverlayAccessManager';
+import { TRANSIT_PATHS, TRANSIT_STATIONS, TRANSIT_GROUPS, TRANSIT_ATTRIBUTION } from './data/athensTransit';
+import {
+  CATACOMB_PASSAGES, CATACOMB_SITES, CATACOMB_CERTAINTY, CATACOMB_SITE_COLOR, CATACOMB_ATTRIBUTION,
+} from './data/athensCatacombs';
+import {
+  NECRO_PASSAGES, NECRO_SITES, NECRO_CERTAINTY, NECRO_NEW_COLOR, NECRO_NEW_WIDTH,
+  NECRO_NOTES, NECRO_SITE_COLOR, NECRO_ATTRIBUTION,
+} from './data/athensNecropolis';
 
 // Accent colors for real-world municipality/district groupings that span
 // more than one map division — purely informational, independent of claim
@@ -34,6 +43,128 @@ const GROUP_ACCENT_COLORS = {
 // Distinct from claim colors, the pending-request amber, and Abaton red —
 // a pale violet reads as "system/storyteller-controlled" for NPC domains.
 const NPC_ACCENT_COLOR = '#c4b5fd';
+
+// ── Athens transit overlay ────────────────────────────────
+// Below this zoom only interchange stations are named; at or above it every
+// visible station gets a label.
+const TRANSIT_LABEL_ALL_ZOOM = 13.5;
+const TRANSIT_LS_KEY = 'domains.transit.v1';
+const TRANSIT_DEFAULT_PREFS = {
+  on: true,
+  groups: { metro: true, line4: true, tram: true, suburban: true },
+};
+
+function loadTransitPrefs() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(TRANSIT_LS_KEY));
+    if (saved && typeof saved === 'object') {
+      return {
+        on: saved.on !== false,
+        groups: { ...TRANSIT_DEFAULT_PREFS.groups, ...(saved.groups || {}) },
+      };
+    }
+  } catch (_) { /* noop — fall through to defaults */ }
+  return TRANSIT_DEFAULT_PREFS;
+}
+
+// ── Clean-map mode ────────────────────────────────────────
+// Personal per-device view toggle. When on, the map drops every ownership
+// visual — claim colours, safety fills, extrusion, clan/avatar/NPC/Abaton
+// badges, municipal-group outlines and the division labels — leaving a plain
+// Athens map with thin neutral division borders. Clicking a division still
+// opens its dossier. Default off for everyone.
+const CLEAN_MAP_LS_KEY = 'domains.cleanMap.v1';
+function loadCleanMap() {
+  try { return localStorage.getItem(CLEAN_MAP_LS_KEY) === '1'; } catch (_) { return false; }
+}
+
+// ── Catacombs overlay (ADMIN ONLY) ────────────────────────
+const CATACOMBS_LS_KEY = 'domains.catacombs.v1';
+const CATACOMBS_DEFAULT_PREFS = {
+  on: false, // opt-in — it's a dense, spoilery layer
+  tiers: { attested: true, inferred: true, speculative: true },
+};
+
+function loadCatacombsPrefs() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(CATACOMBS_LS_KEY));
+    if (saved && typeof saved === 'object') {
+      return {
+        on: saved.on === true,
+        tiers: { ...CATACOMBS_DEFAULT_PREFS.tiers, ...(saved.tiers || {}) },
+      };
+    }
+  } catch (_) { /* noop */ }
+  return CATACOMBS_DEFAULT_PREFS;
+}
+
+// ── Necropoleis overlay (ADMIN ONLY) — Old and New are separate toggles ────
+const NECRO_LS_KEY = 'domains.necropolis.v2';
+const NECRO_DEFAULT_PREFS = {
+  old: { on: false, tiers: { charted: true, hearsay: true, lost: true } },
+  new: { on: false },
+};
+function loadNecroPrefs() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(NECRO_LS_KEY));
+    if (saved && typeof saved === 'object') {
+      return {
+        old: {
+          on: saved.old?.on === true,
+          tiers: { ...NECRO_DEFAULT_PREFS.old.tiers, ...(saved.old?.tiers || {}) },
+        },
+        new: { on: saved.new?.on === true },
+      };
+    }
+  } catch (_) { /* noop */ }
+  return NECRO_DEFAULT_PREFS;
+}
+
+const LAYERS_PANEL_LS_KEY = 'domains.layersPanel.open.v1';
+function loadLayersPanelOpen() {
+  try {
+    const v = localStorage.getItem(LAYERS_PANEL_LS_KEY);
+    if (v === '0') return false;
+    if (v === '1') return true;
+  } catch (_) { /* noop */ }
+  // default: open on desktop, collapsed on a small screen
+  return typeof window === 'undefined' || window.innerWidth > 768;
+}
+
+// ── Consolidated "Layers" panel building blocks ───────────
+// A top-level overlay row: its own ON/OFF plus an optional sub-legend that
+// only shows when the layer is on.
+function LayerRow({ label, on, onToggle, accent, title, children }) {
+  return (
+    <div className={styles.layerRow} data-accent={accent || 'plain'}>
+      <button
+        type="button"
+        className={styles.layerRowMain}
+        data-on={on}
+        onClick={onToggle}
+        title={title}
+      >
+        <span className={styles.layerRowLabel}>{label}</span>
+        <span className={styles.layerRowState}>{on ? 'ON' : 'OFF'}</span>
+      </button>
+      {on && children ? <div className={styles.layerSub}>{children}</div> : null}
+    </div>
+  );
+}
+
+function LayerSubRow({ label, active, onClick, swatch }) {
+  return (
+    <button
+      type="button"
+      className={styles.layerSubRow}
+      data-active={active}
+      onClick={onClick}
+    >
+      {swatch}
+      <span className={styles.layerSubLabel}>{label}</span>
+    </button>
+  );
+}
 
 // ── Division Names ────────────────────────────────────────
 const DIVISION_NAMES = {
@@ -163,6 +294,7 @@ const NO_ENTRY_ICON = 'data:image/svg+xml;utf8,' + encodeURIComponent(`
 export default function Domains() {
   const { user } = useContext(AuthCtx);
   const isCourt = user?.role === 'admin' || user?.role === 'courtuser';
+  const isAdmin = user?.role === 'admin'; // catacombs overlay is admin-only, no exceptions
   const queryClient = useQueryClient();
 
   const mapRef = useRef(null);
@@ -194,22 +326,99 @@ export default function Domains() {
   const [reqColor, setReqColor] = useState('#8b5cf6');
   const [codexText, setCodexText] = useState('');
 
-  // ── Pulse animation driving the "pop out" glow on the selected division ──
-  const [pulse, setPulse] = useState(0);
+  // ── Athens transit overlay (metro / tram / suburban / Line 4) ──
+  const [transitPrefs, setTransitPrefs] = useState(loadTransitPrefs);
+  const transitOn = transitPrefs.on;
+  const transitGroups = transitPrefs.groups;
   useEffect(() => {
-    if (selectedDivision == null) {
-      setPulse(0);
-      return;
+    try { localStorage.setItem(TRANSIT_LS_KEY, JSON.stringify(transitPrefs)); } catch (_) { /* noop */ }
+  }, [transitPrefs]);
+  const toggleTransit = useCallback(() => setTransitPrefs(p => ({ ...p, on: !p.on })), []);
+  const toggleTransitGroup = useCallback((key) => {
+    setTransitPrefs(p => ({ ...p, groups: { ...p.groups, [key]: !p.groups[key] } }));
+  }, []);
+
+  // ── Restricted-overlay access (server-resolved: admin → all, Nosferatu →
+  // necropoleis, plus explicit admin grants) ──
+  const { data: overlayAccessData } = useQuery({
+    queryKey: ['domain-overlays-me'],
+    queryFn: async () => (await api.get('/domain-overlays/me')).data,
+    staleTime: 5 * 60 * 1000,
+  });
+  const overlayAccess = useMemo(
+    () => new Set(overlayAccessData?.overlays || []),
+    [overlayAccessData],
+  );
+  const canCatacombs = isAdmin || overlayAccess.has('catacombs');
+  const canNecroOld = isAdmin || overlayAccess.has('necropolis_old');
+  const canNecroNew = isAdmin || overlayAccess.has('necropolis_new');
+  const [accessMgrOpen, setAccessMgrOpen] = useState(false);
+
+  // ── Catacombs overlay (access-gated) ──
+  const [catacombsPrefs, setCatacombsPrefs] = useState(loadCatacombsPrefs);
+  const catacombsOn = canCatacombs && catacombsPrefs.on;
+  const catacombsTiers = catacombsPrefs.tiers;
+  useEffect(() => {
+    try { localStorage.setItem(CATACOMBS_LS_KEY, JSON.stringify(catacombsPrefs)); } catch (_) { /* noop */ }
+  }, [catacombsPrefs]);
+  const toggleCatacombs = useCallback(() => setCatacombsPrefs(p => ({ ...p, on: !p.on })), []);
+  const toggleCatacombsTier = useCallback((key) => {
+    setCatacombsPrefs(p => ({ ...p, tiers: { ...p.tiers, [key]: !p.tiers[key] } }));
+  }, []);
+
+  // ── Necropoleis overlay (access-gated) — Old + New are independent toggles ──
+  const [necroPrefs, setNecroPrefs] = useState(loadNecroPrefs);
+  const necroOldOn = canNecroOld && necroPrefs.old.on;
+  const necroNewOn = canNecroNew && necroPrefs.new.on;
+  const necroOldTiers = necroPrefs.old.tiers;
+  useEffect(() => {
+    try { localStorage.setItem(NECRO_LS_KEY, JSON.stringify(necroPrefs)); } catch (_) { /* noop */ }
+  }, [necroPrefs]);
+  const toggleNecroOld = useCallback(() => setNecroPrefs(p => ({ ...p, old: { ...p.old, on: !p.old.on } })), []);
+  const toggleNecroNew = useCallback(() => setNecroPrefs(p => ({ ...p, new: { on: !p.new.on } })), []);
+  const toggleNecroOldTier = useCallback((key) => {
+    setNecroPrefs(p => ({ ...p, old: { ...p.old, tiers: { ...p.old.tiers, [key]: !p.old.tiers[key] } } }));
+  }, []);
+
+  // ── Clean-map mode ──
+  const [cleanMap, setCleanMap] = useState(loadCleanMap);
+  useEffect(() => {
+    try { localStorage.setItem(CLEAN_MAP_LS_KEY, cleanMap ? '1' : '0'); } catch (_) { /* noop */ }
+  }, [cleanMap]);
+  const toggleCleanMap = useCallback(() => setCleanMap(v => !v), []);
+
+  // ── Overlay hover tooltip (transit stations, catacomb / necropolis sites +
+  // passages) — surfaces the authored note that's otherwise invisible ──
+  const [overlayHover, setOverlayHover] = useState(null);
+  const onOverlayHover = useCallback((info) => {
+    if (info?.object && info.layer) {
+      const o = info.object;
+      const id = info.layer.id;
+      const kind = id.split('-')[0]; // 'transit' | 'catacombs' | 'necro'
+      let title = o.name || o.label || '';
+      let subtitle = '';
+      const note = o.note || '';
+      if (id.includes('station')) {
+        subtitle = (o.lines || []).join(' · ') + (o.interchange ? ' · interchange' : '');
+      } else if (id.includes('site')) {
+        subtitle = kind === 'necro' ? (o.necropolis === 'new' ? 'New necropolis' : 'Old necropolis') : 'Catacombs';
+        if (o.certainty) subtitle += ` · ${o.certainty}`;
+      } else {
+        // a line / passage
+        subtitle = [o.label, o.network, o.status, o.certainty].filter(Boolean).join(' · ');
+      }
+      setOverlayHover({ x: info.x, y: info.y, title, subtitle, note });
+    } else {
+      setOverlayHover(prev => (prev ? null : prev));
     }
-    let raf;
-    const start = performance.now();
-    const tick = (t) => {
-      setPulse((Math.sin((t - start) / 450) + 1) / 2);
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [selectedDivision]);
+  }, []);
+
+  // ── Panel open/closed state ──
+  const [claimsPanelOpen, setClaimsPanelOpen] = useState(true);
+  const [layersPanelOpen, setLayersPanelOpen] = useState(loadLayersPanelOpen);
+  useEffect(() => {
+    try { localStorage.setItem(LAYERS_PANEL_LS_KEY, layersPanelOpen ? '1' : '0'); } catch (_) { /* noop */ }
+  }, [layersPanelOpen]);
 
   // ── Data ────────────────────────────────────────────────
   const { data: claimsData, isLoading: isClaimsLoading, error } = useQuery({
@@ -432,7 +641,11 @@ export default function Domains() {
           claimed: isOwnedClaim(claim),
           clan: claim?.clan || null,
           titles: claim?.titles || [],
-          safetyRating: claim?.safety_rating ?? null,
+          // safety_rating can arrive as a DECIMAL string from the DB driver —
+          // coerce so the tier comparison (rating >= min) is numeric.
+          safetyRating: (claim?.safety_rating == null || claim.safety_rating === '')
+            ? null
+            : Number(claim.safety_rating),
           claimedAt: claim?.claimed_at || null,
           previousOwnerName: claim?.previous_owner_name || null,
           previousClaimedAt: claim?.previous_claimed_at || null,
@@ -650,6 +863,76 @@ export default function Domains() {
     return { clanBadgeData: clanBadges, avatarBadgeData: avatarBadges, clanLabelData: clanLabels, abatonBadgeData: abatonBadges, abatonFeatures: abatonFeats };
   }, [geoJsonData, avatarCache]);
 
+  // ── Athens transit overlay: filter lines + stations by the legend toggles,
+  // and decide which station labels are visible at the current zoom ──
+  const { transitPathsSolid, transitPathsDashed, transitStationDots, transitLabelData } = useMemo(() => {
+    if (!transitOn) {
+      return { transitPathsSolid: [], transitPathsDashed: [], transitStationDots: [], transitLabelData: [] };
+    }
+    const active = TRANSIT_GROUPS.filter(g => transitGroups[g.key]);
+    const lineOn = (l) => active.some(g => g.matchLine(l));
+    const stationOn = (s) => active.some(g => g.matchStation(s));
+    const solid = [];
+    const dashed = [];
+    for (const p of TRANSIT_PATHS) {
+      if (!lineOn(p)) continue;
+      (p.status === 'construction' ? dashed : solid).push(p);
+    }
+    const dots = TRANSIT_STATIONS.filter(stationOn);
+    const labelAll = zoom >= TRANSIT_LABEL_ALL_ZOOM;
+    const labels = dots.filter(s => s.interchange || labelAll);
+    return { transitPathsSolid: solid, transitPathsDashed: dashed, transitStationDots: dots, transitLabelData: labels };
+  }, [transitOn, transitGroups, zoom]);
+
+  // ── Catacombs overlay (admin only): split passages by certainty so each
+  // tier can carry its own dash pattern, and gate the whole thing behind the
+  // per-tier toggles ──
+  const { catacombPassageTiers, catacombSiteDots, catacombLabelData } = useMemo(() => {
+    if (!catacombsOn) return { catacombPassageTiers: [], catacombSiteDots: [], catacombLabelData: [] };
+    const tiers = Object.keys(CATACOMB_CERTAINTY)
+      .filter(t => catacombsTiers[t])
+      .map(t => ({
+        tier: t,
+        ...CATACOMB_CERTAINTY[t],
+        paths: CATACOMB_PASSAGES.filter(p => p.certainty === t),
+      }))
+      .filter(t => t.paths.length);
+    const sites = CATACOMB_SITES.filter(s => catacombsTiers[s.certainty]);
+    // Landmark sites (caves, shrines, junctions, cisterns) are always named;
+    // the rest only once you zoom in, so the wide view stays readable.
+    const LANDMARK = new Set(['cave', 'shrine', 'junction', 'cistern']);
+    const labelAll = zoom >= TRANSIT_LABEL_ALL_ZOOM;
+    const labels = sites.filter(s => labelAll || LANDMARK.has(s.siteType));
+    return { catacombPassageTiers: tiers, catacombSiteDots: sites, catacombLabelData: labels };
+  }, [catacombsOn, catacombsTiers, zoom]);
+
+  // ── Necropoleis overlay (admin only): the OLD necropolis draws one ragged
+  // PathLayer per certainty tier (charted / hearsay / lost) for its dash; the
+  // NEW necropolis draws as one solid group. ──
+  const { necroDrawGroups, necroSiteDots, necroLabelData } = useMemo(() => {
+    if (!necroOldOn && !necroNewOn) {
+      return { necroDrawGroups: [], necroSiteDots: [], necroLabelData: [] };
+    }
+    const groups = [];
+    if (necroOldOn) {
+      for (const t of Object.keys(NECRO_CERTAINTY)) {
+        if (!necroOldTiers[t]) continue;
+        const paths = NECRO_PASSAGES.filter(p => p.necropolis === 'old' && p.certainty === t);
+        if (paths.length) groups.push({ id: `old-${t}`, paths, ...NECRO_CERTAINTY[t] });
+      }
+    }
+    if (necroNewOn) {
+      const paths = NECRO_PASSAGES.filter(p => p.necropolis === 'new');
+      if (paths.length) groups.push({ id: 'new', paths, color: NECRO_NEW_COLOR, dash: null, width: NECRO_NEW_WIDTH });
+    }
+    const sites = NECRO_SITES.filter(s => (s.necropolis === 'old' && necroOldOn) || (s.necropolis === 'new' && necroNewOn));
+    // Always name the entrances and the ominous markers; the rest at zoom.
+    const KEY = new Set(['new_entrance', 'entrance', 'seal', 'unknown']);
+    const labelAll = zoom >= TRANSIT_LABEL_ALL_ZOOM;
+    const labels = sites.filter(s => labelAll || KEY.has(s.siteType));
+    return { necroDrawGroups: groups, necroSiteDots: sites, necroLabelData: labels };
+  }, [necroOldOn, necroNewOn, necroOldTiers, zoom]);
+
   // ── Build Deck.gl layers ────────────────────────────────
   const deckLayers = useMemo(() => {
     if (!geoJsonData) return [];
@@ -664,17 +947,21 @@ export default function Domains() {
         pickable: true,
         stroked: true,
         filled: true,
-        extruded: true,
+        extruded: !cleanMap,
         wireframe: true,
-        material: { ambient: 0.45, diffuse: 0.65, shininess: 24, specularColor: [255, 255, 255] },
+        // High ambient so the Masquerade-safety tier colour reads true on the
+        // extruded tops instead of being darkened into a muddy khaki by the
+        // scene lighting.
+        material: { ambient: 0.85, diffuse: 0.35, shininess: 16, specularColor: [200, 200, 200] },
         getElevation: (f) => {
+          if (cleanMap) return 0;
           if (f.properties?.isAbaton) return 260; // always looms, regardless of safety
           const claimed = !!f.properties?.claimed;
           const heightRating = f.properties?.safetyRating ?? 5; // Unknown = mid-height
           const base = claimed
             ? 100 + (10 - heightRating) * 70
             : (f.properties?.pendingRequests ? 40 : 15);
-          if (f.properties?.__division === selectedDivision) return base + 60 + pulse * 40;
+          if (f.properties?.__division === selectedDivision) return base + 80;
           return base;
         },
         elevationScale: 1,
@@ -682,19 +969,32 @@ export default function Domains() {
           const div = f.properties?.__division;
           const isSelected = div === selectedDivision;
           const isHovered = div === hoveredDivision;
+          // Clean map: no ownership colour at all — just a faint wash on the
+          // division you have open so you can see what you clicked.
+          if (cleanMap) return isSelected ? [148, 163, 184, 40] : [0, 0, 0, 0];
           if (f.properties?.isAbaton) {
-            return hexToRgba('#7f1d1d', isSelected ? 215 : 175);
+            return hexToRgba('#7f1d1d', isSelected ? 235 : 200);
           }
           const claimed = !!f.properties?.claimed;
-          const tier = safetyTier(f.properties?.safetyRating);
-          const base = f.properties?.safetyRating == null ? (claimed ? 60 : 32) : (claimed ? 140 : 85);
-          return hexToRgba(tier.color, isSelected ? base + 70 + pulse * 40 : isHovered ? base + 35 : base);
+          const rating = f.properties?.safetyRating;
+          const tier = safetyTier(rating);
+          // Claimed divisions are strongly tinted by Masquerade-safety tier so
+          // the board reads at a glance; unclaimed stay near-invisible.
+          let a;
+          if (!claimed) a = rating == null ? 14 : 70;
+          else a = rating == null ? 95 : 175;
+          if (isSelected) a = Math.min(245, a + 75);
+          else if (isHovered) a = Math.min(245, a + 40);
+          return hexToRgba(tier.color, a);
         },
         getLineColor: (f) => {
           const div = f.properties?.__division;
+          if (cleanMap) {
+            return div === selectedDivision ? [255, 255, 255, 220] : [148, 163, 184, 75];
+          }
           const claimed = !!f.properties?.claimed;
           const hasPending = !claimed && f.properties?.pendingRequests > 0;
-          if (div === selectedDivision) return hexToRgba('#ffffff', 180 + pulse * 75);
+          if (div === selectedDivision) return hexToRgba('#ffffff', 235);
           if (f.properties?.isAbaton) return hexToRgba('#ef4444', div === hoveredDivision ? 255 : 210);
           if (hasPending) return hexToRgba('#f59e0b', 220);
           if (claimed) return hexToRgba(f.properties?.claimColor || '#888888', div === hoveredDivision ? 255 : 200);
@@ -702,9 +1002,10 @@ export default function Domains() {
         },
         getLineWidth: (f) => {
           const div = f.properties?.__division;
+          if (cleanMap) return div === selectedDivision ? 2 : 0.8;
           const claimed = !!f.properties?.claimed;
           const hasPending = !claimed && f.properties?.pendingRequests > 0;
-          if (div === selectedDivision) return 3 + pulse * 2;
+          if (div === selectedDivision) return 4;
           if (div === hoveredDivision) return 2.5;
           if (f.properties?.isAbaton) return 2.5;
           if (hasPending) return 2;
@@ -715,10 +1016,10 @@ export default function Domains() {
         onHover: onDeckHover,
         onClick: onDeckClick,
         updateTriggers: {
-          getFillColor: [selectedDivision, hoveredDivision, pulse],
-          getLineColor: [selectedDivision, hoveredDivision, pulse],
-          getLineWidth: [selectedDivision, hoveredDivision, pulse],
-          getElevation: [selectedDivision, pulse],
+          getFillColor: [selectedDivision, hoveredDivision, cleanMap],
+          getLineColor: [selectedDivision, hoveredDivision, cleanMap],
+          getLineWidth: [selectedDivision, hoveredDivision, cleanMap],
+          getElevation: [selectedDivision, cleanMap],
         },
         transitions: {
           getFillColor: 200,
@@ -727,6 +1028,10 @@ export default function Domains() {
         }
       })
     );
+
+    // ─── Everything below is ownership decoration — skipped entirely in
+    // clean-map mode (transit + catacombs overlays are handled separately). ──
+    if (!cleanMap) {
 
     // ─── Abaton hazard stripes — draped onto each Abaton polygon the same
     // way the hover-avatar reveal drapes a face onto a division, just
@@ -986,8 +1291,302 @@ export default function Domains() {
       );
     }
 
+    } // end if (!cleanMap) — ownership decoration
+
+    // ─── Athens transit overlay — metro / tram / suburban lines + stations ──
+    // Ground-level annotation drawn over the 3D extrusions (depthTest off, the
+    // same treatment as the municipal-group borders) so it reads like a transit
+    // map laid over the territory board.
+    if (transitPathsSolid.length || transitPathsDashed.length) {
+      layers.push(
+        new PathLayer({
+          id: 'transit-casing',
+          data: transitPathsSolid.concat(transitPathsDashed),
+          getPath: d => d.path,
+          getColor: [8, 8, 12, 215],
+          getWidth: 9,
+          widthUnits: 'pixels',
+          widthMinPixels: 5,
+          capRounded: true,
+          jointRounded: true,
+          parameters: { depthTest: false },
+          pickable: false,
+        })
+      );
+      layers.push(
+        new PathLayer({
+          id: 'transit-lines',
+          data: transitPathsSolid,
+          getPath: d => d.path,
+          getColor: d => hexToRgba(d.colour, 255),
+          getWidth: 4.5,
+          widthUnits: 'pixels',
+          widthMinPixels: 3,
+          capRounded: true,
+          jointRounded: true,
+          parameters: { depthTest: false },
+          pickable: true,
+          onHover: onOverlayHover,
+          updateTriggers: { getColor: [transitPathsSolid.length] },
+        })
+      );
+      if (transitPathsDashed.length) {
+        layers.push(
+          new PathLayer({
+            id: 'transit-lines-construction',
+            data: transitPathsDashed,
+            getPath: d => d.path,
+            getColor: d => hexToRgba(d.colour, 240),
+            getWidth: 4.5,
+            widthUnits: 'pixels',
+            widthMinPixels: 3,
+            getDashArray: [8, 5],
+            dashJustified: true,
+            extensions: [new PathStyleExtension({ dash: true })],
+            parameters: { depthTest: false },
+            pickable: false,
+          })
+        );
+      }
+    }
+    if (transitStationDots.length) {
+      layers.push(
+        new ScatterplotLayer({
+          id: 'transit-stations',
+          data: transitStationDots,
+          getPosition: d => d.position,
+          getRadius: d => (d.interchange ? 5 : 3),
+          radiusUnits: 'pixels',
+          radiusMinPixels: 2,
+          radiusMaxPixels: 6,
+          stroked: true,
+          filled: true,
+          getFillColor: d => (d.interchange ? [14, 14, 18, 255] : hexToRgba(d.colour, 255)),
+          getLineColor: d => (d.interchange ? [245, 245, 250, 255] : hexToRgba(d.colour, 255)),
+          getLineWidth: d => (d.interchange ? 2 : 1),
+          lineWidthUnits: 'pixels',
+          parameters: { depthTest: false },
+          pickable: true,
+          onHover: onOverlayHover,
+          updateTriggers: { getRadius: [transitStationDots.length], getFillColor: [transitStationDots.length] },
+        })
+      );
+    }
+    if (transitLabelData.length) {
+      layers.push(
+        new TextLayer({
+          id: 'transit-station-labels',
+          data: transitLabelData,
+          getPosition: d => d.position,
+          getText: d => d.name,
+          getSize: d => (d.interchange ? 12 : 10),
+          getColor: d => (d.status === 'construction' ? [253, 186, 116, 255] : [235, 238, 245, 255]),
+          getPixelOffset: [0, -10],
+          fontFamily: '"Courier New", monospace',
+          fontWeight: 700,
+          billboard: true,
+          background: true,
+          getBackgroundColor: [8, 10, 14, 210],
+          backgroundPadding: [4, 2],
+          parameters: { depthTest: false },
+          pickable: false,
+          updateTriggers: {
+            getText: [transitLabelData.length],
+            getSize: [transitLabelData.length],
+            getColor: [transitLabelData.length],
+          },
+        })
+      );
+    }
+
+    // ─── Catacombs overlay (admin only) — buried rivers, Hadrian's Aqueduct,
+    // quarry-caves and the storyteller tunnels that join them. One PathLayer
+    // per certainty tier so each gets its own dash (solid / dashed / dotted). ──
+    if (catacombPassageTiers.length) {
+      // one dark casing pass under every tier
+      layers.push(
+        new PathLayer({
+          id: 'catacombs-casing',
+          data: catacombPassageTiers.flatMap(t => t.paths),
+          getPath: d => d.path,
+          getColor: [4, 3, 6, 220],
+          getWidth: 8,
+          widthUnits: 'pixels',
+          widthMinPixels: 4.5,
+          capRounded: true,
+          jointRounded: true,
+          parameters: { depthTest: false },
+          pickable: false,
+        })
+      );
+      for (const t of catacombPassageTiers) {
+        layers.push(
+          new PathLayer({
+            id: `catacombs-passages-${t.tier}`,
+            data: t.paths,
+            getPath: d => d.path,
+            getColor: hexToRgba(t.color, 245),
+            getWidth: t.tier === 'attested' ? 4.5 : t.tier === 'inferred' ? 4 : 3.5,
+            widthUnits: 'pixels',
+            widthMinPixels: 2.5,
+            capRounded: !t.dash,
+            jointRounded: true,
+            ...(t.dash
+              ? {
+                  getDashArray: t.dash,
+                  dashJustified: true,
+                  dashGapPickable: false,
+                  extensions: [new PathStyleExtension({ dash: true })],
+                }
+              : {}),
+            parameters: { depthTest: false },
+            pickable: true,
+            onHover: onOverlayHover,
+          })
+        );
+      }
+    }
+    if (catacombSiteDots.length) {
+      layers.push(
+        new ScatterplotLayer({
+          id: 'catacombs-sites',
+          data: catacombSiteDots,
+          getPosition: d => d.position,
+          getRadius: d => (d.siteType === 'cave' || d.siteType === 'junction' ? 5.5 : 4),
+          radiusUnits: 'pixels',
+          radiusMinPixels: 3,
+          radiusMaxPixels: 7,
+          stroked: true,
+          filled: true,
+          getFillColor: d => hexToRgba(CATACOMB_SITE_COLOR[d.siteType] || '#e6d5a8', 235),
+          getLineColor: [10, 8, 12, 255],
+          getLineWidth: 1.5,
+          lineWidthUnits: 'pixels',
+          parameters: { depthTest: false },
+          pickable: true,
+          onHover: onOverlayHover,
+          updateTriggers: { getFillColor: [catacombSiteDots.length], getRadius: [catacombSiteDots.length] },
+        })
+      );
+    }
+    if (catacombLabelData.length) {
+      layers.push(
+        new TextLayer({
+          id: 'catacombs-site-labels',
+          data: catacombLabelData,
+          getPosition: d => d.position,
+          getText: d => d.name,
+          getSize: 11,
+          getColor: [235, 224, 196, 255],
+          getPixelOffset: [0, -12],
+          fontFamily: '"Courier New", monospace',
+          fontWeight: 700,
+          billboard: true,
+          background: true,
+          getBackgroundColor: [10, 6, 12, 220],
+          backgroundPadding: [4, 2],
+          parameters: { depthTest: false },
+          pickable: false,
+          updateTriggers: { getText: [catacombLabelData.length] },
+        })
+      );
+    }
+
+    // ─── Necropoleis overlay (admin only) — the ragged OLD necropolis and the
+    // small NEW one. The OLD galleries are deliberately jagged and broken. ──
+    if (necroDrawGroups.length) {
+      layers.push(
+        new PathLayer({
+          id: 'necro-casing',
+          data: necroDrawGroups.flatMap(g => g.paths),
+          getPath: d => d.path,
+          getColor: [3, 4, 3, 215],
+          getWidth: 8,
+          widthUnits: 'pixels',
+          widthMinPixels: 4.5,
+          jointRounded: true,
+          parameters: { depthTest: false },
+          pickable: false,
+        })
+      );
+      for (const g of necroDrawGroups) {
+        layers.push(
+          new PathLayer({
+            id: `necro-${g.id}`,
+            data: g.paths,
+            getPath: d => d.path,
+            getColor: hexToRgba(g.color, g.id === 'new' ? 255 : 245),
+            getWidth: g.width || 3,
+            widthUnits: 'pixels',
+            widthMinPixels: 2,
+            jointRounded: true,
+            ...(g.dash
+              ? {
+                  getDashArray: g.dash,
+                  dashJustified: true,
+                  extensions: [new PathStyleExtension({ dash: true })],
+                }
+              : {}),
+            parameters: { depthTest: false },
+            pickable: true,
+            onHover: onOverlayHover,
+          })
+        );
+      }
+    }
+    if (necroSiteDots.length) {
+      layers.push(
+        new ScatterplotLayer({
+          id: 'necro-sites',
+          data: necroSiteDots,
+          getPosition: d => d.position,
+          getRadius: d => (d.siteType === 'new_entrance' ? 8 : d.siteType === 'unknown' || d.siteType === 'seal' ? 5.5 : 4),
+          radiusUnits: 'pixels',
+          radiusMinPixels: 3,
+          radiusMaxPixels: 10,
+          stroked: true,
+          filled: true,
+          getFillColor: d => hexToRgba(NECRO_SITE_COLOR[d.siteType] || '#c8d0c0', d.siteType === 'new_entrance' ? 255 : 225),
+          getLineColor: d => (d.siteType === 'new_entrance' ? [255, 255, 255, 255] : [6, 8, 6, 255]),
+          getLineWidth: d => (d.siteType === 'new_entrance' ? 2.5 : 1.5),
+          lineWidthUnits: 'pixels',
+          parameters: { depthTest: false },
+          pickable: true,
+          onHover: onOverlayHover,
+          updateTriggers: { getRadius: [necroSiteDots.length], getFillColor: [necroSiteDots.length] },
+        })
+      );
+    }
+    if (necroLabelData.length) {
+      layers.push(
+        new TextLayer({
+          id: 'necro-site-labels',
+          data: necroLabelData,
+          getPosition: d => d.position,
+          getText: d => d.name,
+          getSize: d => (d.siteType === 'new_entrance' ? 13 : 11),
+          getColor: d => (d.siteType === 'new_entrance' ? [255, 214, 92, 255] : [222, 228, 210, 255]),
+          getPixelOffset: d => [0, d.siteType === 'new_entrance' ? -16 : -12],
+          fontFamily: '"Courier New", monospace',
+          fontWeight: 700,
+          billboard: true,
+          background: true,
+          getBackgroundColor: [6, 8, 6, 220],
+          backgroundPadding: [4, 2],
+          parameters: { depthTest: false },
+          pickable: false,
+          updateTriggers: {
+            getText: [necroLabelData.length],
+            getSize: [necroLabelData.length],
+            getColor: [necroLabelData.length],
+            getPixelOffset: [necroLabelData.length],
+          },
+        })
+      );
+    }
+
     // ─── Layers: Mask + Image Fill (hover reveals the owner's face) ──
-    if (hoveredFeature) {
+    if (!cleanMap && hoveredFeature) {
       const currentAvatarUrl = avatarCache[hoveredDivision];
 
       if (currentAvatarUrl && isOwnedClaim(claimByDiv.get(hoveredDivision))) {
@@ -1015,7 +1614,7 @@ export default function Domains() {
     }
 
     return layers;
-  }, [geoJsonData, selectedDivision, hoveredDivision, hoveredFeature, avatarCache, pulse, onDeckHover, onDeckClick, groupOverlayFeatures, groupLabelData, npcFeatures, npcLabelData, clanBadgeData, avatarBadgeData, clanLabelData, abatonBadgeData, abatonFeatures, claimByDiv, badgeSize, badgeOffset]);
+  }, [geoJsonData, selectedDivision, hoveredDivision, hoveredFeature, avatarCache, onDeckHover, onDeckClick, groupOverlayFeatures, groupLabelData, npcFeatures, npcLabelData, clanBadgeData, avatarBadgeData, clanLabelData, abatonBadgeData, abatonFeatures, claimByDiv, badgeSize, badgeOffset, transitPathsSolid, transitPathsDashed, transitStationDots, transitLabelData, catacombPassageTiers, catacombSiteDots, catacombLabelData, necroDrawGroups, necroSiteDots, necroLabelData, cleanMap, onOverlayHover]);
 
   // ── Error state ─────────────────────────────────────────
   if (!geoJsonData) {
@@ -1111,8 +1710,8 @@ export default function Domains() {
             style={{ width: '100%', height: '100%' }}
             onLoad={() => setMapReady(true)}
           >
-            {/* Native MapLibre labels — superior text rendering */}
-            {geoJsonData && (
+            {/* Native MapLibre labels — superior text rendering (hidden in clean-map mode) */}
+            {geoJsonData && !cleanMap && (
               <Source id="domains-labels-src" type="geojson" data={geoJsonData}>
                 <Layer
                   id="domains-labels"
@@ -1138,7 +1737,7 @@ export default function Domains() {
 
         {/* ── Hover tooltip: quick glance without opening the dossier ── */}
         <AnimatePresence>
-          {hoveredFeature && hoveredDivision !== selectedDivision && (
+          {!cleanMap && hoveredFeature && hoveredDivision !== selectedDivision && (
             <motion.div
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1154,6 +1753,28 @@ export default function Domains() {
               {hoveredFeature.properties.pendingRequests > 0 && hoveredFeature.properties.ownerName === 'Unclaimed' && (
                 <span className={styles.hoverTipPending}>{hoveredFeature.properties.pendingRequests} request{hoveredFeature.properties.pendingRequests > 1 ? 's' : ''} pending</span>
               )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── Overlay hover card: transit / catacomb / necropolis feature info ── */}
+        <AnimatePresence>
+          {overlayHover && (
+            <motion.div
+              key="overlay-tip"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.12 }}
+              className={styles.overlayTip}
+              style={{
+                left: Math.min(overlayHover.x + 14, (typeof window !== 'undefined' ? window.innerWidth : 1200) - 280),
+                top: overlayHover.y + 14,
+              }}
+            >
+              <span className={styles.overlayTipTitle}>{overlayHover.title}</span>
+              {overlayHover.subtitle && <span className={styles.overlayTipSub}>{overlayHover.subtitle}</span>}
+              {overlayHover.note && <span className={styles.overlayTipNote}>{overlayHover.note}</span>}
             </motion.div>
           )}
         </AnimatePresence>
@@ -1212,12 +1833,154 @@ export default function Domains() {
           )}
         </div>
 
-        {/* ── RIGHT PANEL: Claimed Divisions ── */}
-        <div className={styles.claimsPanel}>
-          <div className={styles.claimsPanelHeader}>
+        {/* ── MAP OVERLAY CONTROLS (top-left, clear of the footer) ── */}
+        <div className={`${styles.mapControls} ${railOpen ? styles.mapControlsShifted : ''}`}>
+          <div className={styles.layersPanel}>
+            <div className={styles.layersPanelHeadRow}>
+              <button
+                type="button"
+                className={styles.layersPanelHead}
+                data-open={layersPanelOpen}
+                onClick={() => setLayersPanelOpen(o => !o)}
+              >
+                <svg className={styles.transitToggleIcon} viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                  <path fill="currentColor" d="M12 3 2 8l10 5 10-5-10-5Zm0 8.3L4.6 8 12 4.7 19.4 8 12 11.3ZM2 12l10 5 10-5-2.3-1.15L12 14.6 4.3 10.85 2 12Zm0 4 10 5 10-5-2.3-1.15L12 18.6 4.3 14.85 2 16Z" />
+                </svg>
+                <span className={styles.layersPanelTitle}>Layers</span>
+                <span className={styles.layersChevron} data-open={layersPanelOpen}>▾</span>
+              </button>
+              {isAdmin && (
+                <button
+                  type="button"
+                  className={styles.layersManageBtn}
+                  title="Manage which players can see the restricted overlays"
+                  onClick={() => setAccessMgrOpen(true)}
+                >
+                  <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                    <path fill="currentColor" d="M12.65 10A6 6 0 1 0 5 17.65l-2 2V22h3l1-1h2v-2h2v-2h1.65A6 6 0 0 0 12.65 10ZM17 10a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Z" />
+                  </svg>
+                </button>
+              )}
+            </div>
+            <AnimatePresence initial={false}>
+              {layersPanelOpen && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2, ease: 'easeInOut' }}
+                  className={styles.layersBody}
+                >
+                  <LayerRow
+                    label="Clean map"
+                    on={cleanMap}
+                    onToggle={toggleCleanMap}
+                    accent="slate"
+                    title="Hide domain colours, badges and labels — plain Athens map"
+                  />
+
+                  <LayerRow label="Transit" on={transitOn} onToggle={toggleTransit} accent="transit">
+                    {TRANSIT_GROUPS.map(g => (
+                      <LayerSubRow
+                        key={g.key}
+                        label={g.label}
+                        active={!!transitGroups[g.key]}
+                        onClick={() => toggleTransitGroup(g.key)}
+                        swatch={
+                          <span className={`${styles.transitSwatch} ${g.dashed ? styles.transitSwatchDashed : ''}`}>
+                            {g.swatch.map((c, i) => <span key={i} style={{ background: c }} />)}
+                          </span>
+                        }
+                      />
+                    ))}
+                    <span className={styles.layerSubHint}>Zoom in for every station name</span>
+                  </LayerRow>
+
+                  {canCatacombs && (
+                    <LayerRow label="Catacombs" on={catacombsOn} onToggle={toggleCatacombs} accent="catacombs" title={isAdmin ? 'Admin' : 'Access granted'}>
+                      {Object.entries(CATACOMB_CERTAINTY).map(([key, tier]) => (
+                        <LayerSubRow
+                          key={key}
+                          label={tier.label}
+                          active={!!catacombsTiers[key]}
+                          onClick={() => toggleCatacombsTier(key)}
+                          swatch={
+                            <span
+                              className={styles.catacombSwatch}
+                              style={{
+                                borderTopColor: tier.color,
+                                borderTopStyle: key === 'attested' ? 'solid' : key === 'inferred' ? 'dashed' : 'dotted',
+                              }}
+                            />
+                          }
+                        />
+                      ))}
+                      <span className={styles.layerSubHint}>Rivers &amp; aqueduct real · tunnels imagined</span>
+                    </LayerRow>
+                  )}
+
+                  {canNecroOld && (
+                    <LayerRow label="Old Necropolis" on={necroOldOn} onToggle={toggleNecroOld} accent="necro" title="Fictional">
+                      {Object.entries(NECRO_CERTAINTY).map(([key, tier]) => (
+                        <LayerSubRow
+                          key={key}
+                          label={tier.label}
+                          active={!!necroOldTiers[key]}
+                          onClick={() => toggleNecroOldTier(key)}
+                          swatch={
+                            <span
+                              className={styles.catacombSwatch}
+                              style={{
+                                borderTopColor: tier.color,
+                                borderTopStyle: key === 'charted' ? 'solid' : key === 'hearsay' ? 'dashed' : 'dotted',
+                                borderTopWidth: key === 'charted' ? 4 : 3,
+                              }}
+                            />
+                          }
+                        />
+                      ))}
+                      <span className={styles.layerSubHint}>{NECRO_NOTES.old}</span>
+                    </LayerRow>
+                  )}
+
+                  {canNecroNew && (
+                    <LayerRow
+                      label="New Necropolis"
+                      on={necroNewOn}
+                      onToggle={toggleNecroNew}
+                      accent="necroNew"
+                      title="Fictional"
+                    >
+                      <span className={styles.layerSubHint}>{NECRO_NOTES.new}</span>
+                    </LayerRow>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+
+        {/* ── RIGHT PANEL: Claimed Divisions (collapsible) ── */}
+        <div className={`${styles.claimsPanel} ${claimsPanelOpen ? '' : styles.claimsPanelCollapsed}`}>
+          <button
+            type="button"
+            className={styles.claimsPanelHeader}
+            onClick={() => setClaimsPanelOpen(o => !o)}
+            title={claimsPanelOpen ? 'Collapse' : 'Expand'}
+          >
             <span className={styles.claimsPanelTitle}>Territory</span>
             <span className={styles.claimsPanelCount}>{ownedClaims.length} claimed</span>
-          </div>
+            <span className={styles.claimsChevron} data-open={claimsPanelOpen}>▾</span>
+          </button>
+          <AnimatePresence initial={false}>
+            {claimsPanelOpen && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.22, ease: 'easeInOut' }}
+                className={styles.claimsPanelInner}
+              >
           {ownedClaims.length === 0 ? (
             <p className={styles.claimsPanelEmpty}>No territory claimed.</p>
           ) : (
@@ -1259,6 +2022,9 @@ export default function Domains() {
                 })}
             </div>
           )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* ── DOSSIER: Selected Division inspect panel ── */}
@@ -1571,6 +2337,13 @@ export default function Domains() {
                 )}
               </div>
             </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── ADMIN: manage per-player overlay access ── */}
+        <AnimatePresence>
+          {isAdmin && accessMgrOpen && (
+            <OverlayAccessManager onClose={() => setAccessMgrOpen(false)} />
           )}
         </AnimatePresence>
       </div>

@@ -294,21 +294,49 @@
   flex-direction: column;
   background: color-mix(in srgb, var(--surface-color) 88%, transparent);
   backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
   border: 1px solid var(--border-color);
   border-radius: 14px;
   overflow: hidden;
   box-shadow: 0 8px 40px rgb(0 0 0 / 45%);
+  transition: bottom 0.22s ease, height 0.22s ease;
+}
+/* collapsed: just the header bar, pinned to the top */
+.claimsPanelCollapsed {
+  bottom: auto;
+  height: auto;
+}
+
+.claimsPanelInner {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
 }
 
 .claimsPanelHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 16px 10px;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 14px;
+  background: transparent;
+  border: none;
   border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
+  cursor: pointer;
+  transition: background 0.15s;
 }
+.claimsPanelHeader:hover { background: color-mix(in srgb, var(--tint) 8%, transparent); }
+.claimsPanelCollapsed .claimsPanelHeader { border-bottom: none; }
+
+.claimsChevron {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  transition: transform 0.2s;
+}
+.claimsChevron[data-open="false"] { transform: rotate(-90deg); }
 
 .claimsPanelTitle {
   font-size: 0.7rem;
@@ -590,9 +618,356 @@
 }
 
 /* ============================================================
+   MAP OVERLAY CONTROLS — one consolidated "Layers" panel
+   ============================================================ */
+/* Anchored top-left. Slides right (below) when the Divisions rail opens so
+   the two never overlap. The /domains footer paints over the bottom map
+   strip on desktop, so this must stay top-anchored there. */
+.mapControls {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  z-index: 901;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100% - 24px);
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.mapControlsShifted { transform: translateX(268px); }
+
+.layersPanel {
+  width: 232px;
+  display: flex;
+  flex-direction: column;
+  background: color-mix(in srgb, var(--surface-color) 90%, transparent);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgb(0 0 0 / 45%);
+  max-height: 100%;
+}
+
+.layersPanelHeadRow { display: flex; align-items: stretch; }
+
+.layersPanelHead {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-color);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  transition: background 0.15s;
+}
+.layersPanelHead:hover { background: color-mix(in srgb, var(--tint) 10%, transparent); }
+
+.layersManageBtn {
+  flex-shrink: 0;
+  width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-left: 1px solid var(--border-color);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+.layersManageBtn:hover { color: var(--tint); background: color-mix(in srgb, var(--tint) 12%, transparent); }
+
+/* ── Overlay-access manager modal (admin) ── */
+.accessMgrBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 4000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgb(0 0 0 / 55%);
+  backdrop-filter: blur(4px);
+}
+.accessMgr {
+  width: min(560px, 100%);
+  max-height: min(80vh, 700px);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  box-shadow: 0 24px 80px rgb(0 0 0 / 60%);
+  overflow: hidden;
+}
+.accessMgrHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+.accessMgrTitle {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-color);
+}
+.accessMgrSub { margin: 0; font-size: 0.72rem; line-height: 1.4; color: var(--text-muted); }
+.accessMgrClose {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.accessMgrClose:hover { color: var(--text-color); border-color: var(--tint); }
+
+.accessMgrSearch {
+  margin: 12px 18px 8px;
+  padding: 9px 12px;
+  border-radius: 9px;
+  border: 1px solid var(--border-color);
+  background: color-mix(in srgb, #000 20%, var(--surface-color));
+  color: var(--text-color);
+  font-size: 0.82rem;
+}
+.accessMgrSearch:focus { outline: none; border-color: var(--tint); }
+
+.accessMgrList { overflow-y: auto; padding: 4px 10px 12px; }
+.accessMgrEmpty { padding: 16px; font-size: 0.82rem; color: var(--text-muted); font-style: italic; }
+
+.accessMgrRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 45%, transparent);
+  flex-wrap: wrap;
+}
+.accessMgrRow:last-child { border-bottom: none; }
+.accessMgrWho { display: flex; flex-direction: column; min-width: 140px; flex: 1; }
+.accessMgrName { font-size: 0.85rem; font-weight: 600; color: var(--text-color); }
+.accessMgrMeta { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+
+.accessMgrChips { display: flex; gap: 6px; flex-wrap: wrap; }
+.accessMgrChip {
+  padding: 5px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.12s;
+}
+.accessMgrChip:hover:not(:disabled) { border-color: var(--tint); color: var(--text-color); }
+.accessMgrChip[data-on="true"] {
+  background: color-mix(in srgb, #22c55e 22%, transparent);
+  border-color: #22c55e;
+  color: #86efac;
+}
+.accessMgrChip[data-auto="true"] {
+  cursor: default;
+  opacity: 0.75;
+  background: color-mix(in srgb, var(--tint) 18%, transparent);
+  border-color: color-mix(in srgb, var(--tint) 45%, transparent);
+  color: var(--tint);
+}
+.accessMgrChip:disabled { cursor: default; }
+
+.transitToggleIcon { flex-shrink: 0; display: block; color: var(--tint); }
+
+.layersPanelTitle { flex: 1; text-align: left; }
+
+.layersChevron {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  transition: transform 0.2s;
+}
+.layersChevron[data-open="false"] { transform: rotate(-90deg); }
+
+.layersBody {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border-color);
+  max-height: calc(100vh - 150px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+/* one overlay row */
+.layerRow { display: flex; flex-direction: column; border-bottom: 1px solid color-mix(in srgb, var(--border-color) 45%, transparent); }
+.layerRow:last-child { border-bottom: none; }
+
+.layerRowMain {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  transition: color 0.15s, background 0.15s;
+}
+.layerRowMain:hover { background: color-mix(in srgb, var(--row-accent, var(--tint)) 12%, transparent); }
+.layerRowMain[data-on="true"] { color: var(--row-accent, var(--text-color)); }
+
+.layerRowLabel { flex: 1; min-width: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; }
+
+.layerRowState {
+  flex-shrink: 0;
+  font-family: 'Courier New', monospace;
+  font-size: 0.68rem;
+  padding: 2px 6px;
+  border-radius: 5px;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+}
+.layerRowMain[data-on="true"] .layerRowState {
+  color: var(--row-accent, var(--tint));
+  border-color: color-mix(in srgb, var(--row-accent, var(--tint)) 50%, transparent);
+}
+
+/* per-row accent colour (drives label + state + hover + swatches) */
+.layerRow[data-accent="slate"]    { --row-accent: #cbd5e1; }
+.layerRow[data-accent="transit"]  { --row-accent: #7fd4e0; }
+.layerRow[data-accent="catacombs"]{ --row-accent: #e6d5a8; }
+.layerRow[data-accent="necro"]    { --row-accent: #d6ddc8; }
+.layerRow[data-accent="necroNew"] { --row-accent: #f0a6aa; }
+
+.layerSub {
+  display: flex;
+  flex-direction: column;
+  padding: 2px 0 6px;
+  background: color-mix(in srgb, #000 22%, transparent);
+}
+
+.layerSubRow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 12px 6px 20px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text-muted);
+  font-size: 0.73rem;
+  font-weight: 600;
+  opacity: 0.4;
+  transition: opacity 0.15s, background 0.15s;
+}
+.layerSubRow:hover { background: color-mix(in srgb, var(--row-accent, var(--tint)) 10%, transparent); }
+.layerSubRow[data-active="true"] { opacity: 1; color: var(--text-color); }
+.layerSubLabel { flex: 1; }
+
+.layerSubHint {
+  padding: 4px 12px 6px 20px;
+  font-size: 0.66rem;
+  font-style: italic;
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+
+/* swatches (shared with old classes) */
+.transitSwatch {
+  display: flex;
+  flex-direction: column;
+  width: 16px;
+  height: 12px;
+  border-radius: 3px;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 40%);
+}
+.transitSwatch > span { flex: 1; }
+.transitSwatchDashed {
+  height: 0;
+  border-top: 3px dashed #f57c00;
+  border-radius: 0;
+  box-shadow: none;
+  align-self: center;
+}
+.transitSwatchDashed > span { display: none; }
+
+.catacombSwatch {
+  width: 16px;
+  height: 0;
+  flex-shrink: 0;
+  align-self: center;
+  border-top-width: 3px;
+  border-top-style: solid;
+  border-top-color: #e6d5a8;
+}
+
+/* ── Overlay hover card (transit / catacomb / necropolis features) ── */
+.overlayTip {
+  position: fixed;
+  z-index: 1200;
+  max-width: 264px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 11px;
+  background: color-mix(in srgb, var(--surface-color) 94%, transparent);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color);
+  border-radius: 9px;
+  box-shadow: 0 8px 28px rgb(0 0 0 / 50%);
+  pointer-events: none;
+}
+.overlayTipTitle { font-size: 0.8rem; font-weight: 700; color: var(--text-color); }
+.overlayTipSub {
+  font-size: 0.66rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--tint);
+}
+.overlayTipNote { font-size: 0.74rem; line-height: 1.35; color: var(--text-muted); }
+
+/* ============================================================
    RESPONSIVE — Mobile
    ============================================================ */
 @media (width <= 768px) {
+  .mapControls {
+    /* rail owns the top-left on mobile; Layers panel goes top-right (the
+       claims strip is pinned to the bottom, so top-right is clear) */
+    left: auto;
+    right: 12px;
+    top: 12px;
+    max-height: calc(100vh - 300px);
+  }
+  .mapControlsShifted { transform: none; }
+
+  .layersPanel { width: 208px; }
+  .layersBody { max-height: calc(100vh - 360px); }
+
   .claimsPanel {
     inset: auto 0 0;
     width: 100%;
@@ -602,6 +977,9 @@
     border-right: none;
     border-bottom: none;
     flex-direction: column;
+  }
+  .claimsPanelCollapsed {
+    height: auto;
   }
 
   .claimsScroll {
