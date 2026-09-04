@@ -48,7 +48,9 @@ const NPC_ACCENT_COLOR = '#c4b5fd';
 // Below this zoom only interchange stations are named; at or above it every
 // visible station gets a label.
 const TRANSIT_LABEL_ALL_ZOOM = 13.5;
-const TRANSIT_LS_KEY = 'domains.transit.v1';
+// v2: reset everyone once so the transit overlay is ON by default (it is meant
+// to be on the first time a player opens the map).
+const TRANSIT_LS_KEY = 'domains.transit.v2';
 const TRANSIT_DEFAULT_PREFS = {
   on: true,
   groups: { metro: true, line4: true, tram: true, suburban: true },
@@ -943,15 +945,19 @@ export default function Domains() {
     const layers = [];
 
     // ─── Layer 1: Extruded base — fill = Masquerade safety, border = owner color ──
+    // The id switches with clean-map mode on purpose: toggling `extruded` +
+    // `material` on a live GeoJsonLayer leaves deck.gl's lit polygon model in a
+    // half-updated state (colours come back muddy/unlit). A distinct id forces
+    // a clean teardown + rebuild each time the mode flips.
     layers.push(
       new GeoJsonLayer({
-        id: 'domains-base',
+        id: cleanMap ? 'domains-base-flat' : 'domains-base-3d',
         data: geoJsonData,
         pickable: true,
         stroked: true,
         filled: true,
         extruded: !cleanMap,
-        wireframe: true,
+        wireframe: !cleanMap,
         // High ambient so the Masquerade-safety tier colour reads true on the
         // extruded tops instead of being darkened into a muddy khaki by the
         // scene lighting.
