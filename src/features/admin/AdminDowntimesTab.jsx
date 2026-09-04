@@ -666,33 +666,4 @@ function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel }
       </div>
     </article>
   );
-}           <span>Status</span>
-            <select className={styles.select} value={b.status} onChange={(e) => onUpdate(r.id, 'status', e.target.value)}>
-              {STATUS.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </label >
-
-  <div className={styles.labeledInput}>
-    <span>Quick Actions</span>
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem' }}>
-      <button className={`${styles.btn} ${styles.btnSuccess} ${styles.btnSmall}`} type="button" onClick={() => onSave(r.id, { status: 'approved' })}>Approve</button>
-      <button className={`${styles.btn} ${styles.btnWarning} ${styles.btnSmall}`} type="button" onClick={() => onSave(r.id, { status: 'Needs a Scene' })}>Needs Scene</button>
-      <button className={`${styles.btn} ${styles.btnDanger} ${styles.btnSmall}`} type="button" onClick={() => onSave(r.id, { status: 'rejected' })}>Reject</button>
-      <button className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSmall}`} type="button" onClick={() => onSave(r.id, { status: 'resolved' })}>Resolve</button>
-      <button className={styles.btn} style={{ background: 'linear-gradient(135deg, #1b4c8c 0%, #4da6ff 100%)', color: 'var(--text-color)', padding: '0.4rem 0.8rem', fontSize: '0.8rem', fontWeight: 700, borderRadius: 'var(--radius-sm)' }} type="button" onClick={() => onSave(r.id, { status: 'Resolved in scene' })}>In Scene</button>
-    </div>
-  </div>
-        </div >
-
-  <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', alignItems: 'center', borderTop: '1px solid var(--glass-border)', paddingTop: '1.5rem' }}>
-    <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => onCancel(r.id)} disabled={b.saving}>Close</button>
-    <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => onSave(r.id)} disabled={b.saving} style={{ marginLeft: 'auto' }}>
-      {b.saving ? 'Saving...' : 'Save'}
-    </button>
-    {b.error && <div className={`${styles.alertMini} ${styles.alertError}`}>{b.error}</div>}
-    {b.info && <div className={`${styles.alertMini} ${styles.alertInfo}`}>{b.info}</div>}
-  </div>
-      </div >
-    </article >
-  );
 }

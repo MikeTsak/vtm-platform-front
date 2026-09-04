@@ -303,7 +303,7 @@ function ArchiveItem({ dt, isProject, isMassReleaseActive, massReleaseCountdown 
   
   useEffect(() => {
     if (dt.gm_resolution && !isMassReleaseActive && !dt.is_read) {
-      api.patch(\`/downtimes/\${dt.id}/read\`).catch(() => {});
+      api.patch(`/downtimes/${dt.id}/read`).catch(() => {});
     }
   }, [dt.gm_resolution, isMassReleaseActive, dt.is_read, dt.id]);
 
