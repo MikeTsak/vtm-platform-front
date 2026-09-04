@@ -6,6 +6,7 @@ import styles from '../../styles/News.module.css';
 import themeStyles from '../../styles/NewsThemes.module.css';
 import { NEWS_OUTLETS } from '../../constants/newsConstants';
 import { apiJoin, isVideoUrl } from '../../utils/newsUtils';
+import { sanitizeHtml } from '../../utils/sanitizeHtml';
 import { Skeleton } from 'boneyard-js/react';
 // import GoogleAd from '../../components/GoogleAd';
 import Avatar from '../../components/Avatar';
@@ -204,7 +205,7 @@ export default function PublicArticleView() {
               <span style={{ fontWeight: 'bold', color: themeObj.color }}>{article.journalist_name || 'ΣΥΝΤΑΚΤΗΣ'}</span> • <span>{articleDate}</span>
             </div>
             {renderMedia()}
-            <div className={styles.fsBody} dangerouslySetInnerHTML={{ __html: article.body }} style={{ marginTop: '2rem', color: 'inherit', fontFamily: 'inherit' }} />
+            <div className={styles.fsBody} dangerouslySetInnerHTML={{ __html: sanitizeHtml(article.body) }} style={{ marginTop: '2rem', color: 'inherit', fontFamily: 'inherit' }} />
             <DisclaimerText />
             <BottomAd />
           </div>
@@ -241,7 +242,7 @@ export default function PublicArticleView() {
             </div>
             {renderMedia('8px')}
             {article.subtitle && <h3 style={{ margin: '2rem 0 1rem', fontSize: '1.4rem', fontWeight: 'bold', color: themeObj.color }}>{article.subtitle}</h3>}
-            <div className={styles.fsBody} dangerouslySetInnerHTML={{ __html: article.body }} style={{ marginTop: '1rem', color: 'inherit', fontFamily: 'inherit' }} />
+            <div className={styles.fsBody} dangerouslySetInnerHTML={{ __html: sanitizeHtml(article.body) }} style={{ marginTop: '1rem', color: 'inherit', fontFamily: 'inherit' }} />
             <DisclaimerText />
             <BottomAd />
           </div>
@@ -277,7 +278,7 @@ export default function PublicArticleView() {
               <span>{articleDate}</span>
             </div>
             {renderMedia()}
-            <div className={styles.fsBody} dangerouslySetInnerHTML={{ __html: article.body }} style={{ marginTop: '2rem', color: 'inherit', fontFamily: 'inherit' }} />
+            <div className={styles.fsBody} dangerouslySetInnerHTML={{ __html: sanitizeHtml(article.body) }} style={{ marginTop: '2rem', color: 'inherit', fontFamily: 'inherit' }} />
             <DisclaimerText />
             <BottomAd />
           </div>
@@ -312,7 +313,7 @@ export default function PublicArticleView() {
             <h1 className={themeStyles.megaTitle}>{article.title}</h1>
             {article.subtitle && <h3 style={{ margin: '1rem 0 2rem', fontSize: '1.4rem', color: '#aaa', fontWeight: 'normal' }}>{article.subtitle}</h3>}
             {renderMedia()}
-            <div className={styles.fsBody} dangerouslySetInnerHTML={{ __html: article.body }} style={{ marginTop: '2rem', color: 'inherit', fontFamily: 'inherit' }} />
+            <div className={styles.fsBody} dangerouslySetInnerHTML={{ __html: sanitizeHtml(article.body) }} style={{ marginTop: '2rem', color: 'inherit', fontFamily: 'inherit' }} />
             <DisclaimerText />
             <BottomAd />
           </div>
@@ -348,7 +349,7 @@ export default function PublicArticleView() {
             <h1 className={themeStyles.gossipTitle} style={{ textAlign: 'center' }}>{article.title}</h1>
             {article.subtitle && <h3 style={{ margin: '1rem 0 2rem', fontSize: '1.2rem', color: '#e6007e', textAlign: 'center' }}>{article.subtitle}</h3>}
             {renderMedia('15px')}
-            <div className={styles.fsBody} dangerouslySetInnerHTML={{ __html: article.body }} style={{ marginTop: '2rem', color: 'inherit', fontFamily: 'inherit' }} />
+            <div className={styles.fsBody} dangerouslySetInnerHTML={{ __html: sanitizeHtml(article.body) }} style={{ marginTop: '2rem', color: 'inherit', fontFamily: 'inherit' }} />
             <DisclaimerText />
             <BottomAd />
           </div>
@@ -385,7 +386,7 @@ export default function PublicArticleView() {
               <span style={{ fontWeight: 'bold' }}>Ενημερώθηκε:</span> {articleDate}
             </div>
             {renderMedia()}
-            <div className={styles.fsBody} dangerouslySetInnerHTML={{ __html: article.body }} style={{ marginTop: '2rem', color: 'inherit', fontFamily: 'inherit' }} />
+            <div className={styles.fsBody} dangerouslySetInnerHTML={{ __html: sanitizeHtml(article.body) }} style={{ marginTop: '2rem', color: 'inherit', fontFamily: 'inherit' }} />
             <DisclaimerText />
             <BottomAd />
           </div>
@@ -419,7 +420,7 @@ export default function PublicArticleView() {
             <h1 className={themeStyles.openTitle}>{article.title}</h1>
             {article.subtitle && <h3 style={{ margin: '1rem 0 2rem', fontSize: '1.4rem', color: '#444' }}>{article.subtitle}</h3>}
             {renderMedia()}
-            <div className={styles.fsBody} dangerouslySetInnerHTML={{ __html: article.body }} style={{ marginTop: '2rem', color: 'inherit', fontFamily: 'inherit' }} />
+            <div className={styles.fsBody} dangerouslySetInnerHTML={{ __html: sanitizeHtml(article.body) }} style={{ marginTop: '2rem', color: 'inherit', fontFamily: 'inherit' }} />
             <DisclaimerText />
             <BottomAd />
           </div>
@@ -460,7 +461,7 @@ export default function PublicArticleView() {
               
               {renderMedia('8px')}
 
-              <div className={courtStyles.decreeBodyText} dangerouslySetInnerHTML={{__html: article.body.replace(/\n/g, '<br/>')}} style={{ marginTop: '1.5rem', lineHeight: '1.6' }} />
+              <div className={courtStyles.decreeBodyText} dangerouslySetInnerHTML={{__html: sanitizeHtml(String(article.body ?? '').replace(/\n/g, '<br/>'))}} style={{ marginTop: '1.5rem', lineHeight: '1.6' }} />
             </div>
           </article>
         </div>

@@ -5,6 +5,7 @@ import { AuthCtx } from '../../core/AuthContext';
 import styles from '../../styles/News.module.css';
 import { NEWS_OUTLETS } from '../../constants/newsConstants';
 import { apiJoin, isVideoUrl } from '../../utils/newsUtils';
+import { sanitizeHtml } from '../../utils/sanitizeHtml';
 import { useLocation, Link } from 'react-router-dom';
 import CreateNewsModal from './CreateNewsModal';
 import FullscreenArticleModal from '../../components/FullscreenArticleModal';
@@ -249,7 +250,7 @@ export default function News() {
                             </div>
                           )}
 
-                          <div className={styles.bodyHtml} dangerouslySetInnerHTML={{ __html: item.body }} />
+                          <div className={styles.bodyHtml} dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.body) }} />
                         </div>
                         {(isAdmin || isCourt) && (
                           <>
@@ -291,7 +292,7 @@ export default function News() {
                             {isVideoUrl(item.media_url) ? <video src={mediaUrl} controls /> : <img src={mediaUrl} alt="Proof" />}
                           </div>
                         )}
-                        <div className={styles.rumorBodyText} dangerouslySetInnerHTML={{ __html: item.body }} />
+                        <div className={styles.rumorBodyText} dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.body) }} />
                         <div className={styles.rumorMeta}>— Heard on {new Date(item.created_at).toLocaleDateString()}</div>
 
                         {(isAdmin || isCourt) && (
@@ -372,7 +373,7 @@ function FullscreenRumorModal({ item, onClose }) {
             {isVideoUrl(item.media_url) ? <video src={mediaUrl} controls style={{ width: '100%', borderRadius: '4px', border: '2px solid rgba(0,0,0,0.1)' }} /> : <img src={mediaUrl} alt="Proof" style={{ width: '100%', borderRadius: '4px', border: '2px solid rgba(0,0,0,0.1)' }} />}
           </div>
         )}
-        <div style={{ fontSize: '1.3rem', lineHeight: '1.4', whiteSpace: 'pre-wrap', color: '#222' }} dangerouslySetInnerHTML={{ __html: item.body }} />
+        <div style={{ fontSize: '1.3rem', lineHeight: '1.4', whiteSpace: 'pre-wrap', color: '#222' }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.body) }} />
         <div style={{ marginTop: '2rem', fontSize: '1rem', color: '#555', textAlign: 'right', fontStyle: 'italic' }}>
           — Heard on {new Date(item.created_at).toLocaleDateString()}
         </div>

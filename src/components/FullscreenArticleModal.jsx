@@ -2,6 +2,7 @@ import React from 'react';
 import { NEWS_OUTLETS } from '../constants/newsConstants';
 import { apiJoin, isVideoUrl } from '../utils/newsUtils';
 import styles from '../styles/News.module.css';
+import { sanitizeHtml } from '../utils/sanitizeHtml';
 
 export default function FullscreenArticleModal({ item, onClose }) {
   const isRumor = item.theme === 'RUMOR';
@@ -27,7 +28,7 @@ export default function FullscreenArticleModal({ item, onClose }) {
                 </div>
               )}
 
-              <div className={styles.fsBody} dangerouslySetInnerHTML={{ __html: item.body }} />
+              <div className={styles.fsBody} dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.body) }} />
               
               <div style={{ marginTop: '2rem', padding: '1rem', backgroundColor: '#fff3cd', border: '1px solid #ffeeba', borderRadius: '8px', fontSize: '0.85rem', color: '#856404', lineHeight: '1.4' }}>
                 <strong>Disclaimer:</strong> This content is entirely fictional and created for the Athens Through Time LARP game. Any names, characters, places, or incidents are the product of the author's imagination or are used fictitiously. Any resemblance to actual persons, living or dead, or actual events is purely coincidental.
@@ -56,7 +57,7 @@ export default function FullscreenArticleModal({ item, onClose }) {
                 </div>
               )}
 
-              <div className={styles.fsBody} dangerouslySetInnerHTML={{ __html: item.body }} />
+              <div className={styles.fsBody} dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.body) }} />
               
               <div style={{ marginTop: '2rem', padding: '1rem', backgroundColor: '#fff3cd', border: '1px solid #ffeeba', borderRadius: '8px', fontSize: '0.85rem', color: '#856404', lineHeight: '1.4' }}>
                 <strong>Disclaimer:</strong> This content is entirely fictional and created for the Athens Through Time LARP game. Any names, characters, places, or incidents are the product of the author's imagination or are used fictitiously. Any resemblance to actual persons, living or dead, or actual events is purely coincidental.

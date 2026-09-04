@@ -54,8 +54,9 @@ export default function AdminMasterTab() {
     setMigrationDone(false);
 
     const baseUrl = api.defaults.baseURL || import.meta.env.VITE_API_URL || '';
-    const token = localStorage.getItem('token');
-    const es = new EventSource(`${baseUrl}/admin/run-migrations/stream?token=${token}`);
+    // Auth rides along as the httpOnly session cookie — never put a session
+    // token in a URL (it leaks into access logs, proxy logs, browser history).
+    const es = new EventSource(`${baseUrl}/admin/run-migrations/stream`, { withCredentials: true });
 
     es.addEventListener('start', (e) => {
       const data = JSON.parse(e.data);
@@ -96,8 +97,7 @@ export default function AdminMasterTab() {
     setMediaMigrationDone(false);
 
     const baseUrl = api.defaults.baseURL || import.meta.env.VITE_API_URL || '';
-    const token = localStorage.getItem('token');
-    const es = new EventSource(`${baseUrl}/admin/migrate-media/stream?token=${token}`);
+    const es = new EventSource(`${baseUrl}/admin/migrate-media/stream`, { withCredentials: true });
 
     es.addEventListener('start', (e) => {
       const data = JSON.parse(e.data);

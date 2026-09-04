@@ -5,6 +5,7 @@ import { Skeleton } from 'boneyard-js/react';
 import { AuthCtx } from '../../core/AuthContext';
 import Avatar from '../../components/Avatar';
 import { motion } from 'framer-motion';
+import { sanitizeHtml } from '../../utils/sanitizeHtml';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -224,7 +225,7 @@ export default function AnnouncementsView({ canEdit: propCanEdit }) {
                   
                   {item.media_url && <BlobImage url={item.media_url} />}
 
-                  <div className={styles.decreeBodyText} dangerouslySetInnerHTML={{__html: item.body.replace(/\n/g, '<br/>')}} />
+                  <div className={styles.decreeBodyText} dangerouslySetInnerHTML={{__html: sanitizeHtml(String(item.body ?? '').replace(/\n/g, '<br/>'))}} />
                 </div>
 
                 {canEdit && (

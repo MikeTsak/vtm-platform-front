@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../core/api';
 import styles from '../styles/GlobalBanner.module.css';
+import { sanitizeHtml } from '../utils/sanitizeHtml';
 
 export default function GlobalBanner() {
   const [config, setConfig] = useState({ enabled: false, message: '', countdown: '' });
@@ -93,7 +94,7 @@ export default function GlobalBanner() {
       {config.message && (
         <span 
           className={styles.message}
-          dangerouslySetInnerHTML={{ __html: config.message }} 
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(config.message) }}
         />
       )}
       

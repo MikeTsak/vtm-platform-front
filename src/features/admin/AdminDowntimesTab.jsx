@@ -1,4 +1,4 @@
-﻿// src/components/admin/AdminDowntimesTab.jsx
+// src/components/admin/AdminDowntimesTab.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import api from "../../core/api";
 import { formatEuDate } from '../../utils/dateFormatter';
@@ -98,6 +98,8 @@ export default function AdminDowntimesTab() {
     'Needs a Scene': false, resolved: true, 'Resolved in scene': true,
   });
 
+  const [isReleasing, setIsReleasing] = useState(false);
+
   const [buffer, setBuffer] = useState({});
 
   useEffect(() => {
@@ -123,8 +125,16 @@ export default function AdminDowntimesTab() {
     return () => { mounted = false; };
   }, []);
 
-  async function onSaveConfig(instantPhaseOverride = null) {
-    const phaseToSave = instantPhaseOverride || masterPhase;
+  async function onSaveConfig(instantOverrides = {}) {
+    // Maintain backwards compatibility if a string was passed for phase override
+    const overrides = typeof instantOverrides === 'string' 
+      ? { phase: instantOverrides } 
+      : instantOverrides;
+
+    const phaseToSave = overrides.phase || masterPhase;
+    const modeToSave = overrides.massReleaseMode !== undefined ? overrides.massReleaseMode : massReleaseMode;
+    const dateToSave = overrides.massReleaseDate !== undefined ? overrides.massReleaseDate : massReleaseDate;
+
     setCfgSaving(true);
     setCfgErr(''); setCfgInfo('');
     try {
@@ -133,8 +143,8 @@ export default function AdminDowntimesTab() {
         downtime_opening: opening || null,
         project_deadline: projectDeadline || null,
         downtime_active_phase: phaseToSave,
-        downtime_mass_release_mode: massReleaseMode,
-        downtime_mass_release_date: massReleaseDate || null
+        downtime_mass_release_mode: modeToSave,
+        downtime_mass_release_date: dateToSave || null
       });
       setDeadline(ymd(data?.downtime_deadline || ''));
       setOpening(ymd(data?.downtime_opening || ''));
@@ -153,7 +163,35 @@ export default function AdminDowntimesTab() {
 
   function handlePhaseToggle(newPhase) {
     setMasterPhase(newPhase);
-    onSaveConfig(newPhase); 
+    onSaveConfig({ phase: newPhase }); 
+  }
+
+  function handleMassReleaseModeToggle() {
+    const newMode = !massReleaseMode;
+    setMassReleaseMode(newMode);
+    onSaveConfig({ massReleaseMode: newMode });
+  }
+
+  function handleMassReleaseDateChange(newDate) {
+    setMassReleaseDate(newDate);
+    onSaveConfig({ massReleaseDate: newDate });
+  }
+
+  async function handleReleaseNow(e) {
+    e.stopPropagation();
+    if (!window.confirm("Are you sure you want to instantly release all downtimes to players now?")) return;
+    
+    setIsReleasing(true);
+    try {
+      await api.post('admin/downtimes/release-now');
+      setMassReleaseMode(false);
+      setCfgInfo('Downtimes released instantly!');
+      setTimeout(() => setCfgInfo(''), 3000);
+    } catch (err) {
+      setCfgErr('Failed to release downtimes.');
+    } finally {
+      setIsReleasing(false);
+    }
   }
 
   function onReloadConfig() {
@@ -361,7 +399,7 @@ export default function AdminDowntimesTab() {
             <p style={{ margin: '5px 0 0 0', color: 'var(--text-secondary)' }}>Automates the simultaneous release of all GM resolutions to players.</p>
           </div>
 
-          <div onClick={() => setMassReleaseMode(!massReleaseMode)} style={{ background: 'var(--glass-inset)', border: `2px solid ${massReleaseMode ? '#4da6ff' : 'var(--glass-border)'}`, borderRadius: 'var(--radius-md)', padding: '1.5rem', cursor: 'pointer', transition: 'all 0.3s ease', display: 'flex', flexDirection: 'column', gap: '1.5rem', boxShadow: massReleaseMode ? '0 0 20px rgba(77,166,255,0.1)' : 'none' }}>
+          <div onClick={handleMassReleaseModeToggle} style={{ background: 'var(--glass-inset)', border: `2px solid ${massReleaseMode ? '#4da6ff' : 'var(--glass-border)'}`, borderRadius: 'var(--radius-md)', padding: '1.5rem', cursor: 'pointer', transition: 'all 0.3s ease', display: 'flex', flexDirection: 'column', gap: '1.5rem', boxShadow: massReleaseMode ? '0 0 20px rgba(77,166,255,0.1)' : 'none' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                 <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: massReleaseMode ? '#4da6ff' : 'var(--glass-border)', boxShadow: massReleaseMode ? '0 0 15px #4da6ff' : 'none', animation: massReleaseMode ? 'pulseGlow 2s infinite' : 'none' }} />
@@ -377,8 +415,18 @@ export default function AdminDowntimesTab() {
                 <h4 style={{ margin: '0 0 10px 0', color: '#4da6ff', fontSize: '1.1rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Enabled</h4>
                 <label className={styles.labeledInput}>
                   <span style={{ color: 'var(--text-primary)' }}>Resolutions become visible on this date:</span>
-                  <input type="datetime-local" className={styles.input} value={massReleaseDate} onChange={(e) => setMassReleaseDate(e.target.value)} style={{ marginTop: '8px' }} />
+                  <input type="datetime-local" className={styles.input} value={massReleaseDate} onChange={(e) => setMassReleaseDate(e.target.value)} onBlur={(e) => handleMassReleaseDateChange(e.target.value)} style={{ marginTop: '8px' }} />
                 </label>
+                <div style={{ marginTop: '15px' }}>
+                  <button 
+                    className={`${styles.btn} ${styles.btnPrimary}`} 
+                    onClick={handleReleaseNow} 
+                    disabled={isReleasing}
+                    style={{ background: '#4da6ff', color: '#000', fontWeight: 'bold' }}
+                  >
+                    {isReleasing ? 'Releasing...' : '⚡ Release Now'}
+                  </button>
+                </div>
               </div>
             )}
           </div>

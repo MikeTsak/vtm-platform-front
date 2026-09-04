@@ -216,14 +216,9 @@ function relTime(ts) {
 // ── CORS-safe avatar fetcher ──────────────────────────────
 // Returns an object URL string that BitmapLayer can use as `image`.
 async function fetchAvatarAsObjectUrl(url) {
-  const token = localStorage.getItem('token');
-  const headers = {};
-  const apiBase = import.meta.env.VITE_API_URL || '/api';
-  if (url.startsWith(apiBase) || url.startsWith('/')) {
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-  }
+  // Auth rides along as the httpOnly session cookie for same-origin/API
+  // requests — `credentials: 'include'` is what makes the browser attach it.
   const res = await fetch(url, {
-    headers,
     credentials: url.startsWith('http') && !url.includes(window.location.host) ? 'omit' : 'include',
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);

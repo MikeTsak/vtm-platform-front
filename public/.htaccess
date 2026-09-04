@@ -2,6 +2,51 @@ RewriteEngine On
 RewriteBase /
 
 # ----------------------------------------
+# 🔒 0. Security Headers
+# ----------------------------------------
+#
+# This SPA is a pre-built static bundle served directly by Apache — the Node/
+# Fastify API (which sets its own strict CSP via @fastify/helmet, including
+# per-request nonces on the HTML it renders itself) never touches these
+# responses, so this is the ONLY place a CSP for the actual game UI can live.
+#
+# Nonce-based / hash-based script-src was deliberately NOT used here:
+#   - Nonces require generating a fresh value per HTTP response. This is a
+#     static file served by Apache with no per-request templating, so there
+#     is nothing to generate a nonce from.
+#   - Hashing the few inline <script> blocks was considered, but every one of
+#     them (Consent Mode, GA4 init, Microsoft Clarity's loader) was moved to
+#     an external, same-origin file instead: front/public/analytics-init.js.
+#     Zero inline scripts is strictly better than a hash allowlist — there is
+#     nothing to keep in sync, and nothing an attacker can piggy-back on.
+#
+# Result: script-src below has NO 'unsafe-inline' and NO 'unsafe-eval' — an
+# attacker who manages to inject markup (e.g. a stored-XSS payload that slips
+# past DOMPurify) still cannot get a <script> or an inline event handler to
+# execute, because the browser refuses anything not loaded from 'self' or the
+# explicitly-listed vendor origins below.
+#
+# style-src keeps 'unsafe-inline' because several UI libraries in this bundle
+# (framer-motion, sonner, maplibre-gl, @antv/g6, recharts, emoji-picker-react)
+# inject <style> tags / style attributes at runtime; nonce-ing those would
+# require patching each library. Inline CSS cannot execute script, so the
+# risk this leaves open is far lower than inline script would be.
+#
+# img-src/connect-src include a broad https:/wss: allowance because avatar
+# images, map tiles (MapLibre) and the API origin are configured via runtime
+# env vars (VITE_API_URL etc.) that aren't fixed at CSP-authoring time. If you
+# want a tighter policy, replace `https:` below with the exact origins your
+# deployment uses (API host, img.miketsak.gr, your MapLibre tile provider).
+<IfModule mod_headers.c>
+    Header set Content-Security-Policy "default-src 'self'; script-src 'self' https://www.googletagmanager.com https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.doubleclick.net https://www.clarity.ms https://*.clarity.ms; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https: wss:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://*.doubleclick.net; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; upgrade-insecure-requests"
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+    Header set Permissions-Policy "geolocation=(), camera=(), microphone=(), payment=()"
+    Header set Cross-Origin-Opener-Policy "same-origin"
+</IfModule>
+
+# ----------------------------------------
 # 🚀 1. Routing Rules (SPA & API)
 # ----------------------------------------
 

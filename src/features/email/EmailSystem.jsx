@@ -1,7 +1,7 @@
 ﻿// src/components/EmailSystem.jsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import DOMPurify from 'dompurify';
 import api from '../../core/api';
+import { sanitizeHtml } from '../../utils/sanitizeHtml';
 import styles from '../../styles/EmailSystem.module.css';
 import { Skeleton } from 'boneyard-js/react';
 import Avatar from '../../components/Avatar';
@@ -362,7 +362,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled = true }) {
                     {/* CRITICAL SECURITY FIX: Sanitize HTML content to prevent XSS */}
                     <div
                       className={styles.emailMsgContent}
-                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(m.body) }}
+                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(m.body) }}
                     />
                   </motion.div>
                 );

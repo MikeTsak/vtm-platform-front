@@ -1,13 +1,17 @@
 // src/pages/MediaViewer.jsx
 import { useParams, useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import api from '../core/api';
+import { AuthCtx } from '../core/AuthContext';
 import s from '../styles/Premonitions.module.css';
 import { Skeleton } from 'boneyard-js/react';
 
 export default function MediaViewer() {
   const { id } = useParams(); // this is now the PREMONITION id
   const navigate = useNavigate();
+  // Session lives in an httpOnly cookie, so we can't check for a token in JS
+  // directly — wait for AuthProvider's /auth/me check to resolve instead.
+  const { user, loading: authLoading } = useContext(AuthCtx);
 
   const [url, setUrl] = useState(null);
   const [type, setType] = useState(null);
@@ -15,9 +19,9 @@ export default function MediaViewer() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    if (authLoading) return;
 
-    if (!token) {
+    if (!user) {
       navigate(`/login?redirect=/media/${id}`);
       return;
     }
@@ -60,7 +64,7 @@ export default function MediaViewer() {
       cancelled = true;
       if (blobUrl) URL.revokeObjectURL(blobUrl);
     };
-  }, [id, navigate]);
+  }, [id, navigate, user, authLoading]);
 
 
 

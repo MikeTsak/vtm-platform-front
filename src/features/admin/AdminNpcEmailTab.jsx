@@ -4,6 +4,7 @@ import api from '../../core/api';
 import { formatEuDate } from '../../utils/dateFormatter';
 import styles from '../../styles/Admin.module.css';
 import Avatar from '../../components/Avatar';
+import { sanitizeHtml } from '../../utils/sanitizeHtml';
 
 const EditorToolbar = ({ onCmd }) => (
   <div style={{ display: 'flex', gap: '4px', background: 'rgba(0,0,0,0.4)', padding: '6px', borderBottom: '1px solid var(--glass-border)' }}>
@@ -153,7 +154,7 @@ export default function AdminNpcEmailTab() {
                           <span>{msgName}</span>
                           <span style={{ fontWeight: 'normal', fontFamily: 'monospace' }}>{formatEuDate(m.created_at)}</span>
                         </div>
-                        <div style={{ lineHeight: '1.6', color: '#e0e0e5', fontSize: '0.95rem' }} dangerouslySetInnerHTML={{ __html: m.body }} />
+                        <div style={{ lineHeight: '1.6', color: '#e0e0e5', fontSize: '0.95rem' }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(m.body) }} />
                       </div>
                     </div>
                   );

@@ -609,8 +609,8 @@ export default function ChatSystem({ commsEnabled = true }) {
   }, [notifSupported, notifOn, threadKey]);
 
   useEffect(() => {
-    const t = localStorage.getItem('token');
-    if (t) api.defaults.headers.common['Authorization'] = `Bearer ${t}`;
+    // Auth rides along as the httpOnly session cookie — nothing to attach
+    // here manually. Still surface "session expired" if a request 401s.
     const id = api.interceptors.response.use(res => res, err => {
       if (err?.response?.status === 401) setError('Your session expired. Please log in again.');
       return Promise.reject(err);
@@ -618,11 +618,11 @@ export default function ChatSystem({ commsEnabled = true }) {
     return () => api.interceptors.response.eject(id);
   }, []);
 
-  const hasAuthHeader = !!api?.defaults?.headers?.common?.Authorization;
+  const isAuthenticated = !!currentUser;
 
   // Background Contacts Fetcher
   const fetchContacts = useCallback(async () => {
-    if (!hasAuthHeader) return;
+    if (!isAuthenticated) return;
     try {
       const [{ data: u }, { data: n }, { data: g }] = await Promise.all([
         api.get('/chat/users'),
@@ -635,7 +635,7 @@ export default function ChatSystem({ commsEnabled = true }) {
     } catch (e) {
       if (e?.response?.status === 401) setError('Your session expired. Please log in again.');
     }
-  }, [hasAuthHeader]);
+  }, [isAuthenticated]);
 
   // Initial Load & Polling setup
   useEffect(() => {
@@ -678,7 +678,7 @@ export default function ChatSystem({ commsEnabled = true }) {
             }));
           } else {
             if (isAdmin) {
-              if (selectedPlayerId && hasAuthHeader) {
+              if (selectedPlayerId && isAuthenticated) {
                 const res = await api.get(`/admin/chat/npc-history/${selectedContact.id}/${selectedPlayerId}`);
                 msgs = (res.data.messages || []).map(m => ({
                   id: m.id, body: m.body, created_at: m.created_at, sender_id: m.from_side === 'npc' ? 'npc' : selectedPlayerId, _from: m.from_side,
@@ -740,7 +740,7 @@ export default function ChatSystem({ commsEnabled = true }) {
         }
 
         // ---> Admin Roster Sync <---
-        if (isAdmin && selectedContact.type === 'npc' && hasAuthHeader) {
+        if (isAdmin && selectedContact.type === 'npc' && isAuthenticated) {
           try {
             const res = await api.get(`/admin/chat/npc-conversations/${selectedContact.id}`);
             if (loadSeqRef.current !== mySeq) return;
@@ -774,7 +774,7 @@ export default function ChatSystem({ commsEnabled = true }) {
     load();
     pollRef.current = setInterval(load, 4000);
     return () => clearInterval(pollRef.current);
-  }, [selectedContact, selectedPlayerId, isAdmin, hasAuthHeader, currentUser?.id, users, threadKey, isInbound, notify]);
+  }, [selectedContact, selectedPlayerId, isAdmin, isAuthenticated, currentUser?.id, users, threadKey, isInbound, notify]);
 
   /* --- File Handling --- */
   const handleFileSelect = (e) => {
