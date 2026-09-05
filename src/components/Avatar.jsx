@@ -16,6 +16,7 @@ export default function Avatar({ userId, npcId, identityId, retainerId, size = 8
 
   const baseUrl = import.meta.env.VITE_API_URL || '/api';
   let srcUrl = previewUrl || fallback;
+  let thumbSrcUrl = null;
 
   React.useEffect(() => {
     setImgError(false);
@@ -31,12 +32,33 @@ export default function Avatar({ userId, npcId, identityId, retainerId, size = 8
     return () => window.removeEventListener('avatar-updated', handleAvatarUpdated);
   }, [entityKey]);
 
+  // Builds the query string for the full-size request, and the matching
+  // one for the small `?size=thumb` variant the backend can redirect to
+  // (see migrations/list/0011_avatar_thumb_urls.js) — kept as one helper so
+  // the `?t=` cache-busting param stays in sync between the two.
+  const buildQuery = (extra) => {
+    const params = [];
+    if (timestamp) params.push(`t=${timestamp}`);
+    if (extra) params.push(extra);
+    return params.length ? `?${params.join('&')}` : '';
+  };
+
   if (!imgError && !previewUrl) {
-    const q = timestamp ? `?t=${timestamp}` : '';
-    if (userId) srcUrl = `${baseUrl}/users/${userId}/avatar${q}`;
-    else if (npcId) srcUrl = `${baseUrl}/npcs/${npcId}/avatar${q}`;
-    else if (retainerId) srcUrl = `${baseUrl}/retainers/${retainerId}/avatar${q}`;
-    else if (identityId) srcUrl = `${baseUrl}/identities/${identityId}/avatar${q}`;
+    const q = buildQuery();
+    const qThumb = buildQuery('size=thumb');
+    if (userId) {
+      srcUrl = `${baseUrl}/users/${userId}/avatar${q}`;
+      thumbSrcUrl = `${baseUrl}/users/${userId}/avatar${qThumb}`;
+    } else if (npcId) {
+      srcUrl = `${baseUrl}/npcs/${npcId}/avatar${q}`;
+      thumbSrcUrl = `${baseUrl}/npcs/${npcId}/avatar${qThumb}`;
+    } else if (retainerId) {
+      srcUrl = `${baseUrl}/retainers/${retainerId}/avatar${q}`;
+      thumbSrcUrl = `${baseUrl}/retainers/${retainerId}/avatar${qThumb}`;
+    } else if (identityId) {
+      srcUrl = `${baseUrl}/identities/${identityId}/avatar${q}`;
+      thumbSrcUrl = `${baseUrl}/identities/${identityId}/avatar${qThumb}`;
+    }
   }
 
   const handleClick = () => {
@@ -116,9 +138,11 @@ export default function Avatar({ userId, npcId, identityId, retainerId, size = 8
         onClick={handleClick}
         title={editable ? "Click to change avatar" : ""}
       >
-        <img 
-          src={srcUrl} 
-          alt="User Avatar" 
+        <img
+          src={srcUrl}
+          srcSet={thumbSrcUrl ? `${thumbSrcUrl} 160w, ${srcUrl} 500w` : undefined}
+          sizes={thumbSrcUrl ? `${size}px` : undefined}
+          alt="User Avatar"
           width={size}
           height={size}
           className={`${styles.avatarImage} ${imgClassName}`}

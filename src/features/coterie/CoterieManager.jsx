@@ -173,6 +173,9 @@ export default function CoterieManager() {
     }
   }, []);
 
+  // Loaded up front, not just when the Registry tab opens: the builder uses it
+  // to warn that another coterie already claims a Domain division.
+  useEffect(() => { loadRegistry(); }, [loadRegistry]);
   useEffect(() => { if (tab === 'all') loadRegistry(); }, [tab, loadRegistry]);
 
   const loadDetail = useCallback(async (id) => {

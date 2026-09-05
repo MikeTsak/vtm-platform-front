@@ -301,11 +301,6 @@ function ArchiveItem({ dt, isProject, isMassReleaseActive, massReleaseCountdown 
   const status = (dt.status || 'resolved').toLowerCase();
   const displayTitle = isProject ? dt.title.replace('[PROJECT] ', '') : dt.title;
   
-  useEffect(() => {
-    if (dt.gm_resolution && !isMassReleaseActive && !dt.is_read) {
-      api.patch(`/downtimes/${dt.id}/read`).catch(() => {});
-    }
-  }, [dt.gm_resolution, isMassReleaseActive, dt.is_read, dt.id]);
 
   const dateStr = niceDate(dt.created_at).split(' ').slice(1, 3).join(' '); // "Sep 1999" approx
 
@@ -372,7 +367,7 @@ export default function DownTimes() {
     }
   });
 
-  const { data: mineData, isLoading: isMineLoading } = useQuery({
+  const { data: mineData, isLoading: isMineLoading, refetch: refetchMine } = useQuery({
     queryKey: ['downtimes', 'mine'],
     queryFn: async () => {
       const res = await api.get('/downtimes/mine');
@@ -429,6 +424,18 @@ export default function DownTimes() {
   const mine = useMemo(() => {
     return (mineData?.downtimes || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   }, [mineData]);
+
+  // Batch read unread resolutions
+  useEffect(() => {
+    if (!mineData || isMassReleaseActive) return;
+    const unread = (mineData.downtimes || []).filter(dt => dt.gm_resolution && !dt.is_read);
+    if (unread.length > 0) {
+      const ids = unread.map(dt => dt.id);
+      api.patch('/downtimes/read-batch', { ids })
+        .then(() => refetchMine())
+        .catch(() => {});
+    }
+  }, [mineData, isMassReleaseActive, refetchMine]);
 
   const quota = quotaData || { used: 0, limit: 3 };
   const myChar = charData?.character || null;
