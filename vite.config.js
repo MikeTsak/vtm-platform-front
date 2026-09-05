@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { imagetools } from 'vite-imagetools';
+import legacy from '@vitejs/plugin-legacy';
 
 const BONEYARD_ROUTES = [
   '/',
@@ -32,6 +33,10 @@ export default defineConfig(async () => {
   return {
   plugins: [
     react(),
+    legacy({
+      targets: ['ie >= 11'],
+      polyfills: true
+    }),
     // Generates multiple sizes of the clan symbol/logo images at build time
     // (see src/data/clans.js) — those ship as one 330px/300px master each
     // today, downloaded in full by every consumer from a 14px badge up to a
