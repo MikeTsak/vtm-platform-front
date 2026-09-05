@@ -11,6 +11,7 @@ import MiniSearch from 'minisearch';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getPushSettings, updatePushSettings, subscribeToWebPush } from '../../utils/push';
 import { socket } from '../../api/liveSession';
+import { symlogo as localSymlogo } from '../../data/clans';
 
 /* --- Clan assets & colors --- */
 const CLAN_COLORS = {
@@ -33,8 +34,6 @@ const getApiOrigin = () => {
 
 const symlogo = (c) =>
   (c ? `${getApiOrigin()}/img/clans/330px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g, '_')}_symbol.webp` : '');
-const localSymlogo = (c) =>
-  (c ? `/img/clans/330px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g, '_')}_symbol.webp` : '');
 
 const customClanEmojis = Object.keys(CLAN_COLORS).map(clan => ({
   id: clan.toLowerCase().replace(/[^a-z0-9]/g, '_'),

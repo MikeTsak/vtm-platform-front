@@ -7,6 +7,7 @@ import styles from '../../styles/Admin.module.css';
 import * as DiscDataNS from '../../data/disciplines';
 import { MERITS_AND_FLAWS } from '../../data/merits_flaws';
 import { RITUALS } from '../../data/rituals';
+import { symlogo } from '../../data/clans';
 import MiniSearch from 'minisearch';
 
 // --- Discipline names fallback logic ---
@@ -40,9 +41,6 @@ const CLAN_COLORS = {
   Caitiff: '#636363',
   'Thin-blood': '#6e6e2b',
 };
-const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim' };
-const fileify = (c) => (NAME_OVERRIDES[c] || c).replace(/\s+/g, '_');
-const symlogo = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.webp` : '');
 /* -------------------------------------------------- */
 
 

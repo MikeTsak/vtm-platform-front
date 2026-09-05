@@ -2,6 +2,7 @@
 import React, { useMemo, useState, useRef } from 'react';
 import html2canvas from 'html2canvas';
 import styles from '../../styles/Admin.module.css';
+import { symlogo as clanSymbol } from '../../data/clans';
 
 /** ---------- Clan helpers ---------- */
 const CLAN_COLORS = {
@@ -19,9 +20,6 @@ const CLAN_COLORS = {
   Caitiff: '#636363',
   'Thin-blood': '#6e6e2b',
 };
-const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim' };
-const fileify = (c) => (NAME_OVERRIDES[c] || c || '').replace(/\s+/g, '_');
-const clanSymbol = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.webp` : '');
 
 /** ---------- Helpers ---------- */
 const getRollArt = (roll) => {

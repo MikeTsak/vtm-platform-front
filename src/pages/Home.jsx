@@ -9,6 +9,7 @@ import { motion } from 'framer-motion';
 import styles from '../styles/Home.module.css';
 import Avatar from '../components/Avatar';
 import GoogleAd from '../components/GoogleAd';
+import { symlogo, textlogo } from '../data/clans';
 
 /* ── Clan tint colors ───────────────────────────────────────────── */
 const CLAN_COLORS = {
@@ -26,11 +27,6 @@ const CLAN_COLORS = {
   Caitiff: '#636363',
   'Thin-blood': '#6e6e2b',
 };
-
-const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim' };
-const fileify = (c) => (NAME_OVERRIDES[c] || c).replace(/\s+/g, '_');
-const symlogo  = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.webp`      : '');
-const textlogo = (c) => (c ? `/img/clans/text/300px-${fileify(c)}_logo.webp`   : '');
 
 /* ── Relative time ──────────────────────────────────────────────── */
 const formatTimestamp = (ts) => {

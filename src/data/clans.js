@@ -80,7 +80,56 @@ export const NAME_OVERRIDES = {
 
 const fileify = (c) => (NAME_OVERRIDES[c] || c).replace(/\s+/g, '_');
 
-export const symlogo = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.webp` : '');
-export const textlogo = (c) => (c ? `/img/clans/text/300px-${fileify(c)}_logo.webp` : '');
+// The clan symbol/logo masters are a single 330px/300px PNG each, but get
+// rendered everywhere from a 14px inline badge up to a 128px map icon —
+// every consumer downloaded the same 330px file regardless. vite-imagetools
+// (see vite.config.js) generates the smaller sizes at build time from the
+// masters under src/assets/clans/, which is why they moved out of public/
+// (imagetools transforms actual JS imports, not runtime string paths, so a
+// plain `/img/clans/...png` string can't be resized this way — the
+// public/img/clans/ copies are left in place untouched for anything still
+// using the old raw path directly).
+const symbolGlobDefault = import.meta.glob('../assets/clans/*.png', {
+  query: { w: '150', format: 'webp' },
+  import: 'default',
+  eager: true,
+});
+const symbolGlobSrcSet = import.meta.glob('../assets/clans/*.png', {
+  query: { w: '64;150;330', format: 'webp', as: 'srcset' },
+  import: 'default',
+  eager: true,
+});
+const logoGlobDefault = import.meta.glob('../assets/clans/text/*.png', {
+  query: { w: '150', format: 'webp' },
+  import: 'default',
+  eager: true,
+});
+const logoGlobSrcSet = import.meta.glob('../assets/clans/text/*.png', {
+  query: { w: '64;150;300', format: 'webp', as: 'srcset' },
+  import: 'default',
+  eager: true,
+});
+
+// Plain single-URL string — drop-in for every existing caller (CSS
+// background-image, plain <img src>, `fallback=` props) that can't use a
+// srcset anyway. Now serves a 150px image instead of the full 330px/300px
+// master for all of them, with zero call-site changes needed beyond
+// importing this instead of re-deriving the path locally.
+export const symlogo = (c) => (c ? symbolGlobDefault[`../assets/clans/330px-${fileify(c)}_symbol.png`] || '' : '');
+export const textlogo = (c) => (c ? logoGlobDefault[`../assets/clans/text/300px-${fileify(c)}_logo.png`] || '' : '');
+
+// Opt-in upgrade for callers rendering an actual <img> that want the browser
+// to pick the right size itself — spread onto the element:
+// <img src={symlogo(clan)} {...symlogoSrcSet(clan)} />
+export const symlogoSrcSet = (c) => {
+  if (!c) return {};
+  const srcSet = symbolGlobSrcSet[`../assets/clans/330px-${fileify(c)}_symbol.png`];
+  return srcSet ? { srcSet } : {};
+};
+export const textlogoSrcSet = (c) => {
+  if (!c) return {};
+  const srcSet = logoGlobSrcSet[`../assets/clans/text/300px-${fileify(c)}_logo.png`];
+  return srcSet ? { srcSet } : {};
+};
 
 export const clanTint = (clan) => (clan ? CLAN_COLORS[clan]?.[0] : null) || '#8a0f1a';

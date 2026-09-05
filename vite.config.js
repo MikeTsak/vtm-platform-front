@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { imagetools } from 'vite-imagetools';
 
 const BONEYARD_ROUTES = [
   '/',
@@ -31,6 +32,13 @@ export default defineConfig(async () => {
   return {
   plugins: [
     react(),
+    // Generates multiple sizes of the clan symbol/logo images at build time
+    // (see src/data/clans.js) — those ship as one 330px/300px master each
+    // today, downloaded in full by every consumer from a 14px badge up to a
+    // 128px map icon. imagetools transforms actual JS imports, not runtime
+    // string paths, which is why the masters live under src/assets/ instead
+    // of public/ now.
+    imagetools(),
     boneyardPlugin({
       out: './src/bones',
       routes: BONEYARD_ROUTES,

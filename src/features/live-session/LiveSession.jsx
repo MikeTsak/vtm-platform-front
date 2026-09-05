@@ -3,6 +3,7 @@ import api from '../../core/api';
 import { AuthCtx } from '../../core/AuthContext';
 import Avatar from '../../components/Avatar';
 import { DISCIPLINES, iconPath } from '../../data/disciplines';
+import { symlogo } from '../../data/clans';
 import {
   COMMON_ROLLS,
   computeOutcome,
@@ -694,11 +695,11 @@ export default function LiveSession() {
         <aside className={`${styles.leftColumn} ${mobileTab !== 'character' ? styles.mobileHidden : ''}`}>
           {/* Identity */}
           <section style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <Avatar userId={character?.user_id || character?.id} size={64} style={{ borderRadius: 8, border: '1px solid var(--outline-variant)' }} fallback={`/img/clans/330px-${clan.replace(/\s+/g, '_')}_symbol.webp`} />
+            <Avatar userId={character?.user_id || character?.id} size={64} style={{ borderRadius: 8, border: '1px solid var(--outline-variant)' }} fallback={symlogo(clan)} />
             <div>
               <h2 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--primary)' }}>{charName}</h2>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.15rem' }}>
-                {clan !== 'Unknown Clan' && <img src={`/img/clans/330px-${clan.replace(/\s+/g, '_')}_symbol.webp`} alt={clan} style={{ width: 14, height: 14, objectFit: 'contain', filter: 'brightness(0) invert(1)', opacity: 0.7 }} onError={(e) => { e.target.style.display = 'none'; }} />}
+                {clan !== 'Unknown Clan' && <img src={symlogo(clan)} alt={clan} style={{ width: 14, height: 14, objectFit: 'contain', filter: 'brightness(0) invert(1)', opacity: 0.7 }} onError={(e) => { e.target.style.display = 'none'; }} />}
                 <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>{clan} • BP {bp}</p>
               </div>
             </div>

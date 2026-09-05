@@ -3,12 +3,10 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { formatEuDate } from '../../utils/dateFormatter';
 import styles from '../../styles/Admin.module.css';
 import MiniSearch from 'minisearch';
+import { symlogo } from '../../data/clans';
 
 /* ---------- VTM Lookups ---------- */
 const CLAN_COLORS = { Brujah: '#b40f1f', Gangrel: '#2f7a3a', Malkavian: '#713c8b', Nosferatu: '#6a4b2b', Toreador: '#b8236b', Tremere: '#7b1113', Ventrue: '#1b4c8c', 'Banu Haqim': '#7a2f57', Hecata: '#2b6b6b', Lasombra: '#191a5a', 'The Ministry': '#865f12', Caitiff: '#636363', 'Thin-blood': '#6e6e2b' };
-const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim' };
-const fileify = (c) => (NAME_OVERRIDES[c] || c).replace(/\s+/g, '_');
-const symlogo = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.webp` : '');
 
 export default function AdminXPTab({ users, onGrant, onBulkGrant, adminxp }) {
   const [grants, setGrants] = useState({});

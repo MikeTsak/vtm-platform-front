@@ -6,6 +6,7 @@ import api from '../../core/api';
 import { AuthCtx } from '../../core/AuthContext';
 import { DISCIPLINES, ALL_DISCIPLINE_NAMES, iconPath } from '../../data/disciplines';
 import { RITUALS } from '../../data/rituals';
+import { symlogo, textlogo } from '../../data/clans';
 import styles from '../../styles/CharacterView.module.css';
 import homeStyles from '../../styles/Home.module.css';
 
@@ -50,14 +51,6 @@ const CLAN_COLORS = {
   'Thin-blood': '#6e6e2b',
 };
 
-const NAME_OVERRIDES = {
-  'The Ministry': 'Ministry',
-  'Banu Haqim': 'Banu_Haqim',
-  'Thin-blood': 'Thinblood'
-};
-const fileify = (c) => (NAME_OVERRIDES[c] || c).replace(/\s+/g, '_');
-const symlogo = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.webp` : '');
-const textlogo = (c) => (c ? `/img/clans/text/300px-${fileify(c)}_logo.webp` : '');
 
 
 

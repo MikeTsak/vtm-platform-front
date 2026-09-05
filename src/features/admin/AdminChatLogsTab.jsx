@@ -5,6 +5,7 @@ import api from '../../core/api';
 import { formatEuDate } from '../../utils/dateFormatter';
 import styles from '../../styles/Admin.module.css';
 import MiniSearch from 'minisearch';
+import { symlogo } from '../../data/clans';
 
 /* ---------- VTM Lookups ---------- */
 const CLAN_COLORS = {
@@ -13,9 +14,6 @@ const CLAN_COLORS = {
   Hecata: '#2b6b6b', Lasombra: '#191a5a', 'The Ministry': '#865f12',
   Caitiff: '#636363', 'Thin-blood': '#6e6e2b',
 };
-const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim' };
-const fileify = (c) => (NAME_OVERRIDES[c] || c).replace(/\s+/g, '_');
-const symlogo = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.webp` : '');
 
 /* ==================== HELPERS ==================== */
 const useDebouncedValue = (value, ms = 250) => {

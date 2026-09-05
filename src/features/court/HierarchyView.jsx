@@ -5,13 +5,7 @@ import api from '../../core/api';
 import { motion } from 'framer-motion';
 import styles from '../../styles/Court.module.css';
 import { Skeleton } from 'boneyard-js/react';
-
-/* --- Clan assets logic --- */
-const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim', 'Thin-blood': 'Thinblood' };
-const symlogo = (c) =>
-  (c ? `/img/clans/330px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g, '_')}_symbol.webp` : '');
-const textlogo = (c) =>
-  (c ? `/img/clans/text/300px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g, '_')}_logo.webp` : '');
+import { symlogo, textlogo } from '../../data/clans';
 
 // --- URL BUILDER HELPER ---
 

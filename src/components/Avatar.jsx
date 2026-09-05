@@ -140,8 +140,16 @@ export default function Avatar({ userId, npcId, identityId, retainerId, size = 8
       >
         <img
           src={srcUrl}
-          srcSet={thumbSrcUrl ? `${thumbSrcUrl} 160w, ${srcUrl} 500w` : undefined}
-          sizes={thumbSrcUrl ? `${size}px` : undefined}
+          // `size` isn't always a pixel number — several call sites pass
+          // "100%" to fill a variably-sized container (chat rows, admin
+          // grids, the court hierarchy cards). We can't know the actual
+          // rendered pixel size from that alone, and a wrong guess here is
+          // an invalid `sizes` value (e.g. "100%px"), not just a missed
+          // optimization — so only offer the thumb when we truly know the
+          // display size. The percentage cases keep today's exact
+          // behavior: full-size `src`, no srcset.
+          srcSet={thumbSrcUrl && typeof size === 'number' ? `${thumbSrcUrl} 160w, ${srcUrl} 500w` : undefined}
+          sizes={thumbSrcUrl && typeof size === 'number' ? `${size}px` : undefined}
           alt="User Avatar"
           width={size}
           height={size}

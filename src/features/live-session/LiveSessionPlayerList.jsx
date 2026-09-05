@@ -1,6 +1,7 @@
 ﻿import React from 'react';
 import Avatar from '../../components/Avatar';
 import styles from '../../styles/LiveSession.module.css';
+import { symlogo } from '../../data/clans';
 
 export default function LiveSessionPlayerList({ players = [], adminName }) {
   if (!players.length) {
@@ -34,7 +35,7 @@ export default function LiveSessionPlayerList({ players = [], adminName }) {
               gap: '1rem'
             }}
           >
-            <Avatar userId={player.user_id || undefined} npcId={player.is_npc || player.isNpc ? id : undefined} size={40} style={{ borderRadius: '50%' }} fallback={`/img/clans/330px-${clan.replace(/\s+/g, '_')}_symbol.webp`} />
+            <Avatar userId={player.user_id || undefined} npcId={player.is_npc || player.isNpc ? id : undefined} size={40} style={{ borderRadius: '50%' }} fallback={symlogo(clan)} />
             <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, color: 'var(--primary)', fontFamily: 'var(--font-display)', fontSize: '1.1rem' }}>
               {name}
               {player.is_npc || player.isNpc ? <span style={{ fontSize: '0.6rem', border: '1px solid var(--outline)', padding: '2px 4px', borderRadius: '4px', color: 'var(--text-muted)' }}>NPC</span> : null}
