@@ -1,2342 +1,2342 @@
 {
-"type": "FeatureCollection",
-"name": "athens-necropolis",
-"note": "ADMIN-ONLY. Two wholly fictional Kindred necropoleis. The OLD necropolis under central Athens is sealed and inaccessible; its galleries are drawn ragged and broken because the records are fragments — nothing here is confirmed. The NEW necropolis is a small, recent site above Papagou. Not real. Not for players yet.",
-"features": [
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "old",
-"name": "The New Cut — Rock Vaults to the entrance",
-"certainty": "charted",
-"status": "sealed"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.7278,
-37.9705
-],
-[
-23.728101,
-37.969881
-],
-[
-23.728284,
-37.969212
-],
-[
-23.7286,
-37.9686
-],
-[
-23.72858,
-37.968116
-],
-[
-23.728356,
-37.967676
-],
-[
-23.7283,
-37.9672
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "old",
-"name": "The New Cut — entrance to Syngrou-Fix",
-"certainty": "charted",
-"status": "sealed"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.7283,
-37.9672
-],
-[
-23.727834,
-37.966604
-],
-[
-23.727256,
-37.966106
-],
-[
-23.7268,
-37.9655
-],
-[
-23.727095,
-37.964878
-],
-[
-23.727261,
-37.964203
-],
-[
-23.7276,
-37.9636
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "old",
-"name": "The New Cut — the drop to the Hypogeum",
-"certainty": "hearsay",
-"status": "sealed"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.7283,
-37.9672
-],
-[
-23.727099,
-37.968689
-],
-[
-23.726283,
-37.970441
-],
-[
-23.724966,
-37.97185
-],
-[
-23.724,
-37.9735
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "old",
-"name": "Gallery of the Areopagus",
-"certainty": "lost",
-"status": "sealed"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.7278,
-37.9705
-],
-[
-23.726997,
-37.970617
-],
-[
-23.726357,
-37.971194
-]
-],
-[
-[
-23.725509,
-37.971184
-],
-[
-23.724887,
-37.971811
-],
-[
-23.724007,
-37.971711
-],
-[
-23.7233,
-37.9721
-]
-],
-[
-[
-23.723692,
-37.972487
-],
-[
-23.723379,
-37.972935
-],
-[
-23.723876,
-37.972979
-],
-[
-23.723649,
-37.973384
-],
-[
-23.724,
-37.9735
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "old",
-"name": "Gallery of the Agora dead",
-"certainty": "lost",
-"status": "sealed"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.724,
-37.9735
-],
-[
-23.723627,
-37.973557
-],
-[
-23.723834,
-37.97415
-]
-],
-[
-[
-23.723083,
-37.975192
-],
-[
-23.723725,
-37.975118
-],
-[
-23.723757,
-37.975835
-],
-[
-23.724393,
-37.97577
-],
-[
-23.724482,
-37.976413
-],
-[
-23.725,
-37.9765
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "old",
-"name": "The Kerameikos reach",
-"certainty": "hearsay",
-"status": "sealed"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.725,
-37.9765
-],
-[
-23.725249,
-37.976549
-],
-[
-23.725227,
-37.97619
-],
-[
-23.725544,
-37.976341
-]
-],
-[
-[
-23.7256,
-37.9761
-],
-[
-23.723777,
-37.976463
-],
-[
-23.722084,
-37.977267
-],
-[
-23.720247,
-37.977581
-],
-[
-23.7185,
-37.9782
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "old",
-"name": "The Kerameikos reach — lower run",
-"certainty": "lost",
-"status": "collapsed"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.7185,
-37.9782
-],
-[
-23.71888,
-37.976519
-],
-[
-23.718831,
-37.974775
-]
-],
-[
-[
-23.719433,
-37.973127
-],
-[
-23.71929,
-37.971369
-],
-[
-23.719968,
-37.969732
-],
-[
-23.72,
-37.968
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "old",
-"name": "The Gazi reach — to the furnace",
-"certainty": "hearsay",
-"status": "sealed"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.7185,
-37.9782
-],
-[
-23.717191,
-37.978071
-],
-[
-23.71588,
-37.978339
-],
-[
-23.714571,
-37.978065
-],
-[
-23.713261,
-37.978169
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "old",
-"name": "Gallery of the Pnyx",
-"certainty": "lost",
-"status": "sealed"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.724,
-37.9735
-],
-[
-23.723148,
-37.973264
-],
-[
-23.722244,
-37.973564
-],
-[
-23.721416,
-37.973087
-],
-[
-23.72052,
-37.973303
-]
-],
-[
-[
-23.71975,
-37.971609
-],
-[
-23.719661,
-37.970907
-],
-[
-23.720439,
-37.970714
-],
-[
-23.7205,
-37.9701
-],
-[
-23.720713,
-37.96968
-],
-[
-23.720106,
-37.969454
-],
-[
-23.720465,
-37.968999
-]
-],
-[
-[
-23.719896,
-37.968765
-],
-[
-23.720352,
-37.968286
-],
-[
-23.72,
-37.968
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "old",
-"name": "The Philopappou stair",
-"certainty": "lost",
-"status": "collapsed"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.7205,
-37.9701
-],
-[
-23.720407,
-37.969367
-],
-[
-23.719826,
-37.968847
-]
-],
-[
-[
-23.7171,
-37.965915
-],
-[
-23.71645,
-37.965208
-],
-[
-23.715531,
-37.965261
-],
-[
-23.714871,
-37.964584
-],
-[
-23.714,
-37.9645
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "old",
-"name": "Under the Roman market",
-"certainty": "hearsay",
-"status": "sealed"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.725,
-37.9765
-],
-[
-23.725265,
-37.976008
-],
-[
-23.725165,
-37.975412
-],
-[
-23.725597,
-37.974967
-],
-[
-23.7256,
-37.9744
-],
-[
-23.725764,
-37.974836
-]
-],
-[
-[
-23.726268,
-37.974932
-],
-[
-23.726403,
-37.975397
-],
-[
-23.7268,
-37.9756
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "old",
-"name": "The Plaka warren",
-"certainty": "lost",
-"status": "sealed"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.7268,
-37.9756
-],
-[
-23.727552,
-37.975309
-],
-[
-23.727661,
-37.974354
-],
-[
-23.728592,
-37.974249
-],
-[
-23.728706,
-37.973299
-],
-[
-23.729629,
-37.973185
-],
-[
-23.73,
-37.9725
-],
-[
-23.730059,
-37.972282
-],
-[
-23.729717,
-37.97235
-],
-[
-23.729904,
-37.97204
-],
-[
-23.729555,
-37.972113
-],
-[
-23.729785,
-37.971773
-]
-],
-[
-[
-23.730261,
-37.971261
-],
-[
-23.730148,
-37.970715
-],
-[
-23.730715,
-37.970849
-],
-[
-23.7308,
-37.9705
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "old",
-"name": "The Plaka warren — east branch",
-"certainty": "lost",
-"status": "sealed"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.7308,
-37.9705
-],
-[
-23.730982,
-37.970496
-],
-[
-23.730641,
-37.970178
-],
-[
-23.731104,
-37.970343
-],
-[
-23.730789,
-37.97004
-],
-[
-23.731273,
-37.970217
-]
-],
-[
-[
-23.732419,
-37.969315
-],
-[
-23.732915,
-37.969726
-],
-[
-23.7332,
-37.9694
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "old",
-"name": "Gallery of the Olympian ground",
-"certainty": "lost",
-"status": "sealed"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.7332,
-37.9694
-],
-[
-23.733769,
-37.970065
-],
-[
-23.734762,
-37.96997
-],
-[
-23.73527,
-37.970744
-]
-],
-[
-[
-23.737464,
-37.972405
-],
-[
-23.737091,
-37.972603
-],
-[
-23.737436,
-37.973013
-],
-[
-23.73697,
-37.973183
-],
-[
-23.737,
-37.9735
-],
-[
-23.736522,
-37.973689
-]
-],
-[
-[
-23.735757,
-37.974923
-],
-[
-23.735166,
-37.974999
-],
-[
-23.735,
-37.9755
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "old",
-"name": "The Syntagma vault",
-"certainty": "hearsay",
-"status": "sealed"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.735,
-37.9755
-],
-[
-23.732273,
-37.974873
-],
-[
-23.729476,
-37.974634
-],
-[
-23.726772,
-37.973878
-],
-[
-23.724,
-37.9735
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "old",
-"name": "The stadium loop",
-"certainty": "lost",
-"status": "sealed"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.7332,
-37.9694
-],
-[
-23.734106,
-37.969213
-],
-[
-23.734636,
-37.96836
-]
-],
-[
-[
-23.735599,
-37.968276
-],
-[
-23.736125,
-37.967415
-],
-[
-23.737152,
-37.967443
-],
-[
-23.7378,
-37.9668
-]
-],
-[
-[
-23.740015,
-37.967625
-],
-[
-23.740337,
-37.968326
-],
-[
-23.741,
-37.9683
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "old",
-"name": "The stadium loop — cemetery spur",
-"certainty": "lost",
-"status": "collapsed"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.7378,
-37.9668
-],
-[
-23.737221,
-37.966385
-],
-[
-23.736447,
-37.966383
-]
-],
-[
-[
-23.734,
-37.965
-],
-[
-23.734499,
-37.964971
-],
-[
-23.734594,
-37.964403
-],
-[
-23.735091,
-37.964371
-],
-[
-23.735175,
-37.963789
-],
-[
-23.735823,
-37.963958
-],
-[
-23.736,
-37.9635
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "old",
-"name": "The First Cemetery descent",
-"certainty": "hearsay",
-"status": "sealed"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.736,
-37.9635
-],
-[
-23.733899,
-37.963438
-],
-[
-23.731802,
-37.963713
-],
-[
-23.729698,
-37.963387
-],
-[
-23.7276,
-37.9636
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "old",
-"name": "The north climb to the reservoir",
-"certainty": "lost",
-"status": "collapsed"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.725,
-37.9765
-],
-[
-23.727805,
-37.97711
-],
-[
-23.730684,
-37.977218
-],
-[
-23.733482,
-37.977876
-],
-[
-23.736376,
-37.977874
-],
-[
-23.739128,
-37.978847
-]
-],
-[
-[
-23.741211,
-37.979895
-],
-[
-23.741949,
-37.980048
-],
-[
-23.741827,
-37.980807
-]
-],
-[
-[
-23.742507,
-37.981001
-],
-[
-23.742566,
-37.981633
-],
-[
-23.743,
-37.982
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "old",
-"name": "Gallery west — terminus unknown",
-"certainty": "lost",
-"status": "sealed"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.72,
-37.968
-],
-[
-23.718187,
-37.967614
-],
-[
-23.716318,
-37.967839
-]
-],
-[
-[
-23.714522,
-37.967263
-],
-[
-23.712649,
-37.967523
-],
-[
-23.71086,
-37.966872
-],
-[
-23.709,
-37.967
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "old",
-"name": "Gallery north — terminus unknown",
-"certainty": "lost",
-"status": "sealed"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.743,
-37.982
-],
-[
-23.740309,
-37.982264
-],
-[
-23.737694,
-37.983008
-]
-],
-[
-[
-23.734965,
-37.983027
-],
-[
-23.732382,
-37.983977
-],
-[
-23.729622,
-37.983797
-],
-[
-23.727,
-37.9845
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "old",
-"name": "Gallery east — terminus unknown",
-"certainty": "lost",
-"status": "sealed"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.741,
-37.9683
-],
-[
-23.741974,
-37.968642
-],
-[
-23.743029,
-37.968281
-]
-],
-[
-[
-23.743983,
-37.968793
-],
-[
-23.745037,
-37.968451
-],
-[
-23.745983,
-37.969033
-],
-[
-23.747,
-37.969
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "old",
-"name": "The deep link — the Lower Halls to the Black Gate",
-"certainty": "lost",
-"status": "sealed"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.72,
-37.968
-],
-[
-23.719151,
-37.967158
-],
-[
-23.717849,
-37.967092
-]
-],
-[
-[
-23.717123,
-37.966039
-],
-[
-23.715881,
-37.965871
-],
-[
-23.71508,
-37.964947
-],
-[
-23.714,
-37.9645
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "old",
-"name": "The Black Gate — beyond, nothing recorded",
-"certainty": "lost",
-"status": "sealed"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.714,
-37.9645
-],
-[
-23.713102,
-37.964787
-],
-[
-23.712401,
-37.965469
-]
-],
-[
-[
-23.711392,
-37.965535
-],
-[
-23.710745,
-37.966324
-],
-[
-23.709772,
-37.966461
-],
-[
-23.709,
-37.967
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "old",
-"name": "Cross-tie — Areopagus to the Plaka warren",
-"certainty": "lost",
-"status": "sealed"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.7233,
-37.9721
-],
-[
-23.723471,
-37.972695
-],
-[
-23.724166,
-37.972768
-]
-],
-[
-[
-23.724354,
-37.973346
-],
-[
-23.724993,
-37.973474
-],
-[
-23.725102,
-37.974132
-],
-[
-23.7256,
-37.9744
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "old",
-"name": "Cross-tie — Hypogeum to the ossuary",
-"certainty": "hearsay",
-"status": "sealed"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.724,
-37.9735
-],
-[
-23.724073,
-37.974309
-],
-[
-23.724631,
-37.974956
-],
-[
-23.72467,
-37.975777
-],
-[
-23.725,
-37.9765
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "old",
-"name": "Cross-tie — the entrance to the stadium loop",
-"certainty": "lost",
-"status": "sealed"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.7268,
-37.9655
-],
-[
-23.728021,
-37.965714
-],
-[
-23.72918,
-37.96505
-]
-],
-[
-[
-23.730409,
-37.965377
-],
-[
-23.731592,
-37.965045
-],
-[
-23.732813,
-37.965266
-],
-[
-23.734,
-37.965
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "new",
-"name": "Way in",
-"certainty": "charted",
-"status": "active"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.7947,
-37.9959
-],
-[
-23.7936,
-37.99632
-],
-[
-23.7921,
-37.9969
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "new",
-"name": "The Holargos Gate approach",
-"certainty": "charted",
-"status": "active"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.799278,
-37.997861
-],
-[
-23.7911,
-37.99762
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "new",
-"name": "The Holargos branch",
-"certainty": "charted",
-"status": "active"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.799278,
-37.997861
-],
-[
-23.8002,
-37.99752
-],
-[
-23.80092,
-37.99726
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "new",
-"name": "Hall to the west cells",
-"certainty": "charted",
-"status": "active"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.7921,
-37.9969
-],
-[
-23.7907,
-37.99655
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "new",
-"name": "Hall to the north cells",
-"certainty": "charted",
-"status": "active"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.7921,
-37.9969
-],
-[
-23.7911,
-37.99762
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "new",
-"name": "Cell ring",
-"certainty": "charted",
-"status": "active"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.7907,
-37.99655
-],
-[
-23.7911,
-37.99762
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "new",
-"name": "The sanctum passage",
-"certainty": "charted",
-"status": "active"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.7921,
-37.9969
-],
-[
-23.7899,
-37.99716
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "new",
-"name": "Sanctum to the ossuary",
-"certainty": "charted",
-"status": "active"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.7899,
-37.99716
-],
-[
-23.7884,
-37.99786
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "new",
-"name": "The long gallery — under Cholargos",
-"certainty": "charted",
-"status": "active"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.7884,
-37.99786
-],
-[
-23.7864,
-37.9986
-],
-[
-23.7847,
-37.99908
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "new",
-"name": "The bolt-hole",
-"certainty": "charted",
-"status": "active"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.7847,
-37.99908
-],
-[
-23.7856,
-38.0006
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "passage",
-"necropolis": "new",
-"name": "The Ministry approach",
-"certainty": "charted",
-"status": "active"
-},
-"geometry": {
-"type": "MultiLineString",
-"coordinates": [
-[
-[
-23.7847,
-37.99908
-],
-[
-23.7833,
-37.99958
-],
-[
-23.782619,
-37.999924
-]
-]
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "site",
-"necropolis": "old",
-"name": "New 2026 Entrance",
-"siteType": "new_entrance",
-"certainty": "charted",
-"status": "sealed",
-"note": "Cut in 2026 between the Acropolis and Syngrou-Fix. Bricked over within the year. The only modern way anyone found in — and it is shut again."
-},
-"geometry": {
-"type": "Point",
-"coordinates": [
-23.7283,
-37.9672
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "site",
-"necropolis": "old",
-"name": "The Rock Vaults",
-"siteType": "chamber",
-"certainty": "hearsay",
-"status": "sealed",
-"note": "Chambers under the south slope of the Acropolis. Entrance walled; interior known only from one 19th-c. account."
-},
-"geometry": {
-"type": "Point",
-"coordinates": [
-23.7278,
-37.9705
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "site",
-"necropolis": "old",
-"name": "The Hypogeum",
-"siteType": "unknown",
-"certainty": "lost",
-"status": "sealed",
-"note": "A large space beneath the Areopagus. No plan survives. Estimates of its size disagree by an order of magnitude."
-},
-"geometry": {
-"type": "Point",
-"coordinates": [
-23.724,
-37.9735
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "site",
-"necropolis": "old",
-"name": "The Ossuary Halls",
-"siteType": "ossuary",
-"certainty": "hearsay",
-"status": "sealed",
-"note": "Bone-galleries under the old market. Depth unrecorded; the lower levels were never entered."
-},
-"geometry": {
-"type": "Point",
-"coordinates": [
-23.725,
-37.9765
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "site",
-"necropolis": "old",
-"name": "The Lower Halls",
-"siteType": "unknown",
-"certainty": "lost",
-"status": "sealed",
-"note": "Referred to only as 'the lower halls'. Whether one room or many is not known."
-},
-"geometry": {
-"type": "Point",
-"coordinates": [
-23.72,
-37.968
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "site",
-"necropolis": "old",
-"name": "The Black Gate",
-"siteType": "seal",
-"certainty": "lost",
-"status": "sealed",
-"note": "A sealed doorway west of the Pnyx. Beyond it, nothing is recorded. It is said to lead somewhere very large."
-},
-"geometry": {
-"type": "Point",
-"coordinates": [
-23.714,
-37.9645
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "site",
-"necropolis": "old",
-"name": "Kerameikos Shaft",
-"siteType": "shaft",
-"certainty": "hearsay",
-"status": "collapsed",
-"note": "Vertical shaft into the necropolis from the cemetery district. Choked with fill."
-},
-"geometry": {
-"type": "Point",
-"coordinates": [
-23.7185,
-37.9782
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "site",
-"necropolis": "old",
-"name": "Areopagus Chamber",
-"siteType": "chamber",
-"certainty": "lost",
-"status": "sealed",
-"note": "Cut into the rock of the hill. Sealed; contents unknown."
-},
-"geometry": {
-"type": "Point",
-"coordinates": [
-23.7233,
-37.9721
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "site",
-"necropolis": "old",
-"name": "Plaka Warren",
-"siteType": "chamber",
-"certainty": "lost",
-"status": "sealed",
-"note": "A tangle of small chambers under Plaka and Anafiotika. No two accounts of the layout agree."
-},
-"geometry": {
-"type": "Point",
-"coordinates": [
-23.73,
-37.9725
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "site",
-"necropolis": "old",
-"name": "Syntagma Vault",
-"siteType": "chamber",
-"certainty": "hearsay",
-"status": "sealed",
-"note": "Struck during 19th-c. building works, recorded in a sentence, filled in."
-},
-"geometry": {
-"type": "Point",
-"coordinates": [
-23.735,
-37.9755
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "site",
-"necropolis": "old",
-"name": "Olympieion Gallery",
-"siteType": "chamber",
-"certainty": "lost",
-"status": "sealed",
-"note": "Under the Olympian precinct. Flooded to an unknown level."
-},
-"geometry": {
-"type": "Point",
-"coordinates": [
-23.7332,
-37.9694
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "site",
-"necropolis": "old",
-"name": "First Cemetery Descent",
-"siteType": "shaft",
-"certainty": "hearsay",
-"status": "sealed",
-"note": "A stair from the modern First Cemetery said to reach the old galleries. The door has no handle on this side."
-},
-"geometry": {
-"type": "Point",
-"coordinates": [
-23.736,
-37.9635
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "site",
-"necropolis": "old",
-"name": "Philopappou Collapse",
-"siteType": "collapse",
-"certainty": "lost",
-"status": "collapsed",
-"note": "The hill stair came down at an unknown date. Debris not cleared."
-},
-"geometry": {
-"type": "Point",
-"coordinates": [
-23.7188,
-37.9662
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "site",
-"necropolis": "old",
-"name": "Passage west — unmapped",
-"siteType": "unknown",
-"certainty": "lost",
-"status": "sealed",
-"note": "The western gallery continues past here. It has never been surveyed."
-},
-"geometry": {
-"type": "Point",
-"coordinates": [
-23.709,
-37.967
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "site",
-"necropolis": "old",
-"name": "Passage north — unmapped",
-"siteType": "unknown",
-"certainty": "lost",
-"status": "sealed",
-"note": "The climb toward Lykabettos continues past here into no record at all."
-},
-"geometry": {
-"type": "Point",
-"coordinates": [
-23.727,
-37.9845
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "site",
-"necropolis": "old",
-"name": "Passage east — unmapped",
-"siteType": "unknown",
-"certainty": "lost",
-"status": "sealed",
-"note": "Beyond the stadium the gallery goes on. Nobody followed it."
-},
-"geometry": {
-"type": "Point",
-"coordinates": [
-23.747,
-37.969
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "site",
-"necropolis": "old",
-"name": "Reservoir Head",
-"siteType": "collapse",
-"certainty": "lost",
-"status": "collapsed",
-"note": "Where the north climb reaches the old reservoir under Lykabettos. Roof down."
-},
-"geometry": {
-"type": "Point",
-"coordinates": [
-23.743,
-37.982
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "site",
-"necropolis": "old",
-"name": "Technopolis Furnace",
-"siteType": "furnace",
-"certainty": "hearsay",
-"status": "active",
-"note": "The old gasworks retorts at Gazi. Cold to the public — but one is said to still draw, and to open on the Kerameikos galleries. Where the necropolis burns what it must."
-},
-"geometry": {
-"type": "Point",
-"coordinates": [
-23.713261,
-37.978169
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "site",
-"necropolis": "new",
-"name": "Papagou Gate",
-"siteType": "entrance",
-"certainty": "charted",
-"status": "active",
-"note": "The way into the new necropolis, in the pine wood above Papagou. Small, kept, watched."
-},
-"geometry": {
-"type": "Point",
-"coordinates": [
-23.7947,
-37.9959
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "site",
-"necropolis": "new",
-"name": "Holargos Gate",
-"siteType": "entrance",
-"certainty": "charted",
-"status": "active",
-"note": "The second way in, on the Cholargos side. Comes up in a quiet street off the avenue."
-},
-"geometry": {
-"type": "Point",
-"coordinates": [
-23.799278,
-37.997861
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "site",
-"necropolis": "new",
-"name": "Gaming Room",
-"siteType": "chamber",
-"certainty": "charted",
-"status": "active",
-"note": "Off the Holargos branch — screens, seats, a fridge. Somewhere for the young ones to be."
-},
-"geometry": {
-"type": "Point",
-"coordinates": [
-23.8002,
-37.99752
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "site",
-"necropolis": "new",
-"name": "Net Room",
-"siteType": "server_room",
-"certainty": "charted",
-"status": "active",
-"note": "The far end of the branch: patch panels and a line spliced off the Ministry's fibre."
-},
-"geometry": {
-"type": "Point",
-"coordinates": [
-23.80092,
-37.99726
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "site",
-"necropolis": "new",
-"name": "Antechamber",
-"siteType": "chamber",
-"certainty": "charted",
-"status": "active",
-"note": "A short dog-leg inside the gate — a place to be looked over before the hall."
-},
-"geometry": {
-"type": "Point",
-"coordinates": [
-23.7936,
-37.99632
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "site",
-"necropolis": "new",
-"name": "The Hall",
-"siteType": "chamber",
-"certainty": "charted",
-"status": "active",
-"note": "The central vaulted hall. Niches on every wall, most still empty."
-},
-"geometry": {
-"type": "Point",
-"coordinates": [
-23.7921,
-37.9969
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "site",
-"necropolis": "new",
-"name": "The West Cells",
-"siteType": "chamber",
-"certainty": "charted",
-"status": "active",
-"note": "Private cells off the west side of the hall."
-},
-"geometry": {
-"type": "Point",
-"coordinates": [
-23.7907,
-37.99655
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "site",
-"necropolis": "new",
-"name": "The North Cells",
-"siteType": "chamber",
-"certainty": "charted",
-"status": "active",
-"note": "A deeper string of cells, colder, quieter."
-},
-"geometry": {
-"type": "Point",
-"coordinates": [
-23.7911,
-37.99762
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "site",
-"necropolis": "new",
-"name": "The Sanctum",
-"siteType": "chamber",
-"certainty": "charted",
-"status": "active",
-"note": "The inner vault behind the hall. One occupant, and the courtesy of a locked door."
-},
-"geometry": {
-"type": "Point",
-"coordinates": [
-23.7899,
-37.99716
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "site",
-"necropolis": "new",
-"name": "New Ossuary",
-"siteType": "ossuary",
-"certainty": "charted",
-"status": "active",
-"note": "A small ossuary, barely used."
-},
-"geometry": {
-"type": "Point",
-"coordinates": [
-23.7884,
-37.99786
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "site",
-"necropolis": "new",
-"name": "The Long Gallery",
-"siteType": "chamber",
-"certainty": "charted",
-"status": "active",
-"note": "A straight run of cut stone the length of Cholargos, tying the ossuary to the western junction."
-},
-"geometry": {
-"type": "Point",
-"coordinates": [
-23.7864,
-37.9986
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "site",
-"necropolis": "new",
-"name": "Cholargos Junction",
-"siteType": "junction",
-"certainty": "charted",
-"status": "active",
-"note": "Where the long gallery splits — up the bolt-hole, or on toward the Ministry."
-},
-"geometry": {
-"type": "Point",
-"coordinates": [
-23.7847,
-37.99908
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "site",
-"necropolis": "new",
-"name": "The Bolt-Hole",
-"siteType": "entrance",
-"certainty": "charted",
-"status": "active",
-"note": "A second way out, up into Cholargos. Known to few."
-},
-"geometry": {
-"type": "Point",
-"coordinates": [
-23.7856,
-38.0006
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "site",
-"necropolis": "new",
-"name": "Ministry Undercroft",
-"siteType": "chamber",
-"certainty": "charted",
-"status": "active",
-"note": "A low vaulted space under the grounds of the Ministry of National Defence."
-},
-"geometry": {
-"type": "Point",
-"coordinates": [
-23.7833,
-37.99958
-]
-}
-},
-{
-"type": "Feature",
-"properties": {
-"kind": "site",
-"necropolis": "new",
-"name": "Server Room",
-"siteType": "server_room",
-"certainty": "charted",
-"status": "active",
-"note": "A cooled room of racks directly beneath the Υπουργείο Εθνικής Άμυνας. The necropolis draws its power — and its lines — from here."
-},
-"geometry": {
-"type": "Point",
-"coordinates": [
-23.782619,
-37.999924
-]
-}
-}
-]
+    "type": "FeatureCollection",
+    "name": "athens-necropolis",
+    "note": "ADMIN-ONLY. Two wholly fictional Kindred necropoleis. The OLD necropolis under central Athens is sealed and inaccessible; its galleries are drawn ragged and broken because the records are fragments — nothing here is confirmed. The NEW necropolis is a small, recent site above Papagou. Not real. Not for players yet.",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "old",
+                "name": "The New Cut — Rock Vaults to the entrance",
+                "certainty": "charted",
+                "status": "sealed"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.7278,
+                            37.9705
+                        ],
+                        [
+                            23.728101,
+                            37.969881
+                        ],
+                        [
+                            23.728284,
+                            37.969212
+                        ],
+                        [
+                            23.7286,
+                            37.9686
+                        ],
+                        [
+                            23.72858,
+                            37.968116
+                        ],
+                        [
+                            23.728356,
+                            37.967676
+                        ],
+                        [
+                            23.7283,
+                            37.9672
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "old",
+                "name": "The New Cut — entrance to Syngrou-Fix",
+                "certainty": "charted",
+                "status": "sealed"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.7283,
+                            37.9672
+                        ],
+                        [
+                            23.727834,
+                            37.966604
+                        ],
+                        [
+                            23.727256,
+                            37.966106
+                        ],
+                        [
+                            23.7268,
+                            37.9655
+                        ],
+                        [
+                            23.727095,
+                            37.964878
+                        ],
+                        [
+                            23.727261,
+                            37.964203
+                        ],
+                        [
+                            23.7276,
+                            37.9636
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "old",
+                "name": "The New Cut — the drop to the Hypogeum",
+                "certainty": "hearsay",
+                "status": "sealed"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.7283,
+                            37.9672
+                        ],
+                        [
+                            23.727099,
+                            37.968689
+                        ],
+                        [
+                            23.726283,
+                            37.970441
+                        ],
+                        [
+                            23.724966,
+                            37.97185
+                        ],
+                        [
+                            23.724,
+                            37.9735
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "old",
+                "name": "Gallery of the Areopagus",
+                "certainty": "lost",
+                "status": "sealed"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.7278,
+                            37.9705
+                        ],
+                        [
+                            23.726997,
+                            37.970617
+                        ],
+                        [
+                            23.726357,
+                            37.971194
+                        ]
+                    ],
+                    [
+                        [
+                            23.725509,
+                            37.971184
+                        ],
+                        [
+                            23.724887,
+                            37.971811
+                        ],
+                        [
+                            23.724007,
+                            37.971711
+                        ],
+                        [
+                            23.7233,
+                            37.9721
+                        ]
+                    ],
+                    [
+                        [
+                            23.723692,
+                            37.972487
+                        ],
+                        [
+                            23.723379,
+                            37.972935
+                        ],
+                        [
+                            23.723876,
+                            37.972979
+                        ],
+                        [
+                            23.723649,
+                            37.973384
+                        ],
+                        [
+                            23.724,
+                            37.9735
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "old",
+                "name": "Gallery of the Agora dead",
+                "certainty": "lost",
+                "status": "sealed"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.724,
+                            37.9735
+                        ],
+                        [
+                            23.723627,
+                            37.973557
+                        ],
+                        [
+                            23.723834,
+                            37.97415
+                        ]
+                    ],
+                    [
+                        [
+                            23.723083,
+                            37.975192
+                        ],
+                        [
+                            23.723725,
+                            37.975118
+                        ],
+                        [
+                            23.723757,
+                            37.975835
+                        ],
+                        [
+                            23.724393,
+                            37.97577
+                        ],
+                        [
+                            23.724482,
+                            37.976413
+                        ],
+                        [
+                            23.725,
+                            37.9765
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "old",
+                "name": "The Kerameikos reach",
+                "certainty": "hearsay",
+                "status": "sealed"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.725,
+                            37.9765
+                        ],
+                        [
+                            23.725249,
+                            37.976549
+                        ],
+                        [
+                            23.725227,
+                            37.97619
+                        ],
+                        [
+                            23.725544,
+                            37.976341
+                        ]
+                    ],
+                    [
+                        [
+                            23.7256,
+                            37.9761
+                        ],
+                        [
+                            23.723777,
+                            37.976463
+                        ],
+                        [
+                            23.722084,
+                            37.977267
+                        ],
+                        [
+                            23.720247,
+                            37.977581
+                        ],
+                        [
+                            23.7185,
+                            37.9782
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "old",
+                "name": "The Kerameikos reach — lower run",
+                "certainty": "lost",
+                "status": "collapsed"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.7185,
+                            37.9782
+                        ],
+                        [
+                            23.71888,
+                            37.976519
+                        ],
+                        [
+                            23.718831,
+                            37.974775
+                        ]
+                    ],
+                    [
+                        [
+                            23.719433,
+                            37.973127
+                        ],
+                        [
+                            23.71929,
+                            37.971369
+                        ],
+                        [
+                            23.719968,
+                            37.969732
+                        ],
+                        [
+                            23.72,
+                            37.968
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "old",
+                "name": "The Gazi reach — to the furnace",
+                "certainty": "hearsay",
+                "status": "sealed"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.7185,
+                            37.9782
+                        ],
+                        [
+                            23.717191,
+                            37.978071
+                        ],
+                        [
+                            23.71588,
+                            37.978339
+                        ],
+                        [
+                            23.714571,
+                            37.978065
+                        ],
+                        [
+                            23.713261,
+                            37.978169
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "old",
+                "name": "Gallery of the Pnyx",
+                "certainty": "lost",
+                "status": "sealed"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.724,
+                            37.9735
+                        ],
+                        [
+                            23.723148,
+                            37.973264
+                        ],
+                        [
+                            23.722244,
+                            37.973564
+                        ],
+                        [
+                            23.721416,
+                            37.973087
+                        ],
+                        [
+                            23.72052,
+                            37.973303
+                        ]
+                    ],
+                    [
+                        [
+                            23.71975,
+                            37.971609
+                        ],
+                        [
+                            23.719661,
+                            37.970907
+                        ],
+                        [
+                            23.720439,
+                            37.970714
+                        ],
+                        [
+                            23.7205,
+                            37.9701
+                        ],
+                        [
+                            23.720713,
+                            37.96968
+                        ],
+                        [
+                            23.720106,
+                            37.969454
+                        ],
+                        [
+                            23.720465,
+                            37.968999
+                        ]
+                    ],
+                    [
+                        [
+                            23.719896,
+                            37.968765
+                        ],
+                        [
+                            23.720352,
+                            37.968286
+                        ],
+                        [
+                            23.72,
+                            37.968
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "old",
+                "name": "The Philopappou stair",
+                "certainty": "lost",
+                "status": "collapsed"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.7205,
+                            37.9701
+                        ],
+                        [
+                            23.720407,
+                            37.969367
+                        ],
+                        [
+                            23.719826,
+                            37.968847
+                        ]
+                    ],
+                    [
+                        [
+                            23.7171,
+                            37.965915
+                        ],
+                        [
+                            23.71645,
+                            37.965208
+                        ],
+                        [
+                            23.715531,
+                            37.965261
+                        ],
+                        [
+                            23.714871,
+                            37.964584
+                        ],
+                        [
+                            23.714,
+                            37.9645
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "old",
+                "name": "Under the Roman market",
+                "certainty": "hearsay",
+                "status": "sealed"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.725,
+                            37.9765
+                        ],
+                        [
+                            23.725265,
+                            37.976008
+                        ],
+                        [
+                            23.725165,
+                            37.975412
+                        ],
+                        [
+                            23.725597,
+                            37.974967
+                        ],
+                        [
+                            23.7256,
+                            37.9744
+                        ],
+                        [
+                            23.725764,
+                            37.974836
+                        ]
+                    ],
+                    [
+                        [
+                            23.726268,
+                            37.974932
+                        ],
+                        [
+                            23.726403,
+                            37.975397
+                        ],
+                        [
+                            23.7268,
+                            37.9756
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "old",
+                "name": "The Plaka warren",
+                "certainty": "lost",
+                "status": "sealed"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.7268,
+                            37.9756
+                        ],
+                        [
+                            23.727552,
+                            37.975309
+                        ],
+                        [
+                            23.727661,
+                            37.974354
+                        ],
+                        [
+                            23.728592,
+                            37.974249
+                        ],
+                        [
+                            23.728706,
+                            37.973299
+                        ],
+                        [
+                            23.729629,
+                            37.973185
+                        ],
+                        [
+                            23.73,
+                            37.9725
+                        ],
+                        [
+                            23.730059,
+                            37.972282
+                        ],
+                        [
+                            23.729717,
+                            37.97235
+                        ],
+                        [
+                            23.729904,
+                            37.97204
+                        ],
+                        [
+                            23.729555,
+                            37.972113
+                        ],
+                        [
+                            23.729785,
+                            37.971773
+                        ]
+                    ],
+                    [
+                        [
+                            23.730261,
+                            37.971261
+                        ],
+                        [
+                            23.730148,
+                            37.970715
+                        ],
+                        [
+                            23.730715,
+                            37.970849
+                        ],
+                        [
+                            23.7308,
+                            37.9705
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "old",
+                "name": "The Plaka warren — east branch",
+                "certainty": "lost",
+                "status": "sealed"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.7308,
+                            37.9705
+                        ],
+                        [
+                            23.730982,
+                            37.970496
+                        ],
+                        [
+                            23.730641,
+                            37.970178
+                        ],
+                        [
+                            23.731104,
+                            37.970343
+                        ],
+                        [
+                            23.730789,
+                            37.97004
+                        ],
+                        [
+                            23.731273,
+                            37.970217
+                        ]
+                    ],
+                    [
+                        [
+                            23.732419,
+                            37.969315
+                        ],
+                        [
+                            23.732915,
+                            37.969726
+                        ],
+                        [
+                            23.7332,
+                            37.9694
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "old",
+                "name": "Gallery of the Olympian ground",
+                "certainty": "lost",
+                "status": "sealed"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.7332,
+                            37.9694
+                        ],
+                        [
+                            23.733769,
+                            37.970065
+                        ],
+                        [
+                            23.734762,
+                            37.96997
+                        ],
+                        [
+                            23.73527,
+                            37.970744
+                        ]
+                    ],
+                    [
+                        [
+                            23.737464,
+                            37.972405
+                        ],
+                        [
+                            23.737091,
+                            37.972603
+                        ],
+                        [
+                            23.737436,
+                            37.973013
+                        ],
+                        [
+                            23.73697,
+                            37.973183
+                        ],
+                        [
+                            23.737,
+                            37.9735
+                        ],
+                        [
+                            23.736522,
+                            37.973689
+                        ]
+                    ],
+                    [
+                        [
+                            23.735757,
+                            37.974923
+                        ],
+                        [
+                            23.735166,
+                            37.974999
+                        ],
+                        [
+                            23.735,
+                            37.9755
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "old",
+                "name": "The Syntagma vault",
+                "certainty": "hearsay",
+                "status": "sealed"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.735,
+                            37.9755
+                        ],
+                        [
+                            23.732273,
+                            37.974873
+                        ],
+                        [
+                            23.729476,
+                            37.974634
+                        ],
+                        [
+                            23.726772,
+                            37.973878
+                        ],
+                        [
+                            23.724,
+                            37.9735
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "old",
+                "name": "The stadium loop",
+                "certainty": "lost",
+                "status": "sealed"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.7332,
+                            37.9694
+                        ],
+                        [
+                            23.734106,
+                            37.969213
+                        ],
+                        [
+                            23.734636,
+                            37.96836
+                        ]
+                    ],
+                    [
+                        [
+                            23.735599,
+                            37.968276
+                        ],
+                        [
+                            23.736125,
+                            37.967415
+                        ],
+                        [
+                            23.737152,
+                            37.967443
+                        ],
+                        [
+                            23.7378,
+                            37.9668
+                        ]
+                    ],
+                    [
+                        [
+                            23.740015,
+                            37.967625
+                        ],
+                        [
+                            23.740337,
+                            37.968326
+                        ],
+                        [
+                            23.741,
+                            37.9683
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "old",
+                "name": "The stadium loop — cemetery spur",
+                "certainty": "lost",
+                "status": "collapsed"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.7378,
+                            37.9668
+                        ],
+                        [
+                            23.737221,
+                            37.966385
+                        ],
+                        [
+                            23.736447,
+                            37.966383
+                        ]
+                    ],
+                    [
+                        [
+                            23.734,
+                            37.965
+                        ],
+                        [
+                            23.734499,
+                            37.964971
+                        ],
+                        [
+                            23.734594,
+                            37.964403
+                        ],
+                        [
+                            23.735091,
+                            37.964371
+                        ],
+                        [
+                            23.735175,
+                            37.963789
+                        ],
+                        [
+                            23.735823,
+                            37.963958
+                        ],
+                        [
+                            23.736,
+                            37.9635
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "old",
+                "name": "The First Cemetery descent",
+                "certainty": "hearsay",
+                "status": "sealed"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.736,
+                            37.9635
+                        ],
+                        [
+                            23.733899,
+                            37.963438
+                        ],
+                        [
+                            23.731802,
+                            37.963713
+                        ],
+                        [
+                            23.729698,
+                            37.963387
+                        ],
+                        [
+                            23.7276,
+                            37.9636
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "old",
+                "name": "The north climb to the reservoir",
+                "certainty": "lost",
+                "status": "collapsed"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.725,
+                            37.9765
+                        ],
+                        [
+                            23.727805,
+                            37.97711
+                        ],
+                        [
+                            23.730684,
+                            37.977218
+                        ],
+                        [
+                            23.733482,
+                            37.977876
+                        ],
+                        [
+                            23.736376,
+                            37.977874
+                        ],
+                        [
+                            23.739128,
+                            37.978847
+                        ]
+                    ],
+                    [
+                        [
+                            23.741211,
+                            37.979895
+                        ],
+                        [
+                            23.741949,
+                            37.980048
+                        ],
+                        [
+                            23.741827,
+                            37.980807
+                        ]
+                    ],
+                    [
+                        [
+                            23.742507,
+                            37.981001
+                        ],
+                        [
+                            23.742566,
+                            37.981633
+                        ],
+                        [
+                            23.743,
+                            37.982
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "old",
+                "name": "Gallery west — terminus unknown",
+                "certainty": "lost",
+                "status": "sealed"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.72,
+                            37.968
+                        ],
+                        [
+                            23.718187,
+                            37.967614
+                        ],
+                        [
+                            23.716318,
+                            37.967839
+                        ]
+                    ],
+                    [
+                        [
+                            23.714522,
+                            37.967263
+                        ],
+                        [
+                            23.712649,
+                            37.967523
+                        ],
+                        [
+                            23.71086,
+                            37.966872
+                        ],
+                        [
+                            23.709,
+                            37.967
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "old",
+                "name": "Gallery north — terminus unknown",
+                "certainty": "lost",
+                "status": "sealed"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.743,
+                            37.982
+                        ],
+                        [
+                            23.740309,
+                            37.982264
+                        ],
+                        [
+                            23.737694,
+                            37.983008
+                        ]
+                    ],
+                    [
+                        [
+                            23.734965,
+                            37.983027
+                        ],
+                        [
+                            23.732382,
+                            37.983977
+                        ],
+                        [
+                            23.729622,
+                            37.983797
+                        ],
+                        [
+                            23.727,
+                            37.9845
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "old",
+                "name": "Gallery east — terminus unknown",
+                "certainty": "lost",
+                "status": "sealed"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.741,
+                            37.9683
+                        ],
+                        [
+                            23.741974,
+                            37.968642
+                        ],
+                        [
+                            23.743029,
+                            37.968281
+                        ]
+                    ],
+                    [
+                        [
+                            23.743983,
+                            37.968793
+                        ],
+                        [
+                            23.745037,
+                            37.968451
+                        ],
+                        [
+                            23.745983,
+                            37.969033
+                        ],
+                        [
+                            23.747,
+                            37.969
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "old",
+                "name": "The deep link — the Lower Halls to the Black Gate",
+                "certainty": "lost",
+                "status": "sealed"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.72,
+                            37.968
+                        ],
+                        [
+                            23.719151,
+                            37.967158
+                        ],
+                        [
+                            23.717849,
+                            37.967092
+                        ]
+                    ],
+                    [
+                        [
+                            23.717123,
+                            37.966039
+                        ],
+                        [
+                            23.715881,
+                            37.965871
+                        ],
+                        [
+                            23.71508,
+                            37.964947
+                        ],
+                        [
+                            23.714,
+                            37.9645
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "old",
+                "name": "The Black Gate — beyond, nothing recorded",
+                "certainty": "lost",
+                "status": "sealed"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.714,
+                            37.9645
+                        ],
+                        [
+                            23.713102,
+                            37.964787
+                        ],
+                        [
+                            23.712401,
+                            37.965469
+                        ]
+                    ],
+                    [
+                        [
+                            23.711392,
+                            37.965535
+                        ],
+                        [
+                            23.710745,
+                            37.966324
+                        ],
+                        [
+                            23.709772,
+                            37.966461
+                        ],
+                        [
+                            23.709,
+                            37.967
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "old",
+                "name": "Cross-tie — Areopagus to the Plaka warren",
+                "certainty": "lost",
+                "status": "sealed"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.7233,
+                            37.9721
+                        ],
+                        [
+                            23.723471,
+                            37.972695
+                        ],
+                        [
+                            23.724166,
+                            37.972768
+                        ]
+                    ],
+                    [
+                        [
+                            23.724354,
+                            37.973346
+                        ],
+                        [
+                            23.724993,
+                            37.973474
+                        ],
+                        [
+                            23.725102,
+                            37.974132
+                        ],
+                        [
+                            23.7256,
+                            37.9744
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "old",
+                "name": "Cross-tie — Hypogeum to the ossuary",
+                "certainty": "hearsay",
+                "status": "sealed"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.724,
+                            37.9735
+                        ],
+                        [
+                            23.724073,
+                            37.974309
+                        ],
+                        [
+                            23.724631,
+                            37.974956
+                        ],
+                        [
+                            23.72467,
+                            37.975777
+                        ],
+                        [
+                            23.725,
+                            37.9765
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "old",
+                "name": "Cross-tie — the entrance to the stadium loop",
+                "certainty": "lost",
+                "status": "sealed"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.7268,
+                            37.9655
+                        ],
+                        [
+                            23.728021,
+                            37.965714
+                        ],
+                        [
+                            23.72918,
+                            37.96505
+                        ]
+                    ],
+                    [
+                        [
+                            23.730409,
+                            37.965377
+                        ],
+                        [
+                            23.731592,
+                            37.965045
+                        ],
+                        [
+                            23.732813,
+                            37.965266
+                        ],
+                        [
+                            23.734,
+                            37.965
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "new",
+                "name": "Way in",
+                "certainty": "charted",
+                "status": "active"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.7947,
+                            37.9959
+                        ],
+                        [
+                            23.7936,
+                            37.99632
+                        ],
+                        [
+                            23.7921,
+                            37.9969
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "new",
+                "name": "The Holargos Gate approach",
+                "certainty": "charted",
+                "status": "active"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.799278,
+                            37.997861
+                        ],
+                        [
+                            23.7911,
+                            37.99762
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "new",
+                "name": "The Holargos branch",
+                "certainty": "charted",
+                "status": "active"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.799278,
+                            37.997861
+                        ],
+                        [
+                            23.8002,
+                            37.99752
+                        ],
+                        [
+                            23.80092,
+                            37.99726
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "new",
+                "name": "Hall to the west cells",
+                "certainty": "charted",
+                "status": "active"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.7921,
+                            37.9969
+                        ],
+                        [
+                            23.7907,
+                            37.99655
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "new",
+                "name": "Hall to the north cells",
+                "certainty": "charted",
+                "status": "active"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.7921,
+                            37.9969
+                        ],
+                        [
+                            23.7911,
+                            37.99762
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "new",
+                "name": "Cell ring",
+                "certainty": "charted",
+                "status": "active"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.7907,
+                            37.99655
+                        ],
+                        [
+                            23.7911,
+                            37.99762
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "new",
+                "name": "The sanctum passage",
+                "certainty": "charted",
+                "status": "active"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.7921,
+                            37.9969
+                        ],
+                        [
+                            23.7899,
+                            37.99716
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "new",
+                "name": "Sanctum to the ossuary",
+                "certainty": "charted",
+                "status": "active"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.7899,
+                            37.99716
+                        ],
+                        [
+                            23.7884,
+                            37.99786
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "new",
+                "name": "The long gallery — under Cholargos",
+                "certainty": "charted",
+                "status": "active"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.7884,
+                            37.99786
+                        ],
+                        [
+                            23.7864,
+                            37.9986
+                        ],
+                        [
+                            23.7847,
+                            37.99908
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "new",
+                "name": "The bolt-hole",
+                "certainty": "charted",
+                "status": "active"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.7847,
+                            37.99908
+                        ],
+                        [
+                            23.7856,
+                            38.0006
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "passage",
+                "necropolis": "new",
+                "name": "The Ministry approach",
+                "certainty": "charted",
+                "status": "active"
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [
+                            23.7847,
+                            37.99908
+                        ],
+                        [
+                            23.7833,
+                            37.99958
+                        ],
+                        [
+                            23.782619,
+                            37.999924
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "site",
+                "necropolis": "old",
+                "name": "New 2026 Entrance",
+                "siteType": "new_entrance",
+                "certainty": "charted",
+                "status": "sealed",
+                "note": "Cut in 2026 between the Acropolis and Syngrou-Fix. Bricked over within the year. The only modern way anyone found in — and it is shut again."
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    23.7283,
+                    37.9672
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "site",
+                "necropolis": "old",
+                "name": "The Rock Vaults",
+                "siteType": "chamber",
+                "certainty": "hearsay",
+                "status": "sealed",
+                "note": "Chambers under the south slope of the Acropolis. Entrance walled; interior known only from one 19th-c. account."
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    23.7278,
+                    37.9705
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "site",
+                "necropolis": "old",
+                "name": "The Hypogeum",
+                "siteType": "unknown",
+                "certainty": "lost",
+                "status": "sealed",
+                "note": "A large space beneath the Areopagus. No plan survives. Estimates of its size disagree by an order of magnitude."
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    23.724,
+                    37.9735
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "site",
+                "necropolis": "old",
+                "name": "The Ossuary Halls",
+                "siteType": "ossuary",
+                "certainty": "hearsay",
+                "status": "sealed",
+                "note": "Bone-galleries under the old market. Depth unrecorded; the lower levels were never entered."
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    23.725,
+                    37.9765
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "site",
+                "necropolis": "old",
+                "name": "The Lower Halls",
+                "siteType": "unknown",
+                "certainty": "lost",
+                "status": "sealed",
+                "note": "Referred to only as 'the lower halls'. Whether one room or many is not known."
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    23.72,
+                    37.968
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "site",
+                "necropolis": "old",
+                "name": "The Black Gate",
+                "siteType": "seal",
+                "certainty": "lost",
+                "status": "sealed",
+                "note": "A sealed doorway west of the Pnyx. Beyond it, nothing is recorded. It is said to lead somewhere very large."
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    23.714,
+                    37.9645
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "site",
+                "necropolis": "old",
+                "name": "Kerameikos Shaft",
+                "siteType": "shaft",
+                "certainty": "hearsay",
+                "status": "collapsed",
+                "note": "Vertical shaft into the necropolis from the cemetery district. Choked with fill."
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    23.7185,
+                    37.9782
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "site",
+                "necropolis": "old",
+                "name": "Areopagus Chamber",
+                "siteType": "chamber",
+                "certainty": "lost",
+                "status": "sealed",
+                "note": "Cut into the rock of the hill. Sealed; contents unknown."
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    23.7233,
+                    37.9721
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "site",
+                "necropolis": "old",
+                "name": "Plaka Warren",
+                "siteType": "chamber",
+                "certainty": "lost",
+                "status": "sealed",
+                "note": "A tangle of small chambers under Plaka and Anafiotika. No two accounts of the layout agree."
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    23.73,
+                    37.9725
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "site",
+                "necropolis": "old",
+                "name": "Syntagma Vault",
+                "siteType": "chamber",
+                "certainty": "hearsay",
+                "status": "sealed",
+                "note": "Struck during 19th-c. building works, recorded in a sentence, filled in."
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    23.735,
+                    37.9755
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "site",
+                "necropolis": "old",
+                "name": "Olympieion Gallery",
+                "siteType": "chamber",
+                "certainty": "lost",
+                "status": "sealed",
+                "note": "Under the Olympian precinct. Flooded to an unknown level."
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    23.7332,
+                    37.9694
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "site",
+                "necropolis": "old",
+                "name": "First Cemetery Descent",
+                "siteType": "shaft",
+                "certainty": "hearsay",
+                "status": "sealed",
+                "note": "A stair from the modern First Cemetery said to reach the old galleries. The door has no handle on this side."
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    23.736,
+                    37.9635
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "site",
+                "necropolis": "old",
+                "name": "Philopappou Collapse",
+                "siteType": "collapse",
+                "certainty": "lost",
+                "status": "collapsed",
+                "note": "The hill stair came down at an unknown date. Debris not cleared."
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    23.7188,
+                    37.9662
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "site",
+                "necropolis": "old",
+                "name": "Passage west — unmapped",
+                "siteType": "unknown",
+                "certainty": "lost",
+                "status": "sealed",
+                "note": "The western gallery continues past here. It has never been surveyed."
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    23.709,
+                    37.967
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "site",
+                "necropolis": "old",
+                "name": "Passage north — unmapped",
+                "siteType": "unknown",
+                "certainty": "lost",
+                "status": "sealed",
+                "note": "The climb toward Lykabettos continues past here into no record at all."
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    23.727,
+                    37.9845
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "site",
+                "necropolis": "old",
+                "name": "Passage east — unmapped",
+                "siteType": "unknown",
+                "certainty": "lost",
+                "status": "sealed",
+                "note": "Beyond the stadium the gallery goes on. Nobody followed it."
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    23.747,
+                    37.969
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "site",
+                "necropolis": "old",
+                "name": "Reservoir Head",
+                "siteType": "collapse",
+                "certainty": "lost",
+                "status": "collapsed",
+                "note": "Where the north climb reaches the old reservoir under Lykabettos. Roof down."
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    23.743,
+                    37.982
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "site",
+                "necropolis": "old",
+                "name": "Technopolis Furnace",
+                "siteType": "furnace",
+                "certainty": "hearsay",
+                "status": "active",
+                "note": "The old gasworks retorts at Gazi. Cold to the public — but one is said to still draw, and to open on the Kerameikos galleries. Where the necropolis burns what it must."
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    23.713261,
+                    37.978169
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "site",
+                "necropolis": "new",
+                "name": "Papagou Gate",
+                "siteType": "entrance",
+                "certainty": "charted",
+                "status": "active",
+                "note": "The way into the new necropolis, in the pine wood above Papagou. Small, kept, watched."
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    23.7947,
+                    37.9959
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "site",
+                "necropolis": "new",
+                "name": "Holargos Gate",
+                "siteType": "entrance",
+                "certainty": "charted",
+                "status": "active",
+                "note": "The second way in, on the Cholargos side. Comes up in a quiet street off the avenue."
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    23.799278,
+                    37.997861
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "site",
+                "necropolis": "new",
+                "name": "Gaming Room",
+                "siteType": "chamber",
+                "certainty": "charted",
+                "status": "active",
+                "note": "Off the Holargos branch — screens, seats, a fridge. Somewhere for the young ones to be."
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    23.8002,
+                    37.99752
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "site",
+                "necropolis": "new",
+                "name": "Net Room",
+                "siteType": "server_room",
+                "certainty": "charted",
+                "status": "active",
+                "note": "The far end of the branch: patch panels and a line spliced off the Ministry's fibre."
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    23.80092,
+                    37.99726
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "site",
+                "necropolis": "new",
+                "name": "Giannakis Clubhouse",
+                "siteType": "chamber",
+                "certainty": "charted",
+                "status": "active",
+                "note": "Μάστορας Μάστορης Μαστορεύω Μαστορεύουν Μαστορεύει"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    23.7936,
+                    37.99632
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "site",
+                "necropolis": "new",
+                "name": "The Hall",
+                "siteType": "chamber",
+                "certainty": "charted",
+                "status": "active",
+                "note": "The central vaulted hall. Niches on every wall, most still empty."
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    23.7921,
+                    37.9969
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "site",
+                "necropolis": "new",
+                "name": "The West Cells",
+                "siteType": "chamber",
+                "certainty": "charted",
+                "status": "active",
+                "note": "Private cells off the west side of the hall."
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    23.7907,
+                    37.99655
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "site",
+                "necropolis": "new",
+                "name": "The North Cells",
+                "siteType": "chamber",
+                "certainty": "charted",
+                "status": "active",
+                "note": "A deeper string of cells, colder, quieter."
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    23.7911,
+                    37.99762
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "site",
+                "necropolis": "new",
+                "name": "The Sanctum",
+                "siteType": "chamber",
+                "certainty": "charted",
+                "status": "active",
+                "note": "The inner vault behind the hall. One occupant, and the courtesy of a locked door."
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    23.7899,
+                    37.99716
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "site",
+                "necropolis": "new",
+                "name": "New Ossuary",
+                "siteType": "ossuary",
+                "certainty": "charted",
+                "status": "active",
+                "note": "A small ossuary, barely used."
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    23.7884,
+                    37.99786
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "site",
+                "necropolis": "new",
+                "name": "The Long Gallery",
+                "siteType": "chamber",
+                "certainty": "charted",
+                "status": "active",
+                "note": "A straight run of cut stone the length of Cholargos, tying the ossuary to the western junction."
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    23.7864,
+                    37.9986
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "site",
+                "necropolis": "new",
+                "name": "Cholargos Junction",
+                "siteType": "junction",
+                "certainty": "charted",
+                "status": "active",
+                "note": "Where the long gallery splits — up the bolt-hole, or on toward the Ministry."
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    23.7847,
+                    37.99908
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "site",
+                "necropolis": "new",
+                "name": "The Bolt-Hole",
+                "siteType": "entrance",
+                "certainty": "charted",
+                "status": "active",
+                "note": "A second way out, up into Cholargos. Known to few."
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    23.7856,
+                    38.0006
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "site",
+                "necropolis": "new",
+                "name": "Ministry Undercroft",
+                "siteType": "chamber",
+                "certainty": "charted",
+                "status": "active",
+                "note": "A low vaulted space under the grounds of the Ministry of National Defence."
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    23.7833,
+                    37.99958
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "kind": "site",
+                "necropolis": "new",
+                "name": "Server Room",
+                "siteType": "server_room",
+                "certainty": "charted",
+                "status": "active",
+                "note": "A cooled room of racks directly beneath the Υπουργείο Εθνικής Άμυνας. The necropolis draws its power — and its lines — from here."
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    23.782619,
+                    37.999924
+                ]
+            }
+        }
+    ]
 }
