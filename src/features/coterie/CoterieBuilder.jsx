@@ -474,13 +474,21 @@ export default function CoterieBuilder({
                     <li key={k} className={styles.traitRow}>
                       <div className={styles.traitHead}>
                         <div>
-                          <span className={styles.traitName}>{info.name}</span>
+                          <span className={styles.traitName}>
+                            {info.name}
+                            {k === 'chasse' && (
+                              <span style={{ fontSize: '0.75em', fontWeight: 'normal', color: 'var(--text-muted, gray)', marginLeft: '6px' }}>
+                                (is not calculated to the pool)
+                              </span>
+                            )}
+                          </span>
                           <span className={styles.traitTagline}>{info.tagline}</span>
                         </div>
                       </div>
                       <DotPicker
                         value={s.traits[k]}
                         baseline={baseline}
+                        disabled={k === 'chasse'}
                         onChange={(v) => set({ traits: { ...s.traits, [k]: v } })}
                       />
                       {baseline > 0 && s.traits[k] < baseline && (
