@@ -323,6 +323,11 @@ export default function Domains() {
   const [reqColor, setReqColor] = useState('#8b5cf6');
   const [codexText, setCodexText] = useState('');
 
+  // Court assignment form state
+  const [assignTarget, setAssignTarget] = useState('character'); // 'character' | 'npc'
+  const [assignId, setAssignId] = useState('');
+  const [assignColor, setAssignColor] = useState('#8b5cf6');
+
   // ── Athens transit overlay (metro / tram / suburban / Line 4) ──
   const [transitPrefs, setTransitPrefs] = useState(loadTransitPrefs);
   const transitOn = transitPrefs.on;
@@ -455,6 +460,17 @@ export default function Domains() {
     enabled: activeTab === 'codex' && selectedDivision != null,
   });
 
+  // Court-only: characters + NPCs for direct assignment
+  const { data: assignablesData } = useQuery({
+    queryKey: ['court-assignables'],
+    queryFn: async () => {
+      const res = await api.get('/court/characters-and-npcs');
+      return res.data;
+    },
+    enabled: isCourt,
+    staleTime: 60 * 1000,
+  });
+
   const claims = claimsData?.claims || [];
   const requests = requestsData?.requests || [];
   const problems = problemsData?.problems || [];
@@ -508,17 +524,6 @@ export default function Domains() {
     onError: (e) => toast.error(e.response?.data?.error || 'Failed to resolve request'),
   });
 
-  const vacateMutation = useMutation({
-    mutationFn: async (division) => {
-      const res = await api.post(`/admin/domain-claims/${division}/vacate`);
-      return res.data;
-    },
-    onSuccess: () => {
-      toast.success('Domain released back to the city');
-      queryClient.invalidateQueries({ queryKey: ['domain-claims'] });
-    },
-    onError: (e) => toast.error(e.response?.data?.error || 'Failed to vacate domain'),
-  });
 
   const safetyMutation = useMutation({
     mutationFn: async ({ division, safety_rating }) => {
@@ -555,6 +560,24 @@ export default function Domains() {
       queryClient.invalidateQueries({ queryKey: ['domain-codex', selectedDivision] });
     },
     onError: (e) => toast.error(e.response?.data?.error || 'Failed to remove entry'),
+  });
+
+  const assignMutation = useMutation({
+    mutationFn: async ({ division, character_id, npc_id, color, unassign }) => {
+      const res = await api.post(`/court/domain-claims/${division}/assign`, { character_id, npc_id, color, unassign });
+      return res.data;
+    },
+    onSuccess: (_data, vars) => {
+      if (vars.unassign) {
+        toast.success('Domain released back to the city');
+      } else {
+        toast.success('Domain assigned by Court decree');
+      }
+      setAssignId('');
+      queryClient.invalidateQueries({ queryKey: ['domain-claims'] });
+      queryClient.invalidateQueries({ queryKey: ['domain-claim-requests'] });
+    },
+    onError: (e) => toast.error(e.response?.data?.error || 'Failed to assign domain'),
   });
 
   // ── Avatar URL resolver ─────────────────────────────────
@@ -2202,15 +2225,6 @@ export default function Domains() {
                       </div>
                     )}
 
-                    {isCourt && !selectedDivisionInfo.is_abaton && selectedDivisionInfo.owner !== 'Unclaimed' && (
-                      <button
-                        className={styles.dossierDangerBtn}
-                        disabled={vacateMutation.isPending}
-                        onClick={() => vacateMutation.mutate(selectedDivisionInfo.number)}
-                      >
-                        {vacateMutation.isPending ? 'Releasing…' : 'Release Domain'}
-                      </button>
-                    )}
                   </>
                 )}
 
@@ -2275,6 +2289,93 @@ export default function Domains() {
 
                     {myPendingRequest && (
                       <p className={styles.dossierEmpty}>Your petition is awaiting Court review.</p>
+                    )}
+
+                    {/* ── Court: direct assign / unassign ── */}
+                    {isCourt && selectedDivisionInfo && (
+                      <div className={styles.courtAssignSection}>
+                        <span className={styles.courtAssignHeading}>
+                          <span className="material-symbols-outlined" style={{ fontSize: 15, verticalAlign: 'middle', marginRight: 5 }}>gavel</span>
+                          Court Decree
+                        </span>
+
+                        {/* Target type toggle */}
+                        <div className={styles.assignTargetToggle}>
+                          <button
+                            type="button"
+                            className={`${styles.assignToggleBtn} ${assignTarget === 'character' ? styles.assignToggleBtnActive : ''}`}
+                            onClick={() => { setAssignTarget('character'); setAssignId(''); }}
+                          >Character</button>
+                          <button
+                            type="button"
+                            className={`${styles.assignToggleBtn} ${assignTarget === 'npc' ? styles.assignToggleBtnActive : ''}`}
+                            onClick={() => { setAssignTarget('npc'); setAssignId(''); }}
+                          >NPC</button>
+                        </div>
+
+                        {/* Dropdown */}
+                        <select
+                          className={styles.assignSelect}
+                          value={assignId}
+                          onChange={e => setAssignId(e.target.value)}
+                        >
+                          <option value="">— select {assignTarget === 'character' ? 'a character' : 'an NPC'} —</option>
+                          {assignTarget === 'character'
+                            ? (assignablesData?.characters || []).map(c => (
+                                <option key={c.id} value={c.id}>{c.name} ({c.player_name}){c.clan ? ` · ${c.clan}` : ''}</option>
+                              ))
+                            : (assignablesData?.npcs || []).map(n => (
+                                <option key={n.id} value={n.id}>{n.name}{n.clan ? ` · ${n.clan}` : ''}</option>
+                              ))
+                          }
+                        </select>
+
+                        {/* Color picker — characters only */}
+                        {assignTarget === 'character' && (
+                          <div className={styles.assignColorRow}>
+                            <label className={styles.assignColorLabel}>Territory colour</label>
+                            <input
+                              type="color"
+                              className={styles.requestColorInput}
+                              value={assignColor}
+                              onChange={e => setAssignColor(e.target.value)}
+                              title="Territory color"
+                            />
+                          </div>
+                        )}
+
+                        <button
+                          type="button"
+                          className={styles.assignBtn}
+                          disabled={!assignId || assignMutation.isPending}
+                          onClick={() => {
+                            if (!assignId || !selectedDivisionInfo) return;
+                            assignMutation.mutate({
+                              division: selectedDivisionInfo.number,
+                              character_id: assignTarget === 'character' ? Number(assignId) : null,
+                              npc_id: assignTarget === 'npc' ? Number(assignId) : null,
+                              color: assignTarget === 'character' ? assignColor : undefined,
+                            });
+                          }}
+                        >
+                          {assignMutation.isPending ? 'Assigning…' : 'Assign Domain'}
+                        </button>
+
+                        {/* Unassign — only show when division is currently claimed */}
+                        {selectedDivisionInfo.owner !== 'Unclaimed' && !selectedDivisionInfo.is_abaton && (
+                          <>
+                            <hr className={styles.assignSeparator} />
+                            <button
+                              type="button"
+                              className={styles.dossierDangerBtn}
+                              disabled={assignMutation.isPending}
+                              onClick={() => assignMutation.mutate({ division: selectedDivisionInfo.number, unassign: true })}
+                            >
+                              {assignMutation.isPending ? 'Releasing…' : 'Unassign Domain'}
+                            </button>
+                          </>
+                        )}
+                      </div>
                     )}
                   </>
                 )}

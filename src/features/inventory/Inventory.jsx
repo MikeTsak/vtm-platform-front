@@ -20,12 +20,15 @@ function Inventory({ characterId }) {
 
   const fetchInventory = useCallback(async () => {
     setLoading(true);
+    setError(null); // Clear any previous error before fetching
     try {
+      console.log(`[Inventory] Fetching inventory for character id=${id}`);
       const res = await api.get(`/characters/${id}/inventory`);
+      console.log(`[Inventory] Got ${res.data.items?.length ?? 0} items:`, res.data.items);
       setItems(res.data.items || []);
-      setError(null);
     } catch (err) {
-      console.error('Failed to fetch inventory:', err);
+      console.error('[Inventory] Failed to fetch inventory:', err);
+      console.error('[Inventory] Response:', err.response?.status, err.response?.data);
       const detailedError = err.response?.data?.error || err.message || "Unknown error";
       setError(`Failed to load inventory: ${detailedError}`);
     } finally {
@@ -49,8 +52,8 @@ function Inventory({ characterId }) {
       } else {
         await api.post(`/characters/${id}/inventory`, itemData);
       }
-      fetchInventory();
       setModalOpen(false);
+      await fetchInventory(); // await so items are shown after modal closes
     } catch (err) {
       console.error('Failed to save item:', err);
       const detailedError = err.response?.data?.error || err.message || "Unknown error";
@@ -62,7 +65,7 @@ function Inventory({ characterId }) {
     if (!window.confirm('Are you sure you want to delete this item?')) return;
     try {
       await api.delete(`/characters/${id}/inventory/${itemId}`);
-      fetchInventory();
+      await fetchInventory();
     } catch (err) {
       console.error('Failed to delete item:', err);
       const detailedError = err.response?.data?.error || err.message || "Unknown error";
@@ -113,7 +116,6 @@ function Inventory({ characterId }) {
 
     return (
       <div 
-        key={item.id} 
         className={`${styles.itemCard} ${isExpanded ? styles.expanded : ''}`}
       >
         <div className={styles.itemCardHeader} onClick={() => toggleExpand(item.id)}>
@@ -235,7 +237,7 @@ function Inventory({ characterId }) {
         </div>
       ) : (
         <div className={viewMode === 'list' ? styles.itemList : styles.itemGrid}>
-          {filteredItems.map(item => renderItem(item))}
+          {filteredItems.map(item => <React.Fragment key={item.id}>{renderItem(item)}</React.Fragment>)}
         </div>
       )}
 

@@ -1764,6 +1764,106 @@
 .requestSubmitBtn:hover { background: color-mix(in srgb, var(--tint) 32%, transparent); }
 .requestSubmitBtn:disabled { opacity: 0.6; cursor: not-allowed; }
 
+/* ── Court Assignment block (courtuser / admin only) ── */
+.courtAssignSection {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-top: 14px;
+  padding: 12px 14px 14px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, #b45309 45%, transparent);
+  border-top: 2px solid #b45309;
+  background: color-mix(in srgb, #78350f 6%, transparent);
+}
+
+.courtAssignHeading {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fbbf24;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.assignTargetToggle {
+  display: flex;
+  border-radius: 7px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  width: fit-content;
+}
+
+.assignToggleBtn {
+  padding: 5px 14px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.assignToggleBtn:hover {
+  background: color-mix(in srgb, var(--bg-color) 50%, transparent);
+  color: var(--text-color);
+}
+
+.assignToggleBtnActive {
+  background: color-mix(in srgb, #fbbf24 18%, transparent);
+  color: #fbbf24;
+}
+
+.assignSelect {
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-color) 60%, transparent);
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+  appearance: auto;
+}
+
+.assignSelect:focus { outline: none; border-color: #fbbf24; }
+
+.assignColorRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.assignColorLabel {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.assignBtn {
+  padding: 9px 14px;
+  border-radius: 8px;
+  background: color-mix(in srgb, #fbbf24 20%, transparent);
+  border: 1px solid color-mix(in srgb, #fbbf24 55%, transparent);
+  color: #fbbf24;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.assignBtn:hover:not(:disabled) { background: color-mix(in srgb, #fbbf24 32%, transparent); }
+.assignBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.assignSeparator {
+  border: none;
+  border-top: 1px solid color-mix(in srgb, #b45309 35%, transparent);
+  margin: 2px 0;
+}
+
 /* ── Court Intel tab ── */
 .problemList {
   display: flex;

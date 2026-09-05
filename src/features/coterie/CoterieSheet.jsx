@@ -9,7 +9,7 @@
 import React, { useMemo, useState } from 'react';
 import styles from '../../styles/Coteries.module.css';
 import Avatar from '../../components/Avatar';
-import { Card, Dots, Empty, Modal, Muted, Stat } from './ui';
+import { Card, Dots, DotPicker, Empty, Modal, Muted, Stat, Tabs } from './ui';
 import {
   CHASSE_SIZE_TABLE,
   COTERIE_BACKGROUNDS,
@@ -81,6 +81,9 @@ function PurchaseDialog({ coterie, personalXp, onClose, onConfirm, busy }) {
     ? DOMAIN_TRAITS.map((t) => [t, { name: DOMAIN_TRAIT_INFO[t].name }])
     : Object.entries(catalog).sort((a, b) => a[1].name.localeCompare(b[1].name));
 
+  const bankPct = cost > 0 ? (fromBank / cost) * 100 : 0;
+  const personalPct = cost > 0 ? (personal / cost) * 100 : 0;
+
   return (
     <Modal
       title="Spend coterie XP"
@@ -105,43 +108,51 @@ function PurchaseDialog({ coterie, personalXp, onClose, onConfirm, busy }) {
         </>
       }
     >
-      <div className={styles.formGrid}>
-        <label className={styles.field}>
-          <span className={styles.fieldLabel}>What are you raising?</span>
-          <select className={styles.select} value={kind} onChange={(e) => pick(e.target.value)}>
-            <option value="domain">Domain trait</option>
-            <option value="background">Coterie Background</option>
-            <option value="merit">Coterie Merit</option>
-          </select>
-        </label>
+      <Tabs
+        value={kind}
+        onChange={pick}
+        tabs={[
+          { value: 'domain', label: 'Domain' },
+          { value: 'background', label: 'Backgrounds' },
+          { value: 'merit', label: 'Merits' }
+        ]}
+      />
 
-        <label className={styles.field}>
-          <span className={styles.fieldLabel}>Which one?</span>
-          <select
-            className={styles.select}
-            value={key}
-            onChange={(e) => { setKey(e.target.value); setToDots(1); setFromPersonal(0); }}
-          >
-            {options.map(([k, d]) => <option key={k} value={k}>{d.name}</option>)}
-          </select>
-        </label>
+      <div className={styles.dialogTraitList}>
+        {options.map(([k, d]) => {
+          let curr = 0;
+          if (kind === 'domain') curr = Number(coterie.traits[k]) || 0;
+          else {
+            const list = kind === 'background' ? coterie.backgrounds : coterie.merits;
+            const found = (list || []).find((x) => x.key === k);
+            curr = found ? Number(found.dots) || 0 : 0;
+          }
+          
+          return (
+            <div
+              key={k}
+              className={styles.dialogTraitItem}
+              aria-selected={key === k}
+              onClick={() => { setKey(k); setToDots(Math.max(curr + 1, min)); setFromPersonal(0); }}
+            >
+              <span className={styles.dialogTraitName}>{d.name}</span>
+              <span className={styles.dialogTraitCurrent}>
+                {curr > 0 ? `Currently ${curr}` : 'Not owned'}
+              </span>
+            </div>
+          );
+        })}
       </div>
 
-      <div className={styles.purchaseSummary}>
-        <span>Currently <b>{currentDots}</b></span>
-        <span className={styles.arrow}>→</span>
-        <label className={styles.inlineField}>
-          <span className={styles.fieldLabel}>Raise to</span>
-          <input
-            type="number"
-            inputMode="numeric"
-            className={styles.inputSmall}
-            value={effectiveTo}
-            min={lowestBuyable}
-            max={kind === 'domain' ? MAX_DOTS : max}
-            onChange={(e) => setToDots(Number(e.target.value || lowestBuyable))}
-          />
-        </label>
+      <div className={styles.purchaseSummary} style={{ marginTop: '1rem', marginBottom: '0.5rem' }}>
+        <DotPicker
+          label="Raise to"
+          value={effectiveTo}
+          min={lowestBuyable}
+          max={kind === 'domain' ? MAX_DOTS : max}
+          onChange={(val) => setToDots(val)}
+          disabled={alreadyMaxed}
+        />
       </div>
 
       {alreadyMaxed && (
@@ -152,14 +163,32 @@ function PurchaseDialog({ coterie, personalXp, onClose, onConfirm, busy }) {
 
       {!alreadyMaxed && (
         <>
-          <div className={styles.costRow}>
-            <span>Cost</span>
+          <div className={styles.costRow} style={{ marginTop: '1.5rem' }}>
+            <span>Total Cost</span>
             <b>{cost} XP</b>
           </div>
 
-          <label className={styles.field}>
+          <div className={styles.fundingTrack}>
+            <div className={styles.fundingFill} style={{ width: `${bankPct}%` }} />
+            <div className={styles.fundingPersonalFill} style={{ width: `${personalPct}%` }} />
+          </div>
+
+          <div className={styles.fundingSplit}>
+            <div className={styles.fundingPart} data-over={!canAfford ? 'true' : undefined}>
+              <span className={styles.fundingLabel}>Bank XP used</span>
+              <b style={{ color: 'var(--success-color, #2ea043)' }}>{fromBank}</b>
+              <span className={styles.fundingCap}>of {bank} available</span>
+            </div>
+            <div className={styles.fundingPart}>
+              <span className={styles.fundingLabel}>Personal XP used</span>
+              <b style={{ color: 'var(--danger-color, #f85149)' }}>{personal}</b>
+              <span className={styles.fundingCap}>of {Math.max(0, Number(personalXp) || 0)} available</span>
+            </div>
+          </div>
+
+          <label className={styles.field} style={{ marginTop: '1rem' }}>
             <span className={styles.fieldLabel}>
-              Your personal XP contribution (you have {Math.max(0, Number(personalXp) || 0)})
+              Adjust personal contribution
             </span>
             <input
               type="range"
@@ -172,23 +201,10 @@ function PurchaseDialog({ coterie, personalXp, onClose, onConfirm, busy }) {
             />
             <span className={styles.fieldHint}>
               {personalCap === 0
-                ? 'You have no personal XP available to contribute.'
-                : `Drag to pay part of the cost from your own sheet.`}
+                ? 'You have no personal XP to contribute.'
+                : 'Drag to pay part of the cost from your own sheet.'}
             </span>
           </label>
-
-          <div className={styles.fundingSplit}>
-            <div className={styles.fundingPart} data-over={!canAfford ? 'true' : undefined}>
-              <span className={styles.fundingLabel}>From coterie bank</span>
-              <b>{fromBank}</b>
-              <span className={styles.fundingCap}>of {bank}</span>
-            </div>
-            <div className={styles.fundingPart}>
-              <span className={styles.fundingLabel}>From your character</span>
-              <b>{personal}</b>
-              <span className={styles.fundingCap}>of {Math.max(0, Number(personalXp) || 0)}</span>
-            </div>
-          </div>
 
           {!canAfford && (
             <Muted tone="error">
