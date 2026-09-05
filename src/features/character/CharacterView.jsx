@@ -1122,47 +1122,74 @@ export default function CharacterView({
     }
   }
 
+  /**
+   * Resolve an advantage entry to its exact slot in ch.sheet.
+   *
+   * Entries created during character setup are stored as { name, dots } with no
+   * id, so matching on `entry.id === item.id` resolves `undefined === undefined`
+   * and silently hits the first entry in the list. Match on object reference
+   * first — the display components hand back the live sheet objects — and fall
+   * back to a strict key comparison that never matches on missing fields.
+   */
+  const locateAdvantage = (targetItem) => {
+    if (!ch?.sheet || !targetItem) return null;
+
+    const lists = [
+      ['merits', ch.sheet.advantages?.merits],
+      ['flaws', ch.sheet.advantages?.flaws],
+      ['backgrounds', ch.sheet.backgrounds],
+    ];
+
+    for (const [key, arr] of lists) {
+      if (!Array.isArray(arr)) continue;
+      const index = arr.indexOf(targetItem);
+      if (index > -1) return { key, index };
+    }
+
+    // Fallback for items that arrive as copies rather than live references.
+    const sameEntry = (entry) => {
+      if (!entry) return false;
+      if (targetItem.id != null && entry.id != null) {
+        if (entry.id !== targetItem.id) return false;
+        if (targetItem.instance != null || entry.instance != null) {
+          return entry.instance === targetItem.instance;
+        }
+        return true;
+      }
+      return entry.name != null
+        && entry.name === targetItem.name
+        && Number(entry.dots || 0) === Number(targetItem.dots || 0);
+    };
+
+    for (const [key, arr] of lists) {
+      if (!Array.isArray(arr)) continue;
+      const index = arr.findIndex(sameEntry);
+      if (index > -1) return { key, index };
+    }
+
+    return null;
+  };
+
+  /** Read the matching list out of a (cloned) sheet. */
+  const advantageListIn = (sheetObj, key) =>
+    key === 'backgrounds' ? sheetObj.backgrounds : sheetObj.advantages?.[key];
+
   const handleUpdateNotes = async (type, targetItem, newNotes) => {
     if (!ch || !ch.sheet) return;
+
+    const slot = locateAdvantage(targetItem);
+    if (!slot) {
+      console.warn("Could not find advantage to update notes for", targetItem);
+      return;
+    }
+
     const nextSheet = JSON.parse(JSON.stringify(ch.sheet));
-    const merits = nextSheet.advantages?.merits || [];
-    const flaws = nextSheet.advantages?.flaws || [];
-    const backgrounds = nextSheet.backgrounds || [];
-
-    const isMatch = (item) => item.id === targetItem.id && item.instance === targetItem.instance;
-    let found = false;
-
-    if (type === 'flaws') {
-      for (let i = 0; i < flaws.length; i++) {
-        if (isMatch(flaws[i])) {
-          flaws[i].notes = newNotes;
-          found = true;
-          break;
-        }
-      }
-    } else {
-      for (let i = 0; i < merits.length; i++) {
-        if (isMatch(merits[i])) {
-          merits[i].notes = newNotes;
-          found = true;
-          break;
-        }
-      }
-      if (!found) {
-        for (let i = 0; i < backgrounds.length; i++) {
-          if (isMatch(backgrounds[i])) {
-            backgrounds[i].notes = newNotes;
-            found = true;
-            break;
-          }
-        }
-      }
+    const list = advantageListIn(nextSheet, slot.key);
+    if (!Array.isArray(list) || !list[slot.index]) {
+      console.warn("Could not find advantage to update notes for", targetItem);
+      return;
     }
-
-    if (!found) {
-       console.warn("Could not find advantage to update notes for", targetItem);
-       return;
-    }
+    list[slot.index].notes = newNotes;
 
     try {
       await api.put(paths.update, {
@@ -1180,18 +1207,16 @@ export default function CharacterView({
 
   const handleUpdateDesc = async (item, newDesc) => {
     if (!ch || !ch.sheet) return;
-    const nextSheet = JSON.parse(JSON.stringify(ch.sheet));
 
-    let target = null;
-    if (nextSheet.advantages?.merits) {
-      target = nextSheet.advantages.merits.find(m => m.id === item.id || m.name === item.name);
+    const slot = locateAdvantage(item);
+    if (!slot) {
+      console.warn("Could not find advantage to update description for", item);
+      return;
     }
-    if (!target && nextSheet.advantages?.flaws) {
-      target = nextSheet.advantages.flaws.find(f => f.id === item.id || f.name === item.name);
-    }
-    if (!target && nextSheet.backgrounds) {
-      target = nextSheet.backgrounds.find(b => b.id === item.id || b.name === item.name);
-    }
+
+    const nextSheet = JSON.parse(JSON.stringify(ch.sheet));
+    const list = advantageListIn(nextSheet, slot.key);
+    const target = Array.isArray(list) ? list[slot.index] : null;
 
     if (target) {
       target.desc = newDesc;

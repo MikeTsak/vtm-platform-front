@@ -35,6 +35,7 @@ import {
   portillonPenaltyDice,
   seedFromType,
   validateCoterie,
+  XP_PER_DOT,
 } from '../../data/coterieRules';
 
 const emptyState = () => ({
@@ -158,6 +159,7 @@ export default function CoterieBuilder({
   currentUser,
   isAdmin,
   claimedDomains,
+  personalXp,
   saving,
   onSave,
   onCancel,
@@ -225,7 +227,10 @@ export default function CoterieBuilder({
   }), [s]);
 
   const { budget } = check;
-  const canSave = check.errors.length === 0 && !saving;
+  
+  const xpCost = s.bonusPoints * (XP_PER_DOT || 3);
+  const canAffordBonus = editingId ? true : (personalXp >= xpCost);
+  const canSave = check.errors.length === 0 && !saving && (canAffordBonus || isAdmin || s.rulesOverride);
 
   // A Domain Merit is meaningless without dots in the trait it hangs off.
   const meritAvailability = useCallback((key, def) => {
@@ -525,8 +530,28 @@ export default function CoterieBuilder({
               onChange={(v) => set({ bonusPoints: v })}
               min={0}
               max={30}
-              hint="Dots the players moved off their own sheets into the coterie."
+              hint={
+                !editingId ? (
+                  <>
+                    {s.bonusPoints > 0 && (
+                      <span style={{ color: '#ef4444' }}>
+                        This {s.bonusPoints * (XP_PER_DOT || 3)} XP will be deducted from your sheet.{' '}
+                      </span>
+                    )}
+                    <span style={{ color: '#22c55e' }}>
+                      Remaining XP: {Math.max(0, personalXp - (s.bonusPoints * (XP_PER_DOT || 3)))}
+                    </span>
+                  </>
+                ) : (
+                  "Dots the players moved off their own sheets into the coterie."
+                )
+              }
             />
+            {!editingId && s.bonusPoints > 0 && personalXp < s.bonusPoints * (XP_PER_DOT || 3) && (
+              <Muted tone="error" className={styles.tightNote}>
+                You do not have enough personal XP to contribute this many dots.
+              </Muted>
+            )}
             {isAdmin && (
               <label className={styles.checkboxRow}>
                 <input

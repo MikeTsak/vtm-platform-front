@@ -2152,7 +2152,7 @@ export default function Domains() {
                             </span>
                           </>
                         )}
-                        {isCourt && (
+                        {isAdmin && (
                           <div className={styles.safetyEditorRow}>
                             <span className={styles.safetyEditorLabel}>Court: set rating</span>
                             <select

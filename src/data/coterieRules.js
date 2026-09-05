@@ -469,7 +469,7 @@ export function computePool({ memberCount, pointsPerMember, bonusPoints, flaws }
 // by its type included (corebook p.197: "subtract the listed costs").
 export function computeSpend({ traits, backgrounds, merits }) {
   const t = traits || {};
-  const domain = DOMAIN_TRAITS.reduce((n, k) => n + (Number(t[k]) || 0), 0);
+  const domain = ['lien', 'portillon'].reduce((n, k) => n + (Number(t[k]) || 0), 0);
   return {
     domain,
     backgrounds: sumDots(backgrounds),

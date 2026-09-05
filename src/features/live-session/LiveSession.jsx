@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState, useContext } from 'react';
+import React, { useEffect, useMemo, useState, useContext } from 'react';
 import api from '../../core/api';
 import { AuthCtx } from '../../core/AuthContext';
 import Avatar from '../../components/Avatar';
@@ -154,7 +154,7 @@ export default function LiveSession() {
   const [session, setSession] = useState(null);
   const [broadcasts, setBroadcasts] = useState([]);
 
-  const isAdmin = session?.isAdmin || user?.role === 'admin' || user?.role === 'courtuser' || character?.isST;
+  const isAdmin = session?.isAdmin || user?.role === 'admin' || character?.isST;
   const [mobileTab, setMobileTab] = useState('action');
   const [showBlushModal, setShowBlushModal] = useState(false);
 

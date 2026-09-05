@@ -448,6 +448,7 @@ export default function CoterieManager() {
           currentUser={currentUser}
           isAdmin={isAdmin}
           claimedDomains={registry.length ? registry : mine}
+          personalXp={personalXp}
           saving={busy}
           onSave={save}
           onCancel={() => { setEditing(null); setEditingId(null); setTab('mine'); }}
