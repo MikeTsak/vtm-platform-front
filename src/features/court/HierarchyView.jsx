@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { AuthCtx } from '../../core/AuthContext';
 import Avatar from '../../components/Avatar';
 import api from '../../core/api';
@@ -354,7 +354,9 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles, onImageCl
   let imgClass = styles.sharpImg;
   if (ent.is_bloodhunted) {
     imgClass = `${styles.sharpImg} ${styles.imgBloodhunted}`;
-  } else if (ent.is_deceased || ent.is_missing || ent.is_exiled || ent.is_left || ent.is_called) {
+  } else if (ent.is_deceased) {
+    imgClass = `${styles.sharpImg} ${styles.imgDeceased}`;
+  } else if (ent.is_missing || ent.is_exiled || ent.is_left || ent.is_called) {
     imgClass = `${styles.sharpImg} ${styles.grayscale}`;
   }
 
