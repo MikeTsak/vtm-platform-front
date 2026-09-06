@@ -4,6 +4,7 @@ import { registerBones } from 'boneyard-js/react'
 
 import _admin_users_tab from './admin-users-tab.bones.json'
 import _announcements_view from './announcements-view.bones.json'
+import _app_loading from './app-loading.bones.json'
 import _boons_page from './boons-page.bones.json'
 import _character_view_loading from './character-view-loading.bones.json'
 import _court_hierarchy from './court-hierarchy.bones.json'
@@ -14,11 +15,11 @@ import _news_page from './news-page.bones.json'
 import _premonitions_page from './premonitions-page.bones.json'
 import _schrecknet_page from './schrecknet-page.bones.json'
 import _surfaceweb_page from './surfaceweb-page.bones.json'
-import _app_loading from './app-loading.bones.json'
 
 registerBones({
   "admin-users-tab": _admin_users_tab,
   "announcements-view": _announcements_view,
+  "app-loading": _app_loading,
   "boons-page": _boons_page,
   "character-view-loading": _character_view_loading,
   "court-hierarchy": _court_hierarchy,
@@ -29,5 +30,4 @@ registerBones({
   "premonitions-page": _premonitions_page,
   "schrecknet-page": _schrecknet_page,
   "surfaceweb-page": _surfaceweb_page,
-  "app-loading": _app_loading,
 })

@@ -265,7 +265,7 @@ async function fetchAvatarAsObjectUrl(url) {
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const blob = await res.blob();
-  
+
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
@@ -278,11 +278,11 @@ async function fetchAvatarAsObjectUrl(url) {
       ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
       ctx.closePath();
       ctx.clip();
-      
+
       const dx = (img.width - size) / 2;
       const dy = (img.height - size) / 2;
       ctx.drawImage(img, dx, dy, size, size, 0, 0, size, size);
-      
+
       canvas.toBlob(croppedBlob => {
         if (!croppedBlob) reject(new Error('Canvas toBlob failed'));
         else resolve(URL.createObjectURL(croppedBlob));
@@ -439,7 +439,7 @@ export default function Domains() {
   // steps so mouse-wheel zooming doesn't trigger a state update (and layer
   // rebuild) on every tiny delta.
   const [zoom, setZoom] = useState(12);
-  const badgeSize = Math.max(22, Math.min(56, 34 + (zoom - 12) * 6));
+  const badgeSize = Math.max(28, Math.min(70, 48 + (zoom - 12) * 6));
   // Clan badge stays centered on the division (offset 0); the avatar badge
   // sits just to its right — the gap scales with badgeSize so the two can
   // never overlap regardless of zoom.
@@ -1074,6 +1074,7 @@ export default function Domains() {
         position,
         clan: f.properties.clan,
         color: f.properties.claimColor || (f.properties.isNpc ? NPC_ACCENT_COLOR : '#888888'),
+        division
       });
       if (f.properties.clan) {
         clanLabels.push({ position, text: f.properties.clan });
@@ -1261,251 +1262,271 @@ export default function Domains() {
     // clean-map mode (transit + catacombs overlays are handled separately). ──
     if (!cleanMap) {
 
-    // ─── Abaton hazard stripes — draped onto each Abaton polygon the same
-    // way the hover-avatar reveal drapes a face onto a division, just
-    // always-on instead of hover-gated (see the mask+bitmap pattern below).
-    for (const feature of abatonFeatures) {
-      const division = feature.properties.__division;
-      layers.push(
-        new SolidPolygonLayer({
-          id: `abaton-mask-${division}`,
-          data: [feature],
-          getPolygon: d => d.geometry.coordinates,
-          operation: 'mask',
-          getFillColor: [255, 255, 255, 255],
-        })
-      );
-      const [minLng, minLat, maxLng, maxLat] = bbox(feature);
-      layers.push(
-        new BitmapLayer({
-          id: `abaton-stripes-${division}`,
-          image: ABATON_STRIPE_IMG,
-          bounds: [minLng, minLat, maxLng, maxLat],
-          extensions: [new MaskExtension()],
-          maskId: `abaton-mask-${division}`,
-        })
-      );
-    }
+      // ─── Abaton hazard stripes — draped onto each Abaton polygon the same
+      // way the hover-avatar reveal drapes a face onto a division, just
+      // always-on instead of hover-gated (see the mask+bitmap pattern below).
+      for (const feature of abatonFeatures) {
+        const division = feature.properties.__division;
+        layers.push(
+          new SolidPolygonLayer({
+            id: `abaton-mask-${division}`,
+            data: [feature],
+            getPolygon: d => d.geometry.coordinates,
+            operation: 'mask',
+            getFillColor: [255, 255, 255, 255],
+          })
+        );
+        const [minLng, minLat, maxLng, maxLat] = bbox(feature);
+        layers.push(
+          new BitmapLayer({
+            id: `abaton-stripes-${division}`,
+            image: ABATON_STRIPE_IMG,
+            bounds: [minLng, minLat, maxLng, maxLat],
+            extensions: [new MaskExtension()],
+            maskId: `abaton-mask-${division}`,
+          })
+        );
+      }
 
-    // ─── NPC outline + tag — same glow-then-crisp treatment as the
-    // municipal-group borders, so it reads as a distinct "system" marker
-    // regardless of whether that division also has a clan/avatar badge.
-    if (npcFeatures.length) {
-      layers.push(
-        new GeoJsonLayer({
-          id: 'npc-outline-glow',
-          data: npcFeatures,
-          pickable: false,
-          stroked: true,
-          filled: false,
-          extruded: false,
-          getLineColor: hexToRgba(NPC_ACCENT_COLOR, 90),
-          getLineWidth: 6,
-          lineWidthUnits: 'pixels',
-          lineWidthMinPixels: 4,
-          parameters: { depthTest: false },
-        })
-      );
-      layers.push(
-        new GeoJsonLayer({
-          id: 'npc-outline',
-          data: npcFeatures,
-          pickable: false,
-          stroked: true,
-          filled: false,
-          extruded: false,
-          getLineColor: hexToRgba(NPC_ACCENT_COLOR, 255),
-          getLineWidth: 2,
-          lineWidthUnits: 'pixels',
-          lineWidthMinPixels: 1.5,
-          parameters: { depthTest: false },
-        })
-      );
-      layers.push(
-        new TextLayer({
-          id: 'npc-tags',
-          data: npcLabelData,
-          getPosition: d => d.position,
-          getText: () => 'NPC',
-          getSize: 11,
-          getColor: hexToRgba(NPC_ACCENT_COLOR, 255),
-          getPixelOffset: [0, -(badgeSize / 2 + 14)],
-          fontFamily: '"Courier New", monospace',
-          fontWeight: 800,
-          billboard: true,
-          background: true,
-          getBackgroundColor: [10, 10, 10, 200],
-          backgroundPadding: [6, 3],
-          pickable: false,
-          parameters: { depthTest: false },
-          updateTriggers: { getPixelOffset: [badgeSize] },
-        })
-      );
-    }
+      // ─── NPC outline + tag — same glow-then-crisp treatment as the
+      // municipal-group borders, so it reads as a distinct "system" marker
+      // regardless of whether that division also has a clan/avatar badge.
+      if (npcFeatures.length) {
+        layers.push(
+          new GeoJsonLayer({
+            id: 'npc-outline-glow',
+            data: npcFeatures,
+            pickable: false,
+            stroked: true,
+            filled: false,
+            extruded: false,
+            getLineColor: hexToRgba(NPC_ACCENT_COLOR, 90),
+            getLineWidth: 6,
+            lineWidthUnits: 'pixels',
+            lineWidthMinPixels: 4,
+            parameters: { depthTest: false },
+          })
+        );
+        layers.push(
+          new GeoJsonLayer({
+            id: 'npc-outline',
+            data: npcFeatures,
+            pickable: false,
+            stroked: true,
+            filled: false,
+            extruded: false,
+            getLineColor: hexToRgba(NPC_ACCENT_COLOR, 255),
+            getLineWidth: 2,
+            lineWidthUnits: 'pixels',
+            lineWidthMinPixels: 1.5,
+            parameters: { depthTest: false },
+          })
+        );
+        layers.push(
+          new TextLayer({
+            id: 'npc-tags',
+            data: npcLabelData,
+            getPosition: d => d.position,
+            getText: () => 'NPC',
+            getSize: 11,
+            getColor: hexToRgba(NPC_ACCENT_COLOR, 255),
+            getPixelOffset: [0, -(badgeSize / 2 + 14)],
+            fontFamily: '"Courier New", monospace',
+            fontWeight: 800,
+            billboard: true,
+            background: true,
+            getBackgroundColor: [10, 10, 10, 200],
+            backgroundPadding: [6, 3],
+            pickable: false,
+            parameters: { depthTest: false },
+            updateTriggers: { getPixelOffset: [badgeSize] },
+          })
+        );
+      }
 
-    // ─── Clan badge: dark backdrop disc + masked white clan crest, at the
-    // division's center. Plain deck.gl icon loading — no canvas involved.
-    if (clanBadgeData.length) {
-      layers.push(
-        new ScatterplotLayer({
-          id: 'clan-badge-backdrop',
-          data: clanBadgeData,
-          getPosition: d => d.position,
-          getRadius: badgeSize / 2 + 3,
-          radiusUnits: 'pixels',
-          radiusMinPixels: 14,
-          stroked: true,
-          filled: true,
-          getFillColor: [10, 10, 10, 205],
-          getLineColor: d => hexToRgba(d.clan ? clanTint(d.clan) : (d.color || '#888888'), 255),
-          getLineWidth: 2,
-          lineWidthUnits: 'pixels',
-          pickable: false,
-          parameters: { depthTest: false },
-          updateTriggers: { getRadius: [badgeSize] },
-        })
-      );
-    }
+      // ─── Clan badge: dark backdrop disc + masked white clan crest, at the
+      // division's center. Plain deck.gl icon loading — no canvas involved.
+      if (clanBadgeData.length) {
+        layers.push(
+          new ScatterplotLayer({
+            id: 'clan-badge-backdrop',
+            data: clanBadgeData,
+            getPosition: d => d.position,
+            getRadius: badgeSize / 2 + 3,
+            radiusUnits: 'pixels',
+            radiusMinPixels: 14,
+            stroked: true,
+            filled: true,
+            getFillColor: [10, 10, 10, 205],
+            getLineColor: d => hexToRgba(d.clan ? clanTint(d.clan) : (d.color || '#888888'), 255),
+            getLineWidth: 2,
+            lineWidthUnits: 'pixels',
+            pickable: false,
+            parameters: { depthTest: false },
+            updateTriggers: { getRadius: [badgeSize] },
+          })
+        );
+      }
 
-    // ─── Avatar badge: the owner's actual photo — masked to a circle,
-    // sitting squarely inside the clan backdrop disc.
-    if (avatarBadgeData.length) {
-      layers.push(
-        new IconLayer({
-          id: 'avatar-badges',
-          data: avatarBadgeData,
-          getPosition: d => d.position,
-          getIcon: d => ({ url: d.image || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=', width: 256, height: 256 }),
-          getSize: badgeSize,
-          sizeUnits: 'pixels',
-          pickable: false,
-          parameters: { depthTest: false },
-          updateTriggers: { getSize: [badgeSize] },
-          transitions: { getSize: 150 },
-        })
-      );
-    }
+      // ─── Avatar badge: the owner's actual photo — masked to a circle,
+      // sitting squarely inside the clan backdrop disc.
+      if (avatarBadgeData.length) {
+        layers.push(
+          new IconLayer({
+            id: 'avatar-badges',
+            data: avatarBadgeData,
+            getPosition: d => d.position,
+            getIcon: d => ({ url: d.image || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=', id: d.image || 'avatar-fallback', width: 256, height: 256 }),
+            getSize: badgeSize,
+            sizeUnits: 'pixels',
+            pickable: false,
+            parameters: { depthTest: false },
+            updateTriggers: { getSize: [badgeSize] },
+            transitions: { getSize: 150 },
+          })
+        );
+      }
 
-    // ─── Clan badge overlay: rendered on top of the avatar
-    const clanIconsData = clanBadgeData.filter(d => !!d.clan);
-    if (clanIconsData.length) {
-      layers.push(
-        new IconLayer({
-          id: 'clan-badges-shadow',
-          data: clanIconsData,
-          getPosition: d => d.position,
-          getIcon: d => ({ url: symlogo(d.clan) || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=', id: d.clan, width: 150, height: 150, mask: true }),
-          getSize: badgeSize * 0.45,
-          sizeUnits: 'pixels',
-          getColor: [0, 0, 0, 255],
-          getPixelOffset: [1, 1],
-          pickable: false,
-          parameters: { depthTest: false },
-          updateTriggers: { getSize: [badgeSize] },
-          transitions: { getSize: 150 },
-        }),
-        new IconLayer({
-          id: 'clan-badges',
-          data: clanIconsData,
-          getPosition: d => d.position,
-          getIcon: d => ({ url: symlogo(d.clan) || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=', id: d.clan, width: 150, height: 150, mask: true }),
-          getSize: badgeSize * 0.45,
-          sizeUnits: 'pixels',
-          getColor: [240, 240, 245, 255],
-          getPixelOffset: [0, 0],
-          pickable: false,
-          parameters: { depthTest: false },
-          updateTriggers: { getSize: [badgeSize] },
-          transitions: { getSize: 150 },
-        })
-      );
-    }
+      // ─── Clan badge overlay: rendered on top of the avatar
+      const clanIconsData = clanBadgeData.filter(d => !!d.clan && !avatarCache[d.division]);
+      if (clanIconsData.length) {
+        layers.push(
+          new IconLayer({
+            id: 'clan-badges-shadow',
+            data: clanIconsData,
+            getPosition: d => d.position,
+            getIcon: d => ({ url: symlogo(d.clan) || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=', id: d.clan, width: 150, height: 150, mask: true }),
+            getSize: badgeSize * 0.45,
+            sizeUnits: 'pixels',
+            getColor: [0, 0, 0, 255],
+            getPixelOffset: [1, 1],
+            pickable: false,
+            parameters: { depthTest: false },
+            updateTriggers: { getSize: [badgeSize] },
+            transitions: { getSize: 150 },
+          }),
+          new IconLayer({
+            id: 'clan-badges',
+            data: clanIconsData,
+            getPosition: d => d.position,
+            getIcon: d => ({ url: symlogo(d.clan) || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=', id: d.clan, width: 150, height: 150, mask: true }),
+            getSize: badgeSize * 0.45,
+            sizeUnits: 'pixels',
+            getColor: [240, 240, 245, 255],
+            getPixelOffset: [0, 0],
+            pickable: false,
+            parameters: { depthTest: false },
+            updateTriggers: { getSize: [badgeSize] },
+            transitions: { getSize: 150 },
+          })
+        );
+      }
 
-    // ─── Clan text logo, underneath the badge pair ──
-    if (clanLabelData.length) {
-      layers.push(
-        new IconLayer({
-          id: 'clan-name-labels',
-          data: clanLabelData,
-          getPosition: d => d.position,
-          getIcon: d => ({ url: textlogo(d.text) || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=', width: 300, height: 153 }),
-          getSize: badgeSize * 2,
-          sizeUnits: 'pixels',
-          getColor: [230, 230, 235, 255],
-          getPixelOffset: [0, badgeSize / 2 + 18],
-          pickable: false,
-          parameters: { depthTest: false },
-          updateTriggers: { getSize: [badgeSize], getPixelOffset: [badgeSize] },
-          transitions: { getSize: 150 },
-        })
-      );
-    }
-    if (abatonBadgeData.length) {
-      layers.push(
-        new ScatterplotLayer({
-          id: 'abaton-badge-backdrop',
-          data: abatonBadgeData,
-          getPosition: d => d.position,
-          getRadius: badgeSize / 2 + 3,
-          radiusUnits: 'pixels',
-          radiusMinPixels: 14,
-          stroked: true,
-          filled: true,
-          getFillColor: [12, 4, 4, 210],
-          getLineColor: [239, 68, 68, 255],
-          getLineWidth: 2,
-          lineWidthUnits: 'pixels',
-          pickable: false,
-          parameters: { depthTest: false },
-          updateTriggers: { getRadius: [badgeSize] },
-        })
-      );
-      layers.push(
-        new IconLayer({
-          id: 'abaton-badges',
-          data: abatonBadgeData,
-          getPosition: d => d.position,
-          getIcon: () => ({ url: NO_ENTRY_ICON, width: 64, height: 64 }),
-          getSize: badgeSize,
-          sizeUnits: 'pixels',
-          pickable: false,
-          parameters: { depthTest: false },
-          updateTriggers: { getSize: [badgeSize] },
-          transitions: { getSize: 150 },
-        })
-      );
-    }
+      // ─── Clan text logo, underneath the badge pair ──
+      if (clanLabelData.length) {
+        layers.push(
+          new IconLayer({
+            id: 'clan-name-labels-outline',
+            data: clanLabelData,
+            getPosition: d => d.position,
+            getIcon: d => {
+              const safeName = d.text.replace(/^The\s+/i, '').replace(/\s+/g, '_');
+              return { url: `/img/clans/text/300px-${safeName}_logo.png`, id: d.text + '-outline', mask: true };
+            },
+            getSize: badgeSize * 0.85,
+            sizeUnits: 'pixels',
+            getColor: [80, 80, 80, 255],
+            getPixelOffset: [1, badgeSize / 2 + 16],
+            pickable: false,
+            parameters: { depthTest: false },
+            updateTriggers: { getSize: [badgeSize], getPixelOffset: [badgeSize] },
+            transitions: { getSize: 150 },
+          }),
+          new IconLayer({
+            id: 'clan-name-labels',
+            data: clanLabelData,
+            getPosition: d => d.position,
+            getIcon: d => {
+              const safeName = d.text.replace(/^The\s+/i, '').replace(/\s+/g, '_');
+              return { url: `/img/clans/text/300px-${safeName}_logo.png`, id: d.text, mask: true };
+            },
+            getSize: badgeSize * 0.85,
+            sizeUnits: 'pixels',
+            getColor: [255, 255, 255, 255],
+            getPixelOffset: [0, badgeSize / 2 + 15],
+            pickable: false,
+            parameters: { depthTest: false },
+            updateTriggers: { getSize: [badgeSize], getPixelOffset: [badgeSize] },
+            transitions: { getSize: 150 },
+          })
+        );
+      }
+      if (abatonBadgeData.length) {
+        layers.push(
+          new ScatterplotLayer({
+            id: 'abaton-badge-backdrop',
+            data: abatonBadgeData,
+            getPosition: d => d.position,
+            getRadius: badgeSize / 2 + 3,
+            radiusUnits: 'pixels',
+            radiusMinPixels: 14,
+            stroked: true,
+            filled: true,
+            getFillColor: [12, 4, 4, 210],
+            getLineColor: [239, 68, 68, 255],
+            getLineWidth: 2,
+            lineWidthUnits: 'pixels',
+            pickable: false,
+            parameters: { depthTest: false },
+            updateTriggers: { getRadius: [badgeSize] },
+          })
+        );
+        layers.push(
+          new IconLayer({
+            id: 'abaton-badges',
+            data: abatonBadgeData,
+            getPosition: d => d.position,
+            getIcon: () => ({ url: NO_ENTRY_ICON, id: 'abaton', width: 64, height: 64 }),
+            getSize: badgeSize,
+            sizeUnits: 'pixels',
+            pickable: false,
+            parameters: { depthTest: false },
+            updateTriggers: { getSize: [badgeSize] },
+            transitions: { getSize: 150 },
+          })
+        );
+      }
 
 
 
-    // ─── Hunting-difficulty badge — a blood-red pill with the number at each
-    // division centre.
-    if (huntingDiffOn && huntBadgeData.length) {
-      layers.push(
-        new TextLayer({
-          id: 'hunt-badges',
-          data: huntBadgeData,
-          getPosition: d => d.position,
-          getText: d => `HUNT ${d.difficulty}`,
-          getSize: 11,
-          getColor: [255, 235, 235, 255],
-          getPixelOffset: [0, 16],
-          fontFamily: '"Courier New", monospace',
-          fontWeight: 800,
-          billboard: true,
-          background: true,
-          getBackgroundColor: d => (
-            d.difficulty >= 7 ? [130, 8, 12, 235]
-            : d.difficulty >= 5 ? [150, 22, 22, 225]
-            : [90, 20, 22, 210]
-          ),
-          backgroundPadding: [6, 3],
-          parameters: { depthTest: false },
-          pickable: false,
-          updateTriggers: { getBackgroundColor: [huntBadgeData.length] },
-        })
-      );
-    }
+      // ─── Hunting-difficulty badge — a blood-red pill with the number at each
+      // division centre.
+      if (huntingDiffOn && huntBadgeData.length) {
+        layers.push(
+          new TextLayer({
+            id: 'hunt-badges',
+            data: huntBadgeData,
+            getPosition: d => d.position,
+            getText: d => `HUNT ${d.difficulty}`,
+            getSize: 11,
+            getColor: [255, 235, 235, 255],
+            getPixelOffset: [0, 16],
+            fontFamily: '"Courier New", monospace',
+            fontWeight: 800,
+            billboard: true,
+            background: true,
+            getBackgroundColor: d => (
+              d.difficulty >= 7 ? [130, 8, 12, 235]
+                : d.difficulty >= 5 ? [150, 22, 22, 225]
+                  : [90, 20, 22, 210]
+            ),
+            backgroundPadding: [6, 3],
+            parameters: { depthTest: false },
+            pickable: false,
+            updateTriggers: { getBackgroundColor: [huntBadgeData.length] },
+          })
+        );
+      }
 
     } // end if (!cleanMap) — ownership decoration
 
@@ -1707,11 +1728,11 @@ export default function Domains() {
             jointRounded: true,
             ...(t.dash
               ? {
-                  getDashArray: t.dash,
-                  dashJustified: true,
-                  dashGapPickable: false,
-                  extensions: [new PathStyleExtension({ dash: true })],
-                }
+                getDashArray: t.dash,
+                dashJustified: true,
+                dashGapPickable: false,
+                extensions: [new PathStyleExtension({ dash: true })],
+              }
               : {}),
             parameters: { depthTest: false },
             pickable: true,
@@ -1796,10 +1817,10 @@ export default function Domains() {
             jointRounded: true,
             ...(g.dash
               ? {
-                  getDashArray: g.dash,
-                  dashJustified: true,
-                  extensions: [new PathStyleExtension({ dash: true })],
-                }
+                getDashArray: g.dash,
+                dashJustified: true,
+                extensions: [new PathStyleExtension({ dash: true })],
+              }
               : {}),
             parameters: { depthTest: false },
             pickable: true,
@@ -1841,9 +1862,9 @@ export default function Domains() {
           getSize: d => (d.siteType === 'new_entrance' || d.siteType === 'server_room' || d.siteType === 'furnace' ? 13 : 11),
           getColor: d => (
             d.siteType === 'new_entrance' ? [255, 214, 92, 255]
-            : d.siteType === 'server_room' ? [110, 240, 240, 255]
-            : d.siteType === 'furnace' ? [255, 150, 70, 255]
-            : [222, 228, 210, 255]
+              : d.siteType === 'server_room' ? [110, 240, 240, 255]
+                : d.siteType === 'furnace' ? [255, 150, 70, 255]
+                  : [222, 228, 210, 255]
           ),
           getPixelOffset: d => [0, d.siteType === 'new_entrance' || d.siteType === 'server_room' || d.siteType === 'furnace' ? -16 : -12],
           fontFamily: '"Courier New", monospace',
@@ -2218,7 +2239,7 @@ export default function Domains() {
                           }
                         />
                       ))}
-                  <span className={styles.layerSubHint}>Rivers &amp; aqueduct real · tunnels imagined</span>
+                      <span className={styles.layerSubHint}>Rivers &amp; aqueduct real · tunnels imagined</span>
                     </LayerRow>
                   )}
 
@@ -2307,57 +2328,57 @@ export default function Domains() {
                 transition={{ duration: 0.22, ease: 'easeInOut' }}
                 className={styles.claimsPanelInner}
               >
-          {ownedClaims.length === 0 ? (
-            <p className={styles.claimsPanelEmpty}>No territory claimed.</p>
-          ) : (
-            <div className={styles.claimsScroll}>
-              {ownedClaims
-                .slice()
-                .sort((a, b) => Number(a.division) - Number(b.division))
-                .map(c => {
-                  const name = DIVISION_NAMES[c.division] || `Division ${c.division}`;
-                  const displayName = c.live_name || c.owner_name || 'Unclaimed';
-                  return (
-                    <motion.button
-                      initial={{ opacity: 0, x: 20 }}
-                      whileInView={{ opacity: 1, x: 0 }}
-                      viewport={{ once: false, amount: 0.1 }}
-                      transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                      key={c.division}
-                      className={`${styles.claimItem} ${selectedDivision === Number(c.division) ? styles.claimItemActive : ''}`}
-                      onClick={() => handleJumpToDivision(c.division)}
-                      style={{ '--claim-color': c.color || '#888888' }}
-                    >
-                      <span className={styles.claimColorBar} />
-                      {c.is_abaton ? (
-                        <div style={{ marginLeft: '12px', flexShrink: 0, width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                          <img src="/img/ui/abaton.jpg" alt="Abaton" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        </div>
-                      ) : (
-                        <Avatar userId={c.user_id} npcId={c.owner_npc_id} size={36} style={{ marginLeft: '12px', flexShrink: 0, borderRadius: '50%' }} fallback={`https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random`} />
-                      )}
-                      <div className={styles.claimBody} style={{ marginLeft: '12px', textAlign: 'left' }}>
-                        <span className={styles.claimOwner}>{c.is_abaton ? 'Abaton' : displayName}</span>
-                        <span className={styles.claimMeta}>
-                          <span className={styles.claimDivNum}>#{c.division}</span>
-                          <span className={styles.claimDivName}>{name}</span>
-                          {HUNTING_DIFFICULTY[c.division]?.difficulty != null && (
-                            <span
-                              className={styles.railHunt}
-                              data-diff={HUNTING_DIFFICULTY[c.division].difficulty}
-                              title={`Hunting Difficulty ${HUNTING_DIFFICULTY[c.division].difficulty} — ${huntingLabel(HUNTING_DIFFICULTY[c.division].difficulty)}`}
-                            >
-                              <span className="material-symbols-outlined">water_drop</span>
-                              {HUNTING_DIFFICULTY[c.division].difficulty}
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                    </motion.button>
-                  );
-                })}
-            </div>
-          )}
+                {ownedClaims.length === 0 ? (
+                  <p className={styles.claimsPanelEmpty}>No territory claimed.</p>
+                ) : (
+                  <div className={styles.claimsScroll}>
+                    {ownedClaims
+                      .slice()
+                      .sort((a, b) => Number(a.division) - Number(b.division))
+                      .map(c => {
+                        const name = DIVISION_NAMES[c.division] || `Division ${c.division}`;
+                        const displayName = c.live_name || c.owner_name || 'Unclaimed';
+                        return (
+                          <motion.button
+                            initial={{ opacity: 0, x: 20 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            viewport={{ once: false, amount: 0.1 }}
+                            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                            key={c.division}
+                            className={`${styles.claimItem} ${selectedDivision === Number(c.division) ? styles.claimItemActive : ''}`}
+                            onClick={() => handleJumpToDivision(c.division)}
+                            style={{ '--claim-color': c.color || '#888888' }}
+                          >
+                            <span className={styles.claimColorBar} />
+                            {c.is_abaton ? (
+                              <div style={{ marginLeft: '12px', flexShrink: 0, width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                                <img src="/img/ui/abaton.jpg" alt="Abaton" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              </div>
+                            ) : (
+                              <Avatar userId={c.user_id} npcId={c.owner_npc_id} size={36} style={{ marginLeft: '12px', flexShrink: 0, borderRadius: '50%' }} fallback={`https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random`} />
+                            )}
+                            <div className={styles.claimBody} style={{ marginLeft: '12px', textAlign: 'left' }}>
+                              <span className={styles.claimOwner}>{c.is_abaton ? 'Abaton' : displayName}</span>
+                              <span className={styles.claimMeta}>
+                                <span className={styles.claimDivNum}>#{c.division}</span>
+                                <span className={styles.claimDivName}>{name}</span>
+                                {HUNTING_DIFFICULTY[c.division]?.difficulty != null && (
+                                  <span
+                                    className={styles.railHunt}
+                                    data-diff={HUNTING_DIFFICULTY[c.division].difficulty}
+                                    title={`Hunting Difficulty ${HUNTING_DIFFICULTY[c.division].difficulty} — ${huntingLabel(HUNTING_DIFFICULTY[c.division].difficulty)}`}
+                                  >
+                                    <span className="material-symbols-outlined">water_drop</span>
+                                    {HUNTING_DIFFICULTY[c.division].difficulty}
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+                          </motion.button>
+                        );
+                      })}
+                  </div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
@@ -2640,11 +2661,11 @@ export default function Domains() {
                           <option value="">— select {assignTarget === 'character' ? 'a character' : 'an NPC'} —</option>
                           {assignTarget === 'character'
                             ? (assignablesData?.characters || []).map(c => (
-                                <option key={c.id} value={c.id}>{c.name} ({c.player_name}){c.clan ? ` · ${c.clan}` : ''}</option>
-                              ))
+                              <option key={c.id} value={c.id}>{c.name} ({c.player_name}){c.clan ? ` · ${c.clan}` : ''}</option>
+                            ))
                             : (assignablesData?.npcs || []).map(n => (
-                                <option key={n.id} value={n.id}>{n.name}{n.clan ? ` · ${n.clan}` : ''}</option>
-                              ))
+                              <option key={n.id} value={n.id}>{n.name}{n.clan ? ` · ${n.clan}` : ''}</option>
+                            ))
                           }
                         </select>
 
