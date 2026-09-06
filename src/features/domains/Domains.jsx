@@ -1429,14 +1429,11 @@ export default function Domains() {
             id: 'clan-name-labels-outline',
             data: clanLabelData,
             getPosition: d => d.position,
-            getIcon: d => {
-              const safeName = d.text.replace(/^The\s+/i, '').replace(/\s+/g, '_');
-              return { url: `/img/clans/text/300px-${safeName}_logo.png`, id: d.text + '-outline', mask: true };
-            },
-            getSize: badgeSize * 0.85,
+            getIcon: d => ({ url: textlogo(d.text) || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=', id: d.text + '-outline', mask: true }),
+            getSize: badgeSize * 0.8, // VERY SMALL: strictly 80% of the circle's size!
             sizeUnits: 'pixels',
-            getColor: [80, 80, 80, 255],
-            getPixelOffset: [1, badgeSize / 2 + 16],
+            getColor: [50, 50, 50, 255],
+            getPixelOffset: [1, badgeSize / 2 + 9],
             pickable: false,
             parameters: { depthTest: false },
             updateTriggers: { getSize: [badgeSize], getPixelOffset: [badgeSize] },
@@ -1446,14 +1443,11 @@ export default function Domains() {
             id: 'clan-name-labels',
             data: clanLabelData,
             getPosition: d => d.position,
-            getIcon: d => {
-              const safeName = d.text.replace(/^The\s+/i, '').replace(/\s+/g, '_');
-              return { url: `/img/clans/text/300px-${safeName}_logo.png`, id: d.text, mask: true };
-            },
-            getSize: badgeSize * 0.85,
+            getIcon: d => ({ url: textlogo(d.text) || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=', id: d.text, mask: true }),
+            getSize: badgeSize * 0.8, // VERY SMALL: strictly 80% of the circle's size!
             sizeUnits: 'pixels',
             getColor: [255, 255, 255, 255],
-            getPixelOffset: [0, badgeSize / 2 + 15],
+            getPixelOffset: [0, badgeSize / 2 + 8],
             pickable: false,
             parameters: { depthTest: false },
             updateTriggers: { getSize: [badgeSize], getPixelOffset: [badgeSize] },
