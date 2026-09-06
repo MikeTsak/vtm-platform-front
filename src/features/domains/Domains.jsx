@@ -2,6 +2,7 @@ import React, { useMemo, useEffect, useState, useRef, useCallback, useContext } 
 import { Map as MapGL, Source, Layer } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import DeckGL from '@deck.gl/react';
+import { FlyToInterpolator } from '@deck.gl/core';
 import { GeoJsonLayer, BitmapLayer, SolidPolygonLayer, TextLayer, IconLayer, ScatterplotLayer, PathLayer } from '@deck.gl/layers';
 import { MaskExtension, PathStyleExtension } from '@deck.gl/extensions';
 import MiniSearch from 'minisearch';
@@ -45,6 +46,15 @@ const GROUP_ACCENT_COLORS = {
 // a pale violet reads as "system/storyteller-controlled" for NPC domains.
 const NPC_ACCENT_COLOR = '#c4b5fd';
 
+const INITIAL_VIEW_STATE = {
+  longitude: 23.7275,
+  latitude: 37.9838,
+  zoom: 12,
+  minZoom: 11,
+  pitch: 45,
+  bearing: -12
+};
+
 // ── Athens transit overlay ────────────────────────────────
 // Below this zoom only interchange stations are named; at or above it every
 // visible station gets a label.
@@ -79,6 +89,10 @@ function loadTransitPrefs() {
 const CLEAN_MAP_LS_KEY = 'domains.cleanMap.v1';
 function loadCleanMap() {
   try { return localStorage.getItem(CLEAN_MAP_LS_KEY) === '1'; } catch (_) { return false; }
+}
+const MUNI_OUTLINES_LS_KEY = 'domains.muniOutlines.v1';
+function loadMuniOutlines() {
+  try { return localStorage.getItem(MUNI_OUTLINES_LS_KEY) !== '0'; } catch (_) { return true; }
 }
 
 // ── Hunting difficulty ──────────────────────────────────────
@@ -162,16 +176,16 @@ function LayerRow({ label, on, onToggle, accent, title, children }) {
 }
 
 // ── Hunting-difficulty blood-droplet graphic ─────────────
-// `n` filled droplets out of HUNTING_DIFFICULTY_MAX. `size` in px.
+// `n` filled droplets. `size` in px.
 function HuntDroplets({ n, size = 13, showNumber = false }) {
   if (!n) return null;
   return (
-    <span className={styles.huntDroplets} title={`Hunting Difficulty ${n}/${HUNTING_DIFFICULTY_MAX} — ${huntingLabel(n)}`}>
-      {Array.from({ length: HUNTING_DIFFICULTY_MAX }, (_, i) => (
+    <span className={styles.huntDroplets} title={`Hunting Difficulty ${n} — ${huntingLabel(n)}`}>
+      {Array.from({ length: n }, (_, i) => (
         <span
           key={i}
           className={`material-symbols-outlined ${styles.huntDrop}`}
-          data-filled={i < n}
+          data-filled={true}
           style={{ fontSize: size }}
         >
           water_drop
@@ -335,6 +349,7 @@ export default function Domains() {
 
   const [avatarCache, setAvatarCache] = useState({});
   const [mapReady, setMapReady] = useState(false);
+  const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
 
   // Badges should feel like part of the 3D scene, not fixed HUD stickers —
   // grow a bit as you zoom in, shrink as you zoom out. Rounded to quarter
@@ -419,6 +434,12 @@ export default function Domains() {
     try { localStorage.setItem(CLEAN_MAP_LS_KEY, cleanMap ? '1' : '0'); } catch (_) { /* noop */ }
   }, [cleanMap]);
   const toggleCleanMap = useCallback(() => setCleanMap(v => !v), []);
+
+  const [muniOutlinesOn, setMuniOutlinesOn] = useState(loadMuniOutlines);
+  useEffect(() => {
+    try { localStorage.setItem(MUNI_OUTLINES_LS_KEY, muniOutlinesOn ? '1' : '0'); } catch (_) { /* noop */ }
+  }, [muniOutlinesOn]);
+  const toggleMuniOutlines = useCallback(() => setMuniOutlinesOn(v => !v), []);
 
   // ── Hunting difficulty toggle ──
   const [huntingDiffOn, setHuntingDiffOn] = useState(loadHuntingDiff);
@@ -1221,10 +1242,6 @@ export default function Domains() {
           getSize: badgeSize * 0.6,
           sizeUnits: 'pixels',
           getColor: [240, 240, 245, 235],
-          loadOptions: {
-            mimeType: 'image/webp',
-            image: { type: 'image' }
-          },
           pickable: false,
           parameters: { depthTest: false },
           updateTriggers: { getSize: [badgeSize] },
@@ -1312,12 +1329,45 @@ export default function Domains() {
       );
     }
 
+
+
+    // ─── Hunting-difficulty badge — a blood-red pill with the number at each
+    // division centre.
+    if (huntingDiffOn && huntBadgeData.length) {
+      layers.push(
+        new TextLayer({
+          id: 'hunt-badges',
+          data: huntBadgeData,
+          getPosition: d => d.position,
+          getText: d => `HUNT ${d.difficulty}`,
+          getSize: 11,
+          getColor: [255, 235, 235, 255],
+          getPixelOffset: [0, 16],
+          fontFamily: '"Courier New", monospace',
+          fontWeight: 800,
+          billboard: true,
+          background: true,
+          getBackgroundColor: d => (
+            d.difficulty >= 7 ? [130, 8, 12, 235]
+            : d.difficulty >= 5 ? [150, 22, 22, 225]
+            : [90, 20, 22, 210]
+          ),
+          backgroundPadding: [6, 3],
+          parameters: { depthTest: false },
+          pickable: false,
+          updateTriggers: { getBackgroundColor: [huntBadgeData.length] },
+        })
+      );
+    }
+
+    } // end if (!cleanMap) — ownership decoration
+
     // ─── Municipality/district grouping overlay (flat, ownership-agnostic) ──
     // depthTest is off on purpose: these are ground-level, but claimed
     // divisions extrude upward into 3D "buildings" that would otherwise
     // occlude a flat line/label sitting behind them from this camera angle.
     // Treat them like a HUD annotation that always reads on top.
-    if (groupOverlayFeatures.length) {
+    if (muniOutlinesOn && groupOverlayFeatures.length) {
       // Soft outer glow pass, then a crisp bright pass on top — same trick
       // as the selection glow, just static, so the border actually pops
       // against a busy, colorful, already-claimed map.
@@ -1369,37 +1419,6 @@ export default function Domains() {
         })
       );
     }
-
-    // ─── Hunting-difficulty badge — a blood-red pill with the number at each
-    // division centre.
-    if (huntingDiffOn && huntBadgeData.length) {
-      layers.push(
-        new TextLayer({
-          id: 'hunt-badges',
-          data: huntBadgeData,
-          getPosition: d => d.position,
-          getText: d => `HUNT ${d.difficulty}`,
-          getSize: 11,
-          getColor: [255, 235, 235, 255],
-          getPixelOffset: [0, 16],
-          fontFamily: '"Courier New", monospace',
-          fontWeight: 800,
-          billboard: true,
-          background: true,
-          getBackgroundColor: d => (
-            d.difficulty >= 7 ? [130, 8, 12, 235]
-            : d.difficulty >= 5 ? [150, 22, 22, 225]
-            : [90, 20, 22, 210]
-          ),
-          backgroundPadding: [6, 3],
-          parameters: { depthTest: false },
-          pickable: false,
-          updateTriggers: { getBackgroundColor: [huntBadgeData.length] },
-        })
-      );
-    }
-
-    } // end if (!cleanMap) — ownership decoration
 
     // ─── Athens transit overlay — metro / tram / suburban lines + stations ──
     // Ground-level annotation drawn over the 3D extrusions (depthTest off, the
@@ -1727,7 +1746,7 @@ export default function Domains() {
     }
 
     return layers;
-  }, [geoJsonData, selectedDivision, hoveredDivision, hoveredFeature, avatarCache, onDeckHover, onDeckClick, groupOverlayFeatures, groupLabelData, npcFeatures, npcLabelData, clanBadgeData, avatarBadgeData, clanLabelData, abatonBadgeData, abatonFeatures, claimByDiv, badgeSize, badgeOffset, transitPathsSolid, transitPathsDashed, transitStationDots, transitLabelData, catacombPassageTiers, catacombSiteDots, catacombLabelData, necroDrawGroups, necroSiteDots, necroLabelData, cleanMap, onOverlayHover, huntBadgeData, huntingDiffOn]);
+  }, [geoJsonData, selectedDivision, hoveredDivision, hoveredFeature, avatarCache, onDeckHover, onDeckClick, groupOverlayFeatures, groupLabelData, npcFeatures, npcLabelData, clanBadgeData, avatarBadgeData, clanLabelData, abatonBadgeData, abatonFeatures, claimByDiv, badgeSize, badgeOffset, transitPathsSolid, transitPathsDashed, transitStationDots, transitLabelData, catacombPassageTiers, catacombSiteDots, catacombLabelData, necroDrawGroups, necroSiteDots, necroLabelData, cleanMap, onOverlayHover, huntBadgeData, huntingDiffOn, muniOutlinesOn]);
 
   // ── Error state ─────────────────────────────────────────
   if (!geoJsonData) {
@@ -1737,15 +1756,6 @@ export default function Domains() {
       </div>
     );
   }
-
-  const INITIAL_VIEW_STATE = {
-    longitude: 23.7275,
-    latitude: 37.9838,
-    zoom: 12,
-    minZoom: 11,
-    pitch: 45,
-    bearing: -12
-  };
 
   const isLoading = isClaimsLoading;
   const safety = selectedDivisionInfo ? safetyTier(selectedDivisionInfo.safety_rating) : null;
@@ -1807,12 +1817,13 @@ export default function Domains() {
 
         {/* ── DECK.GL + MAPLIBRE ── */}
         <DeckGL
-          initialViewState={INITIAL_VIEW_STATE}
+          viewState={viewState}
           controller={{ dragRotate: true, touchRotate: true, minPitch: 0, maxPitch: 65 }}
           layers={deckLayers}
           getCursor={({ isHovering }) => isHovering ? 'pointer' : 'grab'}
-          onViewStateChange={({ viewState }) => {
-            const rounded = Math.round(viewState.zoom * 4) / 4;
+          onViewStateChange={({ viewState: newViewState }) => {
+            setViewState(newViewState);
+            const rounded = Math.round(newViewState.zoom * 4) / 4;
             setZoom(z => (z === rounded ? z : rounded));
           }}
           style={{ width: '100%', height: '100%' }}
@@ -2009,6 +2020,14 @@ export default function Domains() {
                   />
 
                   <LayerRow
+                    label="Municipality outlines"
+                    on={muniOutlinesOn}
+                    onToggle={toggleMuniOutlines}
+                    accent="slate"
+                    title="Group contiguous communities"
+                  />
+
+                  <LayerRow
                     label="Hunting difficulty"
                     on={huntingDiffOn}
                     onToggle={toggleHuntingDiff}
@@ -2052,7 +2071,7 @@ export default function Domains() {
                           }
                         />
                       ))}
-                      <span className={styles.layerSubHint}>Rivers &amp; aqueduct real · tunnels imagined</span>
+                  <span className={styles.layerSubHint}>Rivers &amp; aqueduct real · tunnels imagined</span>
                     </LayerRow>
                   )}
 
@@ -2095,6 +2114,29 @@ export default function Domains() {
               )}
             </AnimatePresence>
           </div>
+          <button
+            type="button"
+            className={styles.resetTiltBtn}
+            onClick={() => {
+              const isTopDown = viewState.pitch === 0;
+              setViewState(v => ({
+                ...v,
+                pitch: isTopDown ? INITIAL_VIEW_STATE.pitch : 0,
+                bearing: isTopDown ? INITIAL_VIEW_STATE.bearing : 0,
+                transitionDuration: 600,
+                transitionInterpolator: new FlyToInterpolator()
+              }));
+            }}
+            style={{
+              pointerEvents: 'auto',
+              border: viewState.pitch === 0 ? '1px solid var(--tint)' : undefined,
+              color: viewState.pitch === 0 ? 'var(--tint)' : undefined
+            }}
+            title={viewState.pitch === 0 ? "Reset map to angled 3D view" : "Reset map to top-down view"}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '18px', textTransform: 'none' }}>explore</span>
+            {viewState.pitch === 0 ? "3D VIEW" : "TOP-DOWN"}
+          </button>
         </div>
 
         {/* ── RIGHT PANEL: Claimed Divisions (collapsible) ── */}
@@ -2212,13 +2254,17 @@ export default function Domains() {
                       )}
                     </div>
                     {selectedDivisionInfo.clan && (
-                      <img
+                      <div
                         className={styles.dossierClanBadge}
-                        src={symlogo(selectedDivisionInfo.clan)}
-                        alt={selectedDivisionInfo.clan}
                         title={selectedDivisionInfo.clan}
                         style={{ '--clan-tint': clanTint(selectedDivisionInfo.clan) }}
-                      />
+                      >
+                        <img
+                          src={symlogo(selectedDivisionInfo.clan)}
+                          alt={selectedDivisionInfo.clan}
+                          style={{ width: '100%', height: '100%', objectFit: 'contain', filter: 'brightness(0) invert(1)', opacity: 0.8 }}
+                        />
+                      </div>
                     )}
                   </div>
                   <div className={styles.dossierTitleBlock}>
@@ -2324,10 +2370,10 @@ export default function Domains() {
                         <span className={styles.statValue}>~{selectedDivisionInfo.population.population.toLocaleString()} residents</span>
                         {selectedDivisionInfo.population.siblings.length > 0 ? (
                           <span className={styles.statSub}>
-                            Figure covers the whole {selectedDivisionInfo.population.groupLabel}, not {selectedDivisionInfo.population.placeLabel} alone — shared with division{selectedDivisionInfo.population.siblings.length > 1 ? 's' : ''} {selectedDivisionInfo.population.siblings.map(n => `#${n}`).join(', ')}
+                            Figure covers the whole <span style={{ color: GROUP_ACCENT_COLORS[selectedDivisionInfo.population.group] || 'inherit' }}>{selectedDivisionInfo.population.groupLabel}</span>, not {selectedDivisionInfo.population.placeLabel} alone — shared with division{selectedDivisionInfo.population.siblings.length > 1 ? 's' : ''} {selectedDivisionInfo.population.siblings.map(n => `#${n}`).join(', ')}
                           </span>
                         ) : (
-                          <span className={styles.statSub}>{selectedDivisionInfo.population.groupLabel}</span>
+                          <span className={styles.statSub}><span style={{ color: GROUP_ACCENT_COLORS[selectedDivisionInfo.population.group] || 'inherit' }}>{selectedDivisionInfo.population.groupLabel}</span></span>
                         )}
                       </div>
                     )}

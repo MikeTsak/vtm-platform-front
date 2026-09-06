@@ -1,4 +1,4 @@
-﻿// src/data/clans.js
+// src/data/clans.js
 // Single source of truth for the clan roster used across the character
 // creator (ClanPicker, PredatorStep, CharacterSetup, ReviewStep). Previously
 // this list was copy-pasted across those files, which is how Ravnos,
@@ -90,22 +90,22 @@ const fileify = (c) => (NAME_OVERRIDES[c] || c).replace(/\s+/g, '_');
 // public/img/clans/ copies are left in place untouched for anything still
 // using the old raw path directly).
 const symbolGlobDefault = import.meta.glob('../assets/clans/*.png', {
-  query: { w: '150', format: 'webp' },
+  query: { w: '150' },
   import: 'default',
   eager: true,
 });
 const symbolGlobSrcSet = import.meta.glob('../assets/clans/*.png', {
-  query: { w: '64;150;330', format: 'webp', as: 'srcset' },
+  query: { w: '64;150;330', as: 'srcset' },
   import: 'default',
   eager: true,
 });
 const logoGlobDefault = import.meta.glob('../assets/clans/text/*.png', {
-  query: { w: '150', format: 'webp' },
+  query: { w: '150' },
   import: 'default',
   eager: true,
 });
 const logoGlobSrcSet = import.meta.glob('../assets/clans/text/*.png', {
-  query: { w: '64;150;300', format: 'webp', as: 'srcset' },
+  query: { w: '64;150;300', as: 'srcset' },
   import: 'default',
   eager: true,
 });
