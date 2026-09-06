@@ -16,7 +16,7 @@ import domainsRaw from '../../data/Domains.json';
 import api from '../../core/api';
 import Avatar from '../../components/Avatar';
 import { AuthCtx } from '../../core/AuthContext';
-import { symlogo, clanTint } from '../../data/clans';
+import { symlogo, textlogo, clanTint } from '../../data/clans';
 import { DIVISION_POPULATIONS, POPULATION_GROUP_MEMBERS } from './data/divisionPopulations';
 import { HUNTING_DIFFICULTY, HUNTING_DIFFICULTY_MAX, huntingLabel } from './data/huntingDifficulty';
 import OverlayAccessManager from './OverlayAccessManager';
@@ -265,7 +265,36 @@ async function fetchAvatarAsObjectUrl(url) {
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const blob = await res.blob();
-  return URL.createObjectURL(blob);
+  
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const size = Math.min(img.width, img.height);
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      ctx.beginPath();
+      ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+      
+      const dx = (img.width - size) / 2;
+      const dy = (img.height - size) / 2;
+      ctx.drawImage(img, dx, dy, size, size, 0, 0, size, size);
+      
+      canvas.toBlob(croppedBlob => {
+        if (!croppedBlob) reject(new Error('Canvas toBlob failed'));
+        else resolve(URL.createObjectURL(croppedBlob));
+      }, 'image/png');
+    };
+    img.onerror = (e) => {
+      URL.revokeObjectURL(objectUrl);
+      reject(e);
+    };
+    const objectUrl = URL.createObjectURL(blob);
+    img.src = objectUrl;
+  });
 }
 
 // ── Hex to RGBA array ────────────────────────────────────
@@ -279,6 +308,60 @@ function hexToRgba(hex, alpha = 255) {
     return [r, g, b, alpha];
   }
   return [(bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255, alpha];
+}
+
+// ── Canvas-generated fallback circular avatar with initials ──
+function createFallbackAvatarDataUrl(name, accentColor = '#6366f1') {
+  if (typeof document === 'undefined') return '';
+  const canvas = document.createElement('canvas');
+  const size = 160;
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return '';
+
+  // Circular clip
+  ctx.beginPath();
+  ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.clip();
+
+  // Dark background gradient
+  const grad = ctx.createLinearGradient(0, 0, size, size);
+  grad.addColorStop(0, '#262626');
+  grad.addColorStop(0.5, '#171717');
+  grad.addColorStop(1, '#0a0a0a');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, size, size);
+
+  // Subtle radial tint from accentColor
+  const [r, g, b] = hexToRgba(accentColor);
+  const radGrad = ctx.createRadialGradient(size / 2, size / 2, 10, size / 2, size / 2, size / 2);
+  radGrad.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.35)`);
+  radGrad.addColorStop(1, 'transparent');
+  ctx.fillStyle = radGrad;
+  ctx.fillRect(0, 0, size, size);
+
+  // Initials
+  const cleanName = (name || '?').trim();
+  const words = cleanName.split(/\s+/).filter(Boolean);
+  let initials = '?';
+  if (words.length >= 2) {
+    initials = (words[0][0] + words[words.length - 1][0]).toUpperCase();
+  } else if (words.length === 1) {
+    initials = words[0].slice(0, 2).toUpperCase();
+  }
+
+  ctx.font = 'bold 50px "Cinzel", "Times New Roman", Georgia, serif';
+  ctx.fillStyle = '#f4f4f5';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+  ctx.shadowBlur = 8;
+  ctx.shadowOffsetY = 2;
+  ctx.fillText(initials, size / 2, size / 2 + 2);
+
+  return canvas.toDataURL('image/png');
 }
 
 // A domain_claims row is only "owned" if it actually has an owner — a bare
@@ -662,9 +745,23 @@ export default function Domains() {
         })
         .catch(err => {
           console.warn(`[Domains] Failed to load avatar for division ${division}:`, err.message);
+          const fallbackDataUrl = createFallbackAvatarDataUrl(
+            claim.live_name || claim.owner_name,
+            claim.clan ? clanTint(claim.clan) : (claim.color || '#888888')
+          );
+          setAvatarCache(prev => (prev[division] ? prev : { ...prev, [division]: fallbackDataUrl }));
         });
     }
   }, [ownedClaims, avatarCache, getAvatarUrl]);
+
+  // Invalidate and reload avatars whenever an avatar is updated anywhere in the app
+  useEffect(() => {
+    const handleAvatarUpdated = () => {
+      setAvatarCache({});
+    };
+    window.addEventListener('avatar-updated', handleAvatarUpdated);
+    return () => window.removeEventListener('avatar-updated', handleAvatarUpdated);
+  }, []);
 
   // Revoke every blob URL ever created, but only on unmount — this must NOT
   // depend on [avatarCache], or React re-runs the cleanup (revoking
@@ -710,6 +807,7 @@ export default function Domains() {
           ownerName: claim?.live_name || claim?.owner_name || 'Unclaimed',
           userId: claim?.user_id || null,
           npcId: claim?.owner_npc_id || null,
+          characterId: claim?.owner_character_id || null,
           isAbaton: !!claim?.is_abaton,
           isNpc: isNpcOwned(claim),
           // The one source of truth for "does this division have an owner"
@@ -758,6 +856,7 @@ export default function Domains() {
       color: p.claimColor,
       user_id: p.userId,
       npc_id: p.npcId,
+      character_id: p.characterId,
       is_abaton: p.isAbaton,
       is_npc: p.isNpc,
       clan: p.clan,
@@ -774,6 +873,8 @@ export default function Domains() {
     };
   }, [selectedFeature]);
 
+
+
   const selectedPendingRequests = useMemo(() => {
     if (!selectedDivisionInfo) return [];
     return (requestsByDivision.get(selectedDivisionInfo.number) || []).filter(r => r.status === 'pending');
@@ -785,6 +886,31 @@ export default function Domains() {
   }, [selectedPendingRequests, user]);
 
   const isUnclaimed = selectedDivisionInfo && !selectedDivisionInfo.is_abaton && selectedDivisionInfo.owner === 'Unclaimed';
+
+  const lastSyncKey = useRef('');
+  useEffect(() => {
+    if (!selectedDivisionInfo) return;
+    const key = `${selectedDivisionInfo.number}-${selectedDivisionInfo.character_id}-${selectedDivisionInfo.npc_id}-${selectedPendingRequests[0]?.id}`;
+    if (key !== lastSyncKey.current) {
+      lastSyncKey.current = key;
+      if (selectedDivisionInfo.character_id) {
+        setAssignTarget('character');
+        setAssignId(String(selectedDivisionInfo.character_id));
+        setAssignColor(selectedDivisionInfo.color || '#8b5cf6');
+      } else if (selectedDivisionInfo.npc_id) {
+        setAssignTarget('npc');
+        setAssignId(String(selectedDivisionInfo.npc_id));
+        setAssignColor(selectedDivisionInfo.color || '#8b5cf6');
+      } else if (selectedPendingRequests.length > 0) {
+        setAssignTarget('character');
+        setAssignId(String(selectedPendingRequests[0].character_id));
+        setAssignColor(selectedPendingRequests[0].color || '#8b5cf6');
+      } else {
+        setAssignId('');
+        setAssignColor('#8b5cf6');
+      }
+    }
+  }, [selectedDivisionInfo, selectedPendingRequests]);
 
   // ── Interaction handlers ────────────────────────────────
   const onDeckHover = useCallback((info) => {
@@ -940,12 +1066,18 @@ export default function Domains() {
         abatonFeats.push(f);
         continue;
       }
-      if (!f.properties?.clan) continue;
+      if (!f.properties?.claimed) continue;
       const division = f.properties.__division;
       const [minLng, minLat, maxLng, maxLat] = bbox(f);
       const position = [(minLng + maxLng) / 2, (minLat + maxLat) / 2];
-      clanBadges.push({ position, clan: f.properties.clan });
-      clanLabels.push({ position, text: f.properties.clan });
+      clanBadges.push({
+        position,
+        clan: f.properties.clan,
+        color: f.properties.claimColor || (f.properties.isNpc ? NPC_ACCENT_COLOR : '#888888'),
+      });
+      if (f.properties.clan) {
+        clanLabels.push({ position, text: f.properties.clan });
+      }
 
       const avatarUrl = avatarCache[division];
       if (avatarUrl) {
@@ -1225,7 +1357,7 @@ export default function Domains() {
           stroked: true,
           filled: true,
           getFillColor: [10, 10, 10, 205],
-          getLineColor: d => hexToRgba(clanTint(d.clan), 255),
+          getLineColor: d => hexToRgba(d.clan ? clanTint(d.clan) : (d.color || '#888888'), 255),
           getLineWidth: 2,
           lineWidthUnits: 'pixels',
           pickable: false,
@@ -1233,15 +1365,19 @@ export default function Domains() {
           updateTriggers: { getRadius: [badgeSize] },
         })
       );
+    }
+
+    // ─── Avatar badge: the owner's actual photo — masked to a circle,
+    // sitting squarely inside the clan backdrop disc.
+    if (avatarBadgeData.length) {
       layers.push(
         new IconLayer({
-          id: 'clan-badges',
-          data: clanBadgeData,
+          id: 'avatar-badges',
+          data: avatarBadgeData,
           getPosition: d => d.position,
-          getIcon: d => ({ url: symlogo(d.clan), id: d.clan, width: 150, height: 150, mask: true }),
-          getSize: badgeSize * 0.6,
+          getIcon: d => ({ url: d.image || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=', width: 256, height: 256 }),
+          getSize: badgeSize,
           sizeUnits: 'pixels',
-          getColor: [240, 240, 245, 235],
           pickable: false,
           parameters: { depthTest: false },
           updateTriggers: { getSize: [badgeSize] },
@@ -1250,46 +1386,57 @@ export default function Domains() {
       );
     }
 
-    // ─── Avatar badge: the owner's actual photo — a plain square icon (like
-    // the dossier's avatar), offset to sit just right of the clan badge.
-    if (avatarBadgeData.length) {
+    // ─── Clan badge overlay: rendered on top of the avatar
+    const clanIconsData = clanBadgeData.filter(d => !!d.clan);
+    if (clanIconsData.length) {
       layers.push(
         new IconLayer({
-          id: 'avatar-badges',
-          data: avatarBadgeData,
+          id: 'clan-badges-shadow',
+          data: clanIconsData,
           getPosition: d => d.position,
-          getIcon: d => ({ url: d.image, width: 64, height: 64 }),
-          getSize: badgeSize,
+          getIcon: d => ({ url: symlogo(d.clan) || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=', id: d.clan, width: 150, height: 150, mask: true }),
+          getSize: badgeSize * 0.45,
           sizeUnits: 'pixels',
-          getPixelOffset: [badgeOffset, 0],
+          getColor: [0, 0, 0, 255],
+          getPixelOffset: [1, 1],
           pickable: false,
           parameters: { depthTest: false },
-          updateTriggers: { getSize: [badgeSize], getPixelOffset: [badgeOffset] },
+          updateTriggers: { getSize: [badgeSize] },
+          transitions: { getSize: 150 },
+        }),
+        new IconLayer({
+          id: 'clan-badges',
+          data: clanIconsData,
+          getPosition: d => d.position,
+          getIcon: d => ({ url: symlogo(d.clan) || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=', id: d.clan, width: 150, height: 150, mask: true }),
+          getSize: badgeSize * 0.45,
+          sizeUnits: 'pixels',
+          getColor: [240, 240, 245, 255],
+          getPixelOffset: [0, 0],
+          pickable: false,
+          parameters: { depthTest: false },
+          updateTriggers: { getSize: [badgeSize] },
           transitions: { getSize: 150 },
         })
       );
     }
 
-    // ─── Clan name label, underneath the badge pair ──
+    // ─── Clan text logo, underneath the badge pair ──
     if (clanLabelData.length) {
       layers.push(
-        new TextLayer({
+        new IconLayer({
           id: 'clan-name-labels',
           data: clanLabelData,
           getPosition: d => d.position,
-          getText: d => d.text,
-          getSize: 11,
-          getColor: [230, 230, 235, 235],
-          getPixelOffset: [badgeOffset / 2, badgeSize / 2 + 12],
-          fontFamily: '"Courier New", monospace',
-          fontWeight: 700,
-          billboard: true,
-          background: true,
-          getBackgroundColor: [10, 10, 10, 190],
-          backgroundPadding: [5, 3],
+          getIcon: d => ({ url: textlogo(d.text) || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=', width: 300, height: 153 }),
+          getSize: badgeSize * 2,
+          sizeUnits: 'pixels',
+          getColor: [230, 230, 235, 255],
+          getPixelOffset: [0, badgeSize / 2 + 18],
           pickable: false,
           parameters: { depthTest: false },
-          updateTriggers: { getPixelOffset: [badgeOffset, badgeSize] },
+          updateTriggers: { getSize: [badgeSize], getPixelOffset: [badgeSize] },
+          transitions: { getSize: 150 },
         })
       );
     }
@@ -2247,6 +2394,7 @@ export default function Domains() {
                           userId={selectedDivisionInfo.user_id}
                           npcId={selectedDivisionInfo.npc_id}
                           size={96}
+                          editable={isAdmin && (!!selectedDivisionInfo.user_id || !!selectedDivisionInfo.npc_id)}
                           fallback={`https://ui-avatars.com/api/?name=${encodeURIComponent(selectedDivisionInfo.owner)}&background=random`}
                         />
                       ) : (

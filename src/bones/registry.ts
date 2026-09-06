@@ -14,6 +14,7 @@ import _news_page from './news-page.bones.json'
 import _premonitions_page from './premonitions-page.bones.json'
 import _schrecknet_page from './schrecknet-page.bones.json'
 import _surfaceweb_page from './surfaceweb-page.bones.json'
+import _app_loading from './app-loading.bones.json'
 
 registerBones({
   "admin-users-tab": _admin_users_tab,
@@ -28,4 +29,5 @@ registerBones({
   "premonitions-page": _premonitions_page,
   "schrecknet-page": _schrecknet_page,
   "surfaceweb-page": _surfaceweb_page,
+  "app-loading": _app_loading,
 })

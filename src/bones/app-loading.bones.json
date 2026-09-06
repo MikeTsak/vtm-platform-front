@@ -1,0 +1,11 @@
+{
+  "breakpoints": {
+    "768": {
+      "name": "app-loading",
+      "viewportWidth": 768,
+      "width": 768,
+      "height": 0,
+      "bones": []
+    }
+  }
+}
