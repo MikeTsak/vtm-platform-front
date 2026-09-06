@@ -951,6 +951,58 @@
 }
 .overlayTipNote { font-size: 0.74rem; line-height: 1.35; color: var(--text-muted); }
 
+/* ── Hunting-difficulty blood droplets ── */
+.huntDroplets { display: inline-flex; align-items: center; gap: 1px; }
+.huntDrop {
+  color: color-mix(in srgb, #c81e2a 25%, transparent);
+  line-height: 1;
+  transition: color 0.15s;
+}
+.huntDrop[data-filled="true"] { color: #d4202e; }
+.huntDropNum {
+  margin-left: 5px;
+  font-family: 'Courier New', monospace;
+  font-weight: 800;
+  color: #e5545e;
+}
+
+.huntRow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 2px; }
+.huntReadout {
+  font-family: 'Courier New', monospace;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #e5545e;
+}
+
+.hoverTipHunt {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #e5545e;
+}
+.huntTipIcon { font-size: 13px !important; color: #d4202e; }
+
+/* compact droplet+number for the rail / territory lists */
+.railHunt {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  flex-shrink: 0;
+  margin-left: auto;
+  font-family: 'Courier New', monospace;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #e5545e;
+}
+.railHunt .material-symbols-outlined { font-size: 13px; color: #d4202e; }
+.railHunt[data-diff="7"] { color: #ff5a64; }
+.railHunt[data-diff="7"] .material-symbols-outlined { color: #ff2d3a; }
+
+/* in the territory list the meta row is column-ish — keep hunt on its own line end */
+.claimMeta .railHunt { margin-left: 6px; }
+
 /* ============================================================
    RESPONSIVE — Mobile
    ============================================================ */

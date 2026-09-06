@@ -17,6 +17,7 @@ import Avatar from '../../components/Avatar';
 import { AuthCtx } from '../../core/AuthContext';
 import { symlogo, clanTint } from '../../data/clans';
 import { DIVISION_POPULATIONS, POPULATION_GROUP_MEMBERS } from './data/divisionPopulations';
+import { HUNTING_DIFFICULTY, HUNTING_DIFFICULTY_MAX, huntingLabel } from './data/huntingDifficulty';
 import OverlayAccessManager from './OverlayAccessManager';
 import { TRANSIT_PATHS, TRANSIT_STATIONS, TRANSIT_GROUPS, TRANSIT_ATTRIBUTION } from './data/athensTransit';
 import {
@@ -78,6 +79,12 @@ function loadTransitPrefs() {
 const CLEAN_MAP_LS_KEY = 'domains.cleanMap.v1';
 function loadCleanMap() {
   try { return localStorage.getItem(CLEAN_MAP_LS_KEY) === '1'; } catch (_) { return false; }
+}
+
+// ── Hunting difficulty ──────────────────────────────────────
+const HUNTING_DIFF_LS_KEY = 'domains.huntingDiff.v1';
+function loadHuntingDiff() {
+  try { return localStorage.getItem(HUNTING_DIFF_LS_KEY) === '1'; } catch (_) { return false; }
 }
 
 // ── Catacombs overlay (ADMIN ONLY) ────────────────────────
@@ -151,6 +158,27 @@ function LayerRow({ label, on, onToggle, accent, title, children }) {
       </button>
       {on && children ? <div className={styles.layerSub}>{children}</div> : null}
     </div>
+  );
+}
+
+// ── Hunting-difficulty blood-droplet graphic ─────────────
+// `n` filled droplets out of HUNTING_DIFFICULTY_MAX. `size` in px.
+function HuntDroplets({ n, size = 13, showNumber = false }) {
+  if (!n) return null;
+  return (
+    <span className={styles.huntDroplets} title={`Hunting Difficulty ${n}/${HUNTING_DIFFICULTY_MAX} — ${huntingLabel(n)}`}>
+      {Array.from({ length: HUNTING_DIFFICULTY_MAX }, (_, i) => (
+        <span
+          key={i}
+          className={`material-symbols-outlined ${styles.huntDrop}`}
+          data-filled={i < n}
+          style={{ fontSize: size }}
+        >
+          water_drop
+        </span>
+      ))}
+      {showNumber && <span className={styles.huntDropNum}>{n}</span>}
+    </span>
   );
 }
 
@@ -391,6 +419,13 @@ export default function Domains() {
     try { localStorage.setItem(CLEAN_MAP_LS_KEY, cleanMap ? '1' : '0'); } catch (_) { /* noop */ }
   }, [cleanMap]);
   const toggleCleanMap = useCallback(() => setCleanMap(v => !v), []);
+
+  // ── Hunting difficulty toggle ──
+  const [huntingDiffOn, setHuntingDiffOn] = useState(loadHuntingDiff);
+  useEffect(() => {
+    try { localStorage.setItem(HUNTING_DIFF_LS_KEY, huntingDiffOn ? '1' : '0'); } catch (_) { /* noop */ }
+  }, [huntingDiffOn]);
+  const toggleHuntingDiff = useCallback(() => setHuntingDiffOn(v => !v), []);
 
   // ── Overlay hover tooltip (transit stations, catacomb / necropolis sites +
   // passages) — surfaces the authored note that's otherwise invisible ──
@@ -673,6 +708,7 @@ export default function Domains() {
           previousOwnerName: claim?.previous_owner_name || null,
           previousClaimedAt: claim?.previous_claimed_at || null,
           pendingRequests: pendingCountByDivision.get(divisionNumber) || 0,
+          huntingDifficulty: HUNTING_DIFFICULTY[divisionNumber]?.difficulty ?? null,
         }
       };
     });
@@ -706,6 +742,7 @@ export default function Domains() {
       clan: p.clan,
       primaryTitle: p.titles?.[0] || null,
       safety_rating: p.safetyRating,
+      hunting_difficulty: p.huntingDifficulty,
       claimed_at: p.claimedAt,
       previous_owner_name: p.previousOwnerName,
       previous_claimed_at: p.previousClaimedAt,
@@ -849,6 +886,17 @@ export default function Domains() {
       return { position: [(minLng + maxLng) / 2, (minLat + maxLat) / 2] };
     });
   }, [npcFeatures]);
+
+  // ── Hunting-difficulty badge at each division centre (blood-red pill) ──
+  const huntBadgeData = useMemo(() => {
+    if (!geoJsonData) return [];
+    return geoJsonData.features
+      .filter(f => f.properties?.huntingDifficulty != null)
+      .map(f => {
+        const [minLng, minLat, maxLng, maxLat] = bbox(f);
+        return { position: [(minLng + maxLng) / 2, (minLat + maxLat) / 2], difficulty: f.properties.huntingDifficulty };
+      });
+  }, [geoJsonData]);
 
   // ── Map badges at the center of every claimed division: the clan crest
   // AND the owner's avatar side by side (both visible at once, not one
@@ -1169,10 +1217,14 @@ export default function Domains() {
           id: 'clan-badges',
           data: clanBadgeData,
           getPosition: d => d.position,
-          getIcon: d => ({ url: symlogo(d.clan), width: 128, height: 128, mask: true }),
+          getIcon: d => ({ url: symlogo(d.clan), id: d.clan, width: 150, height: 150, mask: true }),
           getSize: badgeSize * 0.6,
           sizeUnits: 'pixels',
           getColor: [240, 240, 245, 235],
+          loadOptions: {
+            mimeType: 'image/webp',
+            image: { type: 'image' }
+          },
           pickable: false,
           parameters: { depthTest: false },
           updateTriggers: { getSize: [badgeSize] },
@@ -1314,6 +1366,35 @@ export default function Domains() {
           getBackgroundColor: [10, 10, 10, 200],
           backgroundPadding: [6, 4],
           parameters: { depthTest: false },
+        })
+      );
+    }
+
+    // ─── Hunting-difficulty badge — a blood-red pill with the number at each
+    // division centre.
+    if (huntingDiffOn && huntBadgeData.length) {
+      layers.push(
+        new TextLayer({
+          id: 'hunt-badges',
+          data: huntBadgeData,
+          getPosition: d => d.position,
+          getText: d => `HUNT ${d.difficulty}`,
+          getSize: 11,
+          getColor: [255, 235, 235, 255],
+          getPixelOffset: [0, 16],
+          fontFamily: '"Courier New", monospace',
+          fontWeight: 800,
+          billboard: true,
+          background: true,
+          getBackgroundColor: d => (
+            d.difficulty >= 7 ? [130, 8, 12, 235]
+            : d.difficulty >= 5 ? [150, 22, 22, 225]
+            : [90, 20, 22, 210]
+          ),
+          backgroundPadding: [6, 3],
+          parameters: { depthTest: false },
+          pickable: false,
+          updateTriggers: { getBackgroundColor: [huntBadgeData.length] },
         })
       );
     }
@@ -1646,7 +1727,7 @@ export default function Domains() {
     }
 
     return layers;
-  }, [geoJsonData, selectedDivision, hoveredDivision, hoveredFeature, avatarCache, onDeckHover, onDeckClick, groupOverlayFeatures, groupLabelData, npcFeatures, npcLabelData, clanBadgeData, avatarBadgeData, clanLabelData, abatonBadgeData, abatonFeatures, claimByDiv, badgeSize, badgeOffset, transitPathsSolid, transitPathsDashed, transitStationDots, transitLabelData, catacombPassageTiers, catacombSiteDots, catacombLabelData, necroDrawGroups, necroSiteDots, necroLabelData, cleanMap, onOverlayHover]);
+  }, [geoJsonData, selectedDivision, hoveredDivision, hoveredFeature, avatarCache, onDeckHover, onDeckClick, groupOverlayFeatures, groupLabelData, npcFeatures, npcLabelData, clanBadgeData, avatarBadgeData, clanLabelData, abatonBadgeData, abatonFeatures, claimByDiv, badgeSize, badgeOffset, transitPathsSolid, transitPathsDashed, transitStationDots, transitLabelData, catacombPassageTiers, catacombSiteDots, catacombLabelData, necroDrawGroups, necroSiteDots, necroLabelData, cleanMap, onOverlayHover, huntBadgeData, huntingDiffOn]);
 
   // ── Error state ─────────────────────────────────────────
   if (!geoJsonData) {
@@ -1782,6 +1863,12 @@ export default function Domains() {
               <span className={styles.hoverTipOwner}>
                 {hoveredFeature.properties.isAbaton ? 'Abaton' : hoveredFeature.properties.ownerName}
               </span>
+              {hoveredFeature.properties.huntingDifficulty != null && (
+                <span className={styles.hoverTipHunt}>
+                  <span className={`material-symbols-outlined ${styles.huntTipIcon}`}>water_drop</span>
+                  Hunt {hoveredFeature.properties.huntingDifficulty} · {huntingLabel(hoveredFeature.properties.huntingDifficulty)}
+                </span>
+              )}
               {hoveredFeature.properties.pendingRequests > 0 && hoveredFeature.properties.ownerName === 'Unclaimed' && (
                 <span className={styles.hoverTipPending}>{hoveredFeature.properties.pendingRequests} request{hoveredFeature.properties.pendingRequests > 1 ? 's' : ''} pending</span>
               )}
@@ -1854,6 +1941,16 @@ export default function Domains() {
                       />
                       <span className={styles.railNum}>#{domain.number}</span>
                       <span className={styles.railName}>{domain.name}</span>
+                      {HUNTING_DIFFICULTY[domain.number]?.difficulty != null && (
+                        <span
+                          className={styles.railHunt}
+                          data-diff={HUNTING_DIFFICULTY[domain.number].difficulty}
+                          title={`Hunting Difficulty ${HUNTING_DIFFICULTY[domain.number].difficulty} — ${huntingLabel(HUNTING_DIFFICULTY[domain.number].difficulty)}`}
+                        >
+                          <span className="material-symbols-outlined">water_drop</span>
+                          {HUNTING_DIFFICULTY[domain.number].difficulty}
+                        </span>
+                      )}
                       {!isClaimed && pendingCount > 0 && (
                         <span className={styles.railPendingDot} title={`${pendingCount} request${pendingCount > 1 ? 's' : ''} pending`} />
                       )}
@@ -1909,6 +2006,14 @@ export default function Domains() {
                     onToggle={toggleCleanMap}
                     accent="slate"
                     title="Hide domain colours, badges and labels — plain Athens map"
+                  />
+
+                  <LayerRow
+                    label="Hunting difficulty"
+                    on={huntingDiffOn}
+                    onToggle={toggleHuntingDiff}
+                    accent="claims"
+                    title="Show hunting difficulty badges on the map"
                   />
 
                   <LayerRow label="Transit" on={transitOn} onToggle={toggleTransit} accent="transit">
@@ -2047,6 +2152,16 @@ export default function Domains() {
                         <span className={styles.claimMeta}>
                           <span className={styles.claimDivNum}>#{c.division}</span>
                           <span className={styles.claimDivName}>{name}</span>
+                          {HUNTING_DIFFICULTY[c.division]?.difficulty != null && (
+                            <span
+                              className={styles.railHunt}
+                              data-diff={HUNTING_DIFFICULTY[c.division].difficulty}
+                              title={`Hunting Difficulty ${HUNTING_DIFFICULTY[c.division].difficulty} — ${huntingLabel(HUNTING_DIFFICULTY[c.division].difficulty)}`}
+                            >
+                              <span className="material-symbols-outlined">water_drop</span>
+                              {HUNTING_DIFFICULTY[c.division].difficulty}
+                            </span>
+                          )}
                         </span>
                       </div>
                     </motion.button>
@@ -2116,6 +2231,14 @@ export default function Domains() {
                     {selectedDivisionInfo.primaryTitle && (
                       <span className={styles.dossierTitleBadge}>{selectedDivisionInfo.primaryTitle}</span>
                     )}
+                    {selectedDivisionInfo.hunting_difficulty != null && (
+                      <div className={styles.huntRow} style={{ marginTop: '0.75rem', justifyContent: 'center' }}>
+                        <HuntDroplets n={selectedDivisionInfo.hunting_difficulty} size={17} />
+                        <span className={styles.huntReadout} style={{ color: '#fff' }}>
+                          Hunt {selectedDivisionInfo.hunting_difficulty} — {huntingLabel(selectedDivisionInfo.hunting_difficulty)}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -2157,6 +2280,7 @@ export default function Domains() {
               <div className={styles.dossierBody}>
                 {activeTab === 'overview' && (
                   <>
+
                     {!selectedDivisionInfo.is_abaton && (
                       <div className={styles.statBlock}>
                         <span className={styles.statLabel}>Masquerade Safety</span>
