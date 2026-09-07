@@ -63,6 +63,10 @@ RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule . - [L]
 
+# Never rewrite missing static asset requests to index.html — return a real 404 instead of HTML
+RewriteCond %{REQUEST_URI} ^/assets/ [NC]
+RewriteRule . - [R=404,L]
+
 # Otherwise, hand everything else to React (Client Side Routing)
 RewriteRule . /index.html [L]
 

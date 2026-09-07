@@ -73,3 +73,30 @@ window.addEventListener('vite:preloadError', function (e) {
   }
   // else: already reloaded recently — swallow silently, the page continues.
 });
+
+// Early Entry / Module-Preload Auto-Recovery:
+// If the initial entry bundle or vendor chunk in index.html fails to load
+// (e.g. after a new deployment when an older chunk hash 404s), Vite's runtime
+// never initializes so 'vite:preloadError' cannot fire.
+// Catching resource load failures on window during capture phase allows the
+// browser to auto-reload once, fetching the latest index.html and self-healing.
+window.addEventListener('error', function (e) {
+  var target = e.target;
+  if (!target || target === window) return;
+
+  var tag = target.tagName;
+  if (tag === 'SCRIPT' || tag === 'LINK') {
+    var url = target.src || target.href || '';
+    if (url && (url.indexOf('/assets/') !== -1 || url.indexOf('index-') !== -1 || url.indexOf('vendor-') !== -1)) {
+      var key = 'chunk-load-reload-at';
+      var now = Date.now();
+      var last = 0;
+      try { last = Number(sessionStorage.getItem(key)) || 0; } catch (_) {}
+      if (now - last > 10000) {
+        try { sessionStorage.setItem(key, String(now)); } catch (_) {}
+        window.location.reload();
+      }
+    }
+  }
+}, true);
+
