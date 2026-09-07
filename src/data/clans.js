@@ -78,7 +78,7 @@ export const NAME_OVERRIDES = {
   'Thin-blood': 'Thinblood',
 };
 
-const fileify = (c) => (NAME_OVERRIDES[c] || c).replace(/\s+/g, '_');
+export const fileify = (c) => (NAME_OVERRIDES[c] || c).replace(/\s+/g, '_');
 
 // The clan symbol/logo masters are a single 330px/300px PNG each, but get
 // rendered everywhere from a 14px inline badge up to a 128px map icon —
@@ -90,22 +90,22 @@ const fileify = (c) => (NAME_OVERRIDES[c] || c).replace(/\s+/g, '_');
 // public/img/clans/ copies are left in place untouched for anything still
 // using the old raw path directly).
 const symbolGlobDefault = import.meta.glob('../assets/clans/*.png', {
-  query: { w: '150' },
+  query: { w: '150', format: 'png' },
   import: 'default',
   eager: true,
 });
 const symbolGlobSrcSet = import.meta.glob('../assets/clans/*.png', {
-  query: { w: '64;150;330', as: 'srcset' },
+  query: { w: '64;150;330', format: 'png', as: 'srcset' },
   import: 'default',
   eager: true,
 });
 const logoGlobDefault = import.meta.glob('../assets/clans/text/*.png', {
-  query: { w: '150' },
+  query: { w: '150', format: 'png' },
   import: 'default',
   eager: true,
 });
 const logoGlobSrcSet = import.meta.glob('../assets/clans/text/*.png', {
-  query: { w: '64;150;300', as: 'srcset' },
+  query: { w: '64;150;300', format: 'png', as: 'srcset' },
   import: 'default',
   eager: true,
 });

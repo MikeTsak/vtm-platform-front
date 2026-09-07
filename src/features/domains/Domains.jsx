@@ -16,7 +16,7 @@ import domainsRaw from '../../data/Domains.json';
 import api from '../../core/api';
 import Avatar from '../../components/Avatar';
 import { AuthCtx } from '../../core/AuthContext';
-import { symlogo, textlogo, clanTint } from '../../data/clans';
+import { symlogo, textlogo, clanTint, fileify } from '../../data/clans';
 import { DIVISION_POPULATIONS, POPULATION_GROUP_MEMBERS } from './data/divisionPopulations';
 import { HUNTING_DIFFICULTY, HUNTING_DIFFICULTY_MAX, huntingLabel } from './data/huntingDifficulty';
 import OverlayAccessManager from './OverlayAccessManager';
@@ -255,44 +255,53 @@ function relTime(ts) {
   return new Date(ts).toLocaleDateString();
 }
 
-// ── CORS-safe avatar fetcher ──────────────────────────────
-// Returns an object URL string that BitmapLayer can use as `image`.
-async function fetchAvatarAsObjectUrl(url) {
-  // Auth rides along as the httpOnly session cookie for same-origin/API
-  // requests — `credentials: 'include'` is what makes the browser attach it.
+// ── CORS-safe circular avatar generator ──────────────────────
+// Returns a 256x256 circular PNG data URL that Deck.gl IconLayer can load reliably on any platform.
+async function fetchAvatarAsDataUrl(url) {
+  // Same-origin or same-domain requests can include session cookie; third-party URLs must omit.
+  const isSameSite = !url.startsWith('http') || url.includes(window.location.hostname) || url.includes('attlarp.gr');
   const res = await fetch(url, {
-    credentials: url.startsWith('http') && !url.includes(window.location.host) ? 'omit' : 'include',
+    credentials: isSameSite ? 'include' : 'omit',
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const blob = await res.blob();
 
   return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(blob);
     const img = new Image();
     img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const size = Math.min(img.width, img.height);
-      canvas.width = size;
-      canvas.height = size;
-      const ctx = canvas.getContext('2d');
-      ctx.beginPath();
-      ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
-      ctx.closePath();
-      ctx.clip();
+      try {
+        const canvas = document.createElement('canvas');
+        const targetSize = 256;
+        canvas.width = targetSize;
+        canvas.height = targetSize;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('Canvas 2D context unavailable');
 
-      const dx = (img.width - size) / 2;
-      const dy = (img.height - size) / 2;
-      ctx.drawImage(img, dx, dy, size, size, 0, 0, size, size);
+        // Circular clip
+        ctx.beginPath();
+        ctx.arc(targetSize / 2, targetSize / 2, targetSize / 2, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
 
-      canvas.toBlob(croppedBlob => {
-        if (!croppedBlob) reject(new Error('Canvas toBlob failed'));
-        else resolve(URL.createObjectURL(croppedBlob));
-      }, 'image/png');
+        // Center-crop square
+        const minDim = Math.min(img.naturalWidth || img.width, img.naturalHeight || img.height);
+        const sx = ((img.naturalWidth || img.width) - minDim) / 2;
+        const sy = ((img.naturalHeight || img.height) - minDim) / 2;
+        ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, targetSize, targetSize);
+
+        const dataUrl = canvas.toDataURL('image/png');
+        URL.revokeObjectURL(objectUrl);
+        resolve(dataUrl);
+      } catch (err) {
+        URL.revokeObjectURL(objectUrl);
+        reject(err);
+      }
     };
     img.onerror = (e) => {
       URL.revokeObjectURL(objectUrl);
       reject(e);
     };
-    const objectUrl = URL.createObjectURL(blob);
     img.src = objectUrl;
   });
 }
@@ -314,7 +323,7 @@ function hexToRgba(hex, alpha = 255) {
 function createFallbackAvatarDataUrl(name, accentColor = '#6366f1') {
   if (typeof document === 'undefined') return '';
   const canvas = document.createElement('canvas');
-  const size = 160;
+  const size = 256;
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext('2d');
@@ -352,7 +361,7 @@ function createFallbackAvatarDataUrl(name, accentColor = '#6366f1') {
     initials = words[0].slice(0, 2).toUpperCase();
   }
 
-  ctx.font = 'bold 50px "Cinzel", "Times New Roman", Georgia, serif';
+  ctx.font = 'bold 80px "Cinzel", "Times New Roman", Georgia, serif';
   ctx.fillStyle = '#f4f4f5';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -739,9 +748,9 @@ export default function Domains() {
       const division = Number(claim.division);
       if (avatarCache[division]) continue;
       const url = getAvatarUrl(claim);
-      fetchAvatarAsObjectUrl(url)
-        .then(objectUrl => {
-          setAvatarCache(prev => (prev[division] ? prev : { ...prev, [division]: objectUrl }));
+      fetchAvatarAsDataUrl(url)
+        .then(dataUrl => {
+          setAvatarCache(prev => (prev[division] ? prev : { ...prev, [division]: dataUrl }));
         })
         .catch(err => {
           console.warn(`[Domains] Failed to load avatar for division ${division}:`, err.message);
@@ -763,13 +772,14 @@ export default function Domains() {
     return () => window.removeEventListener('avatar-updated', handleAvatarUpdated);
   }, []);
 
-  // Revoke every blob URL ever created, but only on unmount — this must NOT
-  // depend on [avatarCache], or React re-runs the cleanup (revoking
-  // everything already cached) on every single new avatar that finishes
-  // loading, breaking every badge except whichever loaded last.
+  // Revoke any blob URL created, but only on unmount
   const avatarUrlsRef = useRef(new Set());
   useEffect(() => {
-    Object.values(avatarCache).forEach(url => avatarUrlsRef.current.add(url));
+    Object.values(avatarCache).forEach(url => {
+      if (typeof url === 'string' && url.startsWith('blob:')) {
+        avatarUrlsRef.current.add(url);
+      }
+    });
   }, [avatarCache]);
   useEffect(() => {
     return () => {
@@ -1082,7 +1092,7 @@ export default function Domains() {
 
       const avatarUrl = avatarCache[division];
       if (avatarUrl) {
-        avatarBadges.push({ position, image: avatarUrl });
+        avatarBadges.push({ position, image: avatarUrl, division });
       }
     }
     return { clanBadgeData: clanBadges, avatarBadgeData: avatarBadges, clanLabelData: clanLabels, abatonBadgeData: abatonBadges, abatonFeatures: abatonFeats };
@@ -1376,13 +1386,32 @@ export default function Domains() {
             id: 'avatar-badges',
             data: avatarBadgeData,
             getPosition: d => d.position,
-            getIcon: d => ({ url: d.image || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=', id: d.image || 'avatar-fallback', width: 256, height: 256 }),
+            getIcon: d => ({
+              url: d.image || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=',
+              id: d.division != null ? `avatar-${d.division}` : (d.image || 'avatar-fallback'),
+              width: 256,
+              height: 256,
+              anchorX: 128,
+              anchorY: 128,
+              mask: false,
+            }),
             getSize: badgeSize,
+            sizeBasis: 'width',
             sizeUnits: 'pixels',
+            getColor: [255, 255, 255, 255],
+            loadOptions: {
+              core: { mimeType: 'image/png', fallbackMimeType: 'image/png' },
+              mimeType: 'image/png',
+              image: { type: 'auto' },
+            },
             pickable: false,
             parameters: { depthTest: false },
-            updateTriggers: { getSize: [badgeSize] },
+            updateTriggers: {
+              getSize: [badgeSize],
+              getIcon: [avatarBadgeData],
+            },
             transitions: { getSize: 150 },
+            onIconError: (evt) => console.warn('[Domains] Avatar icon load error:', evt?.url, evt?.error),
           })
         );
       }
@@ -1395,7 +1424,13 @@ export default function Domains() {
             id: 'clan-badges-shadow',
             data: clanIconsData,
             getPosition: d => d.position,
-            getIcon: d => ({ url: symlogo(d.clan) || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=', id: d.clan, width: 150, height: 150, mask: true }),
+            getIcon: d => ({
+              url: symlogo(d.clan) || (d.clan ? `/img/clans/330px-${fileify(d.clan)}_symbol.png` : 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='),
+              id: d.clan + '-sym-shadow',
+              width: 150,
+              height: 150,
+              mask: true
+            }),
             getSize: badgeSize * 0.45,
             sizeUnits: 'pixels',
             getColor: [0, 0, 0, 255],
@@ -1409,7 +1444,13 @@ export default function Domains() {
             id: 'clan-badges',
             data: clanIconsData,
             getPosition: d => d.position,
-            getIcon: d => ({ url: symlogo(d.clan) || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=', id: d.clan, width: 150, height: 150, mask: true }),
+            getIcon: d => ({
+              url: symlogo(d.clan) || (d.clan ? `/img/clans/330px-${fileify(d.clan)}_symbol.png` : 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='),
+              id: d.clan + '-sym',
+              width: 150,
+              height: 150,
+              mask: true
+            }),
             getSize: badgeSize * 0.45,
             sizeUnits: 'pixels',
             getColor: [240, 240, 245, 255],
@@ -1424,16 +1465,29 @@ export default function Domains() {
 
       // ─── Clan text logo, underneath the badge pair ──
       if (clanLabelData.length) {
+        // Real dimensions so Deck.gl scales every aspect ratio perfectly
+        const clanHeights = { 'Banu Haqim': 59, 'Brujah': 153, 'Caitiff': 65, 'Gangrel': 84, 'Hecata': 79, 'Lasombra': 62, 'Malkavian': 83, 'The Ministry': 35, 'Nosferatu': 84, 'Ravnos': 74, 'Salubri': 108, 'Thinblood': 40, 'Toreador': 151, 'Tremere': 75, 'Tzimisce': 69, 'Ventrue': 47 };
+
         layers.push(
           new IconLayer({
             id: 'clan-name-labels-outline',
             data: clanLabelData,
             getPosition: d => d.position,
-            getIcon: d => ({ url: textlogo(d.text) || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=', id: d.text + '-outline', mask: true }),
-            getSize: badgeSize * 0.8, // VERY SMALL: strictly 80% of the circle's size!
+            getIcon: d => {
+              const h = clanHeights[d.text] || 75;
+              return {
+                url: textlogo(d.text) || (d.text ? `/img/clans/text/300px-${fileify(d.text)}_logo.png` : 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='),
+                id: d.text + '-outline',
+                width: 300,
+                height: h,
+                mask: true
+              };
+            },
+            getSize: badgeSize * 1.2,
+            sizeBasis: 'width',
             sizeUnits: 'pixels',
-            getColor: [50, 50, 50, 255],
-            getPixelOffset: [1, badgeSize / 2 + 9],
+            getColor: [20, 20, 20, 255],
+            getPixelOffset: [1, badgeSize / 2 + 11],
             pickable: false,
             parameters: { depthTest: false },
             updateTriggers: { getSize: [badgeSize], getPixelOffset: [badgeSize] },
@@ -1443,11 +1497,21 @@ export default function Domains() {
             id: 'clan-name-labels',
             data: clanLabelData,
             getPosition: d => d.position,
-            getIcon: d => ({ url: textlogo(d.text) || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=', id: d.text, mask: true }),
-            getSize: badgeSize * 0.8, // VERY SMALL: strictly 80% of the circle's size!
+            getIcon: d => {
+              const h = clanHeights[d.text] || 75;
+              return {
+                url: textlogo(d.text) || (d.text ? `/img/clans/text/300px-${fileify(d.text)}_logo.png` : 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='),
+                id: d.text,
+                width: 300,
+                height: h,
+                mask: true
+              };
+            },
+            getSize: badgeSize * 1.2,
+            sizeBasis: 'width',
             sizeUnits: 'pixels',
-            getColor: [255, 255, 255, 255],
-            getPixelOffset: [0, badgeSize / 2 + 8],
+            getColor: [240, 240, 245, 255],
+            getPixelOffset: [0, badgeSize / 2 + 10],
             pickable: false,
             parameters: { depthTest: false },
             updateTriggers: { getSize: [badgeSize], getPixelOffset: [badgeSize] },
