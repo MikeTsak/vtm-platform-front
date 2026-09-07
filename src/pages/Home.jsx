@@ -1,5 +1,5 @@
 // src/pages/Home.jsx
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useContext } from 'react';
 import api from '../core/api';
 import { trackEvent } from '../utils/analytics';
 import { getPushSettings, updatePushSettings, subscribeToWebPush } from '../utils/push';
@@ -10,6 +10,8 @@ import styles from '../styles/Home.module.css';
 import Avatar from '../components/Avatar';
 import GoogleAd from '../components/GoogleAd';
 import { symlogo, textlogo } from '../data/clans';
+import { AuthCtx } from '../core/AuthContext';
+import Loading from '../ui/Loading';
 
 /* ── Clan tint colors ───────────────────────────────────────────── */
 const CLAN_COLORS = {
@@ -242,8 +244,17 @@ export default function Home() {
     setShards(list);
   }, [isShattering, clickPoint]);
 
+  const { user: authUser } = useContext(AuthCtx);
+
+  useEffect(() => {
+    if (authUser?.role === 'admin') {
+      nav('/admin', { replace: true });
+    }
+  }, [authUser, nav]);
+
   /* ── Data fetch ── */
   useEffect(() => {
+    if (authUser?.role === 'admin') return;
     setLoading(true);
     let live = true;
     (async () => {
@@ -257,7 +268,7 @@ export default function Home() {
 
         const meData = meReq.data;
         setMe(meData.user);
-        if (meData.user?.role === 'admin') { nav('/admin'); return; }
+        if (meData.user?.role === 'admin') { nav('/admin', { replace: true }); return; }
 
         const chData = chReq.data;
         console.log('DEBUG Home loaded chData:', chData);
@@ -297,14 +308,21 @@ export default function Home() {
         if (live) setLoading(false);
       }
     })();
-  }, [nav]);
+  }, [authUser, nav]);
 
   const safeMe = me || { display_name: '', id: '0', role: 'user', ui_sounds_enabled: true };
   const safeCh = ch || { name: '', clan: 'Caitiff', xp: 0, sheet: {} };
 
+  if (authUser?.role === 'admin' || me?.role === 'admin') {
+    return (
+      <div className={styles.loadingScreen}>
+        <Loading />
+      </div>
+    );
+  }
+
   if (!loading) {
     if (!me) return <div className={styles.loadingScreen}>Please log in.</div>;
-    if (me.role === 'admin') return null;
     if (!ch) return (
       <div className={styles.noCharPage}>
         <div className={styles.noCharCard}>

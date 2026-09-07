@@ -1,4 +1,4 @@
-﻿import React, { useContext, useEffect, useRef, useState } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { AuthCtx } from '../../core/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
@@ -53,8 +53,8 @@ export default function Login() {
   // React Query Mutation
   const loginMutation = useMutation({
     mutationFn: async (data) => {
-      await login(data.email, data.password);
-      return data;
+      const loggedInUser = await login(data.email, data.password);
+      return { ...data, loggedInUser };
     },
     onSuccess: (data) => {
       try {
@@ -68,7 +68,11 @@ export default function Login() {
       } catch { }
 
       toast.success('Welcome back!');
-      nav('/');
+      if (data.loggedInUser?.role === 'admin') {
+        nav('/admin', { replace: true });
+      } else {
+        nav('/', { replace: true });
+      }
     },
     onError: (error) => {
       // error.response.data.error is a rejected-by-the-server message (bad

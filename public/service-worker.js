@@ -3,8 +3,8 @@ self.addEventListener('push', function(event) {
     const data = event.data.json();
     const options = {
       body: data.body,
-      icon: '/img/animated.gif',
-      badge: '/img/animated.gif',
+      icon: '/img/icon-192.png',
+      badge: '/img/favicon-32.png',
       data: data.data || {}
     };
 

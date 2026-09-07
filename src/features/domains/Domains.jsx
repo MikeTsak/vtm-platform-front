@@ -751,6 +751,7 @@ export default function Domains() {
   const getAvatarUrl = useCallback((claim) => {
     if (!claim) return '';
     if (claim.is_abaton) return '/img/ui/abaton.jpg';
+    if (claim.has_avatar === false) return null; // Skip immediately: no DB avatar, clan crest is buffer & fallback
     const baseUrl = import.meta.env.VITE_API_URL || '/api';
     if (claim.user_id) return `${baseUrl}/users/${claim.user_id}/avatar?size=thumb`;
     if (claim.owner_npc_id) return `${baseUrl}/npcs/${claim.owner_npc_id}/avatar?size=thumb`;
@@ -2444,7 +2445,7 @@ export default function Domains() {
                                 <img src="/img/ui/abaton.jpg" alt="Abaton" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                               </div>
                             ) : (
-                              <Avatar userId={c.user_id} npcId={c.owner_npc_id} size={36} style={{ marginLeft: '12px', flexShrink: 0, borderRadius: '50%' }} fallback={symlogo(c.clan) || '/img/ATT-logo(1).webp'} />
+                              <Avatar userId={c.user_id} npcId={c.owner_npc_id} hasAvatar={c.has_avatar} size={36} style={{ marginLeft: '12px', flexShrink: 0, borderRadius: '50%' }} fallback={symlogo(c.clan) || '/img/ATT-logo(1).webp'} />
                             )}
                             <div className={styles.claimBody} style={{ marginLeft: '12px', textAlign: 'left' }}>
                               <span className={styles.claimOwner}>{c.is_abaton ? 'Abaton' : displayName}</span>
@@ -2503,6 +2504,7 @@ export default function Domains() {
                         <Avatar
                           userId={selectedDivisionInfo.user_id}
                           npcId={selectedDivisionInfo.npc_id}
+                          hasAvatar={selectedDivisionInfo.has_avatar}
                           size={96}
                           editable={isAdmin && (!!selectedDivisionInfo.user_id || !!selectedDivisionInfo.npc_id)}
                           fallback={symlogo(selectedDivisionInfo.clan) || '/img/ATT-logo(1).webp'}

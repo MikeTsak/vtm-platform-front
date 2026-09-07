@@ -21,7 +21,7 @@ export default function AuthProvider({ children }) {
       const { data } = await api.get('/auth/me');
       setUser(data.user);
       setLoading(false);
-      return true;
+      return data.user;
     } catch (e) {
       // A genuine "you're not logged in" response — no point retrying that.
       const status = e?.response?.status;
@@ -68,6 +68,7 @@ export default function AuthProvider({ children }) {
       // /login, with no explanation).
       throw new Error('Signed in, but could not confirm your session. Please try again.');
     }
+    return confirmed;
   };
   const register = async (email, display_name, password) => {
     await api.post('/auth/register', { email, display_name, password });

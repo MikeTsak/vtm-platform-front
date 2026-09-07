@@ -153,7 +153,10 @@ export default function Nav() {
           <Link 
   data-cuelume-press 
   data-cuelume-hover to="/" className="flex items-center gap-3 z-[1001] group" onClick={closeMenu}>
-            <img src="/img/animated.gif" alt="ATT Logo" className="w-8 h-8 object-contain rounded-md border border-outline-variant/50 bg-surface-container p-0.5 shadow-lg group-hover:border-primary transition-colors" />
+            <picture className="w-8 h-8 flex-shrink-0">
+              <source type="image/webp" srcSet="/img/animated.webp" />
+              <img src="/img/animated.gif" alt="ATT Logo" width="32" height="32" className="w-8 h-8 object-contain rounded-md border border-outline-variant/50 bg-surface-container p-0.5 shadow-lg group-hover:border-primary transition-colors" />
+            </picture>
             <span className="font-['Playfair_Display'] font-bold text-[20px] tracking-wide text-on-surface group-hover:text-primary transition-colors">Erebus Portal</span>
           </Link>
 

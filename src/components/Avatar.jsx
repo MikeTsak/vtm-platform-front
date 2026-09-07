@@ -5,7 +5,7 @@ import AvatarCropperModal from './AvatarCropperModal';
 
 const avatarTimestamps = new Map();
 
-export default function Avatar({ userId, npcId, identityId, retainerId, size = 80, editable = false, onUploadSuccess, onFileSelect, previewUrl, style = {}, className = "", imgClassName = "", imgStyle = {}, fallback = '/img/ATT-logo(1).webp' }) {
+export default function Avatar({ userId, npcId, identityId, retainerId, size = 80, editable = false, onUploadSuccess, onFileSelect, previewUrl, avatarUrl, hasAvatar, style = {}, className = "", imgClassName = "", imgStyle = {}, fallback = '/img/ATT-logo(1).webp' }) {
   const entityKey = userId ? `u_${userId}` : (npcId ? `n_${npcId}` : (retainerId ? `r_${retainerId}` : `i_${identityId}`));
   const [timestamp, setTimestamp] = useState(() => avatarTimestamps.get(entityKey) || '');
   const [isUploading, setIsUploading] = useState(false);
@@ -44,20 +44,28 @@ export default function Avatar({ userId, npcId, identityId, retainerId, size = 8
   };
 
   if (!imgError && !previewUrl) {
-    const q = buildQuery();
-    const qThumb = buildQuery('size=thumb');
-    if (userId) {
-      srcUrl = `${baseUrl}/users/${userId}/avatar${q}`;
-      thumbSrcUrl = `${baseUrl}/users/${userId}/avatar${qThumb}`;
-    } else if (npcId) {
-      srcUrl = `${baseUrl}/npcs/${npcId}/avatar${q}`;
-      thumbSrcUrl = `${baseUrl}/npcs/${npcId}/avatar${qThumb}`;
-    } else if (retainerId) {
-      srcUrl = `${baseUrl}/retainers/${retainerId}/avatar${q}`;
-      thumbSrcUrl = `${baseUrl}/retainers/${retainerId}/avatar${qThumb}`;
-    } else if (identityId) {
-      srcUrl = `${baseUrl}/identities/${identityId}/avatar${q}`;
-      thumbSrcUrl = `${baseUrl}/identities/${identityId}/avatar${qThumb}`;
+    if (avatarUrl) {
+      srcUrl = avatarUrl;
+      thumbSrcUrl = avatarUrl;
+    } else if (hasAvatar === false && !timestamp) {
+      srcUrl = fallback;
+      thumbSrcUrl = null;
+    } else {
+      const q = buildQuery();
+      const qThumb = buildQuery('size=thumb');
+      if (userId) {
+        srcUrl = `${baseUrl}/users/${userId}/avatar${q}`;
+        thumbSrcUrl = `${baseUrl}/users/${userId}/avatar${qThumb}`;
+      } else if (npcId) {
+        srcUrl = `${baseUrl}/npcs/${npcId}/avatar${q}`;
+        thumbSrcUrl = `${baseUrl}/npcs/${npcId}/avatar${qThumb}`;
+      } else if (retainerId) {
+        srcUrl = `${baseUrl}/retainers/${retainerId}/avatar${q}`;
+        thumbSrcUrl = `${baseUrl}/retainers/${retainerId}/avatar${qThumb}`;
+      } else if (identityId) {
+        srcUrl = `${baseUrl}/identities/${identityId}/avatar${q}`;
+        thumbSrcUrl = `${baseUrl}/identities/${identityId}/avatar${qThumb}`;
+      }
     }
   }
 

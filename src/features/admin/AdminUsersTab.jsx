@@ -52,7 +52,7 @@ export default function AdminUsersTab({ users = [], onSave, loading = false }) {
                   <div key={u.id} className={styles.userRow} onMouseEnter={(e) => e.currentTarget.classList.add(styles.hover)} onMouseLeave={(e) => e.currentTarget.classList.remove(styles.hover)}>
                     <div className={styles.td}><span className={styles.idCell}>#{u.id}</span></div>
                     <div className={styles.td} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Avatar userId={u.id} size={32} editable={true} />
+                      <Avatar userId={u.id} hasAvatar={u.has_avatar} size={32} editable={true} />
                       <input className={styles.input} value={draft.display_name} onChange={(e) => setRow(u, { display_name: e.target.value })} />
                     </div>
                     <div className={styles.td}><input className={styles.input} value={draft.email} onChange={(e) => setRow(u, { email: e.target.value })} /></div>

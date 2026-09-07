@@ -15,6 +15,13 @@ import GlobalBanner from '../components/GlobalBanner';
 import CookieConsent from '../components/CookieConsent';
 import Nav from '../ui/Nav';
 import Footer from '../ui/Footer';
+import Loading from '../ui/Loading';
+
+const RouteLoader = () => (
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '80vh', width: '100%' }}>
+    <Loading />
+  </div>
+);
 
 // Lazy Loaded Routes & Components
 const Home = lazyWithRetry(() => import('../pages/Home'));
@@ -47,17 +54,18 @@ const ResetPassword = lazyWithRetry(() => import('../features/auth/ResetPassword
 const Terms = lazyWithRetry(() => import('../pages/Terms'));
 const Legal = lazyWithRetry(() => import('../pages/Legal'));
 const Privacy = lazyWithRetry(() => import('../pages/Privacy'));
+const ClearCache = lazyWithRetry(() => import('../pages/ClearCache'));
 
 function Private({ children }) {
   const { user, loading } = useContext(AuthCtx);
-  if (loading) return <Skeleton name="app-loading" loading={true} />;
+  if (loading) return <RouteLoader />;
   if (!user) return <Navigate to="/login" replace />;
   return children;
 }
 
 function AdminOnly({ children }) {
   const { user, loading } = useContext(AuthCtx);
-  if (loading) return <Skeleton name="app-loading" loading={true} />;
+  if (loading) return <RouteLoader />;
   if (!user) return <Navigate to="/login" replace />;
   if (user.role !== 'admin') return <Navigate to="/" replace />;
   return children;
@@ -66,7 +74,7 @@ function AdminOnly({ children }) {
 // Wrapper for Admins or Court users (Storytellers running Live Sessions, Boons, etc.)
 function CourtOnly({ children }) {
   const { user, loading } = useContext(AuthCtx);
-  if (loading) return <Skeleton name="app-loading" loading={true} />;
+  if (loading) return <RouteLoader />;
   if (!user) return <Navigate to="/login" replace />;
   if (user.role !== 'admin' && user.role !== 'courtuser') return <Navigate to="/" replace />;
   return children;
@@ -98,7 +106,7 @@ function MalkavianOrAdminOnly({ children }) {
   }, [user, authLoading]);
 
   if (loading) {
-    return <Skeleton name="malkavian-admin-only-loading" loading={true} />;
+    return <RouteLoader />;
   }
 
   if (!isAllowed) {
@@ -176,7 +184,7 @@ function AppLayout() {
             : { flexGrow: 1 }
         }
       >
-        <Suspense fallback={<Skeleton name="page-loading" loading={true} />}>
+        <Suspense fallback={<RouteLoader />}>
           <Routes>
             <Route path="/" element={<Private><Home /></Private>} />
             <Route path="/character" element={<Private><CharacterView /></Private>} />
@@ -212,6 +220,8 @@ function AppLayout() {
             <Route path="/legal" element={<Legal />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/media/:id" element={<MediaViewer />} />
+            <Route path="/cache" element={<ClearCache />} />
+            <Route path="/Cache" element={<ClearCache />} />
 
             <Route
               path="/premonitions"

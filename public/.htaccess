@@ -67,6 +67,9 @@ RewriteRule . - [L]
 RewriteCond %{REQUEST_URI} ^/assets/ [NC]
 RewriteRule . - [R=404,L]
 
+# Directly serve standalone cache purger if /cache or /Cache is requested
+RewriteRule ^(cache|Cache)/?$ /cache.html [L]
+
 # Otherwise, hand everything else to React (Client Side Routing)
 RewriteRule . /index.html [L]
 
@@ -96,6 +99,14 @@ RewriteRule . /index.html [L]
 # If you use a manifest.json or config.json that changes often, DO NOT cache it.
 <FilesMatch "^(manifest\.json|service-worker\.js|config\.json)$">
   Header set Cache-Control "no-cache, no-store, must-revalidate"
+</FilesMatch>
+
+# E. CACHE PURGE (Immediate Browser Eviction)
+<FilesMatch "^(cache\.html|cache-purge\.js)$">
+  Header set Cache-Control "no-cache, no-store, must-revalidate"
+  Header set Pragma "no-cache"
+  Header set Expires "0"
+  Header set Clear-Site-Data "\"cache\", \"storage\""
 </FilesMatch>
 
 # D. MEDIA FILES

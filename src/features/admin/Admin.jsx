@@ -36,6 +36,7 @@ import AdminCoteriesTab from './AdminCoteriesTab';
 import { formatEuDate } from "../../utils/dateFormatter";
 import AdminAuditTab from "./AdminAuditTab";
 import AdminNewsTab from './AdminNewsTab';
+import Loading from '../../ui/Loading';
 
 /* ---------------- Sidebar navigation config ---------------- */
 const NAV_SECTIONS = [
@@ -910,101 +911,112 @@ async function grantXP(character_id, delta) {
         )}
 
         <main className={styles.content}>
-          {/* Conditional Tab Rendering */}
-          {tab === 'users' && (
-            <AdminUsersTab 
-              users={users} 
-              onSave={saveUser} 
-            />
+          {loading && users.length === 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '55vh', padding: '2rem 1rem' }}>
+              <Loading />
+              <div style={{ marginTop: '1.25rem', color: 'var(--text-secondary)', fontSize: '0.85rem', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'monospace' }}>
+                Accessing Elysium Archives ({loadProgress}%)
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Conditional Tab Rendering */}
+              {tab === 'users' && (
+                <AdminUsersTab 
+                  users={users} 
+                  onSave={saveUser} 
+                />
+              )}
+              {tab === 'characters' && (
+                <AdminCharactersTab
+                  users={users}
+                  onSave={saveCharacter}
+                  onDelete={deleteCharacter}
+                  onGeneratePDF={handleGeneratePDF}
+                  onOpenEditor={setEditorTarget}
+                />
+              )}
+              {tab === 'claims' && (
+                <AdminClaimsTab
+                  claims={claims}
+                  characters={charIndex}
+                  npcs={npcs}
+                  onSave={saveClaim}
+                  onDelete={deleteClaim}
+                />
+              )}
+              {tab === 'coteries' && <AdminCoteriesTab />}
+              {tab === 'downtimes' && (
+                <AdminDowntimesTab
+                  rows={downtimes}
+                  onSave={saveDowntime}
+                />
+              )}
+              {tab === 'xp' && (
+                <AdminXPTab 
+                  users={users} 
+                  onGrant={grantXP} 
+                  onBulkGrant={grantBulkXP}
+                  adminxp={adminxp} 
+                />
+              )}
+              {tab === 'npcs' && (
+                <AdminNPCsTab
+                  npcs={npcs}
+                  onReload={load}
+                  onDelete={deleteNPC}
+                />
+              )}
+              {tab === 'npc_email' && (
+                <AdminNpcEmailTab npcs={npcs} />
+              )}
+              {tab === 'ghouls' && (
+                <AdminGhoulsTab ghouls={ghouls} />
+              )}
+              {tab === 'premonitions' && <AdminPremonitionsTab />}
+              {tab === 'boons' && <AdminPrestationTab />}
+              {tab === 'events' && <AdminEventsTab />}
+              {tab === 'broadcast' && <AdminBroadcastTab />}
+              {tab === 'chat' && (
+                <AdminChatLogsTab 
+                  messages={allMessages} 
+                  charIndex={charIndex} 
+                />
+              )}
+              {tab === 'stats' && (
+                <ChatStatsTab
+                  directMessages={allMessages}
+                  npcMessages={allNpcMessages}
+                  groupMessages={allGroupMessages}
+                  emailMessages={allEmailMessages}
+                  chatGroups={chatGroups}
+                  npcs={npcs}
+                  users={users}
+                  xpLogs={xpLogs}
+                  premonitions={premonitions}
+                  diceRolls={diceRolls}
+                  downtimes={downtimes}
+                  characters={characters}
+                />
+              )}
+              {tab === 'dice' && (
+                <AdminDiceLogsTab />
+              )}
+              {tab === 'timeline' && <AdminTimelineTab users={users} />}
+              {tab === 'domains' && <AdminDomainsTab />}
+              {tab === 'bloodweb' && <AdminBloodWebTab />}
+              {tab === 'discord' && (
+                <AdminDiscordTab users={users} />
+              )}
+              {tab === 'master' && (            
+                <AdminMasterTab />
+              )}
+              {tab === 'masquerade' && <AdminMasqueradeTab />}
+              {tab === 'audit' && <AdminAuditTab />}
+              {tab === 'news_templates' && <AdminNewsTab users={users} />}
+              {tab === 'logs' && <AdminLogs />}
+            </>
           )}
-          {tab === 'characters' && (
-            <AdminCharactersTab
-              users={users}
-              onSave={saveCharacter}
-              onDelete={deleteCharacter}
-              onGeneratePDF={handleGeneratePDF}
-              onOpenEditor={setEditorTarget}
-            />
-          )}
-          {tab === 'claims' && (
-            <AdminClaimsTab
-              claims={claims}
-              characters={charIndex}
-              npcs={npcs}
-              onSave={saveClaim}
-              onDelete={deleteClaim}
-            />
-          )}
-          {tab === 'coteries' && <AdminCoteriesTab />}
-          {tab === 'downtimes' && (
-            <AdminDowntimesTab
-              rows={downtimes}
-              onSave={saveDowntime}
-            />
-          )}
-          {tab === 'xp' && (
-            <AdminXPTab 
-              users={users} 
-              onGrant={grantXP} 
-              onBulkGrant={grantBulkXP}
-              adminxp={adminxp} 
-            />
-          )}
-          {tab === 'npcs' && (
-            <AdminNPCsTab
-              npcs={npcs}
-              onReload={load}
-              onDelete={deleteNPC}
-            />
-          )}
-          {tab === 'npc_email' && (
-            <AdminNpcEmailTab npcs={npcs} />
-          )}
-          {tab === 'ghouls' && (
-            <AdminGhoulsTab ghouls={ghouls} />
-          )}
-          {tab === 'premonitions' && <AdminPremonitionsTab />}
-          {tab === 'boons' && <AdminPrestationTab />}
-          {tab === 'events' && <AdminEventsTab />}
-          {tab === 'broadcast' && <AdminBroadcastTab />}
-          {tab === 'chat' && (
-            <AdminChatLogsTab 
-              messages={allMessages} 
-              charIndex={charIndex} 
-            />
-          )}
-          {tab === 'stats' && (
-            <ChatStatsTab
-              directMessages={allMessages}
-              npcMessages={allNpcMessages}
-              groupMessages={allGroupMessages}
-              emailMessages={allEmailMessages}
-              chatGroups={chatGroups}
-              npcs={npcs}
-              users={users}
-              xpLogs={xpLogs}
-              premonitions={premonitions}
-              diceRolls={diceRolls}
-              downtimes={downtimes}
-              characters={characters}
-            />
-          )}
-          {tab === 'dice' && (
-            <AdminDiceLogsTab />
-          )}
-          {tab === 'timeline' && <AdminTimelineTab users={users} />}
-          {tab === 'domains' && <AdminDomainsTab />}
-          {tab === 'bloodweb' && <AdminBloodWebTab />}
-          {tab === 'discord' && (
-            <AdminDiscordTab users={users} />
-          )}
-          {tab === 'master' && (            
-            <AdminMasterTab />
-          )}
-          {tab === 'masquerade' && <AdminMasqueradeTab />}
-          {tab === 'audit' && <AdminAuditTab />}
-          {tab === 'news_templates' && <AdminNewsTab users={users} />}
-          {tab === 'logs' && <AdminLogs />}
         </main>
       </div>
 

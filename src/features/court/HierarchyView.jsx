@@ -383,6 +383,8 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles, onImageCl
             <Avatar 
                userId={ent.type === 'player' ? ent.user_id : null} 
                npcId={ent.type === 'npc' ? ent.id : null}
+               hasAvatar={ent.has_avatar}
+               fallback={clanLogoUrl || '/img/ATT-logo(1).webp'}
                size="100%" 
                editable={canEdit}
                style={{ width: '100%', height: '100%', borderRadius: 0 }} 
