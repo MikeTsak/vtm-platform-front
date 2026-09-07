@@ -11,16 +11,16 @@ import { trackPageView, setUserId, setUserProperties } from '../utils/analytics'
 import { lazyWithRetry } from '../utils/lazyWithRetry';
 
 // Pages & Components (Critical Path)
-import Login from '../features/auth/Login';
-import Register from '../features/auth/Register';
-import Home from '../pages/Home';
 import GlobalBanner from '../components/GlobalBanner';
 import CookieConsent from '../components/CookieConsent';
 import Nav from '../ui/Nav';
 import Footer from '../ui/Footer';
-import DiceRoller from '../features/dice/DiceRoller';
 
-// Lazy Loaded Routes
+// Lazy Loaded Routes & Components
+const Home = lazyWithRetry(() => import('../pages/Home'));
+const Login = lazyWithRetry(() => import('../features/auth/Login'));
+const Register = lazyWithRetry(() => import('../features/auth/Register'));
+const DiceRoller = lazyWithRetry(() => import('../features/dice/DiceRoller'));
 const CharacterView = lazyWithRetry(() => import('../features/character/CharacterView'));
 const CharacterSetup = lazyWithRetry(() => import('../features/character/CharacterSetup'));
 const Domains = lazyWithRetry(() => import('../features/domains/Domains'));
@@ -224,7 +224,9 @@ function AppLayout() {
         </Suspense>
       </div>
       <NotificationBanner />
-      <DiceRoller />
+      <Suspense fallback={null}>
+        <DiceRoller />
+      </Suspense>
       <CookieConsent />
       {!isImmersive && <Footer />}
     </div>

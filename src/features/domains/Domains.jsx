@@ -258,14 +258,19 @@ function relTime(ts) {
 // ── CORS-safe circular avatar generator ──────────────────────
 // Returns a 128x128 circular PNG data URL that Deck.gl IconLayer can load reliably on any platform.
 // Resolves to null on error (404, network error, no avatar) so clan crests remain as buffer/fallback.
-async function fetchAvatarAsDataUrl(url) {
+const TRANSPARENT_1PX_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+
+async function fetchAvatarAsDataUrl(url, division) {
   if (!url) return null;
   try {
     const res = await fetch(url, {
       credentials: 'omit',
       mode: 'cors',
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.log(`[Domains Avatar] Div #${division}: HTTP ${res.status} for ${url} (no avatar in DB, staying as clan crest)`);
+      return null;
+    }
     const blob = await res.blob();
 
     return new Promise((resolve) => {
@@ -280,6 +285,7 @@ async function fetchAvatarAsDataUrl(url) {
           const ctx = canvas.getContext('2d');
           if (!ctx) {
             URL.revokeObjectURL(objectUrl);
+            console.warn(`[Domains Avatar] Div #${division}: Failed to get 2D canvas context`);
             resolve(null);
             return;
           }
@@ -298,19 +304,23 @@ async function fetchAvatarAsDataUrl(url) {
 
           const dataUrl = canvas.toDataURL('image/png');
           URL.revokeObjectURL(objectUrl);
+          console.log(`[Domains Avatar] Div #${division}: Successfully loaded & clipped avatar (${targetSize}x${targetSize} PNG)`);
           resolve(dataUrl);
-        } catch {
+        } catch (err) {
           URL.revokeObjectURL(objectUrl);
+          console.warn(`[Domains Avatar] Div #${division}: Canvas clipping error:`, err);
           resolve(null);
         }
       };
-      img.onerror = () => {
+      img.onerror = (e) => {
         URL.revokeObjectURL(objectUrl);
+        console.warn(`[Domains Avatar] Div #${division}: Failed to load image from blob URL:`, e);
         resolve(null);
       };
       img.src = objectUrl;
     });
-  } catch {
+  } catch (err) {
+    console.warn(`[Domains Avatar] Div #${division}: Network/CORS fetch error:`, err.message);
     return null;
   }
 }
@@ -761,7 +771,7 @@ export default function Domains() {
         setAvatarCache(prev => ({ ...prev, [division]: null }));
         continue;
       }
-      fetchAvatarAsDataUrl(url).then(dataUrl => {
+      fetchAvatarAsDataUrl(url, division).then(dataUrl => {
         if (!isMounted) return;
         setAvatarCache(prev => ({
           ...prev,
@@ -1405,7 +1415,7 @@ export default function Domains() {
             data: clanIconsData,
             getPosition: d => d.position,
             getIcon: d => ({
-              url: symlogo(d.clan) || (d.clan ? `/img/clans/330px-${fileify(d.clan)}_symbol.png` : 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='),
+              url: symlogo(d.clan) || (d.clan ? `/img/clans/330px-${fileify(d.clan)}_symbol.png` : TRANSPARENT_1PX_PNG),
               id: d.clan + '-sym-shadow',
               width: 150,
               height: 150,
@@ -1425,7 +1435,7 @@ export default function Domains() {
             data: clanIconsData,
             getPosition: d => d.position,
             getIcon: d => ({
-              url: symlogo(d.clan) || (d.clan ? `/img/clans/330px-${fileify(d.clan)}_symbol.png` : 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='),
+              url: symlogo(d.clan) || (d.clan ? `/img/clans/330px-${fileify(d.clan)}_symbol.png` : TRANSPARENT_1PX_PNG),
               id: d.clan + '-sym',
               width: 150,
               height: 150,
@@ -1497,7 +1507,7 @@ export default function Domains() {
             getIcon: d => {
               const h = clanHeights[d.text] || 75;
               return {
-                url: textlogo(d.text) || (d.text ? `/img/clans/text/300px-${fileify(d.text)}_logo.png` : 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='),
+                url: textlogo(d.text) || (d.text ? `/img/clans/text/300px-${fileify(d.text)}_logo.png` : TRANSPARENT_1PX_PNG),
                 id: d.text + '-outline',
                 width: 300,
                 height: h,
@@ -1521,7 +1531,7 @@ export default function Domains() {
             getIcon: d => {
               const h = clanHeights[d.text] || 75;
               return {
-                url: textlogo(d.text) || (d.text ? `/img/clans/text/300px-${fileify(d.text)}_logo.png` : 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='),
+                url: textlogo(d.text) || (d.text ? `/img/clans/text/300px-${fileify(d.text)}_logo.png` : TRANSPARENT_1PX_PNG),
                 id: d.text,
                 width: 300,
                 height: h,
@@ -2434,7 +2444,7 @@ export default function Domains() {
                                 <img src="/img/ui/abaton.jpg" alt="Abaton" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                               </div>
                             ) : (
-                              <Avatar userId={c.user_id} npcId={c.owner_npc_id} size={36} style={{ marginLeft: '12px', flexShrink: 0, borderRadius: '50%' }} fallback={`https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random`} />
+                              <Avatar userId={c.user_id} npcId={c.owner_npc_id} size={36} style={{ marginLeft: '12px', flexShrink: 0, borderRadius: '50%' }} fallback={symlogo(c.clan) || '/img/ATT-logo(1).webp'} />
                             )}
                             <div className={styles.claimBody} style={{ marginLeft: '12px', textAlign: 'left' }}>
                               <span className={styles.claimOwner}>{c.is_abaton ? 'Abaton' : displayName}</span>
@@ -2495,7 +2505,7 @@ export default function Domains() {
                           npcId={selectedDivisionInfo.npc_id}
                           size={96}
                           editable={isAdmin && (!!selectedDivisionInfo.user_id || !!selectedDivisionInfo.npc_id)}
-                          fallback={`https://ui-avatars.com/api/?name=${encodeURIComponent(selectedDivisionInfo.owner)}&background=random`}
+                          fallback={symlogo(selectedDivisionInfo.clan) || '/img/ATT-logo(1).webp'}
                         />
                       ) : (
                         <span className="material-symbols-outlined">public_off</span>
