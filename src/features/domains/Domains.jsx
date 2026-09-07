@@ -12,21 +12,21 @@ import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import styles from '../../styles/Domains.module.css';
-import domainsRaw from '../../data/Domains.json';
 import api from '../../core/api';
 import Avatar from '../../components/Avatar';
 import { AuthCtx } from '../../core/AuthContext';
 import { symlogo, textlogo, clanTint, fileify } from '../../data/clans';
+import { DIVISION_NAMES } from '../../constants/divisionNames';
 import { DIVISION_POPULATIONS, POPULATION_GROUP_MEMBERS } from './data/divisionPopulations';
 import { HUNTING_DIFFICULTY, HUNTING_DIFFICULTY_MAX, huntingLabel } from './data/huntingDifficulty';
 import OverlayAccessManager from './OverlayAccessManager';
-import { TRANSIT_PATHS, TRANSIT_STATIONS, TRANSIT_GROUPS, TRANSIT_ATTRIBUTION } from './data/athensTransit';
+import { loadTransitData, TRANSIT_GROUPS } from './data/athensTransit';
 import {
-  CATACOMB_PASSAGES, CATACOMB_SITES, CATACOMB_CERTAINTY, CATACOMB_SITE_COLOR, CATACOMB_ATTRIBUTION,
+  loadCatacombsData, CATACOMB_CERTAINTY, CATACOMB_SITE_COLOR,
 } from './data/athensCatacombs';
 import {
-  NECRO_PASSAGES, NECRO_SITES, NECRO_CERTAINTY, NECRO_NEW_COLOR, NECRO_NEW_WIDTH,
-  NECRO_NOTES, NECRO_SITE_COLOR, NECRO_ATTRIBUTION,
+  loadNecropolisData, NECRO_CERTAINTY, NECRO_NEW_COLOR, NECRO_NEW_WIDTH,
+  NECRO_NOTES, NECRO_SITE_COLOR,
 } from './data/athensNecropolis';
 
 // Accent colors for real-world municipality/district groupings that span
@@ -210,20 +210,6 @@ function LayerSubRow({ label, active, onClick, swatch }) {
   );
 }
 
-// ── Division Names ────────────────────────────────────────
-const DIVISION_NAMES = {
-  1: 'Pagkrati', 2: 'Zografou/Kaisarianh', 3: 'Exarxia', 4: 'Boula', 5: 'Ampelokhpoi',
-  6: 'Kalithea', 7: 'Petralona', 8: 'Plaka', 9: 'Keramikos', 10: 'Tauros, Agios Ioannis Rentis',
-  11: 'Thiseio', 12: 'Mosxato', 13: 'Palaio Faliro', 14: 'Nea Smyrnh', 15: 'Agios Dhmhtrios',
-  16: 'Neos Kosmos', 17: 'Nea Penteli, Melissia', 18: 'Kolonaki, Lykabhtos', 19: 'Peristeri',
-  20: 'Aigaleo', 21: 'Petroupolh, Ilion, Agioi Anargyroi, Kamatero', 22: 'Ellhniko, Argyroupolh',
-  23: 'Psyxiko, Neo Psyxiko', 24: 'Attikh', 25: 'Kypselh', 26: 'Galatsi', 27: 'Khfisia, Nea Erythraia',
-  28: 'Alimos', 29: 'Marousi, Peykh', 30: 'Hrakleio, Metamorfosi, Lykobrysh', 31: 'Xalandri, Brilissia',
-  32: 'Perama, Keratsini', 33: 'Pathsia', 34: 'Kolonos, Sepolia', 35: 'Xolargos, Agia Paraskeyh',
-  36: 'Katexakh', 37: 'Nea Philadepfia', 38: 'Hlioupolh, Byronas', 39: 'Athina', 40: 'Psyrh',
-  41: 'Ymuttos', 42: 'Parnitha', 43: 'Peiraias, Neo Faliro', 44: 'Xaidari',
-  45: 'Korydallos, Nikaia, Agia Barbara', 46: 'Glyfada', 47: 'Gkyzh', 48: 'Eleysina', 49: 'Aspropirgos'
-};
 
 // ── Masquerade safety tiers ───────────────────────────────
 // A null rating is a distinct "Unknown" state (not assessed yet), not the
@@ -559,6 +545,43 @@ export default function Domains() {
   }, [huntingDiffOn]);
   const toggleHuntingDiff = useCallback(() => setHuntingDiffOn(v => !v), []);
 
+  // ── Dynamic GeoJSON Loading ──
+  const { data: domainsRaw } = useQuery({
+    queryKey: ['domains-geojson'],
+    queryFn: async () => {
+      const mod = await import('../../data/Domains.json');
+      return mod.default || mod;
+    },
+    staleTime: Infinity,
+  });
+
+  const { data: transitData } = useQuery({
+    queryKey: ['transit-geojson'],
+    queryFn: loadTransitData,
+    enabled: !!transitOn,
+    staleTime: Infinity,
+  });
+  const TRANSIT_PATHS = useMemo(() => transitData?.paths || [], [transitData]);
+  const TRANSIT_STATIONS = useMemo(() => transitData?.stations || [], [transitData]);
+
+  const { data: catacombsData } = useQuery({
+    queryKey: ['catacombs-geojson'],
+    queryFn: loadCatacombsData,
+    enabled: !!catacombsOn && canCatacombs,
+    staleTime: Infinity,
+  });
+  const CATACOMB_PASSAGES = useMemo(() => catacombsData?.passages || [], [catacombsData]);
+  const CATACOMB_SITES = useMemo(() => catacombsData?.sites || [], [catacombsData]);
+
+  const { data: necroData } = useQuery({
+    queryKey: ['necro-geojson'],
+    queryFn: loadNecropolisData,
+    enabled: (!!necroOldOn || !!necroNewOn) && (canNecroOld || canNecroNew),
+    staleTime: Infinity,
+  });
+  const NECRO_PASSAGES = useMemo(() => necroData?.passages || [], [necroData]);
+  const NECRO_SITES = useMemo(() => necroData?.sites || [], [necroData]);
+
   // ── Overlay hover tooltip (transit stations, catacomb / necropolis sites +
   // passages) — surfaces the authored note that's otherwise invisible ──
   const [overlayHover, setOverlayHover] = useState(null);
@@ -812,7 +835,6 @@ export default function Domains() {
   // ── Build GeoJSON with claim + request properties injected ──
   const { geoJsonData, allDomainsList } = useMemo(() => {
     if (!domainsRaw || !Array.isArray(domainsRaw.features)) {
-      console.error('Domains.json is missing or has incorrect structure.');
       return { geoJsonData: null, allDomainsList: [] };
     }
     const domains = [];
@@ -862,7 +884,7 @@ export default function Domains() {
       };
     });
     return { geoJsonData: { ...domainsRaw, features }, allDomainsList: domains };
-  }, [claims, pendingCountByDivision]);
+  }, [claims, pendingCountByDivision, domainsRaw]);
 
   const claimByDiv = useMemo(() => new Map(claims.map(c => [Number(c.division), c])), [claims]);
 
@@ -1145,7 +1167,7 @@ export default function Domains() {
     const labelAll = zoom >= TRANSIT_LABEL_ALL_ZOOM;
     const labels = dots.filter(s => s.interchange || labelAll);
     return { transitPathsSolid: solid, transitPathsDashed: dashed, transitStationDots: dots, transitLabelData: labels };
-  }, [transitOn, transitGroups, zoom]);
+  }, [transitOn, transitGroups, zoom, TRANSIT_PATHS, TRANSIT_STATIONS]);
 
   // ── Catacombs overlay (admin only): split passages by certainty so each
   // tier can carry its own dash pattern, and gate the whole thing behind the
@@ -1167,7 +1189,7 @@ export default function Domains() {
     const labelAll = zoom >= TRANSIT_LABEL_ALL_ZOOM;
     const labels = sites.filter(s => labelAll || LANDMARK.has(s.siteType));
     return { catacombPassageTiers: tiers, catacombSiteDots: sites, catacombLabelData: labels };
-  }, [catacombsOn, catacombsTiers, zoom]);
+  }, [catacombsOn, catacombsTiers, zoom, CATACOMB_PASSAGES, CATACOMB_SITES]);
 
   // ── Necropoleis overlay (admin only): the OLD necropolis draws one ragged
   // PathLayer per certainty tier (charted / hearsay / lost) for its dash; the
@@ -1194,7 +1216,7 @@ export default function Domains() {
     const labelAll = zoom >= TRANSIT_LABEL_ALL_ZOOM;
     const labels = sites.filter(s => labelAll || KEY.has(s.siteType));
     return { necroDrawGroups: groups, necroSiteDots: sites, necroLabelData: labels };
-  }, [necroOldOn, necroNewOn, necroOldTiers, zoom]);
+  }, [necroOldOn, necroNewOn, necroOldTiers, zoom, NECRO_PASSAGES, NECRO_SITES]);
 
   // ── Build Deck.gl layers ────────────────────────────────
   const deckLayers = useMemo(() => {
@@ -2445,7 +2467,7 @@ export default function Domains() {
                                 <img src="/img/ui/abaton.jpg" alt="Abaton" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                               </div>
                             ) : (
-                              <Avatar userId={c.user_id} npcId={c.owner_npc_id} hasAvatar={c.has_avatar} size={36} style={{ marginLeft: '12px', flexShrink: 0, borderRadius: '50%' }} fallback={symlogo(c.clan) || '/img/ATT-logo(1).webp'} />
+                              <Avatar userId={c.user_id} npcId={c.owner_npc_id} hasAvatar={c.has_avatar} clan={c.clan} size={36} style={{ marginLeft: '12px', flexShrink: 0, borderRadius: '50%' }} fallback={symlogo(c.clan) || '/img/ATT-logo(1).webp'} />
                             )}
                             <div className={styles.claimBody} style={{ marginLeft: '12px', textAlign: 'left' }}>
                               <span className={styles.claimOwner}>{c.is_abaton ? 'Abaton' : displayName}</span>

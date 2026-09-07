@@ -1,42 +1,39 @@
 // src/pages/Admin.jsx
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, Suspense } from 'react';
 import api from '../../core/api';
 import styles from '../../styles/Admin.module.css';
-import 'leaflet/dist/leaflet.css';
-
-// Core Components (already exist, unchanged)
-import CharacterEditor from '../character/CharacterEditor';
-import AdminLogs from './AdminLogs';
-import ChatStatsTab from './ChatStatsTab';
-
-// Tab Components (Newly broken out)
-import AdminUsersTab from './AdminUsersTab';
-import AdminCharactersTab from './AdminCharactersTab';
-import AdminClaimsTab from './AdminClaimsTab';
-import AdminDowntimesTab from './AdminDowntimesTab';
-import AdminXPTab from './AdminXPTab';
-import AdminNPCsTab from './AdminNPCsTab';
-import AdminChatLogsTab from './AdminChatLogsTab';
-import AdminDiceLogsTab from './AdminDiceLogsTab'; 
-import AdminDiscordTab from './AdminDiscordTab'; 
-import AdminNpcEmailTab from './AdminNpcEmailTab';
-import AdminMasterTab from './AdminMasterTab';
-import AdminGhoulsTab from './AdminGhoulsTab';
-import AdminPremonitionsTab from './AdminPremonitionsTab';
-import AdminBoonsTab from './AdminBoonsTab';
-import AdminEventsTab from './AdminEventsTab';
-import AdminBroadcastTab from './AdminBroadcastTab';
-import AdminTimelineTab from './AdminTimelineTab';
-import AdminDomainsTab from './AdminDomainsTab';
-import AdminBloodWebTab from './AdminBloodWebTab';
-import AdminMasqueradeTab from './AdminMasqueradeTab';
-import AdminPrestationTab from './AdminPrestationTab';
-import AdminCoteriesTab from './AdminCoteriesTab';
-
-import { formatEuDate } from "../../utils/dateFormatter";
-import AdminAuditTab from "./AdminAuditTab";
-import AdminNewsTab from './AdminNewsTab';
 import Loading from '../../ui/Loading';
+import { lazyWithRetry } from '../../utils/lazyWithRetry';
+
+// Lazy-loaded Core & Modal Components
+const CharacterEditor = lazyWithRetry(() => import('../character/CharacterEditor'));
+const AdminLogs = lazyWithRetry(() => import('./AdminLogs'));
+const ChatStatsTab = lazyWithRetry(() => import('./ChatStatsTab'));
+
+// Lazy-loaded Tab Components (On-demand chunks)
+const AdminUsersTab = lazyWithRetry(() => import('./AdminUsersTab'));
+const AdminCharactersTab = lazyWithRetry(() => import('./AdminCharactersTab'));
+const AdminClaimsTab = lazyWithRetry(() => import('./AdminClaimsTab'));
+const AdminDowntimesTab = lazyWithRetry(() => import('./AdminDowntimesTab'));
+const AdminXPTab = lazyWithRetry(() => import('./AdminXPTab'));
+const AdminNPCsTab = lazyWithRetry(() => import('./AdminNPCsTab'));
+const AdminChatLogsTab = lazyWithRetry(() => import('./AdminChatLogsTab'));
+const AdminDiceLogsTab = lazyWithRetry(() => import('./AdminDiceLogsTab')); 
+const AdminDiscordTab = lazyWithRetry(() => import('./AdminDiscordTab')); 
+const AdminNpcEmailTab = lazyWithRetry(() => import('./AdminNpcEmailTab'));
+const AdminMasterTab = lazyWithRetry(() => import('./AdminMasterTab'));
+const AdminGhoulsTab = lazyWithRetry(() => import('./AdminGhoulsTab'));
+const AdminPremonitionsTab = lazyWithRetry(() => import('./AdminPremonitionsTab'));
+const AdminEventsTab = lazyWithRetry(() => import('./AdminEventsTab'));
+const AdminBroadcastTab = lazyWithRetry(() => import('./AdminBroadcastTab'));
+const AdminTimelineTab = lazyWithRetry(() => import('./AdminTimelineTab'));
+const AdminDomainsTab = lazyWithRetry(() => import('./AdminDomainsTab'));
+const AdminBloodWebTab = lazyWithRetry(() => import('./AdminBloodWebTab'));
+const AdminMasqueradeTab = lazyWithRetry(() => import('./AdminMasqueradeTab'));
+const AdminPrestationTab = lazyWithRetry(() => import('./AdminPrestationTab'));
+const AdminCoteriesTab = lazyWithRetry(() => import('./AdminCoteriesTab'));
+const AdminAuditTab = lazyWithRetry(() => import('./AdminAuditTab'));
+const AdminNewsTab = lazyWithRetry(() => import('./AdminNewsTab'));
 
 /* ---------------- Sidebar navigation config ---------------- */
 const NAV_SECTIONS = [
@@ -919,7 +916,14 @@ async function grantXP(character_id, delta) {
               </div>
             </div>
           ) : (
-            <>
+            <Suspense fallback={
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '40vh', padding: '3rem 1rem' }}>
+                <Loading />
+                <div style={{ marginTop: '1.25rem', color: 'var(--text-secondary)', fontSize: '0.85rem', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'monospace' }}>
+                  Summoning {TAB_LABELS[tab] || 'Module'}...
+                </div>
+              </div>
+            }>
               {/* Conditional Tab Rendering */}
               {tab === 'users' && (
                 <AdminUsersTab 
@@ -1015,18 +1019,20 @@ async function grantXP(character_id, delta) {
               {tab === 'audit' && <AdminAuditTab />}
               {tab === 'news_templates' && <AdminNewsTab users={users} />}
               {tab === 'logs' && <AdminLogs />}
-            </>
+            </Suspense>
           )}
         </main>
       </div>
 
       {/* Modal remains here */}
       {editorTarget && (
-       <CharacterEditor
-          character={editorTarget}
-          onClose={() => setEditorTarget(null)}
-          onSaved={() => { setEditorTarget(null); load(); }} // Close and reload
-        />
+        <Suspense fallback={null}>
+          <CharacterEditor
+            character={editorTarget}
+            onClose={() => setEditorTarget(null)}
+            onSaved={() => { setEditorTarget(null); load(); }} // Close and reload
+          />
+        </Suspense>
       )}
     </div>
   );

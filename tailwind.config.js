@@ -1,4 +1,4 @@
-﻿/** @type {import('tailwindcss').Config} */
+/** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
     './index.html',
@@ -71,13 +71,19 @@ module.exports = {
         'container-max':   '1200px',
       },
       fontFamily: {
-        'label-sm':           ['JetBrains Mono'],
-        'system-code':        ['JetBrains Mono'],
-        'headline-md':        ['Geist'],
-        'headline-lg':        ['Geist'],
-        'body-md':            ['Inter'],
-        'headline-lg-mobile': ['Geist'],
-        'body-lg':            ['Inter'],
+        sans:                 ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        serif:                ['Playfair Display', 'Georgia', 'serif'],
+        mono:                 ['JetBrains Mono', 'monospace'],
+        inter:                ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        playfair:             ['Playfair Display', 'Georgia', 'serif'],
+        cinzel:               ['Cinzel', 'serif'],
+        'label-sm':           ['JetBrains Mono', 'monospace'],
+        'system-code':        ['JetBrains Mono', 'monospace'],
+        'headline-md':        ['Playfair Display', 'Georgia', 'serif'],
+        'headline-lg':        ['Playfair Display', 'Georgia', 'serif'],
+        'body-md':            ['Inter', 'system-ui', 'sans-serif'],
+        'headline-lg-mobile': ['Playfair Display', 'Georgia', 'serif'],
+        'body-lg':            ['Inter', 'system-ui', 'sans-serif'],
       },
       fontSize: {
         'label-sm':           ['12px', { lineHeight: '16px', letterSpacing: '0.05em', fontWeight: '500' }],

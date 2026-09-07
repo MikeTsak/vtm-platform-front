@@ -7,39 +7,7 @@
 //     Acropolis to Syngrou-Fix and carries the "New 2026 Entrance" marker.
 //   * NEW — tiny, recent, in the pine wood above Papagou.
 //
-// Same client-bundle caveat as the catacombs layer: the admin gate in
-// Domains.jsx is client-side only. Move behind an authed API if it must be
-// genuinely hidden.
-
-import necropolisRaw from '../../../data/athens-necropolis.json';
-
-const features = Array.isArray(necropolisRaw?.features) ? necropolisRaw.features : [];
-
-// flatten MultiLineString passages into one {path} per segment (gaps in a
-// gallery are already separate segments in the data)
-export const NECRO_PASSAGES = features
-  .filter(f => f.properties?.kind === 'passage' && f.geometry?.type === 'MultiLineString')
-  .flatMap(f =>
-    f.geometry.coordinates.map(path => ({
-      path,
-      necropolis: f.properties.necropolis,   // 'old' | 'new'
-      name: f.properties.name,
-      certainty: f.properties.certainty,     // 'charted' | 'hearsay' | 'lost'
-      status: f.properties.status,           // 'sealed' | 'collapsed' | 'active'
-    }))
-  );
-
-export const NECRO_SITES = features
-  .filter(f => f.properties?.kind === 'site' && f.geometry?.type === 'Point')
-  .map(f => ({
-    position: f.geometry.coordinates,
-    necropolis: f.properties.necropolis,
-    name: f.properties.name,
-    siteType: f.properties.siteType,         // new_entrance | entrance | chamber | ossuary | shaft | seal | collapse | unknown
-    certainty: f.properties.certainty,
-    status: f.properties.status,
-    note: f.properties.note,
-  }));
+// Lazy-loaded on demand only when an authorized administrator enables the overlay.
 
 // Line style per record-certainty — applies to the OLD necropolis, where the
 // record is fragmentary. Each tier gets its own colour, dash AND width so the
@@ -75,4 +43,41 @@ export const NECRO_SITE_COLOR = {
   furnace:      '#ff7a1a',
 };
 
-export const NECRO_ATTRIBUTION = necropolisRaw?.note || '';
+let necroPromise = null;
+
+export async function loadNecropolisData() {
+  if (!necroPromise) {
+    necroPromise = import('../../../data/athens-necropolis.json').then((mod) => {
+      const necropolisRaw = mod.default || mod;
+      const features = Array.isArray(necropolisRaw?.features) ? necropolisRaw.features : [];
+
+      const passages = features
+        .filter(f => f.properties?.kind === 'passage' && f.geometry?.type === 'MultiLineString')
+        .flatMap(f =>
+          f.geometry.coordinates.map(path => ({
+            path,
+            necropolis: f.properties.necropolis,   // 'old' | 'new'
+            name: f.properties.name,
+            certainty: f.properties.certainty,     // 'charted' | 'hearsay' | 'lost'
+            status: f.properties.status,           // 'sealed' | 'collapsed' | 'active'
+          }))
+        );
+
+      const sites = features
+        .filter(f => f.properties?.kind === 'site' && f.geometry?.type === 'Point')
+        .map(f => ({
+          position: f.geometry.coordinates,
+          necropolis: f.properties.necropolis,
+          name: f.properties.name,
+          siteType: f.properties.siteType,
+          certainty: f.properties.certainty,
+          status: f.properties.status,
+          note: f.properties.note,
+        }));
+
+      const attribution = necropolisRaw?.note || '';
+      return { passages, sites, attribution };
+    });
+  }
+  return necroPromise;
+}

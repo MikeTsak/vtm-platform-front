@@ -5,7 +5,7 @@ import AvatarCropperModal from './AvatarCropperModal';
 
 const avatarTimestamps = new Map();
 
-export default function Avatar({ userId, npcId, identityId, retainerId, size = 80, editable = false, onUploadSuccess, onFileSelect, previewUrl, avatarUrl, hasAvatar, style = {}, className = "", imgClassName = "", imgStyle = {}, fallback = '/img/ATT-logo(1).webp' }) {
+export default function Avatar({ userId, npcId, identityId, retainerId, clan, size = 80, editable = false, onUploadSuccess, onFileSelect, previewUrl, avatarUrl, hasAvatar, style = {}, className = "", imgClassName = "", imgStyle = {}, fallback = '/img/ATT-logo(1).webp' }) {
   const entityKey = userId ? `u_${userId}` : (npcId ? `n_${npcId}` : (retainerId ? `r_${retainerId}` : `i_${identityId}`));
   const [timestamp, setTimestamp] = useState(() => avatarTimestamps.get(entityKey) || '');
   const [isUploading, setIsUploading] = useState(false);
@@ -15,7 +15,7 @@ export default function Avatar({ userId, npcId, identityId, retainerId, size = 8
   const fileInputRef = useRef(null);
 
   const baseUrl = import.meta.env.VITE_API_URL || '/api';
-  let srcUrl = previewUrl || fallback;
+  let srcUrl = previewUrl || fallback || '/img/ATT-logo(1).webp';
   let thumbSrcUrl = null;
 
   React.useEffect(() => {
@@ -48,7 +48,7 @@ export default function Avatar({ userId, npcId, identityId, retainerId, size = 8
       srcUrl = avatarUrl;
       thumbSrcUrl = avatarUrl;
     } else if (hasAvatar === false && !timestamp) {
-      srcUrl = fallback;
+      srcUrl = fallback || '/img/ATT-logo(1).webp';
       thumbSrcUrl = null;
     } else {
       const q = buildQuery();
@@ -138,6 +138,45 @@ export default function Avatar({ userId, npcId, identityId, retainerId, size = 8
     }
   };
 
+  const isAttLogo = Boolean(
+    srcUrl && (
+      srcUrl === '/img/ATT-logo(1).webp' || 
+      srcUrl.includes('ATT-logo')
+    )
+  );
+
+  const isUsingFallback = Boolean(
+    !isAttLogo &&
+    !avatarUrl && 
+    !previewUrl &&
+    (srcUrl === fallback || hasAvatar === false || imgError) &&
+    fallback && 
+    !fallback.includes('ATT-logo')
+  );
+
+  const isExplicitClanLogo = Boolean(
+    !isAttLogo &&
+    (srcUrl === fallback || hasAvatar === false || imgError || isUsingFallback) &&
+    Boolean(clan && clan !== 'Unknown Clan')
+  );
+
+  const isUrlClanLogo = Boolean(
+    !isAttLogo &&
+    srcUrl &&
+    !srcUrl.includes('/users/') &&
+    !srcUrl.includes('/npcs/') &&
+    !srcUrl.includes('/retainers/') &&
+    !srcUrl.includes('/identities/') &&
+    (
+      srcUrl.includes('imagetools') ||
+      srcUrl.includes('_symbol') || 
+      srcUrl.includes('/clans/') || 
+      srcUrl.includes('clans')
+    )
+  );
+
+  const isClanLogo = Boolean(!isAttLogo && (isUsingFallback || isExplicitClanLogo || isUrlClanLogo));
+
   return (
     <>
       <div 
@@ -148,7 +187,7 @@ export default function Avatar({ userId, npcId, identityId, retainerId, size = 8
       >
         <img
           src={srcUrl}
-          crossOrigin="anonymous"
+          crossOrigin={srcUrl && (srcUrl.startsWith('data:') || srcUrl.startsWith('blob:') || (srcUrl.startsWith('http') && !srcUrl.includes('miketsak.gr'))) ? undefined : "anonymous"}
           // `size` isn't always a pixel number — several call sites pass
           // "100%" to fill a variably-sized container (chat rows, admin
           // grids, the court hierarchy cards). We can't know the actual
@@ -163,7 +202,15 @@ export default function Avatar({ userId, npcId, identityId, retainerId, size = 8
           width={size}
           height={size}
           className={`${styles.avatarImage} ${imgClassName}`}
-          style={imgStyle}
+          style={{
+            ...imgStyle,
+            ...(isClanLogo ? {
+              filter: 'brightness(0) invert(1)',
+              objectFit: 'contain',
+              padding: '12%',
+              boxSizing: 'border-box'
+            } : {})
+          }}
           onError={() => setImgError(true)}
         />
         {editable && (

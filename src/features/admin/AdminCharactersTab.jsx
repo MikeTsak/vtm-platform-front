@@ -1,4 +1,4 @@
-﻿// src/components/admin/AdminCharactersTab.jsx
+// src/components/admin/AdminCharactersTab.jsx
 import React, { useMemo, useState, useEffect } from 'react';
 import api from '../../core/api';
 import Inventory from '../inventory/Inventory';
@@ -108,7 +108,8 @@ const TrackerDisplay = ({ label, currentObj, max, onUpdate, isValueTracker = fal
 export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEditor }) {
   const baseChars = useMemo(() => users.filter(u => u.character_id).map(u => ({
     id: u.character_id, user_id: u.id, name: u.char_name || '', clan: u.clan || '',
-    xp: u.xp || 0, sheet: u.sheet || null, owner: `${u.display_name} <${u.email}>`
+    xp: u.xp || 0, sheet: u.sheet || null, owner: `${u.display_name} <${u.email}>`,
+    has_avatar: Boolean(u.has_avatar)
   })), [users]);
 
   const [sheetStates, setSheetStates] = useState({});
@@ -369,7 +370,15 @@ export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEdit
               <div className={styles.charCardHeader} onClick={() => toggleExpand(c.id)}>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                   <div onClick={(e) => e.stopPropagation()}>
-                    <Avatar userId={c.user_id} size={48} fallback={`https://ui-avatars.com/api/?name=${encodeURIComponent(c.name)}&background=random`} style={{ borderRadius: '50%', flexShrink: 0 }} editable={true} />
+                    <Avatar
+                      userId={c.user_id}
+                      hasAvatar={c.has_avatar}
+                      clan={c.clan}
+                      size={48}
+                      fallback={symlogo(c.clan) || '/img/ATT-logo(1).webp'}
+                      style={{ borderRadius: '50%', flexShrink: 0 }}
+                      editable={true}
+                    />
                   </div>
                   <div className={styles.cardOwnerInfo}>
                     <div className={styles.charCardOwnerLabel}>

@@ -233,9 +233,10 @@
 .placeholderLogo {
   width: 48px;
   height: 48px;
-  opacity: 0.6;
+  opacity: 0.85;
   margin-bottom: 4px;
   object-fit: contain;
+  filter: brightness(0) invert(1);
 }
 
 /* Info Column */

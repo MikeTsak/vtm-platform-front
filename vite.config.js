@@ -71,7 +71,9 @@ export default defineConfig(async () => {
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom', 'framer-motion', '@tanstack/react-query', 'zod', 'react-hook-form']
+          vendor: ['react', 'react-dom', 'react-router-dom', 'framer-motion', '@tanstack/react-query', 'zod', 'react-hook-form'],
+          'vendor-maps': ['maplibre-gl', '@deck.gl/core', '@deck.gl/react', '@deck.gl/layers', 'leaflet', 'react-leaflet'],
+          'vendor-charts': ['@antv/g6']
         }
       }
     }

@@ -100,7 +100,7 @@ export default function AdminNpcEmailTab() {
                   <tr key={id.id}>
                     <td style={{ fontWeight: 700, color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <div onClick={(e) => e.stopPropagation()} style={{ width: 40, height: 40, flexShrink: 0 }}>
-                        <Avatar identityId={id.id} size="100%" style={{ width: '100%', height: '100%', borderRadius: '50%' }} editable={true} fallback={`https://ui-avatars.com/api/?name=${encodeURIComponent(id.display_name)}&background=random`} />
+                        <Avatar identityId={id.id} size="100%" style={{ width: '100%', height: '100%', borderRadius: '50%' }} editable={true} fallback="/img/ATT-logo(1).webp" />
                       </div>
                       {id.display_name}
                     </td>
@@ -148,7 +148,7 @@ export default function AdminNpcEmailTab() {
                   
                   return (
                     <div key={i} style={{ alignSelf: isIdentity ? 'flex-end' : 'flex-start', maxWidth: '80%', display: 'flex', flexDirection: isIdentity ? 'row-reverse' : 'row', gap: '1rem', alignItems: 'flex-end' }}>
-                      <Avatar {...avatarProps} size={36} style={{ borderRadius: '50%', flexShrink: 0 }} fallback={`https://ui-avatars.com/api/?name=${encodeURIComponent(msgName)}&background=random`} />
+                      <Avatar {...avatarProps} size={36} style={{ borderRadius: '50%', flexShrink: 0 }} fallback="/img/ATT-logo(1).webp" />
                       <div style={{ background: isIdentity ? 'linear-gradient(135deg, rgba(127,90,240,0.2) 0%, rgba(157,124,255,0.05) 100%)' : 'rgba(255,255,255,0.03)', padding: '1rem 1.25rem', borderRadius: 'var(--radius-md)', border: `1px solid ${isIdentity ? 'var(--glass-border-highlight)' : 'var(--glass-border)'}`, boxShadow: '0 4px 15px rgba(0,0,0,0.2)' }}>
                         <div style={{ fontSize: '0.75rem', color: isIdentity ? 'var(--accent-purple)' : 'var(--text-secondary)', fontWeight: 700, marginBottom: '6px', display: 'flex', justifyContent: 'space-between', gap: '2rem' }}>
                           <span>{msgName}</span>

@@ -24,32 +24,7 @@ import {
   seedFromType,
 } from '../../data/coterieRules';
 
-/* ---- Domains, read the same way Domains.jsx reads them ---- */
-import domainsRaw from '../../data/Domains.json';
-
-const DIVISION_NAMES = {
-  1: 'Pagkrati', 2: 'Zografou/Kaisarianh', 3: 'Exarxia', 4: 'Boula', 5: 'Ampelokhpoi',
-  6: 'Kalithea', 7: 'Petralona', 8: 'Plaka', 9: 'Keramikos', 10: 'Tauros, Agios Ioannis Rentis',
-  11: 'Thiseio', 12: 'Mosxato', 13: 'Palaio Faliro', 14: 'Nea Smyrnh', 15: 'Agios Dhmhtrios',
-  16: 'Neos Kosmos', 17: 'Nea Penteli, Melissia', 18: 'Kolonaki, Lykabhtos', 19: 'Peristeri',
-  20: 'Aigaleo', 21: 'Petroupolh, Ilion, Agioi Anargyroi, Kamatero', 22: 'Ellhniko, Argyroupolh',
-  23: 'Psyxiko, Neo Psyxiko', 24: 'Attikh', 25: 'Kypselh', 26: 'Galatsi', 27: 'Khfisia, Nea Erythraia',
-  28: 'Alimos', 29: 'Marousi, Peykh', 30: 'Hrakleio, Metamorfosi, Lykobrysh', 31: 'Xalandri, Brilissia',
-  32: 'Perama, Keratsini', 33: 'Pathsia', 34: 'Kolonos, Sepolia', 35: 'Xolargos, Agia Paraskeyh',
-  36: 'Katexakh', 37: 'Nea Philadepfia', 38: 'Hlioupolh, Byronas', 39: 'Athina', 40: 'Psyrh',
-  41: 'Ymuttos', 42: 'Parnitha', 43: 'Peiraias, Neo Faliro', 44: 'Xaidari',
-  45: 'Korydallos, Nikaia, Agia Barbara', 46: 'Glyfada', 47: 'Gkyzh', 48: 'Eleysina', 49: 'Aspropirgos',
-};
-
-function computeDomainOptions() {
-  if (!domainsRaw || !Array.isArray(domainsRaw.features)) return [];
-  const seen = new Map();
-  domainsRaw.features.forEach((f, i) => {
-    const n = f?.properties?.division != null ? Number(f.properties.division) : i + 1;
-    if (!seen.has(n)) seen.set(n, { value: n, label: DIVISION_NAMES[n] || `Division ${n}` });
-  });
-  return [...seen.values()].sort((a, b) => a.value - b.value);
-}
+import { DIVISION_OPTIONS, getDivisionName } from '../../constants/divisionNames';
 
 const errText = (e, fallback) =>
   (e && e.response && e.response.data && e.response.data.error) || fallback;
@@ -120,10 +95,10 @@ export default function CoterieManager() {
   const [busy, setBusy] = useState(false);
 
   const isAdmin = currentUser?.role === 'admin' || currentUser?.permission_level === 'admin';
-  const domainOptions = useMemo(computeDomainOptions, []);
+  const domainOptions = DIVISION_OPTIONS;
   const domainLabelFor = useCallback(
-    (id) => (domainOptions.find((o) => o.value === Number(id)) || {}).label || null,
-    [domainOptions]
+    (id) => (id != null ? getDivisionName(Number(id)) : null),
+    []
   );
 
   /* ---- initial load ---- */

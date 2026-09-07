@@ -13,7 +13,6 @@ import homeStyles from '../../styles/Home.module.css';
 import CharacterSetup from './CharacterSetup';
 import { ATTR_DESCRIPTIONS, SKILL_DESCRIPTIONS } from '../../data/descriptions';
 import { MERITS_AND_FLAWS, listAllItems } from '../../data/merits_flaws';
-import generateVTMCharacterSheetPDF from '../../utils/pdfGenerator';
 import { buildXpSpendIdempotencyKey } from '../../utils/idempotencyKey';
 import Inventory from '../inventory/Inventory';
 import TouchstonesConvictionsSection from './TouchstonesConvictionsSection';
@@ -1845,7 +1844,10 @@ export default function CharacterView({
           </motion.section>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
-            <button className={styles.ghostBtn} onClick={() => generateVTMCharacterSheetPDF(ch)}>
+            <button className={styles.ghostBtn} onClick={async () => {
+              const { default: generatePDF } = await import('../../utils/pdfGenerator');
+              generatePDF(ch);
+            }}>
               Export PDF Record
             </button>
           </div>

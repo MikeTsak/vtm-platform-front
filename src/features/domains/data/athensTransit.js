@@ -5,40 +5,8 @@
 // (© OpenStreetMap contributors, ODbL); Line 4 is hand-placed by neighbourhood
 // because it is still under construction and not yet mapped.
 //
-// This module just slices that file into the shapes the map layers want and
-// describes the toggleable network groups shown in the legend.
-
-import transitRaw from '../../../data/athens-transit.json';
-
-const features = Array.isArray(transitRaw?.features) ? transitRaw.features : [];
-
-// Flatten every line feature's MultiLineString into individual paths so a
-// deck.gl PathLayer can consume them directly.
-export const TRANSIT_PATHS = features
-  .filter(f => f.properties?.kind === 'line' && f.geometry?.type === 'MultiLineString')
-  .flatMap(f =>
-    f.geometry.coordinates.map(path => ({
-      path,
-      line: f.properties.line,
-      label: f.properties.label,
-      network: f.properties.network,
-      colour: f.properties.colour,
-      status: f.properties.status, // 'operational' | 'construction'
-    }))
-  );
-
-export const TRANSIT_STATIONS = features
-  .filter(f => f.properties?.kind === 'station' && f.geometry?.type === 'Point')
-  .map(f => ({
-    position: f.geometry.coordinates,
-    name: f.properties.name,
-    nameEl: f.properties.name_el,
-    lines: f.properties.lines || [],
-    networks: f.properties.networks || [],
-    interchange: !!f.properties.interchange,
-    colour: f.properties.primaryColour || '#cbd5e1',
-    status: f.properties.status,
-  }));
+// This module provides static legend / group metadata immediately and lazy-loads
+// the heavy geometry coordinates on-demand so the main bundle isn't bloated.
 
 // ── Network groups: the legend rows / toggles ──────────────────────────────
 // `match` decides which line + station features a group owns. `swatch` is a
@@ -75,4 +43,43 @@ export const TRANSIT_GROUPS = [
   },
 ];
 
-export const TRANSIT_ATTRIBUTION = transitRaw?.note || '';
+let transitDataPromise = null;
+
+export async function loadTransitData() {
+  if (!transitDataPromise) {
+    transitDataPromise = import('../../../data/athens-transit.json').then((mod) => {
+      const transitRaw = mod.default || mod;
+      const features = Array.isArray(transitRaw?.features) ? transitRaw.features : [];
+
+      const paths = features
+        .filter(f => f.properties?.kind === 'line' && f.geometry?.type === 'MultiLineString')
+        .flatMap(f =>
+          f.geometry.coordinates.map(path => ({
+            path,
+            line: f.properties.line,
+            label: f.properties.label,
+            network: f.properties.network,
+            colour: f.properties.colour,
+            status: f.properties.status, // 'operational' | 'construction'
+          }))
+        );
+
+      const stations = features
+        .filter(f => f.properties?.kind === 'station' && f.geometry?.type === 'Point')
+        .map(f => ({
+          position: f.geometry.coordinates,
+          name: f.properties.name,
+          nameEl: f.properties.name_el,
+          lines: f.properties.lines || [],
+          networks: f.properties.networks || [],
+          interchange: !!f.properties.interchange,
+          colour: f.properties.primaryColour || '#cbd5e1',
+          status: f.properties.status,
+        }));
+
+      const attribution = transitRaw?.note || '';
+      return { paths, stations, attribution };
+    });
+  }
+  return transitDataPromise;
+}

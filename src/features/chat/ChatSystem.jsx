@@ -1,4 +1,4 @@
-﻿// src/components/ChatSystem.jsx
+// src/components/ChatSystem.jsx
 import React, { useState, useEffect, useContext, useRef, useMemo, useLayoutEffect, useCallback } from 'react';
 import { AuthCtx } from '../../core/AuthContext';
 import api from '../../core/api';
@@ -6,7 +6,7 @@ import styles from '../../styles/ChatSystem.module.css';
 import '../../styles/SchreckNetChat.css';
 import { Skeleton } from 'boneyard-js/react';
 import Avatar from '../../components/Avatar';
-import EmojiPicker from 'emoji-picker-react';
+const EmojiPicker = React.lazy(() => import('emoji-picker-react'));
 import MiniSearch from 'minisearch';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getPushSettings, updatePushSettings, subscribeToWebPush } from '../../utils/push';
@@ -638,46 +638,66 @@ export default function ChatSystem({ commsEnabled = true }) {
     }
   }, [isAuthenticated]);
 
-  // Initial Load & Polling setup. The interval is now a slow safety net —
-  // 'chat:refresh' (below) handles the real-time case, so this only exists
-  // to catch anything missed if the socket was ever briefly disconnected.
+  // Track page visibility to pause polling entirely when the user is in another tab
+  const [isTabVisible, setIsTabVisible] = useState(() => (typeof document !== 'undefined' ? !document.hidden : true));
+  useEffect(() => {
+    const handleVisibility = () => {
+      const visible = !document.hidden;
+      setIsTabVisible(visible);
+      if (visible) {
+        // Immediate sync upon returning to tab
+        setSocketRefreshTick((t) => t + 1);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, []);
+
+  // Real-time group chat: join socket room for active group
+  useEffect(() => {
+    if (selectedContact?.type === 'group' && selectedContact?.id) {
+      socket.emit('join_group', selectedContact.id);
+      return () => {
+        socket.emit('leave_group', selectedContact.id);
+      };
+    }
+  }, [selectedContact?.type, selectedContact?.id]);
+
+  // Initial Load & Polling setup. Pauses when tab is hidden.
+  // With real-time WebSocket events, a 90s safety fallback is used while visible.
   useEffect(() => {
     setLoading(true);
     fetchContacts().finally(() => setLoading(false));
 
-    const contactInterval = setInterval(fetchContacts, 45000);
+    if (!isTabVisible) return;
+    const intervalMs = socket.connected ? 90000 : 30000;
+    const contactInterval = setInterval(fetchContacts, intervalMs);
     return () => clearInterval(contactInterval);
-  }, [fetchContacts, creatingGroup]);
+  }, [fetchContacts, creatingGroup, isTabVisible]);
 
-  // Socket-driven instant refresh. Deliberately a separate effect from the
-  // one above: this must NEVER toggle `loading` (that would flash the
-  // skeleton on every incoming message) — it just silently re-runs the same
-  // fetchContacts() the interval already calls in the background. Bumping
-  // socketRefreshTick (used by the message-polling effect further down) is
-  // how a single 'chat:refresh' event also re-syncs whichever thread is
-  // currently open, without duplicating that effect's fetch logic here.
+  // Socket-driven instant refresh. Deliberately a separate effect:
+  // this must NEVER toggle `loading` (that would flash the skeleton) —
+  // it silently re-runs fetchContacts() and bumps socketRefreshTick to
+  // sync whichever thread is currently open within 300ms.
   const [socketRefreshTick, setSocketRefreshTick] = useState(0);
   useEffect(() => {
-    // Debounced: a burst of several messages arriving within the same
-    // moment (e.g. a group conversation firing off) would otherwise queue up
-    // that many overlapping fetches — coalesce them into one.
     let debounceTimer = null;
     const bump = () => {
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => setSocketRefreshTick((t) => t + 1), 300);
     };
     socket.on('chat:refresh', bump);
-    // Also catch up immediately after a (re)connect, in case anything
-    // happened while this tab's socket was briefly disconnected.
+    socket.on('chat:reactions', bump);
     socket.on('connect', bump);
     return () => {
       clearTimeout(debounceTimer);
       socket.off('chat:refresh', bump);
+      socket.off('chat:reactions', bump);
       socket.off('connect', bump);
     };
   }, []);
   useEffect(() => {
-    if (socketRefreshTick === 0) return; // skip the initial render — the mount effect above already does the first load
+    if (socketRefreshTick === 0) return; // skip initial render
     fetchContacts();
   }, [socketRefreshTick, fetchContacts]);
 
@@ -745,9 +765,11 @@ export default function ChatSystem({ commsEnabled = true }) {
         .catch(() => {});
     };
     fetchReactions();
-    const interval = setInterval(fetchReactions, 20000);
+    if (!isTabVisible) return () => { active = false; };
+    const intervalMs = socket.connected ? 90000 : 30000;
+    const interval = setInterval(fetchReactions, intervalMs);
     return () => { active = false; clearInterval(interval); };
-  }, [messageIdsKey, reactionTable, socketRefreshTick]);
+  }, [messageIdsKey, reactionTable, socketRefreshTick, isTabVisible]);
 
   // Active Conversation Message Polling
   useEffect(() => {
@@ -875,18 +897,21 @@ export default function ChatSystem({ commsEnabled = true }) {
     };
 
     load();
-    // Slow safety net — 'chat:refresh' (see socketRefreshTick above) covers
-    // the real-time case, so this interval only needs to catch anything
-    // missed during a brief socket disconnect.
-    pollRef.current = setInterval(load, 20000);
-    return () => clearInterval(pollRef.current);
+    if (!isTabVisible) return;
+    // Slow safety net — 'chat:refresh' covers real-time delivery via WebSocket,
+    // so this interval only catches edge cases or reconnects.
+    const intervalMs = socket.connected ? 60000 : 15000;
+    pollRef.current = setInterval(load, intervalMs);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
     // socketRefreshTick is intentionally a dependency, not used in the body:
     // bumping it re-runs this effect, which calls load() immediately — the
     // same function this effect already runs on mount/selection-change and
     // every interval tick, just triggered on-demand by the socket event
     // instead of only on a timer.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedContact, selectedPlayerId, isAdmin, isAuthenticated, currentUser?.id, users, threadKey, isInbound, notify, socketRefreshTick]);
+  }, [selectedContact, selectedPlayerId, isAdmin, isAuthenticated, currentUser?.id, users, threadKey, isInbound, notify, socketRefreshTick, isTabVisible]);
 
   /* --- File Handling --- */
   const handleFileSelect = (e) => {
@@ -1771,25 +1796,31 @@ export default function ChatSystem({ commsEnabled = true }) {
               {/* Emoji Picker */}
               {showEmojiPicker && (
                 <div className="absolute bottom-[100%] left-1/2 -translate-x-1/2 md:left-auto md:right-4 md:translate-x-0 z-50 mb-2 shadow-[0_0_20px_rgba(0,0,0,0.8)] rounded-lg overflow-hidden border border-outline-variant w-[min(92vw,320px)]">
-                  <EmojiPicker
-                    onEmojiClick={onEmojiClick}
-                    theme="dark"
-                    searchDisabled={false}
-                    width="100%"
-                    customEmojis={customClanEmojis}
-                    categories={[
-                      { category: 'suggested', name: 'Recently Used' },
-                      { category: 'custom', name: 'Clans' },
-                      { category: 'smileys_people', name: 'Smileys & People' },
-                      { category: 'animals_nature', name: 'Animals & Nature' },
-                      { category: 'food_drink', name: 'Food & Drink' },
-                      { category: 'travel_places', name: 'Travel & Places' },
-                      { category: 'activities', name: 'Activities' },
-                      { category: 'objects', name: 'Objects' },
-                      { category: 'symbols', name: 'Symbols' },
-                      { category: 'flags', name: 'Flags' }
-                    ]}
-                  />
+                  <React.Suspense fallback={
+                    <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary, #888)', background: '#111', fontSize: '13px' }}>
+                      Loading emojis...
+                    </div>
+                  }>
+                    <EmojiPicker
+                      onEmojiClick={onEmojiClick}
+                      theme="dark"
+                      searchDisabled={false}
+                      width="100%"
+                      customEmojis={customClanEmojis}
+                      categories={[
+                        { category: 'suggested', name: 'Recently Used' },
+                        { category: 'custom', name: 'Clans' },
+                        { category: 'smileys_people', name: 'Smileys & People' },
+                        { category: 'animals_nature', name: 'Animals & Nature' },
+                        { category: 'food_drink', name: 'Food & Drink' },
+                        { category: 'travel_places', name: 'Travel & Places' },
+                        { category: 'activities', name: 'Activities' },
+                        { category: 'objects', name: 'Objects' },
+                        { category: 'symbols', name: 'Symbols' },
+                        { category: 'flags', name: 'Flags' }
+                      ]}
+                    />
+                  </React.Suspense>
                 </div>
               )}
 

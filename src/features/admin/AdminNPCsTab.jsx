@@ -55,7 +55,7 @@ export default function AdminNPCsTab({ npcs, onReload, onDelete }) {
                     <td className={styles.idCell}>#{n.id}</td>
                     <td className={styles.npcNameCell}>
                       <div style={{ width: 40, height: 40, marginRight: 12, display: 'inline-block', verticalAlign: 'middle' }}>
-                        <Avatar npcId={n.id} hasAvatar={n.has_avatar} size="100%" style={{ width: '100%', height: '100%', borderRadius: '50%' }} fallback={symlogo(n.clan)} editable={true} />
+                        <Avatar npcId={n.id} hasAvatar={n.has_avatar} clan={n.clan} size="100%" style={{ width: '100%', height: '100%', borderRadius: '50%' }} fallback={symlogo(n.clan)} editable={true} />
                       </div>
                       <span style={{ fontWeight: 700, fontSize: '1.05rem', verticalAlign: 'middle' }}>{n.name}</span>
                     </td>

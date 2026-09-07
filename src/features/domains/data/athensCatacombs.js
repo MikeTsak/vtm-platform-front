@@ -9,35 +9,7 @@
 // them into one network are storyteller invention. Each feature carries a
 // `certainty` of 'attested' | 'inferred' | 'speculative'.
 //
-// NOTE: this data is bundled in the client. The admin-only gate in Domains.jsx
-// keeps it off every non-admin's screen, but a determined user could still read
-// the JSON out of the built bundle. If it ever needs to be truly secret, move
-// it behind an authenticated API route.
-
-import catacombsRaw from '../../../data/athens-catacombs.json';
-
-const features = Array.isArray(catacombsRaw?.features) ? catacombsRaw.features : [];
-
-// deck.gl PathLayer wants flat {path} objects.
-export const CATACOMB_PASSAGES = features
-  .filter(f => f.properties?.kind === 'passage' && f.geometry?.type === 'LineString')
-  .map(f => ({
-    path: f.geometry.coordinates,
-    name: f.properties.name,
-    basis: f.properties.basis,        // river | aqueduct | quarry | shelter | tunnel
-    certainty: f.properties.certainty, // attested | inferred | speculative
-    status: f.properties.status,       // open | flooded | collapsed | sealed
-  }));
-
-export const CATACOMB_SITES = features
-  .filter(f => f.properties?.kind === 'site' && f.geometry?.type === 'Point')
-  .map(f => ({
-    position: f.geometry.coordinates,
-    name: f.properties.name,
-    siteType: f.properties.siteType,   // entrance | chamber | cave | cistern | shrine | junction | collapse
-    certainty: f.properties.certainty,
-    note: f.properties.note,
-  }));
+// Lazy-loaded on demand only when an authorized administrator enables the overlay.
 
 // Dash pattern (in pixels) for each certainty tier — solid, dashed, dotted.
 export const CATACOMB_CERTAINTY = {
@@ -56,4 +28,37 @@ export const CATACOMB_SITE_COLOR = {
   collapse:  '#e0645a',
 };
 
-export const CATACOMB_ATTRIBUTION = catacombsRaw?.note || '';
+let catacombsPromise = null;
+
+export async function loadCatacombsData() {
+  if (!catacombsPromise) {
+    catacombsPromise = import('../../../data/athens-catacombs.json').then((mod) => {
+      const catacombsRaw = mod.default || mod;
+      const features = Array.isArray(catacombsRaw?.features) ? catacombsRaw.features : [];
+
+      const passages = features
+        .filter(f => f.properties?.kind === 'passage' && f.geometry?.type === 'LineString')
+        .map(f => ({
+          path: f.geometry.coordinates,
+          name: f.properties.name,
+          basis: f.properties.basis,        // river | aqueduct | quarry | shelter | tunnel
+          certainty: f.properties.certainty, // attested | inferred | speculative
+          status: f.properties.status,       // open | flooded | collapsed | sealed
+        }));
+
+      const sites = features
+        .filter(f => f.properties?.kind === 'site' && f.geometry?.type === 'Point')
+        .map(f => ({
+          position: f.geometry.coordinates,
+          name: f.properties.name,
+          siteType: f.properties.siteType,   // entrance | chamber | cave | cistern | shrine | junction | collapse
+          certainty: f.properties.certainty,
+          note: f.properties.note,
+        }));
+
+      const attribution = catacombsRaw?.note || '';
+      return { passages, sites, attribution };
+    });
+  }
+  return catacombsPromise;
+}

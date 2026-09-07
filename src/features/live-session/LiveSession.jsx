@@ -695,7 +695,7 @@ export default function LiveSession() {
         <aside className={`${styles.leftColumn} ${mobileTab !== 'character' ? styles.mobileHidden : ''}`}>
           {/* Identity */}
           <section style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <Avatar userId={character?.user_id || character?.id} size={64} style={{ borderRadius: 8, border: '1px solid var(--outline-variant)' }} fallback={symlogo(clan)} />
+            <Avatar userId={character?.user_id || character?.id} clan={clan} size={64} style={{ borderRadius: 8, border: '1px solid var(--outline-variant)' }} fallback={symlogo(clan)} />
             <div>
               <h2 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--primary)' }}>{charName}</h2>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.15rem' }}>
