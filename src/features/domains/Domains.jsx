@@ -256,54 +256,63 @@ function relTime(ts) {
 }
 
 // ── CORS-safe circular avatar generator ──────────────────────
-// Returns a 256x256 circular PNG data URL that Deck.gl IconLayer can load reliably on any platform.
+// Returns a 128x128 circular PNG data URL that Deck.gl IconLayer can load reliably on any platform.
+// Resolves to null on error (404, network error, no avatar) so clan crests remain as buffer/fallback.
 async function fetchAvatarAsDataUrl(url) {
-  // Same-origin or same-domain requests can include session cookie; third-party URLs must omit.
-  const isSameSite = !url.startsWith('http') || url.includes(window.location.hostname) || url.includes('attlarp.gr');
-  const res = await fetch(url, {
-    credentials: isSameSite ? 'include' : 'omit',
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const blob = await res.blob();
+  if (!url) return null;
+  try {
+    const res = await fetch(url, {
+      credentials: 'omit',
+      mode: 'cors',
+    });
+    if (!res.ok) return null;
+    const blob = await res.blob();
 
-  return new Promise((resolve, reject) => {
-    const objectUrl = URL.createObjectURL(blob);
-    const img = new Image();
-    img.onload = () => {
-      try {
-        const canvas = document.createElement('canvas');
-        const targetSize = 256;
-        canvas.width = targetSize;
-        canvas.height = targetSize;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) throw new Error('Canvas 2D context unavailable');
+    return new Promise((resolve) => {
+      const objectUrl = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          const targetSize = 128;
+          canvas.width = targetSize;
+          canvas.height = targetSize;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            URL.revokeObjectURL(objectUrl);
+            resolve(null);
+            return;
+          }
 
-        // Circular clip
-        ctx.beginPath();
-        ctx.arc(targetSize / 2, targetSize / 2, targetSize / 2, 0, Math.PI * 2);
-        ctx.closePath();
-        ctx.clip();
+          // Circular clip
+          ctx.beginPath();
+          ctx.arc(targetSize / 2, targetSize / 2, targetSize / 2, 0, Math.PI * 2);
+          ctx.closePath();
+          ctx.clip();
 
-        // Center-crop square
-        const minDim = Math.min(img.naturalWidth || img.width, img.naturalHeight || img.height);
-        const sx = ((img.naturalWidth || img.width) - minDim) / 2;
-        const sy = ((img.naturalHeight || img.height) - minDim) / 2;
-        ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, targetSize, targetSize);
+          // Center-crop square
+          const minDim = Math.min(img.naturalWidth || img.width, img.naturalHeight || img.height);
+          const sx = ((img.naturalWidth || img.width) - minDim) / 2;
+          const sy = ((img.naturalHeight || img.height) - minDim) / 2;
+          ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, targetSize, targetSize);
 
-        const dataUrl = canvas.toDataURL('image/png');
+          const dataUrl = canvas.toDataURL('image/png');
+          URL.revokeObjectURL(objectUrl);
+          resolve(dataUrl);
+        } catch {
+          URL.revokeObjectURL(objectUrl);
+          resolve(null);
+        }
+      };
+      img.onerror = () => {
         URL.revokeObjectURL(objectUrl);
-        resolve(dataUrl);
-      } catch (err) {
-        URL.revokeObjectURL(objectUrl);
-        reject(err);
-      }
-    };
-    img.onerror = (e) => {
-      URL.revokeObjectURL(objectUrl);
-      reject(e);
-    };
-    img.src = objectUrl;
-  });
+        resolve(null);
+      };
+      img.src = objectUrl;
+    });
+  } catch {
+    return null;
+  }
 }
 
 // ── Hex to RGBA array ────────────────────────────────────
@@ -733,34 +742,34 @@ export default function Domains() {
     if (!claim) return '';
     if (claim.is_abaton) return '/img/ui/abaton.jpg';
     const baseUrl = import.meta.env.VITE_API_URL || '/api';
-    if (claim.user_id) return `${baseUrl}/users/${claim.user_id}/avatar`;
-    if (claim.owner_npc_id) return `${baseUrl}/npcs/${claim.owner_npc_id}/avatar`;
+    if (claim.user_id) return `${baseUrl}/users/${claim.user_id}/avatar?size=thumb`;
+    if (claim.owner_npc_id) return `${baseUrl}/npcs/${claim.owner_npc_id}/avatar?size=thumb`;
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(claim.live_name || claim.owner_name || 'Unclaimed')}&background=random`;
   }, []);
 
   // ── Eagerly load avatars for every claimed (non-Abaton) division ────────
-  // Feeds both the hover-reveal (full-polygon avatar) and the always-on map
-  // badges (small avatar+clan medallion), so it can't be hover-gated anymore
-  // — every claimed division needs its avatar ready before it's ever hovered.
+  // The clan crest badge displays immediately as the buffer. Once a custom
+  // avatar finishes loading, it cleanly overlays or replaces the crest.
   useEffect(() => {
+    let isMounted = true;
     for (const claim of ownedClaims) {
       if (claim.is_abaton) continue;
       const division = Number(claim.division);
-      if (avatarCache[division]) continue;
+      if (avatarCache[division] !== undefined) continue;
       const url = getAvatarUrl(claim);
-      fetchAvatarAsDataUrl(url)
-        .then(dataUrl => {
-          setAvatarCache(prev => (prev[division] ? prev : { ...prev, [division]: dataUrl }));
-        })
-        .catch(err => {
-          console.warn(`[Domains] Failed to load avatar for division ${division}:`, err.message);
-          const fallbackDataUrl = createFallbackAvatarDataUrl(
-            claim.live_name || claim.owner_name,
-            claim.clan ? clanTint(claim.clan) : (claim.color || '#888888')
-          );
-          setAvatarCache(prev => (prev[division] ? prev : { ...prev, [division]: fallbackDataUrl }));
-        });
+      if (!url) {
+        setAvatarCache(prev => ({ ...prev, [division]: null }));
+        continue;
+      }
+      fetchAvatarAsDataUrl(url).then(dataUrl => {
+        if (!isMounted) return;
+        setAvatarCache(prev => ({
+          ...prev,
+          [division]: dataUrl || null
+        }));
+      });
     }
+    return () => { isMounted = false; };
   }, [ownedClaims, avatarCache, getAvatarUrl]);
 
   // Invalidate and reload avatars whenever an avatar is updated anywhere in the app
@@ -1091,8 +1100,16 @@ export default function Domains() {
       }
 
       const avatarUrl = avatarCache[division];
-      if (avatarUrl) {
+      if (typeof avatarUrl === 'string' && avatarUrl) {
         avatarBadges.push({ position, image: avatarUrl, division });
+      } else if (!f.properties.clan && avatarUrl === null) {
+        const fallback = createFallbackAvatarDataUrl(
+          f.properties.ownerName,
+          f.properties.claimColor || '#888888'
+        );
+        if (fallback) {
+          avatarBadges.push({ position, image: fallback, division });
+        }
       }
     }
     return { clanBadgeData: clanBadges, avatarBadgeData: avatarBadges, clanLabelData: clanLabels, abatonBadgeData: abatonBadges, abatonFeatures: abatonFeats };
@@ -1378,46 +1395,9 @@ export default function Domains() {
         );
       }
 
-      // ─── Avatar badge: the owner's actual photo — masked to a circle,
-      // sitting squarely inside the clan backdrop disc.
-      if (avatarBadgeData.length) {
-        layers.push(
-          new IconLayer({
-            id: 'avatar-badges',
-            data: avatarBadgeData,
-            getPosition: d => d.position,
-            getIcon: d => ({
-              url: d.image || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=',
-              id: d.division != null ? `avatar-${d.division}` : (d.image || 'avatar-fallback'),
-              width: 256,
-              height: 256,
-              anchorX: 128,
-              anchorY: 128,
-              mask: false,
-            }),
-            getSize: badgeSize,
-            sizeBasis: 'width',
-            sizeUnits: 'pixels',
-            getColor: [255, 255, 255, 255],
-            loadOptions: {
-              core: { mimeType: 'image/png', fallbackMimeType: 'image/png' },
-              mimeType: 'image/png',
-              image: { type: 'auto' },
-            },
-            pickable: false,
-            parameters: { depthTest: false },
-            updateTriggers: {
-              getSize: [badgeSize],
-              getIcon: [avatarBadgeData],
-            },
-            transitions: { getSize: 150 },
-            onIconError: (evt) => console.warn('[Domains] Avatar icon load error:', evt?.url, evt?.error),
-          })
-        );
-      }
-
-      // ─── Clan badge overlay: rendered on top of the avatar
-      const clanIconsData = clanBadgeData.filter(d => !!d.clan && !avatarCache[d.division]);
+      // ─── Clan badge: ALWAYS rendered as the buffer/fallback!
+      // Only hidden once a real user photo has finished loading for that division.
+      const clanIconsData = clanBadgeData.filter(d => !!d.clan && typeof avatarCache[d.division] !== 'string');
       if (clanIconsData.length) {
         layers.push(
           new IconLayer({
@@ -1459,6 +1439,47 @@ export default function Domains() {
             parameters: { depthTest: false },
             updateTriggers: { getSize: [badgeSize] },
             transitions: { getSize: 150 },
+          })
+        );
+      }
+
+      // ─── Avatar badge: the owner's actual photo — masked to a circle,
+      // rendered directly on top of the clan crest once loaded.
+      if (avatarBadgeData.length) {
+        layers.push(
+          new IconLayer({
+            id: 'avatar-badges',
+            data: avatarBadgeData,
+            getPosition: d => d.position,
+            getIcon: d => ({
+              url: d.image,
+              id: `avatar-${d.division}`,
+              width: 128,
+              height: 128,
+              anchorX: 64,
+              anchorY: 64,
+              mask: false,
+            }),
+            getSize: badgeSize,
+            sizeBasis: 'width',
+            sizeUnits: 'pixels',
+            getColor: [255, 255, 255, 255],
+            loadOptions: {
+              image: { type: 'auto' },
+            },
+            pickable: false,
+            parameters: { depthTest: false },
+            updateTriggers: {
+              getSize: [badgeSize],
+              getIcon: [avatarBadgeData],
+            },
+            transitions: { getSize: 150 },
+            onIconError: (evt) => {
+              console.warn('[Domains] Avatar icon load error:', evt?.url, evt?.error);
+              if (evt?.source?.division != null) {
+                setAvatarCache(prev => ({ ...prev, [evt.source.division]: null }));
+              }
+            },
           })
         );
       }

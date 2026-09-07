@@ -11,8 +11,9 @@ function NavDropdown({ title, icon, children, isMobile, isOpen, toggleOpen }) {
     return (
       <div className="w-full mb-2">
         <button
+          type="button"
           onClick={toggleOpen}
-          className={`w-full flex items-center justify-between p-3 rounded-lg border border-transparent transition-colors ${isOpen ? 'bg-primary-container/20 border-primary/30 text-primary' : 'bg-surface-variant/10 text-on-surface hover:bg-surface-variant/30'
+          className={`w-full flex items-center justify-between p-3 rounded-lg border border-transparent transition-colors touch-manipulation cursor-pointer ${isOpen ? 'bg-primary-container/20 border-primary/30 text-primary' : 'bg-white/[0.04] text-on-surface hover:bg-white/[0.08]'
             }`}
           data-cuelume-press
           data-cuelume-hover
@@ -96,9 +97,17 @@ export default function Nav() {
   }, [location]);
 
   useEffect(() => {
-    if (isMenuOpen) document.documentElement.style.overflow = 'hidden';
-    else document.documentElement.style.overflow = '';
-    return () => { document.documentElement.style.overflow = ''; };
+    if (isMenuOpen) {
+      document.documentElement.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.documentElement.style.overflow = '';
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.documentElement.style.overflow = '';
+      document.body.style.overflow = '';
+    };
   }, [isMenuOpen]);
 
   useEffect(() => {
@@ -132,7 +141,7 @@ export default function Nav() {
 
       {/* Mobile Overlay */}
       <div
-        className={`fixed inset-0 bg-black/70 backdrop-blur-sm z-[998] transition-opacity duration-300 lg:hidden ${isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+        className={`fixed inset-0 bg-black/80 backdrop-blur-sm z-[9998] transition-opacity duration-300 lg:hidden ${isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
         onClick={closeMenu}
       />
 
@@ -246,7 +255,8 @@ export default function Nav() {
 
           {/* Mobile Hamburger */}
           <button
-            className="lg:hidden z-[1001] p-2 text-on-surface-variant hover:text-primary transition-colors focus:outline-none"
+            type="button"
+            className="lg:hidden z-[10001] min-w-[44px] min-h-[44px] flex items-center justify-center p-2 text-on-surface-variant hover:text-primary transition-colors focus:outline-none touch-manipulation cursor-pointer"
             onClick={toggleMenu}
             aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
             data-cuelume-press
@@ -259,7 +269,7 @@ export default function Nav() {
 
       {/* Mobile Side Drawer */}
       <div
-        className={`fixed top-0 right-0 h-[100dvh] w-72 sm:w-80 bg-surface-container shadow-[-8px_0_25px_rgba(0,0,0,0.6)] z-[999] gothic-etched-border border-r-0 border-y-0 flex flex-col pt-20 pb-8 px-4 overflow-y-auto transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] lg:hidden ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'
+        className={`fixed top-0 right-0 h-[100dvh] w-72 sm:w-80 bg-[#121118] border-l border-outline-variant/20 shadow-[-8px_0_30px_rgba(0,0,0,0.85)] z-[9999] flex flex-col pt-20 pb-8 px-4 overflow-y-auto transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] lg:hidden ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'
           }`}
       >
         <div className="flex flex-col h-full">
@@ -344,7 +354,7 @@ export default function Nav() {
           <div className="mt-auto pt-6 border-t border-outline-variant/30 flex flex-col gap-4">
             {user ? (
               <>
-                <div className="bg-surface-container-highest p-4 rounded-xl border border-outline-variant/10 text-center">
+                <div className="bg-white/[0.05] p-4 rounded-xl border border-outline-variant/10 text-center">
                   <p className="text-[12px] text-on-surface-variant uppercase font-bold tracking-widest mb-1">Authenticated</p>
                   <p className="text-[18px] font-bold text-primary font-['Playfair_Display']">{user.display_name}</p>
                 </div>

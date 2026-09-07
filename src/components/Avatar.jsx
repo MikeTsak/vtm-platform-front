@@ -140,6 +140,7 @@ export default function Avatar({ userId, npcId, identityId, retainerId, size = 8
       >
         <img
           src={srcUrl}
+          crossOrigin="anonymous"
           // `size` isn't always a pixel number — several call sites pass
           // "100%" to fill a variably-sized container (chat rows, admin
           // grids, the court hierarchy cards). We can't know the actual

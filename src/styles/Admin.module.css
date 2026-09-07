@@ -56,6 +56,10 @@
 .adminRoot {
   display: flex;
   min-height: 100vh;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+  position: relative;
   background: #0a0a0f;
   color: var(--text-primary);
   font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
@@ -296,13 +300,31 @@
   margin-left: var(--sidebar-w);
   flex: 1;
   min-width: 0;
+  max-width: calc(100vw - var(--sidebar-w));
   display: flex;
   flex-direction: column;
   transition: margin-left 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-x: hidden;
 }
 
 .mainExpanded {
   margin-left: var(--sidebar-w-collapsed);
+  max-width: calc(100vw - var(--sidebar-w-collapsed));
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+  max-width: 100%;
+  padding: 24px 28px 48px;
+  box-sizing: border-box;
+}
+
+.tableContainer {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* ═══════════════════════════════════════════════
@@ -310,10 +332,10 @@
    ═══════════════════════════════════════════════ */
 .topbar {
   position: sticky;
-  top: 0;
+  top: 64px;
   z-index: 50;
-  height: var(--topbar-h);
-  background: rgba(10, 10, 18, 0.78);
+  min-height: var(--topbar-h);
+  background: rgba(10, 10, 18, 0.88);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border-bottom: 1px solid var(--glass-border);
@@ -323,6 +345,8 @@
   justify-content: space-between;
   gap: 16px;
   flex-shrink: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .topbarBreadcrumb {
@@ -2298,14 +2322,35 @@ tr:hover .clanIcon,
 
   .main {
     margin-left: var(--sidebar-w-collapsed);
+    max-width: calc(100vw - var(--sidebar-w-collapsed));
+    overflow-x: hidden;
   }
 
   .content {
-    padding: 18px 16px 32px;
+    padding: 18px 12px 32px;
+    max-width: 100%;
+    overflow-x: auto;
   }
 
   .topbar {
-    padding: 0 16px;
+    position: relative;
+    top: auto;
+    padding: 8px 12px;
+    height: auto;
+    min-height: var(--topbar-h);
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .topbarActions {
+    flex-wrap: wrap;
+    gap: 6px;
+    max-width: 100%;
+  }
+
+  .reloadBtn {
+    padding: 6px 10px;
+    font-size: 11px;
   }
 }
 
