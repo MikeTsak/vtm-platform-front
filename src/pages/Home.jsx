@@ -3,7 +3,7 @@ import React, { useEffect, useState, useRef, useContext } from 'react';
 import api from '../core/api';
 import { trackEvent } from '../utils/analytics';
 import { getPushSettings, updatePushSettings, subscribeToWebPush } from '../utils/push';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { Skeleton } from 'boneyard-js/react';
 import { motion } from 'framer-motion';
 import styles from '../styles/Home.module.css';
@@ -49,6 +49,16 @@ function niceDate(d) {
   try { return dt.toLocaleDateString('en-GB', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }); }
   catch { return dt.toDateString(); }
 }
+
+function getDtBadgeClass(status) {
+  const s = (status || '').toLowerCase();
+  if (s.includes('approved') || s.includes('resolved')) return styles.badgeApproved;
+  if (s.includes('reject')) return styles.badgeRejected;
+  if (s.includes('scene')) return styles.badgeNeedsScene;
+  if (s.includes('review')) return styles.badgeReview;
+  return styles.badgePending;
+}
+
 
 /* ── Countdown Hook ─────────────────────────────────────────────── */
 function useCountdown(targetDate) {
@@ -140,7 +150,8 @@ function MiniVtmBar({ label, sup, agg, max }) {
 
 
 export default function Home() {
-  const [me, setMe] = useState(null);
+  const { user: authUser } = useContext(AuthCtx);
+  const [me, setMe] = useState(() => authUser);
   const [ch, setCh] = useState(null);
   const [quota, setQuota] = useState({ used: 0, limit: 3 });
   const [openingDate, setOpeningDate] = useState(null);
@@ -244,7 +255,11 @@ export default function Home() {
     setShards(list);
   }, [isShattering, clickPoint]);
 
-  const { user: authUser } = useContext(AuthCtx);
+  useEffect(() => {
+    if (authUser && !me) {
+      setMe(authUser);
+    }
+  }, [authUser, me]);
 
   useEffect(() => {
     if (authUser?.role === 'admin') {
@@ -259,33 +274,31 @@ export default function Home() {
     let live = true;
     (async () => {
       try {
-        const [meReq, chReq, dashReq] = await Promise.all([
-          api.get('/auth/me'),
-          api.get('/characters/me'),
-          api.get('/home/dashboard')
-        ]);
+        const res = await api.get('/home/bootstrap');
         if (!live) return;
 
-        const meData = meReq.data;
-        setMe(meData.user);
-        if (meData.user?.role === 'admin') { nav('/admin', { replace: true }); return; }
+        const data = res.data;
+        if (data.user) {
+          setMe(data.user);
+          if (data.user.role === 'admin') {
+            nav('/admin', { replace: true });
+            return;
+          }
+        }
 
-        const chData = chReq.data;
-        console.log('DEBUG Home loaded chData:', chData);
-        setCh(chData.character);
+        const character = data.character || null;
+        console.log('DEBUG Home loaded chData:', character);
+        setCh(character);
 
-        if (chData.character) {
-          const dashRes = dashReq.data;
-          if (dashRes.success) {
-            const d = dashRes.data;
-            setQuota(d.quota);
-            setRecentDowntimes(d.downtimes || []);
-            setRecentChats(d.chats || []);
-            setRecentNews(d.news || []);
-            setOpeningDate(d.config?.downtime_opening || null);
-            if (d.banner?.masquerade_threat_level) {
-              setThreatLevel(d.banner.masquerade_threat_level);
-            }
+        if (data.dashboard) {
+          const d = data.dashboard;
+          setQuota(d.quota || { used: 0, limit: 3 });
+          setRecentDowntimes(d.downtimes || []);
+          setRecentChats(d.chats || []);
+          setRecentNews(d.news || []);
+          setOpeningDate(d.config?.downtime_opening || null);
+          if (d.banner?.masquerade_threat_level) {
+            setThreatLevel(d.banner.masquerade_threat_level);
           }
         }
         
@@ -310,10 +323,11 @@ export default function Home() {
     })();
   }, [authUser, nav]);
 
-  const safeMe = me || { display_name: '', id: '0', role: 'user', ui_sounds_enabled: true };
+  const currentMe = me || authUser;
+  const safeMe = currentMe || { display_name: '', id: '0', role: 'user', ui_sounds_enabled: true };
   const safeCh = ch || { name: '', clan: 'Caitiff', xp: 0, sheet: {} };
 
-  if (authUser?.role === 'admin' || me?.role === 'admin') {
+  if (authUser?.role === 'admin' || currentMe?.role === 'admin') {
     return (
       <div className={styles.loadingScreen}>
         <Loading />
@@ -322,12 +336,12 @@ export default function Home() {
   }
 
   if (!loading) {
-    if (!me) return <div className={styles.loadingScreen}>Please log in.</div>;
+    if (!currentMe) return <div className={styles.loadingScreen}>Please log in.</div>;
     if (!ch) return (
       <div className={styles.noCharPage}>
         <div className={styles.noCharCard}>
           <div className={styles.noCharRose}>🥀</div>
-          <h2 className={styles.noCharTitle}>Welcome, {me.display_name}</h2>
+          <h2 className={styles.noCharTitle}>Welcome, {currentMe.display_name}</h2>
           <p className={styles.noCharSub}>
             You must present yourself before the gathered Kindred of Athens.<br/>
             Forge your identity. Claim your lineage.
@@ -857,75 +871,98 @@ export default function Home() {
             
             <div className={styles.feedContent}>
               {activeFeedTab === 'chronicle' && (
-                <ul className={styles.newsList}>
-                  {recentNews.length === 0 ? (
-                    <p className={styles.emptyFeedText}>No headlines tonight.</p>
-                  ) : (
-                    recentNews.slice(0, 3).map(item => {
-                      const tag = item.type === 'announcement' ? 'DECREE' : (item.theme || 'NEWS').toUpperCase();
-                      const tagKey = (item.theme || item.type || '').toUpperCase();
-                      return (
-                        <li key={item.id} className={styles.newsItem}>
-                          <Link to="/news" className={styles.newsLink}>
-                            <div className={styles.newsHeader}>
-                               <span className={`${styles.newsTag} ${styles[`tag${tagKey}`] || ''}`}>{tag}</span>
-                               <time className={styles.newsDate}>{formatTimestamp(item.created_at)}</time>
-                            </div>
-                            <h3 className={styles.newsTitle}>{item.title}</h3>
-                          </Link>
-                        </li>
-                      );
-                    })
+                <>
+                  <ul className={styles.newsList}>
+                    {recentNews.length === 0 ? (
+                      <p className={styles.emptyFeedText}>No headlines tonight.</p>
+                    ) : (
+                      recentNews.slice(0, 4).map(item => {
+                        const tag = item.type === 'announcement' ? 'DECREE' : (item.theme || 'NEWS').toUpperCase();
+                        const tagKey = (item.theme || item.type || '').toUpperCase();
+                        return (
+                          <li key={item.id} className={styles.newsItem}>
+                            <Link to="/news" className={styles.newsLink}>
+                              <div className={styles.newsHeader}>
+                                 <span className={`${styles.newsTag} ${styles[`tag${tagKey}`] || ''}`}>{tag}</span>
+                                 <time className={styles.newsDate}>{formatTimestamp(item.created_at)}</time>
+                              </div>
+                              <h3 className={styles.newsTitle}>{item.title}</h3>
+                            </Link>
+                          </li>
+                        );
+                      })
+                    )}
+                  </ul>
+                  {recentNews.length > 0 && (
+                    <Link to="/news" className={styles.feedLinkBtn} style={{ marginTop: '0.75rem' }}>
+                      Chronicle Archive →
+                    </Link>
                   )}
-                </ul>
+                </>
               )}
 
               {activeFeedTab === 'whispers' && (
-                <ul className={styles.chatList}>
-                  {recentChats.length === 0 ? (
-                    <p className={styles.emptyFeedText}>No recent correspondence.</p>
-                  ) : (
-                    recentChats.slice(0, 4).map(chat => (
-                      <li key={chat.id} className={styles.chatItem}>
-                        <Link to="/comms" className={styles.chatLink}>
-                          <div className={styles.chatHead}>
-                            <span className={styles.chatPartner}>
-                              {chat.isNPC && <span className={styles.npcTag}>NPC</span>}
-                              {chat.partnerName}
-                            </span>
-                            <time className={styles.chatTime}>{formatTimestamp(chat.timestamp)}</time>
-                          </div>
-                          <p className={styles.chatSnippet}>
-                            {(chat.lastMessage || '').substring(0, 50)}
-                            {(chat.lastMessage || '').length > 50 ? '…' : ''}
-                          </p>
-                        </Link>
-                      </li>
-                    ))
-                  )}
-                </ul>
+                <>
+                  <ul className={styles.chatList}>
+                    {recentChats.length === 0 ? (
+                      <p className={styles.emptyFeedText}>No recent correspondence.</p>
+                    ) : (
+                      recentChats.slice(0, 4).map(chat => (
+                        <li key={chat.id} className={styles.chatItem}>
+                          <Link to="/schrecknet" className={styles.chatLink}>
+                            <div className={styles.chatHead}>
+                              <span className={styles.chatPartner}>
+                                {chat.isNPC ? (
+                                  <span className={styles.npcTag}>NPC</span>
+                                ) : chat.isGroup ? (
+                                  <span className={styles.npcTag} style={{ background: '#1c3d5a', color: '#90cdf4', borderColor: '#2b6cb0' }}>GRP</span>
+                                ) : null}
+                                {chat.partnerName || 'Unknown'}
+                              </span>
+                              <time className={styles.chatTime}>{formatTimestamp(chat.timestamp)}</time>
+                            </div>
+                            <p className={styles.chatSnippet}>
+                              {(chat.lastMessage || 'Sent an attachment').substring(0, 50)}
+                              {(chat.lastMessage || '').length > 50 ? '…' : ''}
+                            </p>
+                          </Link>
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                  <Link to="/schrecknet" className={styles.feedLinkBtn} style={{ marginTop: '0.75rem' }}>
+                    Open SchreckNet →
+                  </Link>
+                </>
               )}
 
               {activeFeedTab === 'log' && (
-                <ul className={styles.dtList}>
-                  {recentDowntimes.length === 0 ? (
-                    <p className={styles.emptyFeedText}>No recent actions recorded.</p>
-                  ) : (
-                    recentDowntimes.map(dt => (
-                      <li key={dt.id} className={styles.dtItem}>
-                        <Link to="/downtimes" className={styles.dtLink}>
-                          <div className={styles.dtHead}>
-                            <span className={styles.dtTitle}>{dt.title}</span>
-                          </div>
-                          <div className={styles.dtFooter}>
-                            <span className={styles.dtStatus}>Status: {dt.status}</span>
-                            <time className={styles.dtTime}>{formatTimestamp(dt.created_at)}</time>
-                          </div>
-                        </Link>
-                      </li>
-                    ))
-                  )}
-                </ul>
+                <>
+                  <ul className={styles.dtList}>
+                    {recentDowntimes.length === 0 ? (
+                      <p className={styles.emptyFeedText}>No recent actions recorded.</p>
+                    ) : (
+                      recentDowntimes.slice(0, 4).map(dt => (
+                        <li key={dt.id} className={styles.dtItem}>
+                          <Link to="/downtimes" className={styles.dtLink}>
+                            <div className={styles.dtHead}>
+                              <span className={styles.dtTitle}>{dt.title}</span>
+                            </div>
+                            <div className={styles.dtFooter}>
+                              <span className={getDtBadgeClass(dt.status)}>
+                                {dt.status}
+                              </span>
+                              <time className={styles.dtTime}>{formatTimestamp(dt.created_at)}</time>
+                            </div>
+                          </Link>
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                  <Link to="/downtimes" className={styles.feedLinkBtn} style={{ marginTop: '0.75rem' }}>
+                    View Downtimes →
+                  </Link>
+                </>
               )}
             </div>
           </section>
