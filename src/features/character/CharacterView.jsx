@@ -847,7 +847,6 @@ export default function CharacterView({
         load: `/admin/npcs/${adminNPCId}`,
         spend: `/admin/npcs/${adminNPCId}/xp/spend`,
         update: `/admin/npcs/${adminNPCId}`,
-        totals: null,
         pickFrom: 'npc',
       };
     }
@@ -856,15 +855,19 @@ export default function CharacterView({
         load: loadPath,
         spend: xpSpendPath,
         update: loadPath,
-        totals: null,
         pickFrom: 'npc',
       };
     }
+    // `id` is only ever set if this component is mounted on a route that
+    // declares one. Today it is not (App.jsx mounts it at plain "/character"),
+    // so the id branches are dormant — but they must still name real
+    // endpoints. `/characters/user/:id/xp/spend` does not exist; the admin
+    // spend route is `/admin/characters/:id/xp/spend`, and it takes the same
+    // character id and returns the same { character, spent } body.
     return {
       load: id ? `/characters/user/${id}` : `/characters/me`,
-      spend: id ? `/characters/user/${id}/xp/spend` : `/characters/xp/spend`,
+      spend: id ? `/admin/characters/${id}/xp/spend` : `/characters/xp/spend`,
       update: id ? `/characters/user/${id}` : `/characters/me`,
-      totals: `/characters/xp/total`,
       pickFrom: 'character',
     };
   }, [adminNPCId, loadPath, xpSpendPath, id]);
@@ -887,7 +890,6 @@ export default function CharacterView({
   const [activeNav, setActiveNav] = useState('stats');
 
   const [pendingFixes, setPendingFixes] = useState([]);
-  const [xpTotals, setXpTotals] = useState(null);
   const shopRef = useRef(null);
 
   const [tempHealth, setTempHealth] = useState({ superficial: 0, aggravated: 0 });
@@ -965,12 +967,6 @@ export default function CharacterView({
     return () => { mounted = false; };
   }, [paths, adminNPCId, loadPath]);
 
-  useEffect(() => {
-    if (!paths.totals || !ch) return;
-    api.get(paths.totals)
-      .then(r => setXpTotals(r.data))
-      .catch(() => { });
-  }, [paths.totals, ch]);
 
 
   const prevHealthRef = useRef(tempHealth);
@@ -1076,9 +1072,6 @@ export default function CharacterView({
         }
       }, 100);
 
-      if (paths.totals) {
-        try { const t = await api.get(paths.totals); setXpTotals(t.data); } catch { }
-      }
     } catch (e) {
       setErr(e.response?.data?.error || 'Failed to update character sheet');
       throw e;

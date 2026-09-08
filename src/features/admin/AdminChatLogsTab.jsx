@@ -252,14 +252,18 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
   useEffect(() => {
     if (viewMode !== 'npc' || !selectedNpc) { setConvos([]); return; }
     setLoading(p => ({...p, convos: true}));
-    const url = `/admin/chat/npc/conversations?npc_id=${selectedNpc.id}`;
+    // The NPC id is a path segment, not a query param — the old
+    // /admin/chat/npc/conversations?npc_id= form 404'd, so this list was
+    // always empty (and the missing .catch made it an unhandled rejection).
+    const url = `/admin/chat/npc-conversations/${selectedNpc.id}`;
     api.get(url).then(res => {
       const rows = (res.data.conversations||[]).map(r => ({
         userId: r.user_id, charName: r.char_name||'', charClan: getCharInfoByUserId(r.user_id).clan,
         userName: r.display_name || `User ${r.user_id}`, lastMessageAt: r.last_message_at
       }));
       setConvos(rows.sort((a,b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt)));
-    }).finally(() => setLoading(p => ({...p, convos: false})));
+    }).catch(() => setConvos([]))
+      .finally(() => setLoading(p => ({...p, convos: false})));
   }, [selectedNpc, viewMode, getCharInfoByUserId]);
 
   useEffect(() => {

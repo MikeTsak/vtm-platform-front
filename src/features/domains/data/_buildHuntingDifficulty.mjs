@@ -42,7 +42,9 @@ function effectivePopulation(div) {
 }
 
 const D_IDEAL = 6000;                       // people/km² — the easy sweet spot
-const CENTRE_DIVS = new Set([8, 39, 40]);   // Plaka, Athina, Psyrri
+// Always Lethal (7) regardless of the density math: the historic dead centre
+// plus Piraeus — the port, wall-to-wall watchers, organised eyes everywhere.
+const ALWAYS_LETHAL = new Set([8, 39, 40, 43]); // Plaka, Athina, Psyrri, Piraeus
 const CENTRE_DENSITY = 42000;
 
 function difficultyFor(density, pop, div) {
@@ -50,7 +52,7 @@ function difficultyFor(density, pop, div) {
   let raw = l >= 0 ? 2 + l * 5.5 : 2 + (-l) * 3.1;  // crowded side steeper
   if (pop < 9000) raw += 0.6;
   let d = Math.max(2, Math.min(6, Math.round(raw)));
-  if (CENTRE_DIVS.has(div) || density >= CENTRE_DENSITY) d = 7;
+  if (ALWAYS_LETHAL.has(div) || density >= CENTRE_DENSITY) d = 7;
   return d;
 }
 

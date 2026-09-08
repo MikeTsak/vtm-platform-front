@@ -15,10 +15,11 @@ import styles from '../../styles/Domains.module.css';
 import api from '../../core/api';
 import Avatar from '../../components/Avatar';
 import { AuthCtx } from '../../core/AuthContext';
-import { symlogo, textlogo, clanTint, fileify } from '../../data/clans';
+import { symlogo, clanTint, fileify } from '../../data/clans';
 import { DIVISION_NAMES } from '../../constants/divisionNames';
 import { DIVISION_POPULATIONS, POPULATION_GROUP_MEMBERS } from './data/divisionPopulations';
 import { HUNTING_DIFFICULTY, HUNTING_DIFFICULTY_MAX, huntingLabel } from './data/huntingDifficulty';
+import { getDivisionChasse } from './data/chasseMerits';
 import OverlayAccessManager from './OverlayAccessManager';
 import { loadTransitData, TRANSIT_GROUPS } from './data/athensTransit';
 import {
@@ -196,6 +197,41 @@ function HuntDroplets({ n, size = 13, showNumber = false }) {
   );
 }
 
+// ── Inline Font Awesome glyph ({ viewBox, path }) ─────────
+function FaGlyph({ icon, size = 16, className }) {
+  if (!icon) return null;
+  return (
+    <svg className={className} viewBox={icon.viewBox} width={size} height={size} aria-hidden="true" focusable="false">
+      <path fill="currentColor" d={icon.path} />
+    </svg>
+  );
+}
+
+// ── Chasse merit card for the division dossier ───────────
+function ChasseCard({ merit, id }) {
+  return (
+    <div id={id} className={styles.chasseCard} style={{ '--chasse-color': merit.color }}>
+      <span className={styles.chasseIcon}><FaGlyph icon={merit.icon} size={17} /></span>
+      <div className={styles.chasseBody}>
+        <div className={styles.chasseHead}>
+          <span className={styles.chasseName}>{merit.name}</span>
+          <span className={styles.chasseDots} title={`${merit.dots}-dot Merit`}>
+            {'●'.repeat(merit.dots)}{'○'.repeat(Math.max(0, 3 - merit.dots))}
+          </span>
+        </div>
+        <div className={styles.chasseMeta}>
+          <span className={styles.chasseResonance}>{merit.resonances.join(' / ')} resonance</span>
+          {merit.favours?.length > 0 && (
+            <span className={styles.chasseFavours}>favours {merit.favours.join(', ')}</span>
+          )}
+        </div>
+        {merit.note && <p className={styles.chasseNote}>{merit.note}</p>}
+        <p className={styles.chasseDesc}>{merit.description}</p>
+      </div>
+    </div>
+  );
+}
+
 function LayerSubRow({ label, active, onClick, swatch }) {
   return (
     <button
@@ -245,6 +281,15 @@ function relTime(ts) {
 // Returns a 128x128 circular PNG data URL that Deck.gl IconLayer can load reliably on any platform.
 // Resolves to null on error (404, network error, no avatar) so clan crests remain as buffer/fallback.
 const TRANSPARENT_1PX_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+
+// deck.gl map icons load from the plain /public copies, NOT the vite-imagetools
+// glob URLs (symlogo/textlogo). Those resolve to a dev-only transform URL with
+// a query string that deck.gl's image loader chokes on in `npm run dev` (so the
+// clan text never appears until a production build), and on mobile the hashed
+// build asset sometimes fails to upload as a WebGL texture. A flat static PNG
+// path works identically in dev, build, and on every device.
+const clanSymbolUrl = (clan) => (clan ? `/img/clans/330px-${fileify(clan)}_symbol.png` : TRANSPARENT_1PX_PNG);
+const clanTextUrl = (clan) => (clan ? `/img/clans/text/300px-${fileify(clan)}_logo.png` : TRANSPARENT_1PX_PNG);
 
 async function fetchAvatarAsDataUrl(url, division) {
   if (!url) return null;
@@ -447,6 +492,31 @@ export default function Domains() {
   const [avatarCache, setAvatarCache] = useState({});
   const [mapReady, setMapReady] = useState(false);
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
+
+  // The site footer (shown on /domains at desktop widths, position:relative
+  // z-index:10) paints over the bottom strip of the fixed map, cutting off the
+  // dossier / territory panel / rail. Measure how much of the viewport bottom
+  // it actually covers and expose it as --domains-footer-clearance so those
+  // panels can keep clear of it. 0 when the footer is display:none (mobile).
+  useEffect(() => {
+    const apply = () => {
+      const footer = document.querySelector('footer');
+      let clearance = 0;
+      if (footer && footer.offsetParent !== null) {
+        const top = footer.getBoundingClientRect().top;
+        clearance = Math.max(0, Math.min(window.innerHeight - top, 220));
+      }
+      document.documentElement.style.setProperty('--domains-footer-clearance', `${clearance}px`);
+    };
+    apply();
+    const t = setTimeout(apply, 350); // after fonts/layout settle
+    window.addEventListener('resize', apply);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('resize', apply);
+      document.documentElement.style.removeProperty('--domains-footer-clearance');
+    };
+  }, []);
 
   // Badges should feel like part of the 3D scene, not fixed HUD stickers —
   // grow a bit as you zoom in, shrink as you zoom out. Rounded to quarter
@@ -776,8 +846,12 @@ export default function Domains() {
     if (claim.is_abaton) return '/img/ui/abaton.jpg';
     if (claim.has_avatar === false) return null; // Skip immediately: no DB avatar, clan crest is buffer & fallback
     const baseUrl = import.meta.env.VITE_API_URL || '/api';
-    if (claim.user_id) return `${baseUrl}/users/${claim.user_id}/avatar?size=thumb`;
-    if (claim.owner_npc_id) return `${baseUrl}/npcs/${claim.owner_npc_id}/avatar?size=thumb`;
+    // raw=1 → the API proxies the CDN image through same-origin instead of
+    // 302-redirecting to img.miketsak.gr (which sends no CORS header), so the
+    // fetch → canvas → deck.gl texture pipeline below works on every browser,
+    // not just the dev-proxy path.
+    if (claim.user_id) return `${baseUrl}/users/${claim.user_id}/avatar?size=thumb&raw=1`;
+    if (claim.owner_npc_id) return `${baseUrl}/npcs/${claim.owner_npc_id}/avatar?size=thumb&raw=1`;
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(claim.live_name || claim.owner_name || 'Unclaimed')}&background=random`;
   }, []);
 
@@ -915,6 +989,7 @@ export default function Domains() {
       primaryTitle: p.titles?.[0] || null,
       safety_rating: p.safetyRating,
       hunting_difficulty: p.huntingDifficulty,
+      chasse: getDivisionChasse(p.__division),
       claimed_at: p.claimedAt,
       previous_owner_name: p.previousOwnerName,
       previous_claimed_at: p.previousClaimedAt,
@@ -1438,7 +1513,7 @@ export default function Domains() {
             data: clanIconsData,
             getPosition: d => d.position,
             getIcon: d => ({
-              url: symlogo(d.clan) || (d.clan ? `/img/clans/330px-${fileify(d.clan)}_symbol.png` : TRANSPARENT_1PX_PNG),
+              url: clanSymbolUrl(d.clan),
               id: d.clan + '-sym-shadow',
               width: 150,
               height: 150,
@@ -1458,7 +1533,7 @@ export default function Domains() {
             data: clanIconsData,
             getPosition: d => d.position,
             getIcon: d => ({
-              url: symlogo(d.clan) || (d.clan ? `/img/clans/330px-${fileify(d.clan)}_symbol.png` : TRANSPARENT_1PX_PNG),
+              url: clanSymbolUrl(d.clan),
               id: d.clan + '-sym',
               width: 150,
               height: 150,
@@ -1530,7 +1605,7 @@ export default function Domains() {
             getIcon: d => {
               const h = clanHeights[d.text] || 75;
               return {
-                url: textlogo(d.text) || (d.text ? `/img/clans/text/300px-${fileify(d.text)}_logo.png` : TRANSPARENT_1PX_PNG),
+                url: clanTextUrl(d.text),
                 id: d.text + '-outline',
                 width: 300,
                 height: h,
@@ -1554,7 +1629,7 @@ export default function Domains() {
             getIcon: d => {
               const h = clanHeights[d.text] || 75;
               return {
-                url: textlogo(d.text) || (d.text ? `/img/clans/text/300px-${fileify(d.text)}_logo.png` : TRANSPARENT_1PX_PNG),
+                url: clanTextUrl(d.text),
                 id: d.text,
                 width: 300,
                 height: h,
@@ -2657,6 +2732,38 @@ export default function Domains() {
                         ) : (
                           <span className={styles.statSub}><span style={{ color: GROUP_ACCENT_COLORS[selectedDivisionInfo.population.group] || 'inherit' }}>{selectedDivisionInfo.population.groupLabel}</span></span>
                         )}
+                      </div>
+                    )}
+
+                    {selectedDivisionInfo.chasse?.length > 0 && (
+                      <div className={styles.statBlock}>
+                        <span className={styles.statLabel}>Feeding Grounds — Chasse Merits</span>
+                        <div className={styles.chasseBar}>
+                          {selectedDivisionInfo.chasse.map(m => (
+                            <button
+                              key={m.key}
+                              type="button"
+                              className={styles.chasseChip}
+                              style={{ '--chasse-color': m.color }}
+                              title={m.name}
+                              data-name={m.name}
+                              onClick={() => {
+                                const el = document.getElementById(`chasse-card-${m.key}`);
+                                if (!el) return;
+                                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                el.classList.add(styles.chasseCardFlash);
+                                setTimeout(() => el.classList.remove(styles.chasseCardFlash), 1100);
+                              }}
+                            >
+                              <FaGlyph icon={m.icon} size={15} />
+                            </button>
+                          ))}
+                        </div>
+                        <div className={styles.chasseList}>
+                          {selectedDivisionInfo.chasse.map(m => (
+                            <ChasseCard key={m.key} id={`chasse-card-${m.key}`} merit={m} />
+                          ))}
+                        </div>
                       </div>
                     )}
 

@@ -15,7 +15,7 @@
 export const CATACOMB_CERTAINTY = {
   attested:    { label: 'Attested',    dash: null,     color: '#e6d5a8' },
   inferred:    { label: 'Inferred',    dash: [5, 4],   color: '#c9a86a' },
-  speculative: { label: 'Storyteller', dash: [1.5, 4], color: '#9b7bd4' },
+  speculative: { label: 'Speculative', dash: [1.5, 4], color: '#9b7bd4' },
 };
 
 export const CATACOMB_SITE_COLOR = {
