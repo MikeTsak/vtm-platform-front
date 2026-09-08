@@ -1683,8 +1683,8 @@
 
 .chasseChip {
   position: relative;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   flex-shrink: 0;
   padding: 0;
   display: flex;
@@ -2179,6 +2179,12 @@
     order: 2;
     padding: 14px 16px 18px;
   }
+
+  /* bigger touch targets for the Chasse quick-ref bar; tap jumps to the card
+     (which carries the name), so the hover label isn't needed on touch */
+  .chasseBar { gap: 8px; }
+  .chasseChip { width: 36px; height: 36px; }
+  .chasseChip::after { display: none; }
 
   /* The scrollable tab content sits between the header and the bottom tab
      bar — flex handles the sizing automatically via `order` + `flex: 1`,
