@@ -111,7 +111,21 @@ const InventoryItemModal = ({ item, onClose, onSave, busy }) => {
             <label className={styles.label}>Image (optional)</label>
             <input type="file" accept="image/*" className={styles.fileInput} onChange={handleImageChange} />
             {imagePreviewUrl && (
-              <img src={imagePreviewUrl} alt="Preview" className={styles.imagePreview} />
+              <>
+                <img src={imagePreviewUrl} alt="Preview" className={styles.imagePreview} />
+                {/* Saving sends image: null, which the API reads as an explicit
+                    clear. Without this there was no way to take a picture off
+                    an item once one had been attached. */}
+                <button
+                  type="button"
+                  className={styles.ghostBtn}
+                  onClick={() => setImagePreviewUrl(null)}
+                  disabled={busy}
+                  style={{ marginTop: '0.5rem' }}
+                >
+                  Remove image
+                </button>
+              </>
             )}
           </div>
 

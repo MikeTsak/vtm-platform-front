@@ -72,6 +72,9 @@ export default function AdminMasterTab() {
   const [backupDone, setBackupDone] = useState(false);
   const [backupList, setBackupList] = useState([]);
 
+  // Schema version state
+  const [schema, setSchema] = useState(null);
+
 
   const loadBackups = async () => {
     try {
@@ -82,7 +85,16 @@ export default function AdminMasterTab() {
     }
   };
 
-  useEffect(() => { loadBackups(); }, []);
+  const loadSchema = async () => {
+    try {
+      const { data } = await api.get('/admin/schema-versions');
+      setSchema(data);
+    } catch (e) {
+      setSchema(null);
+    }
+  };
+
+  useEffect(() => { loadBackups(); loadSchema(); }, []);
 
   // `full` includes the image BLOB tables (~400MB). The default omits them
   // (~2.4MB) — see back/scripts/backup-db.js for why they dominate the size.
@@ -1086,6 +1098,48 @@ export default function AdminMasterTab() {
                             Download
                           </a>
                         </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Schema Versions */}
+            <div style={{ background: 'var(--glass-inset)', padding: '1.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)', marginTop: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--text-primary)' }}>Schema Versions</div>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '4px' }}>
+                    Every change made to the database structure, in order, with the date it was applied. This is the same record stored in the <code>schema_migrations</code> table, so you can also read it directly in phpMyAdmin.
+                  </div>
+                </div>
+                <button onClick={loadSchema} className={styles.btn} style={{ whiteSpace: 'nowrap' }}>Refresh</button>
+              </div>
+
+              {schema && (
+                <div style={{ marginTop: '1rem' }}>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.6rem' }}>
+                    Database <b>{schema.database}</b> — {schema.versions.filter(v => v.applied).length} applied
+                    {schema.pending > 0 && <span style={{ color: 'var(--color-warning, #d29922)', fontWeight: 700 }}>, {schema.pending} pending</span>}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', maxHeight: '320px', overflowY: 'auto' }}>
+                    {schema.versions.map((v) => (
+                      <div key={v.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', background: 'var(--bg-lighter)', borderRadius: '6px', padding: '0.55rem 0.9rem', fontSize: '0.85rem' }}>
+                        <span style={{ fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</span>
+                        {v.applied ? (
+                          <span style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{new Date(v.applied_at).toLocaleString()}</span>
+                        ) : (
+                          <span style={{ color: 'var(--color-warning, #d29922)', fontWeight: 700, whiteSpace: 'nowrap' }}>PENDING</span>
+                        )}
+                      </div>
+                    ))}
+                    {schema.orphaned.map((o) => (
+                      <div key={o.name} title="Recorded as applied, but the migration file is no longer in the codebase" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', background: 'var(--bg-lighter)', borderRadius: '6px', padding: '0.55rem 0.9rem', fontSize: '0.85rem', opacity: 0.65 }}>
+                        <span style={{ fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {o.name} <span style={{ fontStyle: 'italic' }}>(no file)</span>
+                        </span>
+                        <span style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{new Date(o.applied_at).toLocaleString()}</span>
                       </div>
                     ))}
                   </div>

@@ -75,6 +75,48 @@ const renderMessageBody = (text) => {
   return parts;
 };
 
+/* --- Reaction glyphs ---
+ *
+ * A reaction is stored as a plain string in chat_message_reactions.emoji
+ * (varchar 32). Most are literal emoji, but a clan crest is stored as the
+ * same ':Clan_Name:' token renderMessageBody() already understands, so the
+ * two representations stay interchangeable.
+ *
+ * The ankh is the real character U+2625 rather than an image: it needs no
+ * asset deployed, and it still reads as a crest at 14px where a detailed
+ * logo would not. */
+const ANKH = '☥';
+
+// Resolves any spelling of a clan ('banu haqim', 'Banu_Haqim') to the
+// canonical key in CLAN_COLORS, or null if it isn't one of ours.
+const clanKeyFor = (name) => {
+  if (!name) return null;
+  const want = String(name).trim().replace(/\s+/g, '_').toLowerCase();
+  return Object.keys(CLAN_COLORS).find(c => c.replace(/\s+/g, '_').toLowerCase() === want) || null;
+};
+
+const clanToken = (name) => {
+  const clan = clanKeyFor(name);
+  return clan ? `:${clan.replace(/\s+/g, '_')}:` : null;
+};
+
+// Renders one reaction: a clan token becomes the white crest, anything else
+// is left as the literal character it already is.
+const ReactionGlyph = ({ value, size = 14 }) => {
+  const match = /^:([A-Za-z0-9_]+):$/.exec(value || '');
+  const clan = match ? clanKeyFor(match[1]) : null;
+  if (!clan) return <span>{value}</span>;
+  return (
+    <img
+      src={localSymlogo(clan)}
+      alt={clan}
+      title={clan}
+      className="inline-block align-text-bottom crestImg"
+      style={{ width: size, height: size, filter: 'brightness(0) invert(1)' }}
+    />
+  );
+};
+
 /* --- Gold NPC Tag Component --- */
 const NPCTag = () => (
   <span style={{
@@ -702,8 +744,22 @@ export default function ChatSystem({ commsEnabled = true }) {
   }, [socketRefreshTick, fetchContacts]);
 
   /* --- Reactions (double-tap-to-like + emoji react) --- */
-  const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
-  const LIKE_EMOJI = '❤️';
+  // Double-tap-to-like is a thumbs up, not a heart — it reads as
+  // acknowledgement rather than affection, which is what a tap actually means.
+  const LIKE_EMOJI = '👍';
+
+  // The last slot is the player's own clan crest in place of the heart.
+  // Admins have no character loaded at all (see the myChar effect above), and
+  // a clanless character shouldn't display a crest either, so both fall back
+  // to the ankh.
+  const mySigil = useMemo(
+    () => (isAdmin ? ANKH : (clanToken(myChar?.clan || myChar?.sheet?.clan) || ANKH)),
+    [isAdmin, myChar]
+  );
+  const QUICK_REACTIONS = useMemo(
+    () => ['👍', '😂', '😮', '😢', '🙏', mySigil],
+    [mySigil]
+  );
 
   // Maps selectedContact.type to the discriminator the backend expects —
   // must match REACTION_TABLES in server.fastify.js.
@@ -1722,7 +1778,7 @@ export default function ChatSystem({ commsEnabled = true }) {
                               title={r.reacted_by_me ? 'Remove your reaction' : 'React'}
                               className={`text-[11px] leading-none px-1.5 py-0.5 rounded-full border transition-colors flex items-center gap-1 ${r.reacted_by_me ? 'bg-primary/20 border-primary text-primary' : 'bg-surface-container-highest border-outline-variant/40 text-on-surface-variant hover:border-primary/50'}`}
                             >
-                              <span>{r.emoji}</span>
+                              <ReactionGlyph value={r.emoji} size={12} />
                               <span className="font-system-code">{r.count}</span>
                             </button>
                           ))}
@@ -1734,7 +1790,7 @@ export default function ChatSystem({ commsEnabled = true }) {
                                   onClick={() => toggleReaction(item.id, e)}
                                   className="text-[14px] leading-none hover:scale-125 transition-transform"
                                 >
-                                  {e}
+                                  <ReactionGlyph value={e} size={15} />
                                 </button>
                               ))}
                             </div>

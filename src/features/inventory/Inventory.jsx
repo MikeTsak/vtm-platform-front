@@ -14,21 +14,22 @@ function Inventory({ characterId }) {
   const [activeTab, setActiveTab] = useState('All');
   
   const [expandedItems, setExpandedItems] = useState(new Set());
+  const [brokenImages, setBrokenImages] = useState(new Set());
   
   const [modalOpen, setModalOpen] = useState(false);
+  // The modal already disables Save on `busy`, but nothing was passing it,
+  // so a double-click sent two POSTs and created the item twice.
+  const [saving, setSaving] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
 
   const fetchInventory = useCallback(async () => {
     setLoading(true);
     setError(null); // Clear any previous error before fetching
     try {
-      console.log(`[Inventory] Fetching inventory for character id=${id}`);
       const res = await api.get(`/characters/${id}/inventory`);
-      console.log(`[Inventory] Got ${res.data.items?.length ?? 0} items:`, res.data.items);
       setItems(res.data.items || []);
     } catch (err) {
-      console.error('[Inventory] Failed to fetch inventory:', err);
-      console.error('[Inventory] Response:', err.response?.status, err.response?.data);
+      console.error('[Inventory] Failed to fetch inventory:', err.response?.status, err.response?.data || err.message);
       const detailedError = err.response?.data?.error || err.message || "Unknown error";
       setError(`Failed to load inventory: ${detailedError}`);
     } finally {
@@ -46,6 +47,8 @@ function Inventory({ characterId }) {
   }, [id, fetchInventory]);
 
   const handleSave = async (itemData) => {
+    if (saving) return;
+    setSaving(true);
     try {
       if (editingItem) {
         await api.put(`/characters/${id}/inventory/${editingItem.id}`, itemData);
@@ -58,6 +61,8 @@ function Inventory({ characterId }) {
       console.error('Failed to save item:', err);
       const detailedError = err.response?.data?.error || err.message || "Unknown error";
       alert(`Error saving item: ${detailedError}`);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -121,8 +126,15 @@ function Inventory({ characterId }) {
         <div className={styles.itemCardHeader} onClick={() => toggleExpand(item.id)}>
           <div className={styles.itemCardLeft}>
             <div className={styles.itemIcon}>
-              {item.image ? (
-                <img src={item.image} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '0.375rem' }} />
+              {item.image && !brokenImages.has(item.id) ? (
+                <img
+                  src={item.image}
+                  alt={item.name}
+                  // A dead CDN url used to leave a broken-image glyph in the
+                  // card; fall back to the item-type icon instead.
+                  onError={() => setBrokenImages(prev => new Set(prev).add(item.id))}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '0.375rem' }}
+                />
               ) : (
                 <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
                   {iconName}
@@ -247,6 +259,7 @@ function Inventory({ characterId }) {
           item={editingItem}
           onClose={() => setModalOpen(false)}
           onSave={handleSave}
+          busy={saving}
         />
       )}
     </div>
