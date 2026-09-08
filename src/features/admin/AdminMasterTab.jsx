@@ -64,7 +64,77 @@ export default function AdminMasterTab() {
   const [avatarCdnTotal, setAvatarCdnTotal] = useState(1);
   const [avatarCdnDone, setAvatarCdnDone] = useState(false);
 
+  // Database Backup state
+  const [backupRunning, setBackupRunning] = useState(false);
+  const [backupLogs, setBackupLogs] = useState([]);
+  const [backupProgress, setBackupProgress] = useState(0);
+  const [backupTotal, setBackupTotal] = useState(1);
+  const [backupDone, setBackupDone] = useState(false);
+  const [backupList, setBackupList] = useState([]);
 
+
+  const loadBackups = async () => {
+    try {
+      const { data } = await api.get('/admin/backups');
+      setBackupList(data.backups || []);
+    } catch (e) {
+      setBackupList([]);
+    }
+  };
+
+  useEffect(() => { loadBackups(); }, []);
+
+  // `full` includes the image BLOB tables (~400MB). The default omits them
+  // (~2.4MB) — see back/scripts/backup-db.js for why they dominate the size.
+  const runBackup = (full) => {
+    const what = full
+      ? 'Take a FULL backup? This includes every image stored in the database and can be several hundred MB.'
+      : 'Take a backup of the game data? Images stored in the database are omitted, so this is small and quick.';
+    if (!window.confirm(what)) return;
+
+    setBackupRunning(true);
+    setBackupLogs([]);
+    setBackupProgress(0);
+    setBackupTotal(1);
+    setBackupDone(false);
+
+    const baseUrl = api.defaults.baseURL || import.meta.env.VITE_API_URL || '';
+    const es = new EventSource(`${baseUrl}/admin/backup/stream?full=${full ? 'true' : 'false'}`, { withCredentials: true });
+
+    es.addEventListener('start', (e) => {
+      const data = JSON.parse(e.data);
+      setBackupTotal(data.total || 1);
+    });
+
+    es.addEventListener('progress', (e) => {
+      const data = JSON.parse(e.data);
+      setBackupProgress(data.current);
+    });
+
+    es.addEventListener('log', (e) => {
+      let data = e.data;
+      try { data = JSON.parse(e.data); } catch (err) {}
+      setBackupLogs(prev => [...prev, data]);
+    });
+
+    es.addEventListener('done', (e) => {
+      const data = JSON.parse(e.data);
+      setBackupLogs(prev => [...prev, `[System] ${data.message}`]);
+      setBackupDone(true);
+      setBackupRunning(false);
+      es.close();
+      loadBackups();
+    });
+
+    es.onerror = () => {
+      setBackupLogs(prev => [...prev, `[Error] Connection lost or failed to stream.`]);
+      setBackupRunning(false);
+      es.close();
+      loadBackups();
+    };
+  };
+
+  const formatBytes = (n) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.round(n / 1024)} KB`);
   const runMigrations = () => {
     if(!window.confirm("Are you sure you want to run all system migrations?")) return;
     setMigrationRunning(true);
@@ -933,6 +1003,91 @@ export default function AdminMasterTab() {
                       </div>
                     ))}
                     {avatarCdnRunning && <div style={{ color: '#8b949e', marginTop: '10px' }}>&gt; waiting for output...<span style={{ animation: 'blink 1s step-end infinite' }}>_</span></div>}
+                  </div>
+                </div>
+              )}
+            </div>
+            {/* Database Backup */}
+            <div style={{ background: 'var(--glass-inset)', padding: '1.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)', marginTop: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', gap: '1rem', flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--text-primary)' }}>Database Backup</div>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '4px' }}>Writes a gzipped SQL dump you can re-import through phpMyAdmin. <b>Game data</b> skips the image tables and takes seconds; <b>full</b> includes every stored image and is far larger. Take a full one before anything risky.</div>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button
+                    onClick={() => runBackup(false)}
+                    disabled={backupRunning}
+                    className={styles.btn}
+                    style={{ background: 'var(--color-primary)', color: '#fff', border: 'none', fontWeight: 700, whiteSpace: 'nowrap' }}
+                  >
+                    {backupRunning ? 'Running...' : 'Backup game data'}
+                  </button>
+                  <button
+                    onClick={() => runBackup(true)}
+                    disabled={backupRunning}
+                    className={styles.btn}
+                    style={{ whiteSpace: 'nowrap' }}
+                  >
+                    Full backup
+                  </button>
+                </div>
+              </div>
+
+              {(backupRunning || backupLogs.length > 0) && (
+                <div style={{ marginTop: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '5px' }}>
+                    <span>Tables: {backupProgress} / {backupTotal}</span>
+                    <span>{Math.round((backupProgress / backupTotal) * 100)}%</span>
+                  </div>
+                  <div style={{ width: '100%', height: '8px', background: 'var(--bg-lighter)', borderRadius: '4px', overflow: 'hidden', marginBottom: '1rem' }}>
+                    <div style={{ height: '100%', background: backupDone ? 'var(--color-success)' : 'var(--color-primary)', width: `${(backupProgress / backupTotal) * 100}%`, transition: 'width 0.3s ease' }} />
+                  </div>
+
+                  <div style={{
+                    background: '#0d1117',
+                    color: '#c9d1d9',
+                    fontFamily: 'monospace',
+                    fontSize: '0.85rem',
+                    padding: '1rem',
+                    borderRadius: '6px',
+                    height: '200px',
+                    overflowY: 'auto',
+                    whiteSpace: 'pre-wrap',
+                    border: '1px solid #30363d'
+                  }}>
+                    {backupLogs.map((log, i) => (
+                      <div key={i} style={{ color: typeof log === 'string' && (log.includes('[Error]') || log.includes('[FATAL]')) ? '#ff7b72' : typeof log === 'string' && log.includes('---') ? '#79c0ff' : 'inherit' }}>
+                        {log}
+                      </div>
+                    ))}
+                    {backupRunning && <div style={{ color: '#8b949e', marginTop: '10px' }}>&gt; waiting for output...<span style={{ animation: 'blink 1s step-end infinite' }}>_</span></div>}
+                  </div>
+                </div>
+              )}
+
+              {backupList.length > 0 && (
+                <div style={{ marginTop: '1.25rem' }}>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Available backups (newest first)</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    {backupList.slice(0, 8).map((b) => (
+                      <div key={b.file} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', background: 'var(--bg-lighter)', borderRadius: '6px', padding: '0.6rem 0.9rem', fontSize: '0.85rem' }}>
+                        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <span style={{ fontFamily: 'monospace' }}>{b.file}</span>
+                          {b.partial && <span title="Images stored in the database are not included" style={{ marginLeft: '8px', color: 'var(--color-warning, #d29922)', fontSize: '0.75rem', fontWeight: 700 }}>PARTIAL</span>}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', whiteSpace: 'nowrap' }}>
+                          <span style={{ color: 'var(--text-secondary)' }}>{formatBytes(b.size)}</span>
+                          <span style={{ color: 'var(--text-secondary)' }}>{new Date(b.created_at).toLocaleString()}</span>
+                          <a
+                            href={`${api.defaults.baseURL || import.meta.env.VITE_API_URL || ''}/admin/backups/${encodeURIComponent(b.file)}`}
+                            style={{ color: 'var(--color-primary)', fontWeight: 700, textDecoration: 'none' }}
+                          >
+                            Download
+                          </a>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
