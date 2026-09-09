@@ -1,7 +1,6 @@
 // src/pages/Home.jsx
 import React, { useEffect, useState, useRef, useContext } from 'react';
 import api from '../core/api';
-import { trackEvent } from '../utils/analytics';
 import { getPushSettings, updatePushSettings, subscribeToWebPush } from '../utils/push';
 import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { Skeleton } from 'boneyard-js/react';
@@ -9,26 +8,10 @@ import { motion } from 'framer-motion';
 import styles from '../styles/Home.module.css';
 import Avatar from '../components/Avatar';
 import GoogleAd from '../components/GoogleAd';
-import { symlogo, textlogo } from '../data/clans';
+import { symlogo, textlogo, clanTint } from '../data/clans';
 import { AuthCtx } from '../core/AuthContext';
+import { useTheme } from '../core/ThemeContext';
 import Loading from '../ui/Loading';
-
-/* ── Clan tint colors ───────────────────────────────────────────── */
-const CLAN_COLORS = {
-  Brujah: '#b40f1f',
-  Gangrel: '#2f7a3a',
-  Malkavian: '#713c8b',
-  Nosferatu: '#6a4b2b',
-  Toreador: '#b8236b',
-  Tremere: '#7b1113',
-  Ventrue: '#1b4c8c',
-  'Banu Haqim': '#7a2f57',
-  Hecata: '#2b6b6b',
-  Lasombra: '#191a5a',
-  'The Ministry': '#865f12',
-  Caitiff: '#636363',
-  'Thin-blood': '#6e6e2b',
-};
 
 /* ── Relative time ──────────────────────────────────────────────── */
 const formatTimestamp = (ts) => {
@@ -167,8 +150,10 @@ export default function Home() {
   const [pushLoading, setPushLoading] = useState(true);
   const notifSupported = 'serviceWorker' in navigator && 'PushManager' in window;
 
-  // ✅ DEFAULT SET TO CLAN-THEME WITH DARK ENGINE
-  const [activeTheme, setActiveTheme] = useState(() => localStorage.getItem('vtm_theme') || 'clan');
+  // Theme is owned app-wide by ThemeProvider (src/core/ThemeContext.jsx) — it
+  // applies data-theme / --tint on every route and syncs with the server. Here
+  // we only read the current value and drive the picker below.
+  const { theme: activeTheme, setTheme: handleThemeChange } = useTheme();
   const [isShattering, setIsShattering] = useState(false);
   const [clickPoint, setClickPoint] = useState(null);
   const [shards, setShards] = useState([]);
@@ -178,38 +163,6 @@ export default function Home() {
   const nav = useNavigate();
 
   const eventCd = useCountdown(openingDate);
-
-  /* ── Theme syncing & Saving to Backend ── */
-  useEffect(() => {
-    // Sync backend theme if user loaded
-    if (me?.theme && me.theme !== activeTheme && !localStorage.getItem('theme_synced')) {
-      setActiveTheme(me.theme);
-      localStorage.setItem('theme_synced', 'true'); // Prevent infinite loop override
-    }
-  }, [me, activeTheme]);
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', activeTheme);
-    localStorage.setItem('vtm_theme', activeTheme);
-
-    if (activeTheme === 'clan') {
-      const clanColor = (ch && CLAN_COLORS[ch.clan]) ? CLAN_COLORS[ch.clan] : '#8a0f1a';
-      document.documentElement.style.setProperty('--tint', clanColor);
-    } else {
-      document.documentElement.style.removeProperty('--tint');
-    }
-  }, [activeTheme, ch]); // Fixed: added activeTheme to dependencies
-
-  // Handler for Theme Clicks
-  const handleThemeChange = async (themeId) => {
-    setActiveTheme(themeId);
-    trackEvent('theme_change', { theme: themeId });
-    try {
-      await api.put('/auth/theme', { theme: themeId });
-    } catch (error) {
-      console.error('Failed to sync theme with server', error);
-    }
-  };
 
   /* ── Shatter trigger ── */
   const handlePremonitionClick = (e) => {
@@ -359,7 +312,7 @@ export default function Home() {
   const showCobweb  = isMalkavian || safeMe.role === 'admin';
   const quotaPct    = Math.min((quota.used / quota.limit) * 100, 100);
 
-  const dynamicClanTint = CLAN_COLORS[clan] || '#8a0f1a';
+  const dynamicClanTint = clanTint(clan);
 
   let sheetObj = {};
   try {

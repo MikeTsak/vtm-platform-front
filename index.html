@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="erebus">
+<html lang="en" data-theme="clan">
 
 <head>
   <meta charset="utf-8" />
@@ -7,6 +7,11 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
+
+  <!-- Applies the saved theme to <html> before the app bundle paints, to
+       avoid a flash of the default palette on cold loads / deep links.
+       See public/theme-init.js. -->
+  <script src="/theme-init.js"></script>
 
   <title>Erebus Portal — Athens Through-Time</title>
   <meta name="description"

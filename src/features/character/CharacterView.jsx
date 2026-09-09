@@ -6,7 +6,7 @@ import api from '../../core/api';
 import { AuthCtx } from '../../core/AuthContext';
 import { DISCIPLINES, ALL_DISCIPLINE_NAMES, iconPath } from '../../data/disciplines';
 import { RITUALS } from '../../data/rituals';
-import { symlogo, textlogo } from '../../data/clans';
+import { symlogo, textlogo, CLAN_HEX as CLAN_COLORS } from '../../data/clans';
 import styles from '../../styles/CharacterView.module.css';
 import homeStyles from '../../styles/Home.module.css';
 
@@ -34,22 +34,6 @@ const msSearchText = (arr, query) => {
   const docs = arr.map((text, id) => ({ id, text }));
   ms.addAll(docs);
   return ms.search(query).map(r => ({ item: docs[r.id].text }));
-};
-/* ---------- Clan tint colors ---------- */
-const CLAN_COLORS = {
-  Brujah: '#b40f1f',
-  Gangrel: '#2f7a3a',
-  Malkavian: '#713c8b',
-  Nosferatu: '#6a4b2b',
-  Toreador: '#b8236b',
-  Tremere: '#7b1113',
-  Ventrue: '#1b4c8c',
-  'Banu Haqim': '#7a2f57',
-  Hecata: '#2b6b6b',
-  Lasombra: '#191a5a',
-  'The Ministry': '#865f12',
-  Caitiff: '#636363',
-  'Thin-blood': '#6e6e2b',
 };
 
 

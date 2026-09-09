@@ -7,7 +7,7 @@ import styles from '../../styles/Admin.module.css';
 import * as DiscDataNS from '../../data/disciplines';
 import { MERITS_AND_FLAWS } from '../../data/merits_flaws';
 import { RITUALS } from '../../data/rituals';
-import { symlogo } from '../../data/clans';
+import { symlogo, CLAN_HEX as CLAN_COLORS } from '../../data/clans';
 import MiniSearch from 'minisearch';
 
 // --- Discipline names fallback logic ---
@@ -25,22 +25,6 @@ if (!ALL_DISCIPLINE_NAMES || ALL_DISCIPLINE_NAMES.length === 0) {
   ];
 }
 
-/* ---------- VTM Lookups (as requested) ---------- */
-const CLAN_COLORS = {
-  Brujah: '#b40f1f',
-  Gangrel: '#2f7a3a',
-  Malkavian: '#713c8b',
-  Nosferatu: '#6a4b2b',
-  Toreador: '#b8236b',
-  Tremere: '#7b1113',
-  Ventrue: '#1b4c8c',
-  'Banu Haqim': '#7a2f57',
-  Hecata: '#2b6b6b',
-  Lasombra: '#191a5a',
-  'The Ministry': '#865f12',
-  Caitiff: '#636363',
-  'Thin-blood': '#6e6e2b',
-};
 /* -------------------------------------------------- */
 
 

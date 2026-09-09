@@ -3,6 +3,7 @@ import React, { useContext, useState, useEffect, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { HelmetProvider, Helmet } from 'react-helmet-async';
 import AuthProvider, { AuthCtx } from './AuthContext';
+import ThemeProvider from './ThemeContext';
 import { NotificationProvider } from '../context/NotificationContext';
 import NotificationBanner from '../features/notification/NotificationBanner';
 import api from './api';
@@ -247,11 +248,13 @@ export default function App() {
   return (
     <HelmetProvider>
       <AuthProvider>
-        <NotificationProvider>
-          <BrowserRouter>
-            <AppLayout />
-          </BrowserRouter>
-        </NotificationProvider>
+        <ThemeProvider>
+          <NotificationProvider>
+            <BrowserRouter>
+              <AppLayout />
+            </BrowserRouter>
+          </NotificationProvider>
+        </ThemeProvider>
       </AuthProvider>
     </HelmetProvider>
   );

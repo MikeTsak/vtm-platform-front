@@ -7,15 +7,7 @@ import generateVTMCharacterSheetPDF from '../../utils/pdfGenerator';
 import { ALL_DISCIPLINE_NAMES } from '../../data/disciplines';
 import MiniSearch from 'minisearch';
 import Avatar from '../../components/Avatar';
-import { symlogo } from '../../data/clans';
-
-/* ---------- VTM Lookups ---------- */
-const CLAN_COLORS = {
-  Brujah: '#b40f1f', Gangrel: '#2f7a3a', Malkavian: '#713c8b', Nosferatu: '#6a4b2b',
-  Toreador: '#b8236b', Tremere: '#7b1113', Ventrue: '#1b4c8c', 'Banu Haqim': '#7a2f57',
-  Hecata: '#2b6b6b', Lasombra: '#191a5a', 'The Ministry': '#865f12',
-  Caitiff: '#636363', 'Thin-blood': '#6e6e2b',
-};
+import { symlogo, CLAN_HEX as CLAN_COLORS } from '../../data/clans';
 
 // ---------- TRACKER DISPLAY ----------
 const TrackerDisplay = ({ label, currentObj, max, onUpdate, isValueTracker = false, value = 0, stains = 0 }) => {

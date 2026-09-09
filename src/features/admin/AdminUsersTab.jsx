@@ -3,13 +3,7 @@ import React, { useMemo, useState } from 'react';
 import styles from '../../styles/Admin.module.css';
 import { Skeleton } from 'boneyard-js/react';
 import Avatar from '../../components/Avatar';
-
-const CLAN_COLORS = {
-  Brujah: '#b40f1f', Gangrel: '#2f7a3a', Malkavian: '#713c8b', Nosferatu: '#6a4b2b',
-  Toreador: '#b8236b', Tremere: '#7b1113', Ventrue: '#1b4c8c', 'Banu Haqim': '#7a2f57',
-  Hecata: '#2b6b6b', Lasombra: '#191a5a', Ministry: '#8c6a1b', Ravnos: '#a85f1f',
-  Salubri: '#7f3f7f', Tzimisce: '#3f7f7f', Caitiff: '#666666', Thinblood: 'var(--border-color)'
-};
+import { CLAN_HEX as CLAN_COLORS } from '../../data/clans';
 
 export default function AdminUsersTab({ users = [], onSave, loading = false }) {
   const [drafts, setDrafts] = useState(() => new Map((users || []).map((u) => [u.id, { display_name: u.display_name ?? '', email: u.email ?? '', role: u.role ?? 'user', discord_id: u.discord_id ?? '' }])));

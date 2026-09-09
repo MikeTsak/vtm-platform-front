@@ -133,3 +133,11 @@ export const textlogoSrcSet = (c) => {
 };
 
 export const clanTint = (clan) => (clan ? CLAN_COLORS[clan]?.[0] : null) || '#8a0f1a';
+
+// Flat { clan: '#hex' } map — the first (accent) colour of each gradient pair.
+// Drop-in replacement for the per-file CLAN_COLORS string maps that used to be
+// copy-pasted across the admin tabs, CharacterView, etc. Unknown/blank clans
+// are simply absent, so callers keep their own `|| 'var(--text-secondary)'`.
+export const CLAN_HEX = Object.fromEntries(
+  Object.entries(CLAN_COLORS).map(([clan, pair]) => [clan, pair[0]])
+);

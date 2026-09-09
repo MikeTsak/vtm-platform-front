@@ -9,9 +9,8 @@ import api from '../../core/api';
 import styles from '../../styles/Admin.module.css';
 import MiniSearch from 'minisearch';
 import { ALL_DISCIPLINE_NAMES } from '../../data/disciplines';
+import { CLAN_HEX as CLAN_COLORS } from '../../data/clans';
 import { formatEuDate } from '../../utils/dateFormatter';
-
-const CLAN_COLORS = { Brujah: '#b40f1f', Gangrel: '#2f7a3a', Malkavian: '#713c8b', Nosferatu: '#6a4b2b', Toreador: '#b8236b', Tremere: '#7b1113', Ventrue: '#1b4c8c', 'Banu Haqim': '#7a2f57', Hecata: '#2b6b6b', Lasombra: '#191a5a', 'The Ministry': '#865f12', Caitiff: '#636363', 'Thin-blood': '#6e6e2b' };
 
 const cardStyle = { background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-lg)', padding: '20px', boxShadow: 'var(--glass-shadow)', backdropFilter: 'blur(10px)' };
 const thStyle = { padding: '0.7rem 0.9rem', color: 'var(--text-secondary)', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.07em', textAlign: 'left' };
