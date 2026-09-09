@@ -18,7 +18,7 @@ export function ConfirmModal({ title = 'Confirm Purchase', children, onConfirm, 
   );
 }
 
-export function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, leftIcon, description = '', noConfirm = false, forceExpanded = false, hideDots = false, note = '', badge = null, actionLabel = 'Acquire', children }) {
+export function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, leftIcon, description = '', noConfirm = false, forceExpanded = false, hideDots = false, note = '', badge = null, actionLabel = 'Acquire', compact = false, children }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [working, setWorking] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -42,9 +42,19 @@ export function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, lef
   // Clean up title if it contains "(X)" like Blood Potency
   const cleanTitle = title.replace(/\s*\(\d+\)$/, '');
 
+  const dots = !hideDots && (
+    <div className={`${styles.shopCardDots} ${compact ? styles.shopCardDotsInline : ''}`}>
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className={`${styles.shopDot} ${i < targetLevel ? styles.shopDotFilled : ''}`}>
+          {i < targetLevel - 1 && <span className={styles.shopDotX}>X</span>}
+        </div>
+      ))}
+    </div>
+  );
+
   return (
-    <article className={`${styles.shopCard} ${displayExpanded ? styles.shopCardExpanded : ''} ${disabled ? styles.shopCardLocked : ''}`}>
-      <div className={styles.shopCardHeader} onClick={() => setIsExpanded(!isExpanded)}>
+    <article className={`${styles.shopCard} ${compact ? styles.shopCardCompact : ''} ${displayExpanded ? styles.shopCardExpanded : ''} ${disabled ? styles.shopCardLocked : ''}`}>
+      <div className={`${styles.shopCardHeader} ${compact ? styles.shopCardHeaderCompact : ''}`} onClick={() => setIsExpanded(!isExpanded)}>
         <div className={styles.shopCardTitleRow}>
           <div>
             <h2 className={styles.shopCardTitle}>
@@ -64,17 +74,13 @@ export function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, lef
           </p>
         )}
 
-        {!hideDots && (
-          <div className={styles.shopCardDots}>
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className={`${styles.shopDot} ${i < targetLevel ? styles.shopDotFilled : ''}`}>
-                {i < targetLevel - 1 && <span className={styles.shopDotX}>X</span>}
-              </div>
-            ))}
-          </div>
-        )}
+        {/* Compact cards (the Suggested tab) fold the dots into the footer,
+            next to the price, instead of giving them their own row — that
+            row was the single biggest source of dead vertical space. */}
+        {!compact && dots}
 
-        <div className={styles.shopCardFooter}>
+        <div className={`${styles.shopCardFooter} ${compact ? styles.shopCardFooterCompact : ''}`}>
+          {compact && dots}
           <span className={styles.shopCardPrice}>{cost} XP</span>
           {/* A row with children has no Acquire button of its own, so the
               hint is the only thing telling the reader to expand it. */}

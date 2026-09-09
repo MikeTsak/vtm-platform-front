@@ -23,6 +23,7 @@ import RitualsDisplaySection from './RitualsDisplaySection';
 import MeritsBackgroundsSection from './MeritsBackgroundsSection';
 import Avatar from '../../components/Avatar';
 import MeritsFlawsDisplay from './MeritsFlawsDisplay';
+import CategoryIcon from './CategoryIcon';
 import { Skeleton } from 'boneyard-js/react';
 import MiniSearch from 'minisearch';
 import { ShopRow, ConfirmModal } from '../xp-shop/ShopRow';
@@ -68,11 +69,11 @@ const SKILLS = {
 
 const SHOP_TABS = [
   { key: 'Suggested', icon: 'auto_fix_high', label: 'Suggested', wide: true },
-  { key: 'Disciplines', icon: 'auto_awesome', label: 'Disciplines' },
+  { key: 'Disciplines', icon: 'droplet_plus', label: 'Disciplines' },
   { key: 'Attributes', icon: 'monitor_heart', label: 'Attributes' },
   { key: 'Skills', icon: 'fitness_center', label: 'Skills' },
-  { key: 'Merits & Flaws', icon: 'workspace_premium', label: 'Merits' },
-  { key: 'Rituals', icon: 'local_fire_department', label: 'Rituals' },
+  { key: 'Merits & Flaws', icon: 'garlic', label: 'Merits' },
+  { key: 'Rituals', icon: 'hanukiah', label: 'Rituals' },
   { key: 'Blood Potency', icon: 'water_drop', label: 'Potency' },
 ];
 
@@ -81,9 +82,9 @@ const SHOP_TABS = [
 const MOBILE_NAV_ITEMS = [
   { id: 'stats', icon: 'person', label: 'Stats', anchor: null },
   { id: 'skills', icon: 'fitness_center', label: 'Skills', anchor: 'skills-section' },
-  { id: 'disciplines', icon: 'auto_awesome', label: 'Powers', anchor: 'disciplines-section' },
+  { id: 'disciplines', icon: 'droplet_plus', label: 'Powers', anchor: 'disciplines-section' },
   { id: 'inventory', icon: 'backpack', label: 'Gear', anchor: 'inventory-section' },
-  { id: 'merits', icon: 'workspace_premium', label: 'Merits', anchor: 'merits-section' },
+  { id: 'merits', icon: 'garlic', label: 'Merits', anchor: 'merits-section' },
   { id: 'shop', icon: 'shopping_cart', label: 'Shop', anchor: 'xp-shop-section' },
 ];
 
@@ -1586,6 +1587,7 @@ export default function CharacterView({
       subtitle: s.subtitle,
       cost: s.cost,
       note: s.reason,
+      compact: true,
       badge: s.rank ?? null,
       disabled: !s.affordable,
       hint: s.affordable ? '' : `${s.shortfall} more XP needed`,
@@ -1759,10 +1761,7 @@ export default function CharacterView({
               aria-label={label}
               aria-current={activeNav === id ? 'true' : undefined}
             >
-              <span
-                className="material-symbols-outlined"
-                style={{ fontSize: '21px', fontVariationSettings: activeNav === id ? "'FILL' 1" : "'FILL' 0" }}
-              >{icon}</span>
+              <CategoryIcon glyph={icon} size={21} active={activeNav === id} />
               <span className={styles.mobileNavLabel}>{label}</span>
               {activeNav === id && <span className={styles.mobileNavPill} />}
             </button>
@@ -1780,10 +1779,7 @@ export default function CharacterView({
                 title={label}
                 aria-current={activeNav === id ? 'true' : undefined}
               >
-                <span
-                  className="material-symbols-outlined"
-                  style={{ fontSize: '24px', fontVariationSettings: activeNav === id ? "'FILL' 1" : "'FILL' 0" }}
-                >{icon}</span>
+                <CategoryIcon glyph={icon} size={24} active={activeNav === id} />
                 <span style={{ fontSize: '10px', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</span>
               </button>
             ))}
@@ -2051,10 +2047,7 @@ export default function CharacterView({
                     className={`${styles.shopTabsGridBtn} ${wide ? styles.shopTabsGridBtnWide : ''} ${activeShopTab === key ? styles.shopTabsGridBtnActive : ''}`}
                     onClick={() => setActiveShopTab(key)}
                   >
-                    <span
-                      className="material-symbols-outlined"
-                      style={{ fontSize: '20px', fontVariationSettings: activeShopTab === key ? "'FILL' 1" : "'FILL' 0" }}
-                    >{icon}</span>
+                    <CategoryIcon glyph={icon} size={20} active={activeShopTab === key} />
                     {label}
                   </button>
                 ))}
@@ -2073,7 +2066,11 @@ export default function CharacterView({
               </div>
             </nav>
 
-            <div className={`${styles.shopGrid} ${['Suggested', 'Disciplines', 'Rituals'].includes(activeShopTab) ? styles.shopGridSingle : ''}`}>
+            <div className={`${styles.shopGrid} ${
+              activeShopTab === 'Suggested' ? styles.shopGridSuggest
+                : ['Disciplines', 'Rituals'].includes(activeShopTab) ? styles.shopGridSingle
+                  : ''
+            }`}>
               {/* Category Search Bar */}
               <div className={styles.shopSearchRow} style={{ gridColumn: '1 / -1', marginBottom: '16px' }}>
                 <div className={styles.searchWrap} style={{ width: '100%' }}>
@@ -2088,8 +2085,8 @@ export default function CharacterView({
                 </div>
               </div>
               {activeShopTab === 'Suggested' && !isSearching && (
-                <div className={styles.suggestPane}>
-                  <div className={styles.suggestIntro}>
+                <>
+                  <div className={styles.suggestIntro} style={{ gridColumn: '1 / -1' }}>
                     <span className={`material-symbols-outlined ${styles.suggestIntroIcon}`}>auto_fix_high</span>
                     <p className={styles.suggestIntroText}>
                       Ranked for <b>{ch.name}</b>, {ch.clan}
@@ -2102,26 +2099,22 @@ export default function CharacterView({
 
                   {suggestions.affordable.length > 0 ? (
                     <>
-                      <h3 className={styles.suggestGroupTitle}>Best value at {xp} XP</h3>
-                      <div className={styles.suggestList}>
-                        {suggestions.affordable.map(renderSuggestion)}
-                      </div>
+                      <h3 className={styles.suggestGroupTitle} style={{ gridColumn: '1 / -1' }}>Best value at {xp} XP</h3>
+                      {suggestions.affordable.map(renderSuggestion)}
                     </>
                   ) : (
-                    <div className={styles.suggestEmpty}>
+                    <div className={styles.suggestEmpty} style={{ gridColumn: '1 / -1' }}>
                       Nothing is within reach at {xp} XP yet — here is what to aim for.
                     </div>
                   )}
 
                   {suggestions.aspirational.length > 0 && (
                     <>
-                      <h3 className={`${styles.suggestGroupTitle} ${styles.suggestGroupTitleMuted}`}>Worth saving for</h3>
-                      <div className={styles.suggestList}>
-                        {suggestions.aspirational.map(renderSuggestion)}
-                      </div>
+                      <h3 className={`${styles.suggestGroupTitle} ${styles.suggestGroupTitleMuted}`} style={{ gridColumn: '1 / -1' }}>Worth saving for</h3>
+                      {suggestions.aspirational.map(renderSuggestion)}
                     </>
                   )}
-                </div>
+                </>
               )}
 
               {(activeShopTab === 'Blood Potency' || isSearching) && (

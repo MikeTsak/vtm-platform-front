@@ -3744,14 +3744,21 @@ select.input:focus {
 
 /* ===================================================================
    10. Suggested tab — the "what should I buy next" pane
+   Cards are direct .shopGrid children (same pattern the Disciplines tab
+   uses), so they sit side by side instead of stacking as one dead-space
+   column. Capped at 2 columns rather than the default grid's 3 — these
+   cards carry a paragraph of "why", plus occasionally an expanded
+   discipline picker, and stay more readable a little wider.
    =================================================================== */
-.suggestPane {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  width: 100%;
-  min-width: 0;
+.shopGridSuggest {
+  grid-template-columns: 1fr !important;
+}
+
+@media (min-width: 860px) {
+  .shopGridSuggest {
+    grid-template-columns: repeat(2, 1fr) !important;
+    align-items: start;
+  }
 }
 
 .suggestIntro {
@@ -3799,13 +3806,6 @@ select.input:focus {
   border-bottom-color: var(--border-color);
 }
 
-.suggestList {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  min-width: 0;
-}
-
 /* The reason line inside a shop card — visible without expanding. */
 .shopCardNote {
   display: flex;
@@ -3828,6 +3828,51 @@ select.input:focus {
   color: var(--tint);
   flex-shrink: 0;
   font-size: 18px;
+}
+
+/* ---- Compact card mode (Suggested tab) ----
+   Same card, but the header padding is tighter and the dots move into the
+   footer next to the price instead of owning a whole row — the change that
+   actually shrinks a card, since the dots row was pure vertical padding
+   with no more information than "Raise to X" already gave in the subtitle. */
+.shopCardCompact .shopCardContent {
+  padding: 1rem 1.25rem;
+}
+
+.shopCardHeaderCompact {
+  padding: 1.1rem 1.25rem;
+}
+
+.shopCardHeaderCompact .shopCardTitleRow {
+  margin-bottom: 0.6rem;
+}
+
+.shopCardHeaderCompact .shopCardTitle {
+  font-size: clamp(16px, 3vw, 19px);
+}
+
+.shopCardHeaderCompact .shopCardNote {
+  margin-bottom: 0.75rem;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.shopCardHeaderCompact .shopCardFooter {
+  margin-top: 0;
+}
+
+.shopCardDotsInline {
+  margin-bottom: 0;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.shopCardDotsInline .shopDot {
+  width: 9px;
+  height: 9px;
+  overflow: hidden;
+  font-size: 0;
 }
 
 .suggestRank {
