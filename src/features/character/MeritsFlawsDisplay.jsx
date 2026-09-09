@@ -65,8 +65,10 @@ export default function MeritsFlawsDisplay({ sheet, allMeritsFlat, allFlawsFlat,
     setEditingId(null);
   };
 
+  // The #merits-section scroll anchor lives on the wrapper in CharacterView,
+  // so it must not be repeated here.
   return (
-    <div id="merits-section" className={styles.meritsContainer}>
+    <div className={styles.meritsContainer}>
       {/* Content Grid */}
       <div className={styles.meritsGrid}>
         {/* Merits Column */}

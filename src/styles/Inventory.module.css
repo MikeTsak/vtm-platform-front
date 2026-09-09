@@ -62,8 +62,9 @@
   overflow-x: auto;
   gap: 0.5rem;
   margin-bottom: 2rem;
-  padding-bottom: 0.5rem;
-  padding: 0 1rem;
+  /* The shorthand used to come after padding-bottom and silently reset it. */
+  padding: 0 1rem 0.5rem;
+  scroll-padding-inline: 1rem;
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
@@ -300,7 +301,8 @@
 /* Grid Mode Specific */
 .itemGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  /* min() so the track can never be wider than the container on a phone. */
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
   gap: 1rem;
   padding: 0 1rem;
 }

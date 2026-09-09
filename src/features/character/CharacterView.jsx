@@ -26,6 +26,7 @@ import MeritsFlawsDisplay from './MeritsFlawsDisplay';
 import { Skeleton } from 'boneyard-js/react';
 import MiniSearch from 'minisearch';
 import { ShopRow, ConfirmModal } from '../xp-shop/ShopRow';
+import { buildSuggestions, article } from '../xp-shop/suggestions';
 import { getPushSettings, updatePushSettings, subscribeToWebPush } from '../../utils/push';
 const msSearchText = (arr, query) => {
   const ms = new MiniSearch({ fields: ['text'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
@@ -64,6 +65,27 @@ const SKILLS = {
   Social: ['Animal Ken', 'Etiquette', 'Insight', 'Intimidation', 'Leadership', 'Performance', 'Persuasion', 'Streetwise', 'Subterfuge'],
   Mental: ['Academics', 'Awareness', 'Finance', 'Investigation', 'Medicine', 'Occult', 'Politics', 'Science', 'Technology'],
 };
+
+const SHOP_TABS = [
+  { key: 'Suggested', icon: 'auto_fix_high', label: 'Suggested', wide: true },
+  { key: 'Disciplines', icon: 'auto_awesome', label: 'Disciplines' },
+  { key: 'Attributes', icon: 'monitor_heart', label: 'Attributes' },
+  { key: 'Skills', icon: 'fitness_center', label: 'Skills' },
+  { key: 'Merits & Flaws', icon: 'workspace_premium', label: 'Merits' },
+  { key: 'Rituals', icon: 'local_fire_department', label: 'Rituals' },
+  { key: 'Blood Potency', icon: 'water_drop', label: 'Potency' },
+];
+
+/* The bottom bar on mobile and the rail on desktop drive the same sections.
+   `anchor` is null for the entries that scroll to a ref or to the top. */
+const MOBILE_NAV_ITEMS = [
+  { id: 'stats', icon: 'person', label: 'Stats', anchor: null },
+  { id: 'skills', icon: 'fitness_center', label: 'Skills', anchor: 'skills-section' },
+  { id: 'disciplines', icon: 'auto_awesome', label: 'Powers', anchor: 'disciplines-section' },
+  { id: 'inventory', icon: 'backpack', label: 'Gear', anchor: 'inventory-section' },
+  { id: 'merits', icon: 'workspace_premium', label: 'Merits', anchor: 'merits-section' },
+  { id: 'shop', icon: 'shopping_cart', label: 'Shop', anchor: 'xp-shop-section' },
+];
 
 /* ======================================================
    MERITS & FLAWS HELPERS
@@ -884,13 +906,49 @@ export default function CharacterView({
   const [mysticFixOpen, setMysticFixOpen] = useState(false);
   const [mysticFixBusy, setMysticFixBusy] = useState(false);
 
-  const [activeShopTab, setActiveShopTab] = useState('Disciplines');
+  const [activeShopTab, setActiveShopTab] = useState('Suggested');
   const [currentSearches, setShopSearches] = useState({});
   const [shopFilter, setShopFilter] = useState('in_clan');
   const [activeNav, setActiveNav] = useState('stats');
 
   const [pendingFixes, setPendingFixes] = useState([]);
   const shopRef = useRef(null);
+  // Set while a nav-triggered smooth scroll is in flight, so the scroll spy
+  // does not fight the tap the user just made.
+  const navLockRef = useRef(0);
+
+  const goToSection = useCallback((id) => {
+    const item = MOBILE_NAV_ITEMS.find(i => i.id === id);
+    setActiveNav(id);
+    navLockRef.current = Date.now() + 900;
+    if (!item?.anchor) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    document.getElementById(item.anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
+  // Scroll spy: keep the bottom bar's indicator on whichever section is
+  // actually in view, not just on whatever was tapped last.
+  useEffect(() => {
+    const anchored = MOBILE_NAV_ITEMS.filter(i => i.anchor);
+    const onScroll = () => {
+      if (Date.now() < navLockRef.current) return;
+      // The sticky global nav + character header occupy the top of the
+      // viewport; treat the first section below them as the current one.
+      const line = 160;
+      let current = 'stats';
+      for (const item of anchored) {
+        const el = document.getElementById(item.anchor);
+        if (!el) continue;
+        if (el.getBoundingClientRect().top <= line) current = item.id;
+      }
+      setActiveNav(prev => (prev === current ? prev : current));
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   const [tempHealth, setTempHealth] = useState({ superficial: 0, aggravated: 0 });
   const [tempWillpower, setTempWillpower] = useState({ superficial: 0, aggravated: 0 });
@@ -1078,6 +1136,48 @@ export default function CharacterView({
     }
   }
 
+  /* ---- Single place each purchase shape is built. Shared by the category
+     tabs and by the Suggested tab so the two can never drift apart. ---- */
+
+  async function buyAttribute(attr, current, next) {
+    const nextSheet = JSON.parse(JSON.stringify(sheet));
+    nextSheet.attributes = { ...(nextSheet.attributes || {}), [attr]: next };
+    await spendXP({ type: 'attribute', target: attr, currentLevel: current, newLevel: next, patchSheet: nextSheet });
+  }
+
+  function skillNode(nextSheet, skill) {
+    return (nextSheet.skills[skill] && typeof nextSheet.skills[skill] === 'object')
+      ? { ...nextSheet.skills[skill] }
+      : { dots: Number(nextSheet.skills[skill] || 0), specialties: [] };
+  }
+
+  async function buySkill(skill, current, next) {
+    const nextSheet = JSON.parse(JSON.stringify(sheet));
+    nextSheet.skills = nextSheet.skills || {};
+    const node = skillNode(nextSheet, skill);
+    node.dots = next;
+    nextSheet.skills[skill] = node;
+    await spendXP({ type: 'skill', target: skill, currentLevel: current, newLevel: next, patchSheet: nextSheet });
+  }
+
+  async function buySpecialty(skill, specialty) {
+    const spec = String(specialty || '').trim();
+    if (!spec || xp < XP_RULES.specialty()) return;
+    const nextSheet = JSON.parse(JSON.stringify(sheet));
+    nextSheet.skills = nextSheet.skills || {};
+    const node = skillNode(nextSheet, skill);
+    node.specialties = Array.isArray(node.specialties) ? node.specialties : [];
+    if (!node.specialties.includes(spec)) node.specialties.push(spec);
+    nextSheet.skills[skill] = node;
+    await spendXP({ type: 'specialty', target: skill, specialty: spec, patchSheet: nextSheet });
+  }
+
+  async function buyBloodPotency(current, next) {
+    const nextSheet = JSON.parse(JSON.stringify(sheet));
+    nextSheet.blood_potency = next;
+    await spendXP({ type: 'blood_potency', target: 'Blood Potency', currentLevel: current, newLevel: next, patchSheet: nextSheet });
+  }
+
   async function saveProfileData(newData) {
     setSavingProfile(true);
     const nextSheet = JSON.parse(JSON.stringify(sheet));
@@ -1235,6 +1335,16 @@ export default function CharacterView({
     () => (sheet?.disciplines && typeof sheet.disciplines === 'object' ? sheet.disciplines : {}),
     [sheet]
   );
+
+  // What this particular character should spend experience on next. Recomputed
+  // whenever the sheet or the balance moves, so it re-ranks after every buy.
+  const suggestions = useMemo(() => buildSuggestions({
+    ch,
+    sheet,
+    xp,
+    costs: XP_RULES,
+    disciplineKind: (name) => disciplineKindFor(ch, name),
+  }), [ch, sheet, xp]);
 
   const computeMissingPicks = useCallback(() => {
     const dots = sheet.disciplines || {};
@@ -1468,6 +1578,90 @@ export default function CharacterView({
   const currentSearch = currentSearches[activeShopTab] || '';
   const isSearching = currentSearch.trim().length > 0;
 
+  // One suggestion -> one shop card. Everything except Backgrounds is
+  // purchasable straight from the card.
+  const renderSuggestion = (s) => {
+    const common = {
+      title: s.title,
+      subtitle: s.subtitle,
+      cost: s.cost,
+      note: s.reason,
+      badge: s.rank ?? null,
+      disabled: !s.affordable,
+      hint: s.affordable ? '' : `${s.shortfall} more XP needed`,
+    };
+
+    if (s.kind === 'discipline') {
+      return (
+        <ShopRow
+          key={s.id}
+          {...common}
+          leftIcon={iconPath(s.target)}
+          noConfirm
+          hint={s.affordable ? 'Expand to pick a power' : common.hint}
+        >
+          {s.affordable && (
+            <InlineDisciplinePicker
+              cfg={{
+                name: s.target,
+                current: s.current,
+                next: s.next,
+                kind: s.disciplineKind,
+                assignOnly: false,
+                characterClan: ch.clan,
+                disciplineDots: sheet.disciplines,
+                ownedPowers: sheet.disciplinePowers?.[s.target] || [],
+              }}
+              onConfirm={(sel) => confirmDisciplinePurchase({
+                name: s.target,
+                current: s.current,
+                next: s.next,
+                kind: s.disciplineKind,
+                assignOnly: false,
+                ...sel,
+              })}
+            />
+          )}
+        </ShopRow>
+      );
+    }
+
+    if (s.kind === 'specialty') {
+      return (
+        <ShopRow key={s.id} {...common} hideDots noConfirm forceExpanded={s.affordable}>
+          <SuggestedSpecialtyRow
+            skill={s.target}
+            disabled={!s.affordable}
+            onAdd={(spec) => buySpecialty(s.target, spec)}
+          />
+        </ShopRow>
+      );
+    }
+
+    if (s.kind === 'merits') {
+      return (
+        <ShopRow
+          key={s.id}
+          {...common}
+          cost={`from ${s.cost}`}
+          hideDots
+          disabled={false}
+          hint=""
+          noConfirm
+          actionLabel="Browse"
+          onBuy={() => setActiveShopTab('Merits & Flaws')}
+        />
+      );
+    }
+
+    const onBuy =
+      s.kind === 'attribute' ? () => buyAttribute(s.target, s.current, s.next)
+        : s.kind === 'skill' ? () => buySkill(s.target, s.current, s.next)
+          : () => buyBloodPotency(s.current, s.next);
+
+    return <ShopRow key={s.id} {...common} onBuy={onBuy} />;
+  };
+
   return (
     <Skeleton name="character-view" loading={!ch}>
       <div className={styles.root} style={{ '--tint': tint }}>
@@ -1555,26 +1749,21 @@ export default function CharacterView({
           </div>
         </header>
 
-        {/* --- Mobile Bottom Nav (icon-only, animated indicator) --- */}
+        {/* --- Mobile Bottom Nav (animated indicator) --- */}
         <nav className={styles.mobileNav}>
-          {[
-            { id: 'stats', icon: 'person', scrollTo: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
-            { id: 'skills', icon: 'fitness_center', scrollTo: () => document.getElementById('skills-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) },
-            { id: 'disciplines', icon: 'auto_awesome', scrollTo: () => document.getElementById('disciplines-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) },
-            { id: 'inventory', icon: 'backpack', scrollTo: () => document.getElementById('inventory-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) },
-            { id: 'merits', icon: 'workspace_premium', scrollTo: () => document.getElementById('merits-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) },
-            { id: 'shop', icon: 'shopping_cart', scrollTo: () => shopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }) },
-          ].map(({ id, icon, scrollTo }) => (
+          {MOBILE_NAV_ITEMS.map(({ id, icon, label }) => (
             <button
               key={id}
               className={`${styles.mobileNavItem} ${activeNav === id ? styles.mobileNavItemActive : ''}`}
-              onClick={() => { setActiveNav(id); scrollTo(); }}
-              aria-label={id}
+              onClick={() => goToSection(id)}
+              aria-label={label}
+              aria-current={activeNav === id ? 'true' : undefined}
             >
               <span
                 className="material-symbols-outlined"
-                style={{ fontSize: '22px', fontVariationSettings: activeNav === id ? "'FILL' 1" : "'FILL' 0" }}
+                style={{ fontSize: '21px', fontVariationSettings: activeNav === id ? "'FILL' 1" : "'FILL' 0" }}
               >{icon}</span>
+              <span className={styles.mobileNavLabel}>{label}</span>
               {activeNav === id && <span className={styles.mobileNavPill} />}
             </button>
           ))}
@@ -1582,26 +1771,22 @@ export default function CharacterView({
 
         {/* --- Desktop Nav (Sidebar) --- */}
         <nav className={styles.desktopNav}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-            <button className={`${styles.desktopNavBtn} ${styles.desktopNavBtnActive}`} onClick={() => window.scrollTo(0, 0)} title="Character">
-              <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>person</span>
-              <span style={{ fontSize: '10px', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Character</span>
-            </button>
-
-            <button className={styles.desktopNavBtn} onClick={() => document.getElementById('inventory-section')?.scrollIntoView({ behavior: 'smooth' })} title="Inventory">
-              <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>backpack</span>
-              <span style={{ fontSize: '10px', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Inventory</span>
-            </button>
-
-            <button className={styles.desktopNavBtn} onClick={() => document.getElementById('merits-section')?.scrollIntoView({ behavior: 'smooth' })} title="Merits & Flaws">
-              <span className="material-symbols-outlined" style={{ fontSize: '24px', fontVariationSettings: "'FILL' 1" }}>workspace_premium</span>
-              <span style={{ fontSize: '10px', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Merits</span>
-            </button>
-
-            <button className={styles.desktopNavBtn} onClick={() => shopRef.current?.scrollIntoView({ behavior: 'smooth' })} title="XP Shop">
-              <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>shopping_cart</span>
-              <span style={{ fontSize: '10px', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Shop</span>
-            </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+            {MOBILE_NAV_ITEMS.map(({ id, icon, label }) => (
+              <button
+                key={id}
+                className={`${styles.desktopNavBtn} ${activeNav === id ? styles.desktopNavBtnActive : ''}`}
+                onClick={() => goToSection(id)}
+                title={label}
+                aria-current={activeNav === id ? 'true' : undefined}
+              >
+                <span
+                  className="material-symbols-outlined"
+                  style={{ fontSize: '24px', fontVariationSettings: activeNav === id ? "'FILL' 1" : "'FILL' 0" }}
+                >{icon}</span>
+                <span style={{ fontSize: '10px', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</span>
+              </button>
+            ))}
           </div>
         </nav>
 
@@ -1771,20 +1956,20 @@ export default function CharacterView({
           <motion.section variants={itemVariants} className={styles.bentoGrid}>
             <div className={styles.bentoSpan2} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               {/* Attributes */}
-              <div id="attributes-section" className={styles.mobileScrollWrapper}>
+              <div id="attributes-section" className={`${styles.mobileScrollWrapper} ${styles.scrollAnchor}`}>
                 <AttributesSection sheet={sheet} />
               </div>
 
               {/* Skills & Others */}
-              <div id="skills-section" className={styles.mobileScrollWrapper}>
+              <div id="skills-section" className={`${styles.mobileScrollWrapper} ${styles.scrollAnchor}`}>
                 <SkillsDisplaySection sheet={sheet} />
               </div>
 
-              <div className={`${styles.level1} ${styles.glassCard}`} style={{ padding: '24px' }}>
-                <div id="inventory-section">
+              <div className={`${styles.level1} ${styles.glassCard} ${styles.contentCard}`}>
+                <div id="inventory-section" className={styles.scrollAnchor}>
                   <Inventory characterId={ch?.id} />
                 </div>
-                <div id="merits-section" style={{ marginTop: '24px' }}>
+                <div id="merits-section" className={styles.scrollAnchor} style={{ marginTop: '24px' }}>
                   <MeritsFlawsDisplay
                     sheet={sheet}
                     allMeritsFlat={allMeritsFlat}
@@ -1816,15 +2001,15 @@ export default function CharacterView({
               )}
             </div>
 
-            <div id="disciplines-section" className={`${styles.level1} ${styles.glassCard}`} style={{ padding: '0', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ padding: '24px', borderBottom: '1px solid var(--border-color)' }}>
+            <div id="disciplines-section" className={`${styles.level1} ${styles.glassCard} ${styles.scrollAnchor}`} style={{ padding: '0', display: 'flex', flexDirection: 'column' }}>
+              <div className={styles.contentCardHead}>
                 <h3 style={{ margin: 0, fontFamily: 'var(--font-title)', fontSize: '24px', color: 'var(--text-color)' }}>Disciplines</h3>
               </div>
-              <div style={{ flex: 1, padding: '24px' }}>
+              <div className={styles.contentCardBody}>
                 <DisciplinesDisplaySection sheet={sheet} />
                 <RitualsDisplaySection sheet={sheet} />
               </div>
-              <div style={{ padding: '24px', marginTop: 'auto' }}>
+              <div className={styles.contentCardFoot}>
                 <button
                   className={`${styles.gothicBtn} ${styles.bloodPulse}`}
                   style={{ width: '100%', padding: '16px', fontSize: '16px', background: 'var(--primary-container)', color: 'var(--text-color)', boxShadow: '0 0 15px rgba(180,15,31,0.2)' }}
@@ -1846,7 +2031,7 @@ export default function CharacterView({
           </div>
 
           {/* ===== XP SHOP ===== */}
-          <motion.section variants={itemVariants} ref={shopRef} className={styles.section} style={{ padding: 0 }}>
+          <motion.section id="xp-shop-section" variants={itemVariants} ref={shopRef} className={`${styles.section} ${styles.scrollAnchor}`} style={{ padding: 0 }}>
             {/* New Balance Header */}
             <div className={styles.xpBalanceHeader}>
               <h1 className={styles.xpBalanceLabel}>Current Balance</h1>
@@ -1855,21 +2040,15 @@ export default function CharacterView({
               </div>
             </div>
 
-            {/* Shop Tabs — icon-grid on mobile, pill-row on desktop */}
+            {/* Shop Tabs — icon grid on mobile, pill row on desktop.
+                "Suggested" leads and spans two columns, which also makes the
+                mobile grid an exact 2×4 block with no orphan cell. */}
             <nav className={styles.shopTabsNav}>
-              {/* Mobile: 3×2 icon grid */}
               <div className={styles.shopTabsGrid}>
-                {[
-                  { key: 'Disciplines', icon: 'auto_awesome', label: 'Disciplines' },
-                  { key: 'Attributes', icon: 'monitor_heart', label: 'Attributes' },
-                  { key: 'Skills', icon: 'fitness_center', label: 'Skills' },
-                  { key: 'Merits & Flaws', icon: 'workspace_premium', label: 'Merits' },
-                  { key: 'Rituals', icon: 'local_fire_department', label: 'Rituals' },
-                  { key: 'Blood Potency', icon: 'water_drop', label: 'Potency' },
-                ].map(({ key, icon, label }) => (
+                {SHOP_TABS.map(({ key, icon, label, wide }) => (
                   <button
                     key={key}
-                    className={`${styles.shopTabsGridBtn} ${activeShopTab === key ? styles.shopTabsGridBtnActive : ''}`}
+                    className={`${styles.shopTabsGridBtn} ${wide ? styles.shopTabsGridBtnWide : ''} ${activeShopTab === key ? styles.shopTabsGridBtnActive : ''}`}
                     onClick={() => setActiveShopTab(key)}
                   >
                     <span
@@ -1880,21 +2059,21 @@ export default function CharacterView({
                   </button>
                 ))}
               </div>
-              {/* Desktop: original scrolling pill row */}
+              {/* Desktop: pill row */}
               <div className={styles.shopTabsContainer}>
-                {['Disciplines', 'Attributes', 'Skills', 'Merits & Flaws', 'Rituals', 'Blood Potency'].map(tab => (
+                {SHOP_TABS.map(({ key }) => (
                   <button
-                    key={tab}
-                    className={`${styles.shopTabBtn} ${activeShopTab === tab ? styles.shopTabBtnActive : ''}`}
-                    onClick={() => setActiveShopTab(tab)}
+                    key={key}
+                    className={`${styles.shopTabBtn} ${activeShopTab === key ? styles.shopTabBtnActive : ''}`}
+                    onClick={() => setActiveShopTab(key)}
                   >
-                    {tab}
+                    {key}
                   </button>
                 ))}
               </div>
             </nav>
 
-            <div className={`${styles.shopGrid} ${['Disciplines', 'Rituals'].includes(activeShopTab) ? styles.shopGridSingle : ''}`}>
+            <div className={`${styles.shopGrid} ${['Suggested', 'Disciplines', 'Rituals'].includes(activeShopTab) ? styles.shopGridSingle : ''}`}>
               {/* Category Search Bar */}
               <div className={styles.shopSearchRow} style={{ gridColumn: '1 / -1', marginBottom: '16px' }}>
                 <div className={styles.searchWrap} style={{ width: '100%' }}>
@@ -1908,6 +2087,43 @@ export default function CharacterView({
                   />
                 </div>
               </div>
+              {activeShopTab === 'Suggested' && !isSearching && (
+                <div className={styles.suggestPane}>
+                  <div className={styles.suggestIntro}>
+                    <span className={`material-symbols-outlined ${styles.suggestIntroIcon}`}>auto_fix_high</span>
+                    <p className={styles.suggestIntroText}>
+                      Ranked for <b>{ch.name}</b>, {ch.clan}
+                      {suggestions.profile?.name ? <>, feeding as {article(suggestions.profile.name)} <b>{suggestions.profile.name}</b></> : null}
+                      {suggestions.profile?.pools?.length ? <> ({suggestions.profile.pools.join(' / ')})</> : null}.
+                      {' '}Each pick weighs the gaps on your sheet, what your predator type actually
+                      rolls to survive the night, and how much you get back per experience point.
+                    </p>
+                  </div>
+
+                  {suggestions.affordable.length > 0 ? (
+                    <>
+                      <h3 className={styles.suggestGroupTitle}>Best value at {xp} XP</h3>
+                      <div className={styles.suggestList}>
+                        {suggestions.affordable.map(renderSuggestion)}
+                      </div>
+                    </>
+                  ) : (
+                    <div className={styles.suggestEmpty}>
+                      Nothing is within reach at {xp} XP yet — here is what to aim for.
+                    </div>
+                  )}
+
+                  {suggestions.aspirational.length > 0 && (
+                    <>
+                      <h3 className={`${styles.suggestGroupTitle} ${styles.suggestGroupTitleMuted}`}>Worth saving for</h3>
+                      <div className={styles.suggestList}>
+                        {suggestions.aspirational.map(renderSuggestion)}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
               {(activeShopTab === 'Blood Potency' || isSearching) && (
                 <>
                   {(() => {
@@ -1927,17 +2143,7 @@ export default function CharacterView({
                         cost={cost}
                         disabled={!canRaise || !afford}
                         hint={!canRaise ? `Max ${max}` : (!afford ? 'Not enough XP' : '')}
-                        onBuy={async () => {
-                          const nextSheet = JSON.parse(JSON.stringify(sheet));
-                          nextSheet.blood_potency = next;
-                          await spendXP({
-                            type: 'blood_potency',
-                            target: 'Blood Potency',
-                            currentLevel: current,
-                            newLevel: next,
-                            patchSheet: nextSheet,
-                          });
-                        }}
+                        onBuy={() => buyBloodPotency(current, next)}
                       />
                     );
                   })()}
@@ -1985,17 +2191,7 @@ export default function CharacterView({
                                 disabled={!canRaise || !afford}
                                 hint={!canRaise ? 'Max 5' : (!afford ? 'Not enough XP' : '')}
                                 description={ATTR_DESCRIPTIONS[attr]}
-                                onBuy={async () => {
-                                  const nextSheet = JSON.parse(JSON.stringify(sheet));
-                                  nextSheet.attributes = { ...(nextSheet.attributes || {}), [attr]: next };
-                                  await spendXP({
-                                    type: 'attribute',
-                                    target: attr,
-                                    currentLevel: current,
-                                    newLevel: next,
-                                    patchSheet: nextSheet,
-                                  });
-                                }}
+                                onBuy={() => buyAttribute(attr, current, next)}
                               />
                             );
                           })}
@@ -2044,22 +2240,7 @@ export default function CharacterView({
                                 disabled={!canRaise || !afford}
                                 hint={!canRaise ? 'Max 5' : (!afford ? 'Not enough XP' : '')}
                                 description={SKILL_DESCRIPTIONS[skill]}
-                                onBuy={async () => {
-                                  const nextSheet = JSON.parse(JSON.stringify(sheet));
-                                  nextSheet.skills = nextSheet.skills || {};
-                                  const node = (nextSheet.skills[skill] && typeof nextSheet.skills[skill] === 'object')
-                                    ? { ...nextSheet.skills[skill] }
-                                    : { dots: Number(nextSheet.skills[skill] || 0), specialties: [] };
-                                  node.dots = next;
-                                  nextSheet.skills[skill] = node;
-                                  await spendXP({
-                                    type: 'skill',
-                                    target: skill,
-                                    currentLevel: current,
-                                    newLevel: next,
-                                    patchSheet: nextSheet,
-                                  });
-                                }}
+                                onBuy={() => buySkill(skill, current, next)}
                               />
                             );
                           })}
@@ -2261,27 +2442,7 @@ export default function CharacterView({
                   <div className={styles.cardHead}><b>Skill Specialties</b></div>
                   <SpecialtyAdder
                     xp={xp}
-                    onAdd={async (skillName, spec) => {
-                      const cost = XP_RULES.specialty();
-                      if (xp < cost) return;
-
-                      const nextSheet = JSON.parse(JSON.stringify(sheet));
-                      nextSheet.skills = nextSheet.skills || {};
-                      const node = (nextSheet.skills[skillName] && typeof nextSheet.skills[skillName] === 'object')
-                        ? { ...nextSheet.skills[skillName] }
-                        : { dots: Number(nextSheet.skills[skillName] || 0), specialties: [] };
-
-                      node.specialties = Array.isArray(node.specialties) ? node.specialties : [];
-                      if (!node.specialties.includes(spec)) node.specialties.push(spec);
-                      nextSheet.skills[skillName] = node;
-
-                      await spendXP({
-                        type: 'specialty',
-                        target: skillName,
-                        specialty: spec,
-                        patchSheet: nextSheet,
-                      });
-                    }}
+                    onAdd={(skillName, spec) => buySpecialty(skillName, spec)}
                   />
                 </Card>
               </div>
@@ -2415,8 +2576,8 @@ function RitualRow({ item, level, cost, owned, allowed, afford, prereqUnmet = []
 
         <div className={styles.shopCardFooter}>
           <span className={styles.shopCardPrice}>{cost} XP</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {hint && <span style={{ color: 'rgba(255,180,171, 0.8)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{hint}</span>}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', minWidth: 0 }}>
+            {hint && <span className={styles.shopCardHint}>{hint}</span>}
             <button
               className={styles.shopCardAcquireBtn}
               disabled={disabled || working}
@@ -3106,6 +3267,45 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
 }
 
 /* ---------- Specialty adder ---------- */
+/* A specialty needs a name, so its suggestion card carries its own input
+   rather than a plain Acquire button. */
+function SuggestedSpecialtyRow({ skill, disabled, onAdd }) {
+  const [value, setValue] = useState('');
+  const [working, setWorking] = useState(false);
+  const clean = value.trim();
+
+  async function submit() {
+    if (!clean || working) return;
+    setWorking(true);
+    try {
+      await onAdd(clean);
+      setValue('');
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  return (
+    <div className={styles.suggestSpecialtyRow}>
+      <input
+        className={styles.suggestSpecialtyInput}
+        placeholder="Specialty…"
+        value={value}
+        disabled={disabled || working}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
+      />
+      <button
+        className={styles.shopCardAcquireBtn}
+        disabled={disabled || working || !clean}
+        onClick={submit}
+      >
+        {working ? 'Working…' : 'Acquire'}
+      </button>
+    </div>
+  );
+}
+
 function SpecialtyAdder({ xp, onAdd }) {
   const [skill, setSkill] = useState('Academics');
   const [spec, setSpec] = useState('');

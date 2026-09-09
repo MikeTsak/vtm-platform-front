@@ -27,6 +27,9 @@
 
 /* Root variables and base styles */
 .root {
+  /* Horizontal breathing room for the mobile layout. 0 on desktop, where
+     .root supplies its own padding and the grid handles the gutters. */
+  --cv-gutter: 0px;
   display: flex;
   flex-direction: column;
   color: var(--text-color);
@@ -34,7 +37,12 @@
   font-family: Inter, sans-serif;
   line-height: 1.6;
   animation: fadeIn .8s ease-out;
+  /* clip, not hidden: `hidden` turns .root into a scroll container, which
+     stops every position: sticky descendant (the headers, the shop tabs)
+     from sticking to the viewport. The first line is the pre-Safari-16
+     fallback and is overridden wherever clip is understood. */
   overflow-x: hidden;
+  overflow-x: clip;
   max-width: 100vw;
   padding: 1rem;
   min-height: 100vh;
@@ -64,9 +72,13 @@
 
 @media (max-width: 767px) {
   .mainLayout {
-    padding-top: calc(72px + env(safe-area-inset-top));
-    padding-bottom: 80px;
-    /* pt: clears the fixed 64px mobile header + safe area + gap; pb: clears mobile nav */
+    /* The mobile header is sticky, so it already takes up flow space — this
+       only adds breathing room under it. The bottom padding clears the fixed
+       bottom nav plus the home-indicator inset. */
+    padding-top: 12px;
+    padding-bottom: calc(84px + env(safe-area-inset-bottom));
+    padding-left: max(var(--cv-gutter), env(safe-area-inset-left));
+    padding-right: max(var(--cv-gutter), env(safe-area-inset-right));
   }
 }
 
@@ -134,7 +146,8 @@
   top: 65px;
   z-index: 50;
   width: 100%;
-  background: color-mix(in srgb, var(--surface-color) 95%, transparent);
+  /* Near-opaque so page content does not read through the sticky bar. */
+  background: color-mix(in srgb, var(--surface-color) 99%, transparent);
   backdrop-filter: blur(12px);
   border: 1px solid var(--border-color);
   border-radius: 12px;
@@ -261,13 +274,17 @@
   position: fixed;
   bottom: 0;
   left: 0;
+  right: 0;
   width: 100%;
+  max-width: 100vw;
   justify-content: space-around;
-  align-items: center;
-  height: 68px;
+  align-items: stretch;
+  /* The bar itself is 64px tall; the home-indicator inset is added on top
+     rather than eaten out of it, so the buttons never get squashed. */
+  height: calc(64px + env(safe-area-inset-bottom));
   padding-bottom: env(safe-area-inset-bottom);
-  padding-left: 4px;
-  padding-right: 4px;
+  padding-left: max(4px, env(safe-area-inset-left));
+  padding-right: max(4px, env(safe-area-inset-right));
   background: color-mix(in srgb, var(--bg-color) 88%, transparent);
   backdrop-filter: blur(18px) saturate(160%);
   border-top: 1px solid color-mix(in srgb, var(--tint) 15%, transparent);
@@ -289,19 +306,34 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  flex: 1;
+  gap: 2px;
+  flex: 1 1 0;
+  min-width: 0;
   height: 100%;
   background: transparent;
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 6px 0 14px;
+  padding: 6px 2px 12px;
   border-radius: 12px;
-  transition: color 0.2s ease, filter 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.2s ease, filter 0.2s ease, transform 0.15s ease;
 }
 
 .mobileNavItem:active {
   transform: scale(0.88);
+}
+
+.mobileNavLabel {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .mobileNavItemActive {
@@ -311,7 +343,7 @@
 
 .mobileNavPill {
   position: absolute;
-  bottom: 5px;
+  bottom: 3px;
   left: 50%;
   transform: translateX(-50%);
   width: 20px;
@@ -740,7 +772,8 @@ select.input:focus {
   .mobileScrollWrapper {
     width: 100%;
     max-width: 100%;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-x: clip;
     box-sizing: border-box;
   }
 }
@@ -1808,12 +1841,28 @@ select.input:focus {
   margin-bottom: 2rem;
   padding-bottom: 1rem;
   position: sticky;
-  top: 64px;
-  background: rgba(19, 19, 19, 0.9);
+  /* Mobile: sits under the global nav (64px) + the sticky character header
+     (52px). Desktop: under the top app bar. See the min-width rule below. */
+  top: 116px;
+  /* Bleed the backdrop out through .mainLayout's gutter so page content
+     cannot be seen scrolling past the tabs at the screen edges. */
+  margin-left: calc(-1 * var(--cv-gutter));
+  margin-right: calc(-1 * var(--cv-gutter));
+  padding-left: var(--cv-gutter);
+  padding-right: var(--cv-gutter);
+  background: color-mix(in srgb, var(--bg-color) 98%, transparent);
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   padding-top: 1rem;
   border-bottom: 1px solid var(--border-color);
   z-index: 40;
+}
+
+@media (min-width: 768px) {
+  .shopTabsNav {
+    /* Clears the sticky top app bar (top: 65px, min-height: 120px). */
+    top: 190px;
+  }
 }
 
 .shopTabsNav::-webkit-scrollbar {
@@ -1824,13 +1873,17 @@ select.input:focus {
   display: none;
 }
 
-/* Mobile: 3-col icon grid instead of overflowing pill row */
+/* Mobile: icon grid instead of an overflowing pill row. Four columns with
+   the "Suggested" tab spanning two makes an exact 2x4 block. */
 .shopTabsGrid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
-  padding: 0 4px;
   width: 100%;
+}
+
+.shopTabsGridBtnWide {
+  grid-column: span 2;
 }
 
 .shopTabsGridBtn {
@@ -1839,17 +1892,23 @@ select.input:focus {
   align-items: center;
   justify-content: center;
   gap: 3px;
-  padding: 10px 4px;
-  min-height: 56px;
+  padding: 8px 2px;
+  /* Four columns on a 320px screen leaves ~69px per tab. The label is sized
+     to fit "Disciplines" on one line there, and is allowed to wrap rather
+     than clip if a device is narrower still. */
+  min-width: 0;
+  min-height: 60px;
   border-radius: 10px;
   background: var(--bg-color);
   color: var(--text-muted);
   border: 1px solid var(--border-color);
   cursor: pointer;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
+  font-size: 8.5px;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
+  overflow-wrap: anywhere;
+  -webkit-tap-highlight-color: transparent;
   transition: all 0.18s ease;
   line-height: 1.2;
   text-align: center;
@@ -1875,8 +1934,8 @@ select.input:focus {
 
   .shopTabsContainer {
     display: flex;
-    gap: 1rem;
-    min-width: max-content;
+    flex-wrap: wrap;
+    gap: 0.75rem;
     padding: 0 0.5rem;
   }
 }
@@ -1952,7 +2011,14 @@ select.input:focus {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  gap: 10px;
   margin-bottom: 1rem;
+}
+
+/* The text column must be allowed to shrink or long titles push the
+   expand chevron out of the card. */
+.shopCardTitleRow > div {
+  min-width: 0;
 }
 
 .shopCardTitle {
@@ -1970,10 +2036,13 @@ select.input:focus {
   text-transform: uppercase;
   color: var(--text-muted);
   letter-spacing: 0.08em;
+  margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .expandIcon {
   color: var(--text-muted);
+  flex-shrink: 0;
   transition: all 0.3s ease;
 }
 
@@ -1996,7 +2065,20 @@ select.input:focus {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
   margin-top: 1.5rem;
+}
+
+/* Hint text sits next to the Acquire button; without this it pushes the
+   button off the card on narrow screens. */
+.shopCardHint {
+  color: rgba(255, 180, 171, 0.8);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .shopCardPrice {
@@ -2014,6 +2096,7 @@ select.input:focus {
 .shopCardAcquireBtn {
   background: var(--tint);
   color: white;
+  flex-shrink: 0;
   padding: 0.5rem 1.5rem;
   border-radius: 0.5rem;
   font-family: 'JetBrains Mono', monospace;
@@ -2107,6 +2190,7 @@ select.input:focus {
   color: var(--text-muted);
   line-height: 1.5;
   margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .shopCardLocked {
@@ -2512,6 +2596,75 @@ select.input:focus {
   gap: 24px;
 }
 
+.advItemName {
+  font-size: 20px;
+  font-weight: 600;
+  transition: color 0.2s;
+  overflow-wrap: anywhere;
+}
+
+.advDetailTitleRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.advDetailTitle {
+  font-size: 32px;
+  font-weight: 700;
+  font-family: 'Playfair Display', serif;
+  text-transform: uppercase;
+  line-height: 1.1;
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.advDetailBadge {
+  padding: 4px 8px;
+  background-color: var(--surface-color, rgba(255, 255, 255, 0.1));
+  color: var(--text-muted);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  font-weight: 500;
+  border-radius: 4px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .advItemName {
+    font-size: 16px;
+  }
+
+  .advDetailTitle {
+    font-size: 22px;
+  }
+}
+
+.advColumn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 250px;
+  max-height: 600px;
+  background-color: rgba(28, 27, 27, 0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color);
+}
+
+@media (max-width: 1024px) {
+  .advColumn {
+    /* A hard 250px floor overflows narrow phones once the page gutter is
+       taken into account. */
+    min-width: 0;
+    max-height: 60vh;
+  }
+}
+
 .advDetail {
   flex: 1;
   min-width: 300px;
@@ -2707,7 +2860,11 @@ select.input:focus {
    ------------------------------------------------------------------ */
 @media (max-width: 767px) {
   .root {
+    --cv-gutter: 12px;
     overflow-x: hidden;
+    overflow-x: clip;
+    /* No padding here: the sticky mobile header is a direct child and has to
+       run edge to edge. The gutter lives on .mainLayout instead. */
     padding: 0;
     box-sizing: border-box;
     width: 100%;
@@ -2723,7 +2880,9 @@ select.input:focus {
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box;
+    /* clip rather than hidden — .mainLayout is the sticky shop tabs' ancestor. */
     overflow-x: hidden;
+    overflow-x: clip;
     grid-template-columns: minmax(0, 1fr) !important;
   }
 }
@@ -2754,7 +2913,9 @@ select.input:focus {
     top: 64px;
     /* Anchors under global fixed Nav (64px height) */
     z-index: 99;
-    background: color-mix(in srgb, var(--bg-color) 92%, transparent);
+    /* Near-opaque: at 92% the page content scrolling underneath stayed
+       legible through the bar. */
+    background: color-mix(in srgb, var(--bg-color) 98%, transparent);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
     border-bottom: 1px solid color-mix(in srgb, var(--tint) 20%, transparent);
@@ -2766,8 +2927,10 @@ select.input:focus {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 8px;
-  height: 50px;
+  gap: 8px;
+  padding-left: max(12px, env(safe-area-inset-left));
+  padding-right: max(12px, env(safe-area-inset-right));
+  height: 52px;
   /* Tight, non-blocking sticky header height */
   width: 100%;
   box-sizing: border-box;
@@ -3561,5 +3724,250 @@ select.input:focus {
   .meritDesc {
     font-size: 13.5px !important;
     line-height: 1.45 !important;
+  }
+}
+
+/* ===================================================================
+   9. Scroll anchors
+   The global nav and the character header are both sticky, so a plain
+   scrollIntoView({ block: 'start' }) parks the target underneath them.
+   =================================================================== */
+.scrollAnchor {
+  scroll-margin-top: 128px;
+}
+
+@media (min-width: 768px) {
+  .scrollAnchor {
+    scroll-margin-top: 200px;
+  }
+}
+
+/* ===================================================================
+   10. Suggested tab — the "what should I buy next" pane
+   =================================================================== */
+.suggestPane {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.suggestIntro {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--tint) 35%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--tint) 8%, transparent);
+}
+
+.suggestIntroIcon {
+  color: var(--tint);
+  flex-shrink: 0;
+}
+
+.suggestIntroText {
+  min-width: 0;
+  font-family: Inter, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.suggestIntroText b {
+  color: var(--text-color);
+}
+
+.suggestGroupTitle {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--tint);
+  margin: 0.5rem 0 0;
+  padding-bottom: 6px;
+  border-bottom: 1px solid color-mix(in srgb, var(--tint) 30%, transparent);
+}
+
+.suggestGroupTitleMuted {
+  color: var(--text-muted);
+  border-bottom-color: var(--border-color);
+}
+
+.suggestList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+/* The reason line inside a shop card — visible without expanding. */
+.shopCardNote {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 1rem;
+  padding: 10px 12px;
+  border-left: 2px solid var(--tint);
+  border-radius: 0 6px 6px 0;
+  background: color-mix(in srgb, var(--tint) 10%, transparent);
+  font-family: Inter, sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-color);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.shopCardNoteIcon {
+  color: var(--tint);
+  flex-shrink: 0;
+  font-size: 18px;
+}
+
+.suggestRank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  margin-right: 8px;
+  border-radius: 999px;
+  background: var(--tint);
+  color: #000;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.suggestEmpty {
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+  border: 1px dashed var(--border-color);
+  border-radius: 12px;
+}
+
+.suggestSpecialtyRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.suggestSpecialtyInput {
+  flex: 1 1 180px;
+  min-width: 0;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-color);
+  padding: 10px 12px;
+  font-family: Inter, sans-serif;
+  font-size: 16px;
+}
+
+.suggestSpecialtyInput:focus {
+  outline: none;
+  border-color: var(--tint);
+}
+
+/* ===================================================================
+   11. Mobile polish — tighter padding so cards are not cramped against
+   the screen edge, and no row that can push the layout sideways.
+   =================================================================== */
+@media (max-width: 768px) {
+  .shopCardHeader {
+    padding: 1rem;
+  }
+
+  .shopCardContent {
+    padding: 1rem;
+    max-height: 320px;
+  }
+
+  .shopCardFooter {
+    margin-top: 1rem;
+  }
+
+  .shopCardDots {
+    margin-bottom: 0.75rem;
+    gap: 0.4rem;
+  }
+
+  .xpBalanceHeader {
+    margin-bottom: 1.25rem;
+  }
+
+  .xpBalanceNumber {
+    font-size: 36px;
+  }
+
+  .xpBalanceUnit {
+    font-size: 18px;
+  }
+
+  .shopSearchRow {
+    margin-bottom: 1rem;
+  }
+
+  .shopTabsNav {
+    margin-bottom: 1.25rem;
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+
+  .trackerAdminControls {
+    flex-wrap: wrap;
+  }
+
+  .suggestIntro {
+    padding: 12px;
+  }
+
+  .card {
+    padding: 14px;
+  }
+
+  .sectionTitleWrap {
+    margin-bottom: 0.6rem;
+  }
+}
+
+/* Padded content card. Replaces inline padding: 24px in the JSX so the
+   mobile breakpoint can tighten it. */
+.contentCard {
+  padding: 24px;
+}
+
+.contentCardHead {
+  padding: 24px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.contentCardBody {
+  flex: 1;
+  padding: 24px;
+}
+
+.contentCardFoot {
+  padding: 24px;
+  margin-top: auto;
+}
+
+@media (max-width: 768px) {
+  .contentCard,
+  .contentCardHead,
+  .contentCardBody,
+  .contentCardFoot {
+    padding: 16px;
   }
 }

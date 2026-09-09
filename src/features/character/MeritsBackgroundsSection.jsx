@@ -528,7 +528,7 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
         <div className={styles.advExplorer}>
           
           {/* Merits Column */}
-          <div style={{ flex: '1', display: 'flex', flexDirection: 'column', backgroundColor: 'rgba(28, 27, 27, 0.6)', backdropFilter: 'blur(12px)', border: '1px solid var(--border-color)', minWidth: '250px', maxHeight: '600px' }}>
+          <div className={styles.advColumn}>
             <div style={{ padding: '16px', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color, #0b2b26)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h2 style={{ fontSize: '24px', fontWeight: 600, color: 'var(--primary-color)', fontFamily: "'Playfair Display', serif" }}>MERITS</h2>
               <span style={{ fontSize: '20px', fontWeight: 600, color: 'var(--text-muted)' }}>{totalMeritDots} ●</span>
@@ -555,7 +555,7 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
                     onMouseLeave={e => !isSelected && (e.currentTarget.style.backgroundColor = 'transparent')}
                   >
                     <div>
-                      <div style={{ fontSize: '20px', fontWeight: 600, color: isSelected ? 'var(--primary-color)' : 'var(--text-color)', transition: 'color 0.2s' }}>{m.name}</div>
+                      <div className={styles.advItemName} style={{ color: isSelected ? 'var(--primary-color)' : 'var(--text-color)' }}>{m.name}</div>
                       <div style={{ fontSize: '12px', letterSpacing: '0.1em', color: 'var(--text-muted)', marginTop: '4px', textTransform: 'uppercase' }}>
                         {m.category} • {m.dotsSpec}
                       </div>
@@ -568,7 +568,7 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
           </div>
 
           {/* Flaws Column */}
-          <div style={{ flex: '1', display: 'flex', flexDirection: 'column', backgroundColor: 'rgba(28, 27, 27, 0.6)', backdropFilter: 'blur(12px)', border: '1px solid var(--border-color)', minWidth: '250px', maxHeight: '600px' }}>
+          <div className={styles.advColumn}>
             <div style={{ padding: '16px', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color, #0b2b26)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h2 style={{ fontSize: '24px', fontWeight: 600, color: 'var(--text-color)', fontFamily: "'Playfair Display', serif" }}>FLAWS</h2>
               <span style={{ fontSize: '20px', fontWeight: 600, color: 'var(--error)' }}>{totalFlawDots} ●</span>
@@ -595,7 +595,7 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
                     onMouseLeave={e => !isSelected && (e.currentTarget.style.backgroundColor = 'transparent')}
                   >
                     <div>
-                      <div style={{ fontSize: '20px', fontWeight: 600, color: isSelected ? 'var(--error)' : 'var(--text-color)', transition: 'color 0.2s' }}>{f.name}</div>
+                      <div className={styles.advItemName} style={{ color: isSelected ? 'var(--error)' : 'var(--text-color)' }}>{f.name}</div>
                       <div style={{ fontSize: '12px', letterSpacing: '0.1em', color: 'var(--text-muted)', marginTop: '4px', textTransform: 'uppercase' }}>
                         {f.category} • {f.dotsSpec}
                       </div>
@@ -629,9 +629,9 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
             return (
               <>
                 <div style={{ padding: '24px', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color, #0b2b26)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                    <h3 style={{ fontSize: '32px', fontWeight: 700, color: themeColor, fontFamily: "'Playfair Display', serif", textTransform: 'uppercase', lineHeight: 1.1 }}>{item.name}</h3>
-                    <span style={{ padding: '4px 8px', backgroundColor: 'var(--surface-color, rgba(255, 255, 255, 0.1))', color: 'var(--text-muted)', fontSize: '12px', letterSpacing: '0.1em', fontWeight: 500, borderRadius: '4px', textTransform: 'uppercase' }}>{item.category?.split(' / ')[0]}</span>
+                  <div className={styles.advDetailTitleRow}>
+                    <h3 className={styles.advDetailTitle} style={{ color: themeColor }}>{item.name}</h3>
+                    <span className={styles.advDetailBadge}>{item.category?.split(' / ')[0]}</span>
                   </div>
                   <div style={{ display: 'flex', gap: '4px', marginTop: '8px' }}>
                     {Array.from({ length: 5 }).map((_, i) => (
@@ -864,7 +864,7 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
             {([...meritsList, ...backgroundsList].length > 0) && (
               <>
                 <h3 style={{ fontSize: '14px', letterSpacing: '0.1em', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '16px', textTransform: 'uppercase' }}>Merits & Backgrounds</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px', marginBottom: '32px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(300px, 100%), 1fr))', gap: '16px', marginBottom: '32px' }}>
                   {[...meritsList, ...backgroundsList].map((m, i) => {
                     const details = allMeritsFlat.find(x => x.id === m.id) || allDataItems.find(x => x.id === m.id) || {};
                     const icon = getIconForAdvantage({ ...m, category: details.category }, false);
@@ -904,7 +904,7 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
               <>
                 {([...meritsList, ...backgroundsList].length > 0) && <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)', margin: '0 0 32px 0' }} />}
                 <h3 style={{ fontSize: '14px', letterSpacing: '0.1em', fontWeight: 600, color: 'var(--error)', marginBottom: '16px', textTransform: 'uppercase' }}>Flaws</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(300px, 100%), 1fr))', gap: '16px' }}>
                   {flawsList.map((f, i) => {
                     const details = allFlawsFlat.find(x => x.id === f.id) || allDataItems.find(x => x.id === f.id) || {};
                     const icon = getIconForAdvantage({ ...f, category: details.category }, true);

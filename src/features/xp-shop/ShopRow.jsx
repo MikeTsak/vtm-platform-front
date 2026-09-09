@@ -18,7 +18,7 @@ export function ConfirmModal({ title = 'Confirm Purchase', children, onConfirm, 
   );
 }
 
-export function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, leftIcon, description = '', noConfirm = false, forceExpanded = false, hideDots = false, children }) {
+export function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, leftIcon, description = '', noConfirm = false, forceExpanded = false, hideDots = false, note = '', badge = null, actionLabel = 'Acquire', children }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [working, setWorking] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -47,11 +47,22 @@ export function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, lef
       <div className={styles.shopCardHeader} onClick={() => setIsExpanded(!isExpanded)}>
         <div className={styles.shopCardTitleRow}>
           <div>
-            <h2 className={styles.shopCardTitle}>{cleanTitle}</h2>
+            <h2 className={styles.shopCardTitle}>
+              {badge != null && <span className={styles.suggestRank}>{badge}</span>}
+              {cleanTitle}
+            </h2>
             <p className={styles.shopCardSubtitle}>{subtitle}</p>
           </div>
           <span className={`material-symbols-outlined ${styles.expandIcon}`}>expand_more</span>
         </div>
+
+        {/* The "why" line for suggested buys — readable without expanding. */}
+        {note && (
+          <p className={styles.shopCardNote}>
+            <span className={`material-symbols-outlined ${styles.shopCardNoteIcon}`}>lightbulb</span>
+            <span>{note}</span>
+          </p>
+        )}
 
         {!hideDots && (
           <div className={styles.shopCardDots}>
@@ -65,6 +76,9 @@ export function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, lef
 
         <div className={styles.shopCardFooter}>
           <span className={styles.shopCardPrice}>{cost} XP</span>
+          {/* A row with children has no Acquire button of its own, so the
+              hint is the only thing telling the reader to expand it. */}
+          {hint && (disabled || children) && <span className={styles.shopCardHint}>{hint}</span>}
           {!children && (
             <button
               className={styles.shopCardAcquireBtn}
@@ -78,7 +92,7 @@ export function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, lef
                 }
               }}
             >
-              Acquire
+              {actionLabel}
             </button>
           )}
         </div>
@@ -87,9 +101,13 @@ export function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, lef
       <div className={styles.shopCardContentWrap}>
         <div className={styles.shopCardContentInner}>
           <div className={styles.shopCardContent}>
-            <p className={styles.shopCardText}>
-              {description || hint || `Purchase ${title} for ${cost} Experience Points.`}
-            </p>
+            {/* The note in the header already says why this row is here, so
+                don't repeat a generic "purchase X for Y" underneath it. */}
+            {(description || (!note && hint) || (!note && `Purchase ${title} for ${cost} Experience Points.`)) && (
+              <p className={styles.shopCardText}>
+                {description || hint || `Purchase ${title} for ${cost} Experience Points.`}
+              </p>
+            )}
             {children}
           </div>
         </div>
