@@ -1026,7 +1026,36 @@ export default function CharacterView({
     return () => { mounted = false; };
   }, [paths, adminNPCId, loadPath]);
 
+  // Out-of-clan discipline access (see routes/disciplineAccess.js). Self-serve
+  // only — an admin editing someone else's sheet manages this from the admin
+  // Disciplines tab instead, not from inside the character view.
+  const isOwnCharacter = !adminNPCId && !loadPath && String(user?.id) === String(ch?.user_id);
+  const [discAccess, setDiscAccess] = useState({}); // { [discipline]: { max_level, note } }
+  const [discRequests, setDiscRequests] = useState([]);
+  const [discAccessLoaded, setDiscAccessLoaded] = useState(false);
 
+  useEffect(() => {
+    if (!isOwnCharacter) return;
+    let mounted = true;
+    Promise.all([
+      api.get('/characters/discipline-access'),
+      api.get('/characters/discipline-requests'),
+    ]).then(([accessRes, reqRes]) => {
+      if (!mounted) return;
+      const map = {};
+      (accessRes.data.access || []).forEach(a => { map[a.discipline] = a; });
+      setDiscAccess(map);
+      setDiscRequests(reqRes.data.requests || []);
+      setDiscAccessLoaded(true);
+    }).catch(() => { if (mounted) setDiscAccessLoaded(true); });
+    return () => { mounted = false; };
+  }, [isOwnCharacter, ch?.id]);
+
+  async function requestDisciplineAccess(discipline, requestedLevel, message) {
+    const { data } = await api.post('/characters/discipline-requests', { discipline, requestedLevel, message });
+    setDiscRequests(prev => [data.request, ...prev]);
+    return data.request;
+  }
 
   const prevHealthRef = useRef(tempHealth);
   const prevWillpowerRef = useRef(tempWillpower);
@@ -2323,19 +2352,137 @@ export default function CharacterView({
                           const kind = disciplineKindFor(ch, name);
                           const isKnown = current > 0;
                           const title = isKnown ? `${name} (${current})` : name;
+
+                          // Caitiff can learn any discipline freely — this used to fall
+                          // through to the locked "other" branch below and get hard-blocked
+                          // like a real off-clan pick, which meant Caitiff couldn't buy
+                          // disciplines at all. Same purchase flow as in-clan, just priced
+                          // at the caitiff rate.
+                          if (kind === 'caitiff') {
+                            const canRaise = next > 0 && next <= 10;
+                            const cost = XP_RULES.disciplineCaitiff(next);
+                            const afford = xp >= cost;
+                            return (
+                              <ShopRow
+                                key={name}
+                                title={title}
+                                subtitle={isKnown ? `Raise to ${next} • caitiff` : `Buy • caitiff`}
+                                cost={cost}
+                                leftIcon={iconPath(name)}
+                                disabled={!canRaise || !afford}
+                                hint={!canRaise ? 'Max 5' : (!afford ? 'Not enough XP' : 'Expand to select a power')}
+                                noConfirm={true}
+                                forceExpanded={isSearching}
+                              >
+                                {canRaise && afford && (
+                                  <InlineDisciplinePicker
+                                    cfg={{
+                                      name, current, next,
+                                      kind: 'caitiff',
+                                      assignOnly: false,
+                                      characterClan: ch.clan,
+                                      disciplineDots: sheet.disciplines,
+                                      ownedPowers: sheet.disciplinePowers?.[name] || []
+                                    }}
+                                    searchQuery={currentSearch}
+                                    onConfirm={(sel) => confirmDisciplinePurchase({ name, current, next, kind: 'caitiff', assignOnly: false, ...sel })}
+                                  />
+                                )}
+                              </ShopRow>
+                            );
+                          }
+
+                          // Real off-clan pick — gated behind whatever the ST has
+                          // unlocked (see routes/disciplineAccess.js). The backend
+                          // enforces this cap independently at spend time; this is
+                          // just presenting the same rule before the player tries.
+                          const grant = discAccess[name];
+                          const grantedMax = Number(grant?.max_level || 0);
+                          const pendingReq = discRequests.find(r => r.discipline === name && r.status === 'pending');
+
+                          if (!discAccessLoaded) {
+                            return (
+                              <ShopRow
+                                key={name}
+                                title={title}
+                                subtitle={isKnown ? `Raise to ${next} • other` : `Buy • other`}
+                                cost={'-'}
+                                leftIcon={iconPath(name)}
+                                disabled={true}
+                                hint={'Checking access…'}
+                                forceExpanded={isSearching}
+                              />
+                            );
+                          }
+
+                          if (current < grantedMax) {
+                            const cost = XP_RULES.disciplineOther(next);
+                            const afford = xp >= cost;
+                            return (
+                              <ShopRow
+                                key={name}
+                                title={title}
+                                subtitle={`Raise to ${next} • unlocked to ${grantedMax}`}
+                                cost={cost}
+                                leftIcon={iconPath(name)}
+                                disabled={!afford}
+                                hint={!afford ? 'Not enough XP' : 'Expand to select a power'}
+                                noConfirm={true}
+                                forceExpanded={isSearching}
+                              >
+                                {afford && (
+                                  <InlineDisciplinePicker
+                                    cfg={{
+                                      name, current, next,
+                                      kind: 'other',
+                                      assignOnly: false,
+                                      characterClan: ch.clan,
+                                      disciplineDots: sheet.disciplines,
+                                      ownedPowers: sheet.disciplinePowers?.[name] || []
+                                    }}
+                                    searchQuery={currentSearch}
+                                    onConfirm={(sel) => confirmDisciplinePurchase({ name, current, next, kind: 'other', assignOnly: false, ...sel })}
+                                  />
+                                )}
+                              </ShopRow>
+                            );
+                          }
+
+                          if (pendingReq) {
+                            return (
+                              <ShopRow
+                                key={name}
+                                title={title}
+                                subtitle={`Requested • up to ${pendingReq.requested_level}`}
+                                cost={'-'}
+                                leftIcon={iconPath(name)}
+                                disabled={true}
+                                hint={'Waiting on your Storyteller'}
+                                forceExpanded={isSearching}
+                              />
+                            );
+                          }
+
+                          // grantedMax > 0 but maxed out — offer a request for more;
+                          // grantedMax === 0 — offer the first request.
                           return (
                             <ShopRow
                               key={name}
                               title={title}
-                              subtitle={isKnown ? `Raise to ${next} • ${kind}` : `Buy • ${kind}`}
+                              subtitle={grantedMax > 0 ? `Unlocked to ${grantedMax} • other` : 'Locked • other'}
                               cost={'-'}
                               leftIcon={iconPath(name)}
-                              disabled={true}
-                              hint={'Communicate with your ST to get them'}
-                              locked={true}
-                              onBuy={async () => { }}
+                              disabled={false}
+                              hint={grantedMax > 0 ? `Ask for access beyond level ${grantedMax}` : 'Expand to request access'}
+                              noConfirm={true}
                               forceExpanded={isSearching}
-                            />
+                            >
+                              <DisciplineRequestForm
+                                name={name}
+                                minLevel={grantedMax + 1}
+                                onSubmit={(level, message) => requestDisciplineAccess(name, level, message)}
+                              />
+                            </ShopRow>
                           );
                         })}
                       </>
@@ -3295,6 +3442,66 @@ function SuggestedSpecialtyRow({ skill, disabled, onAdd }) {
       >
         {working ? 'Working…' : 'Acquire'}
       </button>
+    </div>
+  );
+}
+
+/* ---------- Out-of-clan discipline access request ---------- */
+/* Lives inside the locked ShopRow for a discipline the character can't buy
+   yet — asks a level and an optional reason, then hands both to the ST's
+   request queue (see routes/disciplineAccess.js / AdminDisciplinesTab). */
+function DisciplineRequestForm({ name, minLevel = 1, onSubmit }) {
+  const [level, setLevel] = useState(minLevel);
+  const [message, setMessage] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState('');
+
+  async function submit() {
+    setBusy(true);
+    setError('');
+    try {
+      await onSubmit(level, message.trim());
+      setSent(true);
+    } catch (e) {
+      setError(e.response?.data?.error || 'Failed to send the request.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (sent) {
+    return <p className={styles.shopCardText}>Request sent — your Storyteller will see it in their review queue.</p>;
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <p className={styles.shopCardText}>
+        Ask your Storyteller for access to {name}. They can unlock it up to whatever level they're comfortable with.
+      </p>
+      <div className={styles.suggestSpecialtyRow}>
+        <select
+          className={styles.suggestSpecialtyInput}
+          style={{ flex: '0 0 auto', minWidth: '100px' }}
+          value={level}
+          disabled={busy}
+          onChange={(e) => setLevel(Number(e.target.value))}
+        >
+          {[1, 2, 3, 4, 5].filter(n => n >= minLevel).map(n => <option key={n} value={n}>Up to level {n}</option>)}
+        </select>
+        <input
+          className={styles.suggestSpecialtyInput}
+          placeholder="Why (optional) — helps your ST decide"
+          value={message}
+          disabled={busy}
+          onChange={(e) => setMessage(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
+        />
+        <button className={styles.shopCardAcquireBtn} disabled={busy} onClick={submit}>
+          {busy ? 'Sending…' : 'Send Request'}
+        </button>
+      </div>
+      {error && <p style={{ color: '#ff8a80', fontSize: '13px', margin: 0 }}>{error}</p>}
     </div>
   );
 }

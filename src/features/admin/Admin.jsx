@@ -16,6 +16,7 @@ const AdminCharactersTab = lazyWithRetry(() => import('./AdminCharactersTab'));
 const AdminClaimsTab = lazyWithRetry(() => import('./AdminClaimsTab'));
 const AdminDowntimesTab = lazyWithRetry(() => import('./AdminDowntimesTab'));
 const AdminXPTab = lazyWithRetry(() => import('./AdminXPTab'));
+const AdminDisciplinesTab = lazyWithRetry(() => import('./AdminDisciplinesTab'));
 const AdminNPCsTab = lazyWithRetry(() => import('./AdminNPCsTab'));
 const AdminChatLogsTab = lazyWithRetry(() => import('./AdminChatLogsTab'));
 const AdminDiceLogsTab = lazyWithRetry(() => import('./AdminDiceLogsTab')); 
@@ -47,6 +48,7 @@ const NAV_SECTIONS = [
       { id: 'ghouls',     icon: 'pets', label: 'Ghouls', keywords: ['retainers', 'thralls', 'servants', 'domitor', 'blood bonds', 'ghoul sheet', 'disciplines', 'tier', 'player'] },
       { id: 'downtimes',  icon: 'schedule', label: 'Downtimes', keywords: ['actions', 'between sessions', 'projects', 'approve', 'reject', 'needs scene', 'resolve', 'filter pipelines', 'reset configuration', 'sync records'] },
       { id: 'xp',         icon: 'stars', label: 'XP & Rewards', keywords: ['experience', 'levels', 'progression', 'grants', 'apply to all', 'view history', 'refresh data', 'subtract xp', 'bulk grant'] },
+      { id: 'disciplines', icon: 'auto_awesome', label: 'Disciplines', keywords: ['out of clan', 'unlock', 'access', 'request', 'approve', 'reject', 'grant', 'revoke', 'powers', 'clan restriction'] },
     ],
   },
   {
@@ -964,6 +966,7 @@ async function grantXP(character_id, delta) {
                   adminxp={adminxp} 
                 />
               )}
+              {tab === 'disciplines' && <AdminDisciplinesTab />}
               {tab === 'npcs' && (
                 <AdminNPCsTab
                   npcs={npcs}
