@@ -11,6 +11,7 @@ import { RITUALS } from '../../data/rituals';
 import { ATTR_DESCRIPTIONS, SKILL_DESCRIPTIONS } from '../../data/descriptions';
 import { BOOKS, BOOK_BASE, parseSourceString, bookByName, bookUrl } from '../../data/books';
 import { clanRef } from '../../data/clanReference';
+import { powerMechanics } from '../../data/disciplineMechanics';
 import { rollPool, summarizeTrackers, getBloodPotencyStats, applyHealthDamage, remorsePool } from '../../utils/liveSessionMechanics';
 import { formatEuDate } from '../../utils/dateFormatter';
 import LiveSessionRollHistory from '../live-session/LiveSessionRollHistory';
@@ -69,12 +70,15 @@ const FLAWS = [
 
 const DISC_ENTRIES = Object.entries(DISCIPLINES).flatMap(([disc, { levels = {} }]) =>
   Object.entries(levels).flatMap(([level, powers]) =>
-    powers.map(p => ({
-      category: 'disciplines',
-      title: `${p.name} (${disc} ${level})`,
-      content: `Cost: ${p.cost}\nPool: ${p.dice_pool}\n${p.notes || p.duration || ''}`,
-      source: p.source || null,
-    }))
+    powers.map(p => {
+      const mech = powerMechanics(p.id);
+      return {
+        category: 'disciplines',
+        title: `${p.name} (${disc} ${level})`,
+        content: `Cost: ${p.cost}\nPool: ${p.dice_pool}\n${p.notes || p.duration || ''}${mech ? `\nMechanic: ${mech.note}` : ''}`,
+        source: p.source || null,
+      };
+    })
   )
 );
 

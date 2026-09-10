@@ -5,6 +5,7 @@ import Avatar from '../../components/Avatar';
 import { DISCIPLINES, iconPath, ALL_DISCIPLINE_NAMES } from '../../data/disciplines';
 import { symlogo } from '../../data/clans';
 import { clanRef } from '../../data/clanReference';
+import { powerMechanics, resolveMechAmount } from '../../data/disciplineMechanics';
 import {
   COMMON_ROLLS,
   computeOutcome,
@@ -227,6 +228,16 @@ export default function LiveSession() {
     [session?.metadata?.activeEffects, character?.id]
   );
 
+  // Dice modifiers granted by discipline powers the player currently has running.
+  const powerMods = useMemo(() => runningPowers
+    .map(rp => {
+      const m = powerMechanics(rp.id)?.dicePoolMod;
+      if (!m) return null;
+      const amt = resolveMechAmount(m.amount, sheet);
+      return amt ? { id: `pw-${rp.id}`, label: rp.name, mod: amt, target: m.target } : null;
+    })
+    .filter(Boolean), [runningPowers, sheet]);
+
   const currentPool = useMemo(() => {
     const trait1 = selectedTraits[0] || null;
     const trait2 = selectedTraits[1] || null;
@@ -240,6 +251,7 @@ export default function LiveSession() {
     if (specialtyActive) pool += 1;
     pool += Number(situationalMod) || 0;
     for (const e of myEffects) if (activeEffectIds.includes(e.id)) pool += Number(e.mod) || 0;
+    for (const pm of powerMods) if (activeEffectIds.includes(pm.id)) pool += Number(pm.mod) || 0;
 
     // V5 Impairment: −2 to Physical (Health) / Social & Mental (Willpower) pools.
     // The Beast ignores pain during frenzy; a spent Willpower can also negate it.
@@ -251,7 +263,7 @@ export default function LiveSession() {
     if (trackers?.degeneration && !sheet?.frenzyState) pool -= 2;
 
     return Math.max(0, pool);
-  }, [sheet, selectedTraits, bloodSurgeActive, bpStats.surgeBonus, bpStats.disciplineBonus, specialtyActive, situationalMod, myEffects, activeEffectIds, wpIgnoreImpair, trackers]);
+  }, [sheet, selectedTraits, bloodSurgeActive, bpStats.surgeBonus, bpStats.disciplineBonus, specialtyActive, situationalMod, myEffects, powerMods, activeEffectIds, wpIgnoreImpair, trackers]);
 
   const activePowers = useMemo(() => {
     if (!activeDisc || !DISCIPLINES[activeDisc]) return [];
@@ -449,7 +461,7 @@ export default function LiveSession() {
 
     let finalNote = note;
     if (specialtyActive) finalNote += ' (Specialty)';
-    const usedEffects = myEffects.filter(e => activeEffectIds.includes(e.id));
+    const usedEffects = [...myEffects, ...powerMods].filter(e => activeEffectIds.includes(e.id));
     for (const e of usedEffects) finalNote += ` (${e.label} ${Number(e.mod) > 0 ? '+' : ''}${e.mod})`;
     if (Number(situationalMod)) finalNote += ` (${situationalMod > 0 ? '+' : ''}${situationalMod}${modReason ? ` ${modReason}` : ''})`;
     setSituationalMod(0);
@@ -1213,6 +1225,12 @@ export default function LiveSession() {
                               <p style={{ margin: '0.5rem 0 0 0' }}>{p.notes || p.description}</p>
                             </div>
 
+                            {powerMechanics(p.id)?.note && (
+                              <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.72rem', color: 'var(--on-surface)', background: 'var(--surface-container-high)', borderLeft: '2px solid var(--primary)', padding: '0.4rem 0.6rem', borderRadius: '3px' }}>
+                                <strong style={{ color: 'var(--primary)' }}>Mechanic:</strong> {powerMechanics(p.id).note}
+                              </p>
+                            )}
+
                             {needsRouse && (
                               <div style={{ background: 'rgba(225,29,72,0.1)', border: '1px solid var(--primary)', padding: '0.5rem', borderRadius: '4px', marginBottom: '0.75rem' }}>
                                 <p style={{ color: 'var(--primary)', margin: 0, fontSize: '0.75rem', fontWeight: 'bold' }}>Rouse Check Required</p>
@@ -1443,6 +1461,16 @@ export default function LiveSession() {
                   title="Storyteller effect — tap to add to this roll"
                 >
                   {e.label} {Number(e.mod) > 0 ? '+' : ''}{e.mod}
+                </button>
+              ))}
+              {powerMods.map(pm => (
+                <button
+                  key={pm.id}
+                  className={`${styles.commonRollBtn} ${activeEffectIds.includes(pm.id) ? styles.commonRollOn : ''}`}
+                  onClick={() => setActiveEffectIds(prev => prev.includes(pm.id) ? prev.filter(x => x !== pm.id) : [...prev, pm.id])}
+                  title={`${pm.label} — ${pm.target}. Tap to add to this roll if it applies.`}
+                >
+                  {pm.label} +{pm.mod}
                 </button>
               ))}
             </div>
