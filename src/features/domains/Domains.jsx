@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect, useState, useRef, useCallback, useContext } from 'react';
-import { Map as MapGL } from 'react-map-gl/maplibre';
+import { Map as MapGL, Source, Layer } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import DeckGL from '@deck.gl/react';
 import { FlyToInterpolator } from '@deck.gl/core';
@@ -1302,27 +1302,6 @@ export default function Domains() {
     return out;
   }, [geoJsonData]);
 
-  // ── Division name plates. Every division carries its name at its centre,
-  // drawn in deck.gl rather than as a native maplibre symbol layer: maplibre
-  // labels render *behind* the deck canvas, so the extruded polygons paint
-  // over them and the name effectively disappears on any claimed/raised
-  // division. Same reason the icons live here — one anchor, one stack. ──
-  const divisionLabelData = useMemo(() => {
-    if (!geoJsonData) return [];
-    const out = [];
-    for (const f of geoJsonData.features) {
-      if (f.properties?.isAbaton) continue;
-      const [minLng, minLat, maxLng, maxLat] = bbox(f);
-      out.push({
-        position: [(minLng + maxLng) / 2, (minLat + maxLat) / 2],
-        text: f.properties?.__name || '',
-        division: f.properties?.__division,
-        claimed: !!f.properties?.claimed,
-      });
-    }
-    return out;
-  }, [geoJsonData]);
-
   // ── Map badges at the center of every claimed division: the clan crest
   // AND the owner's avatar side by side (both visible at once, not one
   // nested inside the other), a clan-name label underneath, and a no-entry
@@ -1899,82 +1878,9 @@ export default function Domains() {
         );
       }
 
-      // ─── Division name plates. Always on, for every division — the one you
-      // have open just goes BOLD and larger. Two layers because deck.gl's
-      // TextLayer font weight is a layer-level prop, not a per-row accessor.
-      // Offsets clear the merit ring above the badge (claimed) or the merit
-      // row above the centre (unclaimed).
-      const nameOffset = (d, big) => (
-        d.claimed
-          ? [0, -(Math.round(badgeSize / 2) + (big ? 46 : 41))]
-          : [0, big ? -20 : -15]
-      );
-      const otherLabels = divisionLabelData.filter(d => d.division !== selectedDivision);
-      if (otherLabels.length) {
-        layers.push(
-          new TextLayer({
-            id: 'division-name-labels',
-            data: otherLabels,
-            getPosition: d => d.position,
-            getText: d => d.text,
-            // Shrinks as you zoom out so 48 always-on plates stay readable
-            // rather than tiling the whole city.
-            getSize: Math.round(Math.max(10, Math.min(15, 8 + badgeSize * 0.11))),
-            sizeUnits: 'pixels',
-            getColor: [235, 238, 245, 240],
-            fontFamily: '"Playfair Display", Georgia, serif',
-            fontWeight: 400,
-            fontSettings: { sdf: true, buffer: 8 },
-            billboard: true,
-            background: true,
-            getBackgroundColor: [10, 10, 13, 175],
-            backgroundPadding: [7, 4],
-            getPixelOffset: d => nameOffset(d, false),
-            outlineWidth: 2,
-            outlineColor: [0, 0, 0, 200],
-            parameters: { depthTest: false },
-            pickable: false,
-            // NB: no CollisionFilterExtension here — it culled every label in
-            // this layer outright. Names are always on by design anyway; they
-            // shrink with zoom-out via getSize instead.
-            updateTriggers: {
-              getPixelOffset: [badgeSize],
-              getSize: [badgeSize],
-              getText: [selectedDivision],
-            },
-          })
-        );
-      }
-      const selLabel = divisionLabelData.find(d => d.division === selectedDivision);
-      if (selLabel) {
-        layers.push(
-          new TextLayer({
-            id: 'division-name-primary',
-            data: [selLabel],
-            getPosition: d => d.position,
-            getText: d => d.text,
-            getSize: 19,
-            sizeUnits: 'pixels',
-            getColor: [255, 255, 255, 255],
-            fontFamily: '"Playfair Display", Georgia, serif',
-            fontWeight: 700,
-            fontSettings: { sdf: true, buffer: 8 },
-            billboard: true,
-            background: true,
-            getBackgroundColor: [12, 12, 15, 215],
-            backgroundPadding: [9, 5],
-            getPixelOffset: d => nameOffset(d, true),
-            outlineWidth: 2,
-            outlineColor: [0, 0, 0, 220],
-            parameters: { depthTest: false },
-            pickable: false,
-            updateTriggers: {
-              getText: [selectedDivision],
-              getPixelOffset: [badgeSize, selectedDivision],
-            },
-          })
-        );
-      }
+      // Division NAME labels are the native maplibre symbol layer again — small,
+      // low-key, name only — see the <Source id="domains-labels-src"> in JSX.
+      // (The big deck.gl serif plates were rolled back.)
 
     } // end if (!cleanMap) — ownership decoration
 
@@ -2361,8 +2267,27 @@ export default function Domains() {
       }
     }
 
+    // ─── Final z-order pass ─────────────────────────────────────────────
+    // deck.gl paints in array order. The Chasse merit type-icons must read on
+    // top of every overlay — transit lines, catacombs, hunt badges, municipal
+    // outlines — so lift them to the end. The centre badge stack (owner
+    // avatar, clan crest, clan-name logo, Abaton sign, hover face reveal)
+    // stays above even the icons, so lift that last of all.
+    const CHASSE_ICON_ID = 'chasse-type-icons';
+    const TOP_BADGE_IDS = new Set([
+      'clan-badge-backdrop', 'clan-badges-shadow', 'clan-badges',
+      'avatar-badges', 'clan-name-labels-outline', 'clan-name-labels',
+      'abaton-badge-backdrop', 'abaton-badges',
+      'hover-mask-layer', 'hover-image-layer',
+    ]);
+    const iconLayers = layers.filter(l => l.id === CHASSE_ICON_ID);
+    const topLayers = layers.filter(l => TOP_BADGE_IDS.has(l.id));
+    if (iconLayers.length || topLayers.length) {
+      const baseLayers = layers.filter(l => l.id !== CHASSE_ICON_ID && !TOP_BADGE_IDS.has(l.id));
+      return [...baseLayers, ...iconLayers, ...topLayers];
+    }
     return layers;
-  }, [geoJsonData, selectedDivision, hoveredDivision, hoveredFeature, avatarCache, onDeckHover, onDeckClick, groupOverlayFeatures, groupLabelData, npcFeatures, npcLabelData, clanBadgeData, avatarBadgeData, clanLabelData, abatonBadgeData, abatonFeatures, claimByDiv, badgeSize, badgeOffset, transitPathsSolid, transitPathsDashed, transitStationDots, transitLabelData, catacombPassageTiers, catacombSiteDots, catacombLabelData, necroDrawGroups, necroSiteDots, necroLabelData, cleanMap, onOverlayHover, huntBadgeData, huntingDiffOn, chasseIconData, onChasseIconClick, divisionLabelData, muniOutlinesOn]);
+  }, [geoJsonData, selectedDivision, hoveredDivision, hoveredFeature, avatarCache, onDeckHover, onDeckClick, groupOverlayFeatures, groupLabelData, npcFeatures, npcLabelData, clanBadgeData, avatarBadgeData, clanLabelData, abatonBadgeData, abatonFeatures, claimByDiv, badgeSize, badgeOffset, transitPathsSolid, transitPathsDashed, transitStationDots, transitLabelData, catacombPassageTiers, catacombSiteDots, catacombLabelData, necroDrawGroups, necroSiteDots, necroLabelData, cleanMap, onOverlayHover, huntBadgeData, huntingDiffOn, chasseIconData, onChasseIconClick, muniOutlinesOn]);
 
   // ── Error state ─────────────────────────────────────────
   if (!geoJsonData) {
@@ -2450,10 +2375,53 @@ export default function Domains() {
             style={{ width: '100%', height: '100%' }}
             onLoad={() => setMapReady(true)}
           >
-            {/* Division names are NOT a maplibre symbol layer any more — they're
-                deck.gl TextLayers (`division-name-labels` / `-primary`). A
-                maplibre label renders behind the deck canvas, so the extruded
-                polygons painted straight over it. See the deckLayers memo. */}
+            {/* Native MapLibre division-name labels — small, low-key, name only
+                (the number lives in the dossier). The one you have open is drawn
+                slightly bolder via the second layer. On claimed divisions the
+                deck.gl badge/crest sits on top of this — that's fine, it's meant
+                to read quietly underneath. */}
+            {geoJsonData && !cleanMap && (
+              <Source id="domains-labels-src" type="geojson" data={geoJsonData}>
+                <Layer
+                  id="domains-labels"
+                  type="symbol"
+                  filter={['!=', ['get', '__division'], selectedDivision ?? -1]}
+                  layout={{
+                    'text-field': ['get', '__name'],
+                    'text-size': 11,
+                    'text-anchor': 'center',
+                    'text-offset': [0, -1.3],
+                    'text-allow-overlap': false,
+                    'text-ignore-placement': false,
+                    'text-font': ['Open Sans Regular'],
+                  }}
+                  paint={{
+                    'text-color': 'rgba(255, 255, 255, 0.85)',
+                    'text-halo-color': 'rgba(0, 0, 0, 0.9)',
+                    'text-halo-width': 2,
+                  }}
+                />
+                <Layer
+                  id="domains-labels-selected"
+                  type="symbol"
+                  filter={['==', ['get', '__division'], selectedDivision ?? -1]}
+                  layout={{
+                    'text-field': ['get', '__name'],
+                    'text-size': 12,
+                    'text-anchor': 'center',
+                    'text-offset': [0, -1.25],
+                    'text-allow-overlap': true,
+                    'text-ignore-placement': true,
+                    'text-font': ['Open Sans Bold'],
+                  }}
+                  paint={{
+                    'text-color': 'rgba(255, 255, 255, 1)',
+                    'text-halo-color': 'rgba(0, 0, 0, 0.95)',
+                    'text-halo-width': 2.4,
+                  }}
+                />
+              </Source>
+            )}
           </MapGL>
         </DeckGL>
 
