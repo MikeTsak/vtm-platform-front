@@ -21,23 +21,26 @@ export function computeOutcome(normalDice, hungerDice, difficulty = 0) {
   const baseSuccesses = all.filter((die) => die >= 6).length;
   const totalTens = all.filter((die) => die === 10).length;
   const hungerTens = hunger.filter((die) => die === 10).length;
-  const extraFromPairs = Math.floor(totalTens / 2) * 2;
+  const critPairs = Math.floor(totalTens / 2);
+  const extraFromPairs = critPairs * 2;
   const successes = baseSuccesses + extraFromPairs;
 
-  const hasCritical = totalTens >= 2;
-  const hasMessyCritical = hasCritical && hungerTens > 0;
   const metDifficulty = Number(difficulty) > 0 ? successes >= Number(difficulty) : successes > 0;
+  // A critical / messy critical only exists on a winning roll (V5 core).
+  const hasCritical = totalTens >= 2 && metDifficulty;
+  const hasMessyCritical = hasCritical && hungerTens > 0;
   const hasBestialFailure = !metDifficulty && hunger.some((die) => die === 1);
 
   let label = 'Failure';
   if (metDifficulty) label = 'Success';
-  if (hasCritical && metDifficulty) label = 'Critical';
-  if (hasMessyCritical && metDifficulty) label = 'Messy Critical';
+  if (hasCritical) label = 'Critical';
+  if (hasMessyCritical) label = 'Messy Critical';
   if (hasBestialFailure) label = 'Bestial Failure';
 
   return {
     successes,
     extraFromPairs,
+    critPairs,
     hasCritical,
     hasMessyCritical,
     hasBestialFailure,
@@ -45,6 +48,31 @@ export function computeOutcome(normalDice, hungerDice, difficulty = 0) {
     label,
   };
 }
+
+// V5 damage application: Superficial is halved (round up) before it lands, and
+// once the track is full further damage converts Superficial -> Aggravated 1:1.
+// Aggravated fills from the bottom, pushing Superficial out the same way.
+export function applyHealthDamage(track, rawAmount, type = 'superficial', opts = {}) {
+  const max = Math.max(1, Number(opts.max) || 10);
+  let sup = clamp(track?.superficial ?? 0, 0, max);
+  let agg = clamp(track?.aggravated ?? 0, 0, max);
+  let amount = Math.max(0, Math.round(Number(rawAmount) || 0));
+  if (type === 'superficial' && opts.halve) amount = Math.ceil(amount / 2);
+
+  for (let i = 0; i < amount; i += 1) {
+    if (sup + agg < max) {
+      if (type === 'aggravated') agg += 1; else sup += 1;
+    } else if (sup > 0) {
+      sup -= 1; agg += 1;                 // rollover / conversion
+    } else {
+      agg = Math.min(max, agg + 1);       // already all-aggravated (Final Death territory)
+    }
+  }
+  return { superficial: sup, aggravated: agg, appliedAmount: amount };
+}
+
+export const remorsePool = (humanity, stains) =>
+  Math.max(1, 10 - (Number(humanity) || 0) - (Number(stains) || 0));
 
 export function rollPool(pool, hunger, difficulty = 0, rng = Math.random) {
   const totalPool = clamp(pool, 0, 30);
@@ -129,25 +157,43 @@ export function disciplineRequiresRouse(power) {
 
 export function summarizeTrackers(sheet) {
   const stamina = Number(sheet?.attributes?.Stamina) || 1;
-  const fortitude = Number(sheet?.disciplines?.Fortitude) || 0;
-  const maxHealth = Math.max(1, stamina + 3 + fortitude);
+  const fortDots = Number(sheet?.disciplines?.Fortitude) || 0;
+  // RAW: Fortitude adds to the Health track only via the Resilience power. If the
+  // sheet lists Fortitude powers, require Resilience; if it tracks no powers at
+  // all, keep the old assumption so existing characters don't lose boxes.
+  const fortPowers = sheet?.disciplinePowers?.Fortitude;
+  const hasResilience = !Array.isArray(fortPowers) || fortPowers.length === 0
+    || fortPowers.some((p) => /resilien/i.test(String(p?.id ?? p?.name ?? p)));
+  const maxHealth = Math.max(1, stamina + 3 + (hasResilience ? fortDots : 0));
   const maxWillpower = Math.max(
     1,
     (Number(sheet?.attributes?.Composure) || 1) + (Number(sheet?.attributes?.Resolve) || 1)
   );
 
+  const health = {
+    superficial: clamp(sheet?.health?.superficial ?? 0, 0, maxHealth),
+    aggravated: clamp(sheet?.health?.aggravated ?? 0, 0, maxHealth),
+    max: maxHealth,
+  };
+  const willpower = {
+    superficial: clamp(sheet?.willpower?.superficial ?? 0, 0, maxWillpower),
+    aggravated: clamp(sheet?.willpower?.aggravated ?? 0, 0, maxWillpower),
+    max: maxWillpower,
+  };
+  const humanity = clamp(sheet?.humanity ?? sheet?.morality?.humanity ?? 7, 0, 10);
+  const stains = clamp(sheet?.stains ?? 0, 0, 10);
+
   return {
     hunger: clamp(sheet?.hunger ?? 1, 0, 5),
     bloodPotency: clamp(sheet?.bloodPotency ?? 1, 0, 10),
-    health: {
-      superficial: clamp(sheet?.health?.superficial ?? 0, 0, maxHealth),
-      aggravated: clamp(sheet?.health?.aggravated ?? 0, 0, maxHealth),
-      max: maxHealth,
-    },
-    willpower: {
-      superficial: clamp(sheet?.willpower?.superficial ?? 0, 0, maxWillpower),
-      aggravated: clamp(sheet?.willpower?.aggravated ?? 0, 0, maxWillpower),
-      max: maxWillpower,
-    },
+    humanity,
+    stains,
+    health,
+    willpower,
+    healthImpaired: health.superficial + health.aggravated >= health.max,
+    willpowerImpaired: willpower.superficial + willpower.aggravated >= willpower.max,
+    inTorpor: health.aggravated >= health.max,
+    // Degeneration: more Stains than empty Humanity boxes.
+    degeneration: stains > (10 - humanity),
   };
 }

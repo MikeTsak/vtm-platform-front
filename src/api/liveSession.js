@@ -54,6 +54,13 @@ export const sendLiveSessionBroadcast = async (sessionId, payload) => {
   return data;
 };
 
+// Player -> Storyteller signal (raise hand, rules question, AFK, Blush status).
+// Open to any participant, unlike sendLiveSessionBroadcast which is ST-only.
+export const sendLiveSessionSignal = async (sessionId, payload) => {
+  const { data } = await api.post(`${base}/${sessionId}/signal`, payload);
+  return data;
+};
+
 export const getLiveSessionBroadcasts = async (sessionId) => {
   const { data } = await api.get(`${base}/${sessionId}/broadcast`);
   return data;

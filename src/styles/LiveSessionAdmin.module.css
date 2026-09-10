@@ -11,6 +11,9 @@
   --outline-variant: rgba(157, 124, 255, 0.18);
   --text-muted: #9896a8;
   --on-surface: #e8e6f0;
+  --success: #34d399;
+  --danger: #fb7185;
+  --warning: #fbbf24;
   --glass-border: 1px solid rgba(157, 124, 255, 0.18);
   --glass-shadow: 0 8px 40px rgba(0, 0, 0, 0.55);
   --glass-blur: blur(18px) saturate(1.4);
@@ -359,4 +362,300 @@
 
 .diceGrid .formGroup {
   margin-bottom: 0;
+}
+
+/* ── Initiative turn controls ───────────────────────────── */
+.initBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.initRound {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.initRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.3rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid transparent;
+}
+.initRowCurrent {
+  border-color: var(--primary);
+  background: var(--primary-container);
+}
+.initRowCurrent .initName {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+/* ── Player card: state badges ──────────────────────────── */
+.badgeRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.badge {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.12rem 0.4rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+}
+
+/* ── Player card: derived stats strip ───────────────────── */
+.derivedStrip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 0.5rem;
+}
+.derivedStrip span {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  padding: 0.12rem 0.35rem;
+  white-space: nowrap;
+}
+
+/* ── Player card: discipline chips ──────────────────────── */
+.discChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 0.4rem;
+}
+.discChip {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--primary);
+  background: var(--primary-container);
+  border-radius: 4px;
+  padding: 0.12rem 0.35rem;
+  white-space: nowrap;
+}
+
+/* ── Player card: clan bane / compulsion ────────────────── */
+.baneBox {
+  margin-top: 0.5rem;
+  font-size: 0.7rem;
+  border: 1px solid rgba(251, 113, 133, 0.25);
+  background: rgba(251, 113, 133, 0.06);
+  border-radius: 6px;
+  padding: 0.35rem 0.5rem;
+}
+.baneBox summary {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--danger);
+  list-style: none;
+}
+.baneBox summary::-webkit-details-marker { display: none; }
+.baneBox summary :global(.material-symbols-outlined) { font-size: 0.9rem; }
+.baneBox summary a {
+  margin-left: auto;
+  font-size: 0.62rem;
+  color: var(--primary);
+  border-bottom: 1px dotted var(--primary);
+  text-decoration: none;
+}
+.baneBox p {
+  margin: 0.4rem 0 0;
+  color: var(--on-surface);
+  line-height: 1.4;
+}
+.baneBox p strong { color: var(--danger); }
+
+/* ── Player card: apply damage ──────────────────────────── */
+.dmgRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+  padding: 0.35rem 0.45rem;
+  background: rgba(251, 113, 133, 0.06);
+  border: 1px solid rgba(251, 113, 133, 0.2);
+  border-radius: 6px;
+}
+.dmgLabel {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--danger);
+}
+.dmgAmount {
+  width: 44px;
+  padding: 0.2rem 0.3rem;
+  font-size: 0.72rem;
+  background: rgba(0, 0, 0, 0.25);
+  border: var(--glass-border);
+  border-radius: 4px;
+  color: var(--on-surface);
+  text-align: center;
+}
+
+/* ── Player card: storyteller effects ───────────────────── */
+.effRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 0.4rem;
+}
+.effChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--primary);
+  background: var(--primary-container);
+  border-radius: 4px;
+  padding: 0.1rem 0.1rem 0.1rem 0.35rem;
+}
+.effChip button {
+  background: none;
+  border: none;
+  color: var(--primary);
+  cursor: pointer;
+  font-size: 0.8rem;
+  line-height: 1;
+  padding: 0 0.25rem;
+}
+.effInput {
+  min-width: 44px;
+  width: 54px;
+  padding: 0.2rem 0.3rem;
+  font-size: 0.68rem;
+  background: rgba(0, 0, 0, 0.2);
+  border: var(--glass-border);
+  border-radius: 4px;
+  color: var(--on-surface);
+}
+
+/* ── Player card quick actions ──────────────────────────── */
+.quickActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin-top: 0.5rem;
+}
+.quickNote {
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.75rem;
+  background: rgba(0, 0, 0, 0.2);
+  border: var(--glass-border);
+  border-radius: 4px;
+  color: var(--on-surface);
+}
+.quickNote:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+/* ── Remorse helper ─────────────────────────────────────── */
+.remorseRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  margin-bottom: 0.4rem;
+}
+.remorseName {
+  flex: 1;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.remorseStains {
+  width: 46px;
+  padding: 0.25rem;
+  font-size: 0.75rem;
+  background: rgba(0, 0, 0, 0.25);
+  border: var(--glass-border);
+  border-radius: 4px;
+  color: var(--on-surface);
+  text-align: center;
+}
+
+/* ── Reference library ──────────────────────────────────── */
+.bookList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.bookLink {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 6px;
+  background: var(--surface-container-highest);
+  border: var(--glass-border);
+  color: var(--on-surface);
+  text-decoration: none;
+  font-size: 0.82rem;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.bookLink:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.bookLink span:nth-child(2) {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bookLink :global(.material-symbols-outlined) {
+  font-size: 1rem;
+  color: var(--text-muted);
+}
+.bookLink:hover :global(.material-symbols-outlined) {
+  color: var(--primary);
+}
+
+/* ── Source citation links (search results) ─────────────── */
+.sourceLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.45rem;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+.sourceLine :global(.material-symbols-outlined) {
+  font-size: 0.9rem;
+}
+.sourceLink {
+  color: var(--primary);
+  text-decoration: none;
+  border-bottom: 1px dotted var(--primary);
+}
+.sourceLink:hover {
+  filter: brightness(1.25);
 }

@@ -12,7 +12,7 @@ export default function LiveSessionPlayerList({ players = [], adminName }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
       {adminName && (
         <div style={{ background: 'var(--surface-container-highest)', border: '1px solid var(--primary)', borderRadius: '8px', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-          <span style={{ fontSize: '1.2rem' }}>👑</span>
+          <span className="material-symbols-outlined" style={{ fontSize: '1.2rem', color: 'var(--primary)' }}>shield_person</span>
           <div>
             <div style={{ fontSize: '0.7rem', color: 'var(--primary)', textTransform: 'uppercase', fontWeight: 'bold' }}>Session Storyteller</div>
             <div style={{ fontSize: '0.95rem', color: 'var(--on-surface)', fontWeight: 'bold' }}>{adminName}</div>

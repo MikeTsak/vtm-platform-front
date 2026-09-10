@@ -38,7 +38,7 @@ export default function LiveSessionRollHistory({ rolls = [], onBroadcast, curren
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '0.85rem', color: isWhisper ? '#d8b4fe' : 'var(--on-surface)' }}>
-                  {isWhisper && <strong style={{color: '#a855f7'}}>🤫 Whisper: </strong>}
+                  {isWhisper && <strong style={{color: '#a855f7'}}>Whisper: </strong>}
                   {roll.message}
                 </span>
                 <small style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>
@@ -72,7 +72,7 @@ export default function LiveSessionRollHistory({ rolls = [], onBroadcast, curren
             <div className={styles.historyHeader}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <strong style={{ color: 'var(--primary)', fontFamily: 'var(--font-display)', fontSize: '1.1rem', letterSpacing: '0.02em' }}>{name}</strong>
-                {roll.is_hidden ? <span title="Hidden Action (Only visible to ST & You)" style={{ fontSize: '0.8rem', opacity: 0.7 }}>👁️</span> : null}
+                {roll.is_hidden ? <span className="material-symbols-outlined" title="Hidden Action (Only visible to ST & You)" style={{ fontSize: '0.95rem', opacity: 0.7 }}>visibility_off</span> : null}
               </div>
               <span style={{ 
                 fontWeight: 700, 
@@ -94,8 +94,8 @@ export default function LiveSessionRollHistory({ rolls = [], onBroadcast, curren
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', gap: '0.75rem', marginBottom: '0.5rem', alignItems: 'center' }}>
               {roll.pool !== undefined && roll.pool !== null && <span>Pool: <b style={{ color: 'var(--on-surface)' }}>{roll.pool}</b></span>}
               {roll.hunger !== undefined && roll.hunger !== null && <span>Hunger: <b style={{ color: 'var(--on-surface)' }}>{roll.hunger}</b></span>}
-              {hasBestial && <span style={{ color: 'var(--error)', fontWeight: 700 }}>⚠️ Bestial</span>}
-              {hasMessy && <span style={{ color: 'var(--error)', fontWeight: 700 }}>🩸 Messy Crit</span>}
+              {hasBestial && <span style={{ color: 'var(--error)', fontWeight: 700 }}>Bestial</span>}
+              {hasMessy && <span style={{ color: 'var(--error)', fontWeight: 700 }}>Messy Crit</span>}
               
               {(hasBestial || hasMessy) && onBroadcast && (
                 <button 
