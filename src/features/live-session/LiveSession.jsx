@@ -538,6 +538,7 @@ export default function LiveSession() {
     const label = `${t1} + ${t2}${req.specialty ? ` + ${req.specialty}` : ''}`;
     setLastRoll({ ...roll, type: 'requested_roll', note: `Storyteller's request: ${label}` });
     setWpSelections([]);
+    setWpIgnoreImpair(false);
     maybeCompulsion(roll.outcome);
 
     await pushRoll('requested_roll', {
@@ -676,6 +677,7 @@ export default function LiveSession() {
     const roll = rollPool(pool, trackers?.hunger ?? 0, 0);
     setLastRoll({ ...roll, type: 'discipline_roll', note: `${discName} • ${power.name} (${t1} + ${t2})` });
     setWpSelections([]);
+    setWpIgnoreImpair(false);
     maybeCompulsion(roll.outcome);
     await pushRoll('discipline_roll', {
       characterId: character?.id, roll_type: 'discipline_roll',
@@ -1095,24 +1097,24 @@ export default function LiveSession() {
             {/* Health */}
             <div>
               <TrackerBlock label="Health" val="" max={trackers.health.max} agg={trackers.health.aggravated} sup={trackers.health.superficial} />
-              <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.6rem' }}>
+              <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.6rem', flexWrap: 'wrap' }}>
                 <button
                   className={styles.btnOutline}
-                  style={{ flex: 1, padding: '0.35rem', fontSize: '0.7rem' }}
+                  style={{ flex: '1 1 120px', padding: '0.35rem', fontSize: '0.7rem' }}
                   disabled={trackers.health.superficial <= 0 || isRolling}
                   onClick={mendSuperficialSelf}
                   title={`Rouse Check, then heal ${bpStats.mendAmount} Superficial`}
                 >
-                  Mend Superficial ({bpStats.mendAmount})
+                  Mend Sup ({bpStats.mendAmount})
                 </button>
                 <button
                   className={styles.btnOutline}
-                  style={{ flex: 1, padding: '0.35rem', fontSize: '0.7rem' }}
+                  style={{ flex: '1 1 120px', padding: '0.35rem', fontSize: '0.7rem' }}
                   disabled={trackers.health.aggravated <= 0 || isRolling}
                   onClick={mendAggravatedSelf}
                   title="Three Rouse Checks at the start of the night, then heal 1 Aggravated"
                 >
-                  Mend Aggravated (3 Rouse)
+                  Mend Agg (3 Rouse)
                 </button>
               </div>
             </div>

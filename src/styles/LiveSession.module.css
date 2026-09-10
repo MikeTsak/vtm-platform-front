@@ -622,6 +622,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
   animation: pulse 2s infinite;
 }
 
@@ -1193,4 +1195,20 @@
   .diceContainer { gap: 0.5rem; }
   .diceSlotContainer { width: 56px; height: 56px; }
   .dieImage { width: 44px; height: 44px; }
+
+  /* Frenzy banner: label on its own line, actions below and full-width */
+  .frenzyBanner { padding: 0.55rem 1rem; }
+  .frenzyBanner > div:first-child { flex-basis: 100%; }
+  .frenzyBanner button { font-size: 0.72rem; }
+
+  /* Situational modifier row */
+  .modRow { gap: 0.4rem; margin-bottom: 1.25rem; }
+  .modReason { flex-basis: 100%; min-width: 0; }
+
+  /* Common-roll presets */
+  .commonRolls { gap: 0.35rem; margin-bottom: 1.25rem; }
+  .commonRollBtn { font-size: 0.7rem; padding: 0.3rem 0.6rem; }
+
+  /* Compulsion picker fits the viewport */
+  .compulsionChoice { font-size: 0.75rem; padding: 0.5rem 0.6rem; }
 }
