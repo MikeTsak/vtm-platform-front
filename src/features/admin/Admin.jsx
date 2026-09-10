@@ -43,7 +43,7 @@ const NAV_SECTIONS = [
     items: [
       { id: 'users',      icon: 'person', label: 'Users', keywords: ['accounts', 'passwords', 'emails', 'roles', 'login', 'reset password', 'delete user', 'ban', 'unban', 'discord id', 'st role', 'vip role', 'admin role'] },
       { id: 'characters', icon: 'account_circle', label: 'Characters', keywords: ['sheets', 'stats', 'pdf', 'inventory', 'traits', 'disciplines', 'blood potency', 'generation', 'clan', 'sect', 'sire', 'approvals', 'merits', 'flaws', 'health', 'willpower', 'humanity', 'export', 'delete', 'add character'] },
-      { id: 'claims',     icon: 'local_police', label: 'Claims', keywords: ['territory', 'domain', 'map', 'havens', 'feeding grounds', 'racks', 'businesses', 'resources', 'influence'] },
+      { id: 'claims',     icon: 'local_police', label: 'Domains', keywords: ['domain stewards', 'territory', 'claims map access', 'who can assign domains', 'grant', 'revoke', 'permission', 'approve requests', 'court'] },
       { id: 'coteries',   icon: 'group_work', label: 'Coteries', keywords: ['groups', 'factions', 'alliances', 'coterie type', 'domain size', 'chantry', 'shared resources', 'members'] },
       { id: 'ghouls',     icon: 'pets', label: 'Ghouls', keywords: ['retainers', 'thralls', 'servants', 'domitor', 'blood bonds', 'ghoul sheet', 'disciplines', 'tier', 'player'] },
       { id: 'downtimes',  icon: 'schedule', label: 'Downtimes', keywords: ['actions', 'between sessions', 'projects', 'approve', 'reject', 'needs scene', 'resolve', 'filter pipelines', 'reset configuration', 'sync records'] },
@@ -320,7 +320,6 @@ export default function Admin() {
 
   // All data state lives here
   const [users, setUsers] = useState([]);
-  const [claims, setClaims] = useState([]);
   const [charIndex, setCharIndex] = useState({});
   const [downtimes, setDowntimes] = useState([]);
   const [npcs, setNPCs] = useState([]);
@@ -364,7 +363,6 @@ export default function Admin() {
       api.get('/admin/premonitions').then(res => setPremonitions(res.data.premonitions || [])).catch(e => console.error('Failed prems', e)).finally(inc),
       api.get('/admin/dice/rolls?limit=all').then(res => setDiceRolls(res.data.rolls || [])).catch(e => console.error('Failed dice', e)).finally(inc),
       api.get('/admin/characters').then(res => setCharacters(res.data.characters || [])).catch(e => console.error('Failed chars', e)).finally(inc),
-      api.get('/domain-claims').then(res => setClaims(res.data.claims || [])).catch(e => console.error('Failed claims', e)).finally(inc),
       api.get('/admin/downtimes').then(res => setDowntimes(res.data.downtimes || [])).catch(e => console.error('Failed downtimes', e)).finally(inc),
       api.get('/admin/npcs').then(res => setNPCs(res.data.npcs || [])).catch(e => console.error('Failed NPCs', e)).finally(inc),
       api.get('/admin/ghouls').then(res => setGhouls(res.data.ghouls || [])).catch(e => console.error('Failed ghouls', e)).finally(inc),
@@ -827,28 +825,6 @@ async function grantXP(character_id, delta) {
     }
   }
 
-  // --- Claims ---
-  async function saveClaim(division, patch) {
-    setErr(''); setMsg('');
-    try {
-      await api.patch(`/admin/domain-claims/${division}`, patch);
-      setMsg(`Claim ${division} saved`);
-      load(); // Reload
-    } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to save claim');
-    }
-  }
-  async function deleteClaim(division) {
-    setErr(''); setMsg('');
-    try {
-      await api.delete(`/admin/domain-claims/${division}`);
-      setMsg(`Claim ${division} removed`);
-      load(); // Reload
-    } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to delete claim');
-    }
-  }
-
   // --- Downtimes ---
   async function saveDowntime(id, patch) {
     setErr(''); setMsg('');
@@ -943,13 +919,7 @@ async function grantXP(character_id, delta) {
                 />
               )}
               {tab === 'claims' && (
-                <AdminClaimsTab
-                  claims={claims}
-                  characters={charIndex}
-                  npcs={npcs}
-                  onSave={saveClaim}
-                  onDelete={deleteClaim}
-                />
+                <AdminClaimsTab users={users} />
               )}
               {tab === 'coteries' && <AdminCoteriesTab />}
               {tab === 'downtimes' && (

@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect, useState, useRef, useCallback, useContext } from 'react';
-import { Map as MapGL, Source, Layer } from 'react-map-gl/maplibre';
+import { Map as MapGL } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import DeckGL from '@deck.gl/react';
 import { FlyToInterpolator } from '@deck.gl/core';
@@ -291,6 +291,52 @@ const TRANSPARENT_1PX_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAA
 const clanSymbolUrl = (clan) => (clan ? `/img/clans/330px-${fileify(clan)}_symbol.png` : TRANSPARENT_1PX_PNG);
 const clanTextUrl = (clan) => (clan ? `/img/clans/text/300px-${fileify(clan)}_logo.png` : TRANSPARENT_1PX_PNG);
 
+// ── Chasse-merit "domain type" chips for the map ─────────────
+// A Font Awesome glyph on a dark disc, tinted with the merit's colour,
+// emitted as an SVG data URI so deck.gl's IconLayer can load it like any
+// other image (same pattern as NO_ENTRY_ICON). Cached — the same handful of
+// merits repeats across every division on the board.
+const _chasseChipCache = {};
+function chasseChipDataUrl(icon, color) {
+  if (!icon) return TRANSPARENT_1PX_PNG;
+  const cacheKey = `${color}|${icon.viewBox}|${icon.path.length}`;
+  if (_chasseChipCache[cacheKey]) return _chasseChipCache[cacheKey];
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">` +
+    `<circle cx="50" cy="50" r="46" fill="#0c0c0d" stroke="${color}" stroke-width="6"/>` +
+    `<svg x="26" y="26" width="48" height="48" viewBox="${icon.viewBox}">` +
+    `<path fill="${color}" d="${icon.path}"/></svg></svg>`;
+  const url = 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+  _chasseChipCache[cacheKey] = url;
+  return url;
+}
+
+// ── Chasse ring geometry ─────────────────────────────────────────────────
+// Lays a division's merit icons out as an EVENLY spaced arc around its centre
+// badge. The arc is centred on 12 o'clock and opens at the bottom, because
+// that's where the clan-name logo sits. It widens with the merit count
+// (ARC_PER_ICON° each) up to a hard cap, so from three merits up the ring
+// always wraps more than half the circle, and the angular step between any
+// two neighbouring icons is always identical.
+//
+// The ring is a slight ellipse (x stretched) rather than a true circle: the
+// clan-name logo below the badge is far wider than it is tall, so pushing the
+// low icons outward horizontally is what keeps them clear of it.
+const CHASSE_RING_ARC_PER_ICON = 66;  // ° of arc each icon buys
+const CHASSE_RING_MAX_ARC = 252;      // never wrap closer than ±126° to 6 o'clock
+const CHASSE_RING_X_STRETCH = 1.18;
+
+function chasseRingOffset(index, count, radius) {
+  const arc = Math.min(CHASSE_RING_MAX_ARC, CHASSE_RING_ARC_PER_ICON * count);
+  // 0° = 12 o'clock, positive = clockwise. A lone icon sits dead centre on top.
+  const deg = count > 1 ? -arc / 2 + (index * arc) / (count - 1) : 0;
+  const rad = (deg * Math.PI) / 180;
+  return [
+    Math.round(radius * CHASSE_RING_X_STRETCH * Math.sin(rad)),
+    Math.round(-radius * Math.cos(rad)) - 2,
+  ];
+}
+
 async function fetchAvatarAsDataUrl(url, division) {
   if (!url) return null;
   try {
@@ -474,12 +520,25 @@ const NO_ENTRY_ICON = 'data:image/svg+xml;utf8,' + encodeURIComponent(`
 
 export default function Domains() {
   const { user } = useContext(AuthCtx);
-  const isCourt = user?.role === 'admin' || user?.role === 'courtuser';
   const isAdmin = user?.role === 'admin'; // catacombs overlay is admin-only, no exceptions
   const queryClient = useQueryClient();
 
+  // Running the claims map — approving requests, assigning/vacating divisions,
+  // reading the incident log — is gated on being a "Domain Steward" (admin, or
+  // a user an admin has added in the Claims admin tab). The courtuser role no
+  // longer grants any of this. `managers` is the roster the Requests tab shows.
+  const { data: domainManagersData } = useQuery({
+    queryKey: ['domain-managers'],
+    queryFn: async () => (await api.get('/domain-claims/managers')).data,
+    enabled: !!user,
+    staleTime: 60 * 1000,
+  });
+  const canManageDomains = !!domainManagersData?.me?.canManageDomains;
+  const domainStewards = domainManagersData?.managers || [];
+
   const mapRef = useRef(null);
   const hoveredDivisionRef = useRef(null);
+  const pendingChasseScrollRef = useRef(null);
 
   const [hoveredDivision, setHoveredDivision] = useState(null);
   const [hoveredFeature, setHoveredFeature] = useState(null);
@@ -708,7 +767,7 @@ export default function Domains() {
       const res = await api.get(`/domain-claims/${selectedDivision}/problems`);
       return res.data;
     },
-    enabled: isCourt && activeTab === 'court' && selectedDivision != null,
+    enabled: canManageDomains && activeTab === 'court' && selectedDivision != null,
   });
 
   const { data: codexData, isFetching: isCodexLoading } = useQuery({
@@ -727,7 +786,7 @@ export default function Domains() {
       const res = await api.get('/court/characters-and-npcs');
       return res.data;
     },
-    enabled: isCourt,
+    enabled: canManageDomains,
     staleTime: 60 * 1000,
   });
 
@@ -1075,6 +1134,47 @@ export default function Domains() {
     if (feature) selectFeature(feature);
   }, [geoJsonData, selectFeature]);
 
+  // Scroll the open dossier to a specific Chasse-merit card and flash it.
+  // Shared by the dossier quick-reference chips and the map type-icons.
+  const scrollToChasseCard = useCallback((key) => {
+    const el = document.getElementById(`chasse-card-${key}`);
+    if (!el) return false;
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    el.classList.add(styles.chasseCardFlash);
+    setTimeout(() => el.classList.remove(styles.chasseCardFlash), 1100);
+    return true;
+  }, []);
+
+  // Click a merit type-icon on the map → open that division's dossier and jump
+  // straight to the merit's full card.
+  const onChasseIconClick = useCallback((info) => {
+    const d = info?.object;
+    if (!d) return false;
+    const feature = geoJsonData?.features.find(f => f.properties.__division === Number(d.division));
+    if (feature) selectFeature(feature);
+    pendingChasseScrollRef.current = d.meritKey;
+    // Dossier for this division may already be open — try to jump right away.
+    requestAnimationFrame(() => {
+      if (scrollToChasseCard(d.meritKey)) pendingChasseScrollRef.current = null;
+    });
+    return true;
+  }, [geoJsonData, selectFeature, scrollToChasseCard]);
+
+  // Fresh dossier open from a map icon click: wait for it to mount, then jump.
+  useEffect(() => {
+    if (selectedDivision == null || !pendingChasseScrollRef.current) return;
+    const key = pendingChasseScrollRef.current;
+    let tries = 0;
+    let timer = setTimeout(function attempt() {
+      if (scrollToChasseCard(key) || tries++ > 15) {
+        pendingChasseScrollRef.current = null;
+        return;
+      }
+      timer = setTimeout(attempt, 120);
+    }, 260);
+    return () => clearTimeout(timer);
+  }, [selectedDivision, scrollToChasseCard]);
+
   const closeDossier = useCallback(() => {
     setSelectedDivision(null);
   }, []);
@@ -1170,6 +1270,57 @@ export default function Domains() {
         const [minLng, minLat, maxLng, maxLat] = bbox(f);
         return { position: [(minLng + maxLng) / 2, (minLat + maxLat) / 2], difficulty: f.properties.huntingDifficulty };
       });
+  }, [geoJsonData]);
+
+  // ── Chasse-merit "domain type" icons: a small row of glyph chips beneath
+  // every division's name label so you can read what a domain is good for at a
+  // glance (hospital / nightlife / cemetery …) without opening it. One datum
+  // per icon; clicking one opens the dossier and jumps to that merit's card. ──
+  const chasseIconData = useMemo(() => {
+    if (!geoJsonData) return [];
+    const out = [];
+    for (const f of geoJsonData.features) {
+      if (f.properties?.isAbaton) continue;
+      const division = f.properties?.__division;
+      const merits = getDivisionChasse(division);
+      if (!merits.length) continue;
+      const [minLng, minLat, maxLng, maxLat] = bbox(f);
+      const position = [(minLng + maxLng) / 2, (minLat + maxLat) / 2];
+      const claimed = !!f.properties?.claimed;
+      merits.forEach((m, i) => {
+        out.push({
+          position,
+          division,
+          claimed,
+          meritKey: m.key,
+          url: chasseChipDataUrl(m.icon, m.color),
+          i,
+          count: merits.length,
+        });
+      });
+    }
+    return out;
+  }, [geoJsonData]);
+
+  // ── Division name plates. Every division carries its name at its centre,
+  // drawn in deck.gl rather than as a native maplibre symbol layer: maplibre
+  // labels render *behind* the deck canvas, so the extruded polygons paint
+  // over them and the name effectively disappears on any claimed/raised
+  // division. Same reason the icons live here — one anchor, one stack. ──
+  const divisionLabelData = useMemo(() => {
+    if (!geoJsonData) return [];
+    const out = [];
+    for (const f of geoJsonData.features) {
+      if (f.properties?.isAbaton) continue;
+      const [minLng, minLat, maxLng, maxLat] = bbox(f);
+      out.push({
+        position: [(minLng + maxLng) / 2, (minLat + maxLat) / 2],
+        text: f.properties?.__name || '',
+        division: f.properties?.__division,
+        claimed: !!f.properties?.claimed,
+      });
+    }
+    return out;
   }, [geoJsonData]);
 
   // ── Map badges at the center of every claimed division: the clan crest
@@ -1715,6 +1866,116 @@ export default function Domains() {
         );
       }
 
+      // ─── Chasse-merit type icons — a row of glyph chips beneath each
+      // division's name. Pickable: clicking one opens the dossier and jumps to
+      // that merit. Sits well below the clan-name logo on claimed divisions,
+      // right under the name label on unclaimed ones.
+      if (chasseIconData.length) {
+        layers.push(
+          new IconLayer({
+            id: 'chasse-type-icons',
+            data: chasseIconData,
+            pickable: true,
+            getPosition: d => d.position,
+            getIcon: d => ({ url: d.url, id: `chasse-chip-${d.meritKey}`, width: 100, height: 100 }),
+            getSize: d => (d.division === selectedDivision ? 18 : 15),
+            sizeUnits: 'pixels',
+            getPixelOffset: d => {
+              // Claimed: an evenly spaced ring around the avatar circle,
+              // opening at the bottom for the clan-name logo — see
+              // chasseRingOffset().
+              if (d.claimed) return chasseRingOffset(d.i, d.count, badgeSize / 2 + 17);
+              // Unclaimed: no circle to ring, so a plain row under the name.
+              const step = 18;
+              return [Math.round((d.i - (d.count - 1) / 2) * step), 9];
+            },
+            parameters: { depthTest: false },
+            updateTriggers: {
+              getPixelOffset: [badgeSize],
+              getSize: [selectedDivision],
+            },
+            onClick: onChasseIconClick,
+          })
+        );
+      }
+
+      // ─── Division name plates. Always on, for every division — the one you
+      // have open just goes BOLD and larger. Two layers because deck.gl's
+      // TextLayer font weight is a layer-level prop, not a per-row accessor.
+      // Offsets clear the merit ring above the badge (claimed) or the merit
+      // row above the centre (unclaimed).
+      const nameOffset = (d, big) => (
+        d.claimed
+          ? [0, -(Math.round(badgeSize / 2) + (big ? 46 : 41))]
+          : [0, big ? -20 : -15]
+      );
+      const otherLabels = divisionLabelData.filter(d => d.division !== selectedDivision);
+      if (otherLabels.length) {
+        layers.push(
+          new TextLayer({
+            id: 'division-name-labels',
+            data: otherLabels,
+            getPosition: d => d.position,
+            getText: d => d.text,
+            // Shrinks as you zoom out so 48 always-on plates stay readable
+            // rather than tiling the whole city.
+            getSize: Math.round(Math.max(10, Math.min(15, 8 + badgeSize * 0.11))),
+            sizeUnits: 'pixels',
+            getColor: [235, 238, 245, 240],
+            fontFamily: '"Playfair Display", Georgia, serif',
+            fontWeight: 400,
+            fontSettings: { sdf: true, buffer: 8 },
+            billboard: true,
+            background: true,
+            getBackgroundColor: [10, 10, 13, 175],
+            backgroundPadding: [7, 4],
+            getPixelOffset: d => nameOffset(d, false),
+            outlineWidth: 2,
+            outlineColor: [0, 0, 0, 200],
+            parameters: { depthTest: false },
+            pickable: false,
+            // NB: no CollisionFilterExtension here — it culled every label in
+            // this layer outright. Names are always on by design anyway; they
+            // shrink with zoom-out via getSize instead.
+            updateTriggers: {
+              getPixelOffset: [badgeSize],
+              getSize: [badgeSize],
+              getText: [selectedDivision],
+            },
+          })
+        );
+      }
+      const selLabel = divisionLabelData.find(d => d.division === selectedDivision);
+      if (selLabel) {
+        layers.push(
+          new TextLayer({
+            id: 'division-name-primary',
+            data: [selLabel],
+            getPosition: d => d.position,
+            getText: d => d.text,
+            getSize: 19,
+            sizeUnits: 'pixels',
+            getColor: [255, 255, 255, 255],
+            fontFamily: '"Playfair Display", Georgia, serif',
+            fontWeight: 700,
+            fontSettings: { sdf: true, buffer: 8 },
+            billboard: true,
+            background: true,
+            getBackgroundColor: [12, 12, 15, 215],
+            backgroundPadding: [9, 5],
+            getPixelOffset: d => nameOffset(d, true),
+            outlineWidth: 2,
+            outlineColor: [0, 0, 0, 220],
+            parameters: { depthTest: false },
+            pickable: false,
+            updateTriggers: {
+              getText: [selectedDivision],
+              getPixelOffset: [badgeSize, selectedDivision],
+            },
+          })
+        );
+      }
+
     } // end if (!cleanMap) — ownership decoration
 
     // ─── Municipality/district grouping overlay (flat, ownership-agnostic) ──
@@ -2101,7 +2362,7 @@ export default function Domains() {
     }
 
     return layers;
-  }, [geoJsonData, selectedDivision, hoveredDivision, hoveredFeature, avatarCache, onDeckHover, onDeckClick, groupOverlayFeatures, groupLabelData, npcFeatures, npcLabelData, clanBadgeData, avatarBadgeData, clanLabelData, abatonBadgeData, abatonFeatures, claimByDiv, badgeSize, badgeOffset, transitPathsSolid, transitPathsDashed, transitStationDots, transitLabelData, catacombPassageTiers, catacombSiteDots, catacombLabelData, necroDrawGroups, necroSiteDots, necroLabelData, cleanMap, onOverlayHover, huntBadgeData, huntingDiffOn, muniOutlinesOn]);
+  }, [geoJsonData, selectedDivision, hoveredDivision, hoveredFeature, avatarCache, onDeckHover, onDeckClick, groupOverlayFeatures, groupLabelData, npcFeatures, npcLabelData, clanBadgeData, avatarBadgeData, clanLabelData, abatonBadgeData, abatonFeatures, claimByDiv, badgeSize, badgeOffset, transitPathsSolid, transitPathsDashed, transitStationDots, transitLabelData, catacombPassageTiers, catacombSiteDots, catacombLabelData, necroDrawGroups, necroSiteDots, necroLabelData, cleanMap, onOverlayHover, huntBadgeData, huntingDiffOn, chasseIconData, onChasseIconClick, divisionLabelData, muniOutlinesOn]);
 
   // ── Error state ─────────────────────────────────────────
   if (!geoJsonData) {
@@ -2189,28 +2450,10 @@ export default function Domains() {
             style={{ width: '100%', height: '100%' }}
             onLoad={() => setMapReady(true)}
           >
-            {/* Native MapLibre labels — superior text rendering (hidden in clean-map mode) */}
-            {geoJsonData && !cleanMap && (
-              <Source id="domains-labels-src" type="geojson" data={geoJsonData}>
-                <Layer
-                  id="domains-labels"
-                  type="symbol"
-                  layout={{
-                    'text-field': ['concat', ['to-string', ['get', '__division']], ': ', ['get', '__name']],
-                    'text-size': 11,
-                    'text-anchor': 'center',
-                    'text-allow-overlap': false,
-                    'text-ignore-placement': false,
-                    'text-font': ['Open Sans Regular']
-                  }}
-                  paint={{
-                    'text-color': 'rgba(255, 255, 255, 0.85)',
-                    'text-halo-color': 'rgba(0, 0, 0, 0.9)',
-                    'text-halo-width': 2
-                  }}
-                />
-              </Source>
-            )}
+            {/* Division names are NOT a maplibre symbol layer any more — they're
+                deck.gl TextLayers (`division-name-labels` / `-primary`). A
+                maplibre label renders behind the deck canvas, so the extruded
+                polygons painted straight over it. See the deckLayers memo. */}
           </MapGL>
         </DeckGL>
 
@@ -2669,7 +2912,7 @@ export default function Domains() {
                   <span className={`material-symbols-outlined ${styles.dossierTabIcon}`}>menu_book</span>
                   <span className={styles.dossierTabLabel}>Codex</span>
                 </button>
-                {isCourt && (
+                {canManageDomains && (
                   <button
                     className={`${styles.dossierTab} ${activeTab === 'court' ? styles.dossierTabActive : ''}`}
                     onClick={() => setActiveTab('court')}
@@ -2747,13 +2990,7 @@ export default function Domains() {
                               style={{ '--chasse-color': m.color }}
                               title={m.name}
                               data-name={m.name}
-                              onClick={() => {
-                                const el = document.getElementById(`chasse-card-${m.key}`);
-                                if (!el) return;
-                                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                el.classList.add(styles.chasseCardFlash);
-                                setTimeout(() => el.classList.remove(styles.chasseCardFlash), 1100);
-                              }}
+                              onClick={() => scrollToChasseCard(m.key)}
                             >
                               <FaGlyph icon={m.icon} size={15} />
                             </button>
@@ -2802,7 +3039,7 @@ export default function Domains() {
                             </div>
                             <span className={styles.requestBy}>petitioned by {r.requester_name}</span>
                             {r.message && <p className={styles.requestMessage}>&ldquo;{r.message}&rdquo;</p>}
-                            {isCourt && (
+                            {canManageDomains && (
                               <div className={styles.requestActions}>
                                 <button
                                   className={styles.approveBtn}
@@ -2851,7 +3088,7 @@ export default function Domains() {
                     )}
 
                     {/* ── Court: direct assign / unassign ── */}
-                    {isCourt && selectedDivisionInfo && (
+                    {canManageDomains && selectedDivisionInfo && (
                       <div className={styles.courtAssignSection}>
                         <span className={styles.courtAssignHeading}>
                           <span className="material-symbols-outlined" style={{ fontSize: 15, verticalAlign: 'middle', marginRight: 5 }}>gavel</span>
@@ -2936,6 +3173,24 @@ export default function Domains() {
                         )}
                       </div>
                     )}
+
+                    {/* ── Read-only: who can give and take domains anywhere on
+                         the map (plus admins). Managed in Admin → Domains. ── */}
+                    <div className={styles.stewardRoster}>
+                      <span className={styles.statLabel}>Who can give and take domains</span>
+                      {domainStewards.length === 0 ? (
+                        <p className={styles.stewardRosterEmpty}>Administrators only.</p>
+                      ) : (
+                        <ul className={styles.stewardRosterList}>
+                          {domainStewards.map(s => (
+                            <li key={s.user_id} className={styles.stewardRosterItem}>
+                              <span className={styles.stewardRosterName}>{s.name}</span>
+                              {s.clan && <span className={styles.stewardRosterClan}>{s.clan}</span>}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
                   </>
                 )}
 
@@ -2954,7 +3209,7 @@ export default function Domains() {
                               <span className={styles.codexTime}>{relTime(e.created_at)}</span>
                             </div>
                             <p className={styles.codexText}>{e.text}</p>
-                            {(e.user_id === user?.id || isCourt) && (
+                            {(e.user_id === user?.id || canManageDomains) && (
                               <button
                                 className={styles.codexDeleteBtn}
                                 onClick={() => deleteCodexMutation.mutate(e.id)}
@@ -2984,7 +3239,7 @@ export default function Domains() {
                   </>
                 )}
 
-                {activeTab === 'court' && isCourt && (
+                {activeTab === 'court' && canManageDomains && (
                   <>
                     {isProblemsLoading ? (
                       <p className={styles.dossierEmpty}>Loading incident log…</p>

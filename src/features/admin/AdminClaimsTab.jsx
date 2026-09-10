@@ -1,469 +1,134 @@
-// src/pages/AdminClaimsTab.jsx
-import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react';
+// src/features/admin/AdminClaimsTab.jsx
+//
+// The "Domains" admin tab. Assigning / releasing divisions and ruling on claim
+// petitions all happen on the player-facing Domains map now (the dossier), so
+// this tab is exactly one thing: the roster of DOMAIN STEWARDS — the non-admin
+// users allowed to do that.
+//
+// A steward can act on EVERY division, not a specific one. Admins can always do
+// all of it and are never stored here.
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import styles from '../../styles/Admin.module.css';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
-import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
-import MiniSearch from 'minisearch';
-import Avatar from '../../components/Avatar';
-import { DIVISION_NAMES } from '../../constants/divisionNames';
+import api from '../../core/api';
 
-/* ==================== CLAIMS — Split View + MAP (Domains clickability) ==================== */
+export default function AdminClaimsTab({ users = [] }) {
+  const [managers, setManagers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [pick, setPick] = useState('');
+  const [err, setErr] = useState('');
 
-export default function AdminClaimsTab({ claims, characters, npcs = [], onSave, onDelete }) {
-  const [filter, setFilter] = useState('');
-  const [onlyUnowned, setOnlyUnowned] = useState(false);
-  const [sortAsc, setSortAsc] = useState(true);
-  const [selected, setSelected] = useState(null); 
-  const [edits, setEdits] = useState({}); 
-  const [domainsRaw, setDomainsRaw] = useState(null);
-  const [loadingMap, setLoadingMap] = useState(true);
-
-  useEffect(() => {
-    let alive = true;
-    import('../../data/Domains.json')
-      .then((mod) => {
-        if (alive) {
-          setDomainsRaw(mod.default || mod);
-          setLoadingMap(false);
-        }
-      })
-      .catch((err) => {
-        console.error('Failed to load map data:', err);
-        if (alive) setLoadingMap(false);
-      });
-    return () => { alive = false; };
+  const refresh = useCallback(() => {
+    setLoading(true);
+    api.get('/domain-claims/managers')
+      .then(res => setManagers(res.data.managers || []))
+      .catch(e => setErr(e.response?.data?.error || 'Failed to load Domain Stewards'))
+      .finally(() => setLoading(false));
   }, []);
+  useEffect(() => { refresh(); }, [refresh]);
 
-  const [newDraft, setNewDraft] = useState({
-    division: '',
-    color: '#9d7cff',
-    owner_name: '',
-    owner_character_id: '',
-    owner_npc_id: '',
-  });
-
-  const divisionsGeo = useMemo(() => {
-    if (!domainsRaw || !Array.isArray(domainsRaw.features)) return null;
-    return {
-      ...domainsRaw,
-      features: domainsRaw.features.map((f, i) => {
-        const divisionNumber =
-          f?.properties?.division != null ? Number(f.properties.division) : (i + 1);
-        return {
-          ...f,
-          properties: {
-            ...f?.properties,
-            __division: divisionNumber,
-            __name: f?.properties?.name || DIVISION_NAMES[divisionNumber] || `Division ${divisionNumber}`,
-          },
-        };
-      }),
-    };
-  }, [domainsRaw]);
-
-  const bounds = useMemo(() => (divisionsGeo ? L.geoJSON(divisionsGeo).getBounds() : null), [divisionsGeo]);
-  const mapError = useMemo(() => {
-    if (loadingMap) return 'Loading territory map…';
-    return divisionsGeo ? '' : 'Map data not available. Provide a FeatureCollection in /src/data/Domains.json with properties.division.';
-  }, [divisionsGeo, loadingMap]);
-
-  function getRow(c) {
-    return edits[c.division] ?? {
-      owner_name: c.owner_name || '',
-      color: c.color || 'var(--glass-border)',
-      owner_character_id: c.owner_character_id ?? '',
-      owner_npc_id: c.owner_npc_id ?? '',
-    };
-  }
-
-  function resetRow(div) {
-    setEdits(prev => {
-      const next = { ...prev };
-      delete next[div];
-      return next;
-    });
-  }
-
-  const filtered = useMemo(() => {
-    let arr = [...claims];
-    const q = filter.trim();
-    if (q) {
-      const mapped = arr.map(c => ({
-        ...c,
-        __divStr: String(c.division),
-        __charName: characters[c.owner_character_id]?.char_name || ''
-      }));
-      const ms = new MiniSearch({ idField: 'division', fields: ['__divStr', 'owner_name', '__charName'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
-      ms.addAll(mapped);
-      const results = ms.search(q);
-      const idSet = new Set(results.map(r => String(r.id)));
-      arr = arr.filter(c => idSet.has(String(c.division)));
-    }
-    if (onlyUnowned) arr = arr.filter(c => !c.owner_name && !c.owner_character_id);
-    arr.sort((a, b) => (sortAsc ? a.division - b.division : b.division - a.division));
-    return arr;
-  }, [claims, filter, onlyUnowned, sortAsc, characters]);
-
-  const claimByDiv = useMemo(() => {
-    const m = new Map();
-    claims.forEach(c => m.set(Number(c.division), c));
-    return m;
-  }, [claims]);
-
-  const colorForDivision = useCallback(
-    (division) => {
-      const edit = edits[division];
-      if (edit?.color) return edit.color;
-      const base = claimByDiv.get(Number(division))?.color;
-      return base || 'var(--glass-inset)';
-    },
-    [edits, claimByDiv]
+  const stewardIds = useMemo(() => new Set(managers.map(m => m.user_id)), [managers]);
+  const addable = useMemo(
+    () => (users || [])
+      .filter(u => u.role !== 'admin' && !stewardIds.has(u.id))
+      .sort((a, b) => (a.display_name || a.email || '').localeCompare(b.display_name || b.email || '')),
+    [users, stewardIds],
   );
 
-  return (
-    <div className={styles.claimsLayout}>
+  async function add() {
+    const id = Number(pick);
+    if (!Number.isInteger(id)) return;
+    setBusy(true); setErr('');
+    try {
+      const res = await api.post('/domain-claims/managers', { user_id: id });
+      setManagers(res.data.managers || []);
+      setPick('');
+    } catch (e) {
+      setErr(e.response?.data?.error || 'Failed to add steward');
+    } finally {
+      setBusy(false);
+    }
+  }
 
-      {/* MAP PANEL */}
-      <section className={styles.mapMainPanel}>
-        {divisionsGeo ? (
-          <ClaimsMap
-            geo={divisionsGeo}
-            bounds={bounds}
-            selected={selected}
-            onSelect={setSelected}
-            colorForDivision={colorForDivision}
-            claimByDiv={claimByDiv}
-            edits={edits}
-          />
+  async function remove(id) {
+    setBusy(true); setErr('');
+    try {
+      const res = await api.delete(`/domain-claims/managers/${id}`);
+      setManagers(res.data.managers || []);
+    } catch (e) {
+      setErr(e.response?.data?.error || 'Failed to remove steward');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className={styles.stack12} style={{ maxWidth: 720 }}>
+      <div>
+        <h2 className={styles.hl} style={{ margin: 0 }}>Domain Stewards</h2>
+        <p className={styles.subtle} style={{ margin: '0.4rem 0 0', lineHeight: 1.55 }}>
+          The non-admins allowed to run the Athens claims map — approve or deny claim petitions,
+          assign a division to a character or NPC, and release one. A steward can do this on{' '}
+          <b>every division</b>, not just one. Admins can always do all of it and are not listed
+          here. Remove someone and their access is gone immediately.
+        </p>
+      </div>
+
+      <div className={styles.sidePanel} style={{ padding: '1rem' }}>
+        {loading ? (
+          <div className={styles.subtle}>Loading…</div>
+        ) : managers.length === 0 ? (
+          <div className={styles.subtle} style={{ fontStyle: 'italic' }}>
+            No stewards yet — only administrators can manage domains.
+          </div>
         ) : (
-          <div className={styles.loading} style={{ height: '100%' }}>
-            <span className={styles.subtle}>{mapError}</span>
+          <div className={styles.stack12}>
+            {managers.map(m => (
+              <div
+                key={m.user_id}
+                className={styles.row}
+                style={{ justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', paddingBottom: '0.6rem', borderBottom: '1px solid var(--glass-border)' }}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <b style={{ color: 'var(--text-primary)' }}>{m.name}</b>
+                  <small className={styles.subtle} style={{ display: 'block' }}>
+                    {m.account}
+                    {m.clan ? ` · ${m.clan}` : ''}
+                    {m.role === 'courtuser' ? ' · court user' : ''}
+                    {m.granted_by_name ? ` · added by ${m.granted_by_name}` : ''}
+                  </small>
+                </div>
+                <button className={`${styles.btn} ${styles.btnDanger}`} disabled={busy} onClick={() => remove(m.user_id)}>
+                  Remove
+                </button>
+              </div>
+            ))}
           </div>
         )}
-      </section>
 
-      {/* SIDEBAR */}
-      <aside className={styles.controlSidebar}>
-
-        <div className={styles.sidePanel} style={{ flex: 1 }}>
-          <div className={styles.sideHeader}>
-            <input
-              className={styles.input}
-              placeholder="Search #division / owner…"
-              value={filter}
-              onChange={e => setFilter(e.target.value)}
-              style={{ flex: 1 }}
-            />
-            <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => setSortAsc(s => !s)} title="Sort">
-              {sortAsc ? '↓' : '↑'}
-            </button>
-          </div>
-
-          <div className={styles.claimFilterRow}>
-            <label className={styles.claimFilterToggle}>
-              <input type="checkbox" checked={onlyUnowned} onChange={e => setOnlyUnowned(e.target.checked)} style={{ width: '18px', height: '18px', accentColor: 'var(--accent-purple)' }} />
-              <span>Unowned only</span>
-            </label>
-            <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => setSelected('new')}>
-              + New Claim
-            </button>
-          </div>
-
-          <div className={styles.claimListBody}>
-            {filtered.map(c => {
-              const isActive = selected === c.division;
-              return (
-                <button
-                  key={c.division}
-                  onClick={() => setSelected(Number(c.division))}
-                  className={`${styles.claimListItem} ${isActive ? styles.claimListItemActive : ''}`}
-                >
-                  <span className={styles.claimListItemDivision}>#{c.division}</span>
-                  <div className={styles.claimListItemInfo}>
-                    <b className={styles.claimListItemOwner}>{c.is_abaton ? 'Abaton' : c.owner_name || '—'}</b>
-                    <small className={styles.claimListItemChar}>
-                      {c.is_abaton ? '—' : c.owner_character_id ? (characters[c.owner_character_id]?.char_name || 'unknown char') : c.owner_npc_id ? (npcs.find(n => n.id === c.owner_npc_id)?.name || 'unknown NPC') : 'no character/NPC'}
-                    </small>
-                  </div>
-                  <span className={styles.claimListItemSwatch} style={{ background: colorForDivision(c.division) }} />
-                </button>
-              );
-            })}
-            {!filtered.length && <div className={styles.claimListEmpty}>No claims match your filters.</div>}
-          </div>
-        </div>
-
-        {/* EDITOR AREA */}
-        <section className={styles.claimEditorPanel}>
-
-          {selected === 'new' && (
-            <div className={styles.stack12}>
-              <h3 className={styles.hl} style={{ margin: 0, paddingBottom: '0.75rem', borderBottom: '1px solid var(--glass-border)' }}>Create Claim</h3>
-              <div className={styles.formGrid} style={{ gridTemplateColumns: '1fr 1fr' }}>
-                <label className={styles.labeledInput}><span>Division #</span><input className={styles.input} value={newDraft.division} onChange={e => setNewDraft(d => ({ ...d, division: e.target.value }))} placeholder="e.g., 12" /></label>
-                <label className={styles.labeledInput}><span>Owner Name</span><input className={styles.input} value={newDraft.owner_name} onChange={e => setNewDraft(d => ({ ...d, owner_name: e.target.value }))} placeholder="FirstName LastName" disabled={newDraft.is_abaton} /></label>
-              </div>
-              <div className={styles.formGrid} style={{ gridTemplateColumns: 'auto 1fr' }}>
-                <label className={styles.labeledInput} style={{ flexDirection: 'row', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={newDraft.is_abaton || false} onChange={e => setNewDraft(d => ({ ...d, is_abaton: e.target.checked, owner_name: e.target.checked ? 'Abaton' : '', owner_character_id: '', owner_npc_id: '' }))} style={{ width: '18px', height: '18px', accentColor: 'var(--accent-purple)' }} />
-                  <span>Is Abaton</span>
-                </label>
-              </div>
-              <div className={styles.formGrid} style={{ gridTemplateColumns: 'auto 1fr' }}>
-                <label className={styles.labeledInput}><span>Color</span>
-                  <input type="color" className={styles.claimColorInput} value={newDraft.color} onChange={e => setNewDraft(d => ({ ...d, color: e.target.value }))} />
-                </label>
-                <label className={styles.labeledInput}><span>Owner Character</span>
-                  <select className={styles.select} value={newDraft.owner_character_id} disabled={newDraft.is_abaton} onChange={e => setNewDraft(d => ({ ...d, owner_character_id: e.target.value, owner_npc_id: '' }))}>
-                    <option value="">— none —</option>
-                    {Object.entries(characters).map(([cid, info]) => <option key={cid} value={cid}>{`${cid} — ${info.char_name}`}</option>)}
-                  </select>
-                </label>
-                <label className={styles.labeledInput}><span>Owner NPC</span>
-                  <select className={styles.select} value={newDraft.owner_npc_id} disabled={newDraft.is_abaton} onChange={e => setNewDraft(d => ({ ...d, owner_npc_id: e.target.value, owner_character_id: '' }))}>
-                    <option value="">— none —</option>
-                    {npcs.map(n => <option key={n.id} value={n.id}>{`${n.id} — ${n.name}`}</option>)}
-                  </select>
-                </label>
-              </div>
-              <div className={styles.row} style={{ marginTop: '0.75rem' }}>
-                <button className={`${styles.btn} ${styles.btnPrimary}`} style={{ flex: 1 }} onClick={() => {
-                  const div = Number(newDraft.division);
-                  if (!Number.isInteger(div)) return alert('Division must be an integer');
-                  onSave(div, { owner_name: newDraft.owner_name || (newDraft.is_abaton ? 'Abaton' : 'Admin Set'), color: newDraft.color, owner_character_id: newDraft.owner_character_id === '' ? null : Number(newDraft.owner_character_id), owner_npc_id: newDraft.owner_npc_id === '' ? null : Number(newDraft.owner_npc_id), is_abaton: !!newDraft.is_abaton });
-                  setNewDraft({ division: '', color: '#9d7cff', owner_name: '', owner_character_id: '', owner_npc_id: '', is_abaton: false });
-                  setSelected(div);
-                }}>Save Claim</button>
-                <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => setSelected(null)}>Cancel</button>
-              </div>
-            </div>
-          )}
-
-          {typeof selected === 'number' && (
-            <ExistingClaimEditor
-              selected={selected}
-              claims={claims}
-              characters={characters}
-              npcs={npcs}
-              getRow={(c) => (edits[c.division] ?? { owner_name: c.owner_name || '', color: c.color || 'var(--glass-border)', owner_character_id: c.owner_character_id ?? '', owner_npc_id: c.owner_npc_id ?? '', is_abaton: !!c.is_abaton })}
-              setRow={(c, patch) => setEdits(prev => ({ ...prev, [c.division]: { ...getRow(c), ...patch } }))}
-              resetRow={(div) => resetRow(div)}
-              onSave={(div, patch) => onSave(div, patch)}
-              onDelete={(div) => onDelete(div)}
-            />
-          )}
-
-          {selected === null && (
-            <div className={styles.claimEmptyState}>
-              <span style={{ fontSize: '3rem' }}>🗺️</span>
-              <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>Select a Claim</h3>
-              <p className={styles.subtle} style={{ margin: 0 }}>Click a division on the map or select from the list above.</p>
-            </div>
-          )}
-        </section>
-      </aside>
-    </div>
-  );
-}
-
-function ExistingClaimEditor({ selected, claims, characters, npcs = [], getRow, setRow, resetRow, onSave, onDelete }) {
-  const selectedClaim = claims.find(c => Number(c.division) === Number(selected));
-  if (!selectedClaim) return null;
-
-  const row = getRow(selectedClaim);
-  const isDirty = JSON.stringify(row) !== JSON.stringify({ owner_name: selectedClaim.owner_name || '', color: selectedClaim.color || 'var(--glass-border)', owner_character_id: selectedClaim.owner_character_id ?? '', owner_npc_id: selectedClaim.owner_npc_id ?? '', is_abaton: !!selectedClaim.is_abaton });
-
-  const baseUrl = import.meta.env.VITE_API_URL || '/api';
-  const charInfo = row.owner_character_id ? characters[row.owner_character_id] : null;
-  const previewUserId = charInfo?.user_id ? Number(charInfo.user_id) : null;
-  const previewCharName = charInfo?.char_name || null;
-  const previewNpcId = !row.owner_character_id && row.owner_npc_id ? Number(row.owner_npc_id) : null;
-  const previewNpcName = previewNpcId ? (npcs.find(n => n.id === previewNpcId)?.name || 'NPC') : null;
-  const hasPreview = previewUserId || previewNpcId;
-
-  return (
-    <div className={styles.stack12}>
-      <div className={styles.row} style={{ gap: '1rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.75rem' }}>
-        <div className={styles.claimSwatchLarge} style={{ background: row.color }} />
-        <div>
-          <h3 style={{ margin: 0, fontSize: '1.125rem', color: 'var(--text-primary)' }}>Division #{selectedClaim.division}</h3>
-          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-            {selectedClaim.owner_character_id
-              ? `Char ID ${selectedClaim.owner_character_id} · ${characters[selectedClaim.owner_character_id]?.char_name || 'unknown char'}`
-              : selectedClaim.owner_npc_id
-                ? `NPC ID ${selectedClaim.owner_npc_id} · ${npcs?.find(n => n.id === selectedClaim.owner_npc_id)?.name || 'unknown NPC'}`
-                : 'No character/NPC linked'}
-          </div>
-        </div>
-      </div>
-
-      {/* Avatar Preview */}
-      {hasPreview && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', background: 'var(--glass-inset)', borderRadius: 'var(--radius-md)', marginBottom: '0.25rem' }}>
-          <Avatar
-            userId={previewUserId}
-            npcId={previewNpcId}
-            size={52}
-            style={{ borderRadius: '50%', border: '2px solid var(--accent-purple)', flexShrink: 0 }}
-            fallback="/img/ATT-logo(1).webp"
-          />
-          <div>
-            <div style={{ fontWeight: 'bold', color: 'var(--text-primary)', fontSize: '0.9rem' }}>
-              {row.owner_name || previewCharName || previewNpcName || 'Owner'}
-            </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              {previewNpcId
-                ? `NPC #${previewNpcId} — ${previewNpcName || 'unknown'}`
-                : `Character #${row.owner_character_id} (User #${previewUserId})`}
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className={styles.formGrid} style={{ gridTemplateColumns: 'auto 1fr' }}>
-        <label className={styles.labeledInput} style={{ flexDirection: 'row', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-          <input type="checkbox" checked={row.is_abaton || false} onChange={e => setRow(selectedClaim, { is_abaton: e.target.checked, owner_name: e.target.checked ? 'Abaton' : '', owner_character_id: '', owner_npc_id: '' })} style={{ width: '18px', height: '18px', accentColor: 'var(--accent-purple)' }} />
-          <span>Is Abaton</span>
-        </label>
-      </div>
-
-      <div className={styles.formGrid} style={{ gridTemplateColumns: '1fr 1fr' }}>
-        <label className={styles.labeledInput}><span>Owner Name</span><input className={styles.input} value={row.owner_name} disabled={row.is_abaton} onChange={e => setRow(selectedClaim, { owner_name: e.target.value })} /></label>
-        <label className={styles.labeledInput}><span>Owner Character</span>
-          <select className={styles.select} value={row.owner_character_id} disabled={row.is_abaton} onChange={e => setRow(selectedClaim, { owner_character_id: e.target.value, owner_npc_id: '' })}>
-            <option value="">— none —</option>
-            {Object.entries(characters).map(([cid, info]) => <option key={cid} value={cid}>{`${cid} — ${info.char_name}`}</option>)}
+        <div className={styles.row} style={{ gap: '0.5rem', marginTop: '1rem' }}>
+          <select
+            className={styles.select}
+            value={pick}
+            onChange={e => setPick(e.target.value)}
+            style={{ flex: 1, minWidth: 0 }}
+          >
+            <option value="">— choose a user to make a steward —</option>
+            {addable.map(u => (
+              <option key={u.id} value={u.id}>
+                {(u.display_name || u.email)}
+                {u.char_name ? ` (${u.char_name})` : ''}
+                {u.role === 'courtuser' ? ' — court' : ''}
+              </option>
+            ))}
           </select>
-        </label>
-        <label className={styles.labeledInput}><span>Owner NPC</span>
-          <select className={styles.select} value={row.owner_npc_id} disabled={row.is_abaton} onChange={e => setRow(selectedClaim, { owner_npc_id: e.target.value, owner_character_id: '' })}>
-            <option value="">— none —</option>
-            {npcs.map(n => <option key={n.id} value={n.id}>{`${n.id} — ${n.name}`}</option>)}
-          </select>
-        </label>
-      </div>
+          <button className={`${styles.btn} ${styles.btnPrimary}`} disabled={!pick || busy} onClick={add}>
+            Add Steward
+          </button>
+        </div>
 
-      <div className={styles.formGrid} style={{ gridTemplateColumns: 'auto 1fr' }}>
-        <label className={styles.labeledInput}><span>Color</span>
-          <input type="color" className={styles.claimColorInput} value={row.color} onChange={e => setRow(selectedClaim, { color: e.target.value })} />
-        </label>
-        <label className={styles.labeledInput}><span>Hex Code</span>
-          <input className={`${styles.input} ${styles.inputMono}`} value={row.color} onChange={e => setRow(selectedClaim, { color: e.target.value })} placeholder="#RRGGBB" />
-        </label>
-      </div>
-
-      <div className={styles.row} style={{ marginTop: '0.75rem' }}>
-        <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => {
-          onSave(Number(selectedClaim.division), { owner_name: row.owner_name || (row.is_abaton ? 'Abaton' : 'Admin Set'), color: row.color, owner_character_id: row.owner_character_id === '' ? null : Number(row.owner_character_id), owner_npc_id: row.owner_npc_id === '' ? null : Number(row.owner_npc_id), is_abaton: !!row.is_abaton });
-          resetRow(Number(selectedClaim.division));
-        }}>Save</button>
-        <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => resetRow(Number(selectedClaim.division))} disabled={!isDirty}>Reset</button>
-        <button className={`${styles.btn} ${styles.btnDanger}`} style={{ marginLeft: 'auto' }} onClick={() => {
-          if (window.prompt(`Type DELETE to remove claim for division #${selectedClaim.division}`) === 'DELETE') onDelete(Number(selectedClaim.division));
-        }}>Delete</button>
+        {err && <div style={{ color: 'var(--accent-red, #f87171)', fontSize: '0.85rem', marginTop: '0.6rem' }}>{err}</div>}
       </div>
     </div>
-  );
-}
-
-function ClaimsMap({ geo, bounds, selected, onSelect, colorForDivision, claimByDiv, edits }) {
-  const mapRef = useRef(null);
-  const geoRef = useRef(null);
-
-  const numOr = (v, fb) => (Number.isFinite(parseFloat(v)) ? parseFloat(v) : fb);
-
-  const style = useCallback((feature) => {
-    const n = feature?.properties?.__division;
-    const claim = claimByDiv.get(n);
-    const isSelected = Number(selected) === Number(n);
-    const fill = colorForDivision(n);
-    const hasUnsaved = !!(edits && edits[n]);
-    const baseOpacity = (claim || hasUnsaved) ? 0.60 : numOr(feature?.properties?.['fill-opacity'], 0.35);
-
-    return {
-      color: isSelected ? 'var(--accent-purple)' : (claim?.color || feature?.properties?.stroke || 'var(--border-color)'),
-      weight: isSelected ? 3.5 : 1.5,
-      opacity: numOr(feature?.properties?.['stroke-opacity'], 1),
-      fillColor: fill,
-      fillOpacity: isSelected ? Math.min(baseOpacity + 0.25, 0.9) : baseOpacity,
-      dashArray: isSelected ? '' : '4',
-    };
-  }, [selected, claimByDiv, colorForDivision, edits]);
-
-  const onEach = useCallback((feature, layer) => {
-    const n = feature?.properties?.__division;
-    const name = feature?.properties?.__name || `Division ${n}`;
-    const claim = claimByDiv.get(n);
-
-    layer.on({
-      mouseover: (e) => {
-        if (Number(selected) !== Number(n)) {
-          e.target.setStyle({ weight: 3, fillOpacity: Math.min(style(e.target.feature).fillOpacity + 0.15, 0.85), dashArray: '', color: 'var(--accent-purple)' });
-          if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) layer.bringToFront();
-        }
-      },
-      mouseout: (e) => { if (Number(selected) !== Number(n) && geoRef.current) geoRef.current.resetStyle(e.target); },
-      click: (e) => {
-        L.DomEvent.stopPropagation(e);
-        if (mapRef.current) mapRef.current.fitBounds(e.target.getBounds(), { padding: [40, 40], maxZoom: 15, duration: 0.5 });
-        onSelect(n);
-        e.target.bringToFront();
-      },
-    });
-
-    layer.bindTooltip(`${n}: ${name}`, { permanent: true, direction: 'center', className: 'mapGlassTooltip', opacity: 0.9 });
-
-    const escapeHtml = (s = '') => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-    
-    // Glassy Popup Styling
-    const popupHtml = `
-      <div style="background: rgba(15,15,20,0.9); backdrop-filter: blur(8px); padding: 12px; border-radius: 8px; border: 1px solid rgba(157, 124, 255, 0.4); color: var(--text-color); box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
-        <b style="color: #9d7cff; font-size: 1.1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px; display: block; margin-bottom: 8px;">Division ${n}: ${escapeHtml(name)}</b>
-        ${claim ? `
-          <div style="margin-bottom: 4px; color: var(--text-muted);">Owner: <strong style="color: var(--text-color);">${escapeHtml(claim.owner_name || '')}</strong></div>
-          ${claim.color ? `<div style="display: flex; align-items: center; gap: 8px; color: var(--text-muted);">Color: <span style="display:inline-block;width:14px;height:14px;background:${escapeHtml(claim.color)};border-radius:4px;border:1px solid rgba(255,255,255,0.3);box-shadow: 0 0 5px ${escapeHtml(claim.color)}"></span><code>${escapeHtml(claim.color)}</code></div>` : ''}
-        ` : `<div style="color: #a8a8b3; font-style: italic;">Unclaimed Territory</div>`}
-      </div>
-    `;
-    
-    layer.bindPopup(popupHtml, { closeButton: false, className: 'glassPopupWrapper' });
-  }, [claimByDiv, onSelect, selected, style]);
-
-  useEffect(() => { if (bounds && mapRef.current) try { if (bounds.isValid()) mapRef.current.fitBounds(bounds, { padding: [16, 16] }); } catch (e) {} }, [bounds]);
-  useEffect(() => {
-    if (!geoRef.current || !mapRef.current || !selected) return;
-    const layer = (geoRef.current.getLayers?.() || []).find(l => l.feature?.properties?.__division === Number(selected));
-    if (layer) { mapRef.current.fitBounds(layer.getBounds(), { padding: [40, 40], maxZoom: 15, duration: 0.5 }); layer.openPopup(); }
-  }, [selected]);
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    const handleClickOutside = (e) => { if (e.originalEvent?.target?.classList?.contains('leaflet-container') || e.originalEvent?.target?.classList?.contains('leaflet-tile')) onSelect(null); };
-    map.on('click', handleClickOutside);
-    return () => { map.off('click', handleClickOutside); };
-  }, [onSelect]);
-
-  const key = useMemo(() => `geo-${selected}-${claimByDiv.size}-${edits ? Object.keys(edits).length : 0}`, [selected, claimByDiv, edits]);
-
-return (
-    <>
-      <style>{`
-        .leaflet-popup-content-wrapper { background: transparent !important; box-shadow: none !important; padding: 0 !important; }
-        .leaflet-popup-tip { display: none !important; }
-        .mapGlassTooltip { background: rgba(0,0,0,0.6) !important; border: 1px solid rgba(255,255,255,0.1) !important; color: var(--text-color) !important; backdrop-filter: blur(4px) !important; font-weight: bold; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.5) !important; }
-      `}</style>
-      <MapContainer 
-        className={styles.mapCanvas} 
-        whenCreated={(m) => { mapRef.current = m; }} 
-        center={[37.975, 23.735]} /* Hardcoded Athens coordinates */
-        zoom={13} /* Increased from 12 to start more zoomed in */
-        scrollWheelZoom 
-        style={{ height: '100%', width: '100%', background: '#050507' }}
-      >
-        <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" attribution="&copy; OpenStreetMap contributors &copy; CARTO" />
-        <GeoJSON key={key} data={geo} ref={geoRef} style={style} onEachFeature={onEach} />
-      </MapContainer>
-    </>
   );
 }

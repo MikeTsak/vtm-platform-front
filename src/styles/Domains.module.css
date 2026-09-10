@@ -1991,6 +1991,59 @@
 .requestSubmitBtn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* ── Court Assignment block (courtuser / admin only) ── */
+.stewardRoster {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
+}
+
+.stewardRosterEmpty {
+  margin: 2px 0 0;
+  font-size: 0.8rem;
+  font-style: italic;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.stewardRosterList {
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.stewardRosterItem {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  background: color-mix(in srgb, var(--surface-color) 60%, transparent);
+  font-size: 0.8rem;
+}
+
+.stewardRosterName {
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.stewardRosterClan {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.stewardRosterHint {
+  margin: 4px 0 0;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
 .courtAssignSection {
   display: flex;
   flex-direction: column;
