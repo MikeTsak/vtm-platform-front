@@ -18,6 +18,9 @@
 .env.test.local
 .env.production.local
 
+# deploy — real FTP credentials, never commit (see deploy.config.example.json)
+deploy.config.json
+
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

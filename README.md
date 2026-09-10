@@ -68,6 +68,23 @@ npm run build
 ```
 Output is written to the `build/` directory, ready for deployment to a static web host.
 
+### Deploy (FTP → Plesk)
+```bash
+npm run deploy          # build, then upload build/ to the FTP target
+npm run deploy:nobuild  # upload the existing build/ without rebuilding
+npm run deploy:dry      # connect and show what would change, upload nothing
+npm run deploy:force    # build, then re-upload every file (ignore size match)
+```
+First-time setup: copy `deploy.config.example.json` to `deploy.config.json`
+(gitignored) and fill in the FTP host / user / password.
+
+The deploy is **non-destructive** — it only creates or overwrites the files that
+exist in `build/`, and never deletes anything on the server. Other files in the
+web root (PHP helpers, `.htaccess`, uploads) and old hashed asset chunks are left
+in place. Unchanged files are skipped by size comparison; HTML and the dynamic
+root files (`manifest.json`, `sw.js`, …) are always re-uploaded, HTML last.
+Progress is shown with per-file and total progress bars. See `scripts/deploy.mjs`.
+
 ## Configuration
 
 Create a `.env` file in the repository root:
@@ -173,8 +190,8 @@ This frontend works in conjunction with:
 
 - `npm start` - Runs the development server with hot reload
 - `npm run build` - Creates production-optimized build in `build/`
-- `npm test` - Launches Jest test runner (Create React App default)
-- `npm run eject` - **Use with caution**: Removes CRA and exposes build configuration
+- `npm run deploy` - Builds and uploads `build/` to the FTP target (see Deploy section)
+- `npm run deploy:dry` - Shows what a deploy would change without uploading
 
 ## Notes
 
