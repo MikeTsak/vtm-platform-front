@@ -10,6 +10,7 @@ import _character_view_loading from './character-view-loading.bones.json'
 import _court_hierarchy from './court-hierarchy.bones.json'
 import _domains_page from './domains-page.bones.json'
 import _downtimes_page from './downtimes-page.bones.json'
+import _feeding_gate from './feeding-gate.bones.json'
 import _home_page from './home-page.bones.json'
 import _news_page from './news-page.bones.json'
 import _premonitions_page from './premonitions-page.bones.json'
@@ -25,6 +26,7 @@ registerBones({
   "court-hierarchy": _court_hierarchy,
   "domains-page": _domains_page,
   "downtimes-page": _downtimes_page,
+  "feeding-gate": _feeding_gate,
   "home-page": _home_page,
   "news-page": _news_page,
   "premonitions-page": _premonitions_page,

@@ -3,32 +3,36 @@
 import { registerBones } from 'boneyard-js'
 import { configureBoneyard } from 'boneyard-js/react'
 
-import _character_view_loading from './character-view-loading.bones.json'
 import _downtimes_page from './downtimes-page.bones.json'
-import _court_hierarchy from './court-hierarchy.bones.json'
+import _feeding_gate from './feeding-gate.bones.json'
+import _admin_users_tab from './admin-users-tab.bones.json'
 import _announcements_view from './announcements-view.bones.json'
+import _app_loading from './app-loading.bones.json'
 import _boons_page from './boons-page.bones.json'
+import _character_view_loading from './character-view-loading.bones.json'
+import _court_hierarchy from './court-hierarchy.bones.json'
 import _domains_page from './domains-page.bones.json'
+import _home_page from './home-page.bones.json'
 import _news_page from './news-page.bones.json'
+import _premonitions_page from './premonitions-page.bones.json'
 import _schrecknet_page from './schrecknet-page.bones.json'
 import _surfaceweb_page from './surfaceweb-page.bones.json'
-import _admin_users_tab from './admin-users-tab.bones.json'
-import _premonitions_page from './premonitions-page.bones.json'
-import _home_page from './home-page.bones.json'
 
 configureBoneyard({"color":"#222222","darkColor":"#222222","animate":"shimmer","shimmerColor":"#333333","darkShimmerColor":"#333333"})
 
 registerBones({
-  "character-view-loading": _character_view_loading,
   "downtimes-page": _downtimes_page,
-  "court-hierarchy": _court_hierarchy,
+  "feeding-gate": _feeding_gate,
+  "admin-users-tab": _admin_users_tab,
   "announcements-view": _announcements_view,
+  "app-loading": _app_loading,
   "boons-page": _boons_page,
+  "character-view-loading": _character_view_loading,
+  "court-hierarchy": _court_hierarchy,
   "domains-page": _domains_page,
+  "home-page": _home_page,
   "news-page": _news_page,
+  "premonitions-page": _premonitions_page,
   "schrecknet-page": _schrecknet_page,
   "surfaceweb-page": _surfaceweb_page,
-  "admin-users-tab": _admin_users_tab,
-  "premonitions-page": _premonitions_page,
-  "home-page": _home_page,
 })

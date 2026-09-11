@@ -1,0 +1,496 @@
+/* Feeding.module.css — the hunting gate in front of the downtimes page.
+   Deliberately does not reuse the Actions-red / Projects-blue tokens from
+   DownTimes.module.css (--primary / --proj-blue) — those mean something
+   specific there. This uses the general theme tint instead.
+
+   Icon badges and the outcome banner tint themselves off `currentColor` via
+   color-mix, so the same badge markup reads correctly in the theme tint,
+   inside a colored outcome banner, or inside a division row's safety dot,
+   without a matrix of tone classes. */
+
+.gate {
+  position: relative;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 1.85rem;
+  margin-bottom: 2rem;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 24px -12px rgba(0, 0, 0, 0.45);
+}
+
+.fedBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  background: color-mix(in srgb, var(--color-success, #00e676) 7%, var(--glass-bg));
+  border: 1px solid color-mix(in srgb, var(--color-success, #00e676) 30%, var(--glass-border));
+  border-radius: var(--radius-md);
+  padding: 1rem 1.25rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 6px 16px -10px rgba(0, 0, 0, 0.4);
+}
+
+.fedBannerLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--color-success, #00e676);
+}
+
+.fedBannerIcon {
+  color: inherit;
+}
+
+.title {
+  position: relative;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--tint);
+  margin: 0 0 0.9rem 0;
+  padding-bottom: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+.title::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 3.25rem;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, currentColor, transparent);
+}
+
+.subtitle {
+  color: var(--text-secondary, rgba(255,255,255,0.65));
+  font-size: 0.95rem;
+  margin: 0 0 1.25rem 0;
+  line-height: 1.5;
+}
+
+/* ── Icon badges — shaped container behind an FaGlyph, tinted from
+   whatever currentColor the surrounding element already set. ────────── */
+.iconBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.15rem;
+  height: 2.15rem;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: color-mix(in srgb, currentColor 15%, transparent);
+  border: 1px solid color-mix(in srgb, currentColor 32%, transparent);
+}
+.iconBadgeSm {
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 8px;
+}
+
+.statChipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.statChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: color-mix(in srgb, var(--tint) 8%, var(--glass-bg));
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  padding: 0.4rem 0.85rem 0.4rem 0.4rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary, rgba(255,255,255,0.8));
+}
+.statChip svg { flex-shrink: 0; }
+.statChipIcon {
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tint) 20%, transparent);
+  color: var(--tint);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.section {
+  background: color-mix(in srgb, var(--glass-bg) 60%, transparent);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 1.1rem 1.15rem;
+  margin-bottom: 1.1rem;
+}
+
+.sectionLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--tint);
+  margin-bottom: 0.7rem;
+  font-weight: 700;
+}
+
+.defaultDomainBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  text-align: left;
+  background: color-mix(in srgb, var(--tint) 10%, transparent);
+  border: 1px solid var(--tint);
+  border-radius: var(--radius-md);
+  padding: 0.9rem 1.1rem;
+  color: var(--text-primary, #fff);
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+.defaultDomainBtn:hover { background: color-mix(in srgb, var(--tint) 18%, transparent); transform: translateY(-1px); }
+.defaultDomainBtn svg { flex-shrink: 0; color: var(--tint); }
+
+.expandLink {
+  background: none;
+  border: none;
+  color: var(--tint);
+  cursor: pointer;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  padding: 0.5rem 0 0 0;
+}
+
+.pickerBox {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  margin-top: 0.65rem;
+  background: var(--glass-inset, rgba(0,0,0,0.15));
+}
+
+.divisionRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid var(--glass-border);
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.15s ease;
+}
+.divisionRow:last-child { border-bottom: none; }
+.divisionRow:hover { background: rgba(255,255,255,0.05); }
+.divisionRowActive {
+  background: color-mix(in srgb, var(--tint) 12%, transparent);
+  box-shadow: inset 3px 0 0 var(--tint);
+}
+
+.safetyDot {
+  width: 0.65rem;
+  height: 0.65rem;
+  margin-top: 0.35rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 5px 1px rgba(0, 0, 0, 0.35);
+}
+
+.divisionInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.divisionName {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+}
+
+.divisionMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+}
+
+.legendNote {
+  font-size: 0.72rem;
+  color: var(--text-secondary, rgba(255,255,255,0.55));
+  margin: 0.6rem 0 0;
+  line-height: 1.5;
+}
+
+/* Safety and Difficulty each get their own continuous color scale (see
+   feedingScales.js) — color/borderColor come from an inline style per pill,
+   so this class only supplies shape. */
+.metricPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  white-space: nowrap;
+}
+
+.distancePill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  color: var(--text-secondary, rgba(255,255,255,0.6));
+  background: rgba(255,255,255,0.05);
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  white-space: nowrap;
+}
+
+/* Chasse merit badges borrow the same --chasse-color custom property the
+   Domains dossier's ChasseCard uses, so a merit reads the same color
+   wherever it shows up in the app. */
+.chasseBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--chasse-color) 55%, transparent);
+  background: color-mix(in srgb, var(--chasse-color) 18%, transparent);
+  color: var(--chasse-color);
+  white-space: nowrap;
+}
+
+.poolChoices {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.poolBtn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 0.65rem 0.7rem 0.65rem 0.9rem;
+  color: var(--text-primary, #fff);
+  cursor: pointer;
+  font-size: 0.88rem;
+  text-align: left;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.poolBtn:hover { background: rgba(255,255,255,0.06); }
+.poolBtnActive {
+  border-color: var(--tint);
+  background: color-mix(in srgb, var(--tint) 10%, transparent);
+  color: var(--tint);
+  font-weight: 600;
+}
+.poolBtnSingle { cursor: default; }
+
+.poolTotal {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: color-mix(in srgb, currentColor 16%, transparent);
+  border-radius: 999px;
+  padding: 0.25rem 0.65rem;
+  font-weight: 700;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+.poolTotal svg { flex-shrink: 0; }
+
+.warningBox {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+  background: color-mix(in srgb, #ff4d4d 7%, var(--glass-bg));
+  border: 1px solid color-mix(in srgb, #ff4d4d 30%, var(--glass-border));
+  border-radius: var(--radius-md);
+  padding: 1rem 1.15rem;
+  font-size: 0.85rem;
+  margin: 1.25rem 0;
+  line-height: 1.5;
+  color: #ffb3b3;
+}
+.warningIcon { flex-shrink: 0; margin-top: 0.1rem; color: #ff6b6b; }
+.warningBox strong { color: #fff; }
+
+.checkboxRow {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-top: 0.9rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  background: rgba(255,255,255,0.02);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.checkboxRow input {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: var(--tint);
+}
+
+.actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+.btnPrimary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: var(--tint);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 0.8rem 1.5rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 0.95rem;
+  box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--tint) 70%, transparent);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.btnPrimary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 20px -6px color-mix(in srgb, var(--tint) 80%, transparent); }
+.btnPrimary:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+.btnPrimary svg { flex-shrink: 0; }
+
+.btnGhost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary, #fff);
+  border-radius: var(--radius-md);
+  padding: 0.8rem 1.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.btnGhost:hover:not(:disabled) { background: rgba(255,255,255,0.06); transform: translateY(-1px); }
+.btnGhost:disabled { opacity: 0.4; cursor: not-allowed; }
+.btnGhost svg { flex-shrink: 0; }
+
+.diceRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0.85rem 0 1.25rem 0;
+}
+
+.die {
+  width: 2.35rem;
+  height: 2.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  border: 1px solid var(--glass-border);
+  background: linear-gradient(155deg, rgba(255,255,255,0.09), rgba(255,255,255,0.015));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 3px 6px -2px rgba(0,0,0,0.4);
+  cursor: default;
+}
+.dieSuccess { border-color: var(--color-success, #00e676); color: var(--color-success, #00e676); }
+.dieHunger { border-color: #d4202e; background: linear-gradient(155deg, rgba(212,32,46,0.22), rgba(212,32,46,0.06)); }
+.dieHungerSuccess { border-color: #d4202e; background: linear-gradient(155deg, rgba(212,32,46,0.38), rgba(212,32,46,0.12)); color: #ff8a8a; }
+.dieSelectable { cursor: pointer; }
+.dieSelectable:hover { transform: translateY(-2px); }
+.dieSelected { outline: 2px solid var(--tint); transform: translateY(-2px); }
+
+.outcomeBanner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: var(--radius-md);
+  padding: 0.9rem 1.15rem;
+  font-weight: 700;
+  font-size: 1.05rem;
+  margin-bottom: 0.85rem;
+  border: 1px solid;
+  box-shadow: 0 6px 16px -10px rgba(0, 0, 0, 0.5);
+}
+.outcomeBestialFailure { background: rgba(139,0,0,0.15); border-color: #8b0000; color: #ff6b6b; }
+.outcomeFailure { background: rgba(255,77,77,0.1); border-color: rgba(255,77,77,0.35); color: #ff8a8a; }
+.outcomeSuccess { background: rgba(0,230,118,0.1); border-color: rgba(0,230,118,0.3); color: var(--color-success, #00e676); }
+.outcomeCritical { background: rgba(0,230,118,0.15); border-color: rgba(0,230,118,0.4); color: var(--color-success, #00e676); }
+.outcomeMessyCritical { background: rgba(255,153,0,0.12); border-color: rgba(255,153,0,0.4); color: #ffb347; }
+
+.deltaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+.deltaChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary, rgba(255,255,255,0.75));
+  background: rgba(255,255,255,0.05);
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+}
+
+.projectedNote {
+  font-size: 0.75rem;
+  font-style: italic;
+  color: var(--text-secondary, rgba(255,255,255,0.5));
+  margin-top: -0.25rem;
+  margin-bottom: 1rem;
+}
+
+/* ── Mobile ─────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .gate { padding: 1.15rem; border-radius: var(--radius-md); }
+  .section { padding: 0.9rem; }
+  .title { font-size: 1.15rem; }
+  .actions { flex-direction: column; }
+  .btnPrimary, .btnGhost { width: 100%; }
+  .divisionRow { align-items: flex-start; }
+  .fedBanner { flex-direction: column; align-items: flex-start; }
+  .deltaRow { gap: 0.5rem; }
+  .die { width: 2.1rem; height: 2.1rem; font-size: 0.88rem; }
+  .statChip { font-size: 0.75rem; padding: 0.3rem 0.65rem 0.3rem 0.3rem; }
+  .poolBtn { padding: 0.6rem 0.6rem 0.6rem 0.8rem; }
+}
+
+@media (max-width: 380px) {
+  .die { width: 1.9rem; height: 1.9rem; font-size: 0.82rem; }
+  .iconBadge { width: 1.9rem; height: 1.9rem; }
+}

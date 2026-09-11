@@ -12,6 +12,8 @@ import { symlogo, textlogo, clanTint } from '../data/clans';
 import { AuthCtx } from '../core/AuthContext';
 import { useTheme } from '../core/ThemeContext';
 import Loading from '../ui/Loading';
+import FaGlyph from '../ui/FaGlyph';
+import { FEEDING_ICONS } from '../data/feedingIcons';
 
 /* ── Relative time ──────────────────────────────────────────────── */
 const formatTimestamp = (ts) => {
@@ -159,6 +161,7 @@ export default function Home() {
   const [shards, setShards] = useState([]);
   const [activeFeedTab, setActiveFeedTab] = useState('chronicle');
   const [showRsvp, setShowRsvp] = useState(false);
+  const [incidents, setIncidents] = useState([]);
   const overlayRef = useRef(null);
   const nav = useNavigate();
 
@@ -275,6 +278,21 @@ export default function Home() {
       }
     })();
   }, [authUser, nav]);
+
+  /* ── Domain incidents (someone else's hunt went wrong in your domain) ── */
+  useEffect(() => {
+    if (authUser?.role === 'admin') return;
+    let live = true;
+    api.get('/domain-incidents/mine')
+      .then((res) => { if (live) setIncidents(res.data?.incidents || []); })
+      .catch(() => {});
+    return () => { live = false; };
+  }, [authUser]);
+
+  const dismissIncident = (id) => {
+    setIncidents((prev) => prev.filter((i) => i.id !== id));
+    api.patch(`/domain-incidents/${id}/dismiss`).catch(() => {});
+  };
 
   const currentMe = me || authUser;
   const safeMe = currentMe || { display_name: '', id: '0', role: 'user', ui_sounds_enabled: true };
@@ -820,8 +838,14 @@ export default function Home() {
               >
                 LOG
               </button>
+              <button
+                className={`${styles.feedTab} ${activeFeedTab === 'incidents' ? styles.feedTabActive : ''}`}
+                onClick={() => setActiveFeedTab('incidents')}
+              >
+                INCIDENTS{incidents.length > 0 ? ` (${incidents.length})` : ''}
+              </button>
             </div>
-            
+
             <div className={styles.feedContent}>
               {activeFeedTab === 'chronicle' && (
                 <>
@@ -916,6 +940,37 @@ export default function Home() {
                     View Downtimes →
                   </Link>
                 </>
+              )}
+
+              {activeFeedTab === 'incidents' && (
+                <ul className={styles.dtList}>
+                  {incidents.length === 0 ? (
+                    <p className={styles.emptyFeedText}>No incidents in your domains.</p>
+                  ) : (
+                    incidents.map((inc) => (
+                      <li key={inc.id} className={styles.dtItem} style={{ position: 'relative' }}>
+                        <button
+                          onClick={() => dismissIncident(inc.id)}
+                          aria-label="Dismiss"
+                          style={{
+                            position: 'absolute', top: 8, right: 8, background: 'none', border: 'none',
+                            color: 'var(--text-secondary, rgba(255,255,255,0.5))', cursor: 'pointer', lineHeight: 1, padding: 4,
+                          }}
+                        >
+                          <FaGlyph icon={FEEDING_ICONS.xmark} size={12} />
+                        </button>
+                        <div className={styles.dtHead} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <FaGlyph icon={FEEDING_ICONS.droplet} size={12} style={{ color: '#d4202e', flexShrink: 0 }} />
+                          <span className={styles.dtTitle}>{inc.intruder_character_name} in Division {inc.division}</span>
+                        </div>
+                        <p className={styles.chatSnippet} style={{ marginTop: '0.35rem' }}>{inc.flavor_text}</p>
+                        <div className={styles.dtFooter}>
+                          <time className={styles.dtTime}>{formatTimestamp(inc.created_at)}</time>
+                        </div>
+                      </li>
+                    ))
+                  )}
+                </ul>
               )}
             </div>
           </section>

@@ -3,6 +3,7 @@ import React, { useMemo, useState, useContext, useEffect } from 'react';
 import { AuthCtx } from '../../core/AuthContext';
 import api from '../../core/api';
 import styles from '../../styles/DownTimes.module.css';
+import FeedingGate from '../feeding/FeedingGate';
 import { Skeleton } from 'boneyard-js/react';
 import MiniSearch from 'minisearch';
 import { trackEvent } from '../../utils/analytics';
@@ -541,6 +542,7 @@ export default function DownTimes() {
           </AnimatePresence>
         </motion.section>
 
+        <FeedingGate>
         <AnimatePresence mode="wait">
           <motion.div
             key={viewMode}
@@ -637,9 +639,27 @@ export default function DownTimes() {
             </div>
           </div>
         </motion.section>
+          </motion.div>
+        </AnimatePresence>
+        </FeedingGate>
 
-        {/* Submission History List */}
-        <motion.section 
+        {/* Submission History List — always visible and searchable, even
+            before this cycle's Feeding roll is resolved. Only *new*
+            submissions (the gated block above) require feeding first. */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={viewMode}
+            layout
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            variants={{
+              hidden: { opacity: 0 },
+              visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
+              exit: { opacity: 0, transition: { duration: 0.2 } }
+            }}
+          >
+        <motion.section
           className={styles.archiveSection}
           variants={{
             hidden: { opacity: 0, y: 30, scale: 0.95 },

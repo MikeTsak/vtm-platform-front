@@ -170,7 +170,7 @@ export default function Nav() {
   data-cuelume-hover end to="/character" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Character Sheet</NavLink>
                   <NavLink 
   data-cuelume-press 
-  data-cuelume-hover to="/downtimes" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Actions & Projects</NavLink>
+  data-cuelume-hover to="/downtimes" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Actions & Feeding</NavLink>
                   {canSeePremonitions && (
                     <NavLink 
   data-cuelume-press 
@@ -284,7 +284,7 @@ export default function Nav() {
   data-cuelume-hover end to="/character" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Character Sheet</NavLink>
                 <NavLink 
   data-cuelume-press 
-  data-cuelume-hover to="/downtimes" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Actions & Projects</NavLink>
+  data-cuelume-hover to="/downtimes" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Actions & Feeding</NavLink>
                 {canSeePremonitions && (
                   <NavLink 
   data-cuelume-press 

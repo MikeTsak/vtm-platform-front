@@ -15,6 +15,7 @@ const AdminUsersTab = lazyWithRetry(() => import('./AdminUsersTab'));
 const AdminCharactersTab = lazyWithRetry(() => import('./AdminCharactersTab'));
 const AdminClaimsTab = lazyWithRetry(() => import('./AdminClaimsTab'));
 const AdminDowntimesTab = lazyWithRetry(() => import('./AdminDowntimesTab'));
+const AdminFeedingTab = lazyWithRetry(() => import('./AdminFeedingTab'));
 const AdminXPTab = lazyWithRetry(() => import('./AdminXPTab'));
 const AdminDisciplinesTab = lazyWithRetry(() => import('./AdminDisciplinesTab'));
 const AdminNPCsTab = lazyWithRetry(() => import('./AdminNPCsTab'));
@@ -47,6 +48,7 @@ const NAV_SECTIONS = [
       { id: 'coteries',   icon: 'group_work', label: 'Coteries', keywords: ['groups', 'factions', 'alliances', 'coterie type', 'domain size', 'chantry', 'shared resources', 'members'] },
       { id: 'ghouls',     icon: 'pets', label: 'Ghouls', keywords: ['retainers', 'thralls', 'servants', 'domitor', 'blood bonds', 'ghoul sheet', 'disciplines', 'tier', 'player'] },
       { id: 'downtimes',  icon: 'schedule', label: 'Downtimes', keywords: ['actions', 'between sessions', 'projects', 'approve', 'reject', 'needs scene', 'resolve', 'filter pipelines', 'reset configuration', 'sync records'] },
+      { id: 'feeding',    icon: 'nightlight', label: 'Feeding Control', keywords: ['hunting', 'blood', 'predator type', 'chasse merits', 'masquerade', 'safety rating', 'cycle', 'enable', 'disable', 'decay', 'force new cycle'] },
       { id: 'xp',         icon: 'stars', label: 'XP & Rewards', keywords: ['experience', 'levels', 'progression', 'grants', 'apply to all', 'view history', 'refresh data', 'subtract xp', 'bulk grant'] },
       { id: 'disciplines', icon: 'auto_awesome', label: 'Disciplines', keywords: ['out of clan', 'unlock', 'access', 'request', 'approve', 'reject', 'grant', 'revoke', 'powers', 'clan restriction'] },
     ],
@@ -928,6 +930,7 @@ async function grantXP(character_id, delta) {
                   onSave={saveDowntime}
                 />
               )}
+              {tab === 'feeding' && <AdminFeedingTab />}
               {tab === 'xp' && (
                 <AdminXPTab 
                   users={users} 
