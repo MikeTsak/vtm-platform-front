@@ -22,7 +22,7 @@ for (const m of popSrc.matchAll(/^\s*(\d+):\s*\{\s*population:\s*(\d+)[^}]*?grou
 const GROUP_MEMBERS = {};
 for (const [d, info] of Object.entries(POP)) (GROUP_MEMBERS[info.group] ??= []).push(+d);
 
-// Outer-Attica divisions (50–82) have no census row here — best-effort estimates.
+// Outer-Attica divisions (50+) have no census row here — best-effort estimates.
 const EXTRA_POP = {
   50: 5000, 51: 11000, 52: 3000, 53: 3000, 54: 1000, 55: 7000,
   56: 33000, 57: 10000, 58: 3500, 59: 4500, 60: 4000, 61: 10000,
@@ -30,6 +30,7 @@ const EXTRA_POP = {
   68: 1200, 69: 13000, 70: 1500, 71: 3500, 72: 16000, 73: 3000,
   74: 3500, 75: 2500, 76: 10000, 77: 3000, 78: 2500, 79: 3500,
   80: 2000, 81: 2500, 82: 2300,
+  // (divisions 83–88 have real census rows in divisionPopulations.js now)
 };
 
 function effectivePopulation(div) {

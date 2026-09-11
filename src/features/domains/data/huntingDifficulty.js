@@ -579,6 +579,48 @@ export const HUNTING_DIFFICULTY = {
     "areaKm2": 50.081,
     "effectivePopulation": 2300,
     "estimated": true
+  },
+  "83": {
+    "difficulty": 6,
+    "density": 378,
+    "areaKm2": 95.402,
+    "effectivePopulation": 36033,
+    "estimated": false
+  },
+  "84": {
+    "difficulty": 6,
+    "density": 190,
+    "areaKm2": 19.254,
+    "effectivePopulation": 3650,
+    "estimated": false
+  },
+  "85": {
+    "difficulty": 4,
+    "density": 1098,
+    "areaKm2": 90.949,
+    "effectivePopulation": 99840,
+    "estimated": false
+  },
+  "86": {
+    "difficulty": 6,
+    "density": 387,
+    "areaKm2": 91.575,
+    "effectivePopulation": 35417,
+    "estimated": false
+  },
+  "87": {
+    "difficulty": 6,
+    "density": 259,
+    "areaKm2": 81.736,
+    "effectivePopulation": 21183,
+    "estimated": false
+  },
+  "88": {
+    "difficulty": 6,
+    "density": 163,
+    "areaKm2": 17.15,
+    "effectivePopulation": 2800,
+    "estimated": false
   }
 };
 

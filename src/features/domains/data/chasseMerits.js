@@ -198,6 +198,19 @@ export const DIVISION_CHASSE = {
     { merit: 'gated_community', note: 'The golf-course quarter and the closed streets toward Voúla.' },
   ],
   48: [{ merit: 'hospital', note: 'Thriásio general hospital.' }],
+  83: [
+    { merit: 'back_alleys', note: 'The Paloúkia ferry ramp and the naval-yard fence line — dockworkers, night crews, sailors between watches.' },
+    { merit: 'shelter', dots: 1, note: 'The shanty edges of Salamína town and Aiánteio, cut off from the mainland every night when the boats stop.' },
+  ],
+  84: [{ merit: 'funerary', note: 'The old chapels and rock-cut tombs around the Cave of Pan at Fylí, and the mountain cemeteries the city forgets.' }],
+  85: [
+    { merit: 'back_alleys', note: 'The SKA freight yards and the wholesale-market sprawl of Menídi — containers, sidings, and the lanes behind them.' },
+    { merit: 'shelter', note: 'The rougher blocks of Menídi and the Roma quarters on the town\'s northern edge.' },
+  ],
+  88: [
+    { merit: 'back_alleys', note: 'The Skaramangá shipyards — dry docks, gantry cranes, warehouse rows, and the workers\' gate on the coast road.' },
+    { merit: 'shelter', note: 'The Skaramangás camp and the transients who pass through the container port and the coast highway.' },
+  ],
 };
 
 // Resolve a division's assignments into full merit objects for the UI.

@@ -77,6 +77,15 @@ export const DIVISION_POPULATIONS = {
   47: { population: 108400, placeLabel: 'Gyzi', group: 'athens-7', groupLabel: '7th Municipal Community of Athens', source: 'ELSTAT 2021 Census, Municipality of Athens — district-level estimate (estimated)' },
   48: { population: 29619, placeLabel: 'Elefsina', group: 'elefsina', groupLabel: 'Municipality of Elefsina', source: 'ELSTAT 2021 Census, Municipality of Elefsina' },
   49: { population: 31420, placeLabel: 'Aspropyrgos', group: 'aspropyrgos', groupLabel: 'Municipality of Aspropyrgos', source: 'ELSTAT 2021 Census, Municipality of Aspropyrgos' },
+
+  // ── Municipalities added in a later pass (map divisions 83+). Each clipped to
+  //    the land not already covered by an existing division; each its own group. ──
+  83: { population: 36033, placeLabel: 'Salamina (Koulouri)', group: 'salamina', groupLabel: 'Municipality of Salamina', source: 'ELSTAT 2021 Census, Municipality of Salamina (Salamis island)' },
+  84: { population: 3650, placeLabel: 'Fyli / Chasia', group: 'fyli-unit', groupLabel: 'Municipal Unit of Fyli', source: 'ELSTAT 2021 Census — Municipal Unit of Fyli within the Municipality of Fyli (the mountain town; Ano Liosia and Zefyri are separate divisions) (estimated)' },
+  85: { population: 99840, placeLabel: 'Acharnes / Menidi', group: 'acharnes-unit', groupLabel: 'Municipal Unit of Acharnes', source: 'ELSTAT 2021 Census — Municipality of Acharnes (106,347) minus the Municipal Unit of Thrakomakedones, which is a separate division (estimated)' },
+  86: { population: 35417, placeLabel: 'Koropi', group: 'kropia', groupLabel: 'Municipality of Kropia', source: 'ELSTAT 2021 Census, Municipality of Kropia' },
+  87: { population: 21183, placeLabel: 'Markopoulo Mesogaias', group: 'markopoulo', groupLabel: 'Municipality of Markopoulo Mesogaias', source: 'ELSTAT 2021 Census, Municipality of Markopoulo Mesogaias' },
+  88: { population: 2800, placeLabel: 'Skaramangas & west Chaidari (Poikilo)', group: 'skaramangas', groupLabel: 'Skaramangas district (Municipality of Chaidari)', source: 'Skaramangas is a coastal district of the Municipality of Chaidari, not a separate municipality; the built settlement only, the rest is unpopulated hillside (estimated)' },
 };
 
 // Divisions that share a `group` report the SAME population — this maps each

@@ -337,13 +337,28 @@ function chasseRingOffset(index, count, radius) {
   ];
 }
 
-async function fetchAvatarAsDataUrl(url, division) {
+// Mobile networks stall or drop mid-request far more often than a stable
+// desktop connection — without a timeout, one bad moment on a cell handoff
+// hangs this fetch forever (never resolving, never falling back). Abort and
+// treat it as a failure instead so the retry wrapper below gets a chance.
+async function fetchAvatarAsDataUrl(url, division, timeoutMs = 8000) {
   if (!url) return null;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let res;
   try {
-    const res = await fetch(url, {
+    res = await fetch(url, {
       credentials: 'omit',
       mode: 'cors',
+      signal: controller.signal,
     });
+  } catch (err) {
+    console.warn(`[Domains Avatar] Div #${division}: fetch failed (network/CORS/timeout):`, err.message);
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+  try {
     if (!res.ok) {
       console.log(`[Domains Avatar] Div #${division}: HTTP ${res.status} for ${url} (no avatar in DB, staying as clan crest)`);
       return null;
@@ -397,9 +412,20 @@ async function fetchAvatarAsDataUrl(url, division) {
       img.src = objectUrl;
     });
   } catch (err) {
-    console.warn(`[Domains Avatar] Div #${division}: Network/CORS fetch error:`, err.message);
+    console.warn(`[Domains Avatar] Div #${division}: blob/decode error:`, err.message);
     return null;
   }
+}
+
+// A hiccup on a mobile connection is common; giving up after one try is not.
+// Retries a few times with backoff before finally falling back to the crest.
+async function fetchAvatarWithRetry(url, division, attempts = 3) {
+  for (let i = 0; i < attempts; i++) {
+    const result = await fetchAvatarAsDataUrl(url, division);
+    if (result) return result;
+    if (i < attempts - 1) await new Promise(r => setTimeout(r, 1200 * (i + 1)));
+  }
+  return null;
 }
 
 // ── Hex to RGBA array ────────────────────────────────────
@@ -928,7 +954,7 @@ export default function Domains() {
         setAvatarCache(prev => ({ ...prev, [division]: null }));
         continue;
       }
-      fetchAvatarAsDataUrl(url, division).then(dataUrl => {
+      fetchAvatarWithRetry(url, division).then(dataUrl => {
         if (!isMounted) return;
         setAvatarCache(prev => ({
           ...prev,
@@ -946,6 +972,34 @@ export default function Domains() {
     };
     window.addEventListener('avatar-updated', handleAvatarUpdated);
     return () => window.removeEventListener('avatar-updated', handleAvatarUpdated);
+  }, []);
+
+  // A division that failed after all retries above sits as `null` — the clan
+  // crest buffer forever, even once the connection recovers, because nothing
+  // else ever asks again. Reconnecting or bringing the tab back to the
+  // foreground (both common right after the flaky-mobile-network moment that
+  // caused the failure) clears those specific entries so the loader effect
+  // above picks them back up. Confirmed "no avatar in the DB" divisions are
+  // also `null` here and get harmlessly re-checked — cheap, no network call
+  // (getAvatarUrl short-circuits before fetchAvatarWithRetry is ever called).
+  useEffect(() => {
+    const retryFailedAvatars = () => {
+      setAvatarCache(prev => {
+        let changed = false;
+        const next = { ...prev };
+        for (const key of Object.keys(next)) {
+          if (next[key] === null) { delete next[key]; changed = true; }
+        }
+        return changed ? next : prev;
+      });
+    };
+    const onVisibility = () => { if (!document.hidden) retryFailedAvatars(); };
+    window.addEventListener('online', retryFailedAvatars);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('online', retryFailedAvatars);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, []);
 
   // Revoke any blob URL created, but only on unmount
