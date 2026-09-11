@@ -17,8 +17,8 @@
 // Suggestions the character cannot afford yet are not thrown away — they come
 // back separately as "worth saving for", with the shortfall spelled out.
 
-import { PREDATOR_TYPES } from '../../data/predator_types';
-import { ALL_DISCIPLINE_NAMES } from '../../data/disciplines';
+import { PREDATOR_TYPES } from '../../data/predator_types.js';
+import { ALL_DISCIPLINE_NAMES } from '../../data/disciplines.js';
 
 const ATTR_GROUPS = {
   Physical: ['Strength', 'Dexterity', 'Stamina'],
@@ -84,23 +84,72 @@ function joinReasons(list) {
 // what this character is *for*, so they carry the most weight below.
 export function predatorProfile(sheet, clan) {
   const name = sheet?.predator_type || sheet?.predatorType || '';
-  const profile = { name, attrs: new Set(), skills: new Set(), disciplines: new Set(), pools: [] };
+  const profile = {
+    name,
+    attrs: new Set(),
+    skills: new Set(),
+    huntingAttrs: new Set(),
+    huntingSkills: new Set(),
+    specialtySkills: new Set(),
+    disciplines: new Set(),
+    pools: [],
+  };
   const type = PREDATOR_TYPES?.[name];
   if (!type) return profile;
 
-  String(type.rolls || '').split('•').forEach(pool => {
-    const parts = pool.split('+').map(s => s.trim()).filter(Boolean);
-    const attrs = parts.filter(p => ALL_ATTRS.includes(p));
-    const skills = parts.filter(p => ALL_SKILLS.includes(p));
-    if (!attrs.length && !skills.length) return;
-    profile.pools.push([...attrs, ...skills].join(' + '));
-    attrs.forEach(a => profile.attrs.add(a));
-    skills.forEach(s => profile.skills.add(s));
-  });
+  if (Array.isArray(type.huntingPools) && type.huntingPools.length > 0) {
+    type.huntingPools.forEach(hp => {
+      if (hp.pool) profile.pools.push(hp.pool);
+      (hp.attributes || []).forEach(a => {
+        if (ALL_ATTRS.includes(a)) {
+          profile.huntingAttrs.add(a);
+          profile.attrs.add(a);
+        }
+      });
+      (hp.skills || []).forEach(s => {
+        if (ALL_SKILLS.includes(s)) {
+          profile.huntingSkills.add(s);
+          profile.skills.add(s);
+        }
+      });
+    });
+  } else if (Array.isArray(type.huntingAttributes) || Array.isArray(type.huntingSkills)) {
+    (type.huntingAttributes || []).forEach(a => {
+      if (ALL_ATTRS.includes(a)) {
+        profile.huntingAttrs.add(a);
+        profile.attrs.add(a);
+      }
+    });
+    (type.huntingSkills || []).forEach(s => {
+      if (ALL_SKILLS.includes(s)) {
+        profile.huntingSkills.add(s);
+        profile.skills.add(s);
+      }
+    });
+    if (type.rolls && type.rolls !== '—') profile.pools.push(type.rolls);
+  } else {
+    String(type.rolls || '').split('•').forEach(pool => {
+      const parts = pool.split('+').map(s => s.trim()).filter(Boolean);
+      const attrs = parts.filter(p => ALL_ATTRS.includes(p));
+      const skills = parts.filter(p => ALL_SKILLS.includes(p));
+      if (!attrs.length && !skills.length) return;
+      profile.pools.push([...attrs, ...skills].join(' + '));
+      attrs.forEach(a => {
+        profile.huntingAttrs.add(a);
+        profile.attrs.add(a);
+      });
+      skills.forEach(s => {
+        profile.huntingSkills.add(s);
+        profile.skills.add(s);
+      });
+    });
+  }
 
   (type.picks?.specialty || []).forEach(entry => {
     const base = String(entry).split('(')[0].trim();
-    if (ALL_SKILLS.includes(base)) profile.skills.add(base);
+    if (ALL_SKILLS.includes(base)) {
+      profile.specialtySkills.add(base);
+    }
   });
 
   try {
@@ -148,7 +197,7 @@ export function buildSuggestions({ ch, sheet, xp = 0, costs, disciplineKind, lim
       const why = [];
       let need = 18;
 
-      if (profile.attrs.has(attr) && current < 4) {
+      if (profile.huntingAttrs.has(attr) && current < 4) {
         need += 30;
         why.push(`it drives your ${profile.name} feeding pool${profile.pools[0] ? ` (${profile.pools[0]})` : ''}`);
       }
@@ -194,9 +243,12 @@ export function buildSuggestions({ ch, sheet, xp = 0, costs, disciplineKind, lim
       const why = [];
       let need = 12;
 
-      if (profile.skills.has(skill)) {
+      if (profile.huntingSkills.has(skill)) {
         need += 30;
         why.push(`${article(profile.name)} ${profile.name} leans on ${skill} to feed`);
+      } else if (profile.specialtySkills.has(skill)) {
+        need += 14;
+        why.push(`it aligns with your ${profile.name} predator archetype`);
       }
       if (dots === 0 && CORNERSTONE_SKILLS.has(skill)) {
         need += 22;
@@ -233,9 +285,12 @@ export function buildSuggestions({ ch, sheet, xp = 0, costs, disciplineKind, lim
     if (dots < 2 || specialties.length) continue;
     const why = [];
     let need = 20;
-    if (profile.skills.has(skill)) {
+    if (profile.huntingSkills.has(skill)) {
       need += 22;
       why.push(`${skill} is central to how you hunt and has nothing sharpening it`);
+    } else if (profile.specialtySkills.has(skill)) {
+      need += 14;
+      why.push(`it fits your ${profile.name} predator style`);
     }
     if (dots >= 4) {
       need += 14;
