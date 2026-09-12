@@ -1,9 +1,7 @@
-﻿// src/components/admin/ChatStatsTab.jsx
 import React, { useMemo, useState, useRef } from 'react';
 import html2canvas from 'html2canvas';
 import styles from '../../styles/Admin.module.css';
 import { symlogo as clanSymbol, CLAN_HEX as CLAN_COLORS } from '../../data/clans';
-
 
 /** ---------- Helpers ---------- */
 const getRollArt = (roll) => {
@@ -735,7 +733,6 @@ const popStats = useMemo(() => {
 
           {/* LEFT COLUMN */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: isExporting ? '3rem' : '2rem', minWidth: 0 }}>
-            
             <section>
               <h4 style={{ margin: '0 0 1.5rem 0', color: '#d4af37', borderBottom: '2px solid #8a0303', paddingBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '2px', fontSize: isExporting ? '1.4rem' : '1.1rem' }}>The Blood</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>

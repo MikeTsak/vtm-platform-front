@@ -11,6 +11,8 @@ const AdminLogs = lazyWithRetry(() => import('./AdminLogs'));
 const ChatStatsTab = lazyWithRetry(() => import('./ChatStatsTab'));
 
 // Lazy-loaded Tab Components (On-demand chunks)
+const AdminHomeTab = lazyWithRetry(() => import('./AdminHomeTab'));
+const ActivityHeatmap = lazyWithRetry(() => import('./ActivityHeatmap'));
 const AdminUsersTab = lazyWithRetry(() => import('./AdminUsersTab'));
 const AdminCharactersTab = lazyWithRetry(() => import('./AdminCharactersTab'));
 const AdminClaimsTab = lazyWithRetry(() => import('./AdminClaimsTab'));
@@ -40,6 +42,12 @@ const AdminNewsTab = lazyWithRetry(() => import('./AdminNewsTab'));
 /* ---------------- Sidebar navigation config ---------------- */
 const NAV_SECTIONS = [
   {
+    label: 'Overview',
+    items: [
+      { id: 'home', icon: 'dashboard', label: 'Home', keywords: ['home', 'dashboard', 'overview', 'stats', 'activity', 'downtimes', 'kpi', 'welcome', 'terminal'] },
+    ],
+  },
+  {
     label: 'Players',
     items: [
       { id: 'users',      icon: 'person', label: 'Users', keywords: ['accounts', 'passwords', 'emails', 'roles', 'login', 'reset password', 'delete user', 'ban', 'unban', 'discord id', 'st role', 'vip role', 'admin role'] },
@@ -68,6 +76,7 @@ const NAV_SECTIONS = [
   {
     label: 'Intelligence',
     items: [
+      { id: 'activity', icon: 'calendar_month', label: 'Activity Heatmap', keywords: ['activity', 'heatmap', 'compare', 'presence', 'online', 'sessions', 'time', 'playtime', 'calendar'] },
       { id: 'chat',     icon: 'chat',      label: 'Chat Logs', keywords: ['messages', 'history', 'rooms', 'groups', 'transcripts', 'channel', 'direct messages', 'all time', 'last 7 days'] },
       { id: 'stats',    icon: 'bar_chart', label: 'Stats', keywords: ['statistics', 'charts', 'activity', 'metrics', 'graphs', 'data', 'numbers'] },
       { id: 'dice',     icon: 'casino',    label: 'Dice Logs', keywords: ['rolls', 'rng', 'botches', 'successes', 'crits', 'history', 'messy critical', 'bestial failure', 'rouse checks', 'normal dice', 'hunger dice'] },
@@ -315,7 +324,7 @@ function TopBar({ tab, loading, onReload }) {
 
 /* ---------------- Main ---------------- */
 export default function Admin() {
-  const [tab, setTab] = useState('users'); // users | characters | claims | downtimes | xp | npcs | chat | stats | dice | discord | logs
+  const [tab, setTab] = useState('home'); // home | users | characters | claims | downtimes | xp | npcs | chat | stats | dice | discord | logs
   const [loading, setLoading] = useState(false);
   const [loadProgress, setLoadProgress] = useState(0);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -358,7 +367,7 @@ export default function Admin() {
     };
 
     const tasks = [
-      api.get('/admin/xp-logs?limit=al').then(res => setXpLogs(res.data.logs || res.data || [])).catch(e => console.error('Failed XP', e)).finally(inc),
+      api.get('/admin/xp-logs?limit=all').then(res => setXpLogs(res.data.logs || res.data || [])).catch(e => console.error('Failed XP', e)).finally(inc),
       api.get('/admin/chat/groups/messages/all').then(res => setAllGroupMessages(res.data.messages || [])).catch(e => console.error('Failed group msgs', e)).finally(inc),
       api.get('/admin/chat/groups').then(res => setChatGroups(res.data.groups || [])).catch(e => console.error('Failed groups', e)).finally(inc),
       api.get('/admin/emails/messages/all').then(res => setAllEmailMessages(res.data.messages || [])).catch(e => console.error('Failed emails', e)).finally(inc),
@@ -905,6 +914,18 @@ async function grantXP(character_id, delta) {
               </div>
             }>
               {/* Conditional Tab Rendering */}
+              {tab === 'home' && (
+                <AdminHomeTab
+                  users={users}
+                  characters={characters}
+                  downtimes={downtimes}
+                  diceRolls={diceRolls}
+                  xpLogs={xpLogs}
+                  allMessages={allMessages}
+                  setTab={setTab}
+                  onOpenEditor={setEditorTarget}
+                />
+              )}
               {tab === 'users' && (
                 <AdminUsersTab 
                   users={users} 
@@ -957,6 +978,9 @@ async function grantXP(character_id, delta) {
               {tab === 'boons' && <AdminPrestationTab />}
               {tab === 'events' && <AdminEventsTab />}
               {tab === 'broadcast' && <AdminBroadcastTab />}
+              {tab === 'activity' && (
+                <ActivityHeatmap users={users} />
+              )}
               {tab === 'chat' && (
                 <AdminChatLogsTab 
                   messages={allMessages} 
