@@ -165,6 +165,26 @@ function AppLayout() {
     trackPageView(location.pathname);
   }, [location]);
 
+  // Track user online time (Heartbeat)
+  useEffect(() => {
+    if (!user) return;
+
+    const ping = () => {
+      // Only log time if they actually have the tab visible
+      if (document.visibilityState === 'visible') {
+        api.post('/activity/heartbeat').catch(() => { /* skip errors */ });
+      }
+    };
+
+    // Ping immediately
+    ping();
+
+    // Ping every 60 seconds
+    const intervalId = setInterval(ping, 60000);
+
+    return () => clearInterval(intervalId);
+  }, [user]);
+
   return (
     <div
       style={

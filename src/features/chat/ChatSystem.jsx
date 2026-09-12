@@ -314,6 +314,7 @@ export default function ChatSystem({ commsEnabled = true }) {
 
   const [selectedContact, setSelectedContact] = useState(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState(null);
+  const canSend = commsEnabled || (isAdmin && selectedContact?.type === 'npc');
   const [npcConvos, setNpcConvos] = useState([]);
   const [adminPlayerTab, setAdminPlayerTab] = useState('recent');
   const [adminPlayerFilter, setAdminPlayerFilter] = useState('');
@@ -989,7 +990,7 @@ export default function ChatSystem({ commsEnabled = true }) {
 
   /* --- Sending Logic --- */
   const doSend = async () => {
-    if (!commsEnabled) return;
+    if (!canSend) return;
     const body = newMessage.trim();
 
     if ((!body && !attachment) || !selectedContact) return;
@@ -1879,7 +1880,7 @@ export default function ChatSystem({ commsEnabled = true }) {
                 {/* Attachments & Previews */}
                 <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="image/*,video/*,audio/*" onChange={handleFileSelect} />
 
-                <button type="button" onClick={() => fileInputRef.current?.click()} disabled={!isCharActive || !commsEnabled} className="p-2 text-on-surface-variant hover:text-primary transition-colors shrink-0 rounded hover:bg-surface-variant/30 disabled:opacity-30">
+                <button type="button" onClick={() => fileInputRef.current?.click()} disabled={!isCharActive || !canSend} className="p-2 text-on-surface-variant hover:text-primary transition-colors shrink-0 rounded hover:bg-surface-variant/30 disabled:opacity-30">
                   <span className="material-symbols-outlined text-[20px] md:text-[24px]">attach_file</span>
                 </button>
 
@@ -1914,19 +1915,19 @@ export default function ChatSystem({ commsEnabled = true }) {
                     value={newMessage}
                     onChange={e => setNewMessage(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder={!commsEnabled ? "System Offline..." : (!isCharActive ? "Waiting for ST approval..." : "Transmit response...")}
+                    placeholder={!canSend ? "System Offline..." : (!isCharActive ? "Waiting for ST approval..." : "Transmit response...")}
                     className="w-full bg-transparent border-none text-on-surface font-system-code text-[13px] md:text-[14px] placeholder-on-surface-variant/40 focus:ring-0 resize-none py-2 px-1 max-h-32 custom-scrollbar break-words"
                     rows={1}
                     style={{ minHeight: '40px' }}
-                    disabled={!commsEnabled || !isCharActive || (isAdmin && selectedContact.type === 'npc' && !selectedPlayerId)}
+                    disabled={!canSend || !isCharActive || (isAdmin && selectedContact?.type === 'npc' && !selectedPlayerId)}
                   />
                 </div>
 
                 <div className="flex items-center gap-1 shrink-0">
-                  <button type="button" onClick={() => setShowEmojiPicker(val => !val)} disabled={!isCharActive || !commsEnabled} className="p-2 text-on-surface-variant hover:text-primary transition-colors rounded hover:bg-surface-variant/30 hidden md:flex disabled:opacity-30">
+                  <button type="button" onClick={() => setShowEmojiPicker(val => !val)} disabled={!isCharActive || !canSend} className="p-2 text-on-surface-variant hover:text-primary transition-colors rounded hover:bg-surface-variant/30 hidden md:flex disabled:opacity-30">
                     <span className="material-symbols-outlined text-[20px] md:text-[24px]">mood</span>
                   </button>
-                  <button type="button" onClick={handleSendMessage} disabled={!commsEnabled || !isCharActive || sendingRef.current || (!newMessage.trim() && !attachment) || (isAdmin && selectedContact.type === 'npc' && !selectedPlayerId)} className="p-2 bg-primary/10 text-primary border border-primary/30 hover:bg-primary hover:text-on-primary transition-colors rounded shadow-[0_0_8px_rgba(255,179,174,0.1)] group flex items-center justify-center h-10 w-10 disabled:opacity-30 disabled:hover:bg-primary/10 disabled:hover:text-primary">
+                  <button type="button" onClick={handleSendMessage} disabled={!canSend || !isCharActive || sendingRef.current || (!newMessage.trim() && !attachment) || (isAdmin && selectedContact?.type === 'npc' && !selectedPlayerId)} className="p-2 bg-primary/10 text-primary border border-primary/30 hover:bg-primary hover:text-on-primary transition-colors rounded shadow-[0_0_8px_rgba(255,179,174,0.1)] group flex items-center justify-center h-10 w-10 disabled:opacity-30 disabled:hover:bg-primary/10 disabled:hover:text-primary">
                     <span className="material-symbols-outlined text-[18px] md:text-[20px] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform">send</span>
                   </button>
                 </div>
