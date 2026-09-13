@@ -164,6 +164,47 @@ function isStructuredSheet(s) {
   return vals.some(v => v && typeof v === 'object' && 'dots' in v);
 }
 
+/* ===========================
+   Touchstone & Conviction helpers
+   =========================== */
+function normalizeStringArray(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr.map(item => {
+    if (typeof item === 'string') return item;
+    // Rescue old object formats like { name: '...', conviction: '...' }
+    if (typeof item === 'object' && item !== null) {
+      return item.conviction || item.description || item.name || JSON.stringify(item);
+    }
+    return String(item || '');
+  });
+}
+
+function normalizeTouchstoneArray(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr.map(item => {
+    if (!item) return { name: '', conviction: '', background: '' };
+    if (typeof item === 'object' && item !== null) {
+      return {
+        name: String(item.name || item.title || '').trim(),
+        conviction: String(item.conviction || '').trim(),
+        background: String(item.background || item.description || '').trim()
+      };
+    }
+    if (typeof item === 'string') {
+      const splitIdx = item.search(/[:\-]/);
+      if (splitIdx !== -1) {
+        return {
+          name: item.substring(0, splitIdx).trim(),
+          conviction: '',
+          background: item.substring(splitIdx + 1).trim()
+        };
+      }
+      return { name: item.trim(), conviction: '', background: '' };
+    }
+    return { name: String(item), conviction: '', background: '' };
+  });
+}
+
 function normalizeFromFlatAny(source) {
   const flat = source?.sheet && looksLikeFlatSheet(source.sheet) ? source.sheet : source;
   const sheet = {};
@@ -197,45 +238,6 @@ function normalizeFromFlatAny(source) {
   sheet.sire = flat.sire || '';
   sheet.ambition = flat.ambition || '';
   sheet.desire = flat.desire || '';
-
-  // Normalizing Touchstones and Convictions
-  const normalizeStringArray = (arr) => {
-    if (!Array.isArray(arr)) return [];
-    return arr.map(item => {
-      if (typeof item === 'string') return item;
-      // Rescue old object formats like { name: '...', conviction: '...' }
-      if (typeof item === 'object' && item !== null) {
-        return item.conviction || item.description || item.name || JSON.stringify(item);
-      }
-      return String(item || '');
-    });
-  };
-
-  const normalizeTouchstoneArray = (arr) => {
-    if (!Array.isArray(arr)) return [];
-    return arr.map(item => {
-      if (!item) return { name: '', conviction: '', background: '' };
-      if (typeof item === 'object' && item !== null) {
-        return {
-          name: String(item.name || item.title || '').trim(),
-          conviction: String(item.conviction || '').trim(),
-          background: String(item.background || item.description || '').trim()
-        };
-      }
-      if (typeof item === 'string') {
-        const splitIdx = item.search(/[:\-]/);
-        if (splitIdx !== -1) {
-          return {
-            name: item.substring(0, splitIdx).trim(),
-            conviction: '',
-            background: item.substring(splitIdx + 1).trim()
-          };
-        }
-        return { name: item.trim(), conviction: '', background: '' };
-      }
-      return { name: String(item), conviction: '', background: '' };
-    });
-  };
 
   sheet.touchstones = normalizeTouchstoneArray(
     Array.isArray(flat.touchstones) ? flat.touchstones : flat.morality?.touchstones
@@ -453,18 +455,6 @@ function attachStructured(raw) {
   }
 
   // --- NORMALIZATION FIX ADDED HERE ---
-  const normalizeStringArray = (arr) => {
-    if (!Array.isArray(arr)) return [];
-    return arr.map(item => {
-      if (typeof item === 'string') return item;
-      // Rescue old object formats like { name: '...', conviction: '...' }
-      if (typeof item === 'object' && item !== null) {
-        return item.conviction || item.description || item.name || JSON.stringify(item);
-      }
-      return String(item || '');
-    });
-  };
-
   sheet.touchstones = normalizeTouchstoneArray(sheet.touchstones || sheet.morality?.touchstones);
   sheet.convictions = normalizeStringArray(sheet.convictions || sheet.morality?.convictions);
   // ------------------------------------
