@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import api from '../../core/api';
+import api, { formatApiError } from '../../core/api';
 import { formatEuDate } from '../../utils/dateFormatter';
 import styles from '../../styles/Admin.module.css';
 import { Skeleton } from 'boneyard-js/react';
@@ -16,11 +16,13 @@ export default function AdminBoonsTab() {
 
   const loadBoons = async () => {
     setLoading(true);
+    setErr('');
     try {
       const { data } = await api.get('/admin/boons');
       setBoons(data.boons || []);
     } catch (e) {
-      setErr('Failed to load boons.');
+      console.error('[AdminBoonsTab] Failed to load boons', e);
+      setErr(formatApiError(e, 'Failed to load boons'));
     } finally {
       setLoading(false);
     }

@@ -1,7 +1,7 @@
 // src/pages/Admin.jsx
 import React, { useEffect, useState, useCallback, useMemo, useRef, Suspense } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import api from '../../core/api';
+import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/Admin.module.css';
 import Loading from '../../ui/Loading';
 import { lazyWithRetry } from '../../utils/lazyWithRetry';
@@ -755,7 +755,8 @@ export default function Admin() {
     try {
       await Promise.allSettled(tasks);
     } catch (e) {
-      setErr(e?.response?.data?.error || 'Failed to load primary admin data');
+      console.error('[Admin] Load failed', e);
+      setErr(formatApiError(e, 'Failed to load primary admin data'));
     } finally {
       setLoading(false);
       setLoadProgress(100);
@@ -778,7 +779,8 @@ export default function Admin() {
       setMsg(`Saved user #${u.id}`);
       load(); // Reload to reflect changes
     } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to save user.');
+      console.error('[Admin] saveUser failed', e);
+      setErr(formatApiError(e, 'Failed to save user'));
     }
   }
 
@@ -794,7 +796,8 @@ export default function Admin() {
       setMsg(`Saved character #${c.id}`);
       load(); // Reload
     } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to save character.');
+      console.error('[Admin] saveCharacter failed', e);
+      setErr(formatApiError(e, 'Failed to save character'));
     }
   }
 
@@ -806,7 +809,8 @@ async function grantXP(character_id, delta) {
       setMsg(`XP adjusted by ${delta} for character #${character_id}`);
       load(); // Reload
     } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to adjust XP');
+      console.error('[Admin] grantXP failed', e);
+      setErr(formatApiError(e, 'Failed to adjust XP'));
     }
   }
 
@@ -827,7 +831,8 @@ async function grantXP(character_id, delta) {
       setMsg(`Bulk XP (${delta > 0 ? '+' : ''}${delta}) applied to all characters!`);
       load(); // Reload everything so the grid updates instantly
     } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to apply Bulk XP');
+      console.error('[Admin] grantBulkXP failed', e);
+      setErr(formatApiError(e, 'Failed to apply Bulk XP'));
       throw e; // Throw it back to the tab so it can turn off the "Applying..." loading state
     }
   }
@@ -841,7 +846,8 @@ async function grantXP(character_id, delta) {
       setMsg(`Character #${id} deleted`);
       load(); // Reload
     } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to delete character');
+      console.error('[Admin] deleteCharacter failed', e);
+      setErr(formatApiError(e, 'Failed to delete character'));
     }
   }
 

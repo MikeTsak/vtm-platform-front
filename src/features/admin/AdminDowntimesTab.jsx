@@ -1,6 +1,6 @@
 // src/components/admin/AdminDowntimesTab.jsx
 import React, { useEffect, useMemo, useState } from 'react';
-import api from "../../core/api";
+import api, { formatApiError } from "../../core/api";
 import { formatEuDate } from '../../utils/dateFormatter';
 import styles from '../../styles/Admin.module.css';
 import { CLAN_HEX as CLAN_COLORS } from '../../data/clans';
@@ -110,7 +110,8 @@ export default function AdminDowntimesTab() {
         setMassReleaseMode(data?.downtime_mass_release_mode === 'true');
         setMassReleaseDate(data?.downtime_mass_release_date ? new Date(data.downtime_mass_release_date).toISOString().slice(0, 16) : '');
       } catch (e) {
-        if (mounted) setCfgErr('Failed to load downtime config.');
+        console.error('[AdminDowntimesTab] Failed to load config', e);
+        if (mounted) setCfgErr(formatApiError(e, 'Failed to load downtime config'));
       } finally {
         if (mounted) setCfgLoading(false);
       }
@@ -140,7 +141,8 @@ export default function AdminDowntimesTab() {
       setCfgInfo('Configuration saved successfully.');
       setTimeout(() => setCfgInfo(''), 3000);
     } catch (e) {
-      setCfgErr(e?.response?.data?.error || 'Failed to save dates.');
+      console.error('[AdminDowntimesTab] Failed to save config', e);
+      setCfgErr(formatApiError(e, 'Failed to save dates'));
     } finally {
       setCfgSaving(false);
     }
@@ -163,7 +165,10 @@ export default function AdminDowntimesTab() {
         setMassReleaseMode(data?.downtime_mass_release_mode === 'true');
         setMassReleaseDate(data?.downtime_mass_release_date ? new Date(data.downtime_mass_release_date).toISOString().slice(0, 16) : '');
       })
-      .catch(() => setCfgErr('Failed to reload config.'))
+      .catch(e => {
+        console.error('[AdminDowntimesTab] Failed to reload config', e);
+        setCfgErr(formatApiError(e, 'Failed to reload config'));
+      })
       .finally(() => setCfgLoading(false));
   }
 
@@ -174,7 +179,8 @@ export default function AdminDowntimesTab() {
       const { data } = await api.get('admin/downtimes');
       setRows((data?.downtimes || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
     } catch (e) {
-      setListErr('Failed to load downtimes.');
+      console.error('[AdminDowntimesTab] Failed to load downtimes', e);
+      setListErr(formatApiError(e, 'Failed to load downtimes'));
     } finally {
       setListLoading(false);
     }

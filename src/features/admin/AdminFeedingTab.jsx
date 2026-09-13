@@ -1,6 +1,7 @@
 // src/features/admin/AdminFeedingTab.jsx
 import React, { useState, useEffect, useCallback } from 'react';
-import api from '../../core/api';
+import api, { formatApiError } from '../../core/api';
+import styles from '../../styles/Admin.module.css';
 import FaGlyph from '../../ui/FaGlyph';
 import { FEEDING_ICONS } from '../../data/feedingIcons';
 
@@ -88,19 +89,50 @@ export default function AdminFeedingTab() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setErr('');
     try {
-      const [statusRes, logRes, statsRes, rosterRes] = await Promise.all([
+      const [statusRes, logRes, statsRes, rosterRes] = await Promise.allSettled([
         api.get('/feeding/status'),
         api.get('/admin/feeding/log'),
         api.get('/admin/feeding/stats'),
         api.get('/admin/feeding/herd-roster'),
       ]);
-      setStatus(statusRes.data);
-      setLog(logRes.data?.log || []);
-      setStats(statsRes.data);
-      setRoster(rosterRes.data?.roster || []);
-    } catch {
-      setErr('Failed to load feeding data.');
+
+      const errList = [];
+      if (statusRes.status === 'fulfilled') {
+        setStatus(statusRes.value.data);
+      } else {
+        console.error('[AdminFeedingTab] Failed feeding status', statusRes.reason);
+        errList.push(formatApiError(statusRes.reason, 'Failed feeding status'));
+      }
+
+      if (logRes.status === 'fulfilled') {
+        setLog(logRes.value.data?.log || []);
+      } else {
+        console.error('[AdminFeedingTab] Failed feeding log', logRes.reason);
+        errList.push(formatApiError(logRes.reason, 'Failed feeding log'));
+      }
+
+      if (statsRes.status === 'fulfilled') {
+        setStats(statsRes.value.data);
+      } else {
+        console.error('[AdminFeedingTab] Failed feeding stats', statsRes.reason);
+        errList.push(formatApiError(statsRes.reason, 'Failed feeding stats'));
+      }
+
+      if (rosterRes.status === 'fulfilled') {
+        setRoster(rosterRes.value.data?.roster || []);
+      } else {
+        console.error('[AdminFeedingTab] Failed herd roster', rosterRes.reason);
+        errList.push(formatApiError(rosterRes.reason, 'Failed herd roster'));
+      }
+
+      if (errList.length > 0) {
+        setErr(errList.join(', '));
+      }
+    } catch (e) {
+      console.error('[AdminFeedingTab] Load failed', e);
+      setErr(formatApiError(e, 'Failed to load feeding data'));
     } finally {
       setLoading(false);
     }
@@ -119,8 +151,10 @@ export default function AdminFeedingTab() {
       await api.post('/admin/feeding/status', { enabled: !isOnline });
       await load();
       flash(setMsg, `Feeding system is now ${!isOnline ? 'ENABLED' : 'DISABLED'}.`);
-    } catch { flash(setErr, 'Failed to update Feeding status.'); }
-    finally { setActionLoading(false); }
+    } catch (e) {
+      console.error('[AdminFeedingTab] toggleEnabled failed', e);
+      flash(setErr, formatApiError(e, 'Failed to update Feeding status'));
+    } finally { setActionLoading(false); }
   };
 
   const forceNewCycle = async () => {
@@ -131,8 +165,10 @@ export default function AdminFeedingTab() {
       await api.post('/admin/feeding/force-new-cycle');
       await load();
       flash(setMsg, 'New Feeding cycle started.');
-    } catch { flash(setErr, 'Failed to reset the cycle.'); }
-    finally { setActionLoading(false); }
+    } catch (e) {
+      console.error('[AdminFeedingTab] forceNewCycle failed', e);
+      flash(setErr, formatApiError(e, 'Failed to reset cycle'));
+    } finally { setActionLoading(false); }
   };
 
   const runDecay = async () => {
@@ -144,8 +180,10 @@ export default function AdminFeedingTab() {
         ? `Decay skipped: ${res.data.skipped}`
         : `Decay: ${res.data?.decayed ?? 0} division(s). Herd regen: ${res.data?.herdRegen ?? 0} character(s).`);
       await load();
-    } catch { flash(setErr, 'Failed to run decay.'); }
-    finally { setActionLoading(false); }
+    } catch (e) {
+      console.error('[AdminFeedingTab] runDecay failed', e);
+      flash(setErr, formatApiError(e, 'Failed to run decay'));
+    } finally { setActionLoading(false); }
   };
 
   const adjustHerd = async (character_id, delta) => {
@@ -153,12 +191,13 @@ export default function AdminFeedingTab() {
     try {
       const res = await api.post('/admin/feeding/herd-adjust', { character_id, delta });
       const d = res.data;
-      flash(setMsg, `${d.name}: Herd ${d.herdBefore} -> ${d.herdAfter} / ${d.herdDots}`);
+      flash(setMsg, `${d.name}: Herd ${d.herdBefore} to ${d.herdAfter} of ${d.herdDots}`);
       setRoster(prev => prev.map(r =>
         r.character_id === character_id ? { ...r, herdCurrent: d.herdAfter } : r
       ));
     } catch (e) {
-      flash(setErr, e?.response?.data?.error || 'Herd adjust failed.');
+      console.error('[AdminFeedingTab] adjustHerd failed', e);
+      flash(setErr, formatApiError(e, 'Herd adjust failed'));
     } finally {
       setAdjusting(prev => ({ ...prev, [character_id]: false }));
     }
@@ -171,7 +210,7 @@ export default function AdminFeedingTab() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       {msg && <div style={{ padding: '0.75rem 1rem', background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.3)', borderRadius: 'var(--radius-md)', color: 'var(--color-success)' }}>{msg}</div>}
-      {err && <div style={{ padding: '0.75rem 1rem', background: 'rgba(255,77,77,0.1)', border: '1px solid rgba(255,77,77,0.3)', borderRadius: 'var(--radius-md)', color: 'var(--color-error)' }}>{err}</div>}
+      {err && <div style={{ padding: '0.75rem 1rem', background: 'rgba(255,77,77,0.1)', border: '1px solid rgba(255,77,77,0.3)', borderRadius: 'var(--radius-md)', color: 'var(--color-error)', wordBreak: 'break-word', fontSize: '0.88rem' }}>{err}</div>}
 
       {/* KILLSWITCH */}
       <div style={card}>

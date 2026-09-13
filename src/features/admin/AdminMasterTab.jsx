@@ -1,6 +1,6 @@
 // src/components/admin/AdminMasterTab.jsx
 import React, { useState, useEffect, useContext } from 'react';
-import api from '../../core/api';
+import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/Admin.module.css';
 import { Skeleton } from 'boneyard-js/react';
 import { Link } from 'react-router-dom';
@@ -340,8 +340,10 @@ export default function AdminMasterTab() {
       setSubscribeDowntimes(ntfyRes.data.subscribe_downtimes || false);
       setBannerSettings(bannerRes.data);
       setAvailableNpcs(npcsRes.data.npcs || []);
-      setDisabledClans(clansRes.data.disabledClans || []);
-    } catch (e) { setErr('Failed to load Master Settings'); } finally { setLoading(false); }
+    } catch (e) {
+      console.error('[AdminMasterTab] Failed to load settings', e);
+      setErr(formatApiError(e, 'Failed to load Master Settings'));
+    } finally { setLoading(false); }
   };
 
   const toggleClanAvailability = async (clanName) => {

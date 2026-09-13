@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import api from '../../core/api';
+import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/Admin.module.css';
 import { Skeleton } from 'boneyard-js/react';
 import G6 from '@antv/g6';
@@ -13,9 +13,13 @@ export default function AdminPrestationTab() {
   const graphRef = useRef(null);
 
   useEffect(() => {
+    setErr('');
     api.get('/admin/boons')
       .then(res => setBoons(res.data.boons || []))
-      .catch(e => setErr('Failed to load boons'))
+      .catch(e => {
+        console.error('[AdminPrestationTab] Failed to load boons', e);
+        setErr(formatApiError(e, 'Failed to load boons'));
+      })
       .finally(() => setLoading(false));
   }, []);
 

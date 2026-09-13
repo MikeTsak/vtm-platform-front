@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import api from '../../core/api';
+import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/Admin.module.css';
 import { Skeleton } from 'boneyard-js/react';
 import G6 from '@antv/g6';
@@ -14,12 +14,16 @@ export default function AdminCoteriesTab() {
   const graphRef = useRef(null);
 
   useEffect(() => {
+    setErr('');
     api.get('/admin/coteries')
       .then(res => {
         setCoteries(res.data.coteries || []);
         setMembers(res.data.members || []);
       })
-      .catch(e => setErr('Failed to load coteries'))
+      .catch(e => {
+        console.error('[AdminCoteriesTab] Failed to load coteries', e);
+        setErr(formatApiError(e, 'Failed to load coteries'));
+      })
       .finally(() => setLoading(false));
   }, []);
 

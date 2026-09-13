@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import api from '../../core/api';
+import api, { formatApiError } from '../../core/api';
 import { formatEuDate } from '../../utils/dateFormatter';
 import styles from '../../styles/Admin.module.css';
 import { Skeleton } from 'boneyard-js/react';
@@ -20,11 +20,13 @@ export default function AdminEventsTab() {
 
   const loadEvents = async () => {
     setLoading(true);
+    setErr('');
     try {
       const { data } = await api.get('/admin/events');
       setEvents(data.events || []);
     } catch (e) {
-      setErr('Failed to load events.');
+      console.error('[AdminEventsTab] Failed to load events', e);
+      setErr(formatApiError(e, 'Failed to load events'));
     } finally {
       setLoading(false);
     }
@@ -39,7 +41,8 @@ export default function AdminEventsTab() {
       setTitle(''); setDate(''); setDescription('');
       loadEvents();
     } catch (error) {
-      setErr(error.response?.data?.error || 'Failed to create event');
+      console.error('[AdminEventsTab] Failed to create event', error);
+      setErr(formatApiError(error, 'Failed to create event'));
     } finally {
       setAdding(false);
     }
@@ -51,7 +54,8 @@ export default function AdminEventsTab() {
       await api.delete(`/admin/events/${id}`);
       setEvents(prev => prev.filter(e => e.id !== id));
     } catch (error) {
-      setErr(error.response?.data?.error || 'Failed to delete event');
+      console.error('[AdminEventsTab] Failed to delete event', error);
+      setErr(formatApiError(error, 'Failed to delete event'));
     }
   };
 

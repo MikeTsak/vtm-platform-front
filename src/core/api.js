@@ -45,9 +45,39 @@ api.interceptors.response.use(
         type: 'error',
       });
     }
-    // Optionally handle other error statuses here if needed
+// Optionally handle other error statuses here if needed
     return Promise.reject(error);
   }
 );
+
+/**
+ * Extracts a descriptive error string from Axios errors or standard JS exceptions.
+ * Includes HTTP method, endpoint, status code, and backend response payload.
+ */
+export function formatApiError(e, fallback = 'Operation failed') {
+  if (!e) return fallback;
+  if (typeof e === 'string') return e;
+
+  const status = e.response?.status;
+  const url = e.config?.url;
+  const method = e.config?.method ? e.config.method.toUpperCase() : '';
+  const data = e.response?.data;
+
+  let serverMsg = null;
+  if (data && typeof data === 'object') {
+    serverMsg = data.error || data.message || data.details || JSON.stringify(data);
+  } else if (typeof data === 'string' && data.trim()) {
+    serverMsg = data.trim();
+  }
+
+  const coreMsg = serverMsg || e.message || fallback;
+  const parts = [];
+  if (method && url) parts.push(`${method} ${url}`);
+  else if (url) parts.push(url);
+  if (status) parts.push(`HTTP ${status}`);
+  parts.push(coreMsg);
+
+  return parts.join(': ');
+}
 
 export default api;

@@ -1,6 +1,6 @@
 // src/components/admin/AdminDiscordTab.jsx
 import React, { useState, useEffect } from 'react';
-import api from '../../core/api';
+import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/Admin.module.css';
 import { Skeleton } from 'boneyard-js/react';
 
@@ -21,7 +21,7 @@ export default function AdminDiscordTab({ users = [] }) {
   const [dmUserId, setDmUserId] = useState('');
   const [dmMessage, setDmMessage] = useState('');
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
 
@@ -31,11 +31,13 @@ export default function AdminDiscordTab({ users = [] }) {
 
   const loadConfig = async () => {
     setLoading(true);
+    setErr('');
     try {
       const { data } = await api.get('/admin/discord/config');
       setConfig(prev => ({ ...prev, ...data }));
     } catch (e) {
-      setErr('Failed to load Discord settings');
+      console.error('[AdminDiscordTab] Failed to load config', e);
+      setErr(formatApiError(e, 'Failed to load Discord settings'));
     } finally {
       setLoading(false);
     }
