@@ -211,7 +211,33 @@ function normalizeFromFlatAny(source) {
     });
   };
 
-  sheet.touchstones = normalizeStringArray(
+  const normalizeTouchstoneArray = (arr) => {
+    if (!Array.isArray(arr)) return [];
+    return arr.map(item => {
+      if (!item) return { name: '', conviction: '', background: '' };
+      if (typeof item === 'object' && item !== null) {
+        return {
+          name: String(item.name || item.title || '').trim(),
+          conviction: String(item.conviction || '').trim(),
+          background: String(item.background || item.description || '').trim()
+        };
+      }
+      if (typeof item === 'string') {
+        const splitIdx = item.search(/[:\-]/);
+        if (splitIdx !== -1) {
+          return {
+            name: item.substring(0, splitIdx).trim(),
+            conviction: '',
+            background: item.substring(splitIdx + 1).trim()
+          };
+        }
+        return { name: item.trim(), conviction: '', background: '' };
+      }
+      return { name: String(item), conviction: '', background: '' };
+    });
+  };
+
+  sheet.touchstones = normalizeTouchstoneArray(
     Array.isArray(flat.touchstones) ? flat.touchstones : flat.morality?.touchstones
   );
   sheet.convictions = normalizeStringArray(
@@ -439,7 +465,7 @@ function attachStructured(raw) {
     });
   };
 
-  sheet.touchstones = normalizeStringArray(sheet.touchstones || sheet.morality?.touchstones);
+  sheet.touchstones = normalizeTouchstoneArray(sheet.touchstones || sheet.morality?.touchstones);
   sheet.convictions = normalizeStringArray(sheet.convictions || sheet.morality?.convictions);
   // ------------------------------------
 
@@ -735,12 +761,44 @@ function IdentityEditModal({ sheet, onClose, onSave, busy }) {
 }
 
 function MoralityEditModal({ sheet, onClose, onSave, busy }) {
-  const [touchstones, setTouchstones] = useState([...(sheet.touchstones || [])]);
+  const [touchstones, setTouchstones] = useState(
+    (sheet.touchstones || []).map(t => {
+      if (!t) return { name: '', conviction: '', background: '' };
+      if (typeof t === 'object') {
+        return {
+          name: t.name || t.title || '',
+          conviction: t.conviction || '',
+          background: t.background || t.description || ''
+        };
+      }
+      const splitIdx = String(t).search(/[:\-]/);
+      if (splitIdx !== -1) {
+        return {
+          name: String(t).substring(0, splitIdx).trim(),
+          conviction: '',
+          background: String(t).substring(splitIdx + 1).trim()
+        };
+      }
+      return { name: String(t).trim(), conviction: '', background: '' };
+    })
+  );
   const [convictions, setConvictions] = useState([...(sheet.convictions || [])]);
+
+  const handleSave = () => {
+    const cleanTouchstones = touchstones
+      .filter(t => (t.name || '').trim() || (t.background || '').trim())
+      .map(t => ({
+        name: (t.name || '').trim(),
+        conviction: (t.conviction || '').trim(),
+        background: (t.background || '').trim()
+      }));
+    const cleanConvictions = convictions.filter(c => c && String(c).trim());
+    onSave({ touchstones: cleanTouchstones, convictions: cleanConvictions });
+  };
 
   return (
     <div className={styles.modalOverlay} role="dialog">
-      <div className={`${styles.card} ${styles.modalCard}`} style={{ width: 'min(92vw, 600px)', maxHeight: '90vh', overflowY: 'auto', background: 'var(--surface-container)' }}>
+      <div className={`${styles.card} ${styles.modalCard}`} style={{ width: 'min(92vw, 640px)', maxHeight: '90vh', overflowY: 'auto', background: 'var(--surface-container)' }}>
         <div className={styles.modalHeader} style={{ borderBottom: '1px solid var(--border-color)', padding: '16px' }}>
           <h3 className={styles.modalTitle} style={{ margin: 0, fontFamily: 'var(--font-title)', fontSize: '24px', color: 'var(--text-color)' }}>Edit Morality & Anchors</h3>
         </div>
@@ -780,24 +838,84 @@ function MoralityEditModal({ sheet, onClose, onSave, busy }) {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <label style={{ fontWeight: '600', color: 'var(--text-color)', fontSize: '18px' }}>Touchstones</label>
-              <button className={styles.ghostBtn} style={{ padding: '4px 12px', fontSize: '12px', borderRadius: '4px' }} onClick={() => setTouchstones([...touchstones, ''])}>+ Add Touchstone</button>
+              <button
+                className={styles.ghostBtn}
+                style={{ padding: '4px 12px', fontSize: '12px', borderRadius: '4px' }}
+                onClick={() => setTouchstones([...touchstones, { name: '', conviction: '', background: '' }])}
+              >
+                + Add Touchstone
+              </button>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {touchstones.map((t, i) => (
-                <div key={i} style={{ display: 'flex', gap: 8 }}>
-                  <input
+                <div
+                  key={i}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 8,
+                    padding: '12px',
+                    borderRadius: '6px',
+                    border: '1px solid var(--border-color)',
+                    background: 'var(--surface-lowest)'
+                  }}
+                >
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <input
+                      className={styles.input}
+                      value={t.name}
+                      onChange={e => {
+                        const n = [...touchstones];
+                        n[i] = { ...n[i], name: e.target.value };
+                        setTouchstones(n);
+                      }}
+                      style={{ flex: '1 1 50%', background: 'var(--surface-color)', border: '1px solid var(--border-color)', color: 'var(--text-color)', padding: '8px 10px', borderRadius: '4px' }}
+                      placeholder="Touchstone name"
+                    />
+                    <select
+                      className={styles.input}
+                      value={t.conviction}
+                      onChange={e => {
+                        const n = [...touchstones];
+                        n[i] = { ...n[i], conviction: e.target.value };
+                        setTouchstones(n);
+                      }}
+                      style={{ flex: '1 1 50%', background: 'var(--surface-color)', border: '1px solid var(--border-color)', color: 'var(--text-color)', padding: '8px 10px', borderRadius: '4px' }}
+                    >
+                      <option value="">Link conviction (optional)</option>
+                      {convictions.filter(Boolean).map((c, idx) => (
+                        <option key={idx} value={c}>{c}</option>
+                      ))}
+                    </select>
+                    <button
+                      className={styles.ghostBtn}
+                      style={{ color: 'var(--tint)', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '6px 12px' }}
+                      onClick={() => setTouchstones(touchstones.filter((_, idx) => idx !== i))}
+                      title="Remove Touchstone"
+                    >✕</button>
+                  </div>
+                  <textarea
                     className={styles.input}
-                    value={t}
-                    onChange={e => { const n = [...touchstones]; n[i] = e.target.value; setTouchstones(n); }}
-                    style={{ flex: 1, background: 'var(--surface-lowest)', border: '1px solid var(--border-color)', color: 'var(--text-color)', padding: '10px', borderRadius: '4px' }}
-                    placeholder="Name - Description..."
+                    rows={2}
+                    value={t.background}
+                    onChange={e => {
+                      const n = [...touchstones];
+                      n[i] = { ...n[i], background: e.target.value };
+                      setTouchstones(n);
+                    }}
+                    style={{
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      resize: 'vertical',
+                      background: 'var(--surface-color)',
+                      border: '1px solid var(--border-color)',
+                      color: 'var(--text-color)',
+                      padding: '8px 10px',
+                      borderRadius: '4px',
+                      fontFamily: 'inherit'
+                    }}
+                    placeholder="Touchstone background: who they are, what they do, etc."
                   />
-                  <button
-                    className={styles.ghostBtn}
-                    style={{ color: 'var(--tint)', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '0 12px' }}
-                    onClick={() => setTouchstones(touchstones.filter((_, idx) => idx !== i))}
-                    title="Remove Touchstone"
-                  >✕</button>
                 </div>
               ))}
               {touchstones.length === 0 && <div className={styles.muted} style={{ fontSize: '14px' }}>No touchstones added.</div>}
@@ -807,7 +925,7 @@ function MoralityEditModal({ sheet, onClose, onSave, busy }) {
         </div>
         <div className={styles.modalFooter} style={{ padding: '16px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
           <button className={styles.ghostBtn} onPointerDown={(e) => { e.preventDefault(); onClose(); }} onClick={onClose} disabled={busy}>Cancel</button>
-          <button className={styles.cta} onPointerDown={(e) => { e.preventDefault(); onSave({ touchstones, convictions }); }} onClick={() => onSave({ touchstones, convictions })} disabled={busy}>{busy ? 'Saving...' : 'Save Changes'}</button>
+          <button className={styles.cta} onPointerDown={(e) => { e.preventDefault(); handleSave(); }} onClick={handleSave} disabled={busy}>{busy ? 'Saving...' : 'Save Changes'}</button>
         </div>
       </div>
     </div>

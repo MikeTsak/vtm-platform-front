@@ -142,7 +142,29 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
   // Morality
   const [tenets, setTenets] = useState(draft?.tenets ?? '');
   const [convictions, setConvictions] = useState(draft?.convictions ?? ['']);
-  const [touchstones, setTouchstones] = useState(draft?.touchstones ?? ['']);
+  const [touchstones, setTouchstones] = useState(() => {
+    const raw = draft?.touchstones;
+    if (!Array.isArray(raw) || raw.length === 0) return [{ name: '', conviction: '', background: '' }];
+    return raw.map(t => {
+      if (!t) return { name: '', conviction: '', background: '' };
+      if (typeof t === 'object') {
+        return {
+          name: t.name || t.title || '',
+          conviction: t.conviction || '',
+          background: t.background || t.description || ''
+        };
+      }
+      const splitIdx = String(t).search(/[:\-]/);
+      if (splitIdx !== -1) {
+        return {
+          name: String(t).substring(0, splitIdx).trim(),
+          conviction: '',
+          background: String(t).substring(splitIdx + 1).trim()
+        };
+      }
+      return { name: String(t).trim(), conviction: '', background: '' };
+    });
+  });
   const [humanity, setHumanity] = useState(draft?.humanity ?? RULES.humanity);
   const [bloodPotency, setBloodPotency] = useState(draft?.bloodPotency ?? RULES.bloodPotency);
 
@@ -400,7 +422,25 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
       morality: {
         tenets,
         convictions: (convictions || []).filter(Boolean),
-        touchstones: (touchstones || []).filter(Boolean),
+        touchstones: (touchstones || []).map(t => {
+          if (!t) return null;
+          if (typeof t === 'string') {
+            const splitIdx = t.search(/[:\-]/);
+            if (splitIdx !== -1) {
+              return {
+                name: t.substring(0, splitIdx).trim(),
+                conviction: '',
+                background: t.substring(splitIdx + 1).trim()
+              };
+            }
+            return { name: t.trim(), conviction: '', background: '' };
+          }
+          const name = (t.name || '').trim();
+          const conviction = (t.conviction || '').trim();
+          const background = (t.background || t.description || '').trim();
+          if (!name && !background) return null;
+          return { name, conviction, background };
+        }).filter(Boolean),
         humanity: humanityOut
       },
       bloodPotency: bloodPotencyOut
@@ -458,7 +498,15 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
     { step: 5, label: 'Attributes', done: attrOk },
     { step: 6, label: 'Skills', done: skillOk },
     { step: 7, label: 'Merits & Flaws', done: advOk },
-    { step: 8, label: 'Morality', done: convictions.some(Boolean) && touchstones.some(Boolean) },
+    {
+      step: 8,
+      label: 'Morality',
+      done: convictions.some(Boolean) && touchstones.some(t => {
+        if (!t) return false;
+        if (typeof t === 'string') return Boolean(t.trim());
+        return Boolean((t.name || '').trim() || (t.background || '').trim());
+      })
+    },
   ];
 
   return (

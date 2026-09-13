@@ -76,8 +76,17 @@ export default function MoralityStep({
     });
     setTouchstones(prev => {
       const filled = [...prev];
-      const idx = filled.findIndex(t => !t);
-      if (idx > -1) filled[idx] = seed.touchstone; else filled.push(seed.touchstone);
+      const idx = filled.findIndex(t => {
+        if (!t) return true;
+        if (typeof t === 'string') return !t.trim();
+        return !t.name?.trim() && !t.background?.trim();
+      });
+      const newTouchstone = {
+        name: '',
+        conviction: seed.conviction || '',
+        background: seed.touchstone || ''
+      };
+      if (idx > -1) filled[idx] = newTouchstone; else filled.push(newTouchstone);
       return filled;
     });
   };
@@ -143,13 +152,92 @@ export default function MoralityStep({
           <button className={styles.ghostBtn} type="button" onClick={()=>setConvictions(p=>[...p,''])}>+ Add Conviction</button>
         </Field>
         <Field label="Touchstones">
-          {touchstones.map((t,i)=>(
-            <div key={i} className={styles.flexRow}>
-              <input className={styles.input} value={t} onChange={e=>setTouchstones(p=>p.map((x,idx)=>idx===i?e.target.value:x))} placeholder="A mortal tied to a conviction" />
-              <button className={styles.ghostBtn} type="button" onClick={()=>setTouchstones(p=>p.filter((_,idx)=>idx!==i))}>Remove</button>
-            </div>
-          ))}
-          <button className={styles.ghostBtn} type="button" onClick={()=>setTouchstones(p=>[...p,''])}>+ Add Touchstone</button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {touchstones.map((t, i) => {
+              const item = typeof t === 'object' && t !== null
+                ? t
+                : { name: '', conviction: '', background: String(t || '') };
+              return (
+                <div
+                  key={i}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 8,
+                    padding: 10,
+                    borderRadius: 6,
+                    border: '1px solid var(--border-color)',
+                    background: 'var(--surface-lowest)'
+                  }}
+                >
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <input
+                      className={styles.input}
+                      style={{ flex: 1 }}
+                      value={item.name || ''}
+                      onChange={e => {
+                        const val = e.target.value;
+                        setTouchstones(p => p.map((x, idx) => {
+                          if (idx !== i) return x;
+                          const curr = typeof x === 'object' && x !== null ? x : { name: '', conviction: '', background: String(x || '') };
+                          return { ...curr, name: val };
+                        }));
+                      }}
+                      placeholder="Touchstone name"
+                    />
+                    <select
+                      className={styles.input}
+                      style={{ flex: 1 }}
+                      value={item.conviction || ''}
+                      onChange={e => {
+                        const val = e.target.value;
+                        setTouchstones(p => p.map((x, idx) => {
+                          if (idx !== i) return x;
+                          const curr = typeof x === 'object' && x !== null ? x : { name: '', conviction: '', background: String(x || '') };
+                          return { ...curr, conviction: val };
+                        }));
+                      }}
+                    >
+                      <option value="">Link conviction (optional)</option>
+                      {convictions.filter(Boolean).map((c, idx) => (
+                        <option key={idx} value={c}>{c}</option>
+                      ))}
+                    </select>
+                    <button
+                      className={styles.ghostBtn}
+                      type="button"
+                      onClick={() => setTouchstones(p => p.filter((_, idx) => idx !== i))}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  <textarea
+                    className={styles.input}
+                    rows={2}
+                    style={{ width: '100%', resize: 'vertical', boxSizing: 'border-box' }}
+                    value={item.background || ''}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setTouchstones(p => p.map((x, idx) => {
+                        if (idx !== i) return x;
+                        const curr = typeof x === 'object' && x !== null ? x : { name: '', conviction: '', background: String(x || '') };
+                        return { ...curr, background: val };
+                      }));
+                    }}
+                    placeholder="Touchstone background: who they are and what they do"
+                  />
+                </div>
+              );
+            })}
+          </div>
+          <button
+            className={styles.ghostBtn}
+            type="button"
+            onClick={() => setTouchstones(p => [...p, { name: '', conviction: '', background: '' }])}
+            style={{ marginTop: 8 }}
+          >
+            + Add Touchstone
+          </button>
         </Field>
         <Field label="Blood Potency">
           <div className={styles.input} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'default' }}>

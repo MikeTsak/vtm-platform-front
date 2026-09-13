@@ -1174,7 +1174,10 @@ async function grantXP(character_id, delta) {
             doc.setFont(bold.family, bold.style).text('Touchstones', touchColX, yTouch); yTouch += LINE_HEIGHT;
             doc.setFont(regular.family, regular.style);
             mor.touchstones.forEach(t => {
-                split(`• ${t}`, morColW - 12).forEach(ln => { ensure(LINE_HEIGHT); y = yTouch; yTouch = y; doc.text(ln, touchColX + 12, yTouch); yTouch += LINE_HEIGHT; });
+                const text = typeof t === 'object' && t !== null
+                    ? [t.name, t.conviction ? `(${t.conviction})` : '', t.background || t.description || ''].filter(Boolean).join(': ')
+                    : String(t || '');
+                split(`• ${text}`, morColW - 12).forEach(ln => { ensure(LINE_HEIGHT); y = yTouch; yTouch = y; doc.text(ln, touchColX + 12, yTouch); yTouch += LINE_HEIGHT; });
             });
         }
         y = Math.max(yConv, yTouch);

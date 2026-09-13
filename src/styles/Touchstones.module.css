@@ -238,6 +238,7 @@
   line-height: 24px;
   color: var(--text-color, var(--text-color));
   margin: 0;
+  white-space: pre-line;
 }
 
 .emptyState {

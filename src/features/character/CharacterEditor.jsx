@@ -1,4 +1,4 @@
-﻿// src/pages/CharacterEditor.jsx
+// src/pages/CharacterEditor.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import api from '../../core/api';
 import styles from '../../styles/Admin.module.css';
@@ -343,9 +343,13 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
   // ------ touchstones ------
   const touchstones = Array.isArray(sheet.touchstones) ? sheet.touchstones : [];
   const setTouchstones = (arr) => writeSheet({ ...sheet, touchstones: arr });
-  const addTouchstone = (name, conviction='') => {
-    if (!String(name).trim()) return;
-    setTouchstones([...(touchstones || []), { name: String(name).trim(), conviction: String(conviction||'').trim() }]);
+  const addTouchstone = (name, conviction='', background='') => {
+    if (!String(name).trim() && !String(background).trim()) return;
+    setTouchstones([...(touchstones || []), {
+      name: String(name).trim(),
+      conviction: String(conviction||'').trim(),
+      background: String(background||'').trim()
+    }]);
   };
   const updateTouchstone = (i, patch) => {
     const arr = [...(touchstones || [])];
@@ -742,24 +746,34 @@ export default function CharacterEditor({ character, onClose, onSaved }) {
                 <h4 className={styles.sectionSubhead}>Touchstones</h4>
                 {(touchstones.length === 0) && <div className={styles.subtle}>None</div>}
                 {touchstones.map((t, i) => (
-                  <div key={`ts_${i}`} className={styles.row} style={{ gap:8, alignItems:'center', flexWrap:'nowrap' }}>
-                    <input
+                  <div key={`ts_${i}`} style={{ display:'flex', flexDirection:'column', gap:6, padding:8, borderRadius:4, background:'var(--surface-lowest, #111)' }}>
+                    <div className={styles.row} style={{ gap:8, alignItems:'center', flexWrap:'nowrap' }}>
+                      <input
+                        className={styles.input}
+                        style={{ flex:'1 1 50%' }}
+                        value={t?.name || ''}
+                        onChange={e=>updateTouchstone(i, { name: e.target.value })}
+                        placeholder="Name (mortal or anchor)"
+                      />
+                      <select
+                        className={styles.select}
+                        value={t?.conviction || ''}
+                        onChange={e=>updateTouchstone(i, { conviction: e.target.value })}
+                        style={{ flex:'1 1 50%' }}
+                      >
+                        <option value="">Link conviction (optional)</option>
+                        {convictions.map((c, idx) => <option key={`copt_${idx}`} value={c}>{c}</option>)}
+                      </select>
+                      <button className={`${styles.btn} ${styles.btnIcon}`} onClick={()=>removeTouchstone(i)} title="Remove">×</button>
+                    </div>
+                    <textarea
                       className={styles.input}
-                      style={{ flex:'1 1 50%' }}
-                      value={t?.name || ''}
-                      onChange={e=>updateTouchstone(i, { name: e.target.value })}
-                      placeholder="Name (mortal/anchor)"
+                      rows={2}
+                      style={{ width:'100%', resize:'vertical', boxSizing:'border-box' }}
+                      value={t?.background || t?.description || ''}
+                      onChange={e=>updateTouchstone(i, { background: e.target.value })}
+                      placeholder="Touchstone background: who they are and what they do"
                     />
-                    <select
-                      className={styles.select}
-                      value={t?.conviction || ''}
-                      onChange={e=>updateTouchstone(i, { conviction: e.target.value })}
-                      style={{ flex:'1 1 50%' }}
-                    >
-                      <option value="">— Link conviction —</option>
-                      {convictions.map((c, idx) => <option key={`copt_${idx}`} value={c}>{c}</option>)}
-                    </select>
-                    <button className={`${styles.btn} ${styles.btnIcon}`} onClick={()=>removeTouchstone(i)} title="Remove">×</button>
                   </div>
                 ))}
                 <AddTouchstoneRow convictions={convictions} onAdd={addTouchstone} />
@@ -1224,24 +1238,45 @@ function AddAnyRow({ placeholder, onAdd, datalistId, datalistItems }) {
 function AddTouchstoneRow({ convictions, onAdd }) {
   const [name, setName] = useState('');
   const [cv, setCv] = useState('');
+  const [bg, setBg] = useState('');
   return (
-    <div className={styles.row} style={{ marginTop:8, gap:8, flexWrap:'wrap' }}>
-      <input 
-        placeholder="Touchstone name…" 
-        className={styles.input} 
-        value={name} onChange={e=>setName(e.target.value)} 
-        style={{ flex:'1 1 40%' }} 
+    <div style={{ marginTop:8, display:'flex', flexDirection:'column', gap:6, padding:8, borderRadius:4, border:'1px dashed var(--border-color)' }}>
+      <div className={styles.row} style={{ gap:8, flexWrap:'wrap' }}>
+        <input 
+          placeholder="Touchstone name…" 
+          className={styles.input} 
+          value={name} onChange={e=>setName(e.target.value)} 
+          style={{ flex:'1 1 45%' }} 
+        />
+        <select 
+          className={styles.select}
+          value={cv} 
+          onChange={e=>setCv(e.target.value)} 
+          style={{ flex:'1 1 45%' }}
+        >
+          <option value="">Link conviction (optional)</option>
+          {convictions.map((c, idx) => <option key={`cv_${idx}`} value={c}>{c}</option>)}
+        </select>
+      </div>
+      <textarea
+        placeholder="Touchstone background: who they are and what they do…"
+        className={styles.input}
+        rows={2}
+        value={bg}
+        onChange={e=>setBg(e.target.value)}
+        style={{ width:'100%', resize:'vertical', boxSizing:'border-box' }}
       />
-      <select 
-        className={styles.select}
-        value={cv} 
-        onChange={e=>setCv(e.target.value)} 
-        style={{ flex:'1 1 40%' }}
+      <button
+        className={`${styles.btn} ${styles.btnSecondary}`}
+        style={{ alignSelf:'flex-start' }}
+        onClick={()=>{
+          if (!name.trim() && !bg.trim()) return;
+          onAdd(name, cv, bg);
+          setName('');
+          setCv('');
+          setBg('');
+        }}
       >
-        <option value="">— Link conviction (optional) —</option>
-        {convictions.map((c, idx) => <option key={`cv_${idx}`} value={c}>{c}</option>)}
-      </select>
-      <button className={`${styles.btn} ${styles.btnSecondary}`} style={{flex: '1 1 100px'}} onClick={()=>{ onAdd(name, cv); setName(''); setCv(''); }}>
         Add Touchstone
       </button>
     </div>
@@ -1290,7 +1325,27 @@ function normalizeSheet(s) {
   sheet.rituals.oblivion = Array.isArray(sheet.rituals.oblivion) ? sheet.rituals.oblivion : [];
   // convictions / touchstones
   sheet.convictions = Array.isArray(sheet.convictions) ? sheet.convictions : [];
-  sheet.touchstones = Array.isArray(sheet.touchstones) ? sheet.touchstones : [];
+  sheet.touchstones = Array.isArray(sheet.touchstones)
+    ? sheet.touchstones.map(t => {
+        if (!t) return { name: '', conviction: '', background: '' };
+        if (typeof t === 'object') {
+          return {
+            name: t.name || t.title || '',
+            conviction: t.conviction || '',
+            background: t.background || t.description || ''
+          };
+        }
+        const splitIdx = String(t).search(/[:\-]/);
+        if (splitIdx !== -1) {
+          return {
+            name: String(t).substring(0, splitIdx).trim(),
+            conviction: '',
+            background: String(t).substring(splitIdx + 1).trim()
+          };
+        }
+        return { name: String(t).trim(), conviction: '', background: '' };
+      })
+    : [];
   // default BP
   if (sheet.blood_potency == null) sheet.blood_potency = 1;
   

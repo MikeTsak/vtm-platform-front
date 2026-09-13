@@ -14,6 +14,27 @@ const parseText = (text) => {
   return { title: text, desc: '' };
 };
 
+const parseTouchstone = (item) => {
+  if (!item) return { title: 'Unknown', anchor: '', desc: '' };
+  if (typeof item === 'object' && item !== null) {
+    return {
+      title: item.name || item.title || 'Unnamed Touchstone',
+      anchor: item.conviction || '',
+      desc: item.background || item.description || ''
+    };
+  }
+  const text = String(item);
+  const splitIdx = text.search(/[:\-]/);
+  if (splitIdx !== -1) {
+    return {
+      title: text.substring(0, splitIdx).trim(),
+      anchor: '',
+      desc: text.substring(splitIdx + 1).trim()
+    };
+  }
+  return { title: text, anchor: '', desc: '' };
+};
+
 const TouchstonesConvictionsSection = ({ sheet, setMoralityModalOpen }) => {
   const convictions = sheet?.convictions || [];
   const touchstones = sheet?.touchstones || [];
@@ -79,7 +100,7 @@ const TouchstonesConvictionsSection = ({ sheet, setMoralityModalOpen }) => {
             {touchstones.length > 0 ? (
               <div className={styles.touchstonesList}>
                 {touchstones.map((t, i) => {
-                  const { title, desc } = parseText(t);
+                  const { title, anchor, desc } = parseTouchstone(t);
                   return (
                     <div key={i} className={styles.touchstoneCard}>
                       <div className={styles.touchstoneImgBox}>
@@ -91,8 +112,11 @@ const TouchstonesConvictionsSection = ({ sheet, setMoralityModalOpen }) => {
                           <h4 className={styles.touchstoneTitle}>{title}</h4>
                           <span className={styles.badgeHealthy}>HEALTHY</span>
                         </div>
-                        {/* No Anchor mapping in DB yet, so we omit or put generic text */}
-                        <p className={styles.touchstoneAnchor}>ANCHOR</p>
+                        {anchor ? (
+                          <p className={styles.touchstoneAnchor}>ANCHOR: {anchor}</p>
+                        ) : (
+                          <p className={styles.touchstoneAnchor}>ANCHOR</p>
+                        )}
                         {desc && <p className={styles.touchstoneDesc}>{desc}</p>}
                       </div>
                     </div>
