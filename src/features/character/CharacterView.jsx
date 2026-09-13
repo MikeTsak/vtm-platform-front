@@ -850,7 +850,7 @@ function MoralityEditModal({ sheet, onClose, onSave, busy }) {
                     background: 'var(--surface-lowest)'
                   }}
                 >
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                     <input
                       className={styles.input}
                       value={t.name}
@@ -859,7 +859,7 @@ function MoralityEditModal({ sheet, onClose, onSave, busy }) {
                         n[i] = { ...n[i], name: e.target.value };
                         setTouchstones(n);
                       }}
-                      style={{ flex: '1 1 50%', background: 'var(--surface-color)', border: '1px solid var(--border-color)', color: 'var(--text-color)', padding: '8px 10px', borderRadius: '4px' }}
+                      style={{ flex: '1 1 180px', minWidth: 0, background: 'var(--surface-color)', border: '1px solid var(--border-color)', color: 'var(--text-color)', padding: '8px 10px', borderRadius: '4px' }}
                       placeholder="Touchstone name"
                     />
                     <select
@@ -870,7 +870,7 @@ function MoralityEditModal({ sheet, onClose, onSave, busy }) {
                         n[i] = { ...n[i], conviction: e.target.value };
                         setTouchstones(n);
                       }}
-                      style={{ flex: '1 1 50%', background: 'var(--surface-color)', border: '1px solid var(--border-color)', color: 'var(--text-color)', padding: '8px 10px', borderRadius: '4px' }}
+                      style={{ flex: '1 1 180px', minWidth: 0, background: 'var(--surface-color)', border: '1px solid var(--border-color)', color: 'var(--text-color)', padding: '8px 10px', borderRadius: '4px' }}
                     >
                       <option value="">Link conviction (optional)</option>
                       {convictions.filter(Boolean).map((c, idx) => (
@@ -879,7 +879,7 @@ function MoralityEditModal({ sheet, onClose, onSave, busy }) {
                     </select>
                     <button
                       className={styles.ghostBtn}
-                      style={{ color: 'var(--tint)', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '6px 12px' }}
+                      style={{ color: 'var(--tint)', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '6px 12px', flexShrink: 0 }}
                       onClick={() => setTouchstones(touchstones.filter((_, idx) => idx !== i))}
                       title="Remove Touchstone"
                     >✕</button>

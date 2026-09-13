@@ -170,10 +170,10 @@ export default function MoralityStep({
                     background: 'var(--surface-lowest)'
                   }}
                 >
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                     <input
                       className={styles.input}
-                      style={{ flex: 1 }}
+                      style={{ flex: '1 1 180px', minWidth: 0 }}
                       value={item.name || ''}
                       onChange={e => {
                         const val = e.target.value;
@@ -187,7 +187,7 @@ export default function MoralityStep({
                     />
                     <select
                       className={styles.input}
-                      style={{ flex: 1 }}
+                      style={{ flex: '1 1 180px', minWidth: 0 }}
                       value={item.conviction || ''}
                       onChange={e => {
                         const val = e.target.value;
@@ -206,6 +206,7 @@ export default function MoralityStep({
                     <button
                       className={styles.ghostBtn}
                       type="button"
+                      style={{ flexShrink: 0 }}
                       onClick={() => setTouchstones(p => p.filter((_, idx) => idx !== i))}
                     >
                       Remove
