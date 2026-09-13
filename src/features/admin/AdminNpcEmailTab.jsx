@@ -5,6 +5,7 @@ import { formatEuDate } from '../../utils/dateFormatter';
 import styles from '../../styles/Admin.module.css';
 import Avatar from '../../components/Avatar';
 import { sanitizeHtml } from '../../utils/sanitizeHtml';
+import { useIsMobile } from '../../utils/useMediaQuery';
 
 const EditorToolbar = ({ onCmd }) => (
   <div style={{ display: 'flex', gap: '4px', background: 'rgba(0,0,0,0.4)', padding: '6px', borderBottom: '1px solid var(--glass-border)' }}>
@@ -36,6 +37,10 @@ export default function AdminNpcEmailTab() {
   const [formDisplay, setFormDisplay] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const messagesEndRef = useRef(null);
+  const isMobile = useIsMobile();
+  // Phones show either the inbox list or the open thread, never both side by side.
+  const showList = !isMobile || !selectedThreadId;
+  const showDetail = !isMobile || !!selectedThreadId;
 
   const loadIdentities = async () => { try { const { data } = await api.get('/admin/emails/identities'); setIdentities(data.identities || []); } catch (e) {} };
   const loadThreads = async () => { try { const { data } = await api.get('/admin/emails/threads'); setThreads(data.threads || []); } catch (e) {} };
@@ -79,16 +84,16 @@ export default function AdminNpcEmailTab() {
   return (
     <div className={styles.stack12}>
       {/* Identities Configuration Panel */}
-      <div style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-lg)', padding: '1.5rem', boxShadow: 'var(--glass-shadow)' }}>
+      <div className={styles.adminCard}>
         <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-color)', margin: 0 }}>Email Identities</h3>
         <p className={styles.subtle} style={{ marginTop: '4px', marginBottom: '1.5rem' }}>Configure addresses for NPCs to send and receive emails.</p>
         
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '2rem', alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(340px, 100%), 1fr))', gap: '2rem', alignItems: 'start' }}>
           <form onSubmit={handleCreateIdentity} style={{ background: 'var(--glass-inset)', padding: '1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)' }}>
             <h4 style={{ margin: '0 0 1rem 0', color: 'var(--accent-purple)' }}>Create Email Identity</h4>
             <div style={{ marginBottom: '10px' }}><label className={styles.labeledInput}><span>Display Name</span><input className={styles.input} placeholder="e.g. Executive Office" value={formDisplay} onChange={e => setFormDisplay(e.target.value)} required /></label></div>
             <div style={{ marginBottom: '15px' }}><label className={styles.labeledInput}><span>Email Address</span><input className={styles.input} placeholder="e.g. contact@city.gov" value={formEmail} onChange={e => setFormEmail(e.target.value)} required /></label></div>
-            <button className={styles.btnPrimary} style={{ width: '100%', padding: '0.6rem' }} disabled={isSubmitting}>{isSubmitting ? 'Processing...' : 'Create'}</button>
+            <button className={`${styles.btn} ${styles.btnPrimary}`} style={{ width: '100%', padding: '0.6rem' }} disabled={isSubmitting}>{isSubmitting ? 'Processing...' : 'Create'}</button>
           </form>
 
           <div className={styles.tableContainer} style={{ maxHeight: '230px', overflowY: 'auto' }}>
@@ -105,7 +110,7 @@ export default function AdminNpcEmailTab() {
                       {id.display_name}
                     </td>
                     <td style={{ color: 'var(--accent-purple)', fontFamily: 'monospace' }}>{id.email_address}</td>
-                    <td><button className={styles.btnDanger} style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '4px' }} onClick={() => handleDeleteIdentity(id.id)}>Delete</button></td>
+                    <td><button className={`${styles.btn} ${styles.btnDanger} ${styles.btnSmall}`} onClick={() => handleDeleteIdentity(id.id)}>Delete</button></td>
                   </tr>
                 ))}
               </tbody>
@@ -115,9 +120,9 @@ export default function AdminNpcEmailTab() {
       </div>
 
       {/* Main Mail Grid Area Terminal */}
-      <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', height: '620px', background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', boxShadow: 'var(--glass-shadow)' }}>
+      <div className={styles.masterDetail}>
         {/* Inbox Left List Track */}
-        <div style={{ borderRight: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', background: 'rgba(0,0,0,0.2)' }}>
+        <div className={showList ? '' : styles.rPaneHidden} style={{ borderRight: isMobile ? 'none' : '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', background: 'rgba(0,0,0,0.2)', minHeight: 0 }}>
           <div style={{ padding: '1.2rem 1.5rem', background: 'rgba(0,0,0,0.2)', borderBottom: '1px solid var(--glass-border)', fontWeight: 800, color: 'var(--text-color)', fontSize: '1rem', letterSpacing: '0.5px' }}>INBOX</div>
           <div style={{ flex: 1, overflowY: 'auto' }}>
             {threads.map(t => (
@@ -132,22 +137,25 @@ export default function AdminNpcEmailTab() {
         </div>
 
         {/* Content Panel Right Wire Track */}
-        <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--glass-inset)' }}>
+        <div className={showDetail ? '' : styles.rPaneHidden} style={{ display: 'flex', flexDirection: 'column', background: 'var(--glass-inset)', minHeight: 0, minWidth: 0 }}>
           {selectedThreadId && activeThread ? (
             <>
-              <div style={{ padding: '1.25rem 2rem', background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid var(--glass-border)' }}>
-                <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-color)' }}>{activeThread.subject}</h3>
+              <div style={{ padding: 'clamp(0.9rem, 3vw, 1.25rem) clamp(1rem, 4vw, 2rem)', background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid var(--glass-border)' }}>
+                <button type="button" className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall} ${styles.rBackBtn}`} style={{ marginBottom: '8px', marginLeft: '-8px' }} onClick={() => setSelectedThreadId(null)}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 18 }} aria-hidden="true">arrow_back</span> Inbox
+                </button>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-color)', overflowWrap: 'anywhere' }}>{activeThread.subject}</h3>
                 <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '6px' }}>From: <span style={{ color: 'var(--text-color)', fontWeight: 700 }}>{activeThread.user_name} [{activeThread.char_name || 'Kindred'}]</span> ➔ To: <span style={{ color: 'var(--accent-purple)', fontFamily: 'monospace' }}>{activeThread.email_address}</span></div>
               </div>
 
-              <div style={{ flex: 1, overflowY: 'auto', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div style={{ flex: 1, overflowY: 'auto', padding: 'clamp(0.9rem, 3vw, 2rem)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 {messages.map((m, i) => {
                   const isIdentity = m.sender_type === 'identity';
                   const msgName = isIdentity ? activeThread.identity_name : activeThread.user_name;
                   const avatarProps = isIdentity ? { identityId: activeThread.identity_id } : { userId: activeThread.user_id };
                   
                   return (
-                    <div key={i} style={{ alignSelf: isIdentity ? 'flex-end' : 'flex-start', maxWidth: '80%', display: 'flex', flexDirection: isIdentity ? 'row-reverse' : 'row', gap: '1rem', alignItems: 'flex-end' }}>
+                    <div key={i} style={{ alignSelf: isIdentity ? 'flex-end' : 'flex-start', maxWidth: isMobile ? '96%' : '80%', display: 'flex', flexDirection: isIdentity ? 'row-reverse' : 'row', gap: '1rem', alignItems: 'flex-end' }}>
                       <Avatar {...avatarProps} size={36} style={{ borderRadius: '50%', flexShrink: 0 }} fallback="/img/ATT-logo(1).webp" />
                       <div style={{ background: isIdentity ? 'linear-gradient(135deg, rgba(127,90,240,0.2) 0%, rgba(157,124,255,0.05) 100%)' : 'rgba(255,255,255,0.03)', padding: '1rem 1.25rem', borderRadius: 'var(--radius-md)', border: `1px solid ${isIdentity ? 'var(--glass-border-highlight)' : 'var(--glass-border)'}`, boxShadow: '0 4px 15px rgba(0,0,0,0.2)' }}>
                         <div style={{ fontSize: '0.75rem', color: isIdentity ? 'var(--accent-purple)' : 'var(--text-secondary)', fontWeight: 700, marginBottom: '6px', display: 'flex', justifyContent: 'space-between', gap: '2rem' }}>
@@ -162,10 +170,10 @@ export default function AdminNpcEmailTab() {
                 <div ref={messagesEndRef} />
               </div>
 
-              <div style={{ padding: '1.5rem 2rem', borderTop: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)' }}>
+              <div style={{ padding: 'clamp(0.9rem, 3vw, 1.5rem) clamp(0.9rem, 3vw, 2rem)', borderTop: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)' }}>
                 <TextEditor placeholder={`Reply as ${activeThread.identity_name}...`} value={reply} onChange={setReply} />
                 <div style={{ textAlign: 'right', marginTop: '1rem' }}>
-                  <button className={styles.btnPrimary} onClick={handleReply} disabled={!reply.trim()}>Send Reply</button>
+                  <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={handleReply} disabled={!reply.trim()}>Send Reply</button>
                 </div>
               </div>
             </>

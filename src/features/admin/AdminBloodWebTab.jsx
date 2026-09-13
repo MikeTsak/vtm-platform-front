@@ -35,7 +35,7 @@ export default function AdminBloodWebTab() {
     }
 
     const width = containerRef.current.scrollWidth || 800;
-    const height = 600;
+    const height = containerRef.current.clientHeight || 600;
 
     const nodes = [];
     const edges = [];
@@ -139,7 +139,7 @@ export default function AdminBloodWebTab() {
     const handleResize = () => {
       if (!graph || graph.get('destroyed')) return;
       if (!containerRef.current) return;
-      graph.changeSize(containerRef.current.scrollWidth, 600);
+      graph.changeSize(containerRef.current.scrollWidth, containerRef.current.clientHeight || 600);
     };
     window.addEventListener('resize', handleResize);
 
@@ -157,7 +157,7 @@ export default function AdminBloodWebTab() {
       <h2 style={{ color: 'var(--text-primary)', margin: '0 0 4px 0', fontSize: '1.6rem', fontWeight: 800 }}>🩸 The Blood Web (G6 v4)</h2>
       <p style={{ color: 'var(--text-secondary)', margin: '0 0 2rem 0', fontSize: '0.85rem' }}>Interactive city-wide hunger and blood potency radar.</p>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
+      <div className={styles.rGrid3} style={{ marginBottom: '2rem' }}>
         <div style={{ background: 'var(--glass-inset)', padding: '1.5rem', borderRadius: 'var(--radius-lg)', textAlign: 'center' }}>
           <div style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--text-primary)' }}>{total}</div>
           <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', textTransform: 'uppercase' }}>Active Kindred</div>
@@ -181,9 +181,9 @@ export default function AdminBloodWebTab() {
         
         <div 
           ref={containerRef} 
+          className={styles.rGraphCanvas}
           style={{ 
             width: '100%', 
-            height: '600px', 
             background: 'var(--glass-bg)', 
             border: '1px solid var(--glass-border)', 
             borderRadius: '8px',
@@ -195,8 +195,8 @@ export default function AdminBloodWebTab() {
       </Skeleton>
 
       {selectedNode && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.8)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', padding: '2rem', borderRadius: '12px', width: '400px', maxWidth: '90%', backdropFilter: 'blur(10px)' }}>
+        <div className={styles.modalBackdrop} onClick={() => setSelectedNode(null)}>
+          <div className={styles.modalCard} onClick={e => e.stopPropagation()} style={{ maxWidth: '420px', padding: 'clamp(1.25rem, 4vw, 2rem)' }}>
             <h3 style={{ marginTop: 0, color: 'var(--text-primary)', fontSize: '1.4rem' }}>Update {selectedNode.name}</h3>
             
             <div style={{ marginBottom: '1.2rem' }}>
@@ -227,15 +227,13 @@ export default function AdminBloodWebTab() {
 
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
               <button 
-                className={styles.btnSecondary} 
-                style={{ padding: '0.5rem 1rem' }} 
+                className={`${styles.btn} ${styles.btnSecondary}`}
                 onClick={() => setSelectedNode(null)}
               >
                 Cancel
               </button>
               <button 
-                className={styles.submitBtn} 
-                style={{ padding: '0.5rem 1.5rem', width: 'auto' }} 
+                className={`${styles.btn} ${styles.btnPrimary}`}
                 disabled={saving} 
                 onClick={async () => {
                   setSaving(true);

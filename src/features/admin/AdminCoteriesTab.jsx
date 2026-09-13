@@ -31,7 +31,7 @@ export default function AdminCoteriesTab() {
     }
 
     const width = containerRef.current.scrollWidth || 800;
-    const height = 600;
+    const height = containerRef.current.clientHeight || 600;
 
     const nodes = [];
     const edges = [];
@@ -120,7 +120,7 @@ export default function AdminCoteriesTab() {
     const handleResize = () => {
       if (!graph || graph.get('destroyed')) return;
       if (!containerRef.current) return;
-      graph.changeSize(containerRef.current.scrollWidth, 600);
+      graph.changeSize(containerRef.current.scrollWidth, containerRef.current.clientHeight || 600);
     };
     window.addEventListener('resize', handleResize);
 
@@ -147,9 +147,9 @@ export default function AdminCoteriesTab() {
           </div>
         )}
 
-        <div style={{ display: coteries.length > 0 ? 'grid' : 'none', gridTemplateColumns: '1fr 3fr', gap: '2rem' }}>
+        <div className={styles.rGraphLayout} style={{ display: coteries.length > 0 ? 'grid' : 'none' }}>
           
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '600px', overflowY: 'auto', paddingRight: '0.5rem' }}>
+          <div className={styles.rGraphSide} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto', paddingRight: '0.5rem' }}>
             {coteries.map(c => {
               return (
                 <div key={c.id} style={{ background: 'var(--glass-inset)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-lg)', padding: '1rem' }}>
@@ -157,7 +157,7 @@ export default function AdminCoteriesTab() {
                   <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '0.5rem', fontStyle: 'italic' }}>
                     {c.type || 'Standard'}
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px 10px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                     <span>Chasse: {c.chasse || 0}</span>
                     <span>Lien: {c.lien || 0}</span>
                     <span>Port: {c.portillon || 0}</span>
@@ -169,9 +169,9 @@ export default function AdminCoteriesTab() {
 
           <div 
             ref={containerRef} 
+            className={styles.rGraphCanvas}
             style={{ 
               width: '100%', 
-              height: '600px', 
               background: 'var(--glass-bg)', 
               border: '1px solid var(--glass-border)', 
               borderRadius: '8px',

@@ -260,7 +260,7 @@ export default function AdminDowntimesTab() {
     <div className={styles.stack12}>
 
       {/* 1. TOP INTERACTIVE VIEW OVERVIEW OVERHAUL */}
-      <div style={{ display: 'flex', gap: '0.8rem', background: 'var(--glass-inset)', padding: '5px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', width: 'fit-content' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.8rem', background: 'var(--glass-inset)', padding: '5px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', width: 'fit-content', maxWidth: '100%' }}>
         <button
           className={styles.tab}
           style={{
@@ -292,7 +292,7 @@ export default function AdminDowntimesTab() {
       </div>
 
       {/* ============ Downtime Schedule (Config Panel) ============ */}
-      <section className={styles.editorSection} style={{ borderTop: `4px solid ${viewMode === 'project' ? '#4da6ff' : 'var(--accent-purple)'}`, background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', padding: '2rem', boxShadow: 'var(--glass-shadow)' }}>
+      <section className={styles.editorSection} style={{ borderTop: `4px solid ${viewMode === 'project' ? '#4da6ff' : 'var(--accent-purple)'}` }}>
         <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
           <h4 style={{ margin: 0, color: viewMode === 'project' ? '#4da6ff' : 'var(--accent-purple)', fontSize: '1.4rem', fontWeight: 800 }}>
             {viewMode === 'standard' ? 'Downtime Configuration' : 'Project Configuration'}
@@ -330,7 +330,7 @@ export default function AdminDowntimesTab() {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+        <div className={styles.rGrid2}>
           {viewMode === 'standard' ? (
             <>
               <label className={styles.labeledInput}>
@@ -350,17 +350,17 @@ export default function AdminDowntimesTab() {
           )}
         </div>
 
-        <div style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', padding: '2rem', boxShadow: 'var(--glass-shadow)', marginTop: '2rem' }}>
+        <div style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', padding: 'clamp(1rem, 3vw, 2rem)', boxShadow: 'var(--glass-shadow)', marginTop: '2rem' }}>
           <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
             <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-color)' }}>🕒 Mass Release System</h4>
             <p style={{ margin: '5px 0 0 0', color: 'var(--text-secondary)' }}>Automates the simultaneous release of all GM resolutions to players.</p>
           </div>
 
           <div onClick={() => setMassReleaseMode(!massReleaseMode)} style={{ background: 'var(--glass-inset)', border: `2px solid ${massReleaseMode ? '#4da6ff' : 'var(--glass-border)'}`, borderRadius: 'var(--radius-md)', padding: '1.5rem', cursor: 'pointer', transition: 'all 0.3s ease', display: 'flex', flexDirection: 'column', gap: '1.5rem', boxShadow: massReleaseMode ? '0 0 20px rgba(77,166,255,0.1)' : 'none' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px', minWidth: 0 }}>
                 <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: massReleaseMode ? '#4da6ff' : 'var(--glass-border)', boxShadow: massReleaseMode ? '0 0 15px #4da6ff' : 'none', animation: massReleaseMode ? 'pulseGlow 2s infinite' : 'none' }} />
-                <h3 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--text-color)' }}>Mass Release Mode</h3>
+                <h3 style={{ margin: 0, fontSize: 'clamp(1.05rem, 4vw, 1.4rem)', color: 'var(--text-color)' }}>Mass Release Mode</h3>
               </div>
               <div style={{ position: 'relative', width: '60px', height: '32px', background: massReleaseMode ? '#4da6ff' : 'var(--glass-border)', borderRadius: '32px', transition: 'background 0.3s ease' }}>
                 <div style={{ position: 'absolute', top: '4px', left: massReleaseMode ? '32px' : '4px', width: '24px', height: '24px', background: 'var(--text-color)', borderRadius: '50%', transition: 'left 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }} />
@@ -379,7 +379,7 @@ export default function AdminDowntimesTab() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', borderTop: '1px solid var(--glass-border)', paddingTop: '1.5rem' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginTop: '1.5rem', borderTop: '1px solid var(--glass-border)', paddingTop: '1.5rem' }}>
           <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={onReloadConfig}>Reset Configuration</button>
           <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => onSaveConfig()} disabled={cfgSaving}>
             {cfgSaving ? 'Updating...' : 'Save Configuration'}
@@ -388,7 +388,7 @@ export default function AdminDowntimesTab() {
       </section>
 
       {/* ============ Admin List Panel ============ */}
-      <section className={styles.editorSection} style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', padding: '2rem', boxShadow: 'var(--glass-shadow)' }}>
+      <section className={styles.editorSection}>
         <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
           <h4 style={{ margin: 0, color: 'var(--accent-purple)', fontSize: '1.4rem', fontWeight: 800 }}>
             {viewMode === 'standard' ? 'Downtimes' : 'Projects'}
@@ -408,7 +408,7 @@ export default function AdminDowntimesTab() {
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem', alignItems: 'end', marginBottom: '1.5rem' }}>
+        <div className={styles.rMainSide} style={{ alignItems: 'end', marginBottom: '1.5rem' }}>
           <label className={styles.labeledInput}>
             <span>Search</span>
             <input className={styles.input} placeholder="Search by character, action detail, clan..." value={q} onChange={(e) => setQ(e.target.value)} />
@@ -428,7 +428,7 @@ export default function AdminDowntimesTab() {
           ))}
         </div>
 
-        <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginTop: '1.5rem' }}>
           <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => { setQ(''); setStatusFilter('all'); }}>Clear Filters</button>
           <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={loadList}>Refresh</button>
         </div>
@@ -528,10 +528,10 @@ export default function AdminDowntimesTab() {
                     backdropFilter: 'var(--glass-blur)'
                   }}
                 >
-                  <header style={{ padding: '1.25rem 1.5rem', background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', gap: '1.5rem', borderBottom: '1px solid var(--glass-border)' }}>
-                    <div style={{ width: '44px', height: '44px', backgroundImage: clanLogoUrl ? `url(${clanLogoUrl})` : 'none', backgroundSize: 'cover', borderRadius: '50%', border: `2px solid ${clanColor}`, backgroundColor: 'rgba(255,255,255,0.95)', boxShadow: `0 0 15px ${clanColor}44` }}></div>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <span style={{ fontWeight: 800, fontSize: '1.2rem', color: 'var(--text-color)', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>{group.char_name || '(No Character)'}</span>
+                  <header style={{ padding: '1rem 1.25rem', background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '1px solid var(--glass-border)' }}>
+                    <div style={{ flexShrink: 0, width: '44px', height: '44px', backgroundImage: clanLogoUrl ? `url(${clanLogoUrl})` : 'none', backgroundSize: 'cover', borderRadius: '50%', border: `2px solid ${clanColor}`, backgroundColor: 'rgba(255,255,255,0.95)', boxShadow: `0 0 15px ${clanColor}44` }}></div>
+                    <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                      <span style={{ fontWeight: 800, fontSize: '1.2rem', color: 'var(--text-color)', textShadow: '0 2px 4px rgba(0,0,0,0.5)', overflowWrap: 'anywhere' }}>{group.char_name || '(No Character)'}</span>
                       <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: 'Fira Code, monospace', opacity: 0.8 }}>{group.player_name}</span>
                     </div>
                   </header>
@@ -567,13 +567,13 @@ function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel }
   if (!editing) {
     return (
       <div
-        className={styles.downtimeCompactRow}
-        style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', gap: '1.5rem', padding: '1.2rem 1.5rem', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.03)', cursor: 'pointer', background: 'transparent', transition: 'all 0.2s ease' }}
+        className={`${styles.downtimeCompactRow} ${styles.downtimeRowGrid}`}
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', cursor: 'pointer', background: 'transparent', transition: 'all 0.2s ease' }}
         onMouseEnter={e => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
         onClick={() => onOpen(r)}
       >
-        <div style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
+        <div style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-primary)', minWidth: 0, overflowWrap: 'anywhere' }}>
           <b style={{ color: 'var(--accent-purple)', fontFamily: 'Fira Code, monospace', marginRight: '10px' }}>#{r.id}</b> {displayTitle}
         </div>
         <div style={{ fontFamily: 'Fira Code, monospace', fontSize: '0.8rem', color: 'var(--text-secondary)', opacity: 0.8 }}>{niceDate(r.created_at)}</div>
@@ -589,7 +589,7 @@ function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel }
   return (
     <article
       className={styles.downtimeCard}
-      style={{ background: 'var(--glass-inset)', border: '1px solid var(--glass-border)', padding: '1.5rem', margin: '1.25rem', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: '1.5rem', boxShadow: 'inset 0 4px 20px rgba(0,0,0,0.5)', borderLeft: `4px solid ${isProj ? '#4da6ff' : 'var(--accent-purple)'}` }}
+      style={{ background: 'var(--glass-inset)', border: '1px solid var(--glass-border)', padding: 'clamp(0.9rem, 3vw, 1.5rem)', margin: 'clamp(0.5rem, 2vw, 1.25rem)', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: '1.5rem', boxShadow: 'inset 0 4px 20px rgba(0,0,0,0.5)', borderLeft: `4px solid ${isProj ? '#4da6ff' : 'var(--accent-purple)'}` }}
     >
       <header style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
@@ -597,7 +597,7 @@ function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel }
             <b style={{ color: isProj ? '#4da6ff' : 'var(--accent-purple)', fontFamily: 'Fira Code, monospace', marginRight: '8px' }}>#{r.id}</b> {displayTitle || '(no title)'}
             {isProj && <span style={{ fontSize: '0.7rem', background: '#1b4c8c', border: '1px solid #4da6ff', color: 'var(--text-color)', padding: '2px 8px', borderRadius: '4px', marginLeft: '12px', verticalAlign: 'middle', fontWeight: 900, letterSpacing: '1px' }}>PROJECT</span>}
           </div>
-          <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
             <span>Account: <b style={{ color: 'var(--text-secondary)' }}>{r.player_name || r.email}</b></span>
             <span>Subject: <b style={{ color: 'var(--text-secondary)' }}>{r.char_name || '—'}</b> {r.clan ? `[${r.clan}]` : ''}</span>
           </div>
@@ -619,7 +619,7 @@ function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel }
           </label>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+        <div className={styles.rGrid2}>
           <label className={styles.labeledInput}>
             <span>GM Internal Notes</span>
             <textarea className={styles.textarea} value={b.gm_notes} onChange={(e) => onUpdate(r.id, 'gm_notes', e.target.value)} placeholder="Internal notes for GMs only..." />
@@ -630,7 +630,7 @@ function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel }
           </label>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', background: 'var(--glass-bg)', padding: '1.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)', boxShadow: '0 4px 15px rgba(0,0,0,0.2)' }}>
+        <div className={styles.rGrid2} style={{ background: 'var(--glass-bg)', padding: 'clamp(0.9rem, 3vw, 1.5rem)', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)', boxShadow: '0 4px 15px rgba(0,0,0,0.2)' }}>
           <label className={styles.labeledInput}>
             <span>Status</span>
             <select className={styles.select} value={b.status} onChange={(e) => onUpdate(r.id, 'status', e.target.value)}>
@@ -650,7 +650,7 @@ function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel }
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', alignItems: 'center', borderTop: '1px solid var(--glass-border)', paddingTop: '1.5rem' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginTop: '0.5rem', alignItems: 'center', borderTop: '1px solid var(--glass-border)', paddingTop: '1.5rem' }}>
           <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => onCancel(r.id)} disabled={b.saving}>Close</button>
           <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => onSave(r.id)} disabled={b.saving} style={{ marginLeft: 'auto' }}>
             {b.saving ? 'Saving...' : 'Save'}

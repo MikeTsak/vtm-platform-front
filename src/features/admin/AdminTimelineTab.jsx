@@ -65,7 +65,7 @@ export default function AdminTimelineTab({ users }) {
     }
 
     const width = containerRef.current.scrollWidth || 800;
-    const height = 600; 
+    const height = containerRef.current.clientHeight || 600;
 
     const nodes = [];
     const edges = [];
@@ -184,7 +184,7 @@ export default function AdminTimelineTab({ users }) {
     const handleResize = () => {
       if (!graph || graph.get('destroyed')) return;
       if (!containerRef.current) return;
-      graph.changeSize(containerRef.current.scrollWidth, 600);
+      graph.changeSize(containerRef.current.scrollWidth, containerRef.current.clientHeight || 600);
     };
     window.addEventListener('resize', handleResize);
 
@@ -248,9 +248,9 @@ export default function AdminTimelineTab({ users }) {
 
         <div 
           ref={containerRef} 
+          className={styles.rGraphCanvas}
           style={{ 
             width: '100%', 
-            height: '600px', 
             background: 'var(--glass-bg)', 
             border: '1px solid var(--glass-border)', 
             borderRadius: '8px',

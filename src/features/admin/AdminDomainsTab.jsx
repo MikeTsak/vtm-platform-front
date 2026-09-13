@@ -65,7 +65,7 @@ export default function AdminDomainsTab() {
 
   return (
     <div className={styles.adminCard}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '2rem' }}>
         <div>
           <h2 style={{ color: 'var(--text-primary)', margin: 0, fontSize: '1.6rem', fontWeight: 800 }}>🗺️ Domain Threats & Safety</h2>
           <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0', fontSize: '0.85rem' }}>Track the safety ratings of all city domains. Messy criticals reduce safety automatically.</p>
@@ -77,7 +77,7 @@ export default function AdminDomainsTab() {
 
       {err && <div className={`${styles.alert} ${styles.alertError}`}>{err}</div>}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+      <div className={styles.rGrid2} style={{ gap: '2rem' }}>
         {/* DOMAINS LIST */}
         <div style={{ background: 'var(--glass-inset)', padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
           <h3 style={{ margin: '0 0 1rem 0' }}>City Domains</h3>
@@ -109,12 +109,12 @@ export default function AdminDomainsTab() {
         <div style={{ background: 'var(--glass-inset)', padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
           <h3 style={{ margin: '0 0 1rem 0' }}>Current Problems</h3>
           
-          <form onSubmit={addCustomProblem} style={{ display: 'flex', gap: '8px', marginBottom: '1.5rem' }}>
-            <select className={styles.input} value={customDom} onChange={e => setCustomDom(e.target.value)} required>
+          <form onSubmit={addCustomProblem} style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '1.5rem' }}>
+            <select className={styles.input} value={customDom} onChange={e => setCustomDom(e.target.value)} required style={{ flex: '1 1 160px', minWidth: 0 }}>
               <option value="">-- Domain --</option>
               {domains.map(d => <option key={d.id} value={d.id}>{DIVISION_NAMES[d.id] || `Domain ${d.id}`} ({d.name})</option>)}
             </select>
-            <input type="text" className={styles.input} placeholder="Problem description" value={customText} onChange={e => setCustomText(e.target.value)} required style={{ flex: 1 }} />
+            <input type="text" className={styles.input} placeholder="Problem description" value={customText} onChange={e => setCustomText(e.target.value)} required style={{ flex: '2 1 200px', minWidth: 0 }} />
             <button type="submit" className={`${styles.btn} ${styles.btnSecondary}`}>Add</button>
           </form>
 
@@ -126,13 +126,13 @@ export default function AdminDomainsTab() {
                 const dName = dom ? `${DIVISION_NAMES[dom.id] || `Domain ${dom.id}`} (${dom.name})` : 'Unknown';
                 return (
                   <div key={p.id} style={{ padding: '1rem', background: p.resolved ? 'rgba(0,0,0,0.2)' : 'rgba(255,82,82,0.1)', borderLeft: `3px solid ${p.resolved ? 'var(--glass-border)' : '#ff5252'}`, borderRadius: 'var(--radius-md)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
+                      <div style={{ minWidth: 0 }}>
                         <div style={{ fontWeight: 'bold', color: p.resolved ? 'var(--text-muted)' : 'var(--text-primary)' }}>{dName}</div>
                         <div style={{ fontSize: '0.9rem', color: p.resolved ? 'var(--text-muted)' : 'var(--text-secondary)' }}>{p.problem_text} {p.is_custom ? '(Custom)' : ''}</div>
                       </div>
                       {!p.resolved && (
-                        <button className={styles.btnSmall} style={{ background: 'var(--glass-bg)' }} onClick={() => resolveProblem(p.id)}>Resolve</button>
+                        <button className={`${styles.btn} ${styles.btnSmall}`} style={{ flexShrink: 0 }} onClick={() => resolveProblem(p.id)}>Resolve</button>
                       )}
                     </div>
                   </div>

@@ -86,12 +86,12 @@ export default function AdminXPTab({ users, onGrant, onBulkGrant, adminxp }) {
     <div className={styles.stack12}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
         <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>XP Tools & Management</h3>
-        <input type="text" placeholder="Search character, owner, or clan..." className={styles.input} style={{ width: '300px' }} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+        <input type="text" placeholder="Search character, owner, or clan..." className={`${styles.input} ${styles.rInput}`} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
       </div>
 
       {totalCharacters > 0 && (
-        <div style={{ background: 'var(--glass-inset)', padding: '20px', borderRadius: 'var(--radius-lg)', marginBottom: '16px', display: 'flex', gap: '15px', alignItems: 'center', border: '1px solid var(--glass-border)', boxShadow: 'var(--glass-shadow)', backdropFilter: 'blur(10px)' }}>
-          <div style={{ flexGrow: 1 }}>
+        <div style={{ background: 'var(--glass-inset)', padding: '20px', borderRadius: 'var(--radius-lg)', marginBottom: '16px', display: 'flex', flexWrap: 'wrap', gap: '15px', alignItems: 'center', border: '1px solid var(--glass-border)', boxShadow: 'var(--glass-shadow)', backdropFilter: 'blur(10px)' }}>
+          <div style={{ flex: '1 1 240px', minWidth: 0 }}>
             <strong style={{ display: 'block', marginBottom: '4px', fontSize: '1.2rem', color: 'var(--text-color)' }}>Bulk Grant Session XP</strong>
             <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Apply XP to EVERY character simultaneously ({totalCharacters} active characters).</span>
           </div>
@@ -113,7 +113,7 @@ export default function AdminXPTab({ users, onGrant, onBulkGrant, adminxp }) {
                 <div className={styles.clanName} style={{ color: clanColor }}>{c.clan}</div>
                 <div className={styles.ownerCell} title={c.owner}>{c.owner}</div>
                 <div className={styles.xpCell} style={{ fontWeight: 'bold' }}>{c.xp}</div>
-                <div className={styles.actionCell} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <div className={styles.actionCell} style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                   <input type="number" placeholder="+/-" className={styles.input} style={{ width: '70px', padding: '4px 8px' }} value={grants[c.id] ?? ''} onChange={e=>setGrants(prev => ({ ...prev, [c.id]: e.target.value }))} />
                   <button className={`${styles.btn} ${styles.btnPrimary}`} style={{ padding: '6px 12px' }} onClick={() => handleGrant(c.id)} disabled={!grants[c.id] || grants[c.id] === '0'}>Apply</button>
                   <button className={`${styles.btn} ${styles.btnSecondary}`} style={{ padding: '6px 12px', fontSize: '0.85rem' }} onClick={() => setCharModal(c)}>View History</button>
@@ -128,11 +128,11 @@ export default function AdminXPTab({ users, onGrant, onBulkGrant, adminxp }) {
 
       {/* Global XP Audit */}
       <div style={{ marginBottom: '20px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '15px' }}>
           <h3 style={{ margin: 0 }}>Global XP Audit Dashboard</h3>
           <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={fetchLogs} disabled={loadingLogs}>{loadingLogs ? 'Refreshing...' : 'Refresh Data'}</button>
         </div>
-        <div style={{ display: 'flex', gap: '15px', background: 'var(--glass-inset)', padding: '15px', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)' }}>
+        <div className={styles.rGrid3} style={{ background: 'var(--glass-inset)', padding: '15px', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)' }}>
           <label className={styles.labeledInput} style={{flex: 1}}><span>Character</span><select className={styles.select} value={logFilterChar} onChange={(e) => setLogFilterChar(e.target.value)}>{uniqueLogCharacters.map(c => <option key={c} value={c}>{c}</option>)}</select></label>
           <label className={styles.labeledInput} style={{flex: 1}}><span>Action Type</span><select className={styles.select} value={logFilterType} onChange={(e) => setLogFilterType(e.target.value)}><option value="All">All Actions</option><option value="Grants">Granted (+)</option><option value="Spends">Spent (-)</option></select></label>
           <label className={styles.labeledInput} style={{flex: 2}}><span>Search Reason</span><input type="text" className={styles.input} placeholder="e.g. 'Auspex'..." value={logSearch} onChange={(e) => setLogSearch(e.target.value)} /></label>
@@ -168,7 +168,7 @@ export default function AdminXPTab({ users, onGrant, onBulkGrant, adminxp }) {
                 logs.filter(l => l.character_id === charModal.id).map(log => {
                   const isGrant = log.amount > 0;
                   return (
-                    <div key={log.id} style={{ display: 'flex', justifyContent: 'space-between', background: 'var(--glass-inset)', padding: '15px', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)', borderLeft: `4px solid ${isGrant ? 'var(--color-success)' : 'var(--color-error)'}` }}>
+                    <div key={log.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', background: 'var(--glass-inset)', padding: '15px', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)', borderLeft: `4px solid ${isGrant ? 'var(--color-success)' : 'var(--color-error)'}` }}>
                       <div>
                         <div style={{ fontWeight: 'bold', fontSize: '1rem', marginBottom: '4px', color: 'var(--text-color)' }}>{log.reason}</div>
                         <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{formatEuDate(log.created_at)} • <span style={{color: 'var(--accent-purple)'}}>{log.action_type.replace(/_/g, ' ')}</span></div>

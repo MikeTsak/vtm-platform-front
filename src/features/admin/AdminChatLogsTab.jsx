@@ -6,6 +6,7 @@ import { formatEuDate } from '../../utils/dateFormatter';
 import styles from '../../styles/Admin.module.css';
 import MiniSearch from 'minisearch';
 import { symlogo, CLAN_HEX as CLAN_COLORS } from '../../data/clans';
+import { useIsMobile } from '../../utils/useMediaQuery';
 
 
 /* ==================== HELPERS ==================== */
@@ -322,12 +323,27 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
     setNpcSearch(''); setDirectSearch(''); setGroupSearch('');
   };
 
+  // Phones show a single pane at a time: list → (NPC threads) → messages, with back buttons.
+  const isMobile = useIsMobile();
+  const hasThread = (viewMode === 'direct' && !!selectedConversationKey)
+    || (viewMode === 'npc' && !!selectedNpcConversation)
+    || (viewMode === 'group' && !!selectedGroup);
+  const stage = !isMobile ? 'all' : hasThread ? 'messages' : (viewMode === 'npc' && selectedNpc ? 'convos' : 'list');
+  const showListPane = stage === 'all' || stage === 'list';
+  const showConvoPane = viewMode === 'npc' && (stage === 'all' || stage === 'convos');
+  const showMainPane = stage === 'all' || stage === 'messages';
+  const backFromMessages = () => {
+    if (viewMode === 'direct') setSelectedConversationKey(null);
+    else if (viewMode === 'npc') setSelectedNpcConversation(null);
+    else setSelectedGroup(null);
+  };
+
   return (
-    <div style={{ display: 'flex', height: '78vh', background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', overflow: 'hidden', boxShadow: 'var(--glass-shadow)' }}>
+    <div className={styles.chatShell}>
       
       {/* SIDEBAR: LISTS */}
-      <aside style={{ width: '380px', display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.3)', flexShrink: 0 }}>
-        <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', borderBottom: '1px solid var(--glass-border)' }}>
+      <aside className={showListPane ? '' : styles.rPaneHidden} style={{ width: isMobile ? '100%' : '380px', display: 'flex', flexDirection: 'column', borderRight: isMobile ? 'none' : '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.3)', flexShrink: 0, minHeight: 0 }}>
+        <div style={{ padding: 'clamp(0.9rem, 3vw, 1.5rem)', display: 'flex', flexDirection: 'column', gap: '1rem', borderBottom: '1px solid var(--glass-border)' }}>
           <button 
             className={styles.globalRecapBtn} 
             onClick={handleGlobalSummarize}
@@ -373,9 +389,14 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
       </aside>
 
       {/* MIDDLE: NPC CONVOS */}
-      {viewMode === 'npc' && (
-        <aside style={{ width: '320px', display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.45)', flexShrink: 0 }}>
-          <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--glass-border)' }}>
+      {showConvoPane && (
+        <aside style={{ width: isMobile ? '100%' : '320px', display: 'flex', flexDirection: 'column', borderRight: isMobile ? 'none' : '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.45)', flexShrink: 0, minHeight: 0 }}>
+          <div style={{ padding: 'clamp(0.9rem, 3vw, 1.5rem)', borderBottom: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {isMobile && selectedNpc && (
+              <button type="button" className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`} style={{ alignSelf: 'flex-start', marginLeft: '-8px' }} onClick={() => setSelectedNpc(null)}>
+                <span className="material-symbols-outlined" style={{ fontSize: 18 }} aria-hidden="true">arrow_back</span> NPCs · <b style={{ color: CLAN_COLORS[selectedNpc.clan] || 'inherit' }}>{selectedNpc.name}</b>
+              </button>
+            )}
             <input 
               type="search" placeholder={selectedNpc ? "Filter threads..." : "Select NPC"} 
               className={styles.input} disabled={!selectedNpc}
@@ -389,9 +410,9 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
       )}
 
       {/* MAIN: MESSAGES */}
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: 'var(--glass-inset)' }}>
+      <main className={showMainPane ? '' : styles.rPaneHidden} style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, background: 'var(--glass-inset)' }}>
         {viewMode === 'direct' && selectedConversationKey && (
-          <MessagePanel messages={currentMessages} participants={currentParticipants} mode="direct" />
+          <MessagePanel messages={currentMessages} participants={currentParticipants} mode="direct" onBack={isMobile ? backFromMessages : null} />
         )}
         {viewMode === 'npc' && selectedNpcConversation && (
           <MessagePanel 
@@ -402,6 +423,7 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
               user: selectedNpcConversation.charName || 'Unknown Character', userClan: selectedNpcConversation.charClan
             }} 
             mode="npc" loading={loading.thread}
+            onBack={isMobile ? backFromMessages : null}
           />
         )}
         {viewMode === 'group' && selectedGroup && (
@@ -409,6 +431,7 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
             messages={groupThread} 
             participants={{ threadKey: selectedGroup.id, groupName: selectedGroup.name }} 
             mode="group" loading={loading.groupThread}
+            onBack={isMobile ? backFromMessages : null}
           />
         )}
         
@@ -556,7 +579,7 @@ function GlobalSummaryModal({ summary, onClose }) {
 }
 
 /* ==================== MESSAGE PANEL (WITH AI) ==================== */
-function MessagePanel({ messages, participants, loading, mode }) { 
+function MessagePanel({ messages, participants, loading, mode, onBack }) { 
   const messagesEndRef = useRef(null);
   const [summary, setSummary] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
@@ -602,7 +625,7 @@ function MessagePanel({ messages, participants, loading, mode }) {
     if (mode === 'direct') {
       const c1 = participants.user1Clan; const c2 = participants.user2Clan;
       return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.25rem', fontWeight: 800 }}>
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px 10px', fontSize: 'clamp(1rem, 3.5vw, 1.25rem)', fontWeight: 800, minWidth: 0 }}>
           <span style={{color: CLAN_COLORS[c1] || 'var(--text-color)'}}>{participants.user1Char||participants.user1}</span>
           <span style={{color:'var(--text-muted)'}}>↔</span>
           <span style={{color: CLAN_COLORS[c2] || 'var(--text-color)'}}>{participants.user2Char||participants.user2}</span>
@@ -611,7 +634,7 @@ function MessagePanel({ messages, participants, loading, mode }) {
     }
     if (mode === 'group') return <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-color)' }}>{participants.groupName}</span>;
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.25rem', fontWeight: 800 }}>
+      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px 10px', fontSize: 'clamp(1rem, 3.5vw, 1.25rem)', fontWeight: 800, minWidth: 0 }}>
         <span style={{color: CLAN_COLORS[participants.npcClan] || 'var(--text-color)'}}>{participants.npc}</span>
         <span style={{color:'var(--text-muted)'}}>↔</span>
         <span style={{color: CLAN_COLORS[participants.userClan] || 'var(--text-color)'}}>{participants.user}</span>
@@ -621,15 +644,20 @@ function MessagePanel({ messages, participants, loading, mode }) {
 
   return (
     <>
-      <div style={{ display: 'flex', padding: '1.5rem', background: 'rgba(0,0,0,0.4)', borderBottom: '1px solid var(--glass-border)', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, zIndex: 10 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', padding: 'clamp(0.75rem, 3vw, 1.5rem)', background: 'rgba(0,0,0,0.4)', borderBottom: '1px solid var(--glass-border)', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, zIndex: 10 }}>
+        {onBack && (
+          <button type="button" className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`} style={{ flexBasis: '100%', alignSelf: 'flex-start', justifyContent: 'flex-start', marginLeft: '-8px' }} onClick={onBack}>
+            <span className="material-symbols-outlined" style={{ fontSize: 18 }} aria-hidden="true">arrow_back</span> Back to threads
+          </button>
+        )}
         {getHeaderTitle()}
-        <button className={styles.aiButton} onClick={handleSummarize} disabled={aiLoading || !messages || messages.length === 0}>
+        <button className={`${styles.btn} ${styles.aiButton}`} onClick={handleSummarize} disabled={aiLoading || !messages || messages.length === 0}>
           {aiLoading ? <span className={styles.spinner} style={{ width: '16px', height: '16px', borderWidth: '2px', marginRight: '8px', margin: 0 }} /> : '✨'}
           {aiLoading ? 'Analyzing...' : 'AI Thread Summary'}
         </button>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: 'clamp(0.75rem, 3vw, 2rem)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         {loading && <div className={styles.loading}><span className={styles.spinner} /> Extracting transmission stream...</div>}
         
         {!loading && messages.map((msg, i) => {

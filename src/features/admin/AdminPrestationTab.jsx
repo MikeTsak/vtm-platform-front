@@ -45,7 +45,7 @@ export default function AdminPrestationTab() {
     }
 
     const width = containerRef.current.scrollWidth || 800;
-    const height = 600;
+    const height = containerRef.current.clientHeight || 600;
 
     const nodesMap = new Map();
     boons.forEach(b => {
@@ -136,7 +136,7 @@ export default function AdminPrestationTab() {
     const handleResize = () => {
       if (!graph || graph.get('destroyed')) return;
       if (!containerRef.current) return;
-      graph.changeSize(containerRef.current.scrollWidth, 600);
+      graph.changeSize(containerRef.current.scrollWidth, containerRef.current.clientHeight || 600);
     };
     window.addEventListener('resize', handleResize);
 
@@ -163,10 +163,10 @@ export default function AdminPrestationTab() {
           </div>
         )}
         
-        <div style={{ display: boons.length > 0 ? 'grid' : 'none', gridTemplateColumns: '1fr 3fr', gap: '2rem' }}>
-          <div style={{ background: 'var(--glass-inset)', padding: '1.5rem', borderRadius: 'var(--radius-lg)' }}>
+        <div className={styles.rGraphLayout} style={{ display: boons.length > 0 ? 'grid' : 'none' }}>
+          <div className={styles.rGraphSide} style={{ background: 'var(--glass-inset)', padding: '1.5rem', borderRadius: 'var(--radius-lg)', overflowY: 'auto' }}>
             <h3 style={{ margin: '0 0 1rem 0' }}>Power Brokers</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '500px', overflowY: 'auto', paddingRight: '0.5rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingRight: '0.5rem' }}>
               {ranked.map(r => (
                 <div key={r.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.5rem' }}>
                   <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{r.name}</div>
@@ -181,9 +181,9 @@ export default function AdminPrestationTab() {
           
           <div 
             ref={containerRef} 
+            className={styles.rGraphCanvas}
             style={{ 
               width: '100%', 
-              height: '600px', 
               background: 'var(--glass-bg)', 
               border: '1px solid var(--glass-border)', 
               borderRadius: '8px',

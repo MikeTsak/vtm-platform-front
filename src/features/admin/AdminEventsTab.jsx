@@ -67,7 +67,7 @@ export default function AdminEventsTab() {
       <div style={{ background: 'var(--glass-inset)', padding: '1.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)', marginBottom: '2rem' }}>
         <h3 style={{ margin: '0 0 1rem 0', color: 'var(--text-primary)' }}>Schedule New Event</h3>
         <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className={styles.rGrid2} style={{ gap: '1rem' }}>
             <label className={styles.labeledInput}>
               <span>Event Title</span>
               <input type="text" className={styles.input} value={title} onChange={e => setTitle(e.target.value)} required placeholder="e.g. Elysium Gathering" />
@@ -95,15 +95,15 @@ export default function AdminEventsTab() {
             </div>
           ) : (
             events.map(ev => (
-              <div key={ev.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', padding: '1rem 1.5rem', boxShadow: 'var(--glass-shadow)' }}>
-                <div>
+              <div key={ev.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', padding: '1rem 1.25rem', boxShadow: 'var(--glass-shadow)' }}>
+                <div style={{ minWidth: 0 }}>
                   <h4 style={{ margin: '0 0 4px 0', color: 'var(--accent-purple)', fontSize: '1.2rem' }}>{ev.title}</h4>
                   <div style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.9rem', marginBottom: ev.description ? '8px' : 0 }}>
                     {formatEuDate(ev.date)}
                   </div>
                   {ev.description && <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{ev.description}</div>}
                 </div>
-                <button type="button" onClick={() => handleDelete(ev.id)} className={styles.btnSmall} style={{ background: 'rgba(255,82,82,0.1)', color: '#ff5252', border: '1px solid rgba(255,82,82,0.3)', borderRadius: 'var(--radius-sm)' }}>
+                <button type="button" onClick={() => handleDelete(ev.id)} className={`${styles.btn} ${styles.btnDanger} ${styles.btnSmall}`} style={{ flexShrink: 0 }}>
                   Delete
                 </button>
               </div>

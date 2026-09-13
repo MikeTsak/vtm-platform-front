@@ -44,7 +44,7 @@ export default function AdminGhoulsTab({ ghouls }) {
   return (
     <div className={styles.adminCard}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '1.5rem' }}>
         <div>
           <h2 style={{ color: 'var(--text-primary)', margin: 0, fontSize: '1.6rem', fontWeight: 800 }}>
             🩸 Ghouls Directory
@@ -56,7 +56,7 @@ export default function AdminGhoulsTab({ ghouls }) {
       </div>
 
       {/* Table */}
-      <div style={{ overflowX: 'auto' }}>
+      <div className={styles.rTable}>
         <table className={styles.table} style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ borderBottom: '2px solid var(--glass-border)' }}>

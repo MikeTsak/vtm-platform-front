@@ -3,8 +3,14 @@
 /* --- Main Layout --- */
 .adminGrid {
   display: grid;
-  grid-template-columns: 320px 1fr;
+  grid-template-columns: 320px minmax(0, 1fr);
   gap: 16px;
+}
+
+@media (max-width: 900px) {
+  .adminGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .panel {
@@ -95,6 +101,7 @@
 /* --- Composer Panel (Right) --- */
 .modeSwitch {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 10px;
 }
@@ -102,6 +109,7 @@
 .sendClearButtons {
   margin-left: auto;
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 

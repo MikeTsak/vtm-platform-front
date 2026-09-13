@@ -13,7 +13,7 @@ export default function AdminNPCsTab({ npcs, onReload, onDelete }) {
 
   return (
     <div className={styles.stack12}>
-      <div className={styles.row} style={{ justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem' }}>
+      <div className={styles.row} style={{ justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem' }}>
         <h3 style={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>NPCs</h3>
         {mode === 'list' && (
           <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => setMode('create')}>+ Create NPC</button>
@@ -22,7 +22,7 @@ export default function AdminNPCsTab({ npcs, onReload, onDelete }) {
 
       {mode === 'list' && (
         <div className={styles.tableContainer}>
-          <table className={styles.table}>
+          <table className={styles.table} style={{ minWidth: 760 }}>
             <thead>
               <tr>
                 <th>ID</th>
@@ -57,7 +57,7 @@ export default function AdminNPCsTab({ npcs, onReload, onDelete }) {
                     <td style={{ fontFamily: 'Fira Code, monospace', fontWeight: 'bold', color: 'var(--accent-purple)' }}>{n.xp}</td>
                     <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{formatEuDate(n.created_at)}</td>
                     <td>
-                      <div className={styles.row} style={{ gap: '8px', justifyContent: 'flex-end' }}>
+                      <div className={styles.row} style={{ gap: '8px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                         {n.is_disabled ? (
                           <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', padding: '0.5rem 1rem' }}>DISABLED</span>
                         ) : (
@@ -102,12 +102,12 @@ export default function AdminNPCsTab({ npcs, onReload, onDelete }) {
       )}
 
       {mode === 'create' && (
-        <div style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-lg)', padding: '2rem', boxShadow: 'var(--glass-shadow)' }}>
+        <div className={styles.adminCard}>
           <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem' }}>
             <h4 style={{ margin: 0, color: 'var(--accent-purple)', fontSize: '1.4rem', fontWeight: 800 }}>Create NPC</h4>
             <p className={styles.subtle}>Creates a new NPC character sheet.</p>
           </div>
-          <div style={{ background: 'var(--glass-inset)', padding: '1.5rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem' }}>
+          <div style={{ background: 'var(--glass-inset)', padding: 'clamp(0.75rem, 3vw, 1.5rem)', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem' }}>
             <CharacterSetup
               forNPC
               onDone={async () => { await onReload(); setMode('list'); }}

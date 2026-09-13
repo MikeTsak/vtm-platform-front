@@ -185,10 +185,10 @@ export default function AdminFeedingTab() {
           onClick={toggleEnabled}
           style={{ background: 'var(--glass-inset)', border: `2px solid ${themeColor}`, borderRadius: 'var(--radius-md)', padding: '1.5rem', cursor: actionLoading ? 'wait' : 'pointer', transition: 'all 0.3s ease', display: 'flex', flexDirection: 'column', gap: '1.5rem', opacity: actionLoading ? 0.7 : 1 }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
-              <div style={{ width: 12, height: 12, borderRadius: '50%', background: themeColor, boxShadow: `0 0 15px ${themeColor}` }} />
-              <h3 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--text-color)' }}>Feeding Gate</h3>
+              <div style={{ width: 12, height: 12, borderRadius: '50%', background: themeColor, boxShadow: `0 0 15px ${themeColor}`, flexShrink: 0 }} />
+              <h3 style={{ margin: 0, fontSize: 'clamp(1.05rem, 4vw, 1.4rem)', color: 'var(--text-color)' }}>Feeding Gate</h3>
             </div>
             <div style={{ position: 'relative', width: 60, height: 32, background: isOnline ? 'var(--color-success)' : 'var(--glass-border)', borderRadius: 32, transition: 'background 0.3s ease' }}>
               <div style={{ position: 'absolute', top: 4, left: isOnline ? 32 : 4, width: 24, height: 24, background: 'var(--text-color)', borderRadius: '50%', transition: 'left 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }} />
@@ -237,7 +237,7 @@ export default function AdminFeedingTab() {
 
       {/* HERD MANAGEMENT */}
       <div style={card}>
-        <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.75rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.75rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
           <FaGlyph icon={FEEDING_ICONS.droplet} size={16} style={{ color: '#7ecfff' }} />
           <h4 style={{ margin: 0, fontSize: '1.3rem', color: 'var(--text-color)' }}>Herd Management</h4>
           <span style={{ marginLeft: 'auto', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{roster.length} character{roster.length !== 1 ? 's' : ''} with Herd</span>
@@ -245,7 +245,7 @@ export default function AdminFeedingTab() {
         {roster.length === 0 ? (
           <p style={{ color: 'var(--text-secondary)' }}>No characters have the Herd background.</p>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <div className={styles.rTable}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
               <thead>
                 <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--glass-border)', color: 'var(--text-secondary)', fontSize: '0.78rem' }}>
@@ -268,7 +268,7 @@ export default function AdminFeedingTab() {
                       )}
                     </td>
                     <td style={{ padding: '0.6rem 0.75rem' }}>
-                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                         <button style={{ ...btnBase, padding: '0.3rem 0.75rem', fontSize: '1.1rem', lineHeight: 1 }} disabled={adjusting[r.character_id] || r.herdCurrent <= 0} onClick={() => adjustHerd(r.character_id, -1)} title="Damage Herd (-1)">-</button>
                         <button style={{ ...btnBase, padding: '0.3rem 0.75rem', fontSize: '1.1rem', lineHeight: 1, color: '#7ecfff', borderColor: '#7ecfff44' }} disabled={adjusting[r.character_id] || r.herdCurrent >= r.herdDots} onClick={() => adjustHerd(r.character_id, 1)} title="Heal Herd (+1)">+</button>
                         <button style={{ ...btnBase, padding: '0.3rem 0.65rem', fontSize: '0.75rem' }} disabled={adjusting[r.character_id] || r.herdCurrent >= r.herdDots} onClick={() => adjustHerd(r.character_id, r.herdDots - r.herdCurrent)}>Full</button>
@@ -289,7 +289,7 @@ export default function AdminFeedingTab() {
         {log.length === 0 ? (
           <p style={{ color: 'var(--text-secondary)' }}>No feeding rolls yet.</p>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <div className={styles.rTable}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
               <thead>
                 <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--glass-border)', color: 'var(--text-secondary)', fontSize: '0.78rem' }}>

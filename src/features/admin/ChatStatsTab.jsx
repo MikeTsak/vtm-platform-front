@@ -177,7 +177,7 @@ function InteractivePieChart({ data, isExporting }) {
   const r = 15.915494309189533;
 
   return (
-    <div style={{ display: 'flex', gap: '2rem', alignItems: 'center', justifyContent: isExporting ? 'center' : 'flex-start', background: 'rgba(20, 20, 24, 0.7)', padding: '1.5rem', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 4px 12px rgba(0,0,0,0.3)', width: '100%', boxSizing: 'border-box' }}>
+    <div style={{ display: 'flex', flexWrap: isExporting ? 'nowrap' : 'wrap', gap: '2rem', alignItems: 'center', justifyContent: isExporting ? 'center' : 'flex-start', background: 'rgba(20, 20, 24, 0.7)', padding: '1.5rem', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 4px 12px rgba(0,0,0,0.3)', width: '100%', boxSizing: 'border-box' }}>
       <div style={{ position: 'relative', width: isExporting ? '220px' : '180px', height: isExporting ? '220px' : '180px', flexShrink: 0 }}>
         <svg viewBox="0 0 40 40" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)', overflow: 'visible' }}>
           {data.map((d) => {
@@ -210,7 +210,7 @@ function InteractivePieChart({ data, isExporting }) {
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', maxHeight: isExporting ? 'none' : '180px', overflowY: isExporting ? 'visible' : 'auto', paddingRight: '0.5rem', flex: 1, minWidth: 0 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', maxHeight: isExporting ? 'none' : '180px', overflowY: isExporting ? 'visible' : 'auto', paddingRight: '0.5rem', flex: '1 1 200px', minWidth: 0 }}>
          {data.map(d => {
            const isFaded = hovered && hovered !== d.label && !isExporting;
            return (
@@ -655,14 +655,14 @@ const popStats = useMemo(() => {
       {/* Top Toolbar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', background: 'var(--card)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--dim)' }}>
         <h3 style={{ margin: 0 }}>Statistics Engine</h3>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap', flex: '1 1 320px', justifyContent: 'flex-end' }}>
           <input 
             type="text" 
             value={customTitle} 
             onChange={e => setCustomTitle(e.target.value)} 
             placeholder="Custom Export Title..."
             className={styles.input}
-            style={{ width: '220px', margin: 0 }}
+            style={{ flex: '1 1 180px', maxWidth: '260px', margin: 0 }}
           />
           <button 
             onClick={handleExport} 

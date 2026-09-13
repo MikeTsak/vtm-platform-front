@@ -78,7 +78,7 @@ export default function AdminNewsTab({ users = [] }) {
 
   return (
     <div className={styles.editorSection}>
-      <div className={styles.sectionHeader} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className={styles.sectionHeader}>
         <div>
           <h3 className={styles.hl}>News Management</h3>
           <p className={styles.subtle}>Manage news authors and existing articles.</p>
@@ -134,7 +134,7 @@ export default function AdminNewsTab({ users = [] }) {
 
           <h4>Active Permissions</h4>
           <div className={styles.tableContainer}>
-            <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
+            <table style={{ width: '100%', minWidth: 360, textAlign: 'left', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
                   <th style={{ padding: '8px', borderBottom: '1px solid var(--border-color)' }}>User</th>
@@ -148,7 +148,7 @@ export default function AdminNewsTab({ users = [] }) {
                     <td style={{ padding: '8px', borderBottom: '1px solid var(--border-color)' }}>{p.username} (#{p.user_id})</td>
                     <td style={{ padding: '8px', borderBottom: '1px solid var(--border-color)' }}>{p.theme}</td>
                     <td style={{ padding: '8px', borderBottom: '1px solid var(--border-color)' }}>
-                      <button className={styles.btnSecondary} onClick={() => handleRevokePermission(p.id)} style={{ color: 'red' }}>Revoke</button>
+                      <button className={`${styles.btn} ${styles.btnDanger} ${styles.btnSmall}`} onClick={() => handleRevokePermission(p.id)}>Revoke</button>
                     </td>
                   </tr>
                 ))}
@@ -162,7 +162,7 @@ export default function AdminNewsTab({ users = [] }) {
         <div style={{ flex: '2 1 500px' }}>
           <h4>Recent News & Announcements</h4>
           <div className={styles.tableContainer} style={{ maxHeight: '600px', overflowY: 'auto' }}>
-            <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
+            <table style={{ width: '100%', minWidth: 640, textAlign: 'left', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
                   <th style={{ padding: '8px', borderBottom: '1px solid var(--border-color)' }}>ID</th>
@@ -184,12 +184,12 @@ export default function AdminNewsTab({ users = [] }) {
                     </td>
                     <td style={{ padding: '8px', borderBottom: '1px solid var(--border-color)' }}>{formatEuDate(n.created_at)}</td>
                     <td style={{ padding: '8px', borderBottom: '1px solid var(--border-color)' }}>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                         {n.is_private ? (
-                          <button className={styles.btnSecondary} onClick={() => handlePublishNews(n.id)} style={{ color: '#4caf50' }}>Publish</button>
+                          <button className={`${styles.btn} ${styles.btnSuccess} ${styles.btnSmall}`} onClick={() => handlePublishNews(n.id)}>Publish</button>
                         ) : null}
-                        <button className={styles.btnSecondary} onClick={() => window.open(`/news/${n.id}`, '_blank')}>View</button>
-                        <button className={styles.btnSecondary} onClick={() => handleDeleteNews(n.id)} style={{ color: 'red' }}>Del</button>
+                        <button className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSmall}`} onClick={() => window.open(`/news/${n.id}`, '_blank')}>View</button>
+                        <button className={`${styles.btn} ${styles.btnDanger} ${styles.btnSmall}`} onClick={() => handleDeleteNews(n.id)}>Del</button>
                       </div>
                     </td>
                   </tr>

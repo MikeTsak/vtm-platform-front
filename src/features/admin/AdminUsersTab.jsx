@@ -44,15 +44,15 @@ export default function AdminUsersTab({ users = [], onSave, loading = false }) {
                 const clanColor = CLAN_COLORS[u.clan] || '#7F5AF0';
                 return (
                   <div key={u.id} className={styles.userRow} onMouseEnter={(e) => e.currentTarget.classList.add(styles.hover)} onMouseLeave={(e) => e.currentTarget.classList.remove(styles.hover)}>
-                    <div className={styles.td}><span className={styles.idCell}>#{u.id}</span></div>
-                    <div className={styles.td} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div className={styles.td} data-label="ID"><span className={styles.idCell}>#{u.id}</span></div>
+                    <div className={styles.td} data-label="Display Name" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <Avatar userId={u.id} hasAvatar={u.has_avatar} size={32} editable={true} />
                       <input className={styles.input} value={draft.display_name} onChange={(e) => setRow(u, { display_name: e.target.value })} />
                     </div>
-                    <div className={styles.td}><input className={styles.input} value={draft.email} onChange={(e) => setRow(u, { email: e.target.value })} /></div>
-                    <div className={styles.td}><select className={styles.select} value={draft.role} onChange={(e) => setRow(u, { role: e.target.value })}>{roleChoices.map((r) => <option key={r} value={r}>{r}</option>)}</select></div>
-                    <div className={styles.td}><input className={`${styles.input} ${styles.inputMono}`} value={draft.discord_id} onChange={(e) => setRow(u, { discord_id: e.target.value })} /></div>
-                    <div className={styles.td}>
+                    <div className={styles.td} data-label="Email"><input className={styles.input} type="email" value={draft.email} onChange={(e) => setRow(u, { email: e.target.value })} /></div>
+                    <div className={styles.td} data-label="Role"><select className={styles.select} value={draft.role} onChange={(e) => setRow(u, { role: e.target.value })}>{roleChoices.map((r) => <option key={r} value={r}>{r}</option>)}</select></div>
+                    <div className={styles.td} data-label="Discord ID"><input className={`${styles.input} ${styles.inputMono}`} value={draft.discord_id} onChange={(e) => setRow(u, { discord_id: e.target.value })} /></div>
+                    <div className={styles.td} data-label="Character">
                       {u.character_id ? (
                         <div className={styles.row} style={{ gap: '8px', alignItems: 'center' }}>
                           <span title={`Character ID: ${u.character_id}`}>{u.char_name || '—'}</span>
@@ -62,14 +62,14 @@ export default function AdminUsersTab({ users = [], onSave, loading = false }) {
                         <div className={styles.subtle}><em>None</em></div>
                       )}
                     </div>
-                    <div className={styles.td}>
+                    <div className={styles.td} data-label="Clan / XP">
                       <div className={styles.row} style={{ gap: '10px', alignItems: 'center' }}>
                         <span className={styles.tinyChip} style={{ '--chip-color': clanColor }}></span>
                         <span>{u.clan || '—'}</span>
                         <span className={styles.idCell} style={{ marginLeft: 'auto' }}>XP: {u.xp ?? 0}</span>
                       </div>
                     </div>
-                    <div className={`${styles.td} ${styles.rowEnd}`}>
+                    <div className={`${styles.td} ${styles.rowEnd} ${styles.userActions}`}>
                       <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => onSave?.({ id: u.id, ...draft })}>Save</button>
                       <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => resetRow(u)}>Reset</button>
                     </div>

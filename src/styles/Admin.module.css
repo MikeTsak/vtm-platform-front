@@ -2,9 +2,10 @@
  * Admin.module.css — SchreckNet Liquid-Glass Sidebar Portal
  * ============================================================
  * Pairs with the sidebar-dashboard Admin.jsx.
- * Covers: shell (sidebar/topbar/content) + every class used by all
- * 13 tab components (Users, Characters, Claims, Downtimes, XP, NPCs,
- * NPC Email, Chat Logs, Stats, Dice Logs, Discord, Master, Server Logs).
+ * Covers: shell (sticky sidebar / mobile drawer / topbar / content /
+ * toasts) + every shared class used by the admin tab components.
+ * Sections 2–7 are shell-only (safe to restyle); everything from
+ * section 8 onward is shared by the tabs — change with care.
  *
  * Design language
  * ───────────────
@@ -45,20 +46,27 @@
   --radius-lg: 14px;
   --radius-xl: 20px;
 
-  --sidebar-w: 228px;
-  --sidebar-w-collapsed: 64px;
-  --topbar-h: 64px;
+  --sidebar-w: 252px;
+  --sidebar-w-collapsed: 68px;
+  --topbar-h: 60px;
+  --nav-h: 64px; /* height of the global site <Nav /> the admin sits under */
+  --mobile-bar-h: 64px; /* bottom category bar on phones */
 }
 
 /* ═══════════════════════════════════════════════
    2. ROOT SHELL
+   The admin lives *below* the global site <Nav /> (64px, sticky).
+   Desktop : sticky sidebar rail + scrolling content column.
+   Mobile  : off-canvas drawer + hamburger in the top bar.
    ═══════════════════════════════════════════════ */
 .adminRoot {
   display: flex;
-  min-height: 100vh;
+  align-items: flex-start;
+  min-height: calc(100dvh - var(--nav-h));
   width: 100%;
   max-width: 100vw;
-  overflow-x: hidden;
+  /* `clip` (not `hidden`) so position: sticky keeps working for children */
+  overflow-x: clip;
   position: relative;
   background: #0a0a0f;
   color: var(--text-primary);
@@ -81,91 +89,553 @@
   margin: 0 0 1.5rem;
 }
 
+/* Generic icon-only square button (hamburger, drawer close, …) */
+.iconBtn {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.iconBtn:hover {
+  background: var(--accent-purple-dim);
+  border-color: var(--glass-border-highlight);
+  color: var(--accent-purple);
+}
+
+.iconBtn:focus-visible {
+  outline: 2px solid var(--accent-purple);
+  outline-offset: 2px;
+}
+
 /* ═══════════════════════════════════════════════
    3. SIDEBAR
    ═══════════════════════════════════════════════ */
 .sidebar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  height: 100vh;
+  position: sticky;
+  top: var(--nav-h);
+  height: calc(100dvh - var(--nav-h));
   width: var(--sidebar-w);
-  background: rgba(10, 10, 18, 0.86);
+  flex: 0 0 var(--sidebar-w);
+  background: rgba(12, 11, 20, 0.92);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border-right: 1px solid var(--glass-border);
   display: flex;
   flex-direction: column;
-  z-index: 100;
-  transition: width 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 60;
+  transition: width 0.22s cubic-bezier(0.4, 0, 0.2, 1), flex-basis 0.22s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
-  flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 .sidebarCollapsed {
   width: var(--sidebar-w-collapsed);
+  flex-basis: var(--sidebar-w-collapsed);
 }
 
-.sidebarLogo {
+/* ═══════════════════════════════════════════════
+   3b. MOBILE NAVIGATION — bottom category bar + tool sheet
+   (same pattern as the character view's bottom nav)
+   ═══════════════════════════════════════════════ */
+.mobileBar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1100;
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 18px 16px 14px;
-  border-bottom: 1px solid var(--glass-border);
-  min-height: var(--topbar-h);
-  box-sizing: border-box;
+  align-items: stretch;
+  justify-content: space-around;
+  gap: 2px;
+  height: calc(var(--mobile-bar-h) + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: max(4px, env(safe-area-inset-left));
+  padding-right: max(4px, env(safe-area-inset-right));
+  background: rgba(12, 11, 20, 0.9);
+  backdrop-filter: blur(18px) saturate(1.6);
+  -webkit-backdrop-filter: blur(18px) saturate(1.6);
+  border-top: 1px solid var(--glass-border);
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.45);
 }
 
-.sidebarLogoIcon {
-  width: 32px;
-  height: 32px;
-  flex-shrink: 0;
-  background: var(--accent-purple-dim);
-  border: 1px solid var(--glass-border-highlight);
-  border-radius: 8px;
+.mobileBarItem {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  gap: 3px;
+  padding: 6px 2px 12px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.2s, transform 0.15s;
 }
 
-.sidebarLogoText {
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+.mobileBarItem:active {
+  transform: scale(0.9);
+}
+
+.mobileBarItem :global(.material-symbols-outlined) {
+  font-size: 22px;
+}
+
+.mobileBarItemActive {
   color: var(--accent-purple);
-  white-space: nowrap;
-  opacity: 1;
-  transition: opacity 0.15s;
+  filter: drop-shadow(0 0 6px var(--accent-purple-glow));
 }
 
-.sidebarCollapsed .sidebarLogoText {
+.mobileBarLabel {
+  font-family: 'Fira Code', 'JetBrains Mono', monospace;
+  font-size: 8.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobileBarPill {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent-purple);
+  box-shadow: 0 0 8px var(--accent-purple-glow);
+  animation: adminPillIn 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes adminPillIn {
+  from {
+    width: 4px;
+    opacity: 0;
+  }
+
+  to {
+    width: 20px;
+    opacity: 1;
+  }
+}
+
+.drawerBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1190;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   opacity: 0;
   pointer-events: none;
+  transition: opacity 0.25s;
 }
 
-.sidebarNav {
+.drawerBackdropVisible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  max-height: min(84dvh, 720px);
+  padding-bottom: env(safe-area-inset-bottom);
+  background: rgba(14, 12, 22, 0.98);
+  border: 1px solid var(--glass-border-highlight);
+  border-bottom: none;
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.7);
+  transform: translateY(105%);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  visibility: hidden;
+}
+
+.sheetOpen {
+  transform: none;
+  visibility: visible;
+}
+
+.sheetHandle {
+  width: 40px;
+  height: 4px;
+  margin: 10px auto 2px;
+  border-radius: 2px;
+  background: var(--glass-border-highlight);
+  flex-shrink: 0;
+}
+
+.sheetHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 12px 6px 18px;
+  flex-shrink: 0;
+}
+
+.sheetTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-purple);
+}
+
+.sheetTitle :global(.material-symbols-outlined) {
+  font-size: 18px;
+}
+
+.sheetSearchWrap {
+  padding: 4px 12px 10px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.sheetSearchWrap .sidebarSearch {
+  height: 46px;
+}
+
+.sheetSearchWrap .sidebarSearch input {
+  font-size: 16px; /* ≥16px prevents iOS Safari from zooming the page on focus */
+}
+
+.sheetBody {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  overflow-x: hidden;
-  padding: 10px 0;
+  padding: 8px 10px 16px;
+  -webkit-overflow-scrolling: touch;
 }
 
-.sidebarSectionLabel {
-  padding: 12px 16px 4px;
-  font-size: 10px;
+.sheetGroup + .sheetGroup {
+  margin-top: 8px;
+}
+
+.sheetGroupLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 10px 6px;
+  font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  transition: opacity 0.15s;
 }
 
-.sidebarCollapsed .sidebarSectionLabel {
-  opacity: 0;
+.sheetGroupLabel :global(.material-symbols-outlined) {
+  font-size: 15px;
+}
+
+.sheetItem {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-primary);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.sheetItem:active {
+  background: var(--glass-bg-hover);
+}
+
+.sheetItemActive {
+  background: var(--accent-purple-dim);
+  border-color: var(--glass-border-highlight);
+}
+
+.sheetItemIcon {
+  font-size: 22px;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: var(--glass-inset);
+  border: 1px solid var(--glass-border);
+  color: var(--accent-purple);
+  flex-shrink: 0;
+}
+
+.sheetItemActive .sheetItemIcon {
+  background: var(--accent-purple);
+  color: #fff;
+  border-color: var(--accent-purple);
+}
+
+.sheetItemText {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.sheetItemLabel {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.sheetItemHint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sheetItemChevron {
+  font-size: 20px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.sheetItemActive .sheetItemChevron {
+  color: var(--accent-purple);
+}
+
+/* --- Search (pinned to the top of the nav) --- */
+.sidebarSearchWrap {
+  padding: 12px 10px 6px;
+  flex-shrink: 0;
+}
+
+.sidebarSearch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 8px 0 10px;
+  border-radius: var(--radius-md);
+  background: var(--glass-inset);
+  border: 1px solid var(--glass-border);
+  cursor: text;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.sidebarSearch:hover {
+  border-color: rgba(157, 124, 255, 0.32);
+}
+
+.sidebarSearch:focus-within {
+  border-color: var(--accent-purple);
+  box-shadow: 0 0 0 3px rgba(157, 124, 255, 0.12);
+}
+
+.sidebarSearch > :global(.material-symbols-outlined) {
+  font-size: 18px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.sidebarSearch input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13.5px;
+  padding: 0;
+}
+
+.sidebarSearch input::placeholder {
+  color: var(--text-muted);
+}
+
+.sidebarSearch input::-webkit-search-cancel-button,
+.sidebarSearch input::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.sidebarSearchClear {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.sidebarSearchClear:hover {
+  background: var(--glass-bg-hover);
+  color: var(--text-primary);
+}
+
+.sidebarSearchClear :global(.material-symbols-outlined) {
+  font-size: 16px;
+}
+
+.sidebarSearchKbd,
+.sidebarEnterKbd {
+  font-family: 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 10px;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.sidebarSearchIconBtn {
+  width: 44px;
+  height: 40px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-inset);
+  color: var(--text-secondary);
+  cursor: pointer;
+  position: relative;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.sidebarSearchIconBtn:hover {
+  background: var(--accent-purple-dim);
+  border-color: var(--glass-border-highlight);
+  color: var(--accent-purple);
+}
+
+/* --- Navigation list --- */
+.sidebarNav {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 0 12px;
+}
+
+.sidebarSection {
+  padding: 2px 0;
+}
+
+.sidebarSectionToggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: calc(100% - 16px);
+  margin: 8px 8px 2px;
+  padding: 6px 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sidebarSectionToggle:hover:not(:disabled) {
+  background: var(--glass-bg);
+  color: var(--text-secondary);
+}
+
+.sidebarSectionToggle:disabled {
+  cursor: default;
+}
+
+.sidebarSectionToggle:focus-visible {
+  outline: 2px solid var(--accent-purple);
+  outline-offset: 1px;
+}
+
+.sidebarSectionToggleActive {
+  color: var(--accent-purple);
+}
+
+.sidebarSectionIcon {
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.sidebarSectionLabel {
+  flex: 1;
+  min-width: 0;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebarSectionCount {
+  font-family: 'Fira Code', monospace;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.sidebarSectionChevron {
+  font-size: 16px;
+  flex-shrink: 0;
+  transition: transform 0.2s;
+}
+
+.sidebarSectionChevronOpen {
+  transform: rotate(180deg);
+}
+
+.sidebarSectionDivider {
+  height: 1px;
+  margin: 10px 16px;
+  background: var(--glass-border);
 }
 
 .sidebarNavItem {
@@ -173,19 +643,21 @@
   align-items: center;
   gap: 10px;
   width: calc(100% - 16px);
+  min-height: 38px;
   margin: 1px 8px;
-  padding: 9px 12px;
+  padding: 7px 10px;
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 13.5px;
+  font-size: 13px;
   font-family: inherit;
   cursor: pointer;
   white-space: nowrap;
   text-align: left;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
   position: relative;
+  box-sizing: border-box;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
 .sidebarNavItem:hover {
@@ -200,38 +672,102 @@
   font-weight: 700;
 }
 
+.sidebarNavItemActive::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent-purple);
+  box-shadow: 0 0 10px var(--accent-purple-glow);
+}
+
+.sidebarNavItemFirstMatch:not(.sidebarNavItemActive) {
+  border-color: var(--glass-border);
+  background: var(--glass-bg);
+}
+
 .sidebarNavItem:focus-visible {
   outline: 2px solid var(--accent-purple);
   outline-offset: 2px;
 }
 
 .sidebarNavIcon {
-  font-size: 17px;
-  width: 20px;
+  font-size: 19px;
+  width: 22px;
   flex-shrink: 0;
   text-align: center;
   transition: transform 0.15s;
 }
 
 .sidebarNavItem:hover .sidebarNavIcon {
-  transform: scale(1.12);
+  transform: scale(1.1);
 }
 
 .sidebarNavLabel {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  opacity: 1;
-  transition: opacity 0.12s;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
 }
 
-.sidebarCollapsed .sidebarNavLabel {
-  opacity: 0;
-  pointer-events: none;
+.sidebarNavLabelText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebarNavMatch {
+  margin-top: 2px;
+  font-size: 10.5px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--accent-purple);
+  opacity: 0.85;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebarEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 28px 16px;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.sidebarEmpty :global(.material-symbols-outlined) {
+  font-size: 28px;
+  opacity: 0.6;
+}
+
+/* Collapsed rail: icons only, centred */
+.sidebarCollapsed .sidebarNavItem {
+  width: 44px;
+  margin: 2px auto;
+  padding: 9px 0;
+  justify-content: center;
+}
+
+.sidebarCollapsed .sidebarNavItemActive::before {
+  left: -12px;
+}
+
+.sidebarCollapsed .sidebarNavLabel,
+.sidebarCollapsed .sidebarCollapseLabel {
+  display: none;
 }
 
 /* Tooltip on collapsed sidebar hover */
 .sidebarCollapsed .sidebarNavItem[data-tooltip]:hover::after,
-.sidebarCollapsed .sidebarCollapseBtn[data-tooltip]:hover::after {
+.sidebarCollapsed .sidebarCollapseBtn[data-tooltip]:hover::after,
+.sidebarCollapsed .sidebarSearchIconBtn[data-tooltip]:hover::after {
   content: attr(data-tooltip);
   position: absolute;
   left: calc(100% + 12px);
@@ -243,6 +779,9 @@
   padding: 5px 10px;
   border-radius: 6px;
   font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
   white-space: nowrap;
   pointer-events: none;
   z-index: 999;
@@ -253,19 +792,28 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 10px 8px 16px;
-  padding: 9px 13px;
+  margin: 8px 8px 12px;
+  padding: 8px 12px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--glass-border);
   background: var(--glass-bg);
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: 12.5px;
   font-family: inherit;
   cursor: pointer;
   white-space: nowrap;
   overflow: hidden;
-  transition: background 0.15s, color 0.15s;
   position: relative;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sidebarCollapsed .sidebarCollapseBtn {
+  width: 44px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 8px 0;
+  justify-content: center;
 }
 
 .sidebarCollapseBtn:hover {
@@ -279,45 +827,47 @@
 }
 
 .sidebarCollapseIcon {
-  font-size: 15px;
+  font-size: 18px;
   flex-shrink: 0;
-}
-
-.sidebarCollapseLabel {
-  opacity: 1;
-  transition: opacity 0.12s;
-}
-
-.sidebarCollapsed .sidebarCollapseLabel {
-  opacity: 0;
-  pointer-events: none;
 }
 
 /* ═══════════════════════════════════════════════
    4. MAIN AREA
    ═══════════════════════════════════════════════ */
 .main {
-  margin-left: var(--sidebar-w);
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
-  max-width: calc(100vw - var(--sidebar-w));
   display: flex;
   flex-direction: column;
-  transition: margin-left 0.22s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow-x: hidden;
-}
-
-.mainExpanded {
-  margin-left: var(--sidebar-w-collapsed);
-  max-width: calc(100vw - var(--sidebar-w-collapsed));
+  min-height: calc(100dvh - var(--nav-h));
+  overflow-x: clip;
 }
 
 .content {
   flex: 1;
   min-width: 0;
   max-width: 100%;
-  padding: 24px 28px 48px;
+  padding: 24px 28px 56px;
   box-sizing: border-box;
+}
+
+.centerState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 45vh;
+  padding: 3rem 1rem;
+}
+
+.centerStateLabel {
+  margin-top: 1.25rem;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-family: 'Fira Code', monospace;
+  text-align: center;
 }
 
 .tableContainer {
@@ -332,59 +882,90 @@
    ═══════════════════════════════════════════════ */
 .topbar {
   position: sticky;
-  top: 64px;
+  top: var(--nav-h);
   z-index: 50;
   min-height: var(--topbar-h);
   background: rgba(10, 10, 18, 0.88);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border-bottom: 1px solid var(--glass-border);
-  padding: 0 28px;
+  padding: 0 20px 0 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   flex-shrink: 0;
-  max-width: 100%;
   box-sizing: border-box;
+}
+
+.topbarLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
 }
 
 .topbarBreadcrumb {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-secondary);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.topbarBreadcrumbRoot,
+.topbarBreadcrumbSection {
+  white-space: nowrap;
 }
 
 .topbarBreadcrumbSep {
   color: var(--glass-border-highlight);
+  flex-shrink: 0;
 }
 
 .topbarBreadcrumbActive {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   color: var(--text-primary);
   font-weight: 700;
   font-size: 15px;
   letter-spacing: -0.01em;
+  text-transform: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topbarBreadcrumbActive :global(.material-symbols-outlined) {
+  font-size: 18px;
+  color: var(--accent-purple);
+  flex-shrink: 0;
 }
 
 .topbarActions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .statusPill {
   display: flex;
   align-items: center;
   gap: 7px;
-  padding: 6px 12px;
+  height: 36px;
+  padding: 0 12px;
   border-radius: 20px;
   background: rgba(0, 230, 118, 0.08);
   border: 1px solid rgba(0, 230, 118, 0.22);
   font-size: 12px;
   color: var(--color-success);
   font-weight: 600;
+  box-sizing: border-box;
 }
 
 .statusDot {
@@ -394,6 +975,7 @@
   background: var(--color-success);
   box-shadow: 0 0 8px var(--color-success);
   animation: adminPulse 2.2s infinite;
+  flex-shrink: 0;
 }
 
 @keyframes adminPulse {
@@ -409,10 +991,11 @@
 }
 
 .reloadBtn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 8px 15px;
+  height: 36px;
+  padding: 0 14px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--glass-border);
   background: var(--glass-bg);
@@ -421,10 +1004,12 @@
   font-family: inherit;
   font-weight: 500;
   cursor: pointer;
+  box-sizing: border-box;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
-.reloadBtn:hover {
+.reloadBtn:hover,
+.reloadBtnActive {
   background: var(--accent-purple-dim);
   border-color: var(--glass-border-highlight);
   color: var(--accent-purple);
@@ -440,24 +1025,88 @@
   outline-offset: 2px;
 }
 
+.reloadBtn :global(.material-symbols-outlined) {
+  font-size: 18px;
+}
+
 .reloadIcon {
   display: inline-block;
-  font-size: 15px;
 }
 
 .reloadIconSpin {
   animation: adminSpin 0.8s linear infinite;
 }
 
+/* Tools dropdown (push tests etc.) */
+.toolsMenuWrap {
+  position: relative;
+}
+
+.toolsMenu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 240px;
+  padding: 6px;
+  background: rgba(16, 14, 26, 0.98);
+  border: 1px solid var(--glass-border-highlight);
+  border-radius: var(--radius-md);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+  z-index: 200;
+  animation: alertSlideIn 0.15s ease;
+}
+
+.toolsMenuLabel {
+  padding: 8px 10px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.toolsMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.toolsMenuItem:hover {
+  background: var(--accent-purple-dim);
+  color: var(--text-primary);
+}
+
+.toolsMenuItem :global(.material-symbols-outlined) {
+  font-size: 18px;
+  color: var(--accent-purple);
+}
+
 /* ═══════════════════════════════════════════════
-   6. LOADING STRIP + TOAST BAR
+   6. LOADING STRIP + FLOATING TOASTS
    ═══════════════════════════════════════════════ */
 .loadingStrip {
-  height: 2px;
+  height: 3px;
   flex-shrink: 0;
-  background: linear-gradient(90deg, transparent, var(--accent-purple), transparent);
-  background-size: 200% 100%;
-  animation: adminShimmer 1.4s infinite;
+  background: var(--glass-bg);
+  overflow: hidden;
+}
+
+.loadingStripFill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-purple), #c4b2ff);
+  box-shadow: 0 0 10px var(--accent-purple-glow);
+  transition: width 0.2s ease-out;
 }
 
 @keyframes adminShimmer {
@@ -471,20 +1120,332 @@
 }
 
 .toastBar {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 1300;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 16px 28px 0;
+  gap: 8px;
+  width: min(440px, calc(100vw - 32px));
+  pointer-events: none;
+}
+
+.toastBar .toast {
+  pointer-events: auto;
+  align-items: center;
+  margin: 0;
+  padding: 12px 12px 12px 14px;
+  border-radius: var(--radius-md);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.toastBar .alertInfo {
+  background: rgba(30, 24, 52, 0.97);
+}
+
+.toastBar .alertError {
+  background: rgba(50, 18, 24, 0.97);
+}
+
+.toast > :global(.material-symbols-outlined) {
+  font-size: 20px;
   flex-shrink: 0;
 }
 
-/* ═══════════════════════════════════════════════
-   7. CONTENT
-   ═══════════════════════════════════════════════ */
-.content {
-  padding: 24px 28px 40px;
+.toastText {
   flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
+
+.toastClose {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.toastClose:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.toastClose :global(.material-symbols-outlined) {
+  font-size: 18px;
+}
+
+/* ═══════════════════════════════════════════════
+   7. SHELL RESPONSIVE RULES
+   ═══════════════════════════════════════════════ */
+@media (max-width: 900px) {
+  .main {
+    min-height: auto;
+  }
+
+  .content {
+    padding: 14px 12px 48px;
+  }
+
+  .topbar {
+    min-height: 56px;
+    padding: 0 10px 0 8px;
+  }
+
+  /* "Admin ›" prefix is noise on a phone — show Section › Tool only */
+  .topbarBreadcrumbRoot,
+  .topbarBreadcrumbRoot + .topbarBreadcrumbSep {
+    display: none;
+  }
+
+  .topbarBreadcrumbActive {
+    font-size: 14px;
+  }
+
+  .statusPillText,
+  .reloadLabel {
+    display: none;
+  }
+
+  .statusPill {
+    width: 36px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
+  }
+
+  .reloadBtn {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .toolsMenu {
+    min-width: min(280px, calc(100vw - 24px));
+  }
+
+  /* leave room for the fixed bottom category bar */
+  .adminRootMobile .content {
+    padding-bottom: calc(var(--mobile-bar-h) + 24px + env(safe-area-inset-bottom));
+  }
+
+  .toastBar {
+    left: 12px;
+    right: 12px;
+    bottom: calc(var(--mobile-bar-h) + 12px + env(safe-area-inset-bottom));
+    width: auto;
+  }
+
+  /* Native inputs ≥16px so iOS Safari doesn't zoom the page when focusing */
+  .input,
+  .select,
+  .textarea {
+    font-size: 16px;
+  }
+
+  /* Generous touch targets */
+  .btn {
+    min-height: 40px;
+  }
+
+  .btnSmall {
+    min-height: 34px;
+  }
+}
+
+@media (max-width: 480px) {
+  .content {
+    padding: 12px 8px 48px;
+  }
+
+  .adminRootMobile .content {
+    padding-bottom: calc(var(--mobile-bar-h) + 20px + env(safe-area-inset-bottom));
+  }
+
+  .topbarBreadcrumbSection,
+  .topbarBreadcrumbSection + .topbarBreadcrumbSep {
+    display: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   7b. RESPONSIVE LAYOUT HELPERS (used inside the tabs)
+   Desktop keeps the multi-column layout; phones stack.
+   ═══════════════════════════════════════════════ */
+.rGrid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.rGrid3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1rem;
+}
+
+.rSideMain {
+  display: grid;
+  grid-template-columns: 1fr 3fr;
+  gap: 2rem;
+}
+
+.rMainSide {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.5rem;
+}
+
+/* Wide-input helper: fixed width on desktop, full width on phones */
+.rInput {
+  width: 300px;
+  max-width: 100%;
+}
+
+/* Scrolling wrapper for bare <table> elements */
+.rTable {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.rTable > table {
+  min-width: 560px;
+}
+
+/* Generic glass card used by many tabs (Ghouls, Domains, Events, graph views…) */
+.adminCard {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 1.75rem;
+  box-shadow: var(--glass-shadow);
+  min-width: 0;
+}
+
+/* Graph views: side list + G6 canvas. Canvas first and shorter on phones. */
+.rGraphLayout {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 3fr;
+  gap: 2rem;
+  align-items: start;
+}
+
+.rGraphSide {
+  max-height: 600px;
+  min-width: 0;
+}
+
+.rGraphCanvas {
+  height: 600px;
+  min-width: 0;
+}
+
+/* Two-pane master/detail (Chat Logs, NPC Comms). Panes hide/show on phones. */
+.masterDetail {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  height: 620px;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--glass-shadow);
+}
+
+@media (max-width: 900px) {
+  .masterDetail {
+    grid-template-columns: 1fr;
+    height: min(78dvh, 760px);
+    border-radius: var(--radius-md);
+  }
+}
+
+/* Chat Logs shell: lists | (npc threads) | messages */
+.chatShell {
+  display: flex;
+  height: 78vh;
+  min-height: 480px;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--glass-border);
+  overflow: hidden;
+  box-shadow: var(--glass-shadow);
+}
+
+@media (max-width: 900px) {
+  .chatShell {
+    height: min(76dvh, 760px);
+    min-height: 420px;
+    border-radius: var(--radius-md);
+  }
+}
+
+.rPaneHidden {
+  display: none !important;
+}
+
+.rBackBtn {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .rGrid2,
+  .rGrid3,
+  .rSideMain,
+  .rMainSide,
+  .rGraphLayout {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .rGraphCanvas {
+    height: 420px;
+    order: -1;
+  }
+
+  .rGraphSide {
+    max-height: 260px;
+  }
+
+  .adminCard {
+    padding: 1.1rem;
+    border-radius: var(--radius-md);
+  }
+
+  .rInput {
+    width: 100%;
+  }
+
+  .rBackBtn {
+    display: inline-flex;
+  }
+}
+
+@media (max-width: 480px) {
+  .adminCard {
+    padding: 0.9rem;
+  }
+}
+
 
 /* ═══════════════════════════════════════════════
    8. TYPOGRAPHY / LAYOUT UTILITIES
@@ -1875,6 +2836,27 @@ tr:hover .clanIcon,
   background: var(--glass-bg-hover);
 }
 
+/* Collapsed downtime row: title | date | status (stacks on phones) */
+.downtimeRowGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 1.5rem;
+  padding: 1.2rem 1.5rem;
+  align-items: center;
+}
+
+@media (max-width: 900px) {
+  .downtimeRowGrid {
+    grid-template-columns: 1fr auto;
+    gap: 0.5rem 1rem;
+    padding: 0.9rem 1rem;
+  }
+
+  .downtimeRowGrid > :first-child {
+    grid-column: 1 / -1;
+  }
+}
+
 /* ═══════════════════════════════════════════════
    21. CHAT LOGS
    ═══════════════════════════════════════════════ */
@@ -2306,54 +3288,201 @@ tr:hover .clanIcon,
 }
 
 /* ═══════════════════════════════════════════════
-   26. RESPONSIVE — collapse sidebar by default on narrow screens
+   26. RESPONSIVE — shared tab components on small screens
+   (the shell itself is handled in section 7)
    ═══════════════════════════════════════════════ */
-@media (max-width: 860px) {
-  .sidebar {
-    width: var(--sidebar-w-collapsed);
+@media (max-width: 900px) {
+  .editorSection {
+    padding: 1.1rem;
+    border-radius: var(--radius-md);
   }
 
-  .sidebar:not(.sidebarCollapsed) .sidebarLogoText,
-  .sidebar:not(.sidebarCollapsed) .sidebarSectionLabel,
-  .sidebar:not(.sidebarCollapsed) .sidebarNavLabel,
-  .sidebar:not(.sidebarCollapsed) .sidebarCollapseLabel {
-    opacity: 0;
-    pointer-events: none;
+  .sectionHeader {
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
   }
 
-  .main {
-    margin-left: var(--sidebar-w-collapsed);
-    max-width: calc(100vw - var(--sidebar-w-collapsed));
-    overflow-x: hidden;
+  .formGrid {
+    grid-template-columns: 1fr;
+    gap: 0.9rem;
   }
 
-  .content {
-    padding: 18px 12px 32px;
-    max-width: 100%;
-    overflow-x: auto;
+  .characterCardGrid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
   }
 
-  .topbar {
-    position: relative;
-    top: auto;
-    padding: 8px 12px;
-    height: auto;
-    min-height: var(--topbar-h);
+  .charCardHeader {
+    padding: 16px;
     flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .charCardName {
+    font-size: 1.15rem;
+    flex-wrap: wrap;
+  }
+
+  .charCardBody,
+  .charCardFooter {
+    padding: 16px;
+  }
+
+  .charTrackersPanel {
+    padding: 14px;
+    gap: 16px;
+  }
+
+  .charCardClanLogo {
+    display: none;
+  }
+
+  /* --- Users: the 8-column grid becomes one card per user --- */
+  .userHeader {
+    display: none;
+  }
+
+  .userRow {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    padding: 14px;
+    border-bottom: 1px solid var(--glass-border);
+  }
+
+  .userRow .td {
+    min-width: 0;
+  }
+
+  .userRow .td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  /* The name cell is a flex row (avatar + input); let the label sit above it */
+  .userRow .td[data-label="Display Name"] {
+    flex-wrap: wrap;
+  }
+
+  .userRow .td[data-label="Display Name"]::before {
+    flex-basis: 100%;
+  }
+
+  .userRow .td[data-label="Email"],
+  .userRow .td[data-label="Discord ID"],
+  .userRow .td[data-label="Display Name"],
+  .userRow .userActions {
+    grid-column: 1 / -1;
+  }
+
+  .userRow .userActions {
+    display: flex;
     gap: 8px;
+    margin-left: 0;
   }
 
-  .topbarActions {
-    flex-wrap: wrap;
-    gap: 6px;
-    max-width: 100%;
+  .userRow .userActions .btn {
+    flex: 1;
   }
 
-  .reloadBtn {
-    padding: 6px 10px;
-    font-size: 11px;
+  /* --- XP grid: one card per character --- */
+  .xpGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .xpGrid .gridHeader {
+    display: none;
+  }
+
+  .xpGrid .xpCharCell {
+    grid-column: 1 / -1;
+    border-bottom: none;
+    padding-bottom: 2px;
+  }
+
+  .xpGrid .xpCharCell:not(:nth-child(6)) {
+    border-top: 1px solid var(--glass-border);
+    padding-top: 14px;
+  }
+
+  .xpGrid .clanName,
+  .xpGrid .ownerCell {
+    border-bottom: none;
+    padding-top: 0;
+    padding-bottom: 4px;
+  }
+
+  .xpGrid .ownerCell {
+    text-align: right;
+  }
+
+  .xpGrid .xpCell {
+    grid-column: 1 / -1;
+    border-bottom: none;
+    padding-top: 0;
+    padding-bottom: 6px;
+  }
+
+  .xpGrid .xpCell::before {
+    content: 'XP · ';
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .xpGrid .actionCell {
+    grid-column: 1 / -1;
+    border-bottom: none;
+    padding-top: 0;
+    padding-bottom: 14px;
+  }
+
+  .messageBubble {
+    max-width: 90%;
+  }
+
+  .modalBackdrop {
+    padding: 8px;
+  }
+
+  .modalCard {
+    max-height: 94dvh;
+    border-radius: var(--radius-md);
+  }
+
+  .modalHeader,
+  .modalBody,
+  .modalFooter {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .dateFilters {
+    padding: 8px 10px;
   }
 }
+
+@media (max-width: 480px) {
+  .editorSection {
+    padding: 0.9rem;
+  }
+
+  .trackerBox {
+    width: 26px;
+    height: 26px;
+    font-size: 15px;
+  }
+
+  .charVitalChip {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+}
+
 
 /* ═════════════════════════════════════════════════
    27. TRACKER DISPLAY (for AdminCharactersTab)
@@ -2806,6 +3935,27 @@ tr:hover .clanIcon,
 
 .userRow:hover {
   background: var(--glass-bg-hover);
+}
+
+/* Cell hooks used by the div-based user table (styled per breakpoint above/below) */
+.thead,
+.tbody {
+  display: block;
+}
+
+.th {
+  min-width: 0;
+}
+
+.td {
+  min-width: 0;
+}
+
+.userActions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 /* Tiny chip for clan color */

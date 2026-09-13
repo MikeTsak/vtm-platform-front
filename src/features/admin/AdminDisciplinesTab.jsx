@@ -330,8 +330,7 @@ export default function AdminDisciplinesTab() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
               <h4 style={{ margin: 0, color: 'var(--text-primary)' }}>Active Grants ({access.length})</h4>
               <input
-                className={styles.input}
-                style={{ width: '260px' }}
+                className={`${styles.input} ${styles.rInput}`}
                 placeholder="Search character or discipline…"
                 value={accessSearch}
                 onChange={e => setAccessSearch(e.target.value)}
@@ -342,7 +341,7 @@ export default function AdminDisciplinesTab() {
                 {access.length === 0 ? 'No out-of-clan disciplines have been unlocked yet.' : 'No grants match your search.'}
               </div>
             ) : (
-              <div style={{ overflowX: 'auto' }}>
+              <div className={styles.rTable}>
                 <table className={styles.table} style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ borderBottom: '2px solid var(--glass-border)' }}>
