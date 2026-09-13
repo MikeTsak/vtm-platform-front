@@ -9,7 +9,7 @@
 // the exact same pending roll via GET /feeding/status. From a pending roll
 // there are exactly two moves: Accept, or spend Willpower to reroll (once).
 // There is no way to discard a roll and start over.
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../core/api';
 import { toast } from 'sonner';
@@ -27,12 +27,28 @@ function divisionName(division) {
   return DIVISION_NAMES[division] || `Division ${division}`;
 }
 
+function useCountdown(target) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  if (!target) return 'calculating…';
+  const diff = new Date(target).getTime() - now;
+  if (diff <= 0) return 'due';
+  const days = Math.floor(diff / 86400000);
+  const hours = Math.floor((diff % 86400000) / 3600000);
+  const mins = Math.floor((diff % 3600000) / 60000);
+  return `${days}d ${hours}h ${mins}m`;
+}
+
 const TIER_LABEL = {
   bestial_failure: 'Bestial Failure',
   failure: 'Failure',
   success: 'Success',
   critical: 'Critical Win',
   messy_critical: 'Messy Critical',
+  herd: 'Herd Fed',
 };
 const TIER_CLASS = {
   bestial_failure: styles.outcomeBestialFailure,
@@ -40,6 +56,7 @@ const TIER_CLASS = {
   success: styles.outcomeSuccess,
   critical: styles.outcomeCritical,
   messy_critical: styles.outcomeMessyCritical,
+  herd: styles.outcomeSuccess,
 };
 const TIER_ICON = {
   bestial_failure: FEEDING_ICONS.skull,
@@ -47,6 +64,7 @@ const TIER_ICON = {
   success: FEEDING_ICONS.circleCheck,
   critical: FEEDING_ICONS.circleCheck,
   messy_critical: FEEDING_ICONS.triangleExclamation,
+  herd: FEEDING_ICONS.circleCheck,
 };
 
 function IconBadge({ icon, size = 15, small = false }) {
@@ -244,6 +262,7 @@ function ResolvedBanner({ status }) {
 }
 
 function Picker({ status }) {
+  const countdown = useCountdown(status?.cycleEnd);
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(!status.myDivision);
   const [division, setDivision] = useState(status.myDivision || null);
@@ -289,22 +308,16 @@ function Picker({ status }) {
     onError: (e) => toast.error(e?.response?.data?.error || 'Roll failed'),
   });
 
-  if (!status.canAutomate) {
-    return (
-      <div className={styles.gate}>
-        <h2 className={styles.title}>
-          <IconBadge icon={FEEDING_ICONS.droplet} />
-          Feeding
-        </h2>
-        <p className={styles.subtitle}>
-          {status.predatorType
-            ? `${status.predatorType} isn't automatable for the Feeding roll. It's GM-adjudicated per the V5 rules.`
-            : 'Set a Predator Type on your character sheet before feeding.'}
-          {' '}Use a Monthly Action to describe your feeding this cycle instead. The tabs below remain locked otherwise.
-        </p>
-      </div>
-    );
-  }
+  const herdMutation = useMutation({
+    mutationFn: () => api.post('/feeding/herd-feed', { division }),
+    onSuccess: (res) => {
+      const d = res.data;
+      toast.success(`Herd fed Hunger ${d.hungerBefore} → ${d.hungerAfter}. Herd pool: ${d.herdCurrent}/${d.herdDots} remaining.`);
+      queryClient.invalidateQueries({ queryKey: ['feeding', 'status'] });
+      queryClient.invalidateQueries({ queryKey: ['character', 'me'] });
+    },
+    onError: (e) => toast.error(e?.response?.data?.error || 'Herd feed failed'),
+  });
 
   return (
     <div className={styles.gate}>
@@ -312,9 +325,19 @@ function Picker({ status }) {
         <IconBadge icon={FEEDING_ICONS.droplet} />
         Feeding
       </h2>
-      <p className={styles.subtitle}>
-        You must feed before submitting downtime actions this cycle. Pick where and how to hunt.
-      </p>
+      
+      {!status.canAutomate ? (
+        <p className={styles.subtitle}>
+          {status.predatorType
+            ? `${status.predatorType} isn't automatable for the Feeding roll. It's GM-adjudicated per the V5 rules.`
+            : 'Set a Predator Type on your character sheet before feeding.'}
+          {' '}Use a Monthly Action to describe your feeding this cycle instead. The tabs below remain locked otherwise.
+        </p>
+      ) : (
+        <p className={styles.subtitle}>
+          You must feed before submitting downtime actions this cycle. Pick where and how to hunt.
+        </p>
+      )}
 
       <div className={styles.statChipRow}>
         <StatChip icon={FEEDING_ICONS.skull}>Predator Type: {status.predatorType}</StatChip>
@@ -377,11 +400,13 @@ function Picker({ status }) {
         )}
       </div>
 
-      <div className={styles.section}>
-        <div className={styles.sectionLabel}>
-          <FaGlyph icon={FEEDING_ICONS.diceD20} size={13} />
-          How to hunt
-        </div>
+      {status.canAutomate && (
+        <>
+          <div className={styles.section}>
+            <div className={styles.sectionLabel}>
+              <FaGlyph icon={FEEDING_ICONS.diceD20} size={13} />
+              How to hunt
+            </div>
         <div className={styles.poolChoices}>
           {status.pools.map((p, i) => (
             <button
@@ -407,20 +432,51 @@ function Picker({ status }) {
         </span>
       </div>
 
-      <label className={styles.checkboxRow}>
-        <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} />
-        I understand this roll is final.
-      </label>
+          <label className={styles.checkboxRow}>
+            <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} />
+            I understand this roll is final.
+          </label>
+        </>
+      )}
 
-      <div className={styles.actions}>
-        <button
-          className={styles.btnPrimary}
-          disabled={!division || !ack || rollMutation.isPending}
-          onClick={() => rollMutation.mutate()}
-        >
-          <FaGlyph icon={FEEDING_ICONS.diceD20} size={14} />
-          Roll to Feed
-        </button>
+      <div className={styles.actions} style={{ flexWrap: 'wrap', alignItems: 'flex-start' }}>
+        {status.canAutomate && (
+          <button
+            className={styles.btnPrimary}
+            disabled={!division || !ack || rollMutation.isPending}
+            onClick={() => rollMutation.mutate()}
+          >
+            <FaGlyph icon={FEEDING_ICONS.diceD20} size={14} />
+            Roll to Feed
+          </button>
+        )}
+
+        {status.herdDots >= 1 && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+            <button
+              className={styles.btnGhost}
+              disabled={herdMutation.isPending || status.herdCurrent < 1 || !division}
+              onClick={() => herdMutation.mutate()}
+              title={
+                !division
+                  ? `Select a domain above first.`
+                  : status.herdCurrent < 1
+                  ? `Herd depleted restores 1 point next cycle (${status.herdDots} max)`
+                  : `Use 1 Herd point to slake 1 hunger without a roll. Hunger cannot go below 1.`
+              }
+            >
+              <FaGlyph icon={FEEDING_ICONS.droplet} size={14} />
+              Use Herd ({status.herdCurrent}/{status.herdDots}●)
+              {status.herdCurrent < 1 ? ' Depleted' : ' No Roll'}
+            </button>
+            {status.herdCurrent < status.herdDots && (
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.25rem', paddingLeft: '0.25rem' }}>
+                <FaGlyph icon={FEEDING_ICONS.clock} size={11} style={{ marginRight: 4, verticalAlign: '-1px' }} />
+                Next point heals in {countdown}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
