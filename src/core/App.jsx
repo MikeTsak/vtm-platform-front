@@ -165,24 +165,63 @@ function AppLayout() {
     trackPageView(location.pathname);
   }, [location]);
 
-  // Track user online time (Heartbeat)
+  // Track user online time (Heartbeat with AFK / Idle detection)
   useEffect(() => {
     if (!user) return;
 
+    const IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes of no user interaction = AFK
+    let lastActivityTime = Date.now();
+    let isCurrentlyIdle = false;
+
     const ping = () => {
-      // Only log time if they actually have the tab visible
-      if (document.visibilityState === 'visible') {
+      const now = Date.now();
+      const isIdle = now - lastActivityTime > IDLE_TIMEOUT_MS;
+      // Only log time if tab is visible and player is active (not AFK)
+      if (document.visibilityState === 'visible' && !isIdle) {
         api.post('/activity/heartbeat').catch(() => { /* skip errors */ });
       }
     };
 
-    // Ping immediately
+    const handleUserActivity = () => {
+      const now = Date.now();
+      const wasIdle = isCurrentlyIdle || (now - lastActivityTime > IDLE_TIMEOUT_MS);
+      lastActivityTime = now;
+      isCurrentlyIdle = false;
+
+      // If returning from AFK while tab is visible, immediately log presence
+      if (wasIdle && document.visibilityState === 'visible') {
+        ping();
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        handleUserActivity();
+      }
+    };
+
+    // User interaction events that indicate active presence
+    const activityEvents = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'];
+    const listenerOptions = { passive: true };
+
+    activityEvents.forEach((evt) => {
+      window.addEventListener(evt, handleUserActivity, listenerOptions);
+    });
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Initial ping on load
     ping();
 
-    // Ping every 60 seconds
+    // Regular 60 second heartbeat interval
     const intervalId = setInterval(ping, 60000);
 
-    return () => clearInterval(intervalId);
+    return () => {
+      clearInterval(intervalId);
+      activityEvents.forEach((evt) => {
+        window.removeEventListener(evt, handleUserActivity);
+      });
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [user]);
 
   return (

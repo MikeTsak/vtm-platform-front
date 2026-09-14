@@ -42,6 +42,9 @@ const MONTH_SHORT = [
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
 ];
 
+// Chronicle season order starting from September through August
+const SEASON_MONTH_INDICES = [8, 9, 10, 11, 0, 1, 2, 3, 4, 5, 6, 7];
+
 export default function ActivityHeatmap({ users = [], globalOnly = false, onOpenCompare }) {
   const [selectedUser1, setSelectedUser1] = useState('global');
   const [selectedUser2, setSelectedUser2] = useState('none');
@@ -134,17 +137,29 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
     return 5;
   };
 
-  // Ensure calendar spans the full current year through today and all entries have valid levels
+  // Ensure calendar spans the chronicle season starting September 1st in Athens time through August 31st
   const getSafeData = (data = []) => {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const todayStr = `${yyyy}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    const startOfYearStr = `${yyyy}-01-01`;
+    const nowAthens = new Date();
+    const formatter = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Europe/Athens',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    const parts = formatter.formatToParts(nowAthens);
+    const athensYear = parseInt(parts.find(p => p.type === 'year').value, 10);
+    const athensMonth = parseInt(parts.find(p => p.type === 'month').value, 10);
+
+    const seasonStartYear = athensMonth >= 9 ? athensYear : athensYear - 1;
+    const seasonEndYear = seasonStartYear + 1;
+
+    const startOfSeasonStr = `${seasonStartYear}-09-01`;
+    const endOfSeasonStr = `${seasonEndYear}-08-31`;
 
     const map = new Map();
-    // Anchor boundaries so react-activity-calendar renders the full year up to today
-    map.set(startOfYearStr, { date: startOfYearStr, count: 0, level: 0, activeUsers: 0, sessionCount: 0 });
-    map.set(todayStr, { date: todayStr, count: 0, level: 0, activeUsers: 0, sessionCount: 0 });
+    // Anchor boundaries so react-activity-calendar renders from September through August
+    map.set(startOfSeasonStr, { date: startOfSeasonStr, count: 0, level: 0, activeUsers: 0, sessionCount: 0 });
+    map.set(endOfSeasonStr, { date: endOfSeasonStr, count: 0, level: 0, activeUsers: 0, sessionCount: 0 });
 
     if (Array.isArray(data)) {
       data.forEach(item => {
@@ -167,9 +182,9 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
   const safeData1 = useMemo(() => getSafeData(data1), [data1]);
   const safeData2 = useMemo(() => getSafeData(data2), [data2]);
 
-  // Aggregate monthly intelligence from safeData1
+  // Aggregate monthly intelligence from safeData1 ordered from September through August
   const monthlyStats1 = useMemo(() => {
-    const list = Array.from({ length: 12 }, (_, i) => ({
+    const list = SEASON_MONTH_INDICES.map(i => ({
       index: i,
       name: MONTH_NAMES[i],
       short: MONTH_SHORT[i],
@@ -184,14 +199,15 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
       const parts = item.date.split('-');
       if (parts.length < 2) continue;
       const mIdx = Number(parts[1]) - 1;
-      if (mIdx >= 0 && mIdx < 12) {
+      const mObj = list.find(m => m.index === mIdx);
+      if (mObj) {
         const count = Number(item.count) || 0;
-        list[mIdx].totalMinutes += count;
+        mObj.totalMinutes += count;
         if (count > 0) {
-          list[mIdx].activeDays += 1;
-          if (count > list[mIdx].peakMinutes) {
-            list[mIdx].peakMinutes = count;
-            list[mIdx].peakDate = item.date;
+          mObj.activeDays += 1;
+          if (count > mObj.peakMinutes) {
+            mObj.peakMinutes = count;
+            mObj.peakDate = item.date;
           }
         }
       }
@@ -217,10 +233,10 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
     };
   }, [safeData1]);
 
-  // Aggregate monthly intelligence for comparison target
+  // Aggregate monthly intelligence for comparison target ordered from September through August
   const monthlyStats2 = useMemo(() => {
     if (!isComparing) return null;
-    const list = Array.from({ length: 12 }, (_, i) => ({
+    const list = SEASON_MONTH_INDICES.map(i => ({
       index: i,
       name: MONTH_NAMES[i],
       short: MONTH_SHORT[i],
@@ -233,11 +249,12 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
       const parts = item.date.split('-');
       if (parts.length < 2) continue;
       const mIdx = Number(parts[1]) - 1;
-      if (mIdx >= 0 && mIdx < 12) {
+      const mObj = list.find(m => m.index === mIdx);
+      if (mObj) {
         const count = Number(item.count) || 0;
-        list[mIdx].totalMinutes += count;
+        mObj.totalMinutes += count;
         if (count > 0) {
-          list[mIdx].activeDays += 1;
+          mObj.activeDays += 1;
         }
       }
     }
@@ -253,17 +270,17 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
     };
   }, [safeData2, isComparing]);
 
-  const formatDateDisplay = (dateString) => {
+  // Strictly dd/mm/yyyy date format in Athens Greece time
+  const formatDateDisplay = (dateString, includeWeekday = true) => {
     if (!dateString) return '';
     const parts = dateString.split('-');
     if (parts.length < 3) return dateString;
-    const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-    return d.toLocaleDateString('en-US', {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric'
-    });
+    const yyyy = parts[0];
+    const mm = parts[1].padStart(2, '0');
+    const dd = parts[2].padStart(2, '0');
+    const d = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+    const weekday = d.toLocaleDateString('en-GB', { weekday: 'long', timeZone: 'Europe/Athens' });
+    return includeWeekday ? `${dd}/${mm}/${yyyy}, ${weekday}` : `${dd}/${mm}/${yyyy}`;
   };
 
   const formatDurationDHM = (totalMinutes) => {
@@ -463,8 +480,8 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
           <h3 className={adminStyles.hl}>{globalOnly ? 'Global Activity Heatmap' : 'Activity Heatmap and Comparison'}</h3>
           <p className={adminStyles.subtle}>
             {globalOnly
-              ? 'Chronicle wide telemetry tracking total minutes players spend online.'
-              : 'Compare online activity and engagement trends between players or against global chronicle averages.'}
+              ? 'Chronicle wide telemetry tracking total minutes players spend online in Athens Greece time.'
+              : 'Compare online activity and engagement trends between players or against global chronicle averages in Athens Greece time.'}
           </p>
         </div>
         {globalOnly && onOpenCompare && (
@@ -546,7 +563,7 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
           <div className={styles.monthSummaryHeader}>
             <span style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span className="material-symbols-outlined" style={{ fontSize: '17px', color: 'var(--accent-purple)' }}>calendar_view_month</span>
-              Monthly Activity Breakdown
+              Monthly Activity Breakdown (Season starting September)
             </span>
             <span style={{ fontSize: '0.76rem' }}>
               {!isComparing ? (
@@ -634,7 +651,7 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
                   labels={{
                     months: MONTH_SHORT,
                     weekdays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
-                    totalCount: '{{count}} minutes logged in {{year}}',
+                    totalCount: '{{count}} minutes logged in season (Athens Time)',
                     legend: {
                       less: '0 min',
                       more: '180+ min',
@@ -691,7 +708,7 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
                     labels={{
                       months: MONTH_SHORT,
                       weekdays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
-                      totalCount: '{{count}} minutes logged in {{year}}',
+                      totalCount: '{{count}} minutes logged in season (Athens Time)',
                       legend: {
                         less: '0 min',
                         more: '180+ min',
@@ -837,10 +854,10 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
                 </span>
                 <div>
                   <h4 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-primary)', fontWeight: 700 }}>
-                    {isComparing ? 'Day Activity Comparison' : 'Day Activity Heatmap'}: {formatDateDisplay(selectedDate)}
+                    {isComparing ? 'Day Activity Comparison' : 'Day Activity Heatmap'}: {formatDateDisplay(selectedDate)} (Athens Time)
                   </h4>
                   <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                    24:00 hourly presence breakdown and Kindred matrix
+                    24:00 hourly presence breakdown and Kindred matrix (00:00 to 23:00 Athens Time)
                   </p>
                 </div>
               </div>
@@ -931,7 +948,7 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                      {isComparing ? '24:00 Hourly Heatmaps Comparison (00:00 to 23:00)' : '24:00 Hourly Heatmap (00:00 to 23:00)'}
+                      {isComparing ? '24:00 Hourly Heatmaps Comparison (00:00 to 23:00 Athens Time)' : '24:00 Hourly Heatmap (00:00 to 23:00 Athens Time)'}
                     </span>
                     <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
                       Hover an hour to inspect active Kindred
@@ -1061,7 +1078,7 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
                   }}>
                     <div>
                       <strong style={{ color: 'var(--text-primary)' }}>
-                        Time Window: {String(hoveredHour).padStart(2, '0')}:00 to {String(hoveredHour).padStart(2, '0')}:59
+                        Time Window: {String(hoveredHour).padStart(2, '0')}:00 to {String(hoveredHour).padStart(2, '0')}:59 (Athens Time)
                       </strong>
                       {!isComparing ? (
                         <span style={{ color: 'var(--text-secondary)', marginLeft: '10px' }}>
@@ -1109,7 +1126,7 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
                   <div className={styles.userMatrixSection}>
                     <div className={styles.userMatrixHeader}>
                       <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                        Player Presence Matrix (Hourly Breakdown per Kindred)
+                        Player Presence Matrix (Hourly Breakdown per Kindred, 00:00 to 23:00 Athens Time)
                       </span>
                       <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
                         {combinedMatrixUsers.length} player{combinedMatrixUsers.length === 1 ? '' : 's'} recorded, daily average: {formatHoursMinutes(Math.round(matrixAverageMinutes))}
@@ -1154,7 +1171,7 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
                                     <span
                                       className={styles.matrixCellSlot}
                                       style={{ background: cellColor }}
-                                      title={`${u.name} at ${String(h).padStart(2, '0')}:00 to ${String(h).padStart(2, '0')}:59: ${mins} minutes logged`}
+                                      title={`${u.name} at ${String(h).padStart(2, '0')}:00 to ${String(h).padStart(2, '0')}:59: ${mins} minutes logged (Athens Time)`}
                                     />
                                   </td>
                                 );
