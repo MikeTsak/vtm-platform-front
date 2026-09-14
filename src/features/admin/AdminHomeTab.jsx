@@ -61,7 +61,7 @@ export default function AdminHomeTab({
     const totalCycle = cycleDowntimes.length;
     const resolvedDowntimes = cycleDowntimes.filter(d => {
       const s = String(d.status || '').toLowerCase();
-      return s === 'approved' || s === 'rejected' || s === 'resolved' || s === 'resolved in scene';
+      return s === 'approved' || s.startsWith('approved:') || s === 'rejected' || s === 'resolved' || s === 'resolved in scene';
     });
     const resolvedCount = resolvedDowntimes.length;
 
@@ -293,6 +293,8 @@ export default function AdminHomeTab({
     const s = String(status || 'submitted').toLowerCase();
     if (s === 'submitted') return <span className={`${styles.statusPill} ${styles.statusSubmitted}`}>Submitted</span>;
     if (s.includes('needs')) return <span className={`${styles.statusPill} ${styles.statusNeedsScene}`}>Needs Scene</span>;
+    if (s === 'approved: kikos') return <span className={styles.statusPill} style={{ background: 'rgba(0, 230, 118, 0.15)', color: '#00e676', border: '1px solid rgba(0, 230, 118, 0.35)' }}>Approved: Kikos</span>;
+    if (s === 'approved: mike') return <span className={styles.statusPill} style={{ background: 'rgba(0, 229, 255, 0.15)', color: '#00e5ff', border: '1px solid rgba(0, 229, 255, 0.35)' }}>Approved: Mike</span>;
     if (s === 'approved') return <span className={`${styles.statusPill} ${styles.statusApproved}`}>Approved</span>;
     if (s === 'rejected') return <span className={`${styles.statusPill} ${styles.statusRejected}`}>Rejected</span>;
     return <span className={`${styles.statusPill} ${styles.statusResolved}`}>{status}</span>;

@@ -46,6 +46,12 @@ const statusIsPast = (s) => {
   return status === 'resolved' || status === 'rejected' || status === 'resolved in scene';
 };
 
+const formatPlayerStatus = (s) => {
+  const str = String(s || '').trim();
+  if (str.toLowerCase().startsWith('approved')) return 'Approved';
+  return str;
+};
+
 function niceDate(d) {
   if (!d) return '—';
   const dt = new Date(d);
@@ -215,7 +221,7 @@ function ActiveTrackItem({ dt, isProject }) {
   const displayTitle = isProject ? dt.title.replace('[PROJECT] ', '') : dt.title;
 
   let badgeClass = styles.badgePending;
-  if (status === 'approved') badgeClass = styles.badgeApproved;
+  if (status === 'approved' || status.startsWith('approved:')) badgeClass = styles.badgeApproved;
   if (status === 'needs a scene') badgeClass = styles.badgeNeedsScene;
   if (status === 'rejected') badgeClass = styles.badgeRejected;
   if (status === 'resolved' || status === 'resolved in scene') badgeClass = styles.badgeReview;
@@ -262,7 +268,7 @@ function ActiveTrackItem({ dt, isProject }) {
         </span>
         <span className={`${styles.trackStatusTag} ${badgeClass}`}>
           {status === 'needs a scene' && <div className={styles.pulseDot}></div>}
-          {dt.status}
+          {formatPlayerStatus(dt.status)}
         </span>
       </div>
 
@@ -306,7 +312,7 @@ function ArchiveItem({ dt, isProject, isMassReleaseActive, massReleaseCountdown 
   const dateStr = niceDate(dt.created_at).split(' ').slice(1, 3).join(' '); // "Sep 1999" approx
 
   let badgeClass = styles.badgeReview;
-  if (status === 'approved') badgeClass = styles.badgeApproved;
+  if (status === 'approved' || status.startsWith('approved:')) badgeClass = styles.badgeApproved;
   if (status === 'needs a scene') badgeClass = styles.badgeNeedsScene;
   if (status === 'rejected') badgeClass = styles.badgeRejected;
   if (status === 'submitted') badgeClass = styles.badgePending;
@@ -324,12 +330,12 @@ function ArchiveItem({ dt, isProject, isMassReleaseActive, massReleaseCountdown 
           <span className={styles.archiveCardDate}>{dateStr} • {isProject ? 'Project' : 'Action'}</span>
           <h4 className={styles.archiveCardTitle}>{displayTitle}</h4>
         </div>
-        <span className={`${styles.archiveStatusTag} ${badgeClass}`}>{dt.status}</span>
+        <span className={`${styles.archiveStatusTag} ${badgeClass}`}>{formatPlayerStatus(dt.status)}</span>
       </div>
       <div className={styles.archiveCardBody}>
         <p className={styles.archiveCardText}>{dt.body}</p>
 
-        {isMassReleaseActive && ['resolved', 'approved', 'rejected', 'resolved in scene'].includes(status) ? (
+        {isMassReleaseActive && (['resolved', 'approved', 'rejected', 'resolved in scene'].includes(status) || status.startsWith('approved:')) ? (
           <div className={styles.resolutionBox} style={{ textAlign: 'center', opacity: 0.85, padding: '1.5rem', background: 'var(--glass-inset)' }}>
              <h4 style={{ color: '#4da6ff', marginBottom: '8px', marginTop: 0 }}>Resolution Pending Mass Release</h4>
              <p className={styles.resolutionText} style={{ fontFamily: 'Fira Code, monospace', fontSize: '1.1rem' }}>

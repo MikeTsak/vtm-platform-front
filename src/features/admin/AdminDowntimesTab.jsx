@@ -28,7 +28,45 @@ function ymd(d) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-const STATUS = ['submitted', 'approved', 'Needs a Scene', 'rejected', 'resolved', 'Resolved in scene'];
+const STATUS = [
+  'submitted',
+  'approved',
+  'Approved: Kikos',
+  'Approved: Mike',
+  'Needs a Scene',
+  'rejected',
+  'resolved',
+  'Resolved in scene'
+];
+
+function getStatusBadgeStyle(status) {
+  const s = String(status || '').toLowerCase();
+  if (s === 'approved: kikos') {
+    return { background: 'rgba(0, 230, 118, 0.15)', color: '#00e676', border: '1px solid rgba(0, 230, 118, 0.4)' };
+  }
+  if (s === 'approved: mike') {
+    return { background: 'rgba(0, 229, 255, 0.15)', color: '#00e5ff', border: '1px solid rgba(0, 229, 255, 0.4)' };
+  }
+  if (s === 'approved') {
+    return { background: 'rgba(0, 230, 118, 0.12)', color: '#00e676', border: '1px solid rgba(0, 230, 118, 0.3)' };
+  }
+  if (s === 'submitted') {
+    return { background: 'rgba(157, 124, 255, 0.12)', color: '#9d7cff', border: '1px solid rgba(157, 124, 255, 0.3)' };
+  }
+  if (s.includes('needs')) {
+    return { background: 'rgba(255, 204, 0, 0.12)', color: '#ffcc00', border: '1px solid rgba(255, 204, 0, 0.3)' };
+  }
+  if (s === 'rejected') {
+    return { background: 'rgba(255, 82, 82, 0.12)', color: '#ff5252', border: '1px solid rgba(255, 82, 82, 0.3)' };
+  }
+  if (s.includes('scene')) {
+    return { background: 'rgba(77, 166, 255, 0.1)', color: '#4da6ff', border: '1px solid rgba(77, 166, 255, 0.25)' };
+  }
+  if (s === 'resolved') {
+    return { background: 'rgba(77, 166, 255, 0.15)', color: '#4da6ff', border: '1px solid rgba(77, 166, 255, 0.35)' };
+  }
+  return {};
+}
 
 function StatusToggle({ status, checked, onChange }) {
   return (
@@ -89,8 +127,14 @@ export default function AdminDowntimesTab() {
   const [statusFilter, setStatusFilter] = useState('all');
 
   const [hideStatus, setHideStatus] = useState({
-    submitted: false, approved: false, rejected: true,
-    'Needs a Scene': false, resolved: true, 'Resolved in scene': true,
+    submitted: false,
+    approved: false,
+    'Approved: Kikos': false,
+    'Approved: Mike': false,
+    rejected: true,
+    'Needs a Scene': false,
+    resolved: true,
+    'Resolved in scene': true,
   });
 
   const [buffer, setBuffer] = useState({});
@@ -199,7 +243,7 @@ export default function AdminDowntimesTab() {
       if (!dropdownOk) return false;
       if (hideStatus[rowStatus]) return false;
       if (!qq) return true;
-      const hay = `${r.title || ''} ${r.body || ''} ${r.gm_notes || ''} ${r.gm_resolution || ''} ${r.player_name || ''} ${r.char_name || ''} ${r.clan || ''}`.toLowerCase();
+      const hay = `${r.title || ''} ${r.body || ''} ${r.gm_notes || ''} ${r.gm_resolution || ''} ${r.player_name || ''} ${r.char_name || ''} ${r.clan || ''} ${r.status || ''}`.toLowerCase();
       return hay.includes(qq);
     });
   }, [rows, q, statusFilter, hideStatus, viewMode]);
@@ -453,7 +497,9 @@ export default function AdminDowntimesTab() {
             { label: 'All', value: 'all', color: 'var(--text-secondary)', bg: 'var(--glass-inset)' },
             { label: 'Submitted', value: 'submitted', color: '#9d7cff', bg: 'rgba(157,124,255,0.12)' },
             { label: 'Approved', value: 'approved', color: '#00e676', bg: 'rgba(0,230,118,0.1)' },
-            { label: 'Needs a Scene', value: 'Needs a Scene', color: '#ffcc00', bg: 'rgba(255,204,0,0.1)' },
+            { label: 'Appr: Kikos', value: 'Approved: Kikos', color: '#00e676', bg: 'rgba(0,230,118,0.14)' },
+            { label: 'Appr: Mike', value: 'Approved: Mike', color: '#00e5ff', bg: 'rgba(0,229,255,0.14)' },
+            { label: 'Needs Scene', value: 'Needs a Scene', color: '#ffcc00', bg: 'rgba(255,204,0,0.1)' },
             { label: 'Resolved', value: 'resolved', color: '#4da6ff', bg: 'rgba(77,166,255,0.1)' },
             { label: 'Scene Done', value: 'Resolved in scene', color: '#4da6ff', bg: 'rgba(77,166,255,0.08)' },
             { label: 'Rejected', value: 'rejected', color: '#ff5252', bg: 'rgba(255,82,82,0.1)' },
@@ -585,7 +631,9 @@ function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel }
         <div style={{ fontFamily: 'Fira Code, monospace', fontSize: '0.8rem', color: 'var(--text-secondary)', opacity: 0.8 }}>{niceDate(r.created_at)}</div>
         <div>
           {r.is_read ? <span style={{ marginRight: '8px', opacity: 0.6 }} title="Read by player">👁️</span> : null}
-          <span className={styles.statusBadge} data-status={r.status}>{r.status}</span>
+          <span className={styles.statusBadge} data-status={r.status} style={getStatusBadgeStyle(r.status)}>
+            {r.status}
+          </span>
         </div>
       </div>
     );
@@ -648,6 +696,8 @@ function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel }
             <span>Quick Actions</span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem' }}>
               <button className={`${styles.btn} ${styles.btnSuccess} ${styles.btnSmall}`} type="button" onClick={() => onSave(r.id, { status: 'approved' })}>Approve</button>
+              <button className={`${styles.btn} ${styles.btnSmall}`} style={{ background: 'linear-gradient(135deg, #00897b 0%, #00e676 100%)', color: '#032612', fontWeight: 800, borderRadius: 'var(--radius-sm)' }} type="button" onClick={() => onSave(r.id, { status: 'Approved: Kikos' })}>Approve: Kikos</button>
+              <button className={`${styles.btn} ${styles.btnSmall}`} style={{ background: 'linear-gradient(135deg, #00838f 0%, #00e5ff 100%)', color: '#04222f', fontWeight: 800, borderRadius: 'var(--radius-sm)' }} type="button" onClick={() => onSave(r.id, { status: 'Approved: Mike' })}>Approve: Mike</button>
               <button className={`${styles.btn} ${styles.btnWarning} ${styles.btnSmall}`} type="button" onClick={() => onSave(r.id, { status: 'Needs a Scene' })}>Needs Scene</button>
               <button className={`${styles.btn} ${styles.btnDanger} ${styles.btnSmall}`} type="button" onClick={() => onSave(r.id, { status: 'rejected' })}>Reject</button>
               <button className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSmall}`} type="button" onClick={() => onSave(r.id, { status: 'resolved' })}>Resolve</button>
