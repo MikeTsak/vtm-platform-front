@@ -110,17 +110,45 @@ const logoGlobSrcSet = import.meta.glob('../assets/clans/text/*.png', {
   eager: true,
 });
 
-// Plain single-URL string — drop-in for every existing caller (CSS
-// background-image, plain <img src>, `fallback=` props) that can't use a
-// srcset anyway. Now serves a 150px image instead of the full 330px/300px
-// master for all of them, with zero call-site changes needed beyond
-// importing this instead of re-deriving the path locally.
+// Native white clan symbols and typographic logos for dark themes
+const symbolWhiteGlobDefault = import.meta.glob('../assets/clans/white/*.png', {
+  query: { w: '150', format: 'png' },
+  import: 'default',
+  eager: true,
+});
+const symbolWhiteGlobSrcSet = import.meta.glob('../assets/clans/white/*.png', {
+  query: { w: '64;150;330', format: 'png', as: 'srcset' },
+  import: 'default',
+  eager: true,
+});
+const logoWhiteGlobDefault = import.meta.glob('../assets/clans/text_white/*.png', {
+  query: { w: '150', format: 'png' },
+  import: 'default',
+  eager: true,
+});
+const logoWhiteGlobSrcSet = import.meta.glob('../assets/clans/text_white/*.png', {
+  query: { w: '64;150;300', format: 'png', as: 'srcset' },
+  import: 'default',
+  eager: true,
+});
+
+// Plain single URL string for dark or light backgrounds
 export const symlogo = (c) => (c ? symbolGlobDefault[`../assets/clans/330px-${fileify(c)}_symbol.png`] || '' : '');
 export const textlogo = (c) => (c ? logoGlobDefault[`../assets/clans/text/300px-${fileify(c)}_logo.png`] || '' : '');
 
-// Opt-in upgrade for callers rendering an actual <img> that want the browser
-// to pick the right size itself — spread onto the element:
-// <img src={symlogo(clan)} {...symlogoSrcSet(clan)} />
+// Native white single URL string for dark surfaces without CSS invert filters
+export const symlogoWhite = (c) => {
+  if (!c) return '';
+  const key = `../assets/clans/white/330px-${fileify(c)}_symbol_white.png`;
+  return symbolWhiteGlobDefault[key] || `/img/clans/white/330px-${fileify(c)}_symbol_white.webp` || symlogo(c);
+};
+
+export const textlogoWhite = (c) => {
+  if (!c) return '';
+  const key = `../assets/clans/text_white/300px-${fileify(c)}_logo_white.png`;
+  return logoWhiteGlobDefault[key] || `/img/clans/text_white/300px-${fileify(c)}_logo_white.webp` || textlogo(c);
+};
+
 export const symlogoSrcSet = (c) => {
   if (!c) return {};
   const srcSet = symbolGlobSrcSet[`../assets/clans/330px-${fileify(c)}_symbol.png`];
@@ -129,6 +157,17 @@ export const symlogoSrcSet = (c) => {
 export const textlogoSrcSet = (c) => {
   if (!c) return {};
   const srcSet = logoGlobSrcSet[`../assets/clans/text/300px-${fileify(c)}_logo.png`];
+  return srcSet ? { srcSet } : {};
+};
+
+export const symlogoWhiteSrcSet = (c) => {
+  if (!c) return {};
+  const srcSet = symbolWhiteGlobSrcSet[`../assets/clans/white/330px-${fileify(c)}_symbol_white.png`];
+  return srcSet ? { srcSet } : {};
+};
+export const textlogoWhiteSrcSet = (c) => {
+  if (!c) return {};
+  const srcSet = logoWhiteGlobSrcSet[`../assets/clans/text_white/300px-${fileify(c)}_logo_white.png`];
   return srcSet ? { srcSet } : {};
 };
 

@@ -5,7 +5,8 @@ import api from '../../core/api';
 import { motion } from 'framer-motion';
 import styles from '../../styles/Court.module.css';
 import { Skeleton } from 'boneyard-js/react';
-import { symlogo, textlogo } from '../../data/clans';
+import { symlogo, textlogo, symlogoWhite, textlogoWhite } from '../../data/clans';
+import { factionLogo, factionType } from '../../data/factions';
 
 // --- URL BUILDER HELPER ---
 
@@ -147,9 +148,27 @@ export default function HierarchyView({ canEdit: propCanEdit }) {
       <motion.div className={styles.hierarchyWrapper}>
       
       <motion.header initial="hidden" whileInView="show" viewport={{ once: false, amount: 0.1 }} variants={itemVariants} className={styles.sectionBox} style={{ borderBottom: '1px solid color-mix(in srgb, var(--outline-variant) 10%, transparent)', paddingBottom: '1.5rem', position: 'relative', overflow: 'hidden' }}>
-        <span className="material-symbols-outlined" style={{ position: 'absolute', right: '-1rem', top: '-2rem', fontSize: '120px', opacity: 0.03, pointerEvents: 'none', color: 'var(--on-surface)' }}>account_balance</span>
-        <h2 className={styles.sectionTitle} style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>Court Hierarchy</h2>
-        <p style={{ fontSize: '1.125rem', color: 'var(--on-surface-variant)', maxWidth: '42rem' }}>
+        <img 
+          src={factionLogo('Camarilla')} 
+          alt="" 
+          aria-hidden="true"
+          style={{ position: 'absolute', right: '0.5rem', top: '-1rem', height: 'clamp(100px, 22vw, 160px)', opacity: 0.05, pointerEvents: 'none', objectFit: 'contain' }} 
+        />
+        <img 
+          src={factionType('Camarilla')} 
+          alt="" 
+          aria-hidden="true"
+          style={{ position: 'absolute', right: '1rem', bottom: '0.5rem', height: 'clamp(26px, 5vw, 42px)', maxWidth: '40%', opacity: 0.08, pointerEvents: 'none', objectFit: 'contain' }} 
+        />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+          <img 
+            src={factionLogo('Camarilla')} 
+            alt="Camarilla Crest" 
+            style={{ width: 'clamp(32px, 5vw, 42px)', height: 'clamp(32px, 5vw, 42px)', objectFit: 'contain', filter: 'drop-shadow(0 0 10px rgba(138, 15, 26, 0.7))' }} 
+          />
+          <h2 className={styles.sectionTitle} style={{ fontSize: 'clamp(1.75rem, 5vw, 3rem)', margin: 0, lineHeight: 1.1 }}>Court Hierarchy</h2>
+        </div>
+        <p style={{ fontSize: 'clamp(0.95rem, 2.5vw, 1.125rem)', color: 'var(--on-surface-variant)', maxWidth: '42rem' }}>
           The established order of the undead domain. Manage positions, track status, and monitor those marked for final death.
         </p>
       </motion.header>
@@ -346,8 +365,8 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles, onImageCl
   if (ent.type === 'player' && ent.user_id) avatarUrl = `${baseUrl}/users/${ent.user_id}/avatar`;
   else if (ent.type === 'npc') avatarUrl = `${baseUrl}/npcs/${ent.id}/avatar`;
 
-  const clanLogoUrl = symlogo(ent.clan); 
-  const clanTextUrl = textlogo(ent.clan);
+  const clanLogoUrl = symlogoWhite(ent.clan); 
+  const clanTextUrl = textlogoWhite(ent.clan);
 
   const hiddenClass = ent.is_hidden ? styles.hiddenCard : "";
   
@@ -398,7 +417,7 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles, onImageCl
             {clanLogoUrl && <img src={clanLogoUrl} alt={ent.clan} className={styles.placeholderLogo} />}
             {clanTextUrl ? (
                <div style={{ width: '100%', height: '20px', display: 'flex', justifyContent: 'center', marginBottom: '4px' }}>
-                 <img src={clanTextUrl} alt={ent.clan} style={{ maxWidth: '80%', height: '100%', objectFit: 'contain', filter: 'brightness(0) invert(1)' }} />
+                 <img src={clanTextUrl} alt={ent.clan} style={{ maxWidth: '80%', height: '100%', objectFit: 'contain' }} />
                </div>
             ) : (
                ent.clan && <span style={{ color: 'white', marginTop: '2px', textTransform: 'uppercase', letterSpacing: '1px', fontSize: '0.65rem' }}>{ent.clan}</span>
@@ -421,7 +440,7 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles, onImageCl
           {ent.clan && (
             clanTextUrl ? (
               <span className={styles.tagClan} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '80px', height: '22px', padding: '2px' }}>
-                <img src={clanTextUrl} alt={ent.clan} style={{ width: '100%', height: '100%', objectFit: 'contain', filter: 'brightness(0) invert(1) opacity(0.8)' }} />
+                <img src={clanTextUrl} alt={ent.clan} style={{ width: '100%', height: '100%', objectFit: 'contain', opacity: 0.9 }} />
               </span>
             ) : (
               <span className={styles.tagClan}>{ent.clan}</span>

@@ -205,7 +205,7 @@ export default function Avatar({ userId, npcId, identityId, retainerId, clan, si
           style={{
             ...imgStyle,
             ...(isClanLogo ? {
-              filter: 'brightness(0) invert(1)',
+              filter: (srcUrl && srcUrl.includes('_white')) ? 'none' : 'brightness(0) invert(1)',
               objectFit: 'contain',
               padding: '12%',
               boxSizing: 'border-box'

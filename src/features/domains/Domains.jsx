@@ -15,7 +15,7 @@ import styles from '../../styles/Domains.module.css';
 import api from '../../core/api';
 import Avatar from '../../components/Avatar';
 import { AuthCtx } from '../../core/AuthContext';
-import { symlogo, clanTint, fileify } from '../../data/clans';
+import { symlogo, symlogoWhite, clanTint, fileify } from '../../data/clans';
 import { DIVISION_NAMES } from '../../constants/divisionNames';
 import { DIVISION_POPULATIONS, POPULATION_GROUP_MEMBERS } from './data/divisionPopulations';
 import { HUNTING_DIFFICULTY, HUNTING_DIFFICULTY_MAX, huntingLabel } from './data/huntingDifficulty';
@@ -2882,9 +2882,9 @@ export default function Domains() {
                         style={{ '--clan-tint': clanTint(selectedDivisionInfo.clan) }}
                       >
                         <img
-                          src={symlogo(selectedDivisionInfo.clan)}
+                          src={symlogoWhite(selectedDivisionInfo.clan)}
                           alt={selectedDivisionInfo.clan}
-                          style={{ width: '100%', height: '100%', objectFit: 'contain', filter: 'brightness(0) invert(1)', opacity: 0.8 }}
+                          style={{ width: '100%', height: '100%', objectFit: 'contain', opacity: 0.9 }}
                         />
                       </div>
                     )}

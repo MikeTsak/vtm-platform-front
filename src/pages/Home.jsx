@@ -8,7 +8,8 @@ import { motion } from 'framer-motion';
 import styles from '../styles/Home.module.css';
 import Avatar from '../components/Avatar';
 import GoogleAd from '../components/GoogleAd';
-import { symlogo, textlogo, clanTint } from '../data/clans';
+import { symlogo, textlogo, symlogoWhite, textlogoWhite, clanTint } from '../data/clans';
+import { factionLogo } from '../data/factions';
 import { AuthCtx } from '../core/AuthContext';
 import { useTheme } from '../core/ThemeContext';
 import Loading from '../ui/Loading';
@@ -365,11 +366,11 @@ export default function Home() {
 
   // Construct Themes Array dynamically to insert Character's Clan
   const availableThemes = [
-    { id: 'clan', label: clan ? `${clan}` : 'Default', sub: 'Bloodline', hex: dynamicClanTint, img: 'theme_clan' },
-    { id: 'camarilla', label: 'Camarilla', sub: 'Crimson', hex: '#8a0f1a', img: 'theme_camarilla' },
-    { id: 'schrecknet',  label: 'SchreckNet', sub: 'Blue', hex: '#0ea5e9', img: 'theme_schrecknet' },
-    { id: 'anarch',      label: 'Anarch', sub: 'Gold', hex: '#ea580c', img: 'theme_anarch' },
-    { id: 'Giannakis',      label: 'Giannakis', sub: 'Teal', hex: '#0d9488', img: 'theme_giannakis' },
+    { id: 'clan', label: clan ? `${clan}` : 'Default', sub: 'Bloodline', hex: dynamicClanTint, img: 'theme_clan', icon: symlogoWhite(clan) },
+    { id: 'camarilla', label: 'Camarilla', sub: 'Crimson', hex: '#8a0f1a', img: 'theme_camarilla', icon: factionLogo('Camarilla') },
+    { id: 'schrecknet',  label: 'SchreckNet', sub: 'Blue', hex: '#0ea5e9', img: 'theme_schrecknet', icon: null },
+    { id: 'anarch',      label: 'Anarch', sub: 'Gold', hex: '#ea580c', img: 'theme_anarch', icon: factionLogo('Anarch') },
+    { id: 'Giannakis',      label: 'Giannakis', sub: 'Teal', hex: '#0d9488', img: 'theme_giannakis', icon: null },
   ];
 
   return (
@@ -426,7 +427,7 @@ export default function Home() {
                 <h1 className={styles.charName}>{safeCh.name}</h1>
                 <div className={styles.charMeta}>
                   <div className={styles.metaBadge}>
-                    <img src={symlogo(safeCh.clan)} alt={safeCh.clan || 'Clan Logo'} width="16" height="16" style={{ width: '16px', height: '16px', objectFit: 'contain', marginRight: '4px', verticalAlign: 'middle', filter: 'brightness(0) invert(1) drop-shadow(0 0 2px rgba(0,0,0,0.5))' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                    <img src={symlogoWhite(safeCh.clan)} alt={safeCh.clan || 'Clan Logo'} width="16" height="16" style={{ width: '16px', height: '16px', objectFit: 'contain', marginRight: '4px', verticalAlign: 'middle', filter: 'drop-shadow(0 0 2px rgba(0,0,0,0.5))' }} onError={(e) => { e.target.style.display = 'none'; }} />
                     Clan {safeCh.clan || 'Caitiff'}
                   </div>
                   <div className={styles.metaBadge}>
@@ -527,9 +528,9 @@ export default function Home() {
 
             <div className={styles.clanWatermark} aria-hidden>
               <img 
-                src={textlogo(safeCh.clan)}
+                src={textlogoWhite(safeCh.clan)}
                 alt="Clan Logo"
-                style={{ height: '40px', objectFit: 'contain', filter: 'brightness(0) invert(1) drop-shadow(0 0 5px rgba(255,255,255,0.3))' }}
+                style={{ height: '40px', objectFit: 'contain', filter: 'drop-shadow(0 0 6px rgba(255,255,255,0.25))' }}
                 onError={(e) => { e.target.style.display = 'none'; }}
               />
             </div>
@@ -741,7 +742,16 @@ export default function Home() {
                   data-cuelume-toggle
                   data-cuelume-hover
                 >
-                  <span className={styles.themeDot} style={{ position: 'relative', zIndex: 2 }} />
+                  {t.icon ? (
+                    <img 
+                      src={t.icon} 
+                      alt="" 
+                      aria-hidden="true" 
+                      style={{ width: '18px', height: '18px', objectFit: 'contain', position: 'relative', zIndex: 2, marginRight: '6px', filter: 'drop-shadow(0 0 4px rgba(0,0,0,0.8))' }} 
+                    />
+                  ) : (
+                    <span className={styles.themeDot} style={{ position: 'relative', zIndex: 2 }} />
+                  )}
                   <div className={styles.themeInfo} style={{ position: 'relative', zIndex: 2 }}>
                     <span className={styles.themeName}>{t.label}</span>
                   </div>

@@ -6,7 +6,7 @@ import api from '../../core/api';
 import { AuthCtx } from '../../core/AuthContext';
 import { DISCIPLINES, ALL_DISCIPLINE_NAMES, iconPath } from '../../data/disciplines';
 import { RITUALS } from '../../data/rituals';
-import { symlogo, textlogo, CLAN_HEX as CLAN_COLORS } from '../../data/clans';
+import { symlogo, textlogo, symlogoWhite, textlogoWhite, CLAN_HEX as CLAN_COLORS } from '../../data/clans';
 import styles from '../../styles/CharacterView.module.css';
 import homeStyles from '../../styles/Home.module.css';
 
@@ -1838,8 +1838,8 @@ export default function CharacterView({
               <div>
                 <h1 className={styles.charTitle}>{ch.name}</h1>
                 <p className={styles.charSubtitle} style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                  {symlogo(ch.clan) && <img src={symlogo(ch.clan)} alt={ch.clan} style={{ height: '24px', opacity: 0.8, filter: 'brightness(0) invert(1)' }} />}
-                  {textlogo(ch.clan) ? <img src={textlogo(ch.clan)} alt={ch.clan} style={{ height: '20px', opacity: 0.9, filter: 'brightness(0) invert(1)' }} /> : <span>{ch.clan}</span>}
+                  {symlogoWhite(ch.clan) && <img src={symlogoWhite(ch.clan)} alt={ch.clan} style={{ height: '24px', opacity: 0.9, objectFit: 'contain' }} />}
+                  {textlogoWhite(ch.clan) ? <img src={textlogoWhite(ch.clan)} alt={ch.clan} style={{ height: '20px', opacity: 0.95, objectFit: 'contain' }} /> : <span>{ch.clan}</span>}
                   <span style={{ opacity: 0.5 }}>•</span>
                   <span>BP: {sheet?.blood_potency ?? 'Unspecified'}</span>
                 </p>

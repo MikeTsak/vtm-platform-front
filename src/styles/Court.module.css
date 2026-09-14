@@ -236,7 +236,6 @@
   opacity: 0.85;
   margin-bottom: 4px;
   object-fit: contain;
-  filter: brightness(0) invert(1);
 }
 
 /* Info Column */
