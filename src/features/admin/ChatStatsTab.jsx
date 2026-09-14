@@ -5,17 +5,12 @@ import { symlogo as clanSymbol, CLAN_HEX as CLAN_COLORS } from '../../data/clans
 
 /** ---------- Helpers ---------- */
 const getRollArt = (roll) => {
-  if (!roll) return '/img/dice/BestialFail.webp'; 
-  if (roll.messy_crit) return '/img/dice/MessyCrit.webp';
-  if (roll.bestial_failure) return '/img/dice/BestialFail.webp';
-  if (roll.crit_pairs > 0) return '/img/dice/Crit.webp';
-  if (roll.successes > 0) return '/img/dice/Success.webp';
-  return '/img/dice/BestialFail.webp'; 
-};
-
-const IMG = {
-  normal: (v) => `/img/dice/normal-${v}.webp`,
-  hunger: (v) => `/img/dice/hunger-${v}.webp`,
+  if (!roll) return '/img/dice/d10/Dice_Regular_Failure.webp'; 
+  if (roll.messy_crit) return '/img/dice/d10/Dice_Hunger_MessyCritical.webp';
+  if (roll.bestial_failure) return '/img/dice/d10/Dice_Hunger_BestialFailure.webp';
+  if (roll.crit_pairs > 0) return '/img/dice/d10/Dice_Regular_Critical.webp';
+  if (roll.successes > 0) return '/img/dice/d10/Dice_Regular_Success.webp';
+  return '/img/dice/d10/Dice_Regular_Failure.webp'; 
 };
 
 const getTies = (map, idToNameFn = null) => {

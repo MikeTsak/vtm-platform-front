@@ -1,8 +1,10 @@
-﻿// src/components/DiceRoller.jsx
+// src/components/DiceRoller.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import api from '../../core/api';
 import { trackEvent } from '../../utils/analytics';
+import D10Die from '../../ui/D10Die';
+import { getBatterySaverMode, setBatterySaverMode } from '../../ui/dice3d/sharedDiceEngine';
 
 /**
  * Vampire: the Masquerade v5 Dice Roller (d10)
@@ -40,11 +42,11 @@ function computeOutcome(normal, hunger, difficulty) {
   if (bestialFailure) label = 'Bestial Failure';
 
   // Art
-  let art = '/img/dice/Success.webp';
-  if (messyCritical && metDifficulty) art = '/img/dice/MessyCrit.webp';
-  else if (hasCritical && metDifficulty) art = '/img/dice/Crit.webp';
-  else if (bestialFailure) art = '/img/dice/BestialFail.webp';
-  else if (!metDifficulty) art = '/img/dice/BestialFail.webp';
+  let art = '/img/dice/d10/Dice_Regular_Success.webp';
+  if (messyCritical && metDifficulty) art = '/img/dice/d10/Dice_Hunger_MessyCritical.webp';
+  else if (hasCritical && metDifficulty) art = '/img/dice/d10/Dice_Regular_Critical.webp';
+  else if (bestialFailure) art = '/img/dice/d10/Dice_Hunger_BestialFailure.webp';
+  else if (!metDifficulty) art = '/img/dice/d10/Dice_Regular_Failure.webp';
 
   return {
     successesTotal, extraFromPairs,
@@ -75,6 +77,14 @@ export default function DiceRoller({ characterId }) {
   const [hungerDice, setHungerDice] = useState([]);
   const [hasRolled, setHasRolled] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isRolling, setIsRolling] = useState(false);
+  const [batterySaver, setBatterySaver] = useState(() => getBatterySaverMode());
+
+  const toggleBatterySaver = () => {
+    const next = !batterySaver;
+    setBatterySaver(next);
+    setBatterySaverMode(next);
+  };
 
   // Willpower reroll state
   const [wpMode, setWpMode] = useState(false);
@@ -170,6 +180,7 @@ export default function DiceRoller({ characterId }) {
     setNormalDice(normal);
     setHungerDice(hunger);
     setHasRolled(true);
+    setIsRolling(true);
     
     setWpMode(false);
     setWpUsed(false);
@@ -178,6 +189,10 @@ export default function DiceRoller({ characterId }) {
     setRouseVal(null); 
 
     trackEvent('roll_dice', { pool: total, hunger: hLvl, difficulty: difficulty || 0 });
+
+    setTimeout(() => {
+      setIsRolling(false);
+    }, 750);
 
     await logRollToApi(normal, hunger, note);
   };
@@ -198,13 +213,17 @@ export default function DiceRoller({ characterId }) {
       }
     }
 
+    setIsRolling(true);
     const rerolled = normalDice.map((v, i) => (wpSelections.has(i) ? rollD10() : v));
     
-    setNormalDice(rerolled);
-    setWpUsed(true);
-    setWpMode(false);
-    setWpSelections(new Set());
-    setWpMessage('Applying WP cost...');
+    setTimeout(() => {
+      setNormalDice(rerolled);
+      setIsRolling(false);
+      setWpUsed(true);
+      setWpMode(false);
+      setWpSelections(new Set());
+      setWpMessage('Applying WP cost...');
+    }, 700);
 
     const rerollNote = note ? `${note} (WP Reroll)` : 'Willpower Reroll';
     logRollToApi(rerolled, hungerDice, rerollNote);
@@ -228,11 +247,16 @@ export default function DiceRoller({ characterId }) {
   };
 
   const doRouse = async () => {
+    setIsRolling(true);
     const val = rollD10();
     const ok = val >= 6;
     setRouseVal(val);
     setRouseSuccess(ok);
     
+    setTimeout(() => {
+      setIsRolling(false);
+    }, 650);
+
     if (!ok) {
       if (sheet && character) {
         const currentBackendHunger = Number(sheet.hunger) || 0;
@@ -292,7 +316,18 @@ export default function DiceRoller({ characterId }) {
           <div className="font-['Playfair_Display'] font-bold text-lg text-on-surface tracking-wide flex items-center gap-2">
             V5 Dice {isSending && <span className="animate-spin opacity-70">⟳</span>}
           </div>
-          <button className="text-on-surface-variant hover:text-primary transition-colors text-xl leading-none" onClick={() => setOpen(false)} aria-label="Close">✕</button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={toggleBatterySaver}
+              className={`text-xs px-2 py-0.5 rounded font-mono font-bold transition-colors ${batterySaver ? 'bg-amber-950/80 text-amber-300 border border-amber-500/40' : 'bg-primary/20 text-primary border border-primary/40 hover:bg-primary/30'}`}
+              title={batterySaver ? '2D Fast Mode active: Click to switch to 3D WebGL' : '3D WebGL active: Click to switch to 2D Fast Mode'}
+              aria-label={batterySaver ? 'Switch to 3D mode' : 'Switch to 2D battery saver mode'}
+            >
+              {batterySaver ? '2D Fast' : '3D WebGL'}
+            </button>
+            <button className="text-on-surface-variant hover:text-primary transition-colors text-xl leading-none" onClick={() => setOpen(false)} aria-label="Close">✕</button>
+          </div>
         </div>
 
         {/* Inputs */}
@@ -308,7 +343,7 @@ export default function DiceRoller({ characterId }) {
             </div>
             <div className="flex-1 flex flex-col gap-1">
               <label className="text-xs uppercase tracking-wider font-semibold text-on-surface-variant font-['Inter']">Diff.</label>
-              <input className="w-full bg-surface-container-lowest border border-outline/30 rounded-md px-3 py-2 text-sm text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors" type="number" min={0} max={15} placeholder="-" value={difficulty} onChange={(e)=>setDifficulty(e.target.value)} />
+              <input className="w-full bg-surface-container-lowest border border-outline/30 rounded-md px-3 py-2 text-sm text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors" type="number" min={0} max={15} placeholder="0" value={difficulty} onChange={(e)=>setDifficulty(e.target.value)} />
             </div>
           </div>
           
@@ -326,10 +361,13 @@ export default function DiceRoller({ characterId }) {
           </div>
           
           {rouseVal !== null && (
-            <div className="text-center py-2 px-3 bg-surface-container-lowest border border-outline/10 rounded-md text-sm shadow-inner" aria-live="polite">
-              Rouse: <b className="text-on-surface">{rouseVal}</b> — <span className={`font-bold ${rouseSuccess ? 'text-green-500' : 'text-error'}`}>
-                {rouseSuccess ? 'Safe' : 'Hunger +1'}
-              </span>
+            <div className="py-2 px-3 bg-surface-container-lowest border border-outline/10 rounded-md text-sm shadow-inner flex items-center justify-center gap-3" aria-live="polite">
+              <D10Die value={rouseVal} isHunger={true} isRolling={isRolling} size="sm" force2D={batterySaver} showNumber />
+              <div>
+                Rouse: <b className="text-on-surface">{rouseVal}</b> : <span className={`font-bold ${rouseSuccess ? 'text-green-500' : 'text-error'}`}>
+                  {rouseSuccess ? 'Safe' : 'Hunger +1'}
+                </span>
+              </div>
             </div>
           )}
 
@@ -337,7 +375,7 @@ export default function DiceRoller({ characterId }) {
           {hasRolled && outcome && (
             <div className="mt-2 border-t border-outline/20 pt-4 flex flex-col gap-4 animate-fade-in">
               <div className="flex items-center gap-4 bg-surface-container-lowest p-3 rounded-lg border border-outline/10 shadow-sm">
-                <img src={outcome.art} alt={outcome.label} className={`w-12 h-12 object-contain drop-shadow-md ${(!outcome.messyCritical && !outcome.bestialFailure) ? 'invert' : ''}`} />
+                <img src={outcome.art} alt={outcome.label} className="w-12 h-12 object-contain drop-shadow-md" />
                 <div className="flex flex-col">
                   <div className={`font-['Playfair_Display'] font-bold text-xl leading-tight ${outcome.bestialFailure ? 'text-error' : (outcome.messyCritical ? 'text-error' : (outcome.hasCritical ? 'text-primary' : 'text-on-surface'))}`}>{outcome.label}</div>
                   <div className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">
@@ -349,40 +387,42 @@ export default function DiceRoller({ characterId }) {
 
               <div className="flex flex-col gap-3">
                 {/* Normal Dice */}
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 items-center">
                   {normalDice.length === 0 && <span className="text-xs text-on-surface-variant/50 italic">No normal dice</span>}
-                  {normalDice.map((v, i) => {
-                    const isSuccess = v >= 6 && v < 10;
-                    const isTen = v === 10;
-                    const selectable = wpMode;
-                    const selected = wpSelections.has(i);
-                    return (
-                      <button
-                        key={`n-${i}`} type="button"
-                        className={`relative w-10 h-10 flex items-center justify-center font-bold text-lg rounded-md transition-all duration-200 ${isTen ? 'bg-primary text-on-primary shadow-[0_0_8px_rgba(var(--theme-primary-rgb),0.5)] border border-primary/50' : (isSuccess ? 'bg-surface-variant text-on-surface border border-primary/30' : 'bg-surface-container-lowest text-on-surface-variant border border-outline/20')} ${selectable ? 'cursor-pointer hover:-translate-y-1 hover:shadow-md' : 'cursor-default'} ${selected ? 'ring-2 ring-primary ring-offset-2 ring-offset-surface-container transform -translate-y-1' : ''}`}
-                        onClick={() => toggleWpSelect(i)}
-                        disabled={!selectable}
-                        title={selectable ? 'Click to reroll' : ''}
-                      >
-                        {v}
-                      </button>
-                    );
-                  })}
+                  {normalDice.map((v, i) => (
+                    <D10Die
+                      key={`n-${i}`}
+                      index={i}
+                      value={v}
+                      isHunger={false}
+                      isRolling={isRolling}
+                      selectable={wpMode}
+                      selected={wpSelections.has(i)}
+                      onClick={() => toggleWpSelect(i)}
+                      size="md"
+                      force2D={batterySaver}
+                      poolCount={normalDice.length + hungerDice.length}
+                      showNumber
+                    />
+                  ))}
                 </div>
                 
                 {/* Hunger Dice */}
                 {hungerDice.length > 0 && (
-                  <div className="flex flex-wrap gap-2 p-2 bg-error/10 border border-error/20 rounded-lg">
-                    {hungerDice.map((v, i) => {
-                      const isSuccess = v >= 6 && v < 10;
-                      const isTen = v === 10;
-                      const isFail = v === 1;
-                      return (
-                        <div key={`h-${i}`} className={`relative w-10 h-10 flex items-center justify-center font-bold text-lg rounded-md transition-all duration-200 ${isFail ? 'bg-error text-on-error shadow-[0_0_12px_rgba(var(--theme-error-rgb),0.7)] border border-error animate-pulse' : (isTen ? 'bg-error text-on-error shadow-[0_0_8px_rgba(var(--theme-error-rgb),0.5)] border border-error/50' : (isSuccess ? 'bg-surface-variant text-on-surface border border-error/30' : 'bg-surface-container-lowest text-error border border-error/20'))}`}>
-                          {v}
-                        </div>
-                      );
-                    })}
+                  <div className="flex flex-wrap gap-2 p-2 bg-error/10 border border-error/20 rounded-lg items-center">
+                    {hungerDice.map((v, i) => (
+                      <D10Die
+                        key={`h-${i}`}
+                        index={i}
+                        value={v}
+                        isHunger={true}
+                        isRolling={isRolling}
+                        size="md"
+                        force2D={batterySaver}
+                        poolCount={normalDice.length + hungerDice.length}
+                        showNumber
+                      />
+                    ))}
                   </div>
                 )}
               </div>

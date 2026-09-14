@@ -21,6 +21,7 @@ import { getLiveSession, joinLiveSession, logLiveSessionRoll, getLiveSessionBroa
 import LiveSessionPlayerList from './LiveSessionPlayerList';
 import LiveSessionRollHistory from './LiveSessionRollHistory';
 import LiveSessionAdminDashboard from '../admin/LiveSessionDashboard';
+import D10Die from '../../ui/D10Die';
 import styles from '../../styles/LiveSession.module.css';
 
 function TrackerBlock({ label, val, max, agg = 0, sup = 0, filled = 0, stains = 0 }) {
@@ -1565,43 +1566,49 @@ export default function LiveSession() {
                 </h2>
                 <p className={styles.textMuted} style={{ marginBottom: '2rem' }}>{lastRoll.note}</p>
 
-                <div className={styles.diceContainer}>
+                <div className={styles.diceContainer} style={{ gap: '1.25rem', alignItems: 'center', justifyContent: 'center' }}>
                   {lastRoll.normalDice.map((die, i) => {
                     const isSelected = wpSelections.includes(i);
-                    const isSuccess = die >= 6;
-                    const imgSrc = die === 10 ? '/img/dice/Crit.webp' : isSuccess ? '/img/dice/Success.webp' : null;
+                    const totalCount = (lastRoll.normalDice?.length || 0) + (lastRoll.hungerDice?.length || 0);
                     return (
                       <div key={`n-${i}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <div className={`${styles.diceSlotContainer} ${styles.diceSlotNormal}`} style={{ border: isSelected && !isRolling ? '2px solid var(--primary)' : '1px solid var(--outline-variant)' }} onClick={() => { if (!isRolling && rerollAllowed) setWpSelections(prev => prev.includes(i) ? prev.filter(v => v !== i) : prev.length < 3 ? [...prev, i] : prev); }}>
-                          {isRolling ? (
-                            <div className={styles.diceRolling}>
-                              <img src="/img/dice/Success.webp" alt="spin" />
-                              <img src="/img/dice/Crit.webp" alt="spin" />
-                              <img src="/img/dice/MessyCrit.webp" alt="spin" />
-                            </div>
-                          ) : (
-                            imgSrc ? <img src={imgSrc} alt={`${die}`} className={styles.dieImage} /> : <span style={{ fontSize: '2rem', color: 'var(--text-muted)' }}>{die}</span>
-                          )}
-                        </div>
-                        {isSelected && !isRolling && <span style={{ color: 'var(--primary)', fontSize: '0.75rem', marginTop: 4, fontWeight: 'bold' }}>Reroll</span>}
+                        <D10Die
+                          index={i}
+                          value={die}
+                          isHunger={false}
+                          isRolling={isRolling}
+                          selectable={!isRolling && rerollAllowed}
+                          selected={isSelected}
+                          onClick={() => {
+                            if (!isRolling && rerollAllowed) {
+                              setWpSelections(prev => prev.includes(i) ? prev.filter(v => v !== i) : prev.length < 3 ? [...prev, i] : prev);
+                            }
+                          }}
+                          size="lg"
+                          poolCount={totalCount}
+                          showNumber={true}
+                        />
+                        {isSelected && !isRolling && (
+                          <span style={{ color: 'var(--primary)', fontSize: '0.75rem', marginTop: 4, fontWeight: 'bold' }}>
+                            Reroll
+                          </span>
+                        )}
                       </div>
                     );
                   })}
                   {lastRoll.hungerDice.map((die, i) => {
-                    const imgSrc = die === 10 ? '/img/dice/MessyCrit.webp' : die === 1 ? '/img/dice/BestialFail.webp' : die >= 6 ? '/img/dice/Success.webp' : null;
+                    const totalCount = (lastRoll.normalDice?.length || 0) + (lastRoll.hungerDice?.length || 0);
                     return (
                       <div key={`h-${i}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <div className={`${styles.diceSlotContainer} ${styles.diceSlotHunger}`} style={{ border: '2px solid var(--primary-container)' }}>
-                          {isRolling ? (
-                            <div className={styles.diceRolling}>
-                              <img src="/img/dice/Success.webp" alt="spin" />
-                              <img src="/img/dice/MessyCrit.webp" alt="spin" />
-                              <img src="/img/dice/BestialFail.webp" alt="spin" />
-                            </div>
-                          ) : (
-                            imgSrc ? <img src={imgSrc} alt={`${die}`} className={styles.dieImage} /> : <span style={{ fontSize: '2rem', color: 'var(--error)' }}>{die}</span>
-                          )}
-                        </div>
+                        <D10Die
+                          index={i}
+                          value={die}
+                          isHunger={true}
+                          isRolling={isRolling}
+                          size="lg"
+                          poolCount={totalCount}
+                          showNumber={true}
+                        />
                       </div>
                     );
                   })}

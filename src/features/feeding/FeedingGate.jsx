@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { Skeleton } from 'boneyard-js/react';
 import styles from '../../styles/Feeding.module.css';
 import FaGlyph from '../../ui/FaGlyph';
+import D10Die from '../../ui/D10Die';
 import { FEEDING_ICONS } from '../../data/feedingIcons';
 import { DIVISION_NAMES } from '../../constants/divisionNames';
 import { HUNTING_DIFFICULTY, huntingLabel } from '../domains/data/huntingDifficulty';
@@ -129,26 +130,35 @@ function ChasseBadges({ merits }) {
   );
 }
 
-function Die({ value, isHunger, selectable, selected, onClick }) {
-  const success = value >= 6;
-  let cls = styles.die;
-  if (isHunger) cls += ` ${success ? styles.dieHungerSuccess : styles.dieHunger}`;
-  else if (success) cls += ` ${styles.dieSuccess}`;
-  if (selectable) cls += ` ${styles.dieSelectable}`;
-  if (selected) cls += ` ${styles.dieSelected}`;
-  return <div className={cls} onClick={selectable ? onClick : undefined}>{value}</div>;
-}
-
-function DicePreview({ feeding, selectable, selected, onToggle }) {
+function DicePreview({ feeding, selectable, selected, onToggle, isRolling = false }) {
   const normal = feeding.normal_dice || [];
   const hunger = feeding.hunger_dice || [];
   return (
-    <div className={styles.diceRow}>
+    <div className={styles.diceRow} style={{ alignItems: 'center', gap: '0.65rem' }}>
       {normal.map((v, i) => (
-        <Die key={`n${i}`} value={v} selectable={selectable} selected={selected?.includes(i)} onClick={() => onToggle?.(i)} />
+        <D10Die
+          key={`n${i}`}
+          index={i}
+          value={v}
+          isHunger={false}
+          isRolling={isRolling && (selected?.length > 0 ? selected.includes(i) : true)}
+          selectable={selectable}
+          selected={selected?.includes(i)}
+          onClick={() => onToggle?.(i)}
+          size="md"
+          showNumber={true}
+        />
       ))}
       {hunger.map((v, i) => (
-        <Die key={`h${i}`} value={v} isHunger />
+        <D10Die
+          key={`h${i}`}
+          index={i}
+          value={v}
+          isHunger={true}
+          isRolling={isRolling && (!selected || selected.length === 0)}
+          size="md"
+          showNumber={true}
+        />
       ))}
     </div>
   );
@@ -212,6 +222,7 @@ function PendingResult({ status }) {
         feeding={feeding}
         selectable={canReroll}
         selected={selected}
+        isRolling={rerollMutation.isPending}
         onToggle={(i) => setSelected((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : prev.length < 3 ? [...prev, i] : prev))}
       />
 
@@ -329,7 +340,7 @@ function Picker({ status }) {
       {!status.canAutomate ? (
         <p className={styles.subtitle}>
           {status.predatorType
-            ? `${status.predatorType} isn't automatable for the Feeding roll. It's GM-adjudicated per the V5 rules.`
+            ? `${status.predatorType} is not automatable for the Feeding roll. It is GM adjudicated per the V5 rules.`
             : 'Set a Predator Type on your character sheet before feeding.'}
           {' '}Use a Monthly Action to describe your feeding this cycle instead. The tabs below remain locked otherwise.
         </p>

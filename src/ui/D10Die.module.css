@@ -1,0 +1,285 @@
+/* src/ui/D10Die.module.css */
+
+.kineticContainer {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  perspective: 800px;
+  perspective-origin: 50% 110%;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+/* Base Wrapper */
+.dieWrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform-style: preserve-3d;
+  background: transparent;
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.2s ease;
+  z-index: 2;
+}
+
+.dieFaceInner {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transform-style: preserve-3d;
+}
+
+.dieTexture {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.45));
+  transition: filter 0.2s ease, transform 0.2s ease;
+}
+
+/* Sizes */
+.sizeSm {
+  width: 28px;
+  height: 30px;
+}
+
+.sizeMd {
+  width: 44px;
+  height: 48px;
+}
+
+.sizeLg {
+  width: 72px;
+  height: 78px;
+}
+
+/* Dynamic Floor Shadow */
+.floorShadow {
+  position: absolute;
+  bottom: -4px;
+  width: 80%;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0) 72%);
+  z-index: 1;
+  pointer-events: none;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.sizeSm .floorShadow {
+  bottom: -2px;
+  height: 5px;
+}
+
+.sizeLg .floorShadow {
+  bottom: -6px;
+  height: 12px;
+}
+
+/* Number Badge */
+.numberBadge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  background: rgba(0, 0, 0, 0.85);
+  color: #e2e8f0;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* ────────────────────────────────────────────────────────────
+   3D KINETIC TOSS ANIMATIONS
+──────────────────────────────────────────────────────────── */
+
+@keyframes kineticTossA {
+  0% {
+    transform: translateY(0) rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(1);
+  }
+  20% {
+    transform: translateY(-28px) rotateX(120deg) rotateY(90deg) rotateZ(-15deg) scale(1.18);
+  }
+  50% {
+    transform: translateY(-38px) rotateX(260deg) rotateY(200deg) rotateZ(20deg) scale(1.22);
+  }
+  75% {
+    transform: translateY(-12px) rotateX(420deg) rotateY(310deg) rotateZ(-10deg) scale(1.1);
+  }
+  88% {
+    transform: translateY(3px) rotateX(540deg) rotateY(360deg) rotateZ(0deg) scale3d(1.14, 0.88, 1);
+  }
+  94% {
+    transform: translateY(-6px) rotateX(540deg) rotateY(360deg) rotateZ(0deg) scale(1.03);
+  }
+  100% {
+    transform: translateY(0) rotateX(540deg) rotateY(360deg) rotateZ(0deg) scale(1);
+  }
+}
+
+@keyframes kineticTossB {
+  0% {
+    transform: translateY(0) rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(1);
+  }
+  20% {
+    transform: translateY(-26px) rotateX(-110deg) rotateY(-80deg) rotateZ(18deg) scale(1.16);
+  }
+  50% {
+    transform: translateY(-36px) rotateX(-240deg) rotateY(-190deg) rotateZ(-22deg) scale(1.2);
+  }
+  75% {
+    transform: translateY(-10px) rotateX(-400deg) rotateY(-300deg) rotateZ(12deg) scale(1.08);
+  }
+  88% {
+    transform: translateY(3px) rotateX(-540deg) rotateY(-360deg) rotateZ(0deg) scale3d(1.14, 0.88, 1);
+  }
+  94% {
+    transform: translateY(-6px) rotateX(-540deg) rotateY(-360deg) rotateZ(0deg) scale(1.03);
+  }
+  100% {
+    transform: translateY(0) rotateX(-540deg) rotateY(-360deg) rotateZ(0deg) scale(1);
+  }
+}
+
+@keyframes shadowToss {
+  0% {
+    transform: scale(1);
+    opacity: 0.75;
+    filter: blur(2px);
+  }
+  30% {
+    transform: scale(0.48);
+    opacity: 0.18;
+    filter: blur(7px);
+  }
+  55% {
+    transform: scale(0.38);
+    opacity: 0.12;
+    filter: blur(9px);
+  }
+  75% {
+    transform: scale(0.7);
+    opacity: 0.45;
+    filter: blur(4px);
+  }
+  88% {
+    transform: scale(1.3);
+    opacity: 0.95;
+    filter: blur(1.5px);
+  }
+  94% {
+    transform: scale(0.85);
+    opacity: 0.55;
+    filter: blur(3px);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.75;
+    filter: blur(2px);
+  }
+}
+
+@keyframes settleImpact {
+  0% {
+    transform: scale3d(1.12, 0.9, 1);
+  }
+  50% {
+    transform: translateY(-4px) scale(1.04);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+.tossA {
+  animation: kineticTossA 0.62s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+.tossB {
+  animation: kineticTossB 0.62s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+.shadowRolling {
+  animation: shadowToss 0.62s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+.settled {
+  animation: settleImpact 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+/* Special Result Glows */
+.critGlow .dieTexture {
+  filter: drop-shadow(0 0 10px rgba(234, 179, 8, 0.8)) drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5));
+}
+
+.messyGlow .dieTexture {
+  filter: drop-shadow(0 0 12px rgba(220, 38, 38, 0.9)) drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5));
+  animation: pulseGlow 1.8s ease-in-out infinite alternate;
+}
+
+.bestialGlow .dieTexture {
+  filter: drop-shadow(0 0 14px rgba(185, 28, 28, 0.95)) drop-shadow(0 4px 6px rgba(0, 0, 0, 0.6));
+  animation: pulseGlow 1.4s ease-in-out infinite alternate;
+}
+
+@keyframes pulseGlow {
+  0% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 8px rgba(220, 38, 38, 0.6));
+  }
+  100% {
+    transform: scale(1.04);
+    filter: drop-shadow(0 0 14px rgba(239, 68, 68, 0.95));
+  }
+}
+
+/* Interactive States for Willpower Reroll */
+.selectable {
+  cursor: pointer;
+}
+
+.selectable:hover {
+  transform: translateY(-3px) scale(1.06);
+}
+
+.selectable:hover .dieTexture {
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
+}
+
+.selected {
+  transform: translateY(-4px) scale(1.08);
+}
+
+.selected .dieTexture {
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 10px rgba(198, 40, 40, 0.8));
+}
+
+.selectionIndicator {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.checkIcon {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--primary, #c62828);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}

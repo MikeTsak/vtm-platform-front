@@ -1,13 +1,9 @@
-﻿// src/components/admin/AdminDiceLogsTab.jsx
+// src/components/admin/AdminDiceLogsTab.jsx
 import React, { useEffect, useState, useCallback } from "react";
 import styles from '../../styles/AdminDiceLogsTab.module.css';
 import api from '../../core/api'; // Import the central api module
 import { formatEuDate } from '../../utils/dateFormatter';
-
-const IMG = {
-  normal: (v) => `/img/dice/normal-${v}.webp`,
-  hunger: (v) => `/img/dice/hunger-${v}.webp`,
-};
+import D10Die from '../../ui/D10Die';
 
 export default function AdminDiceLogsTab() {
   const [loading, setLoading] = useState(false);
@@ -65,7 +61,7 @@ export default function AdminDiceLogsTab() {
         <label className={styles.customCheckbox}>
           <input type="checkbox" checked={auto} onChange={(e) => setAuto(e.target.checked)} />
           <span className={styles.checkmark}></span>
-          <span>Auto-refresh (5s)</span>
+          <span>Auto refresh (5s)</span>
         </label>
         {err && <span className={styles.error}>{err}</span>}
       </div>
@@ -92,19 +88,19 @@ export default function AdminDiceLogsTab() {
           const diff = Number(res.difficulty ?? r.difficulty ?? 0) || 0;
           const metDifficulty = diff > 0 ? successes >= diff : successes > 0;
 
-          let art = "/img/dice/Success.webp";
+          let art = "/img/dice/d10/Dice_Regular_Success.webp";
           let resultType = "success";
           if (messyCritical && metDifficulty) {
-            art = "/img/dice/MessyCrit.webp";
+            art = "/img/dice/d10/Dice_Hunger_MessyCritical.webp";
             resultType = "messy";
           } else if (hasCritical && metDifficulty) {
-            art = "/img/dice/Crit.webp";
+            art = "/img/dice/d10/Dice_Regular_Critical.webp";
             resultType = "critical";
           } else if (bestialFailure) {
-            art = "/img/dice/BestialFail.webp";
+            art = "/img/dice/d10/Dice_Hunger_BestialFailure.webp";
             resultType = "bestial";
           } else if (!metDifficulty) {
-            art = "/img/dice/BestialFail.webp";
+            art = "/img/dice/d10/Dice_Regular_Failure.webp";
             resultType = "failure";
           }
 
@@ -120,7 +116,6 @@ export default function AdminDiceLogsTab() {
                 src={art}
                 alt={resultType}
                 className={styles.resultIcon}
-                style={{ background: 'white' }}
                 onError={(e) => (e.currentTarget.style.display = "none")}
               />
               <div className={styles.rollContent}>
@@ -142,8 +137,8 @@ export default function AdminDiceLogsTab() {
                 )}
 
                 <div className={styles.diceArea}>
-                  <DiceStrip title="Normal Dice" values={normal} img={IMG.normal} />
-                  <DiceStrip title="Hunger Dice" values={hunger} img={IMG.hunger} />
+                  <DiceStrip title="Normal Dice" values={normal} isHunger={false} />
+                  <DiceStrip title="Hunger Dice" values={hunger} isHunger={true} />
                 </div>
               </div>
             </div>
@@ -154,16 +149,14 @@ export default function AdminDiceLogsTab() {
   );
 }
 
-function DiceStrip({ title, values, img }) {
+function DiceStrip({ title, values, isHunger = false }) {
   if (!values || !values.length) return null;
   return (
     <div className={styles.diceStrip}>
       <div className={styles.diceTitle}>{title} ({values.length})</div>
-      <div className={styles.diceContainer}>
+      <div className={styles.diceContainer} style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
         {values.map((v, i) => (
-          <div key={i} className={styles.dieFallback}>
-            {v}
-          </div>
+          <D10Die key={i} value={v} isHunger={isHunger} size="sm" showNumber />
         ))}
       </div>
     </div>

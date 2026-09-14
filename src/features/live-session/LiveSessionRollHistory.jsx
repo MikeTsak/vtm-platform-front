@@ -1,5 +1,6 @@
-﻿import React from 'react';
+import React from 'react';
 import styles from '../../styles/LiveSession.module.css';
+import D10Die from '../../ui/D10Die';
 
 export default function LiveSessionRollHistory({ rolls = [], onBroadcast, currentCharacterId, isAdmin }) {
   if (!rolls.length) {
@@ -24,25 +25,21 @@ export default function LiveSessionRollHistory({ rolls = [], onBroadcast, curren
         const createdAt = roll.created_at || roll.createdAt;
         const hasBestial = roll.has_bestial_failure;
         const hasMessy = roll.has_messy_critical;
-        const hasCrit = roll.has_critical;
-        const isFailure = roll.successes === 0;
+        const hasCrit = roll.crit_pairs > 0;
+        const isFailure = roll.is_failure;
         const note = roll.note;
 
-        if (roll.message && !roll.roll_type && !roll.rollType) {
-          const isWhisper = !!roll.target_character_id;
+        if (roll.is_whisper) {
+          const isWhisper = Boolean(roll.target_character_id);
           return (
-            <article key={id} className={styles.historyItem} style={{ 
-              background: isWhisper ? 'rgba(168,85,247,0.1)' : 'var(--surface-container-high)', 
-              border: isWhisper ? '1px dashed #a855f7' : '1px solid var(--primary-container)', 
-              padding: '0.75rem' 
-            }}>
+            <article key={id} className={styles.historyItem} style={{ borderLeftColor: '#c084fc' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '0.85rem', color: isWhisper ? '#d8b4fe' : 'var(--on-surface)' }}>
                   {isWhisper && <strong style={{color: '#a855f7'}}>Whisper: </strong>}
                   {roll.message}
                 </span>
                 <small style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>
-                  {createdAt ? new Date(createdAt).toLocaleTimeString() : '-'}
+                  {createdAt ? new Date(createdAt).toLocaleTimeString() : ''}
                 </small>
               </div>
             </article>
@@ -54,18 +51,6 @@ export default function LiveSessionRollHistory({ rolls = [], onBroadcast, curren
         else if (hasMessy) statusClass = 'MessyCritical';
         else if (hasCrit) statusClass = 'Critical';
         else if (isFailure) statusClass = 'Failure';
-
-        const getDieImage = (die, isHunger) => {
-          if (isHunger) {
-            if (die === 10) return '/img/dice/MessyCrit.webp';
-            if (die === 1) return '/img/dice/BestialFail.webp';
-            if (die >= 6) return '/img/dice/Success.webp';
-            return null;
-          }
-          if (die === 10) return '/img/dice/Crit.webp';
-          if (die >= 6) return '/img/dice/Success.webp';
-          return null;
-        };
 
         return (
           <article key={id} className={`${styles.historyItem} ${styles[statusClass]}`}>
@@ -84,10 +69,10 @@ export default function LiveSessionRollHistory({ rolls = [], onBroadcast, curren
             
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
               <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--on-surface)', textTransform: 'capitalize' }}>
-                {roll.roll_type?.replace(/_/g, ' ') || roll.rollType || 'roll'} {note ? `— ${note}` : ''}
+                {roll.roll_type?.replace(/_/g, ' ') || roll.rollType || 'roll'} {note ? `: ${note}` : ''}
               </p>
               <small style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>
-                {createdAt ? new Date(createdAt).toLocaleTimeString() : '-'}
+                {createdAt ? new Date(createdAt).toLocaleTimeString() : ''}
               </small>
             </div>
 
@@ -114,23 +99,13 @@ export default function LiveSessionRollHistory({ rolls = [], onBroadcast, curren
 
             {/* Visual Dice Output */}
             {roll.results && (roll.results.normal || roll.results.hunger || roll.results.rouse) && (
-              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                {(roll.results.normal || []).map((die, i) => {
-                  const imgSrc = getDieImage(die, false);
-                  return (
-                    <div key={`n-${i}`} className={styles.diceSlotNormal} style={{ position: 'relative', width: 26, height: 26, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {imgSrc ? <img src={imgSrc} alt={`${die}`} style={{ width: 16, height: 16, objectFit: 'contain' }} /> : <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 'bold' }}>{die}</span>}
-                    </div>
-                  );
-                })}
-                {(roll.results.hunger || roll.results.rouse || []).map((die, i) => {
-                  const imgSrc = getDieImage(die, true);
-                  return (
-                    <div key={`h-${i}`} className={styles.diceSlotHunger} style={{ position: 'relative', width: 26, height: 26, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {imgSrc ? <img src={imgSrc} alt={`${die}`} style={{ width: 16, height: 16, objectFit: 'contain' }} /> : <span style={{ fontSize: '0.75rem', color: '#111111', fontWeight: 'bold' }}>{die}</span>}
-                    </div>
-                  );
-                })}
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                {(roll.results.normal || []).map((die, i) => (
+                  <D10Die key={`n-${i}`} value={die} isHunger={false} size="sm" />
+                ))}
+                {(roll.results.hunger || roll.results.rouse || []).map((die, i) => (
+                  <D10Die key={`h-${i}`} value={die} isHunger={true} size="sm" />
+                ))}
               </div>
             )}
           </article>
