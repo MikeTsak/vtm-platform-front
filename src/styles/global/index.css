@@ -10,6 +10,12 @@
   --font-cinzel: 'Cinzel', serif;
 }
 
+#root {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+}
+
 body {
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
@@ -17,6 +23,32 @@ body {
   background-color: var(--bg-color);
   color: var(--text-color);
   color-scheme: dark;
+  position: relative;
+  min-height: 100vh;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-image: var(--clan-bg-image, none);
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+  opacity: var(--clan-bg-opacity, 0);
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: radial-gradient(circle at 50% 25%, transparent 20%, rgba(10, 10, 14, 0.65) 70%, var(--bg-color) 100%);
+  pointer-events: none;
+  transition: opacity 0.5s ease;
 }
 
 .material-symbols-outlined {
@@ -163,9 +195,19 @@ option {
 
 /* --------------------------- */
 
+:root {
+  --clan-color-1: #8a0f1a;
+  --clan-color-2: #5c0b12;
+  --clan-color-3: #2f3138;
+  --clan-color-4: #e8e8ed;
+  --clan-color-5: #0d0d0f;
+  --clan-symbol-color: var(--clan-color-1);
+  --clan-text-logo-color: var(--clan-color-4);
+  --clan-surface: var(--surface-color);
+}
+
 :root,
-:root[data-theme='camarilla'],
-:root[data-theme='clan'] {
+:root[data-theme='camarilla'] {
   --tint: #8a0f1a;
   --bg-color: #0d0d0f;
   --surface-color: #141417;
@@ -184,6 +226,1195 @@ option {
   --theme-outline: var(--border-color);
   --theme-on-surface: var(--text-color);
   --theme-on-surface-variant: var(--text-muted);
+}
+
+:root[data-theme='clan'] {
+  --tint: var(--clan-primary, var(--clan-color-1, #8a0f1a));
+  --dynamic-tint: var(--clan-primary, var(--clan-color-1, #8a0f1a));
+  --bg-color: var(--clan-bg, #0d0d0f);
+  --surface-color: var(--clan-surface, var(--clan-color-5, #141417));
+  --surface-lighter: color-mix(in srgb, var(--surface-color) 82%, white 10%);
+  --border-color: var(--clan-border, var(--clan-color-3, #2f3138));
+  --text-color: var(--clan-text, var(--clan-color-4, #e8e8ed));
+  --text-muted: color-mix(in srgb, var(--text-color) 65%, transparent);
+
+  --theme-primary: var(--clan-symbol-color, var(--tint));
+  --theme-secondary: var(--clan-secondary, var(--clan-color-2, #c30011));
+  --theme-background: var(--bg-color);
+  --theme-surface-container-lowest: #0a0a0c;
+  --theme-surface-container-low: var(--bg-color);
+  --theme-surface-container: var(--surface-color);
+  --theme-surface-container-high: var(--surface-lighter);
+  --theme-surface-container-highest: color-mix(in srgb, var(--surface-color) 70%, white 18%);
+  --theme-outline: var(--border-color);
+  --theme-on-surface: var(--text-color);
+  --theme-on-surface-variant: var(--text-muted);
+}
+
+.clan-glass-card {
+  background: color-mix(in srgb, var(--surface-color) 85%, transparent) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--border-color) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+}
+
+/* Clan dynamic recoloring and aesthetic background utilities */
+.clan-symbol-mask {
+  display: inline-block;
+  background-color: var(--clan-symbol-color, var(--tint));
+  transition: background-color 0.25s ease;
+}
+
+.clan-text-logo-mask {
+  display: inline-block;
+  background-color: var(--clan-text-logo-color, var(--text-color));
+  transition: background-color 0.25s ease;
+}
+
+.clan-aesthetic-bg {
+  position: relative;
+  overflow: hidden;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.clan-aesthetic-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, transparent 40%, rgba(0, 0, 0, 0.85) 100%);
+  pointer-events: none;
+}
+
+/* 5-color aesthetic swatch strip */
+.clan-palette-bar {
+  display: flex;
+  height: 4px;
+  width: 100%;
+  border-radius: 2px;
+  overflow: hidden;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+}
+
+.clan-palette-bar span:nth-child(1) { flex: 1; background-color: var(--clan-color-1); }
+.clan-palette-bar span:nth-child(2) { flex: 1; background-color: var(--clan-color-2); }
+.clan-palette-bar span:nth-child(3) { flex: 1; background-color: var(--clan-color-3); }
+.clan-palette-bar span:nth-child(4) { flex: 1; background-color: var(--clan-color-4); }
+.clan-palette-bar span:nth-child(5) { flex: 1; background-color: var(--clan-color-5); }
+
+.clan-border-gradient {
+  border-image: linear-gradient(90deg, var(--clan-color-1), var(--clan-color-2), var(--clan-color-3), var(--clan-color-4), var(--clan-color-5)) 1;
+}
+
+/* =======================================================
+   CLAN BRUJAH : FIERY ANARCH REBELLION AESTHETIC
+   ======================================================= */
+:root[data-theme='clan'][data-clan='brujah'] {
+  --clan-color-1: #FF7214; /* Anarch Flame Orange */
+  --clan-color-2: #C30011; /* Rebel Crimson (Symbol) */
+  --clan-color-3: #A90015; /* Deep Blood Red (Border) */
+  --clan-color-4: #FFB53D; /* Warm Amber Gold (Text) */
+  --clan-color-5: #333333; /* Charcoal Slate (Surface) */
+
+  --clan-symbol-color: #C30011;
+  --clan-text-logo-color: #FFB53D;
+  --clan-primary: #FF7214;
+  --clan-secondary: #C30011;
+  --clan-border: #A90015;
+  --clan-text: #FFB53D;
+  --clan-surface: #221d1d;
+  --clan-bg: #0e0a0a;
+
+  --tint: #FF7214;
+  --theme-primary: #FF7214;
+  --theme-secondary: #C30011;
+  --border-color: #A90015;
+  --theme-outline: #A90015;
+  --text-color: #FFB53D;
+  --theme-on-surface: #FFB53D;
+  --surface-color: #221d1d;
+  --surface-lighter: #2f2626;
+  --bg-color: #0e0a0a;
+}
+
+/* Brujah CSS Atmospheric Canvas */
+:root[data-theme='clan'][data-clan='brujah'] body::before {
+  background-image: 
+    radial-gradient(ellipse at 30% 95%, rgba(255, 114, 20, 0.55) 0%, rgba(195, 0, 17, 0.42) 28%, rgba(169, 0, 21, 0.22) 55%, transparent 78%),
+    radial-gradient(ellipse at 75% 30%, rgba(255, 181, 61, 0.18) 0%, transparent 60%),
+    radial-gradient(circle at 50% 50%, transparent 35%, rgba(14, 10, 10, 0.82) 75%, #0e0a0a 100%),
+    url('/img/clans/backgrounds/Brujah_clean.webp?v=4');
+  background-size: cover;
+  background-position: center bottom;
+  background-repeat: no-repeat;
+  opacity: 0.65;
+  filter: saturate(1.2) contrast(1.15);
+}
+
+/* Brujah CSS Rising Ember Particles */
+:root[data-theme='clan'][data-clan='brujah'] body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: 
+    radial-gradient(2px 2px at 20px 30px, #FFB53D, rgba(0,0,0,0)),
+    radial-gradient(3px 3px at 40px 70px, #FF7214, rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 90px 40px, #FFB53D, rgba(0,0,0,0)),
+    radial-gradient(2.5px 2.5px at 160px 120px, #FF7214, rgba(0,0,0,0)),
+    radial-gradient(3px 3px at 230px 190px, #FFB53D, rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 310px 80px, #FF7214, rgba(0,0,0,0)),
+    radial-gradient(2.5px 2.5px at 390px 240px, #FFB53D, rgba(0,0,0,0)),
+    radial-gradient(circle at 50% 25%, transparent 20%, rgba(14, 10, 10, 0.6) 70%, #0e0a0a 100%);
+  background-repeat: repeat;
+  background-size: 450px 450px, 450px 450px, 450px 450px, 450px 450px, 450px 450px, 450px 450px, 450px 450px, cover;
+  opacity: 0.55;
+  animation: brujahEmbersDrift 18s linear infinite;
+}
+
+@keyframes brujahEmbersDrift {
+  0% {
+    background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, center;
+  }
+  100% {
+    background-position: 40px -450px, -30px -450px, 60px -450px, -50px -450px, 30px -450px, -20px -450px, 50px -450px, center;
+  }
+}
+
+/* Brujah Card Borders, Corner Flares and Identity Header Glow */
+:root[data-theme='clan'][data-clan='brujah'] .clan-symbol-mask {
+  background-color: #C30011 !important;
+  filter: drop-shadow(0 0 10px rgba(255, 114, 20, 0.6)) drop-shadow(0 0 2px #C30011);
+}
+
+:root[data-theme='clan'][data-clan='brujah'] .clan-text-logo-mask {
+  filter: drop-shadow(0 0 8px rgba(255, 114, 20, 0.45));
+}
+
+/* =======================================================
+   CLAN VENTRUE : PATRICIAN IMPERIAL MARBLE & GOLD AESTHETIC
+   ======================================================= */
+:root[data-theme='clan'][data-clan='ventrue'] {
+  --clan-color-1: #0F0D4F; /* Deep Regal Midnight Navy */
+  --clan-color-2: #222862; /* Patrician Royal Blue */
+  --clan-color-3: #7E6D5D; /* Classical Marble Taupe, Slate */
+  --clan-color-4: #F5F2EF; /* Imperial Ivory Marble */
+  --clan-color-5: #B09E4F; /* Sovereign Sceptre Antique Gold */
+
+  --clan-symbol-color: #B09E4F;
+  --clan-text-logo-color: #F5F2EF;
+  --clan-primary: #B09E4F;
+  --clan-secondary: #222862;
+  --clan-border: #7E6D5D;
+  --clan-text: #F5F2EF;
+  --clan-surface: #121528;
+  --clan-bg: #090a16;
+
+  --tint: #B09E4F;
+  --theme-primary: #B09E4F;
+  --theme-secondary: #222862;
+  --border-color: #7E6D5D;
+  --theme-outline: #7E6D5D;
+  --text-color: #F5F2EF;
+  --theme-on-surface: #F5F2EF;
+  --surface-color: #121528;
+  --surface-lighter: #1d2242;
+  --bg-color: #090a16;
+}
+
+/* Ventrue Atmospheric Canvas : Pristine Veined Marble with Royal Navy and Gold Ambient Vignette */
+:root[data-theme='clan'][data-clan='ventrue'] body::before {
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(176, 158, 79, 0.22) 0%, rgba(34, 40, 98, 0.28) 45%, transparent 75%),
+    radial-gradient(circle at 50% 50%, rgba(15, 13, 79, 0.35) 0%, rgba(9, 10, 22, 0.82) 72%, #090a16 100%),
+    url('/img/clans/backgrounds/Ventrue_clean.webp?v=5');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  opacity: 0.58;
+  filter: contrast(1.1) brightness(0.95);
+}
+
+/* Ventrue Patrician Ambient Shimmer : Floating Sovereign Gold Dust */
+:root[data-theme='clan'][data-clan='ventrue'] body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: 
+    radial-gradient(2px 2px at 35px 50px, #B09E4F, rgba(0,0,0,0)),
+    radial-gradient(2.5px 2.5px at 120px 160px, rgba(245, 242, 239, 0.8), rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 220px 90px, #B09E4F, rgba(0,0,0,0)),
+    radial-gradient(3px 3px at 310px 240px, rgba(176, 158, 79, 0.7), rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 400px 140px, #F5F2EF, rgba(0,0,0,0)),
+    radial-gradient(circle at 50% 50%, transparent 40%, rgba(9, 10, 22, 0.7) 80%, #090a16 100%);
+  background-repeat: repeat;
+  background-size: 500px 500px, 500px 500px, 500px 500px, 500px 500px, 500px 500px, cover;
+  opacity: 0.45;
+  animation: ventrueGoldDrift 24s ease-in-out infinite alternate;
+}
+
+@keyframes ventrueGoldDrift {
+  0% {
+    background-position: 0 0, 0 0, 0 0, 0 0, 0 0, center;
+  }
+  100% {
+    background-position: 25px -80px, -35px -60px, 40px -100px, -20px -70px, 30px -90px, center;
+  }
+}
+
+/* Ventrue Sovereign Emblem Glow and Classical Taupe Cards */
+:root[data-theme='clan'][data-clan='ventrue'] .clan-symbol-mask {
+  background-color: #B09E4F !important;
+  filter: drop-shadow(0 0 12px rgba(176, 158, 79, 0.75)) drop-shadow(0 0 2px #B09E4F);
+}
+
+:root[data-theme='clan'][data-clan='ventrue'] .clan-text-logo-mask {
+  filter: drop-shadow(0 0 8px rgba(176, 158, 79, 0.45));
+}
+
+/* =======================================================
+   CLAN MALKAVIAN : HALLUCINATORY PSYCHEDELIC FLUID AESTHETIC
+   ======================================================= */
+:root[data-theme='clan'][data-clan='malkavian'] {
+  --clan-color-1: #F1AB13; /* Chaotic Golden Yellow */
+  --clan-color-2: #FCB0B3; /* Pastel Blossom Pink (Mirror Symbol) */
+  --clan-color-3: #F93943; /* Electric Crimson Neon Red */
+  --clan-color-4: #7EB2DD; /* Periwinkle Ethereal Sky Blue */
+  --clan-color-5: #445E93; /* Deep Muted Slate Cobalt */
+
+  --clan-symbol-color: #FCB0B3;
+  --clan-text-logo-color: #F1AB13;
+  --clan-primary: #F1AB13;
+  --clan-secondary: #F93943;
+  --clan-border: #445E93;
+  --clan-text: #FCB0B3;
+  --clan-surface: #141224;
+  --clan-bg: #0a0814;
+
+  --tint: #F1AB13;
+  --theme-primary: #F1AB13;
+  --theme-secondary: #F93943;
+  --border-color: #445E93;
+  --theme-outline: #445E93;
+  --text-color: #FCB0B3;
+  --theme-on-surface: #FCB0B3;
+  --surface-color: #141224;
+  --surface-lighter: #201c38;
+  --bg-color: #0a0814;
+}
+
+/* Malkavian Atmospheric Canvas : Swirling Marbled Violet Fluid with Electric Crimson and Cobalt Veins */
+:root[data-theme='clan'][data-clan='malkavian'] body::before {
+  background-image:
+    radial-gradient(ellipse at 80% 20%, rgba(249, 57, 67, 0.42) 0%, rgba(241, 171, 19, 0.22) 28%, transparent 65%),
+    radial-gradient(ellipse at 20% 85%, rgba(126, 178, 221, 0.35) 0%, rgba(68, 94, 147, 0.3) 35%, transparent 70%),
+    radial-gradient(circle at 50% 50%, transparent 35%, rgba(10, 8, 20, 0.8) 75%, #0a0814 100%),
+    url('/img/clans/backgrounds/Malkavian_clean.webp?v=4');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  opacity: 0.68;
+  filter: contrast(1.15) saturate(1.2);
+}
+
+/* Malkavian Hallucinatory Mind Ripple Shimmer */
+:root[data-theme='clan'][data-clan='malkavian'] body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: 
+    radial-gradient(2px 2px at 40px 60px, #F1AB13, rgba(0,0,0,0)),
+    radial-gradient(3px 3px at 140px 180px, rgba(249, 57, 67, 0.8), rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 250px 110px, #7EB2DD, rgba(0,0,0,0)),
+    radial-gradient(2.5px 2.5px at 340px 270px, #FCB0B3, rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 420px 160px, #F1AB13, rgba(0,0,0,0)),
+    radial-gradient(circle at 50% 50%, transparent 35%, rgba(10, 8, 20, 0.7) 75%, #0a0814 100%);
+  background-repeat: repeat;
+  background-size: 480px 480px, 480px 480px, 480px 480px, 480px 480px, 480px 480px, cover;
+  opacity: 0.5;
+  animation: malkavianMindDrift 20s linear infinite;
+}
+
+@keyframes malkavianMindDrift {
+  0% {
+    background-position: 0 0, 0 0, 0 0, 0 0, 0 0, center;
+  }
+  100% {
+    background-position: -40px 480px, 30px 480px, -50px 480px, 40px 480px, -25px 480px, center;
+  }
+}
+
+/* Malkavian Cracked Mirror Pink Symbol Glow and Chaotic Yellow Logo */
+:root[data-theme='clan'][data-clan='malkavian'] .clan-symbol-mask {
+  background-color: #FCB0B3 !important;
+  filter: drop-shadow(0 0 10px rgba(249, 57, 67, 0.65)) drop-shadow(0 0 2px #FCB0B3);
+}
+
+:root[data-theme='clan'][data-clan='malkavian'] .clan-text-logo-mask {
+  filter: drop-shadow(0 0 8px rgba(241, 171, 19, 0.55));
+}
+
+/* =======================================================
+   CLAN TOREADOR : VELVET ROSES AND ROMANTIC THORNS AESTHETIC
+   ======================================================= */
+:root[data-theme='clan'][data-clan='toreador'] {
+  --clan-color-1: #DD2C68; /* Vibrant Magenta Rose */
+  --clan-color-2: #F3AFB6; /* Pastel Blossom Pink (Rose Symbol) */
+  --clan-color-3: #9F5D77; /* Muted Mauve Velvet */
+  --clan-color-4: #9C0321; /* Crimson Blood Rose */
+  --clan-color-5: #4A001F; /* Deep Midnight Burgundy */
+
+  --clan-symbol-color: #F3AFB6;
+  --clan-text-logo-color: #DD2C68;
+  --clan-primary: #DD2C68;
+  --clan-secondary: #9C0321;
+  --clan-border: #9C0321;
+  --clan-text: #F3AFB6;
+  --clan-surface: #220713;
+  --clan-bg: #0d0208;
+
+  --tint: #DD2C68;
+  --theme-primary: #DD2C68;
+  --theme-secondary: #9C0321;
+  --border-color: #9C0321;
+  --theme-outline: #9F5D77;
+  --text-color: #F3AFB6;
+  --theme-on-surface: #F3AFB6;
+  --surface-color: #220713;
+  --surface-lighter: #340c1e;
+  --bg-color: #0d0208;
+}
+
+/* Toreador Atmospheric Canvas : Opulent Velvety Dark Roses and Thorny Brambles */
+:root[data-theme='clan'][data-clan='toreador'] body::before {
+  background-image:
+    radial-gradient(ellipse at 70% 15%, rgba(221, 44, 104, 0.38) 0%, rgba(156, 3, 33, 0.25) 30%, transparent 68%),
+    radial-gradient(ellipse at 25% 80%, rgba(159, 93, 119, 0.3) 0%, rgba(74, 0, 31, 0.4) 40%, transparent 75%),
+    radial-gradient(circle at 50% 50%, transparent 30%, rgba(13, 2, 8, 0.82) 72%, #0d0208 100%),
+    url('/img/clans/backgrounds/Toreador_clean.webp?v=5');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  opacity: 0.65;
+  filter: contrast(1.18) saturate(1.25);
+}
+
+/* Toreador Romantic Petal Shimmer : Soft Falling Crimson and Blossom Dust */
+:root[data-theme='clan'][data-clan='toreador'] body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: 
+    radial-gradient(2px 2px at 30px 45px, #F3AFB6, rgba(0,0,0,0)),
+    radial-gradient(3px 3px at 120px 150px, rgba(221, 44, 104, 0.75), rgba(0,0,0,0)),
+    radial-gradient(2.5px 2.5px at 230px 80px, #9C0321, rgba(0,0,0,0)),
+    radial-gradient(3px 3px at 330px 220px, #F3AFB6, rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 410px 130px, #DD2C68, rgba(0,0,0,0)),
+    radial-gradient(circle at 50% 50%, transparent 35%, rgba(13, 2, 8, 0.72) 75%, #0d0208 100%);
+  background-repeat: repeat;
+  background-size: 450px 450px, 450px 450px, 450px 450px, 450px 450px, 450px 450px, cover;
+  opacity: 0.48;
+  animation: toreadorPetalDrift 22s linear infinite;
+}
+
+@keyframes toreadorPetalDrift {
+  0% {
+    background-position: 0 0, 0 0, 0 0, 0 0, 0 0, center;
+  }
+  100% {
+    background-position: 30px 450px, -20px 450px, 40px 450px, -35px 450px, 20px 450px, center;
+  }
+}
+
+/* Toreador Rose Blossom Pink Symbol Glow and Vibrant Magenta Script Logo */
+:root[data-theme='clan'][data-clan='toreador'] .clan-symbol-mask {
+  background-color: #F3AFB6 !important;
+  filter: drop-shadow(0 0 10px rgba(221, 44, 104, 0.75)) drop-shadow(0 0 2px #F3AFB6);
+}
+
+:root[data-theme='clan'][data-clan='toreador'] .clan-text-logo-mask {
+  filter: drop-shadow(0 0 8px rgba(221, 44, 104, 0.6));
+}
+
+/* =======================================================
+   CLAN TZIMISCE : VISCERAL FLESHCRAFT AND ANCESTRAL EARTH AESTHETIC
+   ======================================================= */
+:root[data-theme='clan'][data-clan='tzimisce'] {
+  --clan-color-1: #333333; /* Deep Charcoal Flesh Base */
+  --clan-color-2: #643173; /* Occult Tyrian Violet */
+  --clan-color-3: #86A59C; /* Sage Flesh / Verdigris */
+  --clan-color-4: #B8C4BB; /* Pale Bone Alabaster (Ouroboros) */
+  --clan-color-5: #5A4D2B; /* Old Ancestral Earth Clay */
+
+  --clan-symbol-color: #B8C4BB;
+  --clan-text-logo-color: #B8C4BB;
+  --clan-primary: #86A59C;
+  --clan-secondary: #643173;
+  --clan-border: #5A4D2B;
+  --clan-text: #B8C4BB;
+  --clan-surface: #1a1622;
+  --clan-bg: #0d0b12;
+
+  --tint: #86A59C;
+  --theme-primary: #86A59C;
+  --theme-secondary: #643173;
+  --border-color: #5A4D2B;
+  --theme-outline: #5A4D2B;
+  --text-color: #B8C4BB;
+  --theme-on-surface: #B8C4BB;
+  --surface-color: #1a1622;
+  --surface-lighter: #282234;
+  --bg-color: #0d0b12;
+}
+
+/* Tzimisce Atmospheric Canvas : Visceral Tyrian Violet Fleshcrafting and Ancient Soil */
+:root[data-theme='clan'][data-clan='tzimisce'] body::before {
+  background-image:
+    radial-gradient(ellipse at 75% 20%, rgba(100, 49, 115, 0.45) 0%, rgba(51, 51, 51, 0.3) 35%, transparent 70%),
+    radial-gradient(ellipse at 20% 85%, rgba(90, 77, 43, 0.42) 0%, rgba(134, 165, 156, 0.25) 35%, transparent 72%),
+    radial-gradient(circle at 50% 50%, transparent 35%, rgba(13, 11, 18, 0.82) 75%, #0d0b12 100%),
+    url('/img/clans/backgrounds/Tzimisce_clean.webp?v=4');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  opacity: 0.68;
+  filter: contrast(1.15) saturate(1.2);
+}
+
+/* Tzimisce Ancestral Soil and Spores Drift */
+:root[data-theme='clan'][data-clan='tzimisce'] body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: 
+    radial-gradient(2px 2px at 30px 40px, #86A59C, rgba(0,0,0,0)),
+    radial-gradient(2.5px 2.5px at 130px 170px, rgba(184, 196, 187, 0.8), rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 240px 90px, #5A4D2B, rgba(0,0,0,0)),
+    radial-gradient(3px 3px at 320px 230px, rgba(100, 49, 115, 0.7), rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 420px 140px, #B8C4BB, rgba(0,0,0,0)),
+    radial-gradient(circle at 50% 50%, transparent 35%, rgba(13, 11, 18, 0.7) 75%, #0d0b12 100%);
+  background-repeat: repeat;
+  background-size: 460px 460px, 460px 460px, 460px 460px, 460px 460px, 460px 460px, cover;
+  opacity: 0.45;
+  animation: tzimisceEarthDrift 24s linear infinite;
+}
+
+@keyframes tzimisceEarthDrift {
+  0% {
+    background-position: 0 0, 0 0, 0 0, 0 0, 0 0, center;
+  }
+  100% {
+    background-position: -25px 460px, 35px 460px, -40px 460px, 20px 460px, -15px 460px, center;
+  }
+}
+
+/* Tzimisce Pale Bone Alabaster Dragon Symbol Glow and Wordmark */
+:root[data-theme='clan'][data-clan='tzimisce'] .clan-symbol-mask {
+  background-color: #B8C4BB !important;
+  filter: drop-shadow(0 0 10px rgba(100, 49, 115, 0.75)) drop-shadow(0 0 2px #86A59C);
+}
+
+:root[data-theme='clan'][data-clan='tzimisce'] .clan-text-logo-mask {
+  filter: drop-shadow(0 0 8px rgba(134, 165, 156, 0.6));
+}
+
+/* =======================================================
+   CLAN TREMERE : HERMETIC BLOOD MARBLE AND OCCULT SORCERY AESTHETIC
+   ======================================================= */
+:root[data-theme='clan'][data-clan='tremere'] {
+  --clan-color-1: #501E5C; /* Occult Royal Plum Purple */
+  --clan-color-2: #CCB2DC; /* Ethereal Lilac Alabaster (Hermetic Seal) */
+  --clan-color-3: #937EA5; /* Muted Amethyst Slate */
+  --clan-color-4: #941414; /* Visceral Blood Sorcery Crimson */
+  --clan-color-5: #201D1D; /* Obsidian Hermetic Shadow */
+
+  --clan-symbol-color: #CCB2DC;
+  --clan-text-logo-color: #CCB2DC;
+  --clan-primary: #CCB2DC;
+  --clan-secondary: #941414;
+  --clan-border: #501E5C;
+  --clan-text: #CCB2DC;
+  --clan-surface: #201424;
+  --clan-bg: #0d0810;
+
+  --tint: #CCB2DC;
+  --theme-primary: #CCB2DC;
+  --theme-secondary: #941414;
+  --border-color: #501E5C;
+  --theme-outline: #937EA5;
+  --text-color: #CCB2DC;
+  --theme-on-surface: #CCB2DC;
+  --surface-color: #201424;
+  --surface-lighter: #2f1d35;
+  --bg-color: #0d0810;
+}
+
+/* Tremere Atmospheric Canvas : Hermetic Plum Velvet, Blood Runes, and Arcane Border */
+:root[data-theme='clan'][data-clan='tremere'] body::before {
+  background-image:
+    radial-gradient(ellipse at 65% 25%, rgba(148, 20, 20, 0.45) 0%, rgba(80, 30, 92, 0.35) 35%, transparent 70%),
+    radial-gradient(ellipse at 30% 80%, rgba(147, 126, 165, 0.28) 0%, rgba(32, 29, 29, 0.4) 40%, transparent 75%),
+    radial-gradient(circle at 50% 50%, transparent 35%, rgba(13, 8, 16, 0.82) 75%, #0d0810 100%),
+    url('/img/clans/backgrounds/Tremere_clean.webp?v=4');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  opacity: 0.68;
+  filter: contrast(1.15) saturate(1.22);
+}
+
+/* Tremere Arcane Blood Sorcery Motes Drift */
+:root[data-theme='clan'][data-clan='tremere'] body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: 
+    radial-gradient(2px 2px at 35px 45px, #CCB2DC, rgba(0,0,0,0)),
+    radial-gradient(3px 3px at 125px 160px, rgba(148, 20, 20, 0.8), rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 235px 85px, #937EA5, rgba(0,0,0,0)),
+    radial-gradient(2.5px 2.5px at 325px 225px, rgba(204, 178, 220, 0.8), rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 415px 135px, #941414, rgba(0,0,0,0)),
+    radial-gradient(circle at 50% 50%, transparent 35%, rgba(13, 8, 16, 0.72) 75%, #0d0810 100%);
+  background-repeat: repeat;
+  background-size: 470px 470px, 470px 470px, 470px 470px, 470px 470px, 470px 470px, cover;
+  opacity: 0.48;
+  animation: tremereArcaneDrift 22s linear infinite;
+}
+
+@keyframes tremereArcaneDrift {
+  0% {
+    background-position: 0 0, 0 0, 0 0, 0 0, 0 0, center;
+  }
+  100% {
+    background-position: 25px 470px, -35px 470px, 40px 470px, -20px 470px, 30px 470px, center;
+  }
+}
+
+/* Tremere Lilac Alabaster Hermetic Seal Symbol Glow and Wordmark */
+:root[data-theme='clan'][data-clan='tremere'] .clan-symbol-mask {
+  background-color: #CCB2DC !important;
+  filter: drop-shadow(0 0 10px rgba(148, 20, 20, 0.85)) drop-shadow(0 0 2px #CCB2DC);
+}
+
+:root[data-theme='clan'][data-clan='tremere'] .clan-text-logo-mask {
+  filter: drop-shadow(0 0 8px rgba(148, 20, 20, 0.65));
+}
+
+/* =======================================================
+   CLAN SALUBRI : CELESTIAL CLOUDS AND THIRD EYE AESTHETIC
+   ======================================================= */
+:root[data-theme='clan'][data-clan='salubri'] {
+  --clan-color-1: #E1FBFE; /* Celestial Ice Cyan (Third Eye) */
+  --clan-color-2: #A93F55; /* Crimson Healer Carmine */
+  --clan-color-3: #96A1CA; /* Twilight Cloud Slate */
+  --clan-color-4: #F0EEF1; /* Ethereal Mist White */
+  --clan-color-5: #5A5766; /* Muted Ascetic Charcoal Slate */
+
+  --clan-symbol-color: #E1FBFE;
+  --clan-text-logo-color: #A93F55;
+  --clan-primary: #E1FBFE;
+  --clan-secondary: #A93F55;
+  --clan-border: #5A5766;
+  --clan-text: #F0EEF1;
+  --clan-surface: #1c1b24;
+  --clan-bg: #0d0c12;
+
+  --tint: #E1FBFE;
+  --theme-primary: #E1FBFE;
+  --theme-secondary: #A93F55;
+  --border-color: #5A5766;
+  --theme-outline: #5A5766;
+  --text-color: #F0EEF1;
+  --theme-on-surface: #F0EEF1;
+  --surface-color: #1c1b24;
+  --surface-lighter: #2a2938;
+  --bg-color: #0d0c12;
+}
+
+/* Salubri Atmospheric Canvas : Celestial Twilight Clouds and Third Eye Mist */
+:root[data-theme='clan'][data-clan='salubri'] body::before {
+  background-image:
+    radial-gradient(ellipse at 50% 15%, rgba(225, 251, 254, 0.22) 0%, rgba(150, 161, 202, 0.28) 35%, transparent 70%),
+    radial-gradient(ellipse at 80% 85%, rgba(169, 63, 85, 0.3) 0%, rgba(90, 87, 102, 0.4) 40%, transparent 75%),
+    radial-gradient(circle at 50% 50%, transparent 35%, rgba(13, 12, 18, 0.82) 75%, #0d0c12 100%),
+    url('/img/clans/backgrounds/Salubri_clean.webp?v=4');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  opacity: 0.65;
+  filter: contrast(1.1) brightness(0.95);
+}
+
+/* Salubri Celestial Third Eye Mist Shimmer */
+:root[data-theme='clan'][data-clan='salubri'] body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: 
+    radial-gradient(2px 2px at 30px 50px, #E1FBFE, rgba(0,0,0,0)),
+    radial-gradient(2.5px 2.5px at 135px 165px, rgba(240, 238, 241, 0.85), rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 240px 95px, #96A1CA, rgba(0,0,0,0)),
+    radial-gradient(3px 3px at 330px 235px, rgba(169, 63, 85, 0.7), rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 420px 145px, #E1FBFE, rgba(0,0,0,0)),
+    radial-gradient(circle at 50% 50%, transparent 35%, rgba(13, 12, 18, 0.72) 75%, #0d0c12 100%);
+  background-repeat: repeat;
+  background-size: 480px 480px, 480px 480px, 480px 480px, 480px 480px, 480px 480px, cover;
+  opacity: 0.45;
+  animation: salubriMistDrift 24s linear infinite;
+}
+
+@keyframes salubriMistDrift {
+  0% {
+    background-position: 0 0, 0 0, 0 0, 0 0, 0 0, center;
+  }
+  100% {
+    background-position: 30px 480px, -25px 480px, 40px 480px, -35px 480px, 20px 480px, center;
+  }
+}
+
+/* Salubri Celestial Ice Cyan Third Eye Symbol Glow and Carmine Wordmark */
+:root[data-theme='clan'][data-clan='salubri'] .clan-symbol-mask {
+  background-color: #E1FBFE !important;
+  filter: drop-shadow(0 0 10px rgba(225, 251, 254, 0.9)) drop-shadow(0 0 2px #E1FBFE);
+}
+
+:root[data-theme='clan'][data-clan='salubri'] .clan-text-logo-mask {
+  filter: drop-shadow(0 0 8px rgba(169, 63, 85, 0.75));
+}
+
+/* =======================================================
+   CLAN NOSFERATU : SUBTERRANEAN SEWER AND CRACKED STONE AESTHETIC
+   ======================================================= */
+:root[data-theme='clan'][data-clan='nosferatu'] {
+  --clan-color-1: #272826; /* Subterranean Dark Olive Charcoal */
+  --clan-color-2: #404E51; /* Murky Sewer Slate Teal (Weeping Mask) */
+  --clan-color-3: #A19F74; /* Toxic Bone Sickly Olive Ochre (Wordmark) */
+  --clan-color-4: #4D2B1E; /* Cracked Mud Rotted Earth Umber */
+  --clan-color-5: #363D38; /* Deep Catacomb Mold Slate */
+
+  --clan-symbol-color: #404E51;
+  --clan-text-logo-color: #A19F74;
+  --clan-primary: #A19F74;
+  --clan-secondary: #404E51;
+  --clan-border: #404E51;
+  --clan-text: #A19F74;
+  --clan-surface: #161917;
+  --clan-bg: #0c0d0c;
+
+  --tint: #A19F74;
+  --theme-primary: #A19F74;
+  --theme-secondary: #404E51;
+  --border-color: #404E51;
+  --theme-outline: #363D38;
+  --text-color: #A19F74;
+  --theme-on-surface: #A19F74;
+  --surface-color: #161917;
+  --surface-lighter: #222623;
+  --bg-color: #0c0d0c;
+}
+
+/* Nosferatu Atmospheric Canvas : Subterranean Cracked Rock, Sewer Teal Mist, and Rotted Umber */
+:root[data-theme='clan'][data-clan='nosferatu'] body::before {
+  background-image:
+    radial-gradient(ellipse at 35% 20%, rgba(64, 78, 81, 0.35) 0%, rgba(39, 40, 38, 0.4) 40%, transparent 75%),
+    radial-gradient(ellipse at 75% 80%, rgba(77, 43, 30, 0.32) 0%, rgba(54, 61, 56, 0.4) 40%, transparent 75%),
+    radial-gradient(circle at 50% 50%, transparent 30%, rgba(12, 13, 12, 0.84) 75%, #0c0d0c 100%),
+    url('/img/clans/backgrounds/Nosferatu_clean.webp?v=4');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  opacity: 0.68;
+  filter: contrast(1.18) brightness(0.9);
+}
+
+/* Nosferatu Sewer Mold Spores and Toxic Dust Drift */
+:root[data-theme='clan'][data-clan='nosferatu'] body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: 
+    radial-gradient(2px 2px at 30px 45px, #A19F74, rgba(0,0,0,0)),
+    radial-gradient(2.5px 2.5px at 140px 175px, rgba(64, 78, 81, 0.85), rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 250px 85px, #4D2B1E, rgba(0,0,0,0)),
+    radial-gradient(3px 3px at 340px 225px, rgba(161, 159, 116, 0.75), rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 430px 135px, #363D38, rgba(0,0,0,0)),
+    radial-gradient(circle at 50% 50%, transparent 35%, rgba(12, 13, 12, 0.75) 75%, #0c0d0c 100%);
+  background-repeat: repeat;
+  background-size: 470px 470px, 470px 470px, 470px 470px, 470px 470px, 470px 470px, cover;
+  opacity: 0.45;
+  animation: nosferatuSporeDrift 25s linear infinite;
+}
+
+@keyframes nosferatuSporeDrift {
+  0% {
+    background-position: 0 0, 0 0, 0 0, 0 0, 0 0, center;
+  }
+  100% {
+    background-position: -25px 470px, 35px 470px, -40px 470px, 25px 470px, -15px 470px, center;
+  }
+}
+
+/* Nosferatu Murky Sewer Slate Teal Weeping Mask and Toxic Bone Wordmark */
+:root[data-theme='clan'][data-clan='nosferatu'] .clan-symbol-mask {
+  background-color: #404E51 !important;
+  filter: drop-shadow(0 0 10px rgba(64, 78, 81, 0.85)) drop-shadow(0 0 2px #A19F74);
+}
+
+:root[data-theme='clan'][data-clan='nosferatu'] .clan-text-logo-mask {
+  background-color: #A19F74 !important;
+  filter: drop-shadow(0 0 8px rgba(161, 159, 116, 0.7));
+}
+
+/* =======================================================
+   CLAN THE MINISTRY : DEEP TYRIAN AUBERGINE AND ELECTRIC VENOM AESTHETIC
+   ======================================================= */
+:root[data-theme='clan'][data-clan='the_ministry'],
+:root[data-theme='clan'][data-clan='ministry'] {
+  --clan-color-1: #6BD425; /* Electric Venom Green (Symbol Emblem) */
+  --clan-color-2: #618B25; /* Serpent Olive Green (Wordmark) */
+  --clan-color-3: #61452E; /* Desert Sandstone Umber */
+  --clan-color-4: #370926; /* Deep Tyrian Aubergine */
+  --clan-color-5: #1C0118; /* Abyssal Nightshade Plum Void */
+
+  --clan-symbol-color: #6BD425;
+  --clan-text-logo-color: #618B25;
+  --clan-primary: #6BD425;
+  --clan-secondary: #618B25;
+  --clan-border: #61452E;
+  --clan-text: #84c748;
+  --clan-surface: #240a1b;
+  --clan-bg: #10010e;
+
+  --tint: #6BD425;
+  --theme-primary: #6BD425;
+  --theme-secondary: #618B25;
+  --border-color: #61452E;
+  --theme-outline: #61452E;
+  --text-color: #84c748;
+  --theme-on-surface: #84c748;
+  --surface-color: #240a1b;
+  --surface-lighter: #341228;
+  --bg-color: #10010e;
+}
+
+/* The Ministry Atmospheric Canvas : Coiled Serpent Scales, Desert Venom, and Ancient Hieroglyphs */
+:root[data-theme='clan'][data-clan='the_ministry'] body::before,
+:root[data-theme='clan'][data-clan='ministry'] body::before {
+  background-image:
+    radial-gradient(ellipse at 50% 25%, rgba(107, 212, 37, 0.2) 0%, rgba(55, 9, 38, 0.45) 45%, transparent 75%),
+    radial-gradient(ellipse at 80% 75%, rgba(97, 69, 46, 0.35) 0%, rgba(28, 1, 24, 0.5) 45%, transparent 75%),
+    radial-gradient(circle at 50% 50%, transparent 30%, rgba(16, 1, 14, 0.82) 75%, #10010e 100%),
+    url('/img/clans/backgrounds/Ministry_clean.webp?v=4');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  opacity: 0.7;
+  filter: contrast(1.15) brightness(0.92);
+}
+
+/* The Ministry Venom Motes and Serpent Scale Shimmer */
+:root[data-theme='clan'][data-clan='the_ministry'] body::after,
+:root[data-theme='clan'][data-clan='ministry'] body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: 
+    radial-gradient(2px 2px at 35px 50px, #6BD425, rgba(0,0,0,0)),
+    radial-gradient(2.5px 2.5px at 145px 165px, rgba(97, 139, 37, 0.85), rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 245px 85px, #61452E, rgba(0,0,0,0)),
+    radial-gradient(3px 3px at 335px 235px, rgba(107, 212, 37, 0.7), rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 425px 145px, #84c748, rgba(0,0,0,0)),
+    radial-gradient(circle at 50% 50%, transparent 35%, rgba(16, 1, 14, 0.72) 75%, #10010e 100%);
+  background-repeat: repeat;
+  background-size: 460px 460px, 460px 460px, 460px 460px, 460px 460px, 460px 460px, cover;
+  opacity: 0.45;
+  animation: ministryVenomDrift 23s linear infinite;
+}
+
+@keyframes ministryVenomDrift {
+  0% {
+    background-position: 0 0, 0 0, 0 0, 0 0, 0 0, center;
+  }
+  100% {
+    background-position: 25px 460px, -30px 460px, 35px 460px, -20px 460px, 20px 460px, center;
+  }
+}
+
+/* The Ministry Electric Venom Green Serpent Coil Symbol Glow and Olive Wordmark */
+:root[data-theme='clan'][data-clan='the_ministry'] .clan-symbol-mask,
+:root[data-theme='clan'][data-clan='ministry'] .clan-symbol-mask {
+  background-color: #6BD425 !important;
+  filter: drop-shadow(0 0 10px rgba(107, 212, 37, 0.85)) drop-shadow(0 0 2px #6BD425);
+}
+
+:root[data-theme='clan'][data-clan='the_ministry'] .clan-text-logo-mask,
+:root[data-theme='clan'][data-clan='ministry'] .clan-text-logo-mask {
+  background-color: #618B25 !important;
+  filter: drop-shadow(0 0 8px rgba(107, 212, 37, 0.65));
+}
+
+/* =======================================================
+   CLAN LASOMBRA : ABYSSAL OBSIDIAN SHADOWS AND VELVET VOID AESTHETIC
+   ======================================================= */
+:root[data-theme='clan'][data-clan='lasombra'] {
+  --clan-color-1: #0C080B; /* Pitch Void Abyssal Night */
+  --clan-color-2: #222222; /* Deep Shadow Charcoal */
+  --clan-color-3: #292B36; /* Midnight Slate Steel Indigo */
+  --clan-color-4: #201A28; /* Abyssal Violet Plum */
+  --clan-color-5: #19272A; /* Deep Abyssal Teal Charcoal */
+
+  --clan-symbol-color: #5D6277;
+  --clan-text-logo-color: #A5A9C0;
+  --clan-primary: #5D6277;
+  --clan-secondary: #201A28;
+  --clan-border: #292B36;
+  --clan-text: #A5A9C0;
+  --clan-surface: #131218;
+  --clan-bg: #08070a;
+
+  --tint: #5D6277;
+  --theme-primary: #5D6277;
+  --theme-secondary: #201A28;
+  --border-color: #292B36;
+  --theme-outline: #292B36;
+  --text-color: #A5A9C0;
+  --theme-on-surface: #A5A9C0;
+  --surface-color: #131218;
+  --surface-lighter: #1d1c24;
+  --bg-color: #08070a;
+}
+
+/* Lasombra Atmospheric Canvas : Velvet Shadow Dunes, Abyssal Tendrils, and Pitch Darkness */
+:root[data-theme='clan'][data-clan='lasombra'] body::before {
+  background-image:
+    radial-gradient(ellipse at 40% 20%, rgba(41, 43, 54, 0.45) 0%, rgba(32, 26, 40, 0.5) 40%, transparent 75%),
+    radial-gradient(ellipse at 80% 80%, rgba(25, 39, 42, 0.4) 0%, rgba(12, 8, 11, 0.6) 45%, transparent 75%),
+    radial-gradient(circle at 50% 50%, transparent 25%, rgba(8, 7, 10, 0.85) 70%, #08070a 100%),
+    url('/img/clans/backgrounds/Lasombra_clean.webp?v=4');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  opacity: 0.72;
+  filter: contrast(1.2) brightness(0.9);
+}
+
+/* Lasombra Abyssal Tendrils and Shadow Spore Drift */
+:root[data-theme='clan'][data-clan='lasombra'] body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: 
+    radial-gradient(2px 2px at 30px 40px, #5D6277, rgba(0,0,0,0)),
+    radial-gradient(2.5px 2.5px at 140px 170px, rgba(165, 169, 192, 0.75), rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 240px 85px, #201A28, rgba(0,0,0,0)),
+    radial-gradient(3px 3px at 340px 225px, rgba(93, 98, 119, 0.65), rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 420px 135px, #292B36, rgba(0,0,0,0)),
+    radial-gradient(circle at 50% 50%, transparent 35%, rgba(8, 7, 10, 0.78) 75%, #08070a 100%);
+  background-repeat: repeat;
+  background-size: 470px 470px, 470px 470px, 470px 470px, 470px 470px, 470px 470px, cover;
+  opacity: 0.4;
+  animation: lasombraShadowDrift 24s linear infinite;
+}
+
+@keyframes lasombraShadowDrift {
+  0% {
+    background-position: 0 0, 0 0, 0 0, 0 0, 0 0, center;
+  }
+  100% {
+    background-position: -20px 470px, 30px 470px, -35px 470px, 20px 470px, -15px 470px, center;
+  }
+}
+
+/* Lasombra Crown Symbol Glow and Steel Indigo Wordmark */
+:root[data-theme='clan'][data-clan='lasombra'] .clan-symbol-mask {
+  background-color: #5D6277 !important;
+  filter: drop-shadow(0 0 10px rgba(32, 26, 40, 0.95)) drop-shadow(0 0 2px #5D6277);
+}
+
+:root[data-theme='clan'][data-clan='lasombra'] .clan-text-logo-mask {
+  background-color: #A5A9C0 !important;
+  filter: drop-shadow(0 0 8px rgba(93, 98, 119, 0.7));
+}
+
+/* =======================================================
+   CLAN HECATA : SEPULCHRAL SKULL CATACOMB AND GHOST ASH AESTHETIC
+   ======================================================= */
+:root[data-theme='clan'][data-clan='hecata'] {
+  --clan-color-1: #D1CCDC; /* Pale Lavender Bone */
+  --clan-color-2: #424C55; /* Sepulchral Slate Charcoal */
+  --clan-color-3: #F5EDF0; /* Ghost Alabaster Chalk Ash (Triple Mask) */
+  --clan-color-4: #886F68; /* Sepulcher Clay Earth Fossil Umber */
+  --clan-color-5: #3D2C2E; /* Crypt Mahogany Charred Bone */
+
+  --clan-symbol-color: #F5EDF0;
+  --clan-text-logo-color: #D1CCDC;
+  --clan-primary: #D1CCDC;
+  --clan-secondary: #886F68;
+  --clan-border: #424C55;
+  --clan-text: #F5EDF0;
+  --clan-surface: #221a1c;
+  --clan-bg: #0e0a0b;
+
+  --tint: #D1CCDC;
+  --theme-primary: #D1CCDC;
+  --theme-secondary: #886F68;
+  --border-color: #424C55;
+  --theme-outline: #886F68;
+  --text-color: #F5EDF0;
+  --theme-on-surface: #F5EDF0;
+  --surface-color: #221a1c;
+  --surface-lighter: #302427;
+  --bg-color: #0e0a0b;
+}
+
+/* Hecata Atmospheric Canvas : Catacomb Wall of Skulls, Mausoleum Dust, and Sepulchral Shadows */
+:root[data-theme='clan'][data-clan='hecata'] body::before {
+  background-image:
+    radial-gradient(ellipse at 60% 20%, rgba(209, 204, 220, 0.28) 0%, rgba(66, 76, 85, 0.4) 40%, transparent 75%),
+    radial-gradient(ellipse at 25% 80%, rgba(136, 111, 104, 0.35) 0%, rgba(61, 44, 46, 0.5) 45%, transparent 75%),
+    radial-gradient(circle at 50% 50%, transparent 28%, rgba(14, 10, 11, 0.82) 72%, #0e0a0b 100%),
+    url('/img/clans/backgrounds/Hecata_clean.webp?v=4');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  opacity: 0.72;
+  filter: contrast(1.15) brightness(0.92);
+}
+
+/* Hecata Sepulchral Bone Ash and Tomb Dust Drift */
+:root[data-theme='clan'][data-clan='hecata'] body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: 
+    radial-gradient(2px 2px at 35px 45px, #F5EDF0, rgba(0,0,0,0)),
+    radial-gradient(2.5px 2.5px at 145px 175px, rgba(209, 204, 220, 0.8), rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 245px 85px, #886F68, rgba(0,0,0,0)),
+    radial-gradient(3px 3px at 335px 225px, rgba(245, 237, 240, 0.7), rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 425px 135px, #424C55, rgba(0,0,0,0)),
+    radial-gradient(circle at 50% 50%, transparent 35%, rgba(14, 10, 11, 0.75) 75%, #0e0a0b 100%);
+  background-repeat: repeat;
+  background-size: 460px 460px, 460px 460px, 460px 460px, 460px 460px, 460px 460px, cover;
+  opacity: 0.45;
+  animation: hecataDustDrift 24s linear infinite;
+}
+
+@keyframes hecataDustDrift {
+  0% {
+    background-position: 0 0, 0 0, 0 0, 0 0, 0 0, center;
+  }
+  100% {
+    background-position: 25px 460px, -30px 460px, 35px 460px, -25px 460px, 15px 460px, center;
+  }
+}
+
+/* Hecata Ghost Alabaster Triple Mask Symbol Glow and Lavender Bone Wordmark */
+:root[data-theme='clan'][data-clan='hecata'] .clan-symbol-mask {
+  background-color: #F5EDF0 !important;
+  filter: drop-shadow(0 0 10px rgba(209, 204, 220, 0.9)) drop-shadow(0 0 2px #F5EDF0);
+}
+
+:root[data-theme='clan'][data-clan='hecata'] .clan-text-logo-mask {
+  background-color: #D1CCDC !important;
+  filter: drop-shadow(0 0 8px rgba(136, 111, 104, 0.7));
+}
+
+/* =======================================================
+   CLAN GANGREL : PRIMEVAL WILDERNESS AND FERN UNDERGROWTH AESTHETIC
+   ======================================================= */
+:root[data-theme='clan'][data-clan='gangrel'] {
+  --clan-color-1: #442604; /* Deep Earth Bark Umber */
+  --clan-color-2: #795D15; /* Feral Golden Ochre (Wordmark) */
+  --clan-color-3: #2E2F04; /* Primeval Forest Moss Olive */
+  --clan-color-4: #594E36; /* Mud Timber Slate */
+  --clan-color-5: #7E846B; /* Wild Fern Sage (Wolf Head) */
+
+  --clan-symbol-color: #7E846B;
+  --clan-text-logo-color: #795D15;
+  --clan-primary: #7E846B;
+  --clan-secondary: #795D15;
+  --clan-border: #594E36;
+  --clan-text: #a3a894;
+  --clan-surface: #181a0e;
+  --clan-bg: #0c0e07;
+
+  --tint: #7E846B;
+  --theme-primary: #7E846B;
+  --theme-secondary: #795D15;
+  --border-color: #594E36;
+  --theme-outline: #2E2F04;
+  --text-color: #a3a894;
+  --theme-on-surface: #a3a894;
+  --surface-color: #181a0e;
+  --surface-lighter: #242915;
+  --bg-color: #0c0e07;
+}
+
+/* Gangrel Atmospheric Canvas : Wild Forest Fern Canopy, Earth Bark, and Moss Shadows */
+:root[data-theme='clan'][data-clan='gangrel'] body::before {
+  background-image:
+    radial-gradient(ellipse at 45% 20%, rgba(121, 93, 21, 0.32) 0%, rgba(46, 47, 4, 0.45) 40%, transparent 75%),
+    radial-gradient(ellipse at 80% 80%, rgba(68, 38, 4, 0.4) 0%, rgba(14, 16, 8, 0.6) 45%, transparent 75%),
+    radial-gradient(circle at 50% 50%, transparent 28%, rgba(12, 14, 7, 0.82) 72%, #0c0e07 100%),
+    url('/img/clans/backgrounds/Gangrel_clean.webp?v=4');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  opacity: 0.72;
+  filter: contrast(1.18) brightness(0.92);
+}
+
+/* Gangrel Wild Forest Spores and Pine Motes Drift */
+:root[data-theme='clan'][data-clan='gangrel'] body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: 
+    radial-gradient(2px 2px at 35px 45px, #7E846B, rgba(0,0,0,0)),
+    radial-gradient(2.5px 2.5px at 145px 175px, rgba(121, 93, 21, 0.8), rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 245px 85px, #442604, rgba(0,0,0,0)),
+    radial-gradient(3px 3px at 335px 225px, rgba(126, 132, 107, 0.7), rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 425px 135px, #2E2F04, rgba(0,0,0,0)),
+    radial-gradient(circle at 50% 50%, transparent 35%, rgba(12, 14, 7, 0.75) 75%, #0c0e07 100%);
+  background-repeat: repeat;
+  background-size: 460px 460px, 460px 460px, 460px 460px, 460px 460px, 460px 460px, cover;
+  opacity: 0.45;
+  animation: gangrelForestDrift 24s linear infinite;
+}
+
+@keyframes gangrelForestDrift {
+  0% {
+    background-position: 0 0, 0 0, 0 0, 0 0, 0 0, center;
+  }
+  100% {
+    background-position: 25px 460px, -30px 460px, 35px 460px, -20px 460px, 15px 460px, center;
+  }
+}
+
+/* Gangrel Wild Fern Sage Wolf Head Symbol Glow and Golden Ochre Wordmark */
+:root[data-theme='clan'][data-clan='gangrel'] .clan-symbol-mask {
+  background-color: #7E846B !important;
+  filter: drop-shadow(0 0 10px rgba(121, 93, 21, 0.85)) drop-shadow(0 0 2px #7E846B);
+}
+
+:root[data-theme='clan'][data-clan='gangrel'] .clan-text-logo-mask {
+  background-color: #795D15 !important;
+  filter: drop-shadow(0 0 8px rgba(126, 132, 107, 0.7));
+}
+
+/* =======================================================
+   CLAN BANU HAQIM : CRIMSON VEINED ALAMUT MARBLE AND DAMASCENE GOLD AESTHETIC
+   ======================================================= */
+:root[data-theme='clan'][data-clan='banu_haqim'],
+:root[data-theme='clan'][data-clan='banuhaqim'] {
+  --clan-color-1: #23101B; /* Blackened Blood Burgundy */
+  --clan-color-2: #72171A; /* Judiciary Crimson Blade */
+  --clan-color-3: #B29D34; /* Antique Damascene Gold (Symbol Emblem) */
+  --clan-color-4: #FBF7F4; /* Pure Alabaster (Wordmark) */
+  --clan-color-5: #424242; /* Slate Blade Steel */
+
+  --clan-symbol-color: #B29D34;
+  --clan-text-logo-color: #FBF7F4;
+  --clan-primary: #B29D34;
+  --clan-secondary: #72171A;
+  --clan-border: #424242;
+  --clan-text: #FBF7F4;
+  --clan-surface: #1c0d15;
+  --clan-bg: #0c0609;
+
+  --tint: #B29D34;
+  --theme-primary: #B29D34;
+  --theme-secondary: #72171A;
+  --border-color: #424242;
+  --theme-outline: #424242;
+  --text-color: #FBF7F4;
+  --theme-on-surface: #FBF7F4;
+  --surface-color: #1c0d15;
+  --surface-lighter: #2c1422;
+  --bg-color: #0c0609;
+}
+
+/* Banu Haqim Atmospheric Canvas : Crimson Veined Alamut Marble, Blood Shadows, and Onyx Mineral Flow */
+:root[data-theme='clan'][data-clan='banu_haqim'] body::before,
+:root[data-theme='clan'][data-clan='banuhaqim'] body::before {
+  background-image:
+    radial-gradient(ellipse at 65% 25%, rgba(114, 23, 26, 0.42) 0%, rgba(35, 16, 27, 0.45) 45%, transparent 75%),
+    radial-gradient(ellipse at 30% 80%, rgba(178, 157, 52, 0.28) 0%, rgba(12, 6, 9, 0.6) 45%, transparent 75%),
+    radial-gradient(circle at 50% 50%, transparent 28%, rgba(12, 6, 9, 0.82) 72%, #0c0609 100%),
+    url('/img/clans/backgrounds/Banu_Haqim_clean.webp?v=4');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  opacity: 0.72;
+  filter: contrast(1.18) brightness(0.92);
+}
+
+/* Banu Haqim Damascene Gold Motes and Blade Steel Shimmer */
+:root[data-theme='clan'][data-clan='banu_haqim'] body::after,
+:root[data-theme='clan'][data-clan='banuhaqim'] body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: 
+    radial-gradient(2px 2px at 35px 45px, #B29D34, rgba(0,0,0,0)),
+    radial-gradient(2.5px 2.5px at 145px 175px, rgba(251, 247, 244, 0.8), rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 245px 85px, #72171A, rgba(0,0,0,0)),
+    radial-gradient(3px 3px at 335px 225px, rgba(178, 157, 52, 0.7), rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 425px 135px, #424242, rgba(0,0,0,0)),
+    radial-gradient(circle at 50% 50%, transparent 35%, rgba(12, 6, 9, 0.75) 75%, #0c0609 100%);
+  background-repeat: repeat;
+  background-size: 460px 460px, 460px 460px, 460px 460px, 460px 460px, 460px 460px, cover;
+  opacity: 0.45;
+  animation: banuHaqimBladeDrift 24s linear infinite;
+}
+
+@keyframes banuHaqimBladeDrift {
+  0% {
+    background-position: 0 0, 0 0, 0 0, 0 0, 0 0, center;
+  }
+  100% {
+    background-position: 25px 460px, -30px 460px, 35px 460px, -20px 460px, 15px 460px, center;
+  }
+}
+
+/* Banu Haqim Damascene Gold Octagram Symbol Glow and Alabaster Wordmark */
+:root[data-theme='clan'][data-clan='banu_haqim'] .clan-symbol-mask,
+:root[data-theme='clan'][data-clan='banuhaqim'] .clan-symbol-mask {
+  background-color: #B29D34 !important;
+  filter: drop-shadow(0 0 10px rgba(114, 23, 26, 0.85)) drop-shadow(0 0 2px #B29D34);
+}
+
+:root[data-theme='clan'][data-clan='banu_haqim'] .clan-text-logo-mask,
+:root[data-theme='clan'][data-clan='banuhaqim'] .clan-text-logo-mask {
+  background-color: #FBF7F4 !important;
+  filter: drop-shadow(0 0 8px rgba(178, 157, 52, 0.7));
 }
 
 :root[data-theme='schrecknet'] {
@@ -253,12 +1484,16 @@ option {
    ADMIN THEME (Purple Liquid Glass)
    ═══════════════════════════════════════════════ */
 .admin-theme {
+  --tint: #9d7cff;
+  --dynamic-tint: #9d7cff;
   --theme-primary: #9d7cff;
   --theme-primary-container: rgba(157, 124, 255, 0.12);
   --theme-on-primary-container: #e8e6f0;
   
   --theme-background: #0a0a0f;
+  --bg-color: #0a0a0f;
   --theme-surface: #0a0a0f;
+  --surface-color: #0a0a0f;
   
   --theme-surface-container-lowest: #050508;
   --theme-surface-container-low: #0a0a0f;
@@ -267,9 +1502,16 @@ option {
   --theme-surface-container-highest: rgba(255, 255, 255, 0.12);
   
   --theme-outline: rgba(157, 124, 255, 0.48);
+  --border-color: rgba(157, 124, 255, 0.48);
   --theme-outline-variant: rgba(157, 124, 255, 0.18);
   
   --theme-on-surface: #e8e6f0;
+  --text-color: #e8e6f0;
   --theme-on-surface-variant: #9896a8;
   --theme-secondary: #c8c6c5;
+}
+
+.admin-theme body::before,
+.admin-theme body::after {
+  display: none !important;
 }

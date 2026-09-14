@@ -3,11 +3,14 @@ import React, { useState, useEffect, useContext } from 'react';
 import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/Admin.module.css';
 import { Skeleton } from 'boneyard-js/react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { AuthCtx } from '../../core/AuthContext';
+import { useTheme } from '../../core/ThemeContext';
 import { CLAN_NAMES, symlogo, textlogo } from '../../data/clans';
 export default function AdminMasterTab() {
+  const nav = useNavigate();
   const { me, setMe } = useContext(AuthCtx);
+  const { theme, setTheme, clanOverride, setClanOverride } = useTheme();
   const [commsEnabled, setCommsEnabled] = useState(true);
   const [disabledClans, setDisabledClans] = useState([]);
   const [clanSaving, setClanSaving] = useState(false);
@@ -548,6 +551,47 @@ export default function AdminMasterTab() {
       {msg && <div className={`${styles.alert} ${styles.alertInfo}`}>{msg}</div>}
       {err && <div className={`${styles.alert} ${styles.alertError}`}>{err}</div>}
 
+      {/* ORDINARY HOME EXPERIENCE PREVIEW */}
+      <div style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', padding: '2rem', boxShadow: 'var(--glass-shadow)' }}>
+        <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
+          <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span className="material-symbols-outlined" style={{ color: 'var(--tint)' }}>visibility</span>
+            <span>Player Home Experience Preview</span>
+          </h4>
+          <p style={{ margin: '5px 0 0 0', color: 'var(--text-secondary)' }}>
+            Access the Athens Kindred portal to preview the interface exactly as ordinary players see it. Select any clan bloodline or review active city news, downtimes, and widgets. Exit anytime to return to Master Control.
+          </p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className={styles.btn}
+            onClick={() => {
+              sessionStorage.setItem('vtm_admin_preview', 'true');
+              nav('/?preview=true');
+            }}
+            style={{
+              background: 'var(--tint)',
+              color: '#fff',
+              border: 'none',
+              fontWeight: 700,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '12px 24px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '0.95rem'
+            }}
+            data-cuelume-press
+            data-cuelume-hover
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>launch</span>
+            <span>Launch Home Page Preview</span>
+          </button>
+        </div>
+      </div>
+
       {/* PERSONAL ADMIN PREFS */}
       <div style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', padding: '2rem', boxShadow: 'var(--glass-shadow)' }}>
         <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
@@ -757,15 +801,25 @@ export default function AdminMasterTab() {
 
         {uiToolsOpen && (
           <>
-            <h5 style={{ color: 'var(--text-primary)', marginBottom: '0.25rem', fontSize: '1.2rem' }}>Clan Logos &amp; Availability</h5>
+            <h5 style={{ color: 'var(--text-primary)', marginBottom: '0.25rem', fontSize: '1.2rem' }}>Clan Logos, Homepage Theme &amp; Availability</h5>
             <p style={{ margin: '0 0 1rem 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-              Toggle which clans players can select in the character creator. Disabled clans stay visible there, greyed out with an "Unavailable" badge.
+              Toggle which clans players can select in the character creator, or toggle any clan to preview the homepage with that clan's full aesthetic theme.
             </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.1fr repeat(4, 1fr) auto auto', gap: '1rem', alignItems: 'center', padding: '0 1rem', marginBottom: '0.5rem', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <div>Clan</div>
+              <div style={{ textAlign: 'center' }}>Symbol</div>
+              <div style={{ textAlign: 'center' }}>Inverted</div>
+              <div style={{ textAlign: 'center' }}>Text</div>
+              <div style={{ textAlign: 'center' }}>Text Inverted</div>
+              <div style={{ textAlign: 'center', minWidth: '80px' }}>Homepage Theme</div>
+              <div style={{ textAlign: 'center', minWidth: '70px' }}>Creator</div>
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {CLAN_NAMES.map(clan => {
                 const isDisabled = disabledClans.includes(clan);
+                const isPreviewingThis = clanOverride === clan;
                 return (
-                  <div key={clan} style={{ display: 'grid', gridTemplateColumns: '1fr repeat(4, 1fr) auto', gap: '1rem', alignItems: 'center', background: 'var(--glass-inset)', padding: '1rem', borderRadius: 'var(--radius-md)', border: `1px solid ${isDisabled ? 'rgba(255,82,82,0.35)' : 'var(--glass-border)'}` }}>
+                  <div key={clan} style={{ display: 'grid', gridTemplateColumns: '1.1fr repeat(4, 1fr) auto auto', gap: '1rem', alignItems: 'center', background: 'var(--glass-inset)', padding: '1rem', borderRadius: 'var(--radius-md)', border: `1px solid ${isDisabled ? 'rgba(255,82,82,0.35)' : 'var(--glass-border)'}` }}>
                     <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '1.05rem' }}>{clan}</div>
                     <div style={{ textAlign: 'center' }}>
                       <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '10px' }}>Symbol</div>
@@ -783,13 +837,64 @@ export default function AdminMasterTab() {
                       <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '10px' }}>Text (Inverted)</div>
                       <img src={textlogo(clan)} alt={`${clan} Text`} style={{ width: '100px', height: '64px', objectFit: 'contain', filter: 'invert(1)', opacity: isDisabled ? 0.4 : 1 }} />
                     </div>
+
+                    {/* Homepage Theme Preview Toggle */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', minWidth: '95px' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (isPreviewingThis) {
+                            setClanOverride(null);
+                          } else {
+                            setClanOverride(clan);
+                            setTheme('clan');
+                          }
+                        }}
+                        title={isPreviewingThis ? `Disable ${clan} homepage theme preview` : `Set homepage theme to ${clan}`}
+                        style={{
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
+                          background: 'transparent', border: 'none', cursor: 'pointer', padding: 0
+                        }}
+                      >
+                        <div style={{ position: 'relative', width: '46px', height: '26px', background: isPreviewingThis ? 'var(--tint)' : 'var(--glass-border)', borderRadius: '26px', transition: 'background 0.3s ease' }}>
+                          <div style={{ position: 'absolute', top: '3px', left: isPreviewingThis ? '23px' : '3px', width: '20px', height: '20px', background: 'var(--text-color)', borderRadius: '50%', transition: 'left 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }} />
+                        </div>
+                        <span style={{ fontSize: '0.72rem', color: isPreviewingThis ? 'var(--tint)' : 'var(--text-muted)', fontWeight: 700 }}>
+                          {isPreviewingThis ? 'Theme On' : 'Theme Off'}
+                        </span>
+                      </button>
+                      <Link
+                        to="/"
+                        onClick={() => {
+                          setClanOverride(clan);
+                          setTheme('clan');
+                        }}
+                        style={{
+                          fontSize: '0.68rem',
+                          color: isPreviewingThis ? 'var(--tint)' : 'var(--text-secondary)',
+                          textDecoration: 'none',
+                          marginTop: '2px',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          background: 'rgba(255, 255, 255, 0.06)',
+                          border: '1px solid rgba(255, 255, 255, 0.1)',
+                          whiteSpace: 'nowrap',
+                          transition: 'all 0.2s ease'
+                        }}
+                        title={`Open Homepage as ${clan}`}
+                      >
+                        Show Home Page
+                      </Link>
+                    </div>
+
+                    {/* Clan Creation Availability Toggle */}
                     <button
                       type="button"
                       onClick={() => toggleClanAvailability(clan)}
                       disabled={clanSaving}
                       title={isDisabled ? `Enable ${clan} for character creation` : `Disable ${clan} for character creation`}
                       style={{
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', minWidth: '70px',
                         background: 'transparent', border: 'none', cursor: clanSaving ? 'wait' : 'pointer', padding: 0
                       }}
                     >

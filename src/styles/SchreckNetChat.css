@@ -82,8 +82,12 @@
     color: #f7a8b0;
 }
 
-/* Invert custom clan logos in the Emoji Picker */
-.EmojiPickerReact img[src*="/img/clans/"] {
-    filter: brightness(0) invert(1);
-    opacity: 0.92;
+/* Make clan crest custom emojis white everywhere in the picker:
+   the grid, the "suggested/recently used" row, and the bottom preview panel.
+   !important beats flairup's injected inline styles. */
+.EmojiPickerReact img[src*="/img/clans/"],
+.EmojiPickerReact [data-name="custom"] img,
+.EmojiPickerReact [data-category="custom"] img {
+    filter: brightness(0) invert(1) !important;
+    opacity: 0.92 !important;
 }

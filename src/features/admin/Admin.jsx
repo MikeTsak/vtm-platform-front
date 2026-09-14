@@ -673,6 +673,15 @@ export default function Admin() {
   // Scroll to top when switching tools (mobile especially).
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'auto' }); }, [tab]);
 
+  // Apply Admin Theme (Purple Liquid Glass) on mount; remove on unmount so it
+  // doesn't bleed into the player Home preview.
+  useEffect(() => {
+    document.documentElement.classList.add('admin-theme');
+    return () => {
+      document.documentElement.classList.remove('admin-theme');
+    };
+  }, []);
+
   // All data state lives here
   const [users, setUsers] = useState([]);
   const [charIndex, setCharIndex] = useState({});

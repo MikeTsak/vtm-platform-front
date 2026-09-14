@@ -31,24 +31,369 @@ export const CLAN_BLURBS = {
   'Thin-blood': 'Faint undead spark; alchemy and ambiguity.',
 };
 
-// Dark gradient pairs per clan, driving the --tint accent throughout the wizard
+// 5-color official palettes per clan driving dynamic themes, aesthetics, and iconography
 export const CLAN_COLORS = {
-  Brujah:    ['#b40f1f', '#7a0b15'],
-  Gangrel:   ['#2f7a3a', '#173a1f'],
-  Malkavian: ['#713c8b', '#3a1f47'],
-  Nosferatu: ['#6a4b2b', '#332515'],
-  Toreador:  ['#b8236b', '#5c1338'],
-  Tremere:   ['#7b1113', '#37090a'],
-  Ventrue:   ['#1b4c8c', '#0e2547'],
-  'Banu Haqim': ['#7a2f57', '#3a1730'],
-  Hecata:    ['#2b6b6b', '#123636'],
-  Lasombra:  ['#191a5a', '#0c0d2e'],
-  'The Ministry': ['#865f12', '#3c2a08'],
-  Ravnos:    ['#c26a12', '#6b3a09'],
-  Salubri:   ['#2f96b0', '#153f4a'],
-  Tzimisce:  ['#5c2340', '#2e1120'],
-  Caitiff:   ['#636363', '#2f2f2f'],
-  'Thin-blood': ['#6e6e2b', '#383813'],
+  'Banu Haqim':   ['#23101B', '#72171A', '#B29D34', '#FBF7F4', '#424242'],
+  Brujah:         ['#FF7214', '#C30011', '#A90015', '#FFB53D', '#333333'],
+  Gangrel:        ['#442604', '#795D15', '#2E2F04', '#594E36', '#7E846B'],
+  Hecata:         ['#D1CCDC', '#424C55', '#F5EDF0', '#886F68', '#3D2C2E'],
+  Lasombra:       ['#0C080B', '#222222', '#292B36', '#201A28', '#19272A'],
+  Malkavian:      ['#F1AB13', '#FCB0B3', '#F93943', '#7EB2DD', '#445E93'],
+  Nosferatu:      ['#272826', '#404E51', '#A19F74', '#4D2B1E', '#363D38'],
+  Salubri:        ['#E1FBFE', '#A93F55', '#96A1CA', '#F0EEF1', '#5A5766'],
+  'The Ministry': ['#6BD425', '#618B25', '#61452E', '#370926', '#1C0118'],
+  Toreador:       ['#DD2C68', '#F3AFB6', '#9F5D77', '#9C0321', '#4A001F'],
+  Tremere:        ['#501E5C', '#CCB2DC', '#937EA5', '#941414', '#201D1D'],
+  Tzimisce:       ['#333333', '#643173', '#86A59C', '#B8C4BB', '#5A4D2B'],
+  Ventrue:        ['#0F0D4F', '#222862', '#7E6D5D', '#F5F2EF', '#B09E4F'],
+  Ravnos:         ['#B73D35', '#E08226', '#8F480B', '#F5D7A1', '#2C1B10'],
+  Caitiff:        ['#9A9EA0', '#636363', '#484848', '#E0E0E0', '#1C1C1C'],
+  'Thin-blood':   ['#5B8C9E', '#8C8C37', '#4A4A1C', '#E4E4A8', '#1E1E0E'],
+};
+
+export const CLAN_PALETTES = CLAN_COLORS;
+
+// Official iconography, semantic 5-color roles, and aesthetic mappings per clan
+export const CLAN_THEME_RULES = {
+  'Banu Haqim': {
+    color1: '#23101B',
+    color2: '#72171A',
+    color3: '#B29D34',
+    color4: '#FBF7F4',
+    color5: '#424242',
+    primaryAccent: '#B29D34',
+    secondaryAccent: '#72171A',
+    border: '#424242',
+    textColor: '#FBF7F4',
+    surface: '#1c0d15',
+    bg: '#0c0609',
+    symbolColor: '#B29D34',
+    textLogoColor: '#FBF7F4',
+    aesthetic: 'crimson veined Alamut marble and antique gold runes'
+  },
+  Banu_Haqim: {
+    color1: '#23101B',
+    color2: '#72171A',
+    color3: '#B29D34',
+    color4: '#FBF7F4',
+    color5: '#424242',
+    primaryAccent: '#B29D34',
+    secondaryAccent: '#72171A',
+    border: '#424242',
+    textColor: '#FBF7F4',
+    surface: '#1c0d15',
+    bg: '#0c0609',
+    symbolColor: '#B29D34',
+    textLogoColor: '#FBF7F4',
+    aesthetic: 'crimson veined Alamut marble and antique gold runes'
+  },
+  Brujah: {
+    color1: '#FF7214',
+    color2: '#C30011',
+    color3: '#A90015',
+    color4: '#FFB53D',
+    color5: '#333333',
+    primaryAccent: '#FF7214',
+    secondaryAccent: '#C30011',
+    border: '#A90015',
+    textColor: '#FFB53D',
+    surface: '#221e1e',
+    bg: '#0f0c0c',
+    symbolColor: '#C30011',
+    textLogoColor: '#FFB53D',
+    aesthetic: 'anarch raging fire and embers'
+  },
+  Gangrel: {
+    color1: '#442604',
+    color2: '#795D15',
+    color3: '#2E2F04',
+    color4: '#594E36',
+    color5: '#7E846B',
+    primaryAccent: '#7E846B',
+    secondaryAccent: '#795D15',
+    border: '#594E36',
+    textColor: '#a3a894',
+    surface: '#181a0e',
+    bg: '#0c0e07',
+    symbolColor: '#7E846B',
+    textLogoColor: '#795D15',
+    aesthetic: 'deep forest fern foliage and wild undergrowth'
+  },
+  Hecata: {
+    color1: '#D1CCDC',
+    color2: '#424C55',
+    color3: '#F5EDF0',
+    color4: '#886F68',
+    color5: '#3D2C2E',
+    primaryAccent: '#D1CCDC',
+    secondaryAccent: '#886F68',
+    border: '#424C55',
+    textColor: '#F5EDF0',
+    surface: '#221a1c',
+    bg: '#0e0a0b',
+    symbolColor: '#F5EDF0',
+    textLogoColor: '#D1CCDC',
+    aesthetic: 'catacomb skull wall and mausoleum marble'
+  },
+  Lasombra: {
+    color1: '#0C080B',
+    color2: '#222222',
+    color3: '#292B36',
+    color4: '#201A28',
+    color5: '#19272A',
+    primaryAccent: '#5D6277',
+    secondaryAccent: '#201A28',
+    border: '#292B36',
+    textColor: '#A5A9C0',
+    surface: '#131218',
+    bg: '#08070a',
+    symbolColor: '#5D6277',
+    textLogoColor: '#A5A9C0',
+    aesthetic: 'abyssal pitch shadows and obsidian dark dunes'
+  },
+  Malkavian: {
+    color1: '#F1AB13',
+    color2: '#FCB0B3',
+    color3: '#F93943',
+    color4: '#7EB2DD',
+    color5: '#445E93',
+    primaryAccent: '#F1AB13',
+    secondaryAccent: '#F93943',
+    border: '#445E93',
+    textColor: '#FCB0B3',
+    surface: '#141224',
+    bg: '#0a0814',
+    symbolColor: '#FCB0B3',
+    textLogoColor: '#F1AB13',
+    aesthetic: 'hallucinatory psychedelic swirling fractal fluid'
+  },
+  Nosferatu: {
+    color1: '#272826',
+    color2: '#404E51',
+    color3: '#A19F74',
+    color4: '#4D2B1E',
+    color5: '#363D38',
+    primaryAccent: '#A19F74',
+    secondaryAccent: '#404E51',
+    border: '#404E51',
+    textColor: '#A19F74',
+    surface: '#161917',
+    bg: '#0c0d0c',
+    symbolColor: '#404E51',
+    textLogoColor: '#A19F74',
+    aesthetic: 'subterranean cracked stone catacomb and toxic sewer mist'
+  },
+  Salubri: {
+    color1: '#E1FBFE',
+    color2: '#A93F55',
+    color3: '#96A1CA',
+    color4: '#F0EEF1',
+    color5: '#5A5766',
+    primaryAccent: '#E1FBFE',
+    secondaryAccent: '#A93F55',
+    border: '#5A5766',
+    textColor: '#F0EEF1',
+    surface: '#1c1b24',
+    bg: '#0d0c12',
+    symbolColor: '#E1FBFE',
+    textLogoColor: '#A93F55',
+    aesthetic: 'ethereal twilight clouds and celestial mist'
+  },
+  'The Ministry': {
+    color1: '#6BD425',
+    color2: '#618B25',
+    color3: '#61452E',
+    color4: '#370926',
+    color5: '#1C0118',
+    primaryAccent: '#6BD425',
+    secondaryAccent: '#618B25',
+    border: '#61452E',
+    textColor: '#84c748',
+    surface: '#240a1b',
+    bg: '#10010e',
+    symbolColor: '#6BD425',
+    textLogoColor: '#618B25',
+    aesthetic: 'deep aubergine serpent scales and electric venom'
+  },
+  Ministry: {
+    color1: '#6BD425',
+    color2: '#618B25',
+    color3: '#61452E',
+    color4: '#370926',
+    color5: '#1C0118',
+    primaryAccent: '#6BD425',
+    secondaryAccent: '#618B25',
+    border: '#61452E',
+    textColor: '#84c748',
+    surface: '#240a1b',
+    bg: '#10010e',
+    symbolColor: '#6BD425',
+    textLogoColor: '#618B25',
+    aesthetic: 'deep aubergine serpent scales and electric venom'
+  },
+  Toreador: {
+    color1: '#DD2C68',
+    color2: '#F3AFB6',
+    color3: '#9F5D77',
+    color4: '#9C0321',
+    color5: '#4A001F',
+    primaryAccent: '#DD2C68',
+    secondaryAccent: '#9C0321',
+    border: '#9C0321',
+    textColor: '#F3AFB6',
+    surface: '#220713',
+    bg: '#0d0208',
+    symbolColor: '#F3AFB6',
+    textLogoColor: '#DD2C68',
+    aesthetic: 'velvety dark roses and romantic thorns'
+  },
+  Tremere: {
+    color1: '#501E5C',
+    color2: '#CCB2DC',
+    color3: '#937EA5',
+    color4: '#941414',
+    color5: '#201D1D',
+    primaryAccent: '#CCB2DC',
+    secondaryAccent: '#941414',
+    border: '#501E5C',
+    textColor: '#CCB2DC',
+    surface: '#201424',
+    bg: '#0d0810',
+    symbolColor: '#CCB2DC',
+    textLogoColor: '#CCB2DC',
+    aesthetic: 'hermetic blood marble and occult sorcery swirl'
+  },
+  Tzimisce: {
+    color1: '#333333',
+    color2: '#643173',
+    color3: '#86A59C',
+    color4: '#B8C4BB',
+    color5: '#5A4D2B',
+    primaryAccent: '#86A59C',
+    secondaryAccent: '#643173',
+    border: '#5A4D2B',
+    textColor: '#B8C4BB',
+    surface: '#1a1622',
+    bg: '#0d0b12',
+    symbolColor: '#B8C4BB',
+    textLogoColor: '#B8C4BB',
+    aesthetic: 'visceral textured dragon fleshcrafting and ancestral earth'
+  },
+  Ventrue: {
+    color1: '#0F0D4F',
+    color2: '#222862',
+    color3: '#7E6D5D',
+    color4: '#F5F2EF',
+    color5: '#B09E4F',
+    primaryAccent: '#B09E4F',
+    secondaryAccent: '#222862',
+    border: '#7E6D5D',
+    textColor: '#F5F2EF',
+    surface: '#121528',
+    bg: '#0a0b17',
+    symbolColor: '#B09E4F',
+    textLogoColor: '#F5F2EF',
+    aesthetic: 'patrician imperial white marble and sovereign gold'
+  },
+  Ravnos: {
+    color1: '#B73D35',
+    color2: '#E08226',
+    color3: '#8F480B',
+    color4: '#F5D7A1',
+    color5: '#2C1B10',
+    primaryAccent: '#B73D35',
+    secondaryAccent: '#E08226',
+    border: '#8F480B',
+    textColor: '#F5D7A1',
+    surface: '#2c1e17',
+    bg: '#150c08',
+    symbolColor: '#B73D35',
+    aesthetic: 'nomadic illusion and smoky caravan amber'
+  },
+  Caitiff: {
+    color1: '#9A9EA0',
+    color2: '#636363',
+    color3: '#484848',
+    color4: '#E0E0E0',
+    color5: '#1C1C1C',
+    primaryAccent: '#9A9EA0',
+    secondaryAccent: '#636363',
+    border: '#484848',
+    textColor: '#E0E0E0',
+    surface: '#212121',
+    bg: '#121212',
+    symbolColor: '#9A9EA0',
+    aesthetic: 'street concrete and alleyway smog'
+  },
+  'Thin-blood': {
+    color1: '#5B8C9E',
+    color2: '#8C8C37',
+    color3: '#4A4A1C',
+    color4: '#E4E4A8',
+    color5: '#1E1E0E',
+    primaryAccent: '#5B8C9E',
+    secondaryAccent: '#8C8C37',
+    border: '#4A4A1C',
+    textColor: '#E4E4A8',
+    surface: '#242417',
+    bg: '#121209',
+    symbolColor: '#5B8C9E',
+    aesthetic: 'chemical alchemy smog and daylight dusk'
+  }
+};
+
+// Returns the URL to the custom aesthetic background texture for a clan
+export const clanBackground = (clan) => {
+  if (!clan) return null;
+  const key = fileify(clan);
+  if (key === 'Brujah') {
+    return '/img/clans/backgrounds/Brujah_clean.webp?v=4';
+  }
+  if (key === 'Ventrue') {
+    return '/img/clans/backgrounds/Ventrue_clean.webp?v=5';
+  }
+  if (key === 'Malkavian') {
+    return '/img/clans/backgrounds/Malkavian_clean.webp?v=4';
+  }
+  if (key === 'Toreador') {
+    return '/img/clans/backgrounds/Toreador_clean.webp?v=5';
+  }
+  if (key === 'Tzimisce') {
+    return '/img/clans/backgrounds/Tzimisce_clean.webp?v=4';
+  }
+  if (key === 'Tremere') {
+    return '/img/clans/backgrounds/Tremere_clean.webp?v=4';
+  }
+  if (key === 'Salubri') {
+    return '/img/clans/backgrounds/Salubri_clean.webp?v=4';
+  }
+  if (key === 'Nosferatu') {
+    return '/img/clans/backgrounds/Nosferatu_clean.webp?v=4';
+  }
+  if (key === 'Ministry' || key === 'The_Ministry' || key === 'The Ministry') {
+    return '/img/clans/backgrounds/Ministry_clean.webp?v=4';
+  }
+  if (key === 'Lasombra') {
+    return '/img/clans/backgrounds/Lasombra_clean.webp?v=4';
+  }
+  if (key === 'Hecata') {
+    return '/img/clans/backgrounds/Hecata_clean.webp?v=4';
+  }
+  if (key === 'Gangrel') {
+    return '/img/clans/backgrounds/Gangrel_clean.webp?v=4';
+  }
+  if (key === 'Banu_Haqim' || key === 'Banu Haqim') {
+    return '/img/clans/backgrounds/Banu_Haqim_clean.webp?v=4';
+  }
+  const KNOWN = [
+    'Banu_Haqim', 'Brujah', 'Gangrel', 'Hecata', 'Lasombra',
+    'Malkavian', 'Nosferatu', 'Salubri', 'Ministry', 'Toreador',
+    'Tremere', 'Tzimisce', 'Ventrue'
+  ];
+  if (KNOWN.includes(key)) {
+    return `/img/clans/backgrounds/${key}.webp`;
+  }
+  return null;
 };
 
 // Disciplines per clan (V5 core + Lore of the Clans affinities)
@@ -180,3 +525,20 @@ export const clanTint = (clan) => (clan ? CLAN_COLORS[clan]?.[0] : null) || '#8a
 export const CLAN_HEX = Object.fromEntries(
   Object.entries(CLAN_COLORS).map(([clan, pair]) => [clan, pair[0]])
 );
+
+export const getClanPalette = (clan) => {
+  if (!clan) return null;
+  return CLAN_COLORS[clan] || null;
+};
+
+export const getClanThemeRules = (clan) => {
+  if (!clan) return null;
+  return CLAN_THEME_RULES[clan] || {
+    symbolColor: clanTint(clan),
+    textColor: '#e8e8ed',
+    primaryAccent: clanTint(clan),
+    surface: '#141417',
+    aesthetic: 'gothic darkness'
+  };
+};
+

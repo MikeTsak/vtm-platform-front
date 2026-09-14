@@ -1,7 +1,7 @@
-// src/ui/Nav.jsx
 import React, { useContext, useState, useEffect } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { AuthCtx } from '../core/AuthContext';
+import { useTheme } from '../core/ThemeContext';
 import api from '../core/api';
 
 function NavDropdown({ title, icon, children, isMobile, isOpen, toggleOpen }) {
@@ -78,6 +78,8 @@ const getNavItemClass = ({ isActive, isDropdownItem = false, isMobile = false })
 
 export default function Nav() {
   const { user, logout } = useContext(AuthCtx);
+  const { clan: themeClan } = useTheme();
+  const [characterClan, setCharacterClan] = useState(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [canSeePremonitions, setCanSeePremonitions] = useState(false);
   const [isCharActive, setIsCharActive] = useState(false);
@@ -112,26 +114,39 @@ export default function Nav() {
 
   useEffect(() => {
     let live = true;
-    setCanSeePremonitions(false);
 
-    if (!user) return;
-    if (user.role === 'admin' || user.role === 'courtuser') {
-      if (user.role === 'admin') setCanSeePremonitions(true);
-      setIsCharActive(true);
+    if (!user) {
+      setCanSeePremonitions(false);
+      setCharacterClan(null);
       return;
+    }
+
+    if (user.role === 'admin' || user.role === 'courtuser') {
+      setIsCharActive(true);
     }
 
     api.get('/characters/me')
       .then(({ data }) => {
         if (!live) return;
-        const clan = data?.character?.clan;
-        setCanSeePremonitions(clan === 'Malkavian');
-        setIsCharActive(data?.character?.sheet?.is_active === true);
+        const c = data?.character?.clan || null;
+        setCharacterClan(c);
+        if (user.role !== 'admin' && user.role !== 'courtuser') {
+          setIsCharActive(data?.character?.sheet?.is_active === true);
+        }
       })
-      .catch(() => { });
+      .catch(() => {
+        if (!live) return;
+        setCharacterClan(null);
+      });
 
     return () => { live = false; };
   }, [user]);
+
+  // Synchronize Malkavian premonitions visibility strictly for Malkavians
+  useEffect(() => {
+    const effectiveClan = (themeClan || characterClan || '').trim().toLowerCase();
+    setCanSeePremonitions(effectiveClan === 'malkavian');
+  }, [themeClan, characterClan]);
 
   return (
     <>
@@ -152,7 +167,7 @@ export default function Nav() {
           {/* Logo & Brand */}
           <Link 
   data-cuelume-press 
-  data-cuelume-hover to="/" className="flex items-center gap-3 z-[1001] group" onClick={closeMenu}>
+  data-cuelume-hover to={user?.role === 'admin' ? '/admin' : '/'} className="flex items-center gap-3 z-[1001] group" onClick={closeMenu}>
             <picture className="w-8 h-8 flex-shrink-0">
               <source type="image/webp" srcSet="/img/animated.webp" />
               <img src="/img/animated.gif" alt="ATT Logo" width="32" height="32" className="w-8 h-8 object-contain rounded-md border border-outline-variant/50 bg-surface-container p-0.5 shadow-lg group-hover:border-primary transition-colors" />

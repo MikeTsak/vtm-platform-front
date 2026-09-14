@@ -8,7 +8,9 @@ import { motion } from 'framer-motion';
 import styles from '../styles/Home.module.css';
 import Avatar from '../components/Avatar';
 import GoogleAd from '../components/GoogleAd';
-import { symlogo, textlogo, symlogoWhite, textlogoWhite, clanTint } from '../data/clans';
+import ClanSymbol from '../components/ClanSymbol';
+import ClanTextLogo from '../components/ClanTextLogo';
+import { symlogo, textlogo, symlogoWhite, textlogoWhite, clanTint, clanBackground, CLAN_NAMES } from '../data/clans';
 import { factionLogo } from '../data/factions';
 import { AuthCtx } from '../core/AuthContext';
 import { useTheme } from '../core/ThemeContext';
@@ -156,7 +158,7 @@ export default function Home() {
   // Theme is owned app-wide by ThemeProvider (src/core/ThemeContext.jsx) — it
   // applies data-theme / --tint on every route and syncs with the server. Here
   // we only read the current value and drive the picker below.
-  const { theme: activeTheme, setTheme: handleThemeChange } = useTheme();
+  const { theme: activeTheme, setTheme: handleThemeChange, clan: currentClan, clanOverride, setClanOverride } = useTheme();
   const [isShattering, setIsShattering] = useState(false);
   const [clickPoint, setClickPoint] = useState(null);
   const [shards, setShards] = useState([]);
@@ -218,15 +220,95 @@ export default function Home() {
     }
   }, [authUser, me]);
 
+  const isAdmin = authUser?.role === 'admin' || me?.role === 'admin';
+  const isPreviewApproved = typeof window !== 'undefined' && (
+    sessionStorage.getItem('vtm_admin_preview') === 'true' ||
+    new URLSearchParams(window.location.search).get('preview') === 'true'
+  );
+
+  // If preview was launched via query param, persist approval for this session
   useEffect(() => {
-    if (authUser?.role === 'admin') {
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('preview') === 'true') {
+      sessionStorage.setItem('vtm_admin_preview', 'true');
+    }
+  }, []);
+
+  // Admins can only access the ordinary home from Master Control (preview mode)
+  useEffect(() => {
+    if (!loading && isAdmin && !isPreviewApproved) {
       nav('/admin', { replace: true });
     }
-  }, [authUser, nav]);
+  }, [loading, isAdmin, isPreviewApproved, nav]);
+
+  // Strip admin-theme when the player Home is rendered so the purple admin
+  // glass never leaks into the player experience.
+  useEffect(() => {
+    document.documentElement.classList.remove('admin-theme');
+  }, []);
+
+  // Clean exit from Home Preview: strip clan overrides, restore admin theme, navigate to /admin
+  const handleExitPreview = () => {
+    sessionStorage.removeItem('vtm_admin_preview');
+    setClanOverride(null);
+    try {
+      localStorage.removeItem('vtm_clan_override');
+      localStorage.removeItem('vtm_clan_name');
+      localStorage.removeItem('vtm_clan_bg');
+    } catch {}
+
+    const root = document.documentElement;
+    root.removeAttribute('data-clan');
+    root.setAttribute('data-theme', 'camarilla');
+    root.classList.add('admin-theme');
+
+    for (let i = 1; i <= 5; i++) {
+      root.style.removeProperty(`--clan-color-${i}`);
+    }
+    root.style.removeProperty('--clan-primary');
+    root.style.removeProperty('--clan-secondary');
+    root.style.removeProperty('--clan-border');
+    root.style.removeProperty('--clan-text');
+    root.style.removeProperty('--clan-surface');
+    root.style.removeProperty('--clan-bg');
+    root.style.removeProperty('--clan-bg-image');
+    root.style.removeProperty('--clan-bg-opacity');
+    root.style.removeProperty('--clan-symbol-color');
+    root.style.removeProperty('--clan-text-logo-color');
+    root.style.removeProperty('--tint');
+    root.style.removeProperty('--dynamic-tint');
+    root.style.removeProperty('--theme-primary');
+    root.style.removeProperty('--border-color');
+    root.style.removeProperty('--text-color');
+    root.style.removeProperty('--surface-color');
+    root.style.removeProperty('--bg-color');
+
+    handleThemeChange('camarilla');
+    nav('/admin');
+  };
+
+  const [adminChars, setAdminChars] = useState([]);
+  const [selectedCharIndex, setSelectedCharIndex] = useState(0);
+
+  // Fetch all characters for admin clan preview
+  useEffect(() => {
+    if (!isAdmin) return;
+    let live = true;
+    api.get('/admin/characters')
+      .then((res) => {
+        if (live && res.data?.characters) {
+          setAdminChars(res.data.characters);
+        }
+      })
+      .catch((e) => {
+        console.warn('Failed to load admin characters for preview', e);
+      });
+    return () => {
+      live = false;
+    };
+  }, [isAdmin]);
 
   /* ── Data fetch ── */
   useEffect(() => {
-    if (authUser?.role === 'admin') return;
     setLoading(true);
     let live = true;
     (async () => {
@@ -237,14 +319,9 @@ export default function Home() {
         const data = res.data;
         if (data.user) {
           setMe(data.user);
-          if (data.user.role === 'admin') {
-            nav('/admin', { replace: true });
-            return;
-          }
         }
 
         const character = data.character || null;
-        console.log('DEBUG Home loaded chData:', character);
         setCh(character);
 
         if (data.dashboard) {
@@ -278,38 +355,58 @@ export default function Home() {
         if (live) setLoading(false);
       }
     })();
-  }, [authUser, nav]);
+  }, [nav]);
 
   /* ── Domain incidents (someone else's hunt went wrong in your domain) ── */
   useEffect(() => {
-    if (authUser?.role === 'admin') return;
     let live = true;
     api.get('/domain-incidents/mine')
       .then((res) => { if (live) setIncidents(res.data?.incidents || []); })
       .catch(() => {});
     return () => { live = false; };
-  }, [authUser]);
+  }, []);
 
   const dismissIncident = (id) => {
     setIncidents((prev) => prev.filter((i) => i.id !== id));
     api.patch(`/domain-incidents/${id}/dismiss`).catch(() => {});
   };
 
+  const activeClanName = (clanOverride || currentClan || ch?.clan || 'Ventrue').trim();
+
+  // Find characters belonging to the active clan
+  const matchingClanChars = React.useMemo(() => {
+    if (!isAdmin || !adminChars.length) return [];
+    return adminChars.filter((c) => (c.clan || '').trim().toLowerCase() === activeClanName.toLowerCase());
+  }, [isAdmin, adminChars, activeClanName]);
+
+  const activeClanChar = React.useMemo(() => {
+    if (!isAdmin || !matchingClanChars.length) return null;
+    return matchingClanChars[selectedCharIndex % matchingClanChars.length];
+  }, [isAdmin, matchingClanChars, selectedCharIndex]);
+
   const currentMe = me || authUser;
   const safeMe = currentMe || { display_name: '', id: '0', role: 'user', ui_sounds_enabled: true };
-  const safeCh = ch || { name: '', clan: 'Caitiff', xp: 0, sheet: {} };
 
-  if (authUser?.role === 'admin' || currentMe?.role === 'admin') {
-    return (
-      <div className={styles.loadingScreen}>
-        <Loading />
-      </div>
-    );
+  // Resolve active character: when admin, use the matched clan player, or an empty clan card
+  let resolvedCh = ch;
+  if (isAdmin) {
+    if (activeClanChar) {
+      resolvedCh = activeClanChar;
+    } else {
+      resolvedCh = {
+        name: 'Unclaimed Bloodline',
+        clan: activeClanName,
+        xp: 0,
+        sheet: { clan: activeClanName, hunger: 0, health: { max: 5, superficial: 0, aggravated: 0 }, willpower: { superficial: 0, aggravated: 0 } }
+      };
+    }
   }
+
+  const safeCh = resolvedCh || { name: '', clan: activeClanName, xp: 0, sheet: {} };
 
   if (!loading) {
     if (!currentMe) return <div className={styles.loadingScreen}>Please log in.</div>;
-    if (!ch) return (
+    if (!ch && !isAdmin) return (
       <div className={styles.noCharPage}>
         <div className={styles.noCharCard}>
           <div className={styles.noCharRose}>🥀</div>
@@ -328,7 +425,7 @@ export default function Home() {
 
   const clan        = (safeCh.clan || '').trim();
   const isMalkavian = clan.toLowerCase() === 'malkavian';
-  const showCobweb  = isMalkavian || safeMe.role === 'admin';
+  const showCobweb  = isMalkavian;
   const quotaPct    = Math.min((quota.used / quota.limit) * 100, 100);
 
   const dynamicClanTint = clanTint(clan);
@@ -364,9 +461,11 @@ export default function Home() {
 
   const latestChronicle = recentNews.find(n => n.theme === 'chronicle') || recentNews[0] || null;
 
+  const clanBg = clanBackground(clan);
+
   // Construct Themes Array dynamically to insert Character's Clan
   const availableThemes = [
-    { id: 'clan', label: clan ? `${clan}` : 'Default', sub: 'Bloodline', hex: dynamicClanTint, img: 'theme_clan', icon: symlogoWhite(clan) },
+    { id: 'clan', label: clan ? `${clan}` : 'Default', sub: 'Bloodline', hex: dynamicClanTint, img: 'theme_clan', bgUrl: clanBg, icon: symlogoWhite(clan) },
     { id: 'camarilla', label: 'Camarilla', sub: 'Crimson', hex: '#8a0f1a', img: 'theme_camarilla', icon: factionLogo('Camarilla') },
     { id: 'schrecknet',  label: 'SchreckNet', sub: 'Blue', hex: '#0ea5e9', img: 'theme_schrecknet', icon: null },
     { id: 'anarch',      label: 'Anarch', sub: 'Gold', hex: '#ea580c', img: 'theme_anarch', icon: factionLogo('Anarch') },
@@ -401,6 +500,161 @@ export default function Home() {
         </div>
       )}
 
+      {/* ── STICKY ADMIN CLAN PREVIEW BAR ── */}
+      {isAdmin && (
+        <div
+          style={{
+            position: 'sticky',
+            top: 0,
+            zIndex: 120,
+            marginBottom: '1rem',
+            padding: '10px 16px',
+            background: 'rgba(9, 11, 20, 0.92)',
+            backdropFilter: 'blur(16px)',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            borderTop: 'none',
+            borderRadius: '0 0 14px 14px',
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.6)'
+          }}
+        >
+          {/* Top Row : Status & Player Controls */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '3px 8px', borderRadius: '5px', background: 'rgba(255, 255, 255, 0.08)', border: '1px solid var(--tint)' }}>
+                <FaGlyph name="fa-crown" style={{ color: 'var(--tint)', fontSize: '0.8rem' }} />
+                <span style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.08em', color: 'var(--text-color)', textTransform: 'uppercase' }}>
+                  Admin Preview
+                </span>
+              </div>
+
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', color: 'var(--text-color)' }}>
+                <ClanSymbol clan={activeClanName} size={18} />
+                <span style={{ fontWeight: 700 }}>Clan {activeClanName}</span>
+              </div>
+
+              {activeClanChar ? (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: 'rgba(255, 255, 255, 0.75)' }}>
+                  <span>Player: <strong style={{ color: 'var(--text-color)' }}>{activeClanChar.name}</strong></span>
+                  {matchingClanChars.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCharIndex(i => i + 1)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        background: 'rgba(255, 255, 255, 0.1)',
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        color: 'var(--text-color)',
+                        fontSize: '0.72rem',
+                        cursor: 'pointer'
+                      }}
+                      title="Cycle to next player of this clan"
+                    >
+                      <FaGlyph name="fa-shuffle" style={{ fontSize: '0.7rem' }} />
+                      <span>Next Player ({selectedCharIndex % matchingClanChars.length + 1}/{matchingClanChars.length})</span>
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                  No player registered for Clan {activeClanName}
+                </span>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              <Link
+                to="/admin"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '10px 14px',
+                  minHeight: '44px',
+                  borderRadius: '6px',
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  border: '1px solid var(--border-color)',
+                  color: 'var(--text-color)',
+                  fontSize: '0.8rem',
+                  textDecoration: 'none',
+                  fontWeight: 600,
+                  touchAction: 'manipulation'
+                }}
+              >
+                <FaGlyph name="fa-gear" style={{ fontSize: '0.75rem' }} />
+                <span>Master Control</span>
+              </Link>
+              <button
+                type="button"
+                onClick={handleExitPreview}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '10px 14px',
+                  minHeight: '44px',
+                  borderRadius: '6px',
+                  background: 'rgba(157, 124, 255, 0.15)',
+                  border: '1px solid rgba(157, 124, 255, 0.5)',
+                  color: '#c4b0ff',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  touchAction: 'manipulation'
+                }}
+                title="Exit preview and return to Admin"
+              >
+                <FaGlyph name="fa-arrow-right-from-bracket" size={12} />
+                <span>Exit Preview</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Bottom Row : Clan Chips */}
+          <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px', scrollbarWidth: 'thin' }}>
+            {CLAN_NAMES.map(c => {
+              const isSelected = activeClanName.toLowerCase() === c.toLowerCase();
+              return (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => {
+                    handleThemeChange('clan');
+                    setClanOverride(c);
+                    setSelectedCharIndex(0);
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '10px 12px',
+                    minHeight: '44px',
+                    borderRadius: '6px',
+                    fontSize: '0.75rem',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                    border: isSelected ? '1px solid var(--tint)' : '1px solid rgba(255, 255, 255, 0.08)',
+                    background: isSelected ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.35)',
+                    color: isSelected ? 'var(--text-color)' : 'rgba(255, 255, 255, 0.65)',
+                    fontWeight: isSelected ? 700 : 500,
+                    boxShadow: isSelected ? '0 0 8px rgba(0,0,0,0.5)' : 'none',
+                    transition: 'all 0.2s ease',
+                    touchAction: 'manipulation'
+                  }}
+                >
+                  <ClanSymbol clan={c} size={14} />
+                  <span>{c}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div className={styles.dashboardLayout}>
         
         {/* ── LEFT MAIN COLUMN ── */}
@@ -408,26 +662,52 @@ export default function Home() {
           
           {/* 1. IDENTITY HEADER */}
           <motion.header 
-            className={styles.identityHeader} 
-            style={{ '--dynamic-tint': dynamicClanTint }}
+            className={`${styles.identityHeader} ${clanBg ? 'clan-aesthetic-bg' : ''}`} 
+            style={{ 
+              '--dynamic-tint': dynamicClanTint,
+              ...(clanBg ? { backgroundImage: `linear-gradient(135deg, color-mix(in srgb, var(--surface-color) 78%, rgba(10, 10, 15, 0.85)), color-mix(in srgb, var(--surface-color) 60%, rgba(10, 10, 15, 0.75))), url('${clanBg}')` } : {})
+            }}
             variants={{
               hidden: { opacity: 0, y: 30, scale: 0.95 },
               visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 25 } }
             }}
           >
+            {/* 5 Color Aesthetic Swatch Bar */}
+            <div className="clan-palette-bar" style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 4, height: '5px' }}>
+              <span title="Color 1: Primary Accent"></span>
+              <span title="Color 2: Secondary Accent"></span>
+              <span title="Color 3: Structural Outline"></span>
+              <span title="Color 4: Wordmark and Highlight"></span>
+              <span title="Color 5: Surface and Void"></span>
+            </div>
+
             <span className={`${styles.corner} ${styles.cornerTL}`} />
             <span className={`${styles.corner} ${styles.cornerTR}`} />
             <span className={`${styles.corner} ${styles.cornerBL}`} />
             <span className={`${styles.corner} ${styles.cornerBR}`} />
             
             <div className={styles.headerInner}>
-              <Avatar userId={safeMe.id} size={110} editable={true} />
+              {isAdmin ? (
+                <Avatar 
+                  userId={activeClanChar?.user_id} 
+                  avatarUrl={activeClanChar?.image_url || activeClanChar?.avatar} 
+                  clan={safeCh.clan} 
+                  size={110} 
+                  editable={false} 
+                />
+              ) : (
+                <Avatar userId={safeMe.id} size={110} editable={true} />
+              )}
+
+              <div className={styles.clanRing} title={`Clan ${safeCh.clan || 'Caitiff'}`}>
+                <ClanSymbol clan={safeCh.clan} size={50} />
+              </div>
 
               <div className={styles.charHeaderLeft}>
                 <h1 className={styles.charName}>{safeCh.name}</h1>
                 <div className={styles.charMeta}>
                   <div className={styles.metaBadge}>
-                    <img src={symlogoWhite(safeCh.clan)} alt={safeCh.clan || 'Clan Logo'} width="16" height="16" style={{ width: '16px', height: '16px', objectFit: 'contain', marginRight: '4px', verticalAlign: 'middle', filter: 'drop-shadow(0 0 2px rgba(0,0,0,0.5))' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                    <ClanSymbol clan={safeCh.clan} size={16} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
                     Clan {safeCh.clan || 'Caitiff'}
                   </div>
                   <div className={styles.metaBadge}>
@@ -527,12 +807,7 @@ export default function Home() {
             </div>
 
             <div className={styles.clanWatermark} aria-hidden>
-              <img 
-                src={textlogoWhite(safeCh.clan)}
-                alt="Clan Logo"
-                style={{ height: '40px', objectFit: 'contain', filter: 'drop-shadow(0 0 6px rgba(255,255,255,0.25))' }}
-                onError={(e) => { e.target.style.display = 'none'; }}
-              />
+              <ClanTextLogo clan={safeCh.clan} height={64} width={240} />
             </div>
             
             <div className={styles.quotaBar}>
@@ -684,7 +959,7 @@ export default function Home() {
             )}
           </motion.section>
 
-          {/* AD — between marble buttons and chronicle row */}
+          {/* AD : between marble buttons and chronicle row */}
           <section style={{ margin: '20px 0', textAlign: 'center', background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
             <GoogleAd format="auto" />
           </section>
@@ -738,7 +1013,7 @@ export default function Home() {
                   key={t.id}
                   onClick={() => handleThemeChange(t.id)}
                   className={`${styles.themeBtn} ${activeTheme === t.id ? styles.themeBtnActive : ''}`}
-                  style={{ '--theme-color': t.hex, '--theme-bg': `url('/img/ui/${t.img}.webp')` }}
+                  style={{ '--theme-color': t.hex, '--theme-bg': t.bgUrl ? `url('${t.bgUrl}')` : `url('/img/ui/${t.img}.webp')` }}
                   data-cuelume-toggle
                   data-cuelume-hover
                 >
@@ -754,10 +1029,99 @@ export default function Home() {
                   )}
                   <div className={styles.themeInfo} style={{ position: 'relative', zIndex: 2 }}>
                     <span className={styles.themeName}>{t.label}</span>
+                    {t.id === 'clan' && (
+                      <div className="clan-palette-bar" style={{ height: '3px', width: '40px', marginTop: '4px', borderRadius: '1px' }}>
+                        <span></span><span></span><span></span><span></span><span></span>
+                      </div>
+                    )}
                   </div>
                 </button>
               ))}
             </div>
+
+            {(authUser?.role === 'admin' || clanOverride) && (
+              <div 
+                style={{ 
+                  marginTop: '16px', 
+                  padding: '12px 14px', 
+                  borderRadius: '10px', 
+                  background: 'rgba(10, 12, 20, 0.75)', 
+                  border: '1px solid rgba(255, 255, 255, 0.12)', 
+                  backdropFilter: 'blur(16px)' 
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <FaGlyph name="fa-eye" style={{ color: 'var(--tint)', fontSize: '0.85rem' }} />
+                    <span style={{ fontSize: '0.78rem', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-color)' }}>
+                      Admin Bloodline Preview
+                    </span>
+                    {clanOverride && (
+                      <span style={{ 
+                        fontSize: '0.7rem', 
+                        padding: '2px 8px', 
+                        borderRadius: '4px', 
+                        background: 'rgba(255, 255, 255, 0.1)', 
+                        color: 'var(--tint)',
+                        border: '1px solid var(--tint)'
+                      }}>
+                        Active: {clanOverride}
+                      </span>
+                    )}
+                  </div>
+                  {clanOverride && (
+                    <button
+                      type="button"
+                      onClick={() => setClanOverride(null)}
+                      style={{
+                        background: 'transparent',
+                        border: '1px solid var(--border-color)',
+                        color: 'var(--text-color)',
+                        fontSize: '0.72rem',
+                        padding: '3px 10px',
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Reset to My Character
+                    </button>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {CLAN_NAMES.map(c => {
+                    const isSelected = (clanOverride || currentClan) === c;
+                    return (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => {
+                          handleThemeChange('clan');
+                          setClanOverride(c);
+                        }}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '5px 10px',
+                          borderRadius: '6px',
+                          fontSize: '0.76rem',
+                          cursor: 'pointer',
+                          border: isSelected ? '1px solid var(--tint)' : '1px solid rgba(255, 255, 255, 0.08)',
+                          background: isSelected ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.3)',
+                          color: isSelected ? 'var(--text-color)' : 'rgba(255, 255, 255, 0.65)',
+                          boxShadow: isSelected ? '0 0 10px rgba(0, 0, 0, 0.4)' : 'none',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        <ClanSymbol clan={c} size={14} />
+                        <span>{c}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </motion.section>
 
         </div>
@@ -817,11 +1181,11 @@ export default function Home() {
               <div className={styles.quickStatsGrid} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div className={styles.qsItem} style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
                   <span className={styles.qsName} style={{ opacity: 0.6, fontSize: '0.7rem' }}>AMBITION</span>
-                  <span style={{ fontSize: '0.85rem', color: 'var(--text-color)', lineHeight: 1.3 }}>{sheetObj?.ambition || '—'}</span>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-color)', lineHeight: 1.3 }}>{sheetObj?.ambition || 'None'}</span>
                 </div>
                 <div className={styles.qsItem} style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
                   <span className={styles.qsName} style={{ opacity: 0.6, fontSize: '0.7rem' }}>DESIRE</span>
-                  <span style={{ fontSize: '0.85rem', color: 'var(--text-color)', lineHeight: 1.3 }}>{sheetObj?.desire || '—'}</span>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-color)', lineHeight: 1.3 }}>{sheetObj?.desire || 'None'}</span>
                 </div>
               </div>
             </div>

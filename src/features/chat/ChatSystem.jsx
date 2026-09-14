@@ -769,6 +769,8 @@ export default function ChatSystem({ commsEnabled = true }) {
   const [reactionsByMsgId, setReactionsByMsgId] = useState({});
   const [reactionPickerFor, setReactionPickerFor] = useState(null);
   const lastTapRef = useRef({});
+  const holdTimerRef = useRef(null);
+  const holdFiredRef = useRef(false);
 
   const toggleReaction = useCallback(async (msgId, emoji) => {
     if (!reactionTable || String(msgId).startsWith('temp_')) return; // can't react to a message that hasn't finished sending yet
@@ -785,7 +787,10 @@ export default function ChatSystem({ commsEnabled = true }) {
   // Works for both mouse double-click and touch double-tap — onClick fires
   // for both, so tracking tap timing here covers desktop and mobile with one
   // handler instead of relying on onDoubleClick (touch-unreliable).
+  // If a hold already opened the picker we suppress the click so it doesn't
+  // also count as the first half of a double-tap.
   const handleBubbleTap = useCallback((msgId) => {
+    if (holdFiredRef.current) { holdFiredRef.current = false; return; }
     const now = Date.now();
     const last = lastTapRef.current[msgId] || 0;
     if (now - last < 300) {
@@ -795,6 +800,21 @@ export default function ChatSystem({ commsEnabled = true }) {
       lastTapRef.current[msgId] = now;
     }
   }, [toggleReaction]);
+
+  // Long-press (500ms hold) opens the quick-reaction picker without toggling a
+  // reaction. Works for both touch and mouse via the unified Pointer Events API.
+  const handleBubblePointerDown = useCallback((e, msgId) => {
+    if (String(msgId).startsWith('temp_')) return;
+    holdFiredRef.current = false;
+    holdTimerRef.current = setTimeout(() => {
+      holdFiredRef.current = true;
+      setReactionPickerFor(p => (p === msgId ? null : msgId));
+    }, 500);
+  }, []);
+
+  const handleBubblePointerCancel = useCallback(() => {
+    clearTimeout(holdTimerRef.current);
+  }, []);
 
   // Batch-fetch reaction summaries for whichever messages are currently
   // shown. Re-runs when the set of message ids changes (new message
@@ -1747,6 +1767,11 @@ export default function ChatSystem({ commsEnabled = true }) {
                       ) : (
                         <div
                           onClick={() => handleBubbleTap(item.id)}
+                          onPointerDown={(e) => handleBubblePointerDown(e, item.id)}
+                          onPointerUp={handleBubblePointerCancel}
+                          onPointerLeave={handleBubblePointerCancel}
+                          onPointerCancel={handleBubblePointerCancel}
+                          onContextMenu={(e) => e.preventDefault()}
                           className={`relative chat-glass p-2 md:p-3 w-fit max-w-full shadow-[0_4px_12px_rgba(0,0,0,0.5)] select-none ${mine ? 'bg-blood-accent/90 text-white rounded-l-lg rounded-br-lg bubble-right border-l border-t border-b border-[#b01423]' : 'bg-surface-container-high border border-outline-variant/30 text-on-surface rounded-r-lg rounded-bl-lg bubble-left'}`}
                         >
 
