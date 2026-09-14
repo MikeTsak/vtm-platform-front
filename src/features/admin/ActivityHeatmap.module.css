@@ -91,17 +91,15 @@
 }
 
 .monthScrollTrack {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding-bottom: 6px;
-  scrollbar-width: thin;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 6px;
+  width: 100%;
 }
 
 .monthCard {
-  flex: 0 0 auto;
-  min-width: 105px;
-  padding: 8px 12px;
+  min-width: 0;
+  padding: 6px 8px;
   background: rgba(255, 255, 255, 0.025);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: var(--radius-sm, 6px);
@@ -109,7 +107,7 @@
   transition: all 0.2s ease;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
 }
 
 .monthCard:hover {
@@ -125,21 +123,36 @@
 }
 
 .monthName {
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 700;
   color: var(--text-primary, #e8e6f0);
   letter-spacing: 0.02em;
 }
 
 .monthMinutes {
-  font-size: 0.86rem;
+  font-size: 0.82rem;
   font-weight: 800;
   color: var(--accent-purple, #9d7cff);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.monthAvg {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-secondary, #9896a8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .monthDays {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   color: var(--text-muted, #5a5870);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Calendar wrapper */
@@ -161,27 +174,26 @@
 .calendarWrapper :global(rect) {
   rx: 2px;
   ry: 2px;
-  transition: transform 0.15s ease, filter 0.15s ease, stroke 0.15s ease;
+  cursor: pointer;
+  transition: filter 0.12s ease, stroke 0.12s ease, stroke-width 0.12s ease;
 }
 
 .calendarWrapper :global(rect:hover) {
-  stroke: rgba(255, 255, 255, 0.85);
-  stroke-width: 1.5px;
-  filter: brightness(1.35) drop-shadow(0 0 4px rgba(255, 255, 255, 0.4));
-  transform: scale(1.15);
-  transform-origin: center;
+  stroke: #ffffff !important;
+  stroke-width: 2px !important;
+  filter: brightness(1.45) drop-shadow(0 0 5px rgba(255, 255, 255, 0.6));
 }
 
 /* Floating Tooltip */
 .floatingTooltip {
   position: fixed;
   z-index: 9999;
-  pointer-events: none;
-  background: rgba(14, 14, 20, 0.94);
+  pointer-events: none !important;
+  background: rgba(14, 14, 22, 0.96);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--accent-purple, #9d7cff);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 20px rgba(157, 124, 255, 0.3);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.75), 0 0 20px rgba(157, 124, 255, 0.3);
   padding: 12px 16px;
   border-radius: var(--radius-md, 10px);
   min-width: 220px;
@@ -189,20 +201,10 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  transform: translate(-50%, -115%);
-  transition: opacity 0.1s ease, transform 0.1s ease;
-  animation: tooltipIn 0.12s ease-out;
-}
-
-@keyframes tooltipIn {
-  from {
-    opacity: 0;
-    transform: translate(-50%, -105%);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, -115%);
-  }
+  transform: translate(-50%, -100%);
+  margin-top: -12px;
+  transition: opacity 0.12s ease;
+  will-change: transform, left, top;
 }
 
 .tooltipDate {
@@ -427,10 +429,9 @@
 }
 
 .hourSlot:hover .hourBlock {
-  transform: translateY(-3px);
-  filter: brightness(1.25);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  border-color: rgba(255, 255, 255, 0.4);
+  filter: brightness(1.3);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+  border-color: rgba(255, 255, 255, 0.6);
 }
 
 .hourBlockActive {
@@ -512,13 +513,15 @@
   border-radius: 3px;
   display: inline-block;
   vertical-align: middle;
-  transition: transform 0.1s ease;
+  transition: filter 0.1s ease, box-shadow 0.1s ease;
   cursor: pointer;
 }
 
 .matrixCellSlot:hover {
-  transform: scale(1.25);
-  box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+  filter: brightness(1.4);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
+  outline: 2px solid #ffffff;
+  outline-offset: 1px;
   z-index: 3;
 }
 
@@ -558,4 +561,60 @@
   .hourlyGrid {
     grid-template-columns: repeat(6, minmax(0, 1fr));
   }
+}
+
+/* Comparison View Enhancements */
+.compareTrack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-sm, 6px);
+}
+
+.compareTrackHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-primary, #e8e6f0);
+}
+
+.compareVsBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  background: rgba(157, 124, 255, 0.18);
+  color: var(--accent-purple, #9d7cff);
+  border: 1px solid rgba(157, 124, 255, 0.35);
+  letter-spacing: 0.05em;
+}
+
+.dualSpotlightGrid {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.spotlightUserBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 140px;
+}
+
+.spotlightUserBlockTitle {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-secondary, #9896a8);
 }

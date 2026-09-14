@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ActivityCalendar } from 'react-activity-calendar';
 import api from '../../core/api';
@@ -51,7 +51,18 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
   const [selectedMonth, setSelectedMonth] = useState(null);
   const [hoveredHour, setHoveredHour] = useState(null);
 
+  const hoverTimeoutRef = useRef(null);
+  const drillDownRef = useRef(null);
+
   const currentTheme = THEMES[currentThemeKey] || THEMES.amethyst;
+
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const fetchStats = async (userId) => {
     if (userId === 'none') return [];
@@ -75,8 +86,10 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
     retry: 1,
   });
 
-  // Query 24:00 day breakdown when a day is clicked
-  const { data: dayStats, isLoading: isDayLoading } = useQuery({
+  const isComparing = !globalOnly && selectedUser2 !== 'none';
+
+  // Query 24:00 day breakdown for primary target
+  const { data: dayStats1, isLoading: isDayLoading1 } = useQuery({
     queryKey: ['activityDayStats', selectedDate, activeUser1],
     queryFn: async () => {
       if (!selectedDate) return null;
@@ -87,6 +100,21 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
       return data;
     },
     enabled: !!selectedDate,
+    retry: 1,
+  });
+
+  // Query 24:00 day breakdown for comparison target
+  const { data: dayStats2, isLoading: isDayLoading2 } = useQuery({
+    queryKey: ['activityDayStats', selectedDate, selectedUser2],
+    queryFn: async () => {
+      if (!selectedDate || selectedUser2 === 'none') return null;
+      const url = selectedUser2 === 'global'
+        ? `/activity/day-stats?date=${selectedDate}`
+        : `/activity/day-stats?date=${selectedDate}&userId=${selectedUser2}`;
+      const { data } = await api.get(url);
+      return data;
+    },
+    enabled: !!selectedDate && isComparing,
     retry: 1,
   });
 
@@ -140,7 +168,7 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
   const safeData2 = useMemo(() => getSafeData(data2), [data2]);
 
   // Aggregate monthly intelligence from safeData1
-  const monthlyStats = useMemo(() => {
+  const monthlyStats1 = useMemo(() => {
     const list = Array.from({ length: 12 }, (_, i) => ({
       index: i,
       name: MONTH_NAMES[i],
@@ -189,6 +217,42 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
     };
   }, [safeData1]);
 
+  // Aggregate monthly intelligence for comparison target
+  const monthlyStats2 = useMemo(() => {
+    if (!isComparing) return null;
+    const list = Array.from({ length: 12 }, (_, i) => ({
+      index: i,
+      name: MONTH_NAMES[i],
+      short: MONTH_SHORT[i],
+      totalMinutes: 0,
+      activeDays: 0,
+    }));
+
+    for (const item of safeData2) {
+      if (!item.date) continue;
+      const parts = item.date.split('-');
+      if (parts.length < 2) continue;
+      const mIdx = Number(parts[1]) - 1;
+      if (mIdx >= 0 && mIdx < 12) {
+        const count = Number(item.count) || 0;
+        list[mIdx].totalMinutes += count;
+        if (count > 0) {
+          list[mIdx].activeDays += 1;
+        }
+      }
+    }
+
+    let annualTotal = 0;
+    for (const m of list) {
+      annualTotal += m.totalMinutes;
+    }
+
+    return {
+      months: list,
+      annualTotal,
+    };
+  }, [safeData2, isComparing]);
+
   const formatDateDisplay = (dateString) => {
     if (!dateString) return '';
     const parts = dateString.split('-');
@@ -202,16 +266,40 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
     });
   };
 
-  const formatHoursMinutes = (totalMinutes) => {
-    if (!totalMinutes || totalMinutes <= 0) return '0 minutes';
-    const hrs = Math.floor(totalMinutes / 60);
-    const mins = totalMinutes % 60;
-    if (hrs === 0) return `${mins}m`;
-    if (mins === 0) return `${hrs}h`;
-    return `${hrs}h ${mins}m`;
+  const formatDurationDHM = (totalMinutes) => {
+    if (!totalMinutes || totalMinutes <= 0) return '0m';
+    const days = Math.floor(totalMinutes / 1440);
+    const remainingMinutes = totalMinutes % 1440;
+    const hrs = Math.floor(remainingMinutes / 60);
+    const mins = remainingMinutes % 60;
+
+    const parts = [];
+    if (days > 0) parts.push(`${days}d`);
+    if (hrs > 0) parts.push(`${hrs}h`);
+    if (mins > 0 || parts.length === 0) parts.push(`${mins}m`);
+    return parts.join(' ');
   };
 
-  const handleDayHover = (e, activity) => {
+  const formatHoursMinutes = (totalMinutes) => {
+    if (!totalMinutes || totalMinutes <= 0) return '0 minutes';
+    const days = Math.floor(totalMinutes / 1440);
+    const remainingMinutes = totalMinutes % 1440;
+    const hrs = Math.floor(remainingMinutes / 60);
+    const mins = remainingMinutes % 60;
+
+    const parts = [];
+    if (days > 0) parts.push(`${days}d`);
+    if (hrs > 0) parts.push(`${hrs}h`);
+    if (mins > 0) parts.push(`${mins}m`);
+    return parts.join(' ');
+  };
+
+  const handleDayHover = (e, activity, targetLabel) => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+
     const rect = e.currentTarget.getBoundingClientRect();
     const parts = activity.date.split('-');
     const mIdx = parts.length > 1 ? Number(parts[1]) - 1 : 0;
@@ -223,21 +311,28 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
       activeUsers: activity.activeUsers || (activity.count > 0 ? 1 : 0),
       sessionCount: activity.sessionCount || (activity.count > 0 ? 1 : 0),
       monthName: MONTH_NAMES[mIdx],
+      targetLabel: targetLabel || getName(activeUser1),
       x: rect.left + rect.width / 2,
       y: rect.top,
     });
   };
 
   const handleDayLeave = () => {
-    setHoveredDay(null);
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    hoverTimeoutRef.current = setTimeout(() => {
+      setHoveredDay(null);
+    }, 70);
   };
 
   const handleDayClick = (dateStr) => {
     setSelectedDate(dateStr);
-    window.scrollTo({
-      top: window.scrollY + 280,
-      behavior: 'smooth'
-    });
+    setTimeout(() => {
+      if (drillDownRef.current) {
+        drillDownRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }, 60);
   };
 
   const handleNavigateDay = (delta) => {
@@ -253,35 +348,113 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
 
   // Day currently shown in spotlight (hovered day or selected day or today)
   const activeSpotlight = useMemo(() => {
-    if (hoveredDay) return hoveredDay;
-    if (selectedDate) {
-      const match = safeData1.find(d => d.date === selectedDate);
-      const parts = selectedDate.split('-');
-      const mIdx = parts.length > 1 ? Number(parts[1]) - 1 : 0;
-      return {
-        date: selectedDate,
-        count: match ? match.count : 0,
-        level: match ? match.level : 0,
-        activeUsers: match ? match.activeUsers : 0,
-        sessionCount: match ? match.sessionCount : 0,
-        monthName: MONTH_NAMES[mIdx],
-      };
+    const targetDate = hoveredDay?.date || selectedDate || (safeData1[safeData1.length - 1]?.date);
+    if (!targetDate) return null;
+
+    const match1 = safeData1.find(d => d.date === targetDate);
+    const match2 = isComparing ? safeData2.find(d => d.date === targetDate) : null;
+    const parts = targetDate.split('-');
+    const mIdx = parts.length > 1 ? Number(parts[1]) - 1 : 0;
+
+    return {
+      date: targetDate,
+      monthName: MONTH_NAMES[mIdx],
+      user1: {
+        name: getName(activeUser1),
+        count: match1 ? match1.count : 0,
+        level: match1 ? match1.level : 0,
+        activeUsers: match1 ? match1.activeUsers : 0,
+        sessionCount: match1 ? match1.sessionCount : 0,
+      },
+      user2: isComparing ? {
+        name: getName(selectedUser2),
+        count: match2 ? match2.count : 0,
+        level: match2 ? match2.level : 0,
+        activeUsers: match2 ? match2.activeUsers : 0,
+        sessionCount: match2 ? match2.sessionCount : 0,
+      } : null,
+      hoveredTarget: hoveredDay?.targetLabel || null,
+    };
+  }, [hoveredDay, selectedDate, safeData1, safeData2, isComparing, activeUser1, selectedUser2]);
+
+  // Combined matrix users for day drilldown, sorted from most active to least active
+  const combinedMatrixUsers = useMemo(() => {
+    if (!isComparing) {
+      return [...(dayStats1?.users || [])].sort((a, b) => b.totalMinutes - a.totalMinutes);
     }
-    const today = safeData1[safeData1.length - 1];
-    if (today) {
-      const parts = today.date.split('-');
-      const mIdx = parts.length > 1 ? Number(parts[1]) - 1 : 0;
-      return {
-        date: today.date,
-        count: today.count,
-        level: today.level,
-        activeUsers: today.activeUsers,
-        sessionCount: today.sessionCount,
-        monthName: MONTH_NAMES[mIdx],
-      };
+    if (activeUser1 === 'global') {
+      return [...(dayStats1?.users || [])].sort((a, b) => b.totalMinutes - a.totalMinutes);
     }
-    return null;
-  }, [hoveredDay, selectedDate, safeData1]);
+    if (selectedUser2 === 'global') {
+      return [...(dayStats2?.users || [])].sort((a, b) => b.totalMinutes - a.totalMinutes);
+    }
+
+    // Player vs Player comparison
+    const list = [];
+    const seen = new Set();
+    (dayStats1?.users || []).forEach(u => {
+      seen.add(u.id);
+      list.push(u);
+    });
+    if (!seen.has(Number(activeUser1)) && activeUser1 !== 'global') {
+      list.push({
+        id: Number(activeUser1),
+        name: getName(activeUser1),
+        totalMinutes: 0,
+        hours: Array(24).fill(0),
+      });
+      seen.add(Number(activeUser1));
+    }
+    (dayStats2?.users || []).forEach(u => {
+      if (!seen.has(u.id)) {
+        seen.add(u.id);
+        list.push(u);
+      }
+    });
+    if (!seen.has(Number(selectedUser2)) && selectedUser2 !== 'global' && selectedUser2 !== 'none') {
+      list.push({
+        id: Number(selectedUser2),
+        name: getName(selectedUser2),
+        totalMinutes: 0,
+        hours: Array(24).fill(0),
+      });
+      seen.add(Number(selectedUser2));
+    }
+    return list.sort((a, b) => b.totalMinutes - a.totalMinutes);
+  }, [isComparing, activeUser1, selectedUser2, dayStats1, dayStats2]);
+
+  // Combined active users for hovered hour
+  const hoveredHourUsers = useMemo(() => {
+    if (hoveredHour === null) return [];
+    const u1 = dayStats1?.hourly?.[hoveredHour]?.activeUsers || [];
+    const u2 = isComparing ? (dayStats2?.hourly?.[hoveredHour]?.activeUsers || []) : [];
+    const map = new Map();
+    [...u1, ...u2].forEach(u => {
+      if (!map.has(u.id)) map.set(u.id, u);
+    });
+    return Array.from(map.values());
+  }, [hoveredHour, dayStats1, dayStats2, isComparing]);
+
+  // Average minutes per player across recorded matrix players for that date
+  const matrixAverageMinutes = useMemo(() => {
+    if (!combinedMatrixUsers || combinedMatrixUsers.length === 0) return 0;
+    const sum = combinedMatrixUsers.reduce((acc, u) => acc + (u.totalMinutes || 0), 0);
+    return combinedMatrixUsers.length > 0 ? sum / combinedMatrixUsers.length : 0;
+  }, [combinedMatrixUsers]);
+
+  const formatRatioToAverage = (mins) => {
+    if (!matrixAverageMinutes || matrixAverageMinutes <= 0) {
+      return mins > 0 ? '(1.0x avg)' : '(0.0x avg)';
+    }
+    const ratio = (mins / matrixAverageMinutes).toFixed(1);
+    return `(${ratio}x avg)`;
+  };
+
+  const isDayLoading = isDayLoading1 || (isComparing && isDayLoading2);
+  const hasDayData = Boolean(dayStats1 || (isComparing && dayStats2));
+
+  const tooltipMatch1 = hoveredDay ? safeData1.find(d => d.date === hoveredDay.date) : null;
+  const tooltipMatch2 = hoveredDay && isComparing ? safeData2.find(d => d.date === hoveredDay.date) : null;
 
   return (
     <div className={`${adminStyles.editorSection} ${adminStyles.characterCard}`} style={{ marginBottom: '24px' }}>
@@ -376,15 +549,28 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
               Monthly Activity Breakdown
             </span>
             <span style={{ fontSize: '0.76rem' }}>
-              Busiest Month: <strong style={{ color: 'var(--text-primary)' }}>{monthlyStats.busiest.name} ({formatHoursMinutes(monthlyStats.busiest.totalMinutes)})</strong>
-              {', '}Total: <strong style={{ color: 'var(--accent-purple)' }}>{formatHoursMinutes(monthlyStats.annualTotal)}</strong>
+              {!isComparing ? (
+                <>
+                  Busiest Month: <strong style={{ color: 'var(--text-primary)' }}>{monthlyStats1.busiest.name} ({formatHoursMinutes(monthlyStats1.busiest.totalMinutes)})</strong>
+                  {', '}Total: <strong style={{ color: 'var(--accent-purple)' }}>{formatHoursMinutes(monthlyStats1.annualTotal)}</strong>
+                </>
+              ) : (
+                <>
+                  {getName(activeUser1)}: <strong style={{ color: currentTheme.dot }}>{formatHoursMinutes(monthlyStats1.annualTotal)}</strong>
+                  {' vs '}
+                  {getName(selectedUser2)}: <strong style={{ color: 'var(--text-primary)' }}>{formatHoursMinutes(monthlyStats2?.annualTotal || 0)}</strong>
+                </>
+              )}
             </span>
           </div>
 
           <div className={styles.monthScrollTrack}>
-            {monthlyStats.months.map(m => {
+            {monthlyStats1.months.map(m => {
               const isSelected = selectedMonth === m.index;
-              const isBusiest = monthlyStats.busiest.index === m.index && m.totalMinutes > 0;
+              const isBusiest = monthlyStats1.busiest.index === m.index && m.totalMinutes > 0;
+              const compMinutes = monthlyStats2?.months?.[m.index]?.totalMinutes || 0;
+              const compDays = monthlyStats2?.months?.[m.index]?.activeDays || 0;
+
               return (
                 <div
                   key={m.index}
@@ -400,8 +586,30 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
                       </span>
                     )}
                   </div>
-                  <span className={styles.monthMinutes}>{formatHoursMinutes(m.totalMinutes)}</span>
-                  <span className={styles.monthDays}>{m.activeDays} active day{m.activeDays === 1 ? '' : 's'}</span>
+
+                  {!isComparing ? (
+                    <>
+                      <span className={styles.monthMinutes}>{formatDurationDHM(m.totalMinutes)}</span>
+                      <span className={styles.monthAvg}>
+                        AVG: {formatDurationDHM(m.activeDays > 0 ? Math.round(m.totalMinutes / m.activeDays) : 0)}
+                      </span>
+                      <span className={styles.monthDays}>{m.activeDays} active day{m.activeDays === 1 ? '' : 's'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className={styles.monthMinutes} style={{ fontSize: '0.78rem' }}>{formatDurationDHM(m.totalMinutes)}</span>
+                      <span className={styles.monthAvg}>
+                        AVG: {formatDurationDHM(m.activeDays > 0 ? Math.round(m.totalMinutes / m.activeDays) : 0)}
+                      </span>
+                      <span style={{ fontSize: '0.66rem', color: 'var(--text-secondary)' }}>
+                        vs {formatDurationDHM(compMinutes)}
+                      </span>
+                      <span className={styles.monthAvg} style={{ fontSize: '0.66rem' }}>
+                        AVG: {formatDurationDHM(compDays > 0 ? Math.round(compMinutes / compDays) : 0)}
+                      </span>
+                      <span className={styles.monthDays}>{m.activeDays} vs {compDays} days</span>
+                    </>
+                  )}
                 </div>
               );
             })}
@@ -445,8 +653,12 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
                     const isFilteredMonth = selectedMonth !== null && mIdx === selectedMonth;
 
                     return React.cloneElement(block, {
-                      onClick: () => handleDayClick(activity.date),
-                      onMouseEnter: (e) => handleDayHover(e, activity),
+                      onClick: (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleDayClick(activity.date);
+                      },
+                      onMouseEnter: (e) => handleDayHover(e, activity, getName(activeUser1)),
                       onMouseLeave: handleDayLeave,
                       style: {
                         ...block.props.style,
@@ -491,6 +703,29 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
                       dark: currentTheme.levels,
                     }}
                     colorScheme="dark"
+                    renderBlock={(block, activity) => {
+                      const isSelected = selectedDate === activity.date;
+                      const parts = activity.date.split('-');
+                      const mIdx = parts.length > 1 ? Number(parts[1]) - 1 : -1;
+                      const isFilteredMonth = selectedMonth !== null && mIdx === selectedMonth;
+
+                      return React.cloneElement(block, {
+                        onClick: (e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleDayClick(activity.date);
+                        },
+                        onMouseEnter: (e) => handleDayHover(e, activity, getName(selectedUser2)),
+                        onMouseLeave: handleDayLeave,
+                        style: {
+                          ...block.props.style,
+                          cursor: 'pointer',
+                          outline: isSelected ? '2px solid #ffffff' : (isFilteredMonth ? '1.5px solid var(--accent-purple)' : 'none'),
+                          outlineOffset: '1px',
+                          opacity: selectedMonth !== null && mIdx !== selectedMonth ? 0.35 : 1,
+                        },
+                      });
+                    }}
                   />
                 </div>
               )}
@@ -529,24 +764,55 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
               <div className={styles.spotlightMeta}>
                 <span className={styles.spotlightTitle}>{formatDateDisplay(activeSpotlight.date)}</span>
                 <span className={styles.spotlightSubtitle}>
-                  Month: {activeSpotlight.monthName}, Intensity: Level {activeSpotlight.level} of 5
+                  Month: {activeSpotlight.monthName}
+                  {!isComparing && `, Intensity: Level ${activeSpotlight.user1.level} of 5`}
+                  {isComparing && `, Comparing ${activeSpotlight.user1.name} vs ${activeSpotlight.user2?.name}`}
                 </span>
               </div>
             </div>
 
             <div className={styles.spotlightRight}>
-              <div className={styles.spotlightStatItem}>
-                <span className={styles.spotlightStatValue}>{formatHoursMinutes(activeSpotlight.count)}</span>
-                <span className={styles.spotlightStatLabel}>Active Time</span>
-              </div>
-              <div className={styles.spotlightStatItem}>
-                <span className={styles.spotlightStatValue}>{activeSpotlight.activeUsers}</span>
-                <span className={styles.spotlightStatLabel}>Active Players</span>
-              </div>
-              <div className={styles.spotlightStatItem}>
-                <span className={styles.spotlightStatValue}>{activeSpotlight.sessionCount}</span>
-                <span className={styles.spotlightStatLabel}>Sessions</span>
-              </div>
+              {!isComparing ? (
+                <>
+                  <div className={styles.spotlightStatItem}>
+                    <span className={styles.spotlightStatValue}>{formatHoursMinutes(activeSpotlight.user1.count)}</span>
+                    <span className={styles.spotlightStatLabel}>Active Time</span>
+                  </div>
+                  <div className={styles.spotlightStatItem}>
+                    <span className={styles.spotlightStatValue}>{activeSpotlight.user1.activeUsers}</span>
+                    <span className={styles.spotlightStatLabel}>Active Players</span>
+                  </div>
+                  <div className={styles.spotlightStatItem}>
+                    <span className={styles.spotlightStatValue}>{activeSpotlight.user1.sessionCount}</span>
+                    <span className={styles.spotlightStatLabel}>Sessions</span>
+                  </div>
+                </>
+              ) : (
+                <div className={styles.dualSpotlightGrid}>
+                  <div className={styles.spotlightUserBlock}>
+                    <span className={styles.spotlightUserBlockTitle}>{activeSpotlight.user1.name}</span>
+                    <span className={styles.spotlightStatValue} style={{ color: currentTheme.dot }}>
+                      {formatHoursMinutes(activeSpotlight.user1.count)}
+                    </span>
+                    <span className={styles.spotlightSubtitle}>
+                      Level {activeSpotlight.user1.level} of 5, {activeSpotlight.user1.sessionCount} sessions
+                    </span>
+                  </div>
+
+                  <span className={styles.compareVsBadge}>VS</span>
+
+                  <div className={styles.spotlightUserBlock}>
+                    <span className={styles.spotlightUserBlockTitle}>{activeSpotlight.user2?.name}</span>
+                    <span className={styles.spotlightStatValue}>
+                      {formatHoursMinutes(activeSpotlight.user2?.count || 0)}
+                    </span>
+                    <span className={styles.spotlightSubtitle}>
+                      Level {activeSpotlight.user2?.level || 0} of 5, {activeSpotlight.user2?.sessionCount || 0} sessions
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {selectedDate !== activeSpotlight.date && (
                 <button
                   type="button"
@@ -554,7 +820,7 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
                   onClick={() => handleDayClick(activeSpotlight.date)}
                 >
                   <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>insights</span>
-                  Inspect 24:00 Heatmap
+                  {isComparing ? 'Inspect 24:00 Comparison' : 'Inspect 24:00 Heatmap'}
                 </button>
               )}
             </div>
@@ -563,7 +829,7 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
 
         {/* 24-Hour Daily Drill-Down Heatmap Section */}
         {selectedDate && (
-          <div className={styles.drillDownContainer}>
+          <div ref={drillDownRef} className={styles.drillDownContainer}>
             <div className={styles.drillDownHeader}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                 <span className="material-symbols-outlined" style={{ fontSize: '26px', color: currentTheme.dot }}>
@@ -571,7 +837,7 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
                 </span>
                 <div>
                   <h4 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-primary)', fontWeight: 700 }}>
-                    Day Activity Heatmap: {formatDateDisplay(selectedDate)}
+                    {isComparing ? 'Day Activity Comparison' : 'Day Activity Heatmap'}: {formatDateDisplay(selectedDate)}
                   </h4>
                   <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                     24:00 hourly presence breakdown and Kindred matrix
@@ -612,71 +878,175 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
             {/* Quick Metrics for Selected Day */}
             {isDayLoading ? (
               <div style={{ color: 'var(--text-secondary)', padding: '20px 0' }}>Loading day telemetry...</div>
-            ) : dayStats ? (
+            ) : hasDayData ? (
               <>
-                <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', padding: '6px 0' }}>
-                  <div>
-                    <span className={styles.spotlightStatLabel}>Total Day Duration</span>
-                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: currentTheme.dot }}>
-                      {formatHoursMinutes(dayStats.totalMinutes)}
+                {!isComparing ? (
+                  <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', padding: '6px 0' }}>
+                    <div>
+                      <span className={styles.spotlightStatLabel}>Total Day Duration</span>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 800, color: currentTheme.dot }}>
+                        {formatHoursMinutes(dayStats1?.totalMinutes || 0)}
+                      </div>
+                    </div>
+                    <div>
+                      <span className={styles.spotlightStatLabel}>Active Players</span>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                        {dayStats1?.activeUserCount || 0} online
+                      </div>
+                    </div>
+                    <div>
+                      <span className={styles.spotlightStatLabel}>Total Sessions</span>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                        {dayStats1?.totalSessions || 0} sessions
+                      </div>
                     </div>
                   </div>
-                  <div>
-                    <span className={styles.spotlightStatLabel}>Active Players</span>
-                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-                      {dayStats.activeUserCount} online
+                ) : (
+                  <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', padding: '6px 0', alignItems: 'center' }}>
+                    <div style={{ padding: '10px 16px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: 'var(--radius-sm)' }}>
+                      <span className={styles.spotlightStatLabel}>{getName(activeUser1)}</span>
+                      <div style={{ fontSize: '1.2rem', fontWeight: 800, color: currentTheme.dot }}>
+                        {formatHoursMinutes(dayStats1?.totalMinutes || 0)}
+                      </div>
+                      <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
+                        {dayStats1?.totalSessions || 0} sessions{activeUser1 === 'global' ? `, ${dayStats1?.activeUserCount || 0} players` : ''}
+                      </div>
+                    </div>
+
+                    <span className={styles.compareVsBadge}>VS</span>
+
+                    <div style={{ padding: '10px 16px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: 'var(--radius-sm)' }}>
+                      <span className={styles.spotlightStatLabel}>{getName(selectedUser2)}</span>
+                      <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                        {formatHoursMinutes(dayStats2?.totalMinutes || 0)}
+                      </div>
+                      <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
+                        {dayStats2?.totalSessions || 0} sessions{selectedUser2 === 'global' ? `, ${dayStats2?.activeUserCount || 0} players` : ''}
+                      </div>
                     </div>
                   </div>
-                  <div>
-                    <span className={styles.spotlightStatLabel}>Total Sessions</span>
-                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-                      {dayStats.totalSessions} sessions
-                    </div>
-                  </div>
-                </div>
+                )}
 
                 {/* 24-Hour Timeline Grid Heatmap */}
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                      24:00 Hourly Heatmap (00:00 to 23:00)
+                      {isComparing ? '24:00 Hourly Heatmaps Comparison (00:00 to 23:00)' : '24:00 Hourly Heatmap (00:00 to 23:00)'}
                     </span>
                     <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
                       Hover an hour to inspect active Kindred
                     </span>
                   </div>
 
-                  <div className={styles.hourlyGrid}>
-                    {dayStats.hourly.map(slot => {
-                      const color = currentTheme.levels[slot.level] || currentTheme.levels[0];
-                      const isSlotHovered = hoveredHour === slot.hour;
-                      return (
-                        <div
-                          key={slot.hour}
-                          className={styles.hourSlot}
-                          onMouseEnter={() => setHoveredHour(slot.hour)}
-                          onMouseLeave={() => setHoveredHour(null)}
-                        >
+                  {!isComparing ? (
+                    <div className={styles.hourlyGrid}>
+                      {(dayStats1?.hourly || []).map(slot => {
+                        const color = currentTheme.levels[slot.level] || currentTheme.levels[0];
+                        const isSlotHovered = hoveredHour === slot.hour;
+                        return (
                           <div
-                            className={`${styles.hourBlock} ${isSlotHovered ? styles.hourBlockActive : ''}`}
-                            style={{
-                              background: color,
-                              boxShadow: slot.level > 2 ? `0 0 10px ${color}` : 'none',
-                            }}
+                            key={slot.hour}
+                            className={styles.hourSlot}
+                            onMouseEnter={() => setHoveredHour(slot.hour)}
+                            onMouseLeave={() => setHoveredHour(null)}
                           >
-                            {slot.minutes > 0 && (
-                              <span className={styles.hourMinBadge}>{slot.minutes}m</span>
-                            )}
+                            <div
+                              className={`${styles.hourBlock} ${isSlotHovered ? styles.hourBlockActive : ''}`}
+                              style={{
+                                background: color,
+                                boxShadow: slot.level > 2 ? `0 0 10px ${color}` : 'none',
+                              }}
+                            >
+                              {slot.minutes > 0 && (
+                                <span className={styles.hourMinBadge}>{slot.minutes}m</span>
+                              )}
+                            </div>
+                            <span className={styles.hourLabel}>{slot.label}</span>
                           </div>
-                          <span className={styles.hourLabel}>{slot.label}</span>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                      {/* Track 1: Primary View */}
+                      <div className={styles.compareTrack}>
+                        <div className={styles.compareTrackHeader}>
+                          <span>{getName(activeUser1)}</span>
+                          <span style={{ color: currentTheme.dot }}>
+                            {formatHoursMinutes(dayStats1?.totalMinutes || 0)} across {dayStats1?.totalSessions || 0} sessions
+                          </span>
                         </div>
-                      );
-                    })}
-                  </div>
+                        <div className={styles.hourlyGrid}>
+                          {(dayStats1?.hourly || []).map(slot => {
+                            const color = currentTheme.levels[slot.level] || currentTheme.levels[0];
+                            const isSlotHovered = hoveredHour === slot.hour;
+                            return (
+                              <div
+                                key={slot.hour}
+                                className={styles.hourSlot}
+                                onMouseEnter={() => setHoveredHour(slot.hour)}
+                                onMouseLeave={() => setHoveredHour(null)}
+                              >
+                                <div
+                                  className={`${styles.hourBlock} ${isSlotHovered ? styles.hourBlockActive : ''}`}
+                                  style={{
+                                    background: color,
+                                    boxShadow: slot.level > 2 ? `0 0 10px ${color}` : 'none',
+                                  }}
+                                >
+                                  {slot.minutes > 0 && (
+                                    <span className={styles.hourMinBadge}>{slot.minutes}m</span>
+                                  )}
+                                </div>
+                                <span className={styles.hourLabel}>{slot.label}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Track 2: Comparison View */}
+                      <div className={styles.compareTrack}>
+                        <div className={styles.compareTrackHeader}>
+                          <span>{getName(selectedUser2)}</span>
+                          <span style={{ color: currentTheme.dot }}>
+                            {formatHoursMinutes(dayStats2?.totalMinutes || 0)} across {dayStats2?.totalSessions || 0} sessions
+                          </span>
+                        </div>
+                        <div className={styles.hourlyGrid}>
+                          {(dayStats2?.hourly || []).map(slot => {
+                            const color = currentTheme.levels[slot.level] || currentTheme.levels[0];
+                            const isSlotHovered = hoveredHour === slot.hour;
+                            return (
+                              <div
+                                key={slot.hour}
+                                className={styles.hourSlot}
+                                onMouseEnter={() => setHoveredHour(slot.hour)}
+                                onMouseLeave={() => setHoveredHour(null)}
+                              >
+                                <div
+                                  className={`${styles.hourBlock} ${isSlotHovered ? styles.hourBlockActive : ''}`}
+                                  style={{
+                                    background: color,
+                                    boxShadow: slot.level > 2 ? `0 0 10px ${color}` : 'none',
+                                  }}
+                                >
+                                  {slot.minutes > 0 && (
+                                    <span className={styles.hourMinBadge}>{slot.minutes}m</span>
+                                  )}
+                                </div>
+                                <span className={styles.hourLabel}>{slot.label}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Hour Hover Inspector */}
-                {hoveredHour !== null && dayStats.hourly[hoveredHour] && (
+                {hoveredHour !== null && (
                   <div style={{
                     padding: '10px 16px',
                     background: 'rgba(255, 255, 255, 0.04)',
@@ -693,17 +1063,25 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
                       <strong style={{ color: 'var(--text-primary)' }}>
                         Time Window: {String(hoveredHour).padStart(2, '0')}:00 to {String(hoveredHour).padStart(2, '0')}:59
                       </strong>
-                      <span style={{ color: 'var(--text-secondary)', marginLeft: '10px' }}>
-                        Logged: <strong>{dayStats.hourly[hoveredHour].minutes} minutes</strong> across {dayStats.hourly[hoveredHour].sessionCount} sessions
-                      </span>
+                      {!isComparing ? (
+                        <span style={{ color: 'var(--text-secondary)', marginLeft: '10px' }}>
+                          Logged: <strong>{dayStats1?.hourly?.[hoveredHour]?.minutes || 0} minutes</strong> across {dayStats1?.hourly?.[hoveredHour]?.sessionCount || 0} sessions
+                        </span>
+                      ) : (
+                        <span style={{ color: 'var(--text-secondary)', marginLeft: '10px' }}>
+                          {getName(activeUser1)}: <strong>{dayStats1?.hourly?.[hoveredHour]?.minutes || 0}m</strong> ({dayStats1?.hourly?.[hoveredHour]?.sessionCount || 0} sessions)
+                          {' vs '}
+                          {getName(selectedUser2)}: <strong>{dayStats2?.hourly?.[hoveredHour]?.minutes || 0}m</strong> ({dayStats2?.hourly?.[hoveredHour]?.sessionCount || 0} sessions)
+                        </span>
+                      )}
                     </div>
 
                     <div>
                       <span style={{ color: 'var(--text-muted)', marginRight: '6px' }}>Active Players:</span>
-                      {dayStats.hourly[hoveredHour].activeUsers.length === 0 ? (
+                      {hoveredHourUsers.length === 0 ? (
                         <span style={{ color: 'var(--text-muted)' }}>None</span>
                       ) : (
-                        dayStats.hourly[hoveredHour].activeUsers.map((u, i) => (
+                        hoveredHourUsers.map((u) => (
                           <span
                             key={u.id}
                             style={{
@@ -727,14 +1105,14 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
                 )}
 
                 {/* Player Presence Matrix Heatmap for that day */}
-                {dayStats.users && dayStats.users.length > 0 && (
+                {combinedMatrixUsers.length > 0 && (
                   <div className={styles.userMatrixSection}>
                     <div className={styles.userMatrixHeader}>
                       <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                         Player Presence Matrix (Hourly Breakdown per Kindred)
                       </span>
                       <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-                        {dayStats.users.length} player{dayStats.users.length === 1 ? '' : 's'} recorded on this date
+                        {combinedMatrixUsers.length} player{combinedMatrixUsers.length === 1 ? '' : 's'} recorded, daily average: {formatHoursMinutes(Math.round(matrixAverageMinutes))}
                       </span>
                     </div>
 
@@ -748,11 +1126,11 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
                                 {String(i).padStart(2, '0')}
                               </th>
                             ))}
-                            <th style={{ fontSize: '0.7rem', color: 'var(--text-muted)', padding: '6px 12px' }}>Total</th>
+                            <th style={{ fontSize: '0.7rem', color: 'var(--text-muted)', padding: '6px 12px', whiteSpace: 'nowrap' }}>Total (vs Avg)</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {dayStats.users.map(u => (
+                          {combinedMatrixUsers.map(u => (
                             <tr key={u.id}>
                               <td className={styles.matrixUserCell}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -781,8 +1159,20 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
                                   </td>
                                 );
                               })}
-                              <td style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-primary)', padding: '6px 12px' }}>
-                                {formatHoursMinutes(u.totalMinutes)}
+                              <td style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-primary)', padding: '6px 12px', whiteSpace: 'nowrap' }}>
+                                <span>{formatHoursMinutes(u.totalMinutes)}</span>
+                                {matrixAverageMinutes > 0 && (
+                                  <span
+                                    style={{
+                                      fontSize: '0.7rem',
+                                      fontWeight: 600,
+                                      color: u.totalMinutes >= matrixAverageMinutes ? currentTheme.dot : 'var(--text-muted)',
+                                      marginLeft: '6px',
+                                    }}
+                                  >
+                                    {formatRatioToAverage(u.totalMinutes)}
+                                  </span>
+                                )}
                               </td>
                             </tr>
                           ))}
@@ -806,8 +1196,9 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
         <div
           className={styles.floatingTooltip}
           style={{
-            left: `${hoveredDay.x}px`,
-            top: `${hoveredDay.y}px`,
+            left: `${Math.max(130, Math.min((typeof window !== 'undefined' ? window.innerWidth : 1200) - 130, hoveredDay.x))}px`,
+            top: `${hoveredDay.y < 160 ? hoveredDay.y + 26 : hoveredDay.y}px`,
+            transform: hoveredDay.y < 160 ? 'translate(-50%, 0)' : 'translate(-50%, -100%)',
           }}
         >
           <div className={styles.tooltipDate}>
@@ -822,37 +1213,67 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
             <span className={styles.tooltipValue}>{hoveredDay.monthName}</span>
           </div>
 
-          <div className={styles.tooltipRow}>
-            <span>Active Logged:</span>
-            <span className={styles.tooltipValue} style={{ color: currentTheme.dot }}>
-              {formatHoursMinutes(hoveredDay.count)} ({hoveredDay.count}m)
-            </span>
-          </div>
+          {!isComparing ? (
+            <>
+              <div className={styles.tooltipRow}>
+                <span>Active Logged:</span>
+                <span className={styles.tooltipValue} style={{ color: currentTheme.dot }}>
+                  {formatHoursMinutes(hoveredDay.count)} ({hoveredDay.count}m)
+                </span>
+              </div>
 
-          <div className={styles.tooltipRow}>
-            <span>Intensity Tier:</span>
-            <span className={styles.tooltipValue}>
-              Level {hoveredDay.level} of 5
-            </span>
-          </div>
+              <div className={styles.tooltipRow}>
+                <span>Intensity Tier:</span>
+                <span className={styles.tooltipValue}>
+                  Level {hoveredDay.level} of 5
+                </span>
+              </div>
 
-          <div className={styles.tooltipRow}>
-            <span>Players Online:</span>
-            <span className={styles.tooltipValue}>{hoveredDay.activeUsers}</span>
-          </div>
+              <div className={styles.tooltipRow}>
+                <span>Players Online:</span>
+                <span className={styles.tooltipValue}>{hoveredDay.activeUsers}</span>
+              </div>
 
-          <div className={styles.tooltipRow}>
-            <span>Sessions:</span>
-            <span className={styles.tooltipValue}>{hoveredDay.sessionCount}</span>
-          </div>
+              <div className={styles.tooltipRow}>
+                <span>Sessions:</span>
+                <span className={styles.tooltipValue}>{hoveredDay.sessionCount}</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className={styles.tooltipRow}>
+                <span style={{ fontWeight: 600 }}>{getName(activeUser1)}:</span>
+                <span className={styles.tooltipValue} style={{ color: currentTheme.dot }}>
+                  {formatHoursMinutes(tooltipMatch1?.count || 0)} (Level {tooltipMatch1?.level || 0} of 5)
+                </span>
+              </div>
+
+              <div className={styles.tooltipRow}>
+                <span style={{ fontWeight: 600 }}>{getName(selectedUser2)}:</span>
+                <span className={styles.tooltipValue} style={{ color: 'var(--text-secondary)' }}>
+                  {formatHoursMinutes(tooltipMatch2?.count || 0)} (Level {tooltipMatch2?.level || 0} of 5)
+                </span>
+              </div>
+
+              {(activeUser1 === 'global' || selectedUser2 === 'global') && (
+                <div className={styles.tooltipRow}>
+                  <span>Global Active:</span>
+                  <span className={styles.tooltipValue}>
+                    {Math.max(tooltipMatch1?.activeUsers || 0, tooltipMatch2?.activeUsers || 0)} players, {Math.max(tooltipMatch1?.sessionCount || 0, tooltipMatch2?.sessionCount || 0)} sessions
+                  </span>
+                </div>
+              )}
+            </>
+          )}
 
           <div className={styles.tooltipHint}>
             <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>touch_app</span>
-            Click day to open 24:00 hourly heatmap
+            {isComparing ? 'Click day to inspect 24:00 hourly comparison' : 'Click day to open 24:00 hourly heatmap'}
           </div>
         </div>
       )}
     </div>
   );
 }
+
 
