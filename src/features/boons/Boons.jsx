@@ -43,10 +43,18 @@ export default function Boons() {
   const [editTarget, setEditTarget]   = useState(null);
   
   // Filters & Search
-  const [sortMode, setSortMode]       = useState('date');
-  const [filterActive, setFilterActive] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [sortMode, setSortMode]             = useState('date');
+  const [filterActive, setFilterActive]     = useState(false);
+  const [showPaid, setShowPaid]             = useState(true);
+  const [selectedEntity, setSelectedEntity] = useState('');
+  const [searchQuery, setSearchQuery]       = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // Person Stats Search with MiniSearch
+  const [personSearchQuery, setPersonSearchQuery] = useState('');
+  const [showPersonSuggestions, setShowPersonSuggestions] = useState(false);
+  const [inspectedPerson, setInspectedPerson] = useState(null);
+  const personSearchRef = useRef(null);
   
   const searchRef = useRef(null);
   const [toolbarVisible, setToolbarVisible] = useState(false);
@@ -106,6 +114,9 @@ export default function Boons() {
       if (searchRef.current && !searchRef.current.contains(event.target)) {
         setShowSuggestions(false);
       }
+      if (personSearchRef.current && !personSearchRef.current.contains(event.target)) {
+        setShowPersonSuggestions(false);
+      }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -124,8 +135,6 @@ export default function Boons() {
         targetId = byName.id;
       }
     } else {
-      // Even if we have ID, we need to know the type to fetch the correct avatar endpoint
-      // We can try to guess based on ID if it exists in entities
       const byIdUser = entities.find(e => (e.type === 'user' || e.type === 'player') && String(e.id) === String(id));
       if (byIdUser) type = 'user';
       else {
@@ -133,7 +142,6 @@ export default function Boons() {
         if (byIdNpc) type = 'npc';
       }
       
-      // If we still don't know the type, fallback to name matching
       if (!type) {
          const base = (name || '').split(' (')[0].trim();
          const byName = entities.find(e => (e.name || '').split(' (')[0].trim() === base);
@@ -177,11 +185,253 @@ export default function Boons() {
     return results.map(r => mapped[r.id].name).slice(0, 8);
   }, [searchQuery, uniqueNames]);
 
+  // Helper for normalizing Kindred / NPC names
+  const cleanPersonName = (raw) => (raw || '').split(' (')[0].trim();
+
+  // Full Ledger Entity List with calculated statistics per person
+  const allPersonStats = useMemo(() => {
+    const map = new Map();
+
+    // 1. Seed with known entities (Players and NPCs)
+    entities.forEach((ent, idx) => {
+      const clean = cleanPersonName(ent.name);
+      if (!clean) return;
+      const clanMatch = ent.name.match(/\(([^)]+)\)/);
+      const clanOrRole = clanMatch ? clanMatch[1] : (ent.type === 'npc' ? 'NPC' : 'Kindred');
+      
+      map.set(clean.toLowerCase(), {
+        id: `ent_${ent.id || idx}_${ent.type}`,
+        key: clean.toLowerCase(),
+        name: ent.name,
+        cleanName: clean,
+        type: ent.type === 'npc' ? 'NPC' : 'Player',
+        clan: clanOrRole,
+        entityId: ent.id,
+        debtsOwed: 0,
+        debtsBreakdown: { life: 0, major: 0, minor: 0, trivial: 0 },
+        creditsHeld: 0,
+        creditsBreakdown: { life: 0, major: 0, minor: 0, trivial: 0 },
+        settledCount: 0,
+        weightedDebt: 0,
+        weightedCredit: 0
+      });
+    });
+
+    // 2. Add any names from boons not already seeded
+    uniqueNames.forEach((rawName, idx) => {
+      const clean = cleanPersonName(rawName);
+      if (!clean) return;
+      const key = clean.toLowerCase();
+      if (!map.has(key)) {
+        map.set(key, {
+          id: `raw_${idx}`,
+          key,
+          name: rawName,
+          cleanName: clean,
+          type: 'Kindred',
+          clan: 'Kindred',
+          entityId: null,
+          debtsOwed: 0,
+          debtsBreakdown: { life: 0, major: 0, minor: 0, trivial: 0 },
+          creditsHeld: 0,
+          creditsBreakdown: { life: 0, major: 0, minor: 0, trivial: 0 },
+          settledCount: 0,
+          weightedDebt: 0,
+          weightedCredit: 0
+        });
+      }
+    });
+
+    // 3. Aggregate boons debts and credits
+    const levelWeight = { life: 4, major: 3, minor: 2, trivial: 1 };
+    boons.forEach(b => {
+      const fromClean = cleanPersonName(b.from_name);
+      const toClean   = cleanPersonName(b.to_name);
+      const lvl = String(b.level || 'trivial').toLowerCase();
+      const statusStr = String(b.status || 'owed').toLowerCase();
+      const isSettled = statusStr === 'paid' || statusStr === 'excused';
+      const weight = levelWeight[lvl] || 1;
+
+      // Debtor
+      if (fromClean) {
+        const key = fromClean.toLowerCase();
+        let p = map.get(key);
+        if (!p) {
+          p = {
+            id: `from_${key}`,
+            key,
+            name: b.from_name,
+            cleanName: fromClean,
+            type: 'Kindred',
+            clan: 'Kindred',
+            entityId: b.from_id || null,
+            debtsOwed: 0,
+            debtsBreakdown: { life: 0, major: 0, minor: 0, trivial: 0 },
+            creditsHeld: 0,
+            creditsBreakdown: { life: 0, major: 0, minor: 0, trivial: 0 },
+            settledCount: 0,
+            weightedDebt: 0,
+            weightedCredit: 0
+          };
+          map.set(key, p);
+        }
+        if (isSettled) {
+          p.settledCount += 1;
+        } else {
+          p.debtsOwed += 1;
+          p.weightedDebt += weight;
+          if (p.debtsBreakdown[lvl] !== undefined) p.debtsBreakdown[lvl] += 1;
+        }
+      }
+
+      // Creditor
+      if (toClean) {
+        const key = toClean.toLowerCase();
+        let p = map.get(key);
+        if (!p) {
+          p = {
+            id: `to_${key}`,
+            key,
+            name: b.to_name,
+            cleanName: toClean,
+            type: 'Kindred',
+            clan: 'Kindred',
+            entityId: b.to_id || null,
+            debtsOwed: 0,
+            debtsBreakdown: { life: 0, major: 0, minor: 0, trivial: 0 },
+            creditsHeld: 0,
+            creditsBreakdown: { life: 0, major: 0, minor: 0, trivial: 0 },
+            settledCount: 0,
+            weightedDebt: 0,
+            weightedCredit: 0
+          };
+          map.set(key, p);
+        }
+        if (isSettled) {
+          p.settledCount += 1;
+        } else {
+          p.creditsHeld += 1;
+          p.weightedCredit += weight;
+          if (p.creditsBreakdown[lvl] !== undefined) p.creditsBreakdown[lvl] += 1;
+        }
+      }
+    });
+
+    return Array.from(map.values()).map(p => ({
+      ...p,
+      netBalance: p.creditsHeld - p.debtsOwed,
+      totalActivity: p.debtsOwed + p.creditsHeld + p.settledCount
+    }));
+  }, [entities, uniqueNames, boons]);
+
+  // MiniSearch instance for Person Stats Search
+  const personMiniSearch = useMemo(() => {
+    const ms = new MiniSearch({
+      fields: ['cleanName', 'name', 'clan', 'type'],
+      storeFields: ['id', 'key', 'cleanName', 'name', 'clan', 'type'],
+      searchOptions: {
+        fuzzy: 0.2,
+        prefix: true,
+        combineWith: 'AND'
+      }
+    });
+    ms.addAll(allPersonStats);
+    return ms;
+  }, [allPersonStats]);
+
+  // Suggestions for Person Stats search
+  const filteredPersonStats = useMemo(() => {
+    if (!personSearchQuery) return [];
+    const q = personSearchQuery.trim();
+    const results = personMiniSearch.search(q);
+    const idSet = new Set(results.map(r => r.id));
+    return allPersonStats.filter(p => idSet.has(p.id)).slice(0, 8);
+  }, [personSearchQuery, personMiniSearch, allPersonStats]);
+
+  // Format level breakdown helper
+  const formatBreakdown = (breakdown) => {
+    const parts = [];
+    if (breakdown.life > 0) parts.push(`${breakdown.life} Life`);
+    if (breakdown.major > 0) parts.push(`${breakdown.major} Major`);
+    if (breakdown.minor > 0) parts.push(`${breakdown.minor} Minor`);
+    if (breakdown.trivial > 0) parts.push(`${breakdown.trivial} Trivial`);
+    return parts.length > 0 ? parts.join(', ') : 'None';
+  };
+
+  // Top Debt Mini Statuses calculations
+  const topDebtor = useMemo(() => {
+    const activeDebtors = allPersonStats.filter(p => p.debtsOwed > 0);
+    if (!activeDebtors.length) return null;
+    activeDebtors.sort((a, b) => b.weightedDebt - a.weightedDebt || b.debtsOwed - a.debtsOwed);
+    return activeDebtors[0];
+  }, [allPersonStats]);
+
+  const topCreditor = useMemo(() => {
+    const activeCreditors = allPersonStats.filter(p => p.creditsHeld > 0);
+    if (!activeCreditors.length) return null;
+    activeCreditors.sort((a, b) => b.weightedCredit - a.weightedCredit || b.creditsHeld - a.creditsHeld);
+    return activeCreditors[0];
+  }, [allPersonStats]);
+
+  const myDebtStats = useMemo(() => {
+    const myNames = [];
+    if (user?.display_name) myNames.push(cleanPersonName(user.display_name).toLowerCase());
+    if (myCharacter?.name) myNames.push(cleanPersonName(myCharacter.name).toLowerCase());
+    
+    const matched = allPersonStats.find(p => myNames.includes(p.cleanName.toLowerCase()));
+    if (!matched) {
+      return { debtsOwed: 0, creditsHeld: 0, breakdown: 'Debt Free' };
+    }
+    return {
+      debtsOwed: matched.debtsOwed,
+      creditsHeld: matched.creditsHeld,
+      breakdown: formatBreakdown(matched.debtsBreakdown)
+    };
+  }, [user, myCharacter, allPersonStats]);
+
+  // Entity list for dropdown selector
+  const entitySelectGroups = useMemo(() => {
+    const players = [];
+    const npcs = [];
+    const others = [];
+
+    allPersonStats.forEach(p => {
+      if (p.type === 'Player') players.push(p);
+      else if (p.type === 'NPC') npcs.push(p);
+      else others.push(p);
+    });
+
+    players.sort((a, b) => a.cleanName.localeCompare(b.cleanName));
+    npcs.sort((a, b) => a.cleanName.localeCompare(b.cleanName));
+    others.sort((a, b) => a.cleanName.localeCompare(b.cleanName));
+
+    return { players, npcs, others };
+  }, [allPersonStats]);
+
+  // Processed Boons with all filters applied
   const processedBoons = useMemo(() => {
     let result = [...boons];
     
-    // Ownership Filter
-    if (filterActive && user) {
+    // 1. Paid Boons Toggle (defaults to true)
+    if (!showPaid) {
+      result = result.filter(b => {
+        const s = String(b.status || '').toLowerCase();
+        return s !== 'paid' && s !== 'excused';
+      });
+    }
+
+    // 2. Specific Player or NPC Selection Filter
+    if (selectedEntity) {
+      const targetLower = cleanPersonName(selectedEntity).toLowerCase();
+      result = result.filter(b => {
+        const fromClean = cleanPersonName(b.from_name).toLowerCase();
+        const toClean   = cleanPersonName(b.to_name).toLowerCase();
+        return fromClean === targetLower || toClean === targetLower;
+      });
+    }
+
+    // 3. Ownership Filter (All vs My Boons / NPC records)
+    if (filterActive && user && !selectedEntity) {
       if (isAdmin) {
         const npcNames = entities.filter(e => e.type === 'npc')
           .map(e => e.name.toLowerCase().replace(' (npc)', '').trim());
@@ -192,17 +442,17 @@ export default function Boons() {
         });
       } else {
         const myNames = [];
-        if (user.display_name)  myNames.push(user.display_name.toLowerCase());
-        if (myCharacter?.name)  myNames.push(myCharacter.name.toLowerCase());
+        if (user.display_name)  myNames.push(cleanPersonName(user.display_name).toLowerCase());
+        if (myCharacter?.name)  myNames.push(cleanPersonName(myCharacter.name).toLowerCase());
         result = result.filter(b => {
-          const from = (b.from_name || '').toLowerCase();
-          const to   = (b.to_name   || '').toLowerCase();
-          return myNames.some(n => from.includes(n) || to.includes(n));
+          const from = cleanPersonName(b.from_name).toLowerCase();
+          const to   = cleanPersonName(b.to_name).toLowerCase();
+          return myNames.some(n => from === n || to === n);
         });
       }
     }
 
-    // Search Query Filter
+    // 4. Text Search Query Filter
     if (searchQuery) {
       const sq = searchQuery.trim();
       const ms = new MiniSearch({ fields: ['from_name', 'to_name', 'description'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
@@ -212,7 +462,7 @@ export default function Boons() {
       result = result.filter(b => idSet.has(b.id));
     }
 
-    // Sorting
+    // 5. Sorting
     const levelRank  = { life: 4, major: 3, minor: 2, trivial: 1 };
     const statusRank = { owed: 1, paid: 2, excused: 3 };
     switch (sortMode) {
@@ -232,7 +482,7 @@ export default function Boons() {
         result.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     }
     return result;
-  }, [boons, sortMode, filterActive, user, myCharacter, isAdmin, entities, searchQuery]);
+  }, [boons, sortMode, showPaid, selectedEntity, filterActive, user, myCharacter, isAdmin, entities, searchQuery]);
 
   const stats = useMemo(() => ({
     total:   processedBoons.length,
@@ -253,6 +503,14 @@ export default function Boons() {
   const filterLabel = isAdmin
     ? (filterActive ? 'All boons' : 'NPC records')
     : (filterActive ? 'All boons' : 'My boons');
+
+  // Select a person to inspect and highlight
+  const inspectPerson = (cleanName) => {
+    const target = allPersonStats.find(p => p.cleanName.toLowerCase() === cleanName.toLowerCase());
+    if (target) {
+      setInspectedPerson(target);
+    }
+  };
 
   // Helper for card styling
   const getBoonColorClasses = (level) => {
@@ -330,20 +588,65 @@ export default function Boons() {
               </div>
             )}
           </div>
-          <div className="flex justify-between items-center gap-2">
-             <button
-                className={`px-3 py-1 rounded-full text-[12px] font-bold whitespace-nowrap gothic-etched-border ${filterActive ? 'bg-primary-container text-on-primary-container' : 'bg-surface-container-lowest text-on-surface-variant'}`}
-                onClick={() => setFilterActive(f => !f)}
-              >
-                {filterLabel}
-              </button>
-              <select className="bg-surface-container-lowest gothic-etched-border rounded px-2 py-1 text-[12px] text-on-surface-variant focus:outline-none" value={sortMode} onChange={e => setSortMode(e.target.value)}>
-                <option value="date">Newest</option>
-                <option value="level">Highest Value</option>
-                <option value="status">Active First</option>
-                <option value="from">Debtor A-Z</option>
-                <option value="to">Creditor A-Z</option>
-              </select>
+
+          {/* Mobile Specific Player or NPC Selector */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider block">Kindred or NPC Filter</label>
+            <select
+              className="w-full bg-surface-container-lowest gothic-etched-border rounded px-3 py-2 text-xs text-on-surface outline-none"
+              value={selectedEntity}
+              onChange={e => setSelectedEntity(e.target.value)}
+            >
+              <option value="">All Kindred and NPCs</option>
+              {entitySelectGroups.players.length > 0 && (
+                <optgroup label="Kindred Players">
+                  {entitySelectGroups.players.map(p => (
+                    <option key={p.id} value={p.cleanName}>{p.cleanName} ({p.clan})</option>
+                  ))}
+                </optgroup>
+              )}
+              {entitySelectGroups.npcs.length > 0 && (
+                <optgroup label="NPCs">
+                  {entitySelectGroups.npcs.map(p => (
+                    <option key={p.id} value={p.cleanName}>{p.cleanName} (NPC)</option>
+                  ))}
+                </optgroup>
+              )}
+              {entitySelectGroups.others.length > 0 && (
+                <optgroup label="Other Registered">
+                  {entitySelectGroups.others.map(p => (
+                    <option key={p.id} value={p.cleanName}>{p.cleanName}</option>
+                  ))}
+                </optgroup>
+              )}
+            </select>
+          </div>
+
+          <div className="flex flex-wrap justify-between items-center gap-2 pt-1">
+            {/* Mobile Paid Boons Toggle */}
+            <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-on-surface">
+              <input
+                type="checkbox"
+                checked={showPaid}
+                onChange={e => setShowPaid(e.target.checked)}
+                className="w-4 h-4 rounded border-outline-variant bg-surface-container-lowest text-primary focus:ring-0 cursor-pointer"
+              />
+              <span>Paid Boons</span>
+            </label>
+
+            <button
+              className={`px-3 py-1 rounded-full text-[12px] font-bold whitespace-nowrap gothic-etched-border ${filterActive ? 'bg-primary-container text-on-primary-container' : 'bg-surface-container-lowest text-on-surface-variant'}`}
+              onClick={() => setFilterActive(f => !f)}
+            >
+              {filterLabel}
+            </button>
+            <select className="bg-surface-container-lowest gothic-etched-border rounded px-2 py-1 text-[12px] text-on-surface-variant focus:outline-none" value={sortMode} onChange={e => setSortMode(e.target.value)}>
+              <option value="date">Newest</option>
+              <option value="level">Highest Value</option>
+              <option value="status">Active First</option>
+              <option value="from">Debtor A to Z</option>
+              <option value="to">Creditor A to Z</option>
+            </select>
           </div>
         </div>
       </div>
@@ -354,7 +657,7 @@ export default function Boons() {
           {error && <div className="bg-error-container text-on-error px-4 py-3 rounded mb-6 text-sm">{error}</div>}
 
           {/* Header Section */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
             <div className="space-y-2">
               <h2 className="font-headline-lg text-[32px] font-bold text-primary tracking-tight">Blood Registry</h2>
               <p className="text-on-surface-variant text-sm md:text-base italic border-l border-primary/30 pl-4">Debts of honour recorded before the gathered Kindred.</p>
@@ -367,69 +670,205 @@ export default function Boons() {
             )}
           </div>
 
-          {/* Stats Bar */}
+          {/* Top Mini Statuses: Most in Debt, Your Debt, Most Owed */}
           {!loading && (
-            <div className="flex gap-4 overflow-x-auto custom-scrollbar py-4 -mx-4 px-4 lg:-mx-12 lg:px-12 mb-6">
-              <div className="flex-shrink-0 min-w-[120px] bg-surface-container p-4 rounded-xl gothic-etched-border">
-                <p className="text-[12px] font-bold text-on-surface-variant uppercase">Total Owed</p>
-                <h3 className="text-headline-md text-[24px] font-bold text-primary">{stats.total}</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              {/* Card 1: Most in Debt */}
+              <div 
+                className="bg-surface-container p-5 rounded-xl gothic-etched-border relative overflow-hidden cursor-pointer hover:border-primary/50 transition-all group"
+                onClick={() => {
+                  if (topDebtor) {
+                    inspectPerson(topDebtor.cleanName);
+                    setSelectedEntity(topDebtor.cleanName);
+                  }
+                }}
+                title="Click to view all records and stats for the greatest debtor"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-bold text-primary uppercase tracking-widest flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[16px]">trending_down</span>
+                    Most in Debt
+                  </span>
+                  <span className="material-symbols-outlined text-[16px] text-on-surface-variant group-hover:text-primary transition-colors">arrow_forward</span>
+                </div>
+                <h4 className="text-headline-md text-[20px] font-bold text-on-surface truncate">
+                  {topDebtor ? topDebtor.cleanName : 'No Active Debts'}
+                </h4>
+                <p className="text-[12px] text-on-surface-variant mt-1">
+                  {topDebtor ? `${topDebtor.debtsOwed} active debts: ${formatBreakdown(topDebtor.debtsBreakdown)}` : 'The ledger is clear'}
+                </p>
               </div>
-              <div className="flex-shrink-0 min-w-[120px] bg-surface-container p-4 rounded-xl gothic-etched-border">
-                <p className="text-[12px] font-bold text-on-surface-variant uppercase">Active</p>
-                <h3 className="text-headline-md text-[24px] font-bold text-tertiary">{stats.active}</h3>
+
+              {/* Card 2: Your Debt */}
+              <div 
+                className="bg-surface-container p-5 rounded-xl gothic-etched-border relative overflow-hidden cursor-pointer hover:border-primary/50 transition-all group"
+                onClick={() => {
+                  if (myCharacter?.name || user?.display_name) {
+                    const myName = cleanPersonName(myCharacter?.name || user?.display_name);
+                    inspectPerson(myName);
+                    setSelectedEntity(myName);
+                  }
+                }}
+                title="Click to view your personal debts and records"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-bold text-secondary uppercase tracking-widest flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[16px]">account_balance_wallet</span>
+                    Your Debt Standing
+                  </span>
+                  <span className="material-symbols-outlined text-[16px] text-on-surface-variant group-hover:text-secondary transition-colors">arrow_forward</span>
+                </div>
+                <h4 className="text-headline-md text-[20px] font-bold text-on-surface truncate">
+                  {myDebtStats.debtsOwed > 0 ? `${myDebtStats.debtsOwed} Active Debts` : 'Debt Free'}
+                </h4>
+                <p className="text-[12px] text-on-surface-variant mt-1">
+                  {myDebtStats.debtsOwed > 0 ? myDebtStats.breakdown : `Held credits: ${myDebtStats.creditsHeld} boons`}
+                </p>
               </div>
-              <div className="flex-shrink-0 min-w-[120px] bg-surface-container p-4 rounded-xl gothic-etched-border">
-                <p className="text-[12px] font-bold text-on-surface-variant uppercase">Major Owed</p>
-                <h3 className="text-headline-md text-[24px] font-bold text-secondary">{stats.major}</h3>
-              </div>
-              <div className="flex-shrink-0 min-w-[120px] bg-surface-container p-4 rounded-xl gothic-etched-border">
-                <p className="text-[12px] font-bold text-on-surface-variant uppercase">Life Boons</p>
-                <h3 className="text-headline-md text-[24px] font-bold text-primary-container">{stats.life}</h3>
+
+              {/* Card 3: Most Owed */}
+              <div 
+                className="bg-surface-container p-5 rounded-xl gothic-etched-border relative overflow-hidden cursor-pointer hover:border-primary/50 transition-all group"
+                onClick={() => {
+                  if (topCreditor) {
+                    inspectPerson(topCreditor.cleanName);
+                    setSelectedEntity(topCreditor.cleanName);
+                  }
+                }}
+                title="Click to view all records and stats for the greatest creditor"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-bold text-tertiary uppercase tracking-widest flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[16px]">military_tech</span>
+                    Most Owed
+                  </span>
+                  <span className="material-symbols-outlined text-[16px] text-on-surface-variant group-hover:text-tertiary transition-colors">arrow_forward</span>
+                </div>
+                <h4 className="text-headline-md text-[20px] font-bold text-on-surface truncate">
+                  {topCreditor ? topCreditor.cleanName : 'No Active Credits'}
+                </h4>
+                <p className="text-[12px] text-on-surface-variant mt-1">
+                  {topCreditor ? `${topCreditor.creditsHeld} boons held: ${formatBreakdown(topCreditor.creditsBreakdown)}` : 'No boons owed'}
+                </p>
               </div>
             </div>
           )}
 
-          {/* Desktop Search & Filter */}
-          <div className="hidden lg:flex flex-col md:flex-row gap-4 mb-8">
-            <div className="relative flex-grow" ref={searchRef}>
-              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
-              <input 
-                className="w-full bg-surface-container-lowest gothic-etched-border focus:border-primary px-12 py-3 text-sm outline-none text-on-surface transition-colors"
-                placeholder="Search Kindred names or circumstances..." 
-                type="text"
-                value={searchQuery}
-                onChange={e => { setSearchQuery(e.target.value); setShowSuggestions(true); }}
-                onFocus={() => setShowSuggestions(true)}
-              />
-              {showSuggestions && filteredNames.length > 0 && (
-                <div className="absolute top-full left-0 right-0 bg-surface-container-high gothic-etched-border rounded shadow-xl mt-1 max-h-64 overflow-y-auto z-50">
-                  {filteredNames.map(name => (
-                    <div key={name} className="px-4 py-3 hover:bg-surface-variant cursor-pointer text-sm" onClick={() => { setSearchQuery(name); setShowSuggestions(false); }}>
-                      {name}
+          {/* Mini Search: Inspect Specific Person Stats */}
+          {!loading && (
+            <div className="bg-surface-container-high/60 gothic-etched-border rounded-xl p-4 mb-8">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
+                <div>
+                  <h3 className="text-sm font-bold uppercase tracking-widest text-on-surface flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[18px] text-primary">manage_search</span>
+                    Kindred Prestation Dossier
+                  </h3>
+                  <p className="text-xs text-on-surface-variant">Inspect detailed debt balance and credit stats with MiniSearch</p>
+                </div>
+                {inspectedPerson && (
+                  <button 
+                    onClick={() => setInspectedPerson(null)}
+                    className="text-xs font-bold text-on-surface-variant hover:text-on-surface transition-colors flex items-center gap-1"
+                  >
+                    <span className="material-symbols-outlined text-[14px]">close</span>
+                    Close Dossier
+                  </button>
+                )}
+              </div>
+
+              {/* Person MiniSearch Input */}
+              <div className="relative mb-3" ref={personSearchRef}>
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">person_search</span>
+                <input
+                  className="w-full bg-surface-container-lowest gothic-etched-border focus:border-primary pl-10 pr-4 py-2.5 text-xs outline-none text-on-surface transition-colors rounded"
+                  placeholder="Search player or NPC name to inspect prestation standing..."
+                  type="text"
+                  value={personSearchQuery}
+                  onChange={e => { setPersonSearchQuery(e.target.value); setShowPersonSuggestions(true); }}
+                  onFocus={() => setShowPersonSuggestions(true)}
+                />
+                {showPersonSuggestions && filteredPersonStats.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 bg-surface-container-high gothic-etched-border rounded shadow-xl mt-1 max-h-56 overflow-y-auto z-50">
+                    {filteredPersonStats.map(person => (
+                      <div 
+                        key={person.id}
+                        className="px-4 py-2.5 hover:bg-surface-variant cursor-pointer text-xs flex items-center justify-between border-b border-outline-variant/10 last:border-b-0"
+                        onClick={() => {
+                          setInspectedPerson(person);
+                          setPersonSearchQuery('');
+                          setShowPersonSuggestions(false);
+                        }}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-on-surface">{person.cleanName}</span>
+                          <span className="text-[10px] text-on-surface-variant">({person.clan || person.type})</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-[11px]">
+                          <span className="text-primary font-bold">Owes: {person.debtsOwed}</span>
+                          <span className="text-tertiary font-bold">Held: {person.creditsHeld}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Inspected Person Dossier Card */}
+              {inspectedPerson && (
+                <div className="bg-surface-container-lowest gothic-etched-border rounded-lg p-4 mt-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-outline-variant/10 pb-3 mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full border border-outline-variant/30 flex items-center justify-center text-on-surface-variant text-xs font-bold shrink-0 bg-surface-container-highest overflow-hidden">
+                        {getAvatarProps(inspectedPerson.entityId, inspectedPerson.name) ? (
+                          <Avatar {...getAvatarProps(inspectedPerson.entityId, inspectedPerson.name)} size="100%" style={{ width: '100%', height: '100%' }} />
+                        ) : getInitials(inspectedPerson.cleanName)}
+                      </div>
+                      <div>
+                        <h4 className="text-[16px] font-bold text-on-surface flex items-center gap-2">
+                          {inspectedPerson.cleanName}
+                          <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-normal">
+                            {inspectedPerson.type}: {inspectedPerson.clan}
+                          </span>
+                        </h4>
+                        <p className="text-[11px] text-on-surface-variant">
+                          Net Standing: {inspectedPerson.netBalance > 0 ? `Net Creditor (+${inspectedPerson.netBalance})` : inspectedPerson.netBalance < 0 ? `Net Debtor (${inspectedPerson.netBalance})` : 'Balanced Position'}
+                        </p>
+                      </div>
                     </div>
-                  ))}
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setSelectedEntity(inspectedPerson.cleanName)}
+                        className="bg-primary-container text-on-primary-container px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wider hover:brightness-110 transition-colors"
+                      >
+                        View All Boons for {inspectedPerson.cleanName}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+                    <div className="bg-surface-container p-3 rounded gothic-etched-border">
+                      <span className="text-[10px] font-bold text-primary uppercase tracking-widest block mb-1">Debts Owed (Debtor)</span>
+                      <p className="text-[18px] font-bold text-on-surface">{inspectedPerson.debtsOwed} Active</p>
+                      <p className="text-[11px] text-on-surface-variant mt-1">{formatBreakdown(inspectedPerson.debtsBreakdown)}</p>
+                    </div>
+
+                    <div className="bg-surface-container p-3 rounded gothic-etched-border">
+                      <span className="text-[10px] font-bold text-tertiary uppercase tracking-widest block mb-1">Boons Held (Creditor)</span>
+                      <p className="text-[18px] font-bold text-on-surface">{inspectedPerson.creditsHeld} Active</p>
+                      <p className="text-[11px] text-on-surface-variant mt-1">{formatBreakdown(inspectedPerson.creditsBreakdown)}</p>
+                    </div>
+
+                    <div className="bg-surface-container p-3 rounded gothic-etched-border sm:col-span-2 md:col-span-1">
+                      <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest block mb-1">Historic Settled</span>
+                      <p className="text-[18px] font-bold text-on-surface">{inspectedPerson.settledCount} Settled</p>
+                      <p className="text-[11px] text-on-surface-variant mt-1">Paid or excused before Elysium</p>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
-            
-            <div className="flex gap-2">
-              <div className="flex bg-surface-container-lowest gothic-etched-border p-1">
-                <button
-                  className={`px-4 py-2 text-xs font-bold uppercase tracking-widest transition-colors ${filterActive ? 'bg-primary-container text-on-primary-container' : 'text-on-surface-variant hover:text-on-surface'}`}
-                  onClick={() => setFilterActive(f => !f)}
-                >
-                  {filterLabel}
-                </button>
-              </div>
-              <select className="bg-surface-container-lowest gothic-etched-border text-on-surface-variant text-xs font-bold uppercase tracking-widest px-4 py-2 outline-none cursor-pointer" value={sortMode} onChange={e => setSortMode(e.target.value)}>
-                <option value="date">Newest</option>
-                <option value="level">Highest Value</option>
-                <option value="status">Active First</option>
-                <option value="from">Debtor A-Z</option>
-                <option value="to">Creditor A-Z</option>
-              </select>
-            </div>
-          </div>
+          )}
 
           {/* Section Header */}
           {!loading && processedBoons.length > 0 && (
@@ -507,12 +946,32 @@ export default function Boons() {
                         <p className="text-[12px] font-bold text-on-surface-variant">Debtor</p>
                         <span className="material-symbols-outlined text-[14px] text-on-surface-variant">arrow_forward</span>
                       </div>
-                      <p className="text-[16px] font-bold text-on-surface">{boon.from_name}</p>
+                      <p 
+                        className="text-[16px] font-bold text-on-surface cursor-pointer hover:text-primary transition-colors inline-block"
+                        onClick={() => {
+                          const clean = cleanPersonName(boon.from_name);
+                          inspectPerson(clean);
+                          setSelectedEntity(clean);
+                        }}
+                        title={`Filter all boons for ${cleanPersonName(boon.from_name)}`}
+                      >
+                        {boon.from_name}
+                      </p>
                     </div>
                     
                     <div className="text-right">
                       <p className="text-[12px] font-bold text-on-surface-variant">Creditor</p>
-                      <p className={`text-[16px] font-bold ${levelStyle.text}`}>{boon.to_name}</p>
+                      <p 
+                        className={`text-[16px] font-bold ${levelStyle.text} cursor-pointer hover:brightness-125 transition-colors inline-block`}
+                        onClick={() => {
+                          const clean = cleanPersonName(boon.to_name);
+                          inspectPerson(clean);
+                          setSelectedEntity(clean);
+                        }}
+                        title={`Filter all boons for ${cleanPersonName(boon.to_name)}`}
+                      >
+                        {boon.to_name}
+                      </p>
                     </div>
                     
                     <div className={`w-10 h-10 rounded-full border border-outline-variant/30 flex items-center justify-center text-on-surface-variant text-sm font-bold shrink-0 bg-surface-container-highest overflow-hidden`}>
@@ -567,7 +1026,7 @@ export default function Boons() {
                 <div className="w-1 h-12 bg-primary-container rounded"></div>
                 <div>
                   <p className="text-[16px] font-bold text-primary-container">Life Boon</p>
-                  <p className="text-[14px] text-on-surface-variant">The debtor owes their very existence to the creditor. Non-transferable.</p>
+                  <p className="text-[14px] text-on-surface-variant">The debtor owes their very existence to the creditor. Cannot be transferred.</p>
                 </div>
               </div>
               <div className="flex gap-4">
@@ -637,7 +1096,7 @@ function BoonForm({ entities, boon, onSave, onCancel }) {
   });
 
   const entityOptions = useMemo(() => [
-    { id: 'npc', name: '— NPC / Manual entry —' },
+    { id: 'npc', name: 'NPC or Manual Entry' },
     ...entities.map(e => ({ id: `${e.type}-${e.id}`, name: e.name })),
   ], [entities]);
 
