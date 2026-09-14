@@ -509,7 +509,14 @@ export default function Boons() {
     const target = allPersonStats.find(p => p.cleanName.toLowerCase() === cleanName.toLowerCase());
     if (target) {
       setInspectedPerson(target);
+      setSelectedEntity(target.cleanName);
     }
+  };
+
+  const handleCloseDossier = () => {
+    setInspectedPerson(null);
+    setSelectedEntity('');
+    setPersonSearchQuery('');
   };
 
   // Helper for card styling
@@ -767,8 +774,8 @@ export default function Boons() {
                 </div>
                 {inspectedPerson && (
                   <button 
-                    onClick={() => setInspectedPerson(null)}
-                    className="text-xs font-bold text-on-surface-variant hover:text-on-surface transition-colors flex items-center gap-1"
+                    onClick={handleCloseDossier}
+                    className="text-xs font-bold text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1 bg-surface-container px-3 py-1.5 rounded gothic-etched-border"
                   >
                     <span className="material-symbols-outlined text-[14px]">close</span>
                     Close Dossier
@@ -786,6 +793,15 @@ export default function Boons() {
                   value={personSearchQuery}
                   onChange={e => { setPersonSearchQuery(e.target.value); setShowPersonSuggestions(true); }}
                   onFocus={() => setShowPersonSuggestions(true)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && filteredPersonStats.length > 0) {
+                      const person = filteredPersonStats[0];
+                      setInspectedPerson(person);
+                      setSelectedEntity(person.cleanName);
+                      setPersonSearchQuery('');
+                      setShowPersonSuggestions(false);
+                    }
+                  }}
                 />
                 {showPersonSuggestions && filteredPersonStats.length > 0 && (
                   <div className="absolute top-full left-0 right-0 bg-surface-container-high gothic-etched-border rounded shadow-xl mt-1 max-h-56 overflow-y-auto z-50">
@@ -795,6 +811,7 @@ export default function Boons() {
                         className="px-4 py-2.5 hover:bg-surface-variant cursor-pointer text-xs flex items-center justify-between border-b border-outline-variant/10 last:border-b-0"
                         onClick={() => {
                           setInspectedPerson(person);
+                          setSelectedEntity(person.cleanName);
                           setPersonSearchQuery('');
                           setShowPersonSuggestions(false);
                         }}
@@ -834,15 +851,6 @@ export default function Boons() {
                           Net Standing: {inspectedPerson.netBalance > 0 ? `Net Creditor (+${inspectedPerson.netBalance})` : inspectedPerson.netBalance < 0 ? `Net Debtor (${inspectedPerson.netBalance})` : 'Balanced Position'}
                         </p>
                       </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setSelectedEntity(inspectedPerson.cleanName)}
-                        className="bg-primary-container text-on-primary-container px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wider hover:brightness-110 transition-colors"
-                      >
-                        View All Boons for {inspectedPerson.cleanName}
-                      </button>
                     </div>
                   </div>
 
@@ -991,7 +999,7 @@ export default function Boons() {
                   Filtered to all records involving: <span className="text-white underline font-bold">{selectedEntity}</span>
                 </span>
                 <button
-                  onClick={() => setSelectedEntity('')}
+                  onClick={handleCloseDossier}
                   className="font-bold uppercase tracking-wider text-primary hover:text-white transition-colors flex items-center gap-1"
                 >
                   <span className="material-symbols-outlined text-[14px]">close</span>
