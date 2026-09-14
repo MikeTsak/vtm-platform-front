@@ -188,10 +188,13 @@ This frontend works in conjunction with:
 
 ## Development Scripts
 
-- `npm start` - Runs the development server with hot reload
-- `npm run build` - Creates production-optimized build in `build/`
-- `npm run deploy` - Builds and uploads `build/` to the FTP target (see Deploy section)
-- `npm run deploy:dry` - Shows what a deploy would change without uploading
+* `npm start`: Runs the development server with hot reload
+* `npm run build`: Creates production optimized build in `build/`
+* `npm run deploy`: Builds and uploads `build/` to the FTP target with colored terminal output
+* `npm run deploy:nobuild`: Uploads existing `build/` without rebuilding
+* `npm run deploy:dry`: Shows what a deploy would change without uploading
+* `npm run deploy:force`: Re uploads all files even if remote sizes already match
+* `npm run deploy:rollback`: Instantly restores the previous working entry point from `index.html.prev` on the server
 
 ## Notes
 

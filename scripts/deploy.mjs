@@ -1,5 +1,5 @@
 /**
- * Non-destructive FTP deploy of the built frontend to Plesk.
+ * Non-destructive FTP deploy of the built frontend to Plesk with colored terminal output.
  *
  *   npm run deploy            build, then upload build/ to the FTP target
  *   npm run deploy:nobuild    upload the existing build/ (no rebuild)
@@ -12,15 +12,15 @@
  *
  * Why non-destructive: this only ever creates/overwrites the files that exist
  * in build/. It never deletes anything on the server, so:
- *   - unrelated files living in the same web root (PHP helpers, .htaccess,
+ *   * unrelated files living in the same web root (PHP helpers, .htaccess,
  *     uploads, whatever else is in there) are left untouched;
- *   - old hashed asset chunks stay in place, so a browser tab still running a
+ *   * old hashed asset chunks stay in place, so a browser tab still running a
  *     previous build can keep lazy-loading its chunks instead of white-screening
  *     (this is the same failure the vite.config.js CSS-splitting comment and
  *     src/utils/lazyWithRetry.js are about).
  *
  * Upload order: everything EXCEPT the HTML entry files goes up first, then the
- * HTML last — so the moment index.html points at a new chunk, that chunk is
+ * HTML last, so the moment index.html points at a new chunk, that chunk is
  * already on the server.
  *
  * Config: front/deploy.config.json (gitignored). See deploy.config.example.json.
@@ -32,11 +32,49 @@ import cliProgress from 'cli-progress';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
+import { Readable, Writable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const LOCAL_DIR = path.join(ROOT, 'build');
+
+/* ------------------------------------------------------------------ colors --- */
+const isColorSupported =
+  !process.env.NO_COLOR && (Boolean(process.stdout.isTTY) || Boolean(process.env.FORCE_COLOR));
+
+const c = {
+  red: (s) => (isColorSupported ? `\x1b[31m${s}\x1b[0m` : s),
+  green: (s) => (isColorSupported ? `\x1b[32m${s}\x1b[0m` : s),
+  yellow: (s) => (isColorSupported ? `\x1b[33m${s}\x1b[0m` : s),
+  cyan: (s) => (isColorSupported ? `\x1b[36m${s}\x1b[0m` : s),
+  bold: (s) => (isColorSupported ? `\x1b[1m${s}\x1b[0m` : s),
+  dim: (s) => (isColorSupported ? `\x1b[2m${s}\x1b[0m` : s),
+  boldRed: (s) => (isColorSupported ? `\x1b[1;31m${s}\x1b[0m` : s),
+  boldYellow: (s) => (isColorSupported ? `\x1b[1;33m${s}\x1b[0m` : s),
+  boldGreen: (s) => (isColorSupported ? `\x1b[1;32m${s}\x1b[0m` : s),
+  boldCyan: (s) => (isColorSupported ? `\x1b[1;36m${s}\x1b[0m` : s),
+};
+
+function printError(title, lines = []) {
+  console.error('\n' + c.boldRed('========================================================================'));
+  console.error(c.boldRed(`  ERROR: ${title}`));
+  console.error(c.boldRed('========================================================================'));
+  for (const line of lines) {
+    console.error(`  ${line}`);
+  }
+  console.error(c.boldRed('========================================================================\n'));
+}
+
+function printWarning(title, lines = []) {
+  console.warn('\n' + c.boldYellow('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'));
+  console.warn(c.boldYellow(`  WARNING: ${title}`));
+  console.warn(c.boldYellow('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'));
+  for (const line of lines) {
+    console.warn(`  ${line}`);
+  }
+  console.warn(c.boldYellow('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n'));
+}
 
 /* ------------------------------------------------------------------ args --- */
 const argv = process.argv.slice(2);
@@ -44,6 +82,8 @@ const has = (...names) => names.some((n) => argv.includes(n));
 const DRY_RUN = has('--dry-run', '-n');
 const FORCE = has('--force', '-f');
 const VERBOSE = has('--verbose', '-v');
+const ROLLBACK = has('--rollback');
+const NO_PING = has('--no-ping', '-P');
 
 /* ---------------------------------------------------------------- config --- */
 const CONFIG_FILE = path.join(ROOT, 'deploy.config.json');
@@ -55,7 +95,7 @@ if (fs.existsSync(CONFIG_FILE)) {
     die(`deploy.config.json is not valid JSON: ${e.message}`);
   }
 } else {
-  die('no deploy.config.json — copy deploy.config.example.json to deploy.config.json and fill it in.');
+  die('no deploy.config.json found. Copy deploy.config.example.json to deploy.config.json and fill it in.');
 }
 
 const pick = (envKey, fileKey, fallback) =>
@@ -73,18 +113,102 @@ const SECURE = /^implicit$/i.test(String(pick('FTP_SECURE', 'secure', 'true')))
 const TLS_STRICT = asBool(pick('FTP_TLS_STRICT', 'tlsStrict', 'false'), false);
 const REMOTE_ROOT =
   '/' + String(pick('FTP_REMOTE_DIR', 'remoteDir', '/')).replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+const SITE_URL = String(
+  pick('SITE_URL', 'siteUrl', `https://${HOST.replace(/^ftp\./, '')}/`),
+).replace(/\/+$/, '') + '/';
 
+const kb = (b) => `${(b / 1024).toFixed(1)} KB`;
 const mb = (b) => `${(b / 1048576).toFixed(2)} MB`;
-function die(msg) {
-  console.error(`\n  deploy error: ${msg}\n`);
+function die(msg, lines = []) {
+  printError(msg, lines);
   process.exit(1);
 }
 
-if (!fs.existsSync(LOCAL_DIR)) {
-  die(`no build at ${path.relative(ROOT, LOCAL_DIR)}/ — run "npm run build" first (or use "npm run deploy").`);
+async function getRemoteBuffer(remoteClient, remotePath) {
+  const chunks = [];
+  const writer = new Writable({
+    write(chunk, encoding, cb) {
+      chunks.push(chunk);
+      cb();
+    },
+  });
+  try {
+    await remoteClient.downloadTo(writer, remotePath);
+    return Buffer.concat(chunks);
+  } catch {
+    return null;
+  }
+}
+
+function extractMainAsset(indexPath) {
+  try {
+    if (!fs.existsSync(indexPath)) return null;
+    const content = fs.readFileSync(indexPath, 'utf8');
+    const match = content.match(/src="(\/assets\/index-[^"]+)"/);
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
+}
+
+async function verifyLiveSite(siteUrl, expectedAsset) {
+  process.stdout.write(`  verifying live site at ${c.boldCyan(siteUrl)}... `);
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 12000);
+    const res = await fetch(siteUrl, {
+      signal: controller.signal,
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        Pragma: 'no-cache',
+        'User-Agent': 'VampirePlatform DeployChecker/1.0',
+      },
+    });
+    clearTimeout(timer);
+
+    if (!res.ok) {
+      console.log(c.boldYellow(`HTTP ${res.status} ${res.statusText}`));
+      printWarning('Live site responded with unexpected status code', [
+        `URL: ${siteUrl}`,
+        `Status: ${res.status} ${res.statusText}`,
+        'The web server or htaccess configuration may need review.',
+      ]);
+      return { ok: false, status: res.status };
+    }
+
+    const html = await res.text();
+    const bundleMatch = expectedAsset ? html.includes(expectedAsset) : true;
+
+    if (expectedAsset && !bundleMatch) {
+      console.log(c.boldYellow('HTTP 200 (bundle hash mismatch)'));
+      printWarning('Live site returned 200 OK, but served HTML differs from local build', [
+        `Expected asset reference: ${expectedAsset}`,
+        'Browser cache, server cache, or CDN may still be serving previous version.',
+        'Wait a few moments or purge cache if immediate updates are required.',
+      ]);
+      return { ok: true, cached: true, status: 200 };
+    }
+
+    console.log(c.green(`HTTP 200 OK${expectedAsset ? ' (bundle hash verified)' : ''}`));
+    return { ok: true, cached: false, status: 200 };
+  } catch (err) {
+    console.log(c.boldYellow('unreachable'));
+    printWarning('Could not reach live site for verification', [
+      `URL: ${siteUrl}`,
+      `Error: ${err.message}`,
+      'This may be a local DNS or outbound network timeout and does not indicate upload failure.',
+    ]);
+    return { ok: false, error: err.message };
+  }
+}
+
+if (!ROLLBACK && !fs.existsSync(LOCAL_DIR)) {
+  die(`no build directory at ${path.relative(ROOT, LOCAL_DIR)}/`, [
+    'Run "npm run build" first (or use "npm run deploy").',
+  ]);
 }
 for (const [k, v] of Object.entries({ host: HOST, user: USER, password: PASSWORD })) {
-  if (!v) die(`"${k}" is empty in deploy.config.json (or its FTP_* env var).`);
+  if (!v) die(`"${k}" is empty in deploy.config.json or FTP_* environment variables.`);
 }
 
 /* ----------------------------------------------------------- scan build/ --- */
@@ -102,51 +226,122 @@ async function walk(dir, base) {
 }
 
 // What can be skipped when the remote already has a byte-identical-sized copy:
-//   - Hashed asset chunks (`name-8+chars.ext`): a matching name == matching
-//     content, so size match == identical. 100% safe.
-//   - Static files copied from public/ (images, fonts, …): a real edit to one
-//     of these virtually always changes its size. Good enough, and `--force`
-//     re-sends everything if you need it.
-// What is ALWAYS re-uploaded (small, and a content change may not change the
-// byte count): the HTML entry files and the handful of dynamic root files.
+//   * Hashed asset chunks: matching name means matching content
+//   * Static files copied from public/ (images, fonts)
+// What is ALWAYS re-uploaded: HTML entry files and dynamic root files
 const isEntryHtml = (rel) => rel.toLowerCase().endsWith('.html');
 const ALWAYS_UPLOAD = new Set([
-  'manifest.json', 'sw.js', 'service-worker.js', 'sw.dev.js',
-  '.htaccess', 'robots.txt', 'sitemap.xml', 'ads.txt',
-  'analytics-init.js', 'cache-purge.js', 'theme-init.js', 'version.json',
+  'manifest.json',
+  'sw.js',
+  'service-worker.js',
+  'sw.dev.js',
+  '.htaccess',
+  'robots.txt',
+  'sitemap.xml',
+  'ads.txt',
+  'analytics-init.js',
+  'cache-purge.js',
+  'theme-init.js',
+  'version.json',
 ]);
 const alwaysUpload = (rel) =>
   isEntryHtml(rel) || ALWAYS_UPLOAD.has(rel) || ALWAYS_UPLOAD.has(rel.split('/').pop());
-
-const files = await walk(LOCAL_DIR, LOCAL_DIR);
-files.sort((a, b) => {
-  const ah = isEntryHtml(a.rel) ? 1 : 0;
-  const bh = isEntryHtml(b.rel) ? 1 : 0;
-  return ah - bh || a.rel.localeCompare(b.rel); // non-HTML first, then HTML
-});
-
-if (files.length === 0) die('build/ is empty.');
 
 /* ------------------------------------------------------------- ftp client -- */
 const client = new Client(30_000);
 client.ftp.verbose = VERBOSE;
 
 const remotePathFor = (rel) => path.posix.join(REMOTE_ROOT || '/', rel);
+const startedAt = Date.now();
+
+/* -------------------------------------------------------- rollback mode --- */
+if (ROLLBACK) {
+  console.log(
+    `\n  ${c.boldYellow('ROLLBACK MODE:')} restoring previous frontend entry point\n` +
+      `  target: ${c.cyan(`${USER}@${HOST}:${PORT}${REMOTE_ROOT || '/'}`)} ` +
+      `(${SECURE === true ? 'FTPS' : SECURE === 'implicit' ? 'FTPS implicit' : 'plain FTP'})\n`,
+  );
+
+  try {
+    process.stdout.write(`  connecting to ${c.boldCyan(`${USER}@${HOST}:${PORT}`)}... `);
+    await client.access({
+      host: HOST,
+      port: PORT,
+      user: USER,
+      password: PASSWORD,
+      secure: SECURE,
+      secureOptions: { rejectUnauthorized: TLS_STRICT },
+    });
+    console.log(c.green('connected'));
+
+    const remoteIndex = remotePathFor('index.html');
+    const remotePrev = remotePathFor('index.html.prev');
+
+    process.stdout.write('  fetching previous backup from remote server... ');
+    const prevBuffer = await getRemoteBuffer(client, remotePrev);
+
+    if (!prevBuffer || prevBuffer.length === 0) {
+      console.log(c.boldRed('NOT FOUND'));
+      client.close();
+      die('No rollback file (index.html.prev) found on remote server.', [
+        'A previous deployment backup must exist before rollback can be performed.',
+      ]);
+    }
+    console.log(c.green(`found (${kb(prevBuffer.length)})`));
+
+    process.stdout.write('  restoring index.html from index.html.prev... ');
+    await client.uploadFrom(Readable.from(prevBuffer), remoteIndex);
+    console.log(c.green('done'));
+
+    client.close();
+
+    let liveStatus = null;
+    if (!NO_PING) {
+      liveStatus = await verifyLiveSite(SITE_URL, null);
+    }
+
+    const secs = ((Date.now() - startedAt) / 1000).toFixed(1);
+    console.log(
+      '\n' +
+        c.boldGreen('========================================================================\n') +
+        c.boldGreen('  FRONTEND ROLLBACK SUCCESSFUL\n') +
+        c.boldGreen('========================================================================\n') +
+        `  ${c.bold('restored:')}    ${c.boldGreen('index.html from index.html.prev')} (${kb(prevBuffer.length)})\n` +
+        `  ${c.bold('duration:')}    ${secs}s\n` +
+        `  ${c.bold('target:')}      ${c.cyan(`${USER}@${HOST}:${PORT}${REMOTE_ROOT || '/'}`)}\n` +
+        `  ${c.bold('live url:')}    ${c.boldCyan(SITE_URL)}\n` +
+        (liveStatus ? `  ${c.bold('live check:')}  ${liveStatus.ok ? c.green('HTTP 200 OK') : c.yellow('warning')}\n` : '') +
+        c.boldGreen('========================================================================\n'),
+    );
+  } catch (err) {
+    client.close();
+    die(`rollback failed: ${err.message}`);
+  }
+} else {
+const files = await walk(LOCAL_DIR, LOCAL_DIR);
+files.sort((a, b) => {
+  const ah = isEntryHtml(a.rel) ? 1 : 0;
+  const bh = isEntryHtml(b.rel) ? 1 : 0;
+  return ah - bh || a.rel.localeCompare(b.rel);
+});
+
+if (files.length === 0) die('build directory is empty.');
 
 console.log(
-  `\n  ${DRY_RUN ? 'DRY RUN — ' : ''}deploying ${files.length} files ` +
+  `\n  ${DRY_RUN ? c.boldYellow('DRY RUN: ') : ''}deploying ${c.boldCyan(`${files.length} files`)} ` +
     `(${mb(files.reduce((n, f) => n + f.size, 0))})\n` +
-    `  from  ${path.relative(ROOT, LOCAL_DIR)}/\n` +
-    `  to    ${USER}@${HOST}:${PORT}${REMOTE_ROOT || '/'}  ` +
+    `  source: ${c.dim(path.relative(ROOT, LOCAL_DIR) + '/')}\n` +
+    `  target: ${c.cyan(`${USER}@${HOST}:${PORT}${REMOTE_ROOT || '/'}`)} ` +
     `(${SECURE === true ? 'FTPS' : SECURE === 'implicit' ? 'FTPS implicit' : 'plain FTP'})\n`,
 );
 
 let uploaded = 0;
 let skipped = 0;
 let sentBytes = 0;
-const startedAt = Date.now();
+let backedUpIndex = false;
 
 try {
+  process.stdout.write(`  connecting to ${c.boldCyan(`${USER}@${HOST}:${PORT}`)}... `);
   await client.access({
     host: HOST,
     port: PORT,
@@ -155,11 +350,10 @@ try {
     secure: SECURE,
     secureOptions: { rejectUnauthorized: TLS_STRICT },
   });
+  console.log(c.green('connected'));
 
-  // ---- decide what actually needs uploading (compare against remote sizes) --
-  // One directory listing per remote folder, cached — cheaper and more portable
-  // than a SIZE round-trip per file.
-  process.stdout.write('  checking remote files… ');
+  // Decide what needs uploading by comparing remote file sizes
+  process.stdout.write('  checking remote files... ');
   const remoteSizes = new Map();
   const listedDirs = new Set();
   async function remoteSizeOf(remoteAbs) {
@@ -171,7 +365,7 @@ try {
           if (item.isFile) remoteSizes.set(path.posix.join(dir, item.name), item.size);
         }
       } catch {
-        /* remote dir doesn't exist yet */
+        /* remote directory does not exist yet */
       }
     }
     return remoteSizes.get(remoteAbs) ?? -1;
@@ -180,122 +374,136 @@ try {
   const plan = [];
   for (const f of files) {
     const remote = remotePathFor(f.rel);
-    const remoteSize =
-      !FORCE && !alwaysUpload(f.rel) ? await remoteSizeOf(remote) : -1;
+    const remoteSize = !FORCE && !alwaysUpload(f.rel) ? await remoteSizeOf(remote) : -1;
     if (remoteSize === f.size) skipped++;
     else plan.push({ ...f, remote });
   }
-  console.log(`${skipped} unchanged, ${plan.length} to upload\n`);
+  console.log(`${c.green(`${skipped} unchanged`)}, ${c.boldCyan(`${plan.length} to upload`)}\n`);
 
   const plannedBytes = plan.reduce((n, f) => n + f.size, 0);
 
   if (plan.length === 0) {
-    console.log('  nothing to do — remote is already up to date.\n');
+    console.log(c.green('  nothing to do: remote server is already up to date.\n'));
   } else if (DRY_RUN) {
-    for (const f of plan) console.log(`  would upload  ${f.rel}  (${mb(f.size)})`);
-    console.log(`\n  ${plan.length} files, ${mb(plannedBytes)}\n`);
+    for (const f of plan) {
+      if (f.rel === 'index.html') {
+        console.log(`  would backup: ${c.cyan('index.html')} to ${c.cyan('index.html.prev')}`);
+      }
+      console.log(`  would upload: ${c.cyan(f.rel)} ${c.dim(`(${mb(f.size)})`)}`);
+    }
+    console.log(`\n  ${c.boldCyan(`${plan.length} files`)}, ${c.bold(mb(plannedBytes))}\n`);
   } else {
-    const useBars = process.stdout.isTTY;
-    const bars = useBars
-      ? new cliProgress.MultiBar(
-          {
-            format: '  {bar} {percentage}% │ {value_mb}/{total_mb} │ {name}',
-            barCompleteChar: '█',
-            barIncompleteChar: '░',
-            hideCursor: true,
-            clearOnComplete: false,
-            autopadding: true,
-          },
-          cliProgress.Presets.shades_grey,
-        )
-      : null;
-    const fmtBar = (b, val, total, name) =>
-      b?.update(val, {
-        name,
-        value_mb: mb(val).replace(' MB', ''),
-        total_mb: mb(total).replace(' MB', ''),
+    const useBars = Boolean(process.stdout.isTTY);
+    let bar = null;
+    if (useBars) {
+      bar = new cliProgress.SingleBar(
+        {
+          format: '  uploading: [{bar}] {percentage}% | {value_mb}/{total_mb} MB',
+          barCompleteChar: '█',
+          barIncompleteChar: '░',
+          hideCursor: true,
+          clearOnComplete: false,
+        },
+        cliProgress.Presets.shades_grey,
+      );
+      bar.start(1000, 0, {
+        value_mb: '0.00',
+        total_mb: (plannedBytes / 1048576).toFixed(2),
       });
-
-    const overall = bars?.create(plannedBytes, 0, {
-      name: 'TOTAL',
-      value_mb: '0.00',
-      total_mb: mb(plannedBytes).replace(' MB', ''),
-    });
+    }
 
     const ensured = new Set();
-    let fileBar = null;
-    let currentRel = '';
-    let currentSize = 0;
-    let baseBytes = 0; // bytes from files already finished
-
-    client.trackProgress((info) => {
-      if (info.type !== 'upload') return;
-      const n = Math.min(info.bytes, currentSize || info.bytes);
-      fmtBar(fileBar, n, currentSize || info.bytes, currentRel);
-      fmtBar(overall, baseBytes + n, plannedBytes, 'TOTAL');
-    });
+    let currentUploadedBytes = 0;
 
     for (const f of plan) {
-      currentRel = f.rel;
-      currentSize = f.size;
       const dir = path.posix.dirname(f.remote);
       if (dir && dir !== '/' && !ensured.has(dir)) {
-        await client.ensureDir(dir); // creates missing segments, cwd ends inside dir
+        await client.ensureDir(dir);
         await client.cd(REMOTE_ROOT || '/');
         ensured.add(dir);
       }
 
-      if (useBars) {
-        fileBar = bars.create(f.size, 0, {
-          name: f.rel,
-          value_mb: '0.00',
-          total_mb: mb(f.size).replace(' MB', ''),
-        });
-      } else {
-        process.stdout.write(`  ↑ ${f.rel} … `);
+      if (f.rel === 'index.html' && !DRY_RUN) {
+        try {
+          const remotePrevPath = remotePathFor('index.html.prev');
+          const existingIndexBuffer = await getRemoteBuffer(client, f.remote);
+          if (existingIndexBuffer && existingIndexBuffer.length > 0) {
+            await client.uploadFrom(Readable.from(existingIndexBuffer), remotePrevPath);
+            backedUpIndex = true;
+          }
+        } catch {
+          /* non fatal backup */
+        }
+      }
+
+      if (!useBars) {
+        process.stdout.write(`  uploading: ${c.cyan(f.rel)} ... `);
       }
 
       await client.uploadFrom(f.local, f.remote);
 
       uploaded++;
       sentBytes += f.size;
-      baseBytes += f.size;
-      if (useBars) {
-        fmtBar(fileBar, f.size, f.size, f.rel);
-        fmtBar(overall, baseBytes, plannedBytes, 'TOTAL');
-        bars.remove(fileBar);
-        fileBar = null;
+      currentUploadedBytes += f.size;
+
+      if (useBars && bar) {
+        const frac = plannedBytes > 0 ? Math.min(1, currentUploadedBytes / plannedBytes) : 1;
+        bar.update(Math.round(frac * 1000), {
+          value_mb: (currentUploadedBytes / 1048576).toFixed(2),
+          total_mb: (plannedBytes / 1048576).toFixed(2),
+        });
       } else {
-        console.log('done');
+        console.log(c.green('done'));
       }
     }
 
-    client.trackProgress();
-    fmtBar(overall, plannedBytes, plannedBytes, 'TOTAL');
-    bars?.stop();
+    if (useBars && bar) {
+      bar.update(1000, {
+        value_mb: (plannedBytes / 1048576).toFixed(2),
+        total_mb: (plannedBytes / 1048576).toFixed(2),
+      });
+      bar.stop();
+      process.stdout.write('\n');
+    }
   }
 } catch (err) {
   client.trackProgress?.();
   const hint =
     err.code === 'ENOTFOUND' || err.code === 'EAI_AGAIN'
-      ? `\n  → host "${HOST}" did not resolve. Check "host" in deploy.config.json.`
+      ? `Host "${HOST}" did not resolve. Check "host" in deploy.config.json.`
       : err.code === 'ECONNREFUSED'
-        ? `\n  → connection refused on port ${PORT}. Wrong port, or the server isn't accepting FTP there.`
+        ? `Connection refused on port ${PORT}. Wrong port, or the server is not accepting FTP there.`
         : /530|not logged in|login/i.test(err.message)
-          ? '\n  → login rejected. Check "user" / "password" in deploy.config.json.'
+          ? 'Login rejected. Check "user" and "password" in deploy.config.json.'
           : /certificate|self.signed|altnames|SSL|TLS/i.test(err.message)
-            ? '\n  → TLS handshake failed. Set "tlsStrict": false, or "secure": false if the server has no FTPS.'
+            ? 'TLS handshake failed. Set "tlsStrict": false, or "secure": false if the server has no FTPS.'
             : '';
-  console.error(`\n  deploy failed: ${err.message}${hint}\n`);
   client.close();
-  process.exit(1);
+  die(`deploy failed: ${err.message}`, hint ? [hint] : []);
 }
 
 client.close();
 
+let liveStatus = null;
+if (!DRY_RUN && !NO_PING && uploaded > 0) {
+  const mainAsset = extractMainAsset(path.join(LOCAL_DIR, 'index.html'));
+  liveStatus = await verifyLiveSite(SITE_URL, mainAsset);
+}
+
 const secs = ((Date.now() - startedAt) / 1000).toFixed(1);
 console.log(
-  `\n  ${DRY_RUN ? 'dry run complete' : 'deploy complete'} — ` +
-    `${uploaded} uploaded (${mb(sentBytes)}), ${skipped} unchanged, ${secs}s\n` +
-    (DRY_RUN || uploaded === 0 ? '' : `  live: https://${HOST.replace(/^ftp\./, '')}/\n`),
+  '\n' +
+    c.boldGreen('========================================================================\n') +
+    c.boldGreen(`  ${DRY_RUN ? 'DRY RUN COMPLETE' : 'FRONTEND DEPLOY SUCCESSFUL'}\n`) +
+    c.boldGreen('========================================================================\n') +
+    `  ${c.bold('uploaded:')}    ${c.boldGreen(`${uploaded} files`)} (${mb(sentBytes)})\n` +
+    `  ${c.bold('unchanged:')}   ${c.green(`${skipped} files`)}\n` +
+    (backedUpIndex ? `  ${c.bold('backup:')}      ${c.green('index.html saved to index.html.prev')}\n` : '') +
+    `  ${c.bold('duration:')}    ${secs}s\n` +
+    `  ${c.bold('target:')}      ${c.cyan(`${USER}@${HOST}:${PORT}${REMOTE_ROOT || '/'}`)}\n` +
+    (DRY_RUN || uploaded === 0 ? '' : `  ${c.bold('live url:')}    ${c.boldCyan(SITE_URL)}\n`) +
+    (liveStatus ? `  ${c.bold('live check:')}  ${liveStatus.ok ? (liveStatus.cached ? c.yellow('HTTP 200 (cache pending)') : c.green('HTTP 200 OK (verified)')) : c.yellow('unverified')}\n` : '') +
+    c.boldGreen('========================================================================\n'),
 );
+}
+

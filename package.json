@@ -50,7 +50,8 @@
     "deploy": "vite build && node scripts/deploy.mjs",
     "deploy:nobuild": "node scripts/deploy.mjs",
     "deploy:dry": "node scripts/deploy.mjs --dry-run",
-    "deploy:force": "vite build && node scripts/deploy.mjs --force"
+    "deploy:force": "vite build && node scripts/deploy.mjs --force",
+    "deploy:rollback": "node scripts/deploy.mjs --rollback"
   },
   "eslintConfig": {
     "extends": [
