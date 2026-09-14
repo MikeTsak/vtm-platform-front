@@ -870,6 +870,137 @@ export default function Boons() {
             </div>
           )}
 
+          {/* General Stats Bar */}
+          {!loading && (
+            <div className="flex gap-4 overflow-x-auto custom-scrollbar py-4 -mx-4 px-4 lg:-mx-12 lg:px-12 mb-6">
+              <div className="flex-shrink-0 min-w-[120px] bg-surface-container p-4 rounded-xl gothic-etched-border">
+                <p className="text-[12px] font-bold text-on-surface-variant uppercase">Total Listed</p>
+                <h3 className="text-headline-md text-[24px] font-bold text-primary">{stats.total}</h3>
+              </div>
+              <div className="flex-shrink-0 min-w-[120px] bg-surface-container p-4 rounded-xl gothic-etched-border">
+                <p className="text-[12px] font-bold text-on-surface-variant uppercase">Active</p>
+                <h3 className="text-headline-md text-[24px] font-bold text-tertiary">{stats.active}</h3>
+              </div>
+              <div className="flex-shrink-0 min-w-[120px] bg-surface-container p-4 rounded-xl gothic-etched-border">
+                <p className="text-[12px] font-bold text-on-surface-variant uppercase">Major Owed</p>
+                <h3 className="text-headline-md text-[24px] font-bold text-secondary">{stats.major}</h3>
+              </div>
+              <div className="flex-shrink-0 min-w-[120px] bg-surface-container p-4 rounded-xl gothic-etched-border">
+                <p className="text-[12px] font-bold text-on-surface-variant uppercase">Life Boons</p>
+                <h3 className="text-headline-md text-[24px] font-bold text-primary-container">{stats.life}</h3>
+              </div>
+            </div>
+          )}
+
+          {/* Main Registry Filters Bar */}
+          <div className="flex flex-col gap-4 mb-6">
+            <div className="flex flex-col lg:flex-row gap-3">
+              {/* Lineage & Circumstances Search */}
+              <div className="relative flex-grow" ref={searchRef}>
+                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+                <input 
+                  className="w-full bg-surface-container-lowest gothic-etched-border focus:border-primary pl-12 pr-4 py-3 text-sm outline-none text-on-surface transition-colors rounded"
+                  placeholder="Search Kindred names or circumstances..." 
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => { setSearchQuery(e.target.value); setShowSuggestions(true); }}
+                  onFocus={() => setShowSuggestions(true)}
+                />
+                {showSuggestions && filteredNames.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 bg-surface-container-high gothic-etched-border rounded shadow-xl mt-1 max-h-64 overflow-y-auto z-50">
+                    {filteredNames.map(name => (
+                      <div key={name} className="px-4 py-3 hover:bg-surface-variant cursor-pointer text-sm" onClick={() => { setSearchQuery(name); setShowSuggestions(false); }}>
+                        {name}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              {/* Filters & Toggles Row */}
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Specific Player or NPC Selector */}
+                <select
+                  className="bg-surface-container-lowest gothic-etched-border text-on-surface text-xs font-bold uppercase tracking-wider px-3 py-3 outline-none cursor-pointer rounded"
+                  value={selectedEntity}
+                  onChange={e => setSelectedEntity(e.target.value)}
+                >
+                  <option value="">All Kindred and NPCs</option>
+                  {entitySelectGroups.players.length > 0 && (
+                    <optgroup label="Kindred Players">
+                      {entitySelectGroups.players.map(p => (
+                        <option key={p.id} value={p.cleanName}>{p.cleanName} ({p.clan})</option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {entitySelectGroups.npcs.length > 0 && (
+                    <optgroup label="NPCs">
+                      {entitySelectGroups.npcs.map(p => (
+                        <option key={p.id} value={p.cleanName}>{p.cleanName} (NPC)</option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {entitySelectGroups.others.length > 0 && (
+                    <optgroup label="Other Registered">
+                      {entitySelectGroups.others.map(p => (
+                        <option key={p.id} value={p.cleanName}>{p.cleanName}</option>
+                      ))}
+                    </optgroup>
+                  )}
+                </select>
+
+                {/* Paid Boons Toggle (checked by default) */}
+                <label className="flex items-center gap-2 bg-surface-container-lowest gothic-etched-border px-4 py-3 cursor-pointer select-none text-xs font-bold uppercase tracking-wider text-on-surface hover:border-primary transition-colors rounded">
+                  <input
+                    type="checkbox"
+                    checked={showPaid}
+                    onChange={e => setShowPaid(e.target.checked)}
+                    className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-0 cursor-pointer"
+                  />
+                  <span>Paid Boons</span>
+                </label>
+
+                {/* Ownership Filter Button */}
+                <button
+                  className={`px-4 py-3 text-xs font-bold uppercase tracking-widest transition-colors gothic-etched-border rounded ${filterActive ? 'bg-primary-container text-on-primary-container' : 'bg-surface-container-lowest text-on-surface-variant hover:text-on-surface'}`}
+                  onClick={() => setFilterActive(f => !f)}
+                >
+                  {filterLabel}
+                </button>
+
+                {/* Sort Mode */}
+                <select 
+                  className="bg-surface-container-lowest gothic-etched-border text-on-surface-variant text-xs font-bold uppercase tracking-widest px-4 py-3 outline-none cursor-pointer rounded" 
+                  value={sortMode} 
+                  onChange={e => setSortMode(e.target.value)}
+                >
+                  <option value="date">Newest</option>
+                  <option value="level">Highest Value</option>
+                  <option value="status">Active First</option>
+                  <option value="from">Debtor A to Z</option>
+                  <option value="to">Creditor A to Z</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Active Entity Filter Badge */}
+            {selectedEntity && (
+              <div className="flex items-center justify-between bg-primary-container/20 border border-primary-container/30 px-4 py-2.5 rounded-lg text-xs">
+                <span className="font-bold text-primary flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[16px]">filter_alt</span>
+                  Filtered to all records involving: <span className="text-white underline font-bold">{selectedEntity}</span>
+                </span>
+                <button
+                  onClick={() => setSelectedEntity('')}
+                  className="font-bold uppercase tracking-wider text-primary hover:text-white transition-colors flex items-center gap-1"
+                >
+                  <span className="material-symbols-outlined text-[14px]">close</span>
+                  Clear Filter
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Section Header */}
           {!loading && processedBoons.length > 0 && (
             <div className="flex items-center justify-between mb-4">
