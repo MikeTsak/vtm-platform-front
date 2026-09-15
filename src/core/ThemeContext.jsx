@@ -98,6 +98,16 @@ function paintTheme(theme, clan, tintHex) {
     root.style.setProperty('--text-color', textColor);
     root.style.setProperty('--theme-on-surface', textColor);
 
+    if (rules?.textMuted) {
+      root.style.setProperty('--clan-text-muted', rules.textMuted);
+      root.style.setProperty('--text-muted', rules.textMuted);
+      root.style.setProperty('--theme-on-surface-variant', rules.textMuted);
+    } else {
+      root.style.removeProperty('--clan-text-muted');
+      root.style.removeProperty('--text-muted');
+      root.style.removeProperty('--theme-on-surface-variant');
+    }
+
     root.style.setProperty('--clan-surface', surface);
     root.style.setProperty('--surface-color', surface);
     root.style.setProperty('--theme-surface-container', surface);
@@ -133,6 +143,9 @@ function paintTheme(theme, clan, tintHex) {
     root.style.removeProperty('--clan-text');
     root.style.removeProperty('--text-color');
     root.style.removeProperty('--theme-on-surface');
+    root.style.removeProperty('--clan-text-muted');
+    root.style.removeProperty('--text-muted');
+    root.style.removeProperty('--theme-on-surface-variant');
     root.style.removeProperty('--clan-surface');
     root.style.removeProperty('--surface-color');
     root.style.removeProperty('--theme-surface-container');

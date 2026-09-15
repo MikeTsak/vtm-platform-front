@@ -1073,40 +1073,43 @@ option {
 }
 
 /* =======================================================
-   CLAN LASOMBRA : ABYSSAL OBSIDIAN SHADOWS AND VELVET VOID AESTHETIC
+   CLAN LASOMBRA : ABYSSAL OBSIDIAN SHADOWS AND LUMINESCENT MOONLIT SILVER AESTHETIC
    ======================================================= */
 :root[data-theme='clan'][data-clan='lasombra'] {
-  --clan-color-1: #0C080B; /* Pitch Void Abyssal Night */
+  --clan-color-1: #E2E8F0; /* Luminescent Moonlit Silver */
   --clan-color-2: #222222; /* Deep Shadow Charcoal */
-  --clan-color-3: #292B36; /* Midnight Slate Steel Indigo */
+  --clan-color-3: #334155; /* Midnight Slate Steel */
   --clan-color-4: #201A28; /* Abyssal Violet Plum */
   --clan-color-5: #19272A; /* Deep Abyssal Teal Charcoal */
 
-  --clan-symbol-color: #5D6277;
-  --clan-text-logo-color: #A5A9C0;
-  --clan-primary: #5D6277;
-  --clan-secondary: #201A28;
-  --clan-border: #292B36;
-  --clan-text: #A5A9C0;
+  --clan-symbol-color: #E2E8F0;
+  --clan-text-logo-color: #F8FAFC;
+  --clan-primary: #E2E8F0;
+  --clan-secondary: #94A3B8;
+  --clan-border: #334155;
+  --clan-text: #F8FAFC;
   --clan-surface: #131218;
   --clan-bg: #08070a;
 
-  --tint: #5D6277;
-  --theme-primary: #5D6277;
-  --theme-secondary: #201A28;
-  --border-color: #292B36;
-  --theme-outline: #292B36;
-  --text-color: #A5A9C0;
-  --theme-on-surface: #A5A9C0;
+  --tint: #E2E8F0;
+  --dynamic-tint: #E2E8F0;
+  --theme-primary: #E2E8F0;
+  --theme-secondary: #94A3B8;
+  --border-color: #334155;
+  --theme-outline: #334155;
+  --text-color: #F8FAFC;
+  --theme-on-surface: #F8FAFC;
+  --text-muted: #CBD5E1;
+  --theme-on-surface-variant: #CBD5E1;
   --surface-color: #131218;
-  --surface-lighter: #1d1c24;
+  --surface-lighter: #1e1d26;
   --bg-color: #08070a;
 }
 
 /* Lasombra Atmospheric Canvas : Velvet Shadow Dunes, Abyssal Tendrils, and Pitch Darkness */
 :root[data-theme='clan'][data-clan='lasombra'] body::before {
   background-image:
-    radial-gradient(ellipse at 40% 20%, rgba(41, 43, 54, 0.45) 0%, rgba(32, 26, 40, 0.5) 40%, transparent 75%),
+    radial-gradient(ellipse at 40% 20%, rgba(51, 65, 85, 0.45) 0%, rgba(32, 26, 40, 0.5) 40%, transparent 75%),
     radial-gradient(ellipse at 80% 80%, rgba(25, 39, 42, 0.4) 0%, rgba(12, 8, 11, 0.6) 45%, transparent 75%),
     radial-gradient(circle at 50% 50%, transparent 25%, rgba(8, 7, 10, 0.85) 70%, #08070a 100%),
     url('/img/clans/backgrounds/Lasombra_clean.webp?v=4');
@@ -1117,7 +1120,7 @@ option {
   filter: contrast(1.2) brightness(0.9);
 }
 
-/* Lasombra Abyssal Tendrils and Shadow Spore Drift */
+/* Lasombra Abyssal Tendrils and Moonlit Silver Shimmer Drift */
 :root[data-theme='clan'][data-clan='lasombra'] body::after {
   content: '';
   position: fixed;
@@ -1125,15 +1128,15 @@ option {
   z-index: 0;
   pointer-events: none;
   background-image: 
-    radial-gradient(2px 2px at 30px 40px, #5D6277, rgba(0,0,0,0)),
-    radial-gradient(2.5px 2.5px at 140px 170px, rgba(165, 169, 192, 0.75), rgba(0,0,0,0)),
-    radial-gradient(2px 2px at 240px 85px, #201A28, rgba(0,0,0,0)),
-    radial-gradient(3px 3px at 340px 225px, rgba(93, 98, 119, 0.65), rgba(0,0,0,0)),
-    radial-gradient(2px 2px at 420px 135px, #292B36, rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 30px 40px, #E2E8F0, rgba(0,0,0,0)),
+    radial-gradient(2.5px 2.5px at 140px 170px, rgba(226, 232, 240, 0.75), rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 240px 85px, #94A3B8, rgba(0,0,0,0)),
+    radial-gradient(3px 3px at 340px 225px, rgba(203, 213, 225, 0.65), rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 420px 135px, #334155, rgba(0,0,0,0)),
     radial-gradient(circle at 50% 50%, transparent 35%, rgba(8, 7, 10, 0.78) 75%, #08070a 100%);
   background-repeat: repeat;
   background-size: 470px 470px, 470px 470px, 470px 470px, 470px 470px, 470px 470px, cover;
-  opacity: 0.4;
+  opacity: 0.35;
   animation: lasombraShadowDrift 24s linear infinite;
 }
 
@@ -1146,15 +1149,15 @@ option {
   }
 }
 
-/* Lasombra Crown Symbol Glow and Steel Indigo Wordmark */
+/* Lasombra Crown Symbol Glow and Moonlit Silver Wordmark */
 :root[data-theme='clan'][data-clan='lasombra'] .clan-symbol-mask {
-  background-color: #5D6277 !important;
-  filter: drop-shadow(0 0 10px rgba(32, 26, 40, 0.95)) drop-shadow(0 0 2px #5D6277);
+  background-color: #E2E8F0 !important;
+  filter: drop-shadow(0 0 12px rgba(226, 232, 240, 0.6)) drop-shadow(0 0 2px #E2E8F0);
 }
 
 :root[data-theme='clan'][data-clan='lasombra'] .clan-text-logo-mask {
-  background-color: #A5A9C0 !important;
-  filter: drop-shadow(0 0 8px rgba(93, 98, 119, 0.7));
+  background-color: #F8FAFC !important;
+  filter: drop-shadow(0 0 8px rgba(226, 232, 240, 0.45));
 }
 
 /* =======================================================

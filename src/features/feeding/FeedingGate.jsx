@@ -430,6 +430,11 @@ function Picker({ status }) {
                 <FaGlyph icon={FEEDING_ICONS.diceD20} size={12} />
                 {p.total}
               </span>
+              {p.specialtyBonus > 0 && (
+                <div style={{ fontSize: '0.75rem', marginTop: '4px', opacity: 0.8, fontWeight: 'normal' }}>
+                  +1 from Predator Specialty
+                </div>
+              )}
             </button>
           ))}
         </div>

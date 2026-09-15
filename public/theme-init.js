@@ -55,6 +55,11 @@
             root.style.setProperty('--text-color', rules.textColor);
             root.style.setProperty('--theme-on-surface', rules.textColor);
           }
+          if (rules.textMuted) {
+            root.style.setProperty('--clan-text-muted', rules.textMuted);
+            root.style.setProperty('--text-muted', rules.textMuted);
+            root.style.setProperty('--theme-on-surface-variant', rules.textMuted);
+          }
           if (rules.primaryAccent) {
             root.style.setProperty('--clan-primary', rules.primaryAccent);
             root.style.setProperty('--theme-primary', rules.primaryAccent);
