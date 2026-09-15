@@ -3,7 +3,7 @@ import React, { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../core/api';
 import styles from '../../styles/AdminHomeTab.module.css';
-import { symlogo, CLAN_HEX as CLAN_COLORS } from '../../data/clans';
+import { symlogoWhite, CLAN_HEX as CLAN_COLORS } from '../../data/clans';
 import { formatEuDate } from '../../utils/dateFormatter';
 import ActivityHeatmap from './ActivityHeatmap';
 
@@ -510,7 +510,7 @@ export default function AdminHomeTab({
             <div className={styles.feedList}>
               {recentDowntimes.map((d) => {
                 const clanColor = CLAN_COLORS[d.clan] || '#9d7cff';
-                const clanLogo = symlogo(d.clan);
+                const clanLogo = symlogoWhite(d.clan);
                 const isProject = d.title && d.title.startsWith('[PROJECT]');
                 const cleanTitle = isProject ? d.title.replace(/^\[PROJECT\]\s*/i, '') : d.title;
 
