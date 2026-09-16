@@ -360,7 +360,11 @@ async function fetchAvatarAsDataUrl(url, division, timeoutMs = 8000) {
   }
   try {
     if (!res.ok) {
-      console.log(`[Domains Avatar] Div #${division}: HTTP ${res.status} for ${url} (no avatar in DB, staying as clan crest)`);
+      // 404 = no avatar on file (expected, permanent). 502 = the backend's
+      // own proxy fetch to the CDN failed (transient — the retry wrapper
+      // above will try again); anything else is unexpected.
+      const reason = res.status === 404 ? 'no avatar in DB' : res.status === 502 ? 'backend proxy fetch failed' : 'unexpected status';
+      console.log(`[Domains Avatar] Div #${division}: HTTP ${res.status} for ${url} (${reason})`);
       return null;
     }
     const blob = await res.blob();
@@ -707,7 +711,7 @@ export default function Domains() {
   const toggleHuntingDiff = useCallback(() => setHuntingDiffOn(v => !v), []);
 
   // ── Dynamic GeoJSON Loading ──
-  const { data: domainsRaw } = useQuery({
+  const { data: domainsRaw, isLoading: isDomainsGeoLoading } = useQuery({
     queryKey: ['domains-geojson'],
     queryFn: async () => {
       const mod = await import('../../data/Domains.json');
@@ -1776,7 +1780,12 @@ export default function Domains() {
             getText: () => 'NPC',
             getSize: 11,
             getColor: hexToRgba(NPC_ACCENT_COLOR, 255),
-            getPixelOffset: [0, -(badgeSize / 2 + 14)],
+            // The backdrop disc's radius is badgeSize/2+3, but it's floored at
+            // radiusMinPixels:14 — at low zoom (small badgeSize) that floor
+            // kicks in while this offset kept shrinking as if it hadn't,
+            // landing the tag on top of the badge instead of above it. Clamp
+            // the same way so there's always real clearance.
+            getPixelOffset: [0, -(Math.max(badgeSize / 2, 11) + 22)],
             fontFamily: '"Courier New", monospace',
             fontWeight: 800,
             billboard: true,
@@ -2520,8 +2529,31 @@ export default function Domains() {
     return layers;
   }, [geoJsonData, selectedDivision, hoveredDivision, hoveredFeature, avatarCache, onDeckHover, onDeckClick, groupOverlayFeatures, groupLabelData, npcFeatures, npcLabelData, clanBadgeData, avatarBadgeData, clanLabelData, abatonBadgeData, abatonFeatures, guestBadgeData, selectFeature, claimByDiv, badgeSize, badgeOffset, transitPathsSolid, transitPathsDashed, transitStationDots, transitLabelData, catacombPassageTiers, catacombSiteDots, catacombLabelData, necroDrawGroups, necroSiteDots, necroLabelData, cleanMap, onOverlayHover, huntBadgeData, huntingDiffOn, chasseIconData, onChasseIconClick, muniOutlinesOn]);
 
-  // ── Error state ─────────────────────────────────────────
+  // ── Loading / error state ─────────────────────────────────
+  // Domains.json is a large file loaded as its own chunk (a dynamic import,
+  // not bundled), so on a fresh page load geoJsonData is legitimately still
+  // `undefined` for a moment while that chunk downloads — slower on a mobile
+  // connection, which is why this was showing up there every time. That's
+  // not a failure; only show the error once the query has actually settled
+  // with nothing to show.
   if (!geoJsonData) {
+    if (isDomainsGeoLoading) {
+      return (
+        <div className={styles.wrap}>
+          <div className={styles.loadingOverlay} style={{ position: 'relative', opacity: 1 }}>
+            <div className={styles.loadingContainer}>
+              <div className={styles.loadingLogo}>
+                <span className="material-symbols-outlined">map</span>
+              </div>
+              <h2 className={styles.loadingTitle}>Establishing Cartography...</h2>
+              <div className={styles.loadingBarWrapper}>
+                <div className={styles.loadingBarFill} style={{ width: '60%' }} />
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className={styles.wrap}>
         <div className={styles.alertError}>Error: Invalid or missing map data.</div>
