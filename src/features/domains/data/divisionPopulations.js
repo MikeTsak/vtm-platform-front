@@ -86,6 +86,7 @@ export const DIVISION_POPULATIONS = {
   86: { population: 35417, placeLabel: 'Koropi', group: 'kropia', groupLabel: 'Municipality of Kropia', source: 'ELSTAT 2021 Census, Municipality of Kropia' },
   87: { population: 21183, placeLabel: 'Markopoulo Mesogaias', group: 'markopoulo', groupLabel: 'Municipality of Markopoulo Mesogaias', source: 'ELSTAT 2021 Census, Municipality of Markopoulo Mesogaias' },
   88: { population: 2800, placeLabel: 'Skaramangas & west Chaidari (Poikilo)', group: 'skaramangas', groupLabel: 'Skaramangas district (Municipality of Chaidari)', source: 'Skaramangas is a coastal district of the Municipality of Chaidari, not a separate municipality; the built settlement only, the rest is unpopulated hillside (estimated)' },
+  89: { population: 900, placeLabel: 'Penteli (Old Penteli village & the mountain)', group: 'penteli-unit', groupLabel: 'Municipal Unit of Penteli', source: 'ELSTAT 2021 Census — Municipal Unit of Penteli within the Municipality of Penteli: Old Penteli village plus the Pentelicus mountain forest, monastery and marble quarries above it; Nea Penteli and Melissia are the separate, much larger division #17 (estimated)' },
 };
 
 // Divisions that share a `group` report the SAME population — this maps each

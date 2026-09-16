@@ -621,6 +621,13 @@ export const HUNTING_DIFFICULTY = {
     "areaKm2": 17.15,
     "effectivePopulation": 2800,
     "estimated": false
+  },
+  "89": {
+    "difficulty": 6,
+    "density": 46,
+    "areaKm2": 19.553,
+    "effectivePopulation": 900,
+    "estimated": false
   }
 };
 

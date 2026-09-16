@@ -575,6 +575,7 @@ export default function Domains() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const [avatarCache, setAvatarCache] = useState({});
+  const [guestAvatarCache, setGuestAvatarCache] = useState({});
   const [mapReady, setMapReady] = useState(false);
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
 
@@ -622,6 +623,11 @@ export default function Domains() {
   const [assignTarget, setAssignTarget] = useState('character'); // 'character' | 'npc'
   const [assignId, setAssignId] = useState('');
   const [assignColor, setAssignColor] = useState('#8b5cf6');
+
+  // Add-guest form state
+  const [guestTarget, setGuestTarget] = useState('character'); // 'character' | 'npc'
+  const [guestId, setGuestId] = useState('');
+  const [guestNote, setGuestNote] = useState('');
 
   // ── Athens transit overlay (metro / tram / suburban / Line 4) ──
   const [transitPrefs, setTransitPrefs] = useState(loadTransitPrefs);
@@ -816,6 +822,36 @@ export default function Domains() {
     staleTime: 60 * 1000,
   });
 
+  // Who's hosted in the open division, beyond its owner — anyone can read this;
+  // `me.canManage` tells the dossier whether to show the add/remove controls
+  // (the division's own owner, or a Domain Steward/admin).
+  const { data: guestsData } = useQuery({
+    queryKey: ['domain-guests', selectedDivision],
+    queryFn: async () => (await api.get(`/domain-claims/${selectedDivision}/guests`)).data,
+    enabled: selectedDivision != null,
+  });
+  const canManageGuests = !!guestsData?.me?.canManage;
+
+  // Same characters+NPCs roster as the Court assign dropdown, but open to any
+  // player — extending hospitality is the owner's call, not a Steward power.
+  // Only fetched once the add-guest form can actually render.
+  const { data: guestRosterData } = useQuery({
+    queryKey: ['domain-guests-roster'],
+    queryFn: async () => (await api.get('/domain-claims/roster')).data,
+    enabled: canManageGuests,
+    staleTime: 60 * 1000,
+  });
+
+  // Every guest, every division, in one call — the map badges need this for
+  // every claimed division at once, not just whichever one the dossier has open.
+  const { data: allGuestsData } = useQuery({
+    queryKey: ['domain-guests-all'],
+    queryFn: async () => (await api.get('/domain-claims/guests')).data,
+    enabled: !!user,
+    staleTime: 30 * 1000,
+  });
+  const allGuests = allGuestsData?.guests || [];
+
   const claims = claimsData?.claims || [];
   const requests = requestsData?.requests || [];
   const problems = problemsData?.problems || [];
@@ -925,6 +961,32 @@ export default function Domains() {
     onError: (e) => toast.error(e.response?.data?.error || 'Failed to assign domain'),
   });
 
+  const addGuestMutation = useMutation({
+    mutationFn: async ({ division, character_id, npc_id, note }) => {
+      const res = await api.post(`/domain-claims/${division}/guests`, { character_id, npc_id, note });
+      return res.data;
+    },
+    onSuccess: (_data, vars) => {
+      toast.success('Guest added');
+      setGuestId('');
+      setGuestNote('');
+      queryClient.invalidateQueries({ queryKey: ['domain-guests', vars.division] });
+    },
+    onError: (e) => toast.error(e.response?.data?.error || 'Failed to add guest'),
+  });
+
+  const removeGuestMutation = useMutation({
+    mutationFn: async ({ division, guestId }) => {
+      const res = await api.delete(`/domain-claims/${division}/guests/${guestId}`);
+      return res.data;
+    },
+    onSuccess: (_data, vars) => {
+      toast.success('Guest removed');
+      queryClient.invalidateQueries({ queryKey: ['domain-guests', vars.division] });
+    },
+    onError: (e) => toast.error(e.response?.data?.error || 'Failed to remove guest'),
+  });
+
   // ── Avatar URL resolver ─────────────────────────────────
   const getAvatarUrl = useCallback((claim) => {
     if (!claim) return '';
@@ -939,6 +1001,45 @@ export default function Domains() {
     if (claim.owner_npc_id) return `${baseUrl}/npcs/${claim.owner_npc_id}/avatar?size=thumb&raw=1`;
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(claim.live_name || claim.owner_name || 'Unclaimed')}&background=random`;
   }, []);
+
+  const getGuestAvatarUrl = useCallback((guest) => {
+    if (!guest || guest.has_avatar === false) return null; // no DB avatar — go straight to the initials fallback
+    const baseUrl = import.meta.env.VITE_API_URL || '/api';
+    if (guest.user_id) return `${baseUrl}/users/${guest.user_id}/avatar?size=thumb&raw=1`;
+    if (guest.npc_id) return `${baseUrl}/npcs/${guest.npc_id}/avatar?size=thumb&raw=1`;
+    return null;
+  }, []);
+
+  // ── Eagerly load a small circular avatar for every guest of every claimed
+  // division, exactly like the owner badge above — unlike the owner (which
+  // falls back to the clan crest while it waits/fails), a guest has no crest
+  // to fall back to, so a failed/missing photo becomes a generated initials
+  // circle instead, tinted by clan (or slate for an NPC). ──
+  useEffect(() => {
+    let isMounted = true;
+    for (const guest of allGuests) {
+      if (guestAvatarCache[guest.id] !== undefined) continue;
+      const fallbackColor = guest.isNpc ? '#94a3b8' : (clanTint(guest.clan) || '#6366f1');
+      const url = getGuestAvatarUrl(guest);
+      if (!url) {
+        setGuestAvatarCache(prev => ({ ...prev, [guest.id]: createFallbackAvatarDataUrl(guest.name, fallbackColor) }));
+        continue;
+      }
+      fetchAvatarWithRetry(url, `guest-${guest.id}`).then(dataUrl => {
+        if (!isMounted) return;
+        setGuestAvatarCache(prev => ({
+          ...prev,
+          [guest.id]: dataUrl || createFallbackAvatarDataUrl(guest.name, fallbackColor)
+        }));
+      });
+    }
+    return () => { isMounted = false; };
+  }, [allGuests, guestAvatarCache, getGuestAvatarUrl]);
+
+  // Same reconnect/foreground retry as the owner avatars — but a guest never
+  // sits as `null` (it always resolves to at least the initials fallback), so
+  // there's nothing to clear here; the fallback IS the permanent state until
+  // a real photo succeeds on a later mount. Nothing to add.
 
   // ── Eagerly load avatars for every claimed (non-Abaton) division ────────
   // The clan crest badge displays immediately as the buffer. Once a custom
@@ -969,6 +1070,7 @@ export default function Domains() {
   useEffect(() => {
     const handleAvatarUpdated = () => {
       setAvatarCache({});
+      setGuestAvatarCache({});
     };
     window.addEventListener('avatar-updated', handleAvatarUpdated);
     return () => window.removeEventListener('avatar-updated', handleAvatarUpdated);
@@ -1363,13 +1465,25 @@ export default function Domains() {
   // can render the moment the clan is known (it's a static per-clan asset);
   // the avatar badge only appears once its blob has actually finished
   // fetching — the two are independent.
-  const { clanBadgeData, avatarBadgeData, clanLabelData, abatonBadgeData, abatonFeatures } = useMemo(() => {
-    if (!geoJsonData) return { clanBadgeData: [], avatarBadgeData: [], clanLabelData: [], abatonBadgeData: [], abatonFeatures: [] };
+  // Guests grouped by division, for the badge-position pass below — recomputed
+  // only when the bulk guest list actually changes.
+  const guestsByDivision = useMemo(() => {
+    const map = new Map();
+    for (const g of allGuests) {
+      if (!map.has(g.division)) map.set(g.division, []);
+      map.get(g.division).push(g);
+    }
+    return map;
+  }, [allGuests]);
+
+  const { clanBadgeData, avatarBadgeData, clanLabelData, abatonBadgeData, abatonFeatures, guestBadgeData } = useMemo(() => {
+    if (!geoJsonData) return { clanBadgeData: [], avatarBadgeData: [], clanLabelData: [], abatonBadgeData: [], abatonFeatures: [], guestBadgeData: [] };
     const clanBadges = [];
     const avatarBadges = [];
     const clanLabels = [];
     const abatonBadges = [];
     const abatonFeats = [];
+    const guestBadges = [];
     for (const f of geoJsonData.features) {
       if (f.properties?.isAbaton) {
         const [minLng, minLat, maxLng, maxLat] = bbox(f);
@@ -1403,9 +1517,22 @@ export default function Domains() {
           avatarBadges.push({ position, image: fallback, division });
         }
       }
+
+      // Small guest avatar circles, underneath the clan text logo — one row
+      // per division, only for guests whose avatar (real or generated
+      // fallback) has actually resolved.
+      const divisionGuests = guestsByDivision.get(division);
+      if (divisionGuests?.length) {
+        divisionGuests.forEach((g, i) => {
+          const image = guestAvatarCache[g.id];
+          if (typeof image === 'string' && image) {
+            guestBadges.push({ position, division, guestId: g.id, name: g.name, image, index: i, count: divisionGuests.length });
+          }
+        });
+      }
     }
-    return { clanBadgeData: clanBadges, avatarBadgeData: avatarBadges, clanLabelData: clanLabels, abatonBadgeData: abatonBadges, abatonFeatures: abatonFeats };
-  }, [geoJsonData, avatarCache]);
+    return { clanBadgeData: clanBadges, avatarBadgeData: avatarBadges, clanLabelData: clanLabels, abatonBadgeData: abatonBadges, abatonFeatures: abatonFeats, guestBadgeData: guestBadges };
+  }, [geoJsonData, avatarCache, guestsByDivision, guestAvatarCache]);
 
   // ── Athens transit overlay: filter lines + stations by the legend toggles,
   // and decide which station labels are visible at the current zoom ──
@@ -1832,6 +1959,55 @@ export default function Domains() {
           })
         );
       }
+
+      // ─── Guest avatars — small circles in a row underneath the clan text
+      // logo, same idea as the owner's badge but smaller and possibly several.
+      // Offset clears even the tallest clan logo (Brujah/Toreador). Clicking
+      // one opens that division's dossier, where Guests is the first block. ──
+      if (guestBadgeData.length) {
+        layers.push(
+          new IconLayer({
+            id: 'guest-avatar-badges',
+            data: guestBadgeData,
+            pickable: true,
+            getPosition: d => d.position,
+            getIcon: d => ({
+              url: d.image,
+              id: `guest-${d.guestId}`,
+              width: 128,
+              height: 128,
+              anchorX: 64,
+              anchorY: 64,
+              mask: false,
+            }),
+            getSize: Math.max(10, badgeSize * 0.34),
+            sizeUnits: 'pixels',
+            getColor: [255, 255, 255, 255],
+            getPixelOffset: d => {
+              const size = Math.max(10, badgeSize * 0.34);
+              const step = size + 4;
+              const x = Math.round((d.index - (d.count - 1) / 2) * step);
+              return [x, Math.round(badgeSize / 2 + 32)];
+            },
+            loadOptions: { image: { type: 'auto' } },
+            parameters: { depthTest: false },
+            updateTriggers: {
+              getSize: [badgeSize],
+              getPixelOffset: [badgeSize],
+              getIcon: [guestBadgeData],
+            },
+            transitions: { getSize: 150 },
+            onClick: (info) => {
+              const d = info?.object;
+              if (!d) return false;
+              const feature = geoJsonData?.features.find(f => f.properties.__division === Number(d.division));
+              if (feature) selectFeature(feature);
+              return true;
+            },
+          })
+        );
+      }
+
       if (abatonBadgeData.length) {
         layers.push(
           new ScatterplotLayer({
@@ -2331,6 +2507,7 @@ export default function Domains() {
     const TOP_BADGE_IDS = new Set([
       'clan-badge-backdrop', 'clan-badges-shadow', 'clan-badges',
       'avatar-badges', 'clan-name-labels-outline', 'clan-name-labels',
+      'guest-avatar-badges',
       'abaton-badge-backdrop', 'abaton-badges',
       'hover-mask-layer', 'hover-image-layer',
     ]);
@@ -2341,7 +2518,7 @@ export default function Domains() {
       return [...baseLayers, ...iconLayers, ...topLayers];
     }
     return layers;
-  }, [geoJsonData, selectedDivision, hoveredDivision, hoveredFeature, avatarCache, onDeckHover, onDeckClick, groupOverlayFeatures, groupLabelData, npcFeatures, npcLabelData, clanBadgeData, avatarBadgeData, clanLabelData, abatonBadgeData, abatonFeatures, claimByDiv, badgeSize, badgeOffset, transitPathsSolid, transitPathsDashed, transitStationDots, transitLabelData, catacombPassageTiers, catacombSiteDots, catacombLabelData, necroDrawGroups, necroSiteDots, necroLabelData, cleanMap, onOverlayHover, huntBadgeData, huntingDiffOn, chasseIconData, onChasseIconClick, muniOutlinesOn]);
+  }, [geoJsonData, selectedDivision, hoveredDivision, hoveredFeature, avatarCache, onDeckHover, onDeckClick, groupOverlayFeatures, groupLabelData, npcFeatures, npcLabelData, clanBadgeData, avatarBadgeData, clanLabelData, abatonBadgeData, abatonFeatures, guestBadgeData, selectFeature, claimByDiv, badgeSize, badgeOffset, transitPathsSolid, transitPathsDashed, transitStationDots, transitLabelData, catacombPassageTiers, catacombSiteDots, catacombLabelData, necroDrawGroups, necroSiteDots, necroLabelData, cleanMap, onOverlayHover, huntBadgeData, huntingDiffOn, chasseIconData, onChasseIconClick, muniOutlinesOn]);
 
   // ── Error state ─────────────────────────────────────────
   if (!geoJsonData) {
@@ -2948,6 +3125,96 @@ export default function Domains() {
               <div className={styles.dossierBody}>
                 {activeTab === 'overview' && (
                   <>
+
+                    {!isUnclaimed && !selectedDivisionInfo.is_abaton && (
+                      <div className={styles.statBlock}>
+                        <span className={styles.statLabel}>Guests — Hospitality</span>
+                        {(guestsData?.guests || []).length === 0 ? (
+                          <p className={styles.dossierEmpty} style={{ margin: 0 }}>No one is currently hosted here.</p>
+                        ) : (
+                          <div className={styles.guestList}>
+                            {guestsData.guests.map(g => (
+                              <div key={g.id} className={styles.guestItem}>
+                                <div className={styles.guestItemInfo}>
+                                  <b className={styles.guestItemName}>{g.name}</b>
+                                  {(g.clan || g.isNpc) && (
+                                    <span className={styles.guestItemClan}>{g.clan}{g.clan && g.isNpc ? ' · ' : ''}{g.isNpc ? 'NPC' : ''}</span>
+                                  )}
+                                  {g.note && <span className={styles.guestItemNote}>&ldquo;{g.note}&rdquo;</span>}
+                                </div>
+                                {(canManageGuests || g.isSelf) && (
+                                  <button
+                                    type="button"
+                                    className={styles.guestRemoveBtn}
+                                    disabled={removeGuestMutation.isPending}
+                                    onClick={() => removeGuestMutation.mutate({ division: selectedDivisionInfo.number, guestId: g.id })}
+                                    title={g.isSelf ? 'Leave this domain' : 'Remove guest'}
+                                  >
+                                    {g.isSelf ? 'Leave' : 'Remove'}
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {canManageGuests && (
+                          <div className={styles.guestAddForm}>
+                            <div className={styles.assignTargetToggle}>
+                              <button
+                                type="button"
+                                className={`${styles.assignToggleBtn} ${guestTarget === 'character' ? styles.assignToggleBtnActive : ''}`}
+                                onClick={() => { setGuestTarget('character'); setGuestId(''); }}
+                              >Character</button>
+                              <button
+                                type="button"
+                                className={`${styles.assignToggleBtn} ${guestTarget === 'npc' ? styles.assignToggleBtnActive : ''}`}
+                                onClick={() => { setGuestTarget('npc'); setGuestId(''); }}
+                              >NPC</button>
+                            </div>
+                            <select
+                              className={styles.assignSelect}
+                              value={guestId}
+                              onChange={e => setGuestId(e.target.value)}
+                            >
+                              <option value="">— select {guestTarget === 'character' ? 'a character' : 'an NPC'} —</option>
+                              {guestTarget === 'character'
+                                ? (guestRosterData?.characters || []).map(c => (
+                                  <option key={c.id} value={c.id}>{c.name} ({c.player_name}){c.clan ? ` · ${c.clan}` : ''}</option>
+                                ))
+                                : (guestRosterData?.npcs || []).map(n => (
+                                  <option key={n.id} value={n.id}>{n.name}{n.clan ? ` · ${n.clan}` : ''}</option>
+                                ))
+                              }
+                            </select>
+                            <input
+                              type="text"
+                              className={styles.guestNoteInput}
+                              placeholder="Note (optional) — e.g. seeking Praxis"
+                              value={guestNote}
+                              maxLength={255}
+                              onChange={e => setGuestNote(e.target.value)}
+                            />
+                            <button
+                              type="button"
+                              className={styles.assignBtn}
+                              disabled={!guestId || addGuestMutation.isPending}
+                              onClick={() => {
+                                if (!guestId || !selectedDivisionInfo) return;
+                                addGuestMutation.mutate({
+                                  division: selectedDivisionInfo.number,
+                                  character_id: guestTarget === 'character' ? Number(guestId) : null,
+                                  npc_id: guestTarget === 'npc' ? Number(guestId) : null,
+                                  note: guestNote,
+                                });
+                              }}
+                            >
+                              {addGuestMutation.isPending ? 'Adding…' : 'Add Guest'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {!selectedDivisionInfo.is_abaton && (
                       <div className={styles.statBlock}>

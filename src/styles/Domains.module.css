@@ -2143,6 +2143,88 @@
   margin: 2px 0;
 }
 
+/* ── Domain guests: hospitality declared beyond the owner ── */
+.guestList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.guestItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, #8b5cf6 8%, transparent);
+  border: 1px solid color-mix(in srgb, #8b5cf6 25%, transparent);
+}
+
+.guestItemInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.guestItemName {
+  color: var(--text-color);
+  font-size: 0.85rem;
+}
+
+.guestItemClan {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.guestItemNote {
+  font-size: 0.76rem;
+  font-style: italic;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.guestRemoveBtn {
+  flex-shrink: 0;
+  padding: 5px 10px;
+  border-radius: 7px;
+  background: color-mix(in srgb, #ef4444 14%, transparent);
+  border: 1px solid color-mix(in srgb, #ef4444 40%, transparent);
+  color: #f87171;
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.guestRemoveBtn:hover:not(:disabled) { background: color-mix(in srgb, #ef4444 26%, transparent); }
+.guestRemoveBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.guestAddForm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed color-mix(in srgb, #8b5cf6 30%, transparent);
+}
+
+.guestNoteInput {
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-color) 60%, transparent);
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+  font-size: 0.8rem;
+  font-family: inherit;
+}
+
+.guestNoteInput:focus { outline: none; border-color: #8b5cf6; }
+
 /* ── Court Intel tab ── */
 .problemList {
   display: flex;
@@ -2238,6 +2320,10 @@
   .chasseBar { gap: 8px; }
   .chasseChip { width: 36px; height: 36px; }
   .chasseChip::after { display: none; }
+
+  /* same reasoning for the guest list's Remove/Leave buttons — 5px/10px
+     padding reads fine on a mouse but is too small a target on touch */
+  .guestRemoveBtn { padding: 9px 12px; font-size: 0.8rem; }
 
   /* The scrollable tab content sits between the header and the bottom tab
      bar — flex handles the sizing automatically via `order` + `flex: 1`,
