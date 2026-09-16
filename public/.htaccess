@@ -37,8 +37,19 @@ RewriteBase /
 # env vars (VITE_API_URL etc.) that aren't fixed at CSP-authoring time. If you
 # want a tighter policy, replace `https:` below with the exact origins your
 # deployment uses (API host, img.miketsak.gr, your MapLibre tile provider).
+#
+# connect-src also needs data: (and blob:, for the same reason) — deck.gl's
+# IconLayer loads every icon via an internal fetch(), including ones we hand
+# it as a data: URI (avatar photos baked into a canvas, guest initials
+# fallbacks, MapLibre's own generated marker SVGs). img-src allowing data:
+# only covers plain <img> tags; a fetch() of a data: URL is governed by
+# connect-src, which didn't list it — so every one of those icons silently
+# failed to load. This is the actual cause of "images on top of the domains
+# don't load on mobile": confirmed straight from a phone's console via
+# chrome://inspect ("Fetch API cannot load data:image/... Refused to connect
+# because it violates the document's Content Security Policy").
 <IfModule mod_headers.c>
-    Header set Content-Security-Policy "default-src 'self'; script-src 'self' https://www.googletagmanager.com https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.doubleclick.net https://www.clarity.ms https://*.clarity.ms; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https: wss:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://*.doubleclick.net; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; upgrade-insecure-requests"
+    Header set Content-Security-Policy "default-src 'self'; script-src 'self' https://www.googletagmanager.com https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.doubleclick.net https://www.clarity.ms https://*.clarity.ms; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https: wss: data: blob:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://*.doubleclick.net; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; upgrade-insecure-requests"
     Header set X-Content-Type-Options "nosniff"
     Header set X-Frame-Options "SAMEORIGIN"
     Header set Referrer-Policy "strict-origin-when-cross-origin"
