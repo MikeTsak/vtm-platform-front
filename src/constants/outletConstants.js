@@ -7,6 +7,7 @@ export const NEWS_OUTLETS = {
   'KATHIMERINI': { name: 'Kathimerini', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRNk0h-loKAwB5Ay_ohV5G8ItU88h7PY_RkPw&s', color: '#999999', url: 'www.kathimerini.gr' },
   'GOSSIP': { name: 'Gossip-tv', logo: 'https://cdn.gosmd.gr/img/1200/630/90/2016/05/19/1952016-14126.jpg?t=xRh4M6KRWfNTqee7gQzcuw', color: '#e6007e', url: 'www.gossip-tv.gr' },
   'OPENTV': { name: 'Open TV', logo: 'https://upload.wikimedia.org/wikipedia/commons/5/55/OpenLogo.svg', color: '#fa8301', url: 'www.tvopen.gr' },
+  'ALTER': { name: 'Alter Channel', logo: '/img/alter-logo.svg', color: '#d4af37', url: 'www.alter.gr' },
   'RUMOR': { name: 'Rumor / Gossip', color: '#fbbf24', url: null }
 };
 

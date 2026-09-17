@@ -430,7 +430,62 @@ export default function PublicArticleView() {
     );
   }
 
-  // 8. COURT ANNOUNCEMENT
+  // 8. ALTER
+  if (article.theme === 'ALTER') {
+    return (
+      <div className={`${themeStyles.articleWrapper} ${themeStyles.alterWrapper}`}>
+        {helmet}
+        {backBtn}
+        <header className={themeStyles.alterHeader}>
+          <div className={themeStyles.alterTopBar}>
+            <div className={themeStyles.alterLogoContainer}>
+              <img src={themeObj.logo} alt={themeObj.name} className={themeStyles.alterLogo} />
+              <span className={themeStyles.alterSlogan}>ΤΟ ΚΑΝΑΛΙ ΤΗΣ ΕΝΗΜΕΡΩΣΗΣ</span>
+            </div>
+            <div className={themeStyles.alterLiveBadge}>
+              <span className={themeStyles.alterLiveDot} />
+              <span>LIVE</span>
+            </div>
+          </div>
+          <nav className={themeStyles.alterNav}>
+            <a href="#" onClick={e=>e.preventDefault()}>ΡΟΗ ΕΙΔΗΣΕΩΝ</a>
+            <a href="#" onClick={e=>e.preventDefault()}>ΠΟΛΙΤΙΚΗ</a>
+            <a href="#" onClick={e=>e.preventDefault()}>ΕΡΕΥΝΑ</a>
+            <a href="#" onClick={e=>e.preventDefault()}>ΚΟΙΝΩΝΙΑ</a>
+            <a href="#" onClick={e=>e.preventDefault()}>ΑΠΟΚΑΛΥΨΕΙΣ</a>
+            <a href="#" onClick={e=>e.preventDefault()}>ΚΟΣΜΟΣ</a>
+          </nav>
+          <div className={themeStyles.alterTickerBar}>
+            <span className={themeStyles.alterTickerLabel}>ΕΚΤΑΚΤΟ</span>
+            <span>ΕΝΗΜΕΡΩΤΙΚΟ ΔΕΛΤΙΟ : ΣΥΝΕΧΗΣ ΕΝΗΜΕΡΩΣΗ</span>
+          </div>
+        </header>
+        <div className={themeStyles.mainContent} style={{ marginTop: '2rem' }}>
+          <LeftAdSidebar />
+          <div className={`${themeStyles.articleBody} ${themeStyles.alterArticle}`}>
+            <h1 className={themeStyles.alterTitle}>{article.title}</h1>
+            {article.subtitle && <h3 className={themeStyles.alterSubtitle}>{article.subtitle}</h3>}
+            <div className={themeStyles.alterMeta}>
+              <span>ΣΥΝΤΑΞΗ : {article.journalist_name || 'ALTER NEWSROOM'}</span>
+              <span>ΩΡΑ : {articleDate}</span>
+            </div>
+            {mediaUrl && (
+              <div className={themeStyles.alterMediaContainer}>
+                {renderMedia()}
+                <img src="/img/alter-logo.svg" alt="Alter Bug" className={themeStyles.alterWatermark} />
+              </div>
+            )}
+            <div className={styles.fsBody} dangerouslySetInnerHTML={{ __html: sanitizeHtml(article.body) }} style={{ marginTop: '2rem', color: 'inherit', fontFamily: 'inherit' }} />
+            <DisclaimerText />
+            <BottomAd />
+          </div>
+          <RightAdSidebar />
+        </div>
+      </div>
+    );
+  }
+
+  // 9. COURT ANNOUNCEMENT
   if (article.type === 'announcement') {
     const authorRole = getTopRole(article.char_titles);
     const authorName = article.char_name || article.author_real_name || "Court Authority";

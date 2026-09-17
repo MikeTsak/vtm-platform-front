@@ -125,6 +125,7 @@ export default function AdminNewsTab({ users = [] }) {
                 <option value="KATHIMERINI">Kathimerini</option>
                 <option value="GOSSIP">Gossip-tv</option>
                 <option value="OPENTV">Open TV</option>
+                <option value="ALTER">Alter Channel</option>
               </select>
             </div>
             <button className={`${styles.btn} ${styles.btnPrimary}`} style={{ marginTop: '1rem' }} onClick={handleGrantPermission}>
