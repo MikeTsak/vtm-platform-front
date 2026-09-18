@@ -1468,9 +1468,9 @@ export default function CharacterView({
     disciplineKind: (name) => disciplineKindFor(ch, name),
   }), [ch, sheet, xp]);
 
-  const computeMissingPicks = useCallback(() => {
-    const dots = sheet.disciplines || {};
-    const picks = sheet.disciplinePowers || {};
+  const findMissingPicks = useCallback((s) => {
+    const dots = s?.disciplines || {};
+    const picks = s?.disciplinePowers || {};
     const q = [];
     Object.entries(dots).forEach(([name, lvl]) => {
       const L = Number(lvl || 0);
@@ -1480,7 +1480,9 @@ export default function CharacterView({
     });
     q.sort((a, b) => (a.name === b.name ? a.level - b.level : a.name.localeCompare(b.name)));
     return q;
-  }, [sheet]);
+  }, []);
+
+  const computeMissingPicks = useCallback(() => findMissingPicks(sheet), [sheet, findMissingPicks]);
 
   useEffect(() => {
     if (!ch) return;
@@ -1502,16 +1504,21 @@ export default function CharacterView({
     }
   }, [ch, computeMissingPicks, modalOpen, sheet]);
 
-  async function confirmDisciplinePurchase({ name, selectedPowerId, selectedPowerName, current, next, kind, assignOnly }) {
+  async function confirmDisciplinePurchase({ name, selectedPowerId, selectedPowerName, selectedPowerLevel, current, next, kind, assignOnly }) {
     const nextSheet = JSON.parse(JSON.stringify(sheet));
     nextSheet.disciplines = nextSheet.disciplines || {};
     nextSheet.disciplinePowers = nextSheet.disciplinePowers || {};
 
     if (!assignOnly) nextSheet.disciplines[name] = next;
 
+    // Key the write on the level the chosen power actually belongs to, not the
+    // dot the modal was targeting — those can differ (e.g. filling a gap left
+    // by a predator-type bonus dot) and using `next` here overwrote whatever
+    // power already occupied that dot slot.
+    const powerLevel = Number(selectedPowerLevel ?? next);
     const list = Array.isArray(nextSheet.disciplinePowers[name]) ? nextSheet.disciplinePowers[name] : [];
-    const filtered = list.filter(p => Number(p.level) !== Number(next));
-    filtered.push({ level: next, id: selectedPowerId, name: selectedPowerName });
+    const filtered = list.filter(p => Number(p.level) !== powerLevel);
+    filtered.push({ level: powerLevel, id: selectedPowerId, name: selectedPowerName });
     nextSheet.disciplinePowers[name] = filtered.sort((a, b) => a.level - b.level);
 
     try {
@@ -1546,7 +1553,12 @@ export default function CharacterView({
       setModalCfg(null);
 
       if (assignOnly) {
-        const rest = computeMissingPicks();
+        // Compute against the just-saved nextSheet, not the stale `sheet` this
+        // closure was created with — `sheet` hasn't re-rendered yet, so
+        // computeMissingPicks() here would keep reporting the level we just
+        // filled as still missing, reopening the modal on the same dot and
+        // clobbering it on every subsequent pick (the infinite-loop bug).
+        const rest = findMissingPicks(nextSheet);
         setPendingFixes(rest);
         if (rest.length) {
           const first = rest[0];
@@ -3073,12 +3085,17 @@ function InlineDisciplinePicker({ cfg, onConfirm, searchQuery }) {
     const out = [];
     const levels = DISCIPLINES?.[name]?.levels || {};
     const cap = Number(next || 0);
-    for (let lvl = 1; lvl <= cap; lvl++) {
+    // When filling a specific missing dot (e.g. a gap left by a predator-type
+    // bonus dot), only offer powers for that exact level — offering the full
+    // 1..cap history lets a player pick a lower-level power while "filling"
+    // a higher dot, which then gets mis-saved under the wrong level.
+    const lo = assignOnly ? cap : 1;
+    for (let lvl = lo; lvl <= cap; lvl++) {
       for (const p of (levels[lvl] || [])) out.push({ ...p, __level: lvl });
     }
     out.sort((a, b) => (a.__level - b.__level) || String(a.name).localeCompare(String(b.name)));
     return out;
-  }, [name, next]);
+  }, [name, next, assignOnly]);
 
   const norm = (v) => String(v ?? '').trim().toLowerCase();
   const normDisc = useCallback((s) => norm(s).replace(/\s+/g, ' '), []);
@@ -3299,12 +3316,16 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
     const out = [];
     const levels = DISCIPLINES?.[name]?.levels || {};
     const cap = Number(next || 0);
-    for (let lvl = 1; lvl <= cap; lvl++) {
+    // Same reasoning as InlineDisciplinePicker: restrict to the exact missing
+    // level when filling a gap, so a lower-level power can't get mis-saved
+    // under the level being filled.
+    const lo = assignOnly ? cap : 1;
+    for (let lvl = lo; lvl <= cap; lvl++) {
       for (const p of (levels[lvl] || [])) out.push({ ...p, __level: lvl });
     }
     out.sort((a, b) => (a.__level - b.__level) || String(a.name).localeCompare(String(b.name)));
     return out;
-  }, [name, next]);
+  }, [name, next, assignOnly]);
 
   const norm = (v) => String(v ?? '').trim().toLowerCase();
   const normDisc = useCallback((s) => norm(s).replace(/\s+/g, ' '), []);

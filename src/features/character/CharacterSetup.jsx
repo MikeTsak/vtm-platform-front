@@ -599,6 +599,8 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
               setFavoredDisc={setFavoredDisc}
               disciplinePowerPicks={disciplinePowerPicks}
               setDisciplinePowerPicks={setDisciplinePowerPicks}
+              predatorType={predatorType}
+              predatorPicks={predatorPicks}
               setStep={setStep}
             />
           )}

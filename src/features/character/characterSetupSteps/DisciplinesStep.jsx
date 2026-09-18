@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import styles from '../../../styles/CharacterSetup.module.css';
 import { CLAN_DISCIPLINES } from '../../../data/clans';
 import { DISCIPLINES, iconPath } from '../../../data/disciplines';
+import { PREDATOR_TYPES } from '../../../data/predator_types';
 import { RandomizeButton, StatusIcon, Icon } from './StepHelpers';
 
 const pickRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
@@ -28,10 +29,22 @@ export default function DisciplinesStep({
   selectedDiscs, setSelectedDiscs,
   favoredDisc, setFavoredDisc,
   disciplinePowerPicks, setDisciplinePowerPicks,
+  predatorType, predatorPicks,
   setStep
 }) {
   const [expanded, setExpanded] = useState(null);
   const clanDiscs = useMemo(() => CLAN_DISCIPLINES[clan] || [], [clan]);
+
+  // Predator type can grant a free dot in a discipline (independent of the
+  // two picked below). When it lands on one of those two, its budget needs
+  // to account for that extra dot right here — otherwise the player is never
+  // asked to pick its power during creation, and the sheet ends up with a
+  // discipline dot that has no matching power (surfaced later as a gap-fill
+  // prompt on the character sheet).
+  const predatorBonusDisc = useMemo(() => {
+    const P = PREDATOR_TYPES[predatorType] || {};
+    return (P.picks?.discipline && predatorPicks?.discipline) ? predatorPicks.discipline : null;
+  }, [predatorType, predatorPicks]);
 
   const options = useMemo(() => (
     clanDiscs.includes('Choose Any')
@@ -50,7 +63,7 @@ export default function DisciplinesStep({
     return out;
   };
 
-  const budgetFor = (d) => (favoredDisc === d ? 2 : 1);
+  const budgetFor = (d) => (favoredDisc === d ? 2 : 1) + (predatorBonusDisc === d ? 1 : 0);
 
   // Shared power-choosing walk: always take one legal Level 1 power first,
   // then keep adding legal powers (Level 2 only if its prerequisite is
@@ -59,7 +72,7 @@ export default function DisciplinesStep({
   // pass `arr => arr[0]` for a deterministic "Suggest" or a random picker
   // for "Randomize".
   const choosePowers = (discName, budget, chooser) => {
-    const pool = powersUpTo(discName, budget >= 2 ? 2 : 1);
+    const pool = powersUpTo(discName, budget);
     const level1 = pool.filter(p => p.level === 1);
     const picks = [];
     if (level1.length) picks.push(chooser(level1));
@@ -89,13 +102,19 @@ export default function DisciplinesStep({
     });
   };
 
+  // Budget for a discipline given a specific favored pick — used by
+  // applySuggested/randomizeDiscs, which set `favoredDisc` state in the same
+  // tick they need the budget, so they can't rely on the (not-yet-updated)
+  // `favoredDisc` closure that `budgetFor` reads.
+  const budgetForFavored = (d, favored) => (d === favored ? 2 : 1) + (predatorBonusDisc === d ? 1 : 0);
+
   const applySuggested = () => {
     const picks = options.slice(0, 2);
     const favored = picks[0] || null;
     setSelectedDiscs(picks);
     setFavoredDisc(favored);
     const next = {};
-    picks.forEach(d => { next[d] = pickFirstPowers(d, d === favored ? 2 : 1); });
+    picks.forEach(d => { next[d] = pickFirstPowers(d, budgetForFavored(d, favored)); });
     setDisciplinePowerPicks(next);
   };
 
@@ -107,8 +126,8 @@ export default function DisciplinesStep({
     setSelectedDiscs(picks);
     setFavoredDisc(favored);
     setDisciplinePowerPicks({
-      [picks[0]]: pickRandomPowers(picks[0], picks[0] === favored ? 2 : 1),
-      [picks[1]]: pickRandomPowers(picks[1], picks[1] === favored ? 2 : 1),
+      [picks[0]]: pickRandomPowers(picks[0], budgetForFavored(picks[0], favored)),
+      [picks[1]]: pickRandomPowers(picks[1], budgetForFavored(picks[1], favored)),
     });
   };
 
@@ -237,7 +256,7 @@ export default function DisciplinesStep({
           <div className={styles.grid2}>
             {selectedDiscs.map(d => {
               const budget = budgetFor(d);
-              const powers = powersUpTo(d, budget >= 2 ? 2 : 1);
+              const powers = powersUpTo(d, budget);
               const picked = disciplinePowerPicks[d] || [];
               return (
                 <div key={d} className={styles.cardIsh}>
@@ -246,7 +265,10 @@ export default function DisciplinesStep({
                       <img src={iconPath(d)} alt="" style={{ width: 22, height: 22, objectFit: 'contain' }} />
                       {d}
                     </span>
-                    <span className={styles.muted}>{picked.length}/{budget} picked</span>
+                    <span className={styles.muted}>
+                      {picked.length}/{budget} picked
+                      {predatorBonusDisc === d && <span title="Includes a free dot from your Predator Type"> (+1 Predator)</span>}
+                    </span>
                   </div>
                   <div style={{ display: 'grid', gap: 8 }}>
                     {powers.map(p => {
