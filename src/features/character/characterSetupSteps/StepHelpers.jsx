@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import styles from '../../../styles/CharacterSetup.module.css';
 
 // Material Symbols icon, matching the font already loaded site-wide (no emoji).
@@ -60,13 +60,33 @@ export function RandomizeButton({ onClick, label = 'Randomize' }) {
   );
 }
 
+// Each entry is still stored as a single "Skill: Text" string — that's the
+// flat format CharacterSetup/ReviewStep/the backend/normalizeFromFlatAny all
+// already expect, so nothing downstream needs to change. What used to be a
+// single free-text box (with a placeholder mixing ':' and '/' in the same
+// example, which is exactly how a player ends up typing "Craft/traps" and
+// getting a bogus skill entry instead of a specialty) is now a skill
+// dropdown + a plain text field that get combined into that string for you.
+function parseSpecialtyEntry(raw) {
+  const idx = String(raw || '').indexOf(':');
+  if (idx === -1) return { skill: '', text: String(raw || '') };
+  return { skill: raw.slice(0, idx).trim(), text: raw.slice(idx + 1).trim() };
+}
+
 export function SpecialtiesBlock({ skillDots, specialties, setSpecialties }) {
   const autoSkills = ['Academics','Craft','Performance','Science'];
   const autoCount = autoSkills.reduce((n,sk)=> n + ((skillDots[sk]||0) > 0 ? 1 : 0), 0);
   const totalNeeded = autoCount + 1; // +1 extra anywhere
   const tooMany = specialties.filter(Boolean).length > totalNeeded;
 
-  React.useEffect(() => {
+  // A specialty requires at least 1 dot in the skill (per the rules) — the
+  // free-text box never enforced this at all.
+  const eligibleSkills = useMemo(
+    () => Object.entries(skillDots).filter(([, v]) => Number(v) > 0).map(([k]) => k).sort(),
+    [skillDots]
+  );
+
+  useEffect(() => {
     setSpecialties(prev => {
       if (prev.length < totalNeeded) {
         return [...prev, ...Array(totalNeeded - prev.length).fill('')];
@@ -77,6 +97,14 @@ export function SpecialtiesBlock({ skillDots, specialties, setSpecialties }) {
     });
   }, [totalNeeded, setSpecialties]);
 
+  const updateEntry = (i, patch) => {
+    setSpecialties(prev => prev.map((v, idx) => {
+      if (idx !== i) return v;
+      const next = { ...parseSpecialtyEntry(v), ...patch };
+      return next.skill ? `${next.skill}: ${next.text}` : next.text;
+    }));
+  };
+
   return (
     <>
       <p className={styles.muted}>
@@ -84,16 +112,31 @@ export function SpecialtiesBlock({ skillDots, specialties, setSpecialties }) {
         If Predator type grants a specialty in a Skill with 0 dots, convert it to the first dot instead.
       </p>
       <div className={styles.grid3}>
-        {specialties.map((sp,i)=>(
-          <Field key={i} label={`Specialty ${i+1}`}>
-            <input
-              className={styles.input}
-              value={sp}
-              onChange={e=>setSpecialties(prev=>prev.map((v,idx)=>idx===i?e.target.value:v))}
-              placeholder="e.g., Melee: Knives / Persuasion: Bargaining"
-            />
-          </Field>
-        ))}
+        {specialties.map((sp, i) => {
+          const { skill, text } = parseSpecialtyEntry(sp);
+          return (
+            <Field key={i} label={`Specialty ${i+1}`}>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <select
+                  className={styles.input}
+                  value={skill}
+                  onChange={e => updateEntry(i, { skill: e.target.value })}
+                  style={{ flex: '0 0 42%' }}
+                >
+                  <option value="">Skill…</option>
+                  {eligibleSkills.map(sk => <option key={sk} value={sk}>{sk}</option>)}
+                </select>
+                <input
+                  className={styles.input}
+                  value={text}
+                  onChange={e => updateEntry(i, { text: e.target.value })}
+                  placeholder="e.g. Knives"
+                  style={{ flex: 1 }}
+                />
+              </div>
+            </Field>
+          );
+        })}
       </div>
       <small className={styles.muted}>
         Needed: {totalNeeded}. {tooMany ? 'Trim a specialty.' : 'OK'}

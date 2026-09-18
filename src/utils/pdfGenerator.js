@@ -1,4 +1,15 @@
 ﻿// src/utils/pdfGenerator.js
+import api from '../core/api';
+import { listAllItems } from '../data/merits_flaws';
+
+// The generated sheet opens as a real HTML document in a new window (not a
+// sandboxed preview), so any player/admin-entered free text — names, notes,
+// touchstone backgrounds, item descriptions — must be escaped before being
+// interpolated into the template. Otherwise a stray "<" or a deliberately
+// crafted note becomes live HTML/script in that window.
+const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (ch) => ({
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+}[ch]));
 
 export default async function generateVTMCharacterSheetPDF(character) {
   // 1. Parse the sheet data securely (Handle both wrapped and raw sheet objects)
@@ -13,6 +24,18 @@ export default async function generateVTMCharacterSheetPDF(character) {
     console.error('Invalid sheet JSON', e);
     alert('Invalid JSON sheet. Cannot generate PDF.');
     return;
+  }
+
+  // Inventory lives in its own table, not the sheet JSON — fetch it
+  // best-effort so a failure here never blocks the rest of the sheet.
+  let inventoryItems = [];
+  if (character.id) {
+    try {
+      const { data } = await api.get(`/characters/${character.id}/inventory`);
+      inventoryItems = Array.isArray(data?.items) ? data.items : [];
+    } catch (e) {
+      console.warn('Could not load inventory for PDF export', e);
+    }
   }
 
   // --- Date Formatter ---
@@ -84,8 +107,27 @@ export default async function generateVTMCharacterSheetPDF(character) {
   const getSkill = (k) => (skills[k] && typeof skills[k] === 'object') ? skills[k].dots : (skills[k] || 0);
   
   const disciplines = sheet.disciplines || {};
-  const merits = Array.isArray(sheet.advantages?.merits) ? sheet.advantages.merits : [];
-  const flaws = Array.isArray(sheet.advantages?.flaws) ? sheet.advantages.flaws : [];
+
+  // Purchased merit/flaw/background entries on the sheet don't always carry
+  // their own `.description` (it depends which flow added them), so backfill
+  // from the catalog by id — the same lookup MeritsBackgroundsSection uses.
+  const catalogById = new Map(listAllItems().map(item => [item.id, item]));
+  const withCatalogDescription = (entry) => ({
+    ...entry,
+    description: entry.description || catalogById.get(entry.id)?.description || '',
+  });
+
+  const merits = (Array.isArray(sheet.advantages?.merits) ? sheet.advantages.merits : []).map(withCatalogDescription);
+  const flaws = (Array.isArray(sheet.advantages?.flaws) ? sheet.advantages.flaws : []).map(withCatalogDescription);
+  const backgrounds = (Array.isArray(sheet.backgrounds) ? sheet.backgrounds : []).map(withCatalogDescription);
+  const convictions = Array.isArray(sheet.convictions) ? sheet.convictions.filter(Boolean) : [];
+  const touchstones = Array.isArray(sheet.touchstones)
+    ? sheet.touchstones.filter(t => t && (t.name || t.background || t.description)).map(t => ({
+        name: t.name || t.title || '',
+        conviction: t.conviction || '',
+        background: t.background || t.description || '',
+      }))
+    : [];
 
   // Calculate dynamic max values and current tracker status
   const stamina = Number(attrs.Stamina) || 1;
@@ -152,6 +194,11 @@ export default async function generateVTMCharacterSheetPDF(character) {
         #vtm-sheet-content .trackers { margin-top: 30px; padding: 15px; background: #f4f4f4; border: 1px solid #ddd; border-radius: 4px; }
         #vtm-sheet-content .tracker-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         #vtm-sheet-content .tracker-row strong { font-family: 'Oswald', sans-serif; font-size: 16px; width: 100px; }
+        #vtm-sheet-content .adv-entry { margin-bottom: 10px; }
+        #vtm-sheet-content .adv-desc { padding-left: 4px; font-size: 12px; color: #555; line-height: 1.4; margin-top: 2px; }
+        #vtm-sheet-content .adv-empty { font-size: 13px; color: #999; font-style: italic; }
+        /* Keeps a merit/touchstone/item block from being sliced across a page boundary */
+        #vtm-sheet-content .avoid-break, #vtm-sheet-content .section-title { page-break-inside: avoid; break-inside: avoid; }
       </style>
 
       <div class="header">
@@ -163,17 +210,21 @@ export default async function generateVTMCharacterSheetPDF(character) {
       </div>
 
       <div class="meta-grid">
-        <div class="meta-field"><strong>Name:</strong> <span>${charName}</span></div>
-        <div class="meta-field"><strong>Concept:</strong> <span>${sheet.concept || ''}</span></div>
-        <div class="meta-field"><strong>Predator:</strong> <span>${sheet.predatorType || sheet.predator_type || ''}</span></div>
-        
-        <div class="meta-field"><strong>Exported:</strong> <span>${exportDateString}</span></div>
-        <div class="meta-field"><strong>Ambition:</strong> <span>${sheet.ambition || ''}</span></div>
-        <div class="meta-field"><strong>Sire:</strong> <span>${sheet.sire || ''}</span></div>
-        
-        <div class="meta-field"><strong>Clan:</strong> <span>${character.clan || sheet.clan || ''}</span></div>
-        <div class="meta-field"><strong>Desire:</strong> <span>${sheet.desire || ''}</span></div>
-        <div class="meta-field"><strong>Generation:</strong> <span>${sheet.generation || ''}</span></div>
+        <div class="meta-field"><strong>Name:</strong> <span>${escapeHtml(charName)}</span></div>
+        <div class="meta-field"><strong>Concept:</strong> <span>${escapeHtml(sheet.concept)}</span></div>
+        <div class="meta-field"><strong>Predator:</strong> <span>${escapeHtml(sheet.predatorType || sheet.predator_type)}</span></div>
+
+        <div class="meta-field"><strong>Exported:</strong> <span>${escapeHtml(exportDateString)}</span></div>
+        <div class="meta-field"><strong>Ambition:</strong> <span>${escapeHtml(sheet.ambition)}</span></div>
+        <div class="meta-field"><strong>Sire:</strong> <span>${escapeHtml(sheet.sire)}</span></div>
+
+        <div class="meta-field"><strong>Clan:</strong> <span>${escapeHtml(character.clan || sheet.clan)}</span></div>
+        <div class="meta-field"><strong>Desire:</strong> <span>${escapeHtml(sheet.desire)}</span></div>
+        <div class="meta-field"><strong>Generation:</strong> <span>${escapeHtml(sheet.generation)}</span></div>
+
+        <div class="meta-field"><strong>Chronicle:</strong> <span>${escapeHtml(sheet.chronicle)}</span></div>
+        <div class="meta-field"><strong>Coterie:</strong> <span>${escapeHtml(sheet.coterie)}</span></div>
+        <div class="meta-field"><strong>Blood Potency:</strong> <span>${escapeHtml(sheet.blood_potency)}</span></div>
       </div>
 
       <div class="section-title">ATTRIBUTES</div>
@@ -259,12 +310,12 @@ export default async function generateVTMCharacterSheetPDF(character) {
       </div>
 
       <div class="section-title">DISCIPLINES & POWERS</div>
-      <div class="three-col">
+      <div class="three-col avoid-break">
         ${Object.entries(disciplines).filter(([_,v]) => Number(v)>0).map(([d, val]) => `
           <div>
-            <div class="stat-row"><strong>${d}</strong> ${renderDots(val)}</div>
+            <div class="stat-row"><strong>${escapeHtml(d)}</strong> ${renderDots(val)}</div>
             <div style="padding-left:10px; font-size:13px; color:#555;">
-              ${(Array.isArray(sheet.disciplinePowers?.[d]) ? sheet.disciplinePowers[d] : []).map(p => `• ${p.name || p.id}`).join('<br>')}
+              ${(Array.isArray(sheet.disciplinePowers?.[d]) ? sheet.disciplinePowers[d] : []).map(p => `• ${escapeHtml(p.name || p.id)}`).join('<br>')}
             </div>
           </div>
         `).join('')}
@@ -273,14 +324,73 @@ export default async function generateVTMCharacterSheetPDF(character) {
       <div class="section-title">ADVANTAGES & FLAWS</div>
       <div class="two-col">
         <div>
-          <div class="col-header">Merits & Backgrounds</div>
-          ${merits.map(m => `<div class="stat-row"><span>${m.name || m.id}</span> ${renderDots(m.dots)}</div>`).join('')}
+          <div class="col-header">Merits</div>
+          ${merits.map(m => `
+            <div class="adv-entry avoid-break">
+              <div class="stat-row"><span>${escapeHtml(m.name || m.id)}</span> ${renderDots(m.dots)}</div>
+              ${m.description ? `<div class="adv-desc">${escapeHtml(m.description)}</div>` : ''}
+            </div>
+          `).join('') || '<div class="adv-empty">None</div>'}
         </div>
         <div>
           <div class="col-header">Flaws</div>
-          ${flaws.map(f => `<div class="stat-row"><span>${f.name || f.id}</span> ${renderDots(f.dots)}</div>`).join('')}
+          ${flaws.map(f => `
+            <div class="adv-entry avoid-break">
+              <div class="stat-row"><span>${escapeHtml(f.name || f.id)}</span> ${renderDots(f.dots)}</div>
+              ${f.description ? `<div class="adv-desc">${escapeHtml(f.description)}</div>` : ''}
+            </div>
+          `).join('') || '<div class="adv-empty">None</div>'}
         </div>
       </div>
+
+      ${backgrounds.length ? `
+        <div class="section-title">BACKGROUNDS</div>
+        <div class="two-col">
+          ${backgrounds.map(b => `
+            <div class="adv-entry avoid-break">
+              <div class="stat-row"><span>${escapeHtml(b.name || b.id)}</span> ${renderDots(b.dots)}</div>
+              ${b.description ? `<div class="adv-desc">${escapeHtml(b.description)}</div>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+
+      ${(convictions.length || touchstones.length) ? `
+        <div class="section-title">TOUCHSTONES & CONVICTIONS</div>
+        <div class="two-col">
+          <div>
+            <div class="col-header">Convictions</div>
+            ${convictions.length
+              ? convictions.map(c => `<div class="stat-row avoid-break">${escapeHtml(c)}</div>`).join('')
+              : '<div class="adv-empty">None</div>'}
+          </div>
+          <div>
+            <div class="col-header">Touchstones</div>
+            ${touchstones.length
+              ? touchstones.map(t => `
+                  <div class="adv-entry avoid-break">
+                    <div class="stat-row"><span>${escapeHtml(t.name)}</span></div>
+                    ${t.conviction ? `<div class="adv-desc"><em>${escapeHtml(t.conviction)}</em></div>` : ''}
+                    ${(t.background || t.description) ? `<div class="adv-desc">${escapeHtml(t.background || t.description)}</div>` : ''}
+                  </div>
+                `).join('')
+              : '<div class="adv-empty">None</div>'}
+          </div>
+        </div>
+      ` : ''}
+
+      ${inventoryItems.length ? `
+        <div class="section-title">INVENTORY</div>
+        <div class="two-col">
+          ${inventoryItems.map(item => `
+            <div class="adv-entry avoid-break">
+              <div class="stat-row"><span>${escapeHtml(item.name)} ${item.quantity > 1 ? `(x${escapeHtml(item.quantity)})` : ''}</span><span style="font-size:12px; color:#8a0303; text-transform:uppercase;">${escapeHtml(item.item_type || 'Item')}</span></div>
+              ${item.description ? `<div class="adv-desc">${escapeHtml(item.description)}</div>` : ''}
+              ${item.mechanic_notes ? `<div class="adv-desc"><strong>System:</strong> ${escapeHtml(item.mechanic_notes)}</div>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
     </div>
   `;
 
@@ -290,7 +400,7 @@ export default async function generateVTMCharacterSheetPDF(character) {
     <html lang="en">
       <head>
         <meta charset="UTF-8">
-        <title>${charName} - V5 Sheet</title>
+        <title>${escapeHtml(charName)} - V5 Sheet</title>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
         <style>
           body {
@@ -363,7 +473,8 @@ export default async function generateVTMCharacterSheetPDF(character) {
               filename:     '${safeFileName}',
               image:        { type: 'jpeg', quality: 0.98 },
               html2canvas:  { scale: 2, useCORS: true, scrollY: 0, scrollX: 0 },
-              jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+              jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+              pagebreak:    { mode: ['css', 'legacy'] }
             };
 
             // Call the globally loaded html2pdf library

@@ -1,10 +1,8 @@
 // src/components/admin/AdminCharactersTab.jsx
 import React, { useMemo, useState, useEffect } from 'react';
 import api from '../../core/api';
-import Inventory from '../inventory/Inventory';
 import styles from '../../styles/Admin.module.css';
 import generateVTMCharacterSheetPDF from '../../utils/pdfGenerator';
-import { ALL_DISCIPLINE_NAMES } from '../../data/disciplines';
 import MiniSearch from 'minisearch';
 import Avatar from '../../components/Avatar';
 import { symlogo, CLAN_HEX as CLAN_COLORS } from '../../data/clans';
@@ -65,28 +63,28 @@ const TrackerDisplay = ({ label, currentObj, max, onUpdate, isValueTracker = fal
         {!isValueTracker ? (
           <>
             <div className={styles.trackerControl}>
-              <span className={styles.trackerControlLabel}>SUP:</span>
-              <button className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`} onClick={() => onUpdate('superficial', -1)}>−</button>
-              <button className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`} onClick={() => onUpdate('superficial', 1)}>+</button>
+              <span className={styles.trackerControlLabel}>Sup</span>
+              <button className={styles.trackerStepBtn} onClick={() => onUpdate('superficial', -1)} aria-label={`Decrease ${label} superficial damage`}>−</button>
+              <button className={styles.trackerStepBtn} onClick={() => onUpdate('superficial', 1)} aria-label={`Increase ${label} superficial damage`}>+</button>
             </div>
             <div className={styles.trackerControl}>
-              <span className={styles.trackerControlLabel}>AGG:</span>
-              <button className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`} onClick={() => onUpdate('aggravated', -1)}>−</button>
-              <button className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`} onClick={() => onUpdate('aggravated', 1)}>+</button>
+              <span className={styles.trackerControlLabel}>Agg</span>
+              <button className={styles.trackerStepBtn} onClick={() => onUpdate('aggravated', -1)} aria-label={`Decrease ${label} aggravated damage`}>−</button>
+              <button className={styles.trackerStepBtn} onClick={() => onUpdate('aggravated', 1)} aria-label={`Increase ${label} aggravated damage`}>+</button>
             </div>
           </>
         ) : (
           <>
             <div className={styles.trackerControl}>
-              <span className={styles.trackerControlLabel}>VAL:</span>
-              <button className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`} onClick={() => onUpdate('value', -1)}>−</button>
-              <button className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`} onClick={() => onUpdate('value', 1)}>+</button>
+              <span className={styles.trackerControlLabel}>{label}</span>
+              <button className={styles.trackerStepBtn} onClick={() => onUpdate('value', -1)} aria-label={`Decrease ${label}`}>−</button>
+              <button className={styles.trackerStepBtn} onClick={() => onUpdate('value', 1)} aria-label={`Increase ${label}`}>+</button>
             </div>
             {label === 'Humanity' && (
               <div className={styles.trackerControl}>
-                <span className={styles.trackerControlLabel}>STAINS:</span>
-                <button className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`} onClick={() => onUpdate('stains', -1)}>−</button>
-                <button className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`} onClick={() => onUpdate('stains', 1)}>+</button>
+                <span className={styles.trackerControlLabel}>Stains</span>
+                <button className={styles.trackerStepBtn} onClick={() => onUpdate('stains', -1)} aria-label="Decrease Humanity stains">−</button>
+                <button className={styles.trackerStepBtn} onClick={() => onUpdate('stains', 1)} aria-label="Increase Humanity stains">+</button>
               </div>
             )}
           </>
@@ -97,7 +95,7 @@ const TrackerDisplay = ({ label, currentObj, max, onUpdate, isValueTracker = fal
 };
 
 // ---------- MAIN COMPONENT ----------
-export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEditor }) {
+export default function AdminCharactersTab({ users, onDelete, onOpenEditor }) {
   const baseChars = useMemo(() => users.filter(u => u.character_id).map(u => ({
     id: u.character_id, user_id: u.id, name: u.char_name || '', clan: u.clan || '',
     xp: u.xp || 0, sheet: u.sheet || null, owner: `${u.display_name} <${u.email}>`,
@@ -107,9 +105,13 @@ export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEdit
   const [sheetStates, setSheetStates] = useState({});
   const [expandedCards, setExpandedCards] = useState(new Set());
   const [filterText, setFilterText] = useState('');
+  const [clanFilter, setClanFilter] = useState('');
+  const [sortBy, setSortBy] = useState('name'); // 'name' | 'xp'
+  // The editor page is a separate, sometimes-not-yet-cached chunk — give the
+  // click itself instant feedback instead of leaving the button looking
+  // inert while the route transition and character fetch are in flight.
+  const [openingId, setOpeningId] = useState(null);
   const [confirmDialog, setConfirmDialog] = useState(null);
-  const [upgradeDisciplineState, setUpgradeDisciplineState] = useState(null); // {charId, charName, discipline}
-  const [removeDisciplineState, setRemoveDisciplineState] = useState(null); // {charId, charName, discipline}
 
   useEffect(() => {
     const newStates = {};
@@ -117,15 +119,29 @@ export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEdit
     setSheetStates(newStates);
   }, [baseChars]);
 
+  const clanOptions = useMemo(() => Array.from(new Set(baseChars.map(c => c.clan).filter(Boolean))).sort(), [baseChars]);
+
   const filteredChars = useMemo(() => {
-    if (!filterText.trim()) return baseChars;
-    const q = filterText.trim();
-    const ms = new MiniSearch({ fields: ['name', 'clan', 'owner'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
-    ms.addAll(baseChars);
-    const results = ms.search(q);
-    const idSet = new Set(results.map(r => r.id));
-    return baseChars.filter(c => idSet.has(c.id));
-  }, [baseChars, filterText]);
+    let list = baseChars;
+
+    if (filterText.trim()) {
+      const q = filterText.trim();
+      const ms = new MiniSearch({ fields: ['name', 'clan', 'owner'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
+      ms.addAll(list);
+      const results = ms.search(q);
+      const idSet = new Set(results.map(r => r.id));
+      list = list.filter(c => idSet.has(c.id));
+    }
+
+    if (clanFilter) list = list.filter(c => c.clan === clanFilter);
+
+    list = [...list].sort((a, b) => {
+      if (sortBy === 'xp') return (b.xp || 0) - (a.xp || 0);
+      return a.name.localeCompare(b.name);
+    });
+
+    return list;
+  }, [baseChars, filterText, clanFilter, sortBy]);
 
   const getSheetObj = (charId) => {
     try { return JSON.parse(sheetStates[charId] || '{}'); } 
@@ -157,7 +173,7 @@ export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEdit
     return { maxHealth, maxWillpower, sheetObj: data };
   };
 
-  // --- UNIFIED SHEET UPDATER (Handles Trackers, Inventory, Notes) ---
+  // --- UNIFIED SHEET UPDATER (Handles Trackers, Notes, Active/Reset flags) ---
   const updateSheetData = async (char, updaterFn) => {
     const sheetObj = getSheetObj(char.id);
     let data = {};
@@ -234,98 +250,10 @@ export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEdit
   const handleReset = (char) => { if(window.confirm(`Allow Re-Roll?`)) updateSheetData(char, d => { d.allow_reset = true; return d; }); };
   const handleRevokeReset = (char) => { if(window.confirm(`Revoke Re-Roll?`)) updateSheetData(char, d => { d.allow_reset = false; return d; }); };
 
-  const handleUpgradeDiscipline = (char) => {
-    setUpgradeDisciplineState({
-      charId: char.id,
-      charName: char.name,
-      discipline: null,
-    });
-  };
-
-  const handleDisciplineSelect = (discipline) => {
-    setUpgradeDisciplineState(prev => ({
-      ...prev,
-      discipline: discipline
-    }));
-  };
-
-  const handleUpgradeConfirm = () => {
-    if (!upgradeDisciplineState.discipline || !upgradeDisciplineState.charId) {
-      return;
-    }
-
-    // Find the character to update
-    const char = baseChars.find(c => c.id === upgradeDisciplineState.charId);
-    if (!char) {
-      setUpgradeDisciplineState(null);
-      return;
-    }
-
-    updateSheetData(char, (data) => {
-      // Ensure disciplines object exists
-      const disciplines = data.disciplines || {};
-      // Create a new disciplines object with the update
-      const updatedDisciplines = {
-        ...disciplines,
-        [upgradeDisciplineState.discipline]: 6
-      };
-      return {
-        ...data,
-        disciplines: updatedDisciplines
-      };
-    });
-
-    setUpgradeDisciplineState(null);
-  };
-
-  const handleRemoveDisciplineLevel6 = (char) => {
-    setRemoveDisciplineState({
-      charId: char.id,
-      charName: char.name,
-      discipline: null,
-    });
-  };
-
-  const handleRemoveDisciplineSelect = (discipline) => {
-    setRemoveDisciplineState(prev => ({
-      ...prev,
-      discipline: discipline
-    }));
-  };
-
-  const handleRemoveDisciplineConfirm = () => {
-    if (!removeDisciplineState.discipline || !removeDisciplineState.charId) {
-      return;
-    }
-
-    // Find the character to update
-    const char = baseChars.find(c => c.id === removeDisciplineState.charId);
-    if (!char) {
-      setRemoveDisciplineState(null);
-      return;
-    }
-
-    updateSheetData(char, (data) => {
-      // Ensure disciplines object exists
-      const disciplines = data.disciplines || {};
-      // Create a new disciplines object with the update: set to 5 (removing the sixth dot)
-      const updatedDisciplines = {
-        ...disciplines,
-        [removeDisciplineState.discipline]: 5
-      };
-      return {
-        ...data,
-        disciplines: updatedDisciplines
-      };
-    });
-
-    setRemoveDisciplineState(null);
-  };
-
   return (
     <div className={styles.stack12}>
       <div className={styles.row} style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
-        <h3 style={{ margin: 0 }}>Characters & Inventory</h3>
+        <h3 style={{ margin: 0 }}>Characters</h3>
 
         {filteredChars.length > 0 && (
           <div className={`${styles.alert} ${styles.alertInfo}`} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px', marginBottom: 0 }}>
@@ -338,8 +266,17 @@ export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEdit
         )}
       </div>
 
-      <div className={styles.row}>
+      <div className={styles.row} style={{ flexWrap: 'wrap', gap: '10px' }}>
         <input type="text" placeholder="Filter by name, clan, or owner..." value={filterText} onChange={e => setFilterText(e.target.value)} className={styles.input} style={{ flex: 1, maxWidth: '400px' }} />
+        <select className={styles.select} value={clanFilter} onChange={e => setClanFilter(e.target.value)} style={{ maxWidth: '200px' }}>
+          <option value="">All clans</option>
+          {clanOptions.map(clan => <option key={clan} value={clan}>{clan}</option>)}
+        </select>
+        <select className={styles.select} value={sortBy} onChange={e => setSortBy(e.target.value)} style={{ maxWidth: '160px' }}>
+          <option value="name">Sort: Name</option>
+          <option value="xp">Sort: XP (high-low)</option>
+        </select>
+        <span className={styles.subtle} style={{ marginLeft: 'auto' }}>{filteredChars.length} of {baseChars.length} characters</span>
       </div>
 
       <div className={styles.characterCardGrid}>
@@ -397,7 +334,7 @@ export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEdit
                 {/* Vitals Summary */}
                 <div className={styles.charVitalsRow}>
                   <div className={styles.charVitalChip}><b>XP:</b> {c.xp}</div>
-                  <div className={styles.charVitalChip}><b>Gen:</b> {data.generation || '?'}</div>
+                  <div className={styles.charVitalChip}><b>Gen:</b> {data.generation || 'Unset'}</div>
                   <div className={styles.charVitalChip}><b>BP:</b> {data.blood_potency || 1}</div>
                   <div className={styles.charVitalChip}><b>Sire:</b> {data.sire || 'Unknown'}</div>
                 </div>
@@ -412,22 +349,11 @@ export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEdit
 
                   <div className={styles.charExpandedPanel}>
 
-                    {/* Inventory Section */}
-                    <div className={styles.charSectionBlock}>
-                      <Inventory characterId={c.id} />
-                    </div>
-
                     {/* Admin Notes Section */}
                     <div className={styles.charSectionBlock}>
                       <h4 className={styles.charSectionTitle} style={{ color: 'var(--color-warn)' }}>Admin Notes (Hidden from Player)</h4>
                       <textarea className={`${styles.textarea} ${styles.charNotesArea}`} value={data.admin_notes || ''} onChange={(e) => updateSheetData(c, d => { d.admin_notes = e.target.value; return d; })} placeholder="Add story notes, warnings, or plot hooks here..." />
                     </div>
-
-                    {/* Raw JSON Toggle */}
-                    <details className={styles.charJsonDetails}>
-                      <summary>View/Edit Raw Sheet JSON</summary>
-                      <textarea value={sheetStates[c.id] || ''} onChange={(e) => setSheetState(c.id, JSON.parse(e.target.value))} className={`${styles.textarea} ${styles.inputMono} ${styles.charJsonTextarea}`} />
-                    </details>
 
                   </div>
               </div>
@@ -436,8 +362,13 @@ export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEdit
               <div className={styles.charCardFooter}>
                 {/* Primary Actions */}
                 <div className={styles.charCardFooterRow}>
-                  <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => { try { onSave({ id: c.id, name: c.name, clan: c.clan, sheet: getSheetObj(c.id) }); } catch { alert('Invalid JSON in sheet'); } }}>Save</button>
-                  <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => onOpenEditor({ ...c, sheet: getSheetObj(c.id) })}>Editor Modal</button>
+                  <button
+                    className={`${styles.btn} ${styles.btnPrimary}`}
+                    disabled={openingId === c.id}
+                    onClick={() => { setOpeningId(c.id); onOpenEditor({ ...c, sheet: getSheetObj(c.id) }); }}
+                  >
+                    {openingId === c.id ? 'Opening…' : 'Open Editor'}
+                  </button>
                   <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => generateVTMCharacterSheetPDF(c)}>PDF</button>
                 </div>
 
@@ -448,12 +379,6 @@ export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEdit
                   </button>
                   <button className={`${styles.btn} ${data.allow_reset ? styles.btnGhost : styles.btnWarning}`} onClick={() => data.allow_reset ? handleRevokeReset(c) : handleReset(c)}>
                     {data.allow_reset ? 'Revoke Re-Roll' : 'Allow Re-Roll'}
-                  </button>
-                  <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => handleUpgradeDiscipline(c)}>
-                    Upgrade Disc to 6
-                  </button>
-                  <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => handleRemoveDisciplineLevel6(c)}>
-                    Remove Lvl 6
                   </button>
                   <button className={`${styles.btn} ${styles.btnDanger}`} onClick={() => onDelete(c.id)}>Delete</button>
                 </div>
@@ -478,112 +403,6 @@ export default function AdminCharactersTab({ users, onSave, onDelete, onOpenEdit
             <div className={styles.modalFooter}>
               <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => setConfirmDialog(null)}>Cancel</button>
               <button className={`${styles.btn} ${styles.btnDanger}`} onClick={() => { confirmDialog.onConfirm(); setConfirmDialog(null); }}>Confirm</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* DISCIPLINE UPGRADE MODAL */}
-      {upgradeDisciplineState && (
-        <div className={styles.modalBackdrop}>
-          <div className={styles.modalCard} style={{ maxWidth: '480px' }}>
-            <div className={styles.modalHeader}>
-              <h3 className={styles.inputMono} style={{ color: 'var(--accent-purple)' }}>
-                Upgrade Discipline to Level 6
-              </h3>
-            </div>
-            <div className={styles.modalBody}>
-              <p>
-                Select a discipline to upgrade to level 6 for <strong>{upgradeDisciplineState.charName}</strong>:
-              </p>
-              <div className={styles.row} style={{ margin: '1.5rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {ALL_DISCIPLINE_NAMES.map(disc => (
-                  <label key={disc} className={styles.row} style={{ alignItems: 'center', gap: '0.5rem' }}>
-                    <input
-                      type="radio"
-                      name="discipline"
-                      value={disc}
-                      checked={upgradeDisciplineState.discipline === disc}
-                      onChange={() => handleDisciplineSelect(disc)}
-                      className={styles.input}
-                    />
-                    {disc}
-                  </label>
-                ))}
-              </div>
-              {!upgradeDisciplineState.discipline && (
-                <p className={styles.subtle} style={{ marginTop: '1rem' }}>
-                  Please select a discipline
-                </p>
-              )}
-            </div>
-            <div className={styles.modalFooter}>
-              <button
-                className={`${styles.btn} ${styles.btnSecondary}`}
-                onClick={() => setUpgradeDisciplineState(null)}
-              >
-                Cancel
-              </button>
-              <button
-                className={`${styles.btn} ${styles.btnPrimary}`}
-                onClick={handleUpgradeConfirm}
-                disabled={!upgradeDisciplineState.discipline}
-              >
-                Confirm Upgrade
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* REMOVE DISCIPLINE LEVEL 6 MODAL */}
-      {removeDisciplineState && (
-        <div className={styles.modalBackdrop}>
-          <div className={styles.modalCard} style={{ maxWidth: '480px' }}>
-            <div className={styles.modalHeader}>
-              <h3 className={styles.inputMono} style={{ color: 'var(--color-warning)' }}>
-                Remove Discipline Level 6
-              </h3>
-            </div>
-            <div className={styles.modalBody}>
-              <p>
-                Select a discipline to remove the sixth dot (set to level 5) for <strong>{removeDisciplineState.charName}</strong>:
-              </p>
-              <div className={styles.row} style={{ margin: '1.5rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {ALL_DISCIPLINE_NAMES.map(disc => (
-                  <label key={disc} className={styles.row} style={{ alignItems: 'center', gap: '0.5rem' }}>
-                    <input
-                      type="radio"
-                      name="discipline"
-                      value={disc}
-                      checked={removeDisciplineState.discipline === disc}
-                      onChange={() => handleRemoveDisciplineSelect(disc)}
-                      className={styles.input}
-                    />
-                    {disc}
-                  </label>
-                ))}
-              </div>
-              {!removeDisciplineState.discipline && (
-                <p className={styles.subtle} style={{ marginTop: '1rem' }}>
-                  Please select a discipline
-                </p>
-              )}
-            </div>
-            <div className={styles.modalFooter}>
-              <button
-                className={`${styles.btn} ${styles.btnSecondary}`}
-                onClick={() => setRemoveDisciplineState(null)}
-              >
-                Cancel
-              </button>
-              <button
-                className={`${styles.btn} ${styles.btnPrimary}`}
-                onClick={handleRemoveDisciplineConfirm}
-                disabled={!removeDisciplineState.discipline}
-              >
-                Confirm Remove
-              </button>
             </div>
           </div>
         </div>

@@ -1518,3 +1518,50 @@ option {
 .admin-theme body::after {
   display: none !important;
 }
+
+/* =========================================
+   GLOBAL PRINT RULES
+   ========================================= */
+@media print {
+  /* Suppress all navigation, overlays, floating widgets, and UI chrome */
+  nav,
+  header:not(.printable-header),
+  footer,
+  aside,
+  .no-print,
+  [data-no-print],
+  [role="dialog"]:not(.printable-modal),
+  [data-sonner-toaster],
+  [aria-label="Open dice roller"],
+  [aria-label="Close dice roller"],
+  [aria-label="Dice roller"],
+  button[class*="fixed"],
+  div[class*="fixed"]:not(.printable-modal),
+  .backBtn {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* Reset document for crisp paper printing */
+  html,
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    min-height: auto !important;
+  }
+
+  /* Disable all dark background vignettes and atmospheric pseudo elements */
+  body::before,
+  body::after {
+    display: none !important;
+  }
+
+  /* Flatten app wrapper to prevent flex clipping or scrolling containers */
+  #root,
+  #root > div {
+    display: block !important;
+    min-height: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+}

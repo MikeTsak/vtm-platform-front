@@ -23,9 +23,24 @@ export default function News() {
   const [modalMode, setModalMode] = useState(null);
   const [fullscreenArticle, setFullscreenArticle] = useState(null);
   const [fullscreenRumor, setFullscreenRumor] = useState(null);
+  const [rumorPrintTarget, setRumorPrintTarget] = useState(null);
 
   const isAdmin = user?.role === 'admin';
   const isCourt = user?.role === 'courtuser';
+
+  const handlePrintAllRumors = () => {
+    setRumorPrintTarget('all');
+    setTimeout(() => {
+      window.print();
+    }, 200);
+  };
+
+  const handlePrintSingleRumor = (item) => {
+    setRumorPrintTarget(item);
+    setTimeout(() => {
+      window.print();
+    }, 200);
+  };
 
   // React Query Fetching
   const { data: myCharData, isLoading: myCharLoading } = useQuery({
@@ -187,10 +202,20 @@ export default function News() {
                 + Post Rumor
               </button>
             )}
+            {isRumorsPage && isAdmin && (
+              <button
+                className={`${styles.createBtn} ${styles.printRumorsBtn}`}
+                onClick={handlePrintAllRumors}
+                title="Print all rumors"
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '18px', marginRight: '6px', verticalAlign: 'text-bottom' }}>print</span>
+                Print Rumors
+              </button>
+            )}
           </div>
           <div className={styles.disclaimer}>
-            <strong>Disclaimer:</strong> This content is entirely fictional and created for the <em>Athens Through Time</em> Live Action Role-Playing (LARP) game. 
-            Any names, characters, businesses, places, events, or incidents are either the products of the author's imagination or used in a fictitious manner. 
+            <strong>Disclaimer:</strong> This content is entirely fictional and created for the <em>Athens Through Time</em> Live Action Role-Playing (LARP) game.
+            Any names, characters, businesses, places, events, or incidents are either the products of the author's imagination or used in a fictitious manner.
             Any resemblance to actual persons, living or dead, or actual events is purely coincidental.
           </div>
         </header>
@@ -255,11 +280,11 @@ export default function News() {
                         {(isAdmin || isCourt) && (
                           <>
                             {isAdmin && (
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleBroadcastNews(item.id); }} 
-                                className={styles.deleteOverlay} 
-                                disabled={broadcastNewsMutation.isPending} 
-                                style={{ right: '40px', background: '#3b82f6' }} 
+                              <button
+                                onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleBroadcastNews(item.id); }}
+                                className={styles.deleteOverlay}
+                                disabled={broadcastNewsMutation.isPending}
+                                style={{ right: '40px', background: '#3b82f6' }}
                                 title="Resend to Discord"
                               >
                                 📢
@@ -286,6 +311,7 @@ export default function News() {
                   return (
                     <div key={item.id} className={styles.masonryItem} onClick={() => setFullscreenRumor(item)}>
                       <article className={styles.rumorCard}>
+                        <div className={styles.postItTape}></div>
                         <h2 className={styles.rumorTitle}>{item.title}</h2>
                         {item.media_url && (
                           <div className={styles.mediaFrame}>
@@ -293,21 +319,29 @@ export default function News() {
                           </div>
                         )}
                         <div className={styles.rumorBodyText} dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.body) }} />
-                        <div className={styles.rumorMeta}>— Heard on {new Date(item.created_at).toLocaleDateString()}</div>
+                        <div className={styles.rumorMeta}>HEARD ON: {new Date(item.created_at).toLocaleDateString()}</div>
 
                         {(isAdmin || isCourt) && (
                           <>
                             {isAdmin && (
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); handleBroadcastRumor(item.id); }} 
-                                className={styles.deleteOverlay} 
-                                disabled={broadcastRumorMutation.isPending} 
-                                style={{ right: '40px', background: '#3b82f6' }} 
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleBroadcastRumor(item.id); }}
+                                className={styles.deleteOverlay}
+                                disabled={broadcastRumorMutation.isPending}
+                                style={{ right: '40px', background: '#3b82f6' }}
                                 title="Resend to Discord"
                               >
-                                📢
+                                <span className="material-symbols-outlined" style={{ fontSize: '14px', lineHeight: 1 }}>campaign</span>
                               </button>
                             )}
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handlePrintSingleRumor(item); }}
+                              className={styles.deleteOverlay}
+                              style={{ right: isAdmin ? '76px' : '40px', background: '#ca8a04', color: '#111827' }}
+                              title="Print rumor"
+                            >
+                              <span className="material-symbols-outlined" style={{ fontSize: '14px', lineHeight: 1 }}>print</span>
+                            </button>
                             <button onClick={(e) => { e.stopPropagation(); handleDeleteRumor(item.id); }} className={styles.deleteOverlay} disabled={deleteRumorMutation.isPending}>×</button>
                           </>
                         )}
@@ -323,24 +357,113 @@ export default function News() {
         </div>
       </div>
 
-        {modalMode && (
-          <CreateNewsModal
-            mode={modalMode}
-            onClose={() => setModalMode(null)}
-            onSuccess={() => {
-              setModalMode(null);
-              queryClient.invalidateQueries({ queryKey: [modalMode === 'rumor' ? 'rumors' : 'news'] });
-            }}
-            themes={myThemes}
-          />
-        )}{fullscreenArticle && (
+      {modalMode && (
+        <CreateNewsModal
+          mode={modalMode}
+          onClose={() => setModalMode(null)}
+          onSuccess={() => {
+            setModalMode(null);
+            queryClient.invalidateQueries({ queryKey: [modalMode === 'rumor' ? 'rumors' : 'news'] });
+          }}
+          themes={myThemes}
+        />
+      )}{fullscreenArticle && (
         <FullscreenArticleModal item={fullscreenArticle} onClose={() => setFullscreenArticle(null)} />
       )}
 
       {fullscreenRumor && (
         <FullscreenRumorModal item={fullscreenRumor} onClose={() => setFullscreenRumor(null)} />
       )}
+
+      {rumorPrintTarget && (
+        <RumorPrintModal
+          target={rumorPrintTarget}
+          items={rumorItems}
+          onClose={() => setRumorPrintTarget(null)}
+        />
+      )}
     </Skeleton>
+  );
+}
+
+function RumorPrintModal({ target, items, onClose }) {
+  if (!target) return null;
+  const isAll = target === 'all';
+  const printItems = isAll ? items : [target];
+
+  return (
+    <div className={styles.rumorPrintModal}>
+      <div className={styles.rumorPrintToolbar}>
+        <div className={styles.rumorPrintTitle}>
+          <span className="material-symbols-outlined">description</span>
+          {isAll ? 'Rumors Print Layout (All)' : 'Rumor Print Layout'}
+        </div>
+        <div className={styles.rumorPrintActions}>
+          <button
+            type="button"
+            className={styles.btnActionPrint}
+            onClick={() => window.print()}
+            title="Print now"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>print</span>
+            Print Now
+          </button>
+          <button
+            type="button"
+            className={styles.btnActionClose}
+            onClick={onClose}
+            title="Close print view"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
+            Close
+          </button>
+        </div>
+      </div>
+
+      <div className={styles.rumorPrintSheet}>
+        {isAll ? (
+          <div className={styles.rumorPostItGrid}>
+            {printItems.map((item) => (
+              <PostItCard key={item.id} item={item} />
+            ))}
+          </div>
+        ) : (
+          <div className={styles.singlePostItWrap}>
+            <PostItCard item={target} isSingle />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PostItCard({ item, isSingle }) {
+  const mediaUrl = item.media_url ? apiJoin(item.media_url) : null;
+  return (
+    <div className={`${styles.postItNote} ${isSingle ? styles.singlePostItNote : ''}`}>
+      <div className={styles.postItTape}></div>
+      <div className={styles.postItHeader}>
+        <h3 className={styles.postItTitleText}>{item.title}</h3>
+      </div>
+      {mediaUrl && (
+        <div className={styles.postItMedia}>
+          {isVideoUrl(item.media_url) ? (
+            <video src={mediaUrl} controls />
+          ) : (
+            <img src={mediaUrl} alt="Proof" />
+          )}
+        </div>
+      )}
+      <div
+        className={styles.postItBodyText}
+        dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.body) }}
+      />
+      <div className={styles.postItFooter}>
+        <div className={styles.postItDateText}>
+          HEARD ON: {new Date(item.created_at).toLocaleDateString()}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -349,33 +472,102 @@ function FullscreenRumorModal({ item, onClose }) {
   const mediaUrl = item.media_url ? apiJoin(item.media_url) : null;
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }} onClick={onClose}>
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 99999,
+        background: 'rgba(0, 0, 0, 0.75)',
+        backdropFilter: 'blur(4px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '1.5rem',
+      }}
+      onClick={onClose}
+    >
       <div
         style={{
-          background: '#fefcbf',
-          color: '#333',
-          padding: '2rem',
+          background: '#fef08a',
+          color: '#1c1917',
+          padding: '2.5rem 2rem 2rem 2rem',
           borderRadius: '2px',
-          boxShadow: '4px 4px 15px rgba(0,0,0,0.5), inset 0 0 20px rgba(0,0,0,0.05)',
-          maxWidth: '500px',
+          border: '1px solid #facc15',
+          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.35)',
+          maxWidth: '560px',
           width: '100%',
           maxHeight: '90vh',
           overflowY: 'auto',
-          transform: 'rotate(-2deg)',
-          fontFamily: '"Caveat", "Comic Sans MS", cursive, sans-serif'
+          position: 'relative',
+          fontFamily: "'Inter', system-ui, sans-serif",
         }}
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
-        <button onClick={onClose} style={{ float: 'right', background: 'transparent', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#555' }}>&times;</button>
-        <h2 style={{ fontSize: '2.2rem', marginBottom: '1rem', borderBottom: '1px solid #d4d4aa', paddingBottom: '0.5rem', fontFamily: '"Caveat", "Comic Sans MS", cursive, sans-serif', fontWeight: 'bold' }}>{item.title}</h2>
+        <div className={styles.postItTape}></div>
+        <button
+          onClick={onClose}
+          type="button"
+          aria-label="Close"
+          style={{
+            position: 'absolute',
+            top: '12px',
+            right: '14px',
+            background: 'transparent',
+            border: 'none',
+            fontSize: '1.5rem',
+            cursor: 'pointer',
+            color: '#78350f',
+            lineHeight: 1,
+          }}
+        >
+          &times;
+        </button>
+        <h2
+          style={{
+            fontSize: '1.6rem',
+            marginBottom: '1rem',
+            borderBottom: '2px dashed #ca8a04',
+            paddingBottom: '0.5rem',
+            fontFamily: "'Playfair Display', Georgia, serif",
+            fontWeight: 700,
+            color: '#78350f',
+            lineHeight: 1.2,
+          }}
+        >
+          {item.title}
+        </h2>
         {mediaUrl && (
-          <div style={{ marginBottom: '1rem' }}>
-            {isVideoUrl(item.media_url) ? <video src={mediaUrl} controls style={{ width: '100%', borderRadius: '4px', border: '2px solid rgba(0,0,0,0.1)' }} /> : <img src={mediaUrl} alt="Proof" style={{ width: '100%', borderRadius: '4px', border: '2px solid rgba(0,0,0,0.1)' }} />}
+          <div style={{ marginBottom: '1rem', borderRadius: '4px', overflow: 'hidden', border: '1px solid rgba(202, 138, 4, 0.3)' }}>
+            {isVideoUrl(item.media_url) ? (
+              <video src={mediaUrl} controls style={{ width: '100%', display: 'block' }} />
+            ) : (
+              <img src={mediaUrl} alt="Proof" style={{ width: '100%', display: 'block' }} />
+            )}
           </div>
         )}
-        <div style={{ fontSize: '1.3rem', lineHeight: '1.4', whiteSpace: 'pre-wrap', color: '#222' }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.body) }} />
-        <div style={{ marginTop: '2rem', fontSize: '1rem', color: '#555', textAlign: 'right', fontStyle: 'italic' }}>
-          — Heard on {new Date(item.created_at).toLocaleDateString()}
+        <div
+          style={{
+            fontSize: '1.05rem',
+            lineHeight: '1.6',
+            color: '#292524',
+            wordBreak: 'break-word',
+          }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.body) }}
+        />
+        <div
+          style={{
+            marginTop: '2rem',
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '1px',
+            color: '#854d0e',
+            textAlign: 'right',
+            borderTop: '1px solid rgba(202, 138, 4, 0.3)',
+            paddingTop: '8px',
+          }}
+        >
+          HEARD ON: {new Date(item.created_at).toLocaleDateString()}
         </div>
       </div>
     </div>

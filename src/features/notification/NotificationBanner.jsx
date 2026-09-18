@@ -26,7 +26,7 @@ export default function NotificationBanner() {
   }
 
   return (
-    <div style={{
+    <div className="no-print" style={{
       position: 'fixed',
       top: '20px',
       right: '20px',

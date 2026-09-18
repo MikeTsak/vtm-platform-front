@@ -7,6 +7,8 @@
   color: var(--text-color);
   min-height: 100vh;
   font-family: var(--font-body);
+  position: relative;
+  z-index: 1;
 }
 
 .header {
@@ -76,22 +78,26 @@
   line-height: 1.4;
 }
 
-@media (width <= 600px) {
+@media (width <=600px) {
   .page {
     padding: 0.5rem;
   }
+
   .header {
     margin-bottom: 0.5rem;
     padding-bottom: 0.25rem;
     gap: 0.25rem;
   }
+
   .pageTitle {
     font-size: 1.25rem;
   }
+
   .createBtn {
     padding: 4px 8px;
     font-size: 0.75rem;
   }
+
   .disclaimer {
     margin-top: 0;
     padding: 0.25rem 0.5rem;
@@ -177,13 +183,13 @@
   align-items: start;
 }
 
-@media (width >= 800px) {
+@media (width >=800px) {
   .masonry {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-@media (width >= 1300px) {
+@media (width >=1300px) {
   .masonry {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -202,10 +208,13 @@
    OFFICIAL NEWS CARD (Newspaper Aesthetic)
    ========================================= */
 .browserCard {
-  background: var(--text-color); /* Classic Newspaper White */
-  color: var(--bg-color);      /* Crisp dark ink */
+  background: var(--text-color);
+  /* Classic Newspaper White */
+  color: var(--bg-color);
+  /* Crisp dark ink */
   border: 1px solid var(--border-color);
-  border-radius: 4px;  /* Sharper edges for paper feel */
+  border-radius: 4px;
+  /* Sharper edges for paper feel */
   overflow: hidden;
   position: relative;
   box-shadow: 0 4px 15px rgb(0 0 0 / 30%);
@@ -215,11 +224,22 @@
   display: flex;
   align-items: center;
   padding: 6px 12px;
-  background: #f4f4f5; /* Light gray browser bar */
+  background: #f4f4f5;
+  /* Light gray browser bar */
   border-bottom: 1px solid #d1d5db;
 }
-.dots { display: flex; gap: 4px; margin-right: 12px; }
-.dots span { width: 10px; height: 10px; border-radius: 50%; }
+
+.dots {
+  display: flex;
+  gap: 4px;
+  margin-right: 12px;
+}
+
+.dots span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
 
 .url {
   flex: 1;
@@ -228,7 +248,8 @@
   background: var(--text-color);
   border-radius: 12px;
   border: 1px solid #e5e7eb;
-  color: #4b5563 !important; /* Force dark gray URL */
+  color: #4b5563 !important;
+  /* Force dark gray URL */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -247,13 +268,33 @@
 
 .headerOverlay {
   position: absolute;
-  bottom: 0; left: 0; right: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
   background: linear-gradient(transparent, rgb(255 255 255 / 90%) 70%, var(--text-color));
   padding: 8px 12px;
 }
-.headerTitleGroup { display: flex; gap: 8px; align-items: center; }
-.live { color: var(--text-color); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
-.outletName { color: var(--theme-color); font-weight: 800; font-size: 0.95rem; text-shadow: none; }
+
+.headerTitleGroup {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.live {
+  color: var(--text-color);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: bold;
+}
+
+.outletName {
+  color: var(--theme-color);
+  font-weight: 800;
+  font-size: 0.95rem;
+  text-shadow: none;
+}
 
 .newsBody {
   padding: 16px 20px;
@@ -263,7 +304,8 @@
 .newsBody h2 {
   margin: 0 0 8px;
   font-size: 1.4rem;
-  font-family: 'Playfair Display', var(--font-title), serif; /* Serif for newspaper headlines */
+  font-family: 'Playfair Display', var(--font-title), serif;
+  /* Serif for newspaper headlines */
   color: var(--bg-color);
   font-weight: 800;
   line-height: 1.2;
@@ -284,8 +326,15 @@
   border-bottom: 1px solid #e5e7eb;
   padding-bottom: 8px;
 }
-.journalist { font-weight: 800; color: var(--bg-color); }
-.date { color: #6b7280; }
+
+.journalist {
+  font-weight: 800;
+  color: var(--bg-color);
+}
+
+.date {
+  color: #6b7280;
+}
 
 .mediaFrame {
   width: 100%;
@@ -296,7 +345,8 @@
   border: 1px solid #d1d5db;
 }
 
-.mediaFrame img, .mediaFrame video {
+.mediaFrame img,
+.mediaFrame video {
   width: 100%;
   display: block;
 }
@@ -304,83 +354,138 @@
 .bodyHtml {
   font-size: 0.95rem;
   line-height: 1.6;
-  color: var(--surface-lighter); /* Dark gray article text */
-  font-family: Georgia, serif; /* Classic newspaper body font */
+  color: var(--surface-lighter);
+  /* Dark gray article text */
+  font-family: Georgia, serif;
+  /* Classic newspaper body font */
 }
 
 .deleteOverlay {
   position: absolute;
-  top: 10px; right: 10px;
+  top: 10px;
+  right: 10px;
   background: rgb(220 38 38 / 90%);
   color: var(--text-color);
   border: none;
-  width: 24px; height: 24px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-weight: bold;
 }
-.deleteOverlay:hover { background: #b91c1c; }
+
+.deleteOverlay:hover {
+  background: #b91c1c;
+}
 
 
 /* =========================================
-   RUMOR CARD (Dark/Parchment Grunge)
+   RUMOR CARD (Yellow Post-It Note Aesthetic)
    ========================================= */
 .rumorCard {
-  background: #2a2311;
-  border: 1px solid #4d3a0f;
-  padding: 20px;
-  box-shadow: 2px 4px 15px rgb(0 0 0 / 50%);
-  transform: rotate(-1deg);
-  color: #fef3c7;
+  background: #fef08a !important;
+  color: #1c1917 !important;
+  border: 1px solid #facc15 !important;
+  padding: 24px 20px 16px 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.06);
+  transform: none;
   position: relative;
-  border-radius: 4px;
+  border-radius: 2px;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-family: 'Inter', system-ui, sans-serif;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.rumorCard:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.14);
 }
 
 .rumorCard::before {
   content: '';
   position: absolute;
-  top: 10px; left: 50%;
-  width: 30px; height: 12px;
-  background: rgb(255 255 255 / 10%);
-  transform: translateX(-50%) rotate(-3deg);
-  box-shadow: 0 1px 3px rgb(0 0 0 / 30%);
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 22px;
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-left: 1px dashed rgba(0, 0, 0, 0.15);
+  border-right: 1px dashed rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.rumorCard .mediaFrame {
+  margin: 10px 0 14px 0;
+  border-radius: 4px;
+  overflow: hidden;
+  max-height: 180px;
+  border: 1px solid rgba(202, 138, 4, 0.3);
+}
+
+.rumorCard .mediaFrame img,
+.rumorCard .mediaFrame video {
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+  display: block;
 }
 
 .rumorTitle {
-  font-size: 1.4rem;
-  border-bottom: 1px dashed #d97706;
+  font-size: 1.25rem;
+  font-family: 'Playfair Display', Georgia, serif;
+  font-weight: 700;
+  color: #78350f !important;
+  line-height: 1.2;
+  border-bottom: 2px dashed #ca8a04 !important;
   padding-bottom: 8px;
-  margin-top: 10px;
-  margin-bottom: 16px;
-  color: #fbbf24;
-  font-family: var(--font-title);
+  margin-top: 0;
+  margin-bottom: 12px;
 }
 
 .rumorBodyText {
-  font-size: 1rem;
-  line-height: 1.6;
+  font-size: 0.95rem;
+  line-height: 1.5;
   margin-bottom: 16px;
-  font-style: italic;
-  opacity: 0.9;
+  font-style: normal;
+  color: #292524 !important;
+  flex: 1;
+  word-break: break-word;
 }
 
 .rumorMeta {
-  font-size: 0.8rem;
-  color: #d97706;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #854d0e !important;
   text-align: right;
-  font-weight: bold;
+  border-top: 1px solid rgba(202, 138, 4, 0.3);
+  padding-top: 8px;
+  margin-top: auto;
 }
 
 /* =========================================
    FULLSCREEN READER MODALS
    ========================================= */
 .modalOverlay {
-  position: fixed; inset: 0;
+  position: fixed;
+  inset: 0;
   background: rgb(0 0 0 / 85%);
   backdrop-filter: blur(5px);
   z-index: 1000;
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Base Fullscreen (Official News) */
@@ -388,7 +493,8 @@
   max-width: 900px;
   width: 95%;
   max-height: 90vh;
-  background-color: var(--text-color); /* Newspaper White */
+  background-color: var(--text-color);
+  /* Newspaper White */
   border-radius: 4px;
   color: var(--bg-color);
   box-shadow: 0 25px 50px -12px rgb(0 0 0 / 80%);
@@ -396,12 +502,13 @@
   border-top: 8px solid var(--theme-color);
 }
 
-/* Rumor Override (Keeps Rumors Dark/Parchment) */
+/* Rumor Override (Yellow Post-It Note Aesthetic) */
 .fullscreenModalRumor {
-  background-color: #2a2311;
-  color: #fef3c7;
-  border-top: 6px dashed #fbbf24;
-  border-radius: 12px;
+  background-color: #fef08a !important;
+  color: #1c1917 !important;
+  border: 1px solid #facc15 !important;
+  border-top: 6px dashed #ca8a04 !important;
+  border-radius: 4px;
 }
 
 .modalHeaderControl {
@@ -411,15 +518,26 @@
 }
 
 .modalHeaderControl button {
-  background: transparent; border: none;
-  font-size: 2.5rem; cursor: pointer;
-  color: var(--text-muted); transition: 0.2s;
+  background: transparent;
+  border: none;
+  font-size: 2.5rem;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: 0.2s;
   line-height: 0.8;
 }
-.modalHeaderControl button:hover { color: var(--bg-color); }
-.fullscreenModalRumor .modalHeaderControl button:hover { color: var(--text-color); }
 
-.modalContentPadding { padding: 0 40px 40px; }
+.modalHeaderControl button:hover {
+  color: var(--bg-color);
+}
+
+.fullscreenModalRumor .modalHeaderControl button:hover {
+  color: var(--text-color);
+}
+
+.modalContentPadding {
+  padding: 0 40px 40px;
+}
 
 .rumorBadge {
   background-color: #fbbf24;
@@ -446,14 +564,19 @@
 }
 
 .fsSubtitle {
-  font-size: 1.4rem; margin: 0 0 20px; font-weight: 600;
+  font-size: 1.4rem;
+  margin: 0 0 20px;
+  font-weight: 600;
 }
 
 .fsMediaContainer {
-  display: flex; justify-content: center;
+  display: flex;
+  justify-content: center;
   background-color: #f9fafb;
   border: 1px solid #e5e7eb;
-  padding: 12px; border-radius: 4px; margin-bottom: 24px;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 24px;
 }
 
 .fullscreenModalRumor .fsMediaContainer {
@@ -461,8 +584,11 @@
   border-color: var(--border-color);
 }
 
-.fsMediaContainer img, .fsMediaContainer video {
-  max-width: 100%; max-height: 550px; object-fit: contain;
+.fsMediaContainer img,
+.fsMediaContainer video {
+  max-width: 100%;
+  max-height: 550px;
+  object-fit: contain;
 }
 
 .fsBody {
@@ -478,17 +604,35 @@
 }
 
 .fsOutletHeader {
-  display: flex; align-items: center; gap: 15px;
-  margin-bottom: 20px; padding-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
   border-bottom: 2px solid #e5e7eb;
   background: transparent;
 }
-.fsOutletHeader img { height: 50px; max-width: 180px; object-fit: contain; }
-.fsOutletHeader span { color: var(--text-color); padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
+
+.fsOutletHeader img {
+  height: 50px;
+  max-width: 180px;
+  object-fit: contain;
+}
+
+.fsOutletHeader span {
+  color: var(--text-color);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
 
 .fsMeta {
-  display: flex; gap: 10px; color: #6b7280;
-  font-size: 1rem; margin-bottom: 24px;
+  display: flex;
+  gap: 10px;
+  color: #6b7280;
+  font-size: 1rem;
+  margin-bottom: 24px;
   border-bottom: 1px solid #e5e7eb;
   padding-bottom: 12px;
 }
@@ -508,61 +652,496 @@
   border-radius: 8px;
   box-shadow: 0 10px 25px rgb(0 0 0 / 80%);
   border: 1px solid var(--border-color);
-  max-height: 90vh; /* Prevent overflow on small screens */
-  overflow-y: auto; /* Allow scrolling if content too tall */
+  max-height: 90vh;
+  /* Prevent overflow on small screens */
+  overflow-y: auto;
+  /* Allow scrolling if content too tall */
 }
 
 .createModalHeader {
   padding: 20px;
   border-bottom: 1px solid var(--border-color);
-  display: flex; justify-content: space-between; align-items: center;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   background-color: var(--surface-lighter);
   border-radius: 8px 8px 0 0;
 }
-.createModalHeader h2 { margin: 0; font-size: 1.5rem; color: var(--text-color); font-family: var(--font-title); }
-.createModalHeader button { background: transparent; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
 
-.formContainer { display: flex; flex-direction: column; gap: 16px; padding: 20px; }
-.formGroup label { display: block; margin-bottom: 6px; font-size: 0.9rem; font-weight: bold; color: var(--text-muted); }
+.createModalHeader h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: var(--text-color);
+  font-family: var(--font-title);
+}
+
+.createModalHeader button {
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.formContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+}
+
+.formGroup label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+  font-weight: bold;
+  color: var(--text-muted);
+}
 
 .inputField {
-  width: 100%; padding: 12px; font-size: 1rem; border-radius: 6px;
-  border: 1px solid var(--border-color); background-color: var(--bg-color); color: var(--text-color); box-sizing: border-box; font-family: inherit;
+  width: 100%;
+  padding: 12px;
+  font-size: 1rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  box-sizing: border-box;
+  font-family: inherit;
 }
+
 .inputField option {
   background-color: var(--bg-color, #1a1a1a);
   color: var(--text-color, #ffffff);
 }
-.inputField:focus { outline: none; border-color: var(--tint); }
-.disabledInput { opacity: 0.5; cursor: not-allowed; }
 
-.formGrid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
-
-@media(width <= 600px) {
-  .formGrid { grid-template-columns: 1fr; }
-  .createModalHeader { padding: 15px; }
-  .formContainer { padding: 15px; }
-  .createModalHeader h2 { font-size: 1.25rem; }
+.inputField:focus {
+  outline: none;
+  border-color: var(--tint);
 }
 
-.editorWrap { border: 1px solid var(--border-color); border-radius: 6px; display: flex; flex-direction: column; overflow: hidden; }
-.editorToolbar { display: flex; gap: 5px; padding: 8px; background-color: var(--surface-lighter); border-bottom: 1px solid var(--border-color); }
-.editorToolbar button { padding: 4px 10px; cursor: pointer; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); }
-.editorToolbar button:hover { background: var(--border-color); }
-
-.editable { min-height: 150px; padding: 12px; outline: none; background: var(--bg-color); color: var(--text-color); line-height: 1.5; overflow-y: auto; max-height: 300px; }
-
-@media(width <= 600px) {
-  .editable { min-height: 100px; max-height: 200px; }
+.disabledInput {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-.uploadBox { border: 1px dashed var(--border-color); padding: 16px; border-radius: 6px; background-color: var(--bg-color); text-align: center; }
-.uploadBox label { display: block; font-weight: bold; color: var(--text-muted); cursor: pointer; }
-.uploadBox input { display: block; margin: 10px auto 0; color: var(--text-muted); }
+.formGrid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+}
 
-.modalActions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 10px; padding-top: 16px; border-top: 1px solid var(--border-color); }
-.btnCancel { padding: 10px 20px; border-radius: 6px; border: 1px solid var(--border-color); background-color: transparent; cursor: pointer; font-weight: bold; color: var(--text-muted); }
-.btnCancel:hover { color: var(--text-color); border-color: var(--text-muted); }
-.btnSubmit { padding: 10px 24px; border-radius: 6px; border: 1px solid var(--tint); background-color: var(--tint); color: var(--bg-color); cursor: pointer; font-weight: bold; }
-.btnSubmit:disabled { filter: grayscale(1) brightness(0.5); cursor: not-allowed; }
-.btnSubmitRumor { background-color: #fbbf24; border-color: #fbbf24; color: var(--bg-color); }
+@media(width <=600px) {
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .createModalHeader {
+    padding: 15px;
+  }
+
+  .formContainer {
+    padding: 15px;
+  }
+
+  .createModalHeader h2 {
+    font-size: 1.25rem;
+  }
+}
+
+.editorWrap {
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.editorToolbar {
+  display: flex;
+  gap: 5px;
+  padding: 8px;
+  background-color: var(--surface-lighter);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.editorToolbar button {
+  padding: 4px 10px;
+  cursor: pointer;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-color);
+  color: var(--text-color);
+}
+
+.editorToolbar button:hover {
+  background: var(--border-color);
+}
+
+.editable {
+  min-height: 150px;
+  padding: 12px;
+  outline: none;
+  background: var(--bg-color);
+  color: var(--text-color);
+  line-height: 1.5;
+  overflow-y: auto;
+  max-height: 300px;
+}
+
+@media(width <=600px) {
+  .editable {
+    min-height: 100px;
+    max-height: 200px;
+  }
+}
+
+.uploadBox {
+  border: 1px dashed var(--border-color);
+  padding: 16px;
+  border-radius: 6px;
+  background-color: var(--bg-color);
+  text-align: center;
+}
+
+.uploadBox label {
+  display: block;
+  font-weight: bold;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.uploadBox input {
+  display: block;
+  margin: 10px auto 0;
+  color: var(--text-muted);
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.btnCancel {
+  padding: 10px 20px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background-color: transparent;
+  cursor: pointer;
+  font-weight: bold;
+  color: var(--text-muted);
+}
+
+.btnCancel:hover {
+  color: var(--text-color);
+  border-color: var(--text-muted);
+}
+
+.btnSubmit {
+  padding: 10px 24px;
+  border-radius: 6px;
+  border: 1px solid var(--tint);
+  background-color: var(--tint);
+  color: var(--bg-color);
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.btnSubmit:disabled {
+  filter: grayscale(1) brightness(0.5);
+  cursor: not-allowed;
+}
+
+.btnSubmitRumor {
+  background-color: #fbbf24;
+  border-color: #fbbf24;
+  color: var(--bg-color);
+}
+
+/* =========================================
+   PRINT RUMORS AND POST IT LAYOUT
+   ========================================= */
+.printRumorsBtn {
+  background-color: #ca8a04;
+  border: 1px solid #ca8a04;
+  color: #111827;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.printRumorsBtn:hover {
+  background-color: #eab308;
+  border-color: #eab308;
+  color: #000000;
+}
+
+.rumorPrintModal {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(8px);
+  z-index: 9999;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.rumorPrintToolbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 24px;
+  background-color: #1e293b;
+  border-bottom: 1px solid #334155;
+  color: #f8fafc;
+}
+
+.rumorPrintTitle {
+  font-size: 1.1rem;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rumorPrintActions {
+  display: flex;
+  gap: 10px;
+}
+
+.btnActionPrint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  background-color: #facc15;
+  color: #0f172a;
+  border: 1px solid #eab308;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btnActionPrint:hover {
+  background-color: #fde047;
+}
+
+.btnActionClose {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background-color: #334155;
+  color: #f8fafc;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btnActionClose:hover {
+  background-color: #475569;
+}
+
+.rumorPrintSheet {
+  flex: 1;
+  padding: 32px 24px;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.rumorPostItGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
+  align-items: start;
+}
+
+.postItNote {
+  background: #fef08a !important;
+  color: #1c1917 !important;
+  border: 1px solid #facc15 !important;
+  box-shadow: 2px 4px 12px rgba(0, 0, 0, 0.15);
+  border-radius: 2px;
+  padding: 24px 20px 20px 20px;
+  position: relative;
+  page-break-inside: avoid;
+  break-inside: avoid;
+  font-family: 'Inter', system-ui, sans-serif;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+
+.postItTape {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 22px;
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-left: 1px dashed rgba(0, 0, 0, 0.15);
+  border-right: 1px dashed rgba(0, 0, 0, 0.15);
+}
+
+.postItHeader {
+  margin-bottom: 12px;
+  border-bottom: 2px dashed #ca8a04;
+  padding-bottom: 8px;
+}
+
+.postItTitleText {
+  margin: 0;
+  font-size: 1.25rem;
+  font-family: 'Playfair Display', Georgia, serif;
+  font-weight: 700;
+  color: #78350f;
+  line-height: 1.2;
+}
+
+.postItMedia {
+  margin: 10px 0;
+  border-radius: 4px;
+  overflow: hidden;
+  max-height: 180px;
+}
+
+.postItMedia img,
+.postItMedia video {
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+  display: block;
+}
+
+.postItBodyText {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #292524;
+  margin-bottom: 16px;
+  flex: 1;
+  word-break: break-word;
+}
+
+.postItDateText {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #854d0e;
+  text-align: right;
+  border-top: 1px solid rgba(202, 138, 4, 0.3);
+  padding-top: 8px;
+}
+
+.singlePostItWrap {
+  display: flex;
+  justify-content: center;
+  padding-top: 40px;
+}
+
+.singlePostItNote {
+  max-width: 520px;
+  width: 100%;
+  min-height: 320px;
+  padding: 32px 28px 24px 28px;
+}
+
+/* Article Print Button in News Articles */
+.articlePrintAction {
+  display: flex;
+  justify-content: flex-start;
+  margin: 1.5rem 0;
+}
+
+.articlePrintBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background-color: #1f2937;
+  color: #ffffff;
+  border: 1px solid #4b5563;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.articlePrintBtn:hover {
+  background-color: #374151;
+  border-color: #9ca3af;
+}
+
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  :global(nav),
+  :global(footer),
+  :global(aside),
+  :global(.no-print),
+  :global([data-no-print]),
+  :global([aria-label="Open dice roller"]),
+  :global([aria-label="Close dice roller"]),
+  :global([aria-label="Dice roller"]),
+  :global(button[class*="fixed"]),
+  :global(div[class*="fixed"]:not(.printable-modal)),
+  .backBtn,
+  .rumorPrintToolbar,
+  .articlePrintAction,
+  .deleteOverlay {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  .rumorPrintModal {
+    position: static !important;
+    background: transparent !important;
+    overflow: visible !important;
+  }
+
+  .rumorPrintSheet {
+    padding: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  .rumorPostItGrid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 16px !important;
+  }
+
+  .postItNote {
+    box-shadow: none !important;
+    border: 1px solid #ca8a04 !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .singlePostItWrap {
+    padding-top: 0 !important;
+  }
+}

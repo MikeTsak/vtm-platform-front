@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useContext } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import api from '../../core/api';
 import styles from '../../styles/Court.module.css';
 import { Skeleton } from 'boneyard-js/react';
@@ -83,6 +83,21 @@ export default function AnnouncementsView({ canEdit: propCanEdit }) {
   const [items, setItems] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [decreePrintMode, setDecreePrintMode] = useState(null);
+
+  const handlePrintAllDecrees = () => {
+    setDecreePrintMode('all');
+    setTimeout(() => {
+      window.print();
+    }, 200);
+  };
+
+  const handlePrintSingleDecree = (item) => {
+    setDecreePrintMode(item);
+    setTimeout(() => {
+      window.print();
+    }, 200);
+  };
   
   // Upload states
   const [selectedFile, setSelectedFile] = useState(null);
@@ -189,12 +204,24 @@ export default function AnnouncementsView({ canEdit: propCanEdit }) {
             <p className={styles.decreeHeaderSubtitle}>City Archive</p>
             <h1 className={styles.decreeHeaderTitle}>Decrees</h1>
           </div>
-          {canEdit && (
-            <button className={styles.issueBtn} onClick={() => setShowModal(true)} data-cuelume-press data-cuelume-hover>
-              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add</span>
-              ISSUE DECREE
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button 
+              className={styles.printDecreesBtn} 
+              onClick={handlePrintAllDecrees}
+              data-cuelume-press
+              data-cuelume-hover
+              title="Print decrees"
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>print</span>
+              PRINT DECREES
             </button>
-          )}
+            {canEdit && (
+              <button className={styles.issueBtn} onClick={() => setShowModal(true)} data-cuelume-press data-cuelume-hover>
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>add</span>
+                ISSUE DECREE
+              </button>
+            )}
+          </div>
         </div>
         
         <div className={styles.decreeList}>
@@ -228,20 +255,34 @@ export default function AnnouncementsView({ canEdit: propCanEdit }) {
                   <div className={styles.decreeBodyText} dangerouslySetInnerHTML={{__html: sanitizeHtml(String(item.body ?? '').replace(/\n/g, '<br/>'))}} />
                 </div>
 
-                {canEdit && (
-                  <div className={styles.decreeFooter} style={{ display: 'flex', gap: '10px' }}>
-                    {user?.role === 'admin' && (
-                      <button onClick={() => handleBroadcast(item.id)} className={styles.revokeBtn} style={{ color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.3)' }} data-cuelume-press="thud" data-cuelume-hover>
-                        <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>campaign</span>
-                        Resend to Discord
+                <div className={`${styles.decreeFooter} no-print`} style={{ display: 'flex', gap: '10px' }}>
+                  <button 
+                    type="button"
+                    onClick={() => handlePrintSingleDecree(item)} 
+                    className={styles.revokeBtn} 
+                    style={{ color: '#ca8a04', border: '1px solid rgba(202, 138, 4, 0.4)' }} 
+                    data-cuelume-press="thud" 
+                    data-cuelume-hover
+                    title="Print decree"
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>print</span>
+                    Print Decree
+                  </button>
+                  {canEdit && (
+                    <>
+                      {user?.role === 'admin' && (
+                        <button onClick={() => handleBroadcast(item.id)} className={styles.revokeBtn} style={{ color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.3)' }} data-cuelume-press="thud" data-cuelume-hover>
+                          <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>campaign</span>
+                          Resend to Discord
+                        </button>
+                      )}
+                      <button onClick={() => handleDelete(item.id)} className={styles.revokeBtn} data-cuelume-press="thud" data-cuelume-hover>
+                        <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>cancel</span>
+                        Revoke Decree
                       </button>
-                    )}
-                    <button onClick={() => handleDelete(item.id)} className={styles.revokeBtn} data-cuelume-press="thud" data-cuelume-hover>
-                      <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>cancel</span>
-                      Revoke Decree
-                    </button>
-                  </div>
-                )}
+                    </>
+                  )}
+                </div>
               </motion.article>
             );
           })}
@@ -312,7 +353,117 @@ export default function AnnouncementsView({ canEdit: propCanEdit }) {
             </div>
           </div>
         )}
+
+        {decreePrintMode && (
+          <DecreePrintModal
+            target={decreePrintMode}
+            items={items}
+            onClose={() => setDecreePrintMode(null)}
+          />
+        )}
       </motion.div>
     </Skeleton>
+  );
+}
+
+function DecreePrintModal({ target, items, onClose }) {
+  if (!target) return null;
+  const isAll = target === 'all';
+  const printItems = isAll ? items : [target];
+
+  return (
+    <div className={styles.decreePrintModal}>
+      <div className={`${styles.decreePrintToolbar} no-print`}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}>
+          <span className="material-symbols-outlined">gavel</span>
+          {isAll ? 'Court Decrees Print Layout (All)' : 'Court Decree Print Layout'}
+        </div>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className={styles.submitBtn}
+            style={{ padding: '0.4rem 1rem' }}
+            title="Print now"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>print</span>
+            Print Now
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className={styles.cancelBtn}
+            style={{ padding: '0.4rem 1rem' }}
+            title="Close print view"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>close</span>
+            Close
+          </button>
+        </div>
+      </div>
+
+      <div className={styles.decreePrintSheet}>
+        <div className={styles.decreePrintHeader}>
+          <p style={{ margin: '0 0 6px', fontSize: '0.75rem', letterSpacing: '2px', fontWeight: 'bold', textTransform: 'uppercase', color: '#8a0f1a' }}>
+            CAMARILLA COURT OF ATHENS
+          </p>
+          <h1 style={{ margin: 0, fontFamily: 'Cinzel, Georgia, serif', fontSize: '2rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
+            {isAll ? 'Decrees and Proclamations' : 'Court Proclamation'}
+          </h1>
+          <p style={{ margin: '8px 0 0', fontSize: '0.85rem', color: '#52525b', fontStyle: 'italic' }}>
+            Given under the authority of the Prince and the gathered Elders of Elysium
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', color: '#71717a', marginTop: '16px', paddingTop: '8px', borderTop: '1px dashed #d4d4d8' }}>
+            <span>Seal of Elysium: Acknowledged</span>
+            <span>Printed on: {new Date().toLocaleDateString('el-GR')}</span>
+            <span>Total Decrees: {printItems.length}</span>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {printItems.map(item => {
+            const authorRole = getTopRole(item.char_titles);
+            const authorName = item.char_name || item.author_real_name || 'Court Authority';
+            const dateStr = new Date(item.created_at).toLocaleDateString('el-GR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+            return (
+              <div key={item.id} className={styles.decreePrintItem}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #e4e4e7', paddingBottom: '12px', marginBottom: '16px' }}>
+                  <div>
+                    <h2 style={{ margin: 0, fontSize: '1.4rem', fontFamily: 'Cinzel, Georgia, serif', color: '#18181b' }}>
+                      {item.title}
+                    </h2>
+                    <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: '#8a0f1a', fontWeight: 'bold' }}>
+                      {authorName}, {authorRole}
+                    </p>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ fontSize: '0.75rem', color: '#71717a', fontWeight: 'bold' }}>
+                      Issued: {dateStr}
+                    </span>
+                  </div>
+                </div>
+
+                {item.media_url && (
+                  <div style={{ marginBottom: '16px' }}>
+                    <BlobImage url={item.media_url} />
+                  </div>
+                )}
+
+                <div
+                  style={{ fontSize: '0.95rem', lineHeight: '1.6', color: '#27272a' }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(String(item.body ?? '').replace(/\n/g, '<br/>')) }}
+                />
+
+                <div style={{ marginTop: '20px', paddingTop: '10px', borderTop: '1px solid #f4f4f5', display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#a1a1aa' }}>
+                  <span>Decree #{item.id}</span>
+                  <span>Athens Through Time Elysium Records</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
 }

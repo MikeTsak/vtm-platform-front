@@ -1,0 +1,605 @@
+/* CharacterEdit.module.css — dedicated admin editor page.
+   Deliberately distinct from CharacterView.module.css: this surface is only
+   ever reached via /admin/character/:id (AdminOnly-guarded route), never by
+   a player, so its whole visual identity (amber "editor" banner, dense
+   sidebar+panel+save-bar layout) should read as unmistakably a Storyteller
+   tool rather than the play-facing sheet. */
+
+/* Fills exactly the space below the global Nav bar (App.jsx marks this
+   route "immersive" for that), not a bare 100vh — 100vh here would ignore
+   the nav's own height, make the page taller than the visible viewport, and
+   push the save bar off-screen entirely. Same pattern SchreckNet.jsx uses. */
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--bg-primary, #0a0a0f);
+  color: var(--text-primary, #eee);
+}
+
+.centerState {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: var(--text-muted);
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid var(--glass-border, rgba(255,255,255,0.15));
+  border-top-color: var(--accent-purple, #9d7cff);
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.errorBox {
+  max-width: 420px;
+  text-align: center;
+  padding: 24px;
+  border: 1px solid var(--color-error, #ff5252);
+  border-radius: var(--radius-lg, 12px);
+  background: rgba(255, 82, 82, 0.08);
+}
+
+/* ---------- Banner ---------- */
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 20px;
+  background: linear-gradient(90deg, rgba(180, 100, 20, 0.35), rgba(180, 100, 20, 0.1));
+  border-bottom: 1px solid rgba(217, 119, 6, 0.4);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #ffb347;
+  flex-shrink: 0;
+}
+
+/* ---------- Header ---------- */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.backLink {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.backLink:hover {
+  color: var(--text-primary);
+}
+
+.headerName {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  border: none;
+  background: transparent;
+  border-bottom: 1px solid transparent;
+  min-width: 120px;
+}
+
+.headerName:hover, .headerName:focus {
+  border-bottom-color: var(--glass-border-highlight);
+  outline: none;
+}
+
+.headerClanPill {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 20px;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.headerMeta {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.headerMeta b {
+  color: var(--accent-purple);
+}
+
+/* ---------- Body: sidebar + panel ---------- */
+.body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  border-right: 1px solid var(--glass-border);
+  background: rgba(0, 0, 0, 0.18);
+  padding: 12px;
+}
+
+.navGroup {
+  margin-bottom: 4px;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 9px 12px;
+  border-radius: var(--radius-md, 8px);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.navItem:hover {
+  background: var(--glass-bg-hover);
+  color: var(--text-primary);
+}
+
+.navItemActive {
+  background: var(--accent-purple-dim);
+  color: var(--accent-purple);
+  font-weight: 700;
+}
+
+.navItemIcon {
+  font-size: 1rem;
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.navBadge {
+  margin-left: auto;
+  font-size: 0.68rem;
+  font-family: 'Fira Code', monospace;
+  opacity: 0.6;
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 32px 40px;
+}
+
+/* Wide enough for a real multi-column dashboard (every section on the page
+   at once) without letting a single field stretch edge-to-edge on an
+   ultrawide monitor the way a single unbounded column would. */
+.contentInner {
+  max-width: 1560px;
+}
+
+/* Every section renders here simultaneously — auto-fit reflows the column
+   count with viewport width (down to one column on narrow screens), and
+   align-items:start stops a short card (Trackers) from being stretched to
+   match a tall neighbor (Skills) in the same row. */
+/* minmax(380px, 1fr) alone would force every track to at least 380px even
+   on a phone narrower than that, overflowing the viewport horizontally —
+   min(380px, 100%) caps the floor at the container's own width instead, so
+   auto-fit genuinely collapses to a single full-width column on mobile. */
+.dashboardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(380px, 100%), 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+.gridSpan2 {
+  grid-column: span 2;
+}
+
+.sectionCard {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg, 12px);
+  padding: 20px;
+}
+
+.contentTitle {
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin: 0 0 4px;
+  color: var(--text-primary);
+}
+
+.contentHint {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin: 0 0 24px;
+}
+
+/* ---------- Generic form atoms ---------- */
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: 18px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.input, .select, .textarea {
+  background: var(--glass-inset);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm, 6px);
+  color: var(--text-primary);
+  padding: 9px 12px;
+  font-size: 0.9rem;
+  font-family: inherit;
+}
+
+.input:focus, .select:focus, .textarea:focus {
+  outline: none;
+  border-color: var(--accent-purple);
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 70px;
+}
+
+.groupHeading {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--accent-purple);
+  margin: 28px 0 12px;
+}
+
+.groupHeading:first-child {
+  margin-top: 0;
+}
+
+/* Skills: 26 rows is too long to just stack in one column — Physical/
+   Social/Mental (and Custom, if any) sit side by side on desktop so the
+   section reads wide-and-short instead of narrow-and-tall. A fixed 3-up
+   grid (not auto-fit) keeps the three real categories aligned as columns
+   instead of reflowing at arbitrary width thresholds; it collapses to one
+   column below 700px, same breakpoint family as the rest of the page. */
+.skillsGroupGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0 20px;
+}
+
+@media (max-width: 700px) {
+  .skillsGroupGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.skillSpecInput {
+  width: 84px;
+  min-width: 0;
+  flex-shrink: 1;
+  font-size: 0.72rem;
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-inset);
+  color: var(--text-primary);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.iconBtn {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 1px solid var(--glass-border-highlight);
+  background: var(--glass-bg);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.iconBtn:hover {
+  border-color: var(--accent-purple);
+  color: var(--accent-purple);
+}
+
+.smallBtn {
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  border-radius: var(--radius-sm, 6px);
+  border: 1px solid var(--glass-border-highlight);
+  background: var(--glass-bg);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.smallBtn:hover {
+  border-color: var(--accent-purple);
+  color: var(--accent-purple);
+}
+
+.dangerText {
+  color: var(--color-error, #ff5252);
+}
+
+/* ---------- Entry cards (disciplines / merits / rituals / touchstones) ---------- */
+.entryCard {
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg, 12px);
+  padding: 16px;
+  margin-bottom: 14px;
+  background: var(--glass-inset);
+}
+
+.entryHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.entryTitle {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.entrySub {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.powerRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-top: 1px solid var(--glass-border);
+  font-size: 0.85rem;
+}
+
+.powerRow:first-of-type {
+  border-top: none;
+}
+
+.emptyState {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 0.88rem;
+  padding: 10px 0;
+}
+
+/* ---------- Trackers ---------- */
+.trackerGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.trackerBoxGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.trackerBoxes {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.trackerBox {
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--glass-border);
+  border-radius: 4px;
+  background: var(--glass-inset);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.trackerBox[data-filled] {
+  background: var(--accent-purple);
+  color: #fff;
+  border-color: var(--accent-purple);
+}
+
+.trackerControlLabel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.addRow {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+/* ---------- Bottom save bar ---------- */
+.saveBar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 24px;
+  border-top: 1px solid var(--glass-border);
+  background: rgba(0, 0, 0, 0.35);
+  flex-wrap: wrap;
+}
+
+.modeToggle {
+  display: flex;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm, 6px);
+  overflow: hidden;
+}
+
+.modeBtn {
+  padding: 7px 12px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.modeBtnActive {
+  background: var(--accent-purple);
+  color: #fff;
+}
+
+.impactText {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.impactSpend {
+  color: var(--color-error, #ff5252);
+  font-weight: 700;
+}
+
+.impactRefund {
+  color: var(--color-success, #4caf50);
+  font-weight: 700;
+}
+
+.saveBarActions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-left: auto;
+}
+
+.btnPrimary {
+  padding: 10px 22px;
+  border-radius: var(--radius-sm, 6px);
+  border: none;
+  background: var(--accent-purple);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 0.88rem;
+}
+
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnGhost {
+  padding: 10px 18px;
+  border-radius: var(--radius-sm, 6px);
+  border: 1px solid var(--glass-border-highlight);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.88rem;
+}
+
+.btnGhost:hover {
+  color: var(--text-primary);
+  border-color: var(--text-primary);
+}
+
+/* Swap confirmation itself is the shared SwapConfirmModal component, styled
+   from CharacterView.module.css — no modal styles needed in this module. */
+
+@media (max-width: 800px) {
+  .body {
+    flex-direction: column;
+  }
+  .sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--glass-border);
+    display: flex;
+    overflow-x: auto;
+    gap: 4px;
+  }
+  .navItem {
+    flex-shrink: 0;
+  }
+  .content {
+    padding: 20px;
+  }
+  /* A grid with only one real column still tries to honor "span 2" by
+     conjuring an empty implicit column next to it, widening the row past
+     the viewport — pin every section back to a single column explicitly
+     so mobile is a clean one-under-the-other stack, not a sideways scroll. */
+  .gridSpan2 {
+    grid-column: span 1;
+  }
+}

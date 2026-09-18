@@ -41,6 +41,21 @@ export default function Boons() {
   
   const [showForm, setShowForm]       = useState(false);
   const [editTarget, setEditTarget]   = useState(null);
+  const [boonPrintMode, setBoonPrintMode] = useState(null);
+
+  const handlePrintRegistry = () => {
+    setBoonPrintMode('all');
+    setTimeout(() => {
+      window.print();
+    }, 200);
+  };
+
+  const handlePrintSingleBoon = (boon) => {
+    setBoonPrintMode(boon);
+    setTimeout(() => {
+      window.print();
+    }, 200);
+  };
   
   // Filters & Search
   const [sortMode, setSortMode]             = useState('date');
@@ -559,6 +574,15 @@ export default function Boons() {
         </div>
       )}
 
+      {/* ── Boon Print Sheet Modal ── */}
+      {boonPrintMode && (
+        <BoonPrintModal
+          target={boonPrintMode}
+          boons={processedBoons}
+          onClose={() => setBoonPrintMode(null)}
+        />
+      )}
+
       {/* Top App Bar */}
       <header className="fixed top-0 w-full z-40 bg-surface-container-highest border-b border-outline-variant/10 h-16 flex items-center justify-between px-4 lg:px-8 lg:hidden">
         <h1 className="font-headline-md text-[20px] font-bold text-primary">Blood Registry</h1>
@@ -669,12 +693,22 @@ export default function Boons() {
               <h2 className="font-headline-lg text-[32px] font-bold text-primary tracking-tight">Blood Registry</h2>
               <p className="text-on-surface-variant text-sm md:text-base italic border-l border-primary/30 pl-4">Debts of honour recorded before the gathered Kindred.</p>
             </div>
-            {canManage && (
-              <button onClick={openCreate} className="flex items-center justify-center gap-2 bg-primary-container text-on-primary-container px-6 py-3 rounded-sm font-bold tracking-widest uppercase hover:brightness-110 transition-colors active:scale-95 text-xs">
-                <span className="material-symbols-outlined">add_circle</span>
-                Record Boon
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handlePrintRegistry}
+                className="flex items-center justify-center gap-2 bg-surface-container-highest text-on-surface border border-outline-variant/30 px-5 py-3 rounded-sm font-bold tracking-widest uppercase hover:border-primary transition-colors active:scale-95 text-xs cursor-pointer"
+                title="Print blood registry"
+              >
+                <span className="material-symbols-outlined text-[16px]">print</span>
+                Print Registry
               </button>
-            )}
+              {canManage && (
+                <button onClick={openCreate} className="flex items-center justify-center gap-2 bg-primary-container text-on-primary-container px-6 py-3 rounded-sm font-bold tracking-widest uppercase hover:brightness-110 transition-colors active:scale-95 text-xs cursor-pointer">
+                  <span className="material-symbols-outlined">add_circle</span>
+                  Record Boon
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Top Mini Statuses: Most in Debt, Your Debt, Most Owed */}
@@ -1063,6 +1097,14 @@ export default function Boons() {
                       {LEVEL_LABELS[String(boon.level).toLowerCase()]} Boon
                     </span>
                     <div className="flex items-center gap-2">
+                      <button 
+                        type="button"
+                        onClick={() => handlePrintSingleBoon(boon)} 
+                        className="material-symbols-outlined text-[16px] text-on-surface-variant hover:text-primary transition-colors cursor-pointer" 
+                        title="Print boon deed"
+                      >
+                        print
+                      </button>
                       {canManage && (
                         <div className="flex gap-2 mr-2 border-r border-outline-variant/20 pr-2">
                           <button onClick={() => openEdit(boon)} className="material-symbols-outlined text-[16px] text-on-surface-variant hover:text-primary transition-colors">edit</button>
@@ -1352,5 +1394,190 @@ function BoonForm({ entities, boon, onSave, onCancel }) {
         </button>
       </div>
     </>
+  );
+}
+
+function BoonPrintModal({ target, boons, onClose }) {
+  if (!target) return null;
+  const isAll = target === 'all';
+  const printBoons = isAll ? boons : [target];
+
+  return (
+    <div className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-md overflow-y-auto flex flex-col text-[#111827]">
+      <style>{`
+        @media print {
+          body {
+            background: #ffffff !important;
+            color: #000000 !important;
+          }
+          .boons-page, nav, header, footer, .no-print {
+            display: none !important;
+          }
+          .boon-print-root {
+            position: static !important;
+            background: transparent !important;
+            overflow: visible !important;
+          }
+          .boon-print-sheet {
+            padding: 0 !important;
+            max-width: 100% !important;
+            width: 100% !important;
+          }
+          .boon-print-card {
+            box-shadow: none !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+        }
+      `}</style>
+
+      {/* Top Toolbar */}
+      <div className="sticky top-0 z-50 flex items-center justify-between px-6 py-3 bg-[#1e293b] border-b border-[#334155] text-white no-print">
+        <div className="flex items-center gap-2 text-sm md:text-base font-bold">
+          <span className="material-symbols-outlined text-[20px]">history_edu</span>
+          {isAll ? 'Prestation Ledger: Blood Registry' : 'Boon Deed: Record Certificate'}
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="flex items-center gap-1.5 px-4 py-1.5 bg-[#ca8a04] hover:bg-[#eab308] text-black font-bold text-xs rounded transition-colors cursor-pointer"
+            title="Print now"
+          >
+            <span className="material-symbols-outlined text-[16px]">print</span>
+            Print Now
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex items-center gap-1.5 px-4 py-1.5 bg-[#334155] hover:bg-[#475569] text-white font-bold text-xs rounded transition-colors cursor-pointer"
+            title="Close print view"
+          >
+            <span className="material-symbols-outlined text-[16px]">close</span>
+            Close
+          </button>
+        </div>
+      </div>
+
+      {/* Printable Sheet */}
+      <div className="boon-print-sheet flex-1 max-w-4xl w-full mx-auto p-8 my-6 bg-[#faf8f5] border border-[#e5e7eb] rounded-lg shadow-2xl">
+        {/* Document Header */}
+        <div className="border-b-2 border-[#111827] pb-4 mb-6 text-center">
+          <div className="text-[10px] tracking-[0.25em] font-bold uppercase text-[#78350f] mb-1">
+            CAMARILLA ELYSIUM OF ATHENS
+          </div>
+          <h1 className="font-serif text-3xl font-bold text-[#111827] tracking-tight uppercase">
+            {isAll ? 'Prestation Ledger' : 'Deed of Prestation'}
+          </h1>
+          <p className="text-xs text-[#4b5563] italic mt-1">
+            Official record of Kindred debts and obligations sworn before the Harpies
+          </p>
+          <div className="flex justify-between items-center text-[11px] font-bold uppercase tracking-wider text-[#6b7280] mt-4 pt-2 border-t border-dashed border-[#d1d5db]">
+            <span>Registry Status: Verified</span>
+            <span>Printed on: {new Date().toLocaleDateString('el-GR')}</span>
+            <span>Total Records: {printBoons.length}</span>
+          </div>
+        </div>
+
+        {/* Entries List: one after another */}
+        {isAll ? (
+          <div className="space-y-4">
+            {printBoons.map(b => {
+              const lvl = String(b.level || 'trivial').toUpperCase();
+              const statusStr = String(b.status || 'owed').toUpperCase();
+              const isSettled = statusStr === 'PAID' || statusStr === 'EXCUSED';
+              return (
+                <div key={b.id} className="boon-print-card bg-white p-4 rounded border border-[#d1d5db] shadow-sm">
+                  <div className="flex items-center justify-between border-b border-[#e5e7eb] pb-2 mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-bold text-[#78350f]">#{b.id}</span>
+                      <span className="text-xs font-bold uppercase px-2 py-0.5 rounded bg-[#fef3c7] text-[#92400e] border border-[#fde68a]">
+                        {lvl} BOON
+                      </span>
+                    </div>
+                    <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded ${isSettled ? 'bg-[#f3f4f6] text-[#6b7280]' : 'bg-[#dcfce7] text-[#166534]'}`}>
+                      {statusStr}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 text-xs my-2">
+                    <div>
+                      <span className="font-bold uppercase text-[10px] text-[#6b7280] block">Debtor (Owes Boon)</span>
+                      <span className="font-serif font-bold text-sm text-[#111827]">{b.from_name}</span>
+                    </div>
+                    <div>
+                      <span className="font-bold uppercase text-[10px] text-[#6b7280] block">Creditor (Holds Boon)</span>
+                      <span className="font-serif font-bold text-sm text-[#111827]">{b.to_name}</span>
+                    </div>
+                  </div>
+
+                  {b.description && (
+                    <div className="text-xs text-[#374151] italic bg-[#f9fafb] p-2.5 rounded border border-[#f3f4f6] mt-2">
+                      <strong className="not-italic text-[#111827]">Circumstances: </strong>
+                      {b.description}
+                    </div>
+                  )}
+
+                  <div className="text-[10px] text-[#9ca3af] text-right mt-2">
+                    Recorded on: {b.created_at ? new Date(b.created_at).toLocaleDateString('el-GR') : 'Archive Record'}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          /* Single Boon Deed */
+          <div className="boon-print-card bg-white p-8 rounded-lg border-2 border-[#b45309] shadow-md my-4">
+            <div className="text-center pb-6 border-b border-[#fde68a] mb-6">
+              <span className="text-xs font-bold tracking-widest text-[#b45309] uppercase">Formal Prestation Record</span>
+              <h2 className="font-serif text-2xl font-bold text-[#111827] mt-1">
+                {String(target.level || 'Boon').toUpperCase()} BOON CERTIFICATE
+              </h2>
+              <div className="inline-block mt-2 px-3 py-1 bg-[#fef3c7] text-[#92400e] text-xs font-bold uppercase tracking-wider rounded">
+                Record #{target.id} : Status {String(target.status || 'Active').toUpperCase()}
+              </div>
+            </div>
+
+            <div className="space-y-6 text-sm">
+              <div className="p-4 bg-[#fafaf9] border border-[#e7e5e4] rounded">
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#78716c] block">Debtor Sworn</span>
+                    <p className="font-serif text-lg font-bold text-[#1c1917] mt-1">{target.from_name}</p>
+                  </div>
+                  <div>
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#78716c] block">Creditor Entitled</span>
+                    <p className="font-serif text-lg font-bold text-[#1c1917] mt-1">{target.to_name}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#78716c] block mb-1">Terms and Circumstances</span>
+                <div className="p-4 bg-white border border-[#d6d3d1] rounded italic text-[#292524] min-h-[100px] leading-relaxed">
+                  {target.description || 'Sworn and acknowledged before the Harpies without public condition.'}
+                </div>
+              </div>
+
+              <div className="pt-8 border-t border-[#d6d3d1] grid grid-cols-2 gap-8 text-center text-xs">
+                <div>
+                  <div className="border-b border-black w-48 mx-auto mb-2 h-10"></div>
+                  <span className="font-bold text-[#44403c] uppercase text-[10px]">Harpy of Athens</span>
+                </div>
+                <div>
+                  <div className="border-b border-black w-48 mx-auto mb-2 h-10"></div>
+                  <span className="font-bold text-[#44403c] uppercase text-[10px]">Date: {new Date(target.created_at || Date.now()).toLocaleDateString('el-GR')}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Document Footer */}
+        <div className="mt-8 pt-4 border-t border-[#d1d5db] text-center text-[10px] text-[#9ca3af] uppercase tracking-widest">
+          Athens Through Time Chronicle : Elysium Record Office
+        </div>
+      </div>
+    </div>
   );
 }

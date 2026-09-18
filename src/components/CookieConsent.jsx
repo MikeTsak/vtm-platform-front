@@ -39,7 +39,7 @@ const CookieConsent = () => {
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+    <div className="no-print fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
       <div className="bg-surface-container border border-blood-accent/50 rounded-lg shadow-2xl max-w-md w-full p-6 text-on-surface flex flex-col gap-4 relative overflow-hidden animate-in zoom-in-95 duration-300">
         
         {/* Thematic Accent */}

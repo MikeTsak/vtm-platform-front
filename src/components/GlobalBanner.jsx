@@ -90,7 +90,7 @@ export default function GlobalBanner() {
   if (!config.enabled) return null;
 
   return (
-    <div className={styles.bannerContainer}>
+    <div className={`${styles.bannerContainer} no-print`}>
       {config.message && (
         <span 
           className={styles.message}

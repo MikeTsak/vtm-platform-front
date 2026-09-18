@@ -156,12 +156,12 @@ export default function Nav() {
 
       {/* Mobile Overlay */}
       <div
-        className={`fixed inset-0 bg-black/80 backdrop-blur-sm z-[9998] transition-opacity duration-300 lg:hidden ${isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+        className={`no-print fixed inset-0 bg-black/80 backdrop-blur-sm z-[9998] transition-opacity duration-300 lg:hidden ${isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
         onClick={closeMenu}
       />
 
       {/* Main Top Nav */}
-      <nav className="sticky top-0 z-[1000] bg-surface/90 backdrop-blur-md border-b border-outline-variant/30 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
+      <nav className="no-print sticky top-0 z-[1000] bg-surface/90 backdrop-blur-md border-b border-outline-variant/30 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
         <div className="flex items-center justify-between px-4 lg:px-8 h-16 max-w-[1920px] mx-auto">
 
           {/* Logo & Brand */}
@@ -287,8 +287,11 @@ export default function Nav() {
 
       {/* Mobile Side Drawer */}
       <div
-        className={`fixed top-0 right-0 h-[100dvh] w-72 sm:w-80 bg-[#121118] border-l border-outline-variant/20 shadow-[-8px_0_30px_rgba(0,0,0,0.85)] z-[9999] flex flex-col pt-20 pb-8 px-4 overflow-y-auto transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] lg:hidden ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'
-          }`}
+        className={`no-print fixed top-0 right-0 h-[100dvh] w-72 sm:w-80 bg-[#121118] border-l border-outline-variant/20 z-[9999] flex flex-col pt-20 pb-8 px-4 overflow-y-auto transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] lg:hidden ${
+          isMenuOpen
+            ? 'translate-x-0 shadow-[-8px_0_30px_rgba(0,0,0,0.85)] pointer-events-auto opacity-100 visible'
+            : 'translate-x-full shadow-none pointer-events-none opacity-0 invisible'
+        }`}
       >
         <div className="flex flex-col h-full">
           {user && (

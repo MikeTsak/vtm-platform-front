@@ -78,7 +78,7 @@ export default function PublicArticleView() {
 
   // Floating back button to return to the game
   const backBtn = (
-    <button onClick={() => navigate(isRumor ? '/rumors' : (isAnnouncement ? '/court/announcements' : '/news'))} style={{ position: 'fixed', bottom: '20px', left: '20px', padding: '10px 20px', background: 'rgba(0,0,0,0.8)', color: '#fff', border: '1px solid #444', borderRadius: '4px', cursor: 'pointer', zIndex: 9999, fontWeight: 'bold', boxShadow: '0 4px 6px rgba(0,0,0,0.5)', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px' }}>
+    <button onClick={() => navigate(isRumor ? '/rumors' : (isAnnouncement ? '/court/announcements' : '/news'))} className={`${styles.backBtn} no-print`} style={{ position: 'fixed', bottom: '20px', left: '20px', padding: '10px 20px', background: 'rgba(0,0,0,0.8)', color: '#fff', border: '1px solid #444', borderRadius: '4px', cursor: 'pointer', zIndex: 9999, fontWeight: 'bold', boxShadow: '0 4px 6px rgba(0,0,0,0.5)', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px' }}>
       ← Return to Hub
     </button>
   );
@@ -138,7 +138,7 @@ export default function PublicArticleView() {
 
   // Render left and right sidebar ads + bottom banner
   const LeftAdSidebar = () => (
-    <aside className={themeStyles.sidebarLeft}>
+    <aside className={`${themeStyles.sidebarLeft} no-print`}>
       {/* <div className={themeStyles.adContainer} style={{ background: 'transparent', padding: '0' }}>
         <span className={themeStyles.adLabel}>Advertisement</span>
         <GoogleAd format="vertical" style={{ minHeight: '600px' }} />
@@ -147,7 +147,7 @@ export default function PublicArticleView() {
   );
 
   const RightAdSidebar = () => (
-    <aside className={themeStyles.sidebarRight}>
+    <aside className={`${themeStyles.sidebarRight} no-print`}>
       {/* <div className={themeStyles.adContainer} style={{ background: 'transparent', padding: '0' }}>
         <span className={themeStyles.adLabel}>Advertisement</span>
         <GoogleAd format="vertical" style={{ minHeight: '600px' }} />
@@ -157,25 +157,42 @@ export default function PublicArticleView() {
 
   // Only one bottom banner ad per article
   const BottomAd = () => (
-    <div style={{ background: 'transparent', padding: '1rem 0', marginTop: '2rem', borderTop: '1px solid rgba(0,0,0,0.1)' }}>
+    <div className="no-print" style={{ background: 'transparent', padding: '1rem 0', marginTop: '2rem', borderTop: '1px solid rgba(0,0,0,0.1)' }}>
       {/* <span style={{ display: 'block', fontSize: '0.7rem', color: '#aaa', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Advertisement</span>
       <GoogleAd format="horizontal" style={{ minHeight: '90px' }} /> */}
     </div>
   );
 
-  const DisclaimerText = () => (
-    <div style={{ 
-      marginTop: '2rem', 
-      padding: '1rem', 
-      backgroundColor: '#fff3cd', 
-      border: '1px solid #ffeeba', 
-      borderRadius: '8px', 
-      fontSize: '0.85rem', 
-      color: '#856404', 
-      lineHeight: '1.4' 
-    }}>
-      <strong>Disclaimer:</strong> This content is entirely fictional and created for the Athens Through Time LARP game. Any names, characters, places, or incidents are the product of the author's imagination or are used fictitiously. Any resemblance to actual persons, living or dead, or actual events is purely coincidental.
+  const PrintArticleButton = () => (
+    <div className={`${styles.articlePrintAction} no-print`}>
+      <button 
+        type="button" 
+        onClick={() => window.print()} 
+        className={styles.articlePrintBtn}
+        title="Print this article"
+      >
+        <span className="material-symbols-outlined" style={{ fontSize: '18px', marginRight: '6px' }}>print</span>
+        Print Article
+      </button>
     </div>
+  );
+
+  const DisclaimerText = () => (
+    <>
+      <PrintArticleButton />
+      <div style={{ 
+        marginTop: '1.5rem', 
+        padding: '1rem', 
+        backgroundColor: '#fff3cd', 
+        border: '1px solid #ffeeba', 
+        borderRadius: '8px', 
+        fontSize: '0.85rem', 
+        color: '#856404', 
+        lineHeight: '1.4' 
+      }}>
+        <strong>Disclaimer:</strong> This content is entirely fictional and created for the Athens Through Time LARP game. Any names, characters, places, or incidents are the product of the author's imagination or are used fictitiously. Any resemblance to actual persons, living or dead, or actual events is purely coincidental.
+      </div>
+    </>
   );
 
   // 1. KATHIMERINI
@@ -517,6 +534,9 @@ export default function PublicArticleView() {
               {renderMedia('8px')}
 
               <div className={courtStyles.decreeBodyText} dangerouslySetInnerHTML={{__html: sanitizeHtml(String(article.body ?? '').replace(/\n/g, '<br/>'))}} style={{ marginTop: '1.5rem', lineHeight: '1.6' }} />
+              <div style={{ marginTop: '1.5rem' }}>
+                <PrintArticleButton />
+              </div>
             </div>
           </article>
         </div>

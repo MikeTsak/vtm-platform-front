@@ -30,6 +30,7 @@ const Login = lazyWithRetry(() => import('../features/auth/Login'));
 const Register = lazyWithRetry(() => import('../features/auth/Register'));
 const DiceRoller = lazyWithRetry(() => import('../features/dice/DiceRoller'));
 const CharacterView = lazyWithRetry(() => import('../features/character/CharacterView'));
+const CharacterEdit = lazyWithRetry(() => import('../features/character/CharacterEdit'));
 const CharacterSetup = lazyWithRetry(() => import('../features/character/CharacterSetup'));
 const Domains = lazyWithRetry(() => import('../features/domains/Domains'));
 const DownTimes = lazyWithRetry(() => import('../features/downtimes/DownTimes'));
@@ -118,10 +119,12 @@ function MalkavianOrAdminOnly({ children }) {
 }
 
 const IMMERSIVE_ROUTES = ['/schrecknet', '/surfaceweb'];
+const IMMERSIVE_PREFIXES = ['/admin/character/'];
 
 function AppLayout() {
   const location = useLocation();
-  const isImmersive = IMMERSIVE_ROUTES.includes(location.pathname);
+  const isImmersive = IMMERSIVE_ROUTES.includes(location.pathname)
+    || IMMERSIVE_PREFIXES.some(prefix => location.pathname.startsWith(prefix));
   const { user } = useContext(AuthCtx);
 
   useEffect(() => {
@@ -271,6 +274,7 @@ function AppLayout() {
             <Route path="/admin/live-session" element={<CourtOnly><LiveSessionDashboard /></CourtOnly>} />
             <Route path="/admin/npcs" element={<AdminOnly><NPCs /></AdminOnly>} />
             <Route path="/admin/npcs/:id" element={<AdminOnly><AdminNPCView /></AdminOnly>} />
+            <Route path="/admin/character/:id" element={<AdminOnly><CharacterEdit /></AdminOnly>} />
 
             <Route path="/forgot" element={<ForgotPassword />} />
             <Route path="/reset" element={<ResetPassword />} />

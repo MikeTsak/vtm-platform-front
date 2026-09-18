@@ -3562,20 +3562,58 @@ tr:hover .clanIcon,
 
 .trackerControls {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
+/* Each stat's stepper (e.g. "SUP − +") reads as one grouped chip, not a
+   floating label next to two buttons — and steppers for the same tracker
+   sit side by side instead of stacked, so a 4-tracker panel doesn't need
+   nearly double the vertical space it used to. */
 .trackerControl {
   display: flex;
   align-items: center;
   gap: 6px;
+  padding: 4px 8px 4px 10px;
+  background: var(--glass-inset);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
 }
 
 .trackerControlLabel {
-  opacity: 0.7;
-  font-size: 0.75rem;
-  min-width: 42px;
+  opacity: 0.65;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* Stepper buttons need to read as clickable at rest, not only on hover —
+   .btnGhost (transparent border, muted text) is correct for lower-priority
+   actions elsewhere but disappears here, where +/- are the primary way to
+   interact with the card. */
+.trackerStepBtn {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid var(--glass-border-highlight);
+  background: var(--glass-bg);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.trackerStepBtn:hover {
+  background: var(--accent-purple-dim);
+  border-color: var(--accent-purple);
+  color: var(--accent-purple);
 }
 
 /* ═════════════════════════════════════════════════
