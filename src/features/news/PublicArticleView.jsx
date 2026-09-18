@@ -186,7 +186,7 @@ export default function PublicArticleView() {
         {backBtn}
         <header className={themeStyles.kathimeriniHeader} style={{ flexDirection: 'column', padding: '0' }}>
           <div style={{ width: '100%', padding: '1.5rem', display: 'flex', justifyContent: 'center', borderBottom: '1px solid #ddd' }}>
-            <img src={themeObj.logo} alt={themeObj.name} style={{ height: '45px' }} />
+            <img src={themeObj.logo} alt={themeObj.name} style={{ height: '65px', width: 'auto', objectFit: 'contain' }} />
           </div>
           <nav style={{ width: '100%', padding: '0.8rem', display: 'flex', justifyContent: 'center', gap: '2.5rem', fontSize: '0.9rem', fontWeight: 'bold', textTransform: 'uppercase' }}>
             <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#111', textDecoration: 'none' }}>ΠΟΛΙΤΙΚΗ</a>
@@ -367,13 +367,13 @@ export default function PublicArticleView() {
         {backBtn}
         <header className={themeStyles.skaiHeader}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
-            <img src={themeObj.logo} alt={themeObj.name} style={{ height: '35px', marginRight: '3rem', backgroundColor: '#fff', padding: '5px' }} />
+            <img src={themeObj.logo} alt={themeObj.name} style={{ height: '34px', marginRight: '3rem', objectFit: 'contain' }} />
             <nav style={{ display: 'flex', gap: '1.5rem', fontWeight: 'bold' }}>
-              <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#004d99', textDecoration: 'none' }}>ΕΛΛΑΔΑ</a>
-              <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#004d99', textDecoration: 'none' }}>ΚΟΣΜΟΣ</a>
-              <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#004d99', textDecoration: 'none' }}>ΠΟΛΙΤΙΚΗ</a>
-              <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#004d99', textDecoration: 'none' }}>ΟΙΚΟΝΟΜΙΑ</a>
-              <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#004d99', textDecoration: 'none' }}>ΑΘΛΗΤΙΚΑ</a>
+              <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#005bfe', textDecoration: 'none' }}>ΕΛΛΑΔΑ</a>
+              <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#005bfe', textDecoration: 'none' }}>ΚΟΣΜΟΣ</a>
+              <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#005bfe', textDecoration: 'none' }}>ΠΟΛΙΤΙΚΗ</a>
+              <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#005bfe', textDecoration: 'none' }}>ΟΙΚΟΝΟΜΙΑ</a>
+              <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#005bfe', textDecoration: 'none' }}>ΑΘΛΗΤΙΚΑ</a>
             </nav>
           </div>
         </header>
@@ -472,7 +472,7 @@ export default function PublicArticleView() {
             {mediaUrl && (
               <div className={themeStyles.alterMediaContainer}>
                 {renderMedia()}
-                <img src="/img/alter-logo.svg" alt="Alter Bug" className={themeStyles.alterWatermark} />
+                <img src="/img/alter-logo.png" alt="Alter Bug" className={themeStyles.alterWatermark} />
               </div>
             )}
             <div className={styles.fsBody} dangerouslySetInnerHTML={{ __html: sanitizeHtml(article.body) }} style={{ marginTop: '2rem', color: 'inherit', fontFamily: 'inherit' }} />

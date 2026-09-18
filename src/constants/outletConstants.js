@@ -1,13 +1,13 @@
 // Shared constants for News module
 export const NEWS_OUTLETS = {
-  'ERT': { name: 'ERT News', logo: 'https://www.ertnews.gr/wp-content/uploads/2025/09/ert-news-black-bg.svg', color: '#dc2626', url: 'www.ertnews.gr' },
-  'SKAI': { name: 'SKAI.gr', logo: 'https://upload.wikimedia.org/wikipedia/el/e/eb/SkaiTV-Logo.png', color: '#004d99', url: 'www.skai.gr' },
-  'ALPHA': { name: 'Alpha News', logo: 'https://www.alphatv.gr/wp-content/uploads/2026/01/alpha-logo_logo-red.svg', color: '#ff3b3b', url: 'www.alphatv.gr' },
-  'MEGA': { name: 'Mega Gegonota', logo: 'https://upload.wikimedia.org/wikipedia/commons/8/83/MEGA_CHANNEL.png', color: '#222222', url: 'www.megatv.com' },
-  'KATHIMERINI': { name: 'Kathimerini', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRNk0h-loKAwB5Ay_ohV5G8ItU88h7PY_RkPw&s', color: '#999999', url: 'www.kathimerini.gr' },
+  'ERT': { name: 'ERT News', logo: '/img/ert-news-logo.svg', color: '#e5002b', url: 'www.ertnews.gr' },
+  'SKAI': { name: 'SKAI.gr', logo: '/img/skai-logo.png', color: '#005bfe', url: 'www.skai.gr' },
+  'ALPHA': { name: 'Alpha News', logo: '/img/alpha-logo.png', color: '#ee3d42', url: 'www.alphatv.gr' },
+  'MEGA': { name: 'Mega Gegonota', logo: '/img/mega-logo.png', color: '#e51b24', url: 'www.megatv.com' },
+  'KATHIMERINI': { name: 'Kathimerini', logo: '/img/kathimerini-logo.png', color: '#111111', url: 'www.kathimerini.gr' },
   'GOSSIP': { name: 'Gossip-tv', logo: 'https://cdn.gosmd.gr/img/1200/630/90/2016/05/19/1952016-14126.jpg?t=xRh4M6KRWfNTqee7gQzcuw', color: '#e6007e', url: 'www.gossip-tv.gr' },
-  'OPENTV': { name: 'Open TV', logo: 'https://upload.wikimedia.org/wikipedia/commons/5/55/OpenLogo.svg', color: '#fa8301', url: 'www.tvopen.gr' },
-  'ALTER': { name: 'Alter Channel', logo: '/img/alter-logo.svg', color: '#d4af37', url: 'www.alter.gr' },
+  'OPENTV': { name: 'Open TV', logo: '/img/open-beyond-white.png', color: '#fa8301', url: 'www.tvopen.gr' },
+  'ALTER': { name: 'Alter Channel', logo: '/img/alter-logo.png', color: '#d4af37', url: 'www.alter.gr' },
   'RUMOR': { name: 'Rumor / Gossip', color: '#fbbf24', url: null }
 };
 
