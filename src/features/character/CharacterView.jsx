@@ -1472,11 +1472,17 @@ export default function CharacterView({
     const dots = s?.disciplines || {};
     const picks = s?.disciplinePowers || {};
     const q = [];
+    // Gaps are counted by how many powers are owned vs. dots spent — NOT by
+    // which power-tier numbers appear in the array. V5 allows taking two
+    // different powers of the same level (e.g. two Level-1 picks for a
+    // 2-dot discipline), so a per-level-number check treats that legal
+    // duplicate as "level 2 still missing" and can never be satisfied.
     Object.entries(dots).forEach(([name, lvl]) => {
       const L = Number(lvl || 0);
       if (!L) return;
-      const chosen = new Set((Array.isArray(picks?.[name]) ? picks[name] : []).map(p => Number(p.level)));
-      for (let i = 1; i <= L; i++) if (!chosen.has(i)) q.push({ name, level: i });
+      const owned = Array.isArray(picks?.[name]) ? picks[name].length : 0;
+      const missing = Math.max(0, L - owned);
+      for (let i = 0; i < missing; i++) q.push({ name, level: L });
     });
     q.sort((a, b) => (a.name === b.name ? a.level - b.level : a.name.localeCompare(b.name)));
     return q;
@@ -1511,15 +1517,17 @@ export default function CharacterView({
 
     if (!assignOnly) nextSheet.disciplines[name] = next;
 
-    // Key the write on the level the chosen power actually belongs to, not the
-    // dot the modal was targeting — those can differ (e.g. filling a gap left
-    // by a predator-type bonus dot) and using `next` here overwrote whatever
-    // power already occupied that dot slot.
+    // Append the pick, de-duplicating by the power's own identity — never by
+    // its level number. Two different powers can legitimately share a level
+    // (e.g. two Level-1 picks for a 2-dot discipline), so filtering the
+    // existing list by "level === X" before pushing would delete a
+    // perfectly valid, already-chosen power that happens to share a level
+    // with the one just picked.
     const powerLevel = Number(selectedPowerLevel ?? next);
     const list = Array.isArray(nextSheet.disciplinePowers[name]) ? nextSheet.disciplinePowers[name] : [];
-    const filtered = list.filter(p => Number(p.level) !== powerLevel);
-    filtered.push({ level: powerLevel, id: selectedPowerId, name: selectedPowerName });
-    nextSheet.disciplinePowers[name] = filtered.sort((a, b) => a.level - b.level);
+    const alreadyOwned = list.some(p => (selectedPowerId ? p.id === selectedPowerId : false) || p.name === selectedPowerName);
+    const merged = alreadyOwned ? list : [...list, { level: powerLevel, id: selectedPowerId, name: selectedPowerName }];
+    nextSheet.disciplinePowers[name] = merged.slice().sort((a, b) => a.level - b.level);
 
     try {
       if (assignOnly) {
@@ -3085,17 +3093,16 @@ function InlineDisciplinePicker({ cfg, onConfirm, searchQuery }) {
     const out = [];
     const levels = DISCIPLINES?.[name]?.levels || {};
     const cap = Number(next || 0);
-    // When filling a specific missing dot (e.g. a gap left by a predator-type
-    // bonus dot), only offer powers for that exact level — offering the full
-    // 1..cap history lets a player pick a lower-level power while "filling"
-    // a higher dot, which then gets mis-saved under the wrong level.
-    const lo = assignOnly ? cap : 1;
-    for (let lvl = lo; lvl <= cap; lvl++) {
+    // Offer every power at or below the discipline's current dot total —
+    // V5 lets you take multiple powers of the same level (e.g. two Level-1
+    // picks for a 2-dot discipline), so this must not be narrowed to a
+    // single "target" level. Already-owned powers are filtered out below.
+    for (let lvl = 1; lvl <= cap; lvl++) {
       for (const p of (levels[lvl] || [])) out.push({ ...p, __level: lvl });
     }
     out.sort((a, b) => (a.__level - b.__level) || String(a.name).localeCompare(String(b.name)));
     return out;
-  }, [name, next, assignOnly]);
+  }, [name, next]);
 
   const norm = (v) => String(v ?? '').trim().toLowerCase();
   const normDisc = useCallback((s) => norm(s).replace(/\s+/g, ' '), []);
@@ -3316,16 +3323,15 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
     const out = [];
     const levels = DISCIPLINES?.[name]?.levels || {};
     const cap = Number(next || 0);
-    // Same reasoning as InlineDisciplinePicker: restrict to the exact missing
-    // level when filling a gap, so a lower-level power can't get mis-saved
-    // under the level being filled.
-    const lo = assignOnly ? cap : 1;
-    for (let lvl = lo; lvl <= cap; lvl++) {
+    // Same reasoning as InlineDisciplinePicker: offer every power at or
+    // below the current dot total, since V5 allows multiple same-level
+    // picks (e.g. two Level-1 powers for a 2-dot discipline).
+    for (let lvl = 1; lvl <= cap; lvl++) {
       for (const p of (levels[lvl] || [])) out.push({ ...p, __level: lvl });
     }
     out.sort((a, b) => (a.__level - b.__level) || String(a.name).localeCompare(String(b.name)));
     return out;
-  }, [name, next, assignOnly]);
+  }, [name, next]);
 
   const norm = (v) => String(v ?? '').trim().toLowerCase();
   const normDisc = useCallback((s) => norm(s).replace(/\s+/g, ' '), []);
