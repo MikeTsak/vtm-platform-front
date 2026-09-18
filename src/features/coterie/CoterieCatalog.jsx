@@ -24,7 +24,7 @@ import {
  * Types browser
  * ------------------------------------------------------------------ */
 
-// Built once — MiniSearch was previously reconstructed and re-indexed on
+// Built once: MiniSearch was previously reconstructed and re-indexed on
 // every keystroke inside a useMemo over the query.
 const TYPE_INDEX = (() => {
   const docs = ALL_COTERIE_NAMES.map((name, id) => {
@@ -133,7 +133,7 @@ export function TypesBrowser({ onPick }) {
         subtitle={`${ALL_COTERIE_NAMES.length} archetypes from the Corebook and Players Guide`}
       >
         <Muted className={styles.tightNote}>
-          Build what the troupe wants first and rules second — a type is a shorthand, not a cage.
+          Build what the troupe wants first and rules second: a type is a shorthand, not a cage.
           Applying one fills in its listed Domain dots, Backgrounds and Flaws, all of which you can
           then trade away. The corebook’s own example has a Maréchal coterie drop all four of its
           Domain dots for Contacts and a Haven.
@@ -168,7 +168,7 @@ export function RulesOverview() {
         <p className={styles.prose}>
           A coterie is a small group of Kindred bound together by necessity, ambition or an elder’s
           design. Players might build their characters individually, but they build their coterie
-          together — it is where shared buy-in to the chronicle comes from, and where the troupe says
+          together: it is where shared buy-in to the chronicle comes from, and where the troupe says
           which parts of the World of Darkness it wants to explore.
         </p>
         <p className={styles.prose}>
@@ -192,7 +192,7 @@ export function RulesOverview() {
           </li>
           <li>
             Spend the pool on <b>Domain traits, coterie Backgrounds and coterie Merits</b>. If your
-            coterie matches a listed type, subtract that type’s listed costs from the pool — its
+            coterie matches a listed type, subtract that type’s listed costs from the pool: its
             Domain dots are paid for, not free.
           </li>
           <li>
@@ -206,7 +206,7 @@ export function RulesOverview() {
         <p className={styles.prose}>
           To the Camarilla, a domain resembles a feudal fief held by grant from the Prince or another
           noble Kindred; Anarch coteries call it turf. Either way the principle is the same. Each dot
-          of a Domain Trait costs one dot from the coterie pool. Domain Traits cover a lot of ground —
+          of a Domain Trait costs one dot from the coterie pool. Domain Traits cover a lot of ground:
           use them as abstractions, not constraints.
         </p>
         <ul className={styles.traitList}>
@@ -262,12 +262,12 @@ export function RulesOverview() {
         <Muted>{COTERIE_BACKGROUND_NOTE}</Muted>
         <p className={styles.prose}>
           <b>A Background does not multiply itself.</b> A two-dot coterie Herd still holds the same
-          number of kine and provides only one Resonance — the same as an individual vampire with
+          number of kine and provides only one Resonance: the same as an individual vampire with
           Herd ••.
         </p>
         <Muted className={styles.caveat}>
           Coterie Backgrounds stay vulnerable to events in play. If a mob burns out a coterie Haven,
-          those dots are gone — and unlike one player’s Haven, when a coterie Haven goes, nobody has a
+          those dots are gone, and unlike one player’s Haven, when a coterie Haven goes, nobody has a
           place to sleep. Putting all of one’s eggs in the same basket has its downside.
         </Muted>
       </Card>
@@ -279,7 +279,7 @@ export function RulesOverview() {
       <Card title="Advancing a coterie" subtitle="How this chronicle handles XP">
         <p className={styles.prose}>
           Raising a Domain trait, a coterie Background or a coterie Merit after creation costs{' '}
-          <b>{XP_PER_DOT} XP per new dot</b> — the standard V5 Advantage rate.
+          <b>{XP_PER_DOT} XP per new dot</b>: the standard V5 Advantage rate.
         </p>
         <ol className={styles.rulesList}>
           <li>
@@ -295,7 +295,7 @@ export function RulesOverview() {
             That amount is deducted from their sheet and recorded against their name.
           </li>
           <li>
-            XP buys new dots only. Dropping a rating refunds nothing — trim it in the builder instead.
+            XP buys new dots only. Dropping a rating refunds nothing: trim it in the builder instead.
           </li>
         </ol>
       </Card>

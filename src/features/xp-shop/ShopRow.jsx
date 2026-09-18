@@ -66,7 +66,7 @@ export function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, lef
           <span className={`material-symbols-outlined ${styles.expandIcon}`}>expand_more</span>
         </div>
 
-        {/* The "why" line for suggested buys — readable without expanding. */}
+        {/* The "why" line for suggested buys: readable without expanding. */}
         {note && (
           <p className={styles.shopCardNote}>
             <span className={`material-symbols-outlined ${styles.shopCardNoteIcon}`}>lightbulb</span>
@@ -75,7 +75,7 @@ export function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, lef
         )}
 
         {/* Compact cards (the Suggested tab) fold the dots into the footer,
-            next to the price, instead of giving them their own row — that
+            next to the price, instead of giving them their own row: that
             row was the single biggest source of dead vertical space. */}
         {!compact && dots}
 
@@ -128,7 +128,7 @@ export function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, lef
         >
           <p>
             Are you sure you want to buy <b>{title}</b>
-            {subtitle ? <> — {subtitle}</> : null} for <b>{cost}</b> XP?
+            {subtitle ? <>: {subtitle}</> : null} for <b>{cost}</b> XP?
           </p>
         </ConfirmModal>
       )}

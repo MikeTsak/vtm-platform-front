@@ -3,15 +3,15 @@
 // Renders one nav/tab icon. Most glyph names are plain Material Symbols
 // ligatures (the font already loaded for the rest of the app) and go
 // straight through to a <span>. A handful of names have no Material Symbols
-// equivalent and are hand-inlined SVGs instead — same technique already used
+// equivalent and are hand-inlined SVGs instead, same technique already used
 // for the Chasse merit glyphs on the Domains map (see
 // features/domains/data/chasseMerits.js): copy just the one path we need
 // rather than pulling in an icon-font dependency for three icons.
 //
-// - "garlic"   — Delapouite, game-icons.net, CC BY 3.0 (https://game-icons.net/1x1/delapouite/garlic.html)
-// - "hanukiah" — Font Awesome 6 Free (Solid), CC BY 4.0 (https://fontawesome.com/icons/hanukiah)
+// * "garlic": Delapouite, game-icons.net, CC BY 3.0 (https://game-icons.net/1x1/delapouite/garlic.html)
+// * "hanukiah": Font Awesome 6 Free (Solid), CC BY 4.0 (https://fontawesome.com/icons/hanukiah)
 // "droplet_plus" isn't a real single glyph in either free set (Font Awesome's
-// own "droplet-plus" is Pro-only) — it's built here from the free Font
+// own "droplet-plus" is Pro only), it's built here from the free Font
 // Awesome droplet path plus a small Material Symbols "add" badge tucked into
 // the empty space beside the droplet's tip.
 
@@ -35,7 +35,7 @@ function Svg({ viewBox, path, size }) {
  * @param {string}  glyph  a Material Symbols ligature name, or one of the
  *                         special names handled above ('garlic', 'hanukiah',
  *                         'droplet_plus')
- * @param {number}  size   icon box in px — square, other icons letterbox
+ * @param {number}  size   icon box in px: square, other icons letterbox
  *                         inside it to match
  * @param {boolean} active toggles the Material Symbols outline→filled
  *                         variation; the custom SVGs are solid already and
@@ -56,7 +56,7 @@ export default function CategoryIcon({ glyph, size = 20, active = false }) {
       <span style={{ position: 'relative', display: 'inline-flex', width: size, height: size, flexShrink: 0 }}>
         <Svg viewBox="0 0 384 512" path={DROPLET_PATH} size={size} />
         {/* The droplet narrows to a point at the top, leaving empty space in
-            the top-right of its box — the badge sits there rather than
+            the top right of its box: the badge sits there rather than
             overlapping the filled shape, so no backing circle is needed. */}
         <span
           className="material-symbols-outlined"

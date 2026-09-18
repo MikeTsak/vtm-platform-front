@@ -3,7 +3,7 @@
 // App-wide theme engine. Previously this lived entirely inside the Home page
 // component, which meant:
 //   - themes only applied once you visited "/" (every other route, and every
-//     cold reload, rendered the bare :root fallback — Camarilla crimson);
+//     cold reload, rendered the bare :root fallback: Camarilla crimson);
 //   - the "clan" theme wrote --tint as an inline style on <html> and only ever
 //     removed it if you picked another theme *while on the Home page*, so a
 //     bloodline tint (e.g. the Ministry's gold #865f12) leaked into every

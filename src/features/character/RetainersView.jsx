@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../../core/api';
 import styles from '../../styles/RetainersView.module.css';
@@ -289,8 +289,8 @@ const PowerDetailCard = ({ power, onClear, readOnly, noMargin }) => (
     <div style={{ fontSize: '12px', color: '#ccc', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
       {power.cost && <div><strong>Cost:</strong> {power.cost}</div>}
       {power.duration && <div><strong>Duration:</strong> {power.duration}</div>}
-      {power.dice_pool && power.dice_pool !== '—' && <div><strong>Dice:</strong> {power.dice_pool}</div>}
-      {power.opposing_pool && power.opposing_pool !== '—' && <div><strong>Opposing:</strong> {power.opposing_pool}</div>}
+      {power.dice_pool && power.dice_pool !== '—' && power.dice_pool !== 'None' && <div><strong>Dice:</strong> {power.dice_pool}</div>}
+      {power.opposing_pool && power.opposing_pool !== '—' && power.opposing_pool !== 'None' && <div><strong>Opposing:</strong> {power.opposing_pool}</div>}
     </div>
     <p style={{ margin: 0, color: '#aaa', fontSize: '12px', lineHeight: '1.4' }}>{power.notes || power.description || 'No description available.'}</p>
   </div>

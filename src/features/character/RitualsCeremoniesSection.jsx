@@ -33,16 +33,16 @@ const RitualsCeremoniesSection = ({ sheet, xp, knownPowerNamesAndIds, knownRitua
 
   const estimateDisciplineCost = useCallback((ch, disciplineName, currentLevel, newLevel) => {
     // Implementation would depend on the discipline type
-    // This is a simplified version - in reality this would be more complex
+    // This is a simplified version, in reality this would be more complex
     return XP_RULES.disciplineClan(newLevel); // Placeholder
   }, []);
 
   const ritualPrereqStatus = useCallback((rit, knownPowerSet) => {
-    // Simplified version - the original is quite complex
+    // Simplified version, the original is quite complex
     const prereq = rit?.prereq;
-    if (!prereq || prereq === '—') return { unmet: [] };
+    if (!prereq || prereq === '—' || prereq === 'None') return { unmet: [] };
 
-    // This is a simplified version - the original has complex logic
+    // This is a simplified version, the original has complex logic
     return { unmet: [] };
   }, []);
 

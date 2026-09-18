@@ -56,7 +56,7 @@ export default function Footer() {
                   Erebus Portal
                 </div>
                 <div className="text-[10px] text-on-surface-variant font-['Inter'] leading-tight">
-                  by <a href="https://miketsak.gr" target="_blank" rel="noreferrer" className="text-primary hover:underline font-bold transition-colors">MikeTsak</a> for Athens Through-Time — powered by{' '}
+                  by <a href="https://miketsak.gr" target="_blank" rel="noreferrer" className="text-primary hover:underline font-bold transition-colors">MikeTsak</a> for Athens Through Time, powered by{' '}
                   <a href="https://cerebralproductions.eu/" target="_blank" rel="noreferrer" className="text-primary hover:underline font-bold transition-colors">Cerebral Prod.</a>
                 </div>
               </div>
@@ -68,7 +68,7 @@ export default function Footer() {
                 <img src="/img/cerebralproductions.webp" alt="Cerebral Productions" className="h-6 object-contain" draggable="false" />
               </a>
               <a href="https://www.paradoxinteractive.com/games/world-of-darkness/community/dark-pack-agreement" target="_blank" rel="noreferrer" className="opacity-60 hover:opacity-100 transition-opacity active:scale-95" aria-label="Dark Pack Agreement">
-                <img src="/img/DarkPack_Logo2.webp" alt="World of Darkness — Dark Pack" className="h-6 object-contain" draggable="false" />
+                <img src="/img/DarkPack_Logo2.webp" alt="World of Darkness: Dark Pack" className="h-6 object-contain" draggable="false" />
               </a>
             </div>
           </div>

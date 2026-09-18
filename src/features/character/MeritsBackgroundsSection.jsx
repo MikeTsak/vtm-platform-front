@@ -38,8 +38,8 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
       const opts = src.split(/\bor\b/i).map(s => bulletCount(s)).filter(n => n > 0);
       return Array.from(new Set(opts)).sort((a, b) => a - b);
     }
-    if (src.includes('-')) {
-      const [lo, hi] = src.split('-').map(s => bulletCount(s));
+    if (src.includes('-') || src.includes('–') || src.includes('—') || /\bto\b/i.test(src)) {
+      const [lo, hi] = src.split(/\s*(?:-|–|—|to)\s*/i).map(s => bulletCount(s));
       if (lo > 0 && hi >= lo) { const out = []; for (let i = lo; i <= hi; i++) out.push(i); return out; }
     }
     if (src.includes('+')) {
@@ -50,7 +50,7 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
     return n > 0 ? [n] : [];
   }, [bulletCount]);
 
-  // Helper functions — walks the real { merits, flaws, groups } shape of
+  // Helper functions: walks the real { merits, flaws, groups } shape of
   // MERITS_AND_FLAWS (matches the working flattener in CharacterView.jsx).
   // Each top-level entry is an object, not an array, and sub-categories
   // live under `.groups`, so a flat Array.isArray(payload) check always
@@ -225,7 +225,7 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
     Object.entries(RITUALS.oblivion.levels || {}).forEach(([lvl, list]) => {
       list.forEach(c => {
         const prereq = c.prereq || c.prerequisite || '';
-        if (!prereq || prereq === '—') return;
+        if (!prereq || prereq === '—' || prereq === 'None') return;
         
         let met = false;
         if (prereq.includes(' or ')) {

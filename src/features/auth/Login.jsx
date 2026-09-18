@@ -95,15 +95,15 @@ export default function Login() {
   return (
     <div className={`${styles['login-page']} ${styles['vamp-bg']}`}>
       <Helmet>
-        <title>Sign In — Erebus Portal | Athens Through Time</title>
+        <title>Sign In : Erebus Portal | Athens Through Time</title>
         <meta
           name="description"
-          content="Sign in to the Erebus Portal, the character builder and court management tool for the Athens Through-Time Vampire: The Masquerade LARP."
+          content="Sign in to the Erebus Portal, the character builder and court management tool for the Athens Through Time Vampire: The Masquerade LARP."
         />
-        <meta property="og:title" content="Sign In — Erebus Portal | Athens Through Time" />
+        <meta property="og:title" content="Sign In : Erebus Portal | Athens Through Time" />
         <meta
           property="og:description"
-          content="Sign in to the Erebus Portal, the character builder and court management tool for the Athens Through-Time Vampire: The Masquerade LARP."
+          content="Sign in to the Erebus Portal, the character builder and court management tool for the Athens Through Time Vampire: The Masquerade LARP."
         />
         <script type="application/ld+json">
           {JSON.stringify({

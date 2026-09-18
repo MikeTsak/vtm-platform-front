@@ -41,7 +41,7 @@ export default function AdvantagesStep({
 
     setMerits(randomFill(meritItems, meritBudget) || []);
 
-    // Flaws must land on an exact total — retry a handful of shuffles.
+    // Flaws must land on an exact total: retry a handful of shuffles.
     let flawPick = null;
     for (let attempt = 0; attempt < 30 && !flawPick; attempt++) {
       flawPick = randomFill(flawItems, flawBudget, { exact: true });

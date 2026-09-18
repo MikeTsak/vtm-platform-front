@@ -647,7 +647,7 @@ export default function ChatSystem({ commsEnabled = true }) {
   }, [notifSupported, notifOn, threadKey]);
 
   useEffect(() => {
-    // Auth rides along as the httpOnly session cookie — nothing to attach
+    // Auth rides along as the httpOnly session cookie, nothing to attach
     // here manually. Still surface "session expired" if a request 401s.
     const id = api.interceptors.response.use(res => res, err => {
       if (err?.response?.status === 401) setError('Your session expired. Please log in again.');
@@ -713,7 +713,7 @@ export default function ChatSystem({ commsEnabled = true }) {
   }, [fetchContacts, creatingGroup, isTabVisible]);
 
   // Socket-driven instant refresh. Deliberately a separate effect:
-  // this must NEVER toggle `loading` (that would flash the skeleton) —
+  // this must NEVER toggle `loading` (that would flash the skeleton),
   // it silently re-runs fetchContacts() and bumps socketRefreshTick to
   // sync whichever thread is currently open within 300ms.
   const [socketRefreshTick, setSocketRefreshTick] = useState(0);
@@ -738,8 +738,8 @@ export default function ChatSystem({ commsEnabled = true }) {
     fetchContacts();
   }, [socketRefreshTick, fetchContacts]);
 
-  /* --- Reactions (double-tap-to-like + emoji react) --- */
-  // Double-tap-to-like is a thumbs up, not a heart — it reads as
+  /* Reactions (double-tap-to-like + emoji react) */
+  // Double-tap-to-like is a thumbs up, not a heart: it reads as
   // acknowledgement rather than affection, which is what a tap actually means.
   const LIKE_EMOJI = '👍';
 
@@ -756,7 +756,7 @@ export default function ChatSystem({ commsEnabled = true }) {
     [mySigil]
   );
 
-  // Maps selectedContact.type to the discriminator the backend expects —
+  // Maps selectedContact.type to the discriminator the backend expects:
   // must match REACTION_TABLES in server.fastify.js.
   const reactionTable = selectedContact?.type === 'group'
     ? 'chat_group_messages'
@@ -778,13 +778,13 @@ export default function ChatSystem({ commsEnabled = true }) {
       const { data } = await api.post(`/chat/messages/${msgId}/reactions`, { table: reactionTable, emoji });
       setReactionsByMsgId(prev => ({ ...prev, [msgId]: data.reactions || [] }));
     } catch (e) {
-      // Reactions are a nice-to-have on top of chat — fail silently rather
+      // Reactions are a nice-to-have on top of chat: fail silently rather
       // than surfacing an error banner for something this minor.
     }
     setReactionPickerFor(null);
   }, [reactionTable]);
 
-  // Works for both mouse double-click and touch double-tap — onClick fires
+  // Works for both mouse double-click and touch double-tap: onClick fires
   // for both, so tracking tap timing here covers desktop and mobile with one
   // handler instead of relying on onDoubleClick (touch-unreliable).
   // If a hold already opened the picker we suppress the click so it doesn't
@@ -819,7 +819,7 @@ export default function ChatSystem({ commsEnabled = true }) {
   // Batch-fetch reaction summaries for whichever messages are currently
   // shown. Re-runs when the set of message ids changes (new message
   // arrived), when a socket 'chat:refresh' fires (someone else may have
-  // reacted — the message content itself wouldn't have changed, so the
+  // reacted: the message content itself wouldn't have changed, so the
   // message-polling effect alone wouldn't catch that), and on its own slow
   // interval as a safety net if sockets are ever down.
   const messageIdsKey = useMemo(
@@ -969,7 +969,7 @@ export default function ChatSystem({ commsEnabled = true }) {
 
     load();
     if (!isTabVisible) return;
-    // Slow safety net — 'chat:refresh' covers real-time delivery via WebSocket,
+    // Slow safety net: 'chat:refresh' covers real-time delivery via WebSocket,
     // so this interval only catches edge cases or reconnects.
     const intervalMs = socket.connected ? 60000 : 15000;
     pollRef.current = setInterval(load, intervalMs);
@@ -977,7 +977,7 @@ export default function ChatSystem({ commsEnabled = true }) {
       if (pollRef.current) clearInterval(pollRef.current);
     };
     // socketRefreshTick is intentionally a dependency, not used in the body:
-    // bumping it re-runs this effect, which calls load() immediately — the
+    // bumping it re-runs this effect, which calls load() immediately: the
     // same function this effect already runs on mount/selection-change and
     // every interval tick, just triggered on-demand by the socket event
     // instead of only on a timer.

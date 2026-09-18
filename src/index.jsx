@@ -18,7 +18,7 @@ const queryClient = new QueryClient();
 // -> CreateNewsModal all pull in the same constants module that News.jsx
 // also imports, so Vite splits it into its own hashed chunk). A stale tab
 // still holding the previous build's JS in memory references that chunk's
-// old hash, which the new deploy no longer serves (404) — and Vite reports
+// old hash, which the new deploy no longer serves (404), and Vite reports
 // THAT failure via this global 'vite:preloadError' event rather than
 // rejecting the route's own import() promise, so lazyWithRetry's try/catch
 // never sees it. Without this listener it surfaces as a bare uncaught error

@@ -60,7 +60,7 @@ export function RandomizeButton({ onClick, label = 'Randomize' }) {
   );
 }
 
-// Each entry is still stored as a single "Skill: Text" string — that's the
+// Each entry is still stored as a single "Skill: Text" string: that's the
 // flat format CharacterSetup/ReviewStep/the backend/normalizeFromFlatAny all
 // already expect, so nothing downstream needs to change. What used to be a
 // single free-text box (with a placeholder mixing ':' and '/' in the same
@@ -79,7 +79,7 @@ export function SpecialtiesBlock({ skillDots, specialties, setSpecialties }) {
   const totalNeeded = autoCount + 1; // +1 extra anywhere
   const tooMany = specialties.filter(Boolean).length > totalNeeded;
 
-  // A specialty requires at least 1 dot in the skill (per the rules) — the
+  // A specialty requires at least 1 dot in the skill (per the rules), the
   // free-text box never enforced this at all.
   const eligibleSkills = useMemo(
     () => Object.entries(skillDots).filter(([, v]) => Number(v) > 0).map(([k]) => k).sort(),

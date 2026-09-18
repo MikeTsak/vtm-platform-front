@@ -1,10 +1,10 @@
-﻿// src/utils/pdfGenerator.js
+// src/utils/pdfGenerator.js
 import api from '../core/api';
 import { listAllItems } from '../data/merits_flaws';
 
 // The generated sheet opens as a real HTML document in a new window (not a
-// sandboxed preview), so any player/admin-entered free text — names, notes,
-// touchstone backgrounds, item descriptions — must be escaped before being
+// sandboxed preview), so any player/admin-entered free text (names, notes,
+// touchstone backgrounds, item descriptions) must be escaped before being
 // interpolated into the template. Otherwise a stray "<" or a deliberately
 // crafted note becomes live HTML/script in that window.
 const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (ch) => ({
@@ -26,7 +26,7 @@ export default async function generateVTMCharacterSheetPDF(character) {
     return;
   }
 
-  // Inventory lives in its own table, not the sheet JSON — fetch it
+  // Inventory lives in its own table, not the sheet JSON, fetch it
   // best-effort so a failure here never blocks the rest of the sheet.
   let inventoryItems = [];
   if (character.id) {
@@ -110,7 +110,7 @@ export default async function generateVTMCharacterSheetPDF(character) {
 
   // Purchased merit/flaw/background entries on the sheet don't always carry
   // their own `.description` (it depends which flow added them), so backfill
-  // from the catalog by id — the same lookup MeritsBackgroundsSection uses.
+  // from the catalog by id: the same lookup MeritsBackgroundsSection uses.
   const catalogById = new Map(listAllItems().map(item => [item.id, item]));
   const withCatalogDescription = (entry) => ({
     ...entry,

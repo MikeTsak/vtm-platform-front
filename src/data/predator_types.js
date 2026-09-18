@@ -1,4 +1,4 @@
-// src/data/predator_types.js
+11// src/data/predator_types.js
 //
 // Structured definition of all 18 Vampire: The Masquerade 5th Edition Predator Types.
 // Contains clean descriptions, display rolls, explicit hunting pools with normalized
@@ -74,7 +74,7 @@ export const PREDATOR_TYPES = {
   'Blood Leech': {
     name: 'Blood Leech',
     desc: "Some Kindred might see feeding from mortals as inherently wrong or disgusting regardless of others' rationale. Blood Leech is a feeding style that is not looked upon kindly by many vampires making it risky unless the Kindred has a position of power and can keep their little secret secure. Regardless, with their rejection of mortal blood, they instead feed upon the vitae of other vampires through hunting those weaker than them, coercion, or taking Blood as payment. This Predator Type is suggested to not be abstracted down to a dice pool.",
-    rolls: '— (not abstracted)',
+    rolls: 'None (not abstracted)',
     huntingPools: [],
     huntingAttributes: [],
     huntingSkills: [],
@@ -390,7 +390,7 @@ export const PREDATOR_TYPES = {
   'Tithe Collector': {
     name: 'Tithe Collector',
     desc: "Found in In Memoriam. This predator type is intended for ancilla characters. They hold enough power that other Kindred around them pay tribute in the form of specially selected vessels, who are delivered regularly, or upon request. The vessels must be kept in reasonable condition and returned, but otherwise the Masquerade is everyone else's problem.",
-    rolls: '—',
+    rolls: 'None',
     huntingPools: [],
     huntingAttributes: [],
     huntingSkills: [],

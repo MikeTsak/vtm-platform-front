@@ -2,7 +2,7 @@
 //
 // Dedicated Storyteller/admin editor for an existing character. Deliberately
 // its own file and its own route (/admin/character/:id, AdminOnly-guarded)
-// — never CharacterView, the player-facing sheet. Sharing that component
+// : never CharacterView, the player-facing sheet. Sharing that component
 // would mean an admin viewing their OWN character at /character could see
 // editor-only controls mixed into their normal play view; keeping this
 // completely separate means there is no code path by which a player (or an
@@ -22,7 +22,7 @@ import SwapConfirmModal from './SwapConfirmModal';
 import DotRow from './DotRow';
 
 /* ------------------------------------------------------------------ */
-/* Static data / pure helpers (module scope — computed once)          */
+/* Static data / pure helpers (module scope: computed once)          */
 /* ------------------------------------------------------------------ */
 
 const ATTR_GROUPS = {
@@ -115,7 +115,7 @@ function getPowersForDiscipline(discName) {
   return list;
 }
 
-/** Shape-safety pass — same normalization the sheet has always needed
+/** Shape-safety pass: same normalization the sheet has always needed
  * regardless of which surface edits it (arrays-as-objects, missing
  * sub-objects, legacy touchstone strings, etc). */
 function normalizeSheet(s) {
@@ -174,7 +174,7 @@ function normalizeSheet(s) {
   return sheet;
 }
 
-// Every one of these renders on the page at once (see body layout) — this
+// Every one of these renders on the page at once (see body layout): this
 // list only drives the jump-nav and its scroll-spy highlight, it never hides
 // a section the way the old tab-switcher did.
 const NAV_SECTIONS = [
@@ -264,7 +264,7 @@ export default function CharacterEdit() {
     return () => { cancelled = true; };
   }, [id]);
 
-  // Seed the JSON textarea once, when the character first loads — not on
+  // Seed the JSON textarea once, when the character first loads, not on
   // every draft edit elsewhere, or typing in the textarea would constantly
   // fight in-flight state updates from other sections. "Sync from Draft" in
   // that section re-syncs it on demand instead.
@@ -338,7 +338,7 @@ export default function CharacterEdit() {
     base.specialties = csv.split(',').map(s => s.trim()).filter(Boolean);
     d.skills[name] = base;
   });
-  // Only offered for skills outside the standard 27 (the "Custom" group) —
+  // Only offered for skills outside the standard 27 (the "Custom" group):
   // deleting a standard skill doesn't make sense, you'd just zero its dots.
   // This is also the way to clear out a bogus key like "Craft/traps" left
   // over from old data (see normalizeFromFlatAny's ':'-only specialty parse).
@@ -433,7 +433,7 @@ export default function CharacterEdit() {
     const arr = currentAdvList(kind);
     const old = arr[idx];
     const source = kind === 'flaws' ? FLAW_CATALOG : MERIT_CATALOG;
-    const catalog = source.map(it => ({ id: it.id, label: `${it.name} — ${it.category}`, payload: it }));
+    const catalog = source.map(it => ({ id: it.id, label: `${it.name} : ${it.category}`, payload: it }));
     const oldDetails = MF_CATALOG.find(x => x.id === old?.id);
     const label = kind === 'flaws' ? 'Flaw' : kind === 'backgrounds' ? 'Background' : 'Merit';
     setSwap({ kind: label, oldItem: { name: old?.name || old?.id, description: oldDetails?.description }, catalog, apply: (it) => swapAdvantage(kind, idx, it) });
@@ -546,7 +546,7 @@ export default function CharacterEdit() {
       setDraftSheet(parsed);
       setJsonErr('');
     } catch (e) {
-      setJsonErr('Invalid JSON — fix the syntax before applying.');
+      setJsonErr('Invalid JSON: fix the syntax before applying.');
     }
   }
 
@@ -583,7 +583,7 @@ export default function CharacterEdit() {
     <div className={styles.page}>
       <div className={styles.banner}>
         <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>edit_note</span>
-        Storyteller Character Editor — changes are not visible to the player until you Save
+        Storyteller Character Editor: changes are not visible to the player until you Save
       </div>
 
       <div className={styles.header}>
@@ -715,14 +715,14 @@ export default function CharacterEdit() {
 
               <section id="inventory" className={`${styles.sectionCard} ${styles.gridSpan2}`}>
                 <h2 className={styles.contentTitle}>Inventory</h2>
-                <p className={styles.contentHint}>Inventory items save instantly — they're a separate record, not part of the Save bar below.</p>
+                <p className={styles.contentHint}>Inventory items save instantly: they're a separate record, not part of the Save bar below.</p>
                 <Inventory characterId={character.id} />
               </section>
 
               <section id="json" className={`${styles.sectionCard} ${styles.gridSpan2}`}>
                 <details>
                   <summary className={styles.contentTitle} style={{ cursor: 'pointer', display: 'list-item' }}>Advanced: Raw Sheet JSON</summary>
-                  <p className={styles.contentHint}>For anything not covered above. "Apply to Draft" stages it into the editor — you still need Save below to persist it.</p>
+                  <p className={styles.contentHint}>For anything not covered above. "Apply to Draft" stages it into the editor: you still need Save below to persist it.</p>
                   <div style={{ marginBottom: 10 }}>
                     <button className={styles.smallBtn} onClick={() => { setJsonText(JSON.stringify(draftSheet, null, 2)); setJsonErr(''); }}>
                       Sync from Current Draft
@@ -817,7 +817,7 @@ function IdentitySection({ charName, setCharName, charClan, setCharClan, sheet, 
   return (
     <div>
       <h2 className={styles.contentTitle}>Identity & Vitals</h2>
-      <p className={styles.contentHint}>Name, clan, and background details — these don't cost XP.</p>
+      <p className={styles.contentHint}>Name, clan, and background details: these don't cost XP.</p>
       <div className={styles.formGrid}>
         <div className={styles.field}>
           <label>Name</label>
@@ -946,7 +946,7 @@ function SkillsSection({ sheet, setSkillDots, setSkillSpecsCSV, removeSkill }) {
 
   // One line per skill: name + specialty + dots together, instead of a dot
   // row followed by a full-width specialty input on its own line below it
-  // — that was doubling the height of a list that's already 26 rows long.
+  // : that was doubling the height of a list that's already 26 rows long.
   // The specialty field only appears once there's at least 1 dot in it
   // (matches the actual V5 rule, and skips a field most 0-dot rows never use).
   const renderSkill = (k, removable = false) => {
@@ -993,7 +993,7 @@ function SkillsSection({ sheet, setSkillDots, setSkillSpecsCSV, removeSkill }) {
           <div>
             <div className={styles.groupHeading} style={{ marginTop: 0 }}>Custom</div>
             <p className={styles.contentHint} style={{ marginBottom: 8 }}>
-              Not one of the 27 standard skills — could be a homebrew skill, or leftover bad data (e.g. a specialty saved without its skill name attached). Remove anything that shouldn't be here.
+              Not one of the 27 standard skills: could be a homebrew skill, or leftover bad data (e.g. a specialty saved without its skill name attached). Remove anything that shouldn't be here.
             </p>
             {custom.map(k => renderSkill(k, true))}
           </div>
@@ -1128,7 +1128,7 @@ function AdvantageSection({ title, items, catalog, onAdd, onRemove, onDots, onSw
           if (p) setPickDots(Math.max(1, bulletCount(p.dots) || 1));
         }} style={{ flex: '2 1 260px' }}>
           <option value="">Choose from catalog…</option>
-          {filtered.map(c => <option key={c.id} value={c.id}>{c.name} — {c.category} ({c.dots || '•?'})</option>)}
+          {filtered.map(c => <option key={c.id} value={c.id}>{c.name} : {c.category} ({c.dots || '•?'})</option>)}
         </select>
         <input type="number" min={1} max={5} className={styles.input} style={{ width: 64 }} value={pickDots} onChange={e => setPickDots(normalizeDotsInput(e.target.value))} />
         <button

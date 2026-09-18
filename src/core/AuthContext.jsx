@@ -12,7 +12,7 @@ export default function AuthProvider({ children }) {
 
   // Returns true if we now know the session state for certain (logged in
   // *or* confirmed logged out), false if we still don't know (the request
-  // itself failed — network blip, cold DB connection, a flaky mobile
+  // itself failed: network blip, cold DB connection, a flaky mobile
   // connection, etc). Callers that need to know whether login actually
   // succeeded (see login()/register() below) check this return value instead
   // of assuming success just because loadMe() didn't throw.
@@ -23,7 +23,7 @@ export default function AuthProvider({ children }) {
       setLoading(false);
       return data.user;
     } catch (e) {
-      // A genuine "you're not logged in" response — no point retrying that.
+      // A genuine "you're not logged in" response: no point retrying that.
       const status = e?.response?.status;
       if (status === 401 || status === 403) {
         // Only a confirmed 401/403 should clear an existing session.
@@ -35,10 +35,10 @@ export default function AuthProvider({ children }) {
         setLoading(false);
         return false;
       }
-      // Transient failure — worth one quick retry before giving up, since
+      // Transient failure: worth one quick retry before giving up, since
       // these are usually momentary (and this is exactly the class of
       // failure that used to make login silently look like it worked when
-      // it hadn't — see login() below).
+      // it hadn't: see login() below).
       if (retriesLeft > 0) {
         await new Promise((r) => setTimeout(r, 500));
         return loadMe(retriesLeft - 1);
@@ -49,7 +49,7 @@ export default function AuthProvider({ children }) {
   };
 
   useEffect(() => {
-    // The session cookie is httpOnly — there's nothing for JS to check
+    // The session cookie is httpOnly: there's nothing for JS to check
     // before asking the server whether we're logged in, so always ask.
     loadMe();
   }, []);
@@ -62,7 +62,7 @@ export default function AuthProvider({ children }) {
     const confirmed = await loadMe();
     if (!confirmed) {
       // The login request itself succeeded, but we couldn't confirm the
-      // session afterward — do NOT let the caller treat this as a
+      // session afterward, do NOT let the caller treat this as a
       // successful login (that was the bug: it used to show "Welcome
       // back!" and navigate to a page that immediately bounced back to
       // /login, with no explanation).
@@ -81,7 +81,7 @@ export default function AuthProvider({ children }) {
   };
   const logout = async () => {
     try {
-      // Clears the httpOnly cookie server-side — JS can't clear it itself.
+      // Clears the httpOnly cookie server-side: JS can't clear it itself.
       await api.post('/auth/logout');
     } catch (e) {
       // Even if the request fails, drop the client-side session state below.

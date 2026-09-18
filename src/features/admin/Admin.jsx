@@ -43,12 +43,12 @@ const AdminNewsTab = lazyWithRetry(() => import('./AdminNewsTab'));
 
 /* ---------------- Sidebar navigation config ----------------
  * Every tool is grouped by the *job* a Storyteller is doing:
- *   Overview      – the command center
- *   Players       – accounts, sheets and progression
- *   Chronicle     – running the story between/at sessions
- *   Cast & Comms  – NPCs and everything that talks to players
- *   Intelligence  – read-only telemetry & logs
- *   System        – global switches and audit trails
+ *   Overview      : the command center
+ *   Players       : accounts, sheets and progression
+ *   Chronicle     : running the story between/at sessions
+ *   Cast & Comms  : NPCs and everything that talks to players
+ *   Intelligence  : read-only telemetry & logs
+ *   System        : global switches and audit trails
  */
 const NAV_SECTIONS = [
   {
@@ -117,7 +117,7 @@ const NAV_SECTIONS = [
     icon: 'settings',
     items: [
       { id: 'master',     icon: 'admin_panel_settings', label: 'Master Control',  hint: 'Feature switches & game time', keywords: ['toggles', 'schrecknet comms', 'global settings', 'switches', 'features', 'maintenance mode', 'global configurations', 'announcements', 'time', 'calendar', 'date', 'month', 'year', 'game time', 'pause', 'stop', 'prev', 'next', 'danger zone'] },
-      { id: 'masquerade', icon: 'warning',              label: 'Masquerade Dial', hint: 'Global threat level 1–5', keywords: ['breaches', 'exposure', 'threat', 'danger', 'level', 'tracker', 'second inquisition', 'cleanup', 'media', 'dial'] },
+      { id: 'masquerade', icon: 'warning',              label: 'Masquerade Dial', hint: 'Global threat level 1 to 5', keywords: ['breaches', 'exposure', 'threat', 'danger', 'level', 'tracker', 'second inquisition', 'cleanup', 'media', 'dial'] },
       { id: 'audit',      icon: 'policy',               label: 'Audit Logs',      hint: 'Who changed what', keywords: ['security', 'tracking', 'changes', 'admin actions', 'history', 'edits', 'deletions', 'context', 'copy'] },
       { id: 'logs',       icon: 'receipt_long',         label: 'System Logs',     hint: 'Server errors & traces', keywords: ['errors', 'server', 'debug', 'traces', 'console', 'output', 'crashes', 'context'] },
     ],
@@ -404,7 +404,7 @@ function MobileSheet({ open, section, tab, setTab, onClose, searchQuery, setSear
         className={`${styles.sheet} ${open ? styles.sheetOpen : ''}`}
         role="dialog"
         aria-modal="true"
-        aria-label={`${title} – admin tools`}
+        aria-label={`${title} admin tools`}
         aria-hidden={open ? undefined : 'true'}
       >
         <div className={styles.sheetHandle} aria-hidden="true" />
@@ -797,7 +797,7 @@ export default function Admin() {
   // --- Characters ---
   // Direct sheet saves now happen inside the full character editor
   // (/admin/character/:id, which reuses CharacterView) or inline on the grid
-  // via updateSheetData's auto-save — there is no longer a standalone "Save"
+  // via updateSheetData's auto-save: there is no longer a standalone "Save"
   // action on the grid itself.
 
 async function grantXP(character_id, delta) {

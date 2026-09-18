@@ -4,7 +4,7 @@
 // against (back/utils/coterieRules.js), plus the prose the builder and the
 // coterie sheet need to explain what each dot actually does at the table.
 //
-// The server is the authority on legality — nothing here is a security
+// The server is the authority on legality, nothing here is a security
 // boundary. This file exists so the UI can show correct costs, ranges and
 // mechanics without a round trip, and so a player can read what they are
 // buying before they buy it.
@@ -21,7 +21,7 @@ export const XP_PER_DOT = 3;
  * Domain traits
  * ------------------------------------------------------------------ */
 
-// Corebook p.196 — the geographical equivalent of each Chasse rating.
+// Corebook p.196: the geographical equivalent of each Chasse rating.
 export const CHASSE_SIZE_TABLE = {
   1: 'One city block, one suburban gated community',
   2: 'Two to four blocks, one park and its entrances, one small site (tourist landmark, hospital, mall)',
@@ -35,10 +35,10 @@ export const DOMAIN_TRAIT_INFO = {
     name: 'Chasse',
     tagline: 'Hunting grounds',
     blurb:
-      'How well-stocked, vulnerable and rich the domain is as a hunting ground — and, loosely, how large it is.',
+      'How well-stocked, vulnerable and rich the domain is as a hunting ground, and, loosely, how large it is.',
     rule:
       'One dot of Chasse gives the coterie a default hunting Difficulty of 6 inside their domain. Each further dot reduces that Difficulty by one.',
-    caveat: 'Dots need not translate to size — a small domain in a rich hunting area still rates a higher Chasse than a large one in a desolate part of the city.',
+    caveat: 'Dots need not translate to size: a small domain in a rich hunting area still rates a higher Chasse than a large one in a desolate part of the city.',
   },
   lien: {
     name: 'Lien',
@@ -51,7 +51,7 @@ export const DOMAIN_TRAIT_INFO = {
   portillon: {
     name: 'Portillon',
     tagline: 'Security against intrusion',
-    blurb: 'How secure the domain is against intrusion or disruption — other vampires, mortal police, the Second Inquisition.',
+    blurb: 'How secure the domain is against intrusion or disruption: other vampires, mortal police, the Second Inquisition.',
     rule:
       'Each dot of Portillon subtracts one die from a foe’s pool when they try to enter, investigate or surveil the domain without the coterie’s knowledge.',
     caveat:
@@ -73,7 +73,7 @@ export function portillonPenaltyDice(portillon) {
 }
 
 export const NO_DOMAIN_NOTE =
-  'A coterie without a Domain either poaches its dinner — at grave risk from the angry holder of the domain they enter — or holds a letter of passage from their own Prince or another high official. Where local authorities recognise such credentials, they generally grant a temporary right to hunt. The Storyteller sets the Difficulty.';
+  'A coterie without a Domain either poaches its dinner, at grave risk from the angry holder of the domain they enter, or holds a letter of passage from their own Prince or another high official. Where local authorities recognise such credentials, they generally grant a temporary right to hunt. The Storyteller sets the Difficulty.';
 
 /* ------------------------------------------------------------------ *
  * Coterie Backgrounds
@@ -85,7 +85,7 @@ export const NO_DOMAIN_NOTE =
 export const COTERIE_BACKGROUNDS = {
   ally: {
     name: 'Ally', min: 1, max: 6,
-    desc: 'Mortals — family, friends, an organisation — who will act for the coterie. Split between Effectiveness and Reliability.',
+    desc: 'Mortals (family, friends, an organisation) who will act for the coterie. Split between Effectiveness and Reliability.',
   },
   contacts: {
     name: 'Contacts', min: 1, max: 5,
@@ -93,7 +93,7 @@ export const COTERIE_BACKGROUNDS = {
   },
   haven: {
     name: 'Haven', min: 1, max: 5,
-    desc: 'A shared place to sleep out the day. When a coterie Haven burns, nobody has a place to sleep — eggs, one basket.',
+    desc: 'A shared place to sleep out the day. When a coterie Haven burns, nobody has a place to sleep: eggs, one basket.',
   },
   herd: {
     name: 'Herd', min: 1, max: 5,
@@ -101,7 +101,7 @@ export const COTERIE_BACKGROUNDS = {
   },
   influence: {
     name: 'Influence', min: 1, max: 5,
-    desc: 'Sway over a slice of mortal society — police, media, business, a church.',
+    desc: 'Sway over a slice of mortal society: police, media, business, a church.',
   },
   mask: {
     name: 'Mask', min: 1, max: 2,
@@ -117,7 +117,7 @@ export const COTERIE_BACKGROUNDS = {
   },
   retainers: {
     name: 'Retainers', min: 1, max: 5,
-    desc: 'Servants — ghouls or devoted mortals — loyal to the coterie as a whole.',
+    desc: 'Servants (ghouls or devoted mortals) loyal to the coterie as a whole.',
   },
   status: {
     name: 'Status', min: 1, max: 5,
@@ -125,18 +125,18 @@ export const COTERIE_BACKGROUNDS = {
   },
   adversary: {
     name: 'Adversary', min: 1, max: 5, isFlawSide: true,
-    desc: 'A Kindred rival working against the coterie. Taken as a Flaw — it grants pool dots rather than costing them.',
+    desc: 'A Kindred rival working against the coterie. Taken as a Flaw, it grants pool dots rather than costing them.',
   },
   enemy: {
     name: 'Enemy', min: 1, max: 5, isFlawSide: true,
-    desc: 'A mortal or group hostile to the coterie. Taken as a Flaw — it grants pool dots.',
+    desc: 'A mortal or group hostile to the coterie. Taken as a Flaw, it grants pool dots.',
   },
 
   // Outside the corebook's twelve, but required outright by coterie types in
   // the Players Guide, so a coterie cannot be built to spec without them.
   fame: {
     name: 'Fame', min: 1, max: 5, extended: true,
-    desc: 'Public profile for the coterie as a group — a band, a troupe, a scene. Brings benefits and obvious Masquerade risk.',
+    desc: 'Public profile for the coterie as a group (a band, a troupe, a scene). Brings benefits and obvious Masquerade risk.',
   },
   loresheet: {
     name: 'Loresheet', min: 1, max: 5, extended: true,
@@ -169,11 +169,11 @@ export const COTERIE_MERITS = {
   },
   privileged: {
     name: 'Privileged', min: 3, max: 3, group: 'general',
-    desc: 'The coterie is granted special rights and avoids punishment for a specific crime — feeding in restricted areas, weapons at Elysium, Embracing childer. Revocable if abused.',
+    desc: 'The coterie is granted special rights and avoids punishment for a specific crime: feeding in restricted areas, weapons at Elysium, Embracing childer. Revocable if abused.',
   },
   transportation: {
     name: 'Transportation', min: 2, max: 2, group: 'general',
-    desc: 'A fleet of luxury vehicles with drivers rated Driving 6, available on short notice. Once per story, call in something rare — a helicopter, a bulletproof SUV — for the night.',
+    desc: 'A fleet of luxury vehicles with drivers rated Driving 6, available on short notice. Once per story, call in something rare (a helicopter, a bulletproof SUV) for the night.',
   },
 
   /* --- Chasse Merits --- */
@@ -233,7 +233,7 @@ export const COTERIE_MERITS = {
   },
   members_only: {
     name: 'Members Only', min: 2, max: 2, group: 'lien', trait: 'lien',
-    resonance: 'Sanguine', desc: 'An exclusive club. A Haven on the premises gains a dot of Luxury or Watchmen — but enemies who hold membership walk in with impunity.',
+    resonance: 'Sanguine', desc: 'An exclusive club. A Haven on the premises gains a dot of Luxury or Watchmen, but enemies who hold membership walk in with impunity.',
   },
   transitions: {
     name: 'Transitions', min: 2, max: 2, group: 'lien', trait: 'lien',
@@ -267,7 +267,7 @@ export const COTERIE_MERITS = {
   },
   networked: {
     name: 'Networked', min: 1, max: 1, group: 'portillon', trait: 'portillon',
-    desc: 'Access to cult security systems — cameras, patrols or guards — usable defensively once per story.',
+    desc: 'Access to cult security systems (cameras, patrols or guards) usable defensively once per story.',
   },
 
   /* --- Clan coterie Merits --- */
@@ -289,7 +289,7 @@ export const COTERIE_MERITS = {
   },
   at_any_cost: {
     name: 'At Any Cost', min: 2, max: 2, group: 'clan', clan: 'Lasombra',
-    desc: 'Once per session, a coterie member adds 2 successes to a test — which becomes a Messy Critical, with consequences.',
+    desc: 'Once per session, a coterie member adds 2 successes to a test, which becomes a Messy Critical, with consequences.',
   },
   everything_is_connected: {
     name: 'Everything is Connected', min: 3, max: 3, group: 'clan', clan: 'Malkavian',
@@ -317,7 +317,7 @@ export const COTERIE_MERITS = {
   },
   multi_level_lorekeeping: {
     name: 'Multi-Level Lorekeeping', min: 2, max: 2, group: 'clan', clan: 'Tremere',
-    desc: 'Once per session, a coterie mate uses a Loresheet Advantage from another member’s sheet — clan Loresheets included — for the session.',
+    desc: 'Once per session, a coterie mate uses a Loresheet Advantage from another member’s sheet, clan Loresheets included, for the session.',
   },
   old_world_hospitality: {
     name: 'Old-World Hospitality', min: 2, max: 2, group: 'clan', clan: 'Tzimisce',
@@ -348,7 +348,7 @@ export const MERIT_GROUPS = [
 ];
 
 /* ------------------------------------------------------------------ *
- * Coterie Flaws — taking these GRANTS pool dots
+ * Coterie Flaws: taking these GRANTS pool dots
  * ------------------------------------------------------------------ */
 
 export const COTERIE_FLAWS = {
@@ -362,7 +362,7 @@ export const COTERIE_FLAWS = {
   },
   custodians: {
     name: 'Custodians', min: 2, max: 2,
-    desc: 'An odious duty in the city — Elysium cleanup, gate checking, minding an elder. Failure costs a dot of Status; losing all Status makes the coterie Suspect.',
+    desc: 'An odious duty in the city: Elysium cleanup, gate checking, minding an elder. Failure costs a dot of Status; losing all Status makes the coterie Suspect.',
   },
   targeted: {
     name: 'Targeted', min: 1, max: 1,
@@ -378,7 +378,7 @@ export const COTERIE_FLAWS = {
   },
   disputed_domain: {
     name: 'Disputed Domain', min: 2, max: 2, trait: 'chasse',
-    desc: 'The domain overlaps a rival organisation. On encountering its members, immediately roll to resist Fury Frenzy — subtract 1 die on each subsequent encounter, resetting each story.',
+    desc: 'The domain overlaps a rival organisation. On encountering its members, immediately roll to resist Fury Frenzy, subtract 1 die on each subsequent encounter, resetting each story.',
   },
   visibility: {
     name: 'Visibility', min: 2, max: 2, trait: 'lien',
@@ -452,7 +452,7 @@ export const COTERIE_FLAW_NOTE =
   'Coterie Flaws add dots to the coterie pool during creation. Every player must agree before the coterie takes one.';
 
 /* ------------------------------------------------------------------ *
- * Pool arithmetic — mirrors back/utils/coterieRules.js
+ * Pool arithmetic: mirrors back/utils/coterieRules.js
  * ------------------------------------------------------------------ */
 
 const sumDots = (list) =>
@@ -572,7 +572,7 @@ export function validateCoterie(input = {}) {
       const max = def.max != null ? def.max : MAX_DOTS;
       const dots = Number(item.dots) || 0;
       if (dots < min || dots > max) {
-        rangeIssues.push(`${label} ${def.name} must be rated ${min === max ? min : `${min}–${max}`} (currently ${dots}).`);
+        rangeIssues.push(`${label} ${def.name} must be rated ${min === max ? min : `${min} to ${max}`} (currently ${dots}).`);
       }
     }
   }

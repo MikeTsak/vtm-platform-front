@@ -1,5 +1,5 @@
-// ── Catacombs of Athens — ADMIN-ONLY map overlay ──────────────────────────
-// Source: src/data/athens-catacombs.json — a GeoJSON FeatureCollection with
+// ── Catacombs of Athens: ADMIN-ONLY map overlay ──────────────────────────
+// Source: src/data/athens-catacombs.json: a GeoJSON FeatureCollection with
 // `kind: "passage"` (LineString) and `kind: "site"` (Point).
 //
 // There is no survey GeoJSON of Athens' underground. The line work traces the
@@ -11,7 +11,7 @@
 //
 // Lazy-loaded on demand only when an authorized administrator enables the overlay.
 
-// Dash pattern (in pixels) for each certainty tier — solid, dashed, dotted.
+// Dash pattern (in pixels) for each certainty tier: solid, dashed, dotted.
 export const CATACOMB_CERTAINTY = {
   attested:    { label: 'Attested',    dash: null,     color: '#e6d5a8' },
   inferred:    { label: 'Inferred',    dash: [5, 4],   color: '#c9a86a' },

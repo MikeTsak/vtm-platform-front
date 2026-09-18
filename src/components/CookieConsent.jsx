@@ -14,7 +14,7 @@ const CookieConsent = () => {
       setShow(true);
     } else if (consent === 'granted') {
       // If they previously accepted, tell GA to grant consent and start
-      // AdSense/Clarity — neither loads at all until this fires.
+      // AdSense/Clarity: neither loads at all until this fires.
       updateConsent(true);
       loadConsentGatedScripts();
     } else {

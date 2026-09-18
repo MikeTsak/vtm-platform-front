@@ -68,7 +68,7 @@ export default function SkillsStep({
   }, [skillReq, skillCounts]);
 
   // Click-to-set: clicking a filled dot again drops it back a dot. There is
-  // no per-click quota gate on either direction — you can freely move a dot
+  // no per-click quota gate on either direction: you can freely move a dot
   // from any skill to any other; only "Next" is gated on the final pattern
   // matching exactly (skillOk below). This is what fixes the old bug where
   // dots could get stuck only movable in one direction.

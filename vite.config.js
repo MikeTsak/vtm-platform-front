@@ -33,7 +33,7 @@ export default defineConfig(async () => {
   plugins: [
     react(),
     // Generates multiple sizes of the clan symbol/logo images at build time
-    // (see src/data/clans.js) — those ship as one 330px/300px master each
+    // (see src/data/clans.js), those ship as one 330px/300px master each
     // today, downloaded in full by every consumer from a 14px badge up to a
     // 128px map icon. imagetools transforms actual JS imports, not runtime
     // string paths, which is why the masters live under src/assets/ instead
@@ -69,7 +69,7 @@ export default defineConfig(async () => {
     // import()'s CSS chunk 404ing (because a new deploy replaced the build
     // this tab's old index.html still points at) rejected the whole lazy
     // component with nothing catching it. The actual fix is
-    // src/utils/lazyWithRetry.js, which every lazy route now goes through —
+    // src/utils/lazyWithRetry.js, which every lazy route now goes through:
     // it catches that rejection (JS chunk or CSS chunk, either can 404 the
     // same way) and reloads once to pick up the new build.
     rollupOptions: {

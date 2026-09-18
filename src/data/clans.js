@@ -444,12 +444,12 @@ export const NAME_OVERRIDES = {
 export const fileify = (c) => (NAME_OVERRIDES[c] || c).replace(/\s+/g, '_');
 
 // The clan symbol/logo masters are a single 330px/300px PNG each, but get
-// rendered everywhere from a 14px inline badge up to a 128px map icon —
+// rendered everywhere from a 14px inline badge up to a 128px map icon,
 // every consumer downloaded the same 330px file regardless. vite-imagetools
 // (see vite.config.js) generates the smaller sizes at build time from the
 // masters under src/assets/clans/, which is why they moved out of public/
 // (imagetools transforms actual JS imports, not runtime string paths, so a
-// plain `/img/clans/...png` string can't be resized this way — the
+// plain `/img/clans/...png` string can't be resized this way: the
 // public/img/clans/ copies are left in place untouched for anything still
 // using the old raw path directly).
 const symbolGlobDefault = import.meta.glob('../assets/clans/*.png', {
@@ -536,7 +536,7 @@ export const textlogoWhiteSrcSet = (c) => {
 
 export const clanTint = (clan) => (clan ? CLAN_COLORS[clan]?.[0] : null) || '#8a0f1a';
 
-// Flat { clan: '#hex' } map — the first (accent) colour of each gradient pair.
+// Flat { clan: '#hex' } map: the first (accent) colour of each gradient pair.
 // Drop-in replacement for the per-file CLAN_COLORS string maps that used to be
 // copy-pasted across the admin tabs, CharacterView, etc. Unknown/blank clans
 // are simply absent, so callers keep their own `|| 'var(--text-secondary)'`.

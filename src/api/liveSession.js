@@ -9,7 +9,7 @@ const base = '/live-session';
 const backendUrl = api.defaults.baseURL ? api.defaults.baseURL.replace('/api', '') : window.location.origin;
 
 // Auth rides along as the httpOnly session cookie (read server-side off the
-// handshake's Cookie header) — there's no token in JS to hand over anymore.
+// handshake's Cookie header), there's no token in JS to hand over anymore.
 export const socket = socketIoClient(backendUrl, {
   withCredentials: true,
 });

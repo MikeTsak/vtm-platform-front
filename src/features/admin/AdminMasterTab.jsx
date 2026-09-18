@@ -100,7 +100,7 @@ export default function AdminMasterTab() {
   useEffect(() => { loadBackups(); loadSchema(); }, []);
 
   // `full` includes the image BLOB tables (~400MB). The default omits them
-  // (~2.4MB) — see back/scripts/backup-db.js for why they dominate the size.
+  // (~2.4MB): see back/scripts/backup-db.js for why they dominate the size.
   const runBackup = (full) => {
     const what = full
       ? 'Take a FULL backup? This includes every image stored in the database and can be several hundred MB.'
@@ -158,7 +158,7 @@ export default function AdminMasterTab() {
     setMigrationDone(false);
 
     const baseUrl = api.defaults.baseURL || import.meta.env.VITE_API_URL || '';
-    // Auth rides along as the httpOnly session cookie — never put a session
+    // Auth rides along as the httpOnly session cookie: never put a session
     // token in a URL (it leaks into access logs, proxy logs, browser history).
     const es = new EventSource(`${baseUrl}/admin/run-migrations/stream`, { withCredentials: true });
 
@@ -1082,7 +1082,7 @@ export default function AdminMasterTab() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--text-primary)' }}>Migrate Avatar BLOBs to CDN</div>
-                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '4px' }}>Upload any avatar still stored as raw bytes in the database to the image CDN, then clear those bytes. Avatars no longer fall back to database storage — CDN only, going forward.</div>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '4px' }}>Upload any avatar still stored as raw bytes in the database to the image CDN, then clear those bytes. Avatars no longer fall back to database storage: CDN only, going forward.</div>
                 </div>
                 <button
                   onClick={runAvatarCdnCleanup}
@@ -1227,7 +1227,7 @@ export default function AdminMasterTab() {
               {schema && (
                 <div style={{ marginTop: '1rem' }}>
                   <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.6rem' }}>
-                    Database <b>{schema.database}</b> — {schema.versions.filter(v => v.applied).length} applied
+                    Database <b>{schema.database}</b>: {schema.versions.filter(v => v.applied).length} applied
                     {schema.pending > 0 && <span style={{ color: 'var(--color-warning, #d29922)', fontWeight: 700 }}>, {schema.pending} pending</span>}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', maxHeight: '320px', overflowY: 'auto' }}>

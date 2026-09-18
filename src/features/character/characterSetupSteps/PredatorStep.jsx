@@ -4,7 +4,7 @@ import { Field, RandomizeButton, StatusIcon } from './StepHelpers';
 import { PREDATOR_TYPES, PREDATOR_TYPE_NAMES } from '../../../data/predator_types';
 import { iconPath } from '../../../data/disciplines';
 
-// A chip-picker replaces a native <select> for short option lists — bigger
+// A chip-picker replaces a native <select> for short option lists: bigger
 // touch targets, all options visible at once, optional icon per option.
 function ChipPicker({ label, options, value, onChange, iconFor }) {
   return (
@@ -28,7 +28,7 @@ function ChipPicker({ label, options, value, onChange, iconFor }) {
   );
 }
 
-// A broadly beginner-friendly, thematically varied starting set — filtered
+// A broadly beginner-friendly, thematically varied starting set, filtered
 // down to whichever of these are actually eligible for the chosen clan.
 const SUGGESTED_PREDATOR_TYPES = ['Alleycat', 'Cleaver', 'Sandman', 'Siren', 'Consensualist', 'Farmer'];
 

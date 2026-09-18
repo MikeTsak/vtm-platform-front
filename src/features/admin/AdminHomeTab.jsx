@@ -9,9 +9,9 @@ import ActivityHeatmap from './ActivityHeatmap';
 
 /** Relative time formatter */
 function timeAgo(dateInput) {
-  if (!dateInput) return '—';
+  if (!dateInput) return 'None';
   const date = new Date(dateInput);
-  if (isNaN(date.getTime())) return '—';
+  if (isNaN(date.getTime())) return 'None';
 
   const seconds = Math.floor((new Date() - date) / 1000);
   if (seconds < 60) return 'Just now';
@@ -198,7 +198,7 @@ export default function AdminHomeTab({
             <strong style={{ color: '#ffd700', fontWeight: 800 }}>+{grantedAmount} XP</strong>
             {reason && (
               <span style={{ color: 'var(--text-secondary)', marginLeft: '5px' }}>
-                — {reason}
+                : {reason}
               </span>
             )}
           </span>
@@ -221,11 +221,11 @@ export default function AdminHomeTab({
               {name}
             </span>{' '}
             had{' '}
-            <strong style={{ color: '#ff5252', fontWeight: 800 }}>-{deductAmount} XP</strong>
+            <strong style={{ color: '#ff5252', fontWeight: 800 }}>{deductAmount} XP</strong>
             {' '}deducted
             {reason && (
               <span style={{ color: 'var(--text-secondary)', marginLeft: '5px' }}>
-                — {reason}
+                : {reason}
               </span>
             )}
           </span>

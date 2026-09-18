@@ -86,8 +86,8 @@ function parseDotSpec(spec = '') {
     const opts = src.split(/\bor\b/i).map(s => bulletCount(s)).filter(n => n > 0);
     return Array.from(new Set(opts)).sort((a, b) => a - b);
   }
-  if (src.includes('-')) {
-    const [lo, hi] = src.split('-').map(s => bulletCount(s));
+  if (src.includes('-') || src.includes('–') || src.includes('—') || /\bto\b/i.test(src)) {
+    const [lo, hi] = src.split(/\s*(?:-|–|—|to)\s*/i).map(s => bulletCount(s));
     if (lo > 0 && hi >= lo) { const out = []; for (let i = lo; i <= hi; i++) out.push(i); return out; }
   }
   if (src.includes('+')) {
@@ -512,7 +512,7 @@ function Drawer({ title, subtitle, defaultOpen = false, children }) {
         onClick={() => setOpen(o => !o)}
       >
         <span>
-          <b>{title}</b>{subtitle ? <small className={styles.muted}> — {subtitle}</small> : null}
+          <b>{title}</b>{subtitle ? <small className={styles.muted}>: {subtitle}</small> : null}
         </span>
         <span className={styles.chev} data-open={open ? '1' : '0'}>▾</span>
       </button>
@@ -975,7 +975,7 @@ export default function CharacterView({
     }
     // `id` is only ever set if this component is mounted on a route that
     // declares one. Today it is not (App.jsx mounts it at plain "/character"),
-    // so the id branches are dormant — but they must still name real
+    // so the id branches are dormant, but they must still name real
     // endpoints. `/characters/user/:id/xp/spend` does not exist; the admin
     // spend route is `/admin/characters/:id/xp/spend`, and it takes the same
     // character id and returns the same { character, spent } body.
@@ -1119,7 +1119,7 @@ export default function CharacterView({
   }, [paths, adminNPCId, loadPath]);
 
   // Out-of-clan discipline access (see routes/disciplineAccess.js). Self-serve
-  // only — an admin editing someone else's sheet manages this from the admin
+  // only: an admin editing someone else's sheet manages this from the admin
   // Disciplines tab instead, not from inside the character view.
   const isOwnCharacter = !adminNPCId && !loadPath && String(user?.id) === String(ch?.user_id);
   const [discAccess, setDiscAccess] = useState({}); // { [discipline]: { max_level, note } }
@@ -1342,7 +1342,7 @@ export default function CharacterView({
    * Entries created during character setup are stored as { name, dots } with no
    * id, so matching on `entry.id === item.id` resolves `undefined === undefined`
    * and silently hits the first entry in the list. Match on object reference
-   * first — the display components hand back the live sheet objects — and fall
+   * first (the display components hand back the live sheet objects) and fall
    * back to a strict key comparison that never matches on missing fields.
    */
   const locateAdvantage = (targetItem) => {
@@ -1472,7 +1472,7 @@ export default function CharacterView({
     const dots = s?.disciplines || {};
     const picks = s?.disciplinePowers || {};
     const q = [];
-    // Gaps are counted by how many powers are owned vs. dots spent — NOT by
+    // Gaps are counted by how many powers are owned vs. dots spent, NOT by
     // which power-tier numbers appear in the array. V5 allows taking two
     // different powers of the same level (e.g. two Level-1 picks for a
     // 2-dot discipline), so a per-level-number check treats that legal
@@ -1517,7 +1517,7 @@ export default function CharacterView({
 
     if (!assignOnly) nextSheet.disciplines[name] = next;
 
-    // Append the pick, de-duplicating by the power's own identity — never by
+    // Append the pick, de-duplicating by the power's own identity, never by
     // its level number. Two different powers can legitimately share a level
     // (e.g. two Level-1 picks for a 2-dot discipline), so filtering the
     // existing list by "level === X" before pushing would delete a
@@ -1562,7 +1562,7 @@ export default function CharacterView({
 
       if (assignOnly) {
         // Compute against the just-saved nextSheet, not the stale `sheet` this
-        // closure was created with — `sheet` hasn't re-rendered yet, so
+        // closure was created with: `sheet` hasn't re-rendered yet, so
         // computeMissingPicks() here would keep reporting the level we just
         // filled as still missing, reopening the modal on the same dot and
         // clobbering it on every subsequent pick (the infinite-loop bug).
@@ -1848,7 +1848,7 @@ export default function CharacterView({
         </header>
 
         {/* --- Top App Bar (Desktop) --- */}
-        {/* --- Top App Bar (Desktop only — hidden on mobile via CSS) --- */}
+        {/* --- Top App Bar (Desktop only: hidden on mobile via CSS) --- */}
         <header className={styles.topAppBar}>
           <div className={styles.topAppBarContent}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -1995,17 +1995,17 @@ export default function CharacterView({
             <div className={styles.mobileMetaGrid}>
               <div className={styles.mobileMetaCard}>
                 <span className={styles.mobileMetaLabel}>Predator Type</span>
-                <div className={styles.mobileMetaValue}>{sheet?.predator_type || sheet?.predatorType || '—'}</div>
+                <div className={styles.mobileMetaValue}>{sheet?.predator_type || sheet?.predatorType || 'None'}</div>
               </div>
               <div className={styles.mobileMetaCard}>
                 <span className={styles.mobileMetaLabel}>Sire</span>
-                <div className={styles.mobileMetaValue}>{sheet?.sire || '—'}</div>
+                <div className={styles.mobileMetaValue}>{sheet?.sire || 'None'}</div>
               </div>
               <div className={`${styles.mobileMetaCard} ${styles.mobileMetaFull}`}>
                 <span className={styles.mobileMetaLabel}>Ambition & Desire</span>
                 <div className={styles.mobileMetaSubGrid}>
-                  <div className={styles.mobileMetaValue}><b>Ambition:</b> {sheet?.ambition || '—'}</div>
-                  <div className={styles.mobileMetaValue}><b>Desire:</b> {sheet?.desire || '—'}</div>
+                  <div className={styles.mobileMetaValue}><b>Ambition:</b> {sheet?.ambition || 'None'}</div>
+                  <div className={styles.mobileMetaValue}><b>Desire:</b> {sheet?.desire || 'None'}</div>
                 </div>
               </div>
             </div>
@@ -2016,13 +2016,13 @@ export default function CharacterView({
             <div style={{ flex: '1 1 min-content' }}>
               <h2 style={{ fontFamily: 'var(--font-title)', margin: 0, marginBottom: '6px' }}>Meta Data</h2>
               <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.6', display: 'flex', flexWrap: 'wrap', columnGap: '8px' }}>
-                <span>Predator: {sheet?.predator_type || sheet?.predatorType || '—'}</span>
+                <span>Predator: {sheet?.predator_type || sheet?.predatorType || 'None'}</span>
                 <span style={{ opacity: 0.5 }}>|</span>
-                <span>Sire: {sheet?.sire || '—'}</span>
+                <span>Sire: {sheet?.sire || 'None'}</span>
                 <span style={{ opacity: 0.5 }}>|</span>
-                <span>Ambition: {sheet?.ambition || '—'}</span>
+                <span>Ambition: {sheet?.ambition || 'None'}</span>
                 <span style={{ opacity: 0.5 }}>|</span>
-                <span>Desire: {sheet?.desire || '—'}</span>
+                <span>Desire: {sheet?.desire || 'None'}</span>
               </div>
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', whiteSpace: 'nowrap' }}>
@@ -2177,7 +2177,7 @@ export default function CharacterView({
               </div>
             </div>
 
-            {/* Shop Tabs — icon grid on mobile, pill row on desktop.
+            {/* Shop Tabs: icon grid on mobile, pill row on desktop.
                 "Suggested" leads and spans two columns, which also makes the
                 mobile grid an exact 2×4 block with no orphan cell. */}
             <nav className={styles.shopTabsNav}>
@@ -2245,7 +2245,7 @@ export default function CharacterView({
                     </>
                   ) : (
                     <div className={styles.suggestEmpty} style={{ gridColumn: '1 / -1' }}>
-                      Nothing is within reach at {xp} XP yet — here is what to aim for.
+                      Nothing is within reach at {xp} XP yet: here is what to aim for.
                     </div>
                   )}
 
@@ -2465,7 +2465,7 @@ export default function CharacterView({
                           const isKnown = current > 0;
                           const title = isKnown ? `${name} (${current})` : name;
 
-                          // Caitiff can learn any discipline freely — this used to fall
+                          // Caitiff can learn any discipline freely: this used to fall
                           // through to the locked "other" branch below and get hard-blocked
                           // like a real off-clan pick, which meant Caitiff couldn't buy
                           // disciplines at all. Same purchase flow as in-clan, just priced
@@ -2504,7 +2504,7 @@ export default function CharacterView({
                             );
                           }
 
-                          // Real off-clan pick — gated behind whatever the ST has
+                          // Real off-clan pick: gated behind whatever the ST has
                           // unlocked (see routes/disciplineAccess.js). The backend
                           // enforces this cap independently at spend time; this is
                           // just presenting the same rule before the player tries.
@@ -2575,8 +2575,8 @@ export default function CharacterView({
                             );
                           }
 
-                          // grantedMax > 0 but maxed out — offer a request for more;
-                          // grantedMax === 0 — offer the first request.
+                          // grantedMax > 0 but maxed out: offer a request for more;
+                          // grantedMax === 0: offer the first request.
                           return (
                             <ShopRow
                               key={name}
@@ -2883,7 +2883,7 @@ const _norm = (v) => String(v ?? '').trim().toLowerCase();
 /* ---------- Ritual/Ceremony prereq helper ---------- */
 function ritualPrereqStatus(rit, knownPowerSet) {
   const prereq = rit?.prereq;
-  if (!prereq || prereq === '—') return { unmet: [] };
+  if (!prereq || prereq === '—' || prereq === 'None') return { unmet: [] };
 
   // Use the exact same aggressive normalizer here to ensure a perfect match
   const superNorm = (v) => String(v ?? '').toLowerCase().replace(/\(errata\)/g, '').replace(/\berrata\b/g, '').replace(/'s\b/g, '').replace(/[^a-z0-9]/g, '');
@@ -3093,7 +3093,7 @@ function InlineDisciplinePicker({ cfg, onConfirm, searchQuery }) {
     const out = [];
     const levels = DISCIPLINES?.[name]?.levels || {};
     const cap = Number(next || 0);
-    // Offer every power at or below the discipline's current dot total —
+    // Offer every power at or below the discipline's current dot total:
     // V5 lets you take multiple powers of the same level (e.g. two Level-1
     // picks for a 2-dot discipline), so this must not be narrowed to a
     // single "target" level. Already-owned powers are filtered out below.
@@ -3251,7 +3251,7 @@ function InlineDisciplinePicker({ cfg, onConfirm, searchQuery }) {
                       {(p.cost || p.dice_pool || p.duration || p.system || p.amalgam || p.prerequisite) && (
                         <div className={styles.powerDetailGrid}>
                           {p.cost && <div><b style={{ color: 'var(--text-color)' }}>Cost:</b> {p.cost}</div>}
-                          {p.dice_pool && <div><b style={{ color: 'var(--text-color)' }}>Dice Pool:</b> {p.dice_pool} {p.opposing_pool && p.opposing_pool !== '—' ? `vs ${p.opposing_pool}` : ''}</div>}
+                          {p.dice_pool && <div><b style={{ color: 'var(--text-color)' }}>Dice Pool:</b> {p.dice_pool} {p.opposing_pool && p.opposing_pool !== '—' && p.opposing_pool !== 'None' ? `vs ${p.opposing_pool}` : ''}</div>}
                           {p.duration && <div><b style={{ color: 'var(--text-color)' }}>Duration:</b> {p.duration}</div>}
                           {p.amalgam && <div><b style={{ color: 'var(--text-color)' }}>Amalgam:</b> {p.amalgam}</div>}
                           {p.prerequisite && <div><b style={{ color: 'var(--text-color)' }}>Prerequisite:</b> {p.prerequisite}</div>}
@@ -3567,7 +3567,7 @@ function SuggestedSpecialtyRow({ skill, disabled, onAdd }) {
 
 /* ---------- Out-of-clan discipline access request ---------- */
 /* Lives inside the locked ShopRow for a discipline the character can't buy
-   yet — asks a level and an optional reason, then hands both to the ST's
+   yet: asks a level and an optional reason, then hands both to the ST's
    request queue (see routes/disciplineAccess.js / AdminDisciplinesTab). */
 function DisciplineRequestForm({ name, minLevel = 1, onSubmit }) {
   const [level, setLevel] = useState(minLevel);
@@ -3590,7 +3590,7 @@ function DisciplineRequestForm({ name, minLevel = 1, onSubmit }) {
   }
 
   if (sent) {
-    return <p className={styles.shopCardText}>Request sent — your Storyteller will see it in their review queue.</p>;
+    return <p className={styles.shopCardText}>Request sent: your Storyteller will see it in their review queue.</p>;
   }
 
   return (
@@ -3610,7 +3610,7 @@ function DisciplineRequestForm({ name, minLevel = 1, onSubmit }) {
         </select>
         <input
           className={styles.suggestSpecialtyInput}
-          placeholder="Why (optional) — helps your ST decide"
+          placeholder="Why (optional): helps your ST decide"
           value={message}
           disabled={busy}
           onChange={(e) => setMessage(e.target.value)}
@@ -3948,7 +3948,7 @@ function MeritAdder({ xp, clan, knownPowerNamesAndIds, existing = [], onAdd }) {
               {sel.name} <span style={{ opacity: 0.6, fontSize: '0.85rem', fontWeight: 'normal' }}>({sel.category})</span>
             </div>
             <div style={{ fontSize: '0.85rem', color: 'var(--text-color)', opacity: 0.8 }}>
-              Owned: <b>{existing.filter(m => m.id === (sel.id || '')).length}</b> • Highest: <b>{currentOwnedForSel || '—'}</b>
+              Owned: <b>{existing.filter(m => m.id === (sel.id || '')).length}</b> • Highest: <b>{currentOwnedForSel || 'None'}</b>
             </div>
           </div>
           <div style={{ fontSize: '0.95rem', lineHeight: '1.5', opacity: 0.85 }}>

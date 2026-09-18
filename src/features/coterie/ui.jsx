@@ -59,7 +59,7 @@ export function Dots({ value, max = MAX_DOTS, label }) {
 /**
  * Dot rating control. `min` is a real floor (a Merit that is always •••
  * cannot be set to ••), while `baseline` is only a visual marker for "this is
- * what your coterie type lists" — the corebook lets a troupe trade those dots
+ * what your coterie type lists", the corebook lets a troupe trade those dots
  * away, so it must not be a hard lock.
  */
 export function DotPicker({ label, value, onChange, max = MAX_DOTS, min = 0, baseline = 0, disabled }) {
@@ -128,7 +128,7 @@ export function Empty({ children }) {
   return <p className={styles.empty}>{children}</p>;
 }
 
-/** A labelled figure — the sheet's headline mechanics. */
+/** A labelled figure: the sheet's headline mechanics. */
 export function Stat({ label, value, unit, hint, tone }) {
   return (
     <div className={styles.stat} data-tone={tone}>

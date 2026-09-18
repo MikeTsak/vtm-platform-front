@@ -42,13 +42,13 @@ function RegistryCard({ c, domainLabel }) {
     <Card title={c.name} subtitle={c.type || 'Custom coterie'}>
       {c.concept && <p className={styles.concept}>{c.concept}</p>}
       <div className={styles.registryMeta}>
-        <span><b>Domain:</b> {c.domain_id ? `#${c.domain_id} — ${domainLabel || 'Unknown'}` : 'None'}</span>
+        <span><b>Domain:</b> {c.domain_id ? `#${c.domain_id} : ${domainLabel || 'Unknown'}` : 'None'}</span>
         <span><b>Members:</b> {c.member_count}</span>
       </div>
       {c.domain_id != null && (
         <div className={styles.miniStats}>
           <span title="Hunting Difficulty inside their domain">
-            {DOMAIN_TRAIT_INFO.chasse.name} {c.chasse} → Diff {difficulty == null ? '—' : difficulty}
+            {DOMAIN_TRAIT_INFO.chasse.name} {c.chasse} → Diff {difficulty == null ? 'None' : difficulty}
           </span>
           <span title="Bonus dice interacting and investigating locally">
             {DOMAIN_TRAIT_INFO.lien.name} {c.lien} → +{lien}
@@ -351,7 +351,7 @@ export default function CoterieManager() {
                   members={detail.members}
                   xpLog={detail.xp_log || []}
                   domainLabel={detail.coterie.domain_id
-                    ? `#${detail.coterie.domain_id} — ${domainLabelFor(detail.coterie.domain_id) || 'Unknown'}`
+                    ? `#${detail.coterie.domain_id} : ${domainLabelFor(detail.coterie.domain_id) || 'Unknown'}`
                     : null}
                   isAdmin={isAdmin}
                   canEdit
@@ -378,7 +378,7 @@ export default function CoterieManager() {
                   >
                     {c.concept && <p className={styles.concept}>{c.concept}</p>}
                     <div className={styles.statRow}>
-                      <Stat label="Hunting Diff." value={diff == null ? '—' : diff} />
+                      <Stat label="Hunting Diff." value={diff == null ? 'None' : diff} />
                       <Stat label="Lien" value={`+${lienBonusDice(c.traits?.lien)}`} />
                       <Stat label="Portillon" value={`−${portillonPenaltyDice(c.traits?.portillon)}`} />
                       <Stat label="Members" value={(c.members || []).length} />

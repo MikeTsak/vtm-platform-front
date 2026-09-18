@@ -53,9 +53,9 @@ const formatPlayerStatus = (s) => {
 };
 
 function niceDate(d) {
-  if (!d) return '—';
+  if (!d) return 'None';
   const dt = new Date(d);
-  if (isNaN(dt.getTime())) return '—';
+  if (isNaN(dt.getTime())) return 'None';
   try { return dt.toLocaleDateString('en-GB', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }); }
   catch { return dt.toDateString(); }
 }
@@ -649,7 +649,7 @@ export default function DownTimes() {
         </AnimatePresence>
         </FeedingGate>
 
-        {/* Submission History List — always visible and searchable, even
+        {/* Submission History List: always visible and searchable, even
             before this cycle's Feeding roll is resolved. Only *new*
             submissions (the gated block above) require feeding first. */}
         <AnimatePresence mode="wait">

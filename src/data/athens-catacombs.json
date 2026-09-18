@@ -1,13 +1,13 @@
 {
 "type": "FeatureCollection",
 "name": "athens-catacombs",
-"note": "ADMIN-ONLY. The buried rivers (Eridanos, Ilissos, Kifissos), Hadrian's Aqueduct, the Long Walls, the Sacred Way and the rock-cut caves & baths of Attica and Piraeus really run where drawn (approximately — no survey GeoJSON exists); passages marked 'speculative' are storyteller invention. Not for players.",
+"note": "ADMIN-ONLY. The buried rivers (Eridanos, Ilissos, Kifissos), Hadrian's Aqueduct, the Long Walls, the Sacred Way and the rock-cut caves & baths of Attica and Piraeus really run where drawn (approximately, no survey GeoJSON exists); passages marked 'speculative' are storyteller invention. Not for players.",
 "features": [
 {
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "Eridanos — Lykabettos head",
+"name": "Eridanos: Lykabettos head",
 "basis": "river",
 "certainty": "inferred",
 "status": "flooded"
@@ -34,7 +34,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "Eridanos — under Mitropoleos",
+"name": "Eridanos: under Mitropoleos",
 "basis": "river",
 "certainty": "attested",
 "status": "open"
@@ -61,7 +61,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "Eridanos — Monastiraki vault",
+"name": "Eridanos: Monastiraki vault",
 "basis": "river",
 "certainty": "attested",
 "status": "open"
@@ -88,7 +88,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "Eridanos — Agora to the Sacred Gate",
+"name": "Eridanos: Agora to the Sacred Gate",
 "basis": "river",
 "certainty": "attested",
 "status": "open"
@@ -111,7 +111,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "Eridanos — the turn west",
+"name": "Eridanos: the turn west",
 "basis": "river",
 "certainty": "attested",
 "status": "flooded"
@@ -134,7 +134,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "Eridanos — lost channel to the Kifissos",
+"name": "Eridanos: lost channel to the Kifissos",
 "basis": "river",
 "certainty": "inferred",
 "status": "collapsed"
@@ -161,7 +161,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "Ilissos — Hymettos springs",
+"name": "Ilissos: Hymettos springs",
 "basis": "river",
 "certainty": "inferred",
 "status": "flooded"
@@ -188,7 +188,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "Ilissos — behind the Stadium",
+"name": "Ilissos: behind the Stadium",
 "basis": "river",
 "certainty": "attested",
 "status": "open"
@@ -219,7 +219,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "Ilissos — King Otto's bridge to Vatrachonisi",
+"name": "Ilissos: King Otto's bridge to Vatrachonisi",
 "basis": "river",
 "certainty": "attested",
 "status": "flooded"
@@ -246,7 +246,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "Ilissos — the confluence",
+"name": "Ilissos: the confluence",
 "basis": "river",
 "certainty": "inferred",
 "status": "open"
@@ -273,7 +273,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "Ilissos — under Kallithea to the sea",
+"name": "Ilissos: under Kallithea to the sea",
 "basis": "river",
 "certainty": "attested",
 "status": "collapsed"
@@ -304,7 +304,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "Kifissos — the Parnitha head",
+"name": "Kifissos: the Parnitha head",
 "basis": "river",
 "certainty": "inferred",
 "status": "flooded"
@@ -331,7 +331,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "Kifissos — through the Elaionas",
+"name": "Kifissos: through the Elaionas",
 "basis": "river",
 "certainty": "attested",
 "status": "flooded"
@@ -358,7 +358,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "Kifissos — the Faliro mouth",
+"name": "Kifissos: the Faliro mouth",
 "basis": "river",
 "certainty": "attested",
 "status": "collapsed"
@@ -381,7 +381,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "Hadrian's Aqueduct — the Dexameni",
+"name": "Hadrian's Aqueduct: the Dexameni",
 "basis": "aqueduct",
 "certainty": "attested",
 "status": "open"
@@ -408,7 +408,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "Hadrian's Aqueduct — Ampelokipi to Chalandri",
+"name": "Hadrian's Aqueduct: Ampelokipi to Chalandri",
 "basis": "aqueduct",
 "certainty": "attested",
 "status": "open"
@@ -435,7 +435,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "Hadrian's Aqueduct — Chalandri to Marousi",
+"name": "Hadrian's Aqueduct: Chalandri to Marousi",
 "basis": "aqueduct",
 "certainty": "attested",
 "status": "open"
@@ -462,7 +462,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "Hadrian's Aqueduct — Marousi to the foothills",
+"name": "Hadrian's Aqueduct: Marousi to the foothills",
 "basis": "aqueduct",
 "certainty": "attested",
 "status": "flooded"
@@ -489,7 +489,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "Hadrian's Aqueduct — the Parnitha spring line",
+"name": "Hadrian's Aqueduct: the Parnitha spring line",
 "basis": "aqueduct",
 "certainty": "inferred",
 "status": "collapsed"
@@ -512,7 +512,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "The Long Walls — Dipylon to Piraeus",
+"name": "The Long Walls: Dipylon to Piraeus",
 "basis": "wall",
 "certainty": "inferred",
 "status": "open"
@@ -547,7 +547,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "The Phaleric Wall — Athens to old Phaleron",
+"name": "The Phaleric Wall: Athens to old Phaleron",
 "basis": "wall",
 "certainty": "inferred",
 "status": "collapsed"
@@ -574,7 +574,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "Neo Faliro cut — North Wall segment",
+"name": "Neo Faliro cut: North Wall segment",
 "basis": "wall",
 "certainty": "attested",
 "status": "open"
@@ -597,7 +597,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "Piraeus — the Serangeion galleries",
+"name": "Piraeus: the Serangeion galleries",
 "basis": "quarry",
 "certainty": "attested",
 "status": "open"
@@ -624,7 +624,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "Piraeus — the Hippodamian cistern grid",
+"name": "Piraeus: the Hippodamian cistern grid",
 "basis": "quarry",
 "certainty": "inferred",
 "status": "flooded"
@@ -651,7 +651,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "Piraeus — the Eetioneia sally-passages",
+"name": "Piraeus: the Eetioneia sally-passages",
 "basis": "wall",
 "certainty": "attested",
 "status": "open"
@@ -674,7 +674,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "The Deep Cut — the wall's end to the Serangeion",
+"name": "The Deep Cut: the wall's end to the Serangeion",
 "basis": "tunnel",
 "certainty": "speculative",
 "status": "sealed"
@@ -701,7 +701,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "The Sacred Way — Kerameikos to Eleusis",
+"name": "The Sacred Way: Kerameikos to Eleusis",
 "basis": "tunnel",
 "certainty": "inferred",
 "status": "open"
@@ -755,7 +755,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "The Undercroft — Acropolis knot",
+"name": "The Undercroft: Acropolis knot",
 "basis": "tunnel",
 "certainty": "speculative",
 "status": "open"
@@ -794,7 +794,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "The Undercroft — Klepsydra stair",
+"name": "The Undercroft: Klepsydra stair",
 "basis": "quarry",
 "certainty": "attested",
 "status": "open"
@@ -821,7 +821,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "The Undercroft — Kotzia to the Kerameikos",
+"name": "The Undercroft: Kotzia to the Kerameikos",
 "basis": "wall",
 "certainty": "inferred",
 "status": "open"
@@ -844,7 +844,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "The Undercroft — the wall line to Monastiraki",
+"name": "The Undercroft: the wall line to Monastiraki",
 "basis": "wall",
 "certainty": "inferred",
 "status": "collapsed"
@@ -871,7 +871,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "The Undercroft — Pnyx & Filopappou galleries",
+"name": "The Undercroft: Pnyx & Filopappou galleries",
 "basis": "tunnel",
 "certainty": "speculative",
 "status": "open"
@@ -906,7 +906,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "The Undercroft — Kerameikos ossuary walk",
+"name": "The Undercroft: Kerameikos ossuary walk",
 "basis": "tunnel",
 "certainty": "speculative",
 "status": "open"
@@ -933,7 +933,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "The Deep Cut — Lykabettos to Penteli",
+"name": "The Deep Cut: Lykabettos to Penteli",
 "basis": "tunnel",
 "certainty": "speculative",
 "status": "sealed"
@@ -983,7 +983,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "The Deep Cut — Ilissos to Hymettos",
+"name": "The Deep Cut: Ilissos to Hymettos",
 "basis": "tunnel",
 "certainty": "speculative",
 "status": "collapsed"
@@ -1037,7 +1037,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "The Deep Cut — Hymettos to the Vari cave",
+"name": "The Deep Cut: Hymettos to the Vari cave",
 "basis": "tunnel",
 "certainty": "speculative",
 "status": "sealed"
@@ -1060,7 +1060,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "The Deep Cut — Parnitha vein",
+"name": "The Deep Cut: Parnitha vein",
 "basis": "tunnel",
 "certainty": "speculative",
 "status": "sealed"
@@ -1083,7 +1083,7 @@
 "type": "Feature",
 "properties": {
 "kind": "passage",
-"name": "The Wet Road — confluence to the harbours",
+"name": "The Wet Road: confluence to the harbours",
 "basis": "tunnel",
 "certainty": "speculative",
 "status": "flooded"
@@ -1113,7 +1113,7 @@
 "name": "The Dexameni",
 "siteType": "cistern",
 "certainty": "attested",
-"note": "Hadrian's covered reservoir under the Kolonaki square — the northern mouth of the whole system."
+"note": "Hadrian's covered reservoir under the Kolonaki square: the northern mouth of the whole system."
 },
 "geometry": {
 "type": "Point",
@@ -1317,7 +1317,7 @@
 "name": "Vatrachonisi",
 "siteType": "entrance",
 "certainty": "attested",
-"note": "\"Frog Island\" — the last open, reed-choked reach of the Ilissos before it goes under Kallithea."
+"note": "\"Frog Island\": the last open, reed-choked reach of the Ilissos before it goes under Kallithea."
 },
 "geometry": {
 "type": "Point",
@@ -1453,7 +1453,7 @@
 "name": "Piraeus Kantharos",
 "siteType": "entrance",
 "certainty": "attested",
-"note": "Head of the Great Harbour and the ancient Emporion — where the Long Walls tunnel opens."
+"note": "Head of the Great Harbour and the ancient Emporion: where the Long Walls tunnel opens."
 },
 "geometry": {
 "type": "Point",
@@ -1521,7 +1521,7 @@
 "name": "The Serangeion",
 "siteType": "cave",
 "certainty": "attested",
-"note": "Rock-cut bath and 5th-c. BCE cistern network between Zea and Munichia — two domed chambers, benches and channels cut 12 m into the cliff. Also called the Cave of Paraskevas."
+"note": "Rock-cut bath and 5th-c. BCE cistern network between Zea and Munichia: two domed chambers, benches and channels cut 12 m into the cliff. Also called the Cave of Paraskevas."
 },
 "geometry": {
 "type": "Point",
@@ -1589,7 +1589,7 @@
 "name": "Eleusis Ploutonion",
 "siteType": "shrine",
 "certainty": "attested",
-"note": "Cave of Hades at the Sanctuary of Demeter — the mythic mouth of the underworld, end of the Sacred Way."
+"note": "Cave of Hades at the Sanctuary of Demeter: the mythic mouth of the underworld, end of the Sacred Way."
 },
 "geometry": {
 "type": "Point",
@@ -1640,7 +1640,7 @@
 "name": "Pan's Cave, Hymettos",
 "siteType": "shrine",
 "certainty": "attested",
-"note": "Nympholyptos cave above Kaisariani — cult site from the 6th c. BCE."
+"note": "Nympholyptos cave above Kaisariani: cult site from the 6th c. BCE."
 },
 "geometry": {
 "type": "Point",
@@ -1691,7 +1691,7 @@
 "name": "Parnitha Cave of Pan",
 "siteType": "shrine",
 "certainty": "attested",
-"note": "Lychnospilia — the lamp-cave near the Parnitha spring line."
+"note": "Lychnospilia: the lamp-cave near the Parnitha spring line."
 },
 "geometry": {
 "type": "Point",

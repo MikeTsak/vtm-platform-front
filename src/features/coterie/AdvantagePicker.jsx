@@ -23,7 +23,7 @@ function matches(def, key, query) {
 const rangeLabel = (def) => {
   const min = def.min != null ? def.min : 1;
   const max = def.max != null ? def.max : MAX_DOTS;
-  return min === max ? '•'.repeat(min) : `${'•'.repeat(min)}–${'•'.repeat(max)}`;
+  return min === max ? '•'.repeat(min) : `${'•'.repeat(min)} to ${'•'.repeat(max)}`;
 };
 
 /**
@@ -103,13 +103,13 @@ export default function AdvantagePicker({
           {items.map((item) => {
             const def = catalog[item.key];
             if (!def) {
-              // A saved entry the catalog no longer knows — surface it rather
+              // A saved entry the catalog no longer knows: surface it rather
               // than dropping it silently, so the player can clear it.
               return (
                 <li key={item.key} className={styles.pickedItem} data-unknown="true">
                   <div className={styles.pickedMain}>
                     <span className={styles.pickedName}>{item.name || item.key}</span>
-                    <Muted tone="warn">No longer in the catalog — remove it and pick a current entry.</Muted>
+                    <Muted tone="warn">No longer in the catalog: remove it and pick a current entry.</Muted>
                   </div>
                   <button type="button" className={styles.dangerButton} onClick={() => remove(item.key)}>
                     Remove
@@ -142,7 +142,7 @@ export default function AdvantagePicker({
                       placeholder={`${def.needsChoice}…`}
                       value={item.note || ''}
                       onChange={(e) => setNote(item.key, e.target.value)}
-                      aria-label={`${def.name} — ${def.needsChoice}`}
+                      aria-label={`${def.name}: ${def.needsChoice}`}
                     />
                   )}
                 </div>

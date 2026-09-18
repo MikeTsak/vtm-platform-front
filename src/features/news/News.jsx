@@ -173,16 +173,16 @@ export default function News() {
       <div className={styles.page}>
         {!isRumorsPage && (
           <Helmet>
-            <title>Official News — Athens Through Time | Erebus Portal</title>
+            <title>Official News : Athens Through Time | Erebus Portal</title>
             <meta
               name="description"
-              content="In-character news bulletins from the Athens Through-Time Vampire: The Masquerade chronicle — Camarilla, Anarch, and city happenings reported by the Kindred press."
+              content="In character news bulletins from the Athens Through Time Vampire: The Masquerade chronicle, Camarilla, Anarch, and city happenings reported by the Kindred press."
             />
             <link rel="canonical" href="https://portal.attlarp.gr/news" />
-            <meta property="og:title" content="Official News — Athens Through Time" />
+            <meta property="og:title" content="Official News : Athens Through Time" />
             <meta
               property="og:description"
-              content="In-character news bulletins from the Athens Through-Time Vampire: The Masquerade chronicle."
+              content="In character news bulletins from the Athens Through Time Vampire: The Masquerade chronicle."
             />
           </Helmet>
         )}

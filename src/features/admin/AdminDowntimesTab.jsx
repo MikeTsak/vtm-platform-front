@@ -12,9 +12,9 @@ const symlogo = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.webp` : '');
 /* ---------------------------------- */
 
 function niceDate(d) {
-  if (!d) return '—';
+  if (!d) return 'None';
   const dt = new Date(d);
-  if (isNaN(dt.getTime())) return '—';
+  if (isNaN(dt.getTime())) return 'None';
   return formatEuDate(d);
 }
 
@@ -653,7 +653,7 @@ function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel }
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
             <span>Account: <b style={{ color: 'var(--text-secondary)' }}>{r.player_name || r.email}</b></span>
-            <span>Subject: <b style={{ color: 'var(--text-secondary)' }}>{r.char_name || '—'}</b> {r.clan ? `[${r.clan}]` : ''}</span>
+            <span>Subject: <b style={{ color: 'var(--text-secondary)' }}>{r.char_name || 'None'}</b> {r.clan ? `[${r.clan}]` : ''}</span>
           </div>
         </div>
       </header>

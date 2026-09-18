@@ -2,7 +2,7 @@ import React from 'react';
 import styles from '../../../styles/CharacterSetup.module.css';
 import { Field, RandomizeButton } from './StepHelpers';
 
-// Curated concept/ambition/desire combos — a quick, evocative starting point
+// Curated concept/ambition/desire combos: a quick, evocative starting point
 // a player can fill in with one click and still edit freely afterward.
 const CONCEPT_SEEDS = [
   { concept: 'Haunted Prince', ambition: 'Reclaim a throne stolen in the first nights of the curse.', desire: 'One night of feeling human again.' },
@@ -38,7 +38,7 @@ export default function IdentityStep({
         <div>
           <h3 className={styles.sectionTitle} style={{ marginBottom: 4, borderBottom: 'none', paddingBottom: 0 }}>Concept</h3>
           <p className={`${styles.muted} ${styles.smallFlavor}`} style={{ textAlign: 'left', marginBottom: 0 }}>
-            A mask for the living, a name for the dead. Etch who you were — and what you seek.
+            A mask for the living, a name for the dead. Etch who you were, and what you seek.
           </p>
         </div>
         <div className={styles.stepHeaderActions}>

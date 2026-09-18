@@ -3,7 +3,7 @@ import { publish } from '../utils/notification';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
-  // The session lives in an httpOnly cookie (see back/utils/authCookie.js) —
+  // The session lives in an httpOnly cookie (see back/utils/authCookie.js):
   // this makes the browser attach it automatically. There is no token in JS
   // to read or set; that's the point (an XSS payload can't steal a cookie it
   // can't read either).
@@ -12,17 +12,17 @@ const api = axios.create({
 
 api.interceptors.request.use((config) => {
   // Caching is governed by each response's own Cache-Control header (see
-  // back/server.fastify.js) — forcing no-store on every request here used to
+  // back/server.fastify.js), forcing no-store on every request here used to
   // override that unconditionally, which is why re-enabling caching
   // server-side alone wouldn't have done anything. The backend defaults to
   // no-store for anything that hasn't explicitly opted into caching, so this
   // is safe to leave to the server now.
 
-  // Idempotency-Key is NOT set globally anymore — a fresh random UUID on
+  // Idempotency-Key is NOT set globally anymore: a fresh random UUID on
   // every request meant retries never shared a key, so it protected nothing
   // while still writing a DB row per mutation. Real idempotency is now
   // opt-in, only for the handful of endpoints where a duplicate would cause
-  // real harm (XP spend) — see utils/idempotencyKey.js, called explicitly at
+  // real harm (XP spend): see utils/idempotencyKey.js, called explicitly at
   // those call sites instead of here.
 
   return config;

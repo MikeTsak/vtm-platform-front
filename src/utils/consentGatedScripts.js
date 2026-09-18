@@ -1,6 +1,6 @@
 // src/utils/consentGatedScripts.js
 //
-// Loads third-party trackers that have no "consent mode" of their own —
+// Loads third-party trackers that have no "consent mode" of their own:
 // unlike GA4 (see public/analytics-init.js, which implements Google Consent
 // Mode v2 and is safe to load unconditionally), AdSense and Microsoft
 // Clarity start collecting the moment their script executes. So neither one
@@ -8,7 +8,7 @@
 // only once CookieConsent.jsx has confirmed the visitor actually granted
 // consent (on this visit, or a stored 'granted' from a previous one).
 //
-// Both loaders are idempotent — safe to call every time consent is
+// Both loaders are idempotent, safe to call every time consent is
 // (re-)confirmed without double-injecting a script tag.
 
 const ADSENSE_SRC = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2086654176767394';
@@ -31,7 +31,7 @@ export function loadClarity() {
   }
 }
 
-/** Call once consent has been confirmed granted — starts every consent-gated tracker. */
+/** Call once consent has been confirmed granted: starts every consent-gated tracker. */
 export function loadConsentGatedScripts() {
   loadAdSense();
   loadClarity();

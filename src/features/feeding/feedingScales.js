@@ -1,8 +1,8 @@
 // src/features/feeding/feedingScales.js
 //
 // Continuous color scales for the two independent numbers shown in the
-// Feeding domain picker — Safety (0-10, green = safe -> red = exposed) and
-// Hunting Difficulty (2-7, blue = easiest -> orange = hardest). Plain HSL
+// Feeding domain picker: Safety (0 to 10, green = safe -> red = exposed) and
+// Hunting Difficulty (2 to 7, blue = easiest -> orange = hardest). Plain HSL
 // interpolation, not a fixed palette, so every value in range gets its own
 // shade rather than snapping between a few buckets.
 

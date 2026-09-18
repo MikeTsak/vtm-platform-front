@@ -52,12 +52,12 @@ export default function AttributesStep({
     return [1,2,3,4].every(k => (attrCounts[k] || 0) === (req[k]||0));
   }, [attrCounts]);
 
-  // V5 derived traits — always in sync with the dots above, nothing to set by hand.
+  // V5 derived traits: always in sync with the dots above, nothing to set by hand.
   const health = (attrDots.Stamina ?? RULES.attributes.min) + 3;
   const willpower = (attrDots.Composure ?? RULES.attributes.min) + (attrDots.Resolve ?? RULES.attributes.min);
 
   // Click-to-set: clicking a filled dot again drops it back a dot, clamped
-  // to [min, max]. No per-click quota gate — any value is freely settable
+  // to [min, max]. No per-click quota gate: any value is freely settable
   // in either direction; the pattern is only enforced to unlock "Next".
   const setAttr = (k, n) => {
     setAttrDots(p => {
@@ -121,7 +121,7 @@ export default function AttributesStep({
         </div>
       </div>
       <p className={styles.muted} style={{ marginTop: -8 }}>
-        Health = Stamina + 3 • Willpower = Composure + Resolve — these update automatically as you allocate dots.
+        Health = Stamina + 3 • Willpower = Composure + Resolve: these update automatically as you allocate dots.
       </p>
 
       <div className={styles.attrSkillGrid}>

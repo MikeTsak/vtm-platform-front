@@ -2,7 +2,7 @@
 //
 // The "Domains" admin tab. Assigning / releasing divisions and ruling on claim
 // petitions all happen on the player-facing Domains map now (the dossier), so
-// this tab is exactly one thing: the roster of DOMAIN STEWARDS — the non-admin
+// this tab is exactly one thing: the roster of DOMAIN STEWARDS: the non-admin
 // users allowed to do that.
 //
 // A steward can act on EVERY division, not a specific one. Admins can always do
@@ -67,7 +67,7 @@ export default function AdminClaimsTab({ users = [] }) {
       <div>
         <h2 className={styles.hl} style={{ margin: 0 }}>Domain Stewards</h2>
         <p className={styles.subtle} style={{ margin: '0.4rem 0 0', lineHeight: 1.55 }}>
-          The non-admins allowed to run the Athens claims map — approve or deny claim petitions,
+          The non-admins allowed to run the Athens claims map: approve or deny claim petitions,
           assign a division to a character or NPC, and release one. A steward can do this on{' '}
           <b>every division</b>, not just one. Admins can always do all of it and are not listed
           here. Remove someone and their access is gone immediately.
@@ -79,7 +79,7 @@ export default function AdminClaimsTab({ users = [] }) {
           <div className={styles.subtle}>Loading…</div>
         ) : managers.length === 0 ? (
           <div className={styles.subtle} style={{ fontStyle: 'italic' }}>
-            No stewards yet — only administrators can manage domains.
+            No stewards yet: only administrators can manage domains.
           </div>
         ) : (
           <div className={styles.stack12}>
@@ -113,12 +113,12 @@ export default function AdminClaimsTab({ users = [] }) {
             onChange={e => setPick(e.target.value)}
             style={{ flex: 1, minWidth: 0 }}
           >
-            <option value="">— choose a user to make a steward —</option>
+            <option value="">Choose a user to make a steward</option>
             {addable.map(u => (
               <option key={u.id} value={u.id}>
                 {(u.display_name || u.email)}
                 {u.char_name ? ` (${u.char_name})` : ''}
-                {u.role === 'courtuser' ? ' — court' : ''}
+                {u.role === 'courtuser' ? ' (court)' : ''}
               </option>
             ))}
           </select>

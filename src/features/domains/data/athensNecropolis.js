@@ -1,15 +1,15 @@
-// ── Necropoleis of Athens — ADMIN-ONLY map overlay ───────────────────────
+// ── Necropoleis of Athens: ADMIN-ONLY map overlay ───────────────────────
 // Source: src/data/athens-necropolis.json. Two wholly fictional Kindred
 // necropoleis, no real-world basis:
-//   * OLD — vast, under central Athens, SEALED and inaccessible. Galleries are
+//   * OLD: vast, under central Athens, SEALED and inaccessible. Galleries are
 //     drawn ragged and broken on purpose: the records are fragments and almost
 //     nothing is confirmed (`certainty: "lost"`). A spine runs from under the
 //     Acropolis to Syngrou-Fix and carries the "New 2026 Entrance" marker.
-//   * NEW — tiny, recent, in the pine wood above Papagou.
+//   * NEW: tiny, recent, in the pine wood above Papagou.
 //
 // Lazy-loaded on demand only when an authorized administrator enables the overlay.
 
-// Line style per record-certainty — applies to the OLD necropolis, where the
+// Line style per record-certainty: applies to the OLD necropolis, where the
 // record is fragmentary. Each tier gets its own colour, dash AND width so the
 // three are easy to tell apart at a glance.
 export const NECRO_CERTAINTY = {
@@ -18,15 +18,15 @@ export const NECRO_CERTAINTY = {
   lost:    { label: 'Speculative', dash: [2, 5],   color: '#8fa6a0', width: 3 },
 };
 
-// The New necropolis renders in one solid colour, all of it confirmed — a
+// The New necropolis renders in one solid colour, all of it confirmed: a
 // deliberately different hue from any Old-necropolis tier.
 export const NECRO_NEW_COLOR = '#d64550';
 export const NECRO_NEW_WIDTH = 4.5;
 
 // Legend note per necropolis (shown under its toggle).
 export const NECRO_NOTES = {
-  old: 'Sealed & inaccessible — broken, ragged lines are unconfirmed record.',
-  new: 'Recent — Alsos Papagou west under Cholargos to the Ministry. All confirmed.',
+  old: 'Sealed & inaccessible: broken, ragged lines are unconfirmed record.',
+  new: 'Recent: Alsos Papagou west under Cholargos to the Ministry. All confirmed.',
 };
 
 export const NECRO_SITE_COLOR = {

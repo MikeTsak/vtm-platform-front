@@ -55,7 +55,7 @@ export default function AdminUsersTab({ users = [], onSave, loading = false }) {
                     <div className={styles.td} data-label="Character">
                       {u.character_id ? (
                         <div className={styles.row} style={{ gap: '8px', alignItems: 'center' }}>
-                          <span title={`Character ID: ${u.character_id}`}>{u.char_name || '—'}</span>
+                          <span title={`Character ID: ${u.character_id}`}>{u.char_name || 'None'}</span>
                           <span className={styles.subtle}>#{u.character_id}</span>
                         </div>
                       ) : (
@@ -65,7 +65,7 @@ export default function AdminUsersTab({ users = [], onSave, loading = false }) {
                     <div className={styles.td} data-label="Clan / XP">
                       <div className={styles.row} style={{ gap: '10px', alignItems: 'center' }}>
                         <span className={styles.tinyChip} style={{ '--chip-color': clanColor }}></span>
-                        <span>{u.clan || '—'}</span>
+                        <span>{u.clan || 'None'}</span>
                         <span className={styles.idCell} style={{ marginLeft: 'auto' }}>XP: {u.xp ?? 0}</span>
                       </div>
                     </div>

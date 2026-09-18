@@ -74,7 +74,7 @@ export default function Register() {
       else if (data?.error) errMsg = data.error;
       else if (data?.message) errMsg = data.message;
       // Thrown directly by AuthContext.register() when the account was
-      // created but the follow-up session check couldn't be confirmed —
+      // created but the follow-up session check couldn't be confirmed:
       // there's no error.response for this one, just error.message.
       else if (error?.message) errMsg = error.message;
 
@@ -95,15 +95,15 @@ export default function Register() {
   return (
     <div className={`${styles['login-page']} ${styles['vamp-bg']}`}>
       <Helmet>
-        <title>Register — Erebus Portal | Athens Through Time</title>
+        <title>Register : Erebus Portal | Athens Through Time</title>
         <meta
           name="description"
-          content="Create your account for the Athens Through-Time Vampire: The Masquerade LARP and start building your character in the Erebus Portal."
+          content="Create your account for the Athens Through Time Vampire: The Masquerade LARP and start building your character in the Erebus Portal."
         />
-        <meta property="og:title" content="Register — Erebus Portal | Athens Through Time" />
+        <meta property="og:title" content="Register : Erebus Portal | Athens Through Time" />
         <meta
           property="og:description"
-          content="Create your account for the Athens Through-Time Vampire: The Masquerade LARP and start building your character in the Erebus Portal."
+          content="Create your account for the Athens Through Time Vampire: The Masquerade LARP and start building your character in the Erebus Portal."
         />
       </Helmet>
       <div className={styles.vignette} aria-hidden="true" />

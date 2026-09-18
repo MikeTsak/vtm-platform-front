@@ -13,9 +13,9 @@
        See public/theme-init.js. -->
   <script src="/theme-init.js"></script>
 
-  <title>Erebus Portal — Athens Through-Time</title>
+  <title>Erebus Portal : Athens Through Time</title>
   <meta name="description"
-    content="Erebus Portal for the Athens Through-Time LARP. Create characters, manage downtimes, and navigate the court. Powered by Cerebral Productions." />
+    content="Erebus Portal for the Athens Through Time LARP. Create characters, manage downtimes, and navigate the court. Powered by Cerebral Productions." />
   <meta name="application-name" content="Erebus Portal" />
   <meta name="theme-color" content="#8a0f1a" />
   <meta name="color-scheme" content="dark only" />
@@ -28,7 +28,7 @@
   <link rel="manifest" href="/manifest.json" />
   <link rel="canonical" href="https://portal.attlarp.gr/" />
 
-  <meta property="og:title" content="Erebus Portal — Athens Through-Time" />
+  <meta property="og:title" content="Erebus Portal : Athens Through Time" />
   <meta property="og:description"
     content="Enter the Court. Build your character, spend XP, and coordinate your coterie." />
   <meta property="og:type" content="website" />
@@ -37,8 +37,8 @@
   <meta property="og:image" content="https://portal.attlarp.gr/img/ATT-logo(1).webp" />
   <meta property="og:image:alt" content="Erebus Portal ATT logo" />
   <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="Erebus Portal — Athens Through-Time" />
-  <meta name="twitter:description" content="V5 character builder & court tools for the Athens Through-Time LARP." />
+  <meta name="twitter:title" content="Erebus Portal : Athens Through Time" />
+  <meta name="twitter:description" content="V5 character builder & court tools for the Athens Through Time LARP." />
   <meta name="twitter:image" content="https://portal.attlarp.gr/img/ATT-logo(1).webp" />
 
   <script type="application/ld+json">
@@ -49,7 +49,7 @@
       "applicationCategory": "GameApplication",
       "operatingSystem": "Web",
       "url": "https://portal.attlarp.gr/",
-      "description": "Erebus Portal for the Athens Through-Time LARP. Create characters, manage downtimes, and navigate the court.",
+      "description": "Erebus Portal for the Athens Through Time LARP. Create characters, manage downtimes, and navigate the court.",
       "isPartOf": {
         "@type": "Organization",
         "name": "Athens Through Time",
@@ -77,25 +77,25 @@
   />
   <!-- Consent Mode bootstrap + GA4. Kept in an external, same-origin file
        (not inline) so index.html can ship a strict CSP with no
-       'unsafe-inline' in script-src — see public/analytics-init.js and
+       'unsafe-inline' in script-src, see public/analytics-init.js and
        public/.htaccess for the full rationale. Must run BEFORE the async
        gtag.js tag below.
 
        GA4 is the one script here that's fine to load unconditionally: it
        implements Google Consent Mode v2, and analytics-init.js sets every
-       consent signal to 'denied' before gtag.js ever runs — no cookies are
+       consent signal to 'denied' before gtag.js ever runs: no cookies are
        set and no personal data is processed until CookieConsent.jsx calls
        updateConsent(true). That's Google's own documented compliant
        pattern; blocking gtag.js entirely would actually break it (Consent
        Mode needs the tag present to send anonymous, cookieless pings before
        consent). AdSense and Microsoft Clarity do NOT have an equivalent
-       default-denied mode, so — unlike GA — those two are not loaded here
+       default-denied mode, so (unlike GA) those two are not loaded here
        at all; see src/utils/consentGatedScripts.js, which CookieConsent.jsx
        only calls once consent is actually granted. -->
   <script src="/analytics-init.js"></script>
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-Z7VCE9MCPT"></script>
-  <!-- Google AdSense site-verification meta only — the adsbygoogle.js script
+  <!-- Google AdSense site-verification meta only, the adsbygoogle.js script
        itself is consent-gated, see the comment above. -->
   <meta name="google-adsense-account" content="ca-pub-2086654176767394">
   <!-- Tailwind is now compiled at build time via PostCSS (tailwind.config.js + postcss.config.js) --></head>

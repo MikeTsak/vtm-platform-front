@@ -510,7 +510,7 @@ export default function AdminPremonitionsTab() {
                             {r.char_name ? (
                               <span className={s.recipientCharName}>
                                 {" "}
-                                — {r.char_name}
+                                : {r.char_name}
                               </span>
                             ) : null}
                             {r.viewed_at ? (
@@ -526,7 +526,7 @@ export default function AdminPremonitionsTab() {
                         ))}
                       </ul>
                     ) : (
-                      <div className={s.recipientChar}>—</div>
+                      <div className={s.recipientChar}>None</div>
                     )}
                   </div>
                 </li>

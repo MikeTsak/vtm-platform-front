@@ -2,7 +2,7 @@
 //
 // Out-of-clan discipline access: approve/reject player requests, or grant
 // access directly with no request involved. Backed by routes/disciplineAccess.js
-// (discipline_access + discipline_requests tables) — see that file for the
+// (discipline_access + discipline_requests tables): see that file for the
 // server-side gate this actually enforces at XP-spend time.
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import api from '../../core/api';
@@ -164,7 +164,7 @@ export default function AdminDisciplinesTab() {
       <div>
         <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>Discipline Access</h3>
         <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
-          A character can only buy dots in a discipline outside their clan once it's unlocked here —
+          A character can only buy dots in a discipline outside their clan once it's unlocked here:
           either you grant it directly, or a player requests it from their Disciplines tab and you approve it below.
         </p>
       </div>
@@ -199,7 +199,7 @@ export default function AdminDisciplinesTab() {
 
                       <div style={{ flex: '1 1 240px', minWidth: 0 }}>
                         <div style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
-                          {req.discipline} <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>— requested to level {req.requested_level}</span>
+                          {req.discipline} <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>: requested to level {req.requested_level}</span>
                         </div>
                         {req.message && (
                           <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '4px', fontStyle: 'italic' }}>
@@ -244,7 +244,7 @@ export default function AdminDisciplinesTab() {
                             disabled={busyKey === `reject-${req.id}`}
                             onClick={() => {
                               const note = window.prompt('Reason for the player (optional):', '');
-                              if (note === null) return; // cancelled — leave the request pending
+                              if (note === null) return; // cancelled: leave the request pending
                               reject(req, note);
                             }}
                           >
@@ -263,7 +263,7 @@ export default function AdminDisciplinesTab() {
           <div style={cardStyle}>
             <h4 style={{ margin: '0 0 12px', color: 'var(--text-primary)' }}>Grant Directly</h4>
             <p style={{ margin: '0 0 12px', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-              Skip the request queue — unlock a discipline for a character right now.
+              Skip the request queue: unlock a discipline for a character right now.
             </p>
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
               <label className={styles.labeledInput} style={{ flex: '1 1 220px', position: 'relative' }}>
@@ -315,7 +315,7 @@ export default function AdminDisciplinesTab() {
 
               <label className={styles.labeledInput} style={{ flex: '1 1 200px' }}>
                 <span>Note (optional)</span>
-                <input className={styles.input} placeholder="Why — for your own records" value={grantNote} onChange={e => setGrantNote(e.target.value)} />
+                <input className={styles.input} placeholder="Why: for your own records" value={grantNote} onChange={e => setGrantNote(e.target.value)} />
               </label>
 
               <button className={`${styles.btn} ${styles.btnPrimary}`} disabled={grantBusy} onClick={submitDirectGrant}>
@@ -359,7 +359,7 @@ export default function AdminDisciplinesTab() {
                         <td style={tdStyle}><CharBadge name={row.character_name} clan={row.character_clan} /></td>
                         <td style={tdStyle}>{row.discipline}</td>
                         <td style={tdStyle}>Level {row.max_level}</td>
-                        <td style={{ ...tdStyle, color: 'var(--text-secondary)', maxWidth: '240px' }}>{row.note || '—'}</td>
+                        <td style={{ ...tdStyle, color: 'var(--text-secondary)', maxWidth: '240px' }}>{row.note || 'None'}</td>
                         <td style={{ ...tdStyle, color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
                           {formatEuDate(row.granted_at)}{row.granted_by_name ? ` · ${row.granted_by_name}` : ''}
                         </td>
@@ -389,7 +389,7 @@ export default function AdminDisciplinesTab() {
                   <div key={req.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', padding: '10px 14px', background: 'var(--glass-inset)', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)', borderLeft: `4px solid ${req.status === 'approved' ? 'var(--color-success)' : 'var(--color-error)'}` }}>
                     <div>
                       <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{req.character_name}</span>
-                      <span style={{ color: 'var(--text-secondary)' }}> — {req.discipline} (asked for {req.requested_level}{req.granted_level ? `, granted ${req.granted_level}` : ''})</span>
+                      <span style={{ color: 'var(--text-secondary)' }}>: {req.discipline} (asked for {req.requested_level}{req.granted_level ? `, granted ${req.granted_level}` : ''})</span>
                       {req.admin_note && <div style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', fontStyle: 'italic', marginTop: '2px' }}>{req.admin_note}</div>}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

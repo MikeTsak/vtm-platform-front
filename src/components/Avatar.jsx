@@ -34,7 +34,7 @@ export default function Avatar({ userId, npcId, identityId, retainerId, clan, si
 
   // Builds the query string for the full-size request, and the matching
   // one for the small `?size=thumb` variant the backend can redirect to
-  // (see migrations/list/0011_avatar_thumb_urls.js) — kept as one helper so
+  // (see migrations/list/0011_avatar_thumb_urls.js), kept as one helper so
   // the `?t=` cache-busting param stays in sync between the two.
   const buildQuery = (extra) => {
     const params = [];
@@ -188,12 +188,12 @@ export default function Avatar({ userId, npcId, identityId, retainerId, clan, si
         <img
           src={srcUrl}
           crossOrigin={srcUrl && (srcUrl.startsWith('data:') || srcUrl.startsWith('blob:') || (srcUrl.startsWith('http') && !srcUrl.includes('miketsak.gr'))) ? undefined : "anonymous"}
-          // `size` isn't always a pixel number — several call sites pass
+          // `size` isn't always a pixel number: several call sites pass
           // "100%" to fill a variably-sized container (chat rows, admin
           // grids, the court hierarchy cards). We can't know the actual
           // rendered pixel size from that alone, and a wrong guess here is
           // an invalid `sizes` value (e.g. "100%px"), not just a missed
-          // optimization — so only offer the thumb when we truly know the
+          // optimization, so only offer the thumb when we truly know the
           // display size. The percentage cases keep today's exact
           // behavior: full-size `src`, no srcset.
           srcSet={thumbSrcUrl && typeof size === 'number' ? `${thumbSrcUrl} 160w, ${srcUrl} 500w` : undefined}

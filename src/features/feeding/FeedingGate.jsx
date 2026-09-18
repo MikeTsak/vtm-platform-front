@@ -5,7 +5,7 @@
 // otherwise blocks `children` (the Actions/Projects tabs) entirely.
 //
 // The roll itself is server-authoritative and persisted the instant it's
-// made (see back/routes/feeding.js) — reloading this page always reconstructs
+// made (see back/routes/feeding.js): reloading this page always reconstructs
 // the exact same pending roll via GET /feeding/status. From a pending roll
 // there are exactly two moves: Accept, or spend Willpower to reroll (once).
 // There is no way to discard a roll and start over.
@@ -87,9 +87,9 @@ function StatChip({ icon, color, children }) {
   );
 }
 
-// Safety (0-10, green=safe -> red=exposed) and Hunting Difficulty (2-7,
+// Safety (0 to 10, green=safe -> red=exposed) and Hunting Difficulty (2 to 7,
 // blue=easiest -> orange=hardest) are two unrelated numbers with two
-// unrelated meanings — see the in-app copy below — so each gets its own
+// unrelated meanings (see the in-app copy below), so each gets its own
 // icon and its own color scale rather than looking like the same stat.
 function SafetyPill({ value }) {
   const color = safetyColor(value);

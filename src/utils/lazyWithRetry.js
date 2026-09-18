@@ -2,7 +2,7 @@
 //
 // A route's lazy-loaded JS chunk (and, once per-route CSS code-splitting is
 // enabled, its CSS chunk too) is fetched by filename hash. The moment a new
-// build is deployed, the old build's chunk files are gone — anyone who still
+// build is deployed, the old build's chunk files are gone, anyone who still
 // has the previous index.html open in a tab, and then navigates to a route
 // they haven't visited yet this session, gets a 404 on that dynamic import.
 // Vite's import() rejects, nothing catches it, and the user sees a blank
@@ -32,7 +32,7 @@ export function shouldReloadForChunkFailure(storage, now = Date.now()) {
   try {
     lastReload = Number(storage.getItem(STORAGE_KEY)) || 0;
   } catch {
-    // Storage unavailable (private mode, etc.) — treat as "no recent reload".
+    // Storage unavailable (private mode, etc.): treat as "no recent reload".
   }
 
   if (now - lastReload <= RELOAD_COOLDOWN_MS) return false;
@@ -52,10 +52,10 @@ export function lazyWithRetry(importer) {
     } catch (error) {
       if (shouldReloadForChunkFailure(window.sessionStorage)) {
         window.location.reload();
-        // Never resolve — the page is navigating away, nothing should render.
+        // Never resolve: the page is navigating away, nothing should render.
         return new Promise(() => {});
       }
-      // Already reloaded once recently and it's still failing — a real
+      // Already reloaded once recently and it's still failing: a real
       // error (bad network, genuinely missing file), not a stale deploy.
       // Let it surface normally instead of reloading forever.
       throw error;

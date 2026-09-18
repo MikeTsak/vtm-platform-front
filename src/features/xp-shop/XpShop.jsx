@@ -45,7 +45,7 @@ function BuyAttribute({ currentXp, attributes, onBuy }) {
 
     return (
         <div className={`${styles.card} ${!canAfford ? styles.disabled : ''}`}>
-            <div className={styles.cardHead}><b>Increase Attribute</b> <small className={styles.muted}>— {xp.calculateAttributeCost('N')} XP</small></div>
+            <div className={styles.cardHead}><b>Increase Attribute</b> <small className={styles.muted}>: {xp.calculateAttributeCost('N')} XP</small></div>
             <div className={styles.rowForm}>
                 <select className={styles.input} value={target} onChange={e => setTarget(e.target.value)}>
                     {options.map(o => <option key={o} value={o}>{o}</option>)}
@@ -69,7 +69,7 @@ function BuySkill({ currentXp, skills, onBuy }) {
 
     return (
         <div className={`${styles.card} ${!canAfford ? styles.disabled : ''}`}>
-            <div className={styles.cardHead}><b>Increase Skill</b> <small className={styles.muted}>— {xp.calculateSkillCost('N')} XP</small></div>
+            <div className={styles.cardHead}><b>Increase Skill</b> <small className={styles.muted}>: {xp.calculateSkillCost('N')} XP</small></div>
             <div className={styles.rowForm}>
                 <select className={styles.input} value={target} onChange={e => setTarget(e.target.value)}>
                     {options.map(o => <option key={o} value={o}>{o}</option>)}
@@ -88,7 +88,7 @@ function BuySimple({ label, hint, cost, currentXp, options, onBuy }) {
 
     return (
         <div className={`${styles.card} ${!canAfford ? styles.disabled : ''}`}>
-            <div className={styles.cardHead}><b>{label}</b> <small className={styles.muted}>— {hint}</small></div>
+            <div className={styles.cardHead}><b>{label}</b> <small className={styles.muted}>: {hint}</small></div>
             <div className={styles.rowForm}>
                 <input className={styles.input} value={target} onChange={e=>setTarget(e.target.value)} list={`${label}-options`} placeholder="e.g., Finance: Stock Market"/>
                 <datalist id={`${label}-options`}>
@@ -112,7 +112,7 @@ function BuyDiscipline({ currentXp, disciplines, clan, onPick }) {
 
   return (
     <div className={`${styles.card} ${!canAfford ? styles.disabled : ''}`}>
-      <div className={styles.cardHead}><b>Discipline</b> <small className={styles.muted}>— Clan: N×5, Other: N×7</small></div>
+      <div className={styles.cardHead}><b>Discipline</b> <small className={styles.muted}>: Clan: N×5, Other: N×7</small></div>
       <div className={styles.rowForm}>
         <select className={styles.input} value={name} onChange={(e)=>setName(e.target.value)}>
           {ALL_DISCIPLINE_NAMES.map(n => <option key={n}>{n}</option>)}
@@ -148,7 +148,7 @@ function BuyRitual({ currentXp, sheet, onBuy }) {
 
     return (
         <div className={`${styles.card} ${!canAfford ? styles.disabled : ''}`}>
-            <div className={styles.cardHead}><b>Ritual or Ceremony</b> <small className={styles.muted}>— Level × 3 XP</small></div>
+            <div className={styles.cardHead}><b>Ritual or Ceremony</b> <small className={styles.muted}>: Level × 3 XP</small></div>
             {!hasDiscipline && <div className={styles.alertWarning}>Requires at least one dot in {kind === 'blood_sorcery' ? 'Blood Sorcery' : 'Oblivion'} to purchase.</div>}
             <div className={styles.rowForm}>
                 <select className={styles.input} value={kind} onChange={e => { setKind(e.target.value); }} style={{flex:'0 1 180px'}}>
@@ -177,7 +177,7 @@ function BuyDots({ label, hint, costPerDot, currentXp, onBuy }) {
 
   return (
     <div className={`${styles.card} ${!canAfford ? styles.disabled : ''}`}>
-      <div className={styles.cardHead}><b>{label}</b> <small className={styles.muted}>— {hint}</small></div>
+      <div className={styles.cardHead}><b>{label}</b> <small className={styles.muted}>: {hint}</small></div>
       <div className={styles.rowForm}>
         <input className={styles.input} value={name} onChange={e=>setName(e.target.value)} placeholder="Advantage Name"/>
         <input className={styles.input} type="number" value={dots} min={1} max={5} onChange={e=>setDots(Number(e.target.value))} title="Dots" style={{flex:'0 1 100px'}}/>
@@ -195,7 +195,7 @@ function BuyLevel({ label, hint, costMultiplier, currentLevel, currentXp, onBuy 
 
   return (
     <div className={`${styles.card} ${!canAfford ? styles.disabled : ''}`}>
-      <div className={styles.cardHead}><b>{label}</b> <small className={styles.muted}>— {hint}</small></div>
+      <div className={styles.cardHead}><b>{label}</b> <small className={styles.muted}>: {hint}</small></div>
       <div className={styles.rowForm}>
          <span className={styles.dim}>Level: {currentLevel} → {next}</span>
         <span className={styles.costText}>Cost: {cost} XP</span>

@@ -115,7 +115,7 @@ export const RETAINER_MERITS_AND_FLAWS = {
         blurb: 'Foundations from mortal life.[cite: 2]',
         groups: {
             'Allies': {
-                merits: [{ id: idFor('Backgrounds Allies', 'Allies'), name: 'Allies', dots: '•• - ••••••', description: 'Build between (•–••••) Effectiveness and (•–•••) Reliability.[cite: 2]' }],
+                merits: [{ id: idFor('Backgrounds Allies', 'Allies'), name: 'Allies', dots: '•• - ••••••', description: 'Build between (• - ••••) Effectiveness and (• - •••) Reliability.[cite: 2]' }],
                 flaws: [{ id: idFor('Backgrounds Allies', 'Enemy'), name: 'Enemy', dots: '• +', description: 'Opposite of Allies; rated two dots less than your Allies effectiveness.[cite: 2]' }],
             },
             'Contacts': {
@@ -128,9 +128,9 @@ export const RETAINER_MERITS_AND_FLAWS = {
                     { id: idFor('Backgrounds Fame', 'Influencer'), name: 'Influencer', dots: '•', description: 'Requires Fame ••+. Have the equivalent Influence rating equal to your Fame minus one towards a fan once per story.[cite: 2]' },
                 ],
                 flaws: [
-                    { id: idFor('Backgrounds Fame', 'Dark Secret'), name: 'Dark Secret', dots: '• +', description: 'A dangerous secret known to a few dedicated enemies.[cite: 2]' },
-                    { id: idFor('Backgrounds Fame', 'Infamy'), name: 'Infamy', dots: '• +', description: 'You did something atrocious and others know.[cite: 2]' },
-                ],
+                    { id: idFor('Backgrounds Fame', 'Dark Secret'), name: 'Dark Secret', dots: '• or ••', description: 'A secret that could destroy you if revealed.[cite: 2]' },
+                    { id: idFor('Backgrounds Fame', 'Infamy'), name: 'Infamy', dots: '• - •••', description: 'Notoriety for the wrong reasons.[cite: 2]' },
+                ]
             },
             'Influence': {
                 merits: [{ id: idFor('Backgrounds Influence', 'Influence'), name: 'Influence', dots: '• - •••••', description: 'Sway in mortal spheres; typically limited to a group/region.[cite: 2]' }],
@@ -171,8 +171,8 @@ function parseDotSpec(spec = '') {
     const opts = src.split(/\bor\b/i).map(s => bulletCount(s)).filter(n => n > 0);
     return Array.from(new Set(opts)).sort((a, b) => a - b);
   }
-  if (src.includes('-')) {
-    const [lo, hi] = src.split('-').map(s => bulletCount(s));
+  if (src.includes('-') || src.includes('–') || src.includes('—') || /\bto\b/i.test(src)) {
+    const [lo, hi] = src.split(/\s*(?:-|–|—|to)\s*/i).map(s => bulletCount(s));
     if (lo > 0 && hi >= lo) { const out = []; for (let i = lo; i <= hi; i++) out.push(i); return out; }
   }
   if (src.includes('+')) {

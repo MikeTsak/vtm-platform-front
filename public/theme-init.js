@@ -1,12 +1,12 @@
 /* Pre-paint theme bootstrap.
  *
  * The app's theme engine (src/core/ThemeContext.jsx) only runs once React has
- * mounted. Without this file, every cold load — and every deep link to a
- * non-home route — would paint one frame with the default Camarilla crimson
+ * mounted. Without this file, every cold load (and every deep link to a
+ * non-home route) would paint one frame with the default Camarilla crimson
  * palette before the saved theme took over, a visible flash.
  *
  * Kept as an external same-origin file (not inline) because index.html ships a
- * strict CSP with no 'unsafe-inline' in script-src — same rationale as
+ * strict CSP with no 'unsafe-inline' in script-src, same rationale as
  * analytics-init.js. Must run in <head>, before the app bundle.
  *
  * Keep THEMES in sync with ThemeContext.jsx / back/routes/auth.js.
@@ -95,6 +95,6 @@
       }
     }
   } catch (e) {
-    /* private-mode / storage disabled — the CSS defaults are fine */
+    /* private mode / storage disabled: the CSS defaults are fine */
   }
 })();

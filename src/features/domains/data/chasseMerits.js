@@ -1,13 +1,13 @@
 // ── Chasse Merits ────────────────────────────────────────────────────────
 // Landmark-based feeding-ground merits (V5 Cults of the Blood Gods / Chicago
 // by Night domain rules). These are hand-assigned to the Athens map divisions
-// whose real-world landmarks fit — a hospital row, a nightlife strip, a
+// whose real-world landmarks fit: a hospital row, a nightlife strip, a
 // cemetery, embassy villas, etc. Shown only in the division dossier (side
 // panel), for every player. `dots` on an assignment overrides the merit's
 // canonical rating where the local landmark is a lesser version of it.
 //
 // Font Awesome 6 Free (Solid) glyphs, inlined as { viewBox, path } so we don't
-// pull in the whole icon library. Icons: CC BY 4.0 — fontawesome.com/license.
+// pull in the whole icon library. Icons: CC BY 4.0: fontawesome.com/license.
 
 export const CHASSE_MERIT_DEFS = {
   apartment_towers: {
@@ -60,7 +60,7 @@ export const CHASSE_MERIT_DEFS = {
     },
     color: '#c7a86a',
     description:
-      "The base Difficulty for Larceny tests and related tests is equivalent to the Resource dots of the average resident. Sandman Predator Type vampires receive one bonus die on their hunts in the domain. The mortals within this area tend to be educated professionals or otherwise, making them good sources for Allies, Contacts, or Retainers — but on the flip side can cause problems if they spot a vampire hunting. Storytellers may deny this Merit if the coterie is located in the heart of a city.",
+      "The base Difficulty for Larceny tests and related tests is equivalent to the Resource dots of the average resident. Sandman Predator Type vampires receive one bonus die on their hunts in the domain. The mortals within this area tend to be educated professionals or otherwise, making them good sources for Allies, Contacts, or Retainers, but on the flip side can cause problems if they spot a vampire hunting. Storytellers may deny this Merit if the coterie is located in the heart of a city.",
   },
   hospital: {
     name: 'Hospital',
@@ -106,13 +106,13 @@ export const CHASSE_MERIT_DEFS = {
 // division number -> [{ merit, dots?, note? }]
 // note = the specific Athens landmark that earns the merit.
 export const DIVISION_CHASSE = {
-  1: [{ merit: 'funerary', note: 'The First Cemetery of Athens at Mets — marble mausoleums, family vaults, night wardens who look the other way.' }],
+  1: [{ merit: 'funerary', note: 'The First Cemetery of Athens at Mets: marble mausoleums, family vaults, night wardens who look the other way.' }],
   2: [
     { merit: 'funerary', note: 'Zografou Cemetery on the Hymettos slope.' },
     { merit: 'nightlife', dots: 2, note: 'Student bars around the Panepistimioupoli campus and Kaisariani square.' },
   ],
   3: [
-    { merit: 'back_alleys', note: 'The tight grid of Exarcheia — arcades, courtyards, walls of posters.' },
+    { merit: 'back_alleys', note: 'The tight grid of Exarcheia: arcades, courtyards, walls of posters.' },
     { merit: 'shelter', note: 'Long-running squats and refugee housing off the square.' },
   ],
   4: [
@@ -120,7 +120,7 @@ export const DIVISION_CHASSE = {
     { merit: 'gated_community', note: 'The Kavouri and Vouliagmeni villa strip.' },
   ],
   5: [
-    { merit: 'hospital', note: 'The hospital row along Mesogeíon and Vas. Sofías — Gennimatás, the children\'s hospitals, the 401 Military Hospital.' },
+    { merit: 'hospital', note: 'The hospital row along Mesogeíon and Vas. Sofías: Gennimatás, the children\'s hospitals, the 401 Military Hospital.' },
     { merit: 'apartment_towers', note: 'The Athens Tower complex, the tallest in the city.' },
   ],
   6: [
@@ -132,7 +132,7 @@ export const DIVISION_CHASSE = {
     { merit: 'nightlife', dots: 2, note: 'Taverna courtyards and the bars spilling up from Monastiráki.' },
   ],
   9: [
-    { merit: 'nightlife', note: 'Gázi — Technópolis, the clubs and queer bars around the old gasworks.' },
+    { merit: 'nightlife', note: 'Gázi: Technópolis, the clubs and queer bars around the old gasworks.' },
     { merit: 'funerary', note: 'The ancient Kerameikós necropolis and its Sacred Gate.' },
   ],
   11: [{ merit: 'nightlife', dots: 2, note: 'The café-bar strip along Apostólou Pávlou under the Acropolis.' }],
@@ -141,21 +141,21 @@ export const DIVISION_CHASSE = {
   16: [{ merit: 'nightlife', dots: 2, note: 'The Onassis Stégi / Fix corridor along Syngroú.' }],
   18: [
     { merit: 'nightlife', note: 'Kolonáki\'s bars and members\' clubs.' },
-    { merit: 'hospital', note: 'The Evangelismós–Laïkó–Alexándra hospital cluster on Vas. Sofías.' },
+    { merit: 'hospital', note: 'The Evangelismós, Laïkó, Alexándra hospital cluster on Vas. Sofías.' },
   ],
   19: [
-    { merit: 'apartment_towers', note: 'One of the densest municipalities in the country — nothing but apartment blocks.' },
+    { merit: 'apartment_towers', note: 'One of the densest municipalities in the country: nothing but apartment blocks.' },
     { merit: 'nightlife', dots: 2, note: 'The bars around Peristéri square.' },
   ],
   20: [{ merit: 'apartment_towers', note: 'Dense working-class blocks around the university.' }],
-  23: [{ merit: 'gated_community', note: 'Psychikó — embassy residences, walled gardens, private security.' }],
+  23: [{ merit: 'gated_community', note: 'Psychikó: embassy residences, walled gardens, private security.' }],
   24: [
     { merit: 'shelter', note: 'The hostels and soup kitchens around Attikí and Viktoría squares.' },
     { merit: 'back_alleys', note: 'The gutted arcades of Metaxourgeío.' },
   ],
-  25: [{ merit: 'apartment_towers', note: 'Kypséli — Europe\'s most densely built neighbourhood, balcony over balcony.' }],
+  25: [{ merit: 'apartment_towers', note: 'Kypséli: Europe\'s most densely built neighbourhood, balcony over balcony.' }],
   27: [
-    { merit: 'gated_community', note: 'Ekáli and Politeía — the gated estates north of Kifisiá.' },
+    { merit: 'gated_community', note: 'Ekáli and Politeía: the gated estates north of Kifisiá.' },
     { merit: 'hospital', note: 'KAT, the national accident and trauma hospital.' },
   ],
   28: [{ merit: 'nightlife', dots: 2, note: 'The Álimos marina beach bars.' }],
@@ -171,24 +171,24 @@ export const DIVISION_CHASSE = {
     { merit: 'shelter', note: 'The rough ground around Kolonós and the freight yards.' },
     { merit: 'back_alleys', note: 'Warehouse lanes behind Sepólia.' },
   ],
-  35: [{ merit: 'gated_community', note: 'Papágou — a planned garden suburb of officers\' housing, quiet and self-contained.' }],
-  36: [{ merit: 'hospital', note: 'The Goudí medical campus — Sotiría, the military hospital, the children\'s hospitals of Athens.' }],
+  35: [{ merit: 'gated_community', note: 'Papágou: a planned garden suburb of officers\' housing, quiet and self-contained.' }],
+  36: [{ merit: 'hospital', note: 'The Goudí medical campus: Sotiría, the military hospital, the children\'s hospitals of Athens.' }],
   39: [
-    { merit: 'shelter', note: 'Omónoia and Váthis — the shelters, the migrant hostels, the people who sleep in the arcades.' },
+    { merit: 'shelter', note: 'Omónoia and Váthis: the shelters, the migrant hostels, the people who sleep in the arcades.' },
     { merit: 'back_alleys', note: 'The wholesale market lanes and covered stoás of the old commercial triangle.' },
-    { merit: 'nightlife', note: 'Syntagma to Sofokléous — the central bars, the after-hours spots, the crowds that never fully thin.' },
+    { merit: 'nightlife', note: 'Syntagma to Sofokléous: the central bars, the after-hours spots, the crowds that never fully thin.' },
     { merit: 'apartment_towers', note: 'Dense residential stacked over the ground-floor shops, plus the tower hotels around the squares.' },
     { merit: 'funerary', dots: 1, note: 'The Mitrópolis and the smaller downtown churches keep active crypts and mortuary chapels.' },
   ],
   40: [
-    { merit: 'nightlife', note: 'Psyrrí — the densest concentration of bars and late kitchens in the centre.' },
+    { merit: 'nightlife', note: 'Psyrrí: the densest concentration of bars and late kitchens in the centre.' },
     { merit: 'back_alleys', note: 'Ironmongers\' rows and dead-end courtyards off the squares.' },
   ],
   43: [
-    { merit: 'nightlife', note: 'Mikrolímano and Pasalimáni — the harbour bars and clubs of Piraeus.' },
+    { merit: 'nightlife', note: 'Mikrolímano and Pasalimáni: the harbour bars and clubs of Piraeus.' },
     { merit: 'hospital', note: 'Tzáneio general hospital.' },
     { merit: 'apartment_towers', note: 'The Piraeus Tower and the wall of high blocks facing the Great Harbour.' },
-    { merit: 'back_alleys', note: 'The warehouse grid behind the port — Ágios Dionýsios, the customs yards, the container lanes.' },
+    { merit: 'back_alleys', note: 'The warehouse grid behind the port: Ágios Dionýsios, the customs yards, the container lanes.' },
     { merit: 'shelter', note: 'The seamen\'s missions and the transients who pass through the ferry gates and never leave.' },
   ],
   44: [{ merit: 'hospital', note: 'Attikón university hospital and the Dromokaíteio.' }],
@@ -199,16 +199,16 @@ export const DIVISION_CHASSE = {
   ],
   48: [{ merit: 'hospital', note: 'Thriásio general hospital.' }],
   83: [
-    { merit: 'back_alleys', note: 'The Paloúkia ferry ramp and the naval-yard fence line — dockworkers, night crews, sailors between watches.' },
+    { merit: 'back_alleys', note: 'The Paloúkia ferry ramp and the naval-yard fence line: dockworkers, night crews, sailors between watches.' },
     { merit: 'shelter', dots: 1, note: 'The shanty edges of Salamína town and Aiánteio, cut off from the mainland every night when the boats stop.' },
   ],
   84: [{ merit: 'funerary', note: 'The old chapels and rock-cut tombs around the Cave of Pan at Fylí, and the mountain cemeteries the city forgets.' }],
   85: [
-    { merit: 'back_alleys', note: 'The SKA freight yards and the wholesale-market sprawl of Menídi — containers, sidings, and the lanes behind them.' },
+    { merit: 'back_alleys', note: 'The SKA freight yards and the wholesale-market sprawl of Menídi: containers, sidings, and the lanes behind them.' },
     { merit: 'shelter', note: 'The rougher blocks of Menídi and the Roma quarters on the town\'s northern edge.' },
   ],
   88: [
-    { merit: 'back_alleys', note: 'The Skaramangá shipyards — dry docks, gantry cranes, warehouse rows, and the workers\' gate on the coast road.' },
+    { merit: 'back_alleys', note: 'The Skaramangá shipyards: dry docks, gantry cranes, warehouse rows, and the workers\' gate on the coast road.' },
     { merit: 'shelter', note: 'The Skaramangás camp and the transients who pass through the container port and the coast highway.' },
   ],
 };

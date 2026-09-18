@@ -8,20 +8,20 @@ import { RandomizeButton, StatusIcon, Icon } from './StepHelpers';
 const pickRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
 // Short, plain-language descriptions for new players deciding between
-// Disciplines — not full rules text, just "what does this actually do".
+// Disciplines: not full rules text, just "what does this actually do".
 const DISCIPLINE_BLURBS = {
-  Animalism: "A close, supernatural bond with the animal world — and with a vampire's own Beast.",
-  Auspex: 'Hones the senses, both physical and psychic — sharper awareness, perception, even visions of the future.',
+  Animalism: "A close, supernatural bond with the animal world, and with a vampire's own Beast.",
+  Auspex: 'Hones the senses, both physical and psychic: sharper awareness, perception, even visions of the future.',
   'Blood Sorcery': 'Blood magic: manipulating blood, mortal or vampiric, plus rituals as an extension of it.',
   Celerity: 'Unnatural quickness of movement and supernatural reflexes.',
   Dominate: "Mind control through eye contact and spoken word, and the power to reshape a victim's memories.",
   Fortitude: 'Strengthens physical and mental resistance.',
-  Obfuscate: 'The art of not being seen — whether wholly unseen or simply blending into a crowd.',
+  Obfuscate: 'The art of not being seen, whether wholly unseen or simply blending into a crowd.',
   Oblivion: 'Taps into the Abyss: manipulating shadows, or wielding necromancy and spirits.',
   Potence: 'Strengthens physical prowess.',
   Presence: 'Subtle manipulation, control, and swaying of emotions to guide others toward a goal.',
-  Protean: "Change one's shape — grow claws, meld into earth, or become fog.",
-  'Thin-blood Alchemy': 'Mixtures of blood, emotion, and other ingredients that trigger unique effects — or mimic other Disciplines.',
+  Protean: "Change one's shape: grow claws, meld into earth, or become fog.",
+  'Thin-blood Alchemy': 'Mixtures of blood, emotion, and other ingredients that trigger unique effects, or mimic other Disciplines.',
 };
 
 export default function DisciplinesStep({
@@ -37,7 +37,7 @@ export default function DisciplinesStep({
 
   // Predator type can grant a free dot in a discipline (independent of the
   // two picked below). When it lands on one of those two, its budget needs
-  // to account for that extra dot right here — otherwise the player is never
+  // to account for that extra dot right here, otherwise the player is never
   // asked to pick its power during creation, and the sheet ends up with a
   // discipline dot that has no matching power (surfaced later as a gap-fill
   // prompt on the character sheet).
@@ -68,7 +68,7 @@ export default function DisciplinesStep({
   // Shared power-choosing walk: always take one legal Level 1 power first,
   // then keep adding legal powers (Level 2 only if its prerequisite is
   // already among the picks) until the budget is filled or nothing else
-  // qualifies. `chooser` picks one item from a legal candidate list —
+  // qualifies. `chooser` picks one item from a legal candidate list:
   // pass `arr => arr[0]` for a deterministic "Suggest" or a random picker
   // for "Randomize".
   const choosePowers = (discName, budget, chooser) => {
@@ -102,7 +102,7 @@ export default function DisciplinesStep({
     });
   };
 
-  // Budget for a discipline given a specific favored pick — used by
+  // Budget for a discipline given a specific favored pick: used by
   // applySuggested/randomizeDiscs, which set `favoredDisc` state in the same
   // tick they need the budget, so they can't rely on the (not-yet-updated)
   // `favoredDisc` closure that `budgetFor` reads.
@@ -229,8 +229,8 @@ export default function DisciplinesStep({
                         {powers.map(p => (
                           <div key={p.id || p.name} style={{ fontSize: '0.8rem' }}>
                             <b style={{ color: 'var(--text-color)' }}>{p.name}</b>
-                            {p.dice_pool && p.dice_pool !== '—' && (
-                              <span className={styles.muted}> — {p.dice_pool}</span>
+                            {p.dice_pool && p.dice_pool !== '—' && p.dice_pool !== 'None' && (
+                              <span className={styles.muted}>: {p.dice_pool}</span>
                             )}
                             {p.notes && <div className={styles.muted} style={{ marginTop: 2 }}>{p.notes}</div>}
                           </div>
@@ -251,7 +251,7 @@ export default function DisciplinesStep({
             Choose Your Starting Powers ({powersChosenCount}/{powersBudgetTotal})
           </h4>
           <p className={styles.muted}>
-            Optional at this stage — your Storyteller can help you finalize these later — but picking now means your sheet is ready to play from night one.
+            Optional at this stage (your Storyteller can help you finalize these later), but picking now means your sheet is ready to play from night one.
           </p>
           <div className={styles.grid2}>
             {selectedDiscs.map(d => {
@@ -298,7 +298,7 @@ export default function DisciplinesStep({
                           <span style={{ flex: 1 }}>
                             <b style={{ color: 'var(--text-color)' }}>{p.name}</b>
                             <span className={styles.muted}> (Level {p.level})</span>
-                            {p.dice_pool && p.dice_pool !== '—' && <span className={styles.muted}> — {p.dice_pool}</span>}
+                            {p.dice_pool && p.dice_pool !== '—' && p.dice_pool !== 'None' && <span className={styles.muted}>: {p.dice_pool}</span>}
                             {p.notes && <div className={styles.muted} style={{ marginTop: 2 }}>{p.notes}</div>}
                             {locked && !isPicked && isPowerLocked(d, p) && (
                               <div className={styles.muted} style={{ marginTop: 2, fontStyle: 'italic' }}>Requires: {p.prerequisite}</div>

@@ -1,14 +1,14 @@
 {
     "type": "FeatureCollection",
     "name": "athens-necropolis",
-    "note": "ADMIN-ONLY. Two wholly fictional Kindred necropoleis. The OLD necropolis under central Athens is sealed and inaccessible; its galleries are drawn ragged and broken because the records are fragments — nothing here is confirmed. The NEW necropolis is a small, recent site above Papagou. Not real. Not for players yet.",
+    "note": "ADMIN-ONLY. Two wholly fictional Kindred necropoleis. The OLD necropolis under central Athens is sealed and inaccessible; its galleries are drawn ragged and broken because the records are fragments, nothing here is confirmed. The NEW necropolis is a small, recent site above Papagou. Not real. Not for players yet.",
     "features": [
         {
             "type": "Feature",
             "properties": {
                 "kind": "passage",
                 "necropolis": "old",
-                "name": "The New Cut — Rock Vaults to the entrance",
+                "name": "The New Cut: Rock Vaults to the entrance",
                 "certainty": "charted",
                 "status": "sealed"
             },
@@ -53,7 +53,7 @@
             "properties": {
                 "kind": "passage",
                 "necropolis": "old",
-                "name": "The New Cut — entrance to Syngrou-Fix",
+                "name": "The New Cut: entrance to Syngrou-Fix",
                 "certainty": "charted",
                 "status": "sealed"
             },
@@ -98,7 +98,7 @@
             "properties": {
                 "kind": "passage",
                 "necropolis": "old",
-                "name": "The New Cut — the drop to the Hypogeum",
+                "name": "The New Cut: the drop to the Hypogeum",
                 "certainty": "hearsay",
                 "status": "sealed"
             },
@@ -314,7 +314,7 @@
             "properties": {
                 "kind": "passage",
                 "necropolis": "old",
-                "name": "The Kerameikos reach — lower run",
+                "name": "The Kerameikos reach: lower run",
                 "certainty": "lost",
                 "status": "collapsed"
             },
@@ -361,7 +361,7 @@
             "properties": {
                 "kind": "passage",
                 "necropolis": "old",
-                "name": "The Gazi reach — to the furnace",
+                "name": "The Gazi reach: to the furnace",
                 "certainty": "hearsay",
                 "status": "sealed"
             },
@@ -668,7 +668,7 @@
             "properties": {
                 "kind": "passage",
                 "necropolis": "old",
-                "name": "The Plaka warren — east branch",
+                "name": "The Plaka warren: east branch",
                 "certainty": "lost",
                 "status": "sealed"
             },
@@ -894,7 +894,7 @@
             "properties": {
                 "kind": "passage",
                 "necropolis": "old",
-                "name": "The stadium loop — cemetery spur",
+                "name": "The stadium loop: cemetery spur",
                 "certainty": "lost",
                 "status": "collapsed"
             },
@@ -1059,7 +1059,7 @@
             "properties": {
                 "kind": "passage",
                 "necropolis": "old",
-                "name": "Gallery west — terminus unknown",
+                "name": "Gallery west: terminus unknown",
                 "certainty": "lost",
                 "status": "sealed"
             },
@@ -1106,7 +1106,7 @@
             "properties": {
                 "kind": "passage",
                 "necropolis": "old",
-                "name": "Gallery north — terminus unknown",
+                "name": "Gallery north: terminus unknown",
                 "certainty": "lost",
                 "status": "sealed"
             },
@@ -1153,7 +1153,7 @@
             "properties": {
                 "kind": "passage",
                 "necropolis": "old",
-                "name": "Gallery east — terminus unknown",
+                "name": "Gallery east: terminus unknown",
                 "certainty": "lost",
                 "status": "sealed"
             },
@@ -1200,7 +1200,7 @@
             "properties": {
                 "kind": "passage",
                 "necropolis": "old",
-                "name": "The deep link — the Lower Halls to the Black Gate",
+                "name": "The deep link: the Lower Halls to the Black Gate",
                 "certainty": "lost",
                 "status": "sealed"
             },
@@ -1247,7 +1247,7 @@
             "properties": {
                 "kind": "passage",
                 "necropolis": "old",
-                "name": "The Black Gate — beyond, nothing recorded",
+                "name": "The Black Gate: beyond, nothing recorded",
                 "certainty": "lost",
                 "status": "sealed"
             },
@@ -1294,7 +1294,7 @@
             "properties": {
                 "kind": "passage",
                 "necropolis": "old",
-                "name": "Cross-tie — Areopagus to the Plaka warren",
+                "name": "Cross-tie: Areopagus to the Plaka warren",
                 "certainty": "lost",
                 "status": "sealed"
             },
@@ -1341,7 +1341,7 @@
             "properties": {
                 "kind": "passage",
                 "necropolis": "old",
-                "name": "Cross-tie — Hypogeum to the ossuary",
+                "name": "Cross-tie: Hypogeum to the ossuary",
                 "certainty": "hearsay",
                 "status": "sealed"
             },
@@ -1378,7 +1378,7 @@
             "properties": {
                 "kind": "passage",
                 "necropolis": "old",
-                "name": "Cross-tie — the entrance to the stadium loop",
+                "name": "Cross-tie: the entrance to the stadium loop",
                 "certainty": "lost",
                 "status": "sealed"
             },
@@ -1633,7 +1633,7 @@
             "properties": {
                 "kind": "passage",
                 "necropolis": "new",
-                "name": "The long gallery — under Cholargos",
+                "name": "The long gallery: under Cholargos",
                 "certainty": "charted",
                 "status": "active"
             },
@@ -1720,7 +1720,7 @@
                 "siteType": "new_entrance",
                 "certainty": "charted",
                 "status": "sealed",
-                "note": "Cut in 2026 between the Acropolis and Syngrou-Fix. Bricked over within the year. The only modern way anyone found in — and it is shut again."
+                "note": "Cut in 2026 between the Acropolis and Syngrou-Fix. Bricked over within the year. The only modern way anyone found in, and it is shut again."
             },
             "geometry": {
                 "type": "Point",
@@ -1963,7 +1963,7 @@
             "properties": {
                 "kind": "site",
                 "necropolis": "old",
-                "name": "Passage west — unmapped",
+                "name": "Passage west: unmapped",
                 "siteType": "unknown",
                 "certainty": "lost",
                 "status": "sealed",
@@ -1982,7 +1982,7 @@
             "properties": {
                 "kind": "site",
                 "necropolis": "old",
-                "name": "Passage north — unmapped",
+                "name": "Passage north: unmapped",
                 "siteType": "unknown",
                 "certainty": "lost",
                 "status": "sealed",
@@ -2001,7 +2001,7 @@
             "properties": {
                 "kind": "site",
                 "necropolis": "old",
-                "name": "Passage east — unmapped",
+                "name": "Passage east: unmapped",
                 "siteType": "unknown",
                 "certainty": "lost",
                 "status": "sealed",
@@ -2043,7 +2043,7 @@
                 "siteType": "furnace",
                 "certainty": "hearsay",
                 "status": "active",
-                "note": "The old gasworks retorts at Gazi. Cold to the public — but one is said to still draw, and to open on the Kerameikos galleries. Where the necropolis burns what it must."
+                "note": "The old gasworks retorts at Gazi. Cold to the public, but one is said to still draw, and to open on the Kerameikos galleries. Where the necropolis burns what it must."
             },
             "geometry": {
                 "type": "Point",
@@ -2100,7 +2100,7 @@
                 "siteType": "chamber",
                 "certainty": "charted",
                 "status": "active",
-                "note": "Off the Holargos branch — screens, seats, a fridge. Somewhere for the young ones to be."
+                "note": "Off the Holargos branch: screens, seats, a fridge. Somewhere for the young ones to be."
             },
             "geometry": {
                 "type": "Point",
@@ -2271,7 +2271,7 @@
                 "siteType": "junction",
                 "certainty": "charted",
                 "status": "active",
-                "note": "Where the long gallery splits — up the bolt-hole, or on toward the Ministry."
+                "note": "Where the long gallery splits: up the bolt-hole, or on toward the Ministry."
             },
             "geometry": {
                 "type": "Point",
@@ -2328,7 +2328,7 @@
                 "siteType": "server_room",
                 "certainty": "charted",
                 "status": "active",
-                "note": "A cooled room of racks directly beneath the Υπουργείο Εθνικής Άμυνας. The necropolis draws its power — and its lines — from here."
+                "note": "A cooled room of racks directly beneath the Υπουργείο Εθνικής Άμυνας. The necropolis draws its power and its lines from here."
             },
             "geometry": {
                 "type": "Point",

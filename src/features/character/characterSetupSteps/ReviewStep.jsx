@@ -35,13 +35,13 @@ export default function ReviewStep({
       )}
 
       <ul className={styles.muted} style={{lineHeight:1.6}}>
-        <li><b>Name:</b> {name || '—'} <b>Clan:</b> {clan || '—'}</li>
-        <li><b>Concept:</b> {concept || '—'}  <b>Chronicle:</b> {chronicle}</li>
-        <li><b>Ambition:</b> {ambition || '—'}  <b>Desire:</b> {desire || '—'}</li>
-        <li><b>Sire:</b> {sire || '—'}  <b>Predator:</b> {predatorType}</li>
+        <li><b>Name:</b> {name || 'None'} <b>Clan:</b> {clan || 'None'}</li>
+        <li><b>Concept:</b> {concept || 'None'}  <b>Chronicle:</b> {chronicle}</li>
+        <li><b>Ambition:</b> {ambition || 'None'}  <b>Desire:</b> {desire || 'None'}</li>
+        <li><b>Sire:</b> {sire || 'None'}  <b>Predator:</b> {predatorType}</li>
         <li><b>Health:</b> {health}  <b>Willpower:</b> {willpower}</li>
         <li><b>Humanity:</b> {derivedHumanity}  <b>Blood Potency:</b> {bloodPotency ?? 1}</li>
-        <li><b>Disciplines:</b> {Object.entries(derivedDisciplineDots).map(([k,v])=>`${k} ${'•'.repeat(v)}`).join(' , ') || '—'}</li>
+        <li><b>Disciplines:</b> {Object.entries(derivedDisciplineDots).map(([k,v])=>`${k} ${'•'.repeat(v)}`).join(' , ') || 'None'}</li>
         <li><b>Starting powers:</b> {powerNames.length ? powerNames.join(', ') : 'None picked yet'}</li>
         <li><b>Attributes ok:</b> <StatusIcon ok={attrOk} />  <b>Skills ok:</b> <StatusIcon ok={skillOk} /></li>
         <li><b>Predator ok:</b> <StatusIcon ok={predatorOk} />  <b>Merits/Flaws ok:</b> <StatusIcon ok={advOk} /></li>

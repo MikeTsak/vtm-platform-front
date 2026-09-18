@@ -1,7 +1,7 @@
 // ── Athens public-transport overlay for the Domains map ────────────────────
-// Source data: src/data/athens-transit.json — a GeoJSON FeatureCollection with
+// Source data: src/data/athens-transit.json: a GeoJSON FeatureCollection with
 // two kinds of feature, `kind: "line"` (MultiLineString) and `kind: "station"`
-// (Point). Metro L1–L3, Tram and the Suburban Railway come from OpenStreetMap
+// (Point). Metro L1 to L3, Tram and the Suburban Railway come from OpenStreetMap
 // (© OpenStreetMap contributors, ODbL); Line 4 is hand-placed by neighbourhood
 // because it is still under construction and not yet mapped.
 //
@@ -14,7 +14,7 @@
 export const TRANSIT_GROUPS = [
   {
     key: 'metro',
-    label: 'Metro (M1–M3)',
+    label: 'Metro (M1 to M3)',
     swatch: ['#0e8a3e', '#e2231a', '#0a4fb4'],
     matchLine: l => l.network === 'Athens Metro' && l.line !== 'M4',
     matchStation: s => s.networks.includes('Athens Metro') && s.status !== 'construction',

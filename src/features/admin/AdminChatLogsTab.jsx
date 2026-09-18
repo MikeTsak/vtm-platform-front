@@ -1,4 +1,4 @@
-﻿// src/pages/AdminChatLogsTab.jsx
+// src/pages/AdminChatLogsTab.jsx
 import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown'; 
 import api from '../../core/api';
@@ -17,7 +17,7 @@ const useDebouncedValue = (value, ms = 250) => {
 };
 
 const formatTimestamp = (ts, includeDate = true) => {
-  if (!ts) return '—';
+  if (!ts) return 'None';
   const full = formatEuDate(ts);
   if (!includeDate) return full.split(' ')[1];
   return full;
@@ -132,7 +132,7 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
 
   const getCharInfoByUserId = useCallback((userId) => {
     const charEntry = Object.values(charIndex).find(c => c.user_id === Number(userId));
-    return charEntry ? { name: charEntry.char_name, clan: charEntry.clan } : { name: '—', clan: '—' };
+    return charEntry ? { name: charEntry.char_name, clan: charEntry.clan } : { name: 'None', clan: 'None' };
   }, [charIndex]);
 
   // --- AI: Global Summarize Handler ---
@@ -151,7 +151,7 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
           if (m.char_name) { sender = m.char_name; } 
           else if (m.sender_id) {
             const info = getCharInfoByUserId(m.sender_id);
-            if (info.name && info.name !== '—') sender = info.name;
+            if (info.name && info.name !== '—' && info.name !== 'None') sender = info.name;
           }
         }
         return `[${formatEuDate(m.created_at)}] ${sender}: ${m.body}`;
@@ -246,7 +246,7 @@ export default function AdminChatLogsTab({ messages, charIndex }) {
   useEffect(() => {
     if (viewMode !== 'npc' || !selectedNpc) { setConvos([]); return; }
     setLoading(p => ({...p, convos: true}));
-    // The NPC id is a path segment, not a query param — the old
+    // The NPC id is a path segment, not a query param: the old
     // /admin/chat/npc/conversations?npc_id= form 404'd, so this list was
     // always empty (and the missing .catch made it an unhandled rejection).
     const url = `/admin/chat/npc-conversations/${selectedNpc.id}`;
@@ -597,8 +597,8 @@ function MessagePanel({ messages, participants, loading, mode, onBack }) {
       const chatText = messages.map(m => {
         let sender = 'Unknown Character';
         if (mode === 'direct') {
-          if (m.sender_id === participants.user1Id) { sender = participants.user1Char && participants.user1Char !== '—' ? participants.user1Char : 'Character A'; } 
-          else if (m.sender_id === participants.user2Id) { sender = participants.user2Char && participants.user2Char !== '—' ? participants.user2Char : 'Character B'; }
+          if (m.sender_id === participants.user1Id) { sender = participants.user1Char && participants.user1Char !== '—' && participants.user1Char !== 'None' ? participants.user1Char : 'Character A'; } 
+          else if (m.sender_id === participants.user2Id) { sender = participants.user2Char && participants.user2Char !== '—' && participants.user2Char !== 'None' ? participants.user2Char : 'Character B'; }
         } else if (mode === 'npc') {
           if (m.from === 'npc') { sender = participants.npc || 'NPC'; } 
           else { sender = participants.user || 'Character'; }

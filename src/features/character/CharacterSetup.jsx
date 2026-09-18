@@ -64,7 +64,7 @@ function loadDraft() {
   }
 }
 function saveDraft(data) {
-  try { localStorage.setItem(DRAFT_KEY, JSON.stringify(data)); } catch { /* quota/storage disabled — non-fatal */ }
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify(data)); } catch { /* quota/storage disabled: non-fatal */ }
 }
 function clearDraft() {
   try { localStorage.removeItem(DRAFT_KEY); } catch { /* non-fatal */ }
@@ -125,7 +125,7 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
   // Disciplines selection (2 picks, one favored at 2)
   const [selectedDiscs, setSelectedDiscs] = useState(draft?.selectedDiscs ?? []);
   const [favoredDisc, setFavoredDisc] = useState(draft?.favoredDisc ?? null);
-  // { [disciplineName]: [{ level, id, name }] } — same shape CharacterView.jsx
+  // { [disciplineName]: [{ level, id, name }] }: same shape CharacterView.jsx
   // reads as sheet.disciplinePowers, so powers picked here already show as
   // known once the character exists.
   const [disciplinePowerPicks, setDisciplinePowerPicks] = useState(draft?.disciplinePowerPicks ?? {});
@@ -511,7 +511,7 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
 
   return (
     <div className={styles.sheetRoot}>
-      <div className={styles.sheetPage} data-clan={clan || '—'}>
+      <div className={styles.sheetPage} data-clan={clan || 'None'}>
         <div className={styles.vignette} aria-hidden="true" />
         <div className={styles.skyline} style={{'--tint': tint}} aria-hidden="true" />
         <div className={styles.wizardGrid}>
@@ -521,7 +521,7 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
             <div className={styles.stepHeader} style={{ background: 'var(--glass-inset)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', padding: '0.75rem 1rem', marginBottom: '1rem' }}>
               <span className={styles.muted}>
                 <Icon name="restore" style={{ marginRight: 6 }} />
-                Resuming your draft from earlier — nothing's been created yet.
+                Resuming your draft from earlier: nothing's been created yet.
               </span>
               <div className={styles.stepHeaderActions}>
                 <button type="button" className={styles.ghostBtn} onClick={()=>setShowDraftBanner(false)}>Keep it</button>
@@ -735,7 +735,7 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
           </p>
           {merits.some(m => m.name === 'Retainers') && (
             <p className={styles.modalBody} style={{ marginTop: -8 }}>
-              You took the <b>Retainers</b> merit — build their full sheet on the Retainers page whenever you're ready.
+              You took the <b>Retainers</b> merit: build their full sheet on the Retainers page whenever you're ready.
             </p>
           )}
           <div className={styles.modalActions}>

@@ -14,9 +14,9 @@ function random(min, max) {
 }
 
 /**
- * Create a glassy-looking, irregular polygon INSIDE a cell.
- * - Points are roughly around the cell center with jitter.
- * - We bias shapes to be angular (5–8 points).
+ * Create a glassy looking, irregular polygon INSIDE a cell.
+ * * Points are roughly around the cell center with jitter.
+ * * We bias shapes to be angular (5 to 8 points).
  */
 function makeShardPolygon(cellRect) {
   const { left, top, width, height } = cellRect;
@@ -24,7 +24,7 @@ function makeShardPolygon(cellRect) {
   const cy = top + height / 2;
 
   const points = [];
-  const n = Math.floor(random(5, 9)); // 5–8 sides
+  const n = Math.floor(random(5, 9)); // 5 to 8 sides
   for (let i = 0; i < n; i++) {
     const a = (i / n) * Math.PI * 2 + random(-0.25, 0.25);
     const r = random(0.35, 0.55) * Math.min(width, height);

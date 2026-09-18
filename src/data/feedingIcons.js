@@ -1,9 +1,9 @@
 // src/data/feedingIcons.js
 //
 // Inline Font Awesome 6 Free Solid glyphs used by the Feeding UI, in the same
-// { viewBox, path } shape as src/features/domains/data/chasseMerits.js — no
+// { viewBox, path } shape as src/features/domains/data/chasseMerits.js: no
 // icon-font/library dependency, paths pasted in directly.
-// Icons: CC BY 4.0 — fontawesome.com/license.
+// Icons: CC BY 4.0: fontawesome.com/license.
 
 export const FEEDING_ICONS = {
   droplet: {

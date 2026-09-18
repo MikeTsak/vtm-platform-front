@@ -4,7 +4,7 @@
 //
 // WHY THIS FILE EXISTS: the SPA is served as a static build (see .htaccess),
 // so it ships a strict Content-Security-Policy with NO 'unsafe-inline' in
-// script-src (nonces/hashes aren't viable on a static host — see .htaccess
+// script-src (nonces/hashes aren't viable on a static host: see .htaccess
 // comments). That means index.html cannot contain inline <script> blocks;
 // everything has to live in an external, same-origin file like this one.
 //
@@ -13,7 +13,7 @@
 // registered before that library does anything.
 //
 // GDPR: Microsoft Clarity has no Consent Mode equivalent (no default-denied
-// state — loading it starts session recording immediately), so it is NOT
+// state, loading it starts session recording immediately), so it is NOT
 // started here. window.__loadClarity below is exposed for
 // src/utils/consentGatedScripts.js to call, but ONLY after
 // CookieConsent.jsx confirms the visitor actually granted consent.
@@ -22,7 +22,7 @@ window.dataLayer = window.dataLayer || [];
 function gtag() { window.dataLayer.push(arguments); }
 window.gtag = gtag;
 
-// Google Consent Mode v2 — deny by default until the cookie banner grants consent.
+// Google Consent Mode v2: deny by default until the cookie banner grants consent.
 gtag('consent', 'default', {
   ad_storage: 'denied',
   ad_user_data: 'denied',
@@ -36,7 +36,7 @@ gtag('consent', 'default', {
 gtag('js', new Date());
 gtag('config', 'G-Z7VCE9MCPT');
 
-// Microsoft Clarity — idempotent, NOT auto-invoked. Only called from
+// Microsoft Clarity: idempotent, NOT auto-invoked. Only called from
 // src/utils/consentGatedScripts.js once the visitor has granted consent.
 window.__loadClarity = function () {
   if (window.clarity) return; // already loaded
@@ -50,12 +50,12 @@ window.__loadClarity = function () {
   })(window, document, 'clarity', 'script', 'xk8cqym8o2');
 };
 
-// Vite CSS-preload safety net — Vite's __vitePreload sets crossOrigin=""
+// Vite CSS-preload safety net: Vite's __vitePreload sets crossOrigin=""
 // on dynamically injected <link rel="stylesheet"> elements. If the server
 // doesn't return the right CORS headers (or an extension intercepts the
 // request), the browser fires onerror and Vite dispatches this cancelable
 // event. If no listener calls preventDefault(), Vite re-throws the error
-// as an uncaught exception — killing the entire React tree and producing a
+// as an uncaught exception, killing the entire React tree and producing a
 // blank screen. Calling preventDefault() lets the page continue; the CSS
 // chunk usually still loads via the normal non-CORS path, so styles render
 // fine. As a recovery measure, we also reload once (same cooldown logic as
@@ -71,7 +71,7 @@ window.addEventListener('vite:preloadError', function (e) {
     try { sessionStorage.setItem(key, String(now)); } catch (_) {}
     window.location.reload();
   }
-  // else: already reloaded recently — swallow silently, the page continues.
+  // else: already reloaded recently, swallow silently, the page continues.
 });
 
 // Early Entry / Module-Preload Auto-Recovery:

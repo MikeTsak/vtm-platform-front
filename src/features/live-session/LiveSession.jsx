@@ -83,17 +83,17 @@ function TrackerBlock({ label, val, max, agg = 0, sup = 0, filled = 0, stains = 
    STATIC DATA
 ───────────────────────────────────────────── */
 const HUMANITY_DATA = {
-  10: { label: 'Humanity 10', desc: ['Humans with this score are rare, making vampires with this score even rarer.', 'Blush of Life is not needed to blend into mortal society — they appear as a pale and healthy mortal.', 'They heal Superficial Damage as a mortal in addition to standard healing.', 'Food is able to be tasted, eaten, and digested as a human.', 'Able to stay awake during the day as if human, though they still must sleep at some point.', 'Sunlight damage is halved.'] },
+  10: { label: 'Humanity 10', desc: ['Humans with this score are rare, making vampires with this score even rarer.', 'Blush of Life is not needed to blend into mortal society: they appear as a pale and healthy mortal.', 'They heal Superficial Damage as a mortal in addition to standard healing.', 'Food is able to be tasted, eaten, and digested as a human.', 'Able to stay awake during the day as if human, though they still must sleep at some point.', 'Sunlight damage is halved.'] },
   9: { label: 'Humanity 9', desc: ['Kindred with this rating tend to be more humane than most humans.', 'Without Blush of Life they appear ill.', 'They heal Superficial Damage as a mortal in addition to standard healing.', 'Taste, eat and digest rare or raw meat and many liquids.', 'Rise from day-sleep up to an hour before sunset and stay awake an hour after dawn.', 'Torpor length: Three days.'] },
   8: { label: 'Humanity 8', desc: ['They are still able to comprehend and feel the pain from the anguish they cause.', 'Two dice are used for the Blush of Life checks, taking the highest result.', 'With Blush of Life, they can digest and taste wine.', 'Rise from day-sleep an hour before sunset.', 'Torpor length: One week.'] },
   7: { label: 'Humanity 7', desc: ['Kindred can pass for mortal, still subscribing to the strongest social norms.', 'Blush of Life requires a Rouse Check.', 'Can fake sexual intercourse by winning a Dexterity + Charisma test versus the partner\'s Composure or Wits.', 'Without Blush of Life, food and drink cause vomiting.', 'Torpor length: Two weeks.'] },
   6: { label: 'Humanity 6', desc: ['Not horrific monsters, but will do what they need to survive regardless of cost.', 'Take a one die penalty to the pool for faking sexual intercourse.', 'Even with Blush of Life, must make a Composure + Stamina test against Difficulty 3 to keep food and drink down.', 'Torpor length: One month.'] },
   5: { label: 'Humanity 5', desc: ['At this level most Kindred only care for their Touchstones, and may manifest minor physical eeriness.', 'Take a one die penalty in rolls to interact with mortals. Does not apply to intimidation, hunting, or supernatural Subterfuge.', 'Take a two dice penalty to the pool for faking sexual intercourse.', 'Torpor length: One year.'] },
   4: { label: 'Humanity 4', desc: ['Kindred may have accepted the inevitable downwards spiral. Physically they appear more corpse-like.', 'Take a two dice penalty to interact with mortals.', 'Even with Blush of Life, can no longer keep food and drink down.', 'Torpor length: One decade.'] },
-  3: { label: 'Humanity 3', desc: ['Scrapping near the bottom — pragmatic route, whatever it takes.', 'Take a four dice penalty to interact with mortals.', 'Can no longer fake sexual intercourse.', 'Torpor length: Five decades.'] },
+  3: { label: 'Humanity 3', desc: ['Scrapping near the bottom: pragmatic route, whatever it takes.', 'Take a four dice penalty to interact with mortals.', 'Can no longer fake sexual intercourse.', 'Torpor length: Five decades.'] },
   2: { label: 'Humanity 2', desc: ['With twisted hobbies that please only them, Kindred have no care for others.', 'Take a six dice penalty to interact with mortals (four with Blush of Life).', 'Torpor length: One century.'] },
-  1: { label: 'Humanity 1', desc: ['Teetering on the edge — only caring for survival.', 'Take an eight dice penalty to interact with mortals (five with Blush of Life).', 'Torpor length: Five centuries.'] },
-  0: { label: 'Humanity 0 — Wassail', desc: ['The Beast has taken control; leaving the character in a final Rötschreck Frenzy called Wassail.', 'Physical Attributes all buffed to 5.', 'If they survive this final scene, they become a wight and are taken control of by the Storyteller as an SPC.'] },
+  1: { label: 'Humanity 1', desc: ['Teetering on the edge: only caring for survival.', 'Take an eight dice penalty to interact with mortals (five with Blush of Life).', 'Torpor length: Five centuries.'] },
+  0: { label: 'Humanity 0: Wassail', desc: ['The Beast has taken control; leaving the character in a final Rötschreck Frenzy called Wassail.', 'Physical Attributes all buffed to 5.', 'If they survive this final scene, they become a wight and are taken control of by the Storyteller as an SPC.'] },
 };
 
 const FRENZY_TYPES = [
@@ -124,12 +124,12 @@ const MENTAL_SOCIAL_TRAITS = new Set([
 const isDisciplineTrait = (t) => ALL_DISCIPLINE_NAMES.includes(t) || /alchemy/i.test(t);
 
 // Discipline powers store their activation roll as e.g. "Charisma + Presence",
-// "Wits/Resolve + Auspex", "— (…)", or "As power". Return [attr, trait] when it
+// "Wits/Resolve + Auspex", "None (…)", or "As power". Return [attr, trait] when it
 // is a real pool we can roll, else null.
 function parseDicePool(str) {
   if (!str) return null;
   const s = String(str).trim();
-  if (!s || s === '—' || s.startsWith('—') || /^as power/i.test(s)) return null;
+  if (!s || s === '—' || s.startsWith('—') || s === 'None' || s.startsWith('None') || /^as power/i.test(s)) return null;
   const parts = s.split('+').map(x => x.trim());
   if (parts.length < 2) return null;
   const norm = (t) => t.split('/')[0].replace(/\(.*$/, '').trim();
@@ -286,7 +286,7 @@ export default function LiveSession() {
     return powers;
   }, [activeDisc, sheet?.disciplinePowers]);
 
-  // Non-physical Discipline selected while frenzied — the roll is still allowed
+  // Non-physical Discipline selected while frenzied: the roll is still allowed
   // (the ST has the final say) but the player is warned it breaks V5 rules.
   const frenzyBlockedTrait = useMemo(() => {
     if (!sheet?.frenzyState) return null;
@@ -339,7 +339,7 @@ export default function LiveSession() {
       } catch (e) { }
     };
     load();
-    // ST tracker adjustments (hunger, health, frenzy, etc.) land on our own character row too —
+    // ST tracker adjustments (hunger, health, frenzy, etc.) land on our own character row too:
     // refresh it alongside the session so changes made by the Storyteller actually show up here.
     const onRefresh = () => { load(); loadCharacter(); };
     const rejoin = () => socket.emit('join_session', sessionId);
@@ -391,7 +391,7 @@ export default function LiveSession() {
     }
   };
 
-  // Messy Critical / Bestial Failure — the Beast acts out. Prompt the player to
+  // Messy Critical / Bestial Failure: the Beast acts out. Prompt the player to
   // pick a Compulsion (V5 core: general four + clan-specific).
   const maybeCompulsion = (outcome) => {
     if (outcome?.hasMessyCritical) setCompulsionPrompt({ kind: 'messy' });
@@ -448,9 +448,9 @@ export default function LiveSession() {
     } catch (e) { /* best effort */ }
     if (why === 'ignore_impairment') {
       setWpIgnoreImpair(true);
-      setSignalNote('Willpower spent — impairment ignored for this roll.');
+      setSignalNote('Willpower spent: impairment ignored for this roll.');
     } else if (why === 'frenzy_control') {
-      setSignalNote('Willpower spent — you act freely this turn.');
+      setSignalNote('Willpower spent: you act freely this turn.');
     }
     setTimeout(() => setSignalNote(''), 3000);
   };
@@ -513,7 +513,7 @@ export default function LiveSession() {
   };
 
   // The ST asked for a specific pool. The player can't retune the traits or add
-  // their own specialty — the ST already decided both. Impairment, Hunger, the
+  // their own specialty: the ST already decided both. Impairment, Hunger, the
   // Blood Potency Discipline bonus and any ST-granted specialty still apply.
   const resolveRollRequest = async (req) => {
     setMobileTab('action');
@@ -550,7 +550,7 @@ export default function LiveSession() {
       has_critical: roll.outcome.hasCritical,
       has_messy_critical: roll.outcome.hasMessyCritical,
       has_bestial_failure: roll.outcome.hasBestialFailure,
-      note: `[${req.id.slice(-6)}] ${label}${req.difficulty ? ` · Diff ${req.difficulty}` : ''}${req.specialty ? ' (Specialty)' : ''}${req.note ? ` — ${req.note}` : ''}`,
+      note: `[${req.id.slice(-6)}] ${label}${req.difficulty ? ` · Diff ${req.difficulty}` : ''}${req.specialty ? ' (Specialty)' : ''}${req.note ? `: ${req.note}` : ''}`,
     });
 
     setTimeout(() => setIsRolling(false), 1500);
@@ -688,7 +688,7 @@ export default function LiveSession() {
       has_critical: roll.outcome.hasCritical,
       has_messy_critical: roll.outcome.hasMessyCritical,
       has_bestial_failure: roll.outcome.hasBestialFailure,
-      note: `${discName} • ${power.name} — ${t1} + ${t2}`,
+      note: `${discName} • ${power.name}: ${t1} + ${t2}`,
       disc: discName, power_name: power.name,
     });
   };
@@ -769,7 +769,7 @@ export default function LiveSession() {
       pool: roll.pool, hunger: 0,
       results: { normal: roll.normalDice, hunger: [] },
       successes: roll.outcome.successes,
-      note: resisted ? `Resisted ${frenzyLabel}` : `Failed to resist ${frenzyLabel} — the Beast holds control`,
+      note: resisted ? `Resisted ${frenzyLabel}` : `Failed to resist ${frenzyLabel}: the Beast holds control`,
     });
 
     if (resisted) {
@@ -965,17 +965,17 @@ export default function LiveSession() {
           <div className={styles.modalContent} style={{ maxWidth: 460 }}>
             <div className={styles.modalHeader}>
               <span className="material-symbols-outlined">warning</span>
-              {compulsionPrompt.kind === 'messy' ? 'Messy Critical' : 'Bestial Failure'} — the Beast stirs
+              {compulsionPrompt.kind === 'messy' ? 'Messy Critical' : 'Bestial Failure'}: the Beast stirs
             </div>
             <div className={styles.modalBody} style={{ maxHeight: '55vh', overflowY: 'auto' }}>
               <p style={{ marginBottom: '0.75rem' }}>Pick the Compulsion that takes hold (Storyteller may override):</p>
               {cref && cref.compulsion && cref.compulsion !== 'None.' && (
-                <button className={styles.compulsionChoice} onClick={() => setCompulsion(`${clan} — ${cref.compulsion}`)}>
+                <button className={styles.compulsionChoice} onClick={() => setCompulsion(`${clan}: ${cref.compulsion}`)}>
                   <strong>{clan} Compulsion</strong><br />{cref.compulsion}
                 </button>
               )}
               {GENERAL_COMPULSIONS.map(c => (
-                <button key={c.name} className={styles.compulsionChoice} onClick={() => setCompulsion(`${c.name} — ${c.text}`)}>
+                <button key={c.name} className={styles.compulsionChoice} onClick={() => setCompulsion(`${c.name}: ${c.text}`)}>
                   <strong>{c.name}</strong><br />{c.text}
                 </button>
               ))}
@@ -1012,12 +1012,12 @@ export default function LiveSession() {
         <div className={styles.impairBanner}>
           <span className="material-symbols-outlined">personal_injury</span>
           {inTorpor
-            ? <span>You have entered <strong>torpor</strong> — the Storyteller controls your fate.</span>
+            ? <span>You have entered <strong>torpor</strong>: the Storyteller controls your fate.</span>
             : <span>
                 {healthImpaired && <strong>Impaired</strong>}
-                {healthImpaired && ' — −2 dice to Physical pools. '}
+                {healthImpaired && ': 2 dice penalty to Physical pools. '}
                 {willImpaired && <strong>Willpower spent</strong>}
-                {willImpaired && ' — −2 dice to Social &amp; Mental pools.'}
+                {willImpaired && ': 2 dice penalty to Social &amp; Mental pools.'}
               </span>}
         </div>
       )}
@@ -1065,7 +1065,7 @@ export default function LiveSession() {
             </div>
           </section>
 
-          {/* Active discipline powers — always visible while running */}
+          {/* Active discipline powers: always visible while running */}
           {runningPowers.length > 0 && (
             <section className={styles.activePowersStrip}>
               <span className={styles.labelMd} style={{ color: 'var(--text-muted)' }}>Active Powers</span>
@@ -1154,7 +1154,7 @@ export default function LiveSession() {
               </div>
               {trackers.degeneration && (
                 <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.75rem', color: 'var(--error)', fontWeight: 'bold' }}>
-                  Degeneration — Stains exceed empty boxes: −2 to all pools, take Aggravated Willpower damage.
+                  Degeneration: Stains exceed empty boxes, 2 dice penalty to all pools, take Aggravated Willpower damage.
                 </p>
               )}
               <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>{humanityEffects}</p>
@@ -1164,7 +1164,7 @@ export default function LiveSession() {
             {cref && (
               <div className={styles.trackerBox} style={{ padding: '1rem 1.25rem', marginBottom: '1rem', background: 'var(--surface-container-high)' }}>
                 <div className={styles.trackerHeader} style={{ marginBottom: '0.6rem' }}>
-                  <span className={styles.labelMd}>{clan} — Curse</span>
+                  <span className={styles.labelMd}>{clan}: Curse</span>
                 </div>
                 <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.72rem', color: 'var(--on-surface)', lineHeight: '1.45' }}>
                   <strong style={{ color: 'var(--primary)' }}>Bane:</strong> {cref.bane}
@@ -1210,7 +1210,7 @@ export default function LiveSession() {
                             </span>
                             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.2rem' }}>
                               {needsRouse && <span style={{ color: 'var(--primary)', fontSize: '0.65rem' }}>Rouse Required</span>}
-                              {p.dice_pool && p.dice_pool !== '—' && <span style={{ color: 'var(--text-muted)', fontSize: '0.65rem' }}>Pool: {p.dice_pool}</span>}
+                              {p.dice_pool && p.dice_pool !== '—' && p.dice_pool !== 'None' && <span style={{ color: 'var(--text-muted)', fontSize: '0.65rem' }}>Pool: {p.dice_pool}</span>}
                             </div>
                           </div>
                           <button className={styles.btnOutline} style={{ padding: '0.2rem 0.5rem', fontSize: '0.65rem', border: 'none' }}>
@@ -1222,8 +1222,8 @@ export default function LiveSession() {
                           <div style={{ padding: '0.5rem 0.75rem 0.75rem 0.75rem', borderTop: '1px solid var(--outline-variant)' }}>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
                               {p.cost && <p style={{ margin: '0 0 0.25rem 0' }}><strong style={{ color: 'var(--primary)' }}>Cost:</strong> {p.cost}</p>}
-                              {p.dice_pool && p.dice_pool !== '—' && <p style={{ margin: '0 0 0.25rem 0' }}><strong style={{ color: 'var(--primary)' }}>Dice Pool:</strong> {p.dice_pool}</p>}
-                              {p.opposing_pool && p.opposing_pool !== '—' && <p style={{ margin: '0 0 0.25rem 0' }}><strong style={{ color: 'var(--primary)' }}>Opposing Pool:</strong> {p.opposing_pool}</p>}
+                              {p.dice_pool && p.dice_pool !== '—' && p.dice_pool !== 'None' && <p style={{ margin: '0 0 0.25rem 0' }}><strong style={{ color: 'var(--primary)' }}>Dice Pool:</strong> {p.dice_pool}</p>}
+                              {p.opposing_pool && p.opposing_pool !== '—' && p.opposing_pool !== 'None' && <p style={{ margin: '0 0 0.25rem 0' }}><strong style={{ color: 'var(--primary)' }}>Opposing Pool:</strong> {p.opposing_pool}</p>}
                               {p.duration && <p style={{ margin: '0 0 0.25rem 0' }}><strong style={{ color: 'var(--primary)' }}>Duration:</strong> {p.duration}</p>}
                               <p style={{ margin: '0.5rem 0 0 0' }}>{p.notes || p.description}</p>
                             </div>
@@ -1354,7 +1354,7 @@ export default function LiveSession() {
                 {session?.metadata?.initiative?.length > 0 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                     <span className={styles.labelMd} style={{ color: 'var(--text-muted)' }}>
-                      Initiative{session.metadata.round ? ` — Round ${session.metadata.round}` : ''}
+                      Initiative{session.metadata.round ? `: Round ${session.metadata.round}` : ''}
                     </span>
                     <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                       {session.metadata.initiative.map((actor, i) => {
@@ -1384,7 +1384,7 @@ export default function LiveSession() {
               </div>
             </div>
 
-            {/* Common rolls — quick trait presets */}
+            {/* Common rolls: quick trait presets */}
             <div className={styles.commonRolls}>
               {COMMON_ROLLS.map(r => {
                 const on = selectedTraits.includes(r.attribute) && selectedTraits.includes(r.skill);
@@ -1404,7 +1404,7 @@ export default function LiveSession() {
             {frenzyBlockedTrait && (
               <div className={styles.frenzyWarn}>
                 <span className="material-symbols-outlined">block</span>
-                <span>While frenzied the Beast only permits physical Disciplines — <strong>{frenzyBlockedTrait}</strong> is off-limits. Your Storyteller has the final say.</span>
+                <span>While frenzied the Beast only permits physical Disciplines: <strong>{frenzyBlockedTrait}</strong> is off-limits. Your Storyteller has the final say.</span>
               </div>
             )}
 
@@ -1461,7 +1461,7 @@ export default function LiveSession() {
                   key={e.id}
                   className={`${styles.commonRollBtn} ${activeEffectIds.includes(e.id) ? styles.commonRollOn : ''}`}
                   onClick={() => setActiveEffectIds(prev => prev.includes(e.id) ? prev.filter(x => x !== e.id) : [...prev, e.id])}
-                  title="Storyteller effect — tap to add to this roll"
+                  title="Storyteller effect: tap to add to this roll"
                 >
                   {e.label} {Number(e.mod) > 0 ? '+' : ''}{e.mod}
                 </button>
@@ -1471,7 +1471,7 @@ export default function LiveSession() {
                   key={pm.id}
                   className={`${styles.commonRollBtn} ${activeEffectIds.includes(pm.id) ? styles.commonRollOn : ''}`}
                   onClick={() => setActiveEffectIds(prev => prev.includes(pm.id) ? prev.filter(x => x !== pm.id) : [...prev, pm.id])}
-                  title={`${pm.label} — ${pm.target}. Tap to add to this roll if it applies.`}
+                  title={`${pm.label}: ${pm.target}. Tap to add to this roll if it applies.`}
                 >
                   {pm.label} +{pm.mod}
                 </button>

@@ -107,7 +107,7 @@ export default function AdminCharactersTab({ users, onDelete, onOpenEditor }) {
   const [filterText, setFilterText] = useState('');
   const [clanFilter, setClanFilter] = useState('');
   const [sortBy, setSortBy] = useState('name'); // 'name' | 'xp'
-  // The editor page is a separate, sometimes-not-yet-cached chunk — give the
+  // The editor page is a separate, sometimes-not-yet-cached chunk: give the
   // click itself instant feedback instead of leaving the button looking
   // inert while the route transition and character fetch are in flight.
   const [openingId, setOpeningId] = useState(null);

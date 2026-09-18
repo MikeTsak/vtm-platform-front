@@ -10,7 +10,7 @@ export default function MediaViewer() {
   const { id } = useParams(); // this is now the PREMONITION id
   const navigate = useNavigate();
   // Session lives in an httpOnly cookie, so we can't check for a token in JS
-  // directly — wait for AuthProvider's /auth/me check to resolve instead.
+  // directly, wait for AuthProvider's /auth/me check to resolve instead.
   const { user, loading: authLoading } = useContext(AuthCtx);
 
   const [url, setUrl] = useState(null);

@@ -6,8 +6,8 @@
 // the discipline / ritual data (character sheets, admin tabs, the wiki, the
 // creator) is unaffected.
 //
-// The `note` strings here are terse rules-effect summaries written for this tool
-// — they are NOT the wiki descriptions and deliberately do not reproduce them.
+// The `note` strings here are terse rules-effect summaries written for this tool:
+// they are NOT the wiki descriptions and deliberately do not reproduce them.
 //
 // Field reference (all optional):
 //   dicePoolMod : { target, amount }  amount is a number, or "@Discipline" /
@@ -17,7 +17,7 @@
 //   soak        : { amount, type?, timing?, note }  reduces incoming damage
 //   damage      : { note }  attack / damage modifier
 //   noHealthPenalty / noHungerPenalty / superficialNotHalved : boolean flags
-//   note        : always present — the one-line hint shown in the powers panel.
+//   note        : always present, the one-line hint shown in the powers panel.
 
 export const POWER_MECHANICS = {
   /* ---- Animalism ---- */
@@ -40,9 +40,9 @@ export const POWER_MECHANICS = {
   bloods_curse:          { note: 'Temporarily raises the victim’s Bane Severity; gives clanless creatures a clan bane.' },
   extinguish_vitae:      { note: 'Raises a Kindred’s Hunger by the roll margin.' },
   blood_of_potency:      { note: 'Temporarily raises Blood Potency (can bypass the generation limit) for a scene.' },
-  scorpions_touch:       { damage: { note: 'Vitae becomes paralytic poison; a mortal who takes any damage falls unconscious.' }, note: 'Poison touch — Strength + Blood Sorcery.' },
+  scorpions_touch:       { damage: { note: 'Vitae becomes paralytic poison; a mortal who takes any damage falls unconscious.' }, note: 'Poison touch: Strength + Blood Sorcery.' },
   blood_aegis:           { soak: { amount: 5, per: 'rouse', note: 'each Rouse Check spent reduces incoming damage by 5' }, note: 'Barrier: −5 damage per Rouse Check committed.' },
-  fulminating_vitae:     { damage: { note: 'Vitae bomb — Aggravated to Kindred, Superficial to mortals.' }, note: 'Area vitae detonation.' },
+  fulminating_vitae:     { damage: { note: 'Vitae bomb: Aggravated to Kindred, Superficial to mortals.' }, note: 'Area vitae detonation.' },
   baals_caress:          { damage: { note: 'Vitae becomes lethal poison; mortals die on 1+ damage.' }, note: 'Lethal poison touch.' },
   cauldron_of_blood:     { damage: { note: 'Boils the victim’s blood; mortals die on 1+ damage.' }, note: 'Resolve + Blood Sorcery, costs Stains.' },
 
@@ -73,10 +73,10 @@ export const POWER_MECHANICS = {
   obdurate:              { soak: { amount: '@Fortitude', type: 'superficial', timing: 'before halving', note: 'reduce impact Superficial by Fortitude before halving' }, note: 'Keep your footing; impact Superficial reduced by Fortitude before halving.' },
   self_assurance:        { note: 'Once per scene: convert one point of Willpower damage to Superficial.' },
   toughness:             { soak: { amount: '@Fortitude', type: 'superficial', timing: 'before halving', min: 1, note: 'subtract Fortitude from Superficial before halving (min 1)' }, note: 'While active: subtract Fortitude from all Superficial before halving (cannot go below 1).' },
-  defy_bane:             { soak: { note: 'convert Aggravated to Superficial — that Superficial cannot be healed this scene' }, note: 'Convert Aggravated damage to Superficial (unhealable this scene).' },
+  defy_bane:             { soak: { note: 'convert Aggravated to Superficial, that Superficial cannot be healed this scene' }, note: 'Convert Aggravated damage to Superficial (unhealable this scene).' },
   fortify_the_inner_facade:{ dicePoolMod: { target: 'resist mind-reading', amount: '@Fortitude' }, note: 'Raise the Difficulty of mind-piercing powers by ½ Fortitude, or add Fortitude to resist.' },
   seal_the_beasts_maw:   { noHungerPenalty: true, note: 'Ignore Hunger effects for the scene if you gain no Hunger from the Rouse checks; reduces dice pools.' },
-  gorgons_scales:        { soak: { note: 'Resonance-keyed: Melancholic reduces fire, Sanguine reduces sunlight' }, note: 'Resonance armour — Choleric resists staking, Melancholic −fire, Phlegmatic vs Auspex, Sanguine −sunlight.' },
+  gorgons_scales:        { soak: { note: 'Resonance-keyed: Melancholic reduces fire, Sanguine reduces sunlight' }, note: 'Resonance armour: Choleric resists staking, Melancholic −fire, Phlegmatic vs Auspex, Sanguine −sunlight.' },
   shatter:               { note: 'Your attacker takes the damage your Toughness would have soaked; weapons may break.' },
   flesh_of_marble:       { soak: { note: 'ignore the first source of physical damage each turn (not sunlight); critical attacks bypass' }, note: 'Ignore the first physical damage source each turn.' },
   meat_shields:          { note: 'Increase effective Fortitude by ½ the weak mortals present (round down), max +5.' },
@@ -140,7 +140,7 @@ export const POWER_MECHANICS = {
 
 // A handful of Blood Sorcery Rituals / Oblivion Ceremonies with combat maths.
 export const RITUAL_MECHANICS = {
-  bladed_hands:      { damage: { note: 'Hands count as a light piercing Brawl weapon with a +2 modifier.' }, note: 'Blade-hands — +2 Brawl weapon.' },
+  bladed_hands:      { damage: { note: 'Hands count as a light piercing Brawl weapon with a +2 modifier.' }, note: 'Blade-hands: +2 Brawl weapon.' },
   communal_vigor:    { dicePoolMod: { target: 'Dominate & Presence vs packmates', amount: 3 }, note: 'The Priest gains three bonus dice on Dominate and Presence tests against packmates.' },
   wisdom_of_the_dead:{ dicePoolMod: { target: 'the questioned Skill', amount: 2 }, note: 'Add two dice while carrying the skull/head for the rest of the night.' },
   grim_chrysalis:    { soak: { note: 'the cocoon protects the user from outside damage to some extent' }, note: 'Protective cocoon.' },

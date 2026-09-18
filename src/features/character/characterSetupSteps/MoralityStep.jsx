@@ -8,7 +8,7 @@ const RULES = {
   bloodPotency: 1
 };
 
-// A wider, generic pool — a Conviction is the principle, the Touchstone is
+// A wider, generic pool: a Conviction is the principle, the Touchstone is
 // the person that keeps it real. One click fills both.
 const MORALITY_SEEDS = [
   { conviction: 'Never harm a child, mortal or Kindred.', touchstone: 'A younger sibling who still thinks you moved away.' },
@@ -26,20 +26,20 @@ const MORALITY_SEEDS = [
 ];
 
 // Predator Type is the clearest signal of who a character actually
-// encounters night to night — so it drives the most "connects with the
+// encounters night to night, so it drives the most "connects with the
 // character" touchstone suggestion.
 const PREDATOR_TOUCHSTONE_HINTS = {
-  Alleycat: { conviction: 'I only take from those who can afford to lose it.', touchstone: 'A mugging victim who never saw your face — you make sure of it.' },
+  Alleycat: { conviction: 'I only take from those who can afford to lose it.', touchstone: 'A mugging victim who never saw your face: you make sure of it.' },
   Bagger: { conviction: "I never take from the living if I don't have to.", touchstone: 'A blood bank employee who looks the other way for you.' },
-  'Blood Leech': { conviction: 'I never diablerize the innocent.', touchstone: "A Kindred elder who suspects what you've done — and hasn't reported it yet." },
+  'Blood Leech': { conviction: 'I never diablerize the innocent.', touchstone: "A Kindred elder who suspects what you've done, and hasn't reported it yet." },
   Cleaver: { conviction: 'My family never finds out what I am.', touchstone: "The family member you still visit, pretending nothing's changed." },
   Consensualist: { conviction: 'No one feeds me without saying yes.', touchstone: 'A regular donor who trusts you completely.' },
   Farmer: { conviction: "I don't drink from people, not anymore.", touchstone: 'An animal shelter volunteer who thinks you just love the work.' },
-  Osiris: { conviction: 'I never break the faith my followers place in me.', touchstone: "A devoted follower who'd die for you — and doesn't know why." },
+  Osiris: { conviction: 'I never break the faith my followers place in me.', touchstone: "A devoted follower who'd die for you, and doesn't know why." },
   Sandman: { conviction: 'I never take more than they would miss.', touchstone: 'Someone who sleeps peacefully every night, never knowing you were there.' },
   'Scene Queen': { conviction: 'The scene stays safe, even from us.', touchstone: 'A young regular at the club who looks up to you.' },
   Siren: { conviction: "I never seduce someone who wouldn't have said yes anyway.", touchstone: 'A former lover who still wonders why you left.' },
-  Extortionist: { conviction: 'I only squeeze those who can afford it.', touchstone: 'A small business owner who pays your "protection" fee — and actually needs the protection.' },
+  Extortionist: { conviction: 'I only squeeze those who can afford it.', touchstone: 'A small business owner who pays your "protection" fee, and actually needs the protection.' },
   Graverobber: { conviction: "I don't disturb the recently mourned.", touchstone: 'A mortician who looks the other way, for a price.' },
   'Roadside Killer': { conviction: 'Never twice on the same stretch of road.', touchstone: 'A trucker who picked you up once and never forgot the favor.' },
   'Grim Reaper': { conviction: 'Only the dying, never the living.', touchstone: 'A hospice nurse who suspects more than she says.' },

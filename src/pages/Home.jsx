@@ -31,9 +31,9 @@ const formatTimestamp = (ts) => {
 };
 
 function niceDate(d) {
-  if (!d) return '—';
+  if (!d) return 'None';
   const dt = new Date(d);
-  if (isNaN(dt.getTime())) return '—';
+  if (isNaN(dt.getTime())) return 'None';
   try { return dt.toLocaleDateString('en-GB', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }); }
   catch { return dt.toDateString(); }
 }
@@ -155,7 +155,7 @@ export default function Home() {
   const [pushLoading, setPushLoading] = useState(true);
   const notifSupported = 'serviceWorker' in navigator && 'PushManager' in window;
 
-  // Theme is owned app-wide by ThemeProvider (src/core/ThemeContext.jsx) — it
+  // Theme is owned app-wide by ThemeProvider (src/core/ThemeContext.jsx), it
   // applies data-theme / --tint on every route and syncs with the server. Here
   // we only read the current value and drive the picker below.
   const { theme: activeTheme, setTheme: handleThemeChange, clan: currentClan, clanOverride, setClanOverride } = useTheme();

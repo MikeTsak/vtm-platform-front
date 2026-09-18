@@ -31,7 +31,7 @@ import {
 } from './data/athensNecropolis';
 
 // Accent colors for real-world municipality/district groupings that span
-// more than one map division — purely informational, independent of claim
+// more than one map division: purely informational, independent of claim
 // ownership color. Only groups with 2+ members get an outline (a single
 // standalone municipality doesn't need one; its own border already says it).
 const GROUP_ACCENT_COLORS = {
@@ -43,7 +43,7 @@ const GROUP_ACCENT_COLORS = {
   'moschato-tavros': '#f97316',
 };
 
-// Distinct from claim colors, the pending-request amber, and Abaton red —
+// Distinct from claim colors, the pending-request amber, and Abaton red:
 // a pale violet reads as "system/storyteller-controlled" for NPC domains.
 const NPC_ACCENT_COLOR = '#c4b5fd';
 
@@ -77,14 +77,14 @@ function loadTransitPrefs() {
         groups: { ...TRANSIT_DEFAULT_PREFS.groups, ...(saved.groups || {}) },
       };
     }
-  } catch (_) { /* noop — fall through to defaults */ }
+  } catch (_) { /* noop: fall through to defaults */ }
   return TRANSIT_DEFAULT_PREFS;
 }
 
 // ── Clean-map mode ────────────────────────────────────────
 // Personal per-device view toggle. When on, the map drops every ownership
-// visual — claim colours, safety fills, extrusion, clan/avatar/NPC/Abaton
-// badges, municipal-group outlines and the division labels — leaving a plain
+// visual: claim colours, safety fills, extrusion, clan/avatar/NPC/Abaton
+// badges, municipal,group outlines and the division labels, leaving a plain
 // Athens map with thin neutral division borders. Clicking a division still
 // opens its dossier. Default off for everyone.
 const CLEAN_MAP_LS_KEY = 'domains.cleanMap.v1';
@@ -105,7 +105,7 @@ function loadHuntingDiff() {
 // ── Catacombs overlay (ADMIN ONLY) ────────────────────────
 const CATACOMBS_LS_KEY = 'domains.catacombs.v1';
 const CATACOMBS_DEFAULT_PREFS = {
-  on: false, // opt-in — it's a dense, spoilery layer
+  on: false, // opt-in: it's a dense, spoilery layer
   tiers: { attested: true, inferred: true, speculative: true },
 };
 
@@ -122,7 +122,7 @@ function loadCatacombsPrefs() {
   return CATACOMBS_DEFAULT_PREFS;
 }
 
-// ── Necropoleis overlay (ADMIN ONLY) — Old and New are separate toggles ────
+// ── Necropoleis overlay (ADMIN ONLY): Old and New are separate toggles ────
 const NECRO_LS_KEY = 'domains.necropolis.v2';
 const NECRO_DEFAULT_PREFS = {
   old: { on: false, tiers: { charted: true, hearsay: true, lost: true } },
@@ -181,7 +181,7 @@ function LayerRow({ label, on, onToggle, accent, title, children }) {
 function HuntDroplets({ n, size = 13, showNumber = false }) {
   if (!n) return null;
   return (
-    <span className={styles.huntDroplets} title={`Hunting Difficulty ${n} — ${huntingLabel(n)}`}>
+    <span className={styles.huntDroplets} title={`Hunting Difficulty ${n}: ${huntingLabel(n)}`}>
       {Array.from({ length: n }, (_, i) => (
         <span
           key={i}
@@ -215,7 +215,7 @@ function ChasseCard({ merit, id }) {
       <div className={styles.chasseBody}>
         <div className={styles.chasseHead}>
           <span className={styles.chasseName}>{merit.name}</span>
-          <span className={styles.chasseDots} title={`${merit.dots}-dot Merit`}>
+          <span className={styles.chasseDots} title={`${merit.dots} Dot Merit`}>
             {'●'.repeat(merit.dots)}{'○'.repeat(Math.max(0, 3 - merit.dots))}
           </span>
         </div>
@@ -249,7 +249,7 @@ function LayerSubRow({ label, active, onClick, swatch }) {
 
 // ── Masquerade safety tiers ───────────────────────────────
 // A null rating is a distinct "Unknown" state (not assessed yet), not the
-// same as a numeric 10 — a fresh claim or untouched division hasn't been
+// same as a numeric 10: a fresh claim or untouched division hasn't been
 // vetted by the Court, so it shouldn't silently read as "Secure".
 const SAFETY_TIERS = [
   { min: 8, label: 'Secure', color: '#22c55e' },
@@ -294,7 +294,7 @@ const clanTextUrl = (clan) => (clan ? `/img/clans/text/300px-${fileify(clan)}_lo
 // ── Chasse-merit "domain type" chips for the map ─────────────
 // A Font Awesome glyph on a dark disc, tinted with the merit's colour,
 // emitted as an SVG data URI so deck.gl's IconLayer can load it like any
-// other image (same pattern as NO_ENTRY_ICON). Cached — the same handful of
+// other image (same pattern as NO_ENTRY_ICON). Cached: the same handful of
 // merits repeats across every division on the board.
 const _chasseChipCache = {};
 function chasseChipDataUrl(icon, color) {
@@ -338,7 +338,7 @@ function chasseRingOffset(index, count, radius) {
 }
 
 // Mobile networks stall or drop mid-request far more often than a stable
-// desktop connection — without a timeout, one bad moment on a cell handoff
+// desktop connection: without a timeout, one bad moment on a cell handoff
 // hangs this fetch forever (never resolving, never falling back). Abort and
 // treat it as a failure instead so the retry wrapper below gets a chance.
 async function fetchAvatarAsDataUrl(url, division, timeoutMs = 8000) {
@@ -361,7 +361,7 @@ async function fetchAvatarAsDataUrl(url, division, timeoutMs = 8000) {
   try {
     if (!res.ok) {
       // 404 = no avatar on file (expected, permanent). 502 = the backend's
-      // own proxy fetch to the CDN failed (transient — the retry wrapper
+      // own proxy fetch to the CDN failed (transient: the retry wrapper
       // above will try again); anything else is unexpected.
       const reason = res.status === 404 ? 'no avatar in DB' : res.status === 502 ? 'backend proxy fetch failed' : 'unexpected status';
       console.log(`[Domains Avatar] Div #${division}: HTTP ${res.status} for ${url} (${reason})`);
@@ -499,24 +499,24 @@ function createFallbackAvatarDataUrl(name, accentColor = '#6366f1') {
   return canvas.toDataURL('image/png');
 }
 
-// A domain_claims row is only "owned" if it actually has an owner — a bare
+// A domain_claims row is only "owned" if it actually has an owner: a bare
 // row can exist purely to hold a Court-set safety rating for a division
 // nobody has claimed yet, and must not be treated as claimed anywhere.
 function isOwnedClaim(c) {
-  // owner_name can be set on its own — staff assigning an informal NPC
+  // owner_name can be set on its own: staff assigning an informal NPC
   // owner (e.g. typed straight into the admin panel) with no linked
   // characters/npcs row at all. That still counts as claimed.
   return !!(c && (c.owner_character_id || c.owner_npc_id || c.is_abaton || (c.owner_name && c.owner_name.trim())));
 }
 
-// An NPC-controlled domain: owned, but not by a player's own character —
+// An NPC-controlled domain: owned, but not by a player's own character:
 // either a proper npcs-table record, or just a bare owner_name staff typed
 // in directly with no character/npc link at all.
 function isNpcOwned(c) {
   return !!(c && !c.is_abaton && !c.owner_character_id && (c.owner_npc_id || (c.owner_name && c.owner_name.trim())));
 }
 
-// ── Abaton hazard-stripe texture — diagonal red/black, tiled by the SVG
+// ── Abaton hazard stripe texture: diagonal red/black, tiled by the SVG
 // pattern itself so it reads as real stripes regardless of how large the
 // division's polygon is on screen. Draped onto the polygon via the same
 // mask+bitmap trick used for the hover avatar reveal, just always-on.
@@ -532,7 +532,7 @@ const ABATON_STRIPE_IMG = 'data:image/svg+xml;utf8,' + encodeURIComponent(`
 </svg>
 `);
 
-// "Απαγορευτικό" — a no-entry sign, used as the map badge for Abaton
+// "Απαγορευτικό": a no-entry sign, used as the map badge for Abaton
 // divisions in place of a clan crest (Abaton has no owner/clan).
 const NO_ENTRY_ICON = 'data:image/svg+xml;utf8,' + encodeURIComponent(`
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64">
@@ -541,10 +541,10 @@ const NO_ENTRY_ICON = 'data:image/svg+xml;utf8,' + encodeURIComponent(`
 </svg>
 `);
 
-// Two peer badges sit side by side at each claimed division's center — the
+// Two peer badges sit side by side at each claimed division's center: the
 // clan crest and the owner's avatar (a plain square photo, like the one used
 // in the dossier panel), both clearly visible on their own. Both are plain
-// deck.gl icon loads sized in screen pixels (not real-world meters — a
+// deck.gl icon loads sized in screen pixels (not real-world meters, a
 // geo-sized circle was tried and came out sub-pixel and invisible at normal
 // zoom) so they stay a consistent, legible size and offset at any zoom.
 
@@ -553,8 +553,8 @@ export default function Domains() {
   const isAdmin = user?.role === 'admin'; // catacombs overlay is admin-only, no exceptions
   const queryClient = useQueryClient();
 
-  // Running the claims map — approving requests, assigning/vacating divisions,
-  // reading the incident log — is gated on being a "Domain Steward" (admin, or
+  // Running the claims map (approving requests, assigning/vacating divisions,
+  // reading the incident log) is gated on being a "Domain Steward" (admin, or
   // a user an admin has added in the Claims admin tab). The courtuser role no
   // longer grants any of this. `managers` is the roster the Requests tab shows.
   const { data: domainManagersData } = useQuery({
@@ -608,14 +608,14 @@ export default function Domains() {
     };
   }, []);
 
-  // Badges should feel like part of the 3D scene, not fixed HUD stickers —
+  // Badges should feel like part of the 3D scene, not fixed HUD stickers:
   // grow a bit as you zoom in, shrink as you zoom out. Rounded to quarter
   // steps so mouse-wheel zooming doesn't trigger a state update (and layer
   // rebuild) on every tiny delta.
   const [zoom, setZoom] = useState(12);
   const badgeSize = Math.max(28, Math.min(70, 48 + (zoom - 12) * 6));
   // Clan badge stays centered on the division (offset 0); the avatar badge
-  // sits just to its right — the gap scales with badgeSize so the two can
+  // sits just to its right: the gap scales with badgeSize so the two can
   // never overlap regardless of zoom.
   const badgeOffset = badgeSize + 8;
 
@@ -676,7 +676,7 @@ export default function Domains() {
     setCatacombsPrefs(p => ({ ...p, tiers: { ...p.tiers, [key]: !p.tiers[key] } }));
   }, []);
 
-  // ── Necropoleis overlay (access-gated) — Old + New are independent toggles ──
+  // ── Necropoleis overlay (access-gated): Old + New are independent toggles ──
   const [necroPrefs, setNecroPrefs] = useState(loadNecroPrefs);
   const necroOldOn = canNecroOld && necroPrefs.old.on;
   const necroNewOn = canNecroNew && necroPrefs.new.on;
@@ -748,7 +748,7 @@ export default function Domains() {
   const NECRO_SITES = useMemo(() => necroData?.sites || [], [necroData]);
 
   // ── Overlay hover tooltip (transit stations, catacomb / necropolis sites +
-  // passages) — surfaces the authored note that's otherwise invisible ──
+  // passages): surfaces the authored note that's otherwise invisible ──
   const [overlayHover, setOverlayHover] = useState(null);
   const onOverlayHover = useCallback((info) => {
     if (info?.object && info.layer) {
@@ -826,7 +826,7 @@ export default function Domains() {
     staleTime: 60 * 1000,
   });
 
-  // Who's hosted in the open division, beyond its owner — anyone can read this;
+  // Who's hosted in the open division, beyond its owner: anyone can read this;
   // `me.canManage` tells the dossier whether to show the add/remove controls
   // (the division's own owner, or a Domain Steward/admin).
   const { data: guestsData } = useQuery({
@@ -837,7 +837,7 @@ export default function Domains() {
   const canManageGuests = !!guestsData?.me?.canManage;
 
   // Same characters+NPCs roster as the Court assign dropdown, but open to any
-  // player — extending hospitality is the owner's call, not a Steward power.
+  // player: extending hospitality is the owner's call, not a Steward power.
   // Only fetched once the add-guest form can actually render.
   const { data: guestRosterData } = useQuery({
     queryKey: ['domain-guests-roster'],
@@ -846,7 +846,7 @@ export default function Domains() {
     staleTime: 60 * 1000,
   });
 
-  // Every guest, every division, in one call — the map badges need this for
+  // Every guest, every division, in one call: the map badges need this for
   // every claimed division at once, not just whichever one the dossier has open.
   const { data: allGuestsData } = useQuery({
     queryKey: ['domain-guests-all'],
@@ -1007,7 +1007,7 @@ export default function Domains() {
   }, []);
 
   const getGuestAvatarUrl = useCallback((guest) => {
-    if (!guest || guest.has_avatar === false) return null; // no DB avatar — go straight to the initials fallback
+    if (!guest || guest.has_avatar === false) return null; // no DB avatar: go straight to the initials fallback
     const baseUrl = import.meta.env.VITE_API_URL || '/api';
     if (guest.user_id) return `${baseUrl}/users/${guest.user_id}/avatar?size=thumb&raw=1`;
     if (guest.npc_id) return `${baseUrl}/npcs/${guest.npc_id}/avatar?size=thumb&raw=1`;
@@ -1015,7 +1015,7 @@ export default function Domains() {
   }, []);
 
   // ── Eagerly load a small circular avatar for every guest of every claimed
-  // division, exactly like the owner badge above — unlike the owner (which
+  // division, exactly like the owner badge above: unlike the owner (which
   // falls back to the clan crest while it waits/fails), a guest has no crest
   // to fall back to, so a failed/missing photo becomes a generated initials
   // circle instead, tinted by clan (or slate for an NPC). ──
@@ -1040,7 +1040,7 @@ export default function Domains() {
     return () => { isMounted = false; };
   }, [allGuests, guestAvatarCache, getGuestAvatarUrl]);
 
-  // Same reconnect/foreground retry as the owner avatars — but a guest never
+  // Same reconnect/foreground retry as the owner avatars: but a guest never
   // sits as `null` (it always resolves to at least the initials fallback), so
   // there's nothing to clear here; the fallback IS the permanent state until
   // a real photo succeeds on a later mount. Nothing to add.
@@ -1080,13 +1080,13 @@ export default function Domains() {
     return () => window.removeEventListener('avatar-updated', handleAvatarUpdated);
   }, []);
 
-  // A division that failed after all retries above sits as `null` — the clan
+  // A division that failed after all retries above sits as `null`: the clan
   // crest buffer forever, even once the connection recovers, because nothing
   // else ever asks again. Reconnecting or bringing the tab back to the
   // foreground (both common right after the flaky-mobile-network moment that
   // caused the failure) clears those specific entries so the loader effect
   // above picks them back up. Confirmed "no avatar in the DB" divisions are
-  // also `null` here and get harmlessly re-checked — cheap, no network call
+  // also `null` here and get harmlessly re-checked: cheap, no network call
   // (getAvatarUrl short-circuits before fetchAvatarWithRetry is ever called).
   useEffect(() => {
     const retryFailedAvatars = () => {
@@ -1147,7 +1147,7 @@ export default function Domains() {
           __name: divisionName,
           claimColor: claim?.color || '#888888',
           // owner_name is a legacy free-text snapshot; the backend now also
-          // resolves the live character/npc name (live_name) — prefer that
+          // resolves the live character/npc name (live_name): prefer that
           // so a renamed character never shows a stale duplicate name.
           ownerName: claim?.live_name || claim?.owner_name || 'Unclaimed',
           userId: claim?.user_id || null,
@@ -1156,14 +1156,14 @@ export default function Domains() {
           isAbaton: !!claim?.is_abaton,
           isNpc: isNpcOwned(claim),
           // The one source of truth for "does this division have an owner"
-          // — covers character-linked, npc-linked, AND a bare owner_name
+          // covers character-linked, npc-linked, AND a bare owner_name
           // typed in with no linked record at all (common for informal NPC
           // assignments in this campaign). Everywhere below that used to
           // check `userId || npcId || isAbaton` missed that third case.
           claimed: isOwnedClaim(claim),
           clan: claim?.clan || null,
           titles: claim?.titles || [],
-          // safety_rating can arrive as a DECIMAL string from the DB driver —
+          // safety_rating can arrive as a DECIMAL string from the DB driver:
           // coerce so the tier comparison (rating >= min) is numeric.
           safetyRating: (claim?.safety_rating == null || claim.safety_rating === '')
             ? null
@@ -1182,7 +1182,7 @@ export default function Domains() {
   const claimByDiv = useMemo(() => new Map(claims.map(c => [Number(c.division), c])), [claims]);
 
   // Re-derived from geoJsonData (not a click-time snapshot) so the dossier
-  // reflects live ownership — e.g. it updates itself the moment a request
+  // reflects live ownership: e.g. it updates itself the moment a request
   // is approved while it's still open, instead of showing a stale owner.
   const selectedFeature = useMemo(() => {
     if (selectedDivision == null || !geoJsonData) return null;
@@ -1313,7 +1313,7 @@ export default function Domains() {
     const feature = geoJsonData?.features.find(f => f.properties.__division === Number(d.division));
     if (feature) selectFeature(feature);
     pendingChasseScrollRef.current = d.meritKey;
-    // Dossier for this division may already be open — try to jump right away.
+    // Dossier for this division may already be open: try to jump right away.
     requestAnimationFrame(() => {
       if (scrollToChasseCard(d.meritKey)) pendingChasseScrollRef.current = null;
     });
@@ -1468,8 +1468,8 @@ export default function Domains() {
   // sign for Abaton (which has no owner or clan to show). The clan crest
   // can render the moment the clan is known (it's a static per-clan asset);
   // the avatar badge only appears once its blob has actually finished
-  // fetching — the two are independent.
-  // Guests grouped by division, for the badge-position pass below — recomputed
+  // fetching: the two are independent.
+  // Guests grouped by division, for the badge-position pass below, recomputed
   // only when the bulk guest list actually changes.
   const guestsByDivision = useMemo(() => {
     const map = new Map();
@@ -1522,7 +1522,7 @@ export default function Domains() {
         }
       }
 
-      // Small guest avatar circles, underneath the clan text logo — one row
+      // Small guest avatar circles, underneath the clan text logo: one row
       // per division, only for guests whose avatar (real or generated
       // fallback) has actually resolved.
       const divisionGuests = guestsByDivision.get(division);
@@ -1614,7 +1614,7 @@ export default function Domains() {
 
     const layers = [];
 
-    // ─── Layer 1: Extruded base — fill = Masquerade safety, border = owner color ──
+    // ─── Layer 1: Extruded base: fill = Masquerade safety, border = owner color ──
     // The id switches with clean-map mode on purpose: toggling `extruded` +
     // `material` on a live GeoJsonLayer leaves deck.gl's lit polygon model in a
     // half-updated state (colours come back muddy/unlit). A distinct id forces
@@ -1648,7 +1648,7 @@ export default function Domains() {
           const div = f.properties?.__division;
           const isSelected = div === selectedDivision;
           const isHovered = div === hoveredDivision;
-          // Clean map: no ownership colour at all — just a faint wash on the
+          // Clean map: no ownership colour at all, just a faint wash on the
           // division you have open so you can see what you clicked.
           if (cleanMap) return isSelected ? [148, 163, 184, 40] : [0, 0, 0, 0];
           if (f.properties?.isAbaton) {
@@ -1708,11 +1708,11 @@ export default function Domains() {
       })
     );
 
-    // ─── Everything below is ownership decoration — skipped entirely in
+    // ─── Everything below is ownership decoration: skipped entirely in
     // clean-map mode (transit + catacombs overlays are handled separately). ──
     if (!cleanMap) {
 
-      // ─── Abaton hazard stripes — draped onto each Abaton polygon the same
+      // ─── Abaton hazard stripes: draped onto each Abaton polygon the same
       // way the hover-avatar reveal drapes a face onto a division, just
       // always-on instead of hover-gated (see the mask+bitmap pattern below).
       for (const feature of abatonFeatures) {
@@ -1738,7 +1738,7 @@ export default function Domains() {
         );
       }
 
-      // ─── NPC outline + tag — same glow-then-crisp treatment as the
+      // ─── NPC outline + tag: same glow-then-crisp treatment as the
       // municipal-group borders, so it reads as a distinct "system" marker
       // regardless of whether that division also has a clan/avatar badge.
       if (npcFeatures.length) {
@@ -1781,7 +1781,7 @@ export default function Domains() {
             getSize: 11,
             getColor: hexToRgba(NPC_ACCENT_COLOR, 255),
             // The backdrop disc's radius is badgeSize/2+3, but it's floored at
-            // radiusMinPixels:14 — at low zoom (small badgeSize) that floor
+            // radiusMinPixels:14: at low zoom (small badgeSize) that floor
             // kicks in while this offset kept shrinking as if it hadn't,
             // landing the tag on top of the badge instead of above it. Clamp
             // the same way so there's always real clearance.
@@ -1800,7 +1800,7 @@ export default function Domains() {
       }
 
       // ─── Clan badge: dark backdrop disc + masked white clan crest, at the
-      // division's center. Plain deck.gl icon loading — no canvas involved.
+      // division's center. Plain deck.gl icon loading: no canvas involved.
       if (clanBadgeData.length) {
         layers.push(
           new ScatterplotLayer({
@@ -1871,7 +1871,7 @@ export default function Domains() {
         );
       }
 
-      // ─── Avatar badge: the owner's actual photo — masked to a circle,
+      // ─── Avatar badge: the owner's actual photo masked to a circle,
       // rendered directly on top of the clan crest once loaded.
       if (avatarBadgeData.length) {
         layers.push(
@@ -1969,7 +1969,7 @@ export default function Domains() {
         );
       }
 
-      // ─── Guest avatars — small circles in a row underneath the clan text
+      // ─── Guest avatars: small circles in a row underneath the clan text
       // logo, same idea as the owner's badge but smaller and possibly several.
       // Offset clears even the tallest clan logo (Brujah/Toreador). Clicking
       // one opens that division's dossier, where Guests is the first block. ──
@@ -2055,7 +2055,7 @@ export default function Domains() {
 
 
 
-      // ─── Hunting-difficulty badge — a blood-red pill with the number at each
+      // ─── Hunting-difficulty badge: a blood-red pill with the number at each
       // division centre.
       if (huntingDiffOn && huntBadgeData.length) {
         layers.push(
@@ -2084,7 +2084,7 @@ export default function Domains() {
         );
       }
 
-      // ─── Chasse-merit type icons — a row of glyph chips beneath each
+      // ─── Chasse-merit type icons: a row of glyph chips beneath each
       // division's name. Pickable: clicking one opens the dossier and jumps to
       // that merit. Sits well below the clan-name logo on claimed divisions,
       // right under the name label on unclaimed ones.
@@ -2100,7 +2100,7 @@ export default function Domains() {
             sizeUnits: 'pixels',
             getPixelOffset: d => {
               // Claimed: an evenly spaced ring around the avatar circle,
-              // opening at the bottom for the clan-name logo — see
+              // opening at the bottom for the clan-name logo: see
               // chasseRingOffset().
               if (d.claimed) return chasseRingOffset(d.i, d.count, badgeSize / 2 + 17);
               // Unclaimed: no circle to ring, so a plain row under the name.
@@ -2117,11 +2117,11 @@ export default function Domains() {
         );
       }
 
-      // Division NAME labels are the native maplibre symbol layer again — small,
-      // low-key, name only — see the <Source id="domains-labels-src"> in JSX.
+      // Division NAME labels are the native maplibre symbol layer again: small,
+      // low-key, name only (see the <Source id="domains-labels-src"> in JSX).
       // (The big deck.gl serif plates were rolled back.)
 
-    } // end if (!cleanMap) — ownership decoration
+    } // end if (!cleanMap): ownership decoration
 
     // ─── Municipality/district grouping overlay (flat, ownership-agnostic) ──
     // depthTest is off on purpose: these are ground-level, but claimed
@@ -2129,7 +2129,7 @@ export default function Domains() {
     // occlude a flat line/label sitting behind them from this camera angle.
     // Treat them like a HUD annotation that always reads on top.
     if (muniOutlinesOn && groupOverlayFeatures.length) {
-      // Soft outer glow pass, then a crisp bright pass on top — same trick
+      // Soft outer glow pass, then a crisp bright pass on top: same trick
       // as the selection glow, just static, so the border actually pops
       // against a busy, colorful, already-claimed map.
       layers.push(
@@ -2181,7 +2181,7 @@ export default function Domains() {
       );
     }
 
-    // ─── Athens transit overlay — metro / tram / suburban lines + stations ──
+    // ─── Athens transit overlay: metro / tram / suburban lines + stations ──
     // Ground-level annotation drawn over the 3D extrusions (depthTest off, the
     // same treatment as the municipal-group borders) so it reads like a transit
     // map laid over the territory board.
@@ -2287,7 +2287,7 @@ export default function Domains() {
       );
     }
 
-    // ─── Catacombs overlay (admin only) — buried rivers, Hadrian's Aqueduct,
+    // ─── Catacombs overlay (admin only): buried rivers, Hadrian's Aqueduct,
     // quarry-caves and the storyteller tunnels that join them. One PathLayer
     // per certainty tier so each gets its own dash (solid / dashed / dotted). ──
     if (catacombPassageTiers.length) {
@@ -2380,7 +2380,7 @@ export default function Domains() {
       );
     }
 
-    // ─── Necropoleis overlay (admin only) — the ragged OLD necropolis and the
+    // ─── Necropoleis overlay (admin only): the ragged OLD necropolis and the
     // small NEW one. The OLD galleries are deliberately jagged and broken. ──
     if (necroDrawGroups.length) {
       layers.push(
@@ -2508,8 +2508,8 @@ export default function Domains() {
 
     // ─── Final z-order pass ─────────────────────────────────────────────
     // deck.gl paints in array order. The Chasse merit type-icons must read on
-    // top of every overlay — transit lines, catacombs, hunt badges, municipal
-    // outlines — so lift them to the end. The centre badge stack (owner
+    // top of every overlay (transit lines, catacombs, hunt badges, municipal
+    // outlines) so lift them to the end. The centre badge stack (owner
     // avatar, clan crest, clan-name logo, Abaton sign, hover face reveal)
     // stays above even the icons, so lift that last of all.
     const CHASSE_ICON_ID = 'chasse-type-icons';
@@ -2532,7 +2532,7 @@ export default function Domains() {
   // ── Loading / error state ─────────────────────────────────
   // Domains.json is a large file loaded as its own chunk (a dynamic import,
   // not bundled), so on a fresh page load geoJsonData is legitimately still
-  // `undefined` for a moment while that chunk downloads — slower on a mobile
+  // `undefined` for a moment while that chunk downloads, slower on a mobile
   // connection, which is why this was showing up there every time. That's
   // not a failure; only show the error once the query has actually settled
   // with nothing to show.
@@ -2602,7 +2602,7 @@ export default function Domains() {
           </div>
         )}
 
-        {/* ── Small "still rendering" chip — the 3D terrain/extrusion scene
+        {/* ── Small "still rendering" chip: the 3D terrain/extrusion scene
              can take a moment to spin up even after data has loaded ── */}
         <AnimatePresence>
           {!mapReady && (
@@ -2638,10 +2638,10 @@ export default function Domains() {
             style={{ width: '100%', height: '100%' }}
             onLoad={() => setMapReady(true)}
           >
-            {/* Native MapLibre division-name labels — small, low-key, name only
+            {/* Native MapLibre division-name labels: small, low-key, name only
                 (the number lives in the dossier). The one you have open is drawn
                 slightly bolder via the second layer. On claimed divisions the
-                deck.gl badge/crest sits on top of this — that's fine, it's meant
+                deck.gl badge/crest sits on top of this, that's fine, it's meant
                 to read quietly underneath. */}
             {geoJsonData && !cleanMap && (
               <Source id="domains-labels-src" type="geojson" data={geoJsonData}>
@@ -2785,7 +2785,7 @@ export default function Domains() {
                         <span
                           className={styles.railHunt}
                           data-diff={HUNTING_DIFFICULTY[domain.number].difficulty}
-                          title={`Hunting Difficulty ${HUNTING_DIFFICULTY[domain.number].difficulty} — ${huntingLabel(HUNTING_DIFFICULTY[domain.number].difficulty)}`}
+                          title={`Hunting Difficulty ${HUNTING_DIFFICULTY[domain.number].difficulty}: ${huntingLabel(HUNTING_DIFFICULTY[domain.number].difficulty)}`}
                         >
                           <span className="material-symbols-outlined">water_drop</span>
                           {HUNTING_DIFFICULTY[domain.number].difficulty}
@@ -2845,7 +2845,7 @@ export default function Domains() {
                     on={cleanMap}
                     onToggle={toggleCleanMap}
                     accent="slate"
-                    title="Hide domain colours, badges and labels — plain Athens map"
+                    title="Hide domain colours, badges and labels: plain Athens map"
                   />
 
                   <LayerRow
@@ -3027,7 +3027,7 @@ export default function Domains() {
                                   <span
                                     className={styles.railHunt}
                                     data-diff={HUNTING_DIFFICULTY[c.division].difficulty}
-                                    title={`Hunting Difficulty ${HUNTING_DIFFICULTY[c.division].difficulty} — ${huntingLabel(HUNTING_DIFFICULTY[c.division].difficulty)}`}
+                                    title={`Hunting Difficulty ${HUNTING_DIFFICULTY[c.division].difficulty}: ${huntingLabel(HUNTING_DIFFICULTY[c.division].difficulty)}`}
                                   >
                                     <span className="material-symbols-outlined">water_drop</span>
                                     {HUNTING_DIFFICULTY[c.division].difficulty}
@@ -3064,7 +3064,7 @@ export default function Domains() {
                   <div className={styles.dossierTitleBlock}>
                     <span className={styles.dossierDivTag}>DIVISION {selectedDivisionInfo.number}</span>
                     <h3 className={styles.dossierName}>{selectedDivisionInfo.name}</h3>
-                    <span className={styles.abatonBadgeText}>⚠ ABATON — SACRED GROUND · OFF LIMITS ⚠</span>
+                    <span className={styles.abatonBadgeText}>ABATON: SACRED GROUND · OFF LIMITS</span>
                   </div>
                 </div>
               ) : (
@@ -3112,7 +3112,7 @@ export default function Domains() {
                       <div className={styles.huntRow} style={{ marginTop: '0.75rem', justifyContent: 'center' }}>
                         <HuntDroplets n={selectedDivisionInfo.hunting_difficulty} size={17} />
                         <span className={styles.huntReadout} style={{ color: '#fff' }}>
-                          Hunt {selectedDivisionInfo.hunting_difficulty} — {huntingLabel(selectedDivisionInfo.hunting_difficulty)}
+                          Hunt {selectedDivisionInfo.hunting_difficulty}: {huntingLabel(selectedDivisionInfo.hunting_difficulty)}
                         </span>
                       </div>
                     )}
@@ -3160,7 +3160,7 @@ export default function Domains() {
 
                     {!isUnclaimed && !selectedDivisionInfo.is_abaton && (
                       <div className={styles.statBlock}>
-                        <span className={styles.statLabel}>Guests — Hospitality</span>
+                        <span className={styles.statLabel}>Guests: Hospitality</span>
                         {(guestsData?.guests || []).length === 0 ? (
                           <p className={styles.dossierEmpty} style={{ margin: 0 }}>No one is currently hosted here.</p>
                         ) : (
@@ -3209,7 +3209,7 @@ export default function Domains() {
                               value={guestId}
                               onChange={e => setGuestId(e.target.value)}
                             >
-                              <option value="">— select {guestTarget === 'character' ? 'a character' : 'an NPC'} —</option>
+                              <option value="">Select {guestTarget === 'character' ? 'a character' : 'an NPC'}</option>
                               {guestTarget === 'character'
                                 ? (guestRosterData?.characters || []).map(c => (
                                   <option key={c.id} value={c.id}>{c.name} ({c.player_name}){c.clan ? ` · ${c.clan}` : ''}</option>
@@ -3222,7 +3222,7 @@ export default function Domains() {
                             <input
                               type="text"
                               className={styles.guestNoteInput}
-                              placeholder="Note (optional) — e.g. seeking Praxis"
+                              placeholder="Note (optional), e.g. seeking Praxis"
                               value={guestNote}
                               maxLength={255}
                               onChange={e => setGuestNote(e.target.value)}
@@ -3252,7 +3252,7 @@ export default function Domains() {
                       <div className={styles.statBlock}>
                         <span className={styles.statLabel}>Masquerade Safety</span>
                         {selectedDivisionInfo.safety_rating == null ? (
-                          <span className={styles.gaugeUnknown}>? Unknown — the Court has not assessed this territory</span>
+                          <span className={styles.gaugeUnknown}>? Unknown: the Court has not assessed this territory</span>
                         ) : (
                           <>
                             <div className={styles.gaugeTrack}>
@@ -3262,7 +3262,7 @@ export default function Domains() {
                               />
                             </div>
                             <span className={styles.gaugeReadout} style={{ color: safety.color }}>
-                              {selectedDivisionInfo.safety_rating}/10 — {safety.label}
+                              {selectedDivisionInfo.safety_rating}/10: {safety.label}
                             </span>
                           </>
                         )}
@@ -3291,7 +3291,7 @@ export default function Domains() {
                         <span className={styles.statValue}>~{selectedDivisionInfo.population.population.toLocaleString()} residents</span>
                         {selectedDivisionInfo.population.siblings.length > 0 ? (
                           <span className={styles.statSub}>
-                            Figure covers the whole <span style={{ color: GROUP_ACCENT_COLORS[selectedDivisionInfo.population.group] || 'inherit' }}>{selectedDivisionInfo.population.groupLabel}</span>, not {selectedDivisionInfo.population.placeLabel} alone — shared with division{selectedDivisionInfo.population.siblings.length > 1 ? 's' : ''} {selectedDivisionInfo.population.siblings.map(n => `#${n}`).join(', ')}
+                            Figure covers the whole <span style={{ color: GROUP_ACCENT_COLORS[selectedDivisionInfo.population.group] || 'inherit' }}>{selectedDivisionInfo.population.groupLabel}</span>, not {selectedDivisionInfo.population.placeLabel} alone (shared with division{selectedDivisionInfo.population.siblings.length > 1 ? 's' : ''} {selectedDivisionInfo.population.siblings.map(n => `#${n}`).join(', ')})
                           </span>
                         ) : (
                           <span className={styles.statSub}><span style={{ color: GROUP_ACCENT_COLORS[selectedDivisionInfo.population.group] || 'inherit' }}>{selectedDivisionInfo.population.groupLabel}</span></span>
@@ -3301,7 +3301,7 @@ export default function Domains() {
 
                     {selectedDivisionInfo.chasse?.length > 0 && (
                       <div className={styles.statBlock}>
-                        <span className={styles.statLabel}>Feeding Grounds — Chasse Merits</span>
+                        <span className={styles.statLabel}>Feeding Grounds: Chasse Merits</span>
                         <div className={styles.chasseBar}>
                           {selectedDivisionInfo.chasse.map(m => (
                             <button
@@ -3436,7 +3436,7 @@ export default function Domains() {
                           value={assignId}
                           onChange={e => setAssignId(e.target.value)}
                         >
-                          <option value="">— select {assignTarget === 'character' ? 'a character' : 'an NPC'} —</option>
+                          <option value="">Select {assignTarget === 'character' ? 'a character' : 'an NPC'}</option>
                           {assignTarget === 'character'
                             ? (assignablesData?.characters || []).map(c => (
                               <option key={c.id} value={c.id}>{c.name} ({c.player_name}){c.clan ? ` · ${c.clan}` : ''}</option>
@@ -3447,7 +3447,7 @@ export default function Domains() {
                           }
                         </select>
 
-                        {/* Color picker — characters only */}
+                        {/* Color picker: characters only */}
                         {assignTarget === 'character' && (
                           <div className={styles.assignColorRow}>
                             <label className={styles.assignColorLabel}>Territory colour</label>
@@ -3478,7 +3478,7 @@ export default function Domains() {
                           {assignMutation.isPending ? 'Assigning…' : 'Assign Domain'}
                         </button>
 
-                        {/* Unassign — only show when division is currently claimed */}
+                        {/* Unassign: only show when division is currently claimed */}
                         {selectedDivisionInfo.owner !== 'Unclaimed' && !selectedDivisionInfo.is_abaton && (
                           <>
                             <hr className={styles.assignSeparator} />
@@ -3520,7 +3520,7 @@ export default function Domains() {
                     {isCodexLoading ? (
                       <p className={styles.dossierEmpty}>Loading codex…</p>
                     ) : codexEntries.length === 0 ? (
-                      <p className={styles.dossierEmpty}>No lore recorded yet — be the first to add something.</p>
+                      <p className={styles.dossierEmpty}>No lore recorded yet, be the first to add something.</p>
                     ) : (
                       <div className={styles.codexList}>
                         {codexEntries.map(e => (

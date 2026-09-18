@@ -98,7 +98,7 @@ const ALL_REFERENCE = [...RULES, ...DISC_ENTRIES, ...RITUAL_ENTRIES, ...MERITS, 
 const wikiSearch = new MiniSearch({
   fields: ['title', 'content', 'category'],
   storeFields: ['title', 'content', 'category', 'cost', 'source'],
-  // fuzzy 0.4 intentionally high — VtM terminology is esoteric and players typo constantly
+  // fuzzy 0.4 intentionally high: VtM terminology is esoteric and players typo constantly
   searchOptions: { fuzzy: 0.4, prefix: true }
 });
 wikiSearch.addAll(ALL_REFERENCE.map((item, id) => ({ id, ...item })));
@@ -509,7 +509,7 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
     flash('Willpower restored for the table.');
   };
 
-  // Roll requests — the ST asks a player for a specific pool. Stored in metadata
+  // Roll requests: the ST asks a player for a specific pool. Stored in metadata
   // so the player's screen shows it; the player rolls, the ST clears it.
   const sendRollRequest = () => {
     const target = players.find(p => String(p.character_id ?? p.id) === String(reqTarget));
@@ -556,8 +556,8 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
       results: { normal: res.normalDice, hunger: [] },
       successes: res.outcome.successes,
       note: feltRemorse
-        ? `Remorse (Humanity ${humanity}, ${stains} stain${stains !== 1 ? 's' : ''}) — feels remorse, Stains cleared`
-        : `Remorse (Humanity ${humanity}, ${stains} stain${stains !== 1 ? 's' : ''}) — no remorse, Humanity falls to ${Math.max(0, humanity - 1)}`,
+        ? `Remorse (Humanity ${humanity}, ${stains} stain${stains !== 1 ? 's' : ''}): feels remorse, Stains cleared`
+        : `Remorse (Humanity ${humanity}, ${stains} stain${stains !== 1 ? 's' : ''}): no remorse, Humanity falls to ${Math.max(0, humanity - 1)}`,
     });
 
     if (feltRemorse) {
@@ -565,7 +565,7 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
     } else {
       await adjustPlayer(charId, { humanityDelta: -1, stainsDelta: -stains });
     }
-    flash(feltRemorse ? `${name} feels remorse — Stains cleared.` : `${name} loses a point of Humanity.`);
+    flash(feltRemorse ? `${name} feels remorse: Stains cleared.` : `${name} loses a point of Humanity.`);
   };
 
   const rollAsEntity = async () => {
@@ -816,7 +816,7 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
                     </div>
                   </div>
 
-                  {/* Apply damage — halves Superficial, rolls over to Aggravated */}
+                  {/* Apply damage: halves Superficial, rolls over to Aggravated */}
                   <div className={styles.dmgRow}>
                     <span className={styles.dmgLabel}>Damage</span>
                     <input
@@ -953,7 +953,7 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
                   if (it.message && !it.roll_type) return `[${t}] ${it.message}`;
                   const who = it.character_name || it.player_name || 'Unknown';
                   const res = it.label || `${it.successes ?? 0} successes`;
-                  return `[${t}] ${who} — ${(it.roll_type || 'roll').replace(/_/g, ' ')}${it.note ? ` (${it.note})` : ''} → ${res}`;
+                  return `[${t}] ${who}: ${(it.roll_type || 'roll').replace(/_/g, ' ')}${it.note ? ` (${it.note})` : ''} → ${res}`;
                 }).reverse().join('\n');
                 navigator.clipboard?.writeText(text).then(() => flash('Activity log copied.'), () => flash('Copy failed.'));
               }}
@@ -965,7 +965,7 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
               style={{ width: 'auto', padding: '0.3rem 0.7rem', fontSize: '0.7rem' }}
               onClick={() => {
                 const lines = [];
-                lines.push(`# ${session?.name || 'Live Session'} — ${formatEuDate(session?.created_at || new Date())}`);
+                lines.push(`# ${session?.name || 'Live Session'}: ${formatEuDate(session?.created_at || new Date())}`);
                 lines.push(`Duration ${fmtTime(duration)} · ${players.length} players`);
                 lines.push('');
                 lines.push('## Player state');
@@ -991,7 +991,7 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
                 lines.push('## Notable rolls');
                 for (const r of rolls.filter(x => x.has_messy_critical || x.has_bestial_failure || x.roll_type === 'remorse').slice(0, 40)) {
                   const t = new Date(r.created_at).toLocaleTimeString();
-                  lines.push(`- [${t}] ${r.character_name || 'Unknown'} — ${(r.roll_type || 'roll').replace(/_/g, ' ')}: ${r.note || `${r.successes ?? 0} successes`}`);
+                  lines.push(`* [${t}] ${r.character_name || 'Unknown'}: ${(r.roll_type || 'roll').replace(/_/g, ' ')}: ${r.note || `${r.successes ?? 0} successes`}`);
                 }
                 navigator.clipboard?.writeText(lines.join('\n')).then(() => flash('Session summary copied.'), () => flash('Copy failed.'));
               }}
@@ -1240,7 +1240,7 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
                 {reqTarget && (
                   <div style={{ marginBottom: '0.5rem' }}>
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
-                      {reqTargetPlayer?.name ?? 'Player'}&rsquo;s specialties {reqSpecs.length === 0 && '— none for these traits'}
+                      {reqTargetPlayer?.name ?? 'Player'}&rsquo;s specialties {reqSpecs.length === 0 && ': none for these traits'}
                     </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                       {reqSpecs.map(sp => (
@@ -1294,7 +1294,7 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
                             <button className={styles.btnOutline} style={{ padding: '0.1rem 0.4rem', fontSize: '0.65rem', color: 'var(--danger)', borderColor: 'transparent' }} onClick={() => cancelRollRequest(req.id)}>Clear</button>
                           </div>
                           <div style={{ fontSize: '0.7rem', color: answered ? 'var(--success)' : 'var(--text-muted)', marginTop: '0.15rem' }}>
-                            {answered ? `Rolled — ${answered.successes ?? 0} success${(answered.successes ?? 0) === 1 ? '' : 'es'}` : 'Waiting for the player…'}
+                            {answered ? `Rolled: ${answered.successes ?? 0} success${(answered.successes ?? 0) === 1 ? '' : 'es'}` : 'Waiting for the player…'}
                           </div>
                         </div>
                       );
@@ -1352,7 +1352,7 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
                     results: { normal: a.normalDice, hunger: a.hungerDice },
                     successes: a.outcome.successes,
                     has_messy_critical: a.outcome.hasMessyCritical, has_bestial_failure: a.outcome.hasBestialFailure,
-                    note: `Opposed — ${rollerEntity} ${a.outcome.successes} vs ${b.outcome.successes}: ${verdict}. ${rollerNote}`,
+                    note: `Opposed: ${rollerEntity} ${a.outcome.successes} vs ${b.outcome.successes}: ${verdict}. ${rollerNote}`,
                   });
                   flash(verdict);
                 }}>Roll contest</button>

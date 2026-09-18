@@ -5,7 +5,7 @@
 // Two rules bugs from the previous builder are fixed here and are worth
 // naming, because they changed every typed coterie's arithmetic:
 //
-//  1. A coterie type's Domain dots were treated as free — only dots *above*
+//  1. A coterie type's Domain dots were treated as free: only dots *above*
 //     the type baseline counted against the pool. The corebook is explicit
 //     (p.197): "If your coterie matches a given type, subtract the listed
 //     costs from the coterie pool." Every Domain dot is now paid for.
@@ -67,7 +67,7 @@ function MembersPicker({ members, onChange, roster, currentUser, isAdmin }) {
   const results = useMemo(() => {
     const s = q.trim().toLowerCase();
     return (roster || [])
-      // A coterie is made of characters — an account with no sheet cannot join,
+      // A coterie is made of characters: an account with no sheet cannot join,
       // and the server rejects it, so it is filtered out here too.
       .filter((u) => !!u.char_id && !chosen.has(u.id))
       .filter((u) => !s
@@ -88,7 +88,7 @@ function MembersPicker({ members, onChange, roster, currentUser, isAdmin }) {
   return (
     <Card
       title="Members"
-      subtitle={`Minimum ${MIN_MEMBERS} — each contributes dots to the pool`}
+      subtitle={`Minimum ${MIN_MEMBERS}: each contributes dots to the pool`}
       tone={members.length < MIN_MEMBERS ? 'warn' : undefined}
       actions={<span className={styles.countPill}>{members.length}</span>}
     >
@@ -97,7 +97,7 @@ function MembersPicker({ members, onChange, roster, currentUser, isAdmin }) {
       ) : (
         <ul className={styles.roster}>
           {members.map((m) => {
-            // A non-admin may not remove themselves — the server requires the
+            // A non-admin may not remove themselves: the server requires the
             // caller to remain in the coterie they are editing.
             const locked = !isAdmin && currentUser && currentUser.id === m.id;
             return (
@@ -238,7 +238,7 @@ export default function CoterieBuilder({
       return `Needs at least one dot of ${DOMAIN_TRAIT_INFO[def.trait].name}.`;
     }
     if (def.clan && !s.members.some((m) => (m.clan || '') === def.clan)) {
-      return `No ${def.clan} in the coterie yet — allowed, but the Merit only works if one joins.`;
+      return `No ${def.clan} in the coterie yet: allowed, but the Merit only works if one joins.`;
     }
     return null;
   }, [s.traits, s.members]);
@@ -315,7 +315,7 @@ export default function CoterieBuilder({
                 maxLength={160}
               />
             </Field>
-            <Field label="Concept" hint="One line — what this coterie is for.">
+            <Field label="Concept" hint="One line: what this coterie is for.">
               <input
                 className={styles.input}
                 value={s.concept}
@@ -335,7 +335,7 @@ export default function CoterieBuilder({
                   value={s.type}
                   onChange={(e) => (e.target.value ? applyType(e.target.value) : clearType())}
                 >
-                  <option value="">— Custom (no type) —</option>
+                  <option value="">Custom (no type)</option>
                   {ALL_COTERIE_NAMES.map((n) => <option key={n} value={n}>{n}</option>)}
                 </select>
                 {s.type && (
@@ -354,7 +354,7 @@ export default function CoterieBuilder({
                   <Muted tone="warn" className={styles.tightNote}>
                     <b>Choose for yourself:</b>{' '}
                     {typeSeed.unmapped.map((u) => `${u.name}${u.dots ? ` ${'•'.repeat(u.dots)}` : ''}`).join(', ')}
-                    {' '}— this requirement has no single catalog entry, so add what your troupe agrees on.
+                    {' '}: this requirement has no single catalog entry, so add what your troupe agrees on.
                   </Muted>
                 )}
                 {Array.isArray(typeData.extras) && typeData.extras.length > 0 && (
@@ -387,7 +387,7 @@ export default function CoterieBuilder({
 
           <AdvantagePicker
             title="Coterie Merits"
-            subtitle="From the Players Guide — domain features, clan tricks and general perks"
+            subtitle="From the Players Guide: domain features, clan tricks and general perks"
             catalog={COTERIE_MERITS}
             groups={MERIT_GROUPS}
             items={s.merits}
@@ -447,16 +447,16 @@ export default function CoterieBuilder({
                     : { domainId, traits: { chasse: 0, lien: 0, portillon: 0 } });
                 }}
               >
-                <option value="">— No Domain —</option>
+                <option value="">No Domain</option>
                 {domainOptions.map((o) => (
-                  <option key={o.value} value={o.value}>#{o.value} — {o.label}</option>
+                  <option key={o.value} value={o.value}>#{o.value} : {o.label}</option>
                 ))}
               </select>
             </Field>
 
             {domainTaken && (
               <Muted tone="warn">
-                <b>{domainTaken}</b> already claims this division. Domains are granted by the Prince —
+                <b>{domainTaken}</b> already claims this division. Domains are granted by the Prince:
                 clear it with a Storyteller before two coteries hunt the same ground.
               </Muted>
             )}
@@ -493,7 +493,7 @@ export default function CoterieBuilder({
                       />
                       {baseline > 0 && s.traits[k] < baseline && (
                         <Muted tone="warn" className={styles.tightNote}>
-                          Below the {s.type} baseline of {baseline} — fine if the troupe traded those dots away.
+                          Below the {s.type} baseline of {baseline}: fine if the troupe traded those dots away.
                         </Muted>
                       )}
                     </li>
@@ -510,11 +510,11 @@ export default function CoterieBuilder({
                 </div>
                 <div className={styles.effectRow}>
                   <span>Lien bonus dice</span>
-                  <b>{lienBonusDice(s.traits.lien) || '—'}</b>
+                  <b>{lienBonusDice(s.traits.lien) || 'None'}</b>
                 </div>
                 <div className={styles.effectRow}>
                   <span>Dice off an intruder</span>
-                  <b>{portillonPenaltyDice(s.traits.portillon) || '—'}</b>
+                  <b>{portillonPenaltyDice(s.traits.portillon) || 'None'}</b>
                 </div>
                 {s.traits.chasse > 0 && (
                   <Muted className={styles.caveat}>{CHASSE_SIZE_TABLE[s.traits.chasse]}</Muted>
@@ -578,7 +578,7 @@ export default function CoterieBuilder({
           </Card>
 
           {typeSeed && s.type && (
-            <Card title={`${s.type} — listed costs`} subtitle="Applied above; adjust freely">
+            <Card title={`${s.type}: listed costs`} subtitle="Applied above; adjust freely">
               <ul className={styles.requirementList}>
                 {DOMAIN_TRAITS.filter((k) => typeSeed.traits[k] > 0).map((k) => (
                   <li key={k}>

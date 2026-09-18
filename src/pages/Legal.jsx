@@ -6,8 +6,8 @@ export default function Legal() {
   return (
     <main className={styles.wrap}>
       <Helmet>
-        <title>Legal Notice &amp; Disclaimer — Erebus Portal | Athens Through Time</title>
-        <meta name="description" content="Legal notice and disclaimer for the Erebus Portal, the Athens Through-Time Vampire: The Masquerade LARP platform." />
+        <title>Legal Notice &amp; Disclaimer : Erebus Portal | Athens Through Time</title>
+        <meta name="description" content="Legal notice and disclaimer for the Erebus Portal, the Athens Through Time Vampire: The Masquerade LARP platform." />
         <meta name="robots" content="noindex, follow" />
         <link rel="canonical" href="https://portal.attlarp.gr/legal" />
       </Helmet>
@@ -74,7 +74,7 @@ export default function Legal() {
         </section>
 
         <section id="links">
-          <h2>Links to Other Websites — Disclaimer</h2>
+          <h2>Links to Other Websites: Disclaimer</h2>
           <p>
             Our Services may link to sites not operated or controlled by us. We do not control or guarantee their content or policies.
             When you leave our Website, your activity is governed by the third party’s terms and privacy policy. Review those documents

@@ -49,7 +49,7 @@ export const BOOKS = [
     aliases: ['Tattered Facade'] },
   { label: 'Courts of the Damned',     file: 'VtM-V5-Courts-of-the-Damned-1.pdf', offset: 2 },
   { label: 'Book of Nod Apocrypha',    file: 'V5-Book-of-Nod-Apocrypha.pdf', offset: 2 },
-  // Comic issue, no printed folios — offset is the front-matter count (story p.1 = PDF p.4).
+  // Comic issue, no printed folios: offset is the front-matter count (story p.1 = PDF p.4).
   { label: "Winter's Teeth",           file: 'VTMB-Winter-s-Teeth-3.pdf', offset: 3,
     aliases: ["Winter's Teeth #3", 'Winters Teeth'] },
   { label: 'Quick Reference',          file: 'Quick-Reference-V5.pdf', offset: 2,
@@ -85,7 +85,7 @@ export function bookUrl(book, page) {
 
 // "Chicago by Night p.295; Players Guide p.90"        -> two segments
 // "Cults of the Blood Gods, page 208 Players Guide, page 92" -> two segments
-// Returns [{ raw, label, page, book, url }] — url is null when we have no PDF.
+// Returns [{ raw, label, page, book, url }]: url is null when we have no PDF.
 export function parseSourceString(src) {
   if (!src) return [];
   return String(src)

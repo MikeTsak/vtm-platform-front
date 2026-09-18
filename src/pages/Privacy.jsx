@@ -6,8 +6,8 @@ export default function Privacy() {
   return (
     <main className={styles.wrap}>
       <Helmet>
-        <title>Privacy Policy — Erebus Portal | Athens Through Time</title>
-        <meta name="description" content="Privacy policy for the Erebus Portal, the Athens Through-Time Vampire: The Masquerade LARP platform." />
+        <title>Privacy Policy : Erebus Portal | Athens Through Time</title>
+        <meta name="description" content="Privacy policy for the Erebus Portal, the Athens Through Time Vampire: The Masquerade LARP platform." />
         <meta name="robots" content="noindex, follow" />
         <link rel="canonical" href="https://portal.attlarp.gr/privacy" />
       </Helmet>
@@ -275,7 +275,7 @@ export default function Privacy() {
         </section>
 
         <section id="rights">
-          <h2>Individual Data Subject's Rights — Data Access, Portability and Deletion</h2>
+          <h2>Individual Data Subject's Rights: Data Access, Portability and Deletion</h2>
           <p>
             We use vetted, DPA-compliant vendors. We may store conversation and personal data for up to 6 years unless your
             account is deleted, in which case we dispose of data in accordance with our Terms of Service and this Policy and

@@ -1,11 +1,11 @@
 /*
- * Admin.module.css — SchreckNet Liquid-Glass Sidebar Portal
+ * Admin.module.css : SchreckNet Liquid-Glass Sidebar Portal
  * ============================================================
  * Pairs with the sidebar-dashboard Admin.jsx.
  * Covers: shell (sticky sidebar / mobile drawer / topbar / content /
  * toasts) + every shared class used by the admin tab components.
- * Sections 2–7 are shell-only (safe to restyle); everything from
- * section 8 onward is shared by the tabs — change with care.
+ * Sections 2 to 7 are shell-only (safe to restyle); everything from
+ * section 8 onward is shared by the tabs: change with care.
  *
  * Design language
  * ───────────────

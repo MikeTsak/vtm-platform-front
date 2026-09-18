@@ -97,7 +97,7 @@ export default function PublicArticleView() {
   const articleUrl = `https://portal.attlarp.gr${location.pathname}`;
   const helmet = (
     <Helmet>
-      <title>{`${article.title} — Athens Through Time News`}</title>
+      <title>{`${article.title} : Athens Through Time News`}</title>
       <meta name="description" content={plainExcerpt} />
       <link rel="canonical" href={articleUrl} />
       <meta property="og:type" content="article" />

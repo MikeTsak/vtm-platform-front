@@ -17,7 +17,7 @@ function parseDisciplineSummary(sheet) {
       const discPowers = powers[disc] || [];
       const firstPower = discPowers[0];
       const powerLabel = firstPower
-        ? ` — ${firstPower.name || firstPower.id || '?'}`
+        ? `: ${firstPower.name || firstPower.id || '?'}`
         : '';
       return `${disc} Lv${lvl}${powerLabel}`;
     }).join(', ');
@@ -126,7 +126,7 @@ export default function AdminGhoulsTab({ ghouls }) {
                         {disciplineSummary}
                       </span>
                     ) : (
-                      <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>—</span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>None</span>
                     )}
                   </td>
                   <td style={{ padding: '0.75rem 1rem' }}>

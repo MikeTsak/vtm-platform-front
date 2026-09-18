@@ -5,7 +5,7 @@
 //
 // The mechanics block is the point of this screen. Before it, a coterie's
 // Chasse/Lien/Portillon were three numbers with no stated effect anywhere in
-// the app, so the Domain — the whole reason to have a coterie — was invisible.
+// the app, so the Domain, the whole reason to have a coterie, was invisible.
 import React, { useMemo, useState } from 'react';
 import styles from '../../styles/Coteries.module.css';
 import Avatar from '../../components/Avatar';
@@ -34,7 +34,7 @@ const CATALOGS = {
 };
 
 /* ------------------------------------------------------------------ *
- * Purchase dialog — hybrid funding (coterie bank + personal character XP)
+ * Purchase dialog: hybrid funding (coterie bank + personal character XP)
  * ------------------------------------------------------------------ */
 
 function PurchaseDialog({ coterie, personalXp, onClose, onConfirm, busy }) {
@@ -87,7 +87,7 @@ function PurchaseDialog({ coterie, personalXp, onClose, onConfirm, busy }) {
   return (
     <Modal
       title="Spend coterie XP"
-      subtitle={`${XP_PER_DOT} XP per new dot — the V5 Advantage rate.`}
+      subtitle={`${XP_PER_DOT} XP per new dot: the V5 Advantage rate.`}
       onClose={onClose}
       footer={
         <>
@@ -292,19 +292,19 @@ export default function CoterieSheet({
             <div className={styles.statRow}>
               <Stat
                 label="Hunting Difficulty"
-                value={difficulty == null ? '—' : difficulty}
-                hint={difficulty == null ? 'No Chasse — the Storyteller sets it' : 'inside the domain'}
+                value={difficulty == null ? 'None' : difficulty}
+                hint={difficulty == null ? 'No Chasse: the Storyteller sets it' : 'inside the domain'}
                 tone={difficulty != null && difficulty <= 3 ? 'good' : undefined}
               />
               <Stat
                 label="Lien bonus"
-                value={lien > 0 ? `+${lien}` : '—'}
+                value={lien > 0 ? `+${lien}` : 'None'}
                 unit={lien > 0 ? 'dice' : undefined}
                 hint="interacting, finding, investigating locally"
               />
               <Stat
                 label="Portillon"
-                value={portillon > 0 ? `−${portillon}` : '—'}
+                value={portillon > 0 ? `−${portillon}` : 'None'}
                 unit={portillon > 0 ? 'dice' : undefined}
                 hint="to a foe entering or surveilling"
               />
@@ -338,7 +338,7 @@ export default function CoterieSheet({
 
       {/* ---- Holdings ---- */}
       <div className={styles.twoUp}>
-        <Card title="Coterie Backgrounds" subtitle="Held in common — nobody takes them when they leave">
+        <Card title="Coterie Backgrounds" subtitle="Held in common: nobody takes them when they leave">
           {(coterie.backgrounds || []).length === 0 ? (
             <Empty>None.</Empty>
           ) : (
@@ -439,8 +439,8 @@ export default function CoterieSheet({
         {coterie.type && !compliance.compliant && (
           <div className={styles.complianceBox}>
             <Muted tone="warn">
-              <b>Drifted from the {coterie.type} type.</b> That is allowed — a troupe may trade a type’s
-              listed dots for something else — but for reference it is short:
+              <b>Drifted from the {coterie.type} type.</b> That is allowed, a troupe may trade a type’s
+              listed dots for something else, but for reference it is short:
             </Muted>
             <ul className={styles.issueListWarn}>
               {compliance.unmet.map((u, i) => (

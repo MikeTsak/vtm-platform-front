@@ -18,12 +18,12 @@ export default function SwapConfirmModal({ kind, oldItem, newItem, xpImpact = 0,
           {picker}
           <div style={{ border: '1px solid var(--error)', borderLeft: '4px solid var(--error)', padding: '12px', borderRadius: '4px' }}>
             <div style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--error)', fontWeight: 600, marginBottom: '4px' }}>Removing</div>
-            <div style={{ fontWeight: 600, color: 'var(--text-color)' }}>{oldItem?.name || '—'}</div>
+            <div style={{ fontWeight: 600, color: 'var(--text-color)' }}>{oldItem?.name || 'None'}</div>
             {oldItem?.description && <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>{oldItem.description}</div>}
           </div>
           <div style={{ border: '1px solid var(--tint)', borderLeft: '4px solid var(--tint)', padding: '12px', borderRadius: '4px' }}>
             <div style={{ fontSize: '11px', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--tint)', fontWeight: 600, marginBottom: '4px' }}>Adding</div>
-            <div style={{ fontWeight: 600, color: 'var(--text-color)' }}>{newItem?.name || '—'}</div>
+            <div style={{ fontWeight: 600, color: 'var(--text-color)' }}>{newItem?.name || 'None'}</div>
             {newItem?.description && <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>{newItem.description}</div>}
           </div>
           {xpImpact !== 0 && (

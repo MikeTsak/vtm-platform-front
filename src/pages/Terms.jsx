@@ -6,8 +6,8 @@ export default function Terms() {
   return (
     <main className={styles.wrap}>
       <Helmet>
-        <title>Terms &amp; Conditions — Erebus Portal | Athens Through Time</title>
-        <meta name="description" content="Terms and conditions for using the Erebus Portal, the Athens Through-Time Vampire: The Masquerade LARP platform." />
+        <title>Terms &amp; Conditions : Erebus Portal | Athens Through Time</title>
+        <meta name="description" content="Terms and conditions for using the Erebus Portal, the Athens Through Time Vampire: The Masquerade LARP platform." />
         <meta name="robots" content="noindex, follow" />
         <link rel="canonical" href="https://portal.attlarp.gr/terms" />
       </Helmet>

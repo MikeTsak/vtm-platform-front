@@ -134,7 +134,7 @@ export default function OverlayAccessManager({ onClose, userId }) {
                         disabled={locked}
                         title={
                           auto
-                            ? (isAdminUser ? 'Admin — always has access' : 'Nosferatu — automatic')
+                            ? (isAdminUser ? 'Admin: always has access' : 'Nosferatu: automatic')
                             : on
                               ? (canRevoke ? 'Click to revoke' : 'Granted by someone else')
                               : 'Click to grant'

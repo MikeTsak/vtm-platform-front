@@ -14,7 +14,7 @@
 //                      is not permanently buried under a 25 XP attribute
 //   score      need + efficiency
 //
-// Suggestions the character cannot afford yet are not thrown away — they come
+// Suggestions the character cannot afford yet are not thrown away: they come
 // back separately as "worth saving for", with the shortfall spelled out.
 
 import { PREDATOR_TYPES } from '../../data/predator_types.js';
@@ -63,13 +63,13 @@ function readSkill(sheet, name) {
   return { dots: Number(raw || 0), specialties: [] };
 }
 
-// "an Alleycat", "a Sandman" — predator type names are user-facing prose.
+// "an Alleycat", "a Sandman": predator type names are user-facing prose.
 export function article(word) {
   return /^[aeiou]/i.test(String(word || '')) ? 'an' : 'a';
 }
 
 // Reasons are pushed in descending order of importance, so the two strongest
-// are all a card needs — any more and the "why" line stops being skimmable.
+// are all a card needs: any more and the "why" line stops being skimmable.
 function joinReasons(list) {
   const parts = list.filter(Boolean).slice(0, 2);
   if (!parts.length) return '';
@@ -126,7 +126,7 @@ export function predatorProfile(sheet, clan) {
         profile.skills.add(s);
       }
     });
-    if (type.rolls && type.rolls !== '—') profile.pools.push(type.rolls);
+    if (type.rolls && type.rolls !== '—' && type.rolls !== 'None') profile.pools.push(type.rolls);
   } else {
     String(type.rolls || '').split('•').forEach(pool => {
       const parts = pool.split('+').map(s => s.trim()).filter(Boolean);
@@ -392,7 +392,7 @@ export function buildSuggestions({ ch, sheet, xp = 0, costs, disciplineKind, lim
       next,
       cost,
       need: Math.min(need, 100),
-      reason: joinReasons(why) || 'A long-term investment — expensive now, but it improves everything your Blood does.',
+      reason: joinReasons(why) || 'A long-term investment: expensive now, but it improves everything your Blood does.',
     });
   }
 
