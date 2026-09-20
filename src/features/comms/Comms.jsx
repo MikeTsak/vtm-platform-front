@@ -10,7 +10,7 @@ export default function Comms() {
   const { user } = useContext(AuthCtx);
   const [commsMode, setCommsMode] = useState('chat'); // 'chat' | 'email'
   const [isMobile, setIsMobile] = useState(false);
-  const { commsEnabled } = useCommsEnabled();
+  const { commsEnabled, nextOpening } = useCommsEnabled();
   const containerRef = useRef(null);
 
   // Mobile detection
@@ -60,9 +60,9 @@ export default function Comms() {
 
       <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {commsMode === 'chat' ? (
-          <ChatSystem user={user} isMobile={isMobile} commsEnabled={commsEnabled} />
+          <ChatSystem user={user} isMobile={isMobile} commsEnabled={commsEnabled} nextOpening={nextOpening} />
         ) : (
-          <EmailSystem user={user} isMobile={isMobile} commsEnabled={commsEnabled} />
+          <EmailSystem user={user} isMobile={isMobile} commsEnabled={commsEnabled} nextOpening={nextOpening} />
         )}
       </div>
     </div>

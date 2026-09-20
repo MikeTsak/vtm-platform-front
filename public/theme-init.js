@@ -20,6 +20,10 @@
     var root = document.documentElement;
     root.setAttribute('data-theme', theme);
 
+    var boxMode = localStorage.getItem('vtm_box_mode');
+    if (boxMode !== 'glass' && boxMode !== 'illuminated') boxMode = 'illuminated';
+    root.setAttribute('data-box-mode', boxMode);
+
     if (theme === 'clan') {
       var clanName = localStorage.getItem('vtm_clan_name');
       if (clanName) {
@@ -85,6 +89,9 @@
             root.style.setProperty('--bg-color', rules.bg);
             root.style.setProperty('--theme-background', rules.bg);
           }
+          if (rules.boxLight) root.style.setProperty('--clan-box-light', rules.boxLight);
+          if (rules.boxBorder) root.style.setProperty('--clan-box-border', rules.boxBorder);
+          if (rules.boxInk) root.style.setProperty('--clan-box-ink', rules.boxInk);
         } catch (e) {}
       }
 

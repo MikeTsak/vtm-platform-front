@@ -1,4 +1,4 @@
-﻿// src/components/EmailSystem.jsx
+// src/components/EmailSystem.jsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import api from '../../core/api';
 import { sanitizeHtml } from '../../utils/sanitizeHtml';
@@ -6,6 +6,8 @@ import styles from '../../styles/EmailSystem.module.css';
 import { Skeleton } from 'boneyard-js/react';
 import Avatar from '../../components/Avatar';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useCommsEnabled } from '../comms/useCommsEnabled';
+import { formatAthensDate, formatAthensDateTime } from '../../utils/dateFormatter';
 
 // --- Secure Rich Text Editor Component ---
 const EditorToolbar = ({ onCmd }) => (
@@ -54,7 +56,10 @@ const TextEditor = ({ value, onChange, placeholder, disabled = false }) => {
   );
 };
 
-export default function EmailSystem({ user, isMobile, commsEnabled = true }) {
+export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEnabled, nextOpening: propNextOpening }) {
+  const commsHook = useCommsEnabled();
+  const commsEnabled = typeof propCommsEnabled === 'boolean' ? propCommsEnabled : commsHook.commsEnabled;
+  const nextOpening = propNextOpening !== undefined ? propNextOpening : commsHook.nextOpening;
   const isAdmin = user?.role === 'admin';
   const [loading, setLoading] = useState(true);
   const [threads, setThreads] = useState([]);
@@ -292,7 +297,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled = true }) {
                 <div className={styles.threadContent}>
                   <div className={styles.threadTopRow}>
                     <span className={styles.threadSender}>{senderName}</span>
-                    <span className={styles.threadDate}>{new Date(t.updated_at).toLocaleDateString()}</span>
+                    <span className={styles.threadDate}>{formatAthensDate(t.updated_at)}</span>
                   </div>
                   <div className={styles.threadSubject}>{t.subject}</div>
                   <div className={styles.threadSnippet}>{t.snippet ? t.snippet.replace(/<[^>]+>/g, '').slice(0, 40) + '...' : 'No preview available'}</div>
@@ -356,7 +361,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled = true }) {
                       />
                       <div className={styles.msgMeta}>
                         <span className={styles.msgAuthor}>{msgName}</span>
-                        <span className={styles.msgTime}>{new Date(m.created_at).toLocaleString()}</span>
+                        <span className={styles.msgTime}>{formatAthensDateTime(m.created_at)}</span>
                       </div>
                     </div>
                     {/* CRITICAL SECURITY FIX: Sanitize HTML content to prevent XSS */}
@@ -371,8 +376,11 @@ export default function EmailSystem({ user, isMobile, commsEnabled = true }) {
             </div>
 
             {!commsEnabled && (
-              <div style={{ padding: '8px', background: '#FF4444', color: '#FFFFFF', textAlign: 'center', fontSize: '0.85rem', fontWeight: 'bold' }}>
-                ⚠️ SURFACE WEB COMMS ARE CURRENTLY OFFLINE. MESSAGE SENDING IS DISABLED. ⚠️
+              <div style={{ padding: '8px', background: '#FF4444', color: '#FFFFFF', textAlign: 'center', fontSize: '0.85rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>warning</span>
+                <span>
+                  SURFACE WEB COMMS ARE CURRENTLY OFFLINE : {nextOpening ? `OPENS AGAIN ${nextOpening.day.toUpperCase()} AT ${nextOpening.time} (${nextOpening.date})` : 'MESSAGE SENDING IS DISABLED'}
+                </span>
               </div>
             )}
 
@@ -380,7 +388,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled = true }) {
               <TextEditor
                 value={emailReplyBody}
                 onChange={setEmailReplyBody}
-                placeholder={!commsEnabled ? "System Offline..." : "Reply..."}
+                placeholder={!commsEnabled ? (nextOpening ? `Offline : Opens again ${nextOpening.day} at ${nextOpening.time}` : "System Offline...") : "Reply..."}
                 disabled={!commsEnabled}
               />
               <div style={{ textAlign: 'right', marginTop: '10px' }}>

@@ -6,7 +6,7 @@ import api from '../../core/api';
 import { AuthCtx } from '../../core/AuthContext';
 import { DISCIPLINES, ALL_DISCIPLINE_NAMES, iconPath } from '../../data/disciplines';
 import { RITUALS } from '../../data/rituals';
-import { symlogo, textlogo, symlogoWhite, textlogoWhite, CLAN_HEX as CLAN_COLORS } from '../../data/clans';
+import { symlogo, textlogo, symlogoWhite, textlogoWhite, CLAN_HEX as CLAN_COLORS, clanTint } from '../../data/clans';
 import styles from '../../styles/CharacterView.module.css';
 import homeStyles from '../../styles/Home.module.css';
 
@@ -1449,7 +1449,28 @@ export default function CharacterView({
     }
   };
 
-  const tint = useMemo(() => (ch ? CLAN_COLORS[ch.clan] || '#8a0f1a' : '#8a0f1a'), [ch]);
+  const tint = useMemo(() => (ch ? clanTint(ch.clan) || '#8a0f1a' : '#8a0f1a'), [ch]);
+  const [boxMode, setBoxMode] = useState(() => {
+    try {
+      return localStorage.getItem('vtm_box_mode') || 'illuminated';
+    } catch (e) {
+      return 'illuminated';
+    }
+  });
+
+  const handleBoxModeChange = (mode) => {
+    setBoxMode(mode);
+    try {
+      localStorage.setItem('vtm_box_mode', mode);
+      document.documentElement.setAttribute('data-box-mode', mode);
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    try {
+      document.documentElement.setAttribute('data-box-mode', boxMode);
+    } catch (e) {}
+  }, [boxMode]);
   const sheet = useMemo(() => ch?.sheet || {}, [ch]);
   const xp = ch?.xp ?? 0;
 
@@ -1807,7 +1828,7 @@ export default function CharacterView({
 
   return (
     <Skeleton name="character-view" loading={!ch}>
-      <div className={styles.root} style={{ '--tint': tint }}>
+      <div className={styles.root} style={{ '--tint': tint }} data-box-mode={boxMode}>
         {/* --- Mobile Header --- */}
         <header className={styles.mobileHeader}>
           <div className={styles.mobileHeaderInner}>
@@ -1832,6 +1853,18 @@ export default function CharacterView({
                   >water_drop</span>
                 ))}
               </div>
+              <button
+                type="button"
+                onClick={() => handleBoxModeChange(boxMode === 'illuminated' ? 'glass' : 'illuminated')}
+                title={boxMode === 'illuminated' ? 'Switch to Gothic Glass style' : 'Switch to Illuminated Dossier style'}
+                aria-label={boxMode === 'illuminated' ? 'Switch to Gothic Glass style' : 'Switch to Illuminated Dossier style'}
+                className={styles.mobileHeaderNotifBtn}
+                style={{ color: 'var(--tint)' }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>
+                  {boxMode === 'illuminated' ? 'blur_on' : 'auto_stories'}
+                </span>
+              </button>
               {(!adminNPCId && String(user?.id) === String(ch?.user_id)) && (
                 <button
                   onClick={toggleSysNotifications}
@@ -1866,7 +1899,29 @@ export default function CharacterView({
               </div>
             </div>
 
-            <div className={styles.topAppBarActionRow} style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+            <div className={styles.topAppBarActionRow} style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+              {/* Box Mode Toggle */}
+              <div className={styles.boxModeToggle} role="group" aria-label="Sheet display mode">
+                <button
+                  type="button"
+                  onClick={() => handleBoxModeChange('illuminated')}
+                  className={`${styles.boxModeBtn} ${boxMode === 'illuminated' ? styles.boxModeBtnActive : ''}`}
+                  title="Illuminated Dossier style"
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>auto_stories</span>
+                  <span className={styles.boxModeLabel}>Dossier</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleBoxModeChange('glass')}
+                  className={`${styles.boxModeBtn} ${boxMode === 'glass' ? styles.boxModeBtnActive : ''}`}
+                  title="Gothic Glass style"
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>blur_on</span>
+                  <span className={styles.boxModeLabel}>Glass</span>
+                </button>
+              </div>
+
               {/* Hunger Tracker */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 {Array.from({ length: 5 }).map((_, i) => (
@@ -2033,7 +2088,7 @@ export default function CharacterView({
           {/* Health & Willpower Tracker Grid */}
           <motion.section variants={itemVariants} className={`${styles.bentoGrid} ${styles.trackersGrid}`}>
             {/* Health */}
-            <div className={`${styles.level1} ${styles.glassCard} ${styles.trackerCard}`}>
+            <div className={`${styles.level1} ${styles.glassCard} ${styles.trackerCard}`} data-box-mode={boxMode}>
               <TrackerBlock label="Health" val={maxHealth} max={maxHealth} agg={tempHealth.aggravated} sup={tempHealth.superficial} />
               {isAdmin && (
                 <div className={styles.trackerAdminControls}>
@@ -2052,7 +2107,7 @@ export default function CharacterView({
             </div>
 
             {/* Willpower */}
-            <div className={`${styles.level1} ${styles.glassCard} ${styles.trackerCard}`}>
+            <div className={`${styles.level1} ${styles.glassCard} ${styles.trackerCard}`} data-box-mode={boxMode}>
               <TrackerBlock label="Willpower" val={maxWillpower} max={maxWillpower} agg={tempWillpower.aggravated} sup={tempWillpower.superficial} />
               {isAdmin && (
                 <div className={styles.trackerAdminControls}>
@@ -2071,7 +2126,7 @@ export default function CharacterView({
             </div>
 
             {/* Humanity */}
-            <div className={`${styles.level1} ${styles.glassCard} ${styles.trackerCard}`}>
+            <div className={`${styles.level1} ${styles.glassCard} ${styles.trackerCard}`} data-box-mode={boxMode}>
               <TrackerBlock label="Humanity" val={tempHumanity} max={10} filled={tempHumanity} stains={tempStains} />
               {isAdmin && (
                 <div className={styles.trackerAdminControls}>
@@ -2094,15 +2149,15 @@ export default function CharacterView({
             <div className={styles.bentoSpan2} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               {/* Attributes */}
               <div id="attributes-section" className={`${styles.mobileScrollWrapper} ${styles.scrollAnchor}`}>
-                <AttributesSection sheet={sheet} />
+                <AttributesSection sheet={sheet} boxMode={boxMode} />
               </div>
 
               {/* Skills & Others */}
               <div id="skills-section" className={`${styles.mobileScrollWrapper} ${styles.scrollAnchor}`}>
-                <SkillsDisplaySection sheet={sheet} />
+                <SkillsDisplaySection sheet={sheet} boxMode={boxMode} />
               </div>
 
-              <div className={`${styles.level1} ${styles.glassCard} ${styles.contentCard}`}>
+              <div className={`${styles.level1} ${styles.glassCard} ${styles.contentCard}`} data-box-mode={boxMode}>
                 <div id="inventory-section" className={styles.scrollAnchor}>
                   <Inventory characterId={ch?.id} />
                 </div>
@@ -2138,18 +2193,18 @@ export default function CharacterView({
               )}
             </div>
 
-            <div id="disciplines-section" className={`${styles.level1} ${styles.glassCard} ${styles.scrollAnchor}`} style={{ padding: '0', display: 'flex', flexDirection: 'column' }}>
+            <div id="disciplines-section" className={`${styles.level1} ${styles.glassCard} ${styles.scrollAnchor}`} data-box-mode={boxMode} style={{ padding: '0', display: 'flex', flexDirection: 'column' }}>
               <div className={styles.contentCardHead}>
-                <h3 style={{ margin: 0, fontFamily: 'var(--font-title)', fontSize: '24px', color: 'var(--text-color)' }}>Disciplines</h3>
+                <h3 className={styles.sectionHeading} style={{ margin: 0, fontFamily: 'var(--font-title)', fontSize: '24px' }}>Disciplines</h3>
               </div>
               <div className={styles.contentCardBody}>
-                <DisciplinesDisplaySection sheet={sheet} />
-                <RitualsDisplaySection sheet={sheet} />
+                <DisciplinesDisplaySection sheet={sheet} boxMode={boxMode} />
+                <RitualsDisplaySection sheet={sheet} boxMode={boxMode} />
               </div>
               <div className={styles.contentCardFoot}>
                 <button
                   className={`${styles.gothicBtn} ${styles.bloodPulse}`}
-                  style={{ width: '100%', padding: '16px', fontSize: '16px', background: 'var(--primary-container)', color: 'var(--text-color)', boxShadow: '0 0 15px rgba(180,15,31,0.2)' }}
+                  style={{ width: '100%', padding: '16px', fontSize: '16px', boxShadow: '0 0 15px rgba(180,15,31,0.2)' }}
                   onClick={() => setTempHunger(h => Math.min(5, h + 1))}
                 >
                   ROUSE BLOOD

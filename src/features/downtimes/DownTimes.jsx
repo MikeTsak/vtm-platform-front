@@ -56,7 +56,7 @@ function niceDate(d) {
   if (!d) return 'None';
   const dt = new Date(d);
   if (isNaN(dt.getTime())) return 'None';
-  try { return dt.toLocaleDateString('en-GB', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }); }
+  try { return dt.toLocaleDateString('en-GB', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', timeZone: 'Europe/Athens' }); }
   catch { return dt.toDateString(); }
 }
 

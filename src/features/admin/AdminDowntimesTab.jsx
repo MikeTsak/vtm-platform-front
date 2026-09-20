@@ -1,5 +1,5 @@
 // src/components/admin/AdminDowntimesTab.jsx
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import api, { formatApiError } from "../../core/api";
 import { formatEuDate } from '../../utils/dateFormatter';
 import styles from '../../styles/Admin.module.css';
@@ -26,6 +26,145 @@ function ymd(d) {
   const mm = String(t.getMonth() + 1).padStart(2, '0');
   const dd = String(t.getDate()).padStart(2, '0');
   return `${yyyy}-${mm}-${dd}`;
+}
+
+function isoToEu(isoStr) {
+  if (!isoStr) return '';
+  const parts = String(isoStr).split('T')[0].split('-');
+  if (parts.length === 3) {
+    const [y, m, d] = parts;
+    if (y && m && d) {
+      return `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${y}`;
+    }
+  }
+  return '';
+}
+
+function euToIso(euStr) {
+  if (!euStr) return '';
+  const trimmed = euStr.trim();
+  const match = trimmed.match(/^(\d{1,2})[\/\.-](\d{1,2})[\/\.-](\d{4})$/) || trimmed.match(/^(\d{2})(\d{2})(\d{4})$/);
+  if (match) {
+    const [, d, m, y] = match;
+    const day = parseInt(d, 10);
+    const month = parseInt(m, 10);
+    const year = parseInt(y, 10);
+    if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
+      const dt = new Date(year, month - 1, day);
+      if (dt.getFullYear() === year && dt.getMonth() === month - 1 && dt.getDate() === day) {
+        return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      }
+    }
+  }
+  return null;
+}
+
+function EuDateInput({ value, onChange, className, style, disabled }) {
+  const [text, setText] = useState(() => isoToEu(value));
+  const pickerRef = useRef(null);
+
+  useEffect(() => {
+    setText(isoToEu(value));
+  }, [value]);
+
+  const handleTextChange = (e) => {
+    const val = e.target.value;
+    setText(val);
+    if (!val.trim()) {
+      onChange('');
+      return;
+    }
+    const iso = euToIso(val);
+    if (iso) {
+      onChange(iso);
+    }
+  };
+
+  const handleBlur = () => {
+    if (!text.trim()) {
+      onChange('');
+      return;
+    }
+    const iso = euToIso(text);
+    if (iso) {
+      onChange(iso);
+      setText(isoToEu(iso));
+    } else {
+      setText(isoToEu(value));
+    }
+  };
+
+  const handlePickerChange = (e) => {
+    const iso = e.target.value;
+    if (iso) {
+      onChange(iso);
+      setText(isoToEu(iso));
+    }
+  };
+
+  const triggerPicker = () => {
+    if (disabled) return;
+    try {
+      if (pickerRef.current && typeof pickerRef.current.showPicker === 'function') {
+        pickerRef.current.showPicker();
+      }
+    } catch (_) {}
+  };
+
+  return (
+    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '100%' }}>
+      <input
+        type="text"
+        placeholder="dd/mm/yyyy"
+        className={className}
+        value={text}
+        onChange={handleTextChange}
+        onBlur={handleBlur}
+        disabled={disabled}
+        style={{ paddingRight: '2.5rem', ...style }}
+      />
+      <div
+        onClick={triggerPicker}
+        style={{
+          position: 'absolute',
+          right: '10px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '24px',
+          height: '24px',
+          cursor: disabled ? 'default' : 'pointer',
+          color: 'var(--text-secondary)'
+        }}
+        title="Open calendar"
+      >
+        <span className="material-symbols-outlined" style={{ fontSize: '18px', pointerEvents: 'none' }}>
+          calendar_today
+        </span>
+        <input
+          ref={pickerRef}
+          type="date"
+          value={value || ''}
+          onChange={handlePickerChange}
+          disabled={disabled}
+          tabIndex={-1}
+          aria-label="Choose date"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            opacity: 0,
+            cursor: disabled ? 'default' : 'pointer',
+            border: 'none',
+            padding: 0,
+            margin: 0
+          }}
+        />
+      </div>
+    </div>
+  );
 }
 
 const STATUS = [
@@ -385,17 +524,17 @@ export default function AdminDowntimesTab() {
             <>
               <label className={styles.labeledInput}>
                 <span>Downtime deadline</span>
-                <input type="date" className={styles.input} value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+                <EuDateInput className={styles.input} value={deadline} onChange={setDeadline} />
               </label>
               <label className={styles.labeledInput}>
                 <span>Next Event Date</span>
-                <input type="date" className={styles.input} value={opening} onChange={(e) => setOpening(e.target.value)} />
+                <EuDateInput className={styles.input} value={opening} onChange={setOpening} />
               </label>
             </>
           ) : (
             <label className={styles.labeledInput}>
               <span>Long-Term Project Deadline</span>
-              <input type="date" className={styles.input} value={projectDeadline} onChange={(e) => setProjectDeadline(e.target.value)} />
+              <EuDateInput className={styles.input} value={projectDeadline} onChange={setProjectDeadline} />
             </label>
           )}
         </div>

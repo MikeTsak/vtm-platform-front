@@ -12,7 +12,7 @@ const getRitualFullData = (category, powerId) => {
   return null;
 };
 
-function RitualItem({ ritual, category }) {
+function RitualItem({ ritual, category, boxMode }) {
   const [isOpen, setIsOpen] = useState(false);
   const fullData = getRitualFullData(category, ritual.id);
   const cls = styles.powerPill;
@@ -21,12 +21,13 @@ function RitualItem({ ritual, category }) {
     <li className={styles.powerItem}>
       <div 
         className={cls} 
+        data-box-mode={boxMode}
         onClick={() => setIsOpen(!isOpen)}
         style={{ cursor: 'pointer', userSelect: 'none', width: '100%', boxSizing: 'border-box' }}
         title="Click to view details"
       >
-        <span className={styles.levelBadge}>L{ritual.level}</span>
-        <span className={styles.powerName}>{ritual.name}</span>
+        <span className={styles.levelBadge} data-box-mode={boxMode}>L{ritual.level}</span>
+        <span className={styles.powerName} data-box-mode={boxMode}>{ritual.name}</span>
       </div>
       <div style={{
           display: 'grid',
@@ -36,21 +37,21 @@ function RitualItem({ ritual, category }) {
         }}>
         <div style={{ overflow: 'hidden' }}>
           {fullData && (
-            <div className={styles.powerDetailsBody}>
-              <div className={styles.powerDetailsMeta}>
-                {fullData.cost && fullData.cost !== '—' && fullData.cost !== 'None' && <span><b style={{ opacity: 0.6 }}>Cost:</b> {fullData.cost}</span>}
-                {fullData.dice_pool && fullData.dice_pool !== '—' && fullData.dice_pool !== 'None' && <span><b style={{ opacity: 0.6 }}>Pool:</b> {fullData.dice_pool}</span>}
-                {fullData.difficulty && fullData.difficulty !== '—' && fullData.difficulty !== 'None' && <span><b style={{ opacity: 0.6 }}>Diff:</b> {fullData.difficulty}</span>}
-                {fullData.source && <span><b style={{ opacity: 0.6 }}>Source:</b> {fullData.source}</span>}
+            <div className={styles.powerDetailsBody} data-box-mode={boxMode}>
+              <div className={styles.powerDetailsMeta} data-box-mode={boxMode}>
+                {fullData.cost && fullData.cost !== '—' && fullData.cost !== 'None' && <span><b style={{ opacity: 0.7 }}>Cost:</b> {fullData.cost}</span>}
+                {fullData.dice_pool && fullData.dice_pool !== '—' && fullData.dice_pool !== 'None' && <span><b style={{ opacity: 0.7 }}>Pool:</b> {fullData.dice_pool}</span>}
+                {fullData.difficulty && fullData.difficulty !== '—' && fullData.difficulty !== 'None' && <span><b style={{ opacity: 0.7 }}>Diff:</b> {fullData.difficulty}</span>}
+                {fullData.source && <span><b style={{ opacity: 0.7 }}>Source:</b> {fullData.source}</span>}
               </div>
               {fullData.effect && (
                 <div style={{ lineHeight: '1.4', marginTop: '4px' }}>
-                  <b style={{ opacity: 0.6 }}>Effect:</b> {fullData.effect}
+                  <b style={{ opacity: 0.7 }}>Effect:</b> {fullData.effect}
                 </div>
               )}
               {fullData.notes && (
                 <div style={{ lineHeight: '1.4', marginTop: '4px' }}>
-                  <b style={{ opacity: 0.6 }}>Notes:</b> {fullData.notes}
+                  <b style={{ opacity: 0.7 }}>Notes:</b> {fullData.notes}
                 </div>
               )}
             </div>
@@ -61,7 +62,7 @@ function RitualItem({ ritual, category }) {
   );
 }
 
-const RitualsDisplaySection = ({ sheet }) => {
+const RitualsDisplaySection = ({ sheet, boxMode }) => {
   const bsRituals = sheet?.rituals?.blood_sorcery || [];
   const obCeremonies = sheet?.rituals?.oblivion || [];
   
@@ -79,30 +80,30 @@ const RitualsDisplaySection = ({ sheet }) => {
   const sortedObCeremonies = [...obCeremonies].sort(sortRituals);
 
   return (
-    <div className={`${styles.card} ${styles.disciplinesCard}`} id="rituals-section" style={{ marginTop: '24px' }}>
-      <div className={styles.cardHead}><b>Rituals & Ceremonies</b></div>
+    <div className={`${styles.card} ${styles.disciplinesCard}`} id="rituals-section" data-box-mode={boxMode} style={{ marginTop: '24px' }}>
+      <div className={styles.cardHead}><b>Rituals and Ceremonies</b></div>
       <div className={styles.disciplinesGrid} style={{ display: 'grid', gap: '16px', padding: '16px' }}>
         {sortedBsRituals.length > 0 && (
-          <div className={styles.disciplineRow}>
+          <div className={styles.disciplineRow} data-box-mode={boxMode}>
             <div className={styles.disciplineTitleBlock} style={{ marginBottom: '12px' }}>
-              <b className={styles.disciplineName}>Blood Sorcery Rituals</b>
+              <b className={styles.disciplineName} data-box-mode={boxMode}>Blood Sorcery Rituals</b>
             </div>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {sortedBsRituals.map((rit, idx) => (
-                <RitualItem key={`bs-${idx}`} ritual={rit} category="blood_sorcery" />
+                <RitualItem key={`bs-${idx}`} ritual={rit} category="blood_sorcery" boxMode={boxMode} />
               ))}
             </ul>
           </div>
         )}
         
         {sortedObCeremonies.length > 0 && (
-          <div className={styles.disciplineRow} style={sortedBsRituals.length > 0 ? { borderTop: '1px solid var(--border-color)', paddingTop: '16px' } : {}}>
+          <div className={styles.disciplineRow} data-box-mode={boxMode} style={sortedBsRituals.length > 0 ? { borderTop: '1px solid var(--border-color)', paddingTop: '16px' } : {}}>
             <div className={styles.disciplineTitleBlock} style={{ marginBottom: '12px' }}>
-              <b className={styles.disciplineName}>Oblivion Ceremonies</b>
+              <b className={styles.disciplineName} data-box-mode={boxMode}>Oblivion Ceremonies</b>
             </div>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {sortedObCeremonies.map((cer, idx) => (
-                <RitualItem key={`ob-${idx}`} ritual={cer} category="oblivion" />
+                <RitualItem key={`ob-${idx}`} ritual={cer} category="oblivion" boxMode={boxMode} />
               ))}
             </ul>
           </div>

@@ -31,6 +31,7 @@ const AdminMasterTab = lazyWithRetry(() => import('./AdminMasterTab'));
 const AdminGhoulsTab = lazyWithRetry(() => import('./AdminGhoulsTab'));
 const AdminPremonitionsTab = lazyWithRetry(() => import('./AdminPremonitionsTab'));
 const AdminEventsTab = lazyWithRetry(() => import('./AdminEventsTab'));
+const AdminCalendarTab = lazyWithRetry(() => import('./AdminCalendarTab'));
 const AdminBroadcastTab = lazyWithRetry(() => import('./AdminBroadcastTab'));
 const AdminTimelineTab = lazyWithRetry(() => import('./AdminTimelineTab'));
 const AdminDomainsTab = lazyWithRetry(() => import('./AdminDomainsTab'));
@@ -76,6 +77,7 @@ const NAV_SECTIONS = [
     label: 'Chronicle',
     icon: 'auto_stories',
     items: [
+      { id: 'calendar',     icon: 'calendar_month', label: 'Calendar',       hint: 'Comms, events and downtime deadlines', keywords: ['calendar', 'events', 'downtimes', 'comms', 'schedule', 'rsvp'] },
       { id: 'downtimes',    icon: 'schedule',     label: 'Downtimes',      hint: 'Review & resolve player actions', keywords: ['actions', 'between sessions', 'projects', 'approve', 'reject', 'needs scene', 'resolve', 'filter pipelines', 'reset configuration', 'sync records'] },
       { id: 'feeding',      icon: 'nightlight',   label: 'Feeding Control', hint: 'Hunting cycles & decay', keywords: ['hunting', 'blood', 'predator type', 'chasse merits', 'masquerade', 'safety rating', 'cycle', 'enable', 'disable', 'decay', 'force new cycle'] },
       { id: 'claims',       icon: 'local_police', label: 'Domain Claims',  hint: 'Territory ownership & stewards', keywords: ['domains', 'domain stewards', 'territory', 'claims map access', 'who can assign domains', 'grant', 'revoke', 'permission', 'approve requests', 'court'] },
@@ -904,6 +906,7 @@ async function grantXP(character_id, delta) {
     xp:          () => <AdminXPTab users={users} onGrant={grantXP} onBulkGrant={grantBulkXP} adminxp={adminxp} />,
     disciplines: () => <AdminDisciplinesTab />,
     // Chronicle
+    calendar:     () => <AdminCalendarTab />,
     downtimes:    () => <AdminDowntimesTab rows={downtimes} onSave={saveDowntime} />,
     feeding:      () => <AdminFeedingTab />,
     claims:       () => <AdminClaimsTab users={users} />,

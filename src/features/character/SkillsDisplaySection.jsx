@@ -20,7 +20,7 @@ const RenderDotList = ({ dots }) => {
   );
 };
 
-export default function SkillsDisplaySection({ sheet }) {
+export default function SkillsDisplaySection({ sheet, boxMode }) {
   const [expanded, setExpanded] = useState(false);
 
   const allSkillsFlat = [];
@@ -41,7 +41,7 @@ export default function SkillsDisplaySection({ sheet }) {
     .slice(0, 8);
 
   return (
-    <div className={styles.skillsCard}>
+    <div className={styles.skillsCard} data-box-mode={boxMode}>
       {!expanded ? (
         <>
           <h3 className={styles.skillsSectionTitle}>

@@ -225,6 +225,54 @@
   transform: scale(0.95);
 }
 
+.boxModeToggle {
+  display: inline-flex;
+  align-items: center;
+  background: color-mix(in srgb, var(--surface-color) 80%, transparent);
+  border: 1px solid var(--border-color);
+  border-radius: 9999px;
+  padding: 3px;
+  gap: 3px;
+}
+
+.boxModeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.boxModeBtn:hover {
+  color: var(--text-color);
+}
+
+.boxModeBtnActive {
+  background: color-mix(in srgb, var(--tint) 20%, var(--surface-lighter));
+  color: var(--tint);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.boxModeLabel {
+  display: inline;
+}
+
+@media (max-width: 1023px) {
+  .boxModeLabel {
+    display: none;
+  }
+}
+
 .desktopNav {
   display: none;
 }
@@ -1663,11 +1711,12 @@ select.input:focus {
 }
 
 .glassCard {
-  background: rgba(26, 26, 26, 0.6);
+  background: color-mix(in srgb, var(--surface-color) 82%, transparent);
   backdrop-filter: blur(12px);
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  border-left: 1px solid rgba(255, 255, 255, 0.05);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
 }
 
 /* Trackers */
@@ -4015,4 +4064,272 @@ select.input:focus {
   .contentCardFoot {
     padding: 16px;
   }
+}
+
+/* ==================================================================
+   DUAL BOX MODE ARCHITECTURE (Illuminated Dossier vs Gothic Glass)
+   ================================================================== */
+
+/* --- 1. Illuminated Dossier Mode --- */
+[data-box-mode="illuminated"].glassCard,
+[data-box-mode="illuminated"].attrCard,
+[data-box-mode="illuminated"].skillsCard,
+[data-box-mode="illuminated"].disciplinesCard,
+[data-box-mode="illuminated"].contentCard,
+[data-box-mode="illuminated"].trackerCard,
+[data-box-mode="illuminated"].mobileMetaCard,
+[data-box-mode="illuminated"] .glassCard,
+[data-box-mode="illuminated"] .attrCard,
+[data-box-mode="illuminated"] .skillsCard,
+[data-box-mode="illuminated"] .disciplinesCard,
+[data-box-mode="illuminated"] .contentCard,
+[data-box-mode="illuminated"] .trackerCard,
+[data-box-mode="illuminated"] .mobileMetaCard,
+.attrCard[data-box-mode="illuminated"],
+.skillsCard[data-box-mode="illuminated"],
+.disciplinesCard[data-box-mode="illuminated"] {
+  background: var(--clan-box-light, #f5f2ef) !important;
+  color: var(--clan-box-ink, #141417) !important;
+  border: 1px solid var(--clan-box-border, #b09e4f) !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4), 0 0 1px var(--clan-box-border, #b09e4f) !important;
+  transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+/* Disciplines section inner card transparency so it does not create a card in a card */
+.glassCard[data-box-mode="illuminated"] .disciplinesCard,
+[data-box-mode="illuminated"] .glassCard .disciplinesCard,
+.contentCardBody .disciplinesCard[data-box-mode="illuminated"] {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 16px 20px !important;
+}
+
+/* Headings and Titles */
+[data-box-mode="illuminated"] .attrTitle,
+[data-box-mode="illuminated"] .skillsSectionTitle,
+[data-box-mode="illuminated"] .cardHead,
+[data-box-mode="illuminated"] .sectionHeading,
+[data-box-mode="illuminated"] .contentCardHead h3,
+.glassCard[data-box-mode="illuminated"] .contentCardHead h3,
+.attrCard[data-box-mode="illuminated"] .attrTitle,
+.skillsCard[data-box-mode="illuminated"] .skillsSectionTitle {
+  color: var(--clan-box-ink, #141417) !important;
+  border-bottom-color: color-mix(in srgb, var(--clan-box-border, #b09e4f) 55%, transparent) !important;
+}
+
+[data-box-mode="illuminated"] .attrCategoryTitle,
+[data-box-mode="illuminated"] .skillCategoryTitle,
+.attrCard[data-box-mode="illuminated"] .attrCategoryTitle,
+.skillsCard[data-box-mode="illuminated"] .skillCategoryTitle {
+  color: var(--clan-color-1, var(--clan-box-ink, #111111)) !important;
+  border-bottom-color: color-mix(in srgb, var(--clan-box-border, #b09e4f) 35%, transparent) !important;
+  font-weight: 700 !important;
+}
+
+[data-box-mode="illuminated"] .attrName,
+[data-box-mode="illuminated"] .skillNotableName,
+[data-box-mode="illuminated"] .allSkillName,
+[data-box-mode="illuminated"] .skillSpecialties,
+[data-box-mode="illuminated"] .skillSpecialtiesInline,
+.attrCard[data-box-mode="illuminated"] .attrName,
+.skillsCard[data-box-mode="illuminated"] .skillNotableName {
+  color: var(--clan-box-ink, #111111) !important;
+  font-weight: 500 !important;
+}
+
+[data-box-mode="illuminated"] .attrCategoryGroup,
+.attrCard[data-box-mode="illuminated"] .attrCategoryGroup {
+  background: rgba(0, 0, 0, 0.03) !important;
+  border-color: color-mix(in srgb, var(--clan-box-border, #b09e4f) 30%, transparent) !important;
+}
+
+[data-box-mode="illuminated"] .skillNotableItem,
+.skillsCard[data-box-mode="illuminated"] .skillNotableItem {
+  background: rgba(0, 0, 0, 0.035) !important;
+  border: 1px solid color-mix(in srgb, var(--clan-box-border, #b09e4f) 40%, transparent) !important;
+}
+
+[data-box-mode="illuminated"] .skillNotableItem:hover,
+.skillsCard[data-box-mode="illuminated"] .skillNotableItem:hover {
+  background: rgba(0, 0, 0, 0.07) !important;
+  border-color: var(--clan-box-border, #b09e4f) !important;
+}
+
+/* Disciplines and Powers in Illuminated Mode */
+[data-box-mode="illuminated"] .disciplineRow,
+.disciplineRow[data-box-mode="illuminated"] {
+  background: rgba(0, 0, 0, 0.03) !important;
+  border: 1px solid color-mix(in srgb, var(--clan-box-border, #b09e4f) 35%, transparent) !important;
+  color: var(--clan-box-ink, #111111) !important;
+}
+
+[data-box-mode="illuminated"] .disciplineName,
+.disciplineName[data-box-mode="illuminated"] {
+  color: var(--clan-box-ink, #111111) !important;
+  font-weight: 700 !important;
+}
+
+[data-box-mode="illuminated"] .powerPill,
+.powerPill[data-box-mode="illuminated"],
+.disciplineRow[data-box-mode="illuminated"] .powerPill {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border: 1px solid color-mix(in srgb, var(--clan-box-border, #b09e4f) 35%, transparent) !important;
+  color: var(--clan-box-ink, #111111) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-box-mode="illuminated"] .powerPill:hover,
+.powerPill[data-box-mode="illuminated"]:hover,
+.disciplineRow[data-box-mode="illuminated"] .powerPill:hover {
+  background: rgba(0, 0, 0, 0.07) !important;
+  border-color: var(--clan-box-border, #b09e4f) !important;
+}
+
+[data-box-mode="illuminated"] .powerName,
+.powerName[data-box-mode="illuminated"],
+.powerPill[data-box-mode="illuminated"] .powerName {
+  color: var(--clan-box-ink, #111111) !important;
+  font-weight: 600 !important;
+}
+
+[data-box-mode="illuminated"] .levelBadge,
+.levelBadge[data-box-mode="illuminated"],
+.powerPill[data-box-mode="illuminated"] .levelBadge {
+  background: var(--clan-box-border, #b09e4f) !important;
+  color: var(--clan-box-light, #f5f2ef) !important;
+  border: 1px solid var(--clan-box-border, #b09e4f) !important;
+  font-weight: 700 !important;
+}
+
+[data-box-mode="illuminated"] .powerPillLocked,
+.powerPillLocked[data-box-mode="illuminated"] {
+  opacity: 0.55 !important;
+  background: rgba(0, 0, 0, 0.02) !important;
+  border-color: color-mix(in srgb, var(--clan-box-ink, #111111) 20%, transparent) !important;
+}
+
+[data-box-mode="illuminated"] .powerPillMissing,
+.powerPillMissing[data-box-mode="illuminated"] {
+  border-color: var(--clan-box-border, #b09e4f) !important;
+  background: color-mix(in srgb, var(--clan-box-border, #b09e4f) 12%, transparent) !important;
+}
+
+[data-box-mode="illuminated"] .powerDetailsBody,
+.powerDetailsBody[data-box-mode="illuminated"] {
+  background: rgba(0, 0, 0, 0.035) !important;
+  color: var(--clan-box-ink, #111111) !important;
+  border-left: 3px solid var(--clan-box-border, #b09e4f) !important;
+}
+
+[data-box-mode="illuminated"] .powerDetailsMeta,
+.powerDetailsMeta[data-box-mode="illuminated"] {
+  color: var(--clan-box-ink, #111111) !important;
+}
+
+/* Dots in Illuminated Mode: crisp dark ink or rich clan tone over parchment */
+[data-box-mode="illuminated"] .trackerDot,
+[data-box-mode="illuminated"] .dot,
+.trackerDot[data-box-mode="illuminated"],
+.dot[data-box-mode="illuminated"],
+.disciplineRow[data-box-mode="illuminated"] .dot,
+.attrCard[data-box-mode="illuminated"] .trackerDot,
+.skillsCard[data-box-mode="illuminated"] .trackerDot {
+  border: 1.5px solid color-mix(in srgb, var(--clan-box-ink, #111111) 50%, transparent) !important;
+  background-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+[data-box-mode="illuminated"] .trackerDot.filled,
+[data-box-mode="illuminated"] .dot.filled,
+[data-box-mode="illuminated"] .dot.dotOn,
+.disciplineRow[data-box-mode="illuminated"] .dot.filled,
+.disciplineRow[data-box-mode="illuminated"] .dot.dotOn,
+.attrCard[data-box-mode="illuminated"] .trackerDot.filled,
+.skillsCard[data-box-mode="illuminated"] .trackerDot.filled {
+  background-color: var(--clan-color-1, var(--tint)) !important;
+  border-color: var(--clan-color-1, var(--tint)) !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35) !important;
+}
+
+/* Action buttons and Rouse Blood in Illuminated Mode */
+[data-box-mode="illuminated"] .expandSkillsBtn,
+[data-box-mode="illuminated"] .skillsToggleBtn,
+[data-box-mode="illuminated"] .contentCardFoot .gothicBtn,
+.glassCard[data-box-mode="illuminated"] .contentCardFoot .gothicBtn,
+.skillsCard[data-box-mode="illuminated"] .expandSkillsBtn,
+.skillsCard[data-box-mode="illuminated"] .skillsToggleBtn {
+  background: var(--clan-box-ink, #141417) !important;
+  color: var(--clan-box-light, #f5f2ef) !important;
+  border: 1px solid var(--clan-box-border, #b09e4f) !important;
+}
+
+[data-box-mode="illuminated"] .trackerLabel,
+[data-box-mode="illuminated"] .trackerVal {
+  color: var(--clan-box-ink, #141417) !important;
+}
+
+[data-box-mode="illuminated"] .trackerBox {
+  border-color: color-mix(in srgb, var(--clan-box-ink, #111111) 40%, transparent) !important;
+  background: rgba(0, 0, 0, 0.04) !important;
+}
+
+/* --- 2. Gothic Glass Mode --- */
+[data-box-mode="glass"].glassCard,
+[data-box-mode="glass"].attrCard,
+[data-box-mode="glass"].skillsCard,
+[data-box-mode="glass"].disciplinesCard,
+[data-box-mode="glass"].contentCard,
+[data-box-mode="glass"].trackerCard,
+[data-box-mode="glass"].mobileMetaCard,
+[data-box-mode="glass"] .glassCard,
+[data-box-mode="glass"] .attrCard,
+[data-box-mode="glass"] .skillsCard,
+[data-box-mode="glass"] .disciplinesCard,
+[data-box-mode="glass"] .contentCard,
+[data-box-mode="glass"] .trackerCard,
+[data-box-mode="glass"] .mobileMetaCard,
+.attrCard[data-box-mode="glass"],
+.skillsCard[data-box-mode="glass"] {
+  background: color-mix(in srgb, var(--surface-color) 88%, transparent) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid color-mix(in srgb, var(--clan-box-border, var(--border-color)) 70%, var(--tint) 30%) !important;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  color: var(--text-color) !important;
+  transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+[data-box-mode="glass"] .skillNotableItem,
+.skillsCard[data-box-mode="glass"] .skillNotableItem {
+  background: color-mix(in srgb, var(--surface-color) 60%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--border-color) 70%, var(--tint) 30%) !important;
+}
+
+[data-box-mode="glass"] .skillNotableItem:hover,
+.skillsCard[data-box-mode="glass"] .skillNotableItem:hover {
+  border-color: var(--tint) !important;
+  background: color-mix(in srgb, var(--tint) 10%, transparent) !important;
+}
+
+[data-box-mode="glass"] .trackerDot,
+[data-box-mode="glass"] .dot,
+.trackerDot[data-box-mode="glass"],
+.dot[data-box-mode="glass"],
+.disciplineRow[data-box-mode="glass"] .dot,
+.attrCard[data-box-mode="glass"] .trackerDot,
+.skillsCard[data-box-mode="glass"] .trackerDot {
+  border: 1px solid rgba(255, 255, 255, 0.4) !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+[data-box-mode="glass"] .trackerDot.filled,
+[data-box-mode="glass"] .dot.filled,
+[data-box-mode="glass"] .dot.dotOn,
+.disciplineRow[data-box-mode="glass"] .dot.filled,
+.disciplineRow[data-box-mode="glass"] .dot.dotOn,
+.attrCard[data-box-mode="glass"] .trackerDot.filled,
+.skillsCard[data-box-mode="glass"] .trackerDot.filled {
+  background-color: var(--tint) !important;
+  border-color: var(--tint) !important;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--tint) 60%, transparent) !important;
 }

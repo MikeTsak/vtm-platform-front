@@ -484,13 +484,19 @@
 }
 
 /* ---------- Bottom save bar ---------- */
+/* The site has a global floating dice-roller button fixed at bottom-right
+   (right-6, w-16, bottom-24 on mobile / bottom-6 on desktop, z-index 9000 —
+   see DiceRoller.jsx) on every page. Save/Discard sit at the right edge of
+   this bar via saveBarActions' margin-left:auto, which put them directly
+   under that button — right-padding here keeps them clear of its corner
+   instead of fighting it over z-index. */
 .saveBar {
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 14px 24px;
+  padding: 14px 104px 14px 24px;
   border-top: 1px solid var(--glass-border);
   background: rgba(0, 0, 0, 0.35);
   flex-wrap: wrap;
@@ -583,11 +589,32 @@
   }
   .sidebar {
     width: 100%;
+    /* Explicit here instead of inherited: in a column flex context this is
+       the main-axis sizing (its old flex-shrink:0 was written for the
+       desktop row context and doesn't by itself stop this from being
+       stretched oddly once .body switches to column). Pinning it to its own
+       content height keeps .content's flex:1 share unambiguous. */
+    flex: 0 0 auto;
     border-right: none;
     border-bottom: 1px solid var(--glass-border);
     display: flex;
     overflow-x: auto;
     gap: 4px;
+  }
+  .content {
+    /* Belt-and-suspenders: never let this collapse to nothing even if the
+       flex-basis math above ever comes out wrong on a given mobile browser. */
+    min-height: 200px;
+  }
+  /* The dice FAB sits higher on mobile (bottom-24 = 96–160px up) — keep the
+     save bar low-profile so wrapping mode-toggle/impact/actions can't grow
+     tall enough to reach into that band. */
+  .saveBar {
+    padding: 10px 104px 10px 16px;
+    gap: 8px;
+  }
+  .modeToggle {
+    flex: 1 1 100%;
   }
   .navItem {
     flex-shrink: 0;

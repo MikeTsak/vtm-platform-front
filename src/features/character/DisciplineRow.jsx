@@ -14,7 +14,7 @@ const getPowerFullData = (discName, powerId) => {
 };
 
 // Sub-component so each power pill can animate its own open/close state independently
-function PowerItem({ level, picked, unlocked, discName }) {
+function PowerItem({ level, picked, unlocked, discName, boxMode }) {
   const [isOpen, setIsOpen] = useState(false);
   
   // Fetch the actual rules and text for this specific power
@@ -32,6 +32,7 @@ function PowerItem({ level, picked, unlocked, discName }) {
       {/* The Power Pill itself */}
       <div 
         className={cls} 
+        data-box-mode={boxMode}
         onClick={() => isClickable && setIsOpen(!isOpen)}
         style={{ 
           cursor: isClickable ? 'pointer' : 'default',
@@ -41,8 +42,8 @@ function PowerItem({ level, picked, unlocked, discName }) {
         }}
         title={isClickable ? 'Click to view power details' : undefined}
       >
-        <span className={styles.levelBadge}>L{level}</span>
-        <span className={styles.powerName}>{label}</span>
+        <span className={styles.levelBadge} data-box-mode={boxMode}>L{level}</span>
+        <span className={styles.powerName} data-box-mode={boxMode}>{label}</span>
       </div>
 
       {/* The low-key, smooth-animated expansion area */}
@@ -56,17 +57,17 @@ function PowerItem({ level, picked, unlocked, discName }) {
       >
         <div style={{ overflow: 'hidden' }}>
           {fullData && (
-            <div className={styles.powerDetailsBody}>
-              <div className={styles.powerDetailsMeta}>
-                {fullData.cost && fullData.cost !== '—' && fullData.cost !== 'None' && <span><b style={{ opacity: 0.6 }}>Cost:</b> {fullData.cost}</span>}
-                {fullData.dice_pool && fullData.dice_pool !== '—' && fullData.dice_pool !== 'None' && <span><b style={{ opacity: 0.6 }}>Pool:</b> {fullData.dice_pool}</span>}
-                {fullData.duration && fullData.duration !== '—' && fullData.duration !== 'None' && <span><b style={{ opacity: 0.6 }}>Duration:</b> {fullData.duration}</span>}
-                {fullData.source && <span><b style={{ opacity: 0.6 }}>Source:</b> {fullData.source}</span>}
+            <div className={styles.powerDetailsBody} data-box-mode={boxMode}>
+              <div className={styles.powerDetailsMeta} data-box-mode={boxMode}>
+                {fullData.cost && fullData.cost !== '—' && fullData.cost !== 'None' && <span><b style={{ opacity: 0.7 }}>Cost:</b> {fullData.cost}</span>}
+                {fullData.dice_pool && fullData.dice_pool !== '—' && fullData.dice_pool !== 'None' && <span><b style={{ opacity: 0.7 }}>Pool:</b> {fullData.dice_pool}</span>}
+                {fullData.duration && fullData.duration !== '—' && fullData.duration !== 'None' && <span><b style={{ opacity: 0.7 }}>Duration:</b> {fullData.duration}</span>}
+                {fullData.source && <span><b style={{ opacity: 0.7 }}>Source:</b> {fullData.source}</span>}
               </div>
               
               {fullData.notes && (
                 <div style={{ lineHeight: '1.4', marginTop: '4px' }}>
-                  <b style={{ opacity: 0.6 }}>Effect:</b> {fullData.notes}
+                  <b style={{ opacity: 0.7 }}>Effect:</b> {fullData.notes}
                 </div>
               )}
             </div>
@@ -77,14 +78,14 @@ function PowerItem({ level, picked, unlocked, discName }) {
   );
 }
 
-function DisciplineRow({ name, level = 0, powers = [], phantomPowers = [] }) {
+function DisciplineRow({ name, level = 0, powers = [], phantomPowers = [], boxMode }) {
   const icon = iconPath(name);
   const byLevel = new Map((powers || []).map(p => [Number(p.level), { id: p.id, name: p.name }]));
   const maxPicked = Math.max(0, ...Array.from(byLevel.keys()));
   const displayMax = Math.min(5, Math.max(level || 0, maxPicked || 0) || 0) || level || 0 || 0;
 
   return (
-    <div className={styles.disciplineRow}>
+    <div className={styles.disciplineRow} data-box-mode={boxMode}>
       <div className={styles.disciplineHead}>
         <img
           src={icon}
@@ -95,10 +96,10 @@ function DisciplineRow({ name, level = 0, powers = [], phantomPowers = [] }) {
           className={styles.disciplineIcon}
         />
         <div className={styles.disciplineTitleBlock}>
-          <b className={styles.disciplineName}>{name}</b>
+          <b className={styles.disciplineName} data-box-mode={boxMode}>{name}</b>
           <div className={styles.dots}>
             {Array.from({ length: 5 }).map((_, i) => (
-              <span key={i} className={`${styles.dot} ${i < level ? styles.dotOn : ''}`} />
+              <span key={i} className={`${styles.dot} ${i < level ? styles.dotOn : ''}`} data-box-mode={boxMode} />
             ))}
           </div>
         </div>
@@ -118,6 +119,7 @@ function DisciplineRow({ name, level = 0, powers = [], phantomPowers = [] }) {
               picked={picked} 
               unlocked={unlocked} 
               discName={name} 
+              boxMode={boxMode}
             />
           );
         })}
@@ -132,7 +134,8 @@ function DisciplineRow({ name, level = 0, powers = [], phantomPowers = [] }) {
                 level={p.level}
                 picked={p}
                 unlocked={true}
-                discName={name}
+                discName={name} 
+                boxMode={boxMode}
               />
             ))}
           </div>

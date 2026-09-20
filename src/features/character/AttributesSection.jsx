@@ -20,9 +20,9 @@ const RenderDotList = ({ dots }) => {
   );
 };
 
-export default function AttributesSection({ sheet }) {
+export default function AttributesSection({ sheet, boxMode }) {
   return (
-    <div className={`${styles.glassCard} ${styles.attrCard}`}>
+    <div className={`${styles.glassCard} ${styles.attrCard}`} data-box-mode={boxMode}>
       <h3 className={styles.attrTitle}>
         Attributes
       </h3>

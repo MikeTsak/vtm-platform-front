@@ -37,7 +37,7 @@ export const CLAN_COLORS = {
   Brujah:         ['#FF7214', '#C30011', '#A90015', '#FFB53D', '#333333'],
   Gangrel:        ['#442604', '#795D15', '#2E2F04', '#594E36', '#7E846B'],
   Hecata:         ['#D1CCDC', '#424C55', '#F5EDF0', '#886F68', '#3D2C2E'],
-  Lasombra:       ['#E2E8F0', '#222222', '#334155', '#201A28', '#19272A'],
+  Lasombra:       ['#0C080B', '#222222', '#292B36', '#201A28', '#19272A'],
   Malkavian:      ['#F1AB13', '#FCB0B3', '#F93943', '#7EB2DD', '#445E93'],
   Nosferatu:      ['#272826', '#404E51', '#A19F74', '#4D2B1E', '#363D38'],
   Salubri:        ['#E1FBFE', '#A93F55', '#96A1CA', '#F0EEF1', '#5A5766'],
@@ -69,6 +69,9 @@ export const CLAN_THEME_RULES = {
     bg: '#0c0609',
     symbolColor: '#B29D34',
     textLogoColor: '#FBF7F4',
+    boxLight: '#FBF7F4',
+    boxBorder: '#B29D34',
+    boxInk: '#23101B',
     aesthetic: 'crimson veined Alamut marble and antique gold runes'
   },
   Banu_Haqim: {
@@ -85,6 +88,9 @@ export const CLAN_THEME_RULES = {
     bg: '#0c0609',
     symbolColor: '#B29D34',
     textLogoColor: '#FBF7F4',
+    boxLight: '#FBF7F4',
+    boxBorder: '#B29D34',
+    boxInk: '#23101B',
     aesthetic: 'crimson veined Alamut marble and antique gold runes'
   },
   Brujah: {
@@ -101,6 +107,9 @@ export const CLAN_THEME_RULES = {
     bg: '#0f0c0c',
     symbolColor: '#C30011',
     textLogoColor: '#FFB53D',
+    boxLight: '#FFB53D',
+    boxBorder: '#C30011',
+    boxInk: '#333333',
     aesthetic: 'anarch raging fire and embers'
   },
   Gangrel: {
@@ -117,6 +126,9 @@ export const CLAN_THEME_RULES = {
     bg: '#0c0e07',
     symbolColor: '#7E846B',
     textLogoColor: '#795D15',
+    boxLight: '#F4F3EE',
+    boxBorder: '#7E846B',
+    boxInk: '#2E2F04',
     aesthetic: 'deep forest fern foliage and wild undergrowth'
   },
   Hecata: {
@@ -133,12 +145,15 @@ export const CLAN_THEME_RULES = {
     bg: '#0e0a0b',
     symbolColor: '#F5EDF0',
     textLogoColor: '#D1CCDC',
+    boxLight: '#F5EDF0',
+    boxBorder: '#424C55',
+    boxInk: '#3D2C2E',
     aesthetic: 'catacomb skull wall and mausoleum marble'
   },
   Lasombra: {
-    color1: '#E2E8F0',
+    color1: '#0C080B',
     color2: '#222222',
-    color3: '#334155',
+    color3: '#292B36',
     color4: '#201A28',
     color5: '#19272A',
     primaryAccent: '#E2E8F0',
@@ -150,12 +165,15 @@ export const CLAN_THEME_RULES = {
     bg: '#08070a',
     symbolColor: '#E2E8F0',
     textLogoColor: '#F8FAFC',
+    boxLight: '#F1F5F9',
+    boxBorder: '#334155',
+    boxInk: '#0C080B',
     aesthetic: 'abyssal pitch shadows and luminescent moonlit silver'
   },
   lasombra: {
-    color1: '#E2E8F0',
+    color1: '#0C080B',
     color2: '#222222',
-    color3: '#334155',
+    color3: '#292B36',
     color4: '#201A28',
     color5: '#19272A',
     primaryAccent: '#E2E8F0',
@@ -167,6 +185,9 @@ export const CLAN_THEME_RULES = {
     bg: '#08070a',
     symbolColor: '#E2E8F0',
     textLogoColor: '#F8FAFC',
+    boxLight: '#F1F5F9',
+    boxBorder: '#334155',
+    boxInk: '#0C080B',
     aesthetic: 'abyssal pitch shadows and luminescent moonlit silver'
   },
   Malkavian: {
@@ -183,6 +204,9 @@ export const CLAN_THEME_RULES = {
     bg: '#0a0814',
     symbolColor: '#FCB0B3',
     textLogoColor: '#F1AB13',
+    boxLight: '#FCB0B3',
+    boxBorder: '#F1AB13',
+    boxInk: '#445E93',
     aesthetic: 'hallucinatory psychedelic swirling fractal fluid'
   },
   Nosferatu: {
@@ -199,6 +223,9 @@ export const CLAN_THEME_RULES = {
     bg: '#0c0d0c',
     symbolColor: '#404E51',
     textLogoColor: '#A19F74',
+    boxLight: '#A19F74',
+    boxBorder: '#404E51',
+    boxInk: '#272826',
     aesthetic: 'subterranean cracked stone catacomb and toxic sewer mist'
   },
   Salubri: {
@@ -215,6 +242,9 @@ export const CLAN_THEME_RULES = {
     bg: '#0d0c12',
     symbolColor: '#E1FBFE',
     textLogoColor: '#A93F55',
+    boxLight: '#E1FBFE',
+    boxBorder: '#96A1CA',
+    boxInk: '#5A5766',
     aesthetic: 'ethereal twilight clouds and celestial mist'
   },
   'The Ministry': {
@@ -231,6 +261,9 @@ export const CLAN_THEME_RULES = {
     bg: '#10010e',
     symbolColor: '#6BD425',
     textLogoColor: '#618B25',
+    boxLight: '#FAF5EE',
+    boxBorder: '#618B25',
+    boxInk: '#1C0118',
     aesthetic: 'deep aubergine serpent scales and electric venom'
   },
   Ministry: {
@@ -247,6 +280,9 @@ export const CLAN_THEME_RULES = {
     bg: '#10010e',
     symbolColor: '#6BD425',
     textLogoColor: '#618B25',
+    boxLight: '#FAF5EE',
+    boxBorder: '#618B25',
+    boxInk: '#1C0118',
     aesthetic: 'deep aubergine serpent scales and electric venom'
   },
   Toreador: {
@@ -263,6 +299,9 @@ export const CLAN_THEME_RULES = {
     bg: '#0d0208',
     symbolColor: '#F3AFB6',
     textLogoColor: '#DD2C68',
+    boxLight: '#F3AFB6',
+    boxBorder: '#DD2C68',
+    boxInk: '#4A001F',
     aesthetic: 'velvety dark roses and romantic thorns'
   },
   Tremere: {
@@ -279,6 +318,9 @@ export const CLAN_THEME_RULES = {
     bg: '#0d0810',
     symbolColor: '#CCB2DC',
     textLogoColor: '#CCB2DC',
+    boxLight: '#CCB2DC',
+    boxBorder: '#937EA5',
+    boxInk: '#201D1D',
     aesthetic: 'hermetic blood marble and occult sorcery swirl'
   },
   Tzimisce: {
@@ -295,6 +337,9 @@ export const CLAN_THEME_RULES = {
     bg: '#0d0b12',
     symbolColor: '#B8C4BB',
     textLogoColor: '#B8C4BB',
+    boxLight: '#B8C4BB',
+    boxBorder: '#86A59C',
+    boxInk: '#333333',
     aesthetic: 'visceral textured dragon fleshcrafting and ancestral earth'
   },
   Ventrue: {
@@ -311,6 +356,9 @@ export const CLAN_THEME_RULES = {
     bg: '#0a0b17',
     symbolColor: '#B09E4F',
     textLogoColor: '#F5F2EF',
+    boxLight: '#F5F2EF',
+    boxBorder: '#B09E4F',
+    boxInk: '#0F0D4F',
     aesthetic: 'patrician imperial white marble and sovereign gold'
   },
   Ravnos: {
@@ -326,6 +374,9 @@ export const CLAN_THEME_RULES = {
     surface: '#2c1e17',
     bg: '#150c08',
     symbolColor: '#B73D35',
+    boxLight: '#F5D7A1',
+    boxBorder: '#E08226',
+    boxInk: '#2C1B10',
     aesthetic: 'nomadic illusion and smoky caravan amber'
   },
   Caitiff: {
@@ -341,6 +392,9 @@ export const CLAN_THEME_RULES = {
     surface: '#212121',
     bg: '#121212',
     symbolColor: '#9A9EA0',
+    boxLight: '#E0E0E0',
+    boxBorder: '#636363',
+    boxInk: '#1C1C1C',
     aesthetic: 'street concrete and alleyway smog'
   },
   'Thin-blood': {
@@ -356,6 +410,9 @@ export const CLAN_THEME_RULES = {
     surface: '#242417',
     bg: '#121209',
     symbolColor: '#5B8C9E',
+    boxLight: '#E4E4A8',
+    boxBorder: '#8C8C37',
+    boxInk: '#1E1E0E',
     aesthetic: 'chemical alchemy smog and daylight dusk'
   }
 };
@@ -534,7 +591,12 @@ export const textlogoWhiteSrcSet = (c) => {
   return srcSet ? { srcSet } : {};
 };
 
-export const clanTint = (clan) => (clan ? CLAN_COLORS[clan]?.[0] : null) || '#8a0f1a';
+export const clanTint = (clan) => {
+  if (!clan) return '#8a0f1a';
+  const rules = CLAN_THEME_RULES[clan];
+  if (rules?.primaryAccent) return rules.primaryAccent;
+  return CLAN_COLORS[clan]?.[0] || '#8a0f1a';
+};
 
 // Flat { clan: '#hex' } map: the first (accent) colour of each gradient pair.
 // Drop-in replacement for the per-file CLAN_COLORS string maps that used to be
@@ -557,6 +619,15 @@ export const getClanThemeRules = (clan) => {
     primaryAccent: clanTint(clan),
     surface: '#141417',
     aesthetic: 'gothic darkness'
+  };
+};
+
+export const getClanBoxTokens = (clan) => {
+  const rules = getClanThemeRules(clan);
+  return {
+    boxLight: rules?.boxLight || '#F5F2EF',
+    boxBorder: rules?.boxBorder || rules?.border || '#B09E4F',
+    boxInk: rules?.boxInk || rules?.color1 || '#111111',
   };
 };
 

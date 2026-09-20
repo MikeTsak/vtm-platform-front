@@ -4,6 +4,7 @@ import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/Admin.module.css';
 import FaGlyph from '../../ui/FaGlyph';
 import { FEEDING_ICONS } from '../../data/feedingIcons';
+import { formatAthensDate } from '../../utils/dateFormatter';
 
 function useCountdown(target) {
   const [now, setNow] = useState(Date.now());
@@ -244,16 +245,18 @@ export default function AdminFeedingTab() {
       {/* CYCLE + STATS */}
       {isOnline && (
         <div style={card}>
-          <h4 style={{ margin: '0 0 1rem 0', fontSize: '1.3rem', color: 'var(--text-color)' }}>Current Cycle #{status.cycleIndex}</h4>
+          <h4 style={{ margin: '0 0 1rem 0', fontSize: '1.3rem', color: 'var(--text-color)' }}>
+            Current Cycle #{status.cycleIndex}{status.cycleTitle ? ` : ${status.cycleTitle}` : ''}
+          </h4>
           <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
             <div><div style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>Ends in</div><div style={{ fontSize: '1.2rem', fontWeight: 700 }}>{countdown}</div></div>
-            <div><div style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>Window</div><div style={{ fontSize: '0.9rem' }}>{new Date(status.cycleStart).toLocaleDateString()} - {new Date(status.cycleEnd).toLocaleDateString()}</div></div>
+            <div><div style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>Window</div><div style={{ fontSize: '0.9rem' }}>{formatAthensDate(status.cycleStart)} to {formatAthensDate(status.cycleEnd)}</div></div>
             {stats && <>
               <div><div style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>Total Feeds</div><div style={{ fontSize: '1.2rem', fontWeight: 700 }}>{stats.counts.total}</div></div>
               <div>
                 <div style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>Success Rate</div>
                 <div style={{ fontSize: '1.2rem', fontWeight: 700, color: stats.successPct >= 70 ? 'var(--color-success)' : stats.successPct >= 40 ? '#ffb347' : '#ff6b6b' }}>
-                  {stats.successPct !== null ? `${stats.successPct}%` : '-'}
+                  {stats.successPct !== null ? `${stats.successPct}%` : 'N/A'}
                 </div>
               </div>
               <div><div style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>Fed OK</div><div style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-success)' }}>{stats.counts.success}</div></div>

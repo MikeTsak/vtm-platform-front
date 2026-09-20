@@ -336,3 +336,72 @@
   border-color: rgba(255, 179, 174, 0.5);
   color: var(--tint, var(--tint));
 }
+
+/* ==================================================================
+   DUAL BOX MODE ARCHITECTURE (Illuminated Dossier vs Gothic Glass)
+   ================================================================== */
+
+/* --- 1. Illuminated Dossier Mode --- */
+:global([data-box-mode="illuminated"]) .itemCard {
+  background-color: var(--clan-box-light, #f5f2ef) !important;
+  border: 1px solid var(--clan-box-border, #b09e4f) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), 0 0 1px var(--clan-box-border, #b09e4f) !important;
+  color: var(--clan-box-ink, #141417) !important;
+}
+
+:global([data-box-mode="illuminated"]) .itemCard.expanded {
+  background-color: color-mix(in srgb, var(--clan-box-light, #f5f2ef) 93%, black 7%) !important;
+  border-color: var(--clan-box-border, #b09e4f) !important;
+}
+
+:global([data-box-mode="illuminated"]) .itemCardTitle {
+  color: var(--clan-box-ink, #141417) !important;
+}
+
+:global([data-box-mode="illuminated"]) .itemCardSubText {
+  color: color-mix(in srgb, var(--clan-box-ink, #141417) 70%, transparent) !important;
+}
+
+:global([data-box-mode="illuminated"]) .itemIcon {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+  border-color: color-mix(in srgb, var(--clan-box-border, #b09e4f) 40%, transparent) !important;
+}
+
+:global([data-box-mode="illuminated"]) .itemIcon span {
+  color: var(--clan-color-1, var(--tint)) !important;
+}
+
+:global([data-box-mode="illuminated"]) .tabBtn {
+  color: var(--clan-box-ink, #141417) !important;
+  border-color: color-mix(in srgb, var(--clan-box-border, #b09e4f) 50%, transparent) !important;
+}
+
+:global([data-box-mode="illuminated"]) .activeTab {
+  background-color: var(--clan-box-ink, #141417) !important;
+  color: var(--clan-box-light, #f5f2ef) !important;
+  border-color: var(--clan-box-border, #b09e4f) !important;
+}
+
+:global([data-box-mode="illuminated"]) .viewToggles {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+  border-color: color-mix(in srgb, var(--clan-box-border, #b09e4f) 40%, transparent) !important;
+}
+
+:global([data-box-mode="illuminated"]) .activeView {
+  background-color: var(--clan-box-ink, #141417) !important;
+  color: var(--clan-box-light, #f5f2ef) !important;
+}
+
+/* --- 2. Gothic Glass Mode --- */
+:global([data-box-mode="glass"]) .itemCard {
+  background-color: color-mix(in srgb, var(--surface-color) 85%, transparent) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  border: 1px solid color-mix(in srgb, var(--clan-box-border, var(--border-color)) 70%, var(--tint) 30%) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45) !important;
+}
+
+:global([data-box-mode="glass"]) .itemIcon {
+  background-color: rgba(0, 0, 0, 0.3) !important;
+  border-color: color-mix(in srgb, var(--border-color) 70%, var(--tint) 30%) !important;
+}

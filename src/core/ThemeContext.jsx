@@ -116,6 +116,15 @@ function paintTheme(theme, clan, tintHex) {
     root.style.setProperty('--bg-color', bgBase);
     root.style.setProperty('--theme-background', bgBase);
 
+    // Box Tokens for Character Sheet and Containers
+    const boxLight = rules?.boxLight || palette?.[3] || '#F5F2EF';
+    const boxBorder = rules?.boxBorder || border || '#B09E4F';
+    const boxInk = rules?.boxInk || palette?.[0] || '#111111';
+
+    root.style.setProperty('--clan-box-light', boxLight);
+    root.style.setProperty('--clan-box-border', boxBorder);
+    root.style.setProperty('--clan-box-ink', boxInk);
+
     // 4. Custom atmospheric clan background
     if (bgUrl) {
       root.style.setProperty('--clan-bg-image', `url('${bgUrl}')`);
@@ -152,6 +161,9 @@ function paintTheme(theme, clan, tintHex) {
     root.style.removeProperty('--clan-bg');
     root.style.removeProperty('--bg-color');
     root.style.removeProperty('--theme-background');
+    root.style.removeProperty('--clan-box-light');
+    root.style.removeProperty('--clan-box-border');
+    root.style.removeProperty('--clan-box-ink');
     root.style.removeProperty('--clan-bg-image');
     root.style.removeProperty('--clan-bg-opacity');
   }

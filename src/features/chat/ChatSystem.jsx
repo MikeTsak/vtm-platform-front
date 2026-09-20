@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { getPushSettings, updatePushSettings, subscribeToWebPush } from '../../utils/push';
 import { socket } from '../../api/liveSession';
 import { symlogo as localSymlogo, CLAN_HEX as CLAN_COLORS } from '../../data/clans';
+import { useCommsEnabled } from '../comms/useCommsEnabled';
 
 /* --- Clan assets & colors --- */
 const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim', 'Thin-blood': 'Thinblood' };
@@ -188,10 +189,10 @@ const sortContacts = (list) => {
 const StatusIcon = ({ msg }) => {
   if (!msg || !msg.created_at) return null;
   if (msg.read_at) {
-    return <span title={`Seen: ${new Date(msg.read_at).toLocaleString()}`} className={styles.statusSeen}>✓✓</span>;
+    return <span title={`Seen: ${new Date(msg.read_at).toLocaleString('en-GB', { timeZone: 'Europe/Athens' })}`} className={styles.statusSeen}>✓✓</span>;
   }
   if (msg.delivered_at) {
-    return <span title={`Delivered: ${new Date(msg.delivered_at).toLocaleString()}`} className={styles.statusDelivered}>✓✓</span>;
+    return <span title={`Delivered: ${new Date(msg.delivered_at).toLocaleString('en-GB', { timeZone: 'Europe/Athens' })}`} className={styles.statusDelivered}>✓✓</span>;
   }
   return <span title="Sent" className={styles.statusSent}>✓</span>;
 };
@@ -294,7 +295,11 @@ const generateTempId = () => {
   return `temp_${Date.now()}_${++tempIdCounter}_${Math.random().toString(36).slice(2, 11)}`;
 };
 
-export default function ChatSystem({ commsEnabled = true }) {
+export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening: propNextOpening }) {
+  const commsHook = useCommsEnabled();
+  const commsEnabled = typeof propCommsEnabled === 'boolean' ? propCommsEnabled : commsHook.commsEnabled;
+  const nextOpening = propNextOpening !== undefined ? propNextOpening : commsHook.nextOpening;
+
   const { user: currentUser } = useContext(AuthCtx);
   const isAdmin = currentUser?.role === 'admin';
 
@@ -1194,11 +1199,25 @@ export default function ChatSystem({ commsEnabled = true }) {
   /* --- Render & Filters --- */
   const formatTime = (ts) => {
     const d = new Date(ts);
-    return d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleString('en-GB', {
+      timeZone: 'Europe/Athens',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
   };
   const formatDay = (ts) => {
     const d = new Date(ts);
-    return d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+    return d.toLocaleDateString('en-GB', {
+      timeZone: 'Europe/Athens',
+      weekday: 'short',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
   };
 
   const grouped = useMemo(() => {
@@ -1691,7 +1710,11 @@ export default function ChatSystem({ commsEnabled = true }) {
             {!commsEnabled ? (
               <div className="w-full bg-error-container/20 border-b border-error/50 p-2 text-center flex items-center justify-center gap-2 z-10 shrink-0">
                 <span className="material-symbols-outlined text-error text-sm">warning</span>
-                <span className="font-system-code text-[11px] md:text-sm text-error tracking-widest uppercase font-bold">SCHRECKNET PROTOCOL OFFLINE</span>
+                <span className="font-system-code text-[11px] md:text-sm text-error tracking-widest uppercase font-bold">
+                  {nextOpening
+                    ? `SCHRECKNET OFFLINE : OPENS AGAIN ${nextOpening.day.toUpperCase()} AT ${nextOpening.time} (${nextOpening.date})`
+                    : 'SCHRECKNET PROTOCOL OFFLINE'}
+                </span>
               </div>
             ) : !isCharActive ? (
               <div className="w-full bg-error-container/20 border-b border-error/50 p-2 text-center flex items-center justify-center gap-2 z-10 shrink-0">
@@ -1940,7 +1963,7 @@ export default function ChatSystem({ commsEnabled = true }) {
                     value={newMessage}
                     onChange={e => setNewMessage(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder={!canSend ? "System Offline..." : (!isCharActive ? "Waiting for ST approval..." : "Transmit response...")}
+                    placeholder={!canSend ? (nextOpening ? `SchreckNet offline : Opens again ${nextOpening.day} at ${nextOpening.time}` : "System Offline...") : (!isCharActive ? "Waiting for ST approval..." : "Transmit response...")}
                     className="w-full bg-transparent border-none text-on-surface font-system-code text-[13px] md:text-[14px] placeholder-on-surface-variant/40 focus:ring-0 resize-none py-2 px-1 max-h-32 custom-scrollbar break-words"
                     rows={1}
                     style={{ minHeight: '40px' }}

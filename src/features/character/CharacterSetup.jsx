@@ -443,7 +443,8 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
         }).filter(Boolean),
         humanity: humanityOut
       },
-      bloodPotency: bloodPotencyOut
+      bloodPotency: bloodPotencyOut,
+      is_active: false
     };
 
       const url = forNPC ? '/admin/npcs' : (isRebuilding ? '/characters/rebuild' : '/characters');

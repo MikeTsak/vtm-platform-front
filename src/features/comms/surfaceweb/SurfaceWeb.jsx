@@ -8,7 +8,7 @@ import { useCommsEnabled } from '../useCommsEnabled';
 
 export default function SurfaceWeb() {
   const { user } = useContext(AuthCtx);
-  const { commsEnabled, isLoading } = useCommsEnabled();
+  const { commsEnabled, nextOpening, isLoading } = useCommsEnabled();
 
   return (
     <Skeleton loading={isLoading} name="surfaceweb-page">
@@ -33,7 +33,7 @@ export default function SurfaceWeb() {
       </motion.div>
 
       {user && (
-        <EmailSystem user={user} isMobile={false} commsEnabled={commsEnabled} />
+        <EmailSystem user={user} isMobile={false} commsEnabled={commsEnabled} nextOpening={nextOpening} />
       )}
       </motion.div>
     </Skeleton>

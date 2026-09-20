@@ -256,14 +256,18 @@ function PendingResult({ status }) {
 
 function ResolvedBanner({ status }) {
   const feeding = status.resolvedThisCycle;
+  const cycleLabel = status.cycleTitle || `Cycle ${status.cycleIndex}`;
   return (
     <div className={styles.fedBanner}>
       <div className={styles.fedBannerLeft}>
         <IconBadge icon={FEEDING_ICONS.circleCheck} size={15} small />
         <span>
-          <strong>Fed this cycle in</strong> {divisionName(feeding.division)} ·{' '}
+          <strong>Fed for {cycleLabel} in</strong> {divisionName(feeding.division)} :{' '}
           <span className={TIER_CLASS[feeding.outcome]} style={{ padding: '2px 8px', borderRadius: 4 }}>
             {TIER_LABEL[feeding.outcome] || feeding.outcome}
+          </span>
+          <span style={{ marginLeft: '10px', fontSize: '0.85rem', color: 'var(--text-secondary, #aaa)' }}>
+            (3 Downtime Actions Unlocked)
           </span>
         </span>
       </div>
@@ -334,7 +338,7 @@ function Picker({ status }) {
     <div className={styles.gate}>
       <h2 className={styles.title}>
         <IconBadge icon={FEEDING_ICONS.droplet} />
-        Feeding
+        Feeding {status.cycleTitle ? `: ${status.cycleTitle}` : (status.cycleIndex ? `: Cycle ${status.cycleIndex}` : '')}
       </h2>
       
       {!status.canAutomate ? (
@@ -346,7 +350,7 @@ function Picker({ status }) {
         </p>
       ) : (
         <p className={styles.subtitle}>
-          You must feed before submitting downtime actions this cycle. Pick where and how to hunt.
+          You must feed once this cycle to unlock your 3 downtime actions. Pick where and how to hunt.
         </p>
       )}
 

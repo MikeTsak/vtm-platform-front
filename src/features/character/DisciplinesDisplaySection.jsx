@@ -3,7 +3,7 @@ import styles from '../../styles/CharacterView.module.css';
 import { DISCIPLINES } from '../../data/disciplines';
 import DisciplineRow from './DisciplineRow';
 
-const DisciplinesDisplaySection = ({ sheet }) => {
+const DisciplinesDisplaySection = ({ sheet, boxMode }) => {
   const disciplineNamesSet = new Set(Object.keys(DISCIPLINES));
   if (Array.isArray(sheet?.mystic_powers) && sheet.mystic_powers.length > 0) {
     disciplineNamesSet.add('Oblivion');
@@ -11,8 +11,7 @@ const DisciplinesDisplaySection = ({ sheet }) => {
   const disciplineNames = Array.from(disciplineNamesSet).sort();
 
   return (
-    <div className={`${styles.card} ${styles.disciplinesCard}`} id="disciplines-section">
-      <div className={styles.cardHead}><b>Disciplines</b></div>
+    <div className={`${styles.card} ${styles.disciplinesCard}`} data-box-mode={boxMode}>
       <div className={styles.disciplinesGrid}>
         {disciplineNames.map(name => {
           const level = Number(sheet?.disciplines?.[name] || 0);
@@ -41,6 +40,7 @@ const DisciplinesDisplaySection = ({ sheet }) => {
               level={level}
               powers={sheet?.disciplinePowers?.[name] || []}
               phantomPowers={phantomPowers}
+              boxMode={boxMode}
             />
           );
         })}

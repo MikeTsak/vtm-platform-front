@@ -106,7 +106,7 @@ export default function AdminCharactersTab({ users, onDelete, onOpenEditor }) {
   const [expandedCards, setExpandedCards] = useState(new Set());
   const [filterText, setFilterText] = useState('');
   const [clanFilter, setClanFilter] = useState('');
-  const [sortBy, setSortBy] = useState('name'); // 'name' | 'xp'
+  const [sortBy, setSortBy] = useState('id'); // 'id' | 'name' | 'clan' | 'xp'
   // The editor page is a separate, sometimes-not-yet-cached chunk: give the
   // click itself instant feedback instead of leaving the button looking
   // inert while the route transition and character fetch are in flight.
@@ -119,7 +119,17 @@ export default function AdminCharactersTab({ users, onDelete, onOpenEditor }) {
     setSheetStates(newStates);
   }, [baseChars]);
 
-  const clanOptions = useMemo(() => Array.from(new Set(baseChars.map(c => c.clan).filter(Boolean))).sort(), [baseChars]);
+  const clanCounts = useMemo(() => {
+    const counts = {};
+    baseChars.forEach(c => {
+      if (c.clan) {
+        counts[c.clan] = (counts[c.clan] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [baseChars]);
+
+  const clanOptions = useMemo(() => Object.keys(clanCounts).sort(), [clanCounts]);
 
   const filteredChars = useMemo(() => {
     let list = baseChars;
@@ -136,7 +146,24 @@ export default function AdminCharactersTab({ users, onDelete, onOpenEditor }) {
     if (clanFilter) list = list.filter(c => c.clan === clanFilter);
 
     list = [...list].sort((a, b) => {
-      if (sortBy === 'xp') return (b.xp || 0) - (a.xp || 0);
+      if (sortBy === 'id') {
+        const numA = Number(a.id);
+        const numB = Number(b.id);
+        if (!Number.isNaN(numA) && !Number.isNaN(numB)) {
+          return numA - numB;
+        }
+        return String(a.id).localeCompare(String(b.id), undefined, { numeric: true });
+      }
+      if (sortBy === 'clan') {
+        const clanDiff = (a.clan || '').localeCompare(b.clan || '');
+        if (clanDiff !== 0) return clanDiff;
+        return a.name.localeCompare(b.name);
+      }
+      if (sortBy === 'xp') {
+        const xpDiff = (b.xp || 0) - (a.xp || 0);
+        if (xpDiff !== 0) return xpDiff;
+        return a.name.localeCompare(b.name);
+      }
       return a.name.localeCompare(b.name);
     });
 
@@ -246,7 +273,7 @@ export default function AdminCharactersTab({ users, onDelete, onOpenEditor }) {
     } catch (error) { alert("Error saving some characters. Check console."); }
   };
 
-  const handleToggleActive = (char) => updateSheetData(char, d => { d.is_active = !d.is_active; return d; });
+  const handleToggleActive = (char) => updateSheetData(char, d => { d.is_active = !(d.is_active === true); return d; });
   const handleReset = (char) => { if(window.confirm(`Allow Re-Roll?`)) updateSheetData(char, d => { d.allow_reset = true; return d; }); };
   const handleRevokeReset = (char) => { if(window.confirm(`Revoke Re-Roll?`)) updateSheetData(char, d => { d.allow_reset = false; return d; }); };
 
@@ -268,13 +295,15 @@ export default function AdminCharactersTab({ users, onDelete, onOpenEditor }) {
 
       <div className={styles.row} style={{ flexWrap: 'wrap', gap: '10px' }}>
         <input type="text" placeholder="Filter by name, clan, or owner..." value={filterText} onChange={e => setFilterText(e.target.value)} className={styles.input} style={{ flex: 1, maxWidth: '400px' }} />
-        <select className={styles.select} value={clanFilter} onChange={e => setClanFilter(e.target.value)} style={{ maxWidth: '200px' }}>
+        <select className={styles.select} value={clanFilter} onChange={e => setClanFilter(e.target.value)} style={{ maxWidth: '220px' }}>
           <option value="">All clans</option>
-          {clanOptions.map(clan => <option key={clan} value={clan}>{clan}</option>)}
+          {clanOptions.map(clan => <option key={clan} value={clan}>{clan} ({clanCounts[clan] || 0})</option>)}
         </select>
-        <select className={styles.select} value={sortBy} onChange={e => setSortBy(e.target.value)} style={{ maxWidth: '160px' }}>
+        <select className={styles.select} value={sortBy} onChange={e => setSortBy(e.target.value)} style={{ maxWidth: '190px' }}>
+          <option value="id">Sort: Character ID</option>
           <option value="name">Sort: Name</option>
-          <option value="xp">Sort: XP (high-low)</option>
+          <option value="clan">Sort: Clan</option>
+          <option value="xp">Sort: XP (high to low)</option>
         </select>
         <span className={styles.subtle} style={{ marginLeft: 'auto' }}>{filteredChars.length} of {baseChars.length} characters</span>
       </div>
@@ -286,7 +315,7 @@ export default function AdminCharactersTab({ users, onDelete, onOpenEditor }) {
           const sheetObj = getSheetObj(c.id);
           const { maxHealth, maxWillpower, sheetObj: data } = calculateStats(sheetObj);
           const isExpanded = expandedCards.has(c.id);
-          const isActive = data.is_active !== false; // Default to true if undefined
+          const isActive = data.is_active === true;
 
           return (
             <div

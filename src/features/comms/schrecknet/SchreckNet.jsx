@@ -8,7 +8,7 @@ import { useCommsEnabled } from '../useCommsEnabled';
 
 export default function SchreckNet() {
   const { user } = useContext(AuthCtx);
-  const { commsEnabled, isLoading } = useCommsEnabled();
+  const { commsEnabled, nextOpening, isLoading } = useCommsEnabled();
 
   return (
     <motion.div
@@ -46,7 +46,7 @@ export default function SchreckNet() {
           }}
         >
           <Skeleton loading={isLoading} name="schrecknet-page">
-            <ChatSystem user={user} isMobile={false} commsEnabled={commsEnabled} />
+            <ChatSystem user={user} isMobile={false} commsEnabled={commsEnabled} nextOpening={nextOpening} />
           </Skeleton>
         </motion.div>
       )}

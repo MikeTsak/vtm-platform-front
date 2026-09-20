@@ -204,6 +204,9 @@ option {
   --clan-symbol-color: var(--clan-color-1);
   --clan-text-logo-color: var(--clan-color-4);
   --clan-surface: var(--surface-color);
+  --clan-box-light: #f5f2ef;
+  --clan-box-border: #8a0f1a;
+  --clan-box-ink: #111111;
 }
 
 :root,
@@ -238,6 +241,10 @@ option {
   --text-color: var(--clan-text, var(--clan-color-4, #e8e8ed));
   --text-muted: color-mix(in srgb, var(--text-color) 65%, transparent);
 
+  --clan-box-light: var(--clan-color-4, #f5f2ef);
+  --clan-box-border: var(--clan-border, var(--clan-color-3, #b09e4f));
+  --clan-box-ink: var(--clan-color-1, #111111);
+
   --theme-primary: var(--clan-symbol-color, var(--tint));
   --theme-secondary: var(--clan-secondary, var(--clan-color-2, #c30011));
   --theme-background: var(--bg-color);
@@ -251,12 +258,20 @@ option {
   --theme-on-surface-variant: var(--text-muted);
 }
 
-.clan-glass-card {
+.clan-glass-card,
+.clan-box-glass {
   background: color-mix(in srgb, var(--surface-color) 85%, transparent) !important;
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  border: 1px solid var(--border-color) !important;
+  border: 1px solid color-mix(in srgb, var(--border-color) 85%, var(--tint) 25%) !important;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+}
+
+.clan-box-illuminated {
+  background: var(--clan-box-light, #f5f2ef) !important;
+  color: var(--clan-box-ink, #141417) !important;
+  border: 1px solid var(--clan-box-border, #b09e4f) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 1px var(--clan-box-border, #b09e4f);
 }
 
 /* Clan dynamic recoloring and aesthetic background utilities */

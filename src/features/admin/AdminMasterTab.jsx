@@ -375,10 +375,11 @@ export default function AdminMasterTab() {
     } catch (e) { setErr('Failed to update status.'); } finally { setActionLoading(false); }
   };
 
-  const saveSchedule = async () => {
+  const saveSchedule = async (customSchedule = null) => {
+    const targetSchedule = customSchedule && typeof customSchedule === 'object' && !customSchedule.nativeEvent ? customSchedule : chatSchedule;
     setActionLoading(true); setMsg(''); setErr('');
     try {
-      await api.post('/admin/comms/schedule', { schedule: chatSchedule });
+      await api.post('/admin/comms/schedule', { schedule: targetSchedule });
       setMsg('Comms schedule saved.');
       setTimeout(() => setMsg(''), 3000);
     } catch (e) { setErr('Failed to save comms schedule.'); } finally { setActionLoading(false); }
@@ -393,6 +394,8 @@ export default function AdminMasterTab() {
         next[dateStr] = false;
       } else if (next[dateStr] === false) {
         next[dateStr] = true;
+      } else if (next[dateStr] === true) {
+        next[dateStr] = 'event';
       } else {
         delete next[dateStr];
       }
@@ -400,65 +403,329 @@ export default function AdminMasterTab() {
     });
   };
 
+  const applyEventWeek = async (weekIndex, eventDaysCount = 1) => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const startDayOffset = (firstDay + 6) % 7;
+
+    const weekDateStrs = [];
+    let alreadyEvent = true;
+
+    for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+      const d = new Date(year, month, 1 - startDayOffset + (weekIndex * 7) + dayOffset);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const dayNum = String(d.getDate()).padStart(2, '0');
+      const dateStr = `${y}-${m}-${dayNum}`;
+      weekDateStrs.push(dateStr);
+
+      const expected = (dayOffset === 5 || (dayOffset === 6 && eventDaysCount === 2)) ? 'event' : false;
+      if (chatSchedule[dateStr] !== expected) {
+        alreadyEvent = false;
+      }
+    }
+
+    const next = { ...chatSchedule };
+    if (alreadyEvent) {
+      for (const dateStr of weekDateStrs) {
+        delete next[dateStr];
+      }
+    } else {
+      for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+        const dateStr = weekDateStrs[dayOffset];
+        if (dayOffset === 5) {
+          next[dateStr] = 'event';
+        } else if (dayOffset === 6 && eventDaysCount === 2) {
+          next[dateStr] = 'event';
+        } else {
+          next[dateStr] = false;
+        }
+      }
+    }
+    setChatSchedule(next);
+    await saveSchedule(next);
+  };
+
+  const applyDefaultHoursForWeek = async (weekIndex) => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const startDayOffset = (firstDay + 6) % 7;
+
+    const weekDefaults = [
+      false,    // Mon: Force OFF
+      false,    // Tue: Force OFF
+      true,     // Wed: 00:01 to 24:00 (Midnight Start)
+      false,    // Thu: Force OFF
+      '17:00',  // Fri: from 5pm
+      '17:00',  // Sat: all day (active through night from Fri 5pm)
+      false     // Sun: up until 5pm (active until 5pm from Sat 5pm, then Force OFF)
+    ];
+
+    const weekDateStrs = [];
+    let alreadyDefault = true;
+
+    for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+      const d = new Date(year, month, 1 - startDayOffset + (weekIndex * 7) + dayOffset);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const dayNum = String(d.getDate()).padStart(2, '0');
+      const dateStr = `${y}-${m}-${dayNum}`;
+      weekDateStrs.push(dateStr);
+
+      if (chatSchedule[dateStr] !== weekDefaults[dayOffset]) {
+        alreadyDefault = false;
+      }
+    }
+
+    const next = { ...chatSchedule };
+    if (alreadyDefault) {
+      for (const dateStr of weekDateStrs) {
+        delete next[dateStr];
+      }
+    } else {
+      for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+        next[weekDateStrs[dayOffset]] = weekDefaults[dayOffset];
+      }
+    }
+    setChatSchedule(next);
+    await saveSchedule(next);
+  };
+
+  const applyDefaultHoursForMonth = async () => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const startDayOffset = (firstDay + 6) % 7;
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const totalDays = startDayOffset + daysInMonth;
+    const totalWeeks = Math.ceil(totalDays / 7);
+
+    const weekDefaults = [
+      false,    // Mon: Force OFF
+      false,    // Tue: Force OFF
+      true,     // Wed: 00:01 to 24:00 (Midnight Start)
+      false,    // Thu: Force OFF
+      '17:00',  // Fri: from 5pm
+      '17:00',  // Sat: all day
+      false     // Sun: up until 5pm
+    ];
+
+    const allDates = [];
+    let allAlreadyDefault = true;
+
+    for (let w = 0; w < totalWeeks; w++) {
+      for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+        const d = new Date(year, month, 1 - startDayOffset + (w * 7) + dayOffset);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const dayNum = String(d.getDate()).padStart(2, '0');
+        const dateStr = `${y}-${m}-${dayNum}`;
+        allDates.push({ dateStr, expected: weekDefaults[dayOffset] });
+        if (chatSchedule[dateStr] !== weekDefaults[dayOffset]) {
+          allAlreadyDefault = false;
+        }
+      }
+    }
+
+    const next = { ...chatSchedule };
+    if (allAlreadyDefault) {
+      for (const item of allDates) {
+        delete next[item.dateStr];
+      }
+    } else {
+      for (const item of allDates) {
+        next[item.dateStr] = item.expected;
+      }
+    }
+    setChatSchedule(next);
+    await saveSchedule(next);
+  };
+
   const renderCalendar = () => {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
     const firstDay = new Date(year, month, 1).getDay();
+    const startDayOffset = (firstDay + 6) % 7;
     const daysInMonth = new Date(year, month + 1, 0).getDate();
 
     const days = [];
-    for (let i = 0; i < firstDay; i++) days.push(null);
+    for (let i = 0; i < startDayOffset; i++) days.push(null);
     for (let i = 1; i <= daysInMonth; i++) days.push(i);
+    while (days.length % 7 !== 0) days.push(null);
+
+    const weeks = [];
+    for (let i = 0; i < days.length; i += 7) {
+      weeks.push(days.slice(i, i + 7));
+    }
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1.5rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <button className={styles.btn} onClick={() => setCurrentMonth(new Date(year, month - 1, 1))}>&lt; Prev</button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <button className={styles.btn} onClick={() => setCurrentMonth(new Date(year, month - 1, 1))}>&lt; Prev</button>
+            <button className={styles.btn} onClick={() => setCurrentMonth(new Date(year, month + 1, 1))}>Next &gt;</button>
+          </div>
           <div style={{ fontWeight: 'bold', fontSize: '1.2rem', color: 'var(--text-primary)' }}>
             {currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}
           </div>
-          <button className={styles.btn} onClick={() => setCurrentMonth(new Date(year, month + 1, 1))}>Next &gt;</button>
+          <button
+            className={`${styles.btn} ${styles.btnSecondary}`}
+            onClick={applyDefaultHoursForMonth}
+            disabled={actionLoading}
+            style={{ fontSize: '0.8rem', padding: '0.5rem 0.9rem' }}
+            title="Apply default hours to all weeks in this month"
+          >
+            Apply Default Hours to Month
+          </button>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px', textAlign: 'center' }}>
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-            <div key={d} style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{d}</div>
-          ))}
-          {days.map((d, i) => {
-            if (!d) return <div key={i} />;
-            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-            const state = chatSchedule[dateStr];
-            let bg = 'var(--glass-inset)';
-            let border = '1px solid var(--glass-border)';
-            let color = 'var(--text-primary)';
-            let label = d;
-            if (state === true) {
-              bg = 'rgba(0, 230, 118, 0.15)';
-              border = '1px solid var(--color-success)';
-              color = 'var(--color-success)';
-            } else if (state === '17:00') {
-              bg = 'rgba(0, 150, 255, 0.15)';
-              border = '1px solid #0096FF';
-              color = '#0096FF';
-              label = <>{d}<br/><span style={{fontSize: '0.7rem'}}>5pm</span></>;
-            } else if (state === false) {
-              bg = 'rgba(255, 77, 77, 0.15)';
-              border = '1px solid var(--color-error)';
-              color = 'var(--color-error)';
-            }
-            return (
-              <div 
-                key={i} 
-                onClick={() => toggleDay(dateStr)}
-                style={{
-                  background: bg, border: border, color: color,
-                  padding: '10px 0', borderRadius: '4px', cursor: 'pointer',
-                  userSelect: 'none', transition: 'all 0.2s', fontWeight: state !== undefined ? 'bold' : 'normal'
-                }}
-              >
-                {label}
-              </div>
-            );
-          })}
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(145px, 175px) repeat(7, minmax(40px, 1fr))', gap: '8px', textAlign: 'center', minWidth: '660px' }}>
+            <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              Action
+            </div>
+            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
+              <div key={d} style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{d}</div>
+            ))}
+            {weeks.map((weekDays, weekIdx) => (
+              <React.Fragment key={weekIdx}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', height: '100%', justifyContent: 'center' }}>
+                  <button
+                    type="button"
+                    className={styles.btn}
+                    onClick={() => applyDefaultHoursForWeek(weekIdx)}
+                    disabled={actionLoading}
+                    title="Apply default hours for this week"
+                    style={{
+                      fontSize: '0.72rem',
+                      padding: '4px 6px',
+                      borderRadius: '4px',
+                      background: 'rgba(157, 124, 255, 0.08)',
+                      border: '1px solid rgba(157, 124, 255, 0.25)',
+                      color: 'var(--accent-purple)',
+                      cursor: actionLoading ? 'not-allowed' : 'pointer',
+                      opacity: actionLoading ? 0.5 : 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      textAlign: 'center',
+                      lineHeight: 1.2,
+                      whiteSpace: 'nowrap',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    Default Hours
+                  </button>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
+                    <button
+                      type="button"
+                      className={styles.btn}
+                      onClick={() => applyEventWeek(weekIdx, 1)}
+                      disabled={actionLoading}
+                      title="Set whole week OFF with Saturday as Event"
+                      style={{
+                        fontSize: '0.68rem',
+                        padding: '3px 4px',
+                        borderRadius: '4px',
+                        background: 'rgba(255, 179, 0, 0.1)',
+                        border: '1px solid rgba(255, 179, 0, 0.35)',
+                        color: '#ffb300',
+                        cursor: actionLoading ? 'not-allowed' : 'pointer',
+                        opacity: actionLoading ? 0.5 : 1,
+                        whiteSpace: 'nowrap',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '2px',
+                        lineHeight: 1.1
+                      }}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: '11px' }}>event</span>
+                      Event: Sat
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.btn}
+                      onClick={() => applyEventWeek(weekIdx, 2)}
+                      disabled={actionLoading}
+                      title="Set whole week OFF with Saturday and Sunday as Event"
+                      style={{
+                        fontSize: '0.68rem',
+                        padding: '3px 4px',
+                        borderRadius: '4px',
+                        background: 'rgba(255, 179, 0, 0.1)',
+                        border: '1px solid rgba(255, 179, 0, 0.35)',
+                        color: '#ffb300',
+                        cursor: actionLoading ? 'not-allowed' : 'pointer',
+                        opacity: actionLoading ? 0.5 : 1,
+                        whiteSpace: 'nowrap',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '2px',
+                        lineHeight: 1.1
+                      }}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: '11px' }}>event</span>
+                      Sat+Sun
+                    </button>
+                  </div>
+                </div>
+                {weekDays.map((d, dayIdx) => {
+                  if (!d) return <div key={dayIdx} />;
+                  const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                  const state = chatSchedule[dateStr];
+                  let bg = 'var(--glass-inset)';
+                  let border = '1px solid var(--glass-border)';
+                  let color = 'var(--text-primary)';
+                  let label = d;
+                  if (state === true) {
+                    bg = 'rgba(0, 230, 118, 0.15)';
+                    border = '1px solid var(--color-success)';
+                    color = 'var(--color-success)';
+                  } else if (state === '17:00') {
+                    bg = 'rgba(0, 150, 255, 0.15)';
+                    border = '1px solid #0096FF';
+                    color = '#0096FF';
+                    label = <>{d}<br/><span style={{fontSize: '0.7rem'}}>5pm</span></>;
+                  } else if (state === false) {
+                    bg = 'rgba(255, 77, 77, 0.15)';
+                    border = '1px solid var(--color-error)';
+                    color = 'var(--color-error)';
+                  } else if (state === 'event') {
+                    bg = 'rgba(255, 179, 0, 0.18)';
+                    border = '1px solid #ffb300';
+                    color = '#ffb300';
+                    label = (
+                      <>
+                        {d}
+                        <br/>
+                        <span style={{ fontSize: '0.66rem', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: '11px' }}>event</span>
+                          EVENT
+                        </span>
+                      </>
+                    );
+                  }
+                  return (
+                    <div 
+                      key={dayIdx} 
+                      onClick={() => toggleDay(dateStr)}
+                      style={{
+                        background: bg, border: border, color: color,
+                        padding: '10px 0', borderRadius: '4px', cursor: 'pointer',
+                        userSelect: 'none', transition: 'all 0.2s', fontWeight: state !== undefined ? 'bold' : 'normal',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
+                      }}
+                    >
+                      {label}
+                    </div>
+                  );
+                })}
+              </React.Fragment>
+            ))}
+          </div>
         </div>
         <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={saveSchedule} disabled={actionLoading} style={{ marginTop: '1rem', padding: '1rem' }}>
           {actionLoading ? 'Saving...' : 'Save Schedule'}
@@ -660,7 +927,7 @@ export default function AdminMasterTab() {
       <div style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', padding: '2rem', boxShadow: 'var(--glass-shadow)' }}>
         <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
           <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-color)' }}>🗓️ Comms Schedule</h4>
-          <p style={{ margin: '5px 0 0 0', color: 'var(--text-secondary)' }}>Click days to toggle exceptions: <span style={{ color: '#0096FF' }}>Blue = 5PM Start</span>, <span style={{ color: 'var(--color-error)' }}>Red = Force OFF</span>, <span style={{ color: 'var(--color-success)' }}>Green = Midnight Start</span>. If blank, it follows the Master Killswitch above.</p>
+          <p style={{ margin: '5px 0 0 0', color: 'var(--text-secondary)' }}>Click days to toggle exceptions: <span style={{ color: '#0096FF' }}>Blue = 5PM Start</span>, <span style={{ color: 'var(--color-error)' }}>Red = Force OFF</span>, <span style={{ color: 'var(--color-success)' }}>Green = Midnight Start</span>, <span style={{ color: '#ffb300' }}>Amber = Event (OFF)</span>. If blank, it follows the Master Killswitch above.</p>
         </div>
         {renderCalendar()}
       </div>
