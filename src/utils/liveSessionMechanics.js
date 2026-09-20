@@ -100,14 +100,29 @@ export function getBloodPotencyStats(bp) {
   const rouseRerollLevels = [0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5];
   const mendAmounts = [1, 1, 2, 2, 3, 3, 3, 3, 4, 4, 5];
   const disciplineBonuses = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5];
-  const baneSeverities = [0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5];
-  
+  const baneSeverities = [0, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6];
+  const feedingPenalties = [
+    'No effect',
+    'No effect',
+    'Animal and bagged blood slake half Hunger',
+    'Animal and bagged blood slake no Hunger',
+    'Animal and bagged blood slake no Hunger: slake 1 less Hunger per human',
+    'Animal and bagged blood slake no Hunger: slake 1 less Hunger per human, must kill to reduce Hunger below 2',
+    'Animal and bagged blood slake no Hunger: slake 2 less Hunger per human, must kill to reduce Hunger below 2',
+    'Animal and bagged blood slake no Hunger: slake 2 less Hunger per human, must kill to reduce Hunger below 3',
+    'Animal and bagged blood slake no Hunger: slake 2 less Hunger per human, must kill to reduce Hunger below 3',
+    'Animal and bagged blood slake no Hunger: slake 3 less Hunger per human, must kill to reduce Hunger below 4',
+    'Animal and bagged blood slake no Hunger: slake 3 less Hunger per human, must kill to reduce Hunger below 5',
+  ];
+
   return {
+    level,
     surgeBonus: surgeBonuses[level],
     rouseRerollLevel: rouseRerollLevels[level],
     mendAmount: mendAmounts[level],
     disciplineBonus: disciplineBonuses[level],
     baneSeverity: baneSeverities[level],
+    feedingPenalty: feedingPenalties[level],
   };
 }
 
@@ -183,9 +198,13 @@ export function summarizeTrackers(sheet) {
   const humanity = clamp(sheet?.humanity ?? sheet?.morality?.humanity ?? 7, 0, 10);
   const stains = clamp(sheet?.stains ?? 0, 0, 10);
 
+  const isThinblood = sheet?.clan === 'Thin-blood' || sheet?.clan === 'Thin-Blood' || sheet?.clan === 'Thinblood';
+  const defaultBP = isThinblood ? 0 : 1;
+  const rawBP = sheet?.bloodPotency ?? sheet?.blood_potency ?? defaultBP;
+
   return {
     hunger: clamp(sheet?.hunger ?? 1, 0, 5),
-    bloodPotency: clamp(sheet?.bloodPotency ?? 1, 0, 10),
+    bloodPotency: clamp(rawBP, 0, 10),
     humanity,
     stains,
     health,

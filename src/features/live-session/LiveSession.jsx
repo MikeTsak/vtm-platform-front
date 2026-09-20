@@ -221,7 +221,7 @@ export default function LiveSession() {
   const [runningPowers, setRunningPowers] = useState([]);
   const [sessionRuntime, setSessionRuntime] = useState('00:00:00');
 
-  const bpStats = useMemo(() => getBloodPotencyStats(trackers?.bloodPotency || 1), [trackers?.bloodPotency]);
+  const bpStats = useMemo(() => getBloodPotencyStats(trackers?.bloodPotency ?? 1), [trackers?.bloodPotency]);
 
   // Effects the Storyteller has attached to this character (Awe +3, Dread Gaze -2…).
   const myEffects = useMemo(
@@ -245,7 +245,7 @@ export default function LiveSession() {
     let pool = getPoolFromCharacter(sheet, trait1, trait2);
 
     // Add Discipline Power Bonus if rolling a Discipline
-    const hasDiscipline = (trait1 && sheet?.disciplines?.[trait1] !== undefined) || (trait2 && sheet?.disciplines?.[trait2] !== undefined);
+    const hasDiscipline = (trait1 && (sheet?.disciplines?.[trait1] !== undefined || isDisciplineTrait(trait1))) || (trait2 && (sheet?.disciplines?.[trait2] !== undefined || isDisciplineTrait(trait2)));
     if (hasDiscipline) pool += bpStats.disciplineBonus;
 
     if (bloodSurgeActive) pool += bpStats.surgeBonus;
@@ -461,6 +461,10 @@ export default function LiveSession() {
     let currentHunger = trackers?.hunger ?? 0;
 
     let finalNote = note;
+    const trait1 = selectedTraits[0] || null;
+    const trait2 = selectedTraits[1] || null;
+    const hasDiscipline = (trait1 && (sheet?.disciplines?.[trait1] !== undefined || isDisciplineTrait(trait1))) || (trait2 && (sheet?.disciplines?.[trait2] !== undefined || isDisciplineTrait(trait2)));
+    if (hasDiscipline && bpStats.disciplineBonus > 0) finalNote += ` (+${bpStats.disciplineBonus} BP Disc)`;
     if (specialtyActive) finalNote += ' (Specialty)';
     const usedEffects = [...myEffects, ...powerMods].filter(e => activeEffectIds.includes(e.id));
     for (const e of usedEffects) finalNote += ` (${e.label} ${Number(e.mod) > 0 ? '+' : ''}${e.mod})`;
@@ -470,8 +474,8 @@ export default function LiveSession() {
     setActiveEffectIds([]);
     setWpIgnoreImpair(false);
 
-    // Process Blood Surge immediately
-    if (bloodSurgeActive) {
+    // Process Blood Surge immediately (vampires at Hunger 5 cannot Rouse)
+    if (bloodSurgeActive && currentHunger < 5) {
       const rouseResult = runRouseCheck(currentHunger);
       currentHunger = rouseResult.nextHunger;
       await applySheetUpdate(next => { next.hunger = currentHunger; return next; });
@@ -485,8 +489,9 @@ export default function LiveSession() {
         successes: rouseResult.success ? 1 : 0,
         note: rouseResult.success ? 'Blood Surge: No hunger gained' : 'Blood Surge: Hunger +1',
       });
-      finalNote += ' (Blood Surge)';
+      finalNote += ` (Blood Surge +${bpStats.surgeBonus})`;
     } else {
+      if (bloodSurgeActive) setBloodSurgeActive(false);
       setSpecialtyActive(false);
     }
 
@@ -521,7 +526,7 @@ export default function LiveSession() {
 
     const t1 = req.trait1, t2 = req.trait2;
     let pool = getPoolFromCharacter(sheet, t1, t2);
-    const hasDiscipline = (sheet?.disciplines?.[t1] !== undefined) || (sheet?.disciplines?.[t2] !== undefined);
+    const hasDiscipline = (sheet?.disciplines?.[t1] !== undefined || isDisciplineTrait(t1)) || (sheet?.disciplines?.[t2] !== undefined || isDisciplineTrait(t2));
     if (hasDiscipline) pool += bpStats.disciplineBonus;
     if (req.specialty) pool += 1;
 
@@ -536,7 +541,8 @@ export default function LiveSession() {
 
     const hunger = trackers?.hunger ?? 0;
     const roll = rollPool(pool, hunger, req.difficulty || 0);
-    const label = `${t1} + ${t2}${req.specialty ? ` + ${req.specialty}` : ''}`;
+    const discLabel = (hasDiscipline && bpStats.disciplineBonus > 0) ? ` + BP Disc ${bpStats.disciplineBonus}` : '';
+    const label = `${t1} + ${t2}${req.specialty ? ` + ${req.specialty}` : ''}${discLabel}`;
     setLastRoll({ ...roll, type: 'requested_roll', note: `Storyteller's request: ${label}` });
     setWpSelections([]);
     setWpIgnoreImpair(false);
@@ -620,12 +626,16 @@ export default function LiveSession() {
         await applySheetUpdate(next => { next.frenzyState = 'hunger'; return next; });
       }
 
+      const rollNote = success
+        ? (advantage ? 'Pass : No Hunger Gained (BP Reroll Advantage)' : 'Pass : No Hunger Gained')
+        : (advantage ? 'Fail : Hunger +1 (BP Reroll Advantage)' : 'Fail : Hunger +1');
+
       setLastRoll({
         normalDice: [],
         hungerDice: advantage ? [die1, die2].filter(Boolean) : [die1],
         outcome: { successes: success ? 1 : 0, hasCritical: false, hasMessyCritical: false, hasBestialFailure: false },
         type: source,
-        note: success ? 'Pass (No Hunger Gained)' : 'Fail (Hunger +1)',
+        note: rollNote,
       });
       setWpSelections([]);
 
@@ -634,10 +644,12 @@ export default function LiveSession() {
         hunger: nextHunger,
         results: { normal: [], rouse: advantage ? [die1, die2].filter(Boolean) : [die1] },
         successes: success ? 1 : 0,
-        note: success ? 'No hunger gained' : 'Hunger +1',
+        note: success
+          ? (advantage ? 'No hunger gained (BP Reroll Advantage)' : 'No hunger gained')
+          : (advantage ? 'Hunger +1 (BP Reroll Advantage)' : 'Hunger +1'),
       });
 
-      if (autoActivate) {
+      if (autoActivate && autoActivate.logActivation !== false) {
         await pushRoll('discipline_activation', {
           characterId: character?.id, roll_type: 'discipline_activation',
           note: `${autoActivate.discName} • ${autoActivate.power.name}`,
@@ -665,7 +677,7 @@ export default function LiveSession() {
   const rollDisciplinePower = async (power, discName, traits) => {
     const [t1, t2] = traits;
     let pool = getPoolFromCharacter(sheet, t1, t2);
-    if (isDisciplineTrait(t2)) pool += bpStats.disciplineBonus;
+    if (bpStats.disciplineBonus > 0) pool += bpStats.disciplineBonus;
     if (trackers && !sheet?.frenzyState) {
       const phys = ['Strength', 'Dexterity', 'Stamina', ...SKILL_GROUPS.Physical];
       if (trackers.health.superficial + trackers.health.aggravated >= trackers.health.max
@@ -676,7 +688,8 @@ export default function LiveSession() {
     pool = Math.max(0, pool);
 
     const roll = rollPool(pool, trackers?.hunger ?? 0, 0);
-    setLastRoll({ ...roll, type: 'discipline_roll', note: `${discName} • ${power.name} (${t1} + ${t2})` });
+    const bpBonusText = bpStats.disciplineBonus > 0 ? ` (+${bpStats.disciplineBonus} BP Disc)` : '';
+    setLastRoll({ ...roll, type: 'discipline_roll', note: `${discName} • ${power.name} (${t1} + ${t2}${bpBonusText})` });
     setWpSelections([]);
     setWpIgnoreImpair(false);
     maybeCompulsion(roll.outcome);
@@ -688,7 +701,7 @@ export default function LiveSession() {
       has_critical: roll.outcome.hasCritical,
       has_messy_critical: roll.outcome.hasMessyCritical,
       has_bestial_failure: roll.outcome.hasBestialFailure,
-      note: `${discName} • ${power.name}: ${t1} + ${t2}`,
+      note: `${discName} • ${power.name}: ${t1} + ${t2}${bpBonusText}`,
       disc: discName, power_name: power.name,
     });
   };
@@ -713,11 +726,11 @@ export default function LiveSession() {
     setMobileTab('action');
     setIsRolling(true);
 
-    // Pay the Rouse cost (some powers need two). Only the first Rouse carries the
-    // autoActivate payload so the activation is logged once.
+    // Pay the Rouse cost (some powers need two). All Rouse checks receive BP reroll
+    // advantage if power level is <= rouseRerollLevel; only the first logs activation.
     const rouseCount = disciplineRouseCost(power);
     for (let i = 0; i < rouseCount; i++) {
-      await handleRouse('discipline_rouse_check', i === 0 ? { power, discName } : null, true);
+      await handleRouse('discipline_rouse_check', { power, discName, logActivation: i === 0 }, true);
     }
 
     // Roll the activation pool if the power has one; otherwise just log it.
@@ -1093,7 +1106,25 @@ export default function LiveSession() {
             {/* Hunger */}
             <div>
               <TrackerBlock label="Hunger" val={trackers.hunger} max={5} filled={trackers.hunger} />
-              <button className={styles.btnPrimary} style={{ width: '100%', padding: '0.5rem', fontSize: '0.8rem', marginTop: '1rem' }} onClick={() => handleRouse()}>Perform Rouse Check</button>
+              <button
+                className={styles.btnPrimary}
+                style={{ width: '100%', padding: '0.5rem', fontSize: '0.8rem', marginTop: '1rem' }}
+                disabled={isRolling}
+                onClick={() => handleRouse('rouse_check')}
+              >
+                Perform Rouse Check
+              </button>
+              {bpStats.rouseRerollLevel > 0 && (
+                <button
+                  className={styles.btnOutline}
+                  style={{ width: '100%', padding: '0.35rem', fontSize: '0.72rem', marginTop: '0.4rem' }}
+                  disabled={isRolling}
+                  onClick={() => handleRouse('discipline_rouse_check', { power: { level: bpStats.rouseRerollLevel, name: 'Discipline Rouse' }, discName: 'Discipline' })}
+                  title={`Rouse check with Blood Potency reroll advantage for powers at or below level ${bpStats.rouseRerollLevel}`}
+                >
+                  Discipline Rouse (BP Reroll &le; {bpStats.rouseRerollLevel})
+                </button>
+              )}
             </div>
             {/* Health */}
             <div>
@@ -1135,6 +1166,51 @@ export default function LiveSession() {
               </div>
               <p style={{ margin: '0 0 0.4rem 0', fontSize: '0.7rem', color: 'var(--text-muted)', fontStyle: 'italic', lineHeight: '1.4' }}>Simulates a heartbeat, warmth, breath, and avoids social penalties with mortals.</p>
               <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--on-surface)' }}><strong>Humanity {humanity}:</strong> {blushInfo.text}</p>
+            </div>
+
+            {/* Blood Potency */}
+            <div className={styles.trackerBox} style={{ padding: '1rem 1.25rem', marginBottom: '0.5rem', background: 'var(--surface-container-high)' }}>
+              <div className={styles.trackerHeader} style={{ marginBottom: '0.6rem' }}>
+                <span className={styles.labelMd}>Blood Potency</span>
+                <span style={{ color: 'var(--primary)', fontWeight: 'bold' }}>
+                  BP {bp}
+                </span>
+              </div>
+              <div className={styles.dotRow} style={{ gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+                {Array.from({ length: 10 }).map((_, i) => {
+                  const filled = i < bp;
+                  return <div key={i} className={filled ? styles.dotFilled : styles.dotEmpty} />;
+                })}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem', fontSize: '0.72rem', marginBottom: '0.5rem' }}>
+                <div style={{ background: 'var(--surface-container-highest)', padding: '0.3rem 0.5rem', borderRadius: '4px' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Blood Surge: </span>
+                  <strong style={{ color: 'var(--primary)' }}>+{bpStats.surgeBonus} dice</strong>
+                </div>
+                <div style={{ background: 'var(--surface-container-highest)', padding: '0.3rem 0.5rem', borderRadius: '4px' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Mend: </span>
+                  <strong style={{ color: 'var(--on-surface)' }}>{bpStats.mendAmount} Sup</strong>
+                </div>
+                <div style={{ background: 'var(--surface-container-highest)', padding: '0.3rem 0.5rem', borderRadius: '4px' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Disc Bonus: </span>
+                  <strong style={{ color: 'var(--on-surface)' }}>+{bpStats.disciplineBonus} dice</strong>
+                </div>
+                <div style={{ background: 'var(--surface-container-highest)', padding: '0.3rem 0.5rem', borderRadius: '4px' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Rouse Reroll: </span>
+                  <strong style={{ color: 'var(--on-surface)' }}>{bpStats.rouseRerollLevel > 0 ? `Lvl \u2264 ${bpStats.rouseRerollLevel}` : 'None'}</strong>
+                </div>
+                <div style={{ background: 'var(--surface-container-highest)', padding: '0.3rem 0.5rem', borderRadius: '4px', gridColumn: 'span 2' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Bane Severity: </span>
+                  <strong style={{ color: 'var(--error)' }}>{bpStats.baneSeverity}</strong>
+                </div>
+              </div>
+              {bpStats.feedingPenalty && bpStats.feedingPenalty !== 'No effect' && (
+                <div style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '0.4rem 0.6rem', borderRadius: '4px' }}>
+                  <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--error)', lineHeight: '1.35' }}>
+                    <strong>Feeding: </strong>{bpStats.feedingPenalty}
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Humanity */}
@@ -1411,7 +1487,15 @@ export default function LiveSession() {
             {/* Surge & Settings */}
             <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap' }}>
               {bpStats.surgeBonus > 0 && (
-                <div className={styles.toggleContainer} onClick={() => setBloodSurgeActive(!bloodSurgeActive)}>
+                <div
+                  className={styles.toggleContainer}
+                  onClick={() => {
+                    if (trackers?.hunger >= 5) return;
+                    setBloodSurgeActive(!bloodSurgeActive);
+                  }}
+                  title={trackers?.hunger >= 5 ? 'Cannot Blood Surge at Hunger 5: slake your hunger first' : `Blood Surge (+${bpStats.surgeBonus})`}
+                  style={trackers?.hunger >= 5 ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
+                >
                   <div className={`${styles.toggleTrack} ${bloodSurgeActive ? styles.active : ''}`}>
                     <div className={styles.toggleThumb} />
                   </div>

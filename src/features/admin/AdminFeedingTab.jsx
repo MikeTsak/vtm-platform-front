@@ -1,10 +1,12 @@
 // src/features/admin/AdminFeedingTab.jsx
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/Admin.module.css';
 import FaGlyph from '../../ui/FaGlyph';
 import { FEEDING_ICONS } from '../../data/feedingIcons';
 import { formatAthensDate } from '../../utils/dateFormatter';
+import { getDivisionName } from '../../constants/divisionNames';
 
 function useCountdown(target) {
   const [now, setNow] = useState(Date.now());
@@ -87,6 +89,25 @@ export default function AdminFeedingTab() {
   const [adjusting, setAdjusting] = useState({});
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
+  const [cycleFilter, setCycleFilter] = useState('current');
+
+  const availableCycles = useMemo(() => {
+    const set = new Set();
+    if (status?.cycleIndex != null) set.add(Number(status.cycleIndex));
+    log.forEach(f => {
+      if (f.cycle_index != null) set.add(Number(f.cycle_index));
+    });
+    return Array.from(set).sort((a, b) => b - a);
+  }, [log, status]);
+
+  const filteredLog = useMemo(() => {
+    if (cycleFilter === 'all') return log;
+    const targetCycle = cycleFilter === 'current'
+      ? (status?.cycleIndex ?? (availableCycles.length > 0 ? availableCycles[0] : null))
+      : Number(cycleFilter);
+    if (targetCycle == null) return log;
+    return log.filter(f => Number(f.cycle_index) === Number(targetCycle));
+  }, [log, cycleFilter, status, availableCycles]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -277,6 +298,181 @@ export default function AdminFeedingTab() {
         </div>
       )}
 
+      {/* RECENT FEEDINGS */}
+      <div style={card}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.75rem' }}>
+          <div>
+            <h4 style={{ margin: 0, fontSize: '1.3rem', color: 'var(--text-color)' }}>Recent Feedings</h4>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+              Showing {filteredLog.length} of {log.length} rolls
+            </div>
+          </div>
+
+          {/* Cycle filter pills */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => setCycleFilter('current')}
+              style={{
+                ...btnBase,
+                padding: '0.35rem 0.85rem',
+                fontSize: '0.78rem',
+                borderRadius: '20px',
+                background: cycleFilter === 'current' ? 'var(--color-primary, #e056fd)' : 'var(--glass-inset)',
+                color: cycleFilter === 'current' ? '#ffffff' : 'var(--text-secondary)',
+                borderColor: cycleFilter === 'current' ? 'var(--color-primary, #e056fd)' : 'var(--glass-border)',
+              }}
+              title="View only the feedings from the active cycle"
+            >
+              Current Downtime {status?.cycleIndex != null ? `(Cycle ${status.cycleIndex})` : ''}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setCycleFilter('all')}
+              style={{
+                ...btnBase,
+                padding: '0.35rem 0.85rem',
+                fontSize: '0.78rem',
+                borderRadius: '20px',
+                background: cycleFilter === 'all' ? 'var(--color-primary, #e056fd)' : 'var(--glass-inset)',
+                color: cycleFilter === 'all' ? '#ffffff' : 'var(--text-secondary)',
+                borderColor: cycleFilter === 'all' ? 'var(--color-primary, #e056fd)' : 'var(--glass-border)',
+              }}
+              title="View all feeding rolls across all cycles"
+            >
+              All Cycles
+            </button>
+
+            {availableCycles.length > 1 && (
+              <select
+                value={cycleFilter}
+                onChange={(e) => setCycleFilter(e.target.value)}
+                style={{
+                  ...btnBase,
+                  padding: '0.32rem 0.75rem',
+                  fontSize: '0.78rem',
+                  borderRadius: '20px',
+                  background: (cycleFilter !== 'current' && cycleFilter !== 'all') ? 'var(--color-primary, #e056fd)' : 'var(--glass-inset)',
+                  color: (cycleFilter !== 'current' && cycleFilter !== 'all') ? '#ffffff' : 'var(--text-secondary)',
+                  borderColor: (cycleFilter !== 'current' && cycleFilter !== 'all') ? 'var(--color-primary, #e056fd)' : 'var(--glass-border)',
+                  outline: 'none',
+                }}
+              >
+                <option value="current" style={{ background: '#1a1a24', color: '#ffffff' }}>Active Cycle</option>
+                <option value="all" style={{ background: '#1a1a24', color: '#ffffff' }}>All Cycles</option>
+                {availableCycles.map(c => (
+                  <option key={c} value={c} style={{ background: '#1a1a24', color: '#ffffff' }}>
+                    Cycle {c} {Number(c) === Number(status?.cycleIndex) ? '(Current)' : ''}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        </div>
+
+        {filteredLog.length === 0 ? (
+          <p style={{ color: 'var(--text-secondary)' }}>No feeding rolls found for this cycle.</p>
+        ) : (
+          <div className={styles.rTable}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+              <thead>
+                <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--glass-border)', color: 'var(--text-secondary)', fontSize: '0.78rem' }}>
+                  <th style={{ padding: '0.6rem 0.5rem' }}>Character</th>
+                  <th style={{ padding: '0.6rem 0.5rem' }}>Domain</th>
+                  <th style={{ padding: '0.6rem 0.5rem' }}>Hunt and Pool</th>
+                  <th style={{ padding: '0.6rem 0.5rem' }}>Outcome</th>
+                  <th style={{ padding: '0.6rem 0.5rem' }}>Hunger</th>
+                  <th style={{ padding: '0.6rem 0.5rem' }}>Safety</th>
+                  <th style={{ padding: '0.6rem 0.5rem' }}>Status</th>
+                  <th style={{ padding: '0.6rem 0.5rem' }}>When</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredLog.map((f) => {
+                  const before = f.hunger_before != null ? Number(f.hunger_before) : null;
+                  const delta = f.hunger_delta != null ? Number(f.hunger_delta) : null;
+                  const after = (before != null && delta != null) ? Math.max(0, Math.min(5, before + delta)) : null;
+                  const domainTitle = getDivisionName(f.division);
+
+                  return (
+                    <tr key={f.id} style={{ borderBottom: '1px solid var(--glass-border)' }}>
+                      <td style={{ padding: '0.6rem 0.5rem' }}>
+                        <Link
+                          to={`/admin/character/${f.character_id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: 'var(--color-primary, #e056fd)', textDecoration: 'none', fontWeight: 600 }}
+                          title={`Open ${f.character_name} character sheet`}
+                        >
+                          {f.character_name}
+                        </Link>
+                        {f.predator_type && (
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                            {f.predator_type}
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ padding: '0.6rem 0.5rem' }}>
+                        <div style={{ fontWeight: 600 }}>{domainTitle || `Division ${f.division}`}</div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                          Division {f.division || 'None'}
+                          {f.domain_owner ? `, Claim: ${f.domain_owner}` : ''}
+                        </div>
+                      </td>
+                      <td style={{ padding: '0.6rem 0.5rem' }}>
+                        <div style={{ fontWeight: 500 }}>{f.pool_label || 'Standard'}</div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                          {f.outcome === 'herd' ? 'Herd Slake' : `${f.dice_pool || 0} dice, Diff ${f.difficulty != null ? f.difficulty : 1}`}
+                        </div>
+                      </td>
+                      <td style={{ padding: '0.6rem 0.5rem' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: TIER_COLOR[f.outcome] || 'var(--text-secondary)' }}>
+                          <FaGlyph icon={TIER_ICON[f.outcome] || FEEDING_ICONS.circleCheck} size={12} />
+                          {TIER_LABEL[f.outcome] || f.outcome}
+                        </span>
+                      </td>
+                      <td style={{ padding: '0.6rem 0.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span>{before != null ? before : '?'}</span>
+                          <FaGlyph icon={FEEDING_ICONS.arrowRight} size={10} style={{ opacity: 0.6 }} />
+                          <span style={{ fontWeight: 600 }}>{after != null ? after : '?'}</span>
+                          {delta != null && (
+                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: delta < 0 ? 'var(--color-success)' : delta > 0 ? '#ff6b6b' : 'var(--text-secondary)' }}>
+                              ({delta > 0 ? `+${delta}` : delta})
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <FaGlyph icon={FEEDING_ICONS.droplet} size={9} style={{ color: '#ff6b6b' }} />
+                          Current: <strong style={{ color: 'var(--text-color)' }}>{f.current_hunger != null ? f.current_hunger : 'Unknown'}/5</strong>
+                        </div>
+                      </td>
+                      <td style={{ padding: '0.6rem 0.5rem', color: f.safety_delta < 0 ? '#ff6b6b' : f.safety_delta > 0 ? 'var(--color-success)' : 'var(--text-secondary)' }}>
+                        <div>{f.safety_delta != null ? (f.safety_delta > 0 ? `+${f.safety_delta}` : f.safety_delta) : '0'}</div>
+                        {f.current_domain_safety != null && (
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                            Rating: {f.current_domain_safety}/10
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ padding: '0.6rem 0.5rem' }}>
+                        <span style={{ fontSize: '0.75rem', padding: '2px 6px', borderRadius: 4, background: f.status === 'resolved' ? 'rgba(0,230,118,0.15)' : 'rgba(255,180,0,0.15)', color: f.status === 'resolved' ? 'var(--color-success)' : '#ffb347' }}>
+                          {f.status}
+                        </span>
+                      </td>
+                      <td style={{ padding: '0.6rem 0.5rem', color: 'var(--text-secondary)', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
+                        {new Date(f.created_at).toLocaleString()}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       {/* HERD MANAGEMENT */}
       <div style={card}>
         <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.75rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -311,62 +507,12 @@ export default function AdminFeedingTab() {
                     </td>
                     <td style={{ padding: '0.6rem 0.75rem' }}>
                       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                        <button style={{ ...btnBase, padding: '0.3rem 0.75rem', fontSize: '1.1rem', lineHeight: 1 }} disabled={adjusting[r.character_id] || r.herdCurrent <= 0} onClick={() => adjustHerd(r.character_id, -1)} title="Damage Herd (-1)">-</button>
-                        <button style={{ ...btnBase, padding: '0.3rem 0.75rem', fontSize: '1.1rem', lineHeight: 1, color: '#7ecfff', borderColor: '#7ecfff44' }} disabled={adjusting[r.character_id] || r.herdCurrent >= r.herdDots} onClick={() => adjustHerd(r.character_id, 1)} title="Heal Herd (+1)">+</button>
+                        <button style={{ ...btnBase, padding: '0.3rem 0.75rem', fontSize: '1.1rem', lineHeight: 1 }} disabled={adjusting[r.character_id] || r.herdCurrent <= 0} onClick={() => adjustHerd(r.character_id, -1)} title="Damage Herd, reduce by 1">&#8722;</button>
+                        <button style={{ ...btnBase, padding: '0.3rem 0.75rem', fontSize: '1.1rem', lineHeight: 1, color: '#7ecfff', borderColor: '#7ecfff44' }} disabled={adjusting[r.character_id] || r.herdCurrent >= r.herdDots} onClick={() => adjustHerd(r.character_id, 1)} title="Heal Herd, add 1">+</button>
                         <button style={{ ...btnBase, padding: '0.3rem 0.65rem', fontSize: '0.75rem' }} disabled={adjusting[r.character_id] || r.herdCurrent >= r.herdDots} onClick={() => adjustHerd(r.character_id, r.herdDots - r.herdCurrent)}>Full</button>
                         <button style={{ ...btnBase, padding: '0.3rem 0.65rem', fontSize: '0.75rem', color: '#ff6b6b', borderColor: '#ff6b6b44' }} disabled={adjusting[r.character_id] || r.herdCurrent <= 0} onClick={() => adjustHerd(r.character_id, -r.herdCurrent)}>Deplete</button>
                       </div>
                     </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* RECENT FEEDINGS */}
-      <div style={card}>
-        <h4 style={{ margin: '0 0 1rem 0', fontSize: '1.3rem', color: 'var(--text-color)' }}>Recent Feedings</h4>
-        {log.length === 0 ? (
-          <p style={{ color: 'var(--text-secondary)' }}>No feeding rolls yet.</p>
-        ) : (
-          <div className={styles.rTable}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-              <thead>
-                <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--glass-border)', color: 'var(--text-secondary)', fontSize: '0.78rem' }}>
-                  <th style={{ padding: '0.5rem' }}>Character</th>
-                  <th style={{ padding: '0.5rem' }}>Division</th>
-                  <th style={{ padding: '0.5rem' }}>Outcome</th>
-                  <th style={{ padding: '0.5rem' }}>Hunger</th>
-                  <th style={{ padding: '0.5rem' }}>Safety</th>
-                  <th style={{ padding: '0.5rem' }}>Status</th>
-                  <th style={{ padding: '0.5rem' }}>When</th>
-                </tr>
-              </thead>
-              <tbody>
-                {log.map((f) => (
-                  <tr key={f.id} style={{ borderBottom: '1px solid var(--glass-border)' }}>
-                    <td style={{ padding: '0.5rem', fontWeight: 600 }}>{f.character_name}</td>
-                    <td style={{ padding: '0.5rem', color: 'var(--text-secondary)' }}>{f.division || '-'}</td>
-                    <td style={{ padding: '0.5rem' }}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: TIER_COLOR[f.outcome] || 'var(--text-secondary)' }}>
-                        <FaGlyph icon={TIER_ICON[f.outcome] || FEEDING_ICONS.circleCheck} size={12} />
-                        {TIER_LABEL[f.outcome] || f.outcome}
-                      </span>
-                    </td>
-                    <td style={{ padding: '0.5rem', color: f.hunger_delta < 0 ? 'var(--color-success)' : f.hunger_delta > 0 ? '#ff6b6b' : 'var(--text-secondary)' }}>
-                      {f.hunger_delta != null ? (f.hunger_delta > 0 ? `+${f.hunger_delta}` : f.hunger_delta) : '-'}
-                    </td>
-                    <td style={{ padding: '0.5rem', color: f.safety_delta < 0 ? '#ff6b6b' : f.safety_delta > 0 ? 'var(--color-success)' : 'var(--text-secondary)' }}>
-                      {f.safety_delta != null ? (f.safety_delta > 0 ? `+${f.safety_delta}` : f.safety_delta) : '-'}
-                    </td>
-                    <td style={{ padding: '0.5rem' }}>
-                      <span style={{ fontSize: '0.75rem', padding: '2px 6px', borderRadius: 4, background: f.status === 'resolved' ? 'rgba(0,230,118,0.15)' : 'rgba(255,180,0,0.15)', color: f.status === 'resolved' ? 'var(--color-success)' : '#ffb347' }}>
-                        {f.status}
-                      </span>
-                    </td>
-                    <td style={{ padding: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{new Date(f.created_at).toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>

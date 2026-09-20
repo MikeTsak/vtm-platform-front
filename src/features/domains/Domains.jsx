@@ -690,8 +690,8 @@ function isNpcOwned(c) {
 
 // ── Abaton hazard stripe texture: diagonal red/black, tiled by the SVG
 // pattern itself so it reads as real stripes regardless of how large the
-// division's polygon is on screen. Draped onto the polygon via the same
-// mask+bitmap trick used for the hover avatar reveal, just always-on.
+// division's polygon is on screen. Draped onto the polygon via deck.gl's
+// mask+bitmap layer pair, always-on (not hover-gated).
 const ABATON_STRIPE_IMG = 'data:image/svg+xml;utf8,' + encodeURIComponent(`
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256">
   <defs>
@@ -792,18 +792,25 @@ export default function Domains() {
   const badgeOffset = badgeSize + 8;
 
   const [reqMessage, setReqMessage] = useState('');
-  const [reqColor, setReqColor] = useState('#8b5cf6');
+  const [reqColor, setReqColor] = useState('#3b82f6'); // matches DEFAULT_CLAIM_COLOR on the backend
   const [codexText, setCodexText] = useState('');
 
   // Court assignment form state
   const [assignTarget, setAssignTarget] = useState('character'); // 'character' | 'npc'
   const [assignId, setAssignId] = useState('');
-  const [assignColor, setAssignColor] = useState('#8b5cf6');
+  const [assignColor, setAssignColor] = useState('#3b82f6'); // matches DEFAULT_CLAIM_COLOR on the backend
 
   // Add-guest form state
   const [guestTarget, setGuestTarget] = useState('character'); // 'character' | 'npc'
   const [guestId, setGuestId] = useState('');
   const [guestNote, setGuestNote] = useState('');
+
+  // Owner colour-editor form state: the swatch the dossier's colour picker is
+  // currently showing, kept separate from the division's actual saved colour
+  // (selectedDivisionInfo.color) so the picker can be dragged around freely
+  // before Save is pressed without repainting the map on every drag frame.
+  const [myColor, setMyColor] = useState('#3b82f6');
+  const myColorSyncKey = useRef(null);
 
   // ── Athens transit overlay (metro / tram / suburban / Line 4) ──
   const [transitPrefs, setTransitPrefs] = useState(loadTransitPrefs);
@@ -1006,14 +1013,16 @@ export default function Domains() {
   });
 
   // Who's hosted in the open division, beyond its owner: anyone can read this;
-  // `me.canManage` tells the dossier whether to show the add/remove controls
-  // (the division's own owner, or a Domain Steward/admin).
+  // `me.canManage` tells the dossier whether to show the add/remove controls,
+  // AND whether to show the colour editor below -- both are the same "day to
+  // day control of my territory" authority (the division's own owner, or a
+  // Domain Steward/admin), so one flag from the guests endpoint covers both.
   const { data: guestsData } = useQuery({
     queryKey: ['domain-guests', selectedDivision],
     queryFn: async () => (await api.get(`/domain-claims/${selectedDivision}/guests`)).data,
     enabled: selectedDivision != null,
   });
-  const canManageGuests = !!guestsData?.me?.canManage;
+  const canManageDivision = !!guestsData?.me?.canManage;
 
   // Same characters+NPCs roster as the Court assign dropdown, but open to any
   // player: extending hospitality is the owner's call, not a Steward power.
@@ -1021,7 +1030,7 @@ export default function Domains() {
   const { data: guestRosterData } = useQuery({
     queryKey: ['domain-guests-roster'],
     queryFn: async () => (await api.get('/domain-claims/roster')).data,
-    enabled: canManageGuests,
+    enabled: canManageDivision,
     staleTime: 60 * 1000,
   });
 
@@ -1142,6 +1151,20 @@ export default function Domains() {
       queryClient.invalidateQueries({ queryKey: ['domain-claim-requests'] });
     },
     onError: (e) => toast.error(e.response?.data?.error || 'Failed to assign domain'),
+  });
+
+  const changeColorMutation = useMutation({
+    mutationFn: async ({ division, color }) => {
+      const res = await api.patch(`/domain-claims/${division}/color`, { color });
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Territory colour updated');
+      // Same invalidation as the Court assign path: the map fill, the rail
+      // list swatch and the dossier accent all read off this one query.
+      queryClient.invalidateQueries({ queryKey: ['domain-claims'] });
+    },
+    onError: (e) => toast.error(e.response?.data?.error || 'Failed to update colour'),
   });
 
   const addGuestMutation = useMutation({
@@ -1421,21 +1444,34 @@ export default function Domains() {
       if (selectedDivisionInfo.character_id) {
         setAssignTarget('character');
         setAssignId(String(selectedDivisionInfo.character_id));
-        setAssignColor(selectedDivisionInfo.color || '#8b5cf6');
+        setAssignColor(selectedDivisionInfo.color || '#3b82f6');
       } else if (selectedDivisionInfo.npc_id) {
         setAssignTarget('npc');
         setAssignId(String(selectedDivisionInfo.npc_id));
-        setAssignColor(selectedDivisionInfo.color || '#8b5cf6');
+        setAssignColor(selectedDivisionInfo.color || '#3b82f6');
       } else if (selectedPendingRequests.length > 0) {
         setAssignTarget('character');
         setAssignId(String(selectedPendingRequests[0].character_id));
-        setAssignColor(selectedPendingRequests[0].color || '#8b5cf6');
+        setAssignColor(selectedPendingRequests[0].color || '#3b82f6');
       } else {
         setAssignId('');
-        setAssignColor('#8b5cf6');
+        setAssignColor('#3b82f6');
       }
     }
   }, [selectedDivisionInfo, selectedPendingRequests]);
+
+  // Same "resync only when the underlying division actually changed" pattern
+  // as the Court assign form above (lastSyncKey): otherwise every keystroke
+  // this owner types elsewhere in the dossier would re-run this effect and
+  // snap their in-progress colour drag back to the saved value.
+  useEffect(() => {
+    if (!selectedDivisionInfo) return;
+    const key = `${selectedDivisionInfo.number}-${selectedDivisionInfo.color}`;
+    if (key !== myColorSyncKey.current) {
+      myColorSyncKey.current = key;
+      setMyColor(selectedDivisionInfo.color || '#3b82f6');
+    }
+  }, [selectedDivisionInfo]);
 
   // ── Interaction handlers ────────────────────────────────
   const onDeckHover = useCallback((info) => {
@@ -1846,15 +1882,25 @@ export default function Domains() {
 
     // Shared per-feature helpers for the base layer AND the safety-halo layer
     // below it, so the two never drift out of sync (same rim, same colour).
+    // Height reads as "how much trouble is here", so it has to stay a hint,
+    // not a wall: the earlier 70m-per-point ramp topped out at 800m, which at
+    // street zoom turned a single bad division into a tower that hid the
+    // neighbourhoods behind it. 28m per point tops out at 340m — the worst
+    // division still stands ~5.7x a healthy one, so the ranking survives, but
+    // it climbs gently enough that a point or two of drift stays a nudge.
+    const SAFETY_HEIGHT_FLOOR = 60;     // a rating-10 claimed division
+    const SAFETY_HEIGHT_PER_POINT = 28; // added for each point below 10
     const getBaseElevation = (f) => {
       if (cleanMap) return 0;
-      if (f.properties?.isAbaton) return 260; // always looms, regardless of safety
+      // Abaton keeps its old rank against the ramp (it used to sit between
+      // ratings 7 and 8), rescaled with everything else.
+      if (f.properties?.isAbaton) return 130; // always looms, regardless of safety
       const claimed = !!f.properties?.claimed;
       const heightRating = f.properties?.safetyRating ?? 5; // Unknown = mid-height
       const base = claimed
-        ? 100 + (10 - heightRating) * 70
-        : (f.properties?.pendingRequests ? 40 : 15);
-      if (f.properties?.__division === selectedDivision) return base + 80;
+        ? SAFETY_HEIGHT_FLOOR + (10 - heightRating) * SAFETY_HEIGHT_PER_POINT
+        : (f.properties?.pendingRequests ? 22 : 8);
+      if (f.properties?.__division === selectedDivision) return base + 35;
       return base;
     };
     // Colour for the safety-ramp border/halo. Deliberately NOT overridden by
@@ -2098,9 +2144,9 @@ export default function Domains() {
         );
       }
 
-      // ─── Abaton hazard stripes: draped onto each Abaton polygon the same
-      // way the hover-avatar reveal drapes a face onto a division, just
-      // always-on instead of hover-gated (see the mask+bitmap pattern below).
+      // ─── Abaton hazard stripes: draped onto each Abaton polygon via the
+      // same mask+bitmap layer pair pattern used elsewhere in this file
+      // (see ABATON_STRIPE_IMG above), always-on rather than hover-gated.
       for (const feature of abatonFeatures) {
         const division = feature.properties.__division;
         layers.push(
@@ -2166,12 +2212,17 @@ export default function Domains() {
             getText: () => 'NPC',
             getSize: 11,
             getColor: hexToRgba(NPC_ACCENT_COLOR, 255),
-            // The backdrop disc's radius is badgeSize/2+3, but it's floored at
-            // radiusMinPixels:14: at low zoom (small badgeSize) that floor
-            // kicks in while this offset kept shrinking as if it hadn't,
-            // landing the tag on top of the badge instead of above it. Clamp
-            // the same way so there's always real clearance.
-            getPixelOffset: [0, -(Math.max(badgeSize / 2, 11) + 22)],
+            // Pinned to the TOP RIM of the badge disc, straddling it, rather
+            // than floating above it. The space above the disc belongs to the
+            // Chasse merit ring, and chasseRingOffset() parks a LONE icon at
+            // dead-centre 12 o'clock — exactly where this tag used to sit, so
+            // a one-merit NPC division always collided.
+            //
+            // Disc radius is badgeSize/2+3, floored at radiusMinPixels:14, so
+            // clamp the same way or the tag drifts off the disc at low zoom.
+            // Sitting 6px inside that radius clears the ring's lowest icon
+            // edge (badgeSize/2+10) at every badge size.
+            getPixelOffset: [0, -(Math.max(badgeSize / 2 + 3, 14) - 6)],
             fontFamily: '"Courier New", monospace',
             fontWeight: 800,
             billboard: true,
@@ -2898,47 +2949,18 @@ export default function Domains() {
       );
     }
 
-    // ─── Layers: Mask + Image Fill (hover reveals the owner's face) ──
-    if (!cleanMap && hoveredFeature) {
-      const currentAvatarUrl = avatarCache[hoveredDivision];
-
-      if (currentAvatarUrl && isOwnedClaim(claimByDiv.get(hoveredDivision))) {
-        layers.push(
-          new SolidPolygonLayer({
-            id: 'hover-mask-layer',
-            data: [hoveredFeature],
-            getPolygon: d => d.geometry.coordinates,
-            operation: 'mask',
-            getFillColor: [255, 255, 255, 255]
-          })
-        );
-
-        const [minLng, minLat, maxLng, maxLat] = bbox(hoveredFeature);
-        layers.push(
-          new BitmapLayer({
-            id: 'hover-image-layer',
-            image: currentAvatarUrl,
-            bounds: [minLng, minLat, maxLng, maxLat],
-            extensions: [new MaskExtension()],
-            maskId: 'hover-mask-layer'
-          })
-        );
-      }
-    }
-
     // ─── Final z-order pass ─────────────────────────────────────────────
     // deck.gl paints in array order. The Chasse merit type-icons must read on
     // top of every overlay (transit lines, catacombs, hunt badges, municipal
     // outlines) so lift them to the end. The centre badge stack (owner
-    // avatar, clan crest, clan-name logo, Abaton sign, hover face reveal)
-    // stays above even the icons, so lift that last of all.
+    // avatar, clan crest, clan-name logo, Abaton sign) stays above even the
+    // icons, so lift that last of all.
     const CHASSE_ICON_ID = 'chasse-type-icons';
     const TOP_BADGE_IDS = new Set([
       'clan-badge-backdrop', 'clan-badges-shadow', 'clan-badges',
       'avatar-badges', 'clan-name-labels-outline', 'clan-name-labels',
       'guest-avatar-badges',
       'abaton-badge-backdrop', 'abaton-badges',
-      'hover-mask-layer', 'hover-image-layer',
     ]);
     const iconLayers = layers.filter(l => l.id === CHASSE_ICON_ID);
     const topLayers = layers.filter(l => TOP_BADGE_IDS.has(l.id));
@@ -3598,6 +3620,32 @@ export default function Domains() {
                 {activeTab === 'overview' && (
                   <>
 
+                    {!isUnclaimed && !selectedDivisionInfo.is_abaton && canManageDivision && (
+                      <div className={styles.statBlock}>
+                        <span className={styles.statLabel}>Territory Colour</span>
+                        <div className={styles.assignColorRow}>
+                          <input
+                            type="color"
+                            className={styles.requestColorInput}
+                            value={myColor}
+                            onChange={e => setMyColor(e.target.value)}
+                            title="Territory colour"
+                          />
+                          <button
+                            type="button"
+                            className={styles.assignBtn}
+                            disabled={changeColorMutation.isPending || myColor === selectedDivisionInfo.color}
+                            onClick={() => {
+                              if (!selectedDivisionInfo) return;
+                              changeColorMutation.mutate({ division: selectedDivisionInfo.number, color: myColor });
+                            }}
+                          >
+                            {changeColorMutation.isPending ? 'Saving…' : 'Save Colour'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     {!isUnclaimed && !selectedDivisionInfo.is_abaton && (
                       <div className={styles.statBlock}>
                         <span className={styles.statLabel}>Guests: Hospitality</span>
@@ -3614,7 +3662,7 @@ export default function Domains() {
                                   )}
                                   {g.note && <span className={styles.guestItemNote}>&ldquo;{g.note}&rdquo;</span>}
                                 </div>
-                                {(canManageGuests || g.isSelf) && (
+                                {(canManageDivision || g.isSelf) && (
                                   <button
                                     type="button"
                                     className={styles.guestRemoveBtn}
@@ -3630,7 +3678,7 @@ export default function Domains() {
                           </div>
                         )}
 
-                        {canManageGuests && (
+                        {canManageDivision && (
                           <div className={styles.guestAddForm}>
                             <div className={styles.assignTargetToggle}>
                               <button
@@ -3792,7 +3840,7 @@ export default function Domains() {
                     ) : (
                       <div className={styles.requestList}>
                         {selectedPendingRequests.map(r => (
-                          <div key={r.id} className={styles.requestCard} style={{ '--req-color': r.color || '#8b5cf6' }}>
+                          <div key={r.id} className={styles.requestCard} style={{ '--req-color': r.color || '#3b82f6' }}>
                             <div className={styles.requestCardHeader}>
                               <span className={styles.requestSwatch} />
                               <span className={styles.requestName}>{r.character_name}</span>

@@ -355,6 +355,19 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
       if (deltas.hungerDelta)
         sheet.hunger = Math.max(0, Math.min(5, (sheet.hunger ?? 0) + deltas.hungerDelta));
 
+      if (deltas.bloodPotencyDelta !== undefined) {
+        const currentBP = Number(sheet.blood_potency ?? sheet.bloodPotency ?? 1);
+        const nextBP = Math.max(0, Math.min(10, currentBP + Number(deltas.bloodPotencyDelta)));
+        sheet.blood_potency = nextBP;
+        sheet.bloodPotency = nextBP;
+      }
+
+      if (deltas.bloodPotency !== undefined) {
+        const nextBP = Math.max(0, Math.min(10, Number(deltas.bloodPotency)));
+        sheet.blood_potency = nextBP;
+        sheet.bloodPotency = nextBP;
+      }
+
       if (deltas.humanityDelta) {
         const next = Math.max(0, Math.min(10, (sheet.morality?.humanity ?? sheet.humanity ?? 7) + deltas.humanityDelta));
         sheet.humanity = next;
@@ -752,7 +765,29 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: '1.1rem', color: 'var(--on-surface)', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
-                        <div className={styles.playerClan}>{clan} · BP {bp}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '2px' }}>
+                          <span className={styles.playerClan}>{clan} · BP {bp}</span>
+                          <div style={{ display: 'flex', gap: '2px', marginLeft: 'auto' }}>
+                            <button
+                              className={styles.btnOutline}
+                              style={{ padding: '0.1rem 0.35rem', fontSize: '0.65rem', display: 'inline-flex', alignItems: 'center', gap: '2px' }}
+                              title="Decrease Blood Potency"
+                              disabled={bp <= 0}
+                              onClick={() => adjustPlayer(charId, { bloodPotencyDelta: -1 })}
+                            >
+                              BP <span className="material-symbols-outlined" style={{ fontSize: '0.75rem' }}>remove</span>
+                            </button>
+                            <button
+                              className={styles.btnOutline}
+                              style={{ padding: '0.1rem 0.35rem', fontSize: '0.65rem', display: 'inline-flex', alignItems: 'center', gap: '2px' }}
+                              title="Increase Blood Potency"
+                              disabled={bp >= 10}
+                              onClick={() => adjustPlayer(charId, { bloodPotencyDelta: 1 })}
+                            >
+                              BP <span className="material-symbols-outlined" style={{ fontSize: '0.75rem' }}>add</span>
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
                     {(frenzy || torpor || impaired || willBroken || degeneration || compulsion) && (
@@ -876,6 +911,9 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
                     <span title="Superficial damage mended per Rouse Check">Mend {bpStats.mendAmount}</span>
                     <span title="Rouse Checks at or below this Discipline level get the reroll">Rouse&nbsp;reroll &le;{bpStats.rouseRerollLevel}</span>
                     <span title="Bonus dice to Discipline pools">Disc +{bpStats.disciplineBonus}</span>
+                    {bpStats.feedingPenalty && bpStats.feedingPenalty !== 'No effect' && (
+                      <span title={bpStats.feedingPenalty} style={{ color: 'var(--danger)' }}>Feeding: {bpStats.feedingPenalty}</span>
+                    )}
                   </div>
 
                   {discs.length > 0 && (
@@ -910,9 +948,19 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
                       className={styles.btnOutline}
                       style={{ padding: '0.25rem', fontSize: '0.7rem' }}
                       disabled={!hp.sup || session?.status === 'ended'}
-                      onClick={() => mendSuperficial(charId, hp.sup)}
+                      onClick={() => mendSuperficial(charId, Math.min(hp.sup, bpStats.mendAmount))}
+                      title={`Mend ${bpStats.mendAmount} Superficial damage per Blood Potency`}
                     >
-                      Mend Superficial
+                      Mend ({bpStats.mendAmount})
+                    </button>
+                    <button
+                      className={styles.btnOutline}
+                      style={{ padding: '0.25rem', fontSize: '0.7rem' }}
+                      disabled={!hp.sup || session?.status === 'ended'}
+                      onClick={() => mendSuperficial(charId, hp.sup)}
+                      title="Clear all superficial damage"
+                    >
+                      Mend All Sup
                     </button>
                     <button
                       className={styles.btnOutline}
