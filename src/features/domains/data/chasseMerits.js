@@ -108,7 +108,7 @@ export const CHASSE_MERIT_DEFS = {
 export const DIVISION_CHASSE = {
   1: [{ merit: 'funerary', note: 'The First Cemetery of Athens at Mets: marble mausoleums, family vaults, night wardens who look the other way.' }],
   2: [
-    { merit: 'funerary', note: 'Zografou Cemetery on the Hymettos slope.' },
+    { merit: 'funerary', note: 'Zografou Cemetery and Kaisariani Municipal Cemetery terraced on the pine covered Hymettos slope.' },
     { merit: 'nightlife', dots: 2, note: 'Student bars around the Panepistimioupoli campus and Kaisariani square.' },
   ],
   3: [
@@ -118,9 +118,10 @@ export const DIVISION_CHASSE = {
   4: [
     { merit: 'hospital', note: 'Asklepieion Voulas general hospital.' },
     { merit: 'gated_community', note: 'The Kavouri and Vouliagmeni villa strip.' },
+    { merit: 'funerary', note: 'Voula Municipal Cemetery: serene coastal hillside plots overlooking the Saronic Gulf.' },
   ],
   5: [
-    { merit: 'hospital', note: 'The hospital row along Mesogeíon and Vas. Sofías: Gennimatás, the children\'s hospitals, the 401 Military Hospital.' },
+    { merit: 'hospital', note: 'Major hospital corridor along Vasilissis Sofias: Ippokrateio, Erythros Stavros Korgialenio Benakio, Agios Savvas, Elpis, Alexandra, and Elena Venizelou.' },
     { merit: 'apartment_towers', note: 'The Athens Tower complex, the tallest in the city.' },
   ],
   6: [
@@ -136,18 +137,32 @@ export const DIVISION_CHASSE = {
     { merit: 'funerary', note: 'The ancient Kerameikós necropolis and its Sacred Gate.' },
   ],
   11: [{ merit: 'nightlife', dots: 2, note: 'The café-bar strip along Apostólou Pávlou under the Acropolis.' }],
-  13: [{ merit: 'nightlife', dots: 2, note: 'Édem and the Palaió Fáliro beachfront bars.' }],
-  14: [{ merit: 'nightlife', dots: 2, note: 'The ring of cafés and bars around Néa Smýrni square.' }],
+  13: [
+    { merit: 'nightlife', dots: 2, note: 'Édem and the Palaió Fáliro beachfront bars.' },
+    { merit: 'funerary', note: 'Palaio Faliro Municipal Cemetery: peaceful seaside burial grounds at Agias Sofias and Agiou Petrou.' },
+  ],
+  14: [
+    { merit: 'nightlife', dots: 2, note: 'The ring of cafés and bars around Néa Smýrni square.' },
+    { merit: 'funerary', note: 'Nea Smyrni Municipal Cemetery: ornate Asia Minor refugee family vaults, marble chapels, and silent cypress paths.' },
+  ],
+  15: [{ merit: 'funerary', note: 'Agios Dimitrios Municipal Cemetery and Kallithea Municipal Cemetery: extensive southern suburb burial grounds bordering Dafni.' }],
   16: [{ merit: 'nightlife', dots: 2, note: 'The Onassis Stégi / Fix corridor along Syngroú.' }],
+  17: [
+    { merit: 'hospital', note: 'Amalia Fleming General Hospital in Melissia and Penteli Children\'s Hospital on the pine slopes.' },
+    { merit: 'funerary', note: 'Melissia and Penteli cemeteries: high altitude graves and monastery ossuaries set into the marble slopes.' },
+  ],
   18: [
     { merit: 'nightlife', note: 'Kolonáki\'s bars and members\' clubs.' },
-    { merit: 'hospital', note: 'The Evangelismós, Laïkó, Alexándra hospital cluster on Vas. Sofías.' },
+    { merit: 'hospital', note: 'Evangelismos General Hospital, NIMTS, the Naval Hospital of Athens, and Bioclinic on the lower Lykabettos slopes.' },
   ],
   19: [
     { merit: 'apartment_towers', note: 'One of the densest municipalities in the country: nothing but apartment blocks.' },
     { merit: 'nightlife', dots: 2, note: 'The bars around Peristéri square.' },
+    { merit: 'funerary', note: 'Peristeri Municipal Cemetery at Agios Ierotheos: massive western necropolis carved into the slopes of Poikilo Mountain.' },
   ],
   20: [{ merit: 'apartment_towers', note: 'Dense working-class blocks around the university.' }],
+  21: [{ merit: 'funerary', note: 'The municipal cemeteries of Petroupoli, Ilion, and Agioi Anargyroi spanning the western foothills.' }],
+  22: [{ merit: 'funerary', note: 'Argyroupoli and Elliniko Municipal Cemetery: hillside burial grounds overlooking the coastal plain.' }],
   23: [{ merit: 'gated_community', note: 'Psychikó: embassy residences, walled gardens, private security.' }],
   24: [
     { merit: 'shelter', note: 'The hostels and soup kitchens around Attikí and Viktoría squares.' },
@@ -156,23 +171,42 @@ export const DIVISION_CHASSE = {
   25: [{ merit: 'apartment_towers', note: 'Kypséli: Europe\'s most densely built neighbourhood, balcony over balcony.' }],
   27: [
     { merit: 'gated_community', note: 'Ekáli and Politeía: the gated estates north of Kifisiá.' },
-    { merit: 'hospital', note: 'KAT, the national accident and trauma hospital.' },
+    { merit: 'hospital', note: 'KAT General Hospital for accident and trauma, and Agioi Anargyroi Oncology Hospital in northern Kifisia.' },
+    { merit: 'funerary', note: 'Kifisia and Nea Erythraia Municipal Cemeteries: wealthy northern family mausoleums and old money tombs beneath towering cypresses.' },
   ],
-  28: [{ merit: 'nightlife', dots: 2, note: 'The Álimos marina beach bars.' }],
+  28: [
+    { merit: 'nightlife', dots: 2, note: 'The Álimos marina beach bars.' },
+    { merit: 'funerary', note: 'Phaleron Allied War Cemetery on Poseidonos Avenue: manicured lawns and Commonwealth military graves facing the coast.' },
+  ],
   29: [
-    { merit: 'hospital', note: 'Sismanógleio, Amalía Fleming and the Athens Medical Center.' },
+    { merit: 'hospital', note: 'Major northern medical hub: Sismanogleio General Hospital, Athens Medical Center, Hygeia Hospital, and Iaso.' },
     { merit: 'apartment_towers', note: 'The office and residential towers along Kifisías Avenue.' },
+    { merit: 'funerary', note: 'Marousi Municipal Cemetery: suburban tombs and marble vaults sheltered behind high perimeter walls.' },
   ],
+  30: [{ merit: 'funerary', note: 'The municipal cemeteries of Iraklio and Metamorfosi: northern suburban resting places bounded by pine walls.' }],
+  31: [{ merit: 'funerary', note: 'Chalandri Municipal Cemetery and Vrilissia Cemetery: quiet northern suburban burial parks among pine groves.' }],
+  32: [{ merit: 'funerary', note: 'Schisto Intermunicipal Cemetery and the historic Anastaseos Cemetery of Piraeus situated in Keratsini.' }],
   33: [
+    { merit: 'hospital', note: 'Pammakaristos General Hospital in Kato Patisia on Iakovaton.' },
     { merit: 'apartment_towers', note: 'Solid post-war density from Patísia to Áno Patísia.' },
     { merit: 'shelter', dots: 1, note: 'Overflow from the city-centre shelters.' },
+    { merit: 'funerary', note: 'The Second Cemetery of Athens at Ano Patisia: walled neoclassical plots, marble family crypts, and quiet cypress rows off Herakleiou Avenue.' },
   ],
   34: [
     { merit: 'shelter', note: 'The rough ground around Kolonós and the freight yards.' },
     { merit: 'back_alleys', note: 'Warehouse lanes behind Sepólia.' },
   ],
-  35: [{ merit: 'gated_community', note: 'Papágou: a planned garden suburb of officers\' housing, quiet and self-contained.' }],
-  36: [{ merit: 'hospital', note: 'The Goudí medical campus: Sotiría, the military hospital, the children\'s hospitals of Athens.' }],
+  35: [
+    { merit: 'hospital', note: 'Metropolitan General Hospital on Mesogeion Avenue in Cholargos.' },
+    { merit: 'gated_community', note: 'Papágou: a planned garden suburb of officers\' housing, quiet and self-contained.' },
+    { merit: 'funerary', note: 'Cholargos, Papagou, and Agia Paraskevi Municipal Cemeteries: pine shaded burial grounds on the slopes of Mount Hymettus.' },
+  ],
+  36: [{ merit: 'hospital', note: 'The Goudi medical campus: Sotiria Thoracic Diseases, Gennimatas General Hospital, 401 GSNA Military, 251 GNA Air Force, Agia Sofia and Aglaia Kyriakou Children\'s, and Laiko.' }],
+  37: [
+    { merit: 'hospital', note: 'Konstantopouleio General Hospital Agia Olga situated on the Nea Ionia border.' },
+    { merit: 'funerary', note: 'Nea Filadelfeia Municipal Cemetery at Kokkinos Mylos: large hillside necropolis overlooking the Kifisos river valley.' },
+  ],
+  38: [{ merit: 'funerary', note: 'The Vyronas and Ilioupoli Municipal Cemeteries terraced against the rocky slopes of Mount Hymettus.' }],
   39: [
     { merit: 'shelter', note: 'Omónoia and Váthis: the shelters, the migrant hostels, the people who sleep in the arcades.' },
     { merit: 'back_alleys', note: 'The wholesale market lanes and covered stoás of the old commercial triangle.' },
@@ -184,28 +218,40 @@ export const DIVISION_CHASSE = {
     { merit: 'nightlife', note: 'Psyrrí: the densest concentration of bars and late kitchens in the centre.' },
     { merit: 'back_alleys', note: 'Ironmongers\' rows and dead-end courtyards off the squares.' },
   ],
+  42: [{ merit: 'funerary', note: 'Tatoi Royal Cemetery: secluded royal tombs and mortuary chapels nestled within the dense pine forests of Mount Parnitha.' }],
   43: [
     { merit: 'nightlife', note: 'Mikrolímano and Pasalimáni: the harbour bars and clubs of Piraeus.' },
-    { merit: 'hospital', note: 'Tzáneio general hospital.' },
+    { merit: 'hospital', note: 'Tzaneio General Hospital, Metaxa Cancer Memorial Hospital, and Metropolitan Hospital in Neo Faliro.' },
     { merit: 'apartment_towers', note: 'The Piraeus Tower and the wall of high blocks facing the Great Harbour.' },
     { merit: 'back_alleys', note: 'The warehouse grid behind the port: Ágios Dionýsios, the customs yards, the container lanes.' },
     { merit: 'shelter', note: 'The seamen\'s missions and the transients who pass through the ferry gates and never leave.' },
   ],
-  44: [{ merit: 'hospital', note: 'Attikón university hospital and the Dromokaíteio.' }],
-  45: [{ merit: 'hospital', note: 'Nikaia General "Ágios Panteleímon".' }],
+  44: [{ merit: 'hospital', note: 'Attikon University General Hospital, Dromokaiteio Psychiatric Hospital, and Dafni Psychiatric Hospital.' }],
+  45: [
+    { merit: 'hospital', note: 'Nikaia General Hospital Agios Panteleimon and Agia Varvara General Hospital.' },
+    { merit: 'funerary', note: 'The Third Cemetery of Athens at Nikaia: one of Greece\'s largest necropolises, housing the active Jewish cemetery and resistance memorials across endless marble avenues.' },
+  ],
   46: [
+    { merit: 'hospital', note: 'Mediterraneo Hospital in Glyfada serving the southern coastal suburbs.' },
     { merit: 'nightlife', note: 'The Glyfáda strip and the Riviera beach clubs.' },
     { merit: 'gated_community', note: 'The golf-course quarter and the closed streets toward Voúla.' },
+    { merit: 'funerary', note: 'Glyfada Municipal Cemetery: modern southern coastal burial grounds nestled under the lower Hymettus ridges.' },
   ],
-  48: [{ merit: 'hospital', note: 'Thriásio general hospital.' }],
+  48: [
+    { merit: 'hospital', note: 'Thriasio General Hospital of Elefsina serving the western industrial plain.' },
+    { merit: 'funerary', note: 'Elefsina Municipal Cemetery: resting grounds adjacent to the ancient sanctuaries and archaeological mysteries of Eleusis.' },
+  ],
+  49: [{ merit: 'funerary', note: 'Aspropyrgos Municipal Cemetery: industrial plain burial site with wide stone aisles and remote night stillness.' }],
   83: [
     { merit: 'back_alleys', note: 'The Paloúkia ferry ramp and the naval-yard fence line: dockworkers, night crews, sailors between watches.' },
     { merit: 'shelter', dots: 1, note: 'The shanty edges of Salamína town and Aiánteio, cut off from the mainland every night when the boats stop.' },
+    { merit: 'funerary', note: 'Salamina Municipal Cemetery: quiet island resting grounds overlooking the bay.' },
   ],
   84: [{ merit: 'funerary', note: 'The old chapels and rock-cut tombs around the Cave of Pan at Fylí, and the mountain cemeteries the city forgets.' }],
   85: [
     { merit: 'back_alleys', note: 'The SKA freight yards and the wholesale-market sprawl of Menídi: containers, sidings, and the lanes behind them.' },
     { merit: 'shelter', note: 'The rougher blocks of Menídi and the Roma quarters on the town\'s northern edge.' },
+    { merit: 'funerary', note: 'Acharnes Municipal Cemetery: expansive northern necropolis bordering the Menidi railway junction.' },
   ],
   88: [
     { merit: 'back_alleys', note: 'The Skaramangá shipyards: dry docks, gantry cranes, warehouse rows, and the workers\' gate on the coast road.' },

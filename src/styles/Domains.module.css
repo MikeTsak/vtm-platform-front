@@ -1012,6 +1012,18 @@
 }
 .huntTipIcon { font-size: 13px !important; color: #d4202e; }
 
+.hoverTipSafety {
+  font-size: 0.72rem;
+  font-weight: 700;
+  /* colour is set inline per-division from safetyTier() */
+}
+.hoverTipSafetyUnknown {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #64748b;
+  font-style: italic;
+}
+
 /* compact droplet+number for the rail / territory lists */
 .railHunt {
   display: inline-flex;

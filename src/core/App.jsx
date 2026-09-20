@@ -277,6 +277,7 @@ function AppLayout() {
             <Route path="/admin/character/:id" element={<AdminOnly><CharacterEdit /></AdminOnly>} />
 
             <Route path="/forgot" element={<ForgotPassword />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset" element={<ResetPassword />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />

@@ -102,6 +102,15 @@ function loadHuntingDiff() {
   try { return localStorage.getItem(HUNTING_DIFF_LS_KEY) === '1'; } catch (_) { return false; }
 }
 
+// ── Masquerade safety badge — on by default (unlike hunting difficulty):
+// the border/halo alone proved too subtle against saturated owner-colour
+// fills, so every division also gets an unmissable text pill, the same
+// proven pattern as the hunt badges below. ──
+const MASQ_BADGE_LS_KEY = 'domains.masqBadge.v1';
+function loadMasqBadge() {
+  try { return localStorage.getItem(MASQ_BADGE_LS_KEY) !== '0'; } catch (_) { return true; }
+}
+
 // ── Catacombs overlay (ADMIN ONLY) ────────────────────────
 const CATACOMBS_LS_KEY = 'domains.catacombs.v1';
 const CATACOMBS_DEFAULT_PREFS = {
@@ -263,6 +272,31 @@ function safetyTier(rating) {
   return SAFETY_TIERS.find(t => rating >= t.min) || SAFETY_TIERS[SAFETY_TIERS.length - 1];
 }
 
+// Continuous green→red ramp for the map border, keyed off the same stops as
+// SAFETY_TIERS. Unlike the discrete tiers above (used for labels/gauges),
+// the border needs to visibly warm on every single point of drop — a 10→9
+// slip already reads slightly less green — so the "closing in" feel starts
+// immediately instead of waiting for a tier boundary to cross.
+const SAFETY_RAMP = [
+  { at: 10, rgb: [34, 197, 94] },   // #22c55e green — Secure
+  { at: 7, rgb: [234, 179, 8] },    // #eab308 yellow — Stable
+  { at: 4, rgb: [249, 115, 22] },   // #f97316 orange — At Risk
+  { at: 0, rgb: [239, 68, 68] },    // #ef4444 red — Critical
+];
+function safetyBorderColor(rating) {
+  if (rating == null) return UNKNOWN_TIER.color;
+  const r = Math.max(0, Math.min(10, rating));
+  for (let i = 0; i < SAFETY_RAMP.length - 1; i++) {
+    const hi = SAFETY_RAMP[i], lo = SAFETY_RAMP[i + 1];
+    if (r <= hi.at && r >= lo.at) {
+      const t = (hi.at - r) / (hi.at - lo.at); // 0 at hi stop, 1 at lo stop
+      const rgb = hi.rgb.map((c, idx) => Math.round(c + (lo.rgb[idx] - c) * t));
+      return `#${rgb.map(v => v.toString(16).padStart(2, '0')).join('')}`;
+    }
+  }
+  return '#ef4444'; // clamp guarantees the loop above always matches; kept for type safety
+}
+
 // ── Relative time ──────────────────────────────────────────
 function relTime(ts) {
   if (!ts) return '';
@@ -310,6 +344,144 @@ function chasseChipDataUrl(icon, color) {
   _chasseChipCache[cacheKey] = url;
   return url;
 }
+
+// ── Masquerade "closing in" radial fill ──────────────────────────────────
+// Each division's face is painted as a radial gradient: the owner's colour
+// at the core, blending outward into that division's safety-ramp colour at
+// the rim, with the safe core shrinking as the rating drops. So a division
+// doesn't just get a warmer border as it slips — the danger visibly eats
+// inward across the whole shape.
+//
+// The gradient is baked into a raster that is ALREADY cut to the polygon
+// outline (2D-canvas clip, transparent everywhere outside), so the map can
+// drape it with no runtime masking. Two earlier passes died here, and both
+// failures were really the same mistake — treating 89 divisions as 89
+// independent GPU resources:
+//   1. deck.gl's MaskExtension, one mask + one bitmap per division. Past
+//      ~89 concurrent mask ids it silently stopped clipping and the bitmaps
+//      rendered as raw rectangles bleeding across their neighbours.
+//   2. One BitmapLayer per division, which meant 89 simultaneously bound
+//      textures. WebGL only guarantees 32 combined texture units, so the
+//      icon layers lost their bindings and started sampling the TextLayer
+//      font atlas — the owner-avatar and clan-logo badges came out as
+//      garbled runs of ASCII.
+// So these rasters go through IconLayer's auto-packing atlas instead: ONE
+// texture and ONE draw call for the whole board, which is what IconManager
+// exists for.
+const _safetyFillCache = new Map();
+// px on the long side. Small on purpose — every raster has to fit alongside
+// 88 others inside a single packed atlas (deck.gl caps atlas width at 1024),
+// and these are soft gradients behind a crisp vector border, so they carry
+// colour, not detail.
+const SAFETY_FILL_MAX_EDGE = 128;
+const SAFETY_FILL_CORE_MIN = 0.06;  // surviving owner core at rating 0
+const SAFETY_FILL_CORE_MAX = 0.82;  // owner core at rating 10 (thin rim band)
+const SAFETY_FILL_BLEND = 0.22;     // width of the owner→safety cross-fade
+// How much of the basemap the fill is allowed to eat. The streets, labels
+// and coastline underneath are the point of the map — the ownership/safety
+// read is a wash laid over them, never a replacement for them. Tune here.
+const SAFETY_FILL_ALPHA = 56;           // /255 — resting state, ~22%
+const SAFETY_FILL_ALPHA_HOVER = 88;
+const SAFETY_FILL_ALPHA_SELECTED = 112;
+
+// Normalise both GeoJSON polygon shapes to "a list of polygons, each a list
+// of linear rings, exterior first". Even-odd filling then handles the holes
+// without caring about winding order, and keeping the parts separate lets the
+// gradient tell an exterior ring (the rim) from an interior one (a hole).
+function geometryPolygons(geometry) {
+  if (!geometry) return [];
+  if (geometry.type === 'Polygon') return [geometry.coordinates];
+  if (geometry.type === 'MultiPolygon') return geometry.coordinates;
+  return [];
+}
+
+// `box` is the feature's turf bbox, reused verbatim as the BitmapLayer bounds
+// so the raster lands exactly where it was projected from.
+function safetyFillDataUrl(cacheKey, geometry, box, ownerHex, rating) {
+  const cached = _safetyFillCache.get(cacheKey);
+  if (cached !== undefined) return cached;
+
+  const [minLng, minLat, maxLng, maxLat] = box;
+  const dLng = maxLng - minLng;
+  const dLat = maxLat - minLat;
+  const polygons = geometryPolygons(geometry);
+  if (!(dLng > 0) || !(dLat > 0) || !polygons.length) {
+    _safetyFillCache.set(cacheKey, null);
+    return null;
+  }
+
+  // Size the canvas to the bbox's GROUND aspect, not its raw degree aspect:
+  // at Athens' ~38°N a degree of longitude is only ~0.79 of a degree of
+  // latitude on the ground, so projecting straight from degrees would squash
+  // the gradient into an east-west ellipse on every division.
+  const lngToLat = Math.cos(((minLat + maxLat) / 2) * Math.PI / 180);
+  const groundW = dLng * lngToLat;
+  const groundH = dLat;
+  const longest = Math.max(groundW, groundH);
+  const w = Math.max(16, Math.round(SAFETY_FILL_MAX_EDGE * (groundW / longest)));
+  const h = Math.max(16, Math.round(SAFETY_FILL_MAX_EDGE * (groundH / longest)));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    _safetyFillCache.set(cacheKey, null);
+    return null;
+  }
+
+  const cx = w / 2;
+  const cy = h / 2;
+  const path = new Path2D();
+  let rimSum = 0;
+  let rimCount = 0;
+  for (const rings of polygons) {
+    for (let ri = 0; ri < rings.length; ri++) {
+      const ring = rings[ri];
+      if (!ring || ring.length < 3) continue;
+      for (let i = 0; i < ring.length; i++) {
+        const x = ((ring[i][0] - minLng) / dLng) * w;
+        // Y-flip: latitude grows upward, canvas y grows downward, so the
+        // image's top row is maxLat — which is also how a BitmapLayer maps
+        // its texture onto [left, bottom, right, top] bounds.
+        const y = ((maxLat - ring[i][1]) / dLat) * h;
+        if (i === 0) path.moveTo(x, y); else path.lineTo(x, y);
+        // Ring 0 of each part is the exterior one, i.e. the actual rim;
+        // holes sit in the interior and would drag the mean inward.
+        if (ri === 0) { rimSum += Math.hypot(x - cx, y - cy); rimCount++; }
+      }
+      path.closePath();
+    }
+  }
+  ctx.clip(path, 'evenodd');
+
+  // The gradient runs out to the shape's MEAN rim distance, not to its
+  // bounding box: a division with a long coastline or a thin tail touches its
+  // bbox at only a couple of points, so keying off the box would leave the
+  // safety colour visible only at those extremities. Averaging the real
+  // outline puts full saturation around most of the perimeter instead —
+  // which is the whole "closing in" read. Canvas extends the final stop past
+  // the radius, so the far corners stay safety-coloured regardless.
+  const radius = Math.max(1, rimCount ? rimSum / rimCount : (w + h) / 4);
+  const r = rating == null ? 5 : Math.max(0, Math.min(10, rating)); // Unknown reads as mid
+  const coreEnd = SAFETY_FILL_CORE_MIN + (r / 10) * (SAFETY_FILL_CORE_MAX - SAFETY_FILL_CORE_MIN);
+  const safetyHex = safetyBorderColor(rating);
+  const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+  gradient.addColorStop(0, ownerHex);
+  gradient.addColorStop(coreEnd, ownerHex);
+  gradient.addColorStop(Math.min(1, coreEnd + SAFETY_FILL_BLEND), safetyHex);
+  gradient.addColorStop(1, safetyHex);
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, w, h);
+
+  // Dimensions travel with the url: IconLayer needs them to pack the raster
+  // into the shared atlas and to know its aspect ratio on the ground.
+  const raster = { url: canvas.toDataURL('image/png'), w, h };
+  _safetyFillCache.set(cacheKey, raster);
+  return raster;
+}
+
+
 
 // ── Chasse ring geometry ─────────────────────────────────────────────────
 // Lays a division's merit icons out as an EVENLY spaced arc around its centre
@@ -709,6 +881,13 @@ export default function Domains() {
     try { localStorage.setItem(HUNTING_DIFF_LS_KEY, huntingDiffOn ? '1' : '0'); } catch (_) { /* noop */ }
   }, [huntingDiffOn]);
   const toggleHuntingDiff = useCallback(() => setHuntingDiffOn(v => !v), []);
+
+  // ── Masquerade safety badge toggle ──
+  const [masqBadgeOn, setMasqBadgeOn] = useState(loadMasqBadge);
+  useEffect(() => {
+    try { localStorage.setItem(MASQ_BADGE_LS_KEY, masqBadgeOn ? '1' : '0'); } catch (_) { /* noop */ }
+  }, [masqBadgeOn]);
+  const toggleMasqBadge = useCallback(() => setMasqBadgeOn(v => !v), []);
 
   // ── Dynamic GeoJSON Loading ──
   const { data: domainsRaw, isLoading: isDomainsGeoLoading } = useQuery({
@@ -1432,6 +1611,57 @@ export default function Domains() {
       });
   }, [geoJsonData]);
 
+  // ── Masquerade-safety badge at each division centre: same "unmissable
+  // text pill" pattern as the hunt badge above, since the coloured
+  // border/halo alone read as too subtle against a saturated owner-colour
+  // fill. Every division gets one — claimed or not, rated or not (shows
+  // "?") — so the rating is legible without hovering or opening the
+  // dossier. Abaton is excluded; it isn't rated. ──
+  const masqBadgeData = useMemo(() => {
+    if (!geoJsonData) return [];
+    return geoJsonData.features
+      .filter(f => !f.properties?.isAbaton)
+      .map(f => {
+        const [minLng, minLat, maxLng, maxLat] = bbox(f);
+        return { position: [(minLng + maxLng) / 2, (minLat + maxLat) / 2], rating: f.properties.safetyRating };
+      });
+  }, [geoJsonData]);
+
+  // ── Masquerade "closing in" fills: one pre-clipped gradient raster per
+  // division, plus the bbox it gets draped on. Baked here rather than inside
+  // the layer memo because that one re-runs on every hover, and re-walking 89
+  // polygons through turf's bbox on each mouse move is exactly the cost this
+  // feature is not allowed to add. safetyFillDataUrl caches on
+  // shape/owner-colour/rating, so a claim change only re-bakes what moved. ──
+  const safetyFillTiles = useMemo(() => {
+    if (!geoJsonData) return [];
+    const tiles = [];
+    for (const f of geoJsonData.features) {
+      if (f.properties?.isAbaton) continue; // hazard polygons keep their stripes
+      const division = f.properties.__division;
+      // Same expression the base layer uses for its flat fill, so the core of
+      // the gradient is exactly the colour the division reads as today.
+      const ownerHex = f.properties.claimed ? (f.properties.claimColor || '#888888') : '#64748b';
+      const rating = f.properties.safetyRating ?? null;
+      const box = bbox(f);
+      const key = `${division}|${ownerHex}|${rating}`;
+      const raster = safetyFillDataUrl(key, f.geometry, box, ownerHex, rating);
+      if (!raster) continue;
+      const [minLng, minLat, maxLng, maxLat] = box;
+      const midLat = (minLat + maxLat) / 2;
+      tiles.push({
+        division, key, feature: f,
+        image: raster.url, iconWidth: raster.w, iconHeight: raster.h,
+        position: [(minLng + maxLng) / 2, midLat],
+        // Width on the ground, in metres, so the fill stays pinned to the
+        // map through every zoom. The raster was proportioned from this same
+        // ground-true bbox, so its own aspect ratio supplies the height.
+        widthMeters: (maxLng - minLng) * 111320 * Math.cos(midLat * Math.PI / 180),
+      });
+    }
+    return tiles;
+  }, [geoJsonData]);
+
   // ── Chasse-merit "domain type" icons: a small row of glyph chips beneath
   // every division's name label so you can read what a domain is good for at a
   // glance (hospital / nightlife / cemetery …) without opening it. One datum
@@ -1614,7 +1844,57 @@ export default function Domains() {
 
     const layers = [];
 
-    // ─── Layer 1: Extruded base: fill = Masquerade safety, border = owner color ──
+    // Shared per-feature helpers for the base layer AND the safety-halo layer
+    // below it, so the two never drift out of sync (same rim, same colour).
+    const getBaseElevation = (f) => {
+      if (cleanMap) return 0;
+      if (f.properties?.isAbaton) return 260; // always looms, regardless of safety
+      const claimed = !!f.properties?.claimed;
+      const heightRating = f.properties?.safetyRating ?? 5; // Unknown = mid-height
+      const base = claimed
+        ? 100 + (10 - heightRating) * 70
+        : (f.properties?.pendingRequests ? 40 : 15);
+      if (f.properties?.__division === selectedDivision) return base + 80;
+      return base;
+    };
+    // Colour for the safety-ramp border/halo. Deliberately NOT overridden by
+    // selection — the selected division is exactly the one whose safety a
+    // player is trying to read in the dossier, so hiding the ramp behind a
+    // flat "you clicked this" white would defeat the point. Selection instead
+    // gets its own thin accent ring (see domains-selection-ring below).
+    // Abaton and a pending unclaimed request are the only real overrides,
+    // since those are hazard/actionable states unrelated to the rating.
+    const getSafetyEdgeColorHex = (f) => {
+      if (f.properties?.isAbaton) return '#ef4444';
+      const claimed = !!f.properties?.claimed;
+      const hasPending = !claimed && f.properties?.pendingRequests > 0;
+      if (hasPending) return '#f59e0b';
+      return safetyBorderColor(f.properties?.safetyRating);
+    };
+    // Width for the crisp core line — the halo layer multiplies this up for
+    // its soft outer glow. Bumped from the original 1.2–6.7px range: at
+    // in-context zoom that thin a line read as barely-there next to a
+    // saturated owner-colour fill, which is what prompted this pass. Rating
+    // always drives the base width; selection/hover only ADD emphasis on
+    // top of it (never override it flat) so a dangerous selected division
+    // still reads as thick, not shrunk down to a generic "selected" width.
+    const getSafetyEdgeWidth = (f) => {
+      const div = f.properties?.__division;
+      if (f.properties?.isAbaton) return div === hoveredDivision ? 4.5 : 3.5;
+      const claimed = !!f.properties?.claimed;
+      const hasPending = !claimed && f.properties?.pendingRequests > 0;
+      if (hasPending) return 3;
+      const rating = f.properties?.safetyRating;
+      // "Closing in": the border thickens as danger rises, so a division
+      // under threat visibly constricts even before its colour reads all
+      // the way to red. 10 → 2.5px, 0 → 14.5px.
+      let w = rating == null ? 2 : 2.5 + (10 - Math.max(0, Math.min(10, rating))) * 1.2;
+      if (div === selectedDivision) w += 2.5;
+      else if (div === hoveredDivision) w += 1.5;
+      return w;
+    };
+
+    // ─── Layer 1: Extruded base: fill = owner colour, border = Masquerade safety ──
     // The id switches with clean-map mode on purpose: toggling `extruded` +
     // `material` on a live GeoJsonLayer leaves deck.gl's lit polygon model in a
     // half-updated state (colours come back muddy/unlit). A distinct id forces
@@ -1628,21 +1908,11 @@ export default function Domains() {
         filled: true,
         extruded: !cleanMap,
         wireframe: !cleanMap,
-        // High ambient so the Masquerade-safety tier colour reads true on the
-        // extruded tops instead of being darkened into a muddy khaki by the
-        // scene lighting.
+        // High ambient so the owner-colour fill reads true on the extruded
+        // tops instead of being darkened into a muddy khaki by the scene
+        // lighting.
         material: { ambient: 0.85, diffuse: 0.35, shininess: 16, specularColor: [200, 200, 200] },
-        getElevation: (f) => {
-          if (cleanMap) return 0;
-          if (f.properties?.isAbaton) return 260; // always looms, regardless of safety
-          const claimed = !!f.properties?.claimed;
-          const heightRating = f.properties?.safetyRating ?? 5; // Unknown = mid-height
-          const base = claimed
-            ? 100 + (10 - heightRating) * 70
-            : (f.properties?.pendingRequests ? 40 : 15);
-          if (f.properties?.__division === selectedDivision) return base + 80;
-          return base;
-        },
+        getElevation: getBaseElevation,
         elevationScale: 1,
         getFillColor: (f) => {
           const div = f.properties?.__division;
@@ -1655,40 +1925,33 @@ export default function Domains() {
             return hexToRgba('#7f1d1d', isSelected ? 235 : 200);
           }
           const claimed = !!f.properties?.claimed;
-          const rating = f.properties?.safetyRating;
-          const tier = safetyTier(rating);
-          // Claimed divisions are strongly tinted by Masquerade-safety tier so
-          // the board reads at a glance; unclaimed stay near-invisible.
-          let a;
-          if (!claimed) a = rating == null ? 14 : 70;
-          else a = rating == null ? 95 : 175;
-          if (isSelected) a = Math.min(245, a + 75);
-          else if (isHovered) a = Math.min(245, a + 40);
-          return hexToRgba(tier.color, a);
+          // Fill is the owner's colour — the same one the rail list, dossier
+          // accent and badge ring already use — so the board reads "who holds
+          // what" at a glance. Unclaimed stays a near-invisible neutral wash;
+          // Masquerade safety moved to the border + halo (see below) so it
+          // shows on every division, claimed or not.
+          //
+          // Kept deliberately faint. The safety-fill layer now carries the
+          // owner colour across the whole top face, so all this has left to
+          // do is give the extruded SIDES some body — and stacking two solid
+          // washes is what made the streets and labels underneath unreadable.
+          let a = claimed ? 34 : 8;
+          if (isSelected) a = Math.min(95, a + 40);
+          else if (isHovered) a = Math.min(95, a + 22);
+          return hexToRgba(claimed ? (f.properties?.claimColor || '#888888') : '#64748b', a);
         },
         getLineColor: (f) => {
           const div = f.properties?.__division;
           if (cleanMap) {
             return div === selectedDivision ? [255, 255, 255, 220] : [148, 163, 184, 75];
           }
-          const claimed = !!f.properties?.claimed;
-          const hasPending = !claimed && f.properties?.pendingRequests > 0;
-          if (div === selectedDivision) return hexToRgba('#ffffff', 235);
-          if (f.properties?.isAbaton) return hexToRgba('#ef4444', div === hoveredDivision ? 255 : 210);
-          if (hasPending) return hexToRgba('#f59e0b', 220);
-          if (claimed) return hexToRgba(f.properties?.claimColor || '#888888', div === hoveredDivision ? 255 : 200);
-          return hexToRgba('#888888', div === hoveredDivision ? 140 : 70);
+          const boosted = div === selectedDivision || div === hoveredDivision;
+          return hexToRgba(getSafetyEdgeColorHex(f), boosted ? 255 : 220);
         },
         getLineWidth: (f) => {
           const div = f.properties?.__division;
           if (cleanMap) return div === selectedDivision ? 2 : 0.8;
-          const claimed = !!f.properties?.claimed;
-          const hasPending = !claimed && f.properties?.pendingRequests > 0;
-          if (div === selectedDivision) return 4;
-          if (div === hoveredDivision) return 2.5;
-          if (f.properties?.isAbaton) return 2.5;
-          if (hasPending) return 2;
-          return 1.2;
+          return getSafetyEdgeWidth(f);
         },
         lineWidthUnits: 'pixels',
         lineWidthMinPixels: 1,
@@ -1711,6 +1974,129 @@ export default function Domains() {
     // ─── Everything below is ownership decoration: skipped entirely in
     // clean-map mode (transit + catacombs overlays are handled separately). ──
     if (!cleanMap) {
+
+      // ─── Masquerade "closing in" fill: every division's pre-clipped radial
+      // gradient, laid flat on the top face of its own extrusion. Drawn first
+      // in this block so the safety halo, the selection ring, the overlays and
+      // the whole badge stack still paint over it.
+      //
+      // ONE IconLayer, not one layer per division: deck.gl packs all 89
+      // rasters into a single atlas texture, which is the only reason the
+      // avatar/clan badges keep their own texture bindings (see the note on
+      // safetyFillDataUrl). billboard:false lays each icon in the ground
+      // plane instead of turning it to face the camera, and sizeUnits
+      // 'meters' pins it to the map, so it behaves like a draped bitmap while
+      // costing one texture and one draw call for the whole board. ──
+      if (safetyFillTiles.length) {
+        layers.push(
+          new IconLayer({
+            id: 'safety-fills',
+            data: safetyFillTiles,
+            // A few metres proud of the polygon's own extruded top face
+            // rather than on the ground: at the default 45° pitch a
+            // ground-level drape lands visibly offset from the face it is
+            // meant to be colouring, and the extrusion would occlude it. The
+            // clearance keeps the two coincident surfaces from z-fighting.
+            getPosition: d => [d.position[0], d.position[1], getBaseElevation(d.feature) + 6],
+            getIcon: d => ({
+              url: d.image,
+              id: d.key,
+              width: d.iconWidth,
+              height: d.iconHeight,
+              anchorX: d.iconWidth / 2,
+              anchorY: d.iconHeight / 2,
+              mask: false,
+            }),
+            getSize: d => d.widthMeters,
+            sizeBasis: 'width',
+            sizeUnits: 'meters',
+            billboard: false,
+            // Alpha only — mask:false keeps the raster's own colours. This is
+            // where the fill's transparency lives, so the basemap underneath
+            // stays readable; selection and hover just lift it a little,
+            // standing in for the emphasis the base layer's fill used to give
+            // before this layer covered it.
+            getColor: d => [255, 255, 255,
+              d.division === selectedDivision ? SAFETY_FILL_ALPHA_SELECTED
+                : d.division === hoveredDivision ? SAFETY_FILL_ALPHA_HOVER
+                  : SAFETY_FILL_ALPHA],
+            // Low, not the 0.05 default: the raster's antialiased outline
+            // would otherwise be eroded away once the fill alpha is this low.
+            alphaCutoff: 0.004,
+            pickable: false,
+            // Depth-test but never depth-WRITE (luma.gl v9 parameter name):
+            // these quads must not sit in front of the rim lines and badges
+            // that are drawn after them.
+            parameters: { depthWriteEnabled: false },
+            updateTriggers: {
+              getPosition: [selectedDivision, cleanMap],
+              getColor: [selectedDivision, hoveredDivision],
+              getIcon: [safetyFillTiles],
+            },
+          })
+        );
+      }
+
+      // ─── Masquerade-safety halo: a soft, wide, low-opacity outer glow in
+      // the same colour as the crisp border above, so the safety ramp reads
+      // as a genuine coloured band around the division instead of a hairline
+      // that gets lost against a saturated owner-colour fill. depthTest is
+      // off so the glow never z-fights the coincident rim of the base layer
+      // it's tracing (same getElevation, drawn as an unfilled outline). ──
+      layers.push(
+        new GeoJsonLayer({
+          id: 'domains-safety-halo',
+          data: geoJsonData,
+          pickable: false,
+          stroked: true,
+          filled: false,
+          extruded: true,
+          getElevation: getBaseElevation,
+          elevationScale: 1,
+          getLineColor: (f) => {
+            const div = f.properties?.__division;
+            const boosted = div === selectedDivision || div === hoveredDivision;
+            return hexToRgba(getSafetyEdgeColorHex(f), boosted ? 140 : 90);
+          },
+          getLineWidth: (f) => getSafetyEdgeWidth(f) * 3,
+          lineWidthUnits: 'pixels',
+          lineWidthMinPixels: 6,
+          // Neither test nor write depth: a pure colour overlay in paint
+          // order so it can't hide (or get hidden behind) the avatar/clan
+          // badges and labels drawn in later layers at the same rim height.
+          parameters: { depthTest: false, depthMask: false },
+          updateTriggers: {
+            getLineColor: [selectedDivision, hoveredDivision],
+            getLineWidth: [selectedDivision, hoveredDivision],
+            getElevation: [selectedDivision],
+          },
+          transitions: { getLineColor: 200, getLineWidth: 200 },
+        })
+      );
+
+      // ─── Selection accent: a thin white ring for "this is what you
+      // clicked," kept separate from the safety colour so opening a
+      // division's dossier never hides the very ramp you opened it to see —
+      // it draws as a crisp line down the middle of the (wider) safety band
+      // rather than replacing it. ──
+      if (selectedFeature) {
+        layers.push(
+          new GeoJsonLayer({
+            id: 'domains-selection-ring',
+            data: [selectedFeature],
+            pickable: false,
+            stroked: true,
+            filled: false,
+            extruded: true,
+            getElevation: getBaseElevation,
+            elevationScale: 1,
+            getLineColor: [255, 255, 255, 235],
+            getLineWidth: 2,
+            lineWidthUnits: 'pixels',
+            lineWidthMinPixels: 2,
+          })
+        );
+      }
 
       // ─── Abaton hazard stripes: draped onto each Abaton polygon the same
       // way the hover-avatar reveal drapes a face onto a division, just
@@ -2080,6 +2466,40 @@ export default function Domains() {
             parameters: { depthTest: false },
             pickable: false,
             updateTriggers: { getBackgroundColor: [huntBadgeData.length] },
+          })
+        );
+      }
+
+      // ─── Masquerade-safety badge: a solid, tier-coloured pill at each
+      // division centre, offset to the LEFT of the avatar/crest column so it
+      // never collides with the name label / avatar / clan logo / guest
+      // avatars / hunt badge, which all stack vertically at x=0. This is the
+      // primary, unmissable reading of the rating — the border/halo on the
+      // base layer is the ambient version of the same signal. ──
+      if (masqBadgeOn && masqBadgeData.length) {
+        layers.push(
+          new TextLayer({
+            id: 'masquerade-badges',
+            data: masqBadgeData,
+            getPosition: d => d.position,
+            getText: d => (d.rating == null ? 'MASQ ?' : `MASQ ${d.rating}`),
+            getSize: 11,
+            getColor: d => (safetyTier(d.rating).label === 'Stable' ? [30, 26, 10, 255] : [255, 255, 255, 255]),
+            getPixelOffset: [-(badgeSize / 2 + 42), 0],
+            fontFamily: '"Courier New", monospace',
+            fontWeight: 800,
+            billboard: true,
+            background: true,
+            getBackgroundColor: d => hexToRgba(safetyTier(d.rating).color, 235),
+            backgroundPadding: [6, 3],
+            parameters: { depthTest: false },
+            pickable: false,
+            updateTriggers: {
+              getText: [masqBadgeData.length],
+              getColor: [masqBadgeData.length],
+              getBackgroundColor: [masqBadgeData.length],
+              getPixelOffset: [badgeSize],
+            },
           })
         );
       }
@@ -2527,7 +2947,7 @@ export default function Domains() {
       return [...baseLayers, ...iconLayers, ...topLayers];
     }
     return layers;
-  }, [geoJsonData, selectedDivision, hoveredDivision, hoveredFeature, avatarCache, onDeckHover, onDeckClick, groupOverlayFeatures, groupLabelData, npcFeatures, npcLabelData, clanBadgeData, avatarBadgeData, clanLabelData, abatonBadgeData, abatonFeatures, guestBadgeData, selectFeature, claimByDiv, badgeSize, badgeOffset, transitPathsSolid, transitPathsDashed, transitStationDots, transitLabelData, catacombPassageTiers, catacombSiteDots, catacombLabelData, necroDrawGroups, necroSiteDots, necroLabelData, cleanMap, onOverlayHover, huntBadgeData, huntingDiffOn, chasseIconData, onChasseIconClick, muniOutlinesOn]);
+  }, [geoJsonData, selectedDivision, hoveredDivision, hoveredFeature, avatarCache, onDeckHover, onDeckClick, groupOverlayFeatures, groupLabelData, npcFeatures, npcLabelData, clanBadgeData, avatarBadgeData, clanLabelData, abatonBadgeData, abatonFeatures, guestBadgeData, selectFeature, claimByDiv, badgeSize, badgeOffset, transitPathsSolid, transitPathsDashed, transitStationDots, transitLabelData, catacombPassageTiers, catacombSiteDots, catacombLabelData, necroDrawGroups, necroSiteDots, necroLabelData, cleanMap, onOverlayHover, huntBadgeData, huntingDiffOn, masqBadgeData, masqBadgeOn, chasseIconData, onChasseIconClick, muniOutlinesOn, safetyFillTiles]);
 
   // ── Loading / error state ─────────────────────────────────
   // Domains.json is a large file loaded as its own chunk (a dynamic import,
@@ -2709,6 +3129,18 @@ export default function Domains() {
                   Hunt {hoveredFeature.properties.huntingDifficulty} · {huntingLabel(hoveredFeature.properties.huntingDifficulty)}
                 </span>
               )}
+              {/* Every division carries a Masquerade-safety reading now — claimed
+                  or not — so the border's colour/thickness on the map always has
+                  a number to back it up, even on hover. Abaton isn't rated. */}
+              {!hoveredFeature.properties.isAbaton && (
+                hoveredFeature.properties.safetyRating != null ? (
+                  <span className={styles.hoverTipSafety} style={{ color: safetyTier(hoveredFeature.properties.safetyRating).color }}>
+                    Masquerade {hoveredFeature.properties.safetyRating}/10 · {safetyTier(hoveredFeature.properties.safetyRating).label}
+                  </span>
+                ) : (
+                  <span className={styles.hoverTipSafetyUnknown}>Masquerade: Unknown</span>
+                )
+              )}
               {hoveredFeature.properties.pendingRequests > 0 && hoveredFeature.properties.ownerName === 'Unclaimed' && (
                 <span className={styles.hoverTipPending}>{hoveredFeature.properties.pendingRequests} request{hoveredFeature.properties.pendingRequests > 1 ? 's' : ''} pending</span>
               )}
@@ -2862,6 +3294,14 @@ export default function Domains() {
                     onToggle={toggleHuntingDiff}
                     accent="claims"
                     title="Show hunting difficulty badges on the map"
+                  />
+
+                  <LayerRow
+                    label="Masquerade safety"
+                    on={masqBadgeOn}
+                    onToggle={toggleMasqBadge}
+                    accent="claims"
+                    title="Show Masquerade safety badges on the map"
                   />
 
                   <LayerRow label="Transit" on={transitOn} onToggle={toggleTransit} accent="transit">

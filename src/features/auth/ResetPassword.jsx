@@ -26,7 +26,7 @@ export default function ResetPassword() {
             <p className={styles.muted}>
               The ritual link is missing or broken. Please request a new one.
             </p>
-            <Link to="/forgot-password" className={styles.cta} style={{ display: 'block', textAlign: 'center', marginTop: '1rem', textDecoration: 'none' }}>
+            <Link to="/forgot" className={styles.cta} style={{ display: 'block', textAlign: 'center', marginTop: '1rem', textDecoration: 'none' }}>
               Back to Restoration
             </Link>
           </div>
