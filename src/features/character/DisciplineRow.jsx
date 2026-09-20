@@ -28,7 +28,7 @@ function PowerItem({ level, picked, unlocked, discName, boxMode }) {
   const isClickable = !!fullData;
 
   return (
-    <li className={styles.powerItem}>
+    <li className={styles.powerItem} data-box-mode={boxMode}>
       {/* The Power Pill itself */}
       <div 
         className={cls} 

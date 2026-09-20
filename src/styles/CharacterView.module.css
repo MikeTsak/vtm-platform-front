@@ -991,6 +991,11 @@ select.input:focus {
   display: flex;
   flex-direction: column;
   width: 100%;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-shadow: none !important;
 }
 
 /* Base pill */
@@ -1211,7 +1216,7 @@ select.input:focus {
   border-color: #2f3a58;
 }
 
-.powerList {
+.modalPowerList {
   overflow: auto;
   max-height: 58vh;
   display: grid;
@@ -1220,11 +1225,11 @@ select.input:focus {
   scrollbar-width: thin;
 }
 
-.powerList::-webkit-scrollbar {
+.modalPowerList::-webkit-scrollbar {
   width: 10px;
 }
 
-.powerList::-webkit-scrollbar-thumb {
+.modalPowerList::-webkit-scrollbar-thumb {
   background: #1a2030;
   border: 2px solid transparent;
   background-clip: padding-box;
@@ -1240,7 +1245,7 @@ select.input:focus {
 }
 
 /* Each item has a subtle left accent that lights up on active */
-.powerItem {
+.modalPowerItem {
   text-align: left;
   padding: 10px 12px;
   border-radius: 12px;
@@ -1251,7 +1256,7 @@ select.input:focus {
   position: relative;
 }
 
-.powerItem::before {
+.modalPowerItem::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -1260,7 +1265,7 @@ select.input:focus {
   border-radius: 12px;
 }
 
-.powerItem:hover {
+.modalPowerItem:hover {
   background: #121827;
   border-color: #2a3246;
 }
@@ -1474,7 +1479,7 @@ select.input:focus {
 }
 
 /* Search input at top; list scrolls and fills */
-.powerList {
+.modalPowerScrollList {
   flex: 1 1 auto;
   /* fill remaining height */
   min-height: 0;
@@ -4170,6 +4175,17 @@ select.input:focus {
   font-weight: 700 !important;
 }
 
+[data-box-mode="illuminated"] .powerItem,
+.powerItem[data-box-mode="illuminated"],
+.disciplineRow[data-box-mode="illuminated"] .powerItem {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+  cursor: default !important;
+}
+
 [data-box-mode="illuminated"] .powerPill,
 .powerPill[data-box-mode="illuminated"],
 .disciplineRow[data-box-mode="illuminated"] .powerPill {
@@ -4332,4 +4348,37 @@ select.input:focus {
   background-color: var(--tint) !important;
   border-color: var(--tint) !important;
   box-shadow: 0 0 8px color-mix(in srgb, var(--tint) 60%, transparent) !important;
+}
+
+[data-box-mode="glass"] .powerItem,
+.powerItem[data-box-mode="glass"],
+.disciplineRow[data-box-mode="glass"] .powerItem {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+  cursor: default !important;
+}
+
+[data-box-mode="glass"] .powerPill,
+.powerPill[data-box-mode="glass"],
+.disciplineRow[data-box-mode="glass"] .powerPill {
+  background: color-mix(in srgb, var(--surface-color) 70%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--border-color) 70%, var(--tint) 30%) !important;
+  color: var(--text-color) !important;
+}
+
+[data-box-mode="glass"] .powerName,
+.powerName[data-box-mode="glass"],
+.powerPill[data-box-mode="glass"] .powerName {
+  color: var(--text-color) !important;
+}
+
+[data-box-mode="glass"] .levelBadge,
+.levelBadge[data-box-mode="glass"],
+.powerPill[data-box-mode="glass"] .levelBadge {
+  background: color-mix(in srgb, var(--tint) 30%, var(--surface-color)) !important;
+  border: 1px solid color-mix(in srgb, var(--clan-box-border, var(--border-color)) 70%, var(--tint) 30%) !important;
+  color: var(--tint) !important;
 }

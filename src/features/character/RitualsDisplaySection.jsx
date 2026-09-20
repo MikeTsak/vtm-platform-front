@@ -18,7 +18,7 @@ function RitualItem({ ritual, category, boxMode }) {
   const cls = styles.powerPill;
   
   return (
-    <li className={styles.powerItem}>
+    <li className={styles.powerItem} data-box-mode={boxMode}>
       <div 
         className={cls} 
         data-box-mode={boxMode}
