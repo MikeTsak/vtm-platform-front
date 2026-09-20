@@ -752,6 +752,7 @@ export default function Domains() {
 
   const [avatarCache, setAvatarCache] = useState({});
   const [guestAvatarCache, setGuestAvatarCache] = useState({});
+  const [residentAvatarCache, setResidentAvatarCache] = useState({});
   const [mapReady, setMapReady] = useState(false);
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
 
@@ -793,6 +794,8 @@ export default function Domains() {
 
   const [reqMessage, setReqMessage] = useState('');
   const [reqColor, setReqColor] = useState('#3b82f6'); // matches DEFAULT_CLAIM_COLOR on the backend
+  const [residentAction, setResidentAction] = useState('resident'); // 'resident' | 'assign'
+  const [residentColor, setResidentColor] = useState('#3b82f6');
   const [codexText, setCodexText] = useState('');
 
   // Court assignment form state
@@ -804,6 +807,11 @@ export default function Domains() {
   const [guestTarget, setGuestTarget] = useState('character'); // 'character' | 'npc'
   const [guestId, setGuestId] = useState('');
   const [guestNote, setGuestNote] = useState('');
+
+  // Add-resident form state (unclaimed divisions, Steward/admin only)
+  const [residentTarget, setResidentTarget] = useState('character'); // 'character' | 'npc'
+  const [residentId, setResidentId] = useState('');
+  const [residentNote, setResidentNote] = useState('');
 
   // Owner colour-editor form state: the swatch the dossier's colour picker is
   // currently showing, kept separate from the division's actual saved colour
@@ -1044,6 +1052,23 @@ export default function Domains() {
   });
   const allGuests = allGuestsData?.guests || [];
 
+  // Every resident, every division, in one call: the map badges need this
+  // for every unclaimed division at once — same pattern as allGuestsData.
+  const { data: allResidentsData } = useQuery({
+    queryKey: ['domain-residents-all'],
+    queryFn: async () => (await api.get('/domain-claims/residents')).data,
+    enabled: !!user,
+    staleTime: 30 * 1000,
+  });
+  const allResidents = allResidentsData?.residents || [];
+
+  // Single-division residents for the open dossier panel.
+  const { data: residentsDossierData, isFetching: isResidentsLoading } = useQuery({
+    queryKey: ['domain-residents', selectedDivision],
+    queryFn: async () => (await api.get(`/domain-claims/${selectedDivision}/residents`)).data,
+    enabled: selectedDivision != null,
+  });
+
   const claims = claimsData?.claims || [];
   const requests = requestsData?.requests || [];
   const problems = problemsData?.problems || [];
@@ -1051,6 +1076,67 @@ export default function Domains() {
   const err = error?.response?.data?.error || error?.message || '';
 
   const ownedClaims = useMemo(() => claims.filter(isOwnedClaim), [claims]);
+
+  // Sets of character/NPC IDs already registered as residents or guests anywhere across Athens
+  const activeResidentCharIds = useMemo(() => {
+    return new Set(allResidents.filter(r => r.character_id != null).map(r => r.character_id));
+  }, [allResidents]);
+
+  const activeResidentNpcIds = useMemo(() => {
+    return new Set(allResidents.filter(r => r.npc_id != null).map(r => r.npc_id));
+  }, [allResidents]);
+
+  const activeGuestCharIds = useMemo(() => {
+    return new Set(allGuests.filter(g => g.character_id != null).map(g => g.character_id));
+  }, [allGuests]);
+
+  const activeGuestNpcIds = useMemo(() => {
+    return new Set(allGuests.filter(g => g.npc_id != null).map(g => g.npc_id));
+  }, [allGuests]);
+
+  const activeOwnerCharIds = useMemo(() => {
+    return new Set(claims.filter(c => c.owner_character_id != null).map(c => c.owner_character_id));
+  }, [claims]);
+
+  const activeOwnerNpcIds = useMemo(() => {
+    return new Set(claims.filter(c => c.owner_npc_id != null).map(c => c.owner_npc_id));
+  }, [claims]);
+
+  // Candidates for adding a temporary resident: exclude anyone who already holds a domain,
+  // is already a resident anywhere, or is already a guest anywhere.
+  const availableResidentCharacters = useMemo(() => {
+    return (assignablesData?.characters || []).filter(c =>
+      !activeResidentCharIds.has(c.id) &&
+      !activeGuestCharIds.has(c.id) &&
+      !activeOwnerCharIds.has(c.id)
+    );
+  }, [assignablesData, activeResidentCharIds, activeGuestCharIds, activeOwnerCharIds]);
+
+  const availableResidentNpcs = useMemo(() => {
+    return (assignablesData?.npcs || []).filter(n =>
+      !activeResidentNpcIds.has(n.id) &&
+      !activeGuestNpcIds.has(n.id) &&
+      !activeOwnerNpcIds.has(n.id)
+    );
+  }, [assignablesData, activeResidentNpcIds, activeGuestNpcIds, activeOwnerNpcIds]);
+
+  // Candidates for adding a guest: exclude anyone who already holds a domain,
+  // is already a guest anywhere, or is already a resident anywhere.
+  const availableGuestCharacters = useMemo(() => {
+    return (guestRosterData?.characters || []).filter(c =>
+      !activeGuestCharIds.has(c.id) &&
+      !activeResidentCharIds.has(c.id) &&
+      !activeOwnerCharIds.has(c.id)
+    );
+  }, [guestRosterData, activeGuestCharIds, activeResidentCharIds, activeOwnerCharIds]);
+
+  const availableGuestNpcs = useMemo(() => {
+    return (guestRosterData?.npcs || []).filter(n =>
+      !activeGuestNpcIds.has(n.id) &&
+      !activeResidentNpcIds.has(n.id) &&
+      !activeOwnerNpcIds.has(n.id)
+    );
+  }, [guestRosterData, activeGuestNpcIds, activeResidentNpcIds, activeOwnerNpcIds]);
 
   const requestsByDivision = useMemo(() => {
     const map = new Map();
@@ -1140,15 +1226,33 @@ export default function Domains() {
       const res = await api.post(`/court/domain-claims/${division}/assign`, { character_id, npc_id, color, unassign });
       return res.data;
     },
-    onSuccess: (_data, vars) => {
+    onSuccess: async (_data, vars) => {
       if (vars.unassign) {
         toast.success('Domain released back to the city');
       } else {
         toast.success('Domain assigned by Court decree');
       }
       setAssignId('');
-      queryClient.invalidateQueries({ queryKey: ['domain-claims'] });
-      queryClient.invalidateQueries({ queryKey: ['domain-claim-requests'] });
+      setResidentId('');
+      setResidentNote('');
+      const divNum = Number(vars.division);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['domain-claims'] }),
+        queryClient.invalidateQueries({ queryKey: ['domain-claim-requests'] }),
+        queryClient.invalidateQueries({ queryKey: ['domain-residents'] }),
+        queryClient.invalidateQueries({ queryKey: ['domain-residents', divNum] }),
+        queryClient.invalidateQueries({ queryKey: ['domain-residents', String(divNum)] }),
+        queryClient.invalidateQueries({ queryKey: ['domain-residents-all'] }),
+        queryClient.invalidateQueries({ queryKey: ['domain-guests'] }),
+        queryClient.invalidateQueries({ queryKey: ['domain-guests', divNum] }),
+        queryClient.invalidateQueries({ queryKey: ['domain-guests', String(divNum)] }),
+        queryClient.invalidateQueries({ queryKey: ['domain-guests-all'] }),
+        queryClient.invalidateQueries({ queryKey: ['domain-guests-roster'] }),
+        queryClient.invalidateQueries({ queryKey: ['court-assignables'] }),
+      ]);
+      queryClient.refetchQueries({ queryKey: ['domain-claims'] });
+      queryClient.refetchQueries({ queryKey: ['domain-guests-all'] });
+      queryClient.refetchQueries({ queryKey: ['domain-residents-all'] });
     },
     onError: (e) => toast.error(e.response?.data?.error || 'Failed to assign domain'),
   });
@@ -1172,13 +1276,69 @@ export default function Domains() {
       const res = await api.post(`/domain-claims/${division}/guests`, { character_id, npc_id, note });
       return res.data;
     },
-    onSuccess: (_data, vars) => {
+    onMutate: async (newGuest) => {
+      const divNum = Number(newGuest.division);
+      await queryClient.cancelQueries({ queryKey: ['domain-guests', divNum] });
+      await queryClient.cancelQueries({ queryKey: ['domain-guests-all'] });
+      const prevGuests = queryClient.getQueryData(['domain-guests', divNum]);
+      const prevAllGuests = queryClient.getQueryData(['domain-guests-all']);
+
+      const isChar = !!newGuest.character_id;
+      const targetId = newGuest.character_id || newGuest.npc_id;
+      const rosterList = isChar ? (guestRosterData?.characters || []) : (guestRosterData?.npcs || []);
+      const matched = rosterList.find(x => x.id === targetId);
+
+      const optimisticGuest = {
+        id: `temp-${Date.now()}`,
+        division: divNum,
+        note: newGuest.note || null,
+        created_at: new Date().toISOString(),
+        character_id: newGuest.character_id || null,
+        npc_id: newGuest.npc_id || null,
+        name: matched?.name || 'Kindred',
+        clan: matched?.clan || null,
+        isNpc: !isChar,
+        isSelf: isChar && matched?.user_id === user?.id,
+        has_avatar: true,
+      };
+
+      queryClient.setQueryData(['domain-guests', divNum], (old) => {
+        if (!old) return { guests: [optimisticGuest], me: { canManage: true } };
+        return { ...old, guests: [...(old.guests || []), optimisticGuest] };
+      });
+      queryClient.setQueryData(['domain-guests-all'], (old) => {
+        if (!old) return { guests: [optimisticGuest] };
+        return { ...old, guests: [...(old.guests || []), optimisticGuest] };
+      });
+
+      return { prevGuests, prevAllGuests, divNum };
+    },
+    onSuccess: () => {
       toast.success('Guest added');
       setGuestId('');
       setGuestNote('');
-      queryClient.invalidateQueries({ queryKey: ['domain-guests', vars.division] });
     },
-    onError: (e) => toast.error(e.response?.data?.error || 'Failed to add guest'),
+    onError: (e, _vars, context) => {
+      if (context?.divNum) {
+        queryClient.setQueryData(['domain-guests', context.divNum], context.prevGuests);
+        queryClient.setQueryData(['domain-guests-all'], context.prevAllGuests);
+      }
+      toast.error(e.response?.data?.error || 'Failed to add guest');
+    },
+    onSettled: async (_data, _error, vars) => {
+      const divNum = Number(vars?.division);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['domain-guests'] }),
+        queryClient.invalidateQueries({ queryKey: ['domain-guests', divNum] }),
+        queryClient.invalidateQueries({ queryKey: ['domain-guests', String(divNum)] }),
+        queryClient.invalidateQueries({ queryKey: ['domain-guests-all'] }),
+        queryClient.invalidateQueries({ queryKey: ['domain-guests-roster'] }),
+        queryClient.invalidateQueries({ queryKey: ['domain-residents-all'] }),
+      ]);
+      queryClient.refetchQueries({ queryKey: ['domain-guests', divNum] });
+      queryClient.refetchQueries({ queryKey: ['domain-guests-all'] });
+      queryClient.refetchQueries({ queryKey: ['domain-residents-all'] });
+    },
   });
 
   const removeGuestMutation = useMutation({
@@ -1186,11 +1346,168 @@ export default function Domains() {
       const res = await api.delete(`/domain-claims/${division}/guests/${guestId}`);
       return res.data;
     },
-    onSuccess: (_data, vars) => {
-      toast.success('Guest removed');
-      queryClient.invalidateQueries({ queryKey: ['domain-guests', vars.division] });
+    onMutate: async ({ division, guestId }) => {
+      const divNum = Number(division);
+      await queryClient.cancelQueries({ queryKey: ['domain-guests', divNum] });
+      await queryClient.cancelQueries({ queryKey: ['domain-guests-all'] });
+      const prevGuests = queryClient.getQueryData(['domain-guests', divNum]);
+      const prevAllGuests = queryClient.getQueryData(['domain-guests-all']);
+
+      queryClient.setQueryData(['domain-guests', divNum], (old) => {
+        if (!old) return old;
+        return { ...old, guests: (old.guests || []).filter(g => g.id !== guestId) };
+      });
+      queryClient.setQueryData(['domain-guests-all'], (old) => {
+        if (!old) return old;
+        return { ...old, guests: (old.guests || []).filter(g => g.id !== guestId) };
+      });
+
+      return { prevGuests, prevAllGuests, divNum };
     },
-    onError: (e) => toast.error(e.response?.data?.error || 'Failed to remove guest'),
+    onSuccess: () => {
+      toast.success('Guest removed');
+    },
+    onError: (e, _vars, context) => {
+      if (context?.divNum) {
+        queryClient.setQueryData(['domain-guests', context.divNum], context.prevGuests);
+        queryClient.setQueryData(['domain-guests-all'], context.prevAllGuests);
+      }
+      toast.error(e.response?.data?.error || 'Failed to remove guest');
+    },
+    onSettled: async (_data, _error, vars) => {
+      const divNum = Number(vars?.division);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['domain-guests'] }),
+        queryClient.invalidateQueries({ queryKey: ['domain-guests', divNum] }),
+        queryClient.invalidateQueries({ queryKey: ['domain-guests', String(divNum)] }),
+        queryClient.invalidateQueries({ queryKey: ['domain-guests-all'] }),
+        queryClient.invalidateQueries({ queryKey: ['domain-guests-roster'] }),
+        queryClient.invalidateQueries({ queryKey: ['domain-residents-all'] }),
+      ]);
+      queryClient.refetchQueries({ queryKey: ['domain-guests', divNum] });
+      queryClient.refetchQueries({ queryKey: ['domain-guests-all'] });
+      queryClient.refetchQueries({ queryKey: ['domain-residents-all'] });
+    },
+  });
+
+  const addResidentMutation = useMutation({
+    mutationFn: async ({ division, character_id, npc_id, note }) => {
+      const res = await api.post(`/domain-claims/${division}/residents`, { character_id, npc_id, note });
+      return res.data;
+    },
+    onMutate: async (newResident) => {
+      const divNum = Number(newResident.division);
+      await queryClient.cancelQueries({ queryKey: ['domain-residents', divNum] });
+      await queryClient.cancelQueries({ queryKey: ['domain-residents-all'] });
+      const prevResidents = queryClient.getQueryData(['domain-residents', divNum]);
+      const prevAllResidents = queryClient.getQueryData(['domain-residents-all']);
+
+      const isChar = !!newResident.character_id;
+      const targetId = newResident.character_id || newResident.npc_id;
+      const rosterList = isChar ? (assignablesData?.characters || []) : (assignablesData?.npcs || []);
+      const matched = rosterList.find(x => x.id === targetId);
+
+      const optimisticResident = {
+        id: `temp-${Date.now()}`,
+        division: divNum,
+        note: newResident.note || null,
+        created_at: new Date().toISOString(),
+        character_id: newResident.character_id || null,
+        npc_id: newResident.npc_id || null,
+        name: matched?.name || 'Kindred',
+        clan: matched?.clan || null,
+        isNpc: !isChar,
+        has_avatar: true,
+      };
+
+      queryClient.setQueryData(['domain-residents', divNum], (old) => {
+        if (!old) return { residents: [optimisticResident] };
+        return { ...old, residents: [...(old.residents || []), optimisticResident] };
+      });
+      queryClient.setQueryData(['domain-residents-all'], (old) => {
+        if (!old) return { residents: [optimisticResident] };
+        return { ...old, residents: [...(old.residents || []), optimisticResident] };
+      });
+
+      return { prevResidents, prevAllResidents, divNum };
+    },
+    onSuccess: () => {
+      toast.success('Resident added');
+      setResidentId('');
+      setResidentNote('');
+    },
+    onError: (e, _vars, context) => {
+      if (context?.divNum) {
+        queryClient.setQueryData(['domain-residents', context.divNum], context.prevResidents);
+        queryClient.setQueryData(['domain-residents-all'], context.prevAllResidents);
+      }
+      toast.error(e.response?.data?.error || 'Failed to add resident');
+    },
+    onSettled: async (_data, _error, vars) => {
+      const divNum = Number(vars?.division);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['domain-residents'] }),
+        queryClient.invalidateQueries({ queryKey: ['domain-residents', divNum] }),
+        queryClient.invalidateQueries({ queryKey: ['domain-residents', String(divNum)] }),
+        queryClient.invalidateQueries({ queryKey: ['domain-residents-all'] }),
+        queryClient.invalidateQueries({ queryKey: ['domain-guests-all'] }),
+        queryClient.invalidateQueries({ queryKey: ['domain-guests-roster'] }),
+        queryClient.invalidateQueries({ queryKey: ['court-assignables'] }),
+      ]);
+      queryClient.refetchQueries({ queryKey: ['domain-residents', divNum] });
+      queryClient.refetchQueries({ queryKey: ['domain-residents-all'] });
+      queryClient.refetchQueries({ queryKey: ['domain-guests-all'] });
+    },
+  });
+
+  const removeResidentMutation = useMutation({
+    mutationFn: async ({ division, residentId }) => {
+      const res = await api.delete(`/domain-claims/${division}/residents/${residentId}`);
+      return res.data;
+    },
+    onMutate: async ({ division, residentId }) => {
+      const divNum = Number(division);
+      await queryClient.cancelQueries({ queryKey: ['domain-residents', divNum] });
+      await queryClient.cancelQueries({ queryKey: ['domain-residents-all'] });
+      const prevResidents = queryClient.getQueryData(['domain-residents', divNum]);
+      const prevAllResidents = queryClient.getQueryData(['domain-residents-all']);
+
+      queryClient.setQueryData(['domain-residents', divNum], (old) => {
+        if (!old) return old;
+        return { ...old, residents: (old.residents || []).filter(r => r.id !== residentId) };
+      });
+      queryClient.setQueryData(['domain-residents-all'], (old) => {
+        if (!old) return old;
+        return { ...old, residents: (old.residents || []).filter(r => r.id !== residentId) };
+      });
+
+      return { prevResidents, prevAllResidents, divNum };
+    },
+    onSuccess: () => {
+      toast.success('Resident removed');
+    },
+    onError: (e, _vars, context) => {
+      if (context?.divNum) {
+        queryClient.setQueryData(['domain-residents', context.divNum], context.prevResidents);
+        queryClient.setQueryData(['domain-residents-all'], context.prevAllResidents);
+      }
+      toast.error(e.response?.data?.error || 'Failed to remove resident');
+    },
+    onSettled: async (_data, _error, vars) => {
+      const divNum = Number(vars?.division);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['domain-residents'] }),
+        queryClient.invalidateQueries({ queryKey: ['domain-residents', divNum] }),
+        queryClient.invalidateQueries({ queryKey: ['domain-residents', String(divNum)] }),
+        queryClient.invalidateQueries({ queryKey: ['domain-residents-all'] }),
+        queryClient.invalidateQueries({ queryKey: ['domain-guests-all'] }),
+        queryClient.invalidateQueries({ queryKey: ['domain-guests-roster'] }),
+        queryClient.invalidateQueries({ queryKey: ['court-assignables'] }),
+      ]);
+      queryClient.refetchQueries({ queryKey: ['domain-residents', divNum] });
+      queryClient.refetchQueries({ queryKey: ['domain-residents-all'] });
+      queryClient.refetchQueries({ queryKey: ['domain-guests-all'] });
+    },
   });
 
   // ── Avatar URL resolver ─────────────────────────────────
@@ -1242,6 +1559,36 @@ export default function Domains() {
     return () => { isMounted = false; };
   }, [allGuests, guestAvatarCache, getGuestAvatarUrl]);
 
+  // ── Eagerly load avatars for every resident of every unclaimed division ──
+  // Same pattern as guest avatars: fallback to initials circle if no photo.
+  const getResidentAvatarUrl = useCallback((resident) => {
+    if (!resident || resident.has_avatar === false) return null;
+    const baseUrl = import.meta.env.VITE_API_URL || '/api';
+    if (resident.user_id) return `${baseUrl}/users/${resident.user_id}/avatar?size=thumb&raw=1`;
+    if (resident.npc_id) return `${baseUrl}/npcs/${resident.npc_id}/avatar?size=thumb&raw=1`;
+    return null;
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    for (const r of allResidents) {
+      if (residentAvatarCache[r.id] !== undefined) continue;
+      const url = getResidentAvatarUrl(r);
+      if (!url) {
+        setResidentAvatarCache(prev => ({ ...prev, [r.id]: null }));
+        continue;
+      }
+      fetchAvatarWithRetry(url, `resident-${r.id}`).then(dataUrl => {
+        if (!isMounted) return;
+        setResidentAvatarCache(prev => ({
+          ...prev,
+          [r.id]: dataUrl || null
+        }));
+      });
+    }
+    return () => { isMounted = false; };
+  }, [allResidents, residentAvatarCache, getResidentAvatarUrl]);
+
   // Same reconnect/foreground retry as the owner avatars: but a guest never
   // sits as `null` (it always resolves to at least the initials fallback), so
   // there's nothing to clear here; the fallback IS the permanent state until
@@ -1277,6 +1624,7 @@ export default function Domains() {
     const handleAvatarUpdated = () => {
       setAvatarCache({});
       setGuestAvatarCache({});
+      setResidentAvatarCache({});
     };
     window.addEventListener('avatar-updated', handleAvatarUpdated);
     return () => window.removeEventListener('avatar-updated', handleAvatarUpdated);
@@ -1698,6 +2046,16 @@ export default function Domains() {
     return tiles;
   }, [geoJsonData]);
 
+  // ── Residents: group by division, compute badge + label data ──
+  const residentsByDivision = useMemo(() => {
+    const map = new Map();
+    for (const r of allResidents) {
+      if (!map.has(r.division)) map.set(r.division, []);
+      map.get(r.division).push(r);
+    }
+    return map;
+  }, [allResidents]);
+
   // ── Chasse-merit "domain type" icons: a small row of glyph chips beneath
   // every division's name label so you can read what a domain is good for at a
   // glance (hospital / nightlife / cemetery …) without opening it. One datum
@@ -1713,11 +2071,15 @@ export default function Domains() {
       const [minLng, minLat, maxLng, maxLat] = bbox(f);
       const position = [(minLng + maxLng) / 2, (minLat + maxLat) / 2];
       const claimed = !!f.properties?.claimed;
+      const divResidents = residentsByDivision.get(division) || [];
+      const hasResidents = !claimed && divResidents.length > 0;
       merits.forEach((m, i) => {
         out.push({
           position,
           division,
           claimed,
+          hasResidents,
+          residentCount: divResidents.length,
           meritKey: m.key,
           url: chasseChipDataUrl(m.icon, m.color),
           i,
@@ -1726,7 +2088,7 @@ export default function Domains() {
       });
     }
     return out;
-  }, [geoJsonData]);
+  }, [geoJsonData, residentsByDivision]);
 
   // ── Map badges at the center of every claimed division: the clan crest
   // AND the owner's avatar side by side (both visible at once, not one
@@ -1794,8 +2156,12 @@ export default function Domains() {
       const divisionGuests = guestsByDivision.get(division);
       if (divisionGuests?.length) {
         divisionGuests.forEach((g, i) => {
-          const image = guestAvatarCache[g.id];
-          if (typeof image === 'string' && image) {
+          const cached = guestAvatarCache[g.id];
+          const fallbackColor = g.isNpc ? '#94a3b8' : (clanTint(g.clan) || '#6366f1');
+          const image = (typeof cached === 'string' && cached)
+            ? cached
+            : createFallbackAvatarDataUrl(g.name, fallbackColor);
+          if (image) {
             guestBadges.push({ position, division, guestId: g.id, name: g.name, image, index: i, count: divisionGuests.length });
           }
         });
@@ -1803,6 +2169,38 @@ export default function Domains() {
     }
     return { clanBadgeData: clanBadges, avatarBadgeData: avatarBadges, clanLabelData: clanLabels, abatonBadgeData: abatonBadges, abatonFeatures: abatonFeats, guestBadgeData: guestBadges };
   }, [geoJsonData, avatarCache, guestsByDivision, guestAvatarCache]);
+
+  const { residentBadgeData, residentClanBadgeData, residentBackdropData, residentLabelData } = useMemo(() => {
+    if (!geoJsonData) return { residentBadgeData: [], residentClanBadgeData: [], residentBackdropData: [], residentLabelData: [] };
+    const badges = [];
+    const clanBadges = [];
+    const backdrops = [];
+    const labels = [];
+    for (const f of geoJsonData.features) {
+      // Only unclaimed, non-Abaton divisions show residents
+      if (f.properties?.claimed || f.properties?.isAbaton) continue;
+      const division = f.properties.__division;
+      const divResidents = residentsByDivision.get(division);
+      if (!divResidents?.length) continue;
+      const [minLng, minLat, maxLng, maxLat] = bbox(f);
+      const position = [(minLng + maxLng) / 2, (minLat + maxLat) / 2];
+      divResidents.forEach((r, i) => {
+        backdrops.push({ position, division, index: i, count: divResidents.length });
+        const image = residentAvatarCache[r.id];
+        if (typeof image === 'string' && image) {
+          badges.push({ position, division, residentId: r.id, name: r.name, image, index: i, count: divResidents.length });
+        } else if (r.clan) {
+          clanBadges.push({ position, division, residentId: r.id, name: r.name, clan: r.clan, index: i, count: divResidents.length });
+        } else {
+          const fallback = createFallbackAvatarDataUrl(r.name, r.isNpc ? '#94a3b8' : '#6366f1');
+          badges.push({ position, division, residentId: r.id, name: r.name, image: fallback, index: i, count: divResidents.length });
+        }
+      });
+      // One label entry per division (not per resident)
+      labels.push({ position, division, count: divResidents.length });
+    }
+    return { residentBadgeData: badges, residentClanBadgeData: clanBadges, residentBackdropData: backdrops, residentLabelData: labels };
+  }, [geoJsonData, residentsByDivision, residentAvatarCache]);
 
   // ── Athens transit overlay: filter lines + stations by the legend toggles,
   // and decide which station labels are visible at the current zoom ──
@@ -2454,6 +2852,177 @@ export default function Domains() {
         );
       }
 
+      // ─── Resident badges: avatar circles or white clan crests for characters/NPCs
+      // temporarily present in UNCLAIMED divisions. Shown at the center like an owner
+      // badge (not offset below like guests). If no custom avatar photo is uploaded,
+      // the clan crest is displayed in pure white, matching the visual convention of
+      // claimed domains. Ring is slate to signal unclaimed ground.
+      if (residentBackdropData.length) {
+        layers.push(
+          new ScatterplotLayer({
+            id: 'resident-badge-backdrop',
+            data: residentBackdropData,
+            getPosition: d => d.position,
+            getRadius: d => (d.count > 1 ? (Math.max(10, badgeSize * 0.34) / 2 + 2) : (badgeSize / 2 + 3)),
+            radiusUnits: 'pixels',
+            radiusMinPixels: 10,
+            stroked: true,
+            filled: true,
+            getFillColor: [10, 10, 10, 185],
+            getLineColor: [100, 116, 139, 200], // slate: "unclaimed ground"
+            getLineWidth: 1.5,
+            lineWidthUnits: 'pixels',
+            getPixelOffset: d => {
+              if (d.count <= 1) return [0, 0];
+              const size = Math.max(10, badgeSize * 0.34);
+              const step = size + 4;
+              return [Math.round((d.index - (d.count - 1) / 2) * step), 0];
+            },
+            pickable: false,
+            parameters: { depthTest: false },
+            updateTriggers: { getRadius: [badgeSize], getPixelOffset: [badgeSize] },
+          })
+        );
+
+        // White clan crest fallback for residents without a profile picture
+        if (residentClanBadgeData.length) {
+          layers.push(
+            new IconLayer({
+              id: 'resident-clan-badges-shadow',
+              data: residentClanBadgeData,
+              getPosition: d => d.position,
+              getIcon: d => ({
+                url: clanSymbolUrl(d.clan),
+                id: d.clan + '-res-sym-shadow',
+                width: 150,
+                height: 150,
+                mask: true,
+              }),
+              getSize: d => (d.count > 1 ? Math.max(10, badgeSize * 0.34) * 0.55 : badgeSize * 0.45),
+              sizeUnits: 'pixels',
+              getColor: [0, 0, 0, 255],
+              getPixelOffset: d => {
+                const x = d.count <= 1 ? 0 : Math.round((d.index - (d.count - 1) / 2) * (Math.max(10, badgeSize * 0.34) + 4));
+                return [x + 1, 1];
+              },
+              pickable: false,
+              parameters: { depthTest: false },
+              updateTriggers: { getSize: [badgeSize], getPixelOffset: [badgeSize] },
+              transitions: { getSize: 150 },
+            }),
+            new IconLayer({
+              id: 'resident-clan-badges',
+              data: residentClanBadgeData,
+              pickable: true,
+              getPosition: d => d.position,
+              getIcon: d => ({
+                url: clanSymbolUrl(d.clan),
+                id: d.clan + '-res-sym',
+                width: 150,
+                height: 150,
+                mask: true,
+              }),
+              getSize: d => (d.count > 1 ? Math.max(10, badgeSize * 0.34) * 0.55 : badgeSize * 0.45),
+              sizeUnits: 'pixels',
+              getColor: [240, 240, 245, 255], // White clan icon matching claimed domains
+              getPixelOffset: d => {
+                const x = d.count <= 1 ? 0 : Math.round((d.index - (d.count - 1) / 2) * (Math.max(10, badgeSize * 0.34) + 4));
+                return [x, 0];
+              },
+              parameters: { depthTest: false },
+              updateTriggers: { getSize: [badgeSize], getPixelOffset: [badgeSize] },
+              transitions: { getSize: 150 },
+              onClick: (info) => {
+                const d = info?.object;
+                if (!d) return false;
+                const feature = geoJsonData?.features.find(f => f.properties.__division === Number(d.division));
+                if (feature) selectFeature(feature);
+                return true;
+              },
+            })
+          );
+        }
+
+        // Custom avatar photo for residents with an uploaded profile picture
+        if (residentBadgeData.length) {
+          layers.push(
+            new IconLayer({
+              id: 'resident-avatar-badges',
+              data: residentBadgeData,
+              pickable: true,
+              getPosition: d => d.position,
+              getIcon: d => ({
+                url: d.image,
+                id: `resident-${d.residentId}`,
+                width: 128,
+                height: 128,
+                anchorX: 64,
+                anchorY: 64,
+                mask: false,
+              }),
+              getSize: d => {
+                const size = Math.max(10, badgeSize * 0.34);
+                return d.count > 1 ? size : badgeSize;
+              },
+              sizeUnits: 'pixels',
+              getColor: [255, 255, 255, 230],
+              getPixelOffset: d => {
+                if (d.count <= 1) return [0, 0];
+                const size = Math.max(10, badgeSize * 0.34);
+                const step = size + 4;
+                return [Math.round((d.index - (d.count - 1) / 2) * step), 0];
+              },
+              loadOptions: { image: { type: 'auto' } },
+              parameters: { depthTest: false },
+              updateTriggers: {
+                getSize: [badgeSize],
+                getPixelOffset: [badgeSize],
+                getIcon: [residentBadgeData],
+              },
+              transitions: { getSize: 150 },
+              onIconError: (evt) => {
+                if (evt?.source?.residentId != null) {
+                  setResidentAvatarCache(prev => ({ ...prev, [evt.source.residentId]: null }));
+                }
+              },
+              onClick: (info) => {
+                const d = info?.object;
+                if (!d) return false;
+                const feature = geoJsonData?.features.find(f => f.properties.__division === Number(d.division));
+                if (feature) selectFeature(feature);
+                return true;
+              },
+            })
+          );
+        }
+
+        // "Resident" tag: same monospace pill as the NPC tag, but in cool
+        // cyan to distinguish from the violet NPC tag on claimed divisions.
+        layers.push(
+          new TextLayer({
+            id: 'resident-tags',
+            data: residentLabelData,
+            getPosition: d => d.position,
+            getText: () => 'Resident',
+            getSize: 11,
+            getColor: [103, 232, 249, 255], // #67e8f9 cyan
+            getPixelOffset: d => {
+              const size = d.count > 1 ? Math.max(10, badgeSize * 0.34) : badgeSize;
+              return [0, Math.round(size / 2 + 10)];
+            },
+            fontFamily: '"Courier New", monospace',
+            fontWeight: 800,
+            billboard: true,
+            background: true,
+            getBackgroundColor: [10, 10, 10, 200],
+            backgroundPadding: [6, 3],
+            pickable: false,
+            parameters: { depthTest: false },
+            updateTriggers: { getPixelOffset: [badgeSize] },
+          })
+        );
+      }
+
       if (abatonBadgeData.length) {
         layers.push(
           new ScatterplotLayer({
@@ -2570,17 +3139,22 @@ export default function Domains() {
             getSize: d => (d.division === selectedDivision ? 18 : 15),
             sizeUnits: 'pixels',
             getPixelOffset: d => {
-              // Claimed: an evenly spaced ring around the avatar circle,
-              // opening at the bottom for the clan-name logo: see
+              // Claimed or Resident: an evenly spaced ring around the avatar circle,
+              // opening at the bottom for the clan-name logo or Resident tag: see
               // chasseRingOffset().
-              if (d.claimed) return chasseRingOffset(d.i, d.count, badgeSize / 2 + 17);
-              // Unclaimed: no circle to ring, so a plain row under the name.
+              if (d.claimed || d.hasResidents) {
+                const radius = (d.residentCount > 1)
+                  ? Math.max(badgeSize / 2 + 17, (d.residentCount * (Math.max(10, badgeSize * 0.34) + 4)) / 2 + 12)
+                  : (badgeSize / 2 + 17);
+                return chasseRingOffset(d.i, d.count, radius);
+              }
+              // Unclaimed with no resident: no circle to ring, so a plain row under the name.
               const step = 18;
               return [Math.round((d.i - (d.count - 1) / 2) * step), 9];
             },
             parameters: { depthTest: false },
             updateTriggers: {
-              getPixelOffset: [badgeSize],
+              getPixelOffset: [badgeSize, residentBadgeData, residentClanBadgeData],
               getSize: [selectedDivision],
             },
             onClick: onChasseIconClick,
@@ -3648,11 +4222,24 @@ export default function Domains() {
 
                     {!isUnclaimed && !selectedDivisionInfo.is_abaton && (
                       <div className={styles.statBlock}>
-                        <span className={styles.statLabel}>Guests: Hospitality</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span className={styles.statLabel} style={{ marginBottom: 0 }}>Guests: Hospitality</span>
+                          {canManageDivision && (
+                            <button
+                              type="button"
+                              className={styles.dossierTabSwitchBtn}
+                              onClick={() => setActiveTab('requests')}
+                              title="Invite guests in Requests tab"
+                            >
+                              <span className="material-symbols-outlined" style={{ fontSize: 13, verticalAlign: 'middle' }}>person_add</span>
+                              Invite in Requests
+                            </button>
+                          )}
+                        </div>
                         {(guestsData?.guests || []).length === 0 ? (
-                          <p className={styles.dossierEmpty} style={{ margin: 0 }}>No one is currently hosted here.</p>
+                          <p className={styles.dossierEmpty} style={{ margin: '0.5rem 0 0 0' }}>No one is currently hosted here.</p>
                         ) : (
-                          <div className={styles.guestList}>
+                          <div className={styles.guestList} style={{ marginTop: '0.5rem' }}>
                             {guestsData.guests.map(g => (
                               <div key={g.id} className={styles.guestItem}>
                                 <div className={styles.guestItemInfo}>
@@ -3677,61 +4264,58 @@ export default function Domains() {
                             ))}
                           </div>
                         )}
+                      </div>
+                    )}
 
-                        {canManageDivision && (
-                          <div className={styles.guestAddForm}>
-                            <div className={styles.assignTargetToggle}>
-                              <button
-                                type="button"
-                                className={`${styles.assignToggleBtn} ${guestTarget === 'character' ? styles.assignToggleBtnActive : ''}`}
-                                onClick={() => { setGuestTarget('character'); setGuestId(''); }}
-                              >Character</button>
-                              <button
-                                type="button"
-                                className={`${styles.assignToggleBtn} ${guestTarget === 'npc' ? styles.assignToggleBtnActive : ''}`}
-                                onClick={() => { setGuestTarget('npc'); setGuestId(''); }}
-                              >NPC</button>
-                            </div>
-                            <select
-                              className={styles.assignSelect}
-                              value={guestId}
-                              onChange={e => setGuestId(e.target.value)}
-                            >
-                              <option value="">Select {guestTarget === 'character' ? 'a character' : 'an NPC'}</option>
-                              {guestTarget === 'character'
-                                ? (guestRosterData?.characters || []).map(c => (
-                                  <option key={c.id} value={c.id}>{c.name} ({c.player_name}){c.clan ? ` · ${c.clan}` : ''}</option>
-                                ))
-                                : (guestRosterData?.npcs || []).map(n => (
-                                  <option key={n.id} value={n.id}>{n.name}{n.clan ? ` · ${n.clan}` : ''}</option>
-                                ))
-                              }
-                            </select>
-                            <input
-                              type="text"
-                              className={styles.guestNoteInput}
-                              placeholder="Note (optional), e.g. seeking Praxis"
-                              value={guestNote}
-                              maxLength={255}
-                              onChange={e => setGuestNote(e.target.value)}
-                            />
+                    {!selectedDivisionInfo.is_abaton && isUnclaimed && (
+                      <div className={styles.statBlock}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span className={styles.statLabel} style={{ marginBottom: 0 }}>Temporary Residents</span>
+                          {user && canManageDomains && (
                             <button
                               type="button"
-                              className={styles.assignBtn}
-                              disabled={!guestId || addGuestMutation.isPending}
-                              onClick={() => {
-                                if (!guestId || !selectedDivisionInfo) return;
-                                addGuestMutation.mutate({
-                                  division: selectedDivisionInfo.number,
-                                  character_id: guestTarget === 'character' ? Number(guestId) : null,
-                                  npc_id: guestTarget === 'npc' ? Number(guestId) : null,
-                                  note: guestNote,
-                                });
-                              }}
+                              className={styles.dossierTabSwitchBtn}
+                              onClick={() => setActiveTab('requests')}
+                              title="Manage residents in Requests tab"
                             >
-                              {addGuestMutation.isPending ? 'Adding…' : 'Add Guest'}
+                              <span className="material-symbols-outlined" style={{ fontSize: 13, verticalAlign: 'middle' }}>person_add</span>
+                              Manage in Requests
                             </button>
+                          )}
+                        </div>
+                        {isResidentsLoading ? (
+                          <p className={styles.dossierEmpty} style={{ margin: '0.5rem 0 0 0' }}>Loading…</p>
+                        ) : (residentsDossierData?.residents || []).length === 0 ? (
+                          <p className={styles.dossierEmpty} style={{ margin: '0.5rem 0 0 0' }}>No one is currently recorded here.</p>
+                        ) : (
+                          <div className={styles.guestList} style={{ marginTop: '0.5rem' }}>
+                            {residentsDossierData.residents.map(r => (
+                              <div key={r.id} className={styles.guestItem}>
+                                <div className={styles.guestItemInfo}>
+                                  <b className={styles.guestItemName}>{r.name}</b>
+                                  {(r.clan || r.isNpc) && (
+                                    <span className={styles.guestItemClan}>{r.clan}{r.clan && r.isNpc ? ' · ' : ''}{r.isNpc ? 'NPC' : ''}</span>
+                                  )}
+                                  {r.note && <span className={styles.guestItemNote}>&ldquo;{r.note}&rdquo;</span>}
+                                </div>
+                                {canManageDomains && (
+                                  <button
+                                    type="button"
+                                    className={styles.guestRemoveBtn}
+                                    disabled={removeResidentMutation.isPending}
+                                    onClick={() => removeResidentMutation.mutate({ division: selectedDivisionInfo.number, residentId: r.id })}
+                                    title="Remove resident"
+                                  >
+                                    Remove
+                                  </button>
+                                )}
+                              </div>
+                            ))}
                           </div>
+                        )}
+
+                        {user && !canManageDomains && !selectedDivisionInfo.is_abaton && (
+                          <p className={styles.dossierEmpty} style={{ margin: '0.75rem 0 0 0', fontSize: '0.8rem' }}>Unclaimed territory. See Requests tab to petition the Court.</p>
                         )}
                       </div>
                     )}
@@ -3896,12 +4480,199 @@ export default function Domains() {
                       <p className={styles.dossierEmpty}>Your petition is awaiting Court review.</p>
                     )}
 
-                    {/* ── Court: direct assign / unassign ── */}
-                    {canManageDomains && selectedDivisionInfo && (
+                    {/* ── Hospitality: Invite Guest (Claimed domains, domain managers) ── */}
+                    {!isUnclaimed && !selectedDivisionInfo.is_abaton && canManageDivision && (
+                      <div className={styles.courtAssignSection}>
+                        <span className={styles.courtAssignHeading}>
+                          <span className="material-symbols-outlined" style={{ fontSize: 15, verticalAlign: 'middle', marginRight: 5 }}>person_add</span>
+                          Hospitality: Invite Guest
+                        </span>
+                        <div className={styles.assignTargetToggle}>
+                          <button
+                            type="button"
+                            className={`${styles.assignToggleBtn} ${guestTarget === 'character' ? styles.assignToggleBtnActive : ''}`}
+                            onClick={() => { setGuestTarget('character'); setGuestId(''); }}
+                          >Character</button>
+                          <button
+                            type="button"
+                            className={`${styles.assignToggleBtn} ${guestTarget === 'npc' ? styles.assignToggleBtnActive : ''}`}
+                            onClick={() => { setGuestTarget('npc'); setGuestId(''); }}
+                          >NPC</button>
+                        </div>
+                        <select
+                          className={styles.assignSelect}
+                          value={guestId}
+                          onChange={e => setGuestId(e.target.value)}
+                        >
+                          <option value="">Select {guestTarget === 'character' ? 'a character' : 'an NPC'}</option>
+                          {guestTarget === 'character'
+                            ? availableGuestCharacters.map(c => (
+                              <option key={c.id} value={c.id}>{c.name} ({c.player_name}){c.clan ? ` : ${c.clan}` : ''}</option>
+                            ))
+                            : availableGuestNpcs.map(n => (
+                              <option key={n.id} value={n.id}>{n.name}{n.clan ? ` : ${n.clan}` : ''}</option>
+                            ))
+                          }
+                        </select>
+                        <input
+                          type="text"
+                          className={styles.guestNoteInput}
+                          placeholder="Note (optional), e.g. seeking Praxis"
+                          value={guestNote}
+                          maxLength={255}
+                          onChange={e => setGuestNote(e.target.value)}
+                        />
+                        <button
+                          type="button"
+                          className={styles.assignBtn}
+                          disabled={!guestId || addGuestMutation.isPending}
+                          onClick={() => {
+                            if (!guestId || !selectedDivisionInfo) return;
+                            addGuestMutation.mutate({
+                              division: selectedDivisionInfo.number,
+                              character_id: guestTarget === 'character' ? Number(guestId) : null,
+                              npc_id: guestTarget === 'npc' ? Number(guestId) : null,
+                              note: guestNote,
+                            });
+                          }}
+                        >
+                          {addGuestMutation.isPending ? 'Adding…' : 'Add Guest'}
+                        </button>
+                      </div>
+                    )}
+
+                    {/* ── Court Administration: Mark as Resident OR Give Domain (Unclaimed domains, Steward/admin) ── */}
+                    {isUnclaimed && !selectedDivisionInfo.is_abaton && user && canManageDomains && (
                       <div className={styles.courtAssignSection}>
                         <span className={styles.courtAssignHeading}>
                           <span className="material-symbols-outlined" style={{ fontSize: 15, verticalAlign: 'middle', marginRight: 5 }}>gavel</span>
-                          Court Decree
+                          Court Administration
+                        </span>
+
+                        {/* Action selector */}
+                        <div className={styles.assignTargetToggle} style={{ marginBottom: '0.2rem' }}>
+                          <button
+                            type="button"
+                            className={`${styles.assignToggleBtn} ${residentAction === 'resident' ? styles.assignToggleBtnActive : ''}`}
+                            style={residentAction === 'resident' ? { background: 'color-mix(in srgb, #67e8f9 18%, transparent)', color: '#67e8f9' } : {}}
+                            onClick={() => { setResidentAction('resident'); setResidentId(''); }}
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: 14, verticalAlign: 'middle', marginRight: 4 }}>person_pin</span>
+                            Mark as Resident
+                          </button>
+                          <button
+                            type="button"
+                            className={`${styles.assignToggleBtn} ${residentAction === 'assign' ? styles.assignToggleBtnActive : ''}`}
+                            onClick={() => { setResidentAction('assign'); setResidentId(''); }}
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: 14, verticalAlign: 'middle', marginRight: 4 }}>gavel</span>
+                            Give Domain
+                          </button>
+                        </div>
+
+                        {/* Person Target: Character vs NPC */}
+                        <div className={styles.assignTargetToggle}>
+                          <button
+                            type="button"
+                            className={`${styles.assignToggleBtn} ${residentTarget === 'character' ? styles.assignToggleBtnActive : ''}`}
+                            onClick={() => { setResidentTarget('character'); setResidentId(''); }}
+                          >Character</button>
+                          <button
+                            type="button"
+                            className={`${styles.assignToggleBtn} ${residentTarget === 'npc' ? styles.assignToggleBtnActive : ''}`}
+                            onClick={() => { setResidentTarget('npc'); setResidentId(''); }}
+                          >NPC</button>
+                        </div>
+
+                        {/* Select Person */}
+                        <select
+                          className={styles.assignSelect}
+                          value={residentId}
+                          onChange={e => setResidentId(e.target.value)}
+                        >
+                          <option value="">Select {residentTarget === 'character' ? 'a character' : 'an NPC'}</option>
+                          {residentAction === 'resident' ? (
+                            residentTarget === 'character'
+                              ? availableResidentCharacters.map(c => (
+                                <option key={c.id} value={c.id}>{c.name}{c.clan ? ` : ${c.clan}` : ''}</option>
+                              ))
+                              : availableResidentNpcs.map(n => (
+                                <option key={n.id} value={n.id}>{n.name}{n.clan ? ` : ${n.clan}` : ''}</option>
+                              ))
+                          ) : (
+                            residentTarget === 'character'
+                              ? (assignablesData?.characters || []).map(c => (
+                                <option key={c.id} value={c.id}>{c.name}{c.clan ? ` : ${c.clan}` : ''}</option>
+                              ))
+                              : (assignablesData?.npcs || []).map(n => (
+                                <option key={n.id} value={n.id}>{n.name}{n.clan ? ` : ${n.clan}` : ''}</option>
+                              ))
+                          )}
+                        </select>
+
+                        {/* Conditional input: Note for resident, Color for domain assignment */}
+                        {residentAction === 'resident' ? (
+                          <input
+                            type="text"
+                            className={styles.guestNoteInput}
+                            placeholder="Note (optional), e.g. passing through"
+                            value={residentNote}
+                            maxLength={255}
+                            onChange={e => setResidentNote(e.target.value)}
+                          />
+                        ) : (
+                          residentTarget === 'character' && (
+                            <div className={styles.assignColorRow}>
+                              <label className={styles.assignColorLabel}>Territory colour</label>
+                              <input
+                                type="color"
+                                className={styles.requestColorInput}
+                                value={residentColor}
+                                onChange={e => setResidentColor(e.target.value)}
+                                title="Territory colour"
+                              />
+                            </div>
+                          )
+                        )}
+
+                        {/* Action Button */}
+                        <button
+                          type="button"
+                          className={styles.assignBtn}
+                          disabled={!residentId || addResidentMutation.isPending || assignMutation.isPending}
+                          onClick={() => {
+                            if (!residentId || !selectedDivisionInfo) return;
+                            if (residentAction === 'resident') {
+                              addResidentMutation.mutate({
+                                division: selectedDivisionInfo.number,
+                                character_id: residentTarget === 'character' ? Number(residentId) : null,
+                                npc_id: residentTarget === 'npc' ? Number(residentId) : null,
+                                note: residentNote,
+                              });
+                            } else {
+                              assignMutation.mutate({
+                                division: selectedDivisionInfo.number,
+                                character_id: residentTarget === 'character' ? Number(residentId) : null,
+                                npc_id: residentTarget === 'npc' ? Number(residentId) : null,
+                                color: residentTarget === 'character' ? residentColor : undefined,
+                              });
+                            }
+                          }}
+                        >
+                          {residentAction === 'resident'
+                            ? (addResidentMutation.isPending ? 'Adding…' : 'Mark as Resident')
+                            : (assignMutation.isPending ? 'Assigning…' : 'Give Domain')
+                          }
+                        </button>
+                      </div>
+                    )}
+
+                    {/* ── Court Decree: Reassign Domain or Unassign (Claimed domains, Steward/admin) ── */}
+                    {!isUnclaimed && !selectedDivisionInfo.is_abaton && canManageDomains && (
+                      <div className={styles.courtAssignSection}>
+                        <span className={styles.courtAssignHeading}>
+                          <span className="material-symbols-outlined" style={{ fontSize: 15, verticalAlign: 'middle', marginRight: 5 }}>gavel</span>
+                          Court Decree: Reassign Domain
                         </span>
 
                         {/* Target type toggle */}
@@ -3927,10 +4698,10 @@ export default function Domains() {
                           <option value="">Select {assignTarget === 'character' ? 'a character' : 'an NPC'}</option>
                           {assignTarget === 'character'
                             ? (assignablesData?.characters || []).map(c => (
-                              <option key={c.id} value={c.id}>{c.name} ({c.player_name}){c.clan ? ` · ${c.clan}` : ''}</option>
+                              <option key={c.id} value={c.id}>{c.name} ({c.player_name}){c.clan ? ` : ${c.clan}` : ''}</option>
                             ))
                             : (assignablesData?.npcs || []).map(n => (
-                              <option key={n.id} value={n.id}>{n.name}{n.clan ? ` · ${n.clan}` : ''}</option>
+                              <option key={n.id} value={n.id}>{n.name}{n.clan ? ` : ${n.clan}` : ''}</option>
                             ))
                           }
                         </select>
@@ -3963,7 +4734,7 @@ export default function Domains() {
                             });
                           }}
                         >
-                          {assignMutation.isPending ? 'Assigning…' : 'Assign Domain'}
+                          {assignMutation.isPending ? 'Assigning…' : 'Reassign Domain'}
                         </button>
 
                         {/* Unassign: only show when division is currently claimed */}

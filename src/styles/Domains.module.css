@@ -2237,6 +2237,26 @@
 
 .guestNoteInput:focus { outline: none; border-color: #8b5cf6; }
 
+.dossierTabSwitchBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: color-mix(in srgb, #fbbf24 12%, transparent);
+  border: 1px solid color-mix(in srgb, #fbbf24 35%, transparent);
+  color: #fbbf24;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.dossierTabSwitchBtn:hover {
+  background: color-mix(in srgb, #fbbf24 22%, transparent);
+  border-color: #fbbf24;
+}
+
 /* ── Court Intel tab ── */
 .problemList {
   display: flex;
