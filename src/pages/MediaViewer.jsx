@@ -5,6 +5,7 @@ import api from '../core/api';
 import { AuthCtx } from '../core/AuthContext';
 import s from '../styles/Premonitions.module.css';
 import { Skeleton } from 'boneyard-js/react';
+import FaGlyph from '../ui/FaGlyph';
 
 export default function MediaViewer() {
   const { id } = useParams(); // this is now the PREMONITION id
@@ -15,6 +16,8 @@ export default function MediaViewer() {
 
   const [url, setUrl] = useState(null);
   const [type, setType] = useState(null);
+  const [warnings, setWarnings] = useState([]);
+  const [revealed, setRevealed] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -26,7 +29,6 @@ export default function MediaViewer() {
       return;
     }
 
-    let blobUrl = null;
     let cancelled = false;
 
     const load = async () => {
@@ -34,17 +36,26 @@ export default function MediaViewer() {
       setError('');
 
       try {
-        const res = await api.get(`/premonitions/media/${id}`, {
-          responseType: 'blob',
-        });
+        const res = await api.get(`/premonitions/media/${id}?info=1`);
 
         if (cancelled) return;
 
-        const blob = res.data;
-        blobUrl = URL.createObjectURL(blob);
+        const mediaUrl = res.data?.url;
+        let mime = res.data?.mime || '';
+        if (!mime && mediaUrl) {
+          if (/\.(jpe?g|png|gif|webp|svg)($|\?)/i.test(mediaUrl)) mime = 'image/jpeg';
+          else if (/\.(mp4|webm|mov|ogg)($|\?)/i.test(mediaUrl)) mime = 'video/mp4';
+          else if (/\.(mp3|wav|ogg)($|\?)/i.test(mediaUrl)) mime = 'audio/mpeg';
+        }
 
-        setUrl(blobUrl);
-        setType(blob.type || '');
+        if (!mediaUrl) {
+          setError('Vision not found or signal was corrupted.');
+          return;
+        }
+
+        setUrl(mediaUrl);
+        setType(mime);
+        setWarnings(Array.isArray(res.data?.warnings) ? res.data.warnings : []);
       } catch (err) {
         console.error(err);
 
@@ -62,11 +73,8 @@ export default function MediaViewer() {
 
     return () => {
       cancelled = true;
-      if (blobUrl) URL.revokeObjectURL(blobUrl);
     };
   }, [id, navigate, user, authLoading]);
-
-
 
   if (error) {
     return (
@@ -77,7 +85,7 @@ export default function MediaViewer() {
         </header>
 
         <div className={s.errorBox}>
-          <h3 style={{ marginTop: 0 }}>💀 Signal Corrupted</h3>
+          <h3 style={{ marginTop: 0 }}>Signal Corrupted</h3>
           <p>{error}</p>
         </div>
 
@@ -87,7 +95,7 @@ export default function MediaViewer() {
             onClick={() => navigate('/premonitions')}
             className={s.refreshButton}
           >
-            ← Back to Premonitions
+            Back to Premonitions
           </button>
         </div>
       </main>
@@ -127,39 +135,85 @@ export default function MediaViewer() {
         </div>
 
         <div className={s.mediaContainer}>
-          {type?.startsWith('image') && (
-            <img
-              src={url}
-              alt="Premonition"
-              className={s.mediaContent}
-            />
-          )}
+          {!revealed ? (
+            <div className={s.warningGate}>
+              <div className={s.warningHeaderRow}>
+                <FaGlyph name="fa-triangle-exclamation" size={22} style={{ color: '#ff5c77' }} />
+                <span className={s.warningTitle}>Mature Content Warning</span>
+              </div>
+              <div className={s.warningSub}>
+                {warnings.length > 0
+                  ? 'This vision has been flagged with the following warnings:'
+                  : 'This vision may contain intense or graphic material'}
+              </div>
 
-          {type?.startsWith('video') && (
-            <video
-              src={url}
-              controls
-              playsInline
-              autoPlay
-              className={s.mediaContent}
-            />
-          )}
+              {warnings.length > 0 && (
+                <div className={s.warningBadgesRow}>
+                  {warnings.map((warn, i) => (
+                    <span key={i} className={s.warningBadgeChip}>
+                      {warn}
+                    </span>
+                  ))}
+                </div>
+              )}
 
-          {type?.startsWith('audio') && (
-            <div style={{ width: '100%', padding: '32px' }}>
-              <audio
-                src={url}
-                controls
-                autoPlay
-                style={{ width: '100%' }}
-              />
+              <button
+                type="button"
+                className={s.revealBtn}
+                onClick={() => setRevealed(true)}
+              >
+                <FaGlyph name="fa-eye" size={16} />
+                <span>Click to Reveal {type?.startsWith('video') ? 'Video' : 'Vision'}</span>
+              </button>
             </div>
-          )}
+          ) : (
+            <>
+              {type?.startsWith('image') && (
+                <img
+                  src={url}
+                  alt="Premonition"
+                  className={s.mediaContent}
+                />
+              )}
 
-          {!type && (
-            <div className={s.mediaError}>
-              Unknown media type.
-            </div>
+              {type?.startsWith('video') && (
+                <video
+                  src={url}
+                  controls
+                  playsInline
+                  autoPlay
+                  className={s.mediaContent}
+                />
+              )}
+
+              {type?.startsWith('audio') && (
+                <div style={{ width: '100%', padding: '32px' }}>
+                  <audio
+                    src={url}
+                    controls
+                    autoPlay
+                    style={{ width: '100%' }}
+                  />
+                </div>
+              )}
+
+              {!type && (
+                <div className={s.mediaError}>
+                  Unknown media type.
+                </div>
+              )}
+
+              <div style={{ textAlign: 'right', marginTop: 8, width: '100%' }}>
+                <button
+                  type="button"
+                  className={s.concealBtn}
+                  onClick={() => setRevealed(false)}
+                >
+                  <FaGlyph name="fa-eye-slash" size={12} />
+                  <span>Conceal Vision</span>
+                </button>
+              </div>
+            </>
           )}
         </div>
       </article>
@@ -170,7 +224,7 @@ export default function MediaViewer() {
           onClick={() => navigate('/premonitions')}
           className={s.refreshButton}
         >
-          ← Back to Premonitions
+          Back to Premonitions
         </button>
       </div>
       </main>

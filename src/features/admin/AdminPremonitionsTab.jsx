@@ -4,47 +4,20 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import s from "../../styles/AdminPremonitionsTab.module.css";
 import { Skeleton } from "boneyard-js/react";
 import { formatEuDate } from "../../utils/dateFormatter";
+import api, { formatApiError } from "../../core/api";
+import FaGlyph from "../../ui/FaGlyph";
 
-/**
- * API base:
- * - prefer Vite envs
- * - then CRA envs
- * - then dev fallback
- */
-const RAW_BASE =
-  (typeof import.meta !== "undefined" &&
-    import.meta.env &&
-    (import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_URL)) ||
-  "";
-
-// normalize (remove trailing slashes)
-const API_BASE = RAW_BASE ? RAW_BASE.replace(/\/+$/, "") : "";
-const AUTH_TOKEN_KEY = "token";
-
-// join helper that avoids /api/api/...
-function apiJoin(path) {
-  if (!API_BASE) return path; // relative fetch
-  if (API_BASE.endsWith("/api") && path.startsWith("/api/")) {
-    return `${API_BASE}${path.slice(4)}`; // cut the second /api
-  }
-  return `${API_BASE}${path}`;
-}
+const PRESET_WARNINGS = [
+  "Gore",
+  "Suicide",
+  "Extreme Violence",
+  "Infanticide",
+  "Sexual Content",
+  "Body Horror",
+  "Torture",
+];
 
 export default function AdminPremonitionsTab() {
-  const token = useMemo(
-    () => (typeof window !== "undefined" ? localStorage.getItem(AUTH_TOKEN_KEY) || "" : ""),
-    []
-  );
-  const headersObj = useMemo(
-    () => ({
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0'
-    }),
-    [token]
-  );
-
   // LEFT: Malkavians list / recipients
   const [list, setList] = useState([]); // Malkavians
   const [loading, setLoading] = useState(false);
@@ -58,6 +31,10 @@ export default function AdminPremonitionsTab() {
   const [selected, setSelected] = useState(new Set());
   const [allMalks, setAllMalks] = useState(false);
 
+  // Content Warnings state
+  const [selectedWarnings, setSelectedWarnings] = useState(new Set());
+  const [customWarning, setCustomWarning] = useState("");
+
   // Upload progress state
   const [isUploading, setIsUploading] = useState(false);
   const [pct, setPct] = useState(0);
@@ -66,7 +43,7 @@ export default function AdminPremonitionsTab() {
   const [etaSec, setEtaSec] = useState(null);
   const [speedBps, setSpeedBps] = useState(null);
   const startedAtRef = useRef(0);
-  const xhrRef = useRef(null);
+  const abortControllerRef = useRef(null);
 
   const fileInputRef = useRef();
 
@@ -75,47 +52,31 @@ export default function AdminPremonitionsTab() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyErr, setHistoryErr] = useState("");
 
-  // NEW: secure object URL cache for media preview/open
-  const objectUrlCache = useRef(new Map());
-  const createdUrls = useRef([]);
-  useEffect(() => {
-    // Copy the current value to a variable so it doesn't change
-    const urlsToRevoke = createdUrls.current;
-    return () => {
-      // revoke created object URLs on unmount
-      urlsToRevoke.forEach((u) => URL.revokeObjectURL(u));
-    };
-  }, []);
-
   // Load Malkavians
   useEffect(() => {
     (async () => {
       setLoading(true);
       setErr("");
       try {
-        const r = await fetch(apiJoin("/admin/premonitions/malkavians"), { headers: headersObj });
-        const j = await r.json().catch(() => ({}));
-        if (!r.ok) throw new Error(j?.error || `HTTP ${r.status}`);
-        setList(Array.isArray(j.malkavians) ? j.malkavians : []);
+        const res = await api.get("/admin/premonitions/malkavians");
+        setList(Array.isArray(res.data?.malkavians) ? res.data.malkavians : []);
       } catch (e) {
-        setErr(e.message || "Failed to load Malkavians");
+        setErr(formatApiError(e, "Failed to load Malkavians"));
       } finally {
         setLoading(false);
       }
     })();
-  }, [headersObj]);
+  }, []);
 
   // NEW: Load Admin History
   const fetchHistory = async () => {
     setHistoryLoading(true);
     setHistoryErr("");
     try {
-      const r = await fetch(apiJoin("/admin/premonitions"), { headers: headersObj });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(j?.error || `HTTP ${r.status}`);
-      setHistory(Array.isArray(j.premonitions) ? j.premonitions : []);
+      const res = await api.get("/admin/premonitions");
+      setHistory(Array.isArray(res.data?.premonitions) ? res.data.premonitions : []);
     } catch (e) {
-      setHistoryErr(e.message || "Failed to load history");
+      setHistoryErr(formatApiError(e, "Failed to load history"));
     } finally {
       setHistoryLoading(false);
     }
@@ -123,8 +84,7 @@ export default function AdminPremonitionsTab() {
 
   useEffect(() => {
     fetchHistory();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [headersObj]);
+  }, []);
 
   // Helpers
   const toggleOne = (id) => {
@@ -136,12 +96,30 @@ export default function AdminPremonitionsTab() {
     });
   };
 
+  const toggleWarning = (w) => {
+    setSelectedWarnings((prev) => {
+      const next = new Set(prev);
+      if (next.has(w)) next.delete(w);
+      else next.add(w);
+      return next;
+    });
+  };
+
+  const addCustomWarning = () => {
+    const trimmed = customWarning.trim();
+    if (!trimmed) return;
+    setSelectedWarnings((prev) => new Set([...prev, trimmed]));
+    setCustomWarning("");
+  };
+
   const clear = () => {
     setMode("text");
     setText("");
     setFile(null);
     setSelected(new Set());
     setAllMalks(false);
+    setSelectedWarnings(new Set());
+    setCustomWarning("");
     resetProgress();
   };
 
@@ -153,79 +131,61 @@ export default function AdminPremonitionsTab() {
     setEtaSec(null);
     setSpeedBps(null);
     startedAtRef.current = 0;
-    xhrRef.current = null;
+    abortControllerRef.current = null;
   };
 
   const abortUpload = () => {
     try {
-      xhrRef.current?.abort();
+      abortControllerRef.current?.abort();
     } catch {}
     resetProgress();
     setErr("Upload cancelled");
   };
 
-  // Upload with progress using XHR (fetch doesn't support upload progress)
-  const uploadWithProgress = (file) =>
-    new Promise((resolve, reject) => {
-      const fd = new FormData();
-      fd.append("file", file);
+  // Upload with progress using Axios and AbortController
+  const uploadWithProgress = async (fileToUpload) => {
+    const fd = new FormData();
+    fd.append("file", fileToUpload);
 
-      const xhr = new XMLHttpRequest();
-      xhrRef.current = xhr;
-      xhr.open("POST", apiJoin("/admin/premonitions/upload"), true);
-      if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
-      startedAtRef.current = performance.now();
-      setIsUploading(true);
-      setErr("");
+    startedAtRef.current = performance.now();
+    setIsUploading(true);
+    setErr("");
 
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) {
-          const loaded = e.loaded;
-          const total = e.total || file.size || 0;
-          setSentBytes(loaded);
-          setTotalBytes(total);
-          const p = total > 0 ? Math.round((loaded / total) * 100) : 0;
-          setPct(p);
+    try {
+      const res = await api.post("/admin/premonitions/upload", fd, {
+        signal: controller.signal,
+        onUploadProgress: (e) => {
+          if (e.lengthComputable || (e.total && e.loaded)) {
+            const loaded = e.loaded;
+            const total = e.total || fileToUpload.size || 0;
+            setSentBytes(loaded);
+            setTotalBytes(total);
+            const p = total > 0 ? Math.round((loaded / total) * 100) : 0;
+            setPct(p);
 
-          // speed & ETA
-          const dt = (performance.now() - startedAtRef.current) / 1000; // s
-          if (dt > 0) {
-            const bps = loaded / dt;
-            setSpeedBps(bps);
-            const remain = Math.max(0, total - loaded);
-            setEtaSec(bps > 0 ? Math.round(remain / bps) : null);
+            const dt = (performance.now() - startedAtRef.current) / 1000;
+            if (dt > 0) {
+              const bps = loaded / dt;
+              setSpeedBps(bps);
+              const remain = Math.max(0, total - loaded);
+              setEtaSec(bps > 0 ? Math.round(remain / bps) : null);
+            }
           }
-        }
-      };
-
-      xhr.onreadystatechange = () => {
-        if (xhr.readyState !== 4) return;
-        setIsUploading(false);
-        try {
-          const body = xhr.responseText || "{}";
-          const j = JSON.parse(body);
-          if (xhr.status >= 200 && xhr.status < 300) {
-            resolve(j); // { media_id, media_mime, media_stream_url }
-          } else {
-            reject(new Error(j?.error || `Upload failed (HTTP ${xhr.status})`));
-          }
-        } catch {
-          reject(new Error("Upload failed: invalid JSON response"));
-        }
-      };
-
-      xhr.onerror = () => {
-        setIsUploading(false);
-        reject(new Error("Network error during upload"));
-      };
-      xhr.onabort = () => {
-        setIsUploading(false);
-        reject(new Error("Upload aborted"));
-      };
-
-      xhr.send(fd);
-    });
+        },
+      });
+      return res.data; // { media_id, media_mime, media_stream_url }
+    } catch (err) {
+      if (controller.signal.aborted) {
+        throw new Error("Upload cancelled");
+      }
+      throw new Error(err.response?.data?.error || err.message || "Upload failed");
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const doSend = async () => {
     try {
@@ -250,44 +210,52 @@ export default function AdminPremonitionsTab() {
       if (!user_ids.length) throw new Error("Select recipients or use 'All Malkavians'.");
 
       // 3) Send the premonition
-      const r = await fetch(apiJoin("/admin/premonitions/send"), {
-        method: "POST",
-        headers: { ...headersObj, "Content-Type": "application/json" },
-        body: JSON.stringify({ content_type, content_text, content_url, user_ids }),
+      const res = await api.post("/admin/premonitions/send", {
+        content_type,
+        content_text,
+        content_url,
+        user_ids,
+        warnings: Array.from(selectedWarnings),
       });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+      const j = res.data;
 
-      alert(`✅ Sent! (${j.count} recipients)`);
+      alert(`Sent to ${j?.count ?? 0} recipients`);
       clear();
       // NEW: refresh history so the new item appears
       fetchHistory();
     } catch (e) {
-      setErr(e.message || "Send failed");
+      setErr(formatApiError(e, "Send failed"));
     }
   };
 
-  // NEW: open protected media with bearer auth
+  // Open media link safely (handles direct CDN URLs or backend redirection)
   async function openMediaWithAuth(url) {
     try {
-      if (url.startsWith('http://') || url.startsWith('https://')) {
+      if (url.startsWith("http://") || url.startsWith("https://")) {
         window.open(url, "_blank", "noopener");
         return;
       }
-      const abs = apiJoin(url);
-      if (objectUrlCache.current.has(abs)) {
-        window.open(objectUrlCache.current.get(abs), "_blank", "noopener");
-        return;
+      let endpoint = url;
+      if (endpoint.startsWith("/api/")) {
+        endpoint = endpoint.slice(4);
       }
-      const r = await fetch(abs, { headers: headersObj });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const blob = await r.blob();
-      const obj = URL.createObjectURL(blob);
-      objectUrlCache.current.set(abs, obj);
-      createdUrls.current.push(obj);
-      window.open(obj, "_blank", "noopener");
+      try {
+        const infoRes = await api.get(endpoint + (endpoint.includes("?") ? "&info=1" : "?info=1"));
+        if (infoRes.data?.url) {
+          const direct = infoRes.data.url;
+          if (direct.startsWith("http://") || direct.startsWith("https://")) {
+            window.open(direct, "_blank", "noopener");
+            return;
+          }
+        }
+      } catch {}
+
+      const rawBase = import.meta.env.VITE_API_URL || "";
+      const base = rawBase.replace(/\/+$/, "");
+      const fullUrl = url.startsWith("http") ? url : `${base}${url.startsWith("/") ? "" : "/"}${url}`;
+      window.open(fullUrl, "_blank", "noopener");
     } catch (e) {
-      alert(`Unable to open media: ${e.message}`);
+      alert(`Unable to open media: ${formatApiError(e)}`);
     }
   }
 
@@ -320,7 +288,7 @@ export default function AdminPremonitionsTab() {
         </div>
 
         {loading && <Skeleton loading={true} name="admin-premonitions-loader" />}
-        {err && <div className={s.error}>⚠️ {err}</div>}
+        {err && <div className={s.error}>{err}</div>}
 
         {!loading && !err && (
           <ul className={s.recipientsList}>
@@ -450,6 +418,76 @@ export default function AdminPremonitionsTab() {
           </div>
         )}
 
+        {/* Content Warnings selection */}
+        <div className={s.warningsSection}>
+          <div className={s.warningsTitle}>
+            <FaGlyph name="fa-triangle-exclamation" size={14} style={{ color: "#e5a93b" }} />
+            <span>Content Warnings (Optional)</span>
+          </div>
+          <div className={s.warningsSubtitle}>
+            Select all applicable sensitive content warnings for Malkavian viewers:
+          </div>
+          <div className={s.presetGrid}>
+            {PRESET_WARNINGS.map((warn) => {
+              const active = selectedWarnings.has(warn);
+              return (
+                <button
+                  key={warn}
+                  type="button"
+                  onClick={() => toggleWarning(warn)}
+                  className={`${s.warningChipBtn} ${active ? s.warningChipBtnActive : ""}`}
+                >
+                  {warn}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className={s.customWarningRow}>
+            <input
+              type="text"
+              placeholder="Add custom warning..."
+              value={customWarning}
+              onChange={(e) => setCustomWarning(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addCustomWarning();
+                }
+              }}
+              className={s.customWarningInput}
+            />
+            <button
+              type="button"
+              onClick={addCustomWarning}
+              className={`${s.btn} ${s.btnSecondary}`}
+            >
+              Add Warning
+            </button>
+          </div>
+
+          {selectedWarnings.size > 0 && (
+            <div className={s.selectedWarningsSummary}>
+              <span style={{ color: "#888", fontSize: "0.8rem" }}>Active warnings:</span>
+              <div className={s.selectedTagsRow}>
+                {Array.from(selectedWarnings).map((w) => (
+                  <span key={w} className={s.activeWarningBadge}>
+                    {w}
+                    <button
+                      type="button"
+                      onClick={() => toggleWarning(w)}
+                      className={s.removeWarningBtn}
+                      title="Remove warning"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* NEW: History panel */}
         <div className={s.historyPanel}>
           <div className={s.historyHeader}>
@@ -465,7 +503,7 @@ export default function AdminPremonitionsTab() {
             <span className={s.historyMeta}>{history.length} items</span>
           </div>
 
-          {historyErr && <div className={s.error}>⚠️ {historyErr}</div>}
+          {historyErr && <div className={s.error}>{historyErr}</div>}
           {historyLoading && <Skeleton loading={true} name="admin-history-loader" />}
 
           {!historyLoading && !historyErr && (
@@ -496,6 +534,17 @@ export default function AdminPremonitionsTab() {
                       Open {h.content_type}
                     </button>
                   ) : null}
+
+                  {h.warnings && h.warnings.length > 0 && (
+                    <div className={s.historyWarningsRow}>
+                      <span className={s.historyWarningLabel}>Warnings:</span>
+                      {h.warnings.map((warn, i) => (
+                        <span key={i} className={s.historyWarningTag}>
+                          {warn}
+                        </span>
+                      ))}
+                    </div>
+                  )}
 
                   <div className={s.historyRecipients}>
                     <div className={s.historyRecipientsTitle}>Recipients</div>

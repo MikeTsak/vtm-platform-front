@@ -1,9 +1,10 @@
-// src/pages/Premonitions.jsx
 import React, { useEffect, useMemo, useRef, useState, useContext, useCallback } from "react";
 import { AuthCtx } from "../../core/AuthContext";
 import AdminPremonitionsTab from "../admin/AdminPremonitionsTab";
 import s from "../../styles/Premonitions.module.css";
 import { Skeleton } from "boneyard-js/react";
+import api, { formatApiError } from "../../core/api";
+import FaGlyph from "../../ui/FaGlyph";
 
 /**
  * API base helper
@@ -17,7 +18,6 @@ const RAW_BASE =
   "";
 
 const API_BASE = RAW_BASE ? RAW_BASE.replace(/\/+$/, "") : "";
-const AUTH_TOKEN_KEY = "token";
 
 function apiJoin(path) {
   if (!API_BASE) return path;
@@ -31,7 +31,7 @@ const isDbMediaUrl = (u) => {
   if (!u) return false;
   try {
     const rel = u.startsWith("/") ? u : new URL(u, window.location.origin).pathname;
-    return /\/api\/premonitions\/media\/\d+/.test(rel);
+    return /(?:\/api)?\/premonitions\/media\/\d+/.test(rel);
   } catch {
     return false;
   }
@@ -71,54 +71,15 @@ function PlayerPremonitions() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
-  
-  // Cache allows us to keep URLs active while navigating the list, 
-  // but we won't load them all at once anymore.
-  const objectUrlCache = useRef(new Map());
-  const createdUrls = useRef([]);
-  const token = useMemo(() => localStorage.getItem(AUTH_TOKEN_KEY) || "", []);
-
-  // Cleanup object URLs on unmount
-  useEffect(() => {
-    // Copy the current values to variables so they don't change
-    const urlsToRevoke = createdUrls.current;
-    const cache = objectUrlCache.current;
-    return () => {
-      urlsToRevoke.forEach((u) => URL.revokeObjectURL(u));
-      urlsToRevoke.length = 0;
-      cache.clear();
-    };
-  }, []);
-
-  const parseJsonSafely = async (r) => {
-    const ct = (r.headers.get("content-type") || "").toLowerCase();
-    if (!ct.includes("application/json")) {
-      await r.text();
-      throw new Error(`Unexpected response: ${r.status}`);
-    }
-    return r.json();
-  };
 
   const fetchMine = async () => {
     setLoading(true);
     setErr("");
     try {
-      const r = await fetch(apiJoin("/premonitions/mine"), {
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        },
-      });
-      if (!r.ok) {
-        const errJson = await parseJsonSafely(r).catch(() => ({}));
-        throw new Error(errJson.error || errJson.message || `HTTP ${r.status}`);
-      }
-      const j = await parseJsonSafely(r);
-      setItems(Array.isArray(j.premonitions) ? j.premonitions : []);
+      const res = await api.get("/premonitions/mine");
+      setItems(Array.isArray(res.data?.premonitions) ? res.data.premonitions : []);
     } catch (e) {
-      setErr(e.message || "Failed to load premonitions");
+      setErr(formatApiError(e, "Failed to load premonitions"));
     } finally {
       setLoading(false);
     }
@@ -126,37 +87,11 @@ function PlayerPremonitions() {
 
   useEffect(() => {
     fetchMine();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleRefresh = async () => {
-    // Clear cache on manual refresh
-    createdUrls.current.forEach((u) => URL.revokeObjectURL(u));
-    createdUrls.current.length = 0;
-    objectUrlCache.current.clear();
     await fetchMine();
   };
-
-  // Shared fetcher passed to children
-  const fetchMediaBlob = useCallback(async (contentUrl, itemId) => {
-    // Return cached if exists
-    if (objectUrlCache.current.has(itemId)) {
-      return objectUrlCache.current.get(itemId);
-    }
-
-    const url = qualifyUrl(contentUrl);
-    const r = await fetch(url, {
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-    });
-    if (!r.ok) throw new Error("Failed to load media");
-    
-    const blob = await r.blob();
-    const objUrl = URL.createObjectURL(blob);
-    
-    objectUrlCache.current.set(itemId, objUrl);
-    createdUrls.current.push(objUrl);
-    return objUrl;
-  }, [token]);
 
   return (
     <Skeleton loading={loading} name="premonitions-page">
@@ -188,7 +123,6 @@ function PlayerPremonitions() {
               key={it.id}
               item={it}
               index={index}
-              fetchMediaBlob={fetchMediaBlob}
             />
           ))}
         </div>
@@ -197,12 +131,12 @@ function PlayerPremonitions() {
   );
 }
 
-// === Individual Item with Lazy Loading ===
-function PremonitionItem({ item, index, fetchMediaBlob }) {
-  const [prevContentUrl, setPrevContentUrl] = useState(item.content_url);
-  const [src, setSrc] = useState(null);
-  const [status, setStatus] = useState("idle"); // idle | loading | loaded | error
-  const cardRef = useRef(null);
+// === Individual Item with Direct Streaming / Loading ===
+function PremonitionItem({ item, index }) {
+  const [revealed, setRevealed] = useState(false);
+  const [imgStatus, setImgStatus] = useState("loading"); // loading | loaded | error
+  const [videoStatus, setVideoStatus] = useState("idle"); // idle | playing | error
+  const imgRef = useRef(null);
 
   const when = useMemo(() => {
     try { return new Date(item.created_at).toLocaleString(); } 
@@ -210,60 +144,32 @@ function PremonitionItem({ item, index, fetchMediaBlob }) {
   }, [item.created_at]);
 
   const kind = item.content_type;
-  const isMedia = (kind === "image" || kind === "video") && item.content_url;
-  const isDbMedia = isMedia && isDbMediaUrl(item.content_url);
+  const isMedia = (kind === "image" || kind === "video") && !!item.content_url;
+  const mediaUrl = isMedia ? qualifyUrl(item.content_url) : null;
+  const warningsList = Array.isArray(item.warnings) ? item.warnings : [];
+  const hasWarnings = warningsList.length > 0;
 
-  // ✅ Inline prop comparison to adjust state immediately during render
-  if (item.content_url !== prevContentUrl) {
-    setPrevContentUrl(item.content_url);
-    if (isMedia && !isDbMedia) {
-      setSrc(qualifyUrl(item.content_url));
-      setStatus("loaded");
-    } else {
-      setSrc(null);
-      setStatus("idle");
-    }
-  }
-
-  // Trigger load logic
-  const loadMedia = useCallback(async () => {
-    if (!isDbMedia || status === "loaded" || status === "loading") return;
-
-    setStatus("loading");
-    try {
-      const url = await fetchMediaBlob(item.content_url, item.id);
-      setSrc(url);
-      setStatus("loaded");
-    } catch (e) {
-      console.error(e);
-      setStatus("error");
-    }
-  }, [isDbMedia, item.content_url, item.id, status, fetchMediaBlob]);
-
-  // Effect: Lazy Load Images (Load when scrolled into view)
+  // Active preload to prevent browser stalled loading
   useEffect(() => {
-    if (!isDbMedia || kind !== "image" || status !== "idle") return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          loadMedia();
-          observer.disconnect();
+    if (revealed && kind === "image" && mediaUrl) {
+      setImgStatus("loading");
+      const img = new Image();
+      img.src = mediaUrl;
+      if (img.complete) {
+        if (img.naturalWidth > 0) {
+          setImgStatus("loaded");
+        } else {
+          setImgStatus("error");
         }
-      },
-      { threshold: 0.1 } // Load when 10% visible
-    );
-
-    if (cardRef.current) observer.observe(cardRef.current);
-    return () => observer.disconnect();
-  }, [kind, isDbMedia, status, loadMedia]);
-
-  // ✅ The old useEffect for external links has been completely removed 
-  // because the inline check above handles it synchronously!
+      } else {
+        img.onload = () => setImgStatus("loaded");
+        img.onerror = () => setImgStatus("error");
+      }
+    }
+  }, [revealed, kind, mediaUrl]);
 
   return (
     <article 
-      ref={cardRef} 
       className={s.visionCard} 
       style={{ '--n': index + 1 }}
     >
@@ -272,76 +178,165 @@ function PremonitionItem({ item, index, fetchMediaBlob }) {
         <time className={s.visionTime}>{when}</time>
       </div>
 
+      {/* TEXT CONTENT HANDLING */}
       {kind === "text" && (
         <div className={s.visionBody}>
-          <div className={s.visionText}>
-            {(item.content_text || "").split("\n").map((ln, i) => (
-              <p key={i}>{ln}</p>
-            ))}
-          </div>
+          {hasWarnings && !revealed ? (
+            <div className={s.warningGate}>
+              <div className={s.warningHeaderRow}>
+                <FaGlyph name="fa-triangle-exclamation" size={18} style={{ color: "#ff5c77" }} />
+                <span className={s.warningTitle}>Mature Content Warning</span>
+              </div>
+              <div className={s.warningSub}>
+                This vision has been flagged with the following warnings:
+              </div>
+              <div className={s.warningBadgesRow}>
+                {warningsList.map((warn, i) => (
+                  <span key={i} className={s.warningBadgeChip}>
+                    {warn}
+                  </span>
+                ))}
+              </div>
+              <button
+                type="button"
+                className={s.revealBtn}
+                onClick={() => setRevealed(true)}
+              >
+                <FaGlyph name="fa-eye" size={15} />
+                <span>Click to Reveal Text</span>
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className={s.visionText}>
+                {(item.content_text || "").split("\n").map((ln, i) => (
+                  <p key={i}>{ln}</p>
+                ))}
+              </div>
+              {hasWarnings && revealed && (
+                <div style={{ textAlign: "right", marginTop: 4 }}>
+                  <button
+                    type="button"
+                    className={s.concealBtn}
+                    onClick={() => setRevealed(false)}
+                  >
+                    <FaGlyph name="fa-eye-slash" size={12} />
+                    <span>Conceal Vision</span>
+                  </button>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
 
+      {/* MEDIA CONTENT HANDLING */}
       {isMedia && (
         <div className={s.mediaContainer}>
-          {/* IMAGE HANDLING */}
-          {kind === "image" && (
-            <>
-              {status === "loaded" && src ? (
-                <img src={src} alt="Premonition" className={s.mediaContent} />
-              ) : status === "error" ? (
-                <div className={s.mediaError}>Signal Corrupted</div>
-              ) : (
-                <div className={s.mediaLoading}>
-                  <div className={s.glitchText}>Receiving Image...</div>
+          {!revealed ? (
+            <div className={s.warningGate}>
+              <div className={s.warningHeaderRow}>
+                <FaGlyph name="fa-triangle-exclamation" size={18} style={{ color: "#ff5c77" }} />
+                <span className={s.warningTitle}>Mature Content Warning</span>
+              </div>
+              <div className={s.warningSub}>
+                {hasWarnings
+                  ? "This vision has been flagged with the following warnings:"
+                  : "This vision may contain intense or graphic material"}
+              </div>
+
+              {hasWarnings && (
+                <div className={s.warningBadgesRow}>
+                  {warningsList.map((warn, i) => (
+                    <span key={i} className={s.warningBadgeChip}>
+                      {warn}
+                    </span>
+                  ))}
                 </div>
               )}
-            </>
-          )}
 
-          {/* VIDEO HANDLING - CLICK TO LOAD */}
-          {kind === "video" && (
+              <button
+                type="button"
+                className={s.revealBtn}
+                onClick={() => {
+                  setRevealed(true);
+                  if (kind === "video") setVideoStatus("playing");
+                }}
+              >
+                <FaGlyph name="fa-eye" size={15} />
+                <span>Click to Reveal {kind === "video" ? "Video" : "Image"}</span>
+              </button>
+            </div>
+          ) : (
             <>
-              {status === "loaded" && src ? (
-                <video src={src} controls playsInline autoPlay className={s.mediaContent} />
-              ) : status === "error" ? (
-                <div className={s.mediaError}>Video Signal Lost</div>
-              ) : (
-                // Click placeholder to prevent massive auto-download
-                <div 
-                  className={s.videoPlaceholder} 
-                  onClick={loadMedia}
-                  style={{ 
-                    cursor: 'pointer', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    flexDirection: 'column',
-                    padding: '2rem',
-                    background: 'rgba(0,0,0,0.3)',
-                    border: '1px dashed #444'
-                  }}
-                >
-                  {status === "loading" ? (
-                    <Skeleton loading={true} name="premonition-video-loader">
-                      <div style={{ width: '100px', height: '100px' }}></div>
-                    </Skeleton>
+              {/* IMAGE HANDLING */}
+              {kind === "image" && mediaUrl && (
+                <>
+                  {imgStatus === "error" ? (
+                    <div className={s.mediaError}>Signal Corrupted</div>
                   ) : (
                     <>
-                      <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>▶</div>
-                      <div>Tap to Decode Video</div>
-                      <div style={{ fontSize: '0.8rem', color: '#888' }}>(Saves Bandwidth)</div>
+                      {imgStatus !== "loaded" && (
+                        <div className={s.mediaLoading}>
+                          <div className={s.glitchText}>Receiving Image...</div>
+                        </div>
+                      )}
+                      <img
+                        ref={imgRef}
+                        src={mediaUrl}
+                        alt="Premonition"
+                        className={s.mediaContent}
+                        style={
+                          imgStatus !== "loaded"
+                            ? { opacity: 0, position: "absolute", width: "100%", pointerEvents: "none" }
+                            : undefined
+                        }
+                        onLoad={() => setImgStatus("loaded")}
+                        onError={() => setImgStatus("error")}
+                      />
                     </>
                   )}
-                </div>
+                </>
               )}
+
+              {/* VIDEO HANDLING */}
+              {kind === "video" && mediaUrl && (
+                <>
+                  {videoStatus === "error" ? (
+                    <div className={s.mediaError}>Video Signal Lost</div>
+                  ) : (
+                    <video
+                      src={mediaUrl}
+                      controls
+                      playsInline
+                      autoPlay
+                      className={s.mediaContent}
+                      onError={() => setVideoStatus("error")}
+                    />
+                  )}
+                </>
+              )}
+
+              <div style={{ textAlign: "right", marginTop: 4, width: "100%" }}>
+                <button
+                  type="button"
+                  className={s.concealBtn}
+                  onClick={() => {
+                    setRevealed(false);
+                    if (kind === "video") setVideoStatus("idle");
+                  }}
+                >
+                  <FaGlyph name="fa-eye-slash" size={12} />
+                  <span>Conceal Vision</span>
+                </button>
+              </div>
             </>
           )}
         </div>
       )}
 
-      {/* External Link Button */}
-      {item.content_url && !isDbMedia && kind !== "text" && (
+      {/* External Link Button (only if not image/video media) */}
+      {item.content_url && kind !== "image" && kind !== "video" && (
         <div className={s.visionBody}>
           <a
             href={qualifyUrl(item.content_url)}

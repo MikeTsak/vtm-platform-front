@@ -333,3 +333,143 @@
   border-color: #a66;
   background: #421f1f;
 }
+
+/* Content Warnings */
+.warningsSection {
+  margin-top: 14px;
+  padding: 12px;
+  background: #15131a;
+  border: 1px solid #36293d;
+  border-radius: 8px;
+}
+
+.warningsTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #eeddf5;
+  margin-bottom: 4px;
+}
+
+.warningsSubtitle {
+  font-size: 0.8rem;
+  color: #9f93aa;
+  margin-bottom: 10px;
+}
+
+.presetGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.warningChipBtn {
+  background: #201a26;
+  border: 1px solid #4a3857;
+  color: #cfc2db;
+  border-radius: 16px;
+  padding: 4px 12px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.warningChipBtn:hover {
+  border-color: #8755a3;
+  color: #fff;
+}
+
+.warningChipBtnActive {
+  background: #541926;
+  border-color: #a83248;
+  color: #ffccd5;
+  font-weight: 600;
+}
+
+.customWarningRow {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.customWarningInput {
+  flex: 1;
+  background: #0f0c13;
+  border: 1px solid #3d3047;
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: #eee;
+  font-size: 0.85rem;
+}
+
+.customWarningInput:focus {
+  outline: none;
+  border-color: #8755a3;
+}
+
+.selectedWarningsSummary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px dashed #3d3047;
+}
+
+.selectedTagsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.activeWarningBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #4a1420;
+  border: 1px solid #94293f;
+  color: #ffd6df;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.removeWarningBtn {
+  background: none;
+  border: none;
+  color: #ff99aa;
+  cursor: pointer;
+  padding: 0;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.removeWarningBtn:hover {
+  color: #fff;
+}
+
+.historyWarningsRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.historyWarningLabel {
+  font-size: 0.75rem;
+  color: #d48293;
+  font-weight: 600;
+}
+
+.historyWarningTag {
+  background: #3d141e;
+  border: 1px solid #732235;
+  color: #ffc2cd;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+}
