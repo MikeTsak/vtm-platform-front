@@ -1,4 +1,4 @@
-import React, { useContext, useRef, useState, lazy, Suspense } from 'react';
+import React, { useContext, useRef, useState, useMemo, lazy, Suspense } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { AuthCtx } from '../../core/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
@@ -8,6 +8,8 @@ import * as z from 'zod';
 import { useMutation } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import FaGlyph from '../../ui/FaGlyph';
+import { checkEmailTypo } from '../../utils/emailTypo';
 const Terms = lazy(() => import('../../pages/Terms'));
 const Privacy = lazy(() => import('../../pages/Privacy'));
 import styles from '../../styles/auth/Login.module.css';
@@ -44,6 +46,8 @@ export default function Register() {
     register,
     handleSubmit,
     setError,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(registerSchema),
@@ -54,6 +58,10 @@ export default function Register() {
       agreedToTerms: false,
     },
   });
+
+  const watchedEmail = watch('email');
+  const typoWarning = useMemo(() => checkEmailTypo(watchedEmail), [watchedEmail]);
+  const [acknowledgedEmail, setAcknowledgedEmail] = useState('');
 
   const registerMutation = useMutation({
     mutationFn: async (data) => {
@@ -83,7 +91,18 @@ export default function Register() {
   });
 
   const onSubmit = async (data) => {
+    // If a typo warning is present and the user has not confirmed this exact email yet, prompt confirmation
+    if (typoWarning && acknowledgedEmail !== data.email.trim().toLowerCase()) {
+      setAcknowledgedEmail(data.email.trim().toLowerCase());
+      toast.warning(`Did you mean ${typoWarning.suggestedDomain}? Click Register again to proceed with this email.`);
+      return;
+    }
     registerMutation.mutate(data);
+  };
+
+  const handleApplySuggestion = (suggestedEmail) => {
+    setValue('email', suggestedEmail, { shouldValidate: true, shouldDirty: true });
+    setAcknowledgedEmail('');
   };
 
   const toggleShowPwd = () => {
@@ -137,6 +156,44 @@ export default function Register() {
               autoComplete="email"
               {...register('email')}
             />
+            {typoWarning && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  flexWrap: 'wrap',
+                  marginTop: '0.35rem',
+                  fontSize: '0.82rem',
+                  color: '#fbbf24',
+                  background: 'rgba(251, 191, 36, 0.08)',
+                  border: '1px solid rgba(251, 191, 36, 0.25)',
+                  borderRadius: '6px',
+                  padding: '0.35rem 0.6rem',
+                }}
+              >
+                <FaGlyph name="fa-triangle-exclamation" size={13} style={{ color: '#fbbf24', flexShrink: 0 }} />
+                <span>Did you mean <strong>{typoWarning.suggestedDomain}</strong>?</span>
+                <button
+                  type="button"
+                  onClick={() => handleApplySuggestion(typoWarning.suggestedEmail)}
+                  style={{
+                    background: 'rgba(251, 191, 36, 0.2)',
+                    border: '1px solid rgba(251, 191, 36, 0.4)',
+                    color: '#fef3c7',
+                    borderRadius: '4px',
+                    padding: '0.15rem 0.5rem',
+                    fontSize: '0.78rem',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                  }}
+                  data-cuelume-press
+                  data-cuelume-hover
+                >
+                  Use {typoWarning.suggestedEmail}
+                </button>
+              </div>
+            )}
             {errors.email && <span style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>{errors.email.message}</span>}
           </div>
 
