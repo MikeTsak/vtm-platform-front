@@ -176,44 +176,6 @@ export const COTERIE_MERITS = {
     desc: 'A fleet of luxury vehicles with drivers rated Driving 6, available on short notice. Once per story, call in something rare (a helicopter, a bulletproof SUV) for the night.',
   },
 
-  /* --- Chasse Merits --- */
-  apartment_towers: {
-    name: 'Apartment Towers', min: 2, max: 2, group: 'chasse', trait: 'chasse',
-    resonance: 'All', desc: 'Dense residential blocks. Extortionist predators gain +1 die hunting; high turnover subtracts 1 die from the domain’s Portillon.',
-  },
-  back_alleys: {
-    name: 'Back Alleys', min: 2, max: 2, group: 'chasse', trait: 'chasse',
-    resonance: 'Phlegmatic', desc: 'Alley Cat and Montero predators gain +1 die. Animalism pools for rat-spying within the domain gain +1 die.',
-  },
-  funerary: {
-    name: 'Funerary', min: 1, max: 1, group: 'chasse', trait: 'chasse',
-    resonance: 'Melancholy', desc: 'Cemeteries, funeral homes, morgues. Bagger and Graverobber predators gain +1 die; lose 1 die on Social pools against high-clan snobs.',
-  },
-  gated_community: {
-    name: 'Gated Community', min: 2, max: 2, group: 'chasse', trait: 'chasse',
-    resonance: 'Melancholy', desc: 'Wealthy residential streets. Larceny Difficulty equals resident Resources; Sandman predators gain +1 die once inside.',
-  },
-  hospital: {
-    name: 'Hospital', min: 2, max: 2, group: 'chasse', trait: 'chasse',
-    resonance: 'Melancholy / Phlegmatic', desc: 'Bagger, Consensualist, Grim Reaper and Trapdoor predators gain +1 die. Hunters gain +1 die infiltrating.',
-  },
-  nightlife: {
-    name: 'Nightlife', min: 3, max: 3, group: 'chasse', trait: 'chasse',
-    resonance: 'Choleric / Sanguine', desc: 'Montero, Pursuer, Scene Queen, Siren and Trapdoor predators gain +1 die. Any 1 rolled means the blood is tainted with drink or drugs. Government and crime Influence gains +1 dot here.',
-  },
-  shelter: {
-    name: 'Shelter', min: 2, max: 2, group: 'chasse', trait: 'chasse',
-    resonance: 'Choleric / Melancholy', desc: 'Alley Cat and Sandman predators gain +1 die. Any 1 rolled means tainted blood.',
-  },
-  built_in_flock: {
-    name: 'Built-In Flock', min: 1, max: 1, group: 'chasse', trait: 'chasse',
-    desc: 'A cult front draws mortals in. Once a week, reduce hunting Difficulty by 1.',
-  },
-  mithraeum: {
-    name: 'Mithraeum', min: 2, max: 2, group: 'chasse', trait: 'chasse',
-    desc: 'The domain overlaps a cult protection racket. The coterie gains two swappable Haven Merit dots per story from cult resources.',
-  },
-
   /* --- Lien Merits --- */
   campus: {
     name: 'Campus', min: 3, max: 3, group: 'lien', trait: 'lien',
@@ -339,9 +301,13 @@ export const COTERIE_MERITS = {
 
 export const COTERIE_MERIT_KEYS = Object.keys(COTERIE_MERITS);
 
+export const CHASSE_MERIT_KEYS = new Set([
+  'apartment_towers', 'back_alleys', 'funerary', 'gated_community',
+  'hospital', 'nightlife', 'shelter', 'built_in_flock', 'mithraeum'
+]);
+
 export const MERIT_GROUPS = [
   { key: 'general', label: 'General Coterie Merits', hint: 'Available to any coterie.' },
-  { key: 'chasse', label: 'Chasse Merits', hint: 'Features of the hunting ground. Needs Chasse •+.' },
   { key: 'lien', label: 'Lien Merits', hint: 'Institutions the coterie is woven into. Needs Lien •+.' },
   { key: 'portillon', label: 'Portillon Merits', hint: 'Defensive assets. Needs Portillon •+.' },
   { key: 'clan', label: 'Clan Coterie Merits', hint: 'Needs a member of that clan.' },

@@ -883,6 +883,7 @@
 
 /* per-row accent colour (drives label + state + hover + swatches) */
 .layerRow[data-accent="slate"]    { --row-accent: #cbd5e1; }
+.layerRow[data-accent="coteries"] { --row-accent: #38bdf8; }
 .layerRow[data-accent="transit"]  { --row-accent: #7fd4e0; }
 .layerRow[data-accent="catacombs"]{ --row-accent: #e6d5a8; }
 .layerRow[data-accent="necro"]    { --row-accent: #d6ddc8; }
@@ -2421,4 +2422,136 @@
   .hoverTip {
     display: none;
   }
+}
+
+/* ── Holding Coterie Dossier Card ── */
+.coterieCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: color-mix(in srgb, #0284c7 10%, var(--bg-color));
+  border: 1px solid color-mix(in srgb, #38bdf8 35%, transparent);
+}
+
+.coterieHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.coterieNameRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.coterieIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #38bdf8;
+  flex-shrink: 0;
+}
+
+.coterieName {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.coterieTypeTag {
+  font-family: 'Courier New', monospace;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, #38bdf8 18%, transparent);
+  border: 1px solid color-mix(in srgb, #38bdf8 38%, transparent);
+  color: #7dd3fc;
+  flex-shrink: 0;
+}
+
+.coterieConcept {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.coterieTraitsRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding-top: 4px;
+  border-top: 1px solid color-mix(in srgb, #38bdf8 20%, transparent);
+}
+
+.coterieTrait {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.coterieTraitLabel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.coterieTraitDots {
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  color: #38bdf8;
+}
+
+.coterieRosterBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-top: 4px;
+  border-top: 1px solid color-mix(in srgb, #38bdf8 15%, transparent);
+}
+
+.coterieRosterLabel {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.coterieMembersList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.coterieMemberChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--surface-color, #18181b) 70%, transparent);
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+}
+
+.coterieMemberClan {
+  font-size: 0.64rem;
+  color: #94a3b8;
 }

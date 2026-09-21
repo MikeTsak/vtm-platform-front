@@ -111,6 +111,13 @@ function loadMasqBadge() {
   try { return localStorage.getItem(MASQ_BADGE_LS_KEY) !== '0'; } catch (_) { return true; }
 }
 
+// ── Coterie domains overlay ────────────────────────────────
+const COTERIE_ACCENT_COLOR = '#38bdf8'; // vivid sky cyan
+const COTERIE_DOMAINS_LS_KEY = 'domains.coteries.v1';
+function loadCoterieDomains() {
+  try { return localStorage.getItem(COTERIE_DOMAINS_LS_KEY) !== '0'; } catch (_) { return true; }
+}
+
 // ── Catacombs overlay (ADMIN ONLY) ────────────────────────
 const CATACOMBS_LS_KEY = 'domains.catacombs.v1';
 const CATACOMBS_DEFAULT_PREFS = {
@@ -205,6 +212,12 @@ function HuntDroplets({ n, size = 13, showNumber = false }) {
     </span>
   );
 }
+
+// ── Font Awesome Users icon ({ viewBox, path }) for Coteries ──
+const FA_USERS_ICON = {
+  viewBox: '0 0 640 512',
+  path: 'M144 0a80 80 0 1 1 0 160A80 80 0 1 1 144 0zM512 0a80 80 0 1 1 0 160A80 80 0 1 1 512 0zM0 298.7C0 239.8 47.8 192 106.7 192h74.7c58.9 0 106.7 47.8 106.7 106.7V352c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32V298.7zM496 416c0-17.7-14.3-32-32-32H384c-17.7 0-32 14.3-32 32v32c0 35.3 28.7 64 64 64h48c17.7 0 32-14.3 32-32v-64zm144-117.3V352c0 17.7-14.3 32-32 32H448c-8.8 0-16-7.2-16-16s7.2-16 16-16h160v-53.3c0-41.2-33.5-74.7-74.7-74.7H458.7c-5.9 0-11.6 .7-17 2c-3.1-9.9-7.7-19.1-13.4-27.4c9.3-4.2 19.6-6.6 30.4-6.6h74.7c58.9 0 106.7 47.8 106.7 106.7z',
+};
 
 // ── Inline Font Awesome glyph ({ viewBox, path }) ─────────
 function FaGlyph({ icon, size = 16, className }) {
@@ -904,6 +917,13 @@ export default function Domains() {
   }, [masqBadgeOn]);
   const toggleMasqBadge = useCallback(() => setMasqBadgeOn(v => !v), []);
 
+  // ── Coterie domains overlay toggle ──
+  const [coteriesOn, setCoteriesOn] = useState(loadCoterieDomains);
+  useEffect(() => {
+    try { localStorage.setItem(COTERIE_DOMAINS_LS_KEY, coteriesOn ? '1' : '0'); } catch (_) { /* noop */ }
+  }, [coteriesOn]);
+  const toggleCoteries = useCallback(() => setCoteriesOn(v => !v), []);
+
   // ── Dynamic GeoJSON Loading ──
   const { data: domainsRaw, isLoading: isDomainsGeoLoading } = useQuery({
     queryKey: ['domains-geojson'],
@@ -988,6 +1008,14 @@ export default function Domains() {
     queryFn: async () => {
       const res = await api.get('/domain-claims/requests');
       return res.data;
+    }
+  });
+
+  const { data: coteriesData } = useQuery({
+    queryKey: ['coteries-all'],
+    queryFn: async () => {
+      const res = await api.get('/coteries/all');
+      return res.data?.coteries || [];
     }
   });
 
@@ -1729,6 +1757,19 @@ export default function Domains() {
     return { geoJsonData: { ...domainsRaw, features }, allDomainsList: domains };
   }, [claims, pendingCountByDivision, domainsRaw]);
 
+  const coteriesList = useMemo(() => coteriesData || [], [coteriesData]);
+  const coteriesByDivision = useMemo(() => {
+    const map = new Map();
+    for (const c of coteriesList) {
+      if (c.domain_id != null) {
+        const divNum = Number(c.domain_id);
+        if (!map.has(divNum)) map.set(divNum, []);
+        map.get(divNum).push(c);
+      }
+    }
+    return map;
+  }, [coteriesList]);
+
   const claimByDiv = useMemo(() => new Map(claims.map(c => [Number(c.division), c])), [claims]);
 
   // Re-derived from geoJsonData (not a click-time snapshot) so the dossier
@@ -1744,6 +1785,7 @@ export default function Domains() {
     if (!selectedFeature) return null;
     const p = selectedFeature.properties;
     const popInfo = DIVISION_POPULATIONS[p.__division];
+    const divisionCoteries = coteriesByDivision.get(p.__division) || [];
     return {
       number: p.__division,
       name: p.__name,
@@ -1759,6 +1801,7 @@ export default function Domains() {
       safety_rating: p.safetyRating,
       hunting_difficulty: p.huntingDifficulty,
       chasse: getDivisionChasse(p.__division),
+      coteries: divisionCoteries,
       claimed_at: p.claimedAt,
       previous_owner_name: p.previousOwnerName,
       previous_claimed_at: p.previousClaimedAt,
@@ -1767,7 +1810,7 @@ export default function Domains() {
         siblings: (POPULATION_GROUP_MEMBERS[popInfo.group] || []).filter(n => n !== p.__division),
       } : null,
     };
-  }, [selectedFeature]);
+  }, [selectedFeature, coteriesByDivision]);
 
 
 
@@ -1983,6 +2026,28 @@ export default function Domains() {
       return { position: [(minLng + maxLng) / 2, (minLat + maxLat) / 2] };
     });
   }, [npcFeatures]);
+
+  // ── Coterie domain features and map badges ──
+  const coterieFeatures = useMemo(() => {
+    if (!geoJsonData || !coteriesByDivision.size) return [];
+    return geoJsonData.features.filter(f => coteriesByDivision.has(f.properties?.__division));
+  }, [geoJsonData, coteriesByDivision]);
+
+  const coterieBadgeData = useMemo(() => {
+    if (!coterieFeatures.length) return [];
+    return coterieFeatures.map(f => {
+      const [minLng, minLat, maxLng, maxLat] = bbox(f);
+      const divNum = f.properties.__division;
+      const cList = coteriesByDivision.get(divNum) || [];
+      const primaryCoterie = cList[0];
+      return {
+        position: [(minLng + maxLng) / 2, (minLat + maxLat) / 2],
+        division: divNum,
+        name: primaryCoterie?.name || 'Coterie',
+        count: cList.length,
+      };
+    });
+  }, [coterieFeatures, coteriesByDivision]);
 
   // ── Hunting-difficulty badge at each division centre (blood-red pill) ──
   const huntBadgeData = useMemo(() => {
@@ -2634,6 +2699,38 @@ export default function Domains() {
         );
       }
 
+      // ─── Coterie domain outline: glowing cyan boundary when coterie layer is enabled ───
+      if (coteriesOn && coterieFeatures.length) {
+        layers.push(
+          new GeoJsonLayer({
+            id: 'coterie-outline-glow',
+            data: coterieFeatures,
+            pickable: false,
+            stroked: true,
+            filled: false,
+            extruded: false,
+            getLineColor: hexToRgba(COTERIE_ACCENT_COLOR, 95),
+            getLineWidth: 6,
+            lineWidthUnits: 'pixels',
+            lineWidthMinPixels: 4,
+            parameters: { depthTest: false },
+          }),
+          new GeoJsonLayer({
+            id: 'coterie-outline',
+            data: coterieFeatures,
+            pickable: false,
+            stroked: true,
+            filled: false,
+            extruded: false,
+            getLineColor: hexToRgba(COTERIE_ACCENT_COLOR, 245),
+            getLineWidth: 2,
+            lineWidthUnits: 'pixels',
+            lineWidthMinPixels: 1.5,
+            parameters: { depthTest: false },
+          })
+        );
+      }
+
       // ─── Clan badge: dark backdrop disc + masked white clan crest, at the
       // division's center. Plain deck.gl icon loading: no canvas involved.
       if (clanBadgeData.length) {
@@ -3124,6 +3221,33 @@ export default function Domains() {
         );
       }
 
+      // ─── Coterie-domain badge: a cyan pill on the right side of the avatar column ───
+      if (coteriesOn && coterieBadgeData.length) {
+        layers.push(
+          new TextLayer({
+            id: 'coterie-badges',
+            data: coterieBadgeData,
+            getPosition: d => d.position,
+            getText: d => (d.count > 1 ? `COTERIES: ${d.count}` : d.name ? `COTERIE: ${d.name.toUpperCase()}` : 'COTERIE'),
+            getSize: 11,
+            getColor: [255, 255, 255, 255],
+            getPixelOffset: [badgeSize / 2 + 46, 0],
+            fontFamily: '"Courier New", monospace',
+            fontWeight: 800,
+            billboard: true,
+            background: true,
+            getBackgroundColor: [14, 116, 144, 235], // #0e7490 deep cyan
+            backgroundPadding: [6, 3],
+            parameters: { depthTest: false },
+            pickable: false,
+            updateTriggers: {
+              getText: [coterieBadgeData.length],
+              getPixelOffset: [badgeSize],
+            },
+          })
+        );
+      }
+
       // ─── Chasse-merit type icons: a row of glyph chips beneath each
       // division's name. Pickable: clicking one opens the dossier and jumps to
       // that merit. Sits well below the clan-name logo on claimed divisions,
@@ -3543,7 +3667,7 @@ export default function Domains() {
       return [...baseLayers, ...iconLayers, ...topLayers];
     }
     return layers;
-  }, [geoJsonData, selectedDivision, hoveredDivision, hoveredFeature, avatarCache, onDeckHover, onDeckClick, groupOverlayFeatures, groupLabelData, npcFeatures, npcLabelData, clanBadgeData, avatarBadgeData, clanLabelData, abatonBadgeData, abatonFeatures, guestBadgeData, selectFeature, claimByDiv, badgeSize, badgeOffset, transitPathsSolid, transitPathsDashed, transitStationDots, transitLabelData, catacombPassageTiers, catacombSiteDots, catacombLabelData, necroDrawGroups, necroSiteDots, necroLabelData, cleanMap, onOverlayHover, huntBadgeData, huntingDiffOn, masqBadgeData, masqBadgeOn, chasseIconData, onChasseIconClick, muniOutlinesOn, safetyFillTiles]);
+  }, [geoJsonData, selectedDivision, hoveredDivision, hoveredFeature, avatarCache, onDeckHover, onDeckClick, groupOverlayFeatures, groupLabelData, npcFeatures, npcLabelData, coterieFeatures, coterieBadgeData, coteriesOn, clanBadgeData, avatarBadgeData, clanLabelData, abatonBadgeData, abatonFeatures, guestBadgeData, selectFeature, claimByDiv, badgeSize, badgeOffset, transitPathsSolid, transitPathsDashed, transitStationDots, transitLabelData, catacombPassageTiers, catacombSiteDots, catacombLabelData, necroDrawGroups, necroSiteDots, necroLabelData, cleanMap, onOverlayHover, huntBadgeData, huntingDiffOn, masqBadgeData, masqBadgeOn, chasseIconData, onChasseIconClick, muniOutlinesOn, safetyFillTiles]);
 
   // ── Loading / error state ─────────────────────────────────
   // Domains.json is a large file loaded as its own chunk (a dynamic import,
@@ -3900,6 +4024,14 @@ export default function Domains() {
                     title="Show Masquerade safety badges on the map"
                   />
 
+                  <LayerRow
+                    label="Coterie domains"
+                    on={coteriesOn}
+                    onToggle={toggleCoteries}
+                    accent="coteries"
+                    title="Show coterie territories and badges on the map"
+                  />
+
                   <LayerRow label="Transit" on={transitOn} onToggle={toggleTransit} accent="transit">
                     {TRANSIT_GROUPS.map(g => (
                       <LayerSubRow
@@ -4193,6 +4325,75 @@ export default function Domains() {
               <div className={styles.dossierBody}>
                 {activeTab === 'overview' && (
                   <>
+
+                    {/* ── Holding Coterie Block ── */}
+                    {selectedDivisionInfo.coteries?.length > 0 && (
+                      <div className={styles.statBlock}>
+                        <span className={styles.statLabel}>
+                          {selectedDivisionInfo.coteries.length > 1 ? 'Holding Coteries' : 'Holding Coterie'}
+                        </span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {selectedDivisionInfo.coteries.map(cot => (
+                            <div key={cot.id} className={styles.coterieCard}>
+                              <div className={styles.coterieHead}>
+                                <div className={styles.coterieNameRow}>
+                                  <span className={styles.coterieIcon}>
+                                    <FaGlyph icon={FA_USERS_ICON} size={15} />
+                                  </span>
+                                  <span className={styles.coterieName}>{cot.name}</span>
+                                </div>
+                                {cot.type && (
+                                  <span className={styles.coterieTypeTag}>{cot.type}</span>
+                                )}
+                              </div>
+
+                              {cot.concept && (
+                                <p className={styles.coterieConcept}>&ldquo;{cot.concept}&rdquo;</p>
+                              )}
+
+                              <div className={styles.coterieTraitsRow}>
+                                <div className={styles.coterieTrait} title="Chasse: feeding ground richness">
+                                  <span className={styles.coterieTraitLabel}>Chasse:</span>
+                                  <span className={styles.coterieTraitDots}>
+                                    {'●'.repeat(Number(cot.chasse) || 0)}{'○'.repeat(Math.max(0, 5 - (Number(cot.chasse) || 0)))}
+                                  </span>
+                                </div>
+                                <div className={styles.coterieTrait} title="Lien: local connection bonus">
+                                  <span className={styles.coterieTraitLabel}>Lien:</span>
+                                  <span className={styles.coterieTraitDots}>
+                                    {'●'.repeat(Number(cot.lien) || 0)}{'○'.repeat(Math.max(0, 5 - (Number(cot.lien) || 0)))}
+                                  </span>
+                                </div>
+                                <div className={styles.coterieTrait} title="Portillon: domain security">
+                                  <span className={styles.coterieTraitLabel}>Portillon:</span>
+                                  <span className={styles.coterieTraitDots}>
+                                    {'●'.repeat(Number(cot.portillon) || 0)}{'○'.repeat(Math.max(0, 5 - (Number(cot.portillon) || 0)))}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {cot.members?.length > 0 && (
+                                <div className={styles.coterieRosterBlock}>
+                                  <span className={styles.coterieRosterLabel}>
+                                    Members ({cot.members.length})
+                                  </span>
+                                  <div className={styles.coterieMembersList}>
+                                    {cot.members.map((m, idx) => (
+                                      <span key={idx} className={styles.coterieMemberChip}>
+                                        <span>{m.name}</span>
+                                        {m.clan && (
+                                          <span className={styles.coterieMemberClan}>({m.clan})</span>
+                                        )}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     {!isUnclaimed && !selectedDivisionInfo.is_abaton && canManageDivision && (
                       <div className={styles.statBlock}>

@@ -36,7 +36,10 @@ import {
   seedFromType,
   validateCoterie,
   XP_PER_DOT,
+  CHASSE_MERIT_KEYS,
 } from '../../data/coterieRules';
+import { getDivisionChasse } from '../domains/data/chasseMerits';
+import FaGlyph from '../../ui/FaGlyph';
 
 const emptyState = () => ({
   name: '',
@@ -164,11 +167,17 @@ export default function CoterieBuilder({
   onSave,
   onCancel,
 }) {
-  const [s, setS] = useState(() => ({ ...emptyState(), ...(initial || {}) }));
+  const cleanInitial = (data) => {
+    if (!data) return emptyState();
+    const merits = (data.merits || []).filter((m) => !CHASSE_MERIT_KEYS.has(m.key));
+    return { ...emptyState(), ...data, merits };
+  };
+
+  const [s, setS] = useState(() => cleanInitial(initial));
   const set = useCallback((patch) => setS((prev) => ({ ...prev, ...patch })), []);
 
   useEffect(() => {
-    if (initial) setS({ ...emptyState(), ...initial });
+    if (initial) setS(cleanInitial(initial));
   }, [initial]);
 
   // Seed a brand-new coterie with its author, so a player never saves one
@@ -256,6 +265,11 @@ export default function CoterieBuilder({
       .find((c) => Number(c.domain_id) === Number(s.domainId) && c.id !== editingId);
     return clash ? clash.name : null;
   }, [s.domainId, claimedDomains, editingId]);
+
+  const domainChasse = useMemo(() => {
+    if (!s.domainId) return [];
+    return getDivisionChasse(s.domainId);
+  }, [s.domainId]);
 
   const difficulty = huntingDifficulty(s.traits.chasse);
 
@@ -519,6 +533,64 @@ export default function CoterieBuilder({
                 {s.traits.chasse > 0 && (
                   <Muted className={styles.caveat}>{CHASSE_SIZE_TABLE[s.traits.chasse]}</Muted>
                 )}
+              </div>
+            )}
+
+            {s.domainId && domainChasse.length > 0 && (
+              <div style={{ marginTop: '1rem', paddingTop: '0.85rem', borderTop: '1px solid var(--border-color)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '4px' }}>
+                  <span style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
+                    Territory Chasse Merits
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                    Included automatically: 0 dot cost
+                  </span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {domainChasse.map((m) => (
+                    <div
+                      key={m.key}
+                      style={{
+                        display: 'flex',
+                        gap: '8px',
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                        background: `color-mix(in srgb, ${m.color} 8%, var(--bg-color))`,
+                        border: `1px solid color-mix(in srgb, ${m.color} 30%, var(--border-color))`,
+                      }}
+                    >
+                      <span
+                        style={{
+                          flexShrink: 0,
+                          width: '28px',
+                          height: '28px',
+                          borderRadius: '6px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: `color-mix(in srgb, ${m.color} 20%, transparent)`,
+                          color: m.color,
+                        }}
+                      >
+                        <FaGlyph icon={m.icon} size={14} />
+                      </span>
+                      <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '0.84rem', fontWeight: 700, color: 'var(--text-color)' }}>{m.name}</span>
+                          <span style={{ fontSize: '0.75rem', color: m.color }}>{'●'.repeat(m.dots)}</span>
+                          <span style={{ fontSize: '0.68rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginLeft: 'auto' }}>
+                            {m.resonances.join(', ')}
+                          </span>
+                        </div>
+                        {m.note && (
+                          <span style={{ fontSize: '0.74rem', fontStyle: 'italic', color: 'var(--text-color)', marginTop: '2px' }}>
+                            {m.note}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </Card>

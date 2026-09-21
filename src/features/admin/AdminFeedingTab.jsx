@@ -225,6 +225,36 @@ export default function AdminFeedingTab() {
     }
   };
 
+  const [adjustingHunger, setAdjustingHunger] = useState({});
+
+  const adjustHunger = async (character_id, delta) => {
+    setAdjustingHunger(prev => ({ ...prev, [character_id]: true }));
+    const targetItem = log.find(f => f.character_id === character_id);
+    const prevHunger = targetItem?.current_hunger != null ? Number(targetItem.current_hunger) : 1;
+    const optimisticHunger = Math.max(0, Math.min(5, prevHunger + delta));
+
+    setLog(prev => prev.map(f =>
+      f.character_id === character_id ? { ...f, current_hunger: optimisticHunger } : f
+    ));
+
+    try {
+      const res = await api.post('/admin/feeding/hunger-adjust', { character_id, delta });
+      const d = res.data;
+      flash(setMsg, `${d.name}: Hunger adjusted from ${d.hungerBefore} to ${d.hungerAfter} of 5`);
+      setLog(prev => prev.map(f =>
+        f.character_id === character_id ? { ...f, current_hunger: d.hungerAfter } : f
+      ));
+    } catch (e) {
+      console.error('[AdminFeedingTab] adjustHunger failed', e);
+      flash(setErr, formatApiError(e, 'Hunger adjust failed'));
+      setLog(prev => prev.map(f =>
+        f.character_id === character_id ? { ...f, current_hunger: prevHunger } : f
+      ));
+    } finally {
+      setAdjustingHunger(prev => ({ ...prev, [character_id]: false }));
+    }
+  };
+
   if (loading) return <div style={{ padding: '2rem', color: 'var(--text-secondary)' }}>Loading Feeding Control...</div>;
 
   const themeColor = isOnline ? 'var(--color-success)' : 'var(--color-error)';
@@ -392,8 +422,10 @@ export default function AdminFeedingTab() {
                 {filteredLog.map((f) => {
                   const before = f.hunger_before != null ? Number(f.hunger_before) : null;
                   const delta = f.hunger_delta != null ? Number(f.hunger_delta) : null;
-                  const after = (before != null && delta != null) ? Math.max(0, Math.min(5, before + delta)) : null;
+                  const after = (before != null && delta != null) ? Math.max(1, Math.min(5, before + delta)) : null;
                   const domainTitle = getDivisionName(f.division);
+                  const currentHunger = f.current_hunger != null ? Number(f.current_hunger) : 1;
+                  const isUpdatingHunger = !!adjustingHunger[f.character_id];
 
                   return (
                     <tr key={f.id} style={{ borderBottom: '1px solid var(--glass-border)' }}>
@@ -433,19 +465,111 @@ export default function AdminFeedingTab() {
                         </span>
                       </td>
                       <td style={{ padding: '0.6rem 0.5rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <span>{before != null ? before : '?'}</span>
-                          <FaGlyph icon={FEEDING_ICONS.arrowRight} size={10} style={{ opacity: 0.6 }} />
-                          <span style={{ fontWeight: 600 }}>{after != null ? after : '?'}</span>
-                          {delta != null && (
-                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: delta < 0 ? 'var(--color-success)' : delta > 0 ? '#ff6b6b' : 'var(--text-secondary)' }}>
-                              ({delta > 0 ? `+${delta}` : delta})
-                            </span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                            <button
+                              type="button"
+                              style={{
+                                ...btnBase,
+                                padding: 0,
+                                width: '24px',
+                                height: '24px',
+                                fontSize: '1rem',
+                                lineHeight: '22px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: '#ff8a8a',
+                                borderColor: 'rgba(255,138,138,0.35)',
+                                opacity: (isUpdatingHunger || currentHunger <= 0) ? 0.4 : 1,
+                                cursor: (isUpdatingHunger || currentHunger <= 0) ? 'not-allowed' : 'pointer',
+                              }}
+                              disabled={isUpdatingHunger || currentHunger <= 0}
+                              onClick={() => adjustHunger(f.character_id, -1)}
+                              title="Decrease hunger by 1"
+                            >
+                              &#8722;
+                            </button>
+
+                            <div
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                padding: '3px 8px',
+                                background: 'rgba(230, 57, 70, 0.12)',
+                                border: '1px solid rgba(230, 57, 70, 0.35)',
+                                borderRadius: '6px',
+                              }}
+                              title={`Current hunger: ${currentHunger} of 5`}
+                            >
+                              <FaGlyph icon={FEEDING_ICONS.droplet} size={13} style={{ color: '#e63946' }} />
+                              <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#ffffff' }}>
+                                {currentHunger}
+                              </span>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                                / 5
+                              </span>
+                              <div style={{ display: 'flex', gap: '3px', marginLeft: '2px' }}>
+                                {[1, 2, 3, 4, 5].map((boxNum) => (
+                                  <div
+                                    key={boxNum}
+                                    style={{
+                                      width: '13px',
+                                      height: '13px',
+                                      borderRadius: '3px',
+                                      border: `1px solid ${boxNum <= currentHunger ? '#e63946' : 'var(--glass-border)'}`,
+                                      background: boxNum <= currentHunger ? 'rgba(230, 57, 70, 0.4)' : 'rgba(0,0,0,0.2)',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                    }}
+                                  >
+                                    {boxNum <= currentHunger && (
+                                      <FaGlyph icon={FEEDING_ICONS.droplet} size={7} style={{ color: '#ff6b6b' }} />
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              style={{
+                                ...btnBase,
+                                padding: 0,
+                                width: '24px',
+                                height: '24px',
+                                fontSize: '1rem',
+                                lineHeight: '22px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: '#e63946',
+                                borderColor: 'rgba(230, 57, 70, 0.45)',
+                                opacity: (isUpdatingHunger || currentHunger >= 5) ? 0.4 : 1,
+                                cursor: (isUpdatingHunger || currentHunger >= 5) ? 'not-allowed' : 'pointer',
+                              }}
+                              disabled={isUpdatingHunger || currentHunger >= 5}
+                              onClick={() => adjustHunger(f.character_id, 1)}
+                              title="Increase hunger by 1"
+                            >
+                              +
+                            </button>
+                          </div>
+
+                          {(before != null || delta != null) && (
+                            <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <span>Roll: {before != null ? before : '?'}</span>
+                              <FaGlyph icon={FEEDING_ICONS.arrowRight} size={9} style={{ opacity: 0.6 }} />
+                              <span style={{ fontWeight: 600 }}>{after != null ? after : '?'}</span>
+                              {delta != null && (
+                                <span style={{ fontWeight: 600, color: delta < 0 ? 'var(--color-success)' : delta > 0 ? '#ff6b6b' : 'var(--text-secondary)' }}>
+                                  ({delta > 0 ? `+${delta}` : delta < 0 ? `\u2212${Math.abs(delta)}` : '0'})
+                                </span>
+                              )}
+                            </div>
                           )}
-                        </div>
-                        <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <FaGlyph icon={FEEDING_ICONS.droplet} size={9} style={{ color: '#ff6b6b' }} />
-                          Current: <strong style={{ color: 'var(--text-color)' }}>{f.current_hunger != null ? f.current_hunger : 'Unknown'}/5</strong>
                         </div>
                       </td>
                       <td style={{ padding: '0.6rem 0.5rem', color: f.safety_delta < 0 ? '#ff6b6b' : f.safety_delta > 0 ? 'var(--color-success)' : 'var(--text-secondary)' }}>

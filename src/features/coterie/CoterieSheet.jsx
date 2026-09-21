@@ -25,7 +25,10 @@ import {
   lienBonusDice,
   portillonPenaltyDice,
   xpForDots,
+  CHASSE_MERIT_KEYS,
 } from '../../data/coterieRules';
+import { getDivisionChasse } from '../domains/data/chasseMerits';
+import FaGlyph from '../../ui/FaGlyph';
 
 const CATALOGS = {
   domain: null,
@@ -39,7 +42,7 @@ const CATALOGS = {
 
 function PurchaseDialog({ coterie, personalXp, onClose, onConfirm, busy }) {
   const [kind, setKind] = useState('domain');
-  const [key, setKey] = useState('chasse');
+  const [key, setKey] = useState('lien');
   const [toDots, setToDots] = useState(1);
   const [fromPersonal, setFromPersonal] = useState(0);
 
@@ -72,13 +75,13 @@ function PurchaseDialog({ coterie, personalXp, onClose, onConfirm, busy }) {
 
   const pick = (nextKind) => {
     setKind(nextKind);
-    setKey(nextKind === 'domain' ? 'chasse' : Object.keys(CATALOGS[nextKind])[0]);
+    setKey(nextKind === 'domain' ? 'lien' : Object.keys(CATALOGS[nextKind])[0]);
     setToDots(1);
     setFromPersonal(0);
   };
 
   const options = kind === 'domain'
-    ? DOMAIN_TRAITS.map((t) => [t, { name: DOMAIN_TRAIT_INFO[t].name }])
+    ? DOMAIN_TRAITS.filter((t) => t !== 'chasse').map((t) => [t, { name: DOMAIN_TRAIT_INFO[t].name }])
     : Object.entries(catalog).sort((a, b) => a[1].name.localeCompare(b[1].name));
 
   const bankPct = cost > 0 ? (fromBank / cost) * 100 : 0;
@@ -244,6 +247,15 @@ export default function CoterieSheet({
   const lien = lienBonusDice(t.lien);
   const portillon = portillonPenaltyDice(t.portillon);
 
+  const domainChasse = useMemo(() => {
+    if (coterie.domain_id == null) return [];
+    return getDivisionChasse(coterie.domain_id);
+  }, [coterie.domain_id]);
+
+  const customMerits = useMemo(() => {
+    return (coterie.merits || []).filter((m) => !CHASSE_MERIT_KEYS.has(m.key));
+  }, [coterie.merits]);
+
   const compliance = useMemo(
     () => checkTypeCompliance({
       required: coterie.required,
@@ -332,6 +344,74 @@ export default function CoterieSheet({
                 );
               })}
             </ul>
+
+            {domainChasse.length > 0 && (
+              <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem', flexWrap: 'wrap', gap: '4px' }}>
+                  <span style={{ fontSize: '0.82rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
+                    Domain Chasse Merits
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                    Fixed territory features: 0 XP cost
+                  </span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                  {domainChasse.map((m) => (
+                    <div
+                      key={m.key}
+                      style={{
+                        display: 'flex',
+                        gap: '10px',
+                        padding: '10px',
+                        borderRadius: '10px',
+                        background: `color-mix(in srgb, ${m.color} 8%, var(--bg-color))`,
+                        border: `1px solid color-mix(in srgb, ${m.color} 30%, var(--border-color))`,
+                      }}
+                    >
+                      <span
+                        style={{
+                          flexShrink: 0,
+                          width: '30px',
+                          height: '30px',
+                          borderRadius: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: `color-mix(in srgb, ${m.color} 20%, transparent)`,
+                          color: m.color,
+                        }}
+                      >
+                        <FaGlyph icon={m.icon} size={15} />
+                      </span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', minWidth: 0, flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '0.86rem', fontWeight: 700, color: 'var(--text-color)' }}>{m.name}</span>
+                          <Dots value={m.dots} />
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 10px', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          <span style={{ color: `color-mix(in srgb, ${m.color} 70%, var(--text-color))`, fontWeight: 600 }}>
+                            {m.resonances.join(', ')} resonance
+                          </span>
+                          {m.favours?.length > 0 && (
+                            <span style={{ color: 'var(--text-muted)' }}>
+                              favours {m.favours.join(', ')}
+                            </span>
+                          )}
+                        </div>
+                        {m.note && (
+                          <p style={{ margin: '3px 0 0', fontSize: '0.76rem', fontStyle: 'italic', lineHeight: 1.4, color: 'var(--text-color)' }}>
+                            {m.note}
+                          </p>
+                        )}
+                        <p style={{ margin: '2px 0 0', fontSize: '0.72rem', lineHeight: 1.45, color: 'var(--text-muted)' }}>
+                          {m.description}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </>
         )}
       </Card>
@@ -361,11 +441,11 @@ export default function CoterieSheet({
         </Card>
 
         <Card title="Coterie Merits">
-          {(coterie.merits || []).length === 0 ? (
+          {customMerits.length === 0 ? (
             <Empty>None.</Empty>
           ) : (
             <ul className={styles.holdingList}>
-              {coterie.merits.map((m) => {
+              {customMerits.map((m) => {
                 const def = COTERIE_MERITS[m.key];
                 return (
                   <li key={m.key} className={styles.holdingItem}>
