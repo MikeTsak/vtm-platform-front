@@ -2964,6 +2964,80 @@ tr:hover .clanIcon,
   background: var(--glass-inset);
 }
 
+/* Message-row avatar — a sibling flex item inside .messageRow, so
+   .sentRow's row-reverse automatically puts it on the correct side with
+   no extra layout logic. Also reused (smaller) for NPC/group list rows. */
+.avatarCircle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--glass-inset);
+  border: 1px solid var(--glass-border);
+}
+
+.reactionPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(157, 124, 255, 0.12);
+  border: 1px solid rgba(157, 124, 255, 0.3);
+  color: var(--text-color);
+}
+
+.globalSearchBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.55rem 0.85rem;
+  border-radius: var(--radius-md);
+  background: var(--glass-inset);
+  border: 1px solid var(--glass-border-highlight);
+}
+
+.globalSearchInput {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-color);
+  font-family: inherit;
+  font-size: 0.88rem;
+}
+
+.globalSearchInput::placeholder {
+  color: var(--text-muted);
+}
+
+.spinIcon {
+  display: inline-flex;
+  animation: adminSpin 0.8s linear infinite;
+}
+
+@media (max-width: 900px) {
+  .avatarCircle {
+    width: 36px;
+    height: 36px;
+  }
+
+  .messageRow {
+    padding: 10px 12px;
+  }
+
+  .messageBubble {
+    max-width: 82%;
+  }
+}
+
 /* ═══════════════════════════════════════════════
    22. DATE FILTERS (ChatStatsTab)
    ═══════════════════════════════════════════════ */

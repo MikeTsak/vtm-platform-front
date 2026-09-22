@@ -940,7 +940,17 @@ async function grantXP(character_id, delta) {
         characters={characters}
       />
     ),
-    chat:     () => <AdminChatLogsTab messages={allMessages} charIndex={charIndex} />,
+    chat:     () => (
+      <AdminChatLogsTab
+        messages={allMessages}
+        charIndex={charIndex}
+        npcMessages={allNpcMessages}
+        groupMessages={allGroupMessages}
+        chatGroups={chatGroups}
+        npcs={npcs}
+        onRefresh={load}
+      />
+    ),
     dice:     () => <AdminDiceLogsTab />,
     bloodweb: () => <AdminBloodWebTab />,
     // System
