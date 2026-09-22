@@ -76,7 +76,22 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
   const [adminEmailIdentities, setAdminEmailIdentities] = useState([]);
   const [adminIdentityForm, setAdminIdentityForm] = useState({ email: '', display: '' });
 
+  // Admin DM State
+  const [adminDmOpen, setAdminDmOpen] = useState(false);
+  const [adminDmForm, setAdminDmForm] = useState({ email: '', display: '', user_id: '', subject: '', body: '' });
+  const [adminDmSending, setAdminDmSending] = useState(false);
+  const [allPlayers, setAllPlayers] = useState([]);
+
+  // Admin drawer open state (Set of user_id strings)
+  const [openDrawers, setOpenDrawers] = useState(new Set());
+  const toggleDrawer = (userId) => setOpenDrawers(prev => {
+    const next = new Set(prev);
+    if (next.has(userId)) next.delete(userId); else next.add(userId);
+    return next;
+  });
+
   const emailEndRef = useRef(null);
+  const scrollContainerRef = useRef(null);
   const prevThreadsRef = useRef([]);
 
   // Notifications State safely initialized
@@ -152,6 +167,14 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
     }
   }, [isAdmin, checkNewEmails]);
 
+  // Load player list once for the admin DM modal
+  useEffect(() => {
+    if (!isAdmin) return;
+    api.get('/admin/users').then(({ data }) => {
+      setAllPlayers(data.users || []);
+    }).catch(() => {});
+  }, [isAdmin]);
+
   useEffect(() => {
     const controller = new AbortController();
     loadEmails(false, controller.signal);
@@ -166,6 +189,12 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
     };
   }, [loadEmails]);
 
+  const scrollToBottom = (behavior = 'smooth') => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    }
+  };
+
   const openEmailThread = async (t) => {
     setSelectedThread(t);
     try {
@@ -173,7 +202,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
       const { data } = await api.get(url);
       setEmailMessages(data.messages);
       setThreads(prev => prev.map(th => th.id === t.id ? { ...th, unread_count: 0 } : th));
-      setTimeout(() => emailEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+      setTimeout(() => scrollToBottom('instant'), 80);
     } catch (e) {
       alert('Failed to load email thread. Please try again.');
     }
@@ -188,7 +217,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
       const url = isAdmin ? `/admin/emails/threads/${selectedThread.id}` : `/emails/thread/${selectedThread.id}`;
       const { data } = await api.get(url);
       setEmailMessages(data.messages);
-      setTimeout(() => emailEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+      setTimeout(() => scrollToBottom(), 80);
     } catch (e) {
       alert('Failed to reply to email.');
     }
@@ -231,15 +260,46 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
     }
   };
 
+  const handleAdminDm = async () => {
+    const { email, display, user_id, subject, body } = adminDmForm;
+    if (!email || !display || !user_id || !subject || !body) return;
+    setAdminDmSending(true);
+    try {
+      const { data } = await api.post('/admin/emails/dm', {
+        email_address: email,
+        display_name: display,
+        user_id: Number(user_id),
+        subject,
+        body
+      });
+      setAdminDmOpen(false);
+      setAdminDmForm({ email: '', display: '', user_id: '', subject: '', body: '' });
+      await loadEmails();
+      // Auto-open the newly created thread
+      const newThread = threads.find(t => t.id === data.thread_id) ||
+        (await api.get('/admin/emails/threads').then(r => r.data.threads.find(t => t.id === data.thread_id)));
+      if (newThread) openEmailThread(newThread);
+    } catch (e) {
+      alert(e.response?.data?.error || 'Failed to send DM.');
+    } finally {
+      setAdminDmSending(false);
+    }
+  };
+
+  // On mobile: sidebar slides out when a thread is open; main slides in from the right
+  const sidebarX = isMobile && selectedThread ? '-100%' : 0;
+  const mainX    = isMobile && !selectedThread ? '100%'  : 0;
+  const mainScale = isMobile ? 1 : (selectedThread !== null ? 1 : 0.98);
+
   return (
-    <div className={`${styles.emailContainer} ${selectedThread && isMobile ? styles.mobileViewActive : ''} crt`}>
+    <div className={`${styles.emailContainer} crt`}>
       <div className="crt-overlay"></div>
 
       {/* SIDEBAR */}
       <motion.aside
         className={`${styles.emailSidebar} chat-glass`}
-        initial={{ opacity: 0, x: -30 }}
-        animate={{ opacity: 1, x: 0 }}
+        initial={false}
+        animate={{ opacity: 1, x: sidebarX }}
         transition={{ type: 'spring', stiffness: 300, damping: 25 }}
       >
         <div className={styles.emailHeader}>
@@ -256,13 +316,22 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
               </span>
             </button>
             {isAdmin && (
-              <button
-                className={styles.iconBtn}
-                title="Manage Identities"
-                onClick={() => setAdminIdentitiesOpen(true)}
-              >
-                <span className="material-symbols-outlined text-[20px]" style={{ verticalAlign: 'middle' }}>settings</span>
-              </button>
+              <>
+                <button
+                  className={styles.iconBtn}
+                  title="New Direct Message"
+                  onClick={() => setAdminDmOpen(true)}
+                >
+                  <span className="material-symbols-outlined text-[20px]" style={{ verticalAlign: 'middle' }}>edit_square</span>
+                </button>
+                <button
+                  className={styles.iconBtn}
+                  title="Manage Identities"
+                  onClick={() => setAdminIdentitiesOpen(true)}
+                >
+                  <span className="material-symbols-outlined text-[20px]" style={{ verticalAlign: 'middle' }}>settings</span>
+                </button>
+              </>
             )}
             {!isAdmin && commsEnabled && (
               <button className={`${styles.composeBtn} blood-border-glow`} onClick={() => setEmailComposeOpen(true)}>
@@ -276,9 +345,98 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
           {!loading && threads.length === 0 && (
             <div className={styles.emptyStateText}>Your inbox is empty.</div>
           )}
-          {!loading && threads.map(t => {
-            const senderName = isAdmin ? t.user_name : t.from_name;
-            const avatarProps = isAdmin ? { userId: t.user_id } : { identityId: t.identity_id };
+
+          {/* ADMIN: Grouped player drawers */}
+          {!loading && isAdmin && (() => {
+            // Group threads by player (user_id)
+            const playerMap = new Map();
+            threads.forEach(t => {
+              const key = t.user_id;
+              if (!playerMap.has(key)) {
+                playerMap.set(key, {
+                  user_id: t.user_id,
+                  user_name: t.user_name,
+                  char_name: t.char_name,
+                  threads: []
+                });
+              }
+              playerMap.get(key).threads.push(t);
+            });
+
+            return Array.from(playerMap.values()).map(player => {
+              const isOpen = openDrawers.has(player.user_id);
+              const hasUnread = player.threads.some(t => t.unread_count > 0);
+              return (
+                <div key={player.user_id}>
+                  {/* Player header */}
+                  <div
+                    className={`${styles.playerDrawerHeader} ${isOpen ? styles.open : ''}`}
+                    onClick={() => toggleDrawer(player.user_id)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={e => { if (e.key === 'Enter') toggleDrawer(player.user_id); }}
+                  >
+                    <Avatar
+                      userId={player.user_id}
+                      size={36}
+                      style={{ borderRadius: '50%', flexShrink: 0 }}
+                      fallback={`https://ui-avatars.com/api/?name=${encodeURIComponent(player.char_name || player.user_name)}&background=random`}
+                    />
+                    <div className={styles.playerDrawerInfo}>
+                      <span className={styles.playerDrawerName}>{player.char_name || player.user_name}</span>
+                      {player.char_name && (
+                        <span className={styles.playerDrawerSub}>{player.user_name}</span>
+                      )}
+                    </div>
+                    {hasUnread && <span className={styles.drawerUnreadDot} />}
+                    <i className={`fa-solid fa-chevron-down ${styles.drawerChevron} ${isOpen ? styles.open : ''}`} />
+                  </div>
+
+                  {/* Identity thread rows (expanded) */}
+                  <AnimatePresence initial={false}>
+                    {isOpen && (
+                      <motion.div
+                        className={styles.playerDrawerContent}
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2, ease: 'easeInOut' }}
+                      >
+                        {player.threads.map(t => (
+                          <div
+                            key={t.id}
+                            className={`${styles.identityThreadRow} ${selectedThread?.id === t.id ? styles.active : ''}`}
+                            onClick={() => openEmailThread(t)}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={e => { if (e.key === 'Enter') openEmailThread(t); }}
+                          >
+                            <Avatar
+                              identityId={t.identity_id}
+                              size={30}
+                              style={{ borderRadius: '50%', flexShrink: 0 }}
+                            />
+                            <div className={styles.identityName}>
+                              <span className={styles.identityNameLabel}>{t.identity_name}</span>
+                              <span className={styles.identitySubject}>{t.subject}</span>
+                            </div>
+                            {t.unread_count > 0 && (
+                              <span className={styles.unreadBadge}>{t.unread_count}</span>
+                            )}
+                          </div>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            });
+          })()}
+
+          {/* NON-ADMIN: flat thread list */}
+          {!loading && !isAdmin && threads.map(t => {
+            const senderName = t.from_name;
+            const avatarProps = { identityId: t.identity_id };
             return (
               <div
                 key={t.id}
@@ -292,7 +450,6 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
                   {...avatarProps}
                   size={40}
                   className={styles.threadAvatar}
-                  fallback={`https://ui-avatars.com/api/?name=${encodeURIComponent(senderName)}&background=random`}
                 />
                 <div className={styles.threadContent}>
                   <div className={styles.threadTopRow}>
@@ -311,9 +468,9 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
       {/* MAIN CONTENT (Reading Pane) */}
       <motion.main
         className={styles.emailMain}
-        initial={{ opacity: 0, scale: 0.98 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 25, delay: 0.1 }}
+        initial={false}
+        animate={{ opacity: 1, x: mainX, scale: mainScale }}
+        transition={{ type: 'spring', stiffness: 300, damping: 25 }}
       >
         {selectedThread ? (
           <>
@@ -324,51 +481,61 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
               </div>
               <div className={styles.emailParticipants}>
                 {isAdmin
-                  ? <span className={styles.particChip}>👤 {selectedThread.user_name}</span>
+                  ? <span className={styles.particChip}>
+                      <i className="fa-solid fa-user" style={{ marginRight: 6, opacity: 0.7 }} />
+                      {selectedThread.char_name || selectedThread.user_name}
+                      {selectedThread.char_name && (
+                        <span style={{ opacity: 0.6, marginLeft: 6, fontSize: '0.75rem' }}>({selectedThread.user_name})</span>
+                      )}
+                    </span>
                   : <span className={styles.particChip}>From: {selectedThread.from_name} &lt;{selectedThread.from_email}&gt;</span>
                 }
               </div>
             </div>
 
-            <div className={styles.emailBodyScroll}>
+            <div className={styles.emailBodyScroll} ref={scrollContainerRef}>
               {emailMessages.map(m => {
                 let msgName = 'Unknown';
                 let avatarProps = {};
 
                 if (m.sender_type === 'user') {
-                  msgName = isAdmin ? selectedThread.user_name : 'Me';
-                  avatarProps = { userId: selectedThread.user_id };
+                  msgName = isAdmin ? (selectedThread.char_name || selectedThread.user_name) : 'Me';
+                  // Admin view: use the player's userId from the thread object.
+                  // Player view: selectedThread.user_id is not returned by /emails/my-inbox,
+                  // so fall back to the logged-in user's own id.
+                  avatarProps = { userId: isAdmin ? selectedThread.user_id : user?.id };
                 } else {
                   msgName = isAdmin ? selectedThread.identity_name : selectedThread.from_name;
                   avatarProps = { identityId: selectedThread.identity_id };
                 }
 
+                const sentByUser = m.sender_type === 'user';
                 return (
                   <motion.div
                     key={m.id}
-                    className={styles.emailMsg}
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    className={`${styles.emailMsg} ${sentByUser ? styles.msgSentByUser : styles.msgSentByIdentity}`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
                     transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                   >
-                    <div className={styles.msgHeader}>
-                      <Avatar
-                        {...avatarProps}
-                        size={36}
-                        className={styles.msgAvatar}
-                        style={{ borderRadius: '50%' }}
-                        fallback={`https://ui-avatars.com/api/?name=${encodeURIComponent(msgName)}&background=random`}
-                      />
+                    <Avatar
+                      {...avatarProps}
+                      size={36}
+                      className={styles.msgAvatarOuter}
+                      style={{ borderRadius: '50%', flexShrink: 0 }}
+                      fallback={avatarProps.userId ? `https://ui-avatars.com/api/?name=${encodeURIComponent(msgName)}&background=random` : undefined}
+                    />
+                    <div className={styles.msgBubble}>
                       <div className={styles.msgMeta}>
                         <span className={styles.msgAuthor}>{msgName}</span>
                         <span className={styles.msgTime}>{formatAthensDateTime(m.created_at)}</span>
                       </div>
+                      {/* CRITICAL SECURITY FIX: Sanitize HTML content to prevent XSS */}
+                      <div
+                        className={styles.emailMsgContent}
+                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(m.body) }}
+                      />
                     </div>
-                    {/* CRITICAL SECURITY FIX: Sanitize HTML content to prevent XSS */}
-                    <div
-                      className={styles.emailMsgContent}
-                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(m.body) }}
-                    />
                   </motion.div>
                 );
               })}
@@ -448,7 +615,14 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
               ) : (
                 adminEmailIdentities.map(i => (
                   <div key={i.id} className={styles.identityRow}>
-                    <span><b>{i.display_name}</b> <br /><small>{i.email_address}</small></span>
+                    <Avatar
+                      identityId={i.id}
+                      size={44}
+                      editable={true}
+                      style={{ borderRadius: '50%', flexShrink: 0 }}
+                      onUploadSuccess={() => loadEmails()}
+                    />
+                    <span style={{ flex: 1, marginLeft: 10 }}><b>{i.display_name}</b> <br /><small>{i.email_address}</small></span>
                     <button
                       className={styles.btnSec}
                       onClick={async () => {
@@ -484,6 +658,82 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
                 disabled={!adminIdentityForm.display || !adminIdentityForm.email}
               >
                 Create
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Direct Message Modal */}
+      {adminDmOpen && (
+        <div className={styles.modalBackdrop}>
+          <div className={styles.modal}>
+            <h3>New Direct Message</h3>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted, #aaa)', marginBottom: 8 }}>
+              Create a new in-fiction identity and instantly open a thread with a player.
+            </p>
+
+            <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #aaa)' }}>Target Player</label>
+            <select
+              className={styles.input}
+              value={adminDmForm.user_id}
+              onChange={e => setAdminDmForm({ ...adminDmForm, user_id: e.target.value })}
+            >
+              <option value="">Select a player...</option>
+              {allPlayers.map(p => (
+                <option key={p.id} value={p.id}>
+                  {p.display_name}{p.char_name ? ` (${p.char_name})` : ''}
+                </option>
+              ))}
+            </select>
+
+            <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #aaa)', marginTop: 8 }}>Sender Display Name</label>
+            <input
+              className={styles.input}
+              placeholder="e.g. Cardinal Vasquez"
+              value={adminDmForm.display}
+              onChange={e => setAdminDmForm({ ...adminDmForm, display: e.target.value })}
+            />
+
+            <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #aaa)', marginTop: 8 }}>Sender Email Address</label>
+            <input
+              className={styles.input}
+              placeholder="e.g. cardinal@camarilla.net"
+              value={adminDmForm.email}
+              onChange={e => setAdminDmForm({ ...adminDmForm, email: e.target.value })}
+            />
+
+            <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #aaa)', marginTop: 8 }}>Subject</label>
+            <input
+              className={styles.input}
+              placeholder="Subject"
+              value={adminDmForm.subject}
+              onChange={e => setAdminDmForm({ ...adminDmForm, subject: e.target.value })}
+            />
+
+            <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #aaa)', marginTop: 8 }}>Message</label>
+            <div style={{ flex: 1, minHeight: '160px', display: 'flex', flexDirection: 'column' }}>
+              <TextEditor
+                value={adminDmForm.body}
+                onChange={val => setAdminDmForm({ ...adminDmForm, body: val })}
+                placeholder="Type the opening message..."
+              />
+            </div>
+
+            <div className={styles.modalActions}>
+              <button
+                onClick={() => { setAdminDmOpen(false); setAdminDmForm({ email: '', display: '', user_id: '', subject: '', body: '' }); }}
+                className={styles.btnSec}
+                disabled={adminDmSending}
+              >
+                Cancel
+              </button>
+              <button
+                className={styles.btnPri}
+                onClick={handleAdminDm}
+                disabled={adminDmSending || !adminDmForm.email || !adminDmForm.display || !adminDmForm.user_id || !adminDmForm.subject || !adminDmForm.body}
+              >
+                {adminDmSending ? 'Sending...' : 'Send DM'}
               </button>
             </div>
           </div>

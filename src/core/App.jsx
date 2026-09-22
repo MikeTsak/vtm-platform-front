@@ -118,7 +118,7 @@ function MalkavianOrAdminOnly({ children }) {
   return children;
 }
 
-const IMMERSIVE_ROUTES = ['/schrecknet', '/surfaceweb'];
+const IMMERSIVE_ROUTES = ['/schrecknet'];
 const IMMERSIVE_PREFIXES = ['/admin/character/'];
 
 function AppLayout() {

@@ -3,7 +3,9 @@
 /* --- MAIN LAYOUT --- */
 .emailContainer {
   display: flex;
-  height: 100%;
+  /* Account for: nav (~60px) + mode-banner (~90px) + page padding (~40px) */
+  height: calc(100dvh - 190px);
+  min-height: 400px;
   background-color: var(--bg-color);
   color: var(--text-color);
   font-family: var(--font-body);
@@ -82,6 +84,125 @@
 }
 .threadList::-webkit-scrollbar-thumb:hover {
   background-color: var(--tint);
+}
+
+/* --- ADMIN PLAYER DRAWER (Grouped Thread List) --- */
+.playerDrawerHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-color);
+  border-left: 3px solid transparent;
+  transition: background 0.2s, border-left-color 0.2s;
+  background: transparent;
+  position: relative;
+}
+.playerDrawerHeader:hover {
+  background: color-mix(in srgb, var(--surface-lighter) 50%, transparent);
+}
+.playerDrawerHeader.open {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-left-color: color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.playerDrawerInfo {
+  flex: 1;
+  min-width: 0;
+}
+.playerDrawerName {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.playerDrawerSub {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  opacity: 0.7;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.drawerChevron {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+.drawerChevron.open {
+  transform: rotate(180deg);
+}
+.drawerUnreadDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+  box-shadow: 0 0 6px var(--accent);
+}
+
+.playerDrawerContent {
+  background: color-mix(in srgb, var(--bg-color) 60%, transparent);
+  border-bottom: 1px solid var(--border-color);
+  overflow: hidden;
+}
+
+.identityThreadRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px 9px 36px;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  transition: background 0.15s, border-left-color 0.15s;
+  position: relative;
+}
+.identityThreadRow:hover {
+  background: color-mix(in srgb, var(--surface-lighter) 60%, transparent);
+}
+.identityThreadRow.active {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  border-left-color: var(--accent);
+}
+.identityThreadRow:not(:last-child) {
+  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 50%, transparent);
+}
+.identityName {
+  flex: 1;
+  min-width: 0;
+}
+.identityNameLabel {
+  font-size: 0.85rem;
+  color: var(--text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+.identitySubject {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+  opacity: 0.7;
+}
+.unreadBadge {
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: bold;
+  border-radius: 99px;
+  padding: 1px 5px;
+  min-width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+  box-shadow: 0 0 6px color-mix(in srgb, var(--accent) 50%, transparent);
 }
 
 /* --- THREAD CARD (The Email List Item) --- */
@@ -174,6 +295,8 @@
   flex-direction: column;
   background-color: var(--bg-color);
   z-index: 10;
+  min-height: 0; /* Required: lets the flex child honour overflow-y */
+  overflow: hidden;
 }
 
 .emailViewHeader {
@@ -221,6 +344,7 @@
   flex-direction: column;
   gap: 20px;
   scroll-behavior: smooth;
+  min-height: 0; /* Required: flex child must shrink to let parent contain overflow */
 }
 
 .emailBodyScroll::-webkit-scrollbar {
@@ -234,48 +358,124 @@
   background-color: var(--tint);
 }
 
-/* Individual Message in Thread */
+/* =========================================
+   CHAT BUBBLE MESSAGES
+   ========================================= */
+
+/* Outer row wrapper */
 .emailMsg {
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--surface-color);
-  padding: 16px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-}
-
-.msgHeader {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: 12px;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 82%;
 }
 
-.msgAvatar {
+/* Player message: avatar LEFT, bubble RIGHT, tail on LEFT of bubble */
+.msgSentByUser {
+  flex-direction: row;
+  align-self: flex-start;
+  margin-right: auto;
+}
+
+/* Identity / NPC message: avatar RIGHT, bubble LEFT, tail on RIGHT of bubble */
+.msgSentByIdentity {
+  flex-direction: row-reverse;
+  align-self: flex-end;
+  margin-left: auto;
+}
+
+/* Avatar outside the bubble */
+.msgAvatarOuter {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-color);
-  font-size: 0.8rem;
-  font-weight: bold;
   border: 1px solid var(--border-color);
   background: var(--surface-container-high);
+  flex-shrink: 0;
+}
+
+/* The square bubble */
+.msgBubble {
+  position: relative;
+  border-radius: 4px;          /* square */
+  padding: 10px 14px 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.45);
+}
+
+/* Player bubble: dark surface, slightly lighter than bg */
+.msgSentByUser .msgBubble {
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+}
+
+/* Identity bubble: subtle accent tint */
+.msgSentByIdentity .msgBubble {
+  background: color-mix(in srgb, var(--surface-color) 80%, var(--accent) 20%);
+  border: 1px solid color-mix(in srgb, var(--border-color) 60%, var(--accent) 40%);
+}
+
+/* === LEFT TAIL (player messages) === */
+/* Outline layer (drawn first, behind) */
+.msgSentByUser .msgBubble::after {
+  content: '';
+  position: absolute;
+  left: -9px;
+  top: 12px;
+  width: 0; height: 0;
+  border-top: 9px solid transparent;
+  border-bottom: 9px solid transparent;
+  border-right: 9px solid var(--border-color);
+  z-index: 0;
+}
+/* Fill layer (drawn on top) */
+.msgSentByUser .msgBubble::before {
+  content: '';
+  position: absolute;
+  left: -7px;
+  top: 13px;
+  width: 0; height: 0;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-right: 8px solid var(--surface-color);
+  z-index: 1;
+}
+
+/* === RIGHT TAIL (identity / NPC messages) === */
+.msgSentByIdentity .msgBubble::after {
+  content: '';
+  position: absolute;
+  right: -9px;
+  top: 12px;
+  width: 0; height: 0;
+  border-top: 9px solid transparent;
+  border-bottom: 9px solid transparent;
+  border-left: 9px solid color-mix(in srgb, var(--border-color) 60%, var(--accent) 40%);
+  z-index: 0;
+}
+.msgSentByIdentity .msgBubble::before {
+  content: '';
+  position: absolute;
+  right: -7px;
+  top: 13px;
+  width: 0; height: 0;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-left: 8px solid color-mix(in srgb, var(--surface-color) 80%, var(--accent) 20%);
+  z-index: 1;
 }
 
 .msgMeta {
   display: flex;
-  flex-direction: column;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
 }
 
-.msgAuthor { font-weight: 600; color: var(--text-color); font-size: 0.9rem; }
-.msgTime { font-size: 0.75rem; color: var(--text-muted); }
+.msgAuthor { font-weight: 600; color: var(--text-color); font-size: 0.85rem; }
+.msgTime { font-size: 0.72rem; color: var(--text-muted); }
 
 .emailMsgContent {
-  font-size: 0.95rem;
+  font-size: 0.93rem;
   line-height: 1.6;
   color: var(--text-color);
   overflow-wrap: break-word;
@@ -381,24 +581,23 @@
     display: block; /* Remove flex to allow absolute positioning */
     border: none;
     border-radius: 0;
+    /* Mobile: nav(60px) + mode-banner(55px) */
+    height: calc(100dvh - 115px);
+    min-height: unset;
   }
+
   
-  /* Stack Screens */
+  /* Stack Screens — structural only; Framer Motion drives the x-axis slide */
   .emailSidebar, .emailMain {
     width: 100%;
     height: 100%;
     position: absolute;
     top: 0; left: 0;
-    transition: transform 0.3s ease;
   }
   
-  /* Default: Show Sidebar, Hide Main */
-  .emailSidebar { transform: translateX(0); z-index: 10; }
-  .emailMain { transform: translateX(100%); z-index: 20; background: var(--surface-color); }
-  
-  /* Active State: Show Main */
-  .mobileViewActive .emailSidebar { transform: translateX(-30%); }
-  .mobileViewActive .emailMain { transform: translateX(0); }
+  /* Ensure sidebar renders below main when both at same position */
+  .emailSidebar { z-index: 10; }
+  .emailMain { z-index: 20; background: var(--surface-color); }
   
   .mobileBackBtn { 
     display: block; 
