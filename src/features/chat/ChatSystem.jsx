@@ -30,11 +30,34 @@ const getApiOrigin = () => {
 const symlogo = (c) =>
   (c ? `${getApiOrigin()}/img/clans/330px-${(NAME_OVERRIDES[c] || c).replace(/\s+/g, '_')}_symbol.webp` : '');
 
-const customClanEmojis = Object.keys(CLAN_COLORS).map(clan => ({
+// Sect and bloodline crests usable as chat emoji/tokens alongside the 16
+// player clans. These aren't part of CLAN_COLORS (they don't drive
+// character theming — see src/data/clans.js), just a chat-only extension of
+// the same ':Name:' crest system, backed by the same asset convention
+// (src/assets/clans/330px-{Name}_symbol.png) so localSymlogo() resolves them
+// with no further wiring.
+const EXTRA_CREST_NAMES = ['Anarch', 'Camarilla', 'Sabbat', 'Giovanni'];
+const ALL_CREST_NAMES = [...Object.keys(CLAN_COLORS), ...EXTRA_CREST_NAMES];
+
+const customClanEmojis = ALL_CREST_NAMES.map(clan => ({
   id: clan.toLowerCase().replace(/[^a-z0-9]/g, '_'),
   names: [clan],
   imgUrl: localSymlogo(clan)
 }));
+
+// Shared between the message composer's picker and the group-picture picker.
+const EMOJI_PICKER_CATEGORIES = [
+  { category: 'suggested', name: 'Recently Used' },
+  { category: 'custom', name: 'Clans' },
+  { category: 'smileys_people', name: 'Smileys & People' },
+  { category: 'animals_nature', name: 'Animals & Nature' },
+  { category: 'food_drink', name: 'Food & Drink' },
+  { category: 'travel_places', name: 'Travel & Places' },
+  { category: 'activities', name: 'Activities' },
+  { category: 'objects', name: 'Objects' },
+  { category: 'symbols', name: 'Symbols' },
+  { category: 'flags', name: 'Flags' }
+];
 
 const renderMessageBody = (text) => {
   if (!text) return null;
@@ -47,7 +70,7 @@ const renderMessageBody = (text) => {
       parts.push(text.substring(lastIndex, match.index));
     }
     const clanId = match[1];
-    const clanName = Object.keys(CLAN_COLORS).find(c => c.replace(/\s+/g, '_').toLowerCase() === clanId.toLowerCase());
+    const clanName = ALL_CREST_NAMES.find(c => c.replace(/\s+/g, '_').toLowerCase() === clanId.toLowerCase());
     if (clanName) {
       parts.push(
         <img
@@ -87,7 +110,7 @@ const ANKH = '☥';
 const clanKeyFor = (name) => {
   if (!name) return null;
   const want = String(name).trim().replace(/\s+/g, '_').toLowerCase();
-  return Object.keys(CLAN_COLORS).find(c => c.replace(/\s+/g, '_').toLowerCase() === want) || null;
+  return ALL_CREST_NAMES.find(c => c.replace(/\s+/g, '_').toLowerCase() === want) || null;
 };
 
 const clanToken = (name) => {
@@ -110,6 +133,26 @@ const ReactionGlyph = ({ value, size = 14 }) => {
       style={{ width: size, height: size, filter: 'brightness(0) invert(1)' }}
     />
   );
+};
+
+// A group's chosen picture: same ':Clan_Name:' / literal-emoji convention as
+// ReactionGlyph, just sized and centered for an avatar slot instead of
+// inline text. Falls back to the generic "group" icon when none is set yet.
+const GroupIconGlyph = ({ icon, size = 24 }) => {
+  if (!icon) return <span className="material-symbols-outlined text-on-surface-variant" style={{ fontSize: size }}>group</span>;
+  const match = /^:([A-Za-z0-9_]+):$/.exec(icon);
+  const clan = match ? clanKeyFor(match[1]) : null;
+  if (clan) {
+    return (
+      <img
+        src={localSymlogo(clan)}
+        alt={clan}
+        title={clan}
+        style={{ width: size * 0.7, height: size * 0.7, filter: 'brightness(0) invert(1)' }}
+      />
+    );
+  }
+  return <span style={{ fontSize: size * 0.85, lineHeight: 1 }}>{icon}</span>;
 };
 
 /* --- Gold NPC Tag Component --- */
@@ -161,6 +204,7 @@ const asGroupContact = (g) => ({
   type: 'group',
   id: g.id,
   name: g.name,
+  icon: g.icon || null,
   created_by: g.created_by,
   last_message_at: g.last_message_at ? new Date(g.last_message_at).getTime() : 0,
   unread_count: g.unread_count || 0
@@ -320,9 +364,18 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   const [selectedContact, setSelectedContact] = useState(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState(null);
   const canSend = commsEnabled || (isAdmin && selectedContact?.type === 'npc');
+  // Admin composing as an NPC while comms are down: offer a queue instead of
+  // (not just) the existing immediate-send bypass.
+  const showQueueOption = !commsEnabled && isAdmin && selectedContact?.type === 'npc';
   const [npcConvos, setNpcConvos] = useState([]);
   const [adminPlayerTab, setAdminPlayerTab] = useState('recent');
   const [adminPlayerFilter, setAdminPlayerFilter] = useState('');
+
+  // Admin-only: queued ("Send Later") NPC messages pending until SchreckNet reopens
+  const [pendingOpen, setPendingOpen] = useState(false);
+  const [pendingQueue, setPendingQueue] = useState([]);
+  const [pendingLoading, setPendingLoading] = useState(false);
+  const [pendingRefreshTick, setPendingRefreshTick] = useState(0);
 
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
@@ -331,11 +384,17 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   const [editingMsgId, setEditingMsgId] = useState(null);
   const [editBody, setEditBody] = useState('');
 
+  // Shared by the message composer's picker and the group-picture picker:
+  // a custom (clan/crest) pick becomes a ':Clan_Name:' token, anything else
+  // is the emoji character itself.
+  const emojiObjectToToken = (emojiObject) => {
+    const clanTag = emojiObject.isCustom && emojiObject.names && emojiObject.names[0] ? emojiObject.names[0].replace(/\s+/g, '_') : (emojiObject.unified || 'unknown');
+    return emojiObject.isCustom ? `:${clanTag}:` : emojiObject.emoji;
+  };
+
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const onEmojiClick = (emojiObject) => {
-    const clanTag = emojiObject.isCustom && emojiObject.names && emojiObject.names[0] ? emojiObject.names[0].replace(/\s+/g, '_') : (emojiObject.unified || 'unknown');
-    const textToAdd = emojiObject.isCustom ? `:${clanTag}:` : emojiObject.emoji;
-    setNewMessage(prevInput => prevInput + textToAdd);
+    setNewMessage(prevInput => prevInput + emojiObjectToToken(emojiObject));
     if (!isMobile && textareaRef.current) {
       textareaRef.current.focus();
     }
@@ -358,10 +417,41 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   const [creatingGroup, setCreatingGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupMembers, setNewGroupMembers] = useState([]);
+  const [newGroupIcon, setNewGroupIcon] = useState(null);
+  const [groupIconPickerOpen, setGroupIconPickerOpen] = useState(false);
+  const [savingGroupIcon, setSavingGroupIcon] = useState(false);
+
+  // Picking a group picture: while the Create modal is open it just stages
+  // the value locally; while Manage is open (an existing group) it saves
+  // immediately via the icon endpoint. Only one of those modals is ever open
+  // at once, so which one is active is enough to route the pick.
+  const onGroupIconEmojiClick = async (emojiObject) => {
+    const token = emojiObjectToToken(emojiObject);
+    setGroupIconPickerOpen(false);
+    if (creatingGroup) {
+      setNewGroupIcon(token);
+      return;
+    }
+    if (managingGroup && selectedContact?.type === 'group') {
+      setSavingGroupIcon(true);
+      try {
+        await api.put(`/chat/groups/${selectedContact.id}/icon`, { icon: token });
+        setGroups(prev => prev.map(g => g.id === selectedContact.id ? { ...g, icon: token } : g));
+        setSelectedContact(prev => (prev && prev.id === selectedContact.id) ? { ...prev, icon: token } : prev);
+      } catch (e) {
+        alert('Failed to update group picture.');
+      } finally {
+        setSavingGroupIcon(false);
+      }
+    }
+  };
 
   const [managingGroup, setManagingGroup] = useState(false);
   const [currentGroupMembers, setCurrentGroupMembers] = useState([]);
   const [groupMembersLoading, setGroupMembersLoading] = useState(false);
+  // Both group modals share one picker instance (never open together) —
+  // always start it closed whenever either modal opens or closes.
+  useEffect(() => { setGroupIconPickerOpen(false); }, [creatingGroup, managingGroup]);
 
   const [headerGroupMembers, setHeaderGroupMembers] = useState([]);
 
@@ -441,7 +531,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
       setMessages(prev => prev.map(m => m.id === editingMsgId ? { ...m, body: editBody, edited: true } : m));
       setEditingMsgId(null);
     } catch (e) {
-      alert("Failed to edit message. It may be too old or you lack permission.");
+      alert(e?.response?.data?.error || "Failed to edit message. It may be too old or you lack permission.");
     }
   };
 
@@ -743,6 +833,40 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     fetchContacts();
   }, [socketRefreshTick, fetchContacts]);
 
+  // Admin-only: keep the "Pending" (queued NPC messages) count/list fresh.
+  // Reuses the same chat:refresh socket signal as contacts, plus a slow
+  // poll fallback and an explicit tick bumped right after queue/cancel actions.
+  const fetchPendingQueue = useCallback(async () => {
+    if (!isAdmin || !isAuthenticated) return;
+    setPendingLoading(true);
+    try {
+      const { data } = await api.get('/admin/chat/npc/queued');
+      setPendingQueue(data.queued || []);
+    } catch (e) {
+      // silent fail — non-critical panel
+    } finally {
+      setPendingLoading(false);
+    }
+  }, [isAdmin, isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    fetchPendingQueue();
+    const interval = setInterval(fetchPendingQueue, 60000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, socketRefreshTick, pendingRefreshTick]);
+
+  const cancelPendingMessage = async (id) => {
+    try {
+      await api.delete(`/admin/chat/npc/queued/${id}`);
+      setPendingQueue(prev => prev.filter(m => m.id !== id));
+      setMessages(prev => prev.map(m => (m.id === id && m.status === 'queued') ? { ...m, status: 'cancelled' } : m));
+    } catch (e) {
+      alert('Failed to cancel queued message.');
+    }
+  };
+
   /* Reactions (double-tap-to-like + emoji react) */
   // Double-tap-to-like is a thumbs up, not a heart: it reads as
   // acknowledgement rather than affection, which is what a tap actually means.
@@ -838,7 +962,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
       const ids = messageIdsKey.split(',').map(Number);
       api.post('/chat/messages/reactions/batch', { table: reactionTable, ids })
         .then(({ data }) => { if (active) setReactionsByMsgId(data.reactions || {}); })
-        .catch(() => {});
+        .catch(() => { });
     };
     fetchReactions();
     if (!isTabVisible) return () => { active = false; };
@@ -1007,14 +1131,16 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     }
 
     setAttachment(file);
-    const url = URL.createObjectURL(file);
-    setPreviewUrl(url);
+    setPreviewUrl(prev => {
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
 
     if (textareaRef.current) textareaRef.current.focus();
   };
 
   /* --- Sending Logic --- */
-  const doSend = async () => {
+  const doSend = async ({ queue = false } = {}) => {
     if (!canSend) return;
     const body = newMessage.trim();
 
@@ -1093,7 +1219,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
       }
       else {
         if (isAdmin) {
-          const { data } = await api.post('/admin/chat/npc/messages', { npc_id: selectedContact.id, user_id: selectedPlayerId, ...payload });
+          const { data } = await api.post('/admin/chat/npc/messages', { npc_id: selectedContact.id, user_id: selectedPlayerId, queue, ...payload });
           if (data && data.message) {
             newMsg = {
               id: data.message.id,
@@ -1101,7 +1227,8 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
               created_at: data.message.created_at,
               sender_id: 'npc',
               _from: 'npc',
-              attachment_id: data.message.attachment_id
+              attachment_id: data.message.attachment_id,
+              status: data.message.status
             };
           } else {
             newMsg = {
@@ -1110,9 +1237,11 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
               created_at: new Date().toISOString(),
               sender_id: 'npc',
               _from: 'npc',
-              attachment_id: attachmentId
+              attachment_id: attachmentId,
+              status: queue ? 'queued' : 'sent'
             };
           }
+          setPendingRefreshTick(t => t + 1);
         } else {
           const { data } = await api.post('/chat/npc/messages', { npc_id: selectedContact.id, ...payload });
           if (data && data.message) {
@@ -1182,10 +1311,11 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   const handleCreateGroup = async () => {
     if (!newGroupName.trim() || !newGroupMembers.length) return;
     try {
-      await api.post('/chat/groups', { name: newGroupName, members: newGroupMembers });
+      await api.post('/chat/groups', { name: newGroupName, members: newGroupMembers, icon: newGroupIcon });
       setCreatingGroup(false);
       setNewGroupName('');
       setNewGroupMembers([]);
+      setNewGroupIcon(null);
       fetchContacts();
     } catch (e) { alert('Failed to create group'); }
   };
@@ -1366,6 +1496,44 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
       <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
         <div className="bg-surface-container border border-outline-variant rounded-lg w-full max-w-md p-6 flex flex-col gap-4 shadow-[0_0_20px_rgba(27,76,140,0.3)]">
           <h3 className="text-xl font-headline-md text-primary tracking-tight border-b border-outline-variant/50 pb-2">Manage: {selectedContact?.name}</h3>
+
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setGroupIconPickerOpen(v => !v)}
+              disabled={savingGroupIcon}
+              title="Click to change the group picture"
+              className="w-12 h-12 rounded-full bg-surface-container-high border border-outline-variant/50 flex items-center justify-center shrink-0 overflow-hidden relative hover:border-primary transition-colors disabled:opacity-50"
+            >
+              <GroupIconGlyph icon={selectedContact?.icon} size={40} />
+            </button>
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] text-on-surface-variant/50 font-bold tracking-widest uppercase">Group Picture</span>
+              <button
+                type="button"
+                onClick={() => setGroupIconPickerOpen(v => !v)}
+                disabled={savingGroupIcon}
+                className="text-xs text-primary hover:text-primary-container transition-colors font-bold self-start disabled:opacity-50"
+              >
+                {savingGroupIcon ? 'Saving…' : 'Change Picture'}
+              </button>
+            </div>
+          </div>
+          {groupIconPickerOpen && (
+            <div className="rounded-lg overflow-hidden border border-outline-variant">
+              <React.Suspense fallback={<div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary, #888)', background: '#111', fontSize: '13px' }}>Loading emojis...</div>}>
+                <EmojiPicker
+                  onEmojiClick={onGroupIconEmojiClick}
+                  theme="dark"
+                  width="100%"
+                  height={320}
+                  customEmojis={customClanEmojis}
+                  categories={EMOJI_PICKER_CATEGORIES}
+                />
+              </React.Suspense>
+            </div>
+          )}
+
           {groupMembersLoading ? <div className="text-on-surface-variant">Loading...</div> : (
             <div className="flex flex-col gap-4 max-h-[60vh] overflow-y-auto pr-2" style={{ scrollbarWidth: 'thin' }}>
               <div>
@@ -1410,6 +1578,38 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
       <div className="bg-surface-container border border-outline-variant rounded-lg w-full max-w-md p-6 flex flex-col gap-4 shadow-[0_0_20px_rgba(27,76,140,0.3)]">
         <h3 className="text-xl font-headline-md text-primary tracking-tight border-b border-outline-variant/50 pb-2">Create Group Chat</h3>
+
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setGroupIconPickerOpen(v => !v)}
+            title="Click to pick a group picture"
+            className="w-12 h-12 rounded-full bg-surface-container-high border border-outline-variant/50 flex items-center justify-center shrink-0 overflow-hidden relative hover:border-primary transition-colors"
+          >
+            <GroupIconGlyph icon={newGroupIcon} size={40} />
+          </button>
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] text-on-surface-variant/50 font-bold tracking-widest uppercase">Group Picture</span>
+            <button type="button" onClick={() => setGroupIconPickerOpen(v => !v)} className="text-xs text-primary hover:text-primary-container transition-colors font-bold self-start">
+              {newGroupIcon ? 'Change Picture' : 'Pick Picture'}
+            </button>
+          </div>
+        </div>
+        {groupIconPickerOpen && (
+          <div className="rounded-lg overflow-hidden border border-outline-variant">
+            <React.Suspense fallback={<div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary, #888)', background: '#111', fontSize: '13px' }}>Loading emojis...</div>}>
+              <EmojiPicker
+                onEmojiClick={onGroupIconEmojiClick}
+                theme="dark"
+                width="100%"
+                height={320}
+                customEmojis={customClanEmojis}
+                categories={EMOJI_PICKER_CATEGORIES}
+              />
+            </React.Suspense>
+          </div>
+        )}
+
         <input type="text" placeholder="Group Name" className="w-full bg-surface-dim border border-outline-variant rounded p-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary/50 transition-colors font-system-code" value={newGroupName} onChange={e => setNewGroupName(e.target.value)} />
         <div className="flex flex-col gap-2 max-h-[40vh] overflow-y-auto pr-2" style={{ scrollbarWidth: 'thin' }}>
           {usersWithChar.map(u => (
@@ -1460,7 +1660,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
           {isCharActive && (
             <button onClick={() => setCreatingGroup(true)} className="w-full py-2 bg-transparent border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary hover:shadow-[0_0_8px_rgba(140,27,27,0.2)] transition-all rounded text-[12px] font-bold tracking-wider flex items-center justify-center gap-2 group">
               <span className="material-symbols-outlined text-[16px] group-hover:animate-spin">add</span>
-              NEW UPLOAD
+              NEW GROUP
             </button>
           )}
 
@@ -1492,7 +1692,9 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                   return (
                     <li key={`g-${g.id}`} onClick={() => selectContact(g)} className={`${isActive ? 'blood-active border-l-4 translate-x-1' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all`}>
                       <div className="flex items-center gap-3 min-w-0">
-                        <span className="material-symbols-outlined text-[18px] opacity-70 shrink-0">group</span>
+                        <div className="w-6 h-6 rounded-full bg-surface-container-high flex items-center justify-center shrink-0 overflow-hidden">
+                          <GroupIconGlyph icon={g.icon} size={18} />
+                        </div>
                         <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate`}>{g.name}</span>
                       </div>
                       {g.unread_count > 0 && <div className="w-4 h-4 rounded-full bg-primary-container text-white flex items-center justify-center text-[10px] font-bold shrink-0">{g.unread_count}</div>}
@@ -1607,8 +1809,47 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
             <span className="material-symbols-outlined text-[16px]">{notifOn ? 'notifications_active' : 'notifications_off'}</span>
             <span className="text-[11px] font-bold tracking-widest uppercase">Notifs: {notifOn ? 'On' : 'Off'}</span>
           </div>
+          {isAdmin && (
+            <div onClick={() => setPendingOpen(true)} className={`flex items-center gap-3 ${pendingQueue.length > 0 ? 'text-amber-400' : 'text-on-surface-variant'} cursor-pointer p-1 rounded hover:bg-surface-variant/10 transition-colors`}>
+              <span className="material-symbols-outlined text-[16px]">schedule_send</span>
+              <span className="text-[11px] font-bold tracking-widest uppercase">Pending: {pendingQueue.length}</span>
+            </div>
+          )}
         </div>
       </motion.aside>
+
+      {/* Pending (Queued NPC Messages) Panel */}
+      {pendingOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setPendingOpen(false)}>
+          <div className="bg-surface-container border border-outline-variant rounded-lg w-full max-w-lg max-h-[80vh] flex flex-col shadow-[0_0_20px_rgba(245,158,11,0.2)]" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-outline-variant/50 shrink-0">
+              <h3 className="text-lg font-headline-md text-amber-400 tracking-tight flex items-center gap-2">
+                <span className="material-symbols-outlined">schedule_send</span> Pending NPC Messages
+              </h3>
+              <button onClick={() => setPendingOpen(false)} className="text-on-surface-variant hover:text-error"><span className="material-symbols-outlined">close</span></button>
+            </div>
+            {nextOpening && (
+              <div className="px-4 py-2 text-[11px] font-system-code text-on-surface-variant/70 border-b border-outline-variant/30">
+                Auto-sends when SchreckNet reopens: {nextOpening.formatted}
+              </div>
+            )}
+            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2 custom-scrollbar">
+              {pendingLoading && pendingQueue.length === 0 && <div className="text-on-surface-variant text-sm text-center py-6">Loading...</div>}
+              {!pendingLoading && pendingQueue.length === 0 && <div className="text-on-surface-variant text-sm text-center py-6">Nothing queued.</div>}
+              {pendingQueue.map(m => (
+                <div key={m.id} className="bg-surface-container-highest border border-outline-variant/30 rounded p-3 flex flex-col gap-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-primary truncate">{m.npc_name} <span className="text-on-surface-variant font-normal">➜ {m.char_name || m.user_display_name}</span></span>
+                    <button onClick={() => cancelPendingMessage(m.id)} className="text-[10px] bg-error-container/20 text-error border border-error/30 px-2 py-1 rounded hover:bg-error/20 transition-colors shrink-0">Cancel</button>
+                  </div>
+                  <p className="text-sm text-on-surface break-words">{m.body || (m.attachment_id ? '📷 Attachment' : '')}</p>
+                  <span className="text-[10px] text-on-surface-variant/50 font-system-code">{formatTime(m.created_at)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Content (Canvas) */}
       <motion.main
@@ -1633,7 +1874,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                     ) : selectedContact.type === 'npc' ? (
                       <Avatar npcId={selectedContact.id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="opacity-80" fallback={localSymlogo(selectedContact.clan) || '/img/ATT-logo(1).webp'} />
                     ) : (
-                      <span className="material-symbols-outlined text-on-surface-variant text-[24px]">group</span>
+                      <GroupIconGlyph icon={selectedContact.icon} size={28} />
                     )}
                   </div>
                   <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-surface rounded-full shadow-[0_0_4px_#22c55e]"></div>
@@ -1738,9 +1979,17 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                   </div>
                 );
 
-                const mine = selectedContact.type === 'user' ? item.sender_id === currentUser.id : (selectedContact.type === 'group' ? item.sender_id === currentUser.id : (isAdmin ? item.sender_id === 'npc' : item.sender_id === currentUser.id));
+                const isMineFn = (m) => selectedContact.type === 'user' ? m.sender_id === currentUser.id : (selectedContact.type === 'group' ? m.sender_id === currentUser.id : (isAdmin ? m.sender_id === 'npc' : m.sender_id === currentUser.id));
+                const mine = isMineFn(item);
                 const timeSinceSent = Date.now() - new Date(item.created_at).getTime();
                 const canEditDelete = mine && timeSinceSent < 4 * 60 * 60 * 1000 && !String(item.id).startsWith('temp_');
+                // Mirrors the backend's edit lock: once the other side has sent
+                // anything after this message, it's been "answered" and can no
+                // longer be edited (delete stays unaffected — same as the API).
+                const answeredSince = mine && messages.some(m =>
+                  new Date(m.created_at).getTime() > new Date(item.created_at).getTime() && !isMineFn(m)
+                );
+                const canEdit = canEditDelete && !answeredSince;
                 const isGroupNotMine = selectedContact.type === 'group' && !mine;
 
                 return (
@@ -1847,6 +2096,12 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
 
                         {item.edited && <span className="font-system-code text-[9px] text-on-surface-variant/40">(edited)</span>}
 
+                        {item.status === 'queued' && (
+                          <span className="font-system-code text-[9px] text-amber-400 uppercase tracking-widest flex items-center gap-0.5">
+                            <span className="material-symbols-outlined text-[11px]">schedule_send</span> Pending
+                          </span>
+                        )}
+
                         {mine && (
                           <span className="text-[12px] md:text-[14px] text-primary flex items-center">
                             <StatusIcon msg={item} />
@@ -1866,7 +2121,9 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                           )}
                           {canEditDelete && !editingMsgId && (
                             <>
-                              <button onClick={() => { setEditingMsgId(item.id); setEditBody(item.body); }} className="text-[10px] text-on-surface-variant hover:text-primary transition-colors">Edit</button>
+                              {canEdit && (
+                                <button onClick={() => { setEditingMsgId(item.id); setEditBody(item.body); }} className="text-[10px] text-on-surface-variant hover:text-primary transition-colors">Edit</button>
+                              )}
                               <button onClick={() => handleDeleteMessage(item.id)} className="text-[10px] text-on-surface-variant hover:text-error transition-colors">Del</button>
                             </>
                           )}
@@ -1906,18 +2163,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                       searchDisabled={false}
                       width="100%"
                       customEmojis={customClanEmojis}
-                      categories={[
-                        { category: 'suggested', name: 'Recently Used' },
-                        { category: 'custom', name: 'Clans' },
-                        { category: 'smileys_people', name: 'Smileys & People' },
-                        { category: 'animals_nature', name: 'Animals & Nature' },
-                        { category: 'food_drink', name: 'Food & Drink' },
-                        { category: 'travel_places', name: 'Travel & Places' },
-                        { category: 'activities', name: 'Activities' },
-                        { category: 'objects', name: 'Objects' },
-                        { category: 'symbols', name: 'Symbols' },
-                        { category: 'flags', name: 'Flags' }
-                      ]}
+                      categories={EMOJI_PICKER_CATEGORIES}
                     />
                   </React.Suspense>
                 </div>
@@ -1926,7 +2172,11 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
               <div className="max-w-4xl mx-auto relative flex items-end gap-2 bg-surface-container-lowest border border-outline-variant rounded-md p-1.5 md:p-2 focus-within:border-primary focus-within:shadow-[0_0_8px_rgba(180,15,31,0.2)] transition-all">
 
                 {/* Attachments & Previews */}
-                <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="image/*,video/*,audio/*" onChange={handleFileSelect} />
+                {/* Backend upload endpoint only accepts image/audio (see handleFileSelect) — video
+                    is deliberately left out of the OS picker so it never gets offered just to be
+                    rejected. ChatMedia can still render a video attachment if one exists from
+                    elsewhere; this only narrows what a user can select here. */}
+                <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="image/*,audio/*" onChange={handleFileSelect} />
 
                 <button type="button" onClick={() => fileInputRef.current?.click()} disabled={!isCharActive || !canSend} className="p-2 text-on-surface-variant hover:text-primary transition-colors shrink-0 rounded hover:bg-surface-variant/30 disabled:opacity-30">
                   <span className="material-symbols-outlined text-[20px] md:text-[24px]">attach_file</span>
@@ -1963,7 +2213,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                     value={newMessage}
                     onChange={e => setNewMessage(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder={!canSend ? (nextOpening ? `SchreckNet offline : Opens again ${nextOpening.day} at ${nextOpening.time}` : "System Offline...") : (!isCharActive ? "Waiting for ST approval..." : "Transmit response...")}
+                    placeholder={showQueueOption ? "SchreckNet offline : Queue this reply or send now anyway..." : !canSend ? (nextOpening ? `SchreckNet offline : Opens again ${nextOpening.day} at ${nextOpening.time}` : "System Offline...") : (!isCharActive ? "Waiting for ST approval..." : "Transmit response...")}
                     className="w-full bg-transparent border-none text-on-surface font-system-code text-[13px] md:text-[14px] placeholder-on-surface-variant/40 focus:ring-0 resize-none py-2 px-1 max-h-32 custom-scrollbar break-words"
                     rows={1}
                     style={{ minHeight: '40px' }}
@@ -1975,7 +2225,24 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                   <button type="button" onClick={() => setShowEmojiPicker(val => !val)} disabled={!isCharActive || !canSend} className="p-2 text-on-surface-variant hover:text-primary transition-colors rounded hover:bg-surface-variant/30 hidden md:flex disabled:opacity-30">
                     <span className="material-symbols-outlined text-[20px] md:text-[24px]">mood</span>
                   </button>
-                  <button type="button" onClick={handleSendMessage} disabled={!canSend || !isCharActive || sendingRef.current || (!newMessage.trim() && !attachment) || (isAdmin && selectedContact?.type === 'npc' && !selectedPlayerId)} className="p-2 bg-primary/10 text-primary border border-primary/30 hover:bg-primary hover:text-on-primary transition-colors rounded shadow-[0_0_8px_rgba(255,179,174,0.1)] group flex items-center justify-center h-10 w-10 disabled:opacity-30 disabled:hover:bg-primary/10 disabled:hover:text-primary">
+                  {showQueueOption && (
+                    <button
+                      type="button"
+                      onClick={() => doSend({ queue: true })}
+                      disabled={!isCharActive || sendingRef.current || (!newMessage.trim() && !attachment) || !selectedPlayerId}
+                      title="Queue — sends automatically when SchreckNet reopens"
+                      className="p-2 bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500 hover:text-black transition-colors rounded shadow-[0_0_8px_rgba(245,158,11,0.15)] group flex items-center justify-center h-10 w-10 disabled:opacity-30 disabled:hover:bg-amber-500/10 disabled:hover:text-amber-400"
+                    >
+                      <span className="material-symbols-outlined text-[18px] md:text-[20px]">schedule_send</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleSendMessage}
+                    disabled={!canSend || !isCharActive || sendingRef.current || (!newMessage.trim() && !attachment) || (isAdmin && selectedContact?.type === 'npc' && !selectedPlayerId)}
+                    title={showQueueOption ? 'Send now anyway (bypasses the offline gate)' : undefined}
+                    className="p-2 bg-primary/10 text-primary border border-primary/30 hover:bg-primary hover:text-on-primary transition-colors rounded shadow-[0_0_8px_rgba(255,179,174,0.1)] group flex items-center justify-center h-10 w-10 disabled:opacity-30 disabled:hover:bg-primary/10 disabled:hover:text-primary"
+                  >
                     <span className="material-symbols-outlined text-[18px] md:text-[20px] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform">send</span>
                   </button>
                 </div>

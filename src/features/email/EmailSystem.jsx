@@ -82,6 +82,12 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
   const [adminDmSending, setAdminDmSending] = useState(false);
   const [allPlayers, setAllPlayers] = useState([]);
 
+  // Admin-only: queued ("Send Later") NPC-identity emails pending until SurfaceWeb reopens
+  const [pendingOpen, setPendingOpen] = useState(false);
+  const [pendingQueue, setPendingQueue] = useState([]);
+  const [pendingLoading, setPendingLoading] = useState(false);
+  const [replySending, setReplySending] = useState(false);
+
   // Admin drawer open state (Set of user_id strings)
   const [openDrawers, setOpenDrawers] = useState(new Set());
   const toggleDrawer = (userId) => setOpenDrawers(prev => {
@@ -175,6 +181,36 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
     }).catch(() => {});
   }, [isAdmin]);
 
+  // Admin-only: keep the "Pending" (queued NPC-identity emails) list fresh
+  const fetchPendingQueue = useCallback(async () => {
+    if (!isAdmin) return;
+    setPendingLoading(true);
+    try {
+      const { data } = await api.get('/admin/emails/queued');
+      setPendingQueue(data.queued || []);
+    } catch (e) {
+      // silent fail — non-critical panel
+    } finally {
+      setPendingLoading(false);
+    }
+  }, [isAdmin]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    fetchPendingQueue();
+    const interval = setInterval(fetchPendingQueue, 20000);
+    return () => clearInterval(interval);
+  }, [isAdmin, fetchPendingQueue]);
+
+  const cancelPendingMessage = async (id) => {
+    try {
+      await api.delete(`/admin/emails/queued/${id}`);
+      setPendingQueue(prev => prev.filter(m => m.id !== id));
+    } catch (e) {
+      alert('Failed to cancel queued message.');
+    }
+  };
+
   useEffect(() => {
     const controller = new AbortController();
     loadEmails(false, controller.signal);
@@ -208,18 +244,24 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
     }
   };
 
-  const handleEmailReply = async () => {
-    if (!commsEnabled || !emailReplyBody.trim()) return;
+  const canComposeReply = commsEnabled || isAdmin;
+
+  const handleEmailReply = async ({ queue = false } = {}) => {
+    if (!canComposeReply || !emailReplyBody.trim() || replySending) return;
+    setReplySending(true);
     try {
       const endpoint = isAdmin ? '/admin/emails/reply' : '/emails/send';
-      await api.post(endpoint, { thread_id: selectedThread.id, body: emailReplyBody });
+      await api.post(endpoint, { thread_id: selectedThread.id, body: emailReplyBody, queue });
       setEmailReplyBody('');
       const url = isAdmin ? `/admin/emails/threads/${selectedThread.id}` : `/emails/thread/${selectedThread.id}`;
       const { data } = await api.get(url);
       setEmailMessages(data.messages);
       setTimeout(() => scrollToBottom(), 80);
+      if (queue) fetchPendingQueue();
     } catch (e) {
       alert('Failed to reply to email.');
+    } finally {
+      setReplySending(false);
     }
   };
 
@@ -260,7 +302,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
     }
   };
 
-  const handleAdminDm = async () => {
+  const handleAdminDm = async ({ queue = false } = {}) => {
     const { email, display, user_id, subject, body } = adminDmForm;
     if (!email || !display || !user_id || !subject || !body) return;
     setAdminDmSending(true);
@@ -270,15 +312,20 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
         display_name: display,
         user_id: Number(user_id),
         subject,
-        body
+        body,
+        queue
       });
       setAdminDmOpen(false);
       setAdminDmForm({ email: '', display: '', user_id: '', subject: '', body: '' });
       await loadEmails();
-      // Auto-open the newly created thread
-      const newThread = threads.find(t => t.id === data.thread_id) ||
-        (await api.get('/admin/emails/threads').then(r => r.data.threads.find(t => t.id === data.thread_id)));
-      if (newThread) openEmailThread(newThread);
+      if (queue) {
+        fetchPendingQueue();
+      } else {
+        // Auto-open the newly created thread
+        const newThread = threads.find(t => t.id === data.thread_id) ||
+          (await api.get('/admin/emails/threads').then(r => r.data.threads.find(t => t.id === data.thread_id)));
+        if (newThread) openEmailThread(newThread);
+      }
     } catch (e) {
       alert(e.response?.data?.error || 'Failed to send DM.');
     } finally {
@@ -317,6 +364,19 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
             </button>
             {isAdmin && (
               <>
+                <button
+                  className={styles.iconBtn}
+                  title={`Pending (${pendingQueue.length})`}
+                  onClick={() => setPendingOpen(true)}
+                  style={{ position: 'relative', color: pendingQueue.length > 0 ? '#f59e0b' : undefined }}
+                >
+                  <span className="material-symbols-outlined text-[20px]" style={{ verticalAlign: 'middle' }}>schedule_send</span>
+                  {pendingQueue.length > 0 && (
+                    <span style={{ position: 'absolute', top: -2, right: -2, background: '#f59e0b', color: '#000', borderRadius: '50%', fontSize: '9px', fontWeight: 'bold', minWidth: 14, height: 14, lineHeight: '14px', textAlign: 'center' }}>
+                      {pendingQueue.length}
+                    </span>
+                  )}
+                </button>
                 <button
                   className={styles.iconBtn}
                   title="New Direct Message"
@@ -529,6 +589,11 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
                       <div className={styles.msgMeta}>
                         <span className={styles.msgAuthor}>{msgName}</span>
                         <span className={styles.msgTime}>{formatAthensDateTime(m.created_at)}</span>
+                        {m.status === 'queued' && (
+                          <span style={{ color: '#f59e0b', fontSize: '9px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: '11px' }}>schedule_send</span> Pending
+                          </span>
+                        )}
                       </div>
                       {/* CRITICAL SECURITY FIX: Sanitize HTML content to prevent XSS */}
                       <div
@@ -547,19 +612,31 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
                 <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>warning</span>
                 <span>
                   SURFACE WEB COMMS ARE CURRENTLY OFFLINE : {nextOpening ? `OPENS AGAIN ${nextOpening.day.toUpperCase()} AT ${nextOpening.time} (${nextOpening.date})` : 'MESSAGE SENDING IS DISABLED'}
+                  {isAdmin ? ' — queue this reply below, or send now anyway.' : ''}
                 </span>
               </div>
             )}
 
-            <div className={styles.emailReplyBox} style={{ opacity: !commsEnabled ? 0.6 : 1, pointerEvents: !commsEnabled ? 'none' : 'auto' }}>
+            <div className={styles.emailReplyBox} style={{ opacity: !canComposeReply ? 0.6 : 1, pointerEvents: !canComposeReply ? 'none' : 'auto' }}>
               <TextEditor
                 value={emailReplyBody}
                 onChange={setEmailReplyBody}
-                placeholder={!commsEnabled ? (nextOpening ? `Offline : Opens again ${nextOpening.day} at ${nextOpening.time}` : "System Offline...") : "Reply..."}
-                disabled={!commsEnabled}
+                placeholder={!canComposeReply ? (nextOpening ? `Offline : Opens again ${nextOpening.day} at ${nextOpening.time}` : "System Offline...") : "Reply..."}
+                disabled={!canComposeReply}
               />
-              <div style={{ textAlign: 'right', marginTop: '10px' }}>
-                <button onClick={handleEmailReply} className={styles.btnPri} disabled={!commsEnabled}>Send Reply</button>
+              <div style={{ textAlign: 'right', marginTop: '10px', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                {!commsEnabled && isAdmin ? (
+                  <>
+                    <button onClick={() => handleEmailReply({ queue: true })} className={styles.btnSec} disabled={replySending || !emailReplyBody.trim()} title="Queue — sends automatically when SurfaceWeb reopens">
+                      Queue
+                    </button>
+                    <button onClick={() => handleEmailReply({ queue: false })} className={styles.btnPri} disabled={replySending || !emailReplyBody.trim()} title="Send now anyway (bypasses the offline gate)">
+                      Send Now
+                    </button>
+                  </>
+                ) : (
+                  <button onClick={() => handleEmailReply()} className={styles.btnPri} disabled={!canComposeReply || replySending}>Send Reply</button>
+                )}
               </div>
             </div>
           </>
@@ -720,6 +797,12 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
               />
             </div>
 
+            {!commsEnabled && (
+              <p style={{ fontSize: '0.75rem', color: '#f59e0b', marginTop: 8 }}>
+                SurfaceWeb is offline — queue this DM to auto-send when it reopens, or send it now anyway.
+              </p>
+            )}
+
             <div className={styles.modalActions}>
               <button
                 onClick={() => { setAdminDmOpen(false); setAdminDmForm({ email: '', display: '', user_id: '', subject: '', body: '' }); }}
@@ -728,13 +811,66 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
               >
                 Cancel
               </button>
-              <button
-                className={styles.btnPri}
-                onClick={handleAdminDm}
-                disabled={adminDmSending || !adminDmForm.email || !adminDmForm.display || !adminDmForm.user_id || !adminDmForm.subject || !adminDmForm.body}
-              >
-                {adminDmSending ? 'Sending...' : 'Send DM'}
-              </button>
+              {!commsEnabled ? (
+                <>
+                  <button
+                    className={styles.btnSec}
+                    onClick={() => handleAdminDm({ queue: true })}
+                    disabled={adminDmSending || !adminDmForm.email || !adminDmForm.display || !adminDmForm.user_id || !adminDmForm.subject || !adminDmForm.body}
+                    title="Queue — sends automatically when SurfaceWeb reopens"
+                  >
+                    {adminDmSending ? 'Sending...' : 'Queue'}
+                  </button>
+                  <button
+                    className={styles.btnPri}
+                    onClick={() => handleAdminDm({ queue: false })}
+                    disabled={adminDmSending || !adminDmForm.email || !adminDmForm.display || !adminDmForm.user_id || !adminDmForm.subject || !adminDmForm.body}
+                    title="Send now anyway (bypasses the offline gate)"
+                  >
+                    {adminDmSending ? 'Sending...' : 'Send Now'}
+                  </button>
+                </>
+              ) : (
+                <button
+                  className={styles.btnPri}
+                  onClick={() => handleAdminDm()}
+                  disabled={adminDmSending || !adminDmForm.email || !adminDmForm.display || !adminDmForm.user_id || !adminDmForm.subject || !adminDmForm.body}
+                >
+                  {adminDmSending ? 'Sending...' : 'Send DM'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pending (Queued NPC-identity Emails) Panel */}
+      {pendingOpen && (
+        <div className={styles.modalBackdrop} onClick={() => setPendingOpen(false)}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <h3>Pending Emails</h3>
+            {nextOpening && (
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted, #aaa)', marginBottom: 8 }}>
+                Auto-sends when SurfaceWeb reopens: {nextOpening.formatted}
+              </p>
+            )}
+            <div className={styles.memberSelect} style={{ maxHeight: 320, overflowY: 'auto' }}>
+              {pendingLoading && pendingQueue.length === 0 && <p className={styles.emptyStateText}>Loading...</p>}
+              {!pendingLoading && pendingQueue.length === 0 && <p className={styles.emptyStateText}>Nothing queued.</p>}
+              {pendingQueue.map(m => (
+                <div key={m.id} className={styles.identityRow} style={{ flexDirection: 'column', alignItems: 'stretch', gap: 4 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: '0.8rem' }}>
+                      <b>{m.identity_name}</b> <span style={{ opacity: 0.7 }}>➜ {m.char_name || m.user_display_name}</span>
+                      <br /><small style={{ opacity: 0.6 }}>{m.subject}</small>
+                    </span>
+                    <button className={styles.btnSec} onClick={() => cancelPendingMessage(m.id)}>Cancel</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className={styles.modalActions}>
+              <button onClick={() => setPendingOpen(false)} className={styles.btnSec}>Close</button>
             </div>
           </div>
         </div>

@@ -7,6 +7,25 @@ import { Link, useNavigate } from 'react-router-dom';
 import { AuthCtx } from '../../core/AuthContext';
 import { useTheme } from '../../core/ThemeContext';
 import { CLAN_NAMES, symlogo, textlogo } from '../../data/clans';
+
+// The schedule this calendar edits is keyed and evaluated entirely in
+// Europe/Athens calendar days (see resolveCommsSchedule in back/routes/comms.js).
+// Anchoring the initial month view to the browser's local "now" instead would
+// open the wrong month for an admin outside that timezone right around a
+// month boundary. Every day cell's own date string is still built from the
+// displayed day number, so this only affects which month the calendar opens
+// to by default.
+const getAthensYearMonth = () => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Athens',
+    year: 'numeric',
+    month: '2-digit'
+  }).formatToParts(new Date());
+  const year = Number(parts.find(p => p.type === 'year')?.value);
+  const month = Number(parts.find(p => p.type === 'month')?.value); // 1-12
+  return { year, month };
+};
+
 export default function AdminMasterTab() {
   const nav = useNavigate();
   const { me, setMe } = useContext(AuthCtx);
@@ -15,7 +34,10 @@ export default function AdminMasterTab() {
   const [disabledClans, setDisabledClans] = useState([]);
   const [clanSaving, setClanSaving] = useState(false);
   const [chatSchedule, setChatSchedule] = useState({});
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const { year, month } = getAthensYearMonth();
+    return new Date(year, month - 1, 1);
+  });
   const [bannerEnabled, setBannerEnabled] = useState(false);
   const [bannerMessage, setBannerMessage] = useState('');
   const [bannerCountdown, setBannerCountdown] = useState('');
