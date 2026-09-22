@@ -323,8 +323,15 @@ function Picker({ status }) {
     onError: (e) => toast.error(e?.response?.data?.error || 'Roll failed'),
   });
 
+  // Herd feeding never rolls and never touches domain safety (the backend
+  // hardcodes safety_delta to 0 for it — division is stored purely as a
+  // flavor/log field), so it shouldn't be blocked on the same "pick a
+  // hunting domain" step Roll-to-Feed needs. Fall back to the player's own
+  // domain, then the city centre, so the button always has something valid
+  // to send even if they never expanded the domain list.
+  const herdDivision = division || status.myDivision || CENTRE_DIVISION;
   const herdMutation = useMutation({
-    mutationFn: () => api.post('/feeding/herd-feed', { division }),
+    mutationFn: () => api.post('/feeding/herd-feed', { division: herdDivision }),
     onSuccess: (res) => {
       const d = res.data;
       toast.success(`Herd fed Hunger ${d.hungerBefore} → ${d.hungerAfter}. Herd pool: ${d.herdCurrent}/${d.herdDots} remaining.`);
@@ -475,12 +482,10 @@ function Picker({ status }) {
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
             <button
               className={styles.btnGhost}
-              disabled={herdMutation.isPending || status.herdCurrent < 1 || !division}
+              disabled={herdMutation.isPending || status.herdCurrent < 1}
               onClick={() => herdMutation.mutate()}
               title={
-                !division
-                  ? `Select a domain above first.`
-                  : status.herdCurrent < 1
+                status.herdCurrent < 1
                   ? `Herd depleted restores 1 point next cycle (${status.herdDots} max)`
                   : `Use 1 Herd point to slake 1 hunger without a roll. Hunger cannot go below 1.`
               }

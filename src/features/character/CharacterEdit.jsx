@@ -148,7 +148,20 @@ function normalizeSheet(s) {
     sheet.disciplines = {};
   }
 
-  sheet.disciplinePowers = sheet.disciplinePowers && typeof sheet.disciplinePowers === 'object' ? sheet.disciplinePowers : {};
+  const rawPowers = sheet.disciplinePowers && typeof sheet.disciplinePowers === 'object' && !Array.isArray(sheet.disciplinePowers) ? sheet.disciplinePowers : {};
+  const dpOut = {};
+  Object.entries(rawPowers).forEach(([discName, list]) => {
+    const arr = Array.isArray(list) ? list : (list && typeof list === 'object' ? [list] : []);
+    dpOut[discName] = arr.map(p => {
+      if (!p) return null;
+      if (typeof p === 'string') return { id: p, name: p, level: 0 };
+      const name = typeof p.name === 'string' ? p.name : (typeof p.name?.name === 'string' ? p.name.name : '');
+      const id = (typeof p.id === 'string' || typeof p.id === 'number') ? p.id : (typeof p.id?.id !== 'undefined' ? p.id.id : undefined);
+      const level = Number((typeof p.level === 'object' ? p.level?.level : p.level) || 0);
+      return { id, name, level };
+    }).filter(Boolean);
+  });
+  sheet.disciplinePowers = dpOut;
 
   sheet.rituals = sheet.rituals || { blood_sorcery: [], oblivion: [] };
   sheet.rituals.blood_sorcery = Array.isArray(sheet.rituals.blood_sorcery) ? sheet.rituals.blood_sorcery : [];
