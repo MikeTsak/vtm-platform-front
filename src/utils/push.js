@@ -20,6 +20,22 @@ function urlBase64ToUint8Array(base64String) {
   return outputArray;
 }
 
+// Explains why push isn't available on this device, or null if it is.
+// iOS Safari only exposes the Push/Notification APIs to a site once it's
+// been added to the Home Screen — a regular Safari tab has neither, which
+// is why enabling push there does nothing instead of erroring.
+export function getPushUnsupportedReason() {
+  const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent);
+  const isStandalone = window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  if (isIOS && !isStandalone) {
+    return 'On iPhone/iPad, notifications only work after adding this site to your Home Screen: tap the Share icon in Safari, choose "Add to Home Screen", then open the app from there.';
+  }
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+    return 'This browser does not support push notifications. Try a recent version of Chrome, Firefox, Edge, or Safari 16+.';
+  }
+  return null;
+}
+
 export async function subscribeToWebPush() {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
     throw new Error('Push messaging is not supported in this browser.');

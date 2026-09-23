@@ -1,7 +1,7 @@
 // src/pages/Home.jsx
 import React, { useEffect, useState, useRef, useContext } from 'react';
 import api from '../core/api';
-import { getPushSettings, updatePushSettings, subscribeToWebPush } from '../utils/push';
+import { getPushSettings, updatePushSettings, subscribeToWebPush, getPushUnsupportedReason } from '../utils/push';
 import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { Skeleton } from 'boneyard-js/react';
 import { motion } from 'framer-motion';
@@ -739,7 +739,8 @@ export default function Home() {
                 <button 
                   title={`Push Notifications ${pushEnabled ? 'ON' : 'OFF'}`}
                   onClick={async () => {
-                    if (!notifSupported || pushLoading) return;
+                    if (pushLoading) return;
+                    if (!notifSupported) { alert(getPushUnsupportedReason()); return; }
                     
                     if (!pushEnabled) {
                       setPushLoading(true);

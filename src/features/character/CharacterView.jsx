@@ -29,7 +29,7 @@ import { Skeleton } from 'boneyard-js/react';
 import MiniSearch from 'minisearch';
 import { ShopRow, ConfirmModal } from '../xp-shop/ShopRow';
 import { buildSuggestions, article } from '../xp-shop/suggestions';
-import { getPushSettings, updatePushSettings, subscribeToWebPush } from '../../utils/push';
+import { getPushSettings, updatePushSettings, subscribeToWebPush, getPushUnsupportedReason } from '../../utils/push';
 import { maxHealth as deriveMaxHealth } from '../../utils/derivedStats';
 const msSearchText = (arr, query) => {
   const ms = new MiniSearch({ fields: ['text'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
@@ -1034,7 +1034,8 @@ export default function CharacterView({
   }, []);
 
   const toggleSysNotifications = async () => {
-    if (!notifSupported || pushSettingsLoading) return;
+    if (pushSettingsLoading) return;
+    if (!notifSupported) { alert(getPushUnsupportedReason()); return; }
     if (!sysNotifOn) {
       try {
         await subscribeToWebPush();

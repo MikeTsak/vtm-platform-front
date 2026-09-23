@@ -11,8 +11,8 @@ import { Skeleton } from 'boneyard-js/react';
 import Avatar from '../../components/Avatar';
 const EmojiPicker = React.lazy(() => import('emoji-picker-react'));
 import MiniSearch from 'minisearch';
-import { motion, AnimatePresence } from 'framer-motion';
-import { getPushSettings, updatePushSettings, subscribeToWebPush } from '../../utils/push';
+import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
+import { getPushSettings, updatePushSettings, subscribeToWebPush, getPushUnsupportedReason } from '../../utils/push';
 import { socket } from '../../api/liveSession';
 import { symlogo as localSymlogo, CLAN_HEX as CLAN_COLORS } from '../../data/clans';
 import { useCommsEnabled } from '../comms/useCommsEnabled';
@@ -156,6 +156,61 @@ const GroupIconGlyph = ({ icon, size = 24 }) => {
     );
   }
   return <span style={{ fontSize: size * 0.85, lineHeight: 1 }}>{icon}</span>;
+};
+
+// History rows carry the quoted message as flat reply_* columns (one shape
+// for all three chat kinds; the author is labelled at render time, relative
+// to whoever is viewing). reply_found is null when the original was deleted.
+const toReply = (m) => (m.reply_to_id ? {
+  id: m.reply_to_id,
+  missing: !m.reply_found,
+  body: m.reply_body,
+  attachment_id: m.reply_attachment_id,
+  sender_id: m.reply_sender_id,
+  sender_name: m.reply_sender_name,
+  from_side: m.reply_from_side,
+} : null);
+
+const SWIPE_REPLY_PX = 60;
+
+// A message row that, on touch screens, can be dragged to the right to
+// reply (the usual messenger gesture). It springs back on release; a reply
+// icon fades in behind it as it crosses the threshold. `dragDirectionLock`
+// keeps a vertical scroll from turning into a sideways drag.
+const SwipeRow = ({ enabled, onReply, onSwipeStart, children, className, ...rest }) => {
+  const x = useMotionValue(0);
+  const iconOpacity = useTransform(x, [0, SWIPE_REPLY_PX], [0, 1]);
+  const iconScale = useTransform(x, [0, SWIPE_REPLY_PX], [0.5, 1]);
+  return (
+    <motion.div
+      {...rest}
+      className={`${className} relative`}
+      style={{ x }}
+      drag={enabled ? 'x' : false}
+      dragDirectionLock
+      dragConstraints={{ left: 0, right: 0 }}
+      dragElastic={{ left: 0, right: 0.5 }}
+      dragSnapToOrigin
+      onDragStart={onSwipeStart}
+      onDragEnd={(e, info) => {
+        if (info.offset.x > SWIPE_REPLY_PX) {
+          navigator.vibrate?.(10);
+          onReply();
+        }
+      }}
+    >
+      {enabled && (
+        <motion.span
+          aria-hidden="true"
+          style={{ opacity: iconOpacity, scale: iconScale }}
+          className="material-symbols-outlined absolute -left-9 top-1/2 -translate-y-1/2 text-primary text-[22px] pointer-events-none"
+        >
+          reply
+        </motion.span>
+      )}
+      {children}
+    </motion.div>
+  );
 };
 
 /* --- Gold NPC Tag Component --- */
@@ -396,6 +451,12 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   // EDIT/DELETE STATES
   const [editingMsgId, setEditingMsgId] = useState(null);
   const [editBody, setEditBody] = useState('');
+
+  // Quote-reply: the message the composer is currently replying to (same
+  // shape as toReply()), and a message briefly highlighted after jumping
+  // to it from a quote.
+  const [replyTo, setReplyTo] = useState(null);
+  const [flashMsgId, setFlashMsgId] = useState(null);
 
   // Shared by the message composer's picker and the group-picture picker:
   // a custom (clan/crest) pick becomes a ':Clan_Name:' token, anything else
@@ -764,7 +825,8 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   }, []);
 
   const toggleNotifications = async () => {
-    if (!notifSupported || pushSettingsLoading) return;
+    if (pushSettingsLoading) return;
+    if (!notifSupported) { alert(getPushUnsupportedReason()); return; }
 
     if (!notifOn) {
       try {
@@ -818,6 +880,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     lastTsRef.current = 0;
     setMessages([]);
     setNpcConvos([]);
+    setReplyTo(null);
     setError('');
   }, [threadKey]);
 
@@ -1090,7 +1153,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
             msgs = (res.data.messages || []).map(m => ({
               id: m.id, body: m.body, created_at: m.created_at, sender_id: m.sender_id,
               sender_name: m.char_name || m.display_name, sender_clan: m.clan,
-              attachment_id: m.attachment_id, edited: m.edited
+              attachment_id: m.attachment_id, edited: m.edited, type: m.type, reply: toReply(m)
             }));
           } else if (selectedContact.type === 'user') {
             const res = await api.get(`/chat/history/${selectedContact.id}`);
@@ -1098,7 +1161,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
               id: m.id, body: m.body, created_at: m.created_at,
               read_at: m.read_at, delivered_at: m.delivered_at,
               sender_id: m.sender_id,
-              attachment_id: m.attachment_id, edited: m.edited
+              attachment_id: m.attachment_id, edited: m.edited, reply: toReply(m)
             }));
           } else {
             if (isAdmin) {
@@ -1106,7 +1169,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                 const res = await api.get(`/admin/chat/npc-history/${selectedContact.id}/${selectedPlayerId}`);
                 msgs = (res.data.messages || []).map(m => ({
                   id: m.id, body: m.body, created_at: m.created_at, sender_id: m.from_side === 'npc' ? 'npc' : selectedPlayerId, _from: m.from_side,
-                  attachment_id: m.attachment_id, edited: m.edited
+                  attachment_id: m.attachment_id, edited: m.edited, reply: toReply(m)
                 }));
               }
             } else {
@@ -1117,7 +1180,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                 created_at: m.created_at,
                 sender_id: m.from_side === 'user' ? currentUser.id : 'npc',
                 _from: m.from_side,
-                attachment_id: m.attachment_id, edited: m.edited
+                attachment_id: m.attachment_id, edited: m.edited, reply: toReply(m)
               }));
             }
           }
@@ -1273,7 +1336,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
         }
       }
 
-      const payload = { body, attachment_id: attachmentId };
+      const payload = { body, attachment_id: attachmentId, reply_to_id: replyTo?.id || null };
       let newMsg = null;
 
       if (selectedContact.type === 'group') {
@@ -1372,6 +1435,9 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
       }
 
       if (newMsg) {
+        // Show the quote right away; the next history poll replaces this
+        // with the server's own copy of the reply preview.
+        if (replyTo) newMsg = { ...newMsg, reply: replyTo };
         setMessages(prev => [...prev, newMsg]);
         const msgTime = new Date(newMsg.created_at).getTime();
         if (msgTime > lastTsRef.current) {
@@ -1380,6 +1446,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
       }
 
       setNewMessage('');
+      setReplyTo(null);
       setShowEmojiPicker(false);
       clearAttachment();
       setDrafts(prev => ({ ...prev, [threadKey]: '' }));
@@ -1403,7 +1470,58 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       doSend();
+    } else if (e.key === 'Escape' && replyTo) {
+      setReplyTo(null);
     }
+  };
+
+  const startReply = (item) => {
+    setReplyTo({
+      id: item.id,
+      body: item.body,
+      attachment_id: item.attachment_id,
+      sender_id: item.sender_id,
+      sender_name: item.sender_name,
+      from_side: item._from,
+    });
+    setEditingMsgId(null);
+    setReactionPickerFor(null);
+    setTimeout(() => textareaRef.current?.focus(), 0);
+  };
+
+  // Who wrote the quoted message, from the viewer's point of view.
+  const replyAuthor = (r) => {
+    if (!r || !selectedContact) return '';
+    if (selectedContact.type === 'npc') {
+      if (r.from_side === 'npc') return selectedContact.name;
+      if (!isAdmin) return 'You';
+      const p = users.find(u => u.id === selectedPlayerId);
+      return p?.char_name || p?.display_name || 'Player';
+    }
+    if (r.sender_id === currentUser?.id) return 'You';
+    if (selectedContact.type === 'user') return selectedContact.char_name || selectedContact.display_name;
+    return r.sender_name || 'Someone';
+  };
+
+  const scrollToMessage = (id) => {
+    const el = document.getElementById(`chat-msg-${id}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setFlashMsgId(id);
+    setTimeout(() => setFlashMsgId(f => (f === id ? null : f)), 1600);
+  };
+
+  const replySnippet = (r) => {
+    if (r.missing) return <span className="italic opacity-70">Original message was deleted</span>;
+    if (r.body) return renderMessageBody(r.body);
+    if (r.attachment_id) {
+      return (
+        <span className="inline-flex items-center gap-1 italic opacity-80">
+          <span className="material-symbols-outlined text-[14px]">image</span> Attachment
+        </span>
+      );
+    }
+    return null;
   };
 
   const handleCreateGroup = async () => {
@@ -2236,10 +2354,15 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                 );
                 const canEdit = canEditDelete && !answeredSince;
                 const isGroupNotMine = selectedContact.type === 'group' && !mine;
+                const canReply = !String(item.id).startsWith('temp_') && editingMsgId !== item.id;
 
                 return (
-                  <motion.div
+                  <SwipeRow
                     key={item.id}
+                    id={`chat-msg-${item.id}`}
+                    enabled={isMobile && canReply}
+                    onReply={() => startReply(item)}
+                    onSwipeStart={handleBubblePointerCancel}
                     className={`flex gap-2 md:gap-3 max-w-[90%] md:max-w-[85%] ${mine ? 'self-end flex-row-reverse group' : 'self-start group'}`}
                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -2289,8 +2412,22 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                           onPointerLeave={handleBubblePointerCancel}
                           onPointerCancel={handleBubblePointerCancel}
                           onContextMenu={(e) => e.preventDefault()}
-                          className={`relative chat-glass p-2 md:p-3 w-fit max-w-full shadow-[0_4px_12px_rgba(0,0,0,0.5)] select-none ${mine ? 'bg-blood-accent/90 text-white rounded-l-lg rounded-br-lg bubble-right border-l border-t border-b border-[#b01423]' : 'bg-surface-container-high border border-outline-variant/30 text-on-surface rounded-r-lg rounded-bl-lg bubble-left'}`}
+                          className={`relative chat-glass p-2 md:p-3 w-fit max-w-full shadow-[0_4px_12px_rgba(0,0,0,0.5)] select-none transition-shadow duration-300 ${flashMsgId === item.id ? 'ring-2 ring-primary' : ''} ${mine ? 'bg-blood-accent/90 text-white rounded-l-lg rounded-br-lg bubble-right border-l border-t border-b border-[#b01423]' : 'bg-surface-container-high border border-outline-variant/30 text-on-surface rounded-r-lg rounded-bl-lg bubble-left'}`}
                         >
+
+                          {/* Quoted message this one replies to */}
+                          {item.reply && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); if (!item.reply.missing) scrollToMessage(item.reply.id); }}
+                              onPointerDown={(e) => e.stopPropagation()}
+                              title={item.reply.missing ? undefined : 'Jump to the original message'}
+                              className={`block w-full text-left mb-2 px-2 py-1 rounded border-l-2 text-[12px] md:text-[13px] leading-snug ${mine ? 'bg-black/25 border-white/60' : 'bg-surface-container-highest/80 border-primary'} ${item.reply.missing ? 'cursor-default' : 'cursor-pointer hover:brightness-125'}`}
+                            >
+                              <span className={`block text-[10px] font-bold font-system-code truncate ${mine ? 'text-white/80' : 'text-primary'}`}>{replyAuthor(item.reply)}</span>
+                              <span className="line-clamp-2 break-words opacity-90">{replySnippet(item.reply)}</span>
+                            </button>
+                          )}
 
                           {/* Attachment */}
                           {item.attachment_id && (
@@ -2355,6 +2492,9 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
 
                         {/* Action Buttons (Hover) */}
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {canReply && (
+                            <button onClick={() => startReply(item)} className="text-[10px] text-on-surface-variant hover:text-primary transition-colors">Reply</button>
+                          )}
                           {!String(item.id).startsWith('temp_') && (
                             <button
                               onClick={() => setReactionPickerFor(p => p === item.id ? null : item.id)}
@@ -2378,7 +2518,20 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                         </div>
                       </div>
                     </div>
-                  </motion.div>
+
+                    {/* Reply arrow beside the bubble (desktop; mobile swipes instead) */}
+                    {canReply && (
+                      <button
+                        type="button"
+                        onClick={() => startReply(item)}
+                        title="Reply"
+                        aria-label="Reply to this message"
+                        className="hidden md:flex self-center shrink-0 w-8 h-8 items-center justify-center rounded-full text-on-surface-variant hover:text-primary hover:bg-surface-variant/40 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">reply</span>
+                      </button>
+                    )}
+                  </SwipeRow>
                 );
               })}
 
@@ -2414,7 +2567,31 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                 </div>
               )}
 
-              <div className="max-w-4xl mx-auto relative flex items-end gap-2 bg-surface-container-lowest border border-outline-variant rounded-md p-1.5 md:p-2 focus-within:border-primary focus-within:shadow-[0_0_8px_rgba(180,15,31,0.2)] transition-all">
+              <div className="max-w-4xl mx-auto w-full relative flex flex-col bg-surface-container-lowest border border-outline-variant rounded-md focus-within:border-primary focus-within:shadow-[0_0_8px_rgba(180,15,31,0.2)] transition-all">
+                {replyTo && (
+                  <div className="flex items-center gap-2 mx-1.5 md:mx-2 mt-1.5 md:mt-2 pl-2 pr-1 py-1.5 rounded bg-surface-container-high border-l-2 border-primary">
+                    <span className="material-symbols-outlined text-[18px] text-primary shrink-0">reply</span>
+                    <button
+                      type="button"
+                      onClick={() => scrollToMessage(replyTo.id)}
+                      className="flex-1 min-w-0 text-left"
+                      title="Jump to the message you're replying to"
+                    >
+                      <span className="block text-[10px] font-bold font-system-code text-primary truncate">Replying to {replyAuthor(replyTo)}</span>
+                      <span className="block text-[12px] text-on-surface-variant truncate">{replySnippet(replyTo)}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setReplyTo(null)}
+                      aria-label="Cancel reply"
+                      title="Cancel reply (Esc)"
+                      className="w-9 h-9 shrink-0 flex items-center justify-center rounded text-on-surface-variant hover:text-error hover:bg-surface-variant/40 transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">close</span>
+                    </button>
+                  </div>
+                )}
+                <div className="flex items-end gap-2 p-1.5 md:p-2">
 
                 {/* Attachments & Previews */}
                 {/* Backend upload endpoint only accepts image/audio (see handleFileSelect) — video
@@ -2490,6 +2667,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                   >
                     <span className="material-symbols-outlined text-[18px] md:text-[20px] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform">send</span>
                   </button>
+                </div>
                 </div>
               </div>
 
