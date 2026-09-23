@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import api from '../../core/api';
+import api, { formatApiError } from '../../core/api';
 import { NEWS_OUTLETS } from '../../constants/outletConstants';
 import { apiJoin, isVideoUrl } from '../../utils/newsUtils';
 import { generateGreekName } from '../../utils/nameGenerator';
@@ -57,7 +57,7 @@ export default function CreateNewsModal({ mode, onClose, onSuccess, themes }) {
       });
       onSuccess();
     } catch (e) { 
-      const errorMsg = e.response?.data?.error || e.message || 'Unknown error';
+      const errorMsg = formatApiError(e, 'Unknown error');
       alert(`Error posting: ${errorMsg}\n\n(Original fallback: Ensure you have the correct permissions)`); 
     }
     finally { setUploading(false); }

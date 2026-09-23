@@ -513,7 +513,7 @@ function TopBar({ tab, loading, onReload, isMobile, onOpenSearch, onNotify }) {
     setToolsOpen(false);
     api.post('/push/test', test.payload)
       .then(() => onNotify({ msg: `${test.label.replace('Test ', '')} sent.` }))
-      .catch(e => onNotify({ err: 'Push failed: ' + (e?.response?.data?.error || e.message) }));
+      .catch(e => onNotify({ err: formatApiError(e, 'Push failed') }));
   };
 
   return (
@@ -860,7 +860,7 @@ async function grantXP(character_id, delta) {
       setMsg(`Downtime #${id} saved`);
       load(); // Reload
     } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to save downtime');
+      setErr(formatApiError(e, 'Failed to save downtime'));
     }
   }
 
@@ -874,7 +874,7 @@ async function grantXP(character_id, delta) {
       setMsg(`NPC #${id} deleted`);
       load(); // Reload
     } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to delete NPC');
+      setErr(formatApiError(e, 'Failed to delete NPC'));
     }
   }
 

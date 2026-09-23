@@ -16,6 +16,7 @@ import { AuthCtx } from '../core/AuthContext';
 import { useTheme } from '../core/ThemeContext';
 import Loading from '../ui/Loading';
 import FaGlyph from '../ui/FaGlyph';
+import { formatAthensWeekdayDate } from '../utils/dateFormatter';
 
 /* ── Relative time ──────────────────────────────────────────────── */
 const formatTimestamp = (ts) => {
@@ -33,8 +34,7 @@ function niceDate(d) {
   if (!d) return 'None';
   const dt = new Date(d);
   if (isNaN(dt.getTime())) return 'None';
-  try { return dt.toLocaleDateString('en-GB', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }); }
-  catch { return dt.toDateString(); }
+  return formatAthensWeekdayDate(dt);
 }
 
 function getDtBadgeClass(status) {

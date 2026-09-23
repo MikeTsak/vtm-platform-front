@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { AuthCtx } from '../../core/AuthContext';
+import { formatApiError } from '../../core/api';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -78,7 +79,7 @@ export default function Login() {
       // error.response.data.error is a rejected-by-the-server message (bad
       // credentials, etc); error.message covers the "signed in but couldn't
       // confirm the session" case thrown by login() itself.
-      toast.error(error?.response?.data?.error || error?.message || 'Login failed. Please check your credentials.');
+      toast.error(formatApiError(error, 'Login failed. Please check your credentials.'));
     },
   });
 

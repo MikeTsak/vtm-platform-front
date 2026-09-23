@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/Admin.module.css';
 import { Skeleton } from 'boneyard-js/react';
+import { copyToClipboard } from '../../utils/clipboard';
 
 const DISCORD_EMOJI_DEFINITIONS = [
   { key: 'outlet_alter', label: 'Alter Channel', file: 'outlet_alter.png', desc: 'Alter News broadcast logo' },
@@ -96,16 +97,14 @@ export default function AdminDiscordTab({ users = [] }) {
       setMsg('Settings saved successfully.');
       loadConfig();
     } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to save settings');
+      setErr(formatApiError(e, 'Failed to save settings'));
     } finally {
       setLoading(false);
     }
   };
 
   const handleCopyName = (name) => {
-    if (navigator?.clipboard?.writeText) {
-      navigator.clipboard.writeText(name);
-    }
+    copyToClipboard(name);
     setCopiedKey(name);
     setTimeout(() => setCopiedKey(null), 2000);
   };
@@ -121,7 +120,7 @@ export default function AdminDiscordTab({ users = [] }) {
       }
       loadConfig();
     } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to sync emojis from Discord.');
+      setErr(formatApiError(e, 'Failed to sync emojis from Discord.'));
     } finally {
       setSyncing(false);
     }
@@ -133,7 +132,7 @@ export default function AdminDiscordTab({ users = [] }) {
       const { data } = await api.post(`/admin/discord/test/${type}`);
       setMsg(`Test Success: ${data.message}`);
     } catch (e) {
-      setErr(e.response?.data?.error || `Failed to trigger ${type} test.`);
+      setErr(formatApiError(e, `Failed to trigger ${type} test.`));
     } finally {
       setLoading(false);
     }
@@ -147,7 +146,7 @@ export default function AdminDiscordTab({ users = [] }) {
       setMsg(data.message);
       loadConfig();
     } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to restart bot.');
+      setErr(formatApiError(e, 'Failed to restart bot.'));
     } finally {
       setLoading(false);
     }
@@ -164,7 +163,7 @@ export default function AdminDiscordTab({ users = [] }) {
       setMsg(data.message);
       setDmMessage(''); // Clear the box on success
     } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to send DM.');
+      setErr(formatApiError(e, 'Failed to send DM.'));
     } finally {
       setLoading(false);
     }

@@ -1,8 +1,9 @@
 // src/pages/Boons.jsx
 import React, { useState, useEffect, useContext, useMemo, useRef } from 'react';
-import api from '../../core/api';
+import api, { formatApiError } from '../../core/api';
 import { AuthCtx } from '../../core/AuthContext';
 import { Skeleton } from 'boneyard-js/react';
+import { formatAthensDate } from '../../utils/dateFormatter';
 import MiniSearch from 'minisearch';
 import Avatar from '../../components/Avatar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -108,7 +109,7 @@ export default function Boons() {
   const boons = boonsData?.boons || [];
   const entities = entitiesData?.entities || [];
   const myCharacter = myCharData?.character || null;
-  const error = boonsErrorObj?.response?.data?.error || boonsErrorObj?.message || '';
+  const error = boonsErrorObj ? formatApiError(boonsErrorObj, '') : '';
 
   const deleteMutation = useMutation({
     mutationFn: async (id) => {
@@ -119,7 +120,7 @@ export default function Boons() {
       queryClient.invalidateQueries({ queryKey: ['boons'] });
     },
     onError: (err) => {
-      toast.error(err.response?.data?.error || 'Failed to delete');
+      toast.error(formatApiError(err, 'Failed to delete'));
     }
   });
 
@@ -1272,7 +1273,7 @@ function BoonForm({ entities, boon, onSave, onCancel }) {
       onSave();
     },
     onError: (err) => {
-      toast.error(err.response?.data?.error || 'Failed to save boon');
+      toast.error(formatApiError(err, 'Failed to save boon'));
     }
   });
 
@@ -1474,7 +1475,7 @@ function BoonPrintModal({ target, boons, onClose }) {
           </p>
           <div className="flex justify-between items-center text-[11px] font-bold uppercase tracking-wider text-[#6b7280] mt-4 pt-2 border-t border-dashed border-[#d1d5db]">
             <span>Registry Status: Verified</span>
-            <span>Printed on: {new Date().toLocaleDateString('el-GR')}</span>
+            <span>Printed on: {formatAthensDate(new Date())}</span>
             <span>Total Records: {printBoons.length}</span>
           </div>
         </div>
@@ -1519,7 +1520,7 @@ function BoonPrintModal({ target, boons, onClose }) {
                   )}
 
                   <div className="text-[10px] text-[#9ca3af] text-right mt-2">
-                    Recorded on: {b.created_at ? new Date(b.created_at).toLocaleDateString('el-GR') : 'Archive Record'}
+                    Recorded on: {b.created_at ? formatAthensDate(b.created_at) : 'Archive Record'}
                   </div>
                 </div>
               );
@@ -1566,7 +1567,7 @@ function BoonPrintModal({ target, boons, onClose }) {
                 </div>
                 <div>
                   <div className="border-b border-black w-48 mx-auto mb-2 h-10"></div>
-                  <span className="font-bold text-[#44403c] uppercase text-[10px]">Date: {new Date(target.created_at || Date.now()).toLocaleDateString('el-GR')}</span>
+                  <span className="font-bold text-[#44403c] uppercase text-[10px]">Date: {formatAthensDate(target.created_at || Date.now())}</span>
                 </div>
               </div>
             </div>

@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import MiniSearch from 'minisearch';
 import api from '../../core/api';
+import { copyToClipboard } from '../../utils/clipboard';
 import {
   getLiveSession, getLiveSessionPlayers, getLiveSessionRolls, getLiveSessionBroadcasts,
   createLiveSession, sendLiveSessionBroadcast, logLiveSessionRoll, socket
@@ -1003,7 +1004,7 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
                   const res = it.label || `${it.successes ?? 0} successes`;
                   return `[${t}] ${who}: ${(it.roll_type || 'roll').replace(/_/g, ' ')}${it.note ? ` (${it.note})` : ''} → ${res}`;
                 }).reverse().join('\n');
-                navigator.clipboard?.writeText(text).then(() => flash('Activity log copied.'), () => flash('Copy failed.'));
+                copyToClipboard(text).then(ok => flash(ok ? 'Activity log copied.' : 'Copy failed.'));
               }}
             >
               Copy Log
@@ -1041,7 +1042,7 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
                   const t = new Date(r.created_at).toLocaleTimeString();
                   lines.push(`* [${t}] ${r.character_name || 'Unknown'}: ${(r.roll_type || 'roll').replace(/_/g, ' ')}: ${r.note || `${r.successes ?? 0} successes`}`);
                 }
-                navigator.clipboard?.writeText(lines.join('\n')).then(() => flash('Session summary copied.'), () => flash('Copy failed.'));
+                copyToClipboard(lines.join('\n')).then(ok => flash(ok ? 'Session summary copied.' : 'Copy failed.'));
               }}
             >
               Summary

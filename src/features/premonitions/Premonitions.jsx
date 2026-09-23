@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState, useContext, useCallback } from "react";
 import { AuthCtx } from "../../core/AuthContext";
 import AdminPremonitionsTab from "../admin/AdminPremonitionsTab";
+import { formatAthensDateTime } from "../../utils/dateFormatter";
 import s from "../../styles/Premonitions.module.css";
 import { Skeleton } from "boneyard-js/react";
 import api, { formatApiError } from "../../core/api";
@@ -139,7 +140,7 @@ function PremonitionItem({ item, index }) {
   const imgRef = useRef(null);
 
   const when = useMemo(() => {
-    try { return new Date(item.created_at).toLocaleString(); } 
+    try { return formatAthensDateTime(item.created_at); }
     catch { return item.created_at || ""; }
   }, [item.created_at]);
 

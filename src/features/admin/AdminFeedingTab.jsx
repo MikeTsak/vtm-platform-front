@@ -5,7 +5,7 @@ import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/Admin.module.css';
 import FaGlyph from '../../ui/FaGlyph';
 import { FEEDING_ICONS } from '../../data/feedingIcons';
-import { formatAthensDate } from '../../utils/dateFormatter';
+import { formatAthensDate, formatAthensDateTime } from '../../utils/dateFormatter';
 import { getDivisionName } from '../../constants/divisionNames';
 
 function useCountdown(target) {
@@ -622,7 +622,7 @@ export default function AdminFeedingTab() {
                         </div>
                       </td>
                       <td style={{ padding: '0.6rem 0.5rem', color: 'var(--text-secondary)', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
-                        {new Date(f.created_at).toLocaleString()}
+                        {formatAthensDateTime(f.created_at)}
                       </td>
                     </tr>
                   );

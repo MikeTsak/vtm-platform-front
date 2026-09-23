@@ -12,9 +12,10 @@ import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import styles from '../../styles/Domains.module.css';
-import api from '../../core/api';
+import api, { formatApiError } from '../../core/api';
 import Avatar from '../../components/Avatar';
 import { AuthCtx } from '../../core/AuthContext';
+import { formatAthensDate } from '../../utils/dateFormatter';
 import { symlogo, symlogoWhite, clanTint, fileify } from '../../data/clans';
 import { DIVISION_NAMES } from '../../constants/divisionNames';
 import { DIVISION_POPULATIONS, POPULATION_GROUP_MEMBERS } from './data/divisionPopulations';
@@ -321,7 +322,7 @@ function relTime(ts) {
   if (hrs < 24) return `${hrs}h ago`;
   const days = Math.floor(hrs / 24);
   if (days < 30) return `${days}d ago`;
-  return new Date(ts).toLocaleDateString();
+  return formatAthensDate(ts);
 }
 
 // ── CORS-safe circular avatar generator ──────────────────────
@@ -1101,7 +1102,7 @@ export default function Domains() {
   const requests = requestsData?.requests || [];
   const problems = problemsData?.problems || [];
   const codexEntries = codexData?.entries || [];
-  const err = error?.response?.data?.error || error?.message || '';
+  const err = error ? formatApiError(error, '') : '';
 
   const ownedClaims = useMemo(() => claims.filter(isOwnedClaim), [claims]);
 
@@ -1195,7 +1196,7 @@ export default function Domains() {
       setReqMessage('');
       queryClient.invalidateQueries({ queryKey: ['domain-claim-requests'] });
     },
-    onError: (e) => toast.error(e.response?.data?.error || 'Failed to submit request'),
+    onError: (e) => toast.error(formatApiError(e, 'Failed to submit request')),
   });
 
   const resolveMutation = useMutation({
@@ -1208,7 +1209,7 @@ export default function Domains() {
       queryClient.invalidateQueries({ queryKey: ['domain-claim-requests'] });
       queryClient.invalidateQueries({ queryKey: ['domain-claims'] });
     },
-    onError: (e) => toast.error(e.response?.data?.error || 'Failed to resolve request'),
+    onError: (e) => toast.error(formatApiError(e, 'Failed to resolve request')),
   });
 
 
@@ -1221,7 +1222,7 @@ export default function Domains() {
       toast.success('Masquerade safety updated');
       queryClient.invalidateQueries({ queryKey: ['domain-claims'] });
     },
-    onError: (e) => toast.error(e.response?.data?.error || 'Failed to update safety rating'),
+    onError: (e) => toast.error(formatApiError(e, 'Failed to update safety rating')),
   });
 
   const addCodexMutation = useMutation({
@@ -1234,7 +1235,7 @@ export default function Domains() {
       setCodexText('');
       queryClient.invalidateQueries({ queryKey: ['domain-codex', selectedDivision] });
     },
-    onError: (e) => toast.error(e.response?.data?.error || 'Failed to add entry'),
+    onError: (e) => toast.error(formatApiError(e, 'Failed to add entry')),
   });
 
   const deleteCodexMutation = useMutation({
@@ -1246,7 +1247,7 @@ export default function Domains() {
       toast.success('Entry removed');
       queryClient.invalidateQueries({ queryKey: ['domain-codex', selectedDivision] });
     },
-    onError: (e) => toast.error(e.response?.data?.error || 'Failed to remove entry'),
+    onError: (e) => toast.error(formatApiError(e, 'Failed to remove entry')),
   });
 
   const assignMutation = useMutation({
@@ -1282,7 +1283,7 @@ export default function Domains() {
       queryClient.refetchQueries({ queryKey: ['domain-guests-all'] });
       queryClient.refetchQueries({ queryKey: ['domain-residents-all'] });
     },
-    onError: (e) => toast.error(e.response?.data?.error || 'Failed to assign domain'),
+    onError: (e) => toast.error(formatApiError(e, 'Failed to assign domain')),
   });
 
   const changeColorMutation = useMutation({
@@ -1296,7 +1297,7 @@ export default function Domains() {
       // list swatch and the dossier accent all read off this one query.
       queryClient.invalidateQueries({ queryKey: ['domain-claims'] });
     },
-    onError: (e) => toast.error(e.response?.data?.error || 'Failed to update colour'),
+    onError: (e) => toast.error(formatApiError(e, 'Failed to update colour')),
   });
 
   const addGuestMutation = useMutation({
@@ -1351,7 +1352,7 @@ export default function Domains() {
         queryClient.setQueryData(['domain-guests', context.divNum], context.prevGuests);
         queryClient.setQueryData(['domain-guests-all'], context.prevAllGuests);
       }
-      toast.error(e.response?.data?.error || 'Failed to add guest');
+      toast.error(formatApiError(e, 'Failed to add guest'));
     },
     onSettled: async (_data, _error, vars) => {
       const divNum = Number(vars?.division);
@@ -1400,7 +1401,7 @@ export default function Domains() {
         queryClient.setQueryData(['domain-guests', context.divNum], context.prevGuests);
         queryClient.setQueryData(['domain-guests-all'], context.prevAllGuests);
       }
-      toast.error(e.response?.data?.error || 'Failed to remove guest');
+      toast.error(formatApiError(e, 'Failed to remove guest'));
     },
     onSettled: async (_data, _error, vars) => {
       const divNum = Number(vars?.division);
@@ -1469,7 +1470,7 @@ export default function Domains() {
         queryClient.setQueryData(['domain-residents', context.divNum], context.prevResidents);
         queryClient.setQueryData(['domain-residents-all'], context.prevAllResidents);
       }
-      toast.error(e.response?.data?.error || 'Failed to add resident');
+      toast.error(formatApiError(e, 'Failed to add resident'));
     },
     onSettled: async (_data, _error, vars) => {
       const divNum = Number(vars?.division);
@@ -1519,7 +1520,7 @@ export default function Domains() {
         queryClient.setQueryData(['domain-residents', context.divNum], context.prevResidents);
         queryClient.setQueryData(['domain-residents-all'], context.prevAllResidents);
       }
-      toast.error(e.response?.data?.error || 'Failed to remove resident');
+      toast.error(formatApiError(e, 'Failed to remove resident'));
     },
     onSettled: async (_data, _error, vars) => {
       const divNum = Number(vars?.division);

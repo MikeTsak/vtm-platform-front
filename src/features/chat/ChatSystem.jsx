@@ -1,7 +1,9 @@
 // src/components/ChatSystem.jsx
 import React, { useState, useEffect, useContext, useRef, useMemo, useLayoutEffect, useCallback } from 'react';
 import { AuthCtx } from '../../core/AuthContext';
-import api from '../../core/api';
+import api, { formatApiError } from '../../core/api';
+import { copyToClipboard } from '../../utils/clipboard';
+import { formatAthensDateTime } from '../../utils/dateFormatter';
 import styles from '../../styles/ChatSystem.module.css';
 import '../../styles/SchreckNetChat.css';
 import { Skeleton } from 'boneyard-js/react';
@@ -541,7 +543,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
       setMessages(prev => prev.map(m => m.id === editingMsgId ? { ...m, body: editBody, edited: true } : m));
       setEditingMsgId(null);
     } catch (e) {
-      alert(e?.response?.data?.error || "Failed to edit message. It may be too old or you lack permission.");
+      alert(formatApiError(e, "Failed to edit message. It may be too old or you lack permission."));
     }
   };
 
@@ -1178,7 +1180,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
           attachmentId = res.data.id;
         } catch (err) {
           console.error('Upload error:', err?.response?.data || err);
-          alert(err?.response?.data?.error || 'Failed to upload file. Check file size and type.');
+          alert(formatApiError(err, 'Failed to upload file. Check file size and type.'));
           sendingRef.current = false;
           setIsUploading(false);
           return;
@@ -1330,25 +1332,8 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     } catch (e) { alert('Failed to create group'); }
   };
 
-  const copyToClipboard = (text) => {
-    if (navigator.clipboard && text) {
-      navigator.clipboard.writeText(text);
-    }
-  };
-
   /* --- Render & Filters --- */
-  const formatTime = (ts) => {
-    const d = new Date(ts);
-    return d.toLocaleString('en-GB', {
-      timeZone: 'Europe/Athens',
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    });
-  };
+  const formatTime = (ts) => formatAthensDateTime(ts);
   const formatDay = (ts) => {
     const d = new Date(ts);
     return d.toLocaleDateString('en-GB', {

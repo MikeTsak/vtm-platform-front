@@ -5,7 +5,7 @@
 // (discipline_access + discipline_requests tables): see that file for the
 // server-side gate this actually enforces at XP-spend time.
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import api from '../../core/api';
+import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/Admin.module.css';
 import MiniSearch from 'minisearch';
 import { ALL_DISCIPLINE_NAMES } from '../../data/disciplines';
@@ -62,7 +62,7 @@ export default function AdminDisciplinesTab() {
         id: c.id, name: c.name, clan: c.clan,
       })));
     } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to load discipline access data.');
+      setErr(formatApiError(e, 'Failed to load discipline access data.'));
     } finally {
       setLoading(false);
     }
@@ -103,7 +103,7 @@ export default function AdminDisciplinesTab() {
       });
       await load();
     } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to approve request.');
+      setErr(formatApiError(e, 'Failed to approve request.'));
     } finally {
       setBusyKey(null);
     }
@@ -115,7 +115,7 @@ export default function AdminDisciplinesTab() {
       await api.post(`/admin/discipline-requests/${req.id}/reject`, { adminNote: note || undefined });
       await load();
     } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to reject request.');
+      setErr(formatApiError(e, 'Failed to reject request.'));
     } finally {
       setBusyKey(null);
     }
@@ -128,7 +128,7 @@ export default function AdminDisciplinesTab() {
       await api.delete(`/admin/characters/${row.character_id}/discipline-access/${encodeURIComponent(row.discipline)}`);
       await load();
     } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to revoke access.');
+      setErr(formatApiError(e, 'Failed to revoke access.'));
     } finally {
       setBusyKey(null);
     }
@@ -151,7 +151,7 @@ export default function AdminDisciplinesTab() {
       setGrantNote('');
       await load();
     } catch (e) {
-      setGrantMsg(e.response?.data?.error || 'Failed to grant access.');
+      setGrantMsg(formatApiError(e, 'Failed to grant access.'));
     } finally {
       setGrantBusy(false);
     }

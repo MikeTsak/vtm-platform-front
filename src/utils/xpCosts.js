@@ -24,3 +24,17 @@ export const calculateAdvantageCost = (dots) => dots * 3;
 
 /** Cost for a new level of Blood Potency. */
 export const calculateBloodPotencyCost = (newLevel) => newLevel * 10;
+
+/** Same costs, keyed the way character-sheet call sites expect (XP_RULES.attribute(next), etc). */
+export const XP_RULES = {
+  attribute: calculateAttributeCost,
+  skill: calculateSkillCost,
+  specialty: calculateSpecialtyCost,
+  advantageDot: calculateAdvantageCost,
+  disciplineClan: (newLevel) => calculateDisciplineCost(newLevel, 'clan'),
+  disciplineOther: (newLevel) => calculateDisciplineCost(newLevel, 'other'),
+  disciplineCaitiff: (newLevel) => calculateDisciplineCost(newLevel, 'caitiff'),
+  ritual: calculateRitualCost,
+  ceremony: calculateRitualCost,
+  bloodPotency: calculateBloodPotencyCost,
+};

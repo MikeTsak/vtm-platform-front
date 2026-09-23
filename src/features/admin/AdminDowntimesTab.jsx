@@ -436,7 +436,7 @@ export default function AdminDowntimesTab() {
         setBuffer(prev => { const next = { ...prev }; delete next[id]; return next; });
       }, 800);
     } catch (e) {
-      updBuf(id, 'error', e?.response?.data?.error || 'Save failed');
+      updBuf(id, 'error', formatApiError(e, 'Save failed'));
       updBuf(id, 'saving', false);
     }
   }

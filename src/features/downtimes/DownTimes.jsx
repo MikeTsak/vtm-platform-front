@@ -1,8 +1,9 @@
 // src/pages/DownTimes.jsx
 import React, { useMemo, useState, useContext, useEffect } from 'react';
 import { AuthCtx } from '../../core/AuthContext';
-import api from '../../core/api';
+import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/DownTimes.module.css';
+import { formatAthensWeekdayDate } from '../../utils/dateFormatter';
 import FeedingGate from '../feeding/FeedingGate';
 import { Skeleton } from 'boneyard-js/react';
 import MiniSearch from 'minisearch';
@@ -56,8 +57,7 @@ function niceDate(d) {
   if (!d) return 'None';
   const dt = new Date(d);
   if (isNaN(dt.getTime())) return 'None';
-  try { return dt.toLocaleDateString('en-GB', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', timeZone: 'Europe/Athens' }); }
-  catch { return dt.toDateString(); }
+  return formatAthensWeekdayDate(dt);
 }
 
 const CountdownDisplay = ({ title, countdown, subText, isProject, icon }) => {
@@ -129,7 +129,7 @@ function SubmitCard({ quota, isProject }) {
       queryClient.invalidateQueries({ queryKey: ['quota'] });
     },
     onError: (error) => {
-      toast.error(error?.response?.data?.error || 'Failed to submit action.');
+      toast.error(formatApiError(error, 'Failed to submit action.'));
     }
   });
 

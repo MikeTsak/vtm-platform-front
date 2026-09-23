@@ -10,7 +10,7 @@
 // by accident.
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import api from '../../core/api';
+import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/CharacterEdit.module.css';
 import * as DiscDataNS from '../../data/disciplines';
 import { MERITS_AND_FLAWS } from '../../data/merits_flaws';
@@ -321,7 +321,7 @@ export default function CharacterEdit() {
         });
         setDiscKinds(kinds);
       } catch (e) {
-        if (!cancelled) setLoadError(e.response?.data?.error || 'Failed to load character.');
+        if (!cancelled) setLoadError(formatApiError(e, 'Failed to load character.'));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -621,7 +621,7 @@ export default function CharacterEdit() {
       setSaveMsg('Saved.');
       setTimeout(() => setSaveMsg(''), 3000);
     } catch (e) {
-      setSaveErr(e.response?.data?.error || 'Failed to save.');
+      setSaveErr(formatApiError(e, 'Failed to save.'));
     } finally {
       setSaving(false);
     }

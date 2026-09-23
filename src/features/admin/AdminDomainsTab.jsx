@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import api from '../../core/api';
+import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/Admin.module.css';
 import { Skeleton } from 'boneyard-js/react';
 import { DIVISION_NAMES } from '../../constants/divisionNames';
@@ -23,7 +23,7 @@ export default function AdminDomainsTab() {
       setDomains(data.domains || []);
       setProblems(data.problems || []);
     } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to load domains data');
+      setErr(formatApiError(e, 'Failed to load domains data'));
     } finally {
       setLoading(false);
     }
@@ -36,7 +36,7 @@ export default function AdminDomainsTab() {
       await api.post('/admin/domains/draw-problems');
       await loadData();
     } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to draw monthly problems');
+      setErr(formatApiError(e, 'Failed to draw monthly problems'));
     } finally {
       setDrawing(false);
     }
@@ -50,7 +50,7 @@ export default function AdminDomainsTab() {
       setCustomText(''); setCustomDom('');
       await loadData();
     } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to add custom problem');
+      setErr(formatApiError(e, 'Failed to add custom problem'));
     }
   };
 
@@ -59,7 +59,7 @@ export default function AdminDomainsTab() {
       await api.patch(`/admin/domains/resolve-problem/${id}`);
       setProblems(prev => prev.map(p => p.id === id ? { ...p, resolved: 1 } : p));
     } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to resolve');
+      setErr(formatApiError(e, 'Failed to resolve'));
     }
   };
 

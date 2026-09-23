@@ -9,7 +9,7 @@
 // all of it and are never stored here.
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import styles from '../../styles/Admin.module.css';
-import api from '../../core/api';
+import api, { formatApiError } from '../../core/api';
 
 export default function AdminClaimsTab({ users = [] }) {
   const [managers, setManagers] = useState([]);
@@ -22,7 +22,7 @@ export default function AdminClaimsTab({ users = [] }) {
     setLoading(true);
     api.get('/domain-claims/managers')
       .then(res => setManagers(res.data.managers || []))
-      .catch(e => setErr(e.response?.data?.error || 'Failed to load Domain Stewards'))
+      .catch(e => setErr(formatApiError(e, 'Failed to load Domain Stewards')))
       .finally(() => setLoading(false));
   }, []);
   useEffect(() => { refresh(); }, [refresh]);
@@ -44,7 +44,7 @@ export default function AdminClaimsTab({ users = [] }) {
       setManagers(res.data.managers || []);
       setPick('');
     } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to add steward');
+      setErr(formatApiError(e, 'Failed to add steward'));
     } finally {
       setBusy(false);
     }
@@ -56,7 +56,7 @@ export default function AdminClaimsTab({ users = [] }) {
       const res = await api.delete(`/domain-claims/managers/${id}`);
       setManagers(res.data.managers || []);
     } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to remove steward');
+      setErr(formatApiError(e, 'Failed to remove steward'));
     } finally {
       setBusy(false);
     }

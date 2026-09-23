@@ -181,7 +181,7 @@ export default function AdminPremonitionsTab() {
       if (controller.signal.aborted) {
         throw new Error("Upload cancelled");
       }
-      throw new Error(err.response?.data?.error || err.message || "Upload failed");
+      throw new Error(formatApiError(err, "Upload failed"));
     } finally {
       setIsUploading(false);
     }

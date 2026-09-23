@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import api from '../../core/api';
+import api, { formatApiError } from '../../core/api';
 import { AuthCtx } from '../../core/AuthContext';
 import { DISCIPLINES, ALL_DISCIPLINE_NAMES, iconPath } from '../../data/disciplines';
 import { RITUALS } from '../../data/rituals';
@@ -14,6 +14,7 @@ import CharacterSetup from './CharacterSetup';
 import { ATTR_DESCRIPTIONS, SKILL_DESCRIPTIONS } from '../../data/descriptions';
 import { MERITS_AND_FLAWS, listAllItems } from '../../data/merits_flaws';
 import { buildXpSpendIdempotencyKey } from '../../utils/idempotencyKey';
+import { XP_RULES } from '../../utils/xpCosts';
 import Inventory from '../inventory/Inventory';
 import TouchstonesConvictionsSection from './TouchstonesConvictionsSection';
 import AttributesSection from './AttributesSection';
@@ -453,22 +454,6 @@ function attachStructured(raw) {
 
   return { ...raw, sheet };
 }
-
-/* ===========================
-   XP rules
-   =========================== */
-const XP_RULES = {
-  attribute: newLevel => newLevel * 5,
-  skill: newLevel => newLevel * 3,
-  specialty: () => 3,
-  advantageDot: dots => dots * 3,
-  disciplineClan: newLevel => newLevel * 5,
-  disciplineOther: newLevel => newLevel * 7,
-  disciplineCaitiff: newLevel => newLevel * 6,
-  ritual: lvl => lvl * 3,
-  ceremony: lvl => lvl * 3,
-  bloodPotency: newLevel => newLevel * 10,
-};
 
 function disciplineKindFor(ch, name) {
   if (ch?.clan === 'Caitiff') return 'caitiff';
@@ -1097,7 +1082,7 @@ export default function CharacterView({
       })
       .catch(e => {
         if (!mounted) return;
-        setErr(e?.response?.data?.error || 'Failed to load character');
+        setErr(formatApiError(e, 'Failed to load character'));
       });
     return () => { mounted = false; };
   }, [paths, adminNPCId, loadPath]);
@@ -1237,7 +1222,7 @@ export default function CharacterView({
       }, 100);
 
     } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to update character sheet');
+      setErr(formatApiError(e, 'Failed to update character sheet'));
       throw e;
     }
   }
@@ -1591,7 +1576,7 @@ export default function CharacterView({
         }
       }
     } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to save selection');
+      setErr(formatApiError(e, 'Failed to save selection'));
     }
   }
 
@@ -3001,7 +2986,7 @@ function InlineRitualPicker({ type, itemsObj, knownIds, knownPowerNamesAndIds, b
       const maybe = onBuy?.(sel, sel.__level, sel.__cost);
       if (maybe && typeof maybe.then === 'function') await maybe;
     } catch (e) {
-      setSaveErr(e?.response?.data?.error || e?.message || 'Failed to assign ritual.');
+      setSaveErr(formatApiError(e, 'Failed to assign ritual.'));
     } finally {
       setSaving(false);
     }
@@ -3223,7 +3208,7 @@ function InlineDisciplinePicker({ cfg, onConfirm, searchQuery }) {
       });
       if (maybe && typeof maybe.then === 'function') await maybe;
     } catch (e) {
-      setSaveErr(e?.response?.data?.error || e?.message || 'Failed to assign power.');
+      setSaveErr(formatApiError(e, 'Failed to assign power.'));
     } finally {
       setSaving(false);
     }
@@ -3445,7 +3430,7 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
       if (maybe && typeof maybe.then === 'function') await maybe;
       handleClose();
     } catch (e) {
-      setSaveErr(e?.response?.data?.error || e?.message || 'Failed to assign power.');
+      setSaveErr(formatApiError(e, 'Failed to assign power.'));
     } finally {
       setSaving(false);
     }
@@ -3617,7 +3602,7 @@ function DisciplineRequestForm({ name, minLevel = 1, onSubmit }) {
       await onSubmit(level, message.trim());
       setSent(true);
     } catch (e) {
-      setError(e.response?.data?.error || 'Failed to send the request.');
+      setError(formatApiError(e, 'Failed to send the request.'));
     } finally {
       setBusy(false);
     }

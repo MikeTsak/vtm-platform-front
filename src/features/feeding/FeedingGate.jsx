@@ -11,7 +11,7 @@
 // There is no way to discard a roll and start over.
 import React, { useMemo, useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import api from '../../core/api';
+import api, { formatApiError } from '../../core/api';
 import { toast } from 'sonner';
 import { Skeleton } from 'boneyard-js/react';
 import styles from '../../styles/Feeding.module.css';
@@ -186,7 +186,7 @@ function PendingResult({ status }) {
       setSelected([]);
       queryClient.invalidateQueries({ queryKey: ['feeding', 'status'] });
     },
-    onError: (e) => toast.error(e?.response?.data?.error || 'Reroll failed'),
+    onError: (e) => toast.error(formatApiError(e, 'Reroll failed')),
   });
 
   const confirmMutation = useMutation({
@@ -196,7 +196,7 @@ function PendingResult({ status }) {
       queryClient.invalidateQueries({ queryKey: ['feeding', 'status'] });
       queryClient.invalidateQueries({ queryKey: ['character', 'me'] });
     },
-    onError: (e) => toast.error(e?.response?.data?.error || 'Confirm failed'),
+    onError: (e) => toast.error(formatApiError(e, 'Confirm failed')),
   });
 
   const canReroll = !feeding.wp_rerolled;
@@ -320,7 +320,7 @@ function Picker({ status }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feeding', 'status'] });
     },
-    onError: (e) => toast.error(e?.response?.data?.error || 'Roll failed'),
+    onError: (e) => toast.error(formatApiError(e, 'Roll failed')),
   });
 
   // Herd feeding never rolls and never touches domain safety (the backend
@@ -346,7 +346,7 @@ function Picker({ status }) {
       queryClient.invalidateQueries({ queryKey: ['feeding', 'status'] });
       queryClient.invalidateQueries({ queryKey: ['character', 'me'] });
     },
-    onError: (e) => toast.error(e?.response?.data?.error || 'Herd feed failed'),
+    onError: (e) => toast.error(formatApiError(e, 'Herd feed failed')),
   });
 
   return (

@@ -5,52 +5,31 @@ import api from '../../core/api';
 import { trackEvent } from '../../utils/analytics';
 import D10Die from '../../ui/D10Die';
 import { getBatterySaverMode, setBatterySaverMode } from '../../ui/dice3d/sharedDiceEngine';
+import { rollD10, computeOutcome as computeRollOutcome } from '../../utils/liveSessionMechanics';
 
 /**
  * Vampire: the Masquerade v5 Dice Roller (d10)
  */
 
-// helper
-const rollD10 = () => Math.floor(Math.random() * 10) + 1;
-
 function computeOutcome(normal, hunger, difficulty) {
-  const all = [...normal, ...hunger];
+  const diff = typeof difficulty === 'number' ? difficulty : 0;
+  const result = computeRollOutcome(normal, hunger, diff);
 
-  const successesBase = all.filter(v => v >= 6).length; // includes 10s
-  const tens = all.filter(v => v === 10).length;
-  const tensHunger = hunger.filter(v => v === 10).length;
-
-  // Each pair of 10s is worth +2 extra successes (above the base 2 from the two 10s)
-  const extraFromPairs = Math.floor(tens / 2) * 2;
-  const successesTotal = successesBase + extraFromPairs;
-
-  const hasCritical = tens >= 2;
-  const messyCritical = hasCritical && tensHunger > 0;
-
-  // Bestial failure: failed test + at least one hunger 1
-  const metDifficulty = typeof difficulty === 'number' && difficulty > 0
-    ? successesTotal >= difficulty
-    : successesTotal > 0;
-
-  const bestialFailure = !metDifficulty && hunger.some(v => v === 1);
-
-  // Label
   let label = 'Failure';
-  if (metDifficulty) label = 'Success';
-  if (hasCritical && metDifficulty) label = 'Critical!';
-  if (messyCritical && metDifficulty) label = 'Messy Critical!';
-  if (bestialFailure) label = 'Bestial Failure';
+  if (result.metDifficulty) label = 'Success';
+  if (result.hasCritical) label = 'Critical!';
+  if (result.hasMessyCritical) label = 'Messy Critical!';
+  if (result.hasBestialFailure) label = 'Bestial Failure';
 
-  // Art
   let art = '/img/dice/d10/Dice_Regular_Success.webp';
-  if (messyCritical && metDifficulty) art = '/img/dice/d10/Dice_Hunger_MessyCritical.webp';
-  else if (hasCritical && metDifficulty) art = '/img/dice/d10/Dice_Regular_Critical.webp';
-  else if (bestialFailure) art = '/img/dice/d10/Dice_Hunger_BestialFailure.webp';
-  else if (!metDifficulty) art = '/img/dice/d10/Dice_Regular_Failure.webp';
+  if (result.hasMessyCritical) art = '/img/dice/d10/Dice_Hunger_MessyCritical.webp';
+  else if (result.hasCritical) art = '/img/dice/d10/Dice_Regular_Critical.webp';
+  else if (result.hasBestialFailure) art = '/img/dice/d10/Dice_Hunger_BestialFailure.webp';
+  else if (!result.metDifficulty) art = '/img/dice/d10/Dice_Regular_Failure.webp';
 
   return {
-    successesTotal, extraFromPairs,
-    hasCritical, messyCritical, bestialFailure,
+    successesTotal: result.successes, extraFromPairs: result.extraFromPairs,
+    hasCritical: result.hasCritical, messyCritical: result.hasMessyCritical, bestialFailure: result.hasBestialFailure,
     label, art,
   };
 }

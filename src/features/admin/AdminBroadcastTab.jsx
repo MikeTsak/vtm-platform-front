@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import api from '../../core/api';
+import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/Admin.module.css';
 
 export default function AdminBroadcastTab() {
@@ -28,7 +28,7 @@ export default function AdminBroadcastTab() {
       setBody('');
       setTimeout(() => setMsg(''), 5000);
     } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to send broadcast.');
+      setErr(formatApiError(e, 'Failed to send broadcast.'));
     } finally {
       setSending(false);
     }

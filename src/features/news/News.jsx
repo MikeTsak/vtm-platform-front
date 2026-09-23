@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { Helmet } from 'react-helmet-async';
-import api from '../../core/api';
+import api, { formatApiError } from '../../core/api';
 import { AuthCtx } from '../../core/AuthContext';
 import styles from '../../styles/News.module.css';
 import { NEWS_OUTLETS } from '../../constants/outletConstants';
 import { apiJoin, isVideoUrl } from '../../utils/newsUtils';
 import { sanitizeHtml } from '../../utils/sanitizeHtml';
+import { formatAthensDate } from '../../utils/dateFormatter';
 import { useLocation, Link } from 'react-router-dom';
 import CreateNewsModal from './CreateNewsModal';
 import FullscreenArticleModal from '../../components/FullscreenArticleModal';
@@ -87,7 +88,7 @@ export default function News() {
       queryClient.invalidateQueries({ queryKey: ['news'] });
     },
     onError: (err) => {
-      toast.error(err.response?.data?.error || 'Failed to delete article');
+      toast.error(formatApiError(err, 'Failed to delete article'));
     }
   });
 
@@ -99,7 +100,7 @@ export default function News() {
       toast.success('News/Announcement broadcasted to Discord');
     },
     onError: (err) => {
-      toast.error(err.response?.data?.error || 'Failed to broadcast');
+      toast.error(formatApiError(err, 'Failed to broadcast'));
     }
   });
 
@@ -112,7 +113,7 @@ export default function News() {
       queryClient.invalidateQueries({ queryKey: ['rumors'] });
     },
     onError: (err) => {
-      toast.error(err.response?.data?.error || 'Failed to delete rumor');
+      toast.error(formatApiError(err, 'Failed to delete rumor'));
     }
   });
 
@@ -124,7 +125,7 @@ export default function News() {
       toast.success('Rumor broadcasted to Discord');
     },
     onError: (err) => {
-      toast.error(err.response?.data?.error || 'Failed to broadcast');
+      toast.error(formatApiError(err, 'Failed to broadcast'));
     }
   });
 
@@ -266,7 +267,7 @@ export default function News() {
 
                           <div className={styles.meta}>
                             <span className={styles.journalist} style={{ color: theme.color }}>By {item.journalist_name || 'Staff'}</span>
-                            <span className={styles.date}>| {new Date(item.created_at).toLocaleDateString()}</span>
+                            <span className={styles.date}>| {formatAthensDate(item.created_at)}</span>
                           </div>
 
                           {item.media_url && (
@@ -319,7 +320,7 @@ export default function News() {
                           </div>
                         )}
                         <div className={styles.rumorBodyText} dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.body) }} />
-                        <div className={styles.rumorMeta}>HEARD ON: {new Date(item.created_at).toLocaleDateString()}</div>
+                        <div className={styles.rumorMeta}>HEARD ON: {formatAthensDate(item.created_at)}</div>
 
                         {(isAdmin || isCourt) && (
                           <>
@@ -460,7 +461,7 @@ function PostItCard({ item, isSingle }) {
       />
       <div className={styles.postItFooter}>
         <div className={styles.postItDateText}>
-          HEARD ON: {new Date(item.created_at).toLocaleDateString()}
+          HEARD ON: {formatAthensDate(item.created_at)}
         </div>
       </div>
     </div>
@@ -567,7 +568,7 @@ function FullscreenRumorModal({ item, onClose }) {
             paddingTop: '8px',
           }}
         >
-          HEARD ON: {new Date(item.created_at).toLocaleDateString()}
+          HEARD ON: {formatAthensDate(item.created_at)}
         </div>
       </div>
     </div>

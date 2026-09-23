@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import api from '../../core/api';
+import api, { formatApiError } from '../../core/api';
 import CharacterSetup from '../character/CharacterSetup';
+import { formatAthensDateTime } from '../../utils/dateFormatter';
 import { Link } from 'react-router-dom';
 
 export default function NPCs() {
@@ -15,7 +16,7 @@ export default function NPCs() {
       const { data } = await api.get('/admin/npcs');
       setList(data.npcs || []);
     } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to load NPCs');
+      setErr(formatApiError(e, 'Failed to load NPCs'));
     }
   }
   useEffect(() => { load(); }, []);
@@ -28,7 +29,7 @@ export default function NPCs() {
       setMsg('NPC deleted');
       await load();
     } catch (e) {
-      setErr(e.response?.data?.error || 'Failed to delete NPC');
+      setErr(formatApiError(e, 'Failed to delete NPC'));
     }
   }
 
@@ -54,7 +55,7 @@ export default function NPCs() {
                   <td>{n.name}</td>
                   <td>{n.clan}</td>
                   <td>{n.xp}</td>
-                  <td>{new Date(n.created_at).toLocaleString()}</td>
+                  <td>{formatAthensDateTime(n.created_at)}</td>
                   <td>
                     <Link to={`/admin/npcs/${n.id}`}><button>View</button></Link>{' '}
                     <button onClick={()=>remove(n.id)}>Delete</button>

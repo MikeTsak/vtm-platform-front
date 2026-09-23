@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
-import api from '../../core/api';
+import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/Court.module.css';
 import { Skeleton } from 'boneyard-js/react';
 import { AuthCtx } from '../../core/AuthContext';
+import { formatAthensDate } from '../../utils/dateFormatter';
 import Avatar from '../../components/Avatar';
 import { motion } from 'framer-motion';
 import { sanitizeHtml } from '../../utils/sanitizeHtml';
@@ -178,7 +179,7 @@ export default function AnnouncementsView({ canEdit: propCanEdit }) {
       closeModal();
       fetchItems();
     } catch(e) { 
-      alert(e.response?.data?.error || "Publication failed."); 
+      alert(formatApiError(e, "Publication failed."));
     } finally {
       setIsUploading(false);
     }
@@ -415,7 +416,7 @@ function DecreePrintModal({ target, items, onClose }) {
           </p>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', color: '#71717a', marginTop: '16px', paddingTop: '8px', borderTop: '1px dashed #d4d4d8' }}>
             <span>Seal of Elysium: Acknowledged</span>
-            <span>Printed on: {new Date().toLocaleDateString('el-GR')}</span>
+            <span>Printed on: {formatAthensDate(new Date())}</span>
             <span>Total Decrees: {printItems.length}</span>
           </div>
         </div>
@@ -424,7 +425,7 @@ function DecreePrintModal({ target, items, onClose }) {
           {printItems.map(item => {
             const authorRole = getTopRole(item.char_titles);
             const authorName = item.char_name || item.author_real_name || 'Court Authority';
-            const dateStr = new Date(item.created_at).toLocaleDateString('el-GR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            const dateStr = formatAthensDate(item.created_at);
 
             return (
               <div key={item.id} className={styles.decreePrintItem}>

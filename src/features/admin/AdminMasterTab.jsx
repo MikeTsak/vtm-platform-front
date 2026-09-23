@@ -1,6 +1,7 @@
 // src/components/admin/AdminMasterTab.jsx
 import React, { useState, useEffect, useContext } from 'react';
 import api, { formatApiError } from '../../core/api';
+import { formatAthensDateTime } from '../../utils/dateFormatter';
 import styles from '../../styles/Admin.module.css';
 import { Skeleton } from 'boneyard-js/react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -846,7 +847,7 @@ export default function AdminMasterTab() {
       const { data } = await api.delete('/admin/downtimes/resolved');
       setMsg(`✅ Wiped ${data.deleted || 0} resolved downtime(s) older than 30 days.`);
       setTimeout(() => setMsg(''), 5000);
-    } catch (e) { setErr(e.response?.data?.error || 'Failed to wipe downtimes.'); }
+    } catch (e) { setErr(formatApiError(e, 'Failed to wipe downtimes.')); }
     finally { setDangerLoading(false); }
   };
 
@@ -858,7 +859,7 @@ export default function AdminMasterTab() {
       const { data } = await api.delete('/admin/dice/rolls/all');
       setMsg(`✅ Cleared ${data.deleted || 0} dice roll record(s).`);
       setTimeout(() => setMsg(''), 5000);
-    } catch (e) { setErr(e.response?.data?.error || 'Failed to clear dice logs.'); }
+    } catch (e) { setErr(formatApiError(e, 'Failed to clear dice logs.')); }
     finally { setDangerLoading(false); }
   };
 
@@ -1529,7 +1530,7 @@ export default function AdminMasterTab() {
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', whiteSpace: 'nowrap' }}>
                           <span style={{ color: 'var(--text-secondary)' }}>{formatBytes(b.size)}</span>
-                          <span style={{ color: 'var(--text-secondary)' }}>{new Date(b.created_at).toLocaleString()}</span>
+                          <span style={{ color: 'var(--text-secondary)' }}>{formatAthensDateTime(b.created_at)}</span>
                           <a
                             href={`${api.defaults.baseURL || import.meta.env.VITE_API_URL || ''}/admin/backups/${encodeURIComponent(b.file)}`}
                             style={{ color: 'var(--color-primary)', fontWeight: 700, textDecoration: 'none' }}
@@ -1584,7 +1585,7 @@ export default function AdminMasterTab() {
                       <div key={v.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', background: 'var(--bg-lighter)', borderRadius: '6px', padding: '0.55rem 0.9rem', fontSize: '0.85rem' }}>
                         <span style={{ fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</span>
                         {v.applied ? (
-                          <span style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{new Date(v.applied_at).toLocaleString()}</span>
+                          <span style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{formatAthensDateTime(v.applied_at)}</span>
                         ) : (
                           <span style={{ color: 'var(--color-warning, #d29922)', fontWeight: 700, whiteSpace: 'nowrap' }}>PENDING</span>
                         )}
@@ -1595,7 +1596,7 @@ export default function AdminMasterTab() {
                         <span style={{ fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {o.name} <span style={{ fontStyle: 'italic' }}>(no file)</span>
                         </span>
-                        <span style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{new Date(o.applied_at).toLocaleString()}</span>
+                        <span style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{formatAthensDateTime(o.applied_at)}</span>
                       </div>
                     ))}
                   </div>

@@ -1,7 +1,7 @@
 // src/components/admin/AdminDiceLogsTab.jsx
 import React, { useEffect, useState, useCallback } from "react";
 import styles from '../../styles/AdminDiceLogsTab.module.css';
-import api from '../../core/api'; // Import the central api module
+import api, { formatApiError } from '../../core/api'; // Import the central api module
 import { formatEuDate } from '../../utils/dateFormatter';
 import D10Die from '../../ui/D10Die';
 
@@ -24,7 +24,7 @@ export default function AdminDiceLogsTab() {
       setRolls(res.data.rolls || []);
     } catch (e) {
       // Axios error handling is different
-      setErr(e.response?.data?.error || e.message || "Failed to load rolls");
+      setErr(formatApiError(e, "Failed to load rolls"));
     } finally {
       setLoading(false);
     }

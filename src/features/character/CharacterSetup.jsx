@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import api from '../../core/api';
+import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/CharacterSetup.module.css';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { PREDATOR_TYPES } from '../../data/predator_types';
@@ -468,7 +468,7 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
       // show success modal instead of navigating immediately
       setSuccessOpen(true);
     } catch (e) {
-      setErr(e?.response?.data?.error || 'Failed to save character');
+      setErr(formatApiError(e, 'Failed to save character'));
     } finally {
       setSaving(false);
     }

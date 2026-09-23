@@ -9,6 +9,7 @@
 import React, { useMemo, useState } from 'react';
 import styles from '../../styles/Coteries.module.css';
 import Avatar from '../../components/Avatar';
+import { formatAthensDateTime } from '../../utils/dateFormatter';
 import { Card, Dots, DotPicker, Empty, Modal, Muted, Stat, Tabs } from './ui';
 import {
   CHASSE_SIZE_TABLE,
@@ -607,7 +608,7 @@ export default function CoterieSheet({
                       )}
                       {row.note && <span className={styles.ledgerMeta}>{row.note}</span>}
                       <span className={styles.ledgerMeta}>
-                        {new Date(row.created_at).toLocaleString()}
+                        {formatAthensDateTime(row.created_at)}
                       </span>
                     </span>
                   </li>

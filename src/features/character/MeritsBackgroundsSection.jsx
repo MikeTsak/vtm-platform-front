@@ -6,20 +6,7 @@ import { DISCIPLINES, ALL_DISCIPLINE_NAMES, iconPath } from '../../data/discipli
 import { RITUALS } from '../../data/rituals';
 import MiniSearch from 'minisearch';
 import { ShopRow } from '../xp-shop/ShopRow';
-
-// Define XP_RULES locally since it's not exported from a separate file
-const XP_RULES = {
-  attribute: newLevel => newLevel * 5,
-  skill: newLevel => newLevel * 3,
-  specialty: () => 3,
-  advantageDot: dots => dots * 3,
-  disciplineClan: newLevel => newLevel * 5,
-  disciplineOther: newLevel => newLevel * 7,
-  disciplineCaitiff: newLevel => newLevel * 6,
-  ritual: lvl => lvl * 3,
-  ceremony: lvl => lvl * 3,
-  bloodPotency: newLevel => newLevel * 10,
-};
+import { XP_RULES } from '../../utils/xpCosts';
 
 const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, searchQuery, spendXP, onUpdateNotes }) => {
   const [editingNoteId, setEditingNoteId] = useState(null);

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import api from '../../core/api';
+import { formatAthensDateTime } from '../../utils/dateFormatter';
 import styles from '../../styles/News.module.css';
 import themeStyles from '../../styles/NewsThemes.module.css';
 import { NEWS_OUTLETS } from '../../constants/outletConstants';
@@ -91,7 +92,7 @@ export default function PublicArticleView() {
     return <img src={mediaUrl} alt="News Media" style={{ width: '100%', borderRadius }} />;
   };
 
-  const articleDate = new Date(article.created_at).toLocaleDateString('el-GR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const articleDate = formatAthensDateTime(article.created_at);
 
   const plainExcerpt = (article.subtitle || (article.body || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()).slice(0, 160);
   const articleUrl = `https://portal.attlarp.gr${location.pathname}`;

@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import api from "../../core/api";
 import { formatEuDate } from "../../utils/dateFormatter";
+import { copyToClipboard } from "../../utils/clipboard";
 import styles from '../../styles/Admin.module.css';
 import MiniSearch from 'minisearch';
 
@@ -35,7 +36,6 @@ function formatClockLocal(iso) {
 
 
 function Chip({ style, children, title }) { return <span title={title} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "2px 8px", borderRadius: 20, fontSize: 11, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase", backdropFilter: 'blur(4px)', ...style }}>{children}</span>; }
-function copyToClipboard(text) { try { navigator.clipboard?.writeText(text); } catch {} }
 
 function JSONBlock({ obj }) {
   const [open, setOpen] = useState(false);

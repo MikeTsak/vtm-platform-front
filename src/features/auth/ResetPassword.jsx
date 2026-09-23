@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
-import api from '../../core/api';
+import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/auth/Login.module.css';
 
 export default function ResetPassword() {
@@ -53,7 +53,7 @@ export default function ResetPassword() {
       setTimeout(() => nav('/login'), 2000);
     } catch (e) {
       // Capture specific server errors (e.g., "Invalid or expired token")
-      setErr(e?.response?.data?.error || 'Reset failed. The link may be expired.');
+      setErr(formatApiError(e, 'Reset failed. The link may be expired.'));
     } finally {
       setLoading(false);
     }

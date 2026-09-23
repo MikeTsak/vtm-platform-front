@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import api from '../../core/api';
+import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/RetainersView.module.css';
 import Avatar from '../../components/Avatar';
 import { DISCIPLINES, iconPath } from '../../data/disciplines';
@@ -1136,7 +1136,7 @@ export default function RetainersView() {
       // Close wizard
       setWizardConfig({ isOpen: false, tier: 1, isMigration: false, migrationId: null });
     } catch (e) {
-      alert(e.response?.data?.error || "Failed to save retainer");
+      alert(formatApiError(e, "Failed to save retainer"));
     } finally {
       setSaving(false);
     }
@@ -1181,7 +1181,7 @@ export default function RetainersView() {
       });
       setRetainers(retainers.map(r => r.id === selectedRetainer.id ? { ...r, name: newName } : r));
     } catch (e) {
-      alert(e.response?.data?.error || "Failed to update name");
+      alert(formatApiError(e, "Failed to update name"));
     } finally {
       setSaving(false);
     }
@@ -1221,7 +1221,7 @@ export default function RetainersView() {
       setIsEditing(false);
       setDraftSheet(null);
     } catch (e) {
-      alert(e.response?.data?.error || "Validation Failed");
+      alert(formatApiError(e, "Validation Failed"));
     } finally {
       setSaving(false);
     }

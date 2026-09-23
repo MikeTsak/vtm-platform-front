@@ -2,18 +2,7 @@ import React, { useMemo, useCallback } from 'react';
 import styles from '../../styles/CharacterView.module.css';
 import { DISCIPLINES } from '../../data/disciplines';
 import { RITUALS } from '../../data/rituals';
-const XP_RULES = {
-  attribute: newLevel => newLevel * 5,
-  skill: newLevel => newLevel * 3,
-  specialty: () => 3,
-  advantageDot: dots => dots * 3,
-  disciplineClan: newLevel => newLevel * 5,
-  disciplineOther: newLevel => newLevel * 7,
-  disciplineCaitiff: newLevel => newLevel * 6,
-  ritual: lvl => lvl * 3,
-  ceremony: lvl => lvl * 3,
-  bloodPotency: newLevel => newLevel * 10,
-};
+import { XP_RULES } from '../../utils/xpCosts';
 import { DisciplinePowerModal } from './DisciplinePowerModal'; // Assuming this exists
 import { SpecialtyAdder } from './SpecialtyAdder'; // Assuming this exists
 import { RitualRow } from './RitualRow'; // Assuming this exists

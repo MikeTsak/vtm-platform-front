@@ -66,6 +66,26 @@ export function formatAthensDateTime(dateValue, includeSeconds = false) {
 }
 
 /**
+ * Returns short weekday + date in Athens timezone, for example: "Tue, 22 Sep 2026"
+ */
+export function formatAthensWeekdayDate(dateValue) {
+  if (!dateValue) return "";
+  try {
+    const d = new Date(dateValue);
+    if (isNaN(d.getTime())) return String(dateValue);
+    return new Intl.DateTimeFormat('en-GB', {
+      timeZone: ATHENS_TZ,
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    }).format(d);
+  } catch (e) {
+    return String(dateValue);
+  }
+}
+
+/**
  * Returns day name and time in Athens timezone, for example:
  * "Tuesday at 00:01 (22/09/2026)"
  */

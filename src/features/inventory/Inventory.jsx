@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import api from '../../core/api';
+import api, { formatApiError } from '../../core/api';
 import InventoryItemModal from './InventoryItemModal';
 import styles from '../../styles/Inventory.module.css';
 
@@ -30,7 +30,7 @@ function Inventory({ characterId }) {
       setItems(res.data.items || []);
     } catch (err) {
       console.error('[Inventory] Failed to fetch inventory:', err.response?.status, err.response?.data || err.message);
-      const detailedError = err.response?.data?.error || err.message || "Unknown error";
+      const detailedError = formatApiError(err, "Unknown error");
       setError(`Failed to load inventory: ${detailedError}`);
     } finally {
       setLoading(false);
@@ -59,7 +59,7 @@ function Inventory({ characterId }) {
       await fetchInventory(); // await so items are shown after modal closes
     } catch (err) {
       console.error('Failed to save item:', err);
-      const detailedError = err.response?.data?.error || err.message || "Unknown error";
+      const detailedError = formatApiError(err, "Unknown error");
       alert(`Error saving item: ${detailedError}`);
     } finally {
       setSaving(false);
@@ -73,7 +73,7 @@ function Inventory({ characterId }) {
       await fetchInventory();
     } catch (err) {
       console.error('Failed to delete item:', err);
-      const detailedError = err.response?.data?.error || err.message || "Unknown error";
+      const detailedError = formatApiError(err, "Unknown error");
       alert(`Error deleting item: ${detailedError}`);
     }
   };

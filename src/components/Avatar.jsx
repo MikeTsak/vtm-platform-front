@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import api from '../core/api'; // our axios instance
+import api, { formatApiError } from '../core/api'; // our axios instance
 import styles from './Avatar.module.css';
 import AvatarCropperModal from './AvatarCropperModal';
 
@@ -132,7 +132,7 @@ export default function Avatar({ userId, npcId, identityId, retainerId, clan, si
       }
     } catch (err) {
       console.error('Failed to upload avatar', err);
-      alert('Failed to upload avatar: ' + (err.response?.data?.error || err.message));
+      alert('Failed to upload avatar: ' + formatApiError(err));
     } finally {
       setIsUploading(false);
     }

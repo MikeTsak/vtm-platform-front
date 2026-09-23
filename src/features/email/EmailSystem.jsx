@@ -1,6 +1,6 @@
 // src/components/EmailSystem.jsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import api from '../../core/api';
+import api, { formatApiError } from '../../core/api';
 import { sanitizeHtml } from '../../utils/sanitizeHtml';
 import styles from '../../styles/EmailSystem.module.css';
 import { Skeleton } from 'boneyard-js/react';
@@ -327,7 +327,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
         if (newThread) openEmailThread(newThread);
       }
     } catch (e) {
-      alert(e.response?.data?.error || 'Failed to send DM.');
+      alert(formatApiError(e, 'Failed to send DM.'));
     } finally {
       setAdminDmSending(false);
     }

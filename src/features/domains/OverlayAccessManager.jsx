@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import api from '../../core/api';
+import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/Domains.module.css';
 
 const KEY_LABELS = {
@@ -40,7 +40,7 @@ export default function OverlayAccessManager({ onClose, userId }) {
       qc.invalidateQueries({ queryKey: ['domain-overlays-directory'], exact: false });
       qc.invalidateQueries({ queryKey: ['domain-overlays-me'], exact: false });
     },
-    onError: (e) => toast.error(e.response?.data?.error || 'Failed to update access'),
+    onError: (e) => toast.error(formatApiError(e, 'Failed to update access')),
   });
 
   const users = useMemo(() => {
