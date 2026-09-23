@@ -126,6 +126,26 @@ export default function AdminMasterTab() {
     }
   };
 
+  const [schemaRunning, setSchemaRunning] = useState(false);
+  const [schemaRunMsg, setSchemaRunMsg] = useState(null);
+
+  const runSchemaMigrations = async () => {
+    if (!window.confirm(`Apply ${schema?.pending || 0} pending migration(s) to the database now? Take a backup first if you haven't.`)) return;
+    setSchemaRunning(true);
+    setSchemaRunMsg(null);
+    try {
+      const { data } = await api.post('/admin/schema-versions/run');
+      setSchemaRunMsg({ ok: true, text: data.ran.length ? `Applied: ${data.ran.join(', ')}` : 'Nothing to apply.' });
+    } catch (e) {
+      const d = e?.response?.data;
+      const ran = d?.ran?.length ? ` (applied before the failure: ${d.ran.join(', ')})` : '';
+      setSchemaRunMsg({ ok: false, text: `${d?.error || 'Migration run failed'}${ran}` });
+    } finally {
+      setSchemaRunning(false);
+      loadSchema();
+    }
+  };
+
   useEffect(() => { loadBackups(); loadSchema(); }, []);
 
   // `full` includes the image BLOB tables (~400MB). The default omits them
@@ -1533,8 +1553,25 @@ export default function AdminMasterTab() {
                     Every change made to the database structure, in order, with the date it was applied. This is the same record stored in the <code>schema_migrations</code> table, so you can also read it directly in phpMyAdmin.
                   </div>
                 </div>
-                <button onClick={loadSchema} className={styles.btn} style={{ whiteSpace: 'nowrap' }}>Refresh</button>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={runSchemaMigrations}
+                    className={styles.btn}
+                    style={{ whiteSpace: 'nowrap' }}
+                    disabled={schemaRunning || !schema?.pending}
+                    title="Apply every PENDING migration below, in order (same as npm run migrate)"
+                  >
+                    {schemaRunning ? 'Running...' : `Run pending${schema?.pending ? ` (${schema.pending})` : ''}`}
+                  </button>
+                  <button onClick={loadSchema} className={styles.btn} style={{ whiteSpace: 'nowrap' }}>Refresh</button>
+                </div>
               </div>
+
+              {schemaRunMsg && (
+                <div style={{ marginTop: '0.75rem', fontSize: '0.85rem', color: schemaRunMsg.ok ? 'var(--color-success)' : 'var(--color-error)' }}>
+                  {schemaRunMsg.text}
+                </div>
+              )}
 
               {schema && (
                 <div style={{ marginTop: '1rem' }}>

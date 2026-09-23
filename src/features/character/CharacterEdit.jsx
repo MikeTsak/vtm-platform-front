@@ -20,6 +20,9 @@ import MiniSearch from 'minisearch';
 import Inventory from '../inventory/Inventory';
 import SwapConfirmModal from './SwapConfirmModal';
 import DotRow from './DotRow';
+import { parseDotSpec } from './MeritsFlawsPicker';
+import { calculateRitualCost } from '../../utils/xpCosts';
+import { maxHealth as deriveMaxHealth } from '../../utils/derivedStats';
 
 /* ------------------------------------------------------------------ */
 /* Static data / pure helpers (module scope: computed once)          */
@@ -70,6 +73,18 @@ function sumStepCost(oldV, newV, stepFn) {
 
 function bulletCount(s) { return String(s || '').split('').filter(ch => ch === '•').length; }
 
+// Ratings a catalog merit/flaw permits. parseDotSpec narrows open-ended
+// specs ("• +") to their minimum for character creation; the editor accepts
+// any rating from that minimum up.
+function allowedDots(spec) {
+  const s = String(spec || '').trim();
+  if (/\+\s*$/.test(s)) {
+    const min = Math.max(1, bulletCount(s));
+    return Array.from({ length: 6 - min }, (_, i) => min + i);
+  }
+  return parseDotSpec(s);
+}
+
 function normalizeDotsInput(v) {
   const n = Number(v);
   if (Number.isFinite(n) && n > 0) return Math.min(5, Math.max(1, n));
@@ -96,14 +111,44 @@ const MF_CATALOG = flattenMF();
 const MERIT_CATALOG = MF_CATALOG.filter(x => x.type === 'merit');
 const FLAW_CATALOG = MF_CATALOG.filter(x => x.type === 'flaw');
 
-const ALL_BS_RITUALS = [];
-const ALL_OB_CEREMONIES = [];
-if (RITUALS) {
-  Object.values(RITUALS.blood_sorcery?.levels || {}).forEach(list => (list || []).forEach(r => ALL_BS_RITUALS.push(r.name)));
-  Object.values(RITUALS.oblivion?.levels || {}).forEach(list => (list || []).forEach(r => ALL_OB_CEREMONIES.push(r.name)));
+// Canonical ritual entries per path, in the same {id, name, level} shape the
+// player sheet writes (CharacterView buy flow) and reads (RitualsDisplaySection
+// looks up details by id and sorts on level/name).
+const RITUAL_CATALOG = { blood_sorcery: [], oblivion: [] };
+Object.keys(RITUAL_CATALOG).forEach(path => {
+  Object.entries(RITUALS?.[path]?.levels || {}).forEach(([lvl, list]) => {
+    (list || []).forEach(r => RITUAL_CATALOG[path].push({ id: r.id, name: r.name, level: Number(lvl) }));
+  });
+  RITUAL_CATALOG[path].sort((a, b) => a.name.localeCompare(b.name));
+});
+const ALL_BS_RITUALS = RITUAL_CATALOG.blood_sorcery.map(r => r.name);
+const ALL_OB_CEREMONIES = RITUAL_CATALOG.oblivion.map(r => r.name);
+
+function findRitual(path, key) {
+  const k = String(key || '').trim().toLowerCase();
+  if (!k) return null;
+  return RITUAL_CATALOG[path]?.find(r => String(r.id).toLowerCase() === k || r.name.toLowerCase() === k) || null;
 }
-ALL_BS_RITUALS.sort();
-ALL_OB_CEREMONIES.sort();
+
+// Resolve any stored shape (canonical object, bare name string, partial
+// object) to a full {id, name, level} entry; unknown custom rituals keep
+// their name with whatever level they had.
+function toRitualEntry(path, r) {
+  if (!r) return null;
+  const obj = typeof r === 'object' ? r : { name: String(r) };
+  const found = findRitual(path, obj.id) || findRitual(path, obj.name);
+  if (found) return { ...found };
+  const name = String(obj.name || obj.id || '').trim();
+  return name ? { id: obj.id ?? name, name, level: Number(obj.level) || 0 } : null;
+}
+
+function ritualEffect(path, id) {
+  for (const list of Object.values(RITUALS?.[path]?.levels || {})) {
+    const r = (list || []).find(x => x.id === id);
+    if (r) return r.effect || r.description || '';
+  }
+  return '';
+}
 
 function getPowersForDiscipline(discName) {
   const d = DiscDataNS.DISCIPLINES?.[discName];
@@ -163,23 +208,16 @@ function normalizeSheet(s) {
   });
   sheet.disciplinePowers = dpOut;
 
-  // Rituals/ceremonies are meant to be plain name strings (see addRitual /
-  // swapRitual below), but some legacy data — e.g. a discipline-power-style
-  // {id, name, level} object — has ended up in here instead. Rendering that
-  // object directly as a list item crashes the whole page (React error #31),
-  // so coerce down to the name here, same shape-safety pass as the rest of
-  // this function.
-  const normalizeRitualList = (list) => (Array.isArray(list) ? list : [])
-    .map(r => {
-      if (typeof r === 'string') return r;
-      if (r && typeof r === 'object') return String(r.name || r.id || '').trim();
-      return String(r ?? '').trim();
-    })
-    .filter(Boolean);
-
+  // Rituals/ceremonies are {id, name, level} objects: that's what the player
+  // sheet buys and what RitualsDisplaySection needs (id for details, level +
+  // name for sorting). Older editor saves stored bare name strings, so
+  // upgrade those back to full entries here.
   sheet.rituals = sheet.rituals || { blood_sorcery: [], oblivion: [] };
-  sheet.rituals.blood_sorcery = normalizeRitualList(sheet.rituals.blood_sorcery);
-  sheet.rituals.oblivion = normalizeRitualList(sheet.rituals.oblivion);
+  ['blood_sorcery', 'oblivion'].forEach(path => {
+    sheet.rituals[path] = (Array.isArray(sheet.rituals[path]) ? sheet.rituals[path] : [])
+      .map(r => toRitualEntry(path, r))
+      .filter(Boolean);
+  });
 
   sheet.convictions = Array.isArray(sheet.convictions) ? sheet.convictions : [];
   sheet.touchstones = Array.isArray(sheet.touchstones)
@@ -415,18 +453,27 @@ export default function CharacterEdit() {
     const arr = kind === 'backgrounds' ? d.backgrounds : d.advantages?.[kind];
     if (Array.isArray(arr) && arr[idx]) arr[idx] = { ...arr[idx], dots: normalizeDotsInput(dots) };
   });
+  // A swap is a brand-new advantage: drop the old entry's player-written
+  // `desc` override (the sheet shows it instead of the catalog description)
+  // and its `notes` (Mystic of the Void picks, retainer JSON, …), which
+  // belong to the old item. Dots carry over only when the new item's rating
+  // allows them; otherwise take its minimum.
   const swapAdvantage = (kind, idx, item) => updateDraft(d => {
     const arr = kind === 'backgrounds' ? d.backgrounds : d.advantages?.[kind];
-    if (Array.isArray(arr) && arr[idx]) arr[idx] = { ...arr[idx], id: item.id, name: item.name };
+    if (!Array.isArray(arr) || !arr[idx]) return;
+    const allowed = allowedDots(item.dots);
+    const oldDots = Number(arr[idx].dots) || 1;
+    const dots = !allowed.length || allowed.includes(oldDots) ? oldDots : allowed[0];
+    arr[idx] = { id: item.id, name: item.name, dots };
   });
 
   const addRitual = (path, name) => {
-    const v = name.trim();
-    if (!v) return;
-    updateDraft(d => { d.rituals = d.rituals || { blood_sorcery: [], oblivion: [] }; d.rituals[path] = Array.isArray(d.rituals[path]) ? d.rituals[path] : []; d.rituals[path].push(v); });
+    const entry = toRitualEntry(path, name.trim());
+    if (!entry) return;
+    updateDraft(d => { d.rituals = d.rituals || { blood_sorcery: [], oblivion: [] }; d.rituals[path] = Array.isArray(d.rituals[path]) ? d.rituals[path] : []; d.rituals[path].push(entry); });
   };
   const removeRitual = (path, idx) => updateDraft(d => { const list = d.rituals?.[path]; if (Array.isArray(list)) list.splice(idx, 1); });
-  const swapRitual = (path, idx, name) => updateDraft(d => { const list = d.rituals?.[path]; if (Array.isArray(list)) list[idx] = name; });
+  const swapRitual = (path, idx, ritual) => updateDraft(d => { const list = d.rituals?.[path]; if (Array.isArray(list) && list[idx]) list[idx] = { id: ritual.id, name: ritual.name, level: ritual.level }; });
 
   const addConviction = (text) => { if (!text.trim()) return; updateDraft(d => { d.convictions = Array.isArray(d.convictions) ? d.convictions : []; d.convictions.push(text.trim()); }); };
   const updateConviction = (i, text) => updateDraft(d => { d.convictions[i] = text; });
@@ -453,8 +500,9 @@ export default function CharacterEdit() {
     const list = draftSheet.disciplinePowers?.[discName] || [];
     const old = list[idx];
     const known = new Set(list.map(p => String(p.id || p.name || '').toLowerCase()));
+    const dots = Number(draftSheet.disciplines?.[discName] || 0);
     const catalog = getPowersForDiscipline(discName)
-      .filter(p => !known.has(String(p.id || p.name || '').toLowerCase()))
+      .filter(p => p.level <= dots && !known.has(String(p.id || p.name || '').toLowerCase()))
       .map(p => ({ id: p.id || p.name, label: `${p.name} (Level ${p.level})`, payload: p }));
     setSwap({ kind: 'Discipline Power', oldItem: { name: old?.name || old?.id || 'Unknown power' }, catalog, apply: (p) => swapPower(discName, idx, p) });
   };
@@ -472,9 +520,11 @@ export default function CharacterEdit() {
   const openRitualSwap = (path, idx) => {
     const list = draftSheet.rituals?.[path] || [];
     const old = list[idx];
-    const source = path === 'blood_sorcery' ? ALL_BS_RITUALS : ALL_OB_CEREMONIES;
-    const catalog = source.filter(n => n !== old).map(n => ({ id: n, label: n, payload: { name: n } }));
-    setSwap({ kind: path === 'blood_sorcery' ? 'Ritual' : 'Ceremony', oldItem: { name: old }, catalog, apply: (p) => swapRitual(path, idx, p.name) });
+    const known = new Set(list.map(r => String(r.id).toLowerCase()));
+    const catalog = RITUAL_CATALOG[path]
+      .filter(r => !known.has(String(r.id).toLowerCase()))
+      .map(r => ({ id: r.id, label: `${r.name} (Level ${r.level})`, payload: { ...r, description: ritualEffect(path, r.id) } }));
+    setSwap({ kind: path === 'blood_sorcery' ? 'Ritual' : 'Ceremony', oldItem: { name: old?.name, description: ritualEffect(path, old?.id) }, catalog, apply: (p) => swapRitual(path, idx, p) });
   };
 
   const swapNewItem = swap ? (swap.catalog.find(c => c.id === swapPick)?.payload || null) : null;
@@ -522,6 +572,21 @@ export default function CharacterEdit() {
     delta += diffByKey(originalSheet?.advantages?.merits || [], draftSheet?.advantages?.merits || [], COST.meritDot);
     delta += diffByKey(originalSheet?.backgrounds || [], draftSheet?.backgrounds || [], COST.meritDot);
     delta += diffByKey(originalSheet?.advantages?.flaws || [], draftSheet?.advantages?.flaws || [], COST.flawDot);
+
+    // Rituals/ceremonies: a gained one costs its level x3, a lost one refunds
+    // it (a swap is both). Counted per id so duplicates net out correctly.
+    ['blood_sorcery', 'oblivion'].forEach(path => {
+      const counts = new Map();
+      const tally = (list, sign) => (list || []).forEach(r => {
+        const key = String(r.id).toLowerCase();
+        const cur = counts.get(key) || { level: Number(r.level) || 0, n: 0 };
+        cur.n += sign;
+        counts.set(key, cur);
+      });
+      tally(originalSheet.rituals?.[path], -1);
+      tally(draftSheet.rituals?.[path], 1);
+      counts.forEach(({ level, n }) => { delta += n * calculateRitualCost(level); });
+    });
     return delta;
   }, [originalSheet, draftSheet, discKinds]);
 
@@ -946,10 +1011,7 @@ function TrackerBox({ label, max, agg = 0, sup = 0, isValue = false, value = 0, 
 
 function TrackersSection({ sheet, updateTracker }) {
   const attrs = sheet.attributes || {};
-  const stamina = Number(attrs.Stamina || 0);
-  const fortitudePowers = Array.isArray(sheet.disciplinePowers?.Fortitude) ? sheet.disciplinePowers.Fortitude : [];
-  const hasResilience = fortitudePowers.some(p => String(p?.name || p?.id || '').toLowerCase().includes('resilience'));
-  const maxHealth = stamina + 3 + (hasResilience ? Number(sheet.disciplines?.Fortitude || 0) : 0);
+  const maxHealth = deriveMaxHealth(sheet);
   const maxWillpower = Number(attrs.Composure || 0) + Number(attrs.Resolve || 0);
 
   const health = sheet.health || {};
@@ -1045,7 +1107,7 @@ function DisciplinesSection({ sheet, discKinds, setDiscKinds, setDisciplineDots,
       {Object.keys(sheet.disciplines || {}).sort().map(name => {
         const level = Number(sheet.disciplines?.[name] || 0);
         const powers = sheet.disciplinePowers?.[name] || [];
-        const available = getPowersForDiscipline(name).filter(p => !powers.some(owned => String(owned.id || owned.name).toLowerCase() === String(p.id || p.name).toLowerCase()));
+        const available = getPowersForDiscipline(name).filter(p => p.level <= level && !powers.some(owned => String(owned.id || owned.name).toLowerCase() === String(p.id || p.name).toLowerCase()));
 
         return (
           <div key={name} className={styles.entryCard}>
@@ -1076,7 +1138,7 @@ function DisciplinesSection({ sheet, discKinds, setDiscKinds, setDisciplineDots,
                 onChange={e => setNewPowerPick(prev => ({ ...prev, [name]: e.target.value }))}
                 style={{ flex: 1, minWidth: 200 }}
               >
-                <option value="">Add a power…</option>
+                <option value="">{available.length ? 'Add a power…' : `No unowned powers at Level ${level} or below`}</option>
                 {available.map(p => <option key={p.id || p.name} value={p.id || p.name}>{p.name} (Level {p.level})</option>)}
               </select>
               <button
@@ -1181,9 +1243,9 @@ function RitualsSection({ sheet, addRitual, removeRitual, openRitualSwap }) {
     <div style={{ marginBottom: 28 }}>
       <div className={styles.groupHeading}>{path === 'blood_sorcery' ? 'Blood Sorcery Rituals' : 'Oblivion Ceremonies'}</div>
       {items.length === 0 && <div className={styles.emptyState}>None yet.</div>}
-      {items.map((name, i) => (
-        <div key={`${name}_${i}`} className={styles.powerRow}>
-          <span style={{ flex: 1 }}>{name}</span>
+      {items.map((r, i) => (
+        <div key={`${r.id}_${i}`} className={styles.powerRow}>
+          <span style={{ flex: 1 }}>{r.name}{r.level ? ` (Level ${r.level})` : ''}</span>
           <button className={styles.smallBtn} onClick={() => openRitualSwap(path, i)}>Swap</button>
           <button className={styles.iconBtn} onClick={() => removeRitual(path, i)} title="Remove">✕</button>
         </div>

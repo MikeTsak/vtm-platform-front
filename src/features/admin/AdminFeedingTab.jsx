@@ -255,6 +255,26 @@ export default function AdminFeedingTab() {
     }
   };
 
+  // Two-click confirm: first click arms the row, second undoes the feeding.
+  const [rerollArmed, setRerollArmed] = useState(null);
+  const [rerollBusy, setRerollBusy] = useState(null);
+
+  const allowReroll = async (f) => {
+    if (rerollArmed !== f.id) { setRerollArmed(f.id); return; }
+    setRerollBusy(f.id);
+    try {
+      await api.post(`/admin/feeding/${f.id}/allow-reroll`);
+      flash(setMsg, `${f.character_name}: feeding undone. They can feed again this cycle.`);
+      await load();
+    } catch (e) {
+      console.error('[AdminFeedingTab] allowReroll failed', e);
+      flash(setErr, formatApiError(e, 'Allow reroll failed'));
+    } finally {
+      setRerollBusy(null);
+      setRerollArmed(null);
+    }
+  };
+
   if (loading) return <div style={{ padding: '2rem', color: 'var(--text-secondary)' }}>Loading Feeding Control...</div>;
 
   const themeColor = isOnline ? 'var(--color-success)' : 'var(--color-error)';
@@ -463,6 +483,11 @@ export default function AdminFeedingTab() {
                           <FaGlyph icon={TIER_ICON[f.outcome] || FEEDING_ICONS.circleCheck} size={12} />
                           {TIER_LABEL[f.outcome] || f.outcome}
                         </span>
+                        {f.failure_reason && (
+                          <div style={{ fontSize: '0.72rem', fontStyle: 'italic', color: 'var(--text-secondary)', marginTop: '4px', maxWidth: '22rem', lineHeight: 1.35 }}>
+                            {f.failure_reason}
+                          </div>
+                        )}
                       </td>
                       <td style={{ padding: '0.6rem 0.5rem' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -584,6 +609,17 @@ export default function AdminFeedingTab() {
                         <span style={{ fontSize: '0.75rem', padding: '2px 6px', borderRadius: 4, background: f.status === 'resolved' ? 'rgba(0,230,118,0.15)' : 'rgba(255,180,0,0.15)', color: f.status === 'resolved' ? 'var(--color-success)' : '#ffb347' }}>
                           {f.status}
                         </span>
+                        <div style={{ marginTop: '6px' }}>
+                          <button
+                            style={{ ...btnBase, padding: '0.25rem 0.6rem', fontSize: '0.72rem', whiteSpace: 'nowrap', ...(rerollArmed === f.id ? { color: '#ff6b6b', borderColor: '#ff6b6b66' } : {}) }}
+                            disabled={rerollBusy === f.id}
+                            onClick={() => allowReroll(f)}
+                            onBlur={() => setRerollArmed((id) => (id === f.id ? null : id))}
+                            title="Undo this feeding (Hunger, Willpower, domain Safety, incident, Herd) so the player can feed again this cycle"
+                          >
+                            {rerollBusy === f.id ? 'Undoing...' : rerollArmed === f.id ? 'Confirm undo' : 'Allow Reroll'}
+                          </button>
+                        </div>
                       </td>
                       <td style={{ padding: '0.6rem 0.5rem', color: 'var(--text-secondary)', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
                         {new Date(f.created_at).toLocaleString()}

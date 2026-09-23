@@ -330,6 +330,14 @@ function Picker({ status }) {
   // domain, then the city centre, so the button always has something valid
   // to send even if they never expanded the domain list.
   const herdDivision = division || status.myDivision || CENTRE_DIVISION;
+
+  // The status payload's pool totals are domain-agnostic (attribute + skill +
+  // Predator specialty). Chasse dice depend on where you hunt, so fold them in
+  // here from the same table the server's chasseBonus() uses at roll time.
+  const chasseHere = division
+    ? getDivisionChasse(division).filter((m) => m.favours.includes(status.predatorType))
+    : [];
+  const selectedDifficulty = division ? HUNTING_DIFFICULTY[division]?.difficulty : null;
   const herdMutation = useMutation({
     mutationFn: () => api.post('/feeding/herd-feed', { division: herdDivision }),
     onSuccess: (res) => {
@@ -429,6 +437,18 @@ function Picker({ status }) {
               <FaGlyph icon={FEEDING_ICONS.diceD20} size={13} />
               How to hunt
             </div>
+            {division && (
+              <div className={styles.statChipRow}>
+                <StatChip icon={FEEDING_ICONS.locationDot}>
+                  Hunting in {divisionName(division)}{division === status.myDivision ? ' (your domain)' : ''}
+                </StatChip>
+                {selectedDifficulty != null && (
+                  <StatChip icon={FEEDING_ICONS.gauge} color={difficultyColor(selectedDifficulty)}>
+                    Difficulty {selectedDifficulty}
+                  </StatChip>
+                )}
+              </div>
+            )}
         <div className={styles.poolChoices}>
           {status.pools.map((p, i) => (
             <button
@@ -439,13 +459,18 @@ function Picker({ status }) {
               <span>{p.pool}</span>
               <span className={styles.poolTotal}>
                 <FaGlyph icon={FEEDING_ICONS.diceD20} size={12} />
-                {p.total}
+                {p.total + chasseHere.length}
               </span>
               {p.specialtyBonus > 0 && (
                 <div style={{ fontSize: '0.75rem', marginTop: '4px', opacity: 0.8, fontWeight: 'normal' }}>
                   +1 from Predator Specialty
                 </div>
               )}
+              {chasseHere.map((m) => (
+                <div key={m.key} style={{ fontSize: '0.75rem', marginTop: '4px', opacity: 0.8, fontWeight: 'normal' }}>
+                  +1 from {m.name} (Chasse)
+                </div>
+              ))}
             </button>
           ))}
         </div>

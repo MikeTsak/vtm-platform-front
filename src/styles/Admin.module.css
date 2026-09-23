@@ -2195,7 +2195,9 @@ tr:hover .clanIcon,
 
 .xpCharCell {
   position: relative;
-  padding: 11px 14px 11px 44px;
+  display: block;
+  cursor: pointer;
+  padding: 11px 14px 11px 72px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   transition: background 0.12s;
 }
@@ -2203,7 +2205,7 @@ tr:hover .clanIcon,
 .xpCharCell::before {
   content: '';
   position: absolute;
-  left: 14px;
+  left: 42px;
   top: 50%;
   transform: translateY(-50%);
   width: 20px;
@@ -2222,6 +2224,39 @@ tr:hover .clanIcon,
 
 .xpCharCell:hover::before {
   opacity: 1;
+}
+
+.xpCharCellSelected {
+  background: var(--accent-purple-dim);
+}
+
+.xpSelect {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--accent-purple);
+}
+
+.xpSelectInline {
+  position: static;
+  transform: none;
+}
+
+.xpStatusTag {
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
 .charName {

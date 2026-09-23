@@ -16,7 +16,6 @@ import { AuthCtx } from '../core/AuthContext';
 import { useTheme } from '../core/ThemeContext';
 import Loading from '../ui/Loading';
 import FaGlyph from '../ui/FaGlyph';
-import { FEEDING_ICONS } from '../data/feedingIcons';
 
 /* ── Relative time ──────────────────────────────────────────────── */
 const formatTimestamp = (ts) => {
@@ -162,9 +161,8 @@ export default function Home() {
   const [isShattering, setIsShattering] = useState(false);
   const [clickPoint, setClickPoint] = useState(null);
   const [shards, setShards] = useState([]);
-  const [activeFeedTab, setActiveFeedTab] = useState('chronicle');
+  const [activeFeedTab, setActiveFeedTab] = useState('whispers');
   const [showRsvp, setShowRsvp] = useState(false);
-  const [incidents, setIncidents] = useState([]);
   const overlayRef = useRef(null);
   const nav = useNavigate();
 
@@ -356,20 +354,6 @@ export default function Home() {
       }
     })();
   }, [nav]);
-
-  /* ── Domain incidents (someone else's hunt went wrong in your domain) ── */
-  useEffect(() => {
-    let live = true;
-    api.get('/domain-incidents/mine')
-      .then((res) => { if (live) setIncidents(res.data?.incidents || []); })
-      .catch(() => {});
-    return () => { live = false; };
-  }, []);
-
-  const dismissIncident = (id) => {
-    setIncidents((prev) => prev.filter((i) => i.id !== id));
-    api.patch(`/domain-incidents/${id}/dismiss`).catch(() => {});
-  };
 
   const activeClanName = (clanOverride || currentClan || ch?.clan || 'Ventrue').trim();
 
@@ -1191,7 +1175,7 @@ export default function Home() {
             </div>
           </section>
 
-          {/* CHRONICLE / WHISPERS / LOG */}
+          {/* CHRONICLE / CONVERSATIONS / LOG */}
           <section className={styles.sidebarFeedCard}>
             <div className={styles.feedTabs}>
               <button
@@ -1204,19 +1188,13 @@ export default function Home() {
                 className={`${styles.feedTab} ${activeFeedTab === 'whispers' ? styles.feedTabActive : ''}`}
                 onClick={() => setActiveFeedTab('whispers')}
               >
-                WHISPERS
+                CONVERSATIONS
               </button>
               <button
                 className={`${styles.feedTab} ${activeFeedTab === 'log' ? styles.feedTabActive : ''}`}
                 onClick={() => setActiveFeedTab('log')}
               >
                 LOG
-              </button>
-              <button
-                className={`${styles.feedTab} ${activeFeedTab === 'incidents' ? styles.feedTabActive : ''}`}
-                onClick={() => setActiveFeedTab('incidents')}
-              >
-                INCIDENTS{incidents.length > 0 ? ` (${incidents.length})` : ''}
               </button>
             </div>
 
@@ -1260,19 +1238,22 @@ export default function Home() {
                     ) : (
                       recentChats.slice(0, 4).map(chat => (
                         <li key={chat.id} className={styles.chatItem}>
-                          <Link to="/schrecknet" className={styles.chatLink}>
+                          <Link to={chat.isEmail ? '/surfaceweb' : '/schrecknet'} className={styles.chatLink}>
                             <div className={styles.chatHead}>
                               <span className={styles.chatPartner}>
                                 {chat.isNPC ? (
                                   <span className={styles.npcTag}>NPC</span>
                                 ) : chat.isGroup ? (
                                   <span className={styles.npcTag} style={{ background: '#1c3d5a', color: '#90cdf4', borderColor: '#2b6cb0' }}>GRP</span>
+                                ) : chat.isEmail ? (
+                                  <span className={styles.npcTag} style={{ background: '#2d3a1c', color: '#c6e59a', borderColor: '#5f7a2b' }}>MAIL</span>
                                 ) : null}
                                 {chat.partnerName || 'Unknown'}
                               </span>
                               <time className={styles.chatTime}>{formatTimestamp(chat.timestamp)}</time>
                             </div>
                             <p className={styles.chatSnippet}>
+                              {chat.isEmail && chat.subject ? <strong>{chat.subject}: </strong> : null}
                               {(chat.lastMessage || 'Sent an attachment').substring(0, 50)}
                               {(chat.lastMessage || '').length > 50 ? '…' : ''}
                             </p>
@@ -1281,9 +1262,10 @@ export default function Home() {
                       ))
                     )}
                   </ul>
-                  <Link to="/schrecknet" className={styles.feedLinkBtn} style={{ marginTop: '0.75rem' }}>
-                    Open SchreckNet →
-                  </Link>
+                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
+                    <Link to="/schrecknet" className={styles.feedLinkBtn} style={{ flex: 1 }}>SchreckNet →</Link>
+                    <Link to="/surfaceweb" className={styles.feedLinkBtn} style={{ flex: 1 }}>Surface Web →</Link>
+                  </div>
                 </>
               )}
 
@@ -1316,36 +1298,6 @@ export default function Home() {
                 </>
               )}
 
-              {activeFeedTab === 'incidents' && (
-                <ul className={styles.dtList}>
-                  {incidents.length === 0 ? (
-                    <p className={styles.emptyFeedText}>No incidents in your domains.</p>
-                  ) : (
-                    incidents.map((inc) => (
-                      <li key={inc.id} className={styles.dtItem} style={{ position: 'relative' }}>
-                        <button
-                          onClick={() => dismissIncident(inc.id)}
-                          aria-label="Dismiss"
-                          style={{
-                            position: 'absolute', top: 8, right: 8, background: 'none', border: 'none',
-                            color: 'var(--text-secondary, rgba(255,255,255,0.5))', cursor: 'pointer', lineHeight: 1, padding: 4,
-                          }}
-                        >
-                          <FaGlyph icon={FEEDING_ICONS.xmark} size={12} />
-                        </button>
-                        <div className={styles.dtHead} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                          <FaGlyph icon={FEEDING_ICONS.droplet} size={12} style={{ color: '#d4202e', flexShrink: 0 }} />
-                          <span className={styles.dtTitle}>{inc.intruder_character_name} in Division {inc.division}</span>
-                        </div>
-                        <p className={styles.chatSnippet} style={{ marginTop: '0.35rem' }}>{inc.flavor_text}</p>
-                        <div className={styles.dtFooter}>
-                          <time className={styles.dtTime}>{formatTimestamp(inc.created_at)}</time>
-                        </div>
-                      </li>
-                    ))
-                  )}
-                </ul>
-              )}
             </div>
           </section>
 

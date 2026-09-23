@@ -3,6 +3,19 @@ import { Link, NavLink, useLocation } from 'react-router-dom';
 import { AuthCtx } from '../core/AuthContext';
 import { useTheme } from '../core/ThemeContext';
 import api from '../core/api';
+import { useCommsUnread } from '../features/comms/useCommsUnread';
+
+function UnreadBadge({ count }) {
+  if (!count) return null;
+  return (
+    <span
+      className="ml-2 inline-flex items-center justify-center min-w-4 h-4 px-1 rounded-full bg-primary-container text-white text-[10px] font-bold leading-none align-middle"
+      aria-label={`${count} unread`}
+    >
+      {count > 99 ? '99+' : count}
+    </span>
+  );
+}
 
 function NavDropdown({ title, icon, children, isMobile, isOpen, toggleOpen }) {
   const [isHovered, setIsHovered] = useState(false);
@@ -84,6 +97,7 @@ export default function Nav() {
   const [canSeePremonitions, setCanSeePremonitions] = useState(false);
   const [isCharActive, setIsCharActive] = useState(false);
   const location = useLocation();
+  const unread = useCommsUnread(!!user);
 
   const [openMobileDropdown, setOpenMobileDropdown] = useState(null);
 
@@ -223,10 +237,10 @@ export default function Nav() {
                 <NavDropdown title="Comms" icon="rss_feed" isMobile={false}>
                   <NavLink 
   data-cuelume-press 
-  data-cuelume-hover to="/schrecknet" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>SchreckNet</NavLink>
+  data-cuelume-hover to="/schrecknet" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>SchreckNet<UnreadBadge count={unread.chat} /></NavLink>
                   <NavLink 
   data-cuelume-press 
-  data-cuelume-hover to="/surfaceweb" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Surface Web</NavLink>
+  data-cuelume-hover to="/surfaceweb" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Surface Web<UnreadBadge count={unread.email} /></NavLink>
                 </NavDropdown>
 
                 <NavLink 
@@ -340,10 +354,10 @@ export default function Nav() {
               <NavDropdown title="Comms" icon="rss_feed" isMobile={true} isOpen={openMobileDropdown === 'Comms'} toggleOpen={() => handleMobileDropdownToggle('Comms')}>
                 <NavLink 
   data-cuelume-press 
-  data-cuelume-hover to="/schrecknet" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>SchreckNet</NavLink>
+  data-cuelume-hover to="/schrecknet" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>SchreckNet<UnreadBadge count={unread.chat} /></NavLink>
                 <NavLink 
   data-cuelume-press 
-  data-cuelume-hover to="/surfaceweb" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Surface Web</NavLink>
+  data-cuelume-hover to="/surfaceweb" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Surface Web<UnreadBadge count={unread.email} /></NavLink>
               </NavDropdown>
 
               <NavLink 

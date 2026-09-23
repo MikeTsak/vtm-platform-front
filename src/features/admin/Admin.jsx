@@ -825,11 +825,11 @@ async function grantXP(character_id, delta) {
     }
   };
 
-  async function grantBulkXP(delta) {
+  async function grantBulkXP(delta, characterIds) {
     setErr(''); setMsg('');
     try {
-      await api.patch('/admin/characters/xp/bulk', { delta: Number(delta) });
-      setMsg(`Bulk XP (${delta > 0 ? '+' : ''}${delta}) applied to all characters!`);
+      const { data } = await api.patch('/admin/characters/xp/bulk', { delta: Number(delta), character_ids: characterIds });
+      setMsg(`Bulk XP (${delta > 0 ? '+' : ''}${delta}) applied to ${data?.count ?? characterIds.length} characters!`);
       load(); // Reload everything so the grid updates instantly
     } catch (e) {
       console.error('[Admin] grantBulkXP failed', e);

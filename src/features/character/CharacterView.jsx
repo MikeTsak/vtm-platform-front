@@ -29,6 +29,7 @@ import MiniSearch from 'minisearch';
 import { ShopRow, ConfirmModal } from '../xp-shop/ShopRow';
 import { buildSuggestions, article } from '../xp-shop/suggestions';
 import { getPushSettings, updatePushSettings, subscribeToWebPush } from '../../utils/push';
+import { maxHealth as deriveMaxHealth } from '../../utils/derivedStats';
 const msSearchText = (arr, query) => {
   const ms = new MiniSearch({ fields: ['text'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
   const docs = arr.map((text, id) => ({ id, text }));
@@ -304,24 +305,7 @@ function normalizeFromFlatAny(source) {
 
   sheet.blood_potency = Number(flat.bloodPotency ?? flat.blood_potency ?? 1);
 
-  const staminaRaw = getCaseInsensitive(sheet.attributes, 'Stamina') ?? getCaseInsensitive(flat.attributes, 'Stamina') ?? 1;
-  const stamina = Number(staminaRaw);
-  let healthMax = stamina + 3;
-
-  const fortDotsRaw = getCaseInsensitive(sheet.disciplines, 'Fortitude') ?? 0;
-  const fortitudeDots = Number(fortDotsRaw);
-
-  const fortPowers = getCaseInsensitive(sheet.disciplinePowers, 'Fortitude') || [];
-  const hasResilience = Array.isArray(fortPowers) && fortPowers.some(p => {
-    const name = String(p.name || p.id || '').toLowerCase();
-    return name.includes('resilience');
-  });
-
-  if (hasResilience) {
-    healthMax += fortitudeDots;
-  }
-
-  sheet.health_max = healthMax;
+  sheet.health_max = deriveMaxHealth(sheet);
 
   const hSuperficial = Number(flat?.health?.superficial ?? 0);
   const hAggravated = Number(flat?.health?.aggravated ?? 0);
@@ -1731,12 +1715,7 @@ export default function CharacterView({
   const inClanDisciplines = ALL_DISCIPLINE_NAMES.filter(n => disciplineKindFor(ch, n) === 'clan');
   const outOfClanDisciplines = ALL_DISCIPLINE_NAMES.filter(n => disciplineKindFor(ch, n) !== 'clan');
 
-  const stamina = Number(sheet.attributes?.Stamina) || 1;
-  let maxHealth = stamina + 3;
-  const fortitudePowers = sheet.disciplinePowers?.Fortitude || [];
-  if (Array.isArray(fortitudePowers) && fortitudePowers.some(p => String(p.name || p.id).toLowerCase().includes('resilience'))) {
-    maxHealth += Number(sheet.disciplines?.Fortitude || 0);
-  }
+  const maxHealth = deriveMaxHealth(sheet);
   const maxWillpower = (Number(sheet.attributes?.Composure) || 1) + (Number(sheet.attributes?.Resolve) || 1);
   const currentSearch = currentSearches[activeShopTab] || '';
   const isSearching = currentSearch.trim().length > 0;

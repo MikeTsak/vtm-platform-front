@@ -1,11 +1,19 @@
 ﻿// src/components/admin/AdminXPTab.jsx
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import api, { formatApiError } from '../../core/api';
 import { formatEuDate } from '../../utils/dateFormatter';
 import styles from '../../styles/Admin.module.css';
 import MiniSearch from 'minisearch';
-import { symlogo, CLAN_HEX as CLAN_COLORS } from '../../data/clans';
+import { symlogoWhite, CLAN_HEX as CLAN_COLORS } from '../../data/clans';
 
-/* ---------- VTM Lookups ---------- */
+// Why a character is left out of "Select all eligible" (null = eligible).
+function ineligibleReason(u) {
+  if (u.is_deceased) return 'Deceased';
+  if (u.is_left) return 'Left';
+  if (u.is_missing) return 'Missing';
+  if (u.sheet?.is_active !== true) return 'Not activated';
+  return null;
+}
 
 export default function AdminXPTab({ users, onGrant, onBulkGrant, adminxp }) {
   const [grants, setGrants] = useState({});
@@ -15,6 +23,9 @@ export default function AdminXPTab({ users, onGrant, onBulkGrant, adminxp }) {
   const [logs, setLogs] = useState([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [charModal, setCharModal] = useState(null);
+  const [selected, setSelected] = useState(() => new Set());
+  const [selectionNote, setSelectionNote] = useState('');
+  const selectionLoaded = useRef(false);
 
   const [logFilterChar, setLogFilterChar] = useState('All');
   const [logFilterType, setLogFilterType] = useState('All');
@@ -32,17 +43,78 @@ export default function AdminXPTab({ users, onGrant, onBulkGrant, adminxp }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchLogs(); }, []);
 
+  const allCharacters = useMemo(() => users.filter(u => u.character_id).map(u => ({
+    id: u.character_id, owner: `${u.display_name} <${u.email}>`, name: u.char_name || 'Unnamed',
+    clan: u.clan || 'Unknown', xp: u.xp || 0, inactiveReason: ineligibleReason(u),
+  })), [users]);
+
   const characters = useMemo(() => {
-    const allChars = users.filter(u => u.character_id).map(u => ({ id: u.character_id, owner: `${u.display_name} <${u.email}>`, name: u.char_name || 'Unnamed', clan: u.clan || 'Unknown', xp: u.xp || 0 }));
-    if (!searchTerm.trim()) return allChars;
+    if (!searchTerm.trim()) return allCharacters;
     const q = searchTerm.trim();
     const ms = new MiniSearch({ fields: ['name', 'owner', 'clan'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
-    ms.addAll(allChars);
+    ms.addAll(allCharacters);
     const results = ms.search(q);
     const idSet = new Set(results.map(r => r.id));
-    return allChars.filter(c => idSet.has(c.id));
-  }, [users, searchTerm]);
-  const totalCharacters = users.filter(u => u.character_id).length;
+    return allCharacters.filter(c => idSet.has(c.id));
+  }, [allCharacters, searchTerm]);
+  const totalCharacters = allCharacters.length;
+
+  // Only ids that still map to a character count toward the grant.
+  const selectedIds = useMemo(() => allCharacters.filter(c => selected.has(c.id)).map(c => c.id), [allCharacters, selected]);
+
+  // Restore this admin's last selection, then persist every change (debounced).
+  useEffect(() => {
+    api.get('/admin/xp/bulk-selection')
+      .then(({ data }) => setSelected(new Set(data?.character_ids || [])))
+      .catch(() => { })
+      .finally(() => { selectionLoaded.current = true; });
+  }, []);
+  useEffect(() => {
+    if (!selectionLoaded.current) return undefined;
+    const t = setTimeout(() => {
+      api.put('/admin/xp/bulk-selection', { character_ids: [...selected] }).catch(() => { });
+    }, 600);
+    return () => clearTimeout(t);
+  }, [selected]);
+
+  function toggleSelected(id) {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+  function selectEligible() {
+    setSelected(new Set(allCharacters.filter(c => !c.inactiveReason).map(c => c.id)));
+    setSelectionNote('');
+  }
+  function clearSelection() {
+    setSelected(new Set());
+    setSelectionNote('');
+  }
+  async function selectDowntimeSubmitters() {
+    setSelectionNote('Loading downtime submitters...');
+    try {
+      const { data } = await api.get('/admin/downtimes/last-cycle-submitters');
+      if (!data?.cycle) { setSelectionNote('No closed downtime cycle found.'); return; }
+      const known = new Set(allCharacters.map(c => c.id));
+      const ids = (data.character_ids || []).filter(id => known.has(id));
+      setSelected(new Set(ids));
+      const label = data.cycle.title || `${formatEuDate(data.cycle.opening_date)} - ${formatEuDate(data.cycle.closing_date)}`;
+      setSelectionNote(`${ids.length} submitted downtimes in the last closed cycle (${label}).`);
+    } catch (e) {
+      setSelectionNote(formatApiError(e, 'Failed to load downtime submitters'));
+    }
+  }
+
+  const visibleAllSelected = characters.length > 0 && characters.every(c => selected.has(c.id));
+  function toggleVisible() {
+    setSelected(prev => {
+      const next = new Set(prev);
+      characters.forEach(c => { if (visibleAllSelected) next.delete(c.id); else next.add(c.id); });
+      return next;
+    });
+  }
 
   async function handleGrant(char_id) {
     const delta = parseInt(grants[char_id], 10);
@@ -53,10 +125,10 @@ export default function AdminXPTab({ users, onGrant, onBulkGrant, adminxp }) {
   }
   async function handleBulkGrant() {
     const delta = parseInt(bulkDelta, 10);
-    if (isNaN(delta) || delta === 0) return;
-    if (!window.confirm(`Apply ${delta > 0 ? '+' : ''}${delta} XP to ALL ${totalCharacters} characters?`)) return;
+    if (isNaN(delta) || delta === 0 || selectedIds.length === 0) return;
+    if (!window.confirm(`Apply ${delta > 0 ? '+' : ''}${delta} XP to ${selectedIds.length} selected character${selectedIds.length === 1 ? '' : 's'}?`)) return;
     setIsApplying(true);
-    try { await onBulkGrant(delta); setBulkDelta(''); fetchLogs(); } finally { setIsApplying(false); }
+    try { await onBulkGrant(delta, selectedIds); setBulkDelta(''); fetchLogs(); } finally { setIsApplying(false); }
   }
 
   const filteredGlobalLogs = useMemo(() => {
@@ -90,13 +162,21 @@ export default function AdminXPTab({ users, onGrant, onBulkGrant, adminxp }) {
       </div>
 
       {totalCharacters > 0 && (
-        <div style={{ background: 'var(--glass-inset)', padding: '20px', borderRadius: 'var(--radius-lg)', marginBottom: '16px', display: 'flex', flexWrap: 'wrap', gap: '15px', alignItems: 'center', border: '1px solid var(--glass-border)', boxShadow: 'var(--glass-shadow)', backdropFilter: 'blur(10px)' }}>
-          <div style={{ flex: '1 1 240px', minWidth: 0 }}>
-            <strong style={{ display: 'block', marginBottom: '4px', fontSize: '1.2rem', color: 'var(--text-color)' }}>Bulk Grant Session XP</strong>
-            <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Apply XP to EVERY character simultaneously ({totalCharacters} active characters).</span>
+        <div style={{ background: 'var(--glass-inset)', padding: '20px', borderRadius: 'var(--radius-lg)', marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '14px', border: '1px solid var(--glass-border)', boxShadow: 'var(--glass-shadow)', backdropFilter: 'blur(10px)' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', alignItems: 'center' }}>
+            <div style={{ flex: '1 1 240px', minWidth: 0 }}>
+              <strong style={{ display: 'block', marginBottom: '4px', fontSize: '1.2rem', color: 'var(--text-color)' }}>Bulk Grant Session XP</strong>
+              <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Tick characters in the list below. Your selection is saved for next time ({selectedIds.length} of {totalCharacters} selected).</span>
+            </div>
+            <input type="number" placeholder="+/-" aria-label="Bulk XP amount" className={styles.input} style={{ width: '100px', fontSize: '1.2rem', textAlign: 'center' }} value={bulkDelta} onChange={e => setBulkDelta(e.target.value)} disabled={isApplying} />
+            <button className={`${styles.btn} ${styles.btnPrimary}`} style={{ padding: '0.8rem 1.5rem' }} onClick={handleBulkGrant} disabled={!bulkDelta || bulkDelta === '0' || isApplying || selectedIds.length === 0}>{isApplying ? 'Applying...' : `Apply to ${selectedIds.length} selected`}</button>
           </div>
-          <input type="number" placeholder="+/-" className={styles.input} style={{ width: '100px', fontSize: '1.2rem', textAlign: 'center' }} value={bulkDelta} onChange={e => setBulkDelta(e.target.value)} disabled={isApplying} />
-          <button className={`${styles.btn} ${styles.btnPrimary}`} style={{ padding: '0.8rem 1.5rem' }} onClick={handleBulkGrant} disabled={!bulkDelta || bulkDelta === '0' || isApplying}>{isApplying ? 'Applying...' : 'Apply to All'}</button>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+            <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={selectEligible} title="Skips characters that are not activated, deceased, left or missing">Select all eligible</button>
+            <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={selectDowntimeSubmitters} title="Characters who submitted downtimes in the most recent closed cycle">Select downtime submitters</button>
+            <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={clearSelection} disabled={selected.size === 0}>Clear selection</button>
+            {selectionNote && <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{selectionNote}</span>}
+          </div>
         </div>
       )}
 
@@ -104,12 +184,16 @@ export default function AdminXPTab({ users, onGrant, onBulkGrant, adminxp }) {
       
       {characters.length > 0 && (
         <div className={styles.xpGrid} style={{ background: 'var(--glass-bg)', backdropFilter: 'blur(10px)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)' }}>
-          <b className={styles.gridHeader}>Character</b><b className={styles.gridHeader}>Clan</b><b className={styles.gridHeader}>Owner</b><b className={styles.gridHeader}>Current XP</b><b className={styles.gridHeader}>Actions</b>
+          <b className={styles.gridHeader} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><input type="checkbox" className={`${styles.xpSelect} ${styles.xpSelectInline}`} checked={visibleAllSelected} onChange={toggleVisible} aria-label={visibleAllSelected ? 'Deselect all listed characters' : 'Select all listed characters'} />Character</b><b className={styles.gridHeader}>Clan</b><b className={styles.gridHeader}>Owner</b><b className={styles.gridHeader}>Current XP</b><b className={styles.gridHeader}>Actions</b>
           {characters.map(c => {
             const clanColor = CLAN_COLORS[c.clan] || 'var(--text-secondary)';
             return (
               <React.Fragment key={c.id}>
-                <div className={styles.xpCharCell} style={{ '--clan-color': clanColor, '--clan-logo-url': symlogo(c.clan) ? `url(${symlogo(c.clan)})` : 'none' }}><span className={styles.charName}>{c.name}</span></div>
+                <label className={`${styles.xpCharCell} ${selected.has(c.id) ? styles.xpCharCellSelected : ''}`} style={{ '--clan-color': clanColor, '--clan-logo-url': symlogoWhite(c.clan) ? `url(${symlogoWhite(c.clan)})` : 'none' }}>
+                  <input type="checkbox" className={styles.xpSelect} checked={selected.has(c.id)} onChange={() => toggleSelected(c.id)} aria-label={`Select ${c.name}`} />
+                  <span className={styles.charName}>{c.name}</span>
+                  {c.inactiveReason && <span className={styles.xpStatusTag}>{c.inactiveReason}</span>}
+                </label>
                 <div className={styles.clanName} style={{ color: clanColor }}>{c.clan}</div>
                 <div className={styles.ownerCell} title={c.owner}>{c.owner}</div>
                 <div className={styles.xpCell} style={{ fontWeight: 'bold' }}>{c.xp}</div>

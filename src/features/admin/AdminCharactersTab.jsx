@@ -6,6 +6,7 @@ import generateVTMCharacterSheetPDF from '../../utils/pdfGenerator';
 import MiniSearch from 'minisearch';
 import Avatar from '../../components/Avatar';
 import { symlogo, CLAN_HEX as CLAN_COLORS } from '../../data/clans';
+import { maxHealth as deriveMaxHealth } from '../../utils/derivedStats';
 
 // ---------- TRACKER DISPLAY ----------
 const TrackerDisplay = ({ label, currentObj, max, onUpdate, isValueTracker = false, value = 0, stains = 0 }) => {
@@ -191,11 +192,7 @@ export default function AdminCharactersTab({ users, onDelete, onOpenEditor }) {
   const calculateStats = (sheetObj) => {
     let data = sheetObj;
     const attrs = data.attributes || {};
-    let maxHealth = (Number(attrs.Stamina) || 1) + 3;
-    const powers = data.disciplinePowers?.Fortitude || [];
-    if (Array.isArray(powers) && powers.some(p => String(p.name || p.id).toLowerCase().includes('resilience'))) {
-       maxHealth += Number(data.disciplines?.Fortitude || 0);
-    }
+    const maxHealth = deriveMaxHealth(data);
     const maxWillpower = (Number(attrs.Composure) || 1) + (Number(attrs.Resolve) || 1);
     return { maxHealth, maxWillpower, sheetObj: data };
   };

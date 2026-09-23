@@ -1,4 +1,6 @@
-export const clamp = (value, min, max) => Math.max(min, Math.min(max, Number(value) || 0));
+import { maxHealth as deriveMaxHealth } from './derivedStats';
+
+export const clamp =(value, min, max) => Math.max(min, Math.min(max, Number(value) || 0));
 
 export const rollD10 = (rng = Math.random) => Math.floor(rng() * 10) + 1;
 
@@ -171,15 +173,7 @@ export function disciplineRequiresRouse(power) {
 }
 
 export function summarizeTrackers(sheet) {
-  const stamina = Number(sheet?.attributes?.Stamina) || 1;
-  const fortDots = Number(sheet?.disciplines?.Fortitude) || 0;
-  // RAW: Fortitude adds to the Health track only via the Resilience power. If the
-  // sheet lists Fortitude powers, require Resilience; if it tracks no powers at
-  // all, keep the old assumption so existing characters don't lose boxes.
-  const fortPowers = sheet?.disciplinePowers?.Fortitude;
-  const hasResilience = !Array.isArray(fortPowers) || fortPowers.length === 0
-    || fortPowers.some((p) => /resilien/i.test(String(p?.id ?? p?.name ?? p)));
-  const maxHealth = Math.max(1, stamina + 3 + (hasResilience ? fortDots : 0));
+  const maxHealth = Math.max(1, deriveMaxHealth(sheet));
   const maxWillpower = Math.max(
     1,
     (Number(sheet?.attributes?.Composure) || 1) + (Number(sheet?.attributes?.Resolve) || 1)

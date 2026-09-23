@@ -517,7 +517,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   const handleDeleteMessage = async (msgId) => {
     if (!window.confirm("Delete this message? It cannot be undone.")) return;
     try {
-      await api.delete(`/chat/messages/${msgId}`);
+      await api.delete(`/chat/messages/${msgId}`, { params: { table: reactionTable } });
       setMessages(prev => prev.filter(m => m.id !== msgId));
     } catch (e) {
       alert("Failed to delete message. It may be too old or you lack permission.");
@@ -527,7 +527,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   const submitEditMessage = async () => {
     if (!editBody.trim()) return;
     try {
-      await api.put(`/chat/messages/${editingMsgId}`, { body: editBody });
+      await api.put(`/chat/messages/${editingMsgId}`, { body: editBody, table: reactionTable });
       setMessages(prev => prev.map(m => m.id === editingMsgId ? { ...m, body: editBody, edited: true } : m));
       setEditingMsgId(null);
     } catch (e) {
@@ -886,7 +886,8 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   );
 
   // Maps selectedContact.type to the discriminator the backend expects:
-  // must match REACTION_TABLES in server.fastify.js.
+  // must match ALLOWED_REACTION_TABLES / EDITABLE_MESSAGE_TABLES in back/routes/chat.js.
+  // Also sent on edit/delete, since message ids collide across these tables.
   const reactionTable = selectedContact?.type === 'group'
     ? 'chat_group_messages'
     : selectedContact?.type === 'user'
@@ -1074,13 +1075,12 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
               display_name: r.display_name || '',
               char_name: r.char_name || '',
               last_message_at: r.last_message_at || null,
+              last_incoming_at: r.last_incoming_at || null,
               unread_count: r.unread_count || 0
             }));
-            rows.sort((a, b) => {
-              const unreadDiff = (b.unread_count || 0) - (a.unread_count || 0);
-              if (unreadDiff !== 0) return unreadDiff;
-              return new Date(b.last_message_at || 0) - new Date(a.last_message_at || 0);
-            });
+            // Whoever wrote to this NPC most recently goes on top.
+            const lastIn = (r) => new Date(r.last_incoming_at || r.last_message_at || 0);
+            rows.sort((a, b) => lastIn(b) - lastIn(a));
             setNpcConvos(rows);
           } catch (e) {
             // silent fail
@@ -1789,7 +1789,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="text-[8px] bg-tertiary-container/20 text-tertiary px-1 rounded border border-tertiary/30 uppercase">NPC</span>
-                      {n.unread_count > 0 && <div className="w-2 h-2 rounded-full bg-primary-container animate-pulse"></div>}
+                      {n.unread_count > 0 && <div className="min-w-4 h-4 px-1 rounded-full bg-primary-container text-white flex items-center justify-center text-[10px] font-bold">{n.unread_count > 99 ? '99+' : n.unread_count}</div>}
                     </div>
                   </li>
                 );
