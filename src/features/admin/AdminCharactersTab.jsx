@@ -340,7 +340,7 @@ export default function AdminCharactersTab({ users, onDelete, onOpenEditor }) {
                   </div>
                   <div className={styles.cardOwnerInfo}>
                     <div className={styles.charCardOwnerLabel}>
-                      Owner: {c.owner}
+                      Owner: {c.owner} <span className={styles.subtle}>(#{c.id})</span>
                       {!isActive && <span className={styles.charInactiveTag}>INACTIVE</span>}
                     </div>
                     <div className={styles.charCardName}>

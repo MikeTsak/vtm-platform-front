@@ -163,9 +163,23 @@ function normalizeSheet(s) {
   });
   sheet.disciplinePowers = dpOut;
 
+  // Rituals/ceremonies are meant to be plain name strings (see addRitual /
+  // swapRitual below), but some legacy data — e.g. a discipline-power-style
+  // {id, name, level} object — has ended up in here instead. Rendering that
+  // object directly as a list item crashes the whole page (React error #31),
+  // so coerce down to the name here, same shape-safety pass as the rest of
+  // this function.
+  const normalizeRitualList = (list) => (Array.isArray(list) ? list : [])
+    .map(r => {
+      if (typeof r === 'string') return r;
+      if (r && typeof r === 'object') return String(r.name || r.id || '').trim();
+      return String(r ?? '').trim();
+    })
+    .filter(Boolean);
+
   sheet.rituals = sheet.rituals || { blood_sorcery: [], oblivion: [] };
-  sheet.rituals.blood_sorcery = Array.isArray(sheet.rituals.blood_sorcery) ? sheet.rituals.blood_sorcery : [];
-  sheet.rituals.oblivion = Array.isArray(sheet.rituals.oblivion) ? sheet.rituals.oblivion : [];
+  sheet.rituals.blood_sorcery = normalizeRitualList(sheet.rituals.blood_sorcery);
+  sheet.rituals.oblivion = normalizeRitualList(sheet.rituals.oblivion);
 
   sheet.convictions = Array.isArray(sheet.convictions) ? sheet.convictions : [];
   sheet.touchstones = Array.isArray(sheet.touchstones)
