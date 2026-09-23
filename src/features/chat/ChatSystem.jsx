@@ -212,6 +212,16 @@ const asGroupContact = (g) => ({
 
 const isContactAdmin = (u) => u?.role === 'admin' || u?.permission_level === 'admin' || !!u?.is_admin;
 
+/* Unread count circle shown next to a contact in the sidebar. */
+function UnreadCount({ count }) {
+  if (!count) return null;
+  return (
+    <div className="min-w-4 h-4 px-1 rounded-full bg-primary-container text-white flex items-center justify-center text-[10px] font-bold shrink-0" aria-label={`${count} unread`}>
+      {count > 99 ? '99+' : count}
+    </div>
+  );
+}
+
 /* --- MESSENGER SORT HELPER (Unread -> Most Recent -> A-Z) --- */
 const sortContacts = (list) => {
   return [...list].sort((a, b) => {
@@ -1697,7 +1707,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                         </div>
                         <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate`}>{g.name}</span>
                       </div>
-                      {g.unread_count > 0 && <div className="w-4 h-4 rounded-full bg-primary-container text-white flex items-center justify-center text-[10px] font-bold shrink-0">{g.unread_count}</div>}
+                      <UnreadCount count={g.unread_count} />
                     </li>
                   );
                 })}
@@ -1727,7 +1737,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       {u.clan && <span className="text-[9px] bg-surface-dim px-1 rounded border border-outline-variant/30 uppercase max-w-[40px] truncate">{u.clan.slice(0, 3)}</span>}
-                      {u.unread_count > 0 && <div className="w-2 h-2 rounded-full bg-primary-container animate-pulse"></div>}
+                      <UnreadCount count={u.unread_count} />
                     </div>
                   </li>
                 );
@@ -1757,7 +1767,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                           <span className="truncate">{u.display_name}</span>
                         </span>
                       </div>
-                      {u.unread_count > 0 && <div className="w-2 h-2 rounded-full bg-primary-container animate-pulse shrink-0"></div>}
+                      <UnreadCount count={u.unread_count} />
                     </li>
                   );
                 })}
@@ -1789,7 +1799,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="text-[8px] bg-tertiary-container/20 text-tertiary px-1 rounded border border-tertiary/30 uppercase">NPC</span>
-                      {n.unread_count > 0 && <div className="min-w-4 h-4 px-1 rounded-full bg-primary-container text-white flex items-center justify-center text-[10px] font-bold">{n.unread_count > 99 ? '99+' : n.unread_count}</div>}
+                      <UnreadCount count={n.unread_count} />
                     </div>
                   </li>
                 );
@@ -1940,7 +1950,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                   {(adminPlayerTab === 'recent' ? adminRecentPlayers : adminAllPlayersFiltered).map(u => (
                     <button key={`sel-${u.id}`} onClick={() => selectAdminTarget(u.id)} className={`flex items-center gap-2 px-3 py-1.5 rounded border shrink-0 transition-colors ${selectedPlayerId === u.id ? 'bg-primary/10 border-primary text-primary' : 'bg-surface-container-highest border-outline-variant/30 text-on-surface-variant hover:border-outline-variant'}`}>
                       <span className="text-xs truncate max-w-[100px]">{u.char_name || u.display_name}</span>
-                      {u.unread_count > 0 && <span className="bg-primary-container text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">{u.unread_count}</span>}
+                      <UnreadCount count={u.unread_count} />
                     </button>
                   ))}
                 </div>
