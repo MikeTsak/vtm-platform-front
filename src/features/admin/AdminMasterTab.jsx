@@ -31,6 +31,13 @@ export default function AdminMasterTab() {
   const { me, setMe } = useContext(AuthCtx);
   const { theme, setTheme, clanOverride, setClanOverride } = useTheme();
   const [commsEnabled, setCommsEnabled] = useState(true);
+  // Distinct from commsEnabled (the raw master killswitch this toggle sets):
+  // this is what resolveCommsSchedule() actually resolves to right now, which
+  // also depends on today's schedule entry. The killswitch can be ON while an
+  // explicit "Force OFF"/event day still keeps comms closed, so the banner
+  // text needs this, not the raw switch position, or it tells admins players
+  // can chat when they can't.
+  const [resolvedCommsEnabled, setResolvedCommsEnabled] = useState(true);
   const [disabledClans, setDisabledClans] = useState([]);
   const [clanSaving, setClanSaving] = useState(false);
   const [chatSchedule, setChatSchedule] = useState({});
@@ -347,8 +354,9 @@ export default function AdminMasterTab() {
   const loadConfig = async () => {
     setLoading(true);
     try {
-      const [commsRes, bannerRes, ntfyRes, npcsRes, clansRes] = await Promise.all([
+      const [commsRes, statusRes, bannerRes, ntfyRes, npcsRes, clansRes] = await Promise.all([
         api.get('/admin/comms/config'),
+        api.get('/comms/status').catch(() => ({ data: null })),
         api.get('/system/banner'),
         api.get('/admin/ntfy').catch(() => ({ data: { topic: '', subscribed_npcs: [] } })),
         api.get('/admin/npcs').catch(() => ({ data: { npcs: [] } })),
@@ -356,6 +364,8 @@ export default function AdminMasterTab() {
       ]);
       setCommsEnabled(commsRes.data.master_enabled);
       setChatSchedule(commsRes.data.schedule || {});
+      if (statusRes.data) setResolvedCommsEnabled(!!statusRes.data.comms_enabled);
+      else setResolvedCommsEnabled(commsRes.data.master_enabled);
       setBannerEnabled(bannerRes.data.banner_enabled);
       setBannerMessage(bannerRes.data.banner_message || '');
       setBannerCountdown(bannerRes.data.banner_countdown || '');
@@ -390,9 +400,13 @@ export default function AdminMasterTab() {
     const newVal = !commsEnabled;
     setActionLoading(true); setMsg(''); setErr('');
     try {
-      await api.post('/admin/comms/status', { comms_enabled: newVal });
+      const { data } = await api.post('/admin/comms/status', { comms_enabled: newVal });
       setCommsEnabled(newVal);
-      setMsg(`System updated: Comms are now ${newVal ? 'ONLINE' : 'OFFLINE'}.`);
+      // The response already carries the schedule-resolved status — use it
+      // instead of assuming newVal, since an explicit schedule override for
+      // today can keep comms closed (or open) independent of this switch.
+      setResolvedCommsEnabled(!!data?.comms_enabled);
+      setMsg(`Killswitch updated: comms are ${data?.comms_enabled ? 'ONLINE' : 'OFFLINE'} right now.`);
       setTimeout(() => setMsg(''), 3000);
     } catch (e) { setErr('Failed to update status.'); } finally { setActionLoading(false); }
   };
@@ -401,7 +415,8 @@ export default function AdminMasterTab() {
     const targetSchedule = customSchedule && typeof customSchedule === 'object' && !customSchedule.nativeEvent ? customSchedule : chatSchedule;
     setActionLoading(true); setMsg(''); setErr('');
     try {
-      await api.post('/admin/comms/schedule', { schedule: targetSchedule });
+      const { data } = await api.post('/admin/comms/schedule', { schedule: targetSchedule });
+      if (data) setResolvedCommsEnabled(!!data.comms_enabled);
       setMsg('Comms schedule saved.');
       setTimeout(() => setMsg(''), 3000);
     } catch (e) { setErr('Failed to save comms schedule.'); } finally { setActionLoading(false); }
@@ -939,8 +954,16 @@ export default function AdminMasterTab() {
             </div>
           </div>
           <div style={{ background: bgColor, borderRadius: '8px', padding: '15px', borderLeft: `4px solid ${themeColor}` }}>
-            <h4 style={{ margin: '0 0 8px 0', color: themeColor, fontSize: '1.1rem', textTransform: 'uppercase', letterSpacing: '1px' }}>{isOnline ? '🟢 System is Online' : '🛑 System is Offline (Read-Only)'}</h4>
-            <p style={{ margin: 0, color: 'var(--text-primary)', lineHeight: '1.5' }}>{isOnline ? "All players and administrators can freely send and receive messages, create groups, and upload media across the network." : "The killswitch is engaged. The interface is locked down. Players can log in and read their chat history, but all inputs are disabled."}</p>
+            <h4 style={{ margin: '0 0 4px 0', color: themeColor, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Killswitch: {isOnline ? 'ON' : 'OFF'}</h4>
+            <h4 style={{ margin: '0 0 8px 0', color: resolvedCommsEnabled ? 'var(--color-success)' : 'var(--color-error)', fontSize: '1.1rem', textTransform: 'uppercase', letterSpacing: '1px' }}>{resolvedCommsEnabled ? '🟢 Comms are Online right now' : '🛑 Comms are Offline right now'}</h4>
+            <p style={{ margin: 0, color: 'var(--text-primary)', lineHeight: '1.5' }}>{resolvedCommsEnabled ? "All players and administrators can freely send and receive messages, create groups, and upload media across the network." : "Players can log in and read their chat history, but all inputs are disabled."}</p>
+            {isOnline !== resolvedCommsEnabled && (
+              <p style={{ margin: '10px 0 0 0', color: 'var(--text-muted)', fontSize: '0.85rem', fontStyle: 'italic' }}>
+                {isOnline
+                  ? "The killswitch is ON, but today's schedule below has comms closed right now — flipping this switch off won't change that."
+                  : "The killswitch is OFF, but today's schedule below has comms open right now — flipping this switch on won't change that."}
+              </p>
+            )}
           </div>
         </div>
       </div>

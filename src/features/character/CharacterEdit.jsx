@@ -373,7 +373,10 @@ export default function CharacterEdit() {
 
   const setDisciplineDots = (name, val) => updateDraft(d => {
     d.disciplines = d.disciplines || {};
-    d.disciplines[name] = Math.max(0, Math.min(6, Number(val) || 0));
+    // V5 hard cap: 5, same as attributes/skills above — there's no power
+    // data past level 5 (see disciplines.js), so a 6th dot here breaks the
+    // player's own power picker into a permanent reopen loop.
+    d.disciplines[name] = Math.max(0, Math.min(5, Number(val) || 0));
   });
   const addDiscipline = (name) => {
     const n = name.trim();
