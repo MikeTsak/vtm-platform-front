@@ -1,5 +1,6 @@
 // src/components/ChatSystem.jsx
 import React, { useState, useEffect, useContext, useRef, useMemo, useLayoutEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { AuthCtx } from '../../core/AuthContext';
 import api, { formatApiError } from '../../core/api';
 import { copyToClipboard } from '../../utils/clipboard';
@@ -433,6 +434,22 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   const [groupIconPickerOpen, setGroupIconPickerOpen] = useState(false);
   const [savingGroupIcon, setSavingGroupIcon] = useState(false);
 
+  // In-app replacement for window.confirm: `await askConfirm({...})`
+  // resolves true/false once the player picks a button in the themed dialog.
+  const [confirmState, setConfirmState] = useState(null);
+  const askConfirm = useCallback((opts) => new Promise(resolve => setConfirmState({ ...opts, resolve })), []);
+  const closeConfirm = (result) => {
+    confirmState?.resolve(result);
+    setConfirmState(null);
+  };
+  useEffect(() => {
+    if (!confirmState) return;
+    const onKey = (e) => { if (e.key === 'Escape') closeConfirm(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [confirmState]);
+
   // Picking a group picture: while the Create modal is open it just stages
   // the value locally; while Manage is open (an existing group) it saves
   // immediately via the icon endpoint. Only one of those modals is ever open
@@ -445,6 +462,13 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
       return;
     }
     if (managingGroup && selectedContact?.type === 'group') {
+      const ok = await askConfirm({
+        title: 'Change Group Picture',
+        message: 'Set this as the group picture? Everyone in the group will see the change.',
+        preview: token,
+        confirmLabel: 'Set Picture',
+      });
+      if (!ok) return;
       setSavingGroupIcon(true);
       try {
         await api.put(`/chat/groups/${selectedContact.id}/icon`, { icon: token });
@@ -461,6 +485,9 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   const [managingGroup, setManagingGroup] = useState(false);
   const [currentGroupMembers, setCurrentGroupMembers] = useState([]);
   const [groupMembersLoading, setGroupMembersLoading] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
+  const [savingGroupName, setSavingGroupName] = useState(false);
+  const [addMembersOpen, setAddMembersOpen] = useState(false);
   // Both group modals share one picker instance (never open together) —
   // always start it closed whenever either modal opens or closes.
   useEffect(() => { setGroupIconPickerOpen(false); }, [creatingGroup, managingGroup]);
@@ -480,8 +507,15 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     }
   }, [selectedContact]);
 
-  const openManageGroup = async () => {
-    setManagingGroup(true);
+  // `refresh` reloads the member list after an add/kick without resetting
+  // the panel (rename draft, open "Add Members" list) the player is using.
+  const openManageGroup = async (refresh = false) => {
+    if (refresh !== true) {
+      setManagingGroup(true);
+      setRenameValue(selectedContact?.name || '');
+      setAddMembersOpen(false);
+      setCurrentGroupMembers([]);
+    }
     setGroupMembersLoading(true);
     try {
       const { data } = await api.get(`/chat/groups/${selectedContact.id}/members`);
@@ -493,22 +527,62 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     }
   };
 
-  const handleAddMemberToGroup = async (userId) => {
+  const handleRenameGroup = async () => {
+    const newName = renameValue.trim();
+    if (!newName || newName === selectedContact?.name) return;
+    const ok = await askConfirm({
+      title: 'Rename Group',
+      message: `Change the group name from "${selectedContact?.name}" to "${newName}"?`,
+      confirmLabel: 'Rename',
+    });
+    if (!ok) return;
+    setSavingGroupName(true);
+    try {
+      await api.put(`/chat/groups/${selectedContact.id}/name`, { name: newName });
+      setGroups(prev => prev.map(g => g.id === selectedContact.id ? { ...g, name: newName } : g));
+      setSelectedContact(prev => (prev && prev.id === selectedContact.id) ? { ...prev, name: newName } : prev);
+    } catch (e) {
+      alert('Failed to rename group');
+    } finally {
+      setSavingGroupName(false);
+    }
+  };
+
+  const handleAddMemberToGroup = async (userId, name) => {
+    const ok = await askConfirm({
+      title: 'Add Member',
+      message: `Add ${name} to the group chat? They will be able to read the full message history.`,
+      confirmLabel: 'Add',
+    });
+    if (!ok) return;
     try {
       await api.post(`/chat/groups/${selectedContact.id}/members`, { members: [userId] });
-      openManageGroup();
+      openManageGroup(true);
     } catch (e) { alert('Failed to add member'); }
   };
 
-  const handleRemoveMemberFromGroup = async (userId) => {
+  const handleRemoveMemberFromGroup = async (userId, name) => {
+    const ok = await askConfirm({
+      title: 'Remove Member',
+      message: `Remove ${name} from the group chat?`,
+      confirmLabel: 'Remove',
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await api.delete(`/chat/groups/${selectedContact.id}/members/${userId}`);
-      openManageGroup();
+      openManageGroup(true);
     } catch (e) { alert('Failed to remove member'); }
   };
 
   const handleDeleteGroup = async () => {
-    if (!window.confirm("Are you sure you want to delete this group? This will erase all message history and cannot be undone.")) return;
+    const ok = await askConfirm({
+      title: 'Delete Group',
+      message: 'Delete this group? This erases all message history for everyone and cannot be undone.',
+      confirmLabel: 'Delete Group',
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await api.delete(`/chat/groups/${selectedContact.id}`);
       setManagingGroup(false);
@@ -518,7 +592,13 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   };
 
   const handleLeaveGroup = async () => {
-    if (!window.confirm("Are you sure you want to leave this group chat?")) return;
+    const ok = await askConfirm({
+      title: 'Leave Group',
+      message: `Leave "${selectedContact?.name}"? You'll need someone in the group to add you back.`,
+      confirmLabel: 'Leave',
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await api.delete(`/chat/groups/${selectedContact.id}/members/${currentUser.id}`);
       setSelectedContact(null);
@@ -527,7 +607,13 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   };
 
   const handleDeleteMessage = async (msgId) => {
-    if (!window.confirm("Delete this message? It cannot be undone.")) return;
+    const ok = await askConfirm({
+      title: 'Delete Message',
+      message: 'Delete this message? It cannot be undone.',
+      confirmLabel: 'Delete',
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await api.delete(`/chat/messages/${msgId}`, { params: { table: reactionTable } });
       setMessages(prev => prev.filter(m => m.id !== msgId));
@@ -1354,7 +1440,9 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
         g.push({ type: 'day', id: `day-${day}-${g.length}`, day });
         lastDay = day;
       }
-      g.push({ type: 'msg', ...m });
+      // m.type ('text'/'system') comes from the backend and would otherwise
+      // collide with this array's own 'day'/'msg' discriminant key.
+      g.push({ ...m, type: m.type === 'system' ? 'system' : 'msg' });
     }
     return g;
   }, [messages]);
@@ -1453,9 +1541,11 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     setDrafts(prev => ({ ...prev, [threadKey]: newMessage }));
     setSelectedContact(contact);
 
-    if (isAdmin && contact?.type === 'user') setSelectedPlayerId(null);
+    // A player picked under one NPC means nothing under another NPC; start
+    // clean so the auto-open below picks this NPC's own latest conversation.
+    if (isAdmin) setSelectedPlayerId(null);
 
-    const nextKey = buildThreadKey(contact, isAdmin && contact?.type === 'npc' ? selectedPlayerId : null);
+    const nextKey = buildThreadKey(contact, null);
     setNewMessage(drafts[nextKey] || '');
     setError('');
 
@@ -1483,94 +1573,242 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     api.post('/chat/read', { npc_id: selectedContact.id, sender_id: userId, is_admin_reading_npc: true }).catch(() => { });
   };
 
+  // Opening an NPC as admin jumps straight into its most recently active
+  // conversation. Only once per NPC visit, so "Clear" doesn't immediately
+  // re-select it.
+  const autoPickedNpcRef = useRef(null);
+  useEffect(() => {
+    if (!isAdmin || selectedContact?.type !== 'npc' || selectedPlayerId || !npcConvos.length) return;
+    if (autoPickedNpcRef.current === selectedContact.id) return;
+    autoPickedNpcRef.current = selectedContact.id;
+    const activity = (r) => Math.max(new Date(r.last_message_at || 0).getTime(), new Date(r.last_incoming_at || 0).getTime());
+    const latest = npcConvos.reduce((best, r) => (activity(r) > activity(best) ? r : best), npcConvos[0]);
+    selectAdminTarget(latest.user_id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [npcConvos]);
+  useEffect(() => {
+    if (selectedContact?.type !== 'npc') autoPickedNpcRef.current = null;
+  }, [selectedContact]);
+
   const renderManageGroupModalTailwind = () => {
     const memberIds = currentGroupMembers.map(m => m.id);
     const nonMembers = usersWithChar.filter(u => !memberIds.includes(u.id));
+    // Any member can rename, re-icon, add, or kick — only the group's
+    // creator (or a global admin) can delete it outright, mirrored from the
+    // backend's own guard on DELETE /api/chat/groups/:id.
+    const canDelete = selectedContact?.created_by === currentUser?.id || isAdmin;
 
-    return (
-      <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-        <div className="bg-surface-container border border-outline-variant rounded-lg w-full max-w-md p-6 flex flex-col gap-4 shadow-[0_0_20px_rgba(27,76,140,0.3)]">
-          <h3 className="text-xl font-headline-md text-primary tracking-tight border-b border-outline-variant/50 pb-2">Manage: {selectedContact?.name}</h3>
+    const sectionLabel = "text-[10px] text-on-surface-variant/50 font-bold tracking-widest uppercase";
 
-          <div className="flex items-center gap-3">
+    // Portaled to <body> at z-[1100] so it sits above the sticky site nav
+    // (z-[1000]) instead of sliding underneath it. Header and footer are
+    // fixed; only the middle scrolls. That body is plain block layout on
+    // purpose: in a height-capped flex column the emoji picker's
+    // overflow-hidden wrapper gets shrunk to 0px as soon as the member list
+    // overflows, so the picker "opens" invisibly.
+    return createPortal(
+      <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4" onClick={() => setManagingGroup(false)}>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="manage-group-title"
+          onClick={e => e.stopPropagation()}
+          className="bg-surface-container border border-outline-variant rounded-lg w-full max-w-md max-h-[calc(100dvh-1.5rem)] sm:max-h-[90vh] flex flex-col overflow-hidden shadow-[0_0_20px_rgba(27,76,140,0.3)]"
+        >
+          <div className="flex items-center justify-between gap-3 pl-4 sm:pl-6 pr-2 sm:pr-3 py-2 border-b border-outline-variant/50 shrink-0">
+            <h3 id="manage-group-title" className="text-xl font-headline-md text-primary tracking-tight m-0 truncate">Manage Group</h3>
             <button
               type="button"
-              onClick={() => setGroupIconPickerOpen(v => !v)}
-              disabled={savingGroupIcon}
-              title="Click to change the group picture"
-              className="w-12 h-12 rounded-full bg-surface-container-high border border-outline-variant/50 flex items-center justify-center shrink-0 overflow-hidden relative hover:border-primary transition-colors disabled:opacity-50"
+              onClick={() => setManagingGroup(false)}
+              aria-label="Close"
+              className="w-11 h-11 flex items-center justify-center rounded text-on-surface-variant hover:text-primary hover:bg-surface-variant/50 transition-colors shrink-0"
             >
-              <GroupIconGlyph icon={selectedContact?.icon} size={40} />
+              <span className="material-symbols-outlined">close</span>
             </button>
-            <div className="flex flex-col gap-1">
-              <span className="text-[10px] text-on-surface-variant/50 font-bold tracking-widest uppercase">Group Picture</span>
+          </div>
+
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 sm:px-6 py-4 space-y-5" style={{ scrollbarWidth: 'thin' }}>
+            <div>
+              <label htmlFor="manage-group-name" className={`${sectionLabel} block mb-1`}>Group Name</label>
+              <div className="flex items-center gap-2">
+                <input
+                  id="manage-group-name"
+                  type="text"
+                  value={renameValue}
+                  onChange={e => setRenameValue(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleRenameGroup(); }}
+                  maxLength={100}
+                  disabled={savingGroupName}
+                  className="flex-1 min-w-0 bg-surface-container-high border border-outline-variant/50 rounded px-3 py-2 text-base sm:text-sm text-on-surface focus:border-primary focus:ring-0 disabled:opacity-50"
+                />
+                <button
+                  type="button"
+                  onClick={handleRenameGroup}
+                  disabled={savingGroupName || !renameValue.trim() || renameValue.trim() === selectedContact?.name}
+                  className="text-xs bg-primary text-on-primary px-4 py-2.5 rounded hover:bg-primary-container transition-colors font-bold disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                >
+                  {savingGroupName ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setGroupIconPickerOpen(v => !v)}
+                  disabled={savingGroupIcon}
+                  aria-label="Change group picture"
+                  className="w-12 h-12 rounded-full bg-surface-container-high border border-outline-variant/50 flex items-center justify-center shrink-0 overflow-hidden relative hover:border-primary transition-colors disabled:opacity-50"
+                >
+                  <GroupIconGlyph icon={selectedContact?.icon} size={40} />
+                </button>
+                <div className="flex flex-col gap-1 min-w-0">
+                  <span className={sectionLabel}>Group Picture</span>
+                  <button
+                    type="button"
+                    onClick={() => setGroupIconPickerOpen(v => !v)}
+                    disabled={savingGroupIcon}
+                    aria-expanded={groupIconPickerOpen}
+                    className="text-xs text-primary hover:text-primary-container transition-colors font-bold self-start py-1 disabled:opacity-50"
+                  >
+                    {savingGroupIcon ? 'Saving…' : groupIconPickerOpen ? 'Close Picker' : 'Change Picture'}
+                  </button>
+                </div>
+              </div>
+              {groupIconPickerOpen && (
+                <div className="mt-3 rounded-lg overflow-hidden border border-outline-variant">
+                  <React.Suspense fallback={<div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary, #888)', background: '#111', fontSize: '13px' }}>Loading emojis...</div>}>
+                    <EmojiPicker
+                      onEmojiClick={onGroupIconEmojiClick}
+                      theme="dark"
+                      width="100%"
+                      height={340}
+                      customEmojis={customClanEmojis}
+                      categories={EMOJI_PICKER_CATEGORIES}
+                    />
+                  </React.Suspense>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <div className={`${sectionLabel} mb-2`}>Current Members{currentGroupMembers.length > 0 && ` (${currentGroupMembers.length})`}</div>
+              {groupMembersLoading && !currentGroupMembers.length ? (
+                <div className="text-sm text-on-surface-variant py-2">Loading...</div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {currentGroupMembers.map(m => {
+                    const label = m.char_name || m.display_name || 'this member';
+                    return (
+                      <div key={m.id} className="flex items-center justify-between gap-2 bg-surface-container-highest pl-3 pr-2 py-2 rounded border border-outline-variant/30">
+                        <span className="text-sm min-w-0 truncate">{m.char_name || 'No char'} <small className="opacity-60">({m.display_name})</small></span>
+                        {m.id !== selectedContact.created_by ? (
+                          <button className="text-[11px] bg-error-container/20 text-error border border-error/30 px-3 py-1.5 rounded hover:bg-error/20 transition-colors shrink-0" onClick={() => handleRemoveMemberFromGroup(m.id, label)}>Remove</button>
+                        ) : (
+                          <small className="text-on-surface-variant/50 shrink-0 px-1">Creator</small>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div>
               <button
                 type="button"
-                onClick={() => setGroupIconPickerOpen(v => !v)}
-                disabled={savingGroupIcon}
-                className="text-xs text-primary hover:text-primary-container transition-colors font-bold self-start disabled:opacity-50"
+                onClick={() => setAddMembersOpen(v => !v)}
+                aria-expanded={addMembersOpen}
+                className="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-sm font-bold"
               >
-                {savingGroupIcon ? 'Saving…' : 'Change Picture'}
+                <span className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[18px]">person_add</span>
+                  Add Members
+                </span>
+                <span className={`material-symbols-outlined text-[20px] transition-transform ${addMembersOpen ? 'rotate-180' : ''}`}>expand_more</span>
               </button>
-            </div>
-          </div>
-          {groupIconPickerOpen && (
-            <div className="rounded-lg overflow-hidden border border-outline-variant">
-              <React.Suspense fallback={<div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary, #888)', background: '#111', fontSize: '13px' }}>Loading emojis...</div>}>
-                <EmojiPicker
-                  onEmojiClick={onGroupIconEmojiClick}
-                  theme="dark"
-                  width="100%"
-                  height={320}
-                  customEmojis={customClanEmojis}
-                  categories={EMOJI_PICKER_CATEGORIES}
-                />
-              </React.Suspense>
-            </div>
-          )}
-
-          {groupMembersLoading ? <div className="text-on-surface-variant">Loading...</div> : (
-            <div className="flex flex-col gap-4 max-h-[60vh] overflow-y-auto pr-2" style={{ scrollbarWidth: 'thin' }}>
-              <div>
-                <div className="text-[10px] text-on-surface-variant/50 font-bold tracking-widest mb-2 uppercase">Current Members</div>
-                <div className="flex flex-col gap-2">
-                  {currentGroupMembers.map(m => (
-                    <div key={m.id} className="flex items-center justify-between bg-surface-container-highest p-2 rounded border border-outline-variant/30">
-                      <span className="text-sm">{m.char_name || 'No char'} <small className="opacity-60">({m.display_name})</small></span>
-                      {m.id !== selectedContact.created_by && (
-                        <button className="text-[10px] bg-error-container/20 text-error border border-error/30 px-2 py-1 rounded hover:bg-error/20 transition-colors" onClick={() => handleRemoveMemberFromGroup(m.id)}>Remove</button>
-                      )}
-                      {m.id === selectedContact.created_by && <small className="text-on-surface-variant/50">Creator</small>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <div className="text-[10px] text-on-surface-variant/50 font-bold tracking-widest mb-2 uppercase">Add Members</div>
-                <div className="flex flex-col gap-2">
+              {addMembersOpen && (
+                <div className="flex flex-col gap-2 mt-2">
                   {nonMembers.length === 0 ? (
                     <div className="text-center text-on-surface-variant/50 text-sm py-2">All players are in the group.</div>
-                  ) : nonMembers.map(u => (
-                    <div key={u.id} className="flex items-center justify-between bg-surface-container-highest p-2 rounded border border-outline-variant/30">
-                      <span className="text-sm">{u.char_name} <small className="opacity-60">({u.display_name})</small></span>
-                      <button className="text-[10px] bg-primary/20 text-primary border border-primary/30 px-2 py-1 rounded hover:bg-primary/40 transition-colors" onClick={() => handleAddMemberToGroup(u.id)}>Add</button>
-                    </div>
-                  ))}
+                  ) : nonMembers.map(u => {
+                    const label = u.char_name || u.display_name || 'this player';
+                    return (
+                      <div key={u.id} className="flex items-center justify-between gap-2 bg-surface-container-highest pl-3 pr-2 py-2 rounded border border-outline-variant/30">
+                        <span className="text-sm min-w-0 truncate">{u.char_name} <small className="opacity-60">({u.display_name})</small></span>
+                        <button className="text-[11px] bg-primary/20 text-primary border border-primary/30 px-3 py-1.5 rounded hover:bg-primary/40 transition-colors shrink-0" onClick={() => handleAddMemberToGroup(u.id, label)}>Add</button>
+                      </div>
+                    );
+                  })}
                 </div>
-              </div>
+              )}
             </div>
-          )}
-          <div className="flex justify-between mt-4 pt-4 border-t border-outline-variant/50">
-            <button onClick={handleDeleteGroup} className="text-error hover:text-error-container text-sm font-bold transition-colors">Delete Group</button>
-            <button onClick={() => setManagingGroup(false)} className="bg-primary text-on-primary px-4 py-1.5 rounded hover:bg-primary-container transition-colors font-bold text-sm shadow-[0_0_10px_rgba(255,179,174,0.2)]">Done</button>
+          </div>
+
+          <div className="flex justify-between items-center gap-2 px-4 sm:px-6 py-3 border-t border-outline-variant/50 shrink-0">
+            {canDelete ? (
+              <button onClick={handleDeleteGroup} className="text-error hover:text-error-container text-sm font-bold transition-colors py-2">Delete Group</button>
+            ) : <span />}
+            <button onClick={() => setManagingGroup(false)} className="bg-primary text-on-primary px-5 py-2 rounded hover:bg-primary-container transition-colors font-bold text-sm shadow-[0_0_10px_rgba(255,179,174,0.2)] shrink-0">Done</button>
           </div>
         </div>
-      </div>
+      </div>,
+      document.body
     );
   };
 
-  const renderCreateGroupModalTailwind = () => (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+  const renderConfirmDialog = () => {
+    const { title, message, preview, confirmLabel, danger } = confirmState;
+    return createPortal(
+      <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={() => closeConfirm(false)}>
+        <div
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="chat-confirm-title"
+          aria-describedby="chat-confirm-message"
+          onClick={e => e.stopPropagation()}
+          className={`bg-surface-container border rounded-lg w-full max-w-sm shadow-[0_0_24px_rgba(0,0,0,0.6)] ${danger ? 'border-error/50' : 'border-outline-variant'}`}
+        >
+          <div className="px-5 pt-5 pb-4 flex items-start gap-3">
+            <span className={`material-symbols-outlined text-[24px] shrink-0 ${danger ? 'text-error' : 'text-primary'}`}>{danger ? 'warning' : 'help'}</span>
+            <div className="min-w-0">
+              <h4 id="chat-confirm-title" className="text-lg font-headline-md text-on-surface m-0">{title}</h4>
+              <p id="chat-confirm-message" className="text-sm text-on-surface-variant mt-1 mb-0 break-words">{message}</p>
+            </div>
+          </div>
+          {preview && (
+            <div className="flex justify-center pb-4">
+              <div className="w-16 h-16 rounded-full bg-surface-container-high border border-outline-variant/50 flex items-center justify-center overflow-hidden">
+                <GroupIconGlyph icon={preview} size={52} />
+              </div>
+            </div>
+          )}
+          <div className="flex justify-end gap-2 px-5 py-3 border-t border-outline-variant/50">
+            <button
+              type="button"
+              autoFocus
+              onClick={() => closeConfirm(false)}
+              className="px-4 py-2 text-sm font-bold rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => closeConfirm(true)}
+              className={`px-4 py-2 text-sm font-bold rounded transition-colors ${danger ? 'bg-error text-on-error hover:opacity-90' : 'bg-primary text-on-primary hover:bg-primary-container'}`}
+            >
+              {confirmLabel || 'Confirm'}
+            </button>
+          </div>
+        </div>
+      </div>,
+      document.body
+    );
+  };
+
+  const renderCreateGroupModalTailwind = () => createPortal(
+    <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
       <div className="bg-surface-container border border-outline-variant rounded-lg w-full max-w-md p-6 flex flex-col gap-4 shadow-[0_0_20px_rgba(27,76,140,0.3)]">
         <h3 className="text-xl font-headline-md text-primary tracking-tight border-b border-outline-variant/50 pb-2">Create Group Chat</h3>
 
@@ -1622,7 +1860,8 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
           <button onClick={handleCreateGroup} disabled={!newGroupName || !newGroupMembers.length} className="bg-primary text-on-primary px-4 py-1.5 rounded hover:bg-primary-container disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-bold text-sm shadow-[0_0_10px_rgba(255,179,174,0.2)]">Create</button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 
   return (
@@ -1633,6 +1872,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
       {/* Modals */}
       {creatingGroup && renderCreateGroupModalTailwind()}
       {managingGroup && renderManageGroupModalTailwind()}
+      {confirmState && renderConfirmDialog()}
 
       {/* SideNavBar (Desktop) & Full View (Mobile when no contact selected) */}
       <motion.aside
@@ -1892,17 +2132,21 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
               </div>
               <div className="flex items-center gap-2 md:gap-4 text-on-surface-variant/70 shrink-0">
                 {selectedContact.type === 'group' && (
-                  (selectedContact.created_by === currentUser?.id || isAdmin) ? (
+                  <>
                     <button onClick={openManageGroup} className="hover:text-primary transition-colors flex items-center gap-1 border border-outline-variant/50 px-2 py-1 rounded text-[10px] md:text-xs font-system-code uppercase tracking-widest bg-surface-container-low hover:bg-surface-variant/50">
                       <span className="material-symbols-outlined text-[14px] md:text-[16px]">settings</span>
                       <span className="hidden md:inline">Manage</span>
                     </button>
-                  ) : (
-                    <button onClick={handleLeaveGroup} className="text-error/80 hover:text-error transition-colors flex items-center gap-1 border border-error/30 px-2 py-1 rounded text-[10px] md:text-xs font-system-code uppercase tracking-widest bg-error-container/10 hover:bg-error-container/30">
-                      <span className="material-symbols-outlined text-[14px] md:text-[16px]">logout</span>
-                      <span className="hidden md:inline">Leave</span>
-                    </button>
-                  )
+                    {/* The creator can't leave their own group (server rejects it —
+                        they'd delete it via Manage instead), so Leave is hidden for
+                        them but shown to every other member, managers included. */}
+                    {selectedContact.created_by !== currentUser?.id && (
+                      <button onClick={handleLeaveGroup} className="text-error/80 hover:text-error transition-colors flex items-center gap-1 border border-error/30 px-2 py-1 rounded text-[10px] md:text-xs font-system-code uppercase tracking-widest bg-error-container/10 hover:bg-error-container/30">
+                        <span className="material-symbols-outlined text-[14px] md:text-[16px]">logout</span>
+                        <span className="hidden md:inline">Leave</span>
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </header>
@@ -1971,6 +2215,12 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                     <div className="h-px bg-outline-variant/50 flex-1"></div>
                     <span className="font-system-code text-[10px] text-on-surface-variant px-4 bg-transparent">{item.day.toUpperCase()}</span>
                     <div className="h-px bg-outline-variant/50 flex-1"></div>
+                  </div>
+                );
+
+                if (item.type === 'system') return (
+                  <div key={item.id} className="w-full text-center text-[11px] md:text-[12px] font-system-code text-on-surface-variant/60 my-2 px-4">
+                    {renderMessageBody(item.body)}
                   </div>
                 );
 
