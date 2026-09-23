@@ -676,6 +676,12 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
                       </label>
                     )}
 
+                    {isMystic && detailDots === 2 && !['Hecata', 'Lasombra'].includes(ch?.clan || '') && (
+                      <div style={{ marginTop: '16px', padding: '10px 12px', borderRadius: '4px', border: '1px solid var(--error)', backgroundColor: 'rgba(180,15,31,0.08)', fontSize: '13px', color: 'var(--text-color)' }}>
+                        The 2nd dot only does something for Hecata and Lasombra (3 power picks instead of 1). You're still limited to 1 pick at this rating — this upgrade would cost {cost} XP for no extra benefit.
+                      </div>
+                    )}
+
                     {isMystic && (
                         <div style={{ marginTop: '24px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
                           <label style={{ fontSize: '12px', letterSpacing: '0.1em', color: 'var(--text-color)', textTransform: 'uppercase', fontWeight: 600 }}>Select {maxMystic} Oblivion Power(s):</label>
