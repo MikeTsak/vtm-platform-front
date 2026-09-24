@@ -6,6 +6,7 @@ import api, { formatApiError } from '../../core/api';
 import { AuthCtx } from '../../core/AuthContext';
 import { DISCIPLINES, ALL_DISCIPLINE_NAMES, iconPath } from '../../data/disciplines';
 import { RITUALS } from '../../data/rituals';
+import { PREDATOR_TYPES } from '../../data/predator_types';
 import { symlogo, textlogo, symlogoWhite, textlogoWhite, CLAN_HEX as CLAN_COLORS, clanTint } from '../../data/clans';
 import styles from '../../styles/CharacterView.module.css';
 import homeStyles from '../../styles/Home.module.css';
@@ -31,6 +32,7 @@ import { ShopRow, ConfirmModal } from '../xp-shop/ShopRow';
 import { buildSuggestions, article } from '../xp-shop/suggestions';
 import { getPushSettings, updatePushSettings, subscribeToWebPush, getPushUnsupportedReason } from '../../utils/push';
 import { maxHealth as deriveMaxHealth } from '../../utils/derivedStats';
+import { attachStructured } from './sheetShape';
 const msSearchText = (arr, query) => {
   const ms = new MiniSearch({ fields: ['text'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
   const docs = arr.map((text, id) => ({ id, text }));
@@ -143,322 +145,19 @@ function allSelectableFlaws() {
   return out.filter(f => (seen.has(f.id) ? false : (seen.add(f.id), true)));
 }
 
-/* ===========================
-   Sheet normalization helpers
-   =========================== */
-function looksLikeFlatSheet(s) {
-  if (!s || typeof s !== 'object') return false;
-  if (s.skills && typeof s.skills === 'object') {
-    const vals = Object.values(s.skills);
-    if (vals.length && vals.some(v => typeof v === 'number')) return true;
-  }
-  if ('bloodPotency' in s) return true;
-  if ('predatorType' in s) return true;
-  return false;
-}
-
-function isStructuredSheet(s) {
-  if (!s || typeof s !== 'object') return false;
-  if (!s.skills || typeof s.skills !== 'object') return false;
-  const vals = Object.values(s.skills);
-  if (!vals.length) return false;
-  if (vals.some(v => typeof v === 'number')) return false;
-  return vals.some(v => v && typeof v === 'object' && 'dots' in v);
-}
-
-/* ===========================
-   Touchstone & Conviction helpers
-   =========================== */
-function normalizeStringArray(arr) {
-  if (!Array.isArray(arr)) return [];
-  return arr.map(item => {
-    if (typeof item === 'string') return item;
-    // Rescue old object formats like { name: '...', conviction: '...' }
-    if (typeof item === 'object' && item !== null) {
-      return item.conviction || item.description || item.name || JSON.stringify(item);
-    }
-    return String(item || '');
-  });
-}
-
-function normalizeTouchstoneArray(arr) {
-  if (!Array.isArray(arr)) return [];
-  return arr.map(item => {
-    if (!item) return { name: '', conviction: '', background: '' };
-    if (typeof item === 'object' && item !== null) {
-      return {
-        name: String(item.name || item.title || '').trim(),
-        conviction: String(item.conviction || '').trim(),
-        background: String(item.background || item.description || '').trim()
-      };
-    }
-    if (typeof item === 'string') {
-      const splitIdx = item.search(/[:\-]/);
-      if (splitIdx !== -1) {
-        return {
-          name: item.substring(0, splitIdx).trim(),
-          conviction: '',
-          background: item.substring(splitIdx + 1).trim()
-        };
-      }
-      return { name: item.trim(), conviction: '', background: '' };
-    }
-    return { name: String(item), conviction: '', background: '' };
-  });
-}
-
-function normalizeFromFlatAny(source) {
-  const flat = source?.sheet && looksLikeFlatSheet(source.sheet) ? source.sheet : source;
-  const sheet = {};
-
-  const getCaseInsensitive = (obj, key) => {
-    if (!obj) return undefined;
-    const k = Object.keys(obj).find(k => k.toLowerCase() === key.toLowerCase());
-    return k ? obj[k] : undefined;
-  };
-
-  sheet.attributes = { ...(flat.attributes || {}) };
-
-  const skills = {};
-  Object.entries(flat.skills || {}).forEach(([name, dots]) => {
-    skills[name] = { dots: Number(dots || 0), specialties: [] };
-  });
-  (flat.specialties || []).forEach(s => {
-    const [rawSkill, ...rest] = String(s).split(':');
-    const skill = (rawSkill || '').trim();
-    const spec = rest.join(':').trim();
-    if (!skill) return;
-    if (!skills[skill]) skills[skill] = { dots: 0, specialties: [] };
-    if (spec) skills[skill].specialties.push(spec);
-  });
-  sheet.skills = skills;
-
-  sheet.disciplines = { ...(flat.disciplines || {}) };
-  sheet.disciplinePowers = { ...(flat.disciplinePowers || {}) };
-
-  sheet.predator_type = flat.predatorType || flat.predator?.type || '';
-  sheet.sire = flat.sire || '';
-  sheet.ambition = flat.ambition || '';
-  sheet.desire = flat.desire || '';
-
-  sheet.touchstones = normalizeTouchstoneArray(
-    Array.isArray(flat.touchstones) ? flat.touchstones : flat.morality?.touchstones
-  );
-  sheet.convictions = normalizeStringArray(
-    Array.isArray(flat.convictions) ? flat.convictions : flat.morality?.convictions
-  );
-
-  sheet.advantages = {
-    merits: Array.isArray(flat.advantages?.merits) ? flat.advantages.merits : [],
-    flaws: Array.isArray(flat.advantages?.flaws) ? flat.advantages.flaws : [],
-  };
-
-  sheet.mystic_powers = Array.isArray(flat.mystic_powers) ? flat.mystic_powers : [];
-
-  // Backward compatibility: migrate from notes inside Mystic of the Void merit
-  const mysticMerit = sheet.advantages.merits.find(m => m.id === 'other__mystic_of_the_void');
-  if (mysticMerit && typeof mysticMerit.notes === 'string' && mysticMerit.notes.startsWith('[')) {
-    try {
-      const parsed = JSON.parse(mysticMerit.notes);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        if (sheet.mystic_powers.length === 0) sheet.mystic_powers = parsed;
-      }
-      mysticMerit.notes = '';
-    } catch (e) {
-      // Ignore
-    }
-  }
-
-  // Validate Mystic of the Void selections for view
-  if (mysticMerit && Array.isArray(sheet.mystic_powers) && sheet.mystic_powers.length > 0) {
-    const maxMystic = ['Hecata', 'Lasombra'].includes(flat.clan || '') && Number(mysticMerit.dots) === 2 ? 3 : 1;
-    const oblivionDots = Number(sheet.disciplines?.oblivion || sheet.disciplines?.Oblivion || 0);
-
-    const validPowers = [];
-    for (const pId of sheet.mystic_powers) {
-      let powerLevel = 99;
-      if (DISCIPLINES && DISCIPLINES['Oblivion']) {
-        for (const [lvlStr, list] of Object.entries(DISCIPLINES['Oblivion'].levels || {})) {
-          if (list.find(x => x.id === pId)) {
-            powerLevel = Number(lvlStr);
-            break;
-          }
-        }
-      }
-      if (powerLevel <= oblivionDots) {
-        validPowers.push(pId);
-      }
-    }
-
-    if (validPowers.length !== sheet.mystic_powers.length || validPowers.length > maxMystic) {
-      sheet.mystic_powers = [];
-      sheet._needsMysticFix = true;
-    }
-  } else if (!mysticMerit && sheet.mystic_powers?.length > 0) {
-    sheet.mystic_powers = [];
-  }
-
-
-  sheet.morality = flat.morality || {};
-  sheet.humanity = flat.morality?.humanity ?? flat.humanity ?? undefined;
-  sheet.stains = flat.stains ?? 0;
-  sheet.hunger = flat.hunger ?? 1;
-
-  sheet.blood_potency = Number(flat.bloodPotency ?? flat.blood_potency ?? 1);
-
-  sheet.health_max = deriveMaxHealth(sheet);
-
-  const hSuperficial = Number(flat?.health?.superficial ?? 0);
-  const hAggravated = Number(flat?.health?.aggravated ?? 0);
-  const legacyHealth = Number(flat?.health_current);
-
-  if (Number.isFinite(legacyHealth)) {
-    sheet.health_current = Math.max(0, Math.min(sheet.health_max, legacyHealth));
-  } else {
-    const hDmg = Math.max(0, Math.min(sheet.health_max, hSuperficial + hAggravated));
-    sheet.health_current = sheet.health_max - hDmg;
-  }
-  sheet.health = { superficial: hSuperficial, aggravated: hAggravated };
-
-
-  const compRaw = getCaseInsensitive(sheet.attributes, 'Composure') ?? getCaseInsensitive(flat.attributes, 'Composure') ?? 1;
-  const resoRaw = getCaseInsensitive(sheet.attributes, 'Resolve') ?? getCaseInsensitive(flat.attributes, 'Resolve') ?? 1;
-
-  const comp = Number(compRaw);
-  const reso = Number(resoRaw);
-  sheet.willpower_max = comp + reso;
-
-  const wpSuperficial = Number(flat?.willpower?.superficial ?? 0);
-  const wpAggravated = Number(flat?.willpower?.aggravated ?? 0);
-  const legacyWpCurrent = Number(flat?.willpower_current);
-
-  if (Number.isFinite(legacyWpCurrent)) {
-    sheet.willpower_current = Math.max(0, Math.min(sheet.willpower_max, legacyWpCurrent));
-  } else {
-    const wpDmg = Math.max(0, Math.min(sheet.willpower_max, wpSuperficial + wpAggravated));
-    sheet.willpower_current = sheet.willpower_max - wpDmg;
-  }
-  sheet.willpower = { superficial: wpSuperficial, aggravated: wpAggravated };
-
-  sheet.resonances = flat.resonances || [];
-
-  sheet.rituals = {
-    blood_sorcery: Array.isArray(flat.rituals?.blood_sorcery) ? flat.rituals.blood_sorcery : [],
-    oblivion: Array.isArray(flat.rituals?.oblivion) ? flat.rituals.oblivion : [],
-  };
-
-  if (flat.xp_spent !== undefined) sheet.xp_spent = flat.xp_spent;
-  if (flat.experience !== undefined) sheet.experience = flat.experience;
-
-  if (source?.sheet?.allow_reset === true) sheet.allow_reset = true;
-  if (flat?.allow_reset === true) sheet.allow_reset = true;
-  if (source?.allow_reset === true) sheet.allow_reset = true;
-
-  if (source?.sheet?.is_active !== undefined) sheet.is_active = source.sheet.is_active;
-  if (flat?.is_active !== undefined) sheet.is_active = flat.is_active;
-  if (source?.is_active !== undefined) sheet.is_active = source.is_active;
-
-  return sheet;
-}
-
-function attachStructured(raw) {
-  if (!raw) return raw;
-
-  function buildDisciplineIndex() {
-    const map = {};
-    for (const [disc, data] of Object.entries((typeof DISCIPLINES !== 'undefined' && DISCIPLINES) || {})) {
-      const byId = new Map();
-      const byName = new Map();
-      const levels = data?.levels || {};
-      for (const [lvlStr, arr] of Object.entries(levels)) {
-        const lvl = Number(lvlStr);
-        (arr || []).forEach(p => {
-          if (!p) return;
-          if (p.id) byId.set(String(p.id).toLowerCase(), lvl);
-          if (p.slug) byId.set(String(p.slug).toLowerCase(), lvl);
-          if (p.key) byId.set(String(p.key).toLowerCase(), lvl);
-          if (p.name) byName.set(String(p.name).toLowerCase(), lvl);
-        });
-      }
-      map[disc] = { byId, byName };
-    }
-    return map;
-  }
-
-  function ensureDisciplinePicksHaveLevels(sheet) {
-    const idx = buildDisciplineIndex();
-    const out = { ...sheet, disciplinePowers: sheet.disciplinePowers || {} };
-
-    for (const [disc, picks] of Object.entries(out.disciplinePowers)) {
-      const index = idx[disc];
-      const next = [];
-      const seenLevel = new Set();
-
-      (Array.isArray(picks) ? picks : []).forEach(rawPick => {
-        const p = typeof rawPick === 'string' ? { id: rawPick } : { ...rawPick };
-        let level = Number(p.level);
-
-        if (!Number.isInteger(level) || level <= 0) {
-          const keys = [p.id, p.slug, p.key, p.code, p.power_id, p.name]
-            .filter(Boolean)
-            .map(s => String(s).toLowerCase());
-          if (index) {
-            for (const k of keys) {
-              const guessed = index.byId.get(k) ?? index.byName.get(k);
-              if (Number.isInteger(guessed) && guessed > 0) {
-                level = guessed;
-                break;
-              }
-            }
-          }
-        }
-
-        if (Number.isInteger(level) && level > 0) {
-          if (!seenLevel.has(level)) {
-            seenLevel.add(level);
-            next.push({ ...p, level });
-          }
-        } else {
-          next.push(p);
-        }
-      });
-
-      next.sort((a, b) => Number(a.level || 99) - Number(b.level || 99));
-      out.disciplinePowers[disc] = next;
-    }
-
-    return out;
-  }
-
-  let sheet;
-  if (isStructuredSheet(raw.sheet)) {
-    sheet = { ...raw.sheet };
-  } else if (looksLikeFlatSheet(raw.sheet)) {
-    sheet = normalizeFromFlatAny(raw);
-  } else {
-    sheet = normalizeFromFlatAny(raw);
-  }
-
-  // --- NORMALIZATION FIX ADDED HERE ---
-  sheet.touchstones = normalizeTouchstoneArray(sheet.touchstones || sheet.morality?.touchstones);
-  sheet.convictions = normalizeStringArray(sheet.convictions || sheet.morality?.convictions);
-  // ------------------------------------
-
-  sheet.rituals = sheet.rituals || { blood_sorcery: [], oblivion: [] };
-  sheet.rituals.blood_sorcery = sheet.rituals.blood_sorcery || [];
-  sheet.rituals.oblivion = sheet.rituals.oblivion || [];
-  if (sheet.blood_potency == null) sheet.blood_potency = 1;
-  sheet.disciplinePowers = sheet.disciplinePowers || {};
-
-  sheet = ensureDisciplinePicksHaveLevels(sheet);
-
-  return { ...raw, sheet };
-}
 
 function disciplineKindFor(ch, name) {
   if (ch?.clan === 'Caitiff') return 'caitiff';
   const aff = DISCIPLINES?.[name]?.clan_affinity || [];
   return aff.includes(ch?.clan) ? 'clan' : 'other';
+}
+
+// The predator-type discipline is unlocked for XP even when out of clan.
+// Mirrors isPredatorDiscipline in back/data/predatorDisciplines.js (the
+// server enforces it); the pick isn't stored, so owning a dot stands in.
+function isPredatorDiscipline(ch, sheet, name) {
+  const pick = PREDATOR_TYPES[sheet?.predator_type || sheet?.predatorType]?.picks?.discipline;
+  return !!pick && pick(ch?.clan).includes(name) && Number(sheet?.disciplines?.[name] || 0) >= 1;
 }
 
 function estimateDisciplineCost(ch, name, current, next) {
@@ -2429,8 +2128,12 @@ export default function CharacterView({
                         )}
                         {inClanDisciplines.filter(name => matchDiscipline(name)).map(name => {
                           const current = Number(sheet.disciplines?.[name] || 0);
-                          const next = Math.min(current + 1, 5);
-                          const canRaise = next > 0 && next <= 5;
+                          // House rule: one in-clan discipline may reach 6
+                          // (server enforces the same in routes/characterXp.js).
+                          const otherAtSix = Object.entries(sheet.disciplines || {}).some(([d, v]) => d !== name && Number(v) > 5);
+                          const max = otherAtSix ? 5 : 6;
+                          const next = Math.min(current + 1, max);
+                          const canRaise = current < max;
                           const cost = XP_RULES.disciplineClan(next);
                           const afford = xp >= cost;
                           const isKnown = current > 0;
@@ -2439,11 +2142,12 @@ export default function CharacterView({
                             <ShopRow
                               key={name}
                               title={title}
-                              subtitle={isKnown ? `Raise to ${next} • clan` : `Buy • clan`}
-                              cost={cost}
+                              subtitle={!canRaise ? 'Max reached • clan' : isKnown ? `Raise to ${next} • clan` : `Buy • clan`}
+                              cost={canRaise ? cost : '-'}
+                              owned={current}
                               leftIcon={iconPath(name)}
                               disabled={!canRaise || !afford}
-                              hint={!canRaise ? 'Max 5' : (!afford ? 'Not enough XP' : 'Expand to select a power')}
+                              hint={!canRaise ? `Max ${max}` : (!afford ? 'Not enough XP' : 'Expand to select a power')}
                               noConfirm={true}
                               forceExpanded={isSearching}
                             >
@@ -2491,15 +2195,16 @@ export default function CharacterView({
                           // disciplines at all. Same purchase flow as in-clan, just priced
                           // at the caitiff rate.
                           if (kind === 'caitiff') {
-                            const canRaise = next > 0 && next <= 5;
+                            const canRaise = current < 5;
                             const cost = XP_RULES.disciplineCaitiff(next);
                             const afford = xp >= cost;
                             return (
                               <ShopRow
                                 key={name}
                                 title={title}
-                                subtitle={isKnown ? `Raise to ${next} • caitiff` : `Buy • caitiff`}
-                                cost={cost}
+                                subtitle={!canRaise ? 'Max reached • caitiff' : isKnown ? `Raise to ${next} • caitiff` : `Buy • caitiff`}
+                                cost={canRaise ? cost : '-'}
+                                owned={current}
                                 leftIcon={iconPath(name)}
                                 disabled={!canRaise || !afford}
                                 hint={!canRaise ? 'Max 5' : (!afford ? 'Not enough XP' : 'Expand to select a power')}
@@ -2529,16 +2234,18 @@ export default function CharacterView({
                           // enforces this cap independently at spend time; this is
                           // just presenting the same rule before the player tries.
                           const grant = discAccess[name];
-                          const grantedMax = Number(grant?.max_level || 0);
+                          const isPredator = isPredatorDiscipline(ch, sheet, name);
+                          const grantedMax = isPredator ? 5 : Number(grant?.max_level || 0);
                           const pendingReq = discRequests.find(r => r.discipline === name && r.status === 'pending');
 
-                          if (!discAccessLoaded) {
+                          if (!discAccessLoaded && !isPredator) {
                             return (
                               <ShopRow
                                 key={name}
                                 title={title}
                                 subtitle={isKnown ? `Raise to ${next} • other` : `Buy • other`}
                                 cost={'-'}
+                                owned={current}
                                 leftIcon={iconPath(name)}
                                 disabled={true}
                                 hint={'Checking access…'}
@@ -2554,8 +2261,9 @@ export default function CharacterView({
                               <ShopRow
                                 key={name}
                                 title={title}
-                                subtitle={`Raise to ${next} • unlocked to ${grantedMax}`}
+                                subtitle={isPredator ? `Raise to ${next} • predator` : `Raise to ${next} • unlocked to ${grantedMax}`}
                                 cost={cost}
+                                owned={current}
                                 leftIcon={iconPath(name)}
                                 disabled={!afford}
                                 hint={!afford ? 'Not enough XP' : 'Expand to select a power'}
@@ -2580,6 +2288,22 @@ export default function CharacterView({
                             );
                           }
 
+                          if (current >= 5) {
+                            return (
+                              <ShopRow
+                                key={name}
+                                title={title}
+                                subtitle={'Max reached • other'}
+                                cost={'-'}
+                                owned={current}
+                                leftIcon={iconPath(name)}
+                                disabled={true}
+                                hint={'Max 5'}
+                                forceExpanded={isSearching}
+                              />
+                            );
+                          }
+
                           if (pendingReq) {
                             return (
                               <ShopRow
@@ -2587,6 +2311,7 @@ export default function CharacterView({
                                 title={title}
                                 subtitle={`Requested • up to ${pendingReq.requested_level}`}
                                 cost={'-'}
+                                owned={current}
                                 leftIcon={iconPath(name)}
                                 disabled={true}
                                 hint={'Waiting on your Storyteller'}
@@ -2603,6 +2328,7 @@ export default function CharacterView({
                               title={title}
                               subtitle={grantedMax > 0 ? `Unlocked to ${grantedMax} • other` : 'Locked • other'}
                               cost={'-'}
+                              owned={current}
                               leftIcon={iconPath(name)}
                               disabled={false}
                               hint={grantedMax > 0 ? `Ask for access beyond level ${grantedMax}` : 'Expand to request access'}
@@ -2611,7 +2337,7 @@ export default function CharacterView({
                             >
                               <DisciplineRequestForm
                                 name={name}
-                                minLevel={grantedMax + 1}
+                                minLevel={Math.max(grantedMax, current) + 1}
                                 onSubmit={(level, message) => requestDisciplineAccess(name, level, message)}
                               />
                             </ShopRow>

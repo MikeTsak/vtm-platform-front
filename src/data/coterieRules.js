@@ -150,6 +150,22 @@ export const COTERIE_BACKGROUNDS = {
 
 export const COTERIE_BACKGROUND_KEYS = Object.keys(COTERIE_BACKGROUNDS);
 
+// Character sheet merit id -> coterie Background key a member may hand over
+// for free. Mirrors back/utils/coterieRules.js; the server is authoritative.
+export const CONTRIBUTABLE_BACKGROUNDS = {
+  backgrounds_allies__allies: 'ally',
+  backgrounds_contacts__contacts: 'contacts',
+  backgrounds_fame__fame: 'fame',
+  backgrounds_influence__influence: 'influence',
+  backgrounds_haven__haven: 'haven',
+  backgrounds_herd__herd: 'herd',
+  backgrounds_mask__mask: 'mask',
+  backgrounds_mawla__mawla: 'mawla',
+  backgrounds_resources__resources: 'resources',
+  backgrounds_retainers__retainers: 'retainers',
+  backgrounds_status__status: 'status',
+};
+
 export const COTERIE_BACKGROUND_NOTE =
   'Each member may use these as their own, but the Background belongs to the coterie, not the character. If the coterie splits, or a member is ejected, they cannot take it with them. Backgrounds do not multiply across members, and remain vulnerable to in-game events.';
 

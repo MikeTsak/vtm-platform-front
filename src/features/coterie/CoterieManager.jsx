@@ -79,6 +79,7 @@ export default function CoterieManager() {
   const [tab, setTab] = useState('mine');
   const [currentUser, setCurrentUser] = useState(null);
   const [personalXp, setPersonalXp] = useState(0);
+  const [myCharacter, setMyCharacter] = useState(null);
 
   const [mine, setMine] = useState([]);
   const [registry, setRegistry] = useState([]);
@@ -119,16 +120,22 @@ export default function CoterieManager() {
     return () => { alive = false; };
   }, []);
 
-  // The purchase dialog needs to know how much the player can personally
-  // contribute; the sheet endpoint is the cheapest place to get it.
+  // The purchase dialog needs the player's personal XP, and the contribute
+  // dialog needs their sheet; the sheet endpoint serves both.
+  const loadMyCharacter = useCallback(async () => {
+    try {
+      const { data } = await api.get('/characters/me');
+      setMyCharacter(data?.character || null);
+      setPersonalXp(Number(data?.character?.xp) || 0);
+    } catch {
+      setMyCharacter(null);
+      setPersonalXp(0);
+    }
+  }, []);
+
   useEffect(() => {
-    let alive = true;
-    if (!currentUser) return undefined;
-    api.get('/characters/me')
-      .then(({ data }) => { if (alive) setPersonalXp(Number(data?.character?.xp) || 0); })
-      .catch(() => { if (alive) setPersonalXp(0); });
-    return () => { alive = false; };
-  }, [currentUser]);
+    if (currentUser) loadMyCharacter();
+  }, [currentUser, loadMyCharacter]);
 
   const loadMine = useCallback(async () => {
     try {
@@ -271,6 +278,27 @@ export default function CoterieManager() {
     }
   };
 
+  const contribute = async (characterEntryId) => {
+    if (!detail) return false;
+    setBusy(true);
+    try {
+      const { data } = await api.post(`/coteries/${detail.coterie.id}/contribute`, {
+        character_entry_id: characterEntryId,
+      });
+      publish({
+        message: `${data.contributed.name} now belongs to the coterie (rated ${data.contributed.dots}).`,
+        type: 'success',
+      });
+      await Promise.all([loadDetail(detail.coterie.id), loadMine(), loadMyCharacter()]);
+      return true;
+    } catch (e) {
+      publish({ message: errText(e, 'Could not contribute that background.'), type: 'error' });
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const remove = async (id) => {
     if (!window.confirm('Permanently delete this coterie? Its XP ledger goes with it.')) return;
     setBusy(true);
@@ -356,11 +384,14 @@ export default function CoterieManager() {
                   isAdmin={isAdmin}
                   canEdit
                   personalXp={personalXp}
+                  myCharacter={myCharacter}
+                  isMember={(detail.members || []).some((m) => Number(m.user_id) === Number(currentUser?.id))}
                   busy={busy}
                   onEdit={() => startEdit(detail.coterie, detail.members)}
                   onDelete={() => remove(detail.coterie.id)}
                   onAward={award}
                   onPurchase={purchase}
+                  onContribute={contribute}
                 />
               )}
             </>

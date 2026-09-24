@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/CharacterSetup.module.css';
+import { normalizeFromFlatAny, normalizeTouchstoneArray } from './sheetShape';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { PREDATOR_TYPES } from '../../data/predator_types';
 import { trackEvent } from '../../utils/analytics';
@@ -422,25 +423,7 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
       morality: {
         tenets,
         convictions: (convictions || []).filter(Boolean),
-        touchstones: (touchstones || []).map(t => {
-          if (!t) return null;
-          if (typeof t === 'string') {
-            const splitIdx = t.search(/[:\-]/);
-            if (splitIdx !== -1) {
-              return {
-                name: t.substring(0, splitIdx).trim(),
-                conviction: '',
-                background: t.substring(splitIdx + 1).trim()
-              };
-            }
-            return { name: t.trim(), conviction: '', background: '' };
-          }
-          const name = (t.name || '').trim();
-          const conviction = (t.conviction || '').trim();
-          const background = (t.background || t.description || '').trim();
-          if (!name && !background) return null;
-          return { name, conviction, background };
-        }).filter(Boolean),
+        touchstones: normalizeTouchstoneArray(touchstones).filter(t => t.name || t.background),
         humanity: humanityOut
       },
       bloodPotency: bloodPotencyOut,
@@ -448,7 +431,9 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
     };
 
       const url = forNPC ? '/admin/npcs' : (isRebuilding ? '/characters/rebuild' : '/characters');
-      const { data } = await api.post(url, { name, clan, sheet: payload });
+      // Store the structured shape every later save writes (see sheetShape.js),
+      // not the flat wizard payload, so no reader ever sees two formats.
+      const { data } = await api.post(url, { name, clan, sheet: normalizeFromFlatAny({ sheet: payload }) });
 
       // Store the created character data if returned by API
       // This ensures we have the server-generated ID and any other fields

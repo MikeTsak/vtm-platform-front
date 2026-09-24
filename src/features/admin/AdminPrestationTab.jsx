@@ -3,8 +3,15 @@ import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/Admin.module.css';
 import { Skeleton } from 'boneyard-js/react';
 import G6 from '@antv/g6';
+import RelationshipWeb from './RelationshipWeb';
 
-export default function AdminPrestationTab() {
+const VIEWS = [
+  { id: 'boons', label: 'Boons', blurb: 'Interactive directed graph of city-wide debts. Arrows point from Debtor to Creditor.' },
+  { id: 'conversations', label: 'Conversations', blurb: 'Who talks to whom: direct and NPC messages, weighted by volume, for the selected timeframe.' },
+];
+
+export default function AdminPrestationTab({ directMessages, npcMessages, npcs, users, characters }) {
+  const [view, setView] = useState('boons');
   const [loading, setLoading] = useState(true);
   const [boons, setBoons] = useState([]);
   const [err, setErr] = useState('');
@@ -42,7 +49,8 @@ export default function AdminPrestationTab() {
   const ranked = Object.keys(ledger).map(k => ({ name: k, ...ledger[k] })).sort((a, b) => b.owedToMe - a.owedToMe);
 
   useEffect(() => {
-    if (!containerRef.current || boons.length === 0) return;
+    // The canvas only exists in the boons view; switching back remounts it, so rebuild then.
+    if (view !== 'boons' || !containerRef.current || boons.length === 0) return;
 
     if (graphRef.current) {
       graphRef.current.destroy();
@@ -151,15 +159,37 @@ export default function AdminPrestationTab() {
         graphRef.current = null;
       }
     };
-  }, [boons, ledger]);
+  }, [boons, ledger, view]);
 
   return (
     <div className={styles.adminCard}>
-      <h2 style={{ color: 'var(--text-primary)', margin: '0 0 4px 0', fontSize: '1.6rem', fontWeight: 800 }}>🤝 Prestation Matrix (G6 v4)</h2>
-      <p style={{ color: 'var(--text-secondary)', margin: '0 0 2rem 0', fontSize: '0.85rem' }}>Interactive directed graph of city-wide debts. Arrows point from Debtor to Creditor.</p>
+      <h2 style={{ color: 'var(--text-primary)', margin: '0 0 4px 0', fontSize: '1.6rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <span className="material-symbols-outlined" aria-hidden="true">handshake</span>
+        Prestation Matrix (G6 v4)
+      </h2>
+      <p style={{ color: 'var(--text-secondary)', margin: '0 0 1rem 0', fontSize: '0.85rem' }}>{VIEWS.find((v) => v.id === view).blurb}</p>
 
-      {err && <div className={`${styles.alert} ${styles.alertError}`}>{err}</div>}
+      <div className={styles.toolbar} role="tablist" aria-label="Graph">
+        {VIEWS.map((v) => (
+          <button
+            key={v.id}
+            role="tab"
+            aria-selected={view === v.id}
+            className={`${styles.tab} ${view === v.id ? styles.tabActive : ''}`}
+            onClick={() => setView(v.id)}
+          >
+            {v.label}
+          </button>
+        ))}
+      </div>
 
+      {view === 'conversations' && (
+        <RelationshipWeb directMessages={directMessages} npcMessages={npcMessages} npcs={npcs} users={users} characters={characters} />
+      )}
+
+      {view === 'boons' && err && <div className={`${styles.alert} ${styles.alertError}`}>{err}</div>}
+
+      {view === 'boons' && (
       <Skeleton loading={loading} name="prestation-matrix">
         {boons.length === 0 && !loading && (
           <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
@@ -196,6 +226,7 @@ export default function AdminPrestationTab() {
           />
         </div>
       </Skeleton>
+      )}
     </div>
   );
 }

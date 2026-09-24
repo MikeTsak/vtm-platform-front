@@ -194,7 +194,7 @@ export function summarizeTrackers(sheet) {
 
   const isThinblood = sheet?.clan === 'Thin-blood' || sheet?.clan === 'Thin-Blood' || sheet?.clan === 'Thinblood';
   const defaultBP = isThinblood ? 0 : 1;
-  const rawBP = sheet?.bloodPotency ?? sheet?.blood_potency ?? defaultBP;
+  const rawBP = sheet?.blood_potency ?? sheet?.bloodPotency ?? defaultBP;
 
   return {
     hunger: clamp(sheet?.hunger ?? 1, 0, 5),

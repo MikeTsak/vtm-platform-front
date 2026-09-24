@@ -13,6 +13,7 @@ import { formatAthensDateTime } from '../../utils/dateFormatter';
 import { Card, Dots, DotPicker, Empty, Modal, Muted, Stat, Tabs } from './ui';
 import {
   CHASSE_SIZE_TABLE,
+  CONTRIBUTABLE_BACKGROUNDS,
   COTERIE_BACKGROUNDS,
   COTERIE_FLAWS,
   COTERIE_MERITS,
@@ -222,6 +223,77 @@ function PurchaseDialog({ coterie, personalXp, onClose, onConfirm, busy }) {
 }
 
 /* ------------------------------------------------------------------ *
+ * Contribute dialog: hand a personal Background over to the coterie
+ * ------------------------------------------------------------------ */
+
+function contributableEntries(character) {
+  const sheet = character?.sheet || {};
+  const pool = [
+    ...(Array.isArray(sheet.backgrounds) ? sheet.backgrounds : []),
+    ...(Array.isArray(sheet.advantages?.merits) ? sheet.advantages.merits : []),
+  ];
+  return pool.filter((e) => e && CONTRIBUTABLE_BACKGROUNDS[e.id] && Number(e.dots) > 0);
+}
+
+function ContributeDialog({ coterie, entries, onClose, onConfirm, busy }) {
+  const [picked, setPicked] = useState(entries[0]?.id || null);
+  const entry = entries.find((e) => e.id === picked);
+  const key = entry ? CONTRIBUTABLE_BACKGROUNDS[entry.id] : null;
+  const held = (coterie.backgrounds || []).find((b) => b.key === key);
+  const heldDots = held ? Number(held.dots) || 0 : 0;
+  const given = entry ? Number(entry.dots) || 0 : 0;
+
+  return (
+    <Modal
+      title="Contribute a background"
+      subtitle="Free: the dots leave your sheet and become the coterie's."
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" className={styles.buttonSecondary} onClick={onClose}>Cancel</button>
+          <button
+            type="button"
+            className={styles.buttonPrimary}
+            disabled={busy || !entry}
+            onClick={() => onConfirm(entry.id)}
+          >
+            {busy ? 'Working…' : 'Contribute'}
+          </button>
+        </>
+      }
+    >
+      <div className={styles.dialogTraitList}>
+        {entries.map((e) => {
+          const k = CONTRIBUTABLE_BACKGROUNDS[e.id];
+          return (
+            <div
+              key={`${e.id}-${e.instance || 0}`}
+              className={styles.dialogTraitItem}
+              aria-selected={picked === e.id}
+              onClick={() => setPicked(e.id)}
+            >
+              <span className={styles.dialogTraitName}>{COTERIE_BACKGROUNDS[k]?.name || e.name}</span>
+              <span className={styles.dialogTraitCurrent}>Yours: {Number(e.dots) || 0}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      {entry && (
+        <div style={{ marginTop: '1rem' }}>
+          <Muted tone="warn">
+            {heldDots >= given
+              ? `The coterie already holds ${heldDots}; it stays at ${heldDots} and your ${given} is removed from your sheet.`
+              : `The coterie goes from ${heldDots} to ${given}, and it is removed from your sheet.`}
+            {' '}This cannot be undone.
+          </Muted>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+/* ------------------------------------------------------------------ *
  * Sheet
  * ------------------------------------------------------------------ */
 
@@ -233,13 +305,18 @@ export default function CoterieSheet({
   isAdmin,
   canEdit,
   personalXp,
+  myCharacter,
+  isMember,
   onEdit,
   onDelete,
   onAward,
   onPurchase,
+  onContribute,
   busy,
 }) {
   const [showPurchase, setShowPurchase] = useState(false);
+  const [showContribute, setShowContribute] = useState(false);
+  const contributable = useMemo(() => contributableEntries(myCharacter), [myCharacter]);
   const [awardAmount, setAwardAmount] = useState(3);
 
   const t = coterie.traits || { chasse: 0, lien: 0, portillon: 0 };
@@ -419,7 +496,20 @@ export default function CoterieSheet({
 
       {/* ---- Holdings ---- */}
       <div className={styles.twoUp}>
-        <Card title="Coterie Backgrounds" subtitle="Held in common: nobody takes them when they leave">
+        <Card
+          title="Coterie Backgrounds"
+          subtitle="Held in common: nobody takes them when they leave"
+          actions={isMember && contributable.length > 0 ? (
+            <button
+              type="button"
+              className={styles.buttonSecondary}
+              onClick={() => setShowContribute(true)}
+              disabled={busy}
+            >
+              Contribute yours
+            </button>
+          ) : null}
+        >
           {(coterie.backgrounds || []).length === 0 ? (
             <Empty>None.</Empty>
           ) : (
@@ -599,7 +689,9 @@ export default function CoterieSheet({
                       <span className={styles.ledgerTitle}>
                         {row.kind === 'spend'
                           ? `${row.target_name} ${row.from_dots} → ${row.to_dots}`
-                          : row.kind === 'award' ? 'Storyteller award' : 'Adjustment'}
+                          : row.kind === 'contribute'
+                            ? `${row.target_name} contributed ${row.from_dots} → ${row.to_dots}`
+                            : row.kind === 'award' ? 'Storyteller award' : 'Adjustment'}
                       </span>
                       {row.kind === 'spend' && Number(row.personal_delta) !== 0 && (
                         <span className={styles.ledgerMeta}>
@@ -618,6 +710,19 @@ export default function CoterieSheet({
           </details>
         )}
       </Card>
+
+      {showContribute && (
+        <ContributeDialog
+          coterie={coterie}
+          entries={contributable}
+          busy={busy}
+          onClose={() => setShowContribute(false)}
+          onConfirm={async (entryId) => {
+            const ok = await onContribute(entryId);
+            if (ok) setShowContribute(false);
+          }}
+        />
+      )}
 
       {showPurchase && (
         <PurchaseDialog

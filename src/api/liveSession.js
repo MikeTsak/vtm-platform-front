@@ -6,7 +6,7 @@ const base = '/live-session';
 // Use the exact same base URL as the API client, but switch protocol if needed.
 // If the app is served from the same host, we can just omit the URL or use env vars.
 // The api instance knows the baseURL:
-const backendUrl = api.defaults.baseURL ? api.defaults.baseURL.replace('/api', '') : window.location.origin;
+const backendUrl = api.defaults.baseURL ? api.defaults.baseURL.replace(/\/api\/?$/, '') : window.location.origin;
 
 // Auth rides along as the httpOnly session cookie (read server-side off the
 // handshake's Cookie header), there's no token in JS to hand over anymore.

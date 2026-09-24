@@ -18,7 +18,7 @@ export function ConfirmModal({ title = 'Confirm Purchase', children, onConfirm, 
   );
 }
 
-export function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, leftIcon, description = '', noConfirm = false, forceExpanded = false, hideDots = false, note = '', badge = null, actionLabel = 'Acquire', compact = false, children }) {
+export function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, leftIcon, description = '', noConfirm = false, forceExpanded = false, hideDots = false, note = '', badge = null, actionLabel = 'Acquire', compact = false, owned, children }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [working, setWorking] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -38,15 +38,19 @@ export function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, lef
   // Attempt to parse the target level from subtitle to render dots
   const match = subtitle?.match(/\d+/);
   const targetLevel = match ? parseInt(match[0], 10) : 0;
+  // Rows whose subtitle carries no "next level" (maxed, locked, requested)
+  // pass `owned` so already-bought dots still render.
+  const ownedDots = owned ?? Math.max(targetLevel - 1, 0);
+  const filledDots = Math.max(targetLevel, ownedDots);
 
   // Clean up title if it contains "(X)" like Blood Potency
   const cleanTitle = title.replace(/\s*\(\d+\)$/, '');
 
   const dots = !hideDots && (
     <div className={`${styles.shopCardDots} ${compact ? styles.shopCardDotsInline : ''}`}>
-      {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className={`${styles.shopDot} ${i < targetLevel ? styles.shopDotFilled : ''}`}>
-          {i < targetLevel - 1 && <span className={styles.shopDotX}>X</span>}
+      {Array.from({ length: Math.max(5, filledDots) }).map((_, i) => (
+        <div key={i} className={`${styles.shopDot} ${i < filledDots ? styles.shopDotFilled : ''}`}>
+          {i < ownedDots && <span className={styles.shopDotX}>X</span>}
         </div>
       ))}
     </div>

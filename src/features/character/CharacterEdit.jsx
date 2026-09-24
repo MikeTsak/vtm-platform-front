@@ -23,6 +23,7 @@ import DotRow from './DotRow';
 import { parseDotSpec } from './MeritsFlawsPicker';
 import { calculateRitualCost } from '../../utils/xpCosts';
 import { maxHealth as deriveMaxHealth } from '../../utils/derivedStats';
+import { normalizeTouchstoneArray } from './sheetShape';
 
 /* ------------------------------------------------------------------ */
 /* Static data / pure helpers (module scope: computed once)          */
@@ -220,16 +221,7 @@ function normalizeSheet(s) {
   });
 
   sheet.convictions = Array.isArray(sheet.convictions) ? sheet.convictions : [];
-  sheet.touchstones = Array.isArray(sheet.touchstones)
-    ? sheet.touchstones.map(t => {
-        if (!t) return { name: '', conviction: '', background: '' };
-        if (typeof t === 'object') return { name: t.name || t.title || '', conviction: t.conviction || '', background: t.background || t.description || '' };
-        const idx = String(t).search(/[:\-]/);
-        return idx !== -1
-          ? { name: String(t).slice(0, idx).trim(), conviction: '', background: String(t).slice(idx + 1).trim() }
-          : { name: String(t).trim(), conviction: '', background: '' };
-      })
-    : [];
+  sheet.touchstones = normalizeTouchstoneArray(sheet.touchstones);
 
   sheet.advantages = sheet.advantages || { merits: [], flaws: [] };
   sheet.advantages.merits = Array.isArray(sheet.advantages.merits) ? sheet.advantages.merits : [];
@@ -613,7 +605,9 @@ export default function CharacterEdit() {
         if (reason === null) { setSaving(false); return; }
         await api.patch(`/admin/characters/${id}/xp`, { delta: -xpImpact, reason });
       }
-      await api.patch(`/admin/characters/${id}`, { name: charName, clan: charClan, sheet: draftSheet });
+      // Mirror into morality.* like the sheet view does, so the two copies never drift.
+      const sheetOut = { ...draftSheet, morality: { ...(draftSheet.morality || {}), touchstones: draftSheet.touchstones, convictions: draftSheet.convictions } };
+      await api.patch(`/admin/characters/${id}`, { name: charName, clan: charClan, sheet: sheetOut });
 
       setOriginalSheet(deepClone(draftSheet));
       setOrigName(charName); setOrigClan(charClan);

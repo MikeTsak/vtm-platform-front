@@ -271,21 +271,22 @@
   color: var(--on-surface);
 }
 
-/* Main Grid */
+/* Main Grid — minmax(0, …) so nowrap/ellipsis children can't widen the columns past the viewport */
 .mainGrid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 32px;
 }
 
 @media (min-width: 1024px) {
   .mainGrid {
-    grid-template-columns: repeat(12, 1fr);
+    grid-template-columns: repeat(12, minmax(0, 1fr));
   }
 }
 
 /* Submission Form */
 .formColumn {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -332,7 +333,7 @@
 }
 
 .formBody {
-  padding: 24px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -344,9 +345,15 @@
   gap: 24px;
 }
 
+@media (min-width: 640px) {
+  .formBody {
+    padding: 24px;
+  }
+}
+
 @media (min-width: 768px) {
   .formRow {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
   }
 }
 
@@ -517,6 +524,7 @@
 
 /* Active Track Column */
 .activeTrackColumn {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -717,6 +725,7 @@
 
 .archiveControls {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
 }
@@ -752,6 +761,8 @@
   font-size: 14px;
   color: var(--on-surface);
   width: 192px;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .searchInput::placeholder {

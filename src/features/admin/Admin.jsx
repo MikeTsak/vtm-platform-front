@@ -37,8 +37,7 @@ const AdminTimelineTab = lazyWithRetry(() => import('./AdminTimelineTab'));
 const AdminDomainsTab = lazyWithRetry(() => import('./AdminDomainsTab'));
 const AdminBloodWebTab = lazyWithRetry(() => import('./AdminBloodWebTab'));
 const AdminMasqueradeTab = lazyWithRetry(() => import('./AdminMasqueradeTab'));
-const AdminPrestationTab = lazyWithRetry(() => import('./AdminPrestationTab'));
-const AdminCoteriesTab = lazyWithRetry(() => import('./AdminCoteriesTab'));
+const AdminPrestationTab = lazyWithRetry(() => import('./AdminPrestationTab'));const AdminCoteriesTab = lazyWithRetry(() => import('./AdminCoteriesTab'));
 const AdminAuditTab = lazyWithRetry(() => import('./AdminAuditTab'));
 const AdminNewsTab = lazyWithRetry(() => import('./AdminNewsTab'));
 
@@ -83,7 +82,7 @@ const NAV_SECTIONS = [
       { id: 'claims',       icon: 'local_police', label: 'Domain Claims',  hint: 'Territory ownership & stewards', keywords: ['domains', 'domain stewards', 'territory', 'claims map access', 'who can assign domains', 'grant', 'revoke', 'permission', 'approve requests', 'court'] },
       { id: 'domains',      icon: 'map',          label: 'Domain Threats', hint: 'Safety ratings & monthly problems', keywords: ['map', 'territory', 'security', 'hunters', 'inquisition', 'threats', 'lupines', 'sabbat', 'danger', 'safety rating'] },
       { id: 'coteries',     icon: 'group_work',   label: 'Coteries',       hint: 'Groups & shared resources', keywords: ['groups', 'factions', 'alliances', 'coterie type', 'domain size', 'chantry', 'shared resources', 'members'] },
-      { id: 'prestation',   icon: 'handshake',    label: 'Prestation',     hint: 'Boons matrix & debts', keywords: ['boons', 'debts', 'favors', 'harpy', 'trivial', 'minor', 'major', 'blood', 'life', 'transfer', 'record', 'clear'] },
+      { id: 'prestation',   icon: 'handshake',    label: 'Prestation',     hint: 'Boons & conversation graphs', keywords: ['boons', 'debts', 'favors', 'harpy', 'trivial', 'minor', 'major', 'blood', 'life', 'transfer', 'record', 'clear', 'relationships', 'conversations', 'messages', 'network', 'who talks to whom'] },
       { id: 'premonitions', icon: 'visibility',   label: 'Premonitions',   hint: 'Visions for Malkavians', keywords: ['visions', 'future', 'auspex', 'dreams', 'prophecy', 'omens', 'sight', 'clues'] },
       { id: 'events',       icon: 'event',        label: 'Events',         hint: 'Sessions & calendar', keywords: ['calendar', 'timeline', 'schedule', 'sessions', 'dates', 'venue', 'planning'] },
       { id: 'timeline',     icon: 'timeline',     label: 'Timeline',       hint: 'Per-character chronicle history', keywords: ['history', 'chronicle', 'events', 'past', 'log', 'chronological', 'dates'] },
@@ -912,7 +911,15 @@ async function grantXP(character_id, delta) {
     claims:       () => <AdminClaimsTab users={users} />,
     domains:      () => <AdminDomainsTab />,
     coteries:     () => <AdminCoteriesTab />,
-    prestation:   () => <AdminPrestationTab />,
+    prestation:   () => (
+      <AdminPrestationTab
+        directMessages={allMessages}
+        npcMessages={allNpcMessages}
+        npcs={npcs}
+        users={users}
+        characters={characters}
+      />
+    ),
     premonitions: () => <AdminPremonitionsTab />,
     events:       () => <AdminEventsTab />,
     timeline:     () => <AdminTimelineTab users={users} />,
@@ -952,8 +959,7 @@ async function grantXP(character_id, delta) {
       />
     ),
     dice:     () => <AdminDiceLogsTab />,
-    bloodweb: () => <AdminBloodWebTab />,
-    // System
+    bloodweb: () => <AdminBloodWebTab />,    // System
     master:     () => <AdminMasterTab />,
     masquerade: () => <AdminMasqueradeTab />,
     audit:      () => <AdminAuditTab />,

@@ -53,7 +53,7 @@ function DiceImage({ v, isExporting }) {
   );
 }
 
-function DiceStripInline({ title, values, imgFn, isExporting }) {
+function DiceStripInline({ title, values, isExporting }) {
   if (!values || !values.length) return null;
   return (
     <div style={{ marginTop: '0.5rem' }}>
@@ -62,7 +62,7 @@ function DiceStripInline({ title, values, imgFn, isExporting }) {
       </div>
       <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
         {values.map((v, i) => (
-          <DiceImage key={i} v={v} imgFn={imgFn} isExporting={isExporting} />
+          <DiceImage key={i} v={v} isExporting={isExporting} />
         ))}
       </div>
     </div>
@@ -118,8 +118,8 @@ function DiceStatCard({ title, value, subtext, rollData, isExporting }) {
 
       {rollData && (normal.length > 0 || hunger.length > 0) && (
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '0.75rem', marginTop: '0.25rem' }}>
-          <DiceStripInline title="Normal Dice" values={normal} imgFn={IMG.normal} isExporting={isExporting} />
-          <DiceStripInline title="Hunger Dice" values={hunger} imgFn={IMG.hunger} isExporting={isExporting} />
+          <DiceStripInline title="Normal Dice" values={normal} isExporting={isExporting} />
+          <DiceStripInline title="Hunger Dice" values={hunger} isExporting={isExporting} />
         </div>
       )}
     </div>

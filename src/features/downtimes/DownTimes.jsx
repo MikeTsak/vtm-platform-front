@@ -95,7 +95,6 @@ const CountdownDisplay = ({ title, countdown, subText, isProject, icon }) => {
 const submitSchema = z.object({
   title: z.string().min(1, 'Title is required').max(100, 'Title is too long'),
   body: z.string().min(1, 'Description is required').max(3000, 'Description is too long'),
-  feeding: z.string().max(100, 'Feeding type is too long').optional(),
 });
 
 function SubmitCard({ quota, isProject }) {
@@ -104,7 +103,7 @@ function SubmitCard({ quota, isProject }) {
 
   const { register, handleSubmit, reset, watch, formState: { errors } } = useForm({
     resolver: zodResolver(submitSchema),
-    defaultValues: { title: '', body: '', feeding: '' },
+    defaultValues: { title: '', body: '' },
   });
 
   const bodyValue = watch('body');
@@ -115,7 +114,6 @@ function SubmitCard({ quota, isProject }) {
       const payload = { 
         title: finalTitle, 
         body: data.body.trim(), 
-        feeding_type: isProject ? null : (data.feeding?.trim() || null) 
       };
       const response = await api.post('/downtimes', payload);
       return response.data;
@@ -160,19 +158,6 @@ function SubmitCard({ quota, isProject }) {
               />
               {errors.title && <span style={{ color: '#ef4444', fontSize: '0.85rem' }}>{errors.title.message}</span>}
             </div>
-            {!isProject && (
-              <div className={styles.field}>
-                <label className={styles.label}>Feeding Type / Cover</label>
-                <input
-                  className={styles.input}
-                  type="text"
-                  {...register('feeding')}
-                  placeholder="e.g., Herd Management"
-                  disabled={isFull || submitMutation.isPending}
-                />
-                {errors.feeding && <span style={{ color: '#ef4444', fontSize: '0.85rem' }}>{errors.feeding.message}</span>}
-              </div>
-            )}
           </div>
 
           <div className={styles.field} style={{ marginTop: '24px' }}>
