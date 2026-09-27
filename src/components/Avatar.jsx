@@ -11,15 +11,18 @@ export default function Avatar({ userId, npcId, identityId, retainerId, clan, si
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [imgError, setImgError] = useState(false);
+  const [retryTag, setRetryTag] = useState(0);
   const [cropImageSrc, setCropImageSrc] = useState(null);
   const fileInputRef = useRef(null);
 
   const baseUrl = import.meta.env.VITE_API_URL || '/api';
+  const entityPath = userId ? `/users/${userId}` : (npcId ? `/npcs/${npcId}` : (retainerId ? `/retainers/${retainerId}` : `/identities/${identityId}`));
   let srcUrl = previewUrl || fallback || '/img/ATT-logo(1).webp';
   let thumbSrcUrl = null;
 
   React.useEffect(() => {
     setImgError(false);
+    setRetryTag(0);
   }, [entityKey, timestamp]);
 
   React.useEffect(() => {
@@ -36,9 +39,10 @@ export default function Avatar({ userId, npcId, identityId, retainerId, clan, si
   // one for the small `?size=thumb` variant the backend can redirect to
   // (see migrations/list/0011_avatar_thumb_urls.js), kept as one helper so
   // the `?t=` cache-busting param stays in sync between the two.
-  const buildQuery = (extra) => {
+  const buildQuery = (extra, tag = retryTag) => {
     const params = [];
     if (timestamp) params.push(`t=${timestamp}`);
+    if (tag) params.push(`r=${tag}`);
     if (extra) params.push(extra);
     return params.length ? `?${params.join('&')}` : '';
   };
@@ -50,24 +54,29 @@ export default function Avatar({ userId, npcId, identityId, retainerId, clan, si
     } else if (hasAvatar === false && !timestamp) {
       srcUrl = fallback || '/img/ATT-logo(1).webp';
       thumbSrcUrl = null;
-    } else {
-      const q = buildQuery();
-      const qThumb = buildQuery('size=thumb');
-      if (userId) {
-        srcUrl = `${baseUrl}/users/${userId}/avatar${q}`;
-        thumbSrcUrl = `${baseUrl}/users/${userId}/avatar${qThumb}`;
-      } else if (npcId) {
-        srcUrl = `${baseUrl}/npcs/${npcId}/avatar${q}`;
-        thumbSrcUrl = `${baseUrl}/npcs/${npcId}/avatar${qThumb}`;
-      } else if (retainerId) {
-        srcUrl = `${baseUrl}/retainers/${retainerId}/avatar${q}`;
-        thumbSrcUrl = `${baseUrl}/retainers/${retainerId}/avatar${qThumb}`;
-      } else if (identityId) {
-        srcUrl = `${baseUrl}/identities/${identityId}/avatar${q}`;
-        thumbSrcUrl = `${baseUrl}/identities/${identityId}/avatar${qThumb}`;
-      }
+    } else if (userId || npcId || retainerId || identityId) {
+      srcUrl = `${baseUrl}${entityPath}/avatar${buildQuery()}`;
+      thumbSrcUrl = `${baseUrl}${entityPath}/avatar${buildQuery('size=thumb')}`;
     }
   }
+
+  // One failed load (CDN/network blip, busy server right after login) used to
+  // pin the fallback until the component remounted. Probe the real avatar once
+  // in the background and swap it back in if it loads; an entity with no
+  // avatar just costs one extra 404.
+  const usesEntityUrl = !previewUrl && !avatarUrl && !(hasAvatar === false && !timestamp) && Boolean(userId || npcId || retainerId || identityId);
+  React.useEffect(() => {
+    if (!imgError || retryTag || !usesEntityUrl) return;
+    let cancelled = false;
+    const tag = Date.now();
+    const timer = setTimeout(() => {
+      const probe = new Image();
+      probe.onload = () => { if (!cancelled) { setRetryTag(tag); setImgError(false); } };
+      probe.src = `${baseUrl}${entityPath}/avatar${buildQuery('', tag)}`;
+    }, 3000);
+    return () => { cancelled = true; clearTimeout(timer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imgError, retryTag, usesEntityUrl, entityKey]);
 
   const handleClick = () => {
     if (editable && fileInputRef.current) {
@@ -114,8 +123,7 @@ export default function Avatar({ userId, npcId, identityId, retainerId, clan, si
       const formData = new FormData();
       formData.append('avatar', croppedFile);
 
-      const endpoint = userId ? `/users/${userId}/avatar` : (npcId ? `/npcs/${npcId}/avatar` : (retainerId ? `/retainers/${retainerId}/avatar` : `/identities/${identityId}/avatar`));
-      await api.put(endpoint, formData, {
+      await api.put(`${entityPath}/avatar`, formData, {
         onUploadProgress: (progressEvent) => {
           const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
           setUploadProgress(percentCompleted);

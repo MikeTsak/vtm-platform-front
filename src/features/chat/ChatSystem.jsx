@@ -484,6 +484,10 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
 
   const [drafts, setDrafts] = useState({});
   const sendingRef = useRef(false);
+  // Idempotency key for the draft being sent. It's kept when a send fails, so
+  // re-sending the same text reuses it: if the first request actually reached
+  // the server, the server replays that message instead of storing it again.
+  const sendKeyRef = useRef(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const loadSeqRef = useRef(0);
@@ -1311,6 +1315,9 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
 
     sendingRef.current = true;
     let attachmentId = null;
+    const sig = [threadKey, body, attachment?.name, attachment?.size, replyTo?.id, queue].join('|');
+    if (sendKeyRef.current?.sig !== sig) sendKeyRef.current = { sig, key: crypto.randomUUID() };
+    const idem = { headers: { 'Idempotency-Key': sendKeyRef.current.key } };
 
     try {
       if (attachment) {
@@ -1340,7 +1347,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
       let newMsg = null;
 
       if (selectedContact.type === 'group') {
-        const { data } = await api.post(`/chat/groups/${selectedContact.id}/messages`, payload);
+        const { data } = await api.post(`/chat/groups/${selectedContact.id}/messages`, payload, idem);
         if (data && data.message) {
           newMsg = { ...data.message, sender_id: currentUser.id, sender_name: 'Me' };
         } else {
@@ -1356,7 +1363,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
         setGroups(prev => sortContacts(prev.map(g => g.id === selectedContact.id ? { ...g, last_message_at: Date.now(), unread_count: 0 } : g)));
       }
       else if (selectedContact.type === 'user') {
-        const { data } = await api.post('/chat/messages', { recipient_id: selectedContact.id, ...payload });
+        const { data } = await api.post('/chat/messages', { recipient_id: selectedContact.id, ...payload }, idem);
         if (data && data.message) {
           newMsg = data.message;
         } else {
@@ -1380,7 +1387,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
       }
       else {
         if (isAdmin) {
-          const { data } = await api.post('/admin/chat/npc/messages', { npc_id: selectedContact.id, user_id: selectedPlayerId, queue, ...payload });
+          const { data } = await api.post('/admin/chat/npc/messages', { npc_id: selectedContact.id, user_id: selectedPlayerId, queue, ...payload }, idem);
           if (data && data.message) {
             newMsg = {
               id: data.message.id,
@@ -1404,7 +1411,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
           }
           setPendingRefreshTick(t => t + 1);
         } else {
-          const { data } = await api.post('/chat/npc/messages', { npc_id: selectedContact.id, ...payload });
+          const { data } = await api.post('/chat/npc/messages', { npc_id: selectedContact.id, ...payload }, idem);
           if (data && data.message) {
             newMsg = {
               id: data.message.id,
@@ -1438,13 +1445,16 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
         // Show the quote right away; the next history poll replaces this
         // with the server's own copy of the reply preview.
         if (replyTo) newMsg = { ...newMsg, reply: replyTo };
-        setMessages(prev => [...prev, newMsg]);
+        // A poll or socket refresh that ran while this POST was in flight may
+        // already have added the server's copy; appending again showed it twice.
+        setMessages(prev => prev.some(m => m.id === newMsg.id) ? prev : [...prev, newMsg]);
         const msgTime = new Date(newMsg.created_at).getTime();
         if (msgTime > lastTsRef.current) {
           lastTsRef.current = msgTime;
         }
       }
 
+      sendKeyRef.current = null;
       setNewMessage('');
       setReplyTo(null);
       setShowEmojiPicker(false);
@@ -2391,7 +2401,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
 
                       {/* Sender Name for Groups */}
                       {isGroupNotMine && (
-                        <div className="text-[10px] font-system-code ml-1" style={{ color: CLAN_COLORS[item.sender_clan] || 'var(--on-surface-variant)' }}>
+                        <div className="text-[11px] md:text-[12px] font-bold font-system-code ml-1" style={{ color: '#fff' }}>
                           {item.sender_name}
                         </div>
                       )}

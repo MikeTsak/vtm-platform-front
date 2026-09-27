@@ -912,7 +912,7 @@ function MessagePanel({ messages, participants, reactionsByMsgId, loading, mode,
                 <Avatar {...avatarProps} size={32} style={{ borderRadius: '50%' }} fallback={symlogo(clan) || '/img/ATT-logo(1).webp'} />
               </div>
               <div className={styles.messageBubble}>
-                {showSender && <div className={styles.senderName} style={{ color: CLAN_COLORS[clan] || 'var(--text-secondary)' }}>{name}</div>}
+                {showSender && <div className={styles.senderName} style={{ color: '#fff' }}>{name}</div>}
                 {msg.attachment_id && <MediaAttachment attachmentId={msg.attachment_id} />}
                 {msg.body && <div style={{ color: isSent ? 'var(--text-color)' : 'var(--text-primary)', wordBreak: 'break-word', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{msg.body}</div>}
                 <ReactionRow reactions={reactions} />
