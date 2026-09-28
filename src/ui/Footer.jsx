@@ -5,6 +5,7 @@ import { Link, useLocation } from 'react-router-dom';
 export default function Footer() {
   const location = useLocation();
   const isDomains = location.pathname === '/domains';
+  const isDiceHidden = location.pathname.includes('/live-session');
   
   // Logic to clear service workers and cache storage
   const handleClearCache = async () => {
@@ -62,8 +63,24 @@ export default function Footer() {
               </div>
             </div>
 
-            {/* Logos & Legal */}
+            {/* Logos & Tools */}
             <div className="flex items-center gap-4">
+              {!isDiceHidden && (
+                <button 
+                  type="button" 
+                  onClick={() => window.dispatchEvent(new CustomEvent('toggle_dice_roller'))} 
+                  className="opacity-70 hover:opacity-100 hover:scale-110 active:scale-95 transition-all p-0.5 rounded focus:outline-none cursor-pointer flex items-center justify-center group"
+                  aria-label="Open Dice Roller"
+                  title="Open Dice Roller"
+                >
+                  <img 
+                    src="/img/dice/d10/Dice_Regular_Success.webp" 
+                    alt="Dice Roller" 
+                    className="h-6 w-6 object-contain drop-shadow group-hover:rotate-12 transition-transform" 
+                    draggable="false" 
+                  />
+                </button>
+              )}
               <a href="https://cerebralproductions.eu/" target="_blank" rel="noreferrer" className="opacity-60 hover:opacity-100 transition-opacity active:scale-95" aria-label="Cerebral Productions">
                 <img src="/img/cerebralproductions.webp" alt="Cerebral Productions" className="h-6 object-contain" draggable="false" />
               </a>

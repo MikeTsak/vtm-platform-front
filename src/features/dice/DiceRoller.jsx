@@ -41,6 +41,29 @@ export default function DiceRoller({ characterId }) {
   const location = useLocation();
   const isHidden = location.pathname.includes('/live-session');
 
+  useEffect(() => {
+    const handleToggle = () => setOpen(prev => !prev);
+    const handleOpen = () => setOpen(true);
+    const handleClose = () => setOpen(false);
+    window.addEventListener('toggle_dice_roller', handleToggle);
+    window.addEventListener('open_dice_roller', handleOpen);
+    window.addEventListener('close_dice_roller', handleClose);
+    return () => {
+      window.removeEventListener('toggle_dice_roller', handleToggle);
+      window.removeEventListener('open_dice_roller', handleOpen);
+      window.removeEventListener('close_dice_roller', handleClose);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [open]);
+
   // Integration States
   const [character, setCharacter] = useState(null);
   const [sheet, setSheet] = useState(null);
@@ -274,21 +297,17 @@ export default function DiceRoller({ characterId }) {
 
   return (
     <>
-      {/* Floating Opener (FAB) */}
-      <button
-        className={`no-print fixed bottom-24 md:bottom-6 right-6 w-16 h-16 rounded-full shadow-[0_6px_16px_rgba(0,0,0,0.5)] z-[9000] transition-all duration-300 grid place-items-center group ${open ? 'rotate-45 scale-90 bg-surface-container-high shadow-[0_2px_8px_rgba(0,0,0,0.5)]' : 'bg-gradient-to-br from-primary to-surface-container hover:scale-110 hover:-rotate-6 hover:shadow-[0_8px_24px_rgba(var(--theme-primary-rgb),0.6)]'}`}
-        onClick={() => setOpen(o => !o)}
-        aria-expanded={open}
-        aria-label={open ? 'Close dice roller' : 'Open dice roller'}
-      >
-        <svg className={`w-10 h-10 opacity-80 z-10 filter drop-shadow-md col-start-1 row-start-1 pointer-events-none transition-colors ${open ? 'stroke-on-surface' : 'stroke-on-primary'}`} viewBox="0 0 100 100" aria-hidden="true">
-          <polygon points="8,22 32,8 68,8 92,22 100,58 74,98 26,98 0,58" fill="none" strokeWidth="6" strokeLinejoin="round" className="stroke-current" />
-        </svg>
-        <img src="/img/dice/VtM_ankh_white.webp" alt="" className={`w-6 h-6 object-contain z-20 filter drop-shadow-lg col-start-1 row-start-1 pointer-events-none transition-opacity ${open ? 'opacity-50' : 'opacity-100'}`} draggable="false" />
-      </button>
+      {/* Backdrop overlay when open */}
+      {open && (
+        <div
+          className="no-print fixed inset-0 z-[8999] bg-black/40 backdrop-blur-[2px] transition-opacity"
+          onClick={() => setOpen(false)}
+          aria-hidden="true"
+        />
+      )}
 
       {/* Main Panel */}
-      <div className={`no-print fixed bottom-[168px] md:bottom-[100px] right-2 md:right-6 w-[calc(100vw-16px)] md:w-[340px] max-h-[calc(100vh-180px)] md:max-h-[calc(100vh-120px)] bg-surface-container border border-outline/30 rounded-2xl shadow-[0_12px_48px_rgba(0,0,0,0.75)] flex flex-col overflow-hidden z-[9000] transition-all duration-300 ease-out origin-bottom-right ${open ? 'opacity-100 pointer-events-auto scale-100 translate-y-0' : 'opacity-0 pointer-events-none scale-95 translate-y-5'} gothic-etched-border`} role="dialog" aria-label="Dice roller">
+      <div className={`no-print fixed bottom-4 md:bottom-6 right-2 md:right-6 w-[calc(100vw-16px)] md:w-[350px] max-h-[calc(100vh-32px)] md:max-h-[calc(100vh-48px)] bg-surface-container border border-outline/30 rounded-2xl shadow-[0_12px_48px_rgba(0,0,0,0.75)] flex flex-col overflow-hidden z-[9000] transition-all duration-300 ease-out origin-bottom-right ${open ? 'opacity-100 pointer-events-auto scale-100 translate-y-0' : 'opacity-0 pointer-events-none scale-95 translate-y-5'} gothic-etched-border`} role="dialog" aria-label="Dice roller">
         
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 bg-surface-container-high border-b border-outline/20">
