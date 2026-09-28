@@ -35,7 +35,9 @@ import FaGlyph from '../../ui/FaGlyph';
 const CATALOGS = {
   domain: null,
   background: COTERIE_BACKGROUNDS,
-  merit: COTERIE_MERITS,
+  // Chasse merits are landmarks of a real city, fixed by the Domain: the
+  // server refuses to sell them, so the dialog does not offer them.
+  merit: Object.fromEntries(Object.entries(COTERIE_MERITS).filter(([k]) => !CHASSE_MERIT_KEYS.has(k))),
 };
 
 /* ------------------------------------------------------------------ *
@@ -597,7 +599,7 @@ export default function CoterieSheet({
       {/* ---- Creation budget + type compliance ---- */}
       <Card title="Creation pool" subtitle="What the coterie was built with">
         <div className={styles.statRow}>
-          <Stat label="Pool" value={budget.pool.total} hint={`${budget.pool.base} from members · ${budget.pool.bonus} contributed · ${budget.pool.fromFlaws} from Flaws`} />
+          <Stat label="Pool" value={budget.pool.total} hint={`${budget.pool.base} from members · ${budget.pool.bonus} contributed · ${budget.pool.advancement || 0} added after creation · ${budget.pool.fromFlaws} from Flaws`} />
           <Stat label="Spent" value={budget.spend.total} hint={`${budget.spend.domain} Domain · ${budget.spend.backgrounds} Backgrounds · ${budget.spend.merits} Merits`} />
           <Stat
             label="Remaining"

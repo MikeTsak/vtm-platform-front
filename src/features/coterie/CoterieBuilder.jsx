@@ -53,6 +53,7 @@ const emptyState = () => ({
   members: [],
   pointsPerMember: 1,
   bonusPoints: 0,
+  advancementDots: 0,
   required: null,
   extras: [],
   rulesOverride: false,
@@ -227,6 +228,7 @@ export default function CoterieBuilder({
     memberCount: s.members.length,
     pointsPerMember: s.pointsPerMember,
     bonusPoints: s.bonusPoints,
+    advancementDots: s.advancementDots,
     domainId: s.domainId,
     traits: s.traits,
     backgrounds: s.backgrounds,
@@ -310,6 +312,7 @@ export default function CoterieBuilder({
         <div className={styles.budgetBreakdown}>
           <span>{budget.pool.base} from {s.members.length} members</span>
           {budget.pool.bonus > 0 && <span>+{budget.pool.bonus} contributed</span>}
+          {budget.pool.advancement > 0 && <span>+{budget.pool.advancement} added after creation</span>}
           {budget.pool.fromFlaws > 0 && <span>+{budget.pool.fromFlaws} from Flaws</span>}
           <span className={styles.budgetRemaining}>
             {budget.remaining >= 0 ? `${budget.remaining} left` : `${Math.abs(budget.remaining)} over`}

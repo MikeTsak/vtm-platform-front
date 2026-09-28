@@ -197,6 +197,7 @@ export default function CoterieManager() {
       extras: coterie.extras || [],
       pointsPerMember: coterie.points_per_member || 1,
       bonusPoints: coterie.bonus_points || 0,
+      advancementDots: coterie.advancement_dots || 0,
       rulesOverride: !!coterie.rules_override,
       members: (members || []).map((m) => ({
         id: m.user_id,

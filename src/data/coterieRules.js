@@ -440,11 +440,12 @@ export const COTERIE_FLAW_NOTE =
 const sumDots = (list) =>
   (Array.isArray(list) ? list : []).reduce((n, x) => n + (Number(x && x.dots) || 0), 0);
 
-export function computePool({ memberCount, pointsPerMember, bonusPoints, flaws }) {
+export function computePool({ memberCount, pointsPerMember, bonusPoints, advancementDots, flaws }) {
   const base = (Number(memberCount) || 0) * (Number(pointsPerMember) || 1);
   const bonus = Number(bonusPoints) || 0;
+  const advancement = Number(advancementDots) || 0;
   const fromFlaws = sumDots(flaws);
-  return { base, bonus, fromFlaws, total: base + bonus + fromFlaws };
+  return { base, bonus, advancement, fromFlaws, total: base + bonus + advancement + fromFlaws };
 }
 
 // Every dot the coterie holds is paid from the pool, the Domain dots listed
@@ -502,6 +503,7 @@ export function validateCoterie(input = {}) {
   const budget = computeBudget({
     memberCount, pointsPerMember,
     bonusPoints: Number(input.bonusPoints) || 0,
+    advancementDots: Number(input.advancementDots) || 0,
     traits, backgrounds, merits, flaws,
   });
 

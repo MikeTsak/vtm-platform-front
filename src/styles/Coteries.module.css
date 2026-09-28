@@ -1057,6 +1057,10 @@
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
+/* The body scrolls; its children keep their size. Without this, children that
+   clip their own overflow (the tab strip, the trait list, the XP funding bar)
+   shrink toward zero height when the content is taller than the dialog. */
+.modalBody > * { flex-shrink: 0; }
 
 .modalFooter {
   display: flex;
