@@ -1156,7 +1156,8 @@ export default function CharacterView({
     xp,
     costs: XP_RULES,
     disciplineKind: (name) => disciplineKindFor(ch, name),
-  }), [ch, sheet, xp]);
+    discAccess,
+  }), [ch, sheet, xp, discAccess]);
 
   const findMissingPicks = useCallback((s) => {
     const dots = s?.disciplines || {};
@@ -1415,6 +1416,7 @@ export default function CharacterView({
       note: s.reason,
       compact: true,
       badge: s.rank ?? null,
+      tag: s.synergyTag ?? null,
       disabled: !s.affordable,
       hint: s.affordable ? '' : `${s.shortfall} more XP needed`,
     };
@@ -1460,9 +1462,26 @@ export default function CharacterView({
           <SuggestedSpecialtyRow
             skill={s.target}
             disabled={!s.affordable}
+            recommendedSpecialty={s.recommendedSpecialty}
+            specialtyIdeas={s.specialtyIdeas}
             onAdd={(spec) => buySpecialty(s.target, spec)}
           />
         </ShopRow>
+      );
+    }
+
+    if (s.kind === 'ritual' || s.kind === 'ceremony') {
+      return (
+        <ShopRow
+          key={s.id}
+          {...common}
+          hideDots
+          disabled={false}
+          hint=""
+          noConfirm
+          actionLabel="Browse"
+          onBuy={() => setActiveShopTab('Rituals')}
+        />
       );
     }
 
@@ -3273,17 +3292,18 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
 
 /* ---------- Specialty adder ---------- */
 /* A specialty needs a name, so its suggestion card carries its own input
-   rather than a plain Acquire button. */
-function SuggestedSpecialtyRow({ skill, disabled, onAdd }) {
+   rather than a plain Acquire button, plus quick select pills. */
+function SuggestedSpecialtyRow({ skill, disabled, onAdd, recommendedSpecialty, specialtyIdeas = [] }) {
   const [value, setValue] = useState('');
   const [working, setWorking] = useState(false);
   const clean = value.trim();
 
-  async function submit() {
-    if (!clean || working) return;
+  async function submit(customVal) {
+    const textToSubmit = (customVal || clean).trim();
+    if (!textToSubmit || working) return;
     setWorking(true);
     try {
-      await onAdd(clean);
+      await onAdd(textToSubmit);
       setValue('');
     } finally {
       setWorking(false);
@@ -3291,22 +3311,40 @@ function SuggestedSpecialtyRow({ skill, disabled, onAdd }) {
   }
 
   return (
-    <div className={styles.suggestSpecialtyRow}>
-      <input
-        className={styles.suggestSpecialtyInput}
-        placeholder="Specialty…"
-        value={value}
-        disabled={disabled || working}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
-      />
-      <button
-        className={styles.shopCardAcquireBtn}
-        disabled={disabled || working || !clean}
-        onClick={submit}
-      >
-        {working ? 'Working…' : 'Acquire'}
-      </button>
+    <div style={{ width: '100%' }}>
+      <div className={styles.suggestSpecialtyRow}>
+        <input
+          className={styles.suggestSpecialtyInput}
+          placeholder={recommendedSpecialty ? `e.g. ${recommendedSpecialty}` : 'Specialty…'}
+          value={value}
+          disabled={disabled || working}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
+        />
+        <button
+          className={styles.shopCardAcquireBtn}
+          disabled={disabled || working || !clean}
+          onClick={() => submit()}
+        >
+          {working ? 'Working…' : 'Acquire'}
+        </button>
+      </div>
+      {Array.isArray(specialtyIdeas) && specialtyIdeas.length > 0 && (
+        <div className={styles.suggestSpecialtyPills}>
+          {specialtyIdeas.map((idea) => (
+            <button
+              key={idea}
+              type="button"
+              className={styles.suggestSpecialtyPill}
+              disabled={disabled || working}
+              onClick={() => setValue(idea)}
+              title={`Use ${idea}`}
+            >
+              + {idea}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

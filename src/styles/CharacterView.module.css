@@ -3962,6 +3962,47 @@ select.input:focus {
   vertical-align: middle;
 }
 
+.suggestTag {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-color);
+  color: var(--tint);
+  vertical-align: middle;
+}
+
+.suggestSpecialtyPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  width: 100%;
+}
+
+.suggestSpecialtyPill {
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.suggestSpecialtyPill:hover {
+  border-color: var(--tint);
+  color: var(--text-color);
+  background: rgba(255, 255, 255, 0.05);
+}
+
 .suggestEmpty {
   padding: 24px 16px;
   text-align: center;

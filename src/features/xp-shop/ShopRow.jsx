@@ -18,7 +18,7 @@ export function ConfirmModal({ title = 'Confirm Purchase', children, onConfirm, 
   );
 }
 
-export function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, leftIcon, description = '', noConfirm = false, forceExpanded = false, hideDots = false, note = '', badge = null, actionLabel = 'Acquire', compact = false, owned, children }) {
+export function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, leftIcon, description = '', noConfirm = false, forceExpanded = false, hideDots = false, note = '', badge = null, tag = null, actionLabel = 'Acquire', compact = false, owned, children }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [working, setWorking] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -64,6 +64,7 @@ export function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, lef
             <h2 className={styles.shopCardTitle}>
               {badge != null && <span className={styles.suggestRank}>{badge}</span>}
               {cleanTitle}
+              {tag != null && <span className={styles.suggestTag}>{tag}</span>}
             </h2>
             <p className={styles.shopCardSubtitle}>{subtitle}</p>
           </div>
