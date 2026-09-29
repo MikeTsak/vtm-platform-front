@@ -199,14 +199,14 @@ export const CLAN_THEME_RULES = {
     primaryAccent: '#F1AB13',
     secondaryAccent: '#F93943',
     border: '#445E93',
-    textColor: '#FCB0B3',
+    textColor: '#FCD0D2',
     surface: '#141224',
     bg: '#0a0814',
     symbolColor: '#FCB0B3',
     textLogoColor: '#F1AB13',
-    boxLight: '#FCB0B3',
-    boxBorder: '#F1AB13',
-    boxInk: '#445E93',
+    boxLight: '#FDF6F0',
+    boxBorder: '#D97706',
+    boxInk: '#1C152B',
     aesthetic: 'hallucinatory psychedelic swirling fractal fluid'
   },
   Nosferatu: {
@@ -223,9 +223,9 @@ export const CLAN_THEME_RULES = {
     bg: '#0c0d0c',
     symbolColor: '#404E51',
     textLogoColor: '#A19F74',
-    boxLight: '#A19F74',
-    boxBorder: '#404E51',
-    boxInk: '#272826',
+    boxLight: '#F3F4EE',
+    boxBorder: '#555C4E',
+    boxInk: '#222521',
     aesthetic: 'subterranean cracked stone catacomb and toxic sewer mist'
   },
   Salubri: {
@@ -242,9 +242,9 @@ export const CLAN_THEME_RULES = {
     bg: '#0d0c12',
     symbolColor: '#E1FBFE',
     textLogoColor: '#A93F55',
-    boxLight: '#E1FBFE',
-    boxBorder: '#96A1CA',
-    boxInk: '#5A5766',
+    boxLight: '#F4FAFA',
+    boxBorder: '#5D7399',
+    boxInk: '#161522',
     aesthetic: 'ethereal twilight clouds and celestial mist'
   },
   'The Ministry': {
@@ -313,14 +313,14 @@ export const CLAN_THEME_RULES = {
     primaryAccent: '#CCB2DC',
     secondaryAccent: '#941414',
     border: '#501E5C',
-    textColor: '#CCB2DC',
+    textColor: '#E2D5EA',
     surface: '#201424',
     bg: '#0d0810',
     symbolColor: '#CCB2DC',
     textLogoColor: '#CCB2DC',
-    boxLight: '#CCB2DC',
-    boxBorder: '#937EA5',
-    boxInk: '#201D1D',
+    boxLight: '#F7F3F9',
+    boxBorder: '#723B80',
+    boxInk: '#1A0F1D',
     aesthetic: 'hermetic blood marble and occult sorcery swirl'
   },
   Tzimisce: {
@@ -337,9 +337,9 @@ export const CLAN_THEME_RULES = {
     bg: '#0d0b12',
     symbolColor: '#B8C4BB',
     textLogoColor: '#B8C4BB',
-    boxLight: '#B8C4BB',
-    boxBorder: '#86A59C',
-    boxInk: '#333333',
+    boxLight: '#EFF3F0',
+    boxBorder: '#4E6E64',
+    boxInk: '#181A19',
     aesthetic: 'visceral textured dragon fleshcrafting and ancestral earth'
   },
   Ventrue: {
@@ -356,9 +356,9 @@ export const CLAN_THEME_RULES = {
     bg: '#0a0b17',
     symbolColor: '#B09E4F',
     textLogoColor: '#F5F2EF',
-    boxLight: '#F5F2EF',
-    boxBorder: '#B09E4F',
-    boxInk: '#0F0D4F',
+    boxLight: '#F8F6F2',
+    boxBorder: '#8F7A32',
+    boxInk: '#0C0A2E',
     aesthetic: 'patrician imperial white marble and sovereign gold'
   },
   Ravnos: {
@@ -374,9 +374,9 @@ export const CLAN_THEME_RULES = {
     surface: '#2c1e17',
     bg: '#150c08',
     symbolColor: '#B73D35',
-    boxLight: '#F5D7A1',
-    boxBorder: '#E08226',
-    boxInk: '#2C1B10',
+    boxLight: '#FAF4E8',
+    boxBorder: '#B25E15',
+    boxInk: '#24150C',
     aesthetic: 'nomadic illusion and smoky caravan amber'
   },
   Caitiff: {
@@ -392,8 +392,8 @@ export const CLAN_THEME_RULES = {
     surface: '#212121',
     bg: '#121212',
     symbolColor: '#9A9EA0',
-    boxLight: '#E0E0E0',
-    boxBorder: '#636363',
+    boxLight: '#F0F2F3',
+    boxBorder: '#525759',
     boxInk: '#1C1C1C',
     aesthetic: 'street concrete and alleyway smog'
   },
@@ -410,8 +410,8 @@ export const CLAN_THEME_RULES = {
     surface: '#242417',
     bg: '#121209',
     symbolColor: '#5B8C9E',
-    boxLight: '#E4E4A8',
-    boxBorder: '#8C8C37',
+    boxLight: '#FAF9EE',
+    boxBorder: '#686824',
     boxInk: '#1E1E0E',
     aesthetic: 'chemical alchemy smog and daylight dusk'
   }

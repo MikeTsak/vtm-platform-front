@@ -50,6 +50,28 @@ function readStoredTheme() {
   }
 }
 
+function getContrastInk(hexColor) {
+  if (!hexColor || typeof hexColor !== 'string') return '#ffffff';
+  let hex = hexColor.replace('#', '').trim();
+  if (hex.length === 3) {
+    hex = hex.split('').map(c => c + c).join('');
+  }
+  if (hex.length !== 6) return '#ffffff';
+  const r = parseInt(hex.slice(0, 2), 16) / 255;
+  const g = parseInt(hex.slice(2, 4), 16) / 255;
+  const b = parseInt(hex.slice(4, 6), 16) / 255;
+  const toLinear = (c) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  const lum = 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+  return lum > 0.38 ? '#0b0b0f' : '#ffffff';
+}
+
+const NON_CLAN_THEME_TINTS = {
+  camarilla: '#8a0f1a',
+  schrecknet: '#0ea5e9',
+  anarch: '#ea580c',
+  Giannakis: '#14b8a6',
+};
+
 // Paint <html>. When theme is 'clan' and clan is present, write the full 5-color
 // token suite and iconography colors. For all other themes, strip clan overrides.
 function paintTheme(theme, clan, tintHex) {
@@ -81,6 +103,11 @@ function paintTheme(theme, clan, tintHex) {
     const textColor = rules?.textColor || palette?.[3] || '#e8e8ed';
     const surface = rules?.surface || palette?.[4] || '#141417';
     const bgBase = rules?.bg || '#0a0a0f';
+
+    const tintContrast = getContrastInk(primary);
+    root.style.setProperty('--tint-contrast', tintContrast);
+    root.style.setProperty('--clan-on-primary', tintContrast);
+    root.style.setProperty('--theme-on-primary', tintContrast);
 
     root.style.setProperty('--tint', primary);
     root.style.setProperty('--dynamic-tint', primary);
@@ -119,7 +146,9 @@ function paintTheme(theme, clan, tintHex) {
     // Box Tokens for Character Sheet and Containers
     const boxLight = rules?.boxLight || palette?.[3] || '#F5F2EF';
     const boxBorder = rules?.boxBorder || border || '#B09E4F';
-    const boxInk = rules?.boxInk || palette?.[0] || '#111111';
+    const rawBoxInk = rules?.boxInk || palette?.[0] || '#111111';
+    // Ensure box ink on light paper cards is always legitimately dark
+    const boxInk = getContrastInk(rawBoxInk) === '#ffffff' ? rawBoxInk : '#141417';
 
     root.style.setProperty('--clan-box-light', boxLight);
     root.style.setProperty('--clan-box-border', boxBorder);
@@ -136,6 +165,10 @@ function paintTheme(theme, clan, tintHex) {
   } else {
     // Clear clan overrides to let stylesheet defaults take over
     root.removeAttribute('data-clan');
+    const defaultTint = NON_CLAN_THEME_TINTS[theme] || '#8a0f1a';
+    root.style.setProperty('--tint-contrast', getContrastInk(defaultTint));
+    root.style.removeProperty('--clan-on-primary');
+    root.style.removeProperty('--theme-on-primary');
     root.style.removeProperty('--tint');
     root.style.removeProperty('--dynamic-tint');
     root.style.removeProperty('--clan-primary');

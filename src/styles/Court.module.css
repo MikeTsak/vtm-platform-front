@@ -412,7 +412,7 @@
 
 .toggleViewBtn:hover {
   background: var(--tint);
-  color: var(--bg-color);
+  color: var(--tint-contrast, var(--bg-color));
   box-shadow: 0 0 10px color-mix(in srgb, var(--tint) 40%, transparent);
 }
 
@@ -470,7 +470,7 @@
 
 .decreeBtn:hover {
   background: var(--tint);
-  color: var(--bg-color);
+  color: var(--tint-contrast, var(--bg-color));
   box-shadow: 0 0 15px color-mix(in srgb, var(--tint) 40%, transparent);
 }
 
@@ -603,7 +603,7 @@
 .modalActions button[type="submit"] {
   background: var(--tint);
   border-color: var(--tint);
-  color: var(--bg-color);
+  color: var(--tint-contrast, var(--bg-color));
 }
 .modalActions button[type="submit"]:hover { filter: brightness(1.2); }
 
@@ -711,7 +711,7 @@
 
 .toggleViewBtn:hover {
   background: var(--tint);
-  color: var(--bg-color);
+  color: var(--tint-contrast, var(--bg-color));
   box-shadow: 0 0 12px color-mix(in srgb, var(--tint) 40%, transparent);
 }
 
@@ -799,7 +799,7 @@
   top: -15px;
   right: -15px;
   background: var(--tint);
-  color: white;
+  color: var(--tint-contrast, white);
   border: 2px solid var(--surface-color);
   border-radius: 50%;
   width: 35px;
@@ -895,7 +895,7 @@
 
 .bulkBloodhuntBtn:hover {
   background: var(--tint);
-  color: var(--bg-color);
+  color: var(--tint-contrast, var(--bg-color));
   box-shadow: 0 0 10px color-mix(in srgb, var(--tint) 50%, transparent);
 }
 
@@ -968,6 +968,7 @@
 
 .issueBtn:hover {
   background: var(--tint);
+  color: var(--tint-contrast, var(--text-color));
 }
 
 @media (width <= 600px) {
@@ -1288,6 +1289,7 @@
 
 .submitBtn:hover {
   background: var(--tint);
+  color: var(--tint-contrast, var(--text-color));
 }
 
 /* --- Decree Print Layout Styles --- */

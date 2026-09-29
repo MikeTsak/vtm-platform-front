@@ -334,7 +334,7 @@ function MysticFixModal({ maxMystic, oblivionDots, onClose, onSave, busy }) {
                     padding: '12px',
                     cursor: isDisabled ? 'not-allowed' : 'pointer',
                     opacity: isDisabled ? 0.5 : 1,
-                    backgroundColor: isSelected ? 'var(--primary-container)' : 'transparent',
+                    backgroundColor: isSelected ? 'var(--tint)' : 'transparent',
                     borderBottom: '1px solid var(--border-color)',
                     display: 'flex',
                     alignItems: 'center',
@@ -345,13 +345,13 @@ function MysticFixModal({ maxMystic, oblivionDots, onClose, onSave, busy }) {
                   <div style={{ 
                     width: '16px', height: '16px', border: '1px solid var(--text-color)', 
                     borderRadius: '2px', display: 'flex', justifyContent: 'center', alignItems: 'center',
-                    backgroundColor: isSelected ? 'var(--on-primary)' : 'transparent'
+                    backgroundColor: isSelected ? 'var(--tint-contrast, #fff)' : 'transparent'
                   }}>
-                    {isSelected && <span className="material-symbols-outlined" style={{ fontSize: '14px', color: 'var(--primary-container)' }}>check</span>}
+                    {isSelected && <span className="material-symbols-outlined" style={{ fontSize: '14px', color: 'var(--tint)' }}>check</span>}
                   </div>
                   <div>
-                    <div style={{ fontWeight: 600, color: isSelected ? 'var(--on-primary)' : 'var(--text-color)' }}>{p.name}</div>
-                    <div style={{ fontSize: '12px', color: isSelected ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)' }}>Level {p.level}</div>
+                    <div style={{ fontWeight: 600, color: isSelected ? 'var(--tint-contrast, var(--text-color))' : 'var(--text-color)' }}>{p.name}</div>
+                    <div style={{ fontSize: '12px', color: isSelected ? 'var(--tint-contrast, var(--text-muted))' : 'var(--text-muted)' }}>Level {p.level}</div>
                   </div>
                 </div>
               );
@@ -1520,13 +1520,13 @@ export default function CharacterView({
               <button
                 type="button"
                 onClick={() => handleBoxModeChange(boxMode === 'illuminated' ? 'glass' : 'illuminated')}
-                title={boxMode === 'illuminated' ? 'Switch to Gothic Glass style' : 'Switch to Illuminated Dossier style'}
-                aria-label={boxMode === 'illuminated' ? 'Switch to Gothic Glass style' : 'Switch to Illuminated Dossier style'}
+                title={boxMode === 'illuminated' ? 'Switch to Dark Theme' : 'Switch to White Theme'}
+                aria-label={boxMode === 'illuminated' ? 'Switch to Dark Theme' : 'Switch to White Theme'}
                 className={styles.mobileHeaderNotifBtn}
                 style={{ color: 'var(--tint)' }}
               >
                 <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>
-                  {boxMode === 'illuminated' ? 'blur_on' : 'auto_stories'}
+                  {boxMode === 'illuminated' ? 'dark_mode' : 'light_mode'}
                 </span>
               </button>
               {(!adminNPCId && String(user?.id) === String(ch?.user_id)) && (
@@ -1570,19 +1570,19 @@ export default function CharacterView({
                   type="button"
                   onClick={() => handleBoxModeChange('illuminated')}
                   className={`${styles.boxModeBtn} ${boxMode === 'illuminated' ? styles.boxModeBtnActive : ''}`}
-                  title="Illuminated Dossier style"
+                  title="White Theme"
                 >
-                  <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>auto_stories</span>
-                  <span className={styles.boxModeLabel}>Dossier</span>
+                  <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>light_mode</span>
+                  <span className={styles.boxModeLabel}>White Theme</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => handleBoxModeChange('glass')}
                   className={`${styles.boxModeBtn} ${boxMode === 'glass' ? styles.boxModeBtnActive : ''}`}
-                  title="Gothic Glass style"
+                  title="Dark Theme"
                 >
-                  <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>blur_on</span>
-                  <span className={styles.boxModeLabel}>Glass</span>
+                  <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>dark_mode</span>
+                  <span className={styles.boxModeLabel}>Dark Theme</span>
                 </button>
               </div>
 
@@ -2748,7 +2748,7 @@ function InlineRitualPicker({ type, itemsObj, knownIds, knownPowerNamesAndIds, b
                 <div>
                   <div className={styles.powerCardTitleWrap}>
                     {isOwned && (
-                      <span className="material-symbols-outlined" style={{ color: 'var(--primary-container)', fontSize: '16px', fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                      <span className="material-symbols-outlined" style={{ color: 'var(--tint)', fontSize: '16px', fontVariationSettings: "'FILL' 1" }}>check_circle</span>
                     )}
                     {isRestricted && (
                       <span className="material-symbols-outlined" style={{ color: 'var(--text-muted)', fontSize: '16px' }}>lock</span>
@@ -2968,7 +2968,7 @@ function InlineDisciplinePicker({ cfg, onConfirm, searchQuery }) {
                 <div>
                   <div className={styles.powerCardTitleWrap}>
                     {isOwned && (
-                      <span className="material-symbols-outlined" style={{ color: 'var(--primary-container)', fontSize: '16px', fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                      <span className="material-symbols-outlined" style={{ color: 'var(--tint)', fontSize: '16px', fontVariationSettings: "'FILL' 1" }}>check_circle</span>
                     )}
                     {isRestricted && (
                       <span className="material-symbols-outlined" style={{ color: 'var(--text-muted)', fontSize: '16px' }}>lock</span>
@@ -3185,7 +3185,7 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
               <span className="material-symbols-outlined">close</span>
             </button>
             <div className={styles.drawerXpBadge}>
-              <span className="material-symbols-outlined" style={{ color: 'var(--primary-container)', fontSize: '16px', fontVariationSettings: "'FILL' 1" }}>stars</span>
+              <span className="material-symbols-outlined" style={{ color: 'var(--tint)', fontSize: '16px', fontVariationSettings: "'FILL' 1" }}>stars</span>
               <span className={styles.drawerXpBadgeText}>Level {next}</span>
             </div>
           </div>
@@ -3212,7 +3212,7 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
                     <div>
                       <div className={styles.powerCardTitleWrap}>
                         {isOwned && (
-                          <span className="material-symbols-outlined" style={{ color: 'var(--primary-container)', fontSize: '16px', fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                          <span className="material-symbols-outlined" style={{ color: 'var(--tint)', fontSize: '16px', fontVariationSettings: "'FILL' 1" }}>check_circle</span>
                         )}
                         {isRestricted && (
                           <span className="material-symbols-outlined" style={{ color: 'var(--text-muted)', fontSize: '16px' }}>lock</span>

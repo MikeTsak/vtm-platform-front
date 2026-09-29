@@ -39,7 +39,7 @@
 
 .btnPrimary {
   background: var(--tint);
-  color: var(--bg-color);
+  color: var(--tint-contrast, var(--bg-color));
   border: 1px solid var(--tint);
   padding: 0.75rem 1.5rem;
   border-radius: 8px;

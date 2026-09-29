@@ -474,7 +474,7 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
             <div style={{ position: 'relative', flex: '1 1 300px', maxWidth: '400px' }}>
               <span className="material-symbols-outlined" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>search</span>
               <input
-                style={{ width: '100%', backgroundColor: 'var(--surface-lighter, #113f38)', border: 'none', borderBottom: '1px solid var(--border-color)', color: 'var(--text-color)', padding: '8px 16px 8px 40px', fontSize: '12px', letterSpacing: '0.1em', textTransform: 'uppercase' }}
+                style={{ width: '100%', backgroundColor: 'var(--surface-lighter, rgba(255, 255, 255, 0.05))', border: 'none', borderBottom: '1px solid var(--border-color)', color: 'var(--text-color)', padding: '8px 16px 8px 40px', fontSize: '12px', letterSpacing: '0.1em', textTransform: 'uppercase' }}
                 placeholder="SEARCH ADVANTAGES..."
                 value={localSearch}
                 onChange={e => setLocalSearch(e.target.value)}
@@ -493,8 +493,8 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
                     letterSpacing: '0.1em',
                     fontWeight: 500,
                     whiteSpace: 'nowrap',
-                    border: activeTab === tab ? '1px solid var(--primary-color)' : '1px solid var(--border-color)',
-                    color: activeTab === tab ? 'var(--primary-color)' : 'var(--text-muted)',
+                    border: activeTab === tab ? '1px solid var(--tint)' : '1px solid var(--border-color)',
+                    color: activeTab === tab ? 'var(--tint)' : 'var(--text-muted)',
                     backgroundColor: activeTab === tab ? 'rgba(180, 15, 31, 0.2)' : 'transparent',
                     cursor: 'pointer',
                     transition: 'all 0.2s'
@@ -516,8 +516,8 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
           
           {/* Merits Column */}
           <div className={styles.advColumn}>
-            <div style={{ padding: '16px', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color, #0b2b26)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 style={{ fontSize: '24px', fontWeight: 600, color: 'var(--primary-color)', fontFamily: "'Playfair Display', serif" }}>MERITS</h2>
+            <div style={{ padding: '16px', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color, rgba(20, 20, 25, 0.8))', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ fontSize: '24px', fontWeight: 600, color: 'var(--tint)', fontFamily: "'Playfair Display', serif" }}>MERITS</h2>
               <span style={{ fontSize: '20px', fontWeight: 600, color: 'var(--text-muted)' }}>{totalMeritDots} ●</span>
             </div>
             <div style={{ overflowY: 'auto', padding: '8px', display: 'flex', flexDirection: 'column', gap: '4px', flexGrow: 1 }}>
@@ -534,20 +534,20 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
                       justifyContent: 'space-between',
                       alignItems: 'center',
                       borderBottom: isSelected ? 'none' : '1px solid var(--border-color)',
-                      border: isSelected ? '1px solid var(--primary-color)' : 'none',
+                      border: isSelected ? '1px solid var(--tint)' : 'none',
                       backgroundColor: isSelected ? 'rgba(180, 15, 31, 0.1)' : 'transparent',
                       transition: 'background-color 0.2s'
                     }}
-                    onMouseEnter={e => !isSelected && (e.currentTarget.style.backgroundColor = 'var(--surface-lighter, #113f38)')}
+                    onMouseEnter={e => !isSelected && (e.currentTarget.style.backgroundColor = 'var(--surface-lighter, rgba(255, 255, 255, 0.06))')}
                     onMouseLeave={e => !isSelected && (e.currentTarget.style.backgroundColor = 'transparent')}
                   >
                     <div>
-                      <div className={styles.advItemName} style={{ color: isSelected ? 'var(--primary-color)' : 'var(--text-color)' }}>{m.name}</div>
+                      <div className={styles.advItemName} style={{ color: isSelected ? 'var(--tint)' : 'var(--text-color)' }}>{m.name}</div>
                       <div style={{ fontSize: '12px', letterSpacing: '0.1em', color: 'var(--text-muted)', marginTop: '4px', textTransform: 'uppercase' }}>
                         {m.category} • {m.dotsSpec}
                       </div>
                     </div>
-                    {isSelected && <span className="material-symbols-outlined" style={{ color: 'var(--primary-color)' }}>chevron_right</span>}
+                    {isSelected && <span className="material-symbols-outlined" style={{ color: 'var(--tint)' }}>chevron_right</span>}
                   </div>
                 );
               })}
@@ -556,7 +556,7 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
 
           {/* Flaws Column */}
           <div className={styles.advColumn}>
-            <div style={{ padding: '16px', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color, #0b2b26)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ padding: '16px', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color, rgba(20, 20, 25, 0.8))', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h2 style={{ fontSize: '24px', fontWeight: 600, color: 'var(--text-color)', fontFamily: "'Playfair Display', serif" }}>FLAWS</h2>
               <span style={{ fontSize: '20px', fontWeight: 600, color: 'var(--error)' }}>{totalFlawDots} ●</span>
             </div>
@@ -578,7 +578,7 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
                       backgroundColor: isSelected ? 'rgba(255, 0, 0, 0.05)' : 'transparent',
                       transition: 'background-color 0.2s'
                     }}
-                    onMouseEnter={e => !isSelected && (e.currentTarget.style.backgroundColor = 'var(--surface-lighter, #113f38)')}
+                    onMouseEnter={e => !isSelected && (e.currentTarget.style.backgroundColor = 'var(--surface-lighter, rgba(255, 255, 255, 0.06))')}
                     onMouseLeave={e => !isSelected && (e.currentTarget.style.backgroundColor = 'transparent')}
                   >
                     <div>
@@ -601,7 +601,7 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
           {selectedAdvantage ? (() => {
             const item = detailItem;
             const isFlaw = detailType === 'flaw';
-            const themeColor = isFlaw ? 'var(--error)' : 'var(--primary-color)';
+            const themeColor = isFlaw ? 'var(--error)' : 'var(--tint)';
             const ownedDots = getOwnedDots(item, detailType);
             const delta = Math.max(0, detailDots - ownedDots);
             const cost = isFlaw ? 0 : (detailAddSeparate ? XP_RULES.advantageDot(detailDots) : XP_RULES.advantageDot(delta));
@@ -615,7 +615,7 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
 
             return (
               <>
-                <div style={{ padding: '24px', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color, #0b2b26)' }}>
+                <div style={{ padding: '24px', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color, rgba(20, 20, 25, 0.8))' }}>
                   <div className={styles.advDetailTitleRow}>
                     <h3 className={styles.advDetailTitle} style={{ color: themeColor }}>{item.name}</h3>
                     <span className={styles.advDetailBadge}>{item.category?.split(' / ')[0]}</span>
@@ -641,14 +641,14 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
                   <div style={{ marginTop: '32px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
                     <div style={{ fontSize: '12px', letterSpacing: '0.1em', fontWeight: 500, color: 'var(--text-color)', marginBottom: '8px', textTransform: 'uppercase' }}>Select Rating:</div>
                     
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--surface-lighter, #113f38)', padding: '12px', borderRadius: '4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--surface-lighter, rgba(255, 255, 255, 0.06))', padding: '12px', borderRadius: '4px' }}>
                       <select 
                         value={detailDots} 
                         onChange={e => setDetailDots(Number(e.target.value))}
                         style={{ backgroundColor: 'transparent', border: 'none', color: themeColor, fontSize: '20px', fontWeight: 600, outline: 'none', cursor: 'pointer' }}
                       >
                         {detailAllowed.map(n => (
-                          <option key={n} value={n} style={{ color: 'var(--text-color)', backgroundColor: 'var(--surface-lighter, #113f38)' }}>{glyf(n)} ({n})</option>
+                          <option key={n} value={n} style={{ color: 'var(--text-color)', backgroundColor: 'var(--surface-color, #1a1a1f)' }}>{glyf(n)} ({n})</option>
                         ))}
                       </select>
                       <span style={{ fontSize: '12px', letterSpacing: '0.1em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
@@ -693,9 +693,9 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
                                         style={{
                                           padding: '6px 12px',
                                           borderRadius: '16px',
-                                          border: isSelected ? '1px solid var(--primary-container)' : '1px solid var(--border-color)',
-                                          backgroundColor: isSelected ? 'var(--primary-container)' : 'var(--surface-lighter, #113f38)',
-                                          color: isSelected ? 'white' : (isDisabled ? 'var(--text-muted)' : 'var(--text-color)'),
+                                          border: isSelected ? '1px solid var(--tint)' : '1px solid var(--border-color)',
+                                          backgroundColor: isSelected ? 'var(--tint)' : 'var(--surface-lighter, rgba(255, 255, 255, 0.06))',
+                                          color: isSelected ? 'var(--tint-contrast, #fff)' : (isDisabled ? 'var(--text-muted)' : 'var(--text-color)'),
                                           cursor: isDisabled ? 'not-allowed' : 'pointer',
                                           fontSize: '14px',
                                           display: 'flex',
@@ -736,14 +736,14 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
                   </div>
                 </div>
 
-                <div style={{ padding: '24px', backgroundColor: 'var(--surface-color, #0b2b26)', borderTop: '1px solid var(--border-color)', marginTop: 'auto' }}>
+                <div style={{ padding: '24px', backgroundColor: 'var(--surface-color, rgba(20, 20, 25, 0.8))', borderTop: '1px solid var(--border-color)', marginTop: 'auto' }}>
                   <button 
                     onClick={handlePurchase}
                     disabled={finalBlocked}
                     style={{
                       width: '100%',
-                      backgroundColor: finalBlocked ? 'var(--surface-color, rgba(255, 255, 255, 0.1))' : 'var(--primary-container)',
-                      color: finalBlocked ? 'var(--text-muted)' : 'white',
+                      backgroundColor: finalBlocked ? 'var(--surface-color, rgba(255, 255, 255, 0.1))' : 'var(--tint)',
+                      color: finalBlocked ? 'var(--text-muted)' : 'var(--tint-contrast, #fff)',
                       padding: '12px',
                       borderRadius: '4px',
                       fontSize: '12px',
@@ -822,12 +822,12 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
                   type="text" 
                   value={editNoteText} 
                   onChange={e => setEditNoteText(e.target.value)}
-                  style={{ width: '100%', padding: '6px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--primary-color)', color: '#fff', borderRadius: '4px', fontSize: '12px' }}
+                  style={{ width: '100%', padding: '6px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--tint)', color: '#fff', borderRadius: '4px', fontSize: '12px' }}
                   autoFocus
                 />
                 <div style={{ display: 'flex', gap: '8px', marginTop: '6px', justifyContent: 'flex-end' }}>
                   <button onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); setEditingNoteId(null); }} onClick={(e) => { e.stopPropagation(); setEditingNoteId(null); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '11px', cursor: 'pointer' }}>Cancel</button>
-                  <button onPointerDown={(e) => { e.preventDefault(); handleSaveNote(e, type, item, idx); }} onClick={(e) => handleSaveNote(e, type, item, idx)} style={{ background: 'var(--primary-color)', border: 'none', color: '#000', borderRadius: '4px', padding: '2px 8px', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold' }}>Save</button>
+                  <button onPointerDown={(e) => { e.preventDefault(); handleSaveNote(e, type, item, idx); }} onClick={(e) => handleSaveNote(e, type, item, idx)} style={{ background: 'var(--tint)', border: 'none', color: 'var(--tint-contrast, #fff)', borderRadius: '4px', padding: '2px 8px', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold' }}>Save</button>
                 </div>
               </div>
             );
@@ -836,7 +836,7 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
           return (
             <div style={{ marginTop: '12px', padding: '8px', backgroundColor: 'var(--surface-color, rgba(255, 255, 255, 0.1))', borderRadius: '4px', fontSize: '12px', color: 'var(--text-color)', opacity: 0.9, position: 'relative' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div><strong style={{ color: 'var(--primary-color)' }}>Notes:</strong> {notesStr || <span style={{ opacity: 0.5 }}>None</span>}</div>
+                <div><strong style={{ color: 'var(--tint)' }}>Notes:</strong> {notesStr || <span style={{ opacity: 0.5 }}>None</span>}</div>
                 {onUpdateNotes && (
                   <button 
                     onClick={(e) => { e.stopPropagation(); setEditingNoteId(`${type}_${id}_${idx}`); setEditNoteText(notesStr); }}
@@ -866,7 +866,7 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
                       <div 
                         key={`merit_${m.id}_${i}`} 
                         onClick={() => setExpandedAdvantageId(isExpanded ? null : `merit_${m.id}_${i}`)}
-                        style={{ border: isExpanded ? '1px solid var(--primary-color)' : '1px solid var(--border-color)', padding: '16px', display: 'flex', gap: '16px', backgroundColor: 'var(--surface-color, #0b2b26)', position: 'relative', cursor: 'pointer', transition: 'border-color 0.2s' }}
+                        style={{ border: isExpanded ? '1px solid var(--tint)' : '1px solid var(--border-color)', padding: '16px', display: 'flex', gap: '16px', backgroundColor: 'var(--surface-color, rgba(20, 20, 25, 0.8))', position: 'relative', cursor: 'pointer', transition: 'border-color 0.2s' }}
                       >
                         <div style={{ width: '64px', height: '64px', backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <span className="material-symbols-outlined" style={{ color: 'var(--text-muted)', fontSize: '32px' }}>{icon}</span>
@@ -875,7 +875,7 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <h4 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--text-color)' }}>{m.name}</h4>
                             <div style={{ display: 'flex', gap: '4px' }}>
-                              {Array.from({ length: m.dots || 0 }).map((_, j) => <span key={j} className="dot-filled" style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: 'var(--primary-color)', border: '1px solid var(--primary-color)' }}></span>)}
+                              {Array.from({ length: m.dots || 0 }).map((_, j) => <span key={j} className="dot-filled" style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: 'var(--tint)', border: '1px solid var(--tint)' }}></span>)}
                             </div>
                           </div>
                           <div style={{ fontSize: '12px', letterSpacing: '0.1em', color: 'var(--text-muted)', marginTop: '4px', textTransform: 'uppercase' }}>{details.category || 'MERIT'}</div>
@@ -906,7 +906,7 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
                       <div 
                         key={`flaw_${f.id}_${i}`} 
                         onClick={() => setExpandedAdvantageId(isExpanded ? null : `flaw_${f.id}_${i}`)}
-                        style={{ border: '1px solid var(--border-color)', borderLeft: '4px solid var(--error)', padding: '16px', display: 'flex', gap: '16px', backgroundColor: isExpanded ? 'var(--surface-lighter, #113f38)' : 'var(--surface-color, #0b2b26)', position: 'relative', cursor: 'pointer', transition: 'background-color 0.2s' }}
+                        style={{ border: '1px solid var(--border-color)', borderLeft: '4px solid var(--error)', padding: '16px', display: 'flex', gap: '16px', backgroundColor: isExpanded ? 'var(--surface-lighter, rgba(255, 255, 255, 0.06))' : 'var(--surface-color, rgba(20, 20, 25, 0.8))', position: 'relative', cursor: 'pointer', transition: 'background-color 0.2s' }}
                       >
                         <div style={{ width: '64px', height: '64px', backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <span className="material-symbols-outlined" style={{ color: 'var(--error)', fontSize: '32px' }}>{icon}</span>

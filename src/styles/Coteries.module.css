@@ -336,7 +336,7 @@
   transition: filter 0.15s ease, background 0.15s ease;
 }
 
-.buttonPrimary { background: var(--tint); color: #fff; }
+.buttonPrimary { background: var(--tint); color: var(--tint-contrast, #fff); }
 .buttonPrimary:hover:not(:disabled) { filter: brightness(1.15); }
 
 .buttonSecondary {

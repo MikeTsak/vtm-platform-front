@@ -8,6 +8,10 @@
   --font-mono: 'JetBrains Mono', monospace;
   --font-display: 'Playfair Display', serif;
   --font-cinzel: 'Cinzel', serif;
+  --tint-contrast: #ffffff;
+  --on-primary: var(--tint-contrast, #ffffff);
+  --primary-color: var(--tint, #8a0f1a);
+  --primary-container: var(--tint, #8a0f1a);
 }
 
 #root {
@@ -196,6 +200,7 @@ option {
 /* --------------------------- */
 
 :root {
+  --tint-contrast: #ffffff;
   --clan-color-1: #8a0f1a;
   --clan-color-2: #5c0b12;
   --clan-color-3: #2f3138;
@@ -212,6 +217,7 @@ option {
 :root,
 :root[data-theme='camarilla'] {
   --tint: #8a0f1a;
+  --tint-contrast: #ffffff;
   --bg-color: #0d0d0f;
   --surface-color: #141417;
   --surface-lighter: #1a1b1f;
@@ -220,6 +226,7 @@ option {
   --text-muted: #9398a0;
 
   --theme-primary: var(--tint);
+  --theme-on-primary: var(--tint-contrast);
   --theme-background: var(--bg-color);
   --theme-surface-container-lowest: #0a0a0c;
   --theme-surface-container-low: var(--bg-color);
@@ -234,6 +241,10 @@ option {
 :root[data-theme='clan'] {
   --tint: var(--clan-primary, var(--clan-color-1, #8a0f1a));
   --dynamic-tint: var(--clan-primary, var(--clan-color-1, #8a0f1a));
+  --tint-contrast: #ffffff;
+  --on-primary: var(--tint-contrast);
+  --primary-color: var(--tint);
+  --primary-container: var(--tint);
   --bg-color: var(--clan-bg, #0d0d0f);
   --surface-color: var(--clan-surface, var(--clan-color-5, #141417));
   --surface-lighter: color-mix(in srgb, var(--surface-color) 82%, white 10%);
@@ -243,9 +254,10 @@ option {
 
   --clan-box-light: var(--clan-color-4, #f5f2ef);
   --clan-box-border: var(--clan-border, var(--clan-color-3, #b09e4f));
-  --clan-box-ink: var(--clan-color-1, #111111);
+  --clan-box-ink: #141417;
 
   --theme-primary: var(--clan-symbol-color, var(--tint));
+  --theme-on-primary: var(--tint-contrast);
   --theme-secondary: var(--clan-secondary, var(--clan-color-2, #c30011));
   --theme-background: var(--bg-color);
   --theme-surface-container-lowest: #0a0a0c;
@@ -429,7 +441,12 @@ option {
   --clan-bg: #090a16;
 
   --tint: #B09E4F;
+  --tint-contrast: #0c0a2e;
+  --clan-box-light: #F8F6F2;
+  --clan-box-border: #8F7A32;
+  --clan-box-ink: #0C0A2E;
   --theme-primary: #B09E4F;
+  --theme-on-primary: #0c0a2e;
   --theme-secondary: #222862;
   --border-color: #7E6D5D;
   --theme-outline: #7E6D5D;
@@ -512,12 +529,17 @@ option {
   --clan-bg: #0a0814;
 
   --tint: #F1AB13;
+  --tint-contrast: #0a0814;
+  --clan-box-light: #FDF6F0;
+  --clan-box-border: #D97706;
+  --clan-box-ink: #1C152B;
   --theme-primary: #F1AB13;
+  --theme-on-primary: #0a0814;
   --theme-secondary: #F93943;
   --border-color: #445E93;
   --theme-outline: #445E93;
-  --text-color: #FCB0B3;
-  --theme-on-surface: #FCB0B3;
+  --text-color: #FCD0D2;
+  --theme-on-surface: #FCD0D2;
   --surface-color: #141224;
   --surface-lighter: #201c38;
   --bg-color: #0a0814;
@@ -680,7 +702,12 @@ option {
   --clan-bg: #0d0b12;
 
   --tint: #86A59C;
+  --tint-contrast: #0d0b12;
+  --clan-box-light: #EFF3F0;
+  --clan-box-border: #4E6E64;
+  --clan-box-ink: #181A19;
   --theme-primary: #86A59C;
+  --theme-on-primary: #0d0b12;
   --theme-secondary: #643173;
   --border-color: #5A4D2B;
   --theme-outline: #5A4D2B;
@@ -759,17 +786,22 @@ option {
   --clan-primary: #CCB2DC;
   --clan-secondary: #941414;
   --clan-border: #501E5C;
-  --clan-text: #CCB2DC;
+  --clan-text: #E2D5EA;
   --clan-surface: #201424;
   --clan-bg: #0d0810;
 
   --tint: #CCB2DC;
+  --tint-contrast: #0d0810;
+  --clan-box-light: #F7F3F9;
+  --clan-box-border: #723B80;
+  --clan-box-ink: #1A0F1D;
   --theme-primary: #CCB2DC;
+  --theme-on-primary: #0d0810;
   --theme-secondary: #941414;
   --border-color: #501E5C;
   --theme-outline: #937EA5;
-  --text-color: #CCB2DC;
-  --theme-on-surface: #CCB2DC;
+  --text-color: #E2D5EA;
+  --theme-on-surface: #E2D5EA;
   --surface-color: #201424;
   --surface-lighter: #2f1d35;
   --bg-color: #0d0810;
@@ -848,7 +880,12 @@ option {
   --clan-bg: #0d0c12;
 
   --tint: #E1FBFE;
+  --tint-contrast: #0d0c12;
+  --clan-box-light: #F4FAFA;
+  --clan-box-border: #5D7399;
+  --clan-box-ink: #161522;
   --theme-primary: #E1FBFE;
+  --theme-on-primary: #0d0c12;
   --theme-secondary: #A93F55;
   --border-color: #5A5766;
   --theme-outline: #5A5766;
@@ -1108,7 +1145,12 @@ option {
 
   --tint: #E2E8F0;
   --dynamic-tint: #E2E8F0;
+  --tint-contrast: #08070a;
+  --clan-box-light: #F1F5F9;
+  --clan-box-border: #334155;
+  --clan-box-ink: #0C080B;
   --theme-primary: #E2E8F0;
+  --theme-on-primary: #08070a;
   --theme-secondary: #94A3B8;
   --border-color: #334155;
   --theme-outline: #334155;
@@ -1195,7 +1237,12 @@ option {
   --clan-bg: #0e0a0b;
 
   --tint: #D1CCDC;
+  --tint-contrast: #0e0a0b;
+  --clan-box-light: #F5EDF0;
+  --clan-box-border: #424C55;
+  --clan-box-ink: #3D2C2E;
   --theme-primary: #D1CCDC;
+  --theme-on-primary: #0e0a0b;
   --theme-secondary: #886F68;
   --border-color: #424C55;
   --theme-outline: #886F68;
@@ -1437,6 +1484,7 @@ option {
 
 :root[data-theme='schrecknet'] {
   --tint: #0ea5e9;
+  --tint-contrast: #030712;
   --bg-color: #030712;
   --surface-color: #0f172a;
   --surface-lighter: #1e293b;
@@ -1445,6 +1493,7 @@ option {
   --text-muted: #94a3b8;
 
   --theme-primary: var(--tint);
+  --theme-on-primary: var(--tint-contrast);
   --theme-background: var(--bg-color);
   --theme-surface-container-lowest: #02040a;
   --theme-surface-container-low: var(--bg-color);
@@ -1458,6 +1507,7 @@ option {
 
 :root[data-theme='anarch'] {
   --tint: #ea580c;
+  --tint-contrast: #ffffff;
   --bg-color: #110e0c;
   --surface-color: #1c1917;
   --surface-lighter: #292524;
@@ -1466,6 +1516,7 @@ option {
   --text-muted: #a8a29e;
 
   --theme-primary: var(--tint);
+  --theme-on-primary: var(--tint-contrast);
   --theme-background: var(--bg-color);
   --theme-surface-container-lowest: #090706;
   --theme-surface-container-low: var(--bg-color);
@@ -1479,6 +1530,7 @@ option {
 
 :root[data-theme='Giannakis'] {
   --tint: #14b8a6;
+  --tint-contrast: #051a17;
   --bg-color: #051a17;
   --surface-color: #0b2b26;
   --surface-lighter: #113f38;
@@ -1487,6 +1539,7 @@ option {
   --text-muted: #8eb3ae;
 
   --theme-primary: var(--tint);
+  --theme-on-primary: var(--tint-contrast);
   --theme-background: var(--bg-color);
   --theme-surface-container-lowest: #020d0b;
   --theme-surface-container-low: var(--bg-color);

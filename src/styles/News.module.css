@@ -846,7 +846,7 @@
   border-radius: 6px;
   border: 1px solid var(--tint);
   background-color: var(--tint);
-  color: var(--bg-color);
+  color: var(--tint-contrast, var(--bg-color));
   cursor: pointer;
   font-weight: bold;
 }

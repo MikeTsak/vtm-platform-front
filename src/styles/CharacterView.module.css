@@ -534,7 +534,7 @@
 
 .cta {
   background: var(--tint);
-  color: var(--text-color);
+  color: var(--tint-contrast, var(--text-color));
   border-color: var(--tint);
   text-shadow: none;
   font-weight: bold;
@@ -588,7 +588,7 @@
 .gothicBtn {
   font-family: Inter, sans-serif;
   background: var(--tint);
-  color: var(--text-color);
+  color: var(--tint-contrast, var(--text-color));
   border: none;
   padding: 6px 16px;
   border-radius: 0;
@@ -1667,7 +1667,7 @@ select.input:focus {
   background-color: var(--tint) !important;
   border-color: var(--tint) !important;
   box-shadow: 0 0 4px 1px color-mix(in srgb, var(--tint) 50%, transparent);
-  color: #0a0a0b !important;
+  color: var(--tint-contrast, #0a0a0b) !important;
 }
 
 .trackerBox.empty {
@@ -1725,6 +1725,19 @@ select.input:focus {
 }
 
 /* Trackers */
+.trackersGrid {
+  margin-top: 24px;
+  margin-bottom: 24px;
+}
+
+.trackerCard {
+  padding: 20px 24px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
 .trackerBox {
   width: 24px;
   height: 24px;
@@ -2149,7 +2162,7 @@ select.input:focus {
 
 .shopCardAcquireBtn {
   background: var(--tint);
-  color: white;
+  color: var(--tint-contrast, #ffffff);
   flex-shrink: 0;
   padding: 0.5rem 1.5rem;
   border-radius: 0.5rem;
@@ -2526,7 +2539,7 @@ select.input:focus {
   width: 100%;
   height: 48px;
   background: var(--tint);
-  color: white;
+  color: var(--tint-contrast, #ffffff);
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
   text-transform: uppercase;
@@ -2780,7 +2793,7 @@ select.input:focus {
 .trackerContainer {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
   width: 100%;
   box-sizing: border-box;
 }
@@ -2792,10 +2805,11 @@ select.input:focus {
 }
 
 .trackerVal {
-  font-weight: normal;
+  font-weight: 600;
   color: var(--tint);
   font-family: var(--font-body);
   font-size: 18px;
+  line-height: 1;
 }
 
 .trackerBoxesRow {
@@ -2813,24 +2827,26 @@ select.input:focus {
 }
 
 .trackerSquare {
-  width: 14px;
-  height: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-right: 4px;
+  margin-right: 0;
   font-family: monospace;
   font-size: 12px;
+  font-weight: bold;
   color: var(--tint);
-  border-radius: 2px;
+  border-radius: 3px;
   transition: all 0.15s ease;
+  box-sizing: border-box;
 }
 
 .trackerSquare.filled {
   background-color: var(--tint);
   border-color: var(--tint);
-  color: #000;
+  color: var(--tint-contrast, #000);
 }
 
 .trackerAdminControls {
@@ -3939,7 +3955,7 @@ select.input:focus {
   margin-right: 8px;
   border-radius: 999px;
   background: var(--tint);
-  color: #000;
+  color: var(--tint-contrast, #000);
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
   font-weight: 700;
@@ -4127,7 +4143,7 @@ select.input:focus {
 [data-box-mode="illuminated"] .skillCategoryTitle,
 .attrCard[data-box-mode="illuminated"] .attrCategoryTitle,
 .skillsCard[data-box-mode="illuminated"] .skillCategoryTitle {
-  color: var(--clan-color-1, var(--clan-box-ink, #111111)) !important;
+  color: var(--clan-box-ink, #141417) !important;
   border-bottom-color: color-mix(in srgb, var(--clan-box-border, #b09e4f) 35%, transparent) !important;
   font-weight: 700 !important;
 }
@@ -4212,9 +4228,9 @@ select.input:focus {
 [data-box-mode="illuminated"] .levelBadge,
 .levelBadge[data-box-mode="illuminated"],
 .powerPill[data-box-mode="illuminated"] .levelBadge {
-  background: var(--clan-box-border, #b09e4f) !important;
-  color: var(--clan-box-light, #f5f2ef) !important;
-  border: 1px solid var(--clan-box-border, #b09e4f) !important;
+  background: color-mix(in srgb, var(--clan-box-border, #b09e4f) 25%, transparent) !important;
+  color: var(--clan-box-ink, #141417) !important;
+  border: 1.5px solid var(--clan-box-border, #b09e4f) !important;
   font-weight: 700 !important;
 }
 
@@ -4262,8 +4278,8 @@ select.input:focus {
 .disciplineRow[data-box-mode="illuminated"] .dot.dotOn,
 .attrCard[data-box-mode="illuminated"] .trackerDot.filled,
 .skillsCard[data-box-mode="illuminated"] .trackerDot.filled {
-  background-color: var(--clan-color-1, var(--tint)) !important;
-  border-color: var(--clan-color-1, var(--tint)) !important;
+  background-color: var(--clan-secondary, var(--clan-box-ink, var(--tint))) !important;
+  border-color: var(--clan-secondary, var(--clan-box-ink, var(--tint))) !important;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35) !important;
 }
 
@@ -4284,9 +4300,37 @@ select.input:focus {
   color: var(--clan-box-ink, #141417) !important;
 }
 
+[data-box-mode="illuminated"] .trackerSquare,
 [data-box-mode="illuminated"] .trackerBox {
-  border-color: color-mix(in srgb, var(--clan-box-ink, #111111) 40%, transparent) !important;
-  background: rgba(0, 0, 0, 0.04) !important;
+  border: 1.5px solid color-mix(in srgb, var(--clan-box-ink, #111111) 45%, transparent) !important;
+  background-color: rgba(0, 0, 0, 0.04) !important;
+  color: var(--clan-box-ink, #141417) !important;
+}
+
+[data-box-mode="illuminated"] .trackerSquare.filled {
+  background-color: var(--clan-secondary, var(--clan-box-ink, #111111)) !important;
+  border-color: var(--clan-secondary, var(--clan-box-ink, #111111)) !important;
+  color: var(--clan-box-light, #f5f2ef) !important;
+}
+
+[data-box-mode="illuminated"] .trackerSquare.superficial,
+[data-box-mode="illuminated"] .trackerSquare.aggravated {
+  color: var(--clan-primary, #8b0000) !important;
+  border-color: var(--clan-primary, #8b0000) !important;
+  font-weight: bold !important;
+}
+
+[data-box-mode="illuminated"] .trackerAdminLabel {
+  color: var(--clan-box-ink, #141417) !important;
+}
+
+[data-box-mode="illuminated"] .trackerBtn {
+  border-color: var(--clan-box-border, #b09e4f) !important;
+  color: var(--clan-box-ink, #141417) !important;
+}
+
+[data-box-mode="illuminated"] .trackerBtn:hover {
+  background: color-mix(in srgb, var(--clan-box-border, #b09e4f) 20%, transparent) !important;
 }
 
 /* --- 2. Gothic Glass Mode --- */
@@ -4380,5 +4424,24 @@ select.input:focus {
 .powerPill[data-box-mode="glass"] .levelBadge {
   background: color-mix(in srgb, var(--tint) 30%, var(--surface-color)) !important;
   border: 1px solid color-mix(in srgb, var(--clan-box-border, var(--border-color)) 70%, var(--tint) 30%) !important;
+  color: var(--text-color) !important;
+}
+
+[data-box-mode="glass"] .trackerSquare {
+  border: 1.5px solid color-mix(in srgb, var(--border-color, #ffffff) 50%, transparent) !important;
+  background-color: rgba(0, 0, 0, 0.3) !important;
   color: var(--tint) !important;
+}
+
+[data-box-mode="glass"] .trackerSquare.filled {
+  background-color: var(--tint) !important;
+  border-color: var(--tint) !important;
+  color: var(--tint-contrast, #000) !important;
+}
+
+[data-box-mode="glass"] .trackerSquare.superficial,
+[data-box-mode="glass"] .trackerSquare.aggravated {
+  color: var(--tint) !important;
+  border-color: var(--tint) !important;
+  font-weight: bold !important;
 }

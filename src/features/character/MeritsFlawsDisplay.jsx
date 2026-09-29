@@ -74,8 +74,8 @@ export default function MeritsFlawsDisplay({ sheet, allMeritsFlat, allFlawsFlat,
         {/* Merits Column */}
         <div className={styles.meritsColumn}>
           <div className={styles.meritsSectionHead}>
-            <span className="material-symbols-outlined" style={{ color: 'var(--primary-container)', fontSize: '28px', fontVariationSettings: "'FILL' 1" }}>workspace_premium</span>
-            <h3 className={styles.meritsSectionTitle} style={{ color: 'var(--primary-container)' }}>Merits</h3>
+            <span className="material-symbols-outlined" style={{ color: 'var(--tint)', fontSize: '28px', fontVariationSettings: "'FILL' 1" }}>workspace_premium</span>
+            <h3 className={styles.meritsSectionTitle} style={{ color: 'var(--tint)' }}>Merits</h3>
           </div>
           <div className={styles.meritsListGroup}>
             {meritsList.length === 0 && <p className={styles.dim}>No merits recorded.</p>}
@@ -83,10 +83,10 @@ export default function MeritsFlawsDisplay({ sheet, allMeritsFlat, allFlawsFlat,
               const full = getFullItem(m, false);
               return (
                 <div key={idx} className={`${styles.glassCard} ${styles.meritCard}`}>
-                  <div className={styles.meritAccentBar} style={{ background: 'var(--primary-container)' }} />
+                  <div className={styles.meritAccentBar} style={{ background: 'var(--tint)' }} />
                   <div className={styles.meritHeader}>
                     <div className={styles.meritTitleBlock}>
-                      <span className={styles.meritCategory} style={{ color: 'var(--primary-container)' }}>{full.category}</span>
+                      <span className={styles.meritCategory} style={{ color: 'var(--tint)' }}>{full.category}</span>
                       <h4 className={styles.meritTitle}>{full.name}</h4>
                     </div>
                     <div className={styles.meritDotsBlock}>
@@ -107,11 +107,11 @@ export default function MeritsFlawsDisplay({ sheet, allMeritsFlat, allFlawsFlat,
                       <textarea
                         value={editDescText}
                         onChange={(e) => setEditDescText(e.target.value)}
-                        style={{ width: '100%', minHeight: '80px', padding: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--primary-color)', color: '#fff', borderRadius: '4px', fontSize: '14px', fontFamily: "'Inter', sans-serif" }}
+                        style={{ width: '100%', minHeight: '80px', padding: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--tint)', color: '#fff', borderRadius: '4px', fontSize: '14px', fontFamily: "'Inter', sans-serif" }}
                       />
                       <div style={{ display: 'flex', gap: '8px', marginTop: '8px', justifyContent: 'flex-end' }}>
                         <button onPointerDown={(e) => { e.preventDefault(); setEditingId(null); }} onClick={() => setEditingId(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '12px', cursor: 'pointer' }}>Cancel</button>
-                        <button onPointerDown={(e) => { e.preventDefault(); handleSaveDesc(m); }} onClick={() => handleSaveDesc(m)} style={{ background: 'var(--primary-color)', border: 'none', color: '#000', borderRadius: '4px', padding: '4px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}>Save</button>
+                        <button onPointerDown={(e) => { e.preventDefault(); handleSaveDesc(m); }} onClick={() => handleSaveDesc(m)} style={{ background: 'var(--tint)', border: 'none', color: 'var(--tint-contrast, #fff)', borderRadius: '4px', padding: '4px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}>Save</button>
                       </div>
                     </div>
                   ) : (
@@ -167,7 +167,7 @@ export default function MeritsFlawsDisplay({ sheet, allMeritsFlat, allFlawsFlat,
                       />
                       <div style={{ display: 'flex', gap: '8px', marginTop: '8px', justifyContent: 'flex-end' }}>
                         <button onPointerDown={(e) => { e.preventDefault(); setEditingId(null); }} onClick={() => setEditingId(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '12px', cursor: 'pointer' }}>Cancel</button>
-                        <button onPointerDown={(e) => { e.preventDefault(); handleSaveDesc(f); }} onClick={() => handleSaveDesc(f)} style={{ background: 'var(--text-muted)', border: 'none', color: '#000', borderRadius: '4px', padding: '4px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}>Save</button>
+                        <button onPointerDown={(e) => { e.preventDefault(); handleSaveDesc(f); }} onClick={() => handleSaveDesc(f)} style={{ background: 'var(--text-muted)', border: 'none', color: 'var(--text-color, #fff)', borderRadius: '4px', padding: '4px 12px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}>Save</button>
                       </div>
                     </div>
                   ) : (

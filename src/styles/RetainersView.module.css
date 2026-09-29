@@ -265,7 +265,7 @@
 
 .btnPrimary {
   background: linear-gradient(90deg, var(--tint) 0%, color-mix(in srgb, var(--tint) 70%, black) 100%);
-  color: var(--text-color);
+  color: var(--tint-contrast, var(--text-color));
   padding: 8px 16px;
   border-radius: 4px;
   font-size: 12px;
@@ -786,7 +786,7 @@
   padding: 12px 40px;
   border-radius: 12px;
   background: linear-gradient(to right, var(--tint), color-mix(in srgb, var(--tint) 40%, transparent));
-  color: var(--text-color);
+  color: var(--tint-contrast, var(--text-color));
   font-weight: bold;
   border: none;
   box-shadow: 0 0 20px color-mix(in srgb, var(--tint) 25%, transparent);

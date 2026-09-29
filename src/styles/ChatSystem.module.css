@@ -994,7 +994,7 @@
 .btnPri {
   background: var(--tint);
   border: 1px solid color-mix(in srgb, var(--tint) 80%, white);
-  color: #fff;
+  color: var(--tint-contrast, #fff);
   padding: 8px 16px;
   border-radius: 6px;
   cursor: pointer;

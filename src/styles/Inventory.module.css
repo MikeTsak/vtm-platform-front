@@ -368,7 +368,7 @@
 }
 
 :global([data-box-mode="illuminated"]) .itemIcon span {
-  color: var(--clan-color-1, var(--tint)) !important;
+  color: var(--clan-box-ink, #141417) !important;
 }
 
 :global([data-box-mode="illuminated"]) .tabBtn {

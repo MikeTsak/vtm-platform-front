@@ -63,7 +63,7 @@ const TouchstonesConvictionsSection = ({ sheet, setMoralityModalOpen }) => {
         {/* Convictions Column */}
         <section className={styles.columnBox}>
           <div className={styles.columnHeader}>
-            <span className="material-symbols-outlined" style={{ color: 'var(--primary-container)' }}>balance</span>
+            <span className="material-symbols-outlined" style={{ color: 'var(--tint)' }}>balance</span>
             <h3>Convictions</h3>
           </div>
           <div className={styles.columnBody}>
@@ -93,7 +93,7 @@ const TouchstonesConvictionsSection = ({ sheet, setMoralityModalOpen }) => {
         {/* Touchstones Column */}
         <section className={styles.columnBox}>
           <div className={styles.columnHeader}>
-            <span className="material-symbols-outlined" style={{ color: 'var(--primary-container)' }}>favorite</span>
+            <span className="material-symbols-outlined" style={{ color: 'var(--tint)' }}>favorite</span>
             <h3>Touchstones</h3>
           </div>
           <div className={styles.columnBody}>

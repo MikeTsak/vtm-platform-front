@@ -205,7 +205,7 @@ select.input option {
 
 .cta {
   background: var(--tint);
-  color: #0a0a0b;
+  color: var(--tint-contrast, #ffffff);
   border: 1px solid var(--tint);
   box-shadow: none;
 }
