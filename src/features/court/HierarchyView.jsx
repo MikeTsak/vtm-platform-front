@@ -5,7 +5,10 @@ import api from '../../core/api';
 import { motion } from 'framer-motion';
 import styles from '../../styles/Court.module.css';
 import { Skeleton } from 'boneyard-js/react';
-import { symlogo, textlogo, symlogoWhite, textlogoWhite } from '../../data/clans';
+import { symlogo, textlogo, symlogoWhite, textlogoWhite, getClanThemeRules, getClanPalette, clanTint, clanBackground } from '../../data/clans';
+import ClanSymbol from '../../components/ClanSymbol';
+import ClanTextLogo from '../../components/ClanTextLogo';
+import FaGlyph from '../../ui/FaGlyph';
 import { factionLogo, factionType } from '../../data/factions';
 
 // --- URL BUILDER HELPER ---
@@ -100,19 +103,30 @@ export default function HierarchyView({ canEdit: propCanEdit }) {
 
   const displayedRoster = isEditMode ? roster : roster.filter(r => !r.is_hidden);
 
+  const getStatusVal = (ent) => (ent?.status !== undefined && ent?.status !== null ? Number(ent.status) : 1);
+
+  const sortByStatusThenClan = (a, b) => {
+    const statusA = getStatusVal(a);
+    const statusB = getStatusVal(b);
+    if (statusB !== statusA) return statusB - statusA;
+    const clanCompare = (a.clan || '').localeCompare(b.clan || '');
+    if (clanCompare !== 0) return clanCompare;
+    return (a.name || '').localeCompare(b.name || '');
+  };
+
   // Group characters by their status
-  const bloodhunted = displayedRoster.filter(r => r.is_bloodhunted).sort((a, b) => (b.status || 0) - (a.status || 0));
+  const bloodhunted = displayedRoster.filter(r => r.is_bloodhunted).sort(sortByStatusThenClan);
 
   // Active members are not bloodhunted, deceased, missing, exiled, left, or called
   const activeMembers = displayedRoster.filter(r => 
     !r.is_bloodhunted && !r.is_deceased && !r.is_called && !r.is_missing && !r.is_exiled && !r.is_left
   );
 
-  const deceased = displayedRoster.filter(r => r.is_deceased && !r.is_bloodhunted).sort((a, b) => (b.status || 0) - (a.status || 0));
-  const called = displayedRoster.filter(r => r.is_called && !r.is_bloodhunted).sort((a, b) => (b.status || 0) - (a.status || 0));
-  const missing = displayedRoster.filter(r => r.is_missing && !r.is_bloodhunted).sort((a, b) => (b.status || 0) - (a.status || 0));
-  const exiled = displayedRoster.filter(r => r.is_exiled && !r.is_bloodhunted).sort((a, b) => (b.status || 0) - (a.status || 0));
-  const left = displayedRoster.filter(r => r.is_left && !r.is_bloodhunted).sort((a, b) => (b.status || 0) - (a.status || 0));
+  const deceased = displayedRoster.filter(r => r.is_deceased && !r.is_bloodhunted).sort(sortByStatusThenClan);
+  const called = displayedRoster.filter(r => r.is_called && !r.is_bloodhunted).sort(sortByStatusThenClan);
+  const missing = displayedRoster.filter(r => r.is_missing && !r.is_bloodhunted).sort(sortByStatusThenClan);
+  const exiled = displayedRoster.filter(r => r.is_exiled && !r.is_bloodhunted).sort(sortByStatusThenClan);
+  const left = displayedRoster.filter(r => r.is_left && !r.is_bloodhunted).sort(sortByStatusThenClan);
 
   const mainCourtTitles = ["Prince", "Seneschal", "Sheriff", "Keeper", "Harpy", "Assistant Harpy", "Hound", "Shadow", "Scourge"];
   
@@ -132,16 +146,16 @@ export default function HierarchyView({ canEdit: propCanEdit }) {
       const rankA = getMainCourtRank(a);
       const rankB = getMainCourtRank(b);
       if (rankA !== rankB) return rankA - rankB; 
-      return (b.status || 0) - (a.status || 0);  
+      return sortByStatusThenClan(a, b);
     });
 
   const primogen = activeMembers
     .filter(r => r.titles?.includes("Primogen") && !r.is_ex && !mainCourt.some(m => m.id === r.id && m.type === r.type))
-    .sort((a, b) => (b.status || 0) - (a.status || 0));
+    .sort(sortByStatusThenClan);
 
   const others = activeMembers
     .filter(r => !mainCourt.some(m => m.id === r.id && m.type === r.type) && !primogen.some(p => p.id === r.id && p.type === r.type))
-    .sort((a, b) => (b.status || 0) - (a.status || 0));
+    .sort(sortByStatusThenClan);
 
   return (
     <Skeleton loading={loading} name="court-hierarchy">
@@ -184,7 +198,7 @@ export default function HierarchyView({ canEdit: propCanEdit }) {
               value={selectedClan} 
               onChange={(e) => setSelectedClan(e.target.value)}
             >
-              <option value="">-- Select Clan --</option>
+              <option value="">Select Clan</option>
               {uniqueClans.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
             <button className={styles.bulkBloodhuntBtn} onClick={handleBulkBloodhunt}>
@@ -205,7 +219,7 @@ export default function HierarchyView({ canEdit: propCanEdit }) {
       {bloodhunted.length > 0 && (
         <div className={styles.sectionBox}>
           <div className={styles.sectionHeader}>
-            <span className="material-symbols-outlined" style={{ color: 'var(--primary-container)' }}>warning</span>
+            <FaGlyph name="fa-triangle-exclamation" size={24} style={{ color: 'var(--primary-container)' }} />
             <h2 className={styles.bloodhuntTitle}>Blood Hunt</h2>
             <div className={`${styles.divider} ${styles.dividerBloodhunt}`}></div>
           </div>
@@ -335,7 +349,9 @@ export default function HierarchyView({ canEdit: propCanEdit }) {
       {enlargedImage && (
         <div className={styles.lightboxOverlay} onClick={() => setEnlargedImage(null)}>
           <div className={styles.lightboxContent} onClick={(e) => e.stopPropagation()}>
-            <button className={styles.closeLightboxBtn} onClick={() => setEnlargedImage(null)}>✖</button>
+            <button className={styles.closeLightboxBtn} onClick={() => setEnlargedImage(null)}>
+              <FaGlyph name="fa-xmark" size={14} />
+            </button>
             <img src={enlargedImage} alt="Enlarged portrait" className={styles.lightboxImage} />
           </div>
         </div>
@@ -358,15 +374,29 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles, onImageCl
     update(ent.id, ent.type, 'titles', newTitles);
   };
 
-  const prefix = ent.is_ex ? "Ex-" : "";
+  const clan = ent.clan;
+  const clanRules = getClanThemeRules(clan);
+  const clanPalette = getClanPalette(clan);
+  const clanBg = clanBackground(clan);
+  const clanTintHex = clanTint(clan);
+
+  const primaryColor = clanRules?.primaryAccent || clanPalette?.[0] || clanTintHex || '#8a0f1a';
+  const secondaryColor = clanRules?.secondaryAccent || clanPalette?.[1] || '#c30011';
+  const borderColor = clanRules?.border || clanPalette?.[2] || '#2f3138';
+  const textColor = clanRules?.textColor || clanPalette?.[3] || '#e8e8ed';
+  const surfaceColor = clanRules?.surface || clanPalette?.[4] || '#141417';
+  const symbolColor = clanRules?.symbolColor || primaryColor;
+  const aesthetic = clanRules?.aesthetic || '';
+
+  const prefix = ent.is_ex ? "Ex " : "";
   const primaryTitle = (ent.titles && ent.titles.length > 0) ? `${prefix}${ent.titles[0]}` : null;
   const baseUrl = import.meta.env.VITE_API_URL || '';
   let avatarUrl = null;
   if (ent.type === 'player' && ent.user_id) avatarUrl = `${baseUrl}/users/${ent.user_id}/avatar`;
   else if (ent.type === 'npc') avatarUrl = `${baseUrl}/npcs/${ent.id}/avatar`;
 
-  const clanLogoUrl = symlogoWhite(ent.clan); 
-  const clanTextUrl = textlogoWhite(ent.clan);
+  const clanLogoUrl = symlogoWhite(clan); 
+  const clanTextUrl = textlogoWhite(clan);
 
   const hiddenClass = ent.is_hidden ? styles.hiddenCard : "";
   
@@ -381,18 +411,48 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles, onImageCl
 
   const baseCardClass = ent.is_bloodhunted ? styles.bloodhuntCard : styles.glassCard;
 
+  const cardStyle = {
+    '--card-clan-primary': primaryColor,
+    '--card-clan-secondary': secondaryColor,
+    '--card-clan-border': borderColor,
+    '--card-clan-text': textColor,
+    '--card-clan-surface': surfaceColor,
+    '--card-clan-symbol': symbolColor,
+  };
+
   return (
-    <motion.div variants={itemVariants} className={`${baseCardClass} ${specialClass} ${hiddenClass}`} initial="hidden" whileInView="show" viewport={{ once: false, amount: 0.1 }}>
+    <motion.div 
+      variants={itemVariants} 
+      className={`${baseCardClass} ${specialClass} ${hiddenClass}`} 
+      style={cardStyle}
+      initial="hidden" 
+      whileInView="show" 
+      viewport={{ once: false, amount: 0.1 }}
+    >
+      {/* Clan Atmospheric Background Layer */}
+      {clanBg && (
+        <div 
+          className={styles.cardClanBackground} 
+          style={{ backgroundImage: `url(${clanBg})` }}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Atmospheric Clan Gradient Overlay */}
+      <div className={styles.cardAtmosphericOverlay} aria-hidden="true" />
+
       {ent.is_bloodhunted && (
         <div className={styles.bloodhuntIcon}>
-          <span className="material-symbols-outlined">priority_high</span>
+          <FaGlyph name="fa-triangle-exclamation" size={16} />
         </div>
       )}
       
+      {/* Clan Symbol Watermark */}
       {clanLogoUrl && (
         <div 
           className={styles.cardWatermark} 
           style={{ backgroundImage: `url(${clanLogoUrl})` }}
+          aria-hidden="true"
         />
       )}
 
@@ -403,7 +463,7 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles, onImageCl
                userId={ent.type === 'player' ? ent.user_id : null} 
                npcId={ent.type === 'npc' ? ent.id : null}
                hasAvatar={ent.has_avatar}
-               clan={ent.clan}
+               clan={clan}
                fallback={clanLogoUrl || '/img/ATT-logo(1).webp'}
                size="100%" 
                editable={canEdit}
@@ -414,13 +474,19 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles, onImageCl
           </div>
         ) : (
           <div className={styles.imgPlaceholder}>
-            {clanLogoUrl && <img src={clanLogoUrl} alt={ent.clan} className={styles.placeholderLogo} />}
-            {clanTextUrl ? (
-               <div style={{ width: '100%', height: '20px', display: 'flex', justifyContent: 'center', marginBottom: '4px' }}>
-                 <img src={clanTextUrl} alt={ent.clan} style={{ maxWidth: '80%', height: '100%', objectFit: 'contain' }} />
-               </div>
+            {clan ? (
+              <>
+                <ClanSymbol clan={clan} size={36} color={symbolColor} style={{ marginBottom: 4 }} />
+                {clanTextUrl ? (
+                  <div style={{ width: '100%', height: '16px', display: 'flex', justifyContent: 'center', marginBottom: '2px' }}>
+                    <img src={clanTextUrl} alt={clan} style={{ maxWidth: '80%', height: '100%', objectFit: 'contain' }} />
+                  </div>
+                ) : (
+                  <span style={{ color: 'var(--card-clan-text, #e8e8ed)', marginTop: '2px', textTransform: 'uppercase', letterSpacing: '1px', fontSize: '0.65rem' }}>{clan}</span>
+                )}
+              </>
             ) : (
-               ent.clan && <span style={{ color: 'white', marginTop: '2px', textTransform: 'uppercase', letterSpacing: '1px', fontSize: '0.65rem' }}>{ent.clan}</span>
+              <span style={{ fontSize: '0.65rem', opacity: 0.6 }}>No Clan</span>
             )}
             <span style={{ fontSize: '0.6rem', marginTop: '4px', opacity: 0.7 }}>NO PHOTO</span>
           </div>
@@ -429,27 +495,34 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles, onImageCl
 
       <div className={styles.infoCol}>
         <div className={styles.name}>
-          {primaryTitle && <span className={styles.honorific} style={{ marginRight: '8px' }}>{primaryTitle}</span>}
+          {primaryTitle && <span className={styles.honorific}>{primaryTitle}</span>}
           {ent.name}
           {user && String(ent.user_id) === String(user.id) && (
             <span style={{ marginLeft: '8px', fontSize: '0.65em', color: '#60a5fa', fontWeight: 'bold' }}>(YOU)</span>
           )}
         </div>
+
+        {aesthetic && (
+          <div className={styles.clanAesthetic} title={`Clan Aesthetic: ${aesthetic}`}>
+            {aesthetic}
+          </div>
+        )}
         
         <div className={styles.tags}>
-          {ent.clan && (
-            clanTextUrl ? (
-              <span className={styles.tagClan} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '80px', height: '22px', padding: '2px' }}>
-                <img src={clanTextUrl} alt={ent.clan} style={{ width: '100%', height: '100%', objectFit: 'contain', opacity: 0.9 }} />
-              </span>
-            ) : (
-              <span className={styles.tagClan}>{ent.clan}</span>
-            )
+          {clan && (
+            <span className={styles.tagClan}>
+              <ClanSymbol clan={clan} size={13} color={symbolColor} style={{ marginRight: 5 }} />
+              {clanTextUrl ? (
+                <img src={clanTextUrl} alt={clan} className={styles.tagClanLogoImg} />
+              ) : (
+                <span>{clan}</span>
+              )}
+            </span>
           )}
           {(ent.titles || []).filter((_, i) => i > 0 || !primaryTitle).map(t => (
             <span key={t} className={styles.tagSect}>{prefix}{t}</span>
           ))}
-          {!!ent.is_ex && <span className={styles.tagSect}>EX-ROLE</span>}
+          {!!ent.is_ex && <span className={styles.tagSect}>EX ROLE</span>}
           {!!ent.is_hidden && <span className={styles.tagSect}>HIDDEN</span>}
           {!!ent.is_deceased && <span className={styles.tagSect}>DECEASED</span>}
           {!!ent.is_called && <span className={styles.tagSect}>CALLED</span>}
@@ -464,7 +537,7 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles, onImageCl
           <div className={styles.editContainer} style={{ background: 'rgba(0,0,0,0.4)', padding: '10px', borderRadius: '8px', border: '1px dashed var(--tint)' }}>
             <input
               type="text"
-              placeholder="e.g. Athens through time 2-1"
+              placeholder="e.g. Athens portrait filename"
               className={styles.imageInput}
               defaultValue={ent.image_url || ''}
               onBlur={(e) => {
@@ -488,7 +561,7 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles, onImageCl
               </label>
               <label className={styles.checkboxLabel}>
                 <input type="checkbox" checked={!!ent.is_ex} onChange={(e) => update(ent.id, ent.type, 'is_ex', e.target.checked)} />
-                <span className={styles.exTag}>EX-ROLE</span>
+                <span className={styles.exTag}>EX ROLE</span>
               </label>
               <label className={styles.checkboxLabel}>
                 <input type="checkbox" checked={!!ent.is_deceased} onChange={(e) => update(ent.id, ent.type, 'is_deceased', e.target.checked)} />
@@ -530,7 +603,16 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles, onImageCl
         <div className={styles.footer}>
           <div className={styles.statusDrops}>
             {Array.from({ length: 5 }).map((_, i) => (
-              <span key={i} style={{ opacity: i < (ent.status || 1) ? 1 : 0.3 }}>●</span>
+              <span 
+                key={i} 
+                style={{ 
+                  color: ent.is_bloodhunted ? '#ef4444' : primaryColor,
+                  opacity: i < (ent.status || 1) ? 1 : 0.25,
+                  filter: i < (ent.status || 1) ? `drop-shadow(0 0 3px ${primaryColor}88)` : 'none'
+                }}
+              >
+                ●
+              </span>
             ))}
             {(ent.titles || []).includes("Keeper") && (
               <span className={styles.keeperSubtitle} style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: 'var(--on-surface-variant)' }}>
