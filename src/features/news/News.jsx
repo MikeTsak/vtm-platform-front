@@ -11,7 +11,6 @@ import { useLocation, Link } from 'react-router-dom';
 import CreateNewsModal from './CreateNewsModal';
 import FullscreenArticleModal from '../../components/FullscreenArticleModal';
 import { Skeleton } from 'boneyard-js/react';
-import RumorReactions from './RumorReactions';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 // import GoogleAd from '../../components/GoogleAd';
@@ -321,7 +320,6 @@ export default function News() {
                           </div>
                         )}
                         <div className={styles.rumorBodyText} dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.body) }} />
-                        <RumorReactions rumorId={item.id} />
                         <div className={styles.rumorMeta}>HEARD ON: {formatAthensDate(item.created_at)}</div>
 
                         {(isAdmin || isCourt) && (
@@ -557,7 +555,6 @@ function FullscreenRumorModal({ item, onClose }) {
           }}
           dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.body) }}
         />
-        <RumorReactions rumorId={item.id} />
         <div
           style={{
             marginTop: '2rem',

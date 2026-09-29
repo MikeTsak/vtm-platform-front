@@ -13,7 +13,6 @@ import { Skeleton } from 'boneyard-js/react';
 import Avatar from '../../components/Avatar';
 import courtStyles from '../../styles/Court.module.css';
 import AnnouncementReactions from '../announcements/AnnouncementReactions';
-import RumorReactions from './RumorReactions';
 
 const TITLES = ["Prince", "Seneschal", "Primogen", "Sheriff", "Scourge", "Keeper", "Harpy", "Assistant Harpy", "Hound", "Shadow", "Whip"];
 
@@ -564,7 +563,6 @@ export default function PublicArticleView() {
               </div>
             )}
             <div className={styles.rumorBodyText} dangerouslySetInnerHTML={{ __html: sanitizeHtml(article.body) }} />
-            <RumorReactions rumorId={article.id} />
             <div className={styles.rumorMeta} style={{ marginTop: '1.5rem' }}>
               HEARD ON: {articleDate}
             </div>
