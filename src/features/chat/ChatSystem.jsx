@@ -1063,9 +1063,13 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
 
   const [reactionsByMsgId, setReactionsByMsgId] = useState({});
   const [reactionPickerFor, setReactionPickerFor] = useState(null);
+  const [viewingReactionsMsg, setViewingReactionsMsg] = useState(null);
+  const [selectedReactionTab, setSelectedReactionTab] = useState('all');
   const lastTapRef = useRef({});
   const holdTimerRef = useRef(null);
   const holdFiredRef = useRef(false);
+  const pillHoldTimerRef = useRef(null);
+  const pillHoldFiredRef = useRef(false);
 
   const toggleReaction = useCallback(async (msgId, emoji) => {
     if (!reactionTable || String(msgId).startsWith('temp_')) return; // can't react to a message that hasn't finished sending yet
@@ -1078,6 +1082,29 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     }
     setReactionPickerFor(null);
   }, [reactionTable]);
+
+  const handlePillPointerDown = useCallback((item, emoji) => {
+    pillHoldFiredRef.current = false;
+    pillHoldTimerRef.current = setTimeout(() => {
+      pillHoldFiredRef.current = true;
+      setSelectedReactionTab(emoji);
+      setViewingReactionsMsg(item);
+    }, 450);
+  }, []);
+
+  const handlePillPointerUp = useCallback((item, emoji) => {
+    clearTimeout(pillHoldTimerRef.current);
+    if (pillHoldFiredRef.current) {
+      pillHoldFiredRef.current = false;
+      return;
+    }
+    toggleReaction(item.id, emoji);
+  }, [toggleReaction]);
+
+  const handlePillPointerCancel = useCallback(() => {
+    clearTimeout(pillHoldTimerRef.current);
+    pillHoldFiredRef.current = false;
+  }, []);
 
   // Works for both mouse double-click and touch double-tap: onClick fires
   // for both, so tracking tap timing here covers desktop and mobile with one
@@ -2455,22 +2482,39 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                       {/* Reactions */}
                       {!String(item.id).startsWith('temp_') && (reactionsByMsgId[item.id]?.length > 0 || reactionPickerFor === item.id) && (
                         <div className={`flex items-center gap-1 flex-wrap ${mine ? 'justify-end' : 'justify-start'}`}>
-                          {(reactionsByMsgId[item.id] || []).map(r => (
-                            <button
-                              key={r.emoji}
-                              onClick={() => toggleReaction(item.id, r.emoji)}
-                              title={r.reacted_by_me ? 'Remove your reaction' : 'React'}
-                              className={`text-[11px] leading-none px-1.5 py-0.5 rounded-full border transition-colors flex items-center gap-1 ${r.reacted_by_me ? 'bg-primary/20 border-primary text-primary' : 'bg-surface-container-highest border-outline-variant/40 text-on-surface-variant hover:border-primary/50'}`}
-                            >
-                              <ReactionGlyph value={r.emoji} size={12} />
-                              <span className="font-system-code">{r.count}</span>
-                            </button>
-                          ))}
+                          {(reactionsByMsgId[item.id] || []).map(r => {
+                            const isReactedByMe = (r.users || []).includes(currentUser?.id);
+                            const reactorNames = (r.reactors || []).map(u => u.name).filter(Boolean);
+                            const tooltip = reactorNames.length > 0
+                              ? `${reactorNames.join(', ')}: ${r.emoji}`
+                              : (isReactedByMe ? 'Remove your reaction' : 'React');
+                            return (
+                              <button
+                                key={r.emoji}
+                                type="button"
+                                onPointerDown={() => handlePillPointerDown(item, r.emoji)}
+                                onPointerUp={() => handlePillPointerUp(item, r.emoji)}
+                                onPointerLeave={handlePillPointerCancel}
+                                onPointerCancel={handlePillPointerCancel}
+                                onContextMenu={(e) => {
+                                  e.preventDefault();
+                                  setSelectedReactionTab(r.emoji);
+                                  setViewingReactionsMsg(item);
+                                }}
+                                title={tooltip}
+                                className={`text-[11px] leading-none px-1.5 py-0.5 rounded-full border transition-colors flex items-center gap-1 cursor-pointer select-none ${isReactedByMe ? 'bg-primary/20 border-primary text-primary' : 'bg-surface-container-highest border-outline-variant/40 text-on-surface-variant hover:border-primary/50'}`}
+                              >
+                                <ReactionGlyph value={r.emoji} size={12} />
+                                <span className="font-system-code">{r.count}</span>
+                              </button>
+                            );
+                          })}
                           {reactionPickerFor === item.id && (
                             <div className="flex items-center gap-1 bg-surface-container-highest border border-outline-variant/40 rounded-full px-1.5 py-0.5 shadow-lg">
                               {QUICK_REACTIONS.map(e => (
                                 <button
                                   key={e}
+                                  type="button"
                                   onClick={() => toggleReaction(item.id, e)}
                                   className="text-[14px] leading-none hover:scale-125 transition-transform"
                                 >
@@ -2512,6 +2556,19 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                               className="text-[10px] text-on-surface-variant hover:text-primary transition-colors"
                             >
                               React
+                            </button>
+                          )}
+                          {!String(item.id).startsWith('temp_') && reactionsByMsgId[item.id]?.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedReactionTab('all');
+                                setViewingReactionsMsg(item);
+                              }}
+                              title="Reactions"
+                              className="text-[10px] text-on-surface-variant hover:text-primary transition-colors"
+                            >
+                              Reactions
                             </button>
                           )}
                           {canEditDelete && !editingMsgId && (
@@ -2559,22 +2616,28 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
             <div className={`${styles.messageInputForm} relative`} style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))', flexDirection: 'column', alignItems: 'stretch' }}>
               {/* Emoji Picker */}
               {showEmojiPicker && (
-                <div className="absolute bottom-[100%] left-1/2 -translate-x-1/2 md:left-auto md:right-4 md:translate-x-0 z-50 mb-2 shadow-[0_0_20px_rgba(0,0,0,0.8)] rounded-lg overflow-hidden border border-outline-variant w-[min(92vw,320px)]">
-                  <React.Suspense fallback={
-                    <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary, #888)', background: '#111', fontSize: '13px' }}>
-                      Loading emojis...
-                    </div>
-                  }>
-                    <EmojiPicker
-                      onEmojiClick={onEmojiClick}
-                      theme="dark"
-                      searchDisabled={false}
-                      width="100%"
-                      customEmojis={customClanEmojis}
-                      categories={EMOJI_PICKER_CATEGORIES}
-                    />
-                  </React.Suspense>
-                </div>
+                <>
+                  <div
+                    className="fixed inset-0 z-40 bg-transparent"
+                    onClick={() => setShowEmojiPicker(false)}
+                  />
+                  <div className="absolute bottom-[100%] left-1/2 -translate-x-1/2 md:left-auto md:right-4 md:translate-x-0 z-50 mb-2 shadow-[0_0_20px_rgba(0,0,0,0.8)] rounded-lg overflow-hidden border border-outline-variant w-[min(92vw,320px)]">
+                    <React.Suspense fallback={
+                      <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary, #888)', background: '#111', fontSize: '13px' }}>
+                        Loading emojis...
+                      </div>
+                    }>
+                      <EmojiPicker
+                        onEmojiClick={onEmojiClick}
+                        theme="dark"
+                        searchDisabled={false}
+                        width="100%"
+                        customEmojis={customClanEmojis}
+                        categories={EMOJI_PICKER_CATEGORIES}
+                      />
+                    </React.Suspense>
+                  </div>
+                </>
               )}
 
               <div className="max-w-4xl mx-auto w-full relative flex flex-col bg-surface-container-lowest border border-outline-variant rounded-md focus-within:border-primary focus-within:shadow-[0_0_8px_rgba(180,15,31,0.2)] transition-all">
@@ -2654,7 +2717,14 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                 </div>
 
                 <div className="flex items-center gap-1 shrink-0">
-                  <button type="button" onClick={() => setShowEmojiPicker(val => !val)} disabled={!isCharActive || !canSend} className="p-2 text-on-surface-variant hover:text-primary transition-colors rounded hover:bg-surface-variant/30 hidden md:flex disabled:opacity-30">
+                  <button
+                    type="button"
+                    onClick={() => setShowEmojiPicker(val => !val)}
+                    disabled={!isCharActive || !canSend}
+                    className={`p-2 transition-colors rounded hover:bg-surface-variant/30 flex disabled:opacity-30 ${showEmojiPicker ? 'text-primary bg-surface-variant/40' : 'text-on-surface-variant hover:text-primary'}`}
+                    title="Add emoji"
+                    aria-label="Add emoji"
+                  >
                     <span className="material-symbols-outlined text-[20px] md:text-[24px]">mood</span>
                   </button>
                   {showQueueOption && (
@@ -2662,7 +2732,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                       type="button"
                       onClick={() => doSend({ queue: true })}
                       disabled={!isCharActive || sendingRef.current || (!newMessage.trim() && !attachment) || !selectedPlayerId}
-                      title="Queue — sends automatically when SchreckNet reopens"
+                      title="Queue: sends automatically when SchreckNet reopens"
                       className="p-2 bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500 hover:text-black transition-colors rounded shadow-[0_0_8px_rgba(245,158,11,0.15)] group flex items-center justify-center h-10 w-10 disabled:opacity-30 disabled:hover:bg-amber-500/10 disabled:hover:text-amber-400"
                     >
                       <span className="material-symbols-outlined text-[18px] md:text-[20px]">schedule_send</span>
@@ -2703,6 +2773,106 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
             <span className="material-symbols-outlined text-sm">error</span>
             <span className="text-sm font-bold">{error}</span>
             <button onClick={() => setError('')} className="ml-2 hover:opacity-80"><span className="material-symbols-outlined text-sm">close</span></button>
+          </div>
+        )}
+
+        {/* Message Reactions Modal */}
+        {viewingReactionsMsg && (
+          <div
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+            onClick={() => setViewingReactionsMsg(null)}
+          >
+            <div
+              className="bg-surface-container border border-outline-variant rounded-lg w-full max-w-sm max-h-[75vh] flex flex-col shadow-[0_0_25px_rgba(0,0,0,0.8)]"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-3 border-b border-outline-variant/40 shrink-0">
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[18px] text-primary">thumb_up</span>
+                  Message Reactions
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setViewingReactionsMsg(null)}
+                  className="text-on-surface-variant hover:text-white p-1 rounded transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[18px]">close</span>
+                </button>
+              </div>
+
+              {/* Reaction filter tabs */}
+              <div className="flex items-center gap-1.5 p-2.5 border-b border-outline-variant/30 overflow-x-auto custom-scrollbar shrink-0 bg-surface-container-high/40">
+                <button
+                  type="button"
+                  onClick={() => setSelectedReactionTab('all')}
+                  className={`px-2.5 py-1 rounded-full text-xs font-system-code transition-colors flex items-center gap-1 ${
+                    selectedReactionTab === 'all'
+                      ? 'bg-primary text-on-primary font-bold'
+                      : 'bg-surface-container-highest text-on-surface-variant hover:text-white'
+                  }`}
+                >
+                  <span>All</span>
+                  <span className="opacity-80">
+                    {(reactionsByMsgId[viewingReactionsMsg.id] || []).reduce((acc, r) => acc + (r.count || 0), 0)}
+                  </span>
+                </button>
+                {(reactionsByMsgId[viewingReactionsMsg.id] || []).map(r => (
+                  <button
+                    key={r.emoji}
+                    type="button"
+                    onClick={() => setSelectedReactionTab(r.emoji)}
+                    className={`px-2.5 py-1 rounded-full text-xs font-system-code transition-colors flex items-center gap-1.5 ${
+                      selectedReactionTab === r.emoji
+                        ? 'bg-primary text-on-primary font-bold'
+                        : 'bg-surface-container-highest text-on-surface-variant hover:text-white'
+                    }`}
+                  >
+                    <ReactionGlyph value={r.emoji} size={13} />
+                    <span>{r.count}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Reactors list */}
+              <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2 custom-scrollbar">
+                {(() => {
+                  const reactions = reactionsByMsgId[viewingReactionsMsg.id] || [];
+                  const filtered = selectedReactionTab === 'all'
+                    ? reactions.flatMap(r => (r.reactors || []).map(u => ({ ...u, emoji: r.emoji })))
+                    : (reactions.find(r => r.emoji === selectedReactionTab)?.reactors || []).map(u => ({ ...u, emoji: selectedReactionTab }));
+
+                  if (!filtered.length) {
+                    return (
+                      <div className="text-center py-6 text-on-surface-variant/60 text-xs font-system-code">
+                        No reactions recorded
+                      </div>
+                    );
+                  }
+
+                  return filtered.map((u, idx) => (
+                    <div
+                      key={`${u.id}:${u.emoji}:${idx}`}
+                      className="flex items-center justify-between p-2 rounded bg-surface-container-highest/50 border border-outline-variant/20 hover:border-outline-variant/40 transition-colors"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-7 h-7 rounded-full bg-surface-container flex items-center justify-center overflow-hidden border border-outline-variant/30 shrink-0">
+                          <Avatar userId={u.id} size="100%" style={{ width: '100%', height: '100%' }} fallback="/img/ATT-logo(1).webp" />
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-xs font-bold text-white truncate">{u.name}</span>
+                          {u.clan && (
+                            <span className="text-[10px] text-primary/80 uppercase font-system-code truncate">{u.clan}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="shrink-0 pl-2">
+                        <ReactionGlyph value={u.emoji} size={18} />
+                      </div>
+                    </div>
+                  ));
+                })()}
+              </div>
+            </div>
           </div>
         )}
       </motion.main>

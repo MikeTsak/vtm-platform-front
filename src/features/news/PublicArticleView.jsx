@@ -12,6 +12,8 @@ import { Skeleton } from 'boneyard-js/react';
 // import GoogleAd from '../../components/GoogleAd';
 import Avatar from '../../components/Avatar';
 import courtStyles from '../../styles/Court.module.css';
+import AnnouncementReactions from '../announcements/AnnouncementReactions';
+import RumorReactions from './RumorReactions';
 
 const TITLES = ["Prince", "Seneschal", "Primogen", "Sheriff", "Scourge", "Keeper", "Harpy", "Assistant Harpy", "Hound", "Shadow", "Whip"];
 
@@ -535,9 +537,39 @@ export default function PublicArticleView() {
               {renderMedia('8px')}
 
               <div className={courtStyles.decreeBodyText} dangerouslySetInnerHTML={{__html: sanitizeHtml(String(article.body ?? '').replace(/\n/g, '<br/>'))}} style={{ marginTop: '1.5rem', lineHeight: '1.6' }} />
+              <AnnouncementReactions announcementId={article.id} />
               <div style={{ marginTop: '1.5rem' }}>
                 <PrintArticleButton />
               </div>
+            </div>
+          </article>
+        </div>
+      </div>
+    );
+  }
+
+  // 10. RUMOR
+  if (isRumor || article.theme === 'RUMOR') {
+    return (
+      <div className={styles.page} style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', backgroundColor: '#0a0a0a', padding: '2rem 1rem' }}>
+        {helmet}
+        {backBtn}
+        <div style={{ maxWidth: '640px', width: '100%' }}>
+          <article className={styles.rumorCard} style={{ margin: '0 auto', maxWidth: '100%', width: '100%', cursor: 'default', transform: 'none' }}>
+            <div className={styles.postItTape}></div>
+            <h2 className={styles.rumorTitle}>{article.title}</h2>
+            {mediaUrl && (
+              <div className={styles.mediaFrame}>
+                {isVideoUrl(article.media_url) ? <video src={mediaUrl} controls /> : <img src={mediaUrl} alt="Proof" />}
+              </div>
+            )}
+            <div className={styles.rumorBodyText} dangerouslySetInnerHTML={{ __html: sanitizeHtml(article.body) }} />
+            <RumorReactions rumorId={article.id} />
+            <div className={styles.rumorMeta} style={{ marginTop: '1.5rem' }}>
+              HEARD ON: {articleDate}
+            </div>
+            <div style={{ marginTop: '1.5rem' }}>
+              <PrintArticleButton />
             </div>
           </article>
         </div>

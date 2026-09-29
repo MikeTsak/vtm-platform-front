@@ -7,6 +7,7 @@ import { formatAthensDate } from '../../utils/dateFormatter';
 import Avatar from '../../components/Avatar';
 import { motion } from 'framer-motion';
 import { sanitizeHtml } from '../../utils/sanitizeHtml';
+import AnnouncementReactions from './AnnouncementReactions';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -254,6 +255,7 @@ export default function AnnouncementsView({ canEdit: propCanEdit }) {
                   {item.media_url && <BlobImage url={item.media_url} />}
 
                   <div className={styles.decreeBodyText} dangerouslySetInnerHTML={{__html: sanitizeHtml(String(item.body ?? '').replace(/\n/g, '<br/>'))}} />
+                  <AnnouncementReactions announcementId={item.id} />
                 </div>
 
                 <div className={`${styles.decreeFooter} no-print`} style={{ display: 'flex', gap: '10px' }}>
