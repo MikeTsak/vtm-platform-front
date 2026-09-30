@@ -1,0 +1,65 @@
+/* DotRow.module.css — Shared dot tracker styling with CSS variable theming */
+
+.dotRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+
+.labelGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.label {
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.75));
+  white-space: nowrap;
+}
+
+.dotTracker {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.dot {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 1.5px solid var(--dot-empty-border, rgba(255, 255, 255, 0.45));
+  background-color: var(--dot-empty-bg, rgba(255, 255, 255, 0.08));
+  box-sizing: border-box;
+  flex-shrink: 0;
+  transition: transform 0.15s ease, border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.clickable:hover {
+  border-color: var(--dot-hover-border, #ffffff);
+  background-color: var(--dot-hover-bg, rgba(255, 255, 255, 0.25));
+  transform: scale(1.2);
+}
+
+.filled {
+  background-color: var(--dot-filled-bg, var(--tint, var(--accent-purple, #9d7cff)));
+  border-color: var(--dot-filled-border, var(--tint, var(--accent-purple, #9d7cff)));
+  box-shadow: 0 0 7px var(--dot-filled-glow, rgba(157, 124, 255, 0.55));
+}
+
+.filled.clickable:hover {
+  border-color: #ffffff;
+  box-shadow: 0 0 10px var(--dot-filled-glow-hover, rgba(157, 124, 255, 0.9));
+  transform: scale(1.2);
+}

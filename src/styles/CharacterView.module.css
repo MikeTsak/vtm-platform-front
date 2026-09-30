@@ -1791,14 +1791,15 @@ select.input:focus {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  border: 1px solid color-mix(in srgb, var(--tint) 40%, transparent);
+  border: 1px solid var(--dot-empty-border, rgba(255, 255, 255, 0.45));
+  background-color: var(--dot-empty-bg, rgba(255, 255, 255, 0.05));
   transition: all 0.2s;
 }
 
 .dot.filled {
-  background-color: var(--tint);
-  border-color: var(--tint);
-  box-shadow: 0 0 5px color-mix(in srgb, var(--tint) 40%, transparent);
+  background-color: var(--dot-filled-bg, var(--tint));
+  border-color: var(--dot-filled-border, var(--tint));
+  box-shadow: 0 0 6px var(--dot-filled-glow, color-mix(in srgb, var(--tint) 50%, transparent));
 }
 
 /* Utilities */

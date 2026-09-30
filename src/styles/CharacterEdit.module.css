@@ -17,6 +17,17 @@
   overflow: hidden;
   background: var(--bg-primary, #0a0a0f);
   color: var(--text-primary, #eee);
+
+  /* Dot rating theme: high contrast white empty dots, vibrant theme purple filled dots */
+  --tint: var(--accent-purple, #9d7cff);
+  --dot-empty-border: rgba(255, 255, 255, 0.55);
+  --dot-empty-bg: rgba(255, 255, 255, 0.08);
+  --dot-hover-border: #ffffff;
+  --dot-hover-bg: rgba(255, 255, 255, 0.25);
+  --dot-filled-bg: #9d7cff;
+  --dot-filled-border: #bfa5ff;
+  --dot-filled-glow: rgba(157, 124, 255, 0.6);
+  --dot-filled-glow-hover: rgba(157, 124, 255, 0.9);
 }
 
 .centerState {

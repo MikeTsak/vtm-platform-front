@@ -195,6 +195,11 @@ export default function AdminFeedingTab() {
 
   const runDecay = async () => {
     if (actionLoading) return;
+    if (!window.confirm(
+      'Run cycle-end decay for the last completed cycle?\n\n'
+      + 'Every division with no failed feeding that cycle loses 1 Safety, and every character with Herd regains 1 point. '
+      + 'This normally runs by itself overnight. A cycle that was already processed is skipped.'
+    )) return;
     setActionLoading(true); setMsg(''); setErr('');
     try {
       const res = await api.post('/admin/feeding/run-decay');
