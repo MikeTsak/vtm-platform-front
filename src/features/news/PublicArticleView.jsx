@@ -16,20 +16,37 @@ import AnnouncementReactions from '../announcements/AnnouncementReactions';
 
 const TITLES = ["Prince", "Seneschal", "Primogen", "Sheriff", "Scourge", "Keeper", "Harpy", "Assistant Harpy", "Hound", "Shadow", "Whip"];
 
-const getTopRole = (titlesStr) => {
-  try {
-    const titles = JSON.parse(titlesStr);
-    if (Array.isArray(titles) && titles.length > 0) {
-      const sorted = [...titles].sort((a, b) => {
-        let aIdx = TITLES.indexOf(a);
-        let bIdx = TITLES.indexOf(b);
-        if(aIdx === -1) aIdx = 99;
-        if(bIdx === -1) bIdx = 99;
-        return aIdx - bIdx;
-      });
-      return sorted[0];
+const getTopRole = (rawTitles, authorRole, authorName) => {
+  let titles = [];
+  if (Array.isArray(rawTitles)) {
+    titles = rawTitles;
+  } else if (typeof rawTitles === 'string' && rawTitles.trim()) {
+    try {
+      const parsed = JSON.parse(rawTitles);
+      if (Array.isArray(parsed)) titles = parsed;
+      else if (typeof parsed === 'string') titles = [parsed];
+    } catch (e) {
+      titles = rawTitles.split(',').map(s => s.trim()).filter(Boolean);
     }
-  } catch(e) {}
+  }
+
+  titles = titles.filter(t => typeof t === 'string' && t.trim().length > 0);
+
+  if (titles.length > 0) {
+    const sorted = [...titles].sort((a, b) => {
+      let aIdx = TITLES.indexOf(a);
+      let bIdx = TITLES.indexOf(b);
+      if (aIdx === -1) aIdx = 99;
+      if (bIdx === -1) bIdx = 99;
+      return aIdx - bIdx;
+    });
+    return sorted.join(', ');
+  }
+
+  if (authorRole === 'admin' || (typeof authorName === 'string' && (authorName.startsWith('ST ') || authorName.toLowerCase() === 'admin'))) {
+    return "Storyteller";
+  }
+
   return "Court Member";
 };
 
@@ -506,8 +523,8 @@ export default function PublicArticleView() {
 
   // 9. COURT ANNOUNCEMENT
   if (article.type === 'announcement') {
-    const authorRole = getTopRole(article.char_titles);
     const authorName = article.char_name || article.author_real_name || "Court Authority";
+    const authorRole = getTopRole(article.char_titles, article.author_role, authorName);
 
     return (
       <div className={styles.page} style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', backgroundColor: '#0a0a0a', padding: '2rem 1rem' }}>

@@ -59,20 +59,37 @@ function BlobImage({ url }) {
 
 const TITLES = ["Prince", "Seneschal", "Primogen", "Sheriff", "Scourge", "Keeper", "Harpy", "Assistant Harpy", "Hound", "Shadow", "Whip"];
 
-const getTopRole = (titlesStr) => {
-  try {
-    const titles = JSON.parse(titlesStr);
-    if (Array.isArray(titles) && titles.length > 0) {
-      const sorted = [...titles].sort((a, b) => {
-        let aIdx = TITLES.indexOf(a);
-        let bIdx = TITLES.indexOf(b);
-        if(aIdx === -1) aIdx = 99;
-        if(bIdx === -1) bIdx = 99;
-        return aIdx - bIdx;
-      });
-      return sorted[0];
+const getTopRole = (rawTitles, authorRole, authorName) => {
+  let titles = [];
+  if (Array.isArray(rawTitles)) {
+    titles = rawTitles;
+  } else if (typeof rawTitles === 'string' && rawTitles.trim()) {
+    try {
+      const parsed = JSON.parse(rawTitles);
+      if (Array.isArray(parsed)) titles = parsed;
+      else if (typeof parsed === 'string') titles = [parsed];
+    } catch (e) {
+      titles = rawTitles.split(',').map(s => s.trim()).filter(Boolean);
     }
-  } catch(e) {}
+  }
+
+  titles = titles.filter(t => typeof t === 'string' && t.trim().length > 0);
+
+  if (titles.length > 0) {
+    const sorted = [...titles].sort((a, b) => {
+      let aIdx = TITLES.indexOf(a);
+      let bIdx = TITLES.indexOf(b);
+      if (aIdx === -1) aIdx = 99;
+      if (bIdx === -1) bIdx = 99;
+      return aIdx - bIdx;
+    });
+    return sorted.join(', ');
+  }
+
+  if (authorRole === 'admin' || (typeof authorName === 'string' && (authorName.startsWith('ST ') || authorName.toLowerCase() === 'admin'))) {
+    return "Storyteller";
+  }
+
   return "Court Member";
 };
 
@@ -228,8 +245,8 @@ export default function AnnouncementsView({ canEdit: propCanEdit }) {
         
         <div className={styles.decreeList}>
           {items.map(item => {
-            const authorRole = getTopRole(item.char_titles);
             const authorName = item.char_name || item.author_real_name;
+            const authorRole = getTopRole(item.char_titles, item.author_role, authorName);
             const authorImg = item.char_image || null;
 
             return (
@@ -425,8 +442,8 @@ function DecreePrintModal({ target, items, onClose }) {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {printItems.map(item => {
-            const authorRole = getTopRole(item.char_titles);
             const authorName = item.char_name || item.author_real_name || 'Court Authority';
+            const authorRole = getTopRole(item.char_titles, item.author_role, authorName);
             const dateStr = formatAthensDate(item.created_at);
 
             return (

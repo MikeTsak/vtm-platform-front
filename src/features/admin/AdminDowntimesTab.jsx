@@ -390,9 +390,18 @@ export default function AdminDowntimesTab() {
   const groupedAndFiltered = useMemo(() => {
     const groups = new Map();
     for (const r of filtered) {
-      const key = r.player_name || r.email || 'Unknown Player';
+      const key = r.character_id != null ? `char_${r.character_id}` : (r.user_id != null ? `user_${r.user_id}` : (r.email || r.player_name || 'Unknown Player'));
       if (!groups.has(key)) {
-        groups.set(key, { player_name: key, char_name: r.char_name, clan: r.clan, downtimes: [] });
+        groups.set(key, {
+          key,
+          player_name: r.player_name || r.email || 'Unknown Player',
+          char_name: r.char_name,
+          clan: r.clan,
+          character_id: r.character_id,
+          user_id: r.user_id,
+          email: r.email,
+          downtimes: []
+        });
       }
       groups.get(key).downtimes.push(r);
     }
@@ -706,7 +715,7 @@ export default function AdminDowntimesTab() {
               const clanLogoUrl = symlogo(group.clan);
               return (
                 <div
-                  key={group.player_name}
+                  key={group.key || group.character_id || group.player_name}
                   className={styles.playerDowntimeGroup}
                   style={{
                     '--clan-color': clanColor,
