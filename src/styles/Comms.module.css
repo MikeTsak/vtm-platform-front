@@ -131,6 +131,10 @@
     /* Fixed height for touch */
   }
 
+  .hideOnMobile {
+    display: none;
+  }
+
   .modeSwitch button {
     flex: 1;
     padding: 0;

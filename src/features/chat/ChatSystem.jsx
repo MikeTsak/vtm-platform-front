@@ -1,6 +1,8 @@
 // src/components/ChatSystem.jsx
 import React, { useState, useEffect, useContext, useRef, useMemo, useLayoutEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { useSearchParams, useLocation, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { AuthCtx } from '../../core/AuthContext';
 import api, { formatApiError } from '../../core/api';
 import { copyToClipboard } from '../../utils/clipboard';
@@ -14,7 +16,7 @@ import MiniSearch from 'minisearch';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 import { getPushSettings, updatePushSettings, subscribeToWebPush, getPushUnsupportedReason } from '../../utils/push';
 import { socket } from '../../api/liveSession';
-import { symlogo as localSymlogo, CLAN_HEX as CLAN_COLORS } from '../../data/clans';
+import { symlogo as localSymlogo, CLAN_HEX as CLAN_COLORS, CLAN_PALETTES, clanTint } from '../../data/clans';
 import { useCommsEnabled } from '../comms/useCommsEnabled';
 
 /* --- Clan assets & colors --- */
@@ -244,6 +246,8 @@ const asUserContact = (u) => ({
   is_admin: typeof u.is_admin !== 'undefined' ? !!u.is_admin : (u.role === 'admin' || u.permission_level === 'admin'),
   char_id: u.char_id ?? null,
   image_url: u.image_url ?? null,
+  titles: u.titles || [],
+  court_status: u.court_status ?? null,
   unread_count: u.unread_count || 0,
   last_message_at: u.last_message_at ? new Date(u.last_message_at).getTime() : 0
 });
@@ -254,6 +258,8 @@ const asNpcContact = (n) => ({
   name: n.name,
   clan: n.clan,
   image_url: n.image_url ?? null,
+  titles: n.titles || [],
+  court_status: n.court_status ?? null,
   last_message_at: n.last_message_at ? new Date(n.last_message_at).getTime() : 0,
   unread_count: n.unread_count || 0
 });
@@ -269,6 +275,75 @@ const asGroupContact = (g) => ({
 });
 
 const isContactAdmin = (u) => u?.role === 'admin' || u?.permission_level === 'admin' || !!u?.is_admin;
+
+/* Conversation themes. Each paints the conversation background (`bg`) and
+   "my" bubbles (`color`, the Messenger convention); bubble text flips to
+   black on light accents. Atmospheres are in-universe scenes, clans use
+   their site palette, sects a single colour. */
+const withAlpha = (hex, a) => `${hex}${Math.round(a * 255).toString(16).padStart(2, '0')}`;
+const BASE_BG = 'linear-gradient(180deg, #0d0c11 0%, #07060a 100%)';
+const glowBg = (top, bottom) => `radial-gradient(120% 70% at 100% 0%, ${withAlpha(top, 0.3)}, transparent 65%), radial-gradient(110% 70% at 0% 100%, ${withAlpha(bottom, 0.24)}, transparent 65%), ${BASE_BG}`;
+const ATMOSPHERES = [
+  { key: 'Elysium', color: '#c9a646', icon: 'account_balance', bg: 'radial-gradient(90% 60% at 50% 0%, #c9a64633, transparent 70%), linear-gradient(160deg, #1d1710 0%, #0b0907 100%)' },
+  { key: 'Blood Moon', color: '#b3121f', icon: 'dark_mode', bg: 'radial-gradient(55% 40% at 80% 8%, #e0303d66, #7a0a1233 45%, transparent 75%), linear-gradient(180deg, #16060a 0%, #060204 100%)' },
+  { key: 'Catacombs', color: '#9c8f74', icon: 'skull', bg: 'radial-gradient(80% 60% at 50% 110%, #5a4e3844, transparent 70%), repeating-linear-gradient(0deg, #ffffff05 0 2px, transparent 2px 38px), linear-gradient(180deg, #12100c 0%, #080706 100%)' },
+  { key: 'Neon Rack', color: '#e0249a', icon: 'nightlife', bg: 'radial-gradient(70% 50% at 0% 0%, #e0249a40, transparent 70%), radial-gradient(70% 50% at 100% 100%, #22d3ee33, transparent 70%), linear-gradient(180deg, #0b0612 0%, #05030a 100%)' },
+  { key: 'Masquerade', color: '#7b4bb7', icon: 'theater_comedy', bg: 'radial-gradient(80% 55% at 100% 0%, #7b4bb744, transparent 70%), radial-gradient(60% 45% at 0% 100%, #c9a64626, transparent 70%), linear-gradient(180deg, #0e0914 0%, #060409 100%)' },
+  { key: 'Midnight Rain', color: '#3b82c4', icon: 'rainy', bg: 'repeating-linear-gradient(105deg, #ffffff06 0 1px, transparent 1px 16px), radial-gradient(90% 60% at 50% 0%, #3b82c433, transparent 70%), linear-gradient(180deg, #0a0f16 0%, #05070b 100%)' },
+];
+const SECT_THEMES = { Camarilla: '#3a5fb0', Anarch: '#c0392b', Sabbat: '#7d1d3f' };
+const THEME_GROUPS = ['Atmospheres', 'Clans', 'Sects'];
+const CHAT_THEMES = [
+  ...ATMOSPHERES.map(t => ({ ...t, group: 'Atmospheres' })),
+  ...Object.keys(CLAN_COLORS).map(key => ({ key, group: 'Clans', color: clanTint(key), bg: glowBg(CLAN_PALETTES[key][1], CLAN_PALETTES[key][0]) })),
+  ...Object.entries(SECT_THEMES).map(([key, color]) => ({ key, group: 'Sects', color, bg: glowBg(color, color) })),
+];
+const themeFor = (key) => CHAT_THEMES.find(t => t.key === key) || null;
+
+// Hold-to-grow conversation emoji: rendered size per stored emoji_size, and
+// the hold timeline. It reaches full size at GROW (a tap of haptics marks the
+// sweet spot), wobbles from WARN as a warning, and pops (cancelled, like
+// Messenger) at POP, so full size can be sent anywhere in GROW..POP.
+const EMOJI_PX = [0, 44, 72, 104];
+const EMOJI_GROW_MS = 1200;
+const EMOJI_WARN_MS = 3200;
+const EMOJI_POP_MS = 4200;
+
+// Admin in an NPC chat while SchreckNet is closed: tapping send queues the
+// message until it reopens; holding send this long sends it now instead.
+const SEND_NOW_HOLD_MS = 600;
+
+// Phones: Return adds a line and the send button sends (Messenger/WhatsApp);
+// with a mouse + keyboard, Enter sends and Shift+Enter adds a line.
+const IS_TOUCH = typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches;
+const textOn = (hex) => {
+  const n = parseInt(hex.slice(1, 7), 16);
+  return (0.299 * (n >> 16 & 255) + 0.587 * (n >> 8 & 255) + 0.114 * (n & 255)) > 150 ? '#111' : '#fff';
+};
+
+/* Court standing as the Court page shows it: title(s) and Status dots. */
+const StatusLine = ({ titles, status, className = '' }) => {
+  const dots = Math.max(0, Math.min(Number(status) || 0, 5));
+  if (!titles?.length && !dots) return null;
+  return (
+    <span className={`inline-flex items-center gap-1.5 min-w-0 ${className}`}>
+      {titles?.length > 0 && <span className="truncate">{titles.join(' \u00b7 ')}</span>}
+      {dots > 0 && (
+        <span className="inline-flex gap-0.5 shrink-0" title={`Status ${dots}`} aria-label={`Status ${dots}`}>
+          {Array.from({ length: 5 }, (_, i) => (
+            <span key={i} className={`w-1.5 h-1.5 rounded-full ${i < dots ? 'bg-primary' : 'border border-outline-variant'}`} />
+          ))}
+        </span>
+      )}
+    </span>
+  );
+};
+
+/* Green dot on an avatar while that person has the site open. The avatar
+   itself clips (overflow-hidden), so this sits on a relative wrapper. */
+const OnlineDot = ({ online }) => (online ? (
+  <span title="Online" aria-label="Online" className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-surface-container rounded-full" />
+) : null);
 
 /* Unread count circle shown next to a contact in the sidebar. */
 function UnreadCount({ count }) {
@@ -310,7 +385,7 @@ const StatusIcon = ({ msg }) => {
 };
 
 /* --- CHAT IMAGE COMPONENT (Secure Fetch) --- */
-const ChatMedia = ({ attachmentId }) => {
+const ChatMedia = ({ attachmentId, thumb = false }) => {
   const [prevId, setPrevId] = useState(attachmentId);
   const [mediaInfo, setMediaInfo] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -361,6 +436,19 @@ const ChatMedia = ({ attachmentId }) => {
       if (urlToRevoke) URL.revokeObjectURL(urlToRevoke);
     };
   }, [attachmentId]);
+
+  if (thumb) {
+    if (loading) return <div className="w-full h-full bg-surface-variant/30 animate-pulse" />;
+    if (error) return <div className="w-full h-full flex items-center justify-center text-error"><span className="material-symbols-outlined text-[22px]">broken_image</span></div>;
+    const open = () => window.open(mediaInfo?.url, '_blank');
+    if (mediaInfo?.mime?.startsWith('audio/')) {
+      return <button type="button" onClick={open} aria-label="Open audio" className="w-full h-full flex items-center justify-center text-on-surface-variant"><span className="material-symbols-outlined text-[28px]">graphic_eq</span></button>;
+    }
+    if (mediaInfo?.mime?.startsWith('video/')) {
+      return <video src={mediaInfo.url} preload="metadata" muted playsInline onClick={open} className="w-full h-full object-cover cursor-pointer" />;
+    }
+    return <img src={mediaInfo?.url} alt="Attachment" loading="lazy" onClick={open} className="w-full h-full object-cover cursor-pointer" />;
+  }
 
   if (loading) return (
     <Skeleton name="chat-media-loader" loading={true}>
@@ -430,6 +518,10 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   const isCharActive = isAdmin || (myChar && myChar.sheet && myChar.sheet.is_active === true);
 
   const [selectedContact, setSelectedContact] = useState(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const chatParam = searchParams.get('c');
   const [selectedPlayerId, setSelectedPlayerId] = useState(null);
   const canSend = commsEnabled || (isAdmin && selectedContact?.type === 'npc');
   // Admin composing as an NPC while comms are down: offer a queue instead of
@@ -447,6 +539,24 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
 
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
+
+  // History is paged: the latest page on open, older pages as the list is
+  // scrolled up (Messenger-style), or everything back to a message when
+  // jumping to a search result / quote.
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const prependAnchorRef = useRef(null);
+  const pendingJumpRef = useRef(null);
+
+  // Shared per-conversation settings, delivered with each history page.
+  const [convSettings, setConvSettings] = useState({ theme: null, emoji: null });
+
+  // Details panel (search, media, members, theme): search + media state.
+  const [panelPicker, setPanelPicker] = useState(null);
+  const [searchQ, setSearchQ] = useState('');
+  const [searchResults, setSearchResults] = useState(null);
+  const [searching, setSearching] = useState(false);
+  const [mediaList, setMediaList] = useState({ items: [], hasMore: false, loaded: false });
 
   // EDIT/DELETE STATES
   const [editingMsgId, setEditingMsgId] = useState(null);
@@ -540,7 +650,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
         setGroups(prev => prev.map(g => g.id === selectedContact.id ? { ...g, icon: token } : g));
         setSelectedContact(prev => (prev && prev.id === selectedContact.id) ? { ...prev, icon: token } : prev);
       } catch (e) {
-        alert('Failed to update group picture.');
+        toast.error('Failed to update group picture.');
       } finally {
         setSavingGroupIcon(false);
       }
@@ -607,7 +717,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
       setGroups(prev => prev.map(g => g.id === selectedContact.id ? { ...g, name: newName } : g));
       setSelectedContact(prev => (prev && prev.id === selectedContact.id) ? { ...prev, name: newName } : prev);
     } catch (e) {
-      alert('Failed to rename group');
+      toast.error('Failed to rename group');
     } finally {
       setSavingGroupName(false);
     }
@@ -623,7 +733,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     try {
       await api.post(`/chat/groups/${selectedContact.id}/members`, { members: [userId] });
       openManageGroup(true);
-    } catch (e) { alert('Failed to add member'); }
+    } catch (e) { toast.error('Failed to add member'); }
   };
 
   const handleRemoveMemberFromGroup = async (userId, name) => {
@@ -637,7 +747,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     try {
       await api.delete(`/chat/groups/${selectedContact.id}/members/${userId}`);
       openManageGroup(true);
-    } catch (e) { alert('Failed to remove member'); }
+    } catch (e) { toast.error('Failed to remove member'); }
   };
 
   const handleDeleteGroup = async () => {
@@ -651,9 +761,9 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     try {
       await api.delete(`/chat/groups/${selectedContact.id}`);
       setManagingGroup(false);
-      setSelectedContact(null);
+      closeChat();
       fetchContacts();
-    } catch (e) { alert('Failed to delete group'); }
+    } catch (e) { toast.error('Failed to delete group'); }
   };
 
   const handleLeaveGroup = async () => {
@@ -666,9 +776,9 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     if (!ok) return;
     try {
       await api.delete(`/chat/groups/${selectedContact.id}/members/${currentUser.id}`);
-      setSelectedContact(null);
+      closeChat();
       fetchContacts();
-    } catch (e) { alert('Failed to leave group'); }
+    } catch (e) { toast.error('Failed to leave group'); }
   };
 
   const handleDeleteMessage = async (msgId) => {
@@ -683,7 +793,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
       await api.delete(`/chat/messages/${msgId}`, { params: { table: reactionTable } });
       setMessages(prev => prev.filter(m => m.id !== msgId));
     } catch (e) {
-      alert("Failed to delete message. It may be too old or you lack permission.");
+      toast.error("Failed to delete message. It may be too old or you lack permission.");
     }
   };
 
@@ -694,7 +804,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
       setMessages(prev => prev.map(m => m.id === editingMsgId ? { ...m, body: editBody, edited: true } : m));
       setEditingMsgId(null);
     } catch (e) {
-      alert(formatApiError(e, "Failed to edit message. It may be too old or you lack permission."));
+      toast.error(formatApiError(e, "Failed to edit message. It may be too old or you lack permission."));
     }
   };
 
@@ -705,6 +815,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
 
   const [isMobile, setIsMobile] = useState(false);
   const containerRef = useRef(null);
+  const updateHeightRef = useRef(() => { });
 
   // Self-measuring height: don't trust any ancestor to hand us a correct
   // height through flex/percentage chains (a fixed-vh wrapper above us,
@@ -722,6 +833,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
       const nextHeight = Math.max(viewportHeight - top, 320);
       el.style.height = `${nextHeight}px`;
     };
+    updateHeightRef.current = updateHeight;
 
     updateHeight();
 
@@ -742,6 +854,10 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
       }
     };
   }, []);
+
+  // The SchreckNet banner above us hides on mobile while a chat is open, which
+  // moves our top edge without any resize event: measure again.
+  useLayoutEffect(() => { updateHeightRef.current(); }, [selectedContact]);
 
   const textareaRef = useRef(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
@@ -769,16 +885,25 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, [previewUrl]);
 
-  useEffect(() => {
+  // After older messages are prepended keep the viewport on what the user was
+  // reading, and finish a pending jump once its message is in the DOM.
+  useLayoutEffect(() => {
     const el = messagesListRef.current;
-    if (!el) return;
-    const onScroll = () => {
-      userScrollingRef.current = !isNearBottom(el);
-      setShowScrollBtn(!isNearBottom(el, 300));
-    };
-    el.addEventListener('scroll', onScroll);
-    return () => el.removeEventListener('scroll', onScroll);
-  }, []);
+    const anchor = prependAnchorRef.current;
+    if (el && anchor) {
+      // .messageList has scroll-behavior: smooth; restoring must be instant.
+      el.style.scrollBehavior = 'auto';
+      el.scrollTop = el.scrollHeight - anchor.height + anchor.top;
+      el.style.scrollBehavior = '';
+      prependAnchorRef.current = null;
+    }
+    const jump = pendingJumpRef.current;
+    if (jump && document.getElementById(`chat-msg-${jump}`)) {
+      pendingJumpRef.current = null;
+      revealMessage(jump);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages]);
 
   useEffect(() => {
     if (!userScrollingRef.current) scrollToBottom(false);
@@ -877,11 +1002,29 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
 
   const lastTsRef = useRef(0);
   const initialSyncRef = useRef(true);
+  // Content fingerprint of the last history applied, so edits, deletes and
+  // queued->sent changes (none of which add a newer message) still re-render.
+  const lastSigRef = useRef('');
+  // Newest inbound message already marked read in the open thread.
+  const lastReadTsRef = useRef(0);
+  // load() only needs users for a notification title; reading it through a
+  // ref keeps every contacts refresh from re-fetching the open thread.
+  const usersRef = useRef([]);
+  usersRef.current = users;
 
   useEffect(() => {
     loadSeqRef.current += 1;
     initialSyncRef.current = true;
     lastTsRef.current = 0;
+    lastSigRef.current = '';
+    lastReadTsRef.current = 0;
+    pendingJumpRef.current = null;
+    setHasMore(false);
+    setConvSettings({ theme: null, emoji: null });
+    setSearchQ('');
+    setSearchResults(null);
+    setMediaList({ items: [], hasMore: false, loaded: false });
+    setPanelPicker(null);
     setMessages([]);
     setNpcConvos([]);
     setReplyTo(null);
@@ -917,6 +1060,41 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   }, []);
 
   const isAuthenticated = !!currentUser;
+
+  // Who has the site open (see realtime.js). `admins` are the Storytellers,
+  // who answer as NPCs, so an NPC counts as reachable while one is online.
+  const [presence, setPresence] = useState({ online: new Set(), admins: new Set() });
+  const [connected, setConnected] = useState(socket.connected);
+  useEffect(() => {
+    const load = () => socket.emit('presence:get', (snap) => {
+      if (snap) setPresence({ online: new Set(snap.online.map(Number)), admins: new Set(snap.admins.map(Number)) });
+    });
+    const onUpdate = ({ userId, online, admin }) => setPresence(prev => {
+      const next = { online: new Set(prev.online), admins: new Set(prev.admins) };
+      const id = Number(userId);
+      if (online) {
+        next.online.add(id);
+        if (admin) next.admins.add(id);
+      } else {
+        next.online.delete(id);
+        next.admins.delete(id);
+      }
+      return next;
+    });
+    const onConnect = () => { setConnected(true); load(); };
+    const onDisconnect = () => setConnected(false);
+    if (socket.connected) load();
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+    socket.on('presence:update', onUpdate);
+    return () => {
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
+      socket.off('presence:update', onUpdate);
+    };
+  }, []);
+  const isUserOnline = (id) => presence.online.has(Number(id));
+  const storytellerOnline = [...presence.admins].some(id => id !== Number(currentUser?.id));
 
   // Background Contacts Fetcher
   const fetchContacts = useCallback(async () => {
@@ -1028,7 +1206,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
       setPendingQueue(prev => prev.filter(m => m.id !== id));
       setMessages(prev => prev.map(m => (m.id === id && m.status === 'queued') ? { ...m, status: 'cancelled' } : m));
     } catch (e) {
-      alert('Failed to cancel queued message.');
+      toast.error('Failed to cancel queued message.');
     }
   };
 
@@ -1036,15 +1214,20 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   // Double-tap-to-like is a thumbs up, not a heart: it reads as
   // acknowledgement rather than affection, which is what a tap actually means.
   const LIKE_EMOJI = '👍';
+  const convEmoji = convSettings.emoji || LIKE_EMOJI;
 
   // The last slot is the player's own clan crest in place of the heart.
-  // Admins have no character loaded at all (see the myChar effect above), and
-  // a clanless character shouldn't display a crest either, so both fall back
-  // to the ankh.
-  const mySigil = useMemo(
-    () => (isAdmin ? ANKH : (clanToken(myChar?.clan || myChar?.sheet?.clan) || ANKH)),
-    [isAdmin, myChar]
-  );
+  // When an admin is in an NPC conversation (acting as that NPC), the last slot
+  // displays the NPC's clan crest. Otherwise, admins have no character loaded
+  // and clanless characters have no crest, falling back to the ankh.
+  const mySigil = useMemo(() => {
+    if (isAdmin && selectedContact?.type === 'npc') {
+      const npcClan = selectedContact?.clan || npcs.find(n => n.id === selectedContact?.id)?.clan;
+      return (npcClan && clanToken(npcClan)) || ANKH;
+    }
+    if (isAdmin) return ANKH;
+    return clanToken(myChar?.clan || myChar?.sheet?.clan) || ANKH;
+  }, [isAdmin, selectedContact, npcs, myChar]);
   const QUICK_REACTIONS = useMemo(
     () => ['👍', '😂', '😮', '😢', '🙏', mySigil],
     [mySigil]
@@ -1063,6 +1246,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
 
   const [reactionsByMsgId, setReactionsByMsgId] = useState({});
   const [reactionPickerFor, setReactionPickerFor] = useState(null);
+  const [fullReactionPickerFor, setFullReactionPickerFor] = useState(null);
   const [viewingReactionsMsg, setViewingReactionsMsg] = useState(null);
   const [selectedReactionTab, setSelectedReactionTab] = useState('all');
   const lastTapRef = useRef({});
@@ -1070,6 +1254,17 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   const holdFiredRef = useRef(false);
   const pillHoldTimerRef = useRef(null);
   const pillHoldFiredRef = useRef(false);
+
+  useEffect(() => {
+    if (!reactionPickerFor && !fullReactionPickerFor) return;
+    const handleOutside = (e) => {
+      if (e.target.closest?.('[data-reaction-ui]')) return;
+      setReactionPickerFor(null);
+      setFullReactionPickerFor(null);
+    };
+    document.addEventListener('pointerdown', handleOutside);
+    return () => document.removeEventListener('pointerdown', handleOutside);
+  }, [reactionPickerFor, fullReactionPickerFor]);
 
   const toggleReaction = useCallback(async (msgId, emoji) => {
     if (!reactionTable || String(msgId).startsWith('temp_')) return; // can't react to a message that hasn't finished sending yet
@@ -1081,6 +1276,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
       // than surfacing an error banner for something this minor.
     }
     setReactionPickerFor(null);
+    setFullReactionPickerFor(null);
   }, [reactionTable]);
 
   const handlePillPointerDown = useCallback((item, emoji) => {
@@ -1117,22 +1313,30 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     const last = lastTapRef.current[msgId] || 0;
     if (now - last < 300) {
       lastTapRef.current[msgId] = 0;
-      toggleReaction(msgId, LIKE_EMOJI);
+      toggleReaction(msgId, convEmoji);
     } else {
       lastTapRef.current[msgId] = now;
     }
-  }, [toggleReaction]);
+  }, [toggleReaction, convEmoji]);
 
   // Long-press (500ms hold) opens the quick-reaction picker without toggling a
   // reaction. Works for both touch and mouse via the unified Pointer Events API.
-  const handleBubblePointerDown = useCallback((e, msgId) => {
-    if (String(msgId).startsWith('temp_')) return;
+  // On touch screens a hold opens the action sheet (reactions + Reply, Copy,
+  // Edit, Delete...), since the hover action row never shows there.
+  const [actionSheetMsg, setActionSheetMsg] = useState(null);
+  const handleBubblePointerDown = useCallback((e, item) => {
+    if (String(item.id).startsWith('temp_')) return;
     holdFiredRef.current = false;
     holdTimerRef.current = setTimeout(() => {
       holdFiredRef.current = true;
-      setReactionPickerFor(p => (p === msgId ? null : msgId));
+      if (isMobile) {
+        navigator.vibrate?.(10);
+        setActionSheetMsg(item);
+      } else {
+        setReactionPickerFor(p => (p === item.id ? null : item.id));
+      }
     }, 500);
-  }, []);
+  }, [isMobile]);
 
   const handleBubblePointerCancel = useCallback(() => {
     clearTimeout(holdTimerRef.current);
@@ -1164,6 +1368,85 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     return () => { active = false; clearInterval(interval); };
   }, [messageIdsKey, reactionTable, socketRefreshTick, isTabVisible]);
 
+  const PAGE_SIZE = 50;
+  const byTime = (a, b) => (new Date(a.created_at) - new Date(b.created_at)) || (a.id - b.id);
+
+  // One page of the open conversation, normalised to what the list renders.
+  // `qs` carries the paging params (see back/utils/chatConversation.js).
+  const fetchHistory = async (qs) => {
+    const c = selectedContact;
+    let res;
+    let msgs;
+    if (c.type === 'group') {
+      res = await api.get(`/chat/groups/${c.id}/history?${qs}`);
+      msgs = (res.data.messages || []).map(m => ({
+        id: m.id, body: m.body, created_at: m.created_at, sender_id: m.sender_id,
+        sender_name: m.char_name || m.display_name, sender_clan: m.clan,
+        attachment_id: m.attachment_id, edited: m.edited, emoji_size: m.emoji_size, type: m.type, reply: toReply(m)
+      }));
+    } else if (c.type === 'user') {
+      res = await api.get(`/chat/history/${c.id}?${qs}`);
+      msgs = (res.data.messages || []).map(m => ({
+        id: m.id, body: m.body, created_at: m.created_at,
+        read_at: m.read_at, delivered_at: m.delivered_at,
+        sender_id: m.sender_id,
+        attachment_id: m.attachment_id, edited: m.edited, emoji_size: m.emoji_size, reply: toReply(m)
+      }));
+    } else if (isAdmin) {
+      res = await api.get(`/admin/chat/npc-history/${c.id}/${selectedPlayerId}?${qs}`);
+      msgs = (res.data.messages || []).map(m => ({
+        id: m.id, body: m.body, created_at: m.created_at, sender_id: m.from_side === 'npc' ? 'npc' : selectedPlayerId, _from: m.from_side,
+        attachment_id: m.attachment_id, edited: m.edited, emoji_size: m.emoji_size, status: m.status, reply: toReply(m)
+      }));
+    } else {
+      res = await api.get(`/chat/npc-history/${c.id}?${qs}`);
+      msgs = (res.data.messages || []).map(m => ({
+        id: m.id, body: m.body, created_at: m.created_at,
+        sender_id: m.from_side === 'user' ? currentUser.id : 'npc', _from: m.from_side,
+        attachment_id: m.attachment_id, edited: m.edited, emoji_size: m.emoji_size, reply: toReply(m)
+      }));
+    }
+    msgs.sort(byTime);
+    return { msgs, hasMore: !!res.data.has_more, settings: res.data.settings || null };
+  };
+
+  // Prepends messages older than what's loaded (deduplicated).
+  const prependMessages = (older) => setMessages(prev => {
+    const ids = new Set(prev.map(m => m.id));
+    return [...older.filter(m => !ids.has(m.id)), ...prev];
+  });
+
+  // Ref, not the state: several scroll events can land before a re-render.
+  const loadingOlderRef = useRef(false);
+  const loadOlder = async () => {
+    if (!hasMore || loadingOlderRef.current || !selectedContact) return;
+    const oldest = messages.find(m => !String(m.id).startsWith('temp_'));
+    if (!oldest) return;
+    const seq = loadSeqRef.current;
+    loadingOlderRef.current = true;
+    setLoadingOlder(true);
+    try {
+      const page = await fetchHistory(`limit=${PAGE_SIZE}&before=${oldest.id}`);
+      if (loadSeqRef.current !== seq) return;
+      const el = messagesListRef.current;
+      if (el) prependAnchorRef.current = { height: el.scrollHeight, top: el.scrollTop };
+      prependMessages(page.msgs);
+      setHasMore(page.hasMore);
+    } catch (e) {
+      toast.error('Could not load older messages.');
+    } finally {
+      loadingOlderRef.current = false;
+      setLoadingOlder(false);
+    }
+  };
+
+  const handleListScroll = (e) => {
+    const el = e.currentTarget;
+    userScrollingRef.current = !isNearBottom(el);
+    setShowScrollBtn(!isNearBottom(el, 300));
+    if (el.scrollTop < 150) loadOlder();
+  };
+
   // Active Conversation Message Polling
   useEffect(() => {
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
@@ -1179,51 +1462,32 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
         const shouldFetchMessages = !(isAdmin && selectedContact.type === 'npc' && !selectedPlayerId);
 
         if (shouldFetchMessages) {
-          if (selectedContact.type === 'group') {
-            const res = await api.get(`/chat/groups/${selectedContact.id}/history`);
-            msgs = (res.data.messages || []).map(m => ({
-              id: m.id, body: m.body, created_at: m.created_at, sender_id: m.sender_id,
-              sender_name: m.char_name || m.display_name, sender_clan: m.clan,
-              attachment_id: m.attachment_id, edited: m.edited, type: m.type, reply: toReply(m)
-            }));
-          } else if (selectedContact.type === 'user') {
-            const res = await api.get(`/chat/history/${selectedContact.id}`);
-            msgs = (res.data.messages || []).map(m => ({
-              id: m.id, body: m.body, created_at: m.created_at,
-              read_at: m.read_at, delivered_at: m.delivered_at,
-              sender_id: m.sender_id,
-              attachment_id: m.attachment_id, edited: m.edited, reply: toReply(m)
-            }));
-          } else {
-            if (isAdmin) {
-              if (selectedPlayerId && isAuthenticated) {
-                const res = await api.get(`/admin/chat/npc-history/${selectedContact.id}/${selectedPlayerId}`);
-                msgs = (res.data.messages || []).map(m => ({
-                  id: m.id, body: m.body, created_at: m.created_at, sender_id: m.from_side === 'npc' ? 'npc' : selectedPlayerId, _from: m.from_side,
-                  attachment_id: m.attachment_id, edited: m.edited, reply: toReply(m)
-                }));
-              }
-            } else {
-              const res = await api.get(`/chat/npc-history/${selectedContact.id}`);
-              msgs = (res.data.messages || []).map(m => ({
-                id: m.id,
-                body: m.body,
-                created_at: m.created_at,
-                sender_id: m.from_side === 'user' ? currentUser.id : 'npc',
-                _from: m.from_side,
-                attachment_id: m.attachment_id, edited: m.edited, reply: toReply(m)
-              }));
+          const page = await fetchHistory(`limit=${PAGE_SIZE}`);
+          msgs = page.msgs;
+          if (loadSeqRef.current === mySeq) {
+            if (isInitialLoad) setHasMore(page.hasMore);
+            if (page.settings) {
+              setConvSettings(prev => (prev.theme === page.settings.theme && prev.emoji === page.settings.emoji ? prev : page.settings));
             }
           }
-
-          msgs.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
           const newestTs = msgs.reduce((t, m) => Math.max(t, new Date(m.created_at).getTime()), 0);
 
           hasNewMessages = newestTs > lastTsRef.current;
+          const sig = msgs.map(m => `${m.id}:${m.edited ? 1 : 0}:${m.status || ''}:${m.read_at ? 1 : 0}${m.delivered_at ? 1 : 0}:${m.body}`).join('|');
+          const contentChanged = sig !== lastSigRef.current;
 
           if (loadSeqRef.current !== mySeq) return;
 
-          if (isInitialLoad || hasNewMessages) {
+          const newestInbound = msgs.reduce((t, m) => (isInbound(m) ? Math.max(t, new Date(m.created_at).getTime()) : t), 0);
+          if (isInitialLoad) {
+            lastReadTsRef.current = newestInbound;
+          } else if (newestInbound > lastReadTsRef.current && !document.hidden) {
+            lastReadTsRef.current = newestInbound;
+            markThreadReadRef.current(selectedContact, selectedPlayerId);
+          }
+
+          if (isInitialLoad || hasNewMessages || contentChanged) {
+            lastSigRef.current = sig;
             if (hasNewMessages && !isInitialLoad) {
               const inboundNew = msgs.filter(m => new Date(m.created_at).getTime() > lastTsRef.current && isInbound(m));
               if (inboundNew.length && (document.hidden || !pageVisibleRef.current)) {
@@ -1237,7 +1501,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                   title = selectedContact.char_name || selectedContact.display_name;
                   icon = symlogo(selectedContact.clan) || icon;
                 } else {
-                  title = isAdmin && selectedPlayerId ? `${selectedContact.name} ↔ ${users.find(u => u.id === selectedPlayerId)?.char_name || 'Player'}` : selectedContact.name;
+                  title = isAdmin && selectedPlayerId ? `${selectedContact.name} ↔ ${usersRef.current.find(u => u.id === selectedPlayerId)?.char_name || 'Kindred'}` : selectedContact.name;
                   icon = symlogo(selectedContact.clan) || icon;
                 }
                 const notificationBody = latest.attachment_id ? '📷 Image Attachment' : (latest.body || 'New message');
@@ -1248,7 +1512,10 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
             setMessages(prev => {
               const serverIds = new Set(msgs.map(m => m.id));
               const localOnly = prev.filter(m => String(m.id).startsWith('temp_') && !serverIds.has(m.id));
-              return [...msgs, ...localOnly];
+              // Older pages loaded by scrolling up stay; the latest page replaces the rest.
+              const first = msgs[0];
+              const older = first ? prev.filter(m => !String(m.id).startsWith('temp_') && byTime(m, first) < 0) : [];
+              return [...older, ...msgs, ...localOnly];
             });
 
             if (selectedContact.type === 'user' && !isAdmin && msgs.length > 0) {
@@ -1303,7 +1570,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     // every interval tick, just triggered on-demand by the socket event
     // instead of only on a timer.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedContact, selectedPlayerId, isAdmin, isAuthenticated, currentUser?.id, users, threadKey, isInbound, notify, socketRefreshTick, isTabVisible]);
+  }, [selectedContact, selectedPlayerId, isAdmin, isAuthenticated, currentUser?.id, threadKey, isInbound, notify, socketRefreshTick, isTabVisible]);
 
   /* --- File Handling --- */
   const handleFileSelect = (e) => {
@@ -1311,14 +1578,14 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     if (!file) return;
 
     if (!file.type.startsWith('image/') && !file.type.startsWith('audio/')) {
-      alert('Only images and audio files are allowed');
+      toast.error('Only images and audio files are allowed');
       return;
     }
 
     const MAX_MB = 50;
     const MAX_BYTES = MAX_MB * 1024 * 1024;
     if (file.size > MAX_BYTES) {
-      alert(`File size too large (max ${MAX_MB}MB)`);
+      toast.error(`File size too large (max ${MAX_MB}MB)`);
       return;
     }
 
@@ -1332,26 +1599,31 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   };
 
   /* --- Sending Logic --- */
-  const doSend = async ({ queue = false } = {}) => {
+  // `text` sends something other than the composer (the conversation emoji).
+  const doSend = async ({ queue = false, text, emojiSize = null } = {}) => {
     if (!canSend) return;
-    const body = newMessage.trim();
+    // The conversation emoji button sends `text` on its own: the typed draft
+    // and any picked attachment stay in the composer.
+    const fromComposer = text == null;
+    const body = (fromComposer ? newMessage : text).trim();
+    const file = fromComposer ? attachment : null;
 
-    if ((!body && !attachment) || !selectedContact) return;
+    if ((!body && !file) || !selectedContact) return;
     if (isAdmin && selectedContact.type === 'npc' && !selectedPlayerId) return;
     if (sendingRef.current) return;
 
     sendingRef.current = true;
     let attachmentId = null;
-    const sig = [threadKey, body, attachment?.name, attachment?.size, replyTo?.id, queue].join('|');
+    const sig = [threadKey, body, file?.name, file?.size, replyTo?.id, queue, emojiSize].join('|');
     if (sendKeyRef.current?.sig !== sig) sendKeyRef.current = { sig, key: crypto.randomUUID() };
     const idem = { headers: { 'Idempotency-Key': sendKeyRef.current.key } };
 
     try {
-      if (attachment) {
+      if (file) {
         setIsUploading(true);
         setUploadProgress(0);
         const formData = new FormData();
-        formData.append('file', attachment);
+        formData.append('file', file);
 
         try {
           const res = await api.post('/chat/upload', formData, {
@@ -1363,14 +1635,14 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
           attachmentId = res.data.id;
         } catch (err) {
           console.error('Upload error:', err?.response?.data || err);
-          alert(formatApiError(err, 'Failed to upload file. Check file size and type.'));
+          toast.error(formatApiError(err, 'Failed to upload file. Check file size and type.'));
           sendingRef.current = false;
           setIsUploading(false);
           return;
         }
       }
 
-      const payload = { body, attachment_id: attachmentId, reply_to_id: replyTo?.id || null };
+      const payload = { body, attachment_id: attachmentId, reply_to_id: replyTo?.id || null, emoji_size: emojiSize };
       let newMsg = null;
 
       if (selectedContact.type === 'group') {
@@ -1423,6 +1695,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
               sender_id: 'npc',
               _from: 'npc',
               attachment_id: data.message.attachment_id,
+              emoji_size: data.message.emoji_size,
               status: data.message.status
             };
           } else {
@@ -1446,7 +1719,8 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
               created_at: data.message.created_at,
               sender_id: currentUser.id,
               _from: 'user',
-              attachment_id: data.message.attachment_id
+              attachment_id: data.message.attachment_id,
+              emoji_size: data.message.emoji_size
             };
           } else {
             newMsg = {
@@ -1482,12 +1756,14 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
       }
 
       sendKeyRef.current = null;
-      setNewMessage('');
       setReplyTo(null);
-      setShowEmojiPicker(false);
-      clearAttachment();
-      setDrafts(prev => ({ ...prev, [threadKey]: '' }));
-      if (textareaRef.current) textareaRef.current.style.height = 'auto';
+      if (fromComposer) {
+        setNewMessage('');
+        setShowEmojiPicker(false);
+        clearAttachment();
+        setDrafts(prev => ({ ...prev, [threadKey]: '' }));
+        if (textareaRef.current) textareaRef.current.style.height = 'auto';
+      }
 
     } catch (err) {
       setError(err?.response?.status === 401 ? 'Your session expired. Please log in again.' : 'Failed to send message.');
@@ -1503,10 +1779,74 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     doSend();
   };
 
+  // Hold the conversation emoji to inflate it: the longer the hold the bigger
+  // it's sent (1-3); see EMOJI_GROW/WARN/POP_MS for the timeline.
+  const [emojiHold, setEmojiHold] = useState('idle'); // 'idle' | 'growing' | 'warning' | 'popped'
+  const holdStartRef = useRef(null);
+  const holdTimersRef = useRef([]);
+  const clearHoldTimers = () => {
+    holdTimersRef.current.forEach(clearTimeout);
+    holdTimersRef.current = [];
+  };
+  useEffect(() => () => clearHoldTimers(), []);
+  const startEmojiHold = (e) => {
+    if (e.button > 0) return;
+    clearHoldTimers();
+    holdStartRef.current = Date.now();
+    setEmojiHold('growing');
+    holdTimersRef.current = [
+      setTimeout(() => navigator.vibrate?.(8), EMOJI_GROW_MS),
+      setTimeout(() => setEmojiHold('warning'), EMOJI_WARN_MS),
+      setTimeout(() => {
+        holdStartRef.current = null;
+        navigator.vibrate?.([20, 40, 20]);
+        setEmojiHold('popped');
+        holdTimersRef.current.push(setTimeout(() => setEmojiHold('idle'), 350));
+      }, EMOJI_POP_MS),
+    ];
+  };
+  const endEmojiHold = (send) => {
+    const start = holdStartRef.current;
+    if (start == null) return; // popped, or never started
+    clearHoldTimers();
+    holdStartRef.current = null;
+    setEmojiHold('idle');
+    if (!send) return;
+    const held = Date.now() - start;
+    doSend({ text: convEmoji, emojiSize: held < 300 ? 1 : held < EMOJI_GROW_MS * 0.75 ? 2 : 3, queue: showQueueOption });
+  };
+
+  // Offline admin send button: 'holding' until SEND_NOW_HOLD_MS, then 'armed'
+  // (release sends now). The ref mirrors the phase for the pointer handlers.
+  const [sendHold, setSendHold] = useState('idle'); // 'idle' | 'holding' | 'armed'
+  const sendHoldRef = useRef('idle');
+  const sendHoldTimerRef = useRef(null);
+  const setSendHoldPhase = (phase) => {
+    sendHoldRef.current = phase;
+    setSendHold(phase);
+  };
+  useEffect(() => () => clearTimeout(sendHoldTimerRef.current), []);
+  const startSendHold = (e) => {
+    if (e.button > 0) return;
+    clearTimeout(sendHoldTimerRef.current);
+    setSendHoldPhase('holding');
+    sendHoldTimerRef.current = setTimeout(() => {
+      navigator.vibrate?.(15);
+      setSendHoldPhase('armed');
+    }, SEND_NOW_HOLD_MS);
+  };
+  const endSendHold = (send) => {
+    const phase = sendHoldRef.current;
+    if (phase === 'idle') return;
+    clearTimeout(sendHoldTimerRef.current);
+    setSendHoldPhase('idle');
+    if (send) doSend({ queue: phase !== 'armed' });
+  };
+
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && !IS_TOUCH) {
       e.preventDefault();
-      doSend();
+      doSend({ queue: showQueueOption });
     } else if (e.key === 'Escape' && replyTo) {
       setReplyTo(null);
     }
@@ -1523,6 +1863,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     });
     setEditingMsgId(null);
     setReactionPickerFor(null);
+    setFullReactionPickerFor(null);
     setTimeout(() => textareaRef.current?.focus(), 0);
   };
 
@@ -1533,19 +1874,42 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
       if (r.from_side === 'npc') return selectedContact.name;
       if (!isAdmin) return 'You';
       const p = users.find(u => u.id === selectedPlayerId);
-      return p?.char_name || p?.display_name || 'Player';
+      return p?.char_name || p?.display_name || 'Kindred';
     }
     if (r.sender_id === currentUser?.id) return 'You';
     if (selectedContact.type === 'user') return selectedContact.char_name || selectedContact.display_name;
     return r.sender_name || 'Someone';
   };
 
-  const scrollToMessage = (id) => {
+  const revealMessage = (id) => {
     const el = document.getElementById(`chat-msg-${id}`);
-    if (!el) return;
+    if (!el) return false;
+    userScrollingRef.current = true; // keep the auto scroll-to-bottom from undoing the jump
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     setFlashMsgId(id);
     setTimeout(() => setFlashMsgId(f => (f === id ? null : f)), 1600);
+    return true;
+  };
+
+  // Scrolls to a message; when it's further back than what's loaded, first
+  // loads everything between it and the oldest loaded page.
+  const scrollToMessage = async (id) => {
+    if (revealMessage(id)) return;
+    const oldest = messages.find(m => !String(m.id).startsWith('temp_'));
+    if (!oldest || !selectedContact) return;
+    const seq = loadSeqRef.current;
+    try {
+      const page = await fetchHistory(`from=${id}&before=${oldest.id}`);
+      if (loadSeqRef.current !== seq) return;
+      if (!page.msgs.some(m => m.id === id)) {
+        toast.error('Could not find that message.');
+        return;
+      }
+      pendingJumpRef.current = id;
+      prependMessages(page.msgs);
+    } catch (e) {
+      toast.error('Could not load that message.');
+    }
   };
 
   const replySnippet = (r) => {
@@ -1570,7 +1934,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
       setNewGroupMembers([]);
       setNewGroupIcon(null);
       fetchContacts();
-    } catch (e) { alert('Failed to create group'); }
+    } catch (e) { toast.error('Failed to create group'); }
   };
 
   /* --- Render & Filters --- */
@@ -1674,12 +2038,106 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     if (isAdmin && selectedContact.type === 'npc') {
       const selUser = users.find(u => u.id === selectedPlayerId);
       return selUser
-        ? <>{selectedContact.name} <NPCTag /> ➜ {selUser.char_name || selUser.display_name}</>
+        ? <>{selectedContact.name} <NPCTag /> <span className="material-symbols-outlined text-[16px] align-middle">arrow_forward</span> {selUser.char_name || selUser.display_name}</>
         : <>{selectedContact.name} <NPCTag /></>;
     }
     if (selectedContact.type === 'npc') return <>{selectedContact.name} <NPCTag /></>;
     return <>{selectedContact.name}</>;
   })();
+
+  // The open chat lives in the URL (?c=u-12 / g-3 / n-5) so the phone's back
+  // button closes it instead of leaving SchreckNet. Clicks only change the
+  // URL; the effect below does the actual selection.
+  const contactKey = (c) => (c ? `${c.type[0]}-${c.id}` : null);
+  const openChat = (contact) => {
+    const key = contactKey(contact);
+    if (key === chatParam) return;
+    // Switching straight from one chat to another (desktop) replaces, so
+    // back doesn't walk through every chat that was ever opened.
+    setSearchParams({ c: key }, { replace: !!chatParam, state: { chat: true } });
+  };
+  const closeChat = () => {
+    // Pop the chat entry, plus the details panel entry when it's open on top.
+    if (location.state?.chat) navigate(location.state?.panel ? -2 : -1);
+    else setSearchParams({}, { replace: true });
+  };
+
+  // The details panel is ?p=info on top of the chat, so back closes it first.
+  const detailsOpen = searchParams.get('p') === 'info';
+  const openDetails = () => setSearchParams({ c: chatParam, p: 'info' }, { state: { chat: !!location.state?.chat, panel: true } });
+  const closeDetails = () => {
+    if (location.state?.panel) navigate(-1);
+    else setSearchParams({ c: chatParam }, { replace: true, state: { chat: !!location.state?.chat } });
+  };
+
+  // Header dot/status per chat kind: the person for DMs, a Storyteller for a
+  // player's NPC chat, the selected player for an admin's NPC chat, and a
+  // member count for groups.
+  const headerOnline = !selectedContact ? false
+    : selectedContact.type === 'user' ? isUserOnline(selectedContact.id)
+      : selectedContact.type === 'npc' ? (isAdmin ? !!selectedPlayerId && isUserOnline(selectedPlayerId) : storytellerOnline)
+        : false;
+  const headerStatus = (() => {
+    if (!selectedContact) return null;
+    if (selectedContact.type === 'group') {
+      const on = headerGroupMembers.filter(m => isUserOnline(m.id)).length;
+      return headerGroupMembers.length ? `${headerGroupMembers.length} members, ${on} online` : '';
+    }
+    if (selectedContact.type === 'npc' && isAdmin) {
+      if (!selectedPlayerId) return 'Select a Kindred';
+      return headerOnline ? 'Kindred online' : 'Kindred offline';
+    }
+    return headerOnline ? 'Online' : 'Offline';
+  })();
+
+  const headerStanding = (selectedContact?.type === 'user' || selectedContact?.type === 'npc')
+    ? { titles: selectedContact.titles || [], court_status: selectedContact.court_status ?? null }
+    : { titles: [], court_status: null };
+  // Which button the composer's single slot shows. A button that is still
+  // animating out keeps its old props (e.g. the text just sent), so taps on it
+  // are dropped: its slot no longer matches the current one.
+  const composerSlot = (newMessage.trim() || attachment) ? (showQueueOption ? 'queue' : 'send') : 'emoji';
+  const composerSlotRef = useRef(composerSlot);
+  composerSlotRef.current = composerSlot;
+  const dropIfStale = (slot) => (e) => {
+    if (slot !== composerSlotRef.current) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+  };
+  const activeTheme = themeFor(convSettings.theme);
+  const accent = activeTheme?.color || null;
+  const bubbleTheme = accent ? { backgroundColor: accent, borderColor: accent, color: textOn(accent) } : null;
+
+  // Identifies the open conversation to the settings / search / media endpoints.
+  const convParams = !selectedContact ? null
+    : selectedContact.type === 'npc' && isAdmin
+      ? (selectedPlayerId ? { kind: 'npc', id: selectedContact.id, user_id: selectedPlayerId } : null)
+      : { kind: selectedContact.type, id: selectedContact.id };
+
+  const saveConvSettings = async (patch) => {
+    if (!convParams) return;
+    const prev = convSettings;
+    setConvSettings(cur => ({ ...cur, ...patch }));
+    setPanelPicker(null);
+    try {
+      await api.put('/chat/settings', { ...convParams, ...patch });
+    } catch (e) {
+      setConvSettings(prev);
+      toast.error(formatApiError(e, 'Could not save the change.'));
+    }
+  };
+
+  const loadMedia = async (more = false) => {
+    if (!convParams) return;
+    const before = more ? mediaList.items[mediaList.items.length - 1]?.id : undefined;
+    try {
+      const { data } = await api.get('/chat/media-list', { params: { ...convParams, before } });
+      setMediaList(cur => ({ items: more ? [...cur.items, ...data.media] : data.media, hasMore: data.has_more, loaded: true }));
+    } catch (e) {
+      setMediaList(cur => ({ ...cur, loaded: true }));
+    }
+  };
 
   const buildThreadKey = (contact, selPlayerId) => {
     if (!contact) return 'none';
@@ -1688,6 +2146,28 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     return isAdmin ? `n-${contact.id}-p-${selPlayerId || 'none'}` : `n-${contact.id}`;
   };
 
+  // Marks a conversation read on the server and zeroes its local badge. Used
+  // when a chat is opened and again whenever a message arrives while it's on
+  // screen: it used to run only on open, so a message read live stayed unread.
+  const markThreadRead = (contact, playerId) => {
+    if (!contact) return;
+    if (contact.type === 'user') {
+      setUsers(prev => prev.map(u => u.id === contact.id ? { ...u, unread_count: 0 } : u));
+      api.post('/chat/read', { sender_id: contact.id }).catch(() => { });
+    } else if (contact.type === 'group') {
+      setGroups(prev => prev.map(g => g.id === contact.id ? { ...g, unread_count: 0 } : g));
+      api.post(`/chat/groups/${contact.id}/read`).catch(() => { });
+    } else if (contact.type === 'npc' && !isAdmin) {
+      setNpcs(prev => prev.map(n => n.id === contact.id ? { ...n, unread_count: 0 } : n));
+      api.post('/chat/read', { npc_id: contact.id }).catch(() => { });
+    } else if (contact.type === 'npc' && playerId) {
+      setNpcConvos(prev => prev.map(c => c.user_id === playerId ? { ...c, unread_count: 0 } : c));
+      api.post('/chat/read', { npc_id: contact.id, sender_id: playerId, is_admin_reading_npc: true }).catch(() => { });
+    }
+  };
+  const markThreadReadRef = useRef(markThreadRead);
+  markThreadReadRef.current = markThreadRead;
+
   const selectContact = (contact) => {
     if (selectedContact?.type === contact.type && selectedContact?.id === contact.id) {
       return;
@@ -1695,6 +2175,8 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
 
     setDrafts(prev => ({ ...prev, [threadKey]: newMessage }));
     setSelectedContact(contact);
+    setReactionPickerFor(null);
+    setFullReactionPickerFor(null);
 
     // A player picked under one NPC means nothing under another NPC; start
     // clean so the auto-open below picks this NPC's own latest conversation.
@@ -1703,17 +2185,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     const nextKey = buildThreadKey(contact, null);
     setNewMessage(drafts[nextKey] || '');
     setError('');
-
-    if (contact.type === 'user') {
-      setUsers(prev => prev.map(u => u.id === contact.id ? { ...u, unread_count: 0 } : u));
-      api.post('/chat/read', { sender_id: contact.id }).catch(() => { });
-    } else if (contact.type === 'npc' && !isAdmin) {
-      setNpcs(prev => prev.map(n => n.id === contact.id ? { ...n, unread_count: 0 } : n));
-      api.post('/chat/read', { npc_id: contact.id }).catch(() => { });
-    } else if (contact.type === 'group') {
-      setGroups(prev => prev.map(g => g.id === contact.id ? { ...g, unread_count: 0 } : g));
-      api.post(`/chat/groups/${contact.id}/read`).catch(() => { });
-    }
+    markThreadRead(contact, null);
 
     if (!isMobile) window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -1721,12 +2193,67 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   const selectAdminTarget = (userId) => {
     setDrafts(prev => ({ ...prev, [threadKey]: newMessage }));
     setSelectedPlayerId(userId);
+    setReactionPickerFor(null);
+    setFullReactionPickerFor(null);
     const nextKey = buildThreadKey(selectedContact, userId);
     setNewMessage(drafts[nextKey] || '');
-
-    setNpcConvos(prev => prev.map(c => c.user_id === userId ? { ...c, unread_count: 0 } : c));
-    api.post('/chat/read', { npc_id: selectedContact.id, sender_id: userId, is_admin_reading_npc: true }).catch(() => { });
+    markThreadRead(selectedContact, userId);
   };
+
+  const handleMarkNpcUnread = async (fromMessageId = null) => {
+    if (!isAdmin || selectedContact?.type !== 'npc' || !selectedPlayerId) return;
+    const targetPlayerId = selectedPlayerId;
+    const targetNpcId = selectedContact.id;
+
+    // Optimistically update counts and deselect so thread is not immediately re-read
+    setNpcConvos(prev => prev.map(c => c.user_id === targetPlayerId ? { ...c, unread_count: (c.unread_count > 0 ? c.unread_count : 1) } : c));
+    setNpcs(prev => prev.map(n => n.id === targetNpcId ? { ...n, unread_count: (n.unread_count > 0 ? n.unread_count : 1) } : n));
+    setSelectedPlayerId(null);
+    setMessages([]);
+
+    try {
+      const { data } = await api.post(`/admin/chat/npc-unread/${targetNpcId}/${targetPlayerId}`, fromMessageId ? { fromMessageId } : {});
+      if (data?.unread_count) {
+        setNpcConvos(prev => prev.map(c => c.user_id === targetPlayerId ? { ...c, unread_count: data.unread_count } : c));
+      }
+      toast.success('Conversation marked unread for Storytellers');
+    } catch (e) {
+      toast.error('Failed to mark conversation unread');
+    }
+  };
+
+  useEffect(() => {
+    if (!chatParam) {
+      if (selectedContact) setSelectedContact(null);
+      return;
+    }
+    if (contactKey(selectedContact) === chatParam) return;
+    const [t, id] = chatParam.split('-');
+    const list = t === 'u' ? users : t === 'g' ? groups : t === 'n' ? npcs : [];
+    const contact = list.find(c => String(c.id) === id);
+    if (contact) selectContact(contact);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatParam, users, groups, npcs]);
+
+  // Details panel: first media page on open, debounced search while typing.
+  const convParamsKey = convParams ? JSON.stringify(convParams) : '';
+  useEffect(() => {
+    if (detailsOpen && convParamsKey && !mediaList.loaded) loadMedia();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detailsOpen, convParamsKey, mediaList.loaded]);
+  useEffect(() => {
+    const q = searchQ.trim();
+    if (!detailsOpen || !convParamsKey || q.length < 2) { setSearchResults(null); return; }
+    let live = true;
+    setSearching(true);
+    const t = setTimeout(() => {
+      api.get('/chat/search', { params: { ...JSON.parse(convParamsKey), q } })
+        .then(({ data }) => { if (live) setSearchResults(data.results || []); })
+        .catch(() => { if (live) setSearchResults([]); })
+        .finally(() => { if (live) setSearching(false); });
+    }, 350);
+    return () => { live = false; clearTimeout(t); };
+  }, [searchQ, detailsOpen, convParamsKey]);
 
   // Opening an NPC as admin jumps straight into its most recently active
   // conversation. Only once per NPC visit, so "Clear" doesn't immediately
@@ -1768,7 +2295,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
           aria-modal="true"
           aria-labelledby="manage-group-title"
           onClick={e => e.stopPropagation()}
-          className="bg-surface-container border border-outline-variant rounded-lg w-full max-w-md max-h-[calc(100dvh-1.5rem)] sm:max-h-[90vh] flex flex-col overflow-hidden shadow-[0_0_20px_rgba(27,76,140,0.3)]"
+          className="chat-overlay-surface border border-outline-variant rounded-lg w-full max-w-md max-h-[calc(100dvh-1.5rem)] sm:max-h-[90vh] flex flex-col overflow-hidden shadow-[0_0_20px_rgba(27,76,140,0.3)]"
         >
           <div className="flex items-center justify-between gap-3 pl-4 sm:pl-6 pr-2 sm:pr-3 py-2 border-b border-outline-variant/50 shrink-0">
             <h3 id="manage-group-title" className="text-xl font-headline-md text-primary tracking-tight m-0 truncate">Manage Group</h3>
@@ -1857,7 +2384,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                     const label = m.char_name || m.display_name || 'this member';
                     return (
                       <div key={m.id} className="flex items-center justify-between gap-2 bg-surface-container-highest pl-3 pr-2 py-2 rounded border border-outline-variant/30">
-                        <span className="text-sm min-w-0 truncate">{m.char_name || 'No char'} <small className="opacity-60">({m.display_name})</small></span>
+                        <span className="text-sm min-w-0 truncate">{m.char_name || m.display_name}</span>
                         {m.id !== selectedContact.created_by ? (
                           <button className="text-[11px] bg-error-container/20 text-error border border-error/30 px-3 py-1.5 rounded hover:bg-error/20 transition-colors shrink-0" onClick={() => handleRemoveMemberFromGroup(m.id, label)}>Remove</button>
                         ) : (
@@ -1886,12 +2413,12 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
               {addMembersOpen && (
                 <div className="flex flex-col gap-2 mt-2">
                   {nonMembers.length === 0 ? (
-                    <div className="text-center text-on-surface-variant/50 text-sm py-2">All players are in the group.</div>
+                    <div className="text-center text-on-surface-variant/50 text-sm py-2">Every Kindred is already in the group.</div>
                   ) : nonMembers.map(u => {
-                    const label = u.char_name || u.display_name || 'this player';
+                    const label = u.char_name || u.display_name || 'this Kindred';
                     return (
                       <div key={u.id} className="flex items-center justify-between gap-2 bg-surface-container-highest pl-3 pr-2 py-2 rounded border border-outline-variant/30">
-                        <span className="text-sm min-w-0 truncate">{u.char_name} <small className="opacity-60">({u.display_name})</small></span>
+                        <span className="text-sm min-w-0 truncate">{u.char_name}</span>
                         <button className="text-[11px] bg-primary/20 text-primary border border-primary/30 px-3 py-1.5 rounded hover:bg-primary/40 transition-colors shrink-0" onClick={() => handleAddMemberToGroup(u.id, label)}>Add</button>
                       </div>
                     );
@@ -1913,6 +2440,279 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     );
   };
 
+  const isMine = (m) => (selectedContact?.type === 'npc' && isAdmin ? m.sender_id === 'npc' : m.sender_id === currentUser?.id);
+  const messagePerms = (item) => {
+    const mine = isMine(item);
+    const sent = !String(item.id).startsWith('temp_');
+    const createdAt = new Date(item.created_at).getTime();
+    const canEditDelete = mine && sent && Date.now() - createdAt < 4 * 60 * 60 * 1000;
+    // Mirrors the backend's edit lock: once the other side has sent anything
+    // after this message, it's been "answered" and can no longer be edited
+    // (delete stays unaffected, same as the API).
+    const answeredSince = canEditDelete && messages.some(m => new Date(m.created_at).getTime() > createdAt && !isMine(m));
+    return { mine, sent, canEditDelete, canEdit: canEditDelete && !answeredSince, canReply: sent && editingMsgId !== item.id };
+  };
+
+  const renderActionSheet = () => {
+    const item = actionSheetMsg;
+    const { mine, sent, canEditDelete, canEdit, canReply } = messagePerms(item);
+    const close = () => setActionSheetMsg(null);
+    const run = (fn) => () => { close(); fn(); };
+    const actions = [
+      canReply && { icon: 'reply', label: 'Reply', fn: () => startReply(item) },
+      item.body && { icon: 'content_copy', label: 'Copy text', fn: () => copyToClipboard(item.body) },
+      reactionsByMsgId[item.id]?.length > 0 && { icon: 'groups', label: 'See reactions', fn: () => { setSelectedReactionTab('all'); setViewingReactionsMsg(item); } },
+      canEdit && !editingMsgId && { icon: 'edit', label: 'Edit', fn: () => { setEditingMsgId(item.id); setEditBody(item.body); } },
+      !mine && sent && isAdmin && selectedContact?.type === 'npc' && { icon: 'mark_chat_unread', label: 'Mark unread from here', fn: () => handleMarkNpcUnread(item.id) },
+      canEditDelete && !editingMsgId && { icon: 'delete', label: 'Delete', danger: true, fn: () => handleDeleteMessage(item.id) },
+    ].filter(Boolean);
+    return createPortal(
+      <div className="fixed inset-0 z-[1100] flex items-end bg-black/60" onClick={close}>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Message actions"
+          onClick={e => e.stopPropagation()}
+          className="w-full chat-overlay-surface border-t border-outline-variant rounded-t-2xl pb-[max(12px,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(0,0,0,0.6)]"
+        >
+          <div className="w-10 h-1 rounded-full bg-outline-variant/60 mx-auto mt-2 mb-2" />
+          {sent && (
+            <div className="flex items-center justify-around px-2 pb-2 border-b border-outline-variant/40">
+              {QUICK_REACTIONS.map(e => (
+                <button key={e} type="button" onClick={run(() => toggleReaction(item.id, e))} className="w-11 h-11 flex items-center justify-center rounded-full text-[24px] leading-none active:bg-surface-variant/50">
+                  <ReactionGlyph value={e} size={24} />
+                </button>
+              ))}
+              <button type="button" aria-label="More reactions" onClick={run(() => setFullReactionPickerFor(item.id))} className="w-11 h-11 flex items-center justify-center rounded-full text-on-surface-variant active:bg-surface-variant/50">
+                <span className="material-symbols-outlined text-[24px]">add_reaction</span>
+              </button>
+            </div>
+          )}
+          <div className="flex flex-col py-1">
+            {actions.map(a => (
+              <button key={a.label} type="button" onClick={run(a.fn)} className={`flex items-center gap-4 px-5 h-12 text-left text-[15px] active:bg-surface-variant/40 ${a.danger ? 'text-error' : 'text-on-surface'}`}>
+                <span className="material-symbols-outlined text-[22px]">{a.icon}</span>
+                {a.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>,
+      document.body
+    );
+  };
+
+  const renderDetailsPanel = () => {
+    const c = selectedContact;
+    const locked = !convParams;
+    const sectionLabel = 'px-4 pt-6 pb-2 text-[10px] text-on-surface-variant/60 font-bold tracking-widest uppercase';
+    const row = 'w-full flex items-center gap-4 px-4 min-h-[52px] text-left text-[15px] text-on-surface hover:bg-surface-variant/20 active:bg-surface-variant/40 transition-colors disabled:opacity-40';
+    // Each swatch previews the background, with the bubble colour as its mark.
+    const swatch = (t) => {
+      const key = t?.key || null;
+      const selected = (convSettings.theme || null) === key;
+      const crest = t && !t.icon && localSymlogo(t.key);
+      return (
+        <button key={key || 'default'} type="button" onClick={() => saveConvSettings({ theme: key })} aria-pressed={selected} className="flex flex-col items-center gap-1 min-w-0">
+          <span
+            className={`w-14 h-14 rounded-full border border-outline-variant/50 flex items-center justify-center ${selected ? 'ring-2 ring-offset-2 ring-offset-surface-container ring-on-surface' : ''}`}
+            style={{ background: t ? t.bg : BASE_BG }}
+          >
+            {t?.icon && <span className="material-symbols-outlined text-[26px]" style={{ color: t.color }}>{t.icon}</span>}
+            {crest && (
+              <span className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: t.color }}>
+                <img src={crest} alt="" className="w-5 h-5" style={{ filter: textOn(t.color) === '#fff' ? 'brightness(0) invert(1)' : 'brightness(0)' }} />
+              </span>
+            )}
+            {!t && <span className="material-symbols-outlined text-[24px] text-on-surface-variant">format_color_reset</span>}
+          </span>
+          <span className="text-[10px] text-on-surface-variant truncate max-w-full">{t ? t.key : 'Default'}</span>
+        </button>
+      );
+    };
+    const searchAuthor = (r) => replyAuthor({
+      sender_id: r.sender_id, from_side: r.from_side,
+      sender_name: headerGroupMembers.find(m => m.id === r.sender_id)?.char_name,
+    });
+
+    return createPortal(
+      <div className="fixed inset-0 z-[1100] flex justify-end bg-black/60" onClick={closeDetails}>
+        <motion.aside
+          role="dialog"
+          aria-modal="true"
+          aria-label="Conversation details"
+          onClick={e => e.stopPropagation()}
+          initial={{ x: '100%' }}
+          animate={{ x: 0 }}
+          transition={{ type: 'spring', stiffness: 380, damping: 36 }}
+          className="w-full md:w-[400px] h-full chat-overlay-surface md:border-l border-outline-variant flex flex-col shadow-[-8px_0_24px_rgba(0,0,0,0.5)]"
+        >
+          <div className="flex items-center gap-2 px-2 h-14 border-b border-outline-variant/50 shrink-0">
+            <button type="button" onClick={closeDetails} aria-label="Close details" className="w-11 h-11 flex items-center justify-center rounded text-on-surface-variant hover:text-primary">
+              <span className="material-symbols-outlined text-[24px]">arrow_back</span>
+            </button>
+            <h3 className="text-[16px] font-semibold text-on-surface m-0">Details</h3>
+          </div>
+
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain pb-[max(16px,env(safe-area-inset-bottom))]">
+            {/* Who */}
+            <div className="flex flex-col items-center text-center px-6 pt-6 gap-1">
+              <div className="relative mb-2">
+                <div className={`w-20 h-20 ${c.type === 'npc' ? 'rounded-lg' : 'rounded-full'} bg-surface-container-highest border border-outline-variant/50 overflow-hidden flex items-center justify-center`}>
+                  {c.type === 'user' ? (
+                    <Avatar userId={c.id} size="100%" style={{ width: '100%', height: '100%' }} fallback={localSymlogo(c.clan) || '/img/ATT-logo(1).webp'} />
+                  ) : c.type === 'npc' ? (
+                    <Avatar npcId={c.id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} fallback={localSymlogo(c.clan) || '/img/ATT-logo(1).webp'} />
+                  ) : (
+                    <GroupIconGlyph icon={c.icon} size={56} />
+                  )}
+                </div>
+                <OnlineDot online={headerOnline} />
+              </div>
+              <div className="text-[18px] font-semibold text-on-surface">{headerLabel}</div>
+              <StatusLine titles={headerStanding.titles} status={headerStanding.court_status} className="text-[12px] text-on-surface-variant justify-center" />
+              <div className={`text-[12px] font-system-code ${headerOnline ? 'text-green-500' : 'text-on-surface-variant/70'}`}>{headerStatus}</div>
+            </div>
+
+            {/* Customise (shared with everyone in the conversation) */}
+            <div className={sectionLabel}>Customise</div>
+            <button type="button" className={row} disabled={locked} onClick={() => setPanelPicker(v => (v === 'theme' ? null : 'theme'))} aria-expanded={panelPicker === 'theme'}>
+              <span className="material-symbols-outlined text-[22px] text-on-surface-variant">palette</span>
+              <span className="flex-1">Theme</span>
+              <span className="flex items-center gap-2 text-[13px] text-on-surface-variant">
+                {convSettings.theme || 'Default'}
+                <span className="w-6 h-6 rounded-full border border-outline-variant" style={{ background: activeTheme?.bg || BASE_BG }} />
+              </span>
+            </button>
+            {panelPicker === 'theme' && (
+              <div className="px-4 py-3">
+                <div className="grid grid-cols-4 gap-x-2 gap-y-4">{swatch(null)}</div>
+                {THEME_GROUPS.map(g => (
+                  <div key={g}>
+                    <div className="text-[10px] uppercase tracking-widest text-on-surface-variant/50 mt-5 mb-2">{g}</div>
+                    <div className="grid grid-cols-4 gap-x-2 gap-y-4">{CHAT_THEMES.filter(t => t.group === g).map(swatch)}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button type="button" className={row} disabled={locked} onClick={() => setPanelPicker(v => (v === 'emoji' ? null : 'emoji'))} aria-expanded={panelPicker === 'emoji'}>
+              <span className="material-symbols-outlined text-[22px] text-on-surface-variant">add_reaction</span>
+              <span className="flex-1">Conversation emoji</span>
+              <span className="text-[22px] leading-none"><ReactionGlyph value={convEmoji} size={22} /></span>
+            </button>
+            {panelPicker === 'emoji' && (
+              <div className="px-4 pb-3">
+                <div className="rounded-lg overflow-hidden border border-outline-variant">
+                  <React.Suspense fallback={<div className="p-8 text-center text-xs text-on-surface-variant font-system-code">Loading emojis...</div>}>
+                    <EmojiPicker
+                      onEmojiClick={(o) => saveConvSettings({ emoji: emojiObjectToToken(o) })}
+                      theme="dark"
+                      width="100%"
+                      height={340}
+                      customEmojis={customClanEmojis}
+                      categories={EMOJI_PICKER_CATEGORIES}
+                    />
+                  </React.Suspense>
+                </div>
+                {convSettings.emoji && (
+                  <button type="button" onClick={() => saveConvSettings({ emoji: null })} className="mt-2 px-1 py-2 text-[13px] text-primary">Reset to default</button>
+                )}
+              </div>
+            )}
+
+            {/* Search */}
+            <div className={sectionLabel}>Search in conversation</div>
+            <div className="px-4">
+              <div className="relative">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[20px] text-on-surface-variant/60">search</span>
+                <input
+                  type="search"
+                  value={searchQ}
+                  onChange={e => setSearchQ(e.target.value)}
+                  disabled={locked}
+                  placeholder="Search messages"
+                  className="w-full bg-surface-dim border border-outline-variant/50 rounded-lg pl-10 pr-3 h-11 text-[16px] md:text-[14px] text-on-surface focus:border-primary focus:ring-0"
+                />
+              </div>
+            </div>
+            {searchQ.trim().length >= 2 && (
+              <div className="mt-2">
+                {searching && !searchResults && <div className="px-4 py-3 text-[13px] text-on-surface-variant">Searching...</div>}
+                {searchResults && searchResults.length === 0 && <div className="px-4 py-3 text-[13px] text-on-surface-variant">No messages found.</div>}
+                {searchResults?.map(r => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => { closeDetails(); setTimeout(() => scrollToMessage(r.id), 60); }}
+                    className="w-full text-left px-4 py-3 border-b border-outline-variant/20 hover:bg-surface-variant/20 active:bg-surface-variant/40"
+                  >
+                    <div className="flex justify-between gap-2 text-[11px] text-on-surface-variant font-system-code">
+                      <span className="truncate">{searchAuthor(r)}</span>
+                      <span className="shrink-0">{formatTime(r.created_at)}</span>
+                    </div>
+                    <div className="text-[14px] text-on-surface line-clamp-2 break-words mt-0.5">{renderMessageBody(r.body)}</div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Media */}
+            <div className={sectionLabel}>Media</div>
+            {mediaList.loaded && mediaList.items.length === 0 ? (
+              <div className="px-4 text-[13px] text-on-surface-variant">No media shared yet.</div>
+            ) : (
+              <div className="grid grid-cols-3 gap-1 px-4">
+                {mediaList.items.map(m => (
+                  <div key={m.id} className="aspect-square rounded overflow-hidden bg-black/40">
+                    <ChatMedia attachmentId={m.attachment_id} thumb />
+                  </div>
+                ))}
+              </div>
+            )}
+            {mediaList.hasMore && (
+              <button type="button" onClick={() => loadMedia(true)} className="mx-4 mt-2 px-3 py-2 text-[13px] text-primary">Show more</button>
+            )}
+
+            {/* Members (groups) */}
+            {c.type === 'group' && (
+              <>
+                <div className={sectionLabel}>Members ({headerGroupMembers.length})</div>
+                {headerGroupMembers.map(m => (
+                  <div key={m.id} className="flex items-center gap-3 px-4 min-h-[56px]">
+                    <div className="relative shrink-0">
+                      <div className="w-10 h-10 rounded-full overflow-hidden border border-outline-variant/50 bg-surface-container-highest">
+                        <Avatar userId={m.id} size="100%" style={{ width: '100%', height: '100%' }} fallback={localSymlogo(m.clan) || '/img/ATT-logo(1).webp'} />
+                      </div>
+                      <OnlineDot online={isUserOnline(m.id)} />
+                    </div>
+                    <div className="min-w-0 flex-1 flex flex-col">
+                      <span className="text-[15px] text-on-surface truncate">{m.char_name || m.display_name}</span>
+                      <StatusLine titles={m.titles} status={m.court_status} className="text-[11px] text-on-surface-variant/70" />
+                    </div>
+                    {m.id === c.created_by && <span className="text-[11px] text-on-surface-variant/60 shrink-0">Founder</span>}
+                  </div>
+                ))}
+                <button type="button" className={`${row} mt-2`} onClick={() => openManageGroup()}>
+                  <span className="material-symbols-outlined text-[22px] text-on-surface-variant">settings</span>
+                  Manage group
+                </button>
+                {/* The creator can't leave their own group (the server rejects it);
+                    they delete it from Manage instead. */}
+                {c.created_by !== currentUser?.id && (
+                  <button type="button" className={`${row} !text-error`} onClick={handleLeaveGroup}>
+                    <span className="material-symbols-outlined text-[22px]">logout</span>
+                    Leave group
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        </motion.aside>
+      </div>,
+      document.body
+    );
+  };
+
   const renderConfirmDialog = () => {
     const { title, message, preview, confirmLabel, danger } = confirmState;
     return createPortal(
@@ -1923,7 +2723,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
           aria-labelledby="chat-confirm-title"
           aria-describedby="chat-confirm-message"
           onClick={e => e.stopPropagation()}
-          className={`bg-surface-container border rounded-lg w-full max-w-sm shadow-[0_0_24px_rgba(0,0,0,0.6)] ${danger ? 'border-error/50' : 'border-outline-variant'}`}
+          className={`chat-overlay-surface border rounded-lg w-full max-w-sm shadow-[0_0_24px_rgba(0,0,0,0.6)] ${danger ? 'border-error/50' : 'border-outline-variant'}`}
         >
           <div className="px-5 pt-5 pb-4 flex items-start gap-3">
             <span className={`material-symbols-outlined text-[24px] shrink-0 ${danger ? 'text-error' : 'text-primary'}`}>{danger ? 'warning' : 'help'}</span>
@@ -1964,7 +2764,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
 
   const renderCreateGroupModalTailwind = () => createPortal(
     <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="bg-surface-container border border-outline-variant rounded-lg w-full max-w-md p-6 flex flex-col gap-4 shadow-[0_0_20px_rgba(27,76,140,0.3)]">
+      <div className="chat-overlay-surface border border-outline-variant rounded-lg w-full max-w-md p-6 flex flex-col gap-4 shadow-[0_0_20px_rgba(27,76,140,0.3)]">
         <h3 className="text-xl font-headline-md text-primary tracking-tight border-b border-outline-variant/50 pb-2">Create Group Chat</h3>
 
         <div className="flex items-center gap-3">
@@ -1998,7 +2798,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
           </div>
         )}
 
-        <input type="text" placeholder="Group Name" className="w-full bg-surface-dim border border-outline-variant rounded p-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary/50 transition-colors font-system-code" value={newGroupName} onChange={e => setNewGroupName(e.target.value)} />
+        <input type="text" placeholder="Group Name" className="w-full bg-surface-dim border border-outline-variant rounded p-2 text-base md:text-sm text-on-surface focus:border-primary focus:ring-1 focus:ring-primary/50 transition-colors font-system-code" value={newGroupName} onChange={e => setNewGroupName(e.target.value)} />
         <div className="flex flex-col gap-2 max-h-[40vh] overflow-y-auto pr-2" style={{ scrollbarWidth: 'thin' }}>
           {usersWithChar.map(u => (
             <label key={u.id} className="flex items-center gap-3 bg-surface-container-highest p-2 rounded border border-outline-variant/30 cursor-pointer hover:bg-surface-variant/30 transition-colors">
@@ -2006,7 +2806,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                 if (e.target.checked) setNewGroupMembers(p => [...p, u.id]);
                 else setNewGroupMembers(p => p.filter(id => id !== u.id));
               }} />
-              <span className="text-sm">{u.char_name} <small className="opacity-60">({u.display_name})</small></span>
+              <span className="text-sm min-w-0 truncate">{u.char_name}</span>
             </label>
           ))}
         </div>
@@ -2038,13 +2838,15 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
       >
         {/* Header */}
         <div className={styles.listHeader} style={{ flexDirection: 'column', alignItems: 'stretch', gap: '12px' }}>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded bg-surface-container-highest border border-outline-variant flex items-center justify-center overflow-hidden shrink-0">
-              <span className="material-symbols-outlined text-primary">dns</span>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-surface-container-highest border border-outline-variant flex items-center justify-center overflow-hidden shrink-0">
+              {isAdmin
+                ? <span className="material-symbols-outlined text-primary text-[22px]">shield_person</span>
+                : <Avatar userId={currentUser?.id} size="100%" style={{ width: '100%', height: '100%' }} fallback={localSymlogo(myChar?.clan) || '/img/ATT-logo(1).webp'} />}
             </div>
             <div className="min-w-0">
-              <div className="font-bold text-on-surface text-[14px] truncate">NODE_01</div>
-              <div className="text-on-surface-variant text-[10px] opacity-70 truncate">Secure Blood Channel</div>
+              <div className="text-on-surface-variant text-[10px] uppercase tracking-widest opacity-70">Writing as</div>
+              <div className="font-bold text-on-surface text-[14px] truncate">{isAdmin ? 'Storyteller' : (myChar?.name || currentUser?.display_name)}</div>
             </div>
           </div>
           {isCharActive && (
@@ -2058,7 +2860,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
             <span className="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-on-surface-variant/50 text-[16px]">search</span>
             <input
               type="text"
-              className="w-full bg-surface-dim border border-outline-variant/50 rounded py-1.5 pl-8 pr-2 text-[12px] text-on-surface focus:border-primary focus:ring-1 focus:ring-primary/50 transition-colors"
+              className="w-full bg-surface-dim border border-outline-variant/50 rounded py-2 md:py-1.5 pl-8 pr-2 text-[16px] md:text-[12px] text-on-surface focus:border-primary focus:ring-1 focus:ring-primary/50 transition-colors"
               placeholder="Search network..."
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
@@ -2074,16 +2876,15 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
             <div className="mb-6">
               <div className="px-4 text-[10px] text-on-surface-variant/50 mb-2 font-bold tracking-widest flex items-center justify-between">
                 GROUPS
-                <span className="material-symbols-outlined text-[14px]">expand_more</span>
               </div>
               <ul className="flex flex-col">
                 {filteredGroups.map(g => {
                   const isActive = selectedContact?.type === 'group' && selectedContact?.id === g.id;
                   return (
-                    <li key={`g-${g.id}`} onClick={() => selectContact(g)} className={`${isActive ? 'blood-active border-l-4 translate-x-1' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all`}>
+                    <li key={`g-${g.id}`} onClick={() => openChat(g)} className={`${isActive ? 'blood-active border-l-4' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all`}>
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-6 h-6 rounded-full bg-surface-container-high flex items-center justify-center shrink-0 overflow-hidden">
-                          <GroupIconGlyph icon={g.icon} size={18} />
+                        <div className="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center shrink-0 overflow-hidden">
+                          <GroupIconGlyph icon={g.icon} size={24} />
                         </div>
                         <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate`}>{g.name}</span>
                       </div>
@@ -2099,20 +2900,22 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
           <div className="mb-6">
             <div className="px-4 text-[10px] text-on-surface-variant/50 mb-2 font-bold tracking-widest flex items-center justify-between">
               CONTACTS
-              <span className="material-symbols-outlined text-[14px]">expand_more</span>
             </div>
             <ul className="flex flex-col">
               {usersWithChar.map(u => {
                 const isActive = selectedContact?.type === 'user' && selectedContact?.id === u.id;
                 return (
-                  <li key={`u-${u.id}`} onClick={() => selectContact(u)} className={`${isActive ? 'blood-active border-l-4 translate-x-1' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all`}>
+                  <li key={`u-${u.id}`} onClick={() => openChat(u)} className={`${isActive ? 'blood-active border-l-4' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all`}>
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center overflow-hidden border border-outline-variant/50 relative">
-                        <Avatar userId={u.id} size="100%" style={{ width: '100%', height: '100%' }} imgClassName="opacity-80" fallback={localSymlogo(u.clan) || '/img/ATT-logo(1).webp'} />
+                      <div className="relative shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center overflow-hidden border border-outline-variant/50">
+                          <Avatar userId={u.id} size="100%" style={{ width: '100%', height: '100%' }} imgClassName="opacity-80" fallback={localSymlogo(u.clan) || '/img/ATT-logo(1).webp'} />
+                        </div>
+                        <OnlineDot online={isUserOnline(u.id)} />
                       </div>
-                      <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate flex flex-col`}>
-                        <span className="truncate">{u.char_name}</span>
-                        <span className="text-[9px] opacity-60 truncate">{u.display_name}</span>
+                      <span className="min-w-0 flex flex-col">
+                        <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate`}>{u.char_name}</span>
+                        <StatusLine titles={u.titles} status={u.court_status} className="text-[10px] text-on-surface-variant/70" />
                       </span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -2138,12 +2941,15 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                 {usersNoChar.map(u => {
                   const isActive = selectedContact?.type === 'user' && selectedContact?.id === u.id;
                   return (
-                    <li key={`u-${u.id}`} onClick={() => selectContact(u)} className={`${isActive ? 'blood-active border-l-4 translate-x-1' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all opacity-80`}>
+                    <li key={`u-${u.id}`} onClick={() => openChat(u)} className={`${isActive ? 'blood-active border-l-4' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all opacity-80`}>
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-6 h-6 rounded-full bg-surface-container flex items-center justify-center shrink-0 border border-outline-variant/30 overflow-hidden">
-                          <Avatar userId={u.id} size="100%" style={{ width: '100%', height: '100%' }} imgClassName="opacity-80" fallback="/img/ATT-logo(1).webp" />
+                        <div className="relative shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center border border-outline-variant/30 overflow-hidden">
+                            <Avatar userId={u.id} size="100%" style={{ width: '100%', height: '100%' }} imgClassName="opacity-80" fallback="/img/ATT-logo(1).webp" />
+                          </div>
+                          <OnlineDot online={isUserOnline(u.id)} />
                         </div>
-                        <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate flex flex-col`}>
+                        <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate min-w-0 flex flex-col`}>
                           <span className="truncate">{u.display_name}</span>
                         </span>
                       </div>
@@ -2159,22 +2965,23 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
           <div className="mb-6">
             <div className="px-4 text-[10px] text-on-surface-variant/50 mb-2 font-bold tracking-widest flex items-center justify-between">
               ASSETS (NPCs)
-              <span className="material-symbols-outlined text-[14px]">expand_more</span>
             </div>
             <ul className="flex flex-col">
               {filteredNpcs.map(n => {
                 const isActive = selectedContact?.type === 'npc' && selectedContact?.id === n.id;
                 const crest = localSymlogo(n.clan);
                 return (
-                  <li key={`n-${n.id}`} onClick={() => selectContact(n)} className={`${isActive ? 'blood-active border-l-4 translate-x-1' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all`}>
+                  <li key={`n-${n.id}`} onClick={() => openChat(n)} className={`${isActive ? 'blood-active border-l-4' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all`}>
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="relative shrink-0">
-                        <div className="w-6 h-6 rounded-sm bg-surface-container-highest flex items-center justify-center overflow-hidden border border-outline-variant/50">
+                        <div className="w-8 h-8 rounded-sm bg-surface-container-highest flex items-center justify-center overflow-hidden border border-outline-variant/50">
                           <Avatar npcId={n.id} size="100%" style={{ width: '100%', height: '100%', borderRadius: 0 }} imgClassName="opacity-80" fallback={crest || '/img/ATT-logo(1).webp'} />
                         </div>
+                        {!isAdmin && <OnlineDot online={storytellerOnline} />}
                       </div>
-                      <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate flex items-center gap-1`}>
-                        {n.name}
+                      <span className="min-w-0 flex flex-col">
+                        <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate`}>{n.name}</span>
+                        <StatusLine titles={n.titles} status={n.court_status} className="text-[10px] text-on-surface-variant/70" />
                       </span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -2191,9 +2998,9 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
 
         {/* Footer */}
         <div className="p-4 border-t border-outline-variant/50 flex flex-col gap-2 shrink-0">
-          <div className="flex items-center gap-3 text-on-surface-variant hover:text-on-surface cursor-pointer p-1 rounded hover:bg-surface-variant/10 transition-colors">
-            <span className="material-symbols-outlined text-[16px]">wifi_tethering</span>
-            <span className="text-[11px] font-bold tracking-widest uppercase">Signal: Strong</span>
+          <div className={`flex items-center gap-3 p-1 ${connected ? 'text-on-surface-variant' : 'text-amber-400'}`}>
+            <span className="material-symbols-outlined text-[16px]">{connected ? 'wifi_tethering' : 'wifi_tethering_off'}</span>
+            <span className="text-[11px] font-bold tracking-widest uppercase">{connected ? 'Signal: Strong' : 'Signal: Lost'}</span>
           </div>
           <div onClick={toggleNotifications} className={`flex items-center gap-3 ${notifOn ? 'text-green-500' : 'text-on-surface-variant'} cursor-pointer p-1 rounded hover:bg-surface-variant/10 transition-colors`}>
             <span className="material-symbols-outlined text-[16px]">{notifOn ? 'notifications_active' : 'notifications_off'}</span>
@@ -2209,9 +3016,9 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
       </motion.aside>
 
       {/* Pending (Queued NPC Messages) Panel */}
-      {pendingOpen && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setPendingOpen(false)}>
-          <div className="bg-surface-container border border-outline-variant rounded-lg w-full max-w-lg max-h-[80vh] flex flex-col shadow-[0_0_20px_rgba(245,158,11,0.2)]" onClick={e => e.stopPropagation()}>
+      {pendingOpen && createPortal(
+        <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setPendingOpen(false)}>
+          <div className="chat-overlay-surface border border-outline-variant rounded-lg w-full max-w-lg max-h-[80vh] flex flex-col shadow-[0_0_20px_rgba(245,158,11,0.2)]" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b border-outline-variant/50 shrink-0">
               <h3 className="text-lg font-headline-md text-amber-400 tracking-tight flex items-center gap-2">
                 <span className="material-symbols-outlined">schedule_send</span> Pending NPC Messages
@@ -2229,21 +3036,23 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
               {pendingQueue.map(m => (
                 <div key={m.id} className="bg-surface-container-highest border border-outline-variant/30 rounded p-3 flex flex-col gap-1">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-semibold text-primary truncate">{m.npc_name} <span className="text-on-surface-variant font-normal">➜ {m.char_name || m.user_display_name}</span></span>
+                    <span className="text-xs font-semibold text-primary truncate">{m.npc_name} <span className="text-on-surface-variant font-normal"><span className="material-symbols-outlined text-[16px] align-middle">arrow_forward</span> {m.char_name || m.user_display_name}</span></span>
                     <button onClick={() => cancelPendingMessage(m.id)} className="text-[10px] bg-error-container/20 text-error border border-error/30 px-2 py-1 rounded hover:bg-error/20 transition-colors shrink-0">Cancel</button>
                   </div>
-                  <p className="text-sm text-on-surface break-words">{m.body || (m.attachment_id ? '📷 Attachment' : '')}</p>
+                  <p className="text-sm text-on-surface break-words">{m.body || (m.attachment_id ? <span className="inline-flex items-center gap-1 italic opacity-80"><span className="material-symbols-outlined text-[16px]">image</span> Attachment</span> : '')}</p>
                   <span className="text-[10px] text-on-surface-variant/50 font-system-code">{formatTime(m.created_at)}</span>
                 </div>
               ))}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Main Content (Canvas) */}
       <motion.main
         className={styles.chatWindow}
+        style={selectedContact && activeTheme ? { background: activeTheme.bg } : undefined}
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ type: 'spring', stiffness: 300, damping: 25, delay: 0.1 }}
@@ -2254,9 +3063,10 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
             <header className={styles.chatHeader} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: '64px' }}>
               <div className="flex items-center gap-3 md:gap-4 min-w-0">
                 {/* Mobile Back */}
-                <button className="mr-2 md:hidden text-on-surface-variant hover:text-primary transition-colors focus:outline-none shrink-0" onClick={() => setSelectedContact(null)}>
-                  <span className="material-symbols-outlined">arrow_back</span>
+                <button className="-ml-2 w-11 h-11 flex items-center justify-center md:hidden text-on-surface-variant hover:text-primary transition-colors focus:outline-none shrink-0" onClick={closeChat} aria-label="Back to contacts">
+                  <span className="material-symbols-outlined text-[24px]">arrow_back</span>
                 </button>
+                <button type="button" onClick={openDetails} aria-label="Conversation details" className="flex items-center gap-3 md:gap-4 min-w-0 text-left">
                 <div className="relative shrink-0">
                   <div className="w-10 h-10 rounded-sm bg-surface-container-highest overflow-hidden border border-outline-variant/50 flex items-center justify-center">
                     {selectedContact.type === 'user' ? (
@@ -2267,42 +3077,36 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                       <GroupIconGlyph icon={selectedContact.icon} size={28} />
                     )}
                   </div>
-                  <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-surface rounded-full shadow-[0_0_4px_#22c55e]"></div>
+                  <OnlineDot online={headerOnline} />
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <h2 className="font-headline-md text-[16px] md:text-[18px] font-semibold text-on-surface m-0 leading-tight truncate">{headerLabel}</h2>
-                    {selectedContact.type === 'npc' && !isAdmin && <span className="text-[9px] font-system-code bg-tertiary-container/20 text-tertiary px-1.5 py-0.5 rounded border border-tertiary/30 shrink-0">NPC</span>}
                   </div>
-                  <div className="flex items-center gap-1.5 text-[10px] md:text-[12px] font-system-code text-on-surface-variant/70 mt-0.5 truncate">
-                    <span className="material-symbols-outlined text-[12px] md:text-[14px] text-green-500/70">shield</span>
-                    Encrypted - AES-256
-                    {selectedContact.type === 'group' && headerGroupMembers.length > 0 && (
-                      <span className="ml-2 hidden md:inline truncate opacity-70">
-                        • {headerGroupMembers.map(m => m.char_name || m.display_name).join(', ')}
-                      </span>
-                    )}
+                  <div className="flex items-center gap-1.5 text-[11px] md:text-[12px] font-system-code mt-0.5 min-w-0 text-on-surface-variant/70">
+                    <StatusLine titles={headerStanding.titles} status={headerStanding.court_status} />
+                    {(headerStanding.titles.length > 0 || headerStanding.court_status > 0) && headerStatus && <span aria-hidden="true">{'\u00b7'}</span>}
+                    <span className={`truncate ${headerOnline ? 'text-green-500' : ''}`}>{headerStatus}</span>
                   </div>
                 </div>
+                </button>
               </div>
               <div className="flex items-center gap-2 md:gap-4 text-on-surface-variant/70 shrink-0">
-                {selectedContact.type === 'group' && (
-                  <>
-                    <button onClick={openManageGroup} className="hover:text-primary transition-colors flex items-center gap-1 border border-outline-variant/50 px-2 py-1 rounded text-[10px] md:text-xs font-system-code uppercase tracking-widest bg-surface-container-low hover:bg-surface-variant/50">
-                      <span className="material-symbols-outlined text-[14px] md:text-[16px]">settings</span>
-                      <span className="hidden md:inline">Manage</span>
-                    </button>
-                    {/* The creator can't leave their own group (server rejects it —
-                        they'd delete it via Manage instead), so Leave is hidden for
-                        them but shown to every other member, managers included. */}
-                    {selectedContact.created_by !== currentUser?.id && (
-                      <button onClick={handleLeaveGroup} className="text-error/80 hover:text-error transition-colors flex items-center gap-1 border border-error/30 px-2 py-1 rounded text-[10px] md:text-xs font-system-code uppercase tracking-widest bg-error-container/10 hover:bg-error-container/30">
-                        <span className="material-symbols-outlined text-[14px] md:text-[16px]">logout</span>
-                        <span className="hidden md:inline">Leave</span>
-                      </button>
-                    )}
-                  </>
+                {isAdmin && selectedContact.type === 'npc' && selectedPlayerId && (
+                  <button
+                    type="button"
+                    onClick={() => handleMarkNpcUnread()}
+                    title="Mark conversation unread for other Storytellers"
+                    className="hover:text-primary transition-colors flex items-center justify-center gap-1 border border-outline-variant/50 h-10 min-w-10 px-2 rounded text-[10px] md:text-xs font-system-code uppercase tracking-widest bg-surface-container-low hover:bg-surface-variant/50 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">mark_chat_unread</span>
+                    <span className="hidden sm:inline">Mark Unread</span>
+                  </button>
                 )}
+                {/* Group manage/leave, search, media and theme live in the details panel. */}
+                <button type="button" onClick={openDetails} aria-label="Conversation details" title="Details" className="w-10 h-10 flex items-center justify-center rounded hover:text-primary hover:bg-surface-variant/40 transition-colors">
+                  <span className="material-symbols-outlined text-[22px]">info</span>
+                </button>
               </div>
             </header>
 
@@ -2315,17 +3119,17 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                     <button className={`px-3 py-1 ${adminPlayerTab === 'all' ? 'bg-primary/20 text-primary font-bold' : 'text-on-surface-variant hover:bg-surface-variant/30'}`} onClick={() => setAdminPlayerTab('all')}>All</button>
                   </div>
                   {adminPlayerTab === 'all' && (
-                    <input className="bg-surface-dim border border-outline-variant/50 rounded px-2 py-1 text-xs text-on-surface focus:border-primary w-full md:w-auto" placeholder="Search players…" value={adminPlayerFilter} onChange={(e) => setAdminPlayerFilter(e.target.value)} />
+                    <input className="bg-surface-dim border border-outline-variant/50 rounded px-2 py-1 text-base md:text-xs text-on-surface focus:border-primary w-full md:w-auto" placeholder="Search Kindred…" value={adminPlayerFilter} onChange={(e) => setAdminPlayerFilter(e.target.value)} />
                   )}
                   <div className="text-xs font-system-code flex items-center gap-2">
                     {selectedPlayerId ? (
                       <>
                         <span className="text-on-surface-variant">To:</span>
                         <b className="text-primary">{users.find(u => u.id === selectedPlayerId)?.char_name || 'Unknown'}</b>
-                        <button className="text-[10px] bg-outline-variant/30 px-1.5 py-0.5 rounded hover:bg-outline-variant/50 transition-colors" onClick={() => setSelectedPlayerId(null)}>Clear</button>
+                        <button className="text-[10px] bg-outline-variant/30 px-1.5 py-0.5 rounded hover:bg-outline-variant/50 transition-colors cursor-pointer" onClick={() => setSelectedPlayerId(null)}>Clear</button>
                       </>
                     ) : (
-                      <span className="text-error text-[10px] uppercase tracking-widest flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">warning</span> Select target player</span>
+                      <span className="text-error text-[10px] uppercase tracking-widest flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">warning</span> Select a Kindred</span>
                     )}
                   </div>
                 </div>
@@ -2333,6 +3137,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                 <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
                   {(adminPlayerTab === 'recent' ? adminRecentPlayers : adminAllPlayersFiltered).map(u => (
                     <button key={`sel-${u.id}`} onClick={() => selectAdminTarget(u.id)} className={`flex items-center gap-2 px-3 py-1.5 rounded border shrink-0 transition-colors ${selectedPlayerId === u.id ? 'bg-primary/10 border-primary text-primary' : 'bg-surface-container-highest border-outline-variant/30 text-on-surface-variant hover:border-outline-variant'}`}>
+                      {isUserOnline(u.id) && <span title="Online" className="w-2 h-2 rounded-full bg-green-500 shrink-0" />}
                       <span className="text-xs truncate max-w-[100px]">{u.char_name || u.display_name}</span>
                       <UnreadCount count={u.unread_count} />
                     </button>
@@ -2359,9 +3164,12 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
             ) : null}
 
             {/* Chat History Area */}
-            <div className={`${styles.messageList} custom-scrollbar`} ref={messagesListRef}>
-              <div className="text-center text-[10px] md:text-[12px] font-system-code text-on-surface-variant/40 my-2">
-                [ END OF ENCRYPTED HISTORY ]
+            <div className={`${styles.messageList} custom-scrollbar`} ref={messagesListRef} onScroll={handleListScroll}>
+              <div className="text-center text-[10px] md:text-[12px] font-system-code text-on-surface-variant/40 my-2 min-h-[20px]">
+                {loadingOlder ? 'Decrypting older transmissions...'
+                  : hasMore ? (
+                    <button type="button" onClick={loadOlder} className="text-primary/80 hover:text-primary px-3 py-2">Load older messages</button>
+                  ) : messages.length ? '[ START OF ENCRYPTED CHANNEL ]' : '[ CHANNEL OPEN : NO TRANSMISSIONS YET ]'}
               </div>
 
               {grouped.map(item => {
@@ -2379,19 +3187,10 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                   </div>
                 );
 
-                const isMineFn = (m) => selectedContact.type === 'user' ? m.sender_id === currentUser.id : (selectedContact.type === 'group' ? m.sender_id === currentUser.id : (isAdmin ? m.sender_id === 'npc' : m.sender_id === currentUser.id));
-                const mine = isMineFn(item);
-                const timeSinceSent = Date.now() - new Date(item.created_at).getTime();
-                const canEditDelete = mine && timeSinceSent < 4 * 60 * 60 * 1000 && !String(item.id).startsWith('temp_');
-                // Mirrors the backend's edit lock: once the other side has sent
-                // anything after this message, it's been "answered" and can no
-                // longer be edited (delete stays unaffected — same as the API).
-                const answeredSince = mine && messages.some(m =>
-                  new Date(m.created_at).getTime() > new Date(item.created_at).getTime() && !isMineFn(m)
-                );
-                const canEdit = canEditDelete && !answeredSince;
+                const { mine, canEditDelete, canEdit, canReply } = messagePerms(item);
                 const isGroupNotMine = selectedContact.type === 'group' && !mine;
-                const canReply = !String(item.id).startsWith('temp_') && editingMsgId !== item.id;
+                // Hold-to-grow emoji: shown bare and big, without the bubble.
+                const bigEmoji = !!item.emoji_size && !!item.body && !item.attachment_id;
 
                 return (
                   <SwipeRow
@@ -2407,7 +3206,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                   >
                     {/* Avatar */}
                     {!mine ? (
-                      <div className="w-6 h-6 md:w-8 md:h-8 rounded-sm md:rounded-full bg-surface-container-high border border-outline-variant flex-shrink-0 flex items-center justify-center overflow-hidden blood-glow opacity-80 mt-auto md:mt-0">
+                      <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-surface-container-high border border-outline-variant flex-shrink-0 flex items-center justify-center overflow-hidden blood-glow opacity-80 mt-auto md:mt-0">
                         {(() => {
                           if (selectedContact.type === 'group') {
                             const sender = currentGroupMembers.find(m => m.id === item.sender_id);
@@ -2435,7 +3234,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
 
                       {editingMsgId === item.id ? (
                         <div className="bg-surface-container-high p-3 rounded-lg border border-primary/50 shadow-[0_0_15px_rgba(255,179,174,0.1)] w-full max-w-sm">
-                          <textarea value={editBody} onChange={e => setEditBody(e.target.value)} className="w-full bg-surface-dim border border-outline-variant rounded p-2 text-on-surface text-sm focus:border-primary focus:ring-0 resize-none font-system-code" rows={3} />
+                          <textarea value={editBody} onChange={e => setEditBody(e.target.value)} className="w-full bg-surface-dim border border-outline-variant rounded p-2 text-on-surface text-base md:text-sm focus:border-primary focus:ring-0 resize-none font-system-code" rows={3} />
                           <div className="flex justify-end gap-2 mt-2">
                             <button onClick={() => setEditingMsgId(null)} className="text-xs text-on-surface-variant hover:text-on-surface px-2 py-1">Cancel</button>
                             <button onClick={submitEditMessage} className="text-xs bg-primary text-on-primary px-3 py-1 rounded font-bold hover:bg-primary-container">Save</button>
@@ -2444,12 +3243,15 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                       ) : (
                         <div
                           onClick={() => handleBubbleTap(item.id)}
-                          onPointerDown={(e) => handleBubblePointerDown(e, item.id)}
+                          onPointerDown={(e) => handleBubblePointerDown(e, item)}
                           onPointerUp={handleBubblePointerCancel}
                           onPointerLeave={handleBubblePointerCancel}
                           onPointerCancel={handleBubblePointerCancel}
                           onContextMenu={(e) => e.preventDefault()}
-                          className={`relative chat-glass p-2 md:p-3 w-fit max-w-full shadow-[0_4px_12px_rgba(0,0,0,0.5)] select-none transition-shadow duration-300 ${flashMsgId === item.id ? 'ring-2 ring-primary' : ''} ${mine ? 'bg-blood-accent/90 text-white rounded-l-lg rounded-br-lg bubble-right border-l border-t border-b border-[#b01423]' : 'bg-surface-container-high border border-outline-variant/30 text-on-surface rounded-r-lg rounded-bl-lg bubble-left'}`}
+                          style={mine && bubbleTheme && !bigEmoji ? bubbleTheme : undefined}
+                          className={bigEmoji
+                            ? `relative w-fit max-w-full select-none leading-none rounded ${flashMsgId === item.id ? 'ring-2 ring-primary' : ''}`
+                            : `relative chat-glass p-2 md:p-3 w-fit max-w-full shadow-[0_4px_12px_rgba(0,0,0,0.5)] select-none transition-shadow duration-300 ${flashMsgId === item.id ? 'ring-2 ring-primary' : ''} ${mine ? 'bg-blood-accent/90 text-white rounded-l-lg rounded-br-lg bubble-right border-l border-t border-b border-[#b01423]' : 'bg-surface-container-high border border-outline-variant/30 text-on-surface rounded-r-lg rounded-bl-lg bubble-left'}`}
                         >
 
                           {/* Quoted message this one replies to */}
@@ -2475,7 +3277,13 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                           )}
 
                           {/* Body */}
-                          {item.body && <p className="text-[14px] md:text-[15px] leading-relaxed whitespace-pre-wrap break-words">{renderMessageBody(item.body)}</p>}
+                          {item.body && (bigEmoji ? (
+                            <span className="block py-1" style={{ fontSize: EMOJI_PX[item.emoji_size] }}>
+                              <ReactionGlyph value={item.body} size={EMOJI_PX[item.emoji_size]} />
+                            </span>
+                          ) : (
+                            <p className="text-[14px] md:text-[15px] leading-relaxed whitespace-pre-wrap break-words">{renderMessageBody(item.body)}</p>
+                          ))}
                         </div>
                       )}
 
@@ -2502,7 +3310,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                                   setViewingReactionsMsg(item);
                                 }}
                                 title={tooltip}
-                                className={`text-[11px] leading-none px-1.5 py-0.5 rounded-full border transition-colors flex items-center gap-1 cursor-pointer select-none ${isReactedByMe ? 'bg-primary/20 border-primary text-primary' : 'bg-surface-container-highest border-outline-variant/40 text-on-surface-variant hover:border-primary/50'}`}
+                                className={`text-[12px] md:text-[11px] leading-none px-2 py-1 md:px-1.5 md:py-0.5 rounded-full border transition-colors flex items-center gap-1 cursor-pointer select-none ${isReactedByMe ? 'bg-primary/20 border-primary text-primary' : 'bg-surface-container-highest border-outline-variant/40 text-on-surface-variant hover:border-primary/50'}`}
                               >
                                 <ReactionGlyph value={r.emoji} size={12} />
                                 <span className="font-system-code">{r.count}</span>
@@ -2510,7 +3318,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                             );
                           })}
                           {reactionPickerFor === item.id && (
-                            <div className="flex items-center gap-1 bg-surface-container-highest border border-outline-variant/40 rounded-full px-1.5 py-0.5 shadow-lg">
+                            <div data-reaction-ui="true" className="flex items-center gap-1 bg-surface-container-highest border border-outline-variant/40 rounded-full px-1.5 py-0.5 shadow-lg">
                               {QUICK_REACTIONS.map(e => (
                                 <button
                                   key={e}
@@ -2521,6 +3329,19 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                                   <ReactionGlyph value={e} size={15} />
                                 </button>
                               ))}
+                              <div className="w-px h-3.5 bg-outline-variant/40 mx-0.5" />
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setFullReactionPickerFor(item.id);
+                                }}
+                                className="text-on-surface-variant hover:text-primary transition-colors flex items-center justify-center p-0.5 rounded-full hover:bg-white/10"
+                                title="More reactions"
+                                aria-label="More reactions"
+                              >
+                                <span className="material-symbols-outlined text-[15px] leading-none">add_reaction</span>
+                              </button>
                             </div>
                           )}
                         </div>
@@ -2530,7 +3351,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                       <div className={`flex items-center gap-2 mt-0.5 ${mine ? 'mr-1 flex-row-reverse' : 'ml-1'}`}>
                         <span className="font-system-code text-[9px] md:text-[10px] text-on-surface-variant/60">{formatTime(item.created_at)}</span>
 
-                        {item.edited && <span className="font-system-code text-[9px] text-on-surface-variant/40">(edited)</span>}
+                        {!!item.edited && <span className="font-system-code text-[9px] text-on-surface-variant/40">(edited)</span>}
 
                         {item.status === 'queued' && (
                           <span className="font-system-code text-[9px] text-amber-400 uppercase tracking-widest flex items-center gap-0.5">
@@ -2545,12 +3366,13 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                         )}
 
                         {/* Action Buttons (Hover) */}
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="hidden md:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           {canReply && (
                             <button onClick={() => startReply(item)} className="text-[10px] text-on-surface-variant hover:text-primary transition-colors">Reply</button>
                           )}
                           {!String(item.id).startsWith('temp_') && (
                             <button
+                              data-reaction-ui="true"
                               onClick={() => setReactionPickerFor(p => p === item.id ? null : item.id)}
                               title="React"
                               className="text-[10px] text-on-surface-variant hover:text-primary transition-colors"
@@ -2579,8 +3401,23 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                               <button onClick={() => handleDeleteMessage(item.id)} className="text-[10px] text-on-surface-variant hover:text-error transition-colors">Del</button>
                             </>
                           )}
-                          {!mine && item.body && (
-                            <button onClick={() => copyToClipboard(item.body)} className="text-[10px] text-on-surface-variant hover:text-primary transition-colors">Copy</button>
+                          {!mine && (
+                            <>
+                              {isAdmin && selectedContact?.type === 'npc' && !String(item.id).startsWith('temp_') && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleMarkNpcUnread(item.id)}
+                                  title="Mark unread from this message"
+                                  className="text-[10px] text-on-surface-variant hover:text-primary transition-colors flex items-center gap-0.5 cursor-pointer"
+                                >
+                                  <span className="material-symbols-outlined text-[11px]">mark_chat_unread</span>
+                                  Unread
+                                </button>
+                              )}
+                              {item.body && (
+                                <button onClick={() => copyToClipboard(item.body)} className="text-[10px] text-on-surface-variant hover:text-primary transition-colors">Copy</button>
+                              )}
+                            </>
                           )}
                         </div>
                       </div>
@@ -2673,13 +3510,13 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                     elsewhere; this only narrows what a user can select here. */}
                 <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="image/*,audio/*" onChange={handleFileSelect} />
 
-                <button type="button" onClick={() => fileInputRef.current?.click()} disabled={!isCharActive || !canSend} className="p-2 text-on-surface-variant hover:text-primary transition-colors shrink-0 rounded hover:bg-surface-variant/30 disabled:opacity-30">
-                  <span className="material-symbols-outlined text-[20px] md:text-[24px]">attach_file</span>
+                <button type="button" onClick={() => fileInputRef.current?.click()} disabled={!isCharActive || !canSend} aria-label="Attach file" className="w-10 h-10 flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors shrink-0 rounded hover:bg-surface-variant/30 disabled:opacity-30">
+                  <span className="material-symbols-outlined text-[22px]">attach_file</span>
                 </button>
 
                 <div className="flex-1 flex flex-col min-w-0">
                   {attachment && (
-                    <div className="absolute bottom-full left-0 mb-2 p-2 bg-surface-container border border-primary/20 rounded shadow-lg flex items-center gap-3 w-full">
+                    <div className="absolute bottom-full left-0 mb-2 p-2 chat-overlay-surface border border-primary/20 rounded shadow-lg flex items-center gap-3 w-full">
                       {attachment.type.startsWith('image/') ? (
                         <img src={previewUrl} alt="Preview" className="h-12 w-12 object-cover rounded" />
                       ) : (
@@ -2708,8 +3545,9 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                     value={newMessage}
                     onChange={e => setNewMessage(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder={showQueueOption ? "SchreckNet offline : Queue this reply or send now anyway..." : !canSend ? (nextOpening ? `SchreckNet offline : Opens again ${nextOpening.day} at ${nextOpening.time}` : "System Offline...") : (!isCharActive ? "Waiting for ST approval..." : "Transmit response...")}
-                    className="w-full bg-transparent border-none text-on-surface font-system-code text-[13px] md:text-[14px] placeholder-on-surface-variant/40 focus:ring-0 resize-none py-2 px-1 max-h-32 custom-scrollbar break-words"
+                    enterKeyHint={IS_TOUCH ? 'enter' : 'send'}
+                    placeholder={showQueueOption ? "SchreckNet offline : send queues it, hold send to deliver now" : !canSend ? (nextOpening ? `SchreckNet offline : Opens again ${nextOpening.day} at ${nextOpening.time}` : "System Offline...") : (!isCharActive ? "Waiting for ST approval..." : "Transmit response...")}
+                    className="w-full bg-transparent border-none text-on-surface font-system-code text-[16px] md:text-[14px] placeholder-on-surface-variant/40 focus:ring-0 resize-none py-2 px-1 max-h-32 custom-scrollbar break-words"
                     rows={1}
                     style={{ minHeight: '40px' }}
                     disabled={!canSend || !isCharActive || (isAdmin && selectedContact?.type === 'npc' && !selectedPlayerId)}
@@ -2721,50 +3559,141 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                     type="button"
                     onClick={() => setShowEmojiPicker(val => !val)}
                     disabled={!isCharActive || !canSend}
-                    className={`p-2 transition-colors rounded hover:bg-surface-variant/30 flex disabled:opacity-30 ${showEmojiPicker ? 'text-primary bg-surface-variant/40' : 'text-on-surface-variant hover:text-primary'}`}
+                    className={`w-10 h-10 items-center justify-center transition-colors rounded hover:bg-surface-variant/30 flex disabled:opacity-30 ${showEmojiPicker ? 'text-primary bg-surface-variant/40' : 'text-on-surface-variant hover:text-primary'}`}
                     title="Add emoji"
                     aria-label="Add emoji"
                   >
-                    <span className="material-symbols-outlined text-[20px] md:text-[24px]">mood</span>
+                    <span className="material-symbols-outlined text-[22px]">mood</span>
                   </button>
-                  {showQueueOption && (
-                    <button
-                      type="button"
-                      onClick={() => doSend({ queue: true })}
-                      disabled={!isCharActive || sendingRef.current || (!newMessage.trim() && !attachment) || !selectedPlayerId}
-                      title="Queue: sends automatically when SchreckNet reopens"
-                      className="p-2 bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500 hover:text-black transition-colors rounded shadow-[0_0_8px_rgba(245,158,11,0.15)] group flex items-center justify-center h-10 w-10 disabled:opacity-30 disabled:hover:bg-amber-500/10 disabled:hover:text-amber-400"
-                    >
-                      <span className="material-symbols-outlined text-[18px] md:text-[20px]">schedule_send</span>
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={handleSendMessage}
-                    disabled={!canSend || !isCharActive || sendingRef.current || (!newMessage.trim() && !attachment) || (isAdmin && selectedContact?.type === 'npc' && !selectedPlayerId)}
-                    title={showQueueOption ? 'Send now anyway (bypasses the offline gate)' : undefined}
-                    className="p-2 bg-primary/10 text-primary border border-primary/30 hover:bg-primary hover:text-on-primary transition-colors rounded shadow-[0_0_8px_rgba(255,179,174,0.1)] group flex items-center justify-center h-10 w-10 disabled:opacity-30 disabled:hover:bg-primary/10 disabled:hover:text-primary"
-                  >
-                    <span className="material-symbols-outlined text-[18px] md:text-[20px] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform">send</span>
-                  </button>
+                  {/* One slot, like Messenger: the conversation emoji while the
+                      composer is empty, the send button once there's a draft.
+                      onMouseDown preventDefault keeps the textarea focused, so a
+                      phone keyboard stays open between messages. */}
+                  <div className="relative w-10 h-10 shrink-0">
+                    <AnimatePresence initial={false}>
+                      {/* Crossfade the emoji and send buttons in the same spot:
+                          one spins and shrinks out while the other grows in. */}
+                      <motion.div
+                        key={composerSlot}
+                        onClickCapture={dropIfStale(composerSlot)}
+                        onPointerDownCapture={dropIfStale(composerSlot)}
+                        onPointerUpCapture={dropIfStale(composerSlot)}
+                        className="absolute inset-0 flex items-center justify-center"
+                        initial={{ opacity: 0, scale: 0.4, rotate: -45 }}
+                        animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                        exit={{ opacity: 0, scale: 0.4, rotate: 45 }}
+                        transition={{ type: 'spring', stiffness: 520, damping: 30 }}
+                      >
+                      {(newMessage.trim() || attachment) ? (
+                        showQueueOption ? (
+                          <button
+                            type="button"
+                            onClick={(e) => { if (e.detail === 0) doSend({ queue: true }); }}
+                            onMouseDown={(e) => e.preventDefault()}
+                            onPointerDown={startSendHold}
+                            onPointerUp={() => endSendHold(true)}
+                            onPointerLeave={() => endSendHold(false)}
+                            onPointerCancel={() => endSendHold(false)}
+                            onContextMenu={(e) => e.preventDefault()}
+                            disabled={!isCharActive || sendingRef.current || !selectedPlayerId}
+                            title="Tap: queue until SchreckNet reopens. Hold: send now"
+                            aria-label={sendHold === 'armed' ? 'Release to send now' : 'Queue until SchreckNet reopens, hold to send now'}
+                            style={{ touchAction: 'none', WebkitTouchCallout: 'none' }}
+                            className={`relative flex items-center justify-center h-10 w-10 rounded border select-none transition-colors disabled:opacity-30 ${sendHold === 'armed' ? 'bg-primary text-on-primary border-primary' : 'bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20'}`}
+                          >
+                            {sendHold === 'holding' && (
+                              <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 40 40" aria-hidden="true">
+                                <motion.circle
+                                  cx="20" cy="20" r="17" fill="none" stroke="currentColor" strokeWidth="2.5"
+                                  initial={{ pathLength: 0 }}
+                                  animate={{ pathLength: 1 }}
+                                  transition={{ duration: SEND_NOW_HOLD_MS / 1000, ease: 'linear' }}
+                                />
+                              </svg>
+                            )}
+                            <span className="material-symbols-outlined text-[22px]">{sendHold === 'armed' ? 'send' : 'schedule_send'}</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={handleSendMessage}
+                            onMouseDown={(e) => e.preventDefault()}
+                            disabled={!canSend || !isCharActive || sendingRef.current || (isAdmin && selectedContact?.type === 'npc' && !selectedPlayerId)}
+                            title="Send"
+                            aria-label="Send"
+                            className="p-2 bg-primary/10 text-primary border border-primary/30 hover:bg-primary hover:text-on-primary transition-colors rounded shadow-[0_0_8px_rgba(255,179,174,0.1)] group flex items-center justify-center h-10 w-10 disabled:opacity-30 disabled:hover:bg-primary/10 disabled:hover:text-primary"
+                          >
+                            <span className="material-symbols-outlined text-[22px] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform">send</span>
+                          </button>
+                        )
+                      ) : (
+                        /* Conversation emoji (Messenger's like button): tap sends it,
+                           hold to inflate it, hold too long and it pops. onClick only
+                           covers keyboard activation (detail 0). */
+                        <button
+                          type="button"
+                          onClick={(e) => { if (e.detail === 0) doSend({ text: convEmoji, emojiSize: 1, queue: showQueueOption }); }}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onPointerDown={startEmojiHold}
+                          onPointerUp={() => endEmojiHold(true)}
+                          onPointerLeave={() => endEmojiHold(false)}
+                          onPointerCancel={() => endEmojiHold(false)}
+                          onContextMenu={(e) => e.preventDefault()}
+                          disabled={!canSend || !isCharActive || sendingRef.current || (isAdmin && selectedContact?.type === 'npc' && !selectedPlayerId)}
+                          aria-label="Send the conversation emoji, hold to make it bigger"
+                          title="Tap to send, hold to make it bigger"
+                          style={{ touchAction: 'none', WebkitTouchCallout: 'none' }}
+                          className="relative flex items-center justify-center h-10 w-10 rounded text-[22px] leading-none select-none hover:bg-surface-variant/30 transition-colors disabled:opacity-30"
+                        >
+                          <motion.span
+                            className="relative z-10 inline-block leading-none"
+                            style={{ originX: 1, originY: 1 }}
+                            animate={
+                              emojiHold === 'growing' ? { scale: 3.2, rotate: 0, opacity: 1 }
+                                : emojiHold === 'warning' ? { scale: 3.2, rotate: [0, -10, 10, -10, 10, 0], opacity: 1 }
+                                  : emojiHold === 'popped' ? { scale: 0, rotate: 0, opacity: 0 }
+                                    : { scale: 1, rotate: 0, opacity: 1 }
+                            }
+                            transition={
+                              emojiHold === 'growing' ? { duration: EMOJI_GROW_MS / 1000, ease: 'easeOut' }
+                                : emojiHold === 'warning' ? { rotate: { duration: 0.35, repeat: Infinity }, scale: { duration: 0 } }
+                                  : { type: 'spring', stiffness: 500, damping: 22 }
+                            }
+                          >
+                            <ReactionGlyph value={convEmoji} size={22} />
+                          </motion.span>
+                        </button>
+                      )}
+                      </motion.div>
+                    </AnimatePresence>
+                  </div>
                 </div>
                 </div>
               </div>
 
-              <div className="max-w-4xl mx-auto flex justify-between mt-2 px-1">
-                <span className="text-[9px] md:text-[10px] font-system-code text-on-surface-variant/40 hidden md:inline">Enter to send, Shift+Enter for new line</span>
-                <span className="text-[9px] md:text-[10px] font-system-code text-green-500/60 flex items-center gap-1 ml-auto">
-                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
-                  Uplink Stable
-                </span>
-              </div>
+              {(!isMobile || !connected) && (
+                <div className="max-w-4xl mx-auto flex justify-between mt-2 px-1">
+                  <span className="text-[10px] font-system-code text-on-surface-variant/40 hidden md:inline">Enter to send, Shift+Enter for new line</span>
+                  {connected ? (
+                    <span className="text-[10px] font-system-code text-green-500/60 flex items-center gap-1 ml-auto">
+                      <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
+                      Uplink stable
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-system-code text-amber-400 flex items-center gap-1 ml-auto">
+                      <span className="material-symbols-outlined text-[14px]">wifi_tethering_off</span>
+                      Uplink lost, reconnecting
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-on-surface-variant/50 p-6 text-center z-10">
             <span className="material-symbols-outlined text-[64px] mb-4 opacity-20">terminal</span>
-            <p className="font-system-code text-sm tracking-widest uppercase mb-2 text-glow-active">SchreckNet Node 01 Online</p>
-            <p className="text-xs max-w-md">Select a contact from the secure roster to initiate an encrypted channel.</p>
+            <p className="font-system-code text-sm tracking-widest uppercase mb-2 text-glow-active">SchreckNet</p>
+            <p className="text-xs max-w-md">Pick a contact, group or NPC to open a conversation.</p>
           </div>
         )}
 
@@ -2777,13 +3706,13 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
         )}
 
         {/* Message Reactions Modal */}
-        {viewingReactionsMsg && (
+        {viewingReactionsMsg && createPortal(
           <div
-            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+            className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
             onClick={() => setViewingReactionsMsg(null)}
           >
             <div
-              className="bg-surface-container border border-outline-variant rounded-lg w-full max-w-sm max-h-[75vh] flex flex-col shadow-[0_0_25px_rgba(0,0,0,0.8)]"
+              className="chat-overlay-surface border border-outline-variant rounded-lg w-full max-w-sm max-h-[75vh] flex flex-col shadow-[0_0_25px_rgba(0,0,0,0.8)]"
               onClick={e => e.stopPropagation()}
             >
               <div className="flex items-center justify-between p-3 border-b border-outline-variant/40 shrink-0">
@@ -2856,7 +3785,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <div className="w-7 h-7 rounded-full bg-surface-container flex items-center justify-center overflow-hidden border border-outline-variant/30 shrink-0">
-                          <Avatar userId={u.id} size="100%" style={{ width: '100%', height: '100%' }} fallback="/img/ATT-logo(1).webp" />
+                          <Avatar userId={u.npcId ? null : u.id} npcId={u.npcId} size="100%" style={{ width: '100%', height: '100%' }} fallback={localSymlogo(u.clan) || '/img/ATT-logo(1).webp'} />
                         </div>
                         <div className="flex flex-col min-w-0">
                           <span className="text-xs font-bold text-white truncate">{u.name}</span>
@@ -2873,8 +3802,62 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                 })()}
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
+
+        {/* Full Emoji Reaction Picker Modal */}
+        {fullReactionPickerFor && createPortal(
+          <div
+            className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+            onClick={() => setFullReactionPickerFor(null)}
+          >
+            <div
+              data-reaction-ui="true"
+              className="chat-overlay-surface border border-outline-variant rounded-lg w-full max-w-[350px] shadow-[0_0_30px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-3 border-b border-outline-variant/40 shrink-0 bg-surface-container-highest">
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[18px] text-primary">add_reaction</span>
+                  Add Reaction
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setFullReactionPickerFor(null)}
+                  className="text-on-surface-variant hover:text-white transition-colors"
+                  aria-label="Close"
+                >
+                  <span className="material-symbols-outlined text-[18px]">close</span>
+                </button>
+              </div>
+              <div className="p-1">
+                <React.Suspense fallback={<div className="p-8 text-center text-xs text-on-surface-variant font-system-code">Loading emojis...</div>}>
+                  <EmojiPicker
+                    theme="dark"
+                    onEmojiClick={(emojiData) => {
+                      const clanTag = emojiData.isCustom && emojiData.names && emojiData.names[0]
+                        ? emojiData.names[0].replace(/\s+/g, '_')
+                        : (emojiData.unified || 'unknown');
+                      const token = emojiData.isCustom ? `:${clanTag}:` : emojiData.emoji;
+                      toggleReaction(fullReactionPickerFor, token);
+                      setFullReactionPickerFor(null);
+                      setReactionPickerFor(null);
+                    }}
+                    customEmojis={customClanEmojis}
+                    categories={EMOJI_PICKER_CATEGORIES}
+                    searchDisabled={false}
+                    width="100%"
+                    height={380}
+                  />
+                </React.Suspense>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+        {actionSheetMsg && renderActionSheet()}
+        {detailsOpen && selectedContact && renderDetailsPanel()}
       </motion.main>
     </div>
   );

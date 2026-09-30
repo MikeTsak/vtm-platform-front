@@ -599,14 +599,29 @@
   .emailSidebar { z-index: 10; }
   .emailMain { z-index: 20; background: var(--surface-color); }
   
-  .mobileBackBtn { 
-    display: block; 
-    background: transparent; 
-    border: none; 
-    color: var(--accent); 
-    font-size: 1.5rem; 
-    cursor: pointer; 
-    padding: 0 16px 0 0; 
+  .mobileBackBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    margin-left: -10px;
+    flex-shrink: 0;
+    background: transparent;
+    border: none;
+    color: var(--accent);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  /* iOS zooms the page when focusing text under 16px */
+  .input, .editable {
+    font-size: 16px;
+  }
+
+  .desktopOnly {
+    display: none;
   }
 
   /* Modal Full Screen */

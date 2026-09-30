@@ -91,3 +91,12 @@
     filter: brightness(0) invert(1) !important;
     opacity: 0.92 !important;
 }
+
+/* Sheets, dialogs and the details panel must be opaque: in the admin
+   "liquid glass" theme --theme-surface-container is nearly transparent, so
+   the surface colour is layered over the solid page background. */
+.chat-overlay-surface {
+  background:
+    linear-gradient(var(--theme-surface-container, #201f1f), var(--theme-surface-container, #201f1f)),
+    var(--bg-color, #0d0d0f);
+}

@@ -1,4 +1,5 @@
 import React, { useContext } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AuthCtx } from '../../../core/AuthContext';
 import ChatSystem from '../../chat/ChatSystem';
 import styles from '../../../styles/Comms.module.css'; // reuse Comms styling for banner
@@ -9,6 +10,10 @@ import { useCommsEnabled } from '../useCommsEnabled';
 export default function SchreckNet() {
   const { user } = useContext(AuthCtx);
   const { commsEnabled, nextOpening, isLoading } = useCommsEnabled();
+  // ChatSystem keeps the open chat in ?c=; on a phone the banner is dead
+  // space above an open conversation.
+  const [searchParams] = useSearchParams();
+  const inChat = !!searchParams.get('c');
 
   return (
     <motion.div
@@ -24,7 +29,7 @@ export default function SchreckNet() {
     >
       {/* BANNER */}
       <motion.div 
-        className={styles.modeSwitch} 
+        className={`${styles.modeSwitch} ${inChat ? styles.hideOnMobile : ''}`}
         style={{ flexShrink: 0 }}
         variants={{
           hidden: { opacity: 0, y: -20 },
@@ -46,7 +51,7 @@ export default function SchreckNet() {
           }}
         >
           <Skeleton loading={isLoading} name="schrecknet-page">
-            <ChatSystem user={user} isMobile={false} commsEnabled={commsEnabled} nextOpening={nextOpening} />
+            <ChatSystem commsEnabled={commsEnabled} nextOpening={nextOpening} />
           </Skeleton>
         </motion.div>
       )}

@@ -1,6 +1,8 @@
 // src/components/EmailSystem.jsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { toast } from 'sonner';
 import api, { formatApiError } from '../../core/api';
+import { socket } from '../../api/liveSession';
 import { sanitizeHtml } from '../../utils/sanitizeHtml';
 import styles from '../../styles/EmailSystem.module.css';
 import { Skeleton } from 'boneyard-js/react';
@@ -16,8 +18,8 @@ const EditorToolbar = ({ onCmd }) => (
     <button type="button" onClick={() => onCmd('italic')} title="Italic"><i>I</i></button>
     <button type="button" onClick={() => onCmd('underline')} title="Underline"><u>U</u></button>
     <button type="button" onClick={() => onCmd('formatBlock', 'H3')} title="Heading 3">H3</button>
-    <button type="button" onClick={() => onCmd('justifyLeft')} title="Align Left">L</button>
-    <button type="button" onClick={() => onCmd('justifyCenter')} title="Align Center">C</button>
+    <button type="button" className={styles.desktopOnly} onClick={() => onCmd('justifyLeft')} title="Align Left">L</button>
+    <button type="button" className={styles.desktopOnly} onClick={() => onCmd('justifyCenter')} title="Align Center">C</button>
     <button type="button" onClick={() => onCmd('insertUnorderedList')} title="Bullet List">• List</button>
   </div>
 );
@@ -97,6 +99,13 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
   });
 
   const emailEndRef = useRef(null);
+  const [replyOpen, setReplyOpen] = useState(false);
+  // The open thread is refetched when the list reports it changed (new
+  // message), not on every refresh: fetching a thread marks it read, which
+  // emits emails:refresh again.
+  const selectedThreadRef = useRef(null);
+  selectedThreadRef.current = selectedThread;
+  const openThreadStampRef = useRef(null);
   const scrollContainerRef = useRef(null);
   const prevThreadsRef = useRef([]);
 
@@ -128,7 +137,9 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
 
   const notify = useCallback((title, body, icon) => {
     if (!notifSupported || !notifOn || Notification.permission !== 'granted') return;
-    new Notification(title, { body, icon: icon || '/img/ATT-logo(1).webp' });
+    try {
+      new Notification(title, { body, icon: icon || '/img/ATT-logo(1).webp' });
+    } catch { /* unsupported on Android: web push covers it */ }
   }, [notifSupported, notifOn]);
 
   const checkNewEmails = useCallback((newThreads) => {
@@ -153,16 +164,25 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
   const loadEmails = useCallback(async (isPolling = false, signal = null) => {
     if (!isPolling) setLoading(true);
     try {
+      const { data } = await api.get(isAdmin ? '/admin/emails/threads' : '/emails/my-inbox', { signal });
+      setThreads(data.threads);
+      checkNewEmails(data.threads);
+
+      const open = selectedThreadRef.current;
+      const fresh = open && data.threads.find(t => t.id === open.id);
+      if (fresh && fresh.updated_at !== openThreadStampRef.current) {
+        openThreadStampRef.current = fresh.updated_at;
+        const { data: thread } = await api.get(isAdmin ? `/admin/emails/threads/${open.id}` : `/emails/thread/${open.id}`, { signal });
+        if (selectedThreadRef.current?.id === open.id) {
+          setEmailMessages(thread.messages);
+          setThreads(prev => prev.map(th => th.id === open.id ? { ...th, unread_count: 0 } : th));
+          setTimeout(() => scrollToBottom(), 80);
+        }
+      }
+
       if (isAdmin) {
-        const { data } = await api.get('/admin/emails/threads', { signal });
-        checkNewEmails(data.threads);
-        setThreads(data.threads);
         const { data: idData } = await api.get('/admin/emails/identities', { signal });
         setAdminEmailIdentities(idData.identities);
-      } else {
-        const { data } = await api.get('/emails/my-inbox', { signal });
-        checkNewEmails(data.threads);
-        setThreads(data.threads);
       }
     } catch (e) {
       if (e.name !== 'CanceledError') {
@@ -207,7 +227,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
       await api.delete(`/admin/emails/queued/${id}`);
       setPendingQueue(prev => prev.filter(m => m.id !== id));
     } catch (e) {
-      alert('Failed to cancel queued message.');
+      toast.error('Failed to cancel queued message.');
     }
   };
 
@@ -215,12 +235,26 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
     const controller = new AbortController();
     loadEmails(false, controller.signal);
 
+    // emails:refresh (new mail or a read) is the real-time path; the poll is
+    // only a safety net and skips background tabs.
+    let debounce = null;
+    const onRefresh = () => {
+      clearTimeout(debounce);
+      debounce = setTimeout(() => loadEmails(true), 300);
+    };
     const interval = setInterval(() => {
-      loadEmails(true);
-    }, 15000);
+      if (!document.hidden) loadEmails(true);
+    }, 60000);
+    socket.on('emails:refresh', onRefresh);
+    socket.on('connect', onRefresh);
+    document.addEventListener('visibilitychange', onRefresh);
 
     return () => {
       clearInterval(interval);
+      clearTimeout(debounce);
+      socket.off('emails:refresh', onRefresh);
+      socket.off('connect', onRefresh);
+      document.removeEventListener('visibilitychange', onRefresh);
       controller.abort();
     };
   }, [loadEmails]);
@@ -233,6 +267,8 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
 
   const openEmailThread = async (t) => {
     setSelectedThread(t);
+    setReplyOpen(false);
+    openThreadStampRef.current = t.updated_at;
     try {
       const url = isAdmin ? `/admin/emails/threads/${t.id}` : `/emails/thread/${t.id}`;
       const { data } = await api.get(url);
@@ -240,7 +276,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
       setThreads(prev => prev.map(th => th.id === t.id ? { ...th, unread_count: 0 } : th));
       setTimeout(() => scrollToBottom('instant'), 80);
     } catch (e) {
-      alert('Failed to load email thread. Please try again.');
+      toast.error('Failed to load email thread. Please try again.');
     }
   };
 
@@ -253,13 +289,14 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
       const endpoint = isAdmin ? '/admin/emails/reply' : '/emails/send';
       await api.post(endpoint, { thread_id: selectedThread.id, body: emailReplyBody, queue });
       setEmailReplyBody('');
+      setReplyOpen(false);
       const url = isAdmin ? `/admin/emails/threads/${selectedThread.id}` : `/emails/thread/${selectedThread.id}`;
       const { data } = await api.get(url);
       setEmailMessages(data.messages);
       setTimeout(() => scrollToBottom(), 80);
       if (queue) fetchPendingQueue();
     } catch (e) {
-      alert('Failed to reply to email.');
+      toast.error('Failed to reply to email.');
     } finally {
       setReplySending(false);
     }
@@ -277,12 +314,12 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
       setEmailComposeOpen(false);
       setEmailForm({ to: '', subject: '', body: '' });
       loadEmails();
-      alert('Email Sent Successfully.');
+      toast.success('Email sent.');
     } catch (e) {
       if (e.response?.status === 404) {
-        alert('Delivery Status Notification: The specified email address does not exist.');
+        toast.error('Delivery Status Notification: The specified email address does not exist.');
       } else {
-        alert('Failed to send email.');
+        toast.error('Failed to send email.');
       }
     }
   };
@@ -296,9 +333,9 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
       });
       setAdminIdentityForm({ email: '', display: '' });
       loadEmails();
-      alert('Identity created successfully');
+      toast.success('Identity created.');
     } catch (e) {
-      alert('Error creating identity');
+      toast.error('Error creating identity');
     }
   };
 
@@ -327,7 +364,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
         if (newThread) openEmailThread(newThread);
       }
     } catch (e) {
-      alert(formatApiError(e, 'Failed to send DM.'));
+      toast.error(formatApiError(e, 'Failed to send DM.'));
     } finally {
       setAdminDmSending(false);
     }
@@ -395,7 +432,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
             )}
             {!isAdmin && commsEnabled && (
               <button className={`${styles.composeBtn} blood-border-glow`} onClick={() => setEmailComposeOpen(true)}>
-                + Compose
+                <span className="material-symbols-outlined" style={{ fontSize: 18, verticalAlign: 'middle', marginRight: 4 }}>edit</span>Compose
               </button>
             )}
           </div>
@@ -449,7 +486,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
                       )}
                     </div>
                     {hasUnread && <span className={styles.drawerUnreadDot} />}
-                    <i className={`fa-solid fa-chevron-down ${styles.drawerChevron} ${isOpen ? styles.open : ''}`} />
+                    <span className={`material-symbols-outlined ${styles.drawerChevron} ${isOpen ? styles.open : ''}`}>expand_more</span>
                   </div>
 
                   {/* Identity thread rows (expanded) */}
@@ -536,13 +573,15 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
           <>
             <div className={styles.emailViewHeader}>
               <div className={styles.headerTopRow}>
-                <button className={styles.mobileBackBtn} onClick={() => setSelectedThread(null)}>← Back</button>
+                <button className={styles.mobileBackBtn} onClick={() => setSelectedThread(null)} aria-label="Back to inbox">
+                  <span className="material-symbols-outlined">arrow_back</span>
+                </button>
                 <h1>{selectedThread.subject}</h1>
               </div>
               <div className={styles.emailParticipants}>
                 {isAdmin
                   ? <span className={styles.particChip}>
-                      <i className="fa-solid fa-user" style={{ marginRight: 6, opacity: 0.7 }} />
+                      <span className="material-symbols-outlined" style={{ fontSize: 16, marginRight: 6, opacity: 0.7, verticalAlign: 'middle' }}>person</span>
                       {selectedThread.char_name || selectedThread.user_name}
                       {selectedThread.char_name && (
                         <span style={{ opacity: 0.6, marginLeft: 6, fontSize: '0.75rem' }}>({selectedThread.user_name})</span>
@@ -617,6 +656,13 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
               </div>
             )}
 
+            {isMobile && !replyOpen && !emailReplyBody ? (
+              <div className={styles.emailReplyBox}>
+                <button className={styles.btnPri} style={{ width: '100%', minHeight: 44 }} disabled={!canComposeReply} onClick={() => setReplyOpen(true)}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 20, verticalAlign: 'middle', marginRight: 6 }}>reply</span>Reply
+                </button>
+              </div>
+            ) : (
             <div className={styles.emailReplyBox} style={{ opacity: !canComposeReply ? 0.6 : 1, pointerEvents: !canComposeReply ? 'none' : 'auto' }}>
               <TextEditor
                 value={emailReplyBody}
@@ -639,10 +685,11 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
                 )}
               </div>
             </div>
+            )}
           </>
         ) : (
           <div className={styles.placeholderLight}>
-            <div className={styles.emptyIcon}>✉️</div>
+            <span className={`material-symbols-outlined ${styles.emptyIcon}`} style={{ fontSize: 64 }}>mail</span>
             <p>Select an email thread to read</p>
           </div>
         )}
@@ -703,8 +750,13 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
                     <button
                       className={styles.btnSec}
                       onClick={async () => {
-                        await api.delete(`/admin/emails/identities/${i.id}`);
-                        loadEmails();
+                        if (!window.confirm(`Delete the identity "${i.display_name}" <${i.email_address}>? This cannot be undone.`)) return;
+                        try {
+                          await api.delete(`/admin/emails/identities/${i.id}`);
+                          loadEmails();
+                        } catch (e) {
+                          toast.error('Failed to delete identity.');
+                        }
                       }}
                     >
                       Delete
@@ -747,16 +799,16 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
           <div className={styles.modal}>
             <h3>New Direct Message</h3>
             <p style={{ fontSize: '0.78rem', color: 'var(--text-muted, #aaa)', marginBottom: 8 }}>
-              Create a new in-fiction identity and instantly open a thread with a player.
+              Create a new in-fiction identity and instantly open a thread with a Kindred.
             </p>
 
-            <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #aaa)' }}>Target Player</label>
+            <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #aaa)' }}>Target Kindred</label>
             <select
               className={styles.input}
               value={adminDmForm.user_id}
               onChange={e => setAdminDmForm({ ...adminDmForm, user_id: e.target.value })}
             >
-              <option value="">Select a player...</option>
+              <option value="">Select a Kindred...</option>
               {allPlayers.map(p => (
                 <option key={p.id} value={p.id}>
                   {p.display_name}{p.char_name ? ` (${p.char_name})` : ''}
@@ -861,7 +913,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
                 <div key={m.id} className={styles.identityRow} style={{ flexDirection: 'column', alignItems: 'stretch', gap: 4 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: '0.8rem' }}>
-                      <b>{m.identity_name}</b> <span style={{ opacity: 0.7 }}>➜ {m.char_name || m.user_display_name}</span>
+                      <b>{m.identity_name}</b> <span style={{ opacity: 0.7 }}><span className="material-symbols-outlined" style={{ fontSize: 14, verticalAlign: 'middle' }}>arrow_forward</span> {m.char_name || m.user_display_name}</span>
                       <br /><small style={{ opacity: 0.6 }}>{m.subject}</small>
                     </span>
                     <button className={styles.btnSec} onClick={() => cancelPendingMessage(m.id)}>Cancel</button>
