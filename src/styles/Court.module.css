@@ -346,18 +346,6 @@
   text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
 }
 
-.clanAesthetic {
-  font-size: 0.68rem;
-  font-style: italic;
-  color: color-mix(in srgb, var(--card-clan-text, #e8e8ed) 65%, transparent);
-  letter-spacing: 0.03em;
-  margin-bottom: 0.4rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  z-index: 10;
-  position: relative;
-}
 
 .tags {
   display: flex;

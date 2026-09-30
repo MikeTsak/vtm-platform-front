@@ -1,5 +1,5 @@
 // src/features/admin/AdminChatLogsTab.jsx
-import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useState, useRef, useCallback } from 'react';
 import api from '../../core/api';
 import { formatEuDate } from '../../utils/dateFormatter';
 import styles from '../../styles/Admin.module.css';
@@ -834,10 +834,17 @@ function MessagePanel({ messages, participants, reactionsByMsgId, loading, mode,
   // ancestor it finds on the way up, including the page itself (the "jumps
   // to the bottom of the whole admin page" bug). Setting scrollTop directly
   // on this panel's own scroll container touches only this box.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = scrollContainerRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [participants.threadKey, loading]);
+    if (el && !loading) {
+      el.scrollTop = el.scrollHeight;
+      requestAnimationFrame(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+        }
+      });
+    }
+  }, [participants.threadKey, loading, messages]);
 
   const getHeaderTitle = () => {
     if (mode === 'direct') {
@@ -880,7 +887,7 @@ function MessagePanel({ messages, participants, reactionsByMsgId, loading, mode,
         {getHeaderTitle()}
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: 'clamp(0.75rem, 3vw, 2rem)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+      <div ref={scrollContainerRef} style={{ flex: 1, overflowY: 'auto', padding: 'clamp(0.75rem, 3vw, 2rem)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
         {loading && <div className={styles.loading}><span className={styles.spinner} /> Extracting transmission stream...</div>}
 
         {!loading && messages.map((msg, i) => {

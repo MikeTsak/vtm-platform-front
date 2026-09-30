@@ -386,7 +386,6 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles, onImageCl
   const textColor = clanRules?.textColor || clanPalette?.[3] || '#e8e8ed';
   const surfaceColor = clanRules?.surface || clanPalette?.[4] || '#141417';
   const symbolColor = clanRules?.symbolColor || primaryColor;
-  const aesthetic = clanRules?.aesthetic || '';
 
   const prefix = ent.is_ex ? "Ex " : "";
   const primaryTitle = (ent.titles && ent.titles.length > 0) ? `${prefix}${ent.titles[0]}` : null;
@@ -502,12 +501,6 @@ function MemberCard({ ent, specialClass = "", canEdit, update, titles, onImageCl
           )}
         </div>
 
-        {aesthetic && (
-          <div className={styles.clanAesthetic} title={`Clan Aesthetic: ${aesthetic}`}>
-            {aesthetic}
-          </div>
-        )}
-        
         <div className={styles.tags}>
           {clan && (
             <span className={styles.tagClan}>

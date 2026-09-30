@@ -865,6 +865,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   const messagesEndRef = useRef(null);
   const messagesListRef = useRef(null);
   const userScrollingRef = useRef(false);
+  const initialScrollDoneRef = useRef(false);
 
   const isNearBottom = (el, pad = 150) => {
     if (!el) return true;
@@ -872,11 +873,15 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     return scrollHeight - scrollTop - clientHeight < pad;
   };
 
-  const scrollToBottom = (smooth = true) => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'end' });
+  const scrollToBottom = useCallback((smooth = false) => {
+    const el = messagesListRef.current;
+    if (!el) return;
+    if (smooth) {
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    } else {
+      el.scrollTop = el.scrollHeight;
     }
-  };
+  }, []);
 
   const clearAttachment = useCallback(() => {
     setAttachment(null);
@@ -886,32 +891,47 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   }, [previewUrl]);
 
   // After older messages are prepended keep the viewport on what the user was
-  // reading, and finish a pending jump once its message is in the DOM.
+  // reading, finish a pending jump once its message is in the DOM, or snap
+  // to the latest message on initial conversation load before paint.
   useLayoutEffect(() => {
     const el = messagesListRef.current;
+    if (!el) return;
+
     const anchor = prependAnchorRef.current;
-    if (el && anchor) {
-      // .messageList has scroll-behavior: smooth; restoring must be instant.
-      el.style.scrollBehavior = 'auto';
+    if (anchor) {
       el.scrollTop = el.scrollHeight - anchor.height + anchor.top;
-      el.style.scrollBehavior = '';
       prependAnchorRef.current = null;
+      return;
     }
+
     const jump = pendingJumpRef.current;
     if (jump && document.getElementById(`chat-msg-${jump}`)) {
       pendingJumpRef.current = null;
       revealMessage(jump);
+      return;
+    }
+
+    if (!initialScrollDoneRef.current && messages.length > 0) {
+      el.scrollTop = el.scrollHeight;
+      initialScrollDoneRef.current = true;
+      userScrollingRef.current = false;
+      requestAnimationFrame(() => {
+        if (!userScrollingRef.current && messagesListRef.current) {
+          messagesListRef.current.scrollTop = messagesListRef.current.scrollHeight;
+        }
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages]);
 
   useEffect(() => {
-    if (!userScrollingRef.current) scrollToBottom(false);
-  }, [messages]);
+    if (initialScrollDoneRef.current && !userScrollingRef.current) {
+      scrollToBottom(false);
+    }
+  }, [messages, scrollToBottom]);
 
   useEffect(() => {
     userScrollingRef.current = false;
-    scrollToBottom(false);
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
@@ -1015,6 +1035,9 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   useEffect(() => {
     loadSeqRef.current += 1;
     initialSyncRef.current = true;
+    initialScrollDoneRef.current = false;
+    userScrollingRef.current = false;
+    setShowScrollBtn(false);
     lastTsRef.current = 0;
     lastSigRef.current = '';
     lastReadTsRef.current = 0;
@@ -1390,20 +1413,20 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
         id: m.id, body: m.body, created_at: m.created_at,
         read_at: m.read_at, delivered_at: m.delivered_at,
         sender_id: m.sender_id,
-        attachment_id: m.attachment_id, edited: m.edited, emoji_size: m.emoji_size, reply: toReply(m)
+        attachment_id: m.attachment_id, edited: m.edited, emoji_size: m.emoji_size, type: m.type, reply: toReply(m)
       }));
     } else if (isAdmin) {
       res = await api.get(`/admin/chat/npc-history/${c.id}/${selectedPlayerId}?${qs}`);
       msgs = (res.data.messages || []).map(m => ({
         id: m.id, body: m.body, created_at: m.created_at, sender_id: m.from_side === 'npc' ? 'npc' : selectedPlayerId, _from: m.from_side,
-        attachment_id: m.attachment_id, edited: m.edited, emoji_size: m.emoji_size, status: m.status, reply: toReply(m)
+        attachment_id: m.attachment_id, edited: m.edited, emoji_size: m.emoji_size, status: m.status, type: m.type, reply: toReply(m)
       }));
     } else {
       res = await api.get(`/chat/npc-history/${c.id}?${qs}`);
       msgs = (res.data.messages || []).map(m => ({
         id: m.id, body: m.body, created_at: m.created_at,
         sender_id: m.from_side === 'user' ? currentUser.id : 'npc', _from: m.from_side,
-        attachment_id: m.attachment_id, edited: m.edited, emoji_size: m.emoji_size, reply: toReply(m)
+        attachment_id: m.attachment_id, edited: m.edited, emoji_size: m.emoji_size, type: m.type, reply: toReply(m)
       }));
     }
     msgs.sort(byTime);
@@ -1442,7 +1465,9 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
 
   const handleListScroll = (e) => {
     const el = e.currentTarget;
-    userScrollingRef.current = !isNearBottom(el);
+    if (!initialScrollDoneRef.current) return;
+    const nearBottom = isNearBottom(el);
+    userScrollingRef.current = !nearBottom;
     setShowScrollBtn(!isNearBottom(el, 300));
     if (el.scrollTop < 150) loadOlder();
   };
@@ -1763,6 +1788,8 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
         clearAttachment();
         setDrafts(prev => ({ ...prev, [threadKey]: '' }));
         if (textareaRef.current) textareaRef.current.style.height = 'auto';
+        userScrollingRef.current = false;
+        scrollToBottom(true);
       }
 
     } catch (err) {
@@ -2122,6 +2149,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     setPanelPicker(null);
     try {
       await api.put('/chat/settings', { ...convParams, ...patch });
+      setSocketRefreshTick(t => t + 1);
     } catch (e) {
       setConvSettings(prev);
       toast.error(formatApiError(e, 'Could not save the change.'));
@@ -2170,6 +2198,8 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
 
   const selectContact = (contact) => {
     if (selectedContact?.type === contact.type && selectedContact?.id === contact.id) {
+      userScrollingRef.current = false;
+      scrollToBottom(true);
       return;
     }
 
@@ -2191,6 +2221,12 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   };
 
   const selectAdminTarget = (userId) => {
+    if (selectedPlayerId === userId) {
+      userScrollingRef.current = false;
+      scrollToBottom(true);
+      return;
+    }
+
     setDrafts(prev => ({ ...prev, [threadKey]: newMessage }));
     setSelectedPlayerId(userId);
     setReactionPickerFor(null);
@@ -3444,7 +3480,14 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
             </div>
 
             {showScrollBtn && (
-              <button className="absolute bottom-24 right-6 w-10 h-10 rounded-full bg-surface-container-highest border border-outline-variant text-primary shadow-[0_0_15px_rgba(0,0,0,0.8)] flex items-center justify-center z-20 hover:bg-surface-variant transition-colors" onClick={() => scrollToBottom(true)}>
+              <button
+                type="button"
+                className="absolute bottom-24 right-6 w-10 h-10 rounded-full bg-surface-container-highest border border-outline-variant text-primary shadow-[0_0_15px_rgba(0,0,0,0.8)] flex items-center justify-center z-20 hover:bg-surface-variant transition-colors"
+                onClick={() => {
+                  userScrollingRef.current = false;
+                  scrollToBottom(true);
+                }}
+              >
                 <span className="material-symbols-outlined">arrow_downward</span>
               </button>
             )}

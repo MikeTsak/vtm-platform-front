@@ -289,7 +289,7 @@ function ActiveTrackItem({ dt, isProject }) {
   );
 }
 
-function ArchiveItem({ dt, isProject, isMassReleaseActive, massReleaseCountdown }) {
+function ArchiveItem({ dt, isProject, massReleaseCountdown }) {
   const status = (dt.status || 'resolved').toLowerCase();
   const displayTitle = isProject ? dt.title.replace('[PROJECT] ', '') : dt.title;
   
@@ -301,6 +301,8 @@ function ArchiveItem({ dt, isProject, isMassReleaseActive, massReleaseCountdown 
   if (status === 'needs a scene') badgeClass = styles.badgeNeedsScene;
   if (status === 'rejected') badgeClass = styles.badgeRejected;
   if (status === 'submitted') badgeClass = styles.badgePending;
+
+  const isPendingRelease = Boolean(dt.is_pending_release && (!massReleaseCountdown || !massReleaseCountdown.isPast));
 
   return (
     <motion.div 
@@ -320,12 +322,12 @@ function ArchiveItem({ dt, isProject, isMassReleaseActive, massReleaseCountdown 
       <div className={styles.archiveCardBody}>
         <p className={styles.archiveCardText}>{dt.body}</p>
 
-        {isMassReleaseActive && (['resolved', 'approved', 'rejected', 'resolved in scene'].includes(status) || status.startsWith('approved:')) ? (
+        {isPendingRelease ? (
           <div className={styles.resolutionBox} style={{ textAlign: 'center', opacity: 0.85, padding: '1.5rem', background: 'var(--glass-inset)' }}>
              <h4 style={{ color: '#4da6ff', marginBottom: '8px', marginTop: 0 }}>Resolution Pending Mass Release</h4>
              <p className={styles.resolutionText} style={{ fontFamily: 'Fira Code, monospace', fontSize: '1.1rem' }}>
                Releasing in {(() => {
-                  if (!massReleaseCountdown) return '00d 00h 00m 00s';
+                  if (!massReleaseCountdown || massReleaseCountdown.isPast) return '00d 00h 00m 00s';
                   const d = String(massReleaseCountdown.days).padStart(2, '0');
                   const h = String(massReleaseCountdown.hours).padStart(2, '0');
                   const m = String(massReleaseCountdown.minutes).padStart(2, '0');
@@ -410,7 +412,6 @@ export default function DownTimes() {
   projectCountdown.targetDate = configData?.project_deadline || '';
 
   const massReleaseCountdown = useCountdown(configData?.downtime_mass_release_date || '', false);
-  const isMassReleaseActive = configData?.downtime_mass_release_mode === 'true' && !massReleaseCountdown.isPast;
 
   // Data processing
   const mine = useMemo(() => {
@@ -419,15 +420,22 @@ export default function DownTimes() {
 
   // Batch read unread resolutions
   useEffect(() => {
-    if (!mineData || isMassReleaseActive) return;
-    const unread = (mineData.downtimes || []).filter(dt => dt.gm_resolution && !dt.is_read);
+    if (!mineData) return;
+    const unread = (mineData.downtimes || []).filter(dt => !dt.is_pending_release && dt.gm_resolution && !dt.is_read);
     if (unread.length > 0) {
       const ids = unread.map(dt => dt.id);
       api.patch('/downtimes/read-batch', { ids })
         .then(() => refetchMine())
         .catch(() => {});
     }
-  }, [mineData, isMassReleaseActive, refetchMine]);
+  }, [mineData, refetchMine]);
+
+  // When countdown expires live in the player's tab, refetch to reveal resolutions
+  useEffect(() => {
+    if (massReleaseCountdown.isPast && configData?.downtime_mass_release_mode === 'true') {
+      refetchMine();
+    }
+  }, [massReleaseCountdown.isPast, configData?.downtime_mass_release_mode, refetchMine]);
 
   const quota = quotaData || { used: 0, limit: 3 };
   const myChar = charData?.character || null;
@@ -694,7 +702,7 @@ export default function DownTimes() {
               </div>
             ) : (
               archiveList.map(dt => (
-                <ArchiveItem key={dt.id} dt={dt} isProject={viewMode === 'project'} isMassReleaseActive={isMassReleaseActive} massReleaseCountdown={massReleaseCountdown} />
+                <ArchiveItem key={dt.id} dt={dt} isProject={viewMode === 'project'} massReleaseCountdown={massReleaseCountdown} />
               ))
             )}
           </div>

@@ -502,7 +502,6 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  scroll-behavior: smooth;
 }
 
 .messageList::-webkit-scrollbar {
