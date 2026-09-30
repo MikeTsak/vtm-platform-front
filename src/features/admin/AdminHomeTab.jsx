@@ -44,6 +44,55 @@ export default function AdminHomeTab({
     staleTime: 60000,
   });
 
+  // Helper to verify if a sheet object or JSON string marks the character as active
+  const isSheetActive = (sheet) => {
+    if (!sheet) return false;
+    let parsed = sheet;
+    if (typeof parsed === 'string') {
+      try { parsed = JSON.parse(parsed); } catch (e) { return false; }
+    }
+    return parsed?.is_active === true;
+  };
+
+  // Active Kindred and active player sets (strictly excluding deactivated, deceased, left, or missing)
+  const { activeCharacters, activeCharIdSet, activeUserIdSet, eligiblePlayersCount } = useMemo(() => {
+    const charSet = new Set();
+    const userSet = new Set();
+
+    // 1. Identify active characters from characters prop
+    const activeChars = characters.filter(c => {
+      const isActive = isSheetActive(c.sheet) && !c.is_deceased && !c.is_left && !c.is_missing;
+      if (isActive) {
+        charSet.add(Number(c.id));
+        if (c.user_id) userSet.add(Number(c.user_id));
+      }
+      return isActive;
+    });
+
+    // 2. Identify active players from users prop
+    const activeUsers = users.filter(u => {
+      if (!u.character_id) return false;
+      const isSheetOk = isSheetActive(u.sheet) && !u.is_deceased && !u.is_left && !u.is_missing;
+      const isCharListOk = charSet.has(Number(u.character_id));
+      const isActive = isSheetOk || isCharListOk;
+      if (isActive) {
+        userSet.add(Number(u.id));
+        charSet.add(Number(u.character_id));
+      }
+      return isActive;
+    });
+
+    // Eligible player count strictly reflects active players, never counting deactivated players
+    const eligibleCount = activeUsers.length || activeChars.length || 1;
+
+    return {
+      activeCharacters: activeChars.length > 0 ? activeChars : characters.filter(c => charSet.has(Number(c.id))),
+      activeCharIdSet: charSet,
+      activeUserIdSet: userSet,
+      eligiblePlayersCount: eligibleCount,
+    };
+  }, [characters, users]);
+
   // Cycle Metrics (Calculated from last downtime opening)
   const cycleStats = useMemo(() => {
     const openingStr = dtConfig?.downtime_opening;
@@ -52,10 +101,18 @@ export default function AdminHomeTab({
     const hasOpening = openingDate && !isNaN(openingDate.getTime());
 
     // Filter downtimes submitted in this cycle (since opening date)
+    // Exclude downtimes from deactivated, deceased, left, or missing players
     const cycleDowntimes = downtimes.filter(d => {
       if (!hasOpening) return true;
       const dDate = new Date(d.created_at || 0);
-      return dDate >= openingDate;
+      if (dDate < openingDate) return false;
+      if (activeCharIdSet.size > 0 && d.character_id && !activeCharIdSet.has(Number(d.character_id))) {
+        return false;
+      }
+      if (activeUserIdSet.size > 0 && d.user_id && !activeUserIdSet.has(Number(d.user_id))) {
+        return false;
+      }
+      return true;
     });
 
     const totalCycle = cycleDowntimes.length;
@@ -69,7 +126,7 @@ export default function AdminHomeTab({
       ? Math.round((resolvedCount / totalCycle) * 100)
       : 100;
 
-    // Unique players who submitted in this cycle
+    // Unique active players who submitted in this cycle
     const uniqueSubmitterIds = new Set();
     cycleDowntimes.forEach(d => {
       if (d.user_id) uniqueSubmitterIds.add(Number(d.user_id));
@@ -77,8 +134,8 @@ export default function AdminHomeTab({
     });
     const playersSubmittedCount = uniqueSubmitterIds.size;
 
-    // Total active players (users with a character assigned or active non-admins)
-    const eligiblePlayers = users.filter(u => u.character_id).length || users.filter(u => u.role !== 'admin').length || users.length || 1;
+    // Total active players (strictly excluding deactivated players)
+    const eligiblePlayers = eligiblePlayersCount;
     const participationPct = Math.min(100, Math.round((playersSubmittedCount / eligiblePlayers) * 100));
 
     return {
@@ -92,7 +149,7 @@ export default function AdminHomeTab({
       eligiblePlayers,
       participationPct,
     };
-  }, [downtimes, dtConfig, users]);
+  }, [downtimes, dtConfig, activeCharIdSet, activeUserIdSet, eligiblePlayersCount]);
 
   // Open Character Sheet / Editor Modal
   const handleOpenCharacter = (charIdOrName) => {
@@ -119,9 +176,17 @@ export default function AdminHomeTab({
   const pendingDowntimes = useMemo(() => {
     return downtimes.filter(d => {
       const s = String(d.status || '').toLowerCase();
-      return s === 'submitted' || s === 'needs a scene';
+      const isPending = s === 'submitted' || s === 'needs a scene';
+      if (!isPending) return false;
+      if (activeCharIdSet.size > 0 && d.character_id && !activeCharIdSet.has(Number(d.character_id))) {
+        return false;
+      }
+      if (activeUserIdSet.size > 0 && d.user_id && !activeUserIdSet.has(Number(d.user_id))) {
+        return false;
+      }
+      return true;
     });
-  }, [downtimes]);
+  }, [downtimes, activeCharIdSet, activeUserIdSet]);
 
   const diceStats = useMemo(() => {
     let messy = 0;
@@ -138,9 +203,18 @@ export default function AdminHomeTab({
   // Recent Downtime Submissions
   const recentDowntimes = useMemo(() => {
     return [...downtimes]
+      .filter(d => {
+        if (activeCharIdSet.size > 0 && d.character_id && !activeCharIdSet.has(Number(d.character_id))) {
+          return false;
+        }
+        if (activeUserIdSet.size > 0 && d.user_id && !activeUserIdSet.has(Number(d.user_id))) {
+          return false;
+        }
+        return true;
+      })
       .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
       .slice(0, 7);
-  }, [downtimes]);
+  }, [downtimes, activeCharIdSet, activeUserIdSet]);
 
   // Clean up and format trait/power target names
   const formatTraitName = (target, action) => {
@@ -433,7 +507,7 @@ export default function AdminHomeTab({
           </div>
         </div>
 
-        {/* Characters Count */}
+        {/* Active Kindred Count */}
         <div
           className={styles.statCard}
           onClick={() => setTab('characters')}
@@ -445,7 +519,7 @@ export default function AdminHomeTab({
               <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>account_circle</span>
             </div>
           </div>
-          <div className={styles.statValue}>{characters.length}</div>
+          <div className={styles.statValue}>{activeCharacters.length}</div>
           <div className={styles.statSubtext}>
             <span>{users.length} registered accounts</span>
           </div>
