@@ -11,6 +11,49 @@ import { CLAN_HEX as CLAN_COLORS, symlogoWhite } from '../../data/clans';
 const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim' };
 const fileify = (c) => (NAME_OVERRIDES[c] || c).replace(/\s+/g, '_');
 const symlogo = (c) => (c ? `/img/clans/330px-${fileify(c)}_symbol.webp` : '');
+
+// High contrast clan colors and surfaces ensuring vibrant legibility on dark glass
+const CLAN_ACCENTS = {
+  Brujah: '#FF7214',
+  Gangrel: '#C7B582',
+  Malkavian: '#F1AB13',
+  Nosferatu: '#BDBA82',
+  Toreador: '#DD2C68',
+  Tremere: '#CCB2DC',
+  Ventrue: '#D4C270',
+  'Banu Haqim': '#C5A838',
+  Banu_Haqim: '#C5A838',
+  Hecata: '#D1CCDC',
+  Lasombra: '#E2E8F0',
+  'The Ministry': '#6BD425',
+  Ministry: '#6BD425',
+  Ravnos: '#E08226',
+  Salubri: '#E1FBFE',
+  Tzimisce: '#86A59C',
+  Caitiff: '#E0E0E0',
+  'Thin-blood': '#6BA8BD',
+};
+
+const CLAN_SURFACES = {
+  Brujah: 'rgba(60, 15, 18, 0.7)',
+  Gangrel: 'rgba(68, 38, 4, 0.7)',
+  Malkavian: 'rgba(35, 25, 55, 0.7)',
+  Nosferatu: 'rgba(35, 40, 36, 0.7)',
+  Toreador: 'rgba(74, 0, 31, 0.7)',
+  Tremere: 'rgba(80, 30, 92, 0.65)',
+  Ventrue: 'rgba(15, 13, 79, 0.75)',
+  'Banu Haqim': 'rgba(35, 16, 27, 0.7)',
+  Banu_Haqim: 'rgba(35, 16, 27, 0.7)',
+  Hecata: 'rgba(50, 45, 55, 0.7)',
+  Lasombra: 'rgba(20, 26, 40, 0.75)',
+  'The Ministry': 'rgba(28, 1, 24, 0.75)',
+  Ministry: 'rgba(28, 1, 24, 0.75)',
+  Ravnos: 'rgba(44, 27, 16, 0.7)',
+  Salubri: 'rgba(30, 35, 50, 0.7)',
+  Tzimisce: 'rgba(35, 30, 45, 0.7)',
+  Caitiff: 'rgba(35, 35, 38, 0.7)',
+  'Thin-blood': 'rgba(20, 35, 45, 0.7)',
+};
 /* ---------------------------------- */
 
 function niceDate(d) {
@@ -721,7 +764,8 @@ export default function AdminDowntimesTab() {
             )}
 
             {groupedAndFiltered.map(group => {
-              const clanColor = CLAN_COLORS[group.clan] || 'var(--accent-purple)';
+              const clanAccent = (group.clan && CLAN_ACCENTS[group.clan]) || CLAN_COLORS[group.clan] || 'var(--accent-purple)';
+              const clanSurface = (group.clan && CLAN_SURFACES[group.clan]) || 'rgba(30, 20, 45, 0.7)';
               const clanLogoUrl = symlogo(group.clan);
               const clanWhiteLogoUrl = symlogoWhite(group.clan);
               return (
@@ -729,13 +773,13 @@ export default function AdminDowntimesTab() {
                   key={group.key || group.character_id || group.player_name}
                   className={styles.playerDowntimeGroup}
                   style={{
-                    '--clan-color': clanColor,
+                    '--clan-color': clanAccent,
                     '--clan-logo-url': clanLogoUrl ? `url(${clanLogoUrl})` : 'none',
                     background: 'rgba(10, 10, 15, 0.4)',
                     border: '1px solid var(--glass-border)',
                     borderRadius: 'var(--radius-lg)',
                     overflow: 'hidden',
-                    borderLeft: `6px solid ${clanColor}`,
+                    borderLeft: `6px solid ${clanAccent}`,
                     backdropFilter: 'var(--glass-blur)'
                   }}
                 >
@@ -747,8 +791,8 @@ export default function AdminDowntimesTab() {
                         width: '48px',
                         height: '48px',
                         borderRadius: '50%',
-                        border: `2px solid ${clanColor}`,
-                        boxShadow: `0 0 14px ${clanColor}44`,
+                        border: `2px solid ${clanAccent}`,
+                        boxShadow: `0 0 14px ${clanAccent}44`,
                         overflow: 'hidden',
                         background: 'rgba(15, 12, 25, 0.8)',
                         cursor: group.character_id ? 'pointer' : 'default',
@@ -801,7 +845,7 @@ export default function AdminDowntimesTab() {
                             onError={(e) => { e.currentTarget.style.display = 'none'; }}
                           />
                         )}
-                        <span style={{ fontSize: '0.85rem', color: clanColor, fontWeight: 700 }}>
+                        <span style={{ fontSize: '0.85rem', color: clanAccent, fontWeight: 700 }}>
                           {group.clan || 'Unknown Clan'}
                         </span>
                         <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>•</span>
@@ -819,28 +863,29 @@ export default function AdminDowntimesTab() {
                           display: 'flex',
                           alignItems: 'center',
                           gap: '10px',
-                          background: 'rgba(255, 255, 255, 0.04)',
+                          background: `linear-gradient(135deg, ${clanSurface} 0%, rgba(10, 10, 16, 0.9) 100%)`,
                           padding: '6px 14px',
                           borderRadius: '24px',
-                          border: `1px solid ${clanColor}44`,
-                          boxShadow: `0 0 12px ${clanColor}22`,
+                          border: `1px solid ${clanAccent}55`,
+                          boxShadow: `0 0 16px ${clanAccent}25, inset 0 1px 0 rgba(255, 255, 255, 0.15)`,
                         }}
                         title={`${group.clan || 'Clan'} Crest`}
                       >
                         <img
                           src={clanWhiteLogoUrl}
                           alt={group.clan || 'Clan'}
-                          style={{ width: '22px', height: '22px', objectFit: 'contain' }}
+                          style={{ width: '22px', height: '22px', objectFit: 'contain', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.6))' }}
                           onError={(e) => { e.currentTarget.style.display = 'none'; }}
                         />
                         <span
                           style={{
-                            color: clanColor,
+                            color: clanAccent,
                             fontWeight: 800,
                             fontSize: '0.82rem',
-                            letterSpacing: '0.06em',
+                            letterSpacing: '0.08em',
                             textTransform: 'uppercase',
                             fontFamily: 'Fira Code, monospace',
+                            textShadow: `0 0 10px ${clanAccent}55`,
                           }}
                         >
                           {group.clan}
