@@ -921,7 +921,7 @@ async function grantXP(character_id, delta) {
     disciplines: () => <AdminDisciplinesTab />,
     // Chronicle
     calendar:     () => <AdminCalendarTab />,
-    downtimes:    () => <AdminDowntimesTab rows={downtimes} onSave={saveDowntime} />,
+    downtimes:    () => <AdminDowntimesTab rows={downtimes} onSave={saveDowntime} characters={characters} />,
     feeding:      () => <AdminFeedingTab />,
     claims:       () => <AdminClaimsTab users={users} />,
     domains:      () => <AdminDomainsTab />,

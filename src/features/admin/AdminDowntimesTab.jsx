@@ -5,6 +5,7 @@ import api, { formatApiError } from "../../core/api";
 import { formatEuDate } from '../../utils/dateFormatter';
 import styles from '../../styles/Admin.module.css';
 import Avatar from '../../components/Avatar';
+import generateVTMCharacterSheetPDF from '../../utils/pdfGenerator';
 import { CLAN_HEX as CLAN_COLORS, symlogoWhite } from '../../data/clans';
 
 /* ---------- VTM Lookups ---------- */
@@ -269,6 +270,15 @@ function formatSceneLabel(sceneId, sceneIndex = null) {
   return 'Scene';
 }
 
+function newSceneId() {
+  return `scene_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+}
+
+// New scenes are named after a participant's downtime title (scene_title is VARCHAR(150)).
+function autoSceneTitle(dt) {
+  return String(dt?.title || '').replace(/^\[PROJECT\]\s*/, '').trim().slice(0, 150) || null;
+}
+
 // dragleave also fires when the pointer crosses into a child element; only treat it as a real leave
 // when the element being entered is outside the drop zone, otherwise highlights flicker on/off.
 function leftDropZone(e) {
@@ -287,6 +297,26 @@ function DropHint({ icon, text, color = '#ffcc00' }) {
       <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>{icon}</span>
       {text}
     </div>
+  );
+}
+
+// Same as the Characters tab PDF button: opens the printable sheet in a new tab.
+// `characters` is the full list Admin.jsx already loads.
+function SheetPdfButton({ character, style }) {
+  if (!character) return null;
+  return (
+    <button
+      type="button"
+      title={`Open ${character.name || 'character'}'s sheet as a printable PDF in a new tab`}
+      onClick={(e) => {
+        e.stopPropagation();
+        generateVTMCharacterSheetPDF(character);
+      }}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.06em', fontFamily: 'Fira Code, monospace', color: '#ff8a80', background: 'rgba(255, 82, 82, 0.1)', border: '1px solid rgba(255, 82, 82, 0.4)', borderRadius: '12px', cursor: 'pointer', flexShrink: 0, ...style }}
+    >
+      <span className="material-symbols-outlined" style={{ fontSize: '0.95rem' }}>picture_as_pdf</span>
+      PDF
+    </button>
   );
 }
 
@@ -352,7 +382,7 @@ function StatusToggle({ status, checked, onChange }) {
   );
 }
 
-export default function AdminDowntimesTab() {
+export default function AdminDowntimesTab({ characters = [] }) {
   const navigate = useNavigate();
   const [cfgLoading, setCfgLoading] = useState(false);
   const [cfgSaving, setCfgSaving] = useState(false);
@@ -385,7 +415,6 @@ export default function AdminDowntimesTab() {
     'Resolved in scene': true,
   });
 
-  const [customScenes, setCustomScenes] = useState([]);
   const [sceneSearch, setSceneSearch] = useState({});
   const [activeSearchScene, setActiveSearchScene] = useState(null);
   const [sceneTitleBuf, setSceneTitleBuf] = useState({});
@@ -402,6 +431,8 @@ export default function AdminDowntimesTab() {
   const isDraggingAssigned = Boolean(draggedDt && draggedDt.scene_id);
 
   const [buffer, setBuffer] = useState({});
+
+  const charById = useMemo(() => new Map(characters.map(c => [c.id, c])), [characters]);
 
   useEffect(() => {
     let mounted = true;
@@ -520,13 +551,16 @@ export default function AdminDowntimesTab() {
     return filtered.filter(r => isSceneDowntime(r));
   }, [filtered]);
 
+  // Player card badge: only scenes still to be played ("Needs a Scene"); "Resolved in scene" is done and not counted.
   const scenesByPlayerKey = useMemo(() => {
     const map = new Map();
     for (const r of rows) {
-      if (isSceneDowntime(r)) {
-        const key = r.character_id != null ? `char_${r.character_id}` : (r.user_id != null ? `user_${r.user_id}` : (r.email || r.player_name || 'Unknown Player'));
-        map.set(key, (map.get(key) || 0) + 1);
-      }
+      if (String(r.status || '').toLowerCase() !== 'needs a scene') continue;
+      const key = r.character_id != null ? `char_${r.character_id}` : (r.user_id != null ? `user_${r.user_id}` : (r.email || r.player_name || 'Unknown Player'));
+      if (!map.has(key)) map.set(key, { sceneIds: new Set(), unassigned: 0 });
+      const entry = map.get(key);
+      if (r.scene_id) entry.sceneIds.add(r.scene_id);
+      else entry.unassigned += 1;
     }
     return map;
   }, [rows]);
@@ -554,7 +588,7 @@ export default function AdminDowntimesTab() {
   }, [standardFiltered]);
 
   const allSceneIds = useMemo(() => {
-    const ids = new Set(customScenes);
+    const ids = new Set();
     for (const r of rows) {
       if (isSceneDowntime(r) && r.scene_id) {
         ids.add(r.scene_id);
@@ -564,17 +598,11 @@ export default function AdminDowntimesTab() {
     // (Stripping every non digit used to glue the random suffix's digits onto the timestamp and scramble the order.)
     const key = (id) => Number((/^scene_(\d+)/.exec(String(id)) || [])[1]) || 0;
     return Array.from(ids).sort((a, b) => (key(a) - key(b)) || String(a).localeCompare(String(b)));
-  }, [customScenes, rows]);
+  }, [rows]);
 
   const unassignedSceneDowntimes = useMemo(() => {
     return sceneFiltered.filter(r => !r.scene_id);
   }, [sceneFiltered]);
-
-  function handleCreateScene() {
-    const newId = `scene_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-    setCustomScenes(prev => [...prev, newId]);
-    setEditingScenes(prev => ({ ...prev, [newId]: true }));
-  }
 
   function getSceneTitle(sceneId) {
     if (sceneTitleBuf[sceneId] !== undefined) return sceneTitleBuf[sceneId];
@@ -599,8 +627,8 @@ export default function AdminDowntimesTab() {
     }
   }
 
-  async function handleAddToScene(downtimeId, sceneId) {
-    const targetTitle = getSceneTitle(sceneId);
+  async function handleAddToScene(downtimeId, sceneId, title) {
+    const targetTitle = title !== undefined ? title : getSceneTitle(sceneId);
     try {
       await api.patch(`admin/downtimes/${downtimeId}`, {
         scene_id: sceneId,
@@ -641,7 +669,6 @@ export default function AdminDowntimesTab() {
         console.error('Failed to disband scene', e);
       }
     }
-    setCustomScenes(prev => prev.filter(id => id !== sceneId));
   }
 
   // Header toggle: flips every action in the scene between "Needs a Scene" and "Resolved in scene".
@@ -702,17 +729,16 @@ export default function AdminDowntimesTab() {
     } else if (sourceDt.scene_id) {
       await handleAddToScene(targetDt.id, sourceDt.scene_id);
     } else {
-      const newId = `scene_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-      setCustomScenes(prev => [...prev, newId]);
+      const newId = newSceneId();
+      const title = autoSceneTitle(targetDt) || autoSceneTitle(sourceDt);
       try {
         await api.post('admin/downtimes/scenes/batch', {
           downtime_ids: [sourceDt.id, targetDt.id],
           scene_id: newId,
-          scene_title: null,
-          status: 'Needs a Scene'
+          scene_title: title
         });
         setRows(prev => prev.map(r => (r.id === sourceDt.id || r.id === targetDt.id)
-          ? { ...r, scene_id: newId, status: r.status === 'Resolved in scene' ? 'Resolved in scene' : 'Needs a Scene' }
+          ? { ...r, scene_id: newId, scene_title: title }
           : r
         ));
       } catch (e) {
@@ -1174,7 +1200,14 @@ export default function AdminDowntimesTab() {
                         <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: 'Fira Code, monospace', opacity: 0.85 }}>
                           {group.player_name}
                         </span>
-                        {scenesByPlayerKey.get(group.key) > 0 && (
+                        {scenesByPlayerKey.has(group.key) && (() => {
+                          const pending = scenesByPlayerKey.get(group.key);
+                          const parts = [...pending.sceneIds]
+                            .map(id => allSceneIds.indexOf(id))
+                            .sort((a, b) => a - b)
+                            .map(idx => formatSceneLabel(null, idx));
+                          if (pending.unassigned) parts.push(`${pending.unassigned} not yet in a scene`);
+                          return (
                           <span
                             style={{
                               fontSize: '0.78rem',
@@ -1190,16 +1223,21 @@ export default function AdminDowntimesTab() {
                             title="Actions requiring scenes are managed in the Live Scenes section below"
                           >
                             <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>theaters</span>
-                            {scenesByPlayerKey.get(group.key)} in Live Scenes below
+                            {parts.join(', ')} below
                           </span>
-                        )}
+                          );
+                        })()}
                       </div>
                     </div>
 
+                    <div style={{ marginLeft: 'auto', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <SheetPdfButton
+                      character={charById.get(group.character_id)}
+                      style={{ padding: '7px 14px', fontSize: '0.8rem', borderRadius: '24px', gap: '6px' }}
+                    />
                     {clanWhiteLogoUrl && (
                       <div
                         style={{
-                          marginLeft: 'auto',
                           flexShrink: 0,
                           display: 'flex',
                           alignItems: 'center',
@@ -1233,6 +1271,7 @@ export default function AdminDowntimesTab() {
                         </span>
                       </div>
                     )}
+                    </div>
                   </header>
 
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -1271,25 +1310,6 @@ export default function AdminDowntimesTab() {
               </p>
             </div>
 
-            <button
-              className={styles.btn}
-              style={{
-                background: 'linear-gradient(135deg, rgba(255, 204, 0, 0.25) 0%, rgba(255, 170, 0, 0.4) 100%)',
-                color: '#fff',
-                border: '1px solid rgba(255, 204, 0, 0.5)',
-                fontWeight: 800,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '0.75rem 1.4rem',
-                borderRadius: 'var(--radius-md)',
-                boxShadow: '0 0 15px rgba(255, 204, 0, 0.15)'
-              }}
-              onClick={handleCreateScene}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: '1.2rem', color: '#ffcc00' }}>add_circle</span>
-              Create New Scene
-            </button>
           </div>
 
           {/* Unassigned tray. Shown whenever any scene exists (not only when it has cards) so it is always
@@ -1417,34 +1437,36 @@ export default function AdminDowntimesTab() {
                         )}
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                        <SheetPdfButton character={charById.get(dt.character_id)} />
                         <span className={styles.statusBadge} style={getStatusBadgeStyle(dt.status)}>
                           {dt.status}
                         </span>
-                        <select
-                          className={styles.select}
-                          style={{ padding: '0.4rem 0.8rem', fontSize: '0.82rem', background: 'var(--glass-inset)', width: 'auto' }}
-                          defaultValue=""
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            if (!val) return;
-                            if (val === '__new__') {
-                              const newId = `scene_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-                              setCustomScenes(prev => [...prev, newId]);
-                              handleAddToScene(dt.id, newId);
-                            } else {
-                              handleAddToScene(dt.id, val);
-                            }
-                          }}
+                        {allSceneIds.length > 0 && (
+                          <select
+                            className={styles.select}
+                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.82rem', background: 'var(--glass-inset)', width: 'auto' }}
+                            value=""
+                            onChange={(e) => { if (e.target.value) handleAddToScene(dt.id, e.target.value); }}
+                          >
+                            <option value="" disabled>Assign to Scene...</option>
+                            {allSceneIds.map((sid, sIdx) => (
+                              <option key={sid} value={sid}>
+                                {formatSceneLabel(sid, sIdx)}{getSceneTitle(sid) ? `: ${getSceneTitle(sid)}` : ''}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                        <button
+                          type="button"
+                          className={`${styles.btn} ${styles.btnSmall}`}
+                          onClick={() => handleAddToScene(dt.id, newSceneId(), autoSceneTitle(dt))}
+                          title="Start a new scene with this character, named after their downtime. Drag others onto it to join."
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '0.4rem 0.8rem', fontSize: '0.8rem', fontWeight: 800, background: 'rgba(255, 204, 0, 0.15)', color: '#ffcc00', border: '1px solid rgba(255, 204, 0, 0.45)', borderRadius: 'var(--radius-sm)' }}
                         >
-                          <option value="" disabled>Assign to Scene...</option>
-                          <option value="__new__">+ Create New Scene</option>
-                          {allSceneIds.map((sid, sIdx) => (
-                            <option key={sid} value={sid}>
-                              {formatSceneLabel(sid, sIdx)}{getSceneTitle(sid) ? `: ${getSceneTitle(sid)}` : ''}
-                            </option>
-                          ))}
-                        </select>
+                          <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>add_circle</span>
+                          New scene
+                        </button>
                       </div>
 
                       {isExpanded && <SceneActionDetails r={dt} />}
@@ -1737,25 +1759,26 @@ export default function AdminDowntimesTab() {
                           >
                             {isCharDropTarget && <DropHint icon="group_add" text="Drop here to add to this scene" />}
 
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', rowGap: '6px', flexWrap: 'wrap', minWidth: 0 }}>
                               <span className="material-symbols-outlined" style={{ color: '#ffcc00', opacity: 0.7, fontSize: '1.1rem', flexShrink: 0 }} title="Drag to move between scenes or unassign">
                                 drag_indicator
                               </span>
                               <div style={{ width: '28px', height: '28px', borderRadius: '50%', overflow: 'hidden', border: '1px solid #ffcc00', flexShrink: 0 }}>
                                 <Avatar userId={r.user_id} hasAvatar={r.has_avatar} clan={r.clan} size={28} fallback={symlogoWhite(r.clan) || '/img/ATT-logo(1).webp'} />
                               </div>
-                              <div style={{ flexShrink: 0, display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                              <div style={{ flex: '0 1 auto', minWidth: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: '6px' }}>
                                 <span style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-primary)' }}>{r.char_name || '(No Character)'}</span>
                                 <span style={{ fontSize: '0.75rem', color: '#ffcc00', fontWeight: 700 }}>[{r.clan || 'Clan'}]</span>
                                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{r.player_name || r.email}</span>
                               </div>
-                              <div style={{ flex: '1 1 auto', minWidth: 0, fontSize: '0.82rem', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <div style={{ flex: '1 1 160px', minWidth: 0, fontSize: '0.82rem', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 <b style={{ color: '#ffcc00', fontFamily: 'Fira Code, monospace', marginRight: '6px' }}>#{r.id}</b>
                                 {r.title}
                               </div>
                               <span className="material-symbols-outlined" style={{ fontSize: '1.2rem', color: 'var(--text-muted)', flexShrink: 0 }} title={isExpanded ? 'Hide details' : 'Show details'}>
                                 {isExpanded ? 'expand_less' : 'expand_more'}
                               </span>
+                              <SheetPdfButton character={charById.get(r.character_id)} />
                               {!isEditing && (
                                 <span className={styles.statusBadge} style={{ ...getStatusBadgeStyle(r.status), flexShrink: 0 }}>{r.status}</span>
                               )}
@@ -1889,7 +1912,13 @@ function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel }
               <button className={`${styles.btn} ${styles.btnSmall}`} style={{ background: 'linear-gradient(135deg, #00897b 0%, #00e676 100%)', color: '#032612', fontWeight: 800, borderRadius: 'var(--radius-sm)' }} type="button" onClick={() => onSave(r.id, { status: 'Approved: Kikos' })}>Approve: Kikos</button>
               <button className={`${styles.btn} ${styles.btnSmall}`} style={{ background: 'linear-gradient(135deg, #00838f 0%, #00e5ff 100%)', color: '#04222f', fontWeight: 800, borderRadius: 'var(--radius-sm)' }} type="button" onClick={() => onSave(r.id, { status: 'Approved: Mike' })}>Approve: Mike</button>
               <button className={`${styles.btn} ${styles.btnWarning} ${styles.btnSmall}`} type="button" onClick={() => onSave(r.id, { status: 'Needs a Scene' })}>Needs Scene</button>
-              <button className={`${styles.btn} ${styles.btnDanger} ${styles.btnSmall}`} type="button" onClick={() => onSave(r.id, { status: 'rejected' })}>Reject</button>
+              <button className={`${styles.btn} ${styles.btnDanger} ${styles.btnSmall}`} type="button" onClick={() => onSave(r.id, { status: 'rejected' })} title="Rejected actions do not count toward the player's 3 per cycle, so they can write a new one">Reject</button>
+              {String(r.status || 'submitted').toLowerCase() !== 'submitted' && (
+                <button className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSmall}`} type="button" onClick={() => onSave(r.id, { status: 'submitted' })} title="Reopen: the player can edit this action again (until the deadline)" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>undo</span>
+                  Back to submitted
+                </button>
+              )}
               <button className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSmall}`} type="button" onClick={() => onSave(r.id, { status: 'resolved' })}>Resolve</button>
               <button className={styles.btn} style={{ background: 'linear-gradient(135deg, #1b4c8c 0%, #4da6ff 100%)', color: 'var(--text-color)', padding: '0.4rem 0.8rem', fontSize: '0.8rem', fontWeight: 700, borderRadius: 'var(--radius-sm)' }} type="button" onClick={() => onSave(r.id, { status: 'Resolved in scene' })}>In Scene</button>
             </div>
