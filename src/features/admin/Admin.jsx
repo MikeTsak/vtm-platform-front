@@ -44,83 +44,98 @@ const AdminNewsTab = lazyWithRetry(() => import('./AdminNewsTab'));
 /* ---------------- Sidebar navigation config ----------------
  * Every tool is grouped by the *job* a Storyteller is doing:
  *   Overview      : the command center
- *   Players       : accounts, sheets and progression
- *   Chronicle     : running the story between/at sessions
- *   Cast & Comms  : NPCs and everything that talks to players
- *   Intelligence  : read-only telemetry & logs
- *   System        : global switches and audit trails
+ *   Players       : accounts, sheets, coteries, and progression
+ *   Chronicle     : story, calendar, downtimes, and sessions
+ *   Domains       : territory, claims, hunting, and SI threat
+ *   Cast & Comms  : chat logs, NPCs, emails, and announcements
+ *   Intelligence  : stats, heatmap, blood web, and dice logs
+ *   System        : master switches, audit trails, and server logs
  */
 const NAV_SECTIONS = [
   {
     id: 'overview',
     label: 'Overview',
+    shortLabel: 'Home',
     icon: 'space_dashboard',
     items: [
-      { id: 'home', icon: 'dashboard', label: 'Home', hint: 'KPIs, live feed & quick actions', keywords: ['home', 'dashboard', 'overview', 'stats', 'activity', 'downtimes', 'kpi', 'welcome', 'terminal'] },
+      { id: 'home', icon: 'dashboard', label: 'Home', hint: 'KPIs, live feed, and quick actions', keywords: ['home', 'dashboard', 'overview', 'stats', 'activity', 'downtimes', 'kpi', 'welcome', 'terminal'] },
     ],
   },
   {
     id: 'players',
     label: 'Players',
+    shortLabel: 'Players',
     icon: 'group',
     items: [
-      { id: 'users',       icon: 'person',         label: 'Users',          hint: 'Accounts, roles & Discord IDs', keywords: ['accounts', 'passwords', 'emails', 'roles', 'login', 'reset password', 'delete user', 'ban', 'unban', 'discord id', 'st role', 'vip role', 'admin role'] },
-      { id: 'characters',  icon: 'account_circle', label: 'Characters',     hint: 'Sheets, trackers & PDF export', keywords: ['sheets', 'stats', 'pdf', 'inventory', 'traits', 'disciplines', 'blood potency', 'generation', 'clan', 'sect', 'sire', 'approvals', 'merits', 'flaws', 'health', 'willpower', 'humanity', 'export', 'delete', 'add character'] },
-      { id: 'ghouls',      icon: 'pets',           label: 'Ghouls',         hint: 'Retainers & blood bonds', keywords: ['retainers', 'thralls', 'servants', 'domitor', 'blood bonds', 'ghoul sheet', 'disciplines', 'tier', 'player'] },
-      { id: 'xp',          icon: 'stars',          label: 'XP & Rewards',   hint: 'Grant, subtract & bulk XP', keywords: ['experience', 'levels', 'progression', 'grants', 'apply to all', 'view history', 'refresh data', 'subtract xp', 'bulk grant'] },
-      { id: 'disciplines', icon: 'auto_awesome',   label: 'Disciplines',    hint: 'Out-of-clan access requests', keywords: ['out of clan', 'unlock', 'access', 'request', 'approve', 'reject', 'grant', 'revoke', 'powers', 'clan restriction'] },
+      { id: 'characters',  icon: 'account_circle', label: 'Characters',   hint: 'Sheets, trackers, and PDF export', keywords: ['sheets', 'stats', 'pdf', 'inventory', 'traits', 'disciplines', 'blood potency', 'generation', 'clan', 'sect', 'sire', 'approvals', 'merits', 'flaws', 'health', 'willpower', 'humanity', 'export', 'delete', 'add character'] },
+      { id: 'users',       icon: 'person',         label: 'Users',        hint: 'Accounts, roles, and Discord IDs', keywords: ['accounts', 'passwords', 'emails', 'roles', 'login', 'reset password', 'delete user', 'ban', 'unban', 'discord id', 'st role', 'vip role', 'admin role'] },
+      { id: 'coteries',    icon: 'group_work',     label: 'Coteries',     hint: 'Player coteries and shared havens', keywords: ['groups', 'factions', 'alliances', 'coterie type', 'domain size', 'chantry', 'shared resources', 'members'] },
+      { id: 'ghouls',      icon: 'pets',           label: 'Ghouls',       hint: 'Retainers and blood bonds', keywords: ['retainers', 'thralls', 'servants', 'domitor', 'blood bonds', 'ghoul sheet', 'disciplines', 'tier', 'player'] },
+      { id: 'xp',          icon: 'stars',          label: 'XP & Rewards', hint: 'Grant, subtract, and bulk XP', keywords: ['experience', 'levels', 'progression', 'grants', 'apply to all', 'view history', 'refresh data', 'subtract xp', 'bulk grant'] },
+      { id: 'disciplines', icon: 'auto_awesome',   label: 'Disciplines',  hint: 'Out of clan access requests', keywords: ['out of clan', 'unlock', 'access', 'request', 'approve', 'reject', 'grant', 'revoke', 'powers', 'clan restriction'] },
     ],
   },
   {
     id: 'chronicle',
     label: 'Chronicle',
+    shortLabel: 'Story',
     icon: 'auto_stories',
     items: [
-      { id: 'calendar',     icon: 'calendar_month', label: 'Calendar',       hint: 'Comms, events and downtime deadlines', keywords: ['calendar', 'events', 'downtimes', 'comms', 'schedule', 'rsvp'] },
-      { id: 'downtimes',    icon: 'schedule',     label: 'Downtimes',      hint: 'Review & resolve player actions', keywords: ['actions', 'between sessions', 'projects', 'approve', 'reject', 'needs scene', 'resolve', 'filter pipelines', 'reset configuration', 'sync records'] },
-      { id: 'feeding',      icon: 'nightlight',   label: 'Feeding Control', hint: 'Hunting cycles & decay', keywords: ['hunting', 'blood', 'predator type', 'chasse merits', 'masquerade', 'safety rating', 'cycle', 'enable', 'disable', 'decay', 'force new cycle'] },
-      { id: 'claims',       icon: 'local_police', label: 'Domain Claims',  hint: 'Territory ownership & stewards', keywords: ['domains', 'domain stewards', 'territory', 'claims map access', 'who can assign domains', 'grant', 'revoke', 'permission', 'approve requests', 'court'] },
-      { id: 'domains',      icon: 'map',          label: 'Domain Threats', hint: 'Safety ratings & monthly problems', keywords: ['map', 'territory', 'security', 'hunters', 'inquisition', 'threats', 'lupines', 'sabbat', 'danger', 'safety rating'] },
-      { id: 'coteries',     icon: 'group_work',   label: 'Coteries',       hint: 'Groups & shared resources', keywords: ['groups', 'factions', 'alliances', 'coterie type', 'domain size', 'chantry', 'shared resources', 'members'] },
-      { id: 'prestation',   icon: 'handshake',    label: 'Prestation',     hint: 'Boons & conversation graphs', keywords: ['boons', 'debts', 'favors', 'harpy', 'trivial', 'minor', 'major', 'blood', 'life', 'transfer', 'record', 'clear', 'relationships', 'conversations', 'messages', 'network', 'who talks to whom'] },
-      { id: 'premonitions', icon: 'visibility',   label: 'Premonitions',   hint: 'Visions for Malkavians', keywords: ['visions', 'future', 'auspex', 'dreams', 'prophecy', 'omens', 'sight', 'clues'] },
-      { id: 'events',       icon: 'event',        label: 'Events',         hint: 'Sessions & calendar', keywords: ['calendar', 'timeline', 'schedule', 'sessions', 'dates', 'venue', 'planning'] },
-      { id: 'timeline',     icon: 'timeline',     label: 'Timeline',       hint: 'Per-character chronicle history', keywords: ['history', 'chronicle', 'events', 'past', 'log', 'chronological', 'dates'] },
+      { id: 'downtimes',    icon: 'schedule',       label: 'Downtimes',    hint: 'Review and resolve player actions', keywords: ['actions', 'between sessions', 'projects', 'approve', 'reject', 'needs scene', 'resolve', 'filter pipelines', 'reset configuration', 'sync records'] },
+      { id: 'calendar',     icon: 'calendar_month', label: 'Calendar',     hint: 'Deadlines, events, and scheduling', keywords: ['calendar', 'events', 'downtimes', 'comms', 'schedule', 'rsvp'] },
+      { id: 'events',       icon: 'event',          label: 'Events',       hint: 'Game sessions and dates', keywords: ['calendar', 'timeline', 'schedule', 'sessions', 'dates', 'venue', 'planning'] },
+      { id: 'prestation',   icon: 'handshake',      label: 'Prestation',   hint: 'Boons, debts, and favors', keywords: ['boons', 'debts', 'favors', 'harpy', 'trivial', 'minor', 'major', 'blood', 'life', 'transfer', 'record', 'clear', 'relationships', 'conversations', 'messages', 'network', 'who talks to whom'] },
+      { id: 'premonitions', icon: 'visibility',     label: 'Premonitions', hint: 'Visions for Malkavians', keywords: ['visions', 'future', 'auspex', 'dreams', 'prophecy', 'omens', 'sight', 'clues'] },
+      { id: 'timeline',     icon: 'timeline',       label: 'Timeline',     hint: 'Per character chronicle history', keywords: ['history', 'chronicle', 'events', 'past', 'log', 'chronological', 'dates'] },
+    ],
+  },
+  {
+    id: 'domains',
+    label: 'Domains',
+    shortLabel: 'Domains',
+    icon: 'map',
+    items: [
+      { id: 'domains',    icon: 'map',          label: 'Domain Threats', hint: 'Safety ratings and monthly problems', keywords: ['map', 'territory', 'security', 'hunters', 'inquisition', 'threats', 'lupines', 'sabbat', 'danger', 'safety rating'] },
+      { id: 'claims',     icon: 'local_police', label: 'Domain Claims',  hint: 'Territory ownership and stewards', keywords: ['domains', 'domain stewards', 'territory', 'claims map access', 'who can assign domains', 'grant', 'revoke', 'permission', 'approve requests', 'court'] },
+      { id: 'feeding',    icon: 'nightlight',   label: 'Feeding Control', hint: 'Hunting cycles, blood, and decay', keywords: ['hunting', 'blood', 'predator type', 'chasse merits', 'masquerade', 'safety rating', 'cycle', 'enable', 'disable', 'decay', 'force new cycle'] },
+      { id: 'masquerade', icon: 'warning',      label: 'Masquerade Dial', hint: 'Global threat level 1 to 5', keywords: ['breaches', 'exposure', 'threat', 'danger', 'level', 'tracker', 'second inquisition', 'cleanup', 'media', 'dial'] },
     ],
   },
   {
     id: 'cast',
     label: 'Cast & Comms',
+    shortLabel: 'Comms',
     icon: 'forum',
     items: [
-      { id: 'npcs',           icon: 'recent_actors', label: 'NPCs',      hint: 'Storyteller characters', keywords: ['spc', 'storyteller characters', 'cast', 'add temp actor', 'stats', 'disciplines', 'clans', 'generation', 'notes', 'create'] },
-      { id: 'npc_emails',     icon: 'mail',          label: 'NPC Comms', hint: 'NPC inboxes & identities', keywords: ['emails', 'messages', 'inbox', 'outbox', 'send reply', 'delete identity', 'create identity'] },
-      { id: 'broadcast',      icon: 'campaign',      label: 'Broadcast', hint: 'Push announcements to everyone', keywords: ['announcements', 'alerts', 'notifications', 'global', 'news', 'urgent', 'messages', 'push'] },
-      { id: 'news_templates', icon: 'article',       label: 'News',      hint: 'Templates & writer permissions', keywords: ['news', 'templates', 'writers', 'permissions', 'articles'] },
-      { id: 'discord',        icon: 'sensors',       label: 'Discord',   hint: 'Bot sync & webhooks', keywords: ['bots', 'sync', 'webhooks', 'integration', 'messages', 'channels', 'setup', 'permissions'] },
+      { id: 'chat',           icon: 'chat',          label: 'Chat Logs',  hint: 'Transcripts, rooms, and direct messages', keywords: ['messages', 'history', 'rooms', 'groups', 'transcripts', 'channel', 'direct messages', 'all time', 'last 7 days'] },
+      { id: 'npcs',           icon: 'recent_actors', label: 'NPCs',       hint: 'Storyteller characters and cast', keywords: ['spc', 'storyteller characters', 'cast', 'add temp actor', 'stats', 'disciplines', 'clans', 'generation', 'notes', 'create'] },
+      { id: 'npc_emails',     icon: 'mail',          label: 'NPC Comms',  hint: 'NPC inboxes and mail threads', keywords: ['emails', 'messages', 'inbox', 'outbox', 'send reply', 'delete identity', 'create identity'] },
+      { id: 'broadcast',      icon: 'campaign',      label: 'Broadcast',  hint: 'Push announcements to everyone', keywords: ['announcements', 'alerts', 'notifications', 'global', 'news', 'urgent', 'messages', 'push'] },
+      { id: 'discord',        icon: 'sensors',       label: 'Discord',    hint: 'Bot sync and webhooks', keywords: ['bots', 'sync', 'webhooks', 'integration', 'messages', 'channels', 'setup', 'permissions'] },
+      { id: 'news_templates', icon: 'article',       label: 'News',       hint: 'Templates and writer permissions', keywords: ['news', 'templates', 'writers', 'permissions', 'articles'] },
     ],
   },
   {
     id: 'intel',
     label: 'Intelligence',
+    shortLabel: 'Intel',
     icon: 'query_stats',
     items: [
-      { id: 'activity', icon: 'calendar_month', label: 'Activity Heatmap', hint: 'Compare player presence', keywords: ['activity', 'heatmap', 'compare', 'presence', 'online', 'sessions', 'time', 'playtime', 'calendar'] },
       { id: 'stats',    icon: 'bar_chart',      label: 'Stats',            hint: 'Charts across all systems', keywords: ['statistics', 'charts', 'activity', 'metrics', 'graphs', 'data', 'numbers'] },
-      { id: 'chat',     icon: 'chat',           label: 'Chat Logs',        hint: 'Transcripts & rooms', keywords: ['messages', 'history', 'rooms', 'groups', 'transcripts', 'channel', 'direct messages', 'all time', 'last 7 days'] },
-      { id: 'dice',     icon: 'casino',         label: 'Dice Logs',        hint: 'Rolls, crits & botches', keywords: ['rolls', 'rng', 'botches', 'successes', 'crits', 'history', 'messy critical', 'bestial failure', 'rouse checks', 'normal dice', 'hunger dice'] },
-      { id: 'bloodweb', icon: 'radar',          label: 'Blood Web',        hint: 'Hunger & potency radar', keywords: ['radar', 'map', 'connections', 'relationships', 'conspiracy', 'nodes', 'rumors', 'secrets', 'network', 'hunger', 'blood potency'] },
+      { id: 'activity', icon: 'calendar_month', label: 'Activity Heatmap', hint: 'Compare player presence', keywords: ['activity', 'heatmap', 'compare', 'presence', 'online', 'sessions', 'time', 'playtime', 'calendar'] },
+      { id: 'bloodweb', icon: 'radar',          label: 'Blood Web',        hint: 'Hunger and potency radar', keywords: ['radar', 'map', 'connections', 'relationships', 'conspiracy', 'nodes', 'rumors', 'secrets', 'network', 'hunger', 'blood potency'] },
+      { id: 'dice',     icon: 'casino',         label: 'Dice Logs',        hint: 'Rolls, crits, and botches', keywords: ['rolls', 'rng', 'botches', 'successes', 'crits', 'history', 'messy critical', 'bestial failure', 'rouse checks', 'normal dice', 'hunger dice'] },
     ],
   },
   {
     id: 'system',
     label: 'System',
+    shortLabel: 'System',
     icon: 'settings',
     items: [
-      { id: 'master',     icon: 'admin_panel_settings', label: 'Master Control',  hint: 'Feature switches & game time', keywords: ['toggles', 'schrecknet comms', 'global settings', 'switches', 'features', 'maintenance mode', 'global configurations', 'announcements', 'time', 'calendar', 'date', 'month', 'year', 'game time', 'pause', 'stop', 'prev', 'next', 'danger zone'] },
-      { id: 'masquerade', icon: 'warning',              label: 'Masquerade Dial', hint: 'Global threat level 1 to 5', keywords: ['breaches', 'exposure', 'threat', 'danger', 'level', 'tracker', 'second inquisition', 'cleanup', 'media', 'dial'] },
-      { id: 'audit',      icon: 'policy',               label: 'Audit Logs',      hint: 'Who changed what', keywords: ['security', 'tracking', 'changes', 'admin actions', 'history', 'edits', 'deletions', 'context', 'copy'] },
-      { id: 'logs',       icon: 'receipt_long',         label: 'System Logs',     hint: 'Server errors & traces', keywords: ['errors', 'server', 'debug', 'traces', 'console', 'output', 'crashes', 'context'] },
+      { id: 'master', icon: 'admin_panel_settings', label: 'Master Control', hint: 'Feature switches and game time', keywords: ['toggles', 'schrecknet comms', 'global settings', 'switches', 'features', 'maintenance mode', 'global configurations', 'announcements', 'time', 'calendar', 'date', 'month', 'year', 'game time', 'pause', 'stop', 'prev', 'next', 'danger zone'] },
+      { id: 'audit',  icon: 'policy',               label: 'Audit Logs',     hint: 'Security and admin change history', keywords: ['security', 'tracking', 'changes', 'admin actions', 'history', 'edits', 'deletions', 'context', 'copy'] },
+      { id: 'logs',   icon: 'receipt_long',         label: 'System Logs',    hint: 'Server errors and traces', keywords: ['errors', 'server', 'debug', 'traces', 'console', 'output', 'crashes', 'context'] },
     ],
   },
 ];
@@ -358,7 +373,7 @@ function MobileBottomBar({ tab, onSelectSection }) {
             data-cuelume-press
           >
             <span className="material-symbols-outlined" aria-hidden="true">{section.icon}</span>
-            <span className={styles.mobileBarLabel}>{section.label}</span>
+            <span className={styles.mobileBarLabel}>{section.shortLabel || section.label}</span>
             {active && <span className={styles.mobileBarPill} aria-hidden="true" />}
           </button>
         );
