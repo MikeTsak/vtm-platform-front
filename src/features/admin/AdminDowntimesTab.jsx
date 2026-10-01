@@ -1,9 +1,11 @@
 // src/components/admin/AdminDowntimesTab.jsx
 import React, { useEffect, useMemo, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api, { formatApiError } from "../../core/api";
 import { formatEuDate } from '../../utils/dateFormatter';
 import styles from '../../styles/Admin.module.css';
-import { CLAN_HEX as CLAN_COLORS } from '../../data/clans';
+import Avatar from '../../components/Avatar';
+import { CLAN_HEX as CLAN_COLORS, symlogoWhite } from '../../data/clans';
 
 /* ---------- VTM Lookups ---------- */
 const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim' };
@@ -245,6 +247,7 @@ function StatusToggle({ status, checked, onChange }) {
 }
 
 export default function AdminDowntimesTab() {
+  const navigate = useNavigate();
   const [cfgLoading, setCfgLoading] = useState(false);
   const [cfgSaving, setCfgSaving] = useState(false);
   const [cfgErr, setCfgErr] = useState('');
@@ -400,6 +403,7 @@ export default function AdminDowntimesTab() {
           character_id: r.character_id,
           user_id: r.user_id,
           email: r.email,
+          has_avatar: Boolean(r.has_avatar),
           downtimes: []
         });
       }
@@ -504,7 +508,10 @@ export default function AdminDowntimesTab() {
 
         {/* --- SYSTEM PHASE INTERACTIVE OVERRIDE --- */}
         <div style={{ background: 'var(--glass-inset)', padding: '1.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)', borderLeft: masterPhase === 'project' ? '4px solid #4da6ff' : '4px solid var(--accent-purple)', marginBottom: '2rem', boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.4)' }}>
-          <h4 style={{ margin: '0 0 6px 0', fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-color)' }}>🌍 Default Phase</h4>
+          <h4 style={{ margin: '0 0 6px 0', fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '1.2rem', color: 'var(--accent-purple)' }}>public</span>
+            Default Phase
+          </h4>
           <p style={{ margin: '0 0 15px 0', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
             Sets the default baseline view shown to all users inside their action panels.
           </p>
@@ -550,7 +557,10 @@ export default function AdminDowntimesTab() {
 
         <div style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', padding: 'clamp(1rem, 3vw, 2rem)', boxShadow: 'var(--glass-shadow)', marginTop: '2rem' }}>
           <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
-            <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-color)' }}>🕒 Mass Release System</h4>
+            <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '1.5rem', color: '#4da6ff' }}>schedule</span>
+              Mass Release System
+            </h4>
             <p style={{ margin: '5px 0 0 0', color: 'var(--text-secondary)' }}>Automates the simultaneous release of all GM resolutions to players.</p>
           </div>
 
@@ -596,7 +606,7 @@ export default function AdminDowntimesTab() {
 
         {massReleaseMode && (
           <div style={{ background: 'rgba(77,166,255,0.1)', border: '1px solid rgba(77,166,255,0.3)', borderRadius: 'var(--radius-md)', padding: '15px', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <div style={{ fontSize: '1.8rem' }}>🕒</div>
+            <span className="material-symbols-outlined" style={{ fontSize: '2rem', color: '#4da6ff' }}>schedule</span>
             <div>
               <h4 style={{ margin: '0 0 5px 0', color: '#4da6ff', fontSize: '1.1rem' }}>Mass Release Active</h4>
               <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
@@ -704,7 +714,7 @@ export default function AdminDowntimesTab() {
           <div style={{ display: 'grid', gap: '2rem', marginTop: '2rem' }}>
             {groupedAndFiltered.length === 0 && (
               <div style={{ padding: '4rem 2rem', textAlign: 'center', background: 'var(--glass-inset)', borderRadius: 'var(--radius-lg)', border: '1px dashed var(--glass-border)', opacity: 0.7 }}>
-                <span style={{ fontSize: '3rem', display: 'block', marginBottom: '1rem' }}>🗄️</span>
+                <span className="material-symbols-outlined" style={{ fontSize: '3rem', display: 'block', marginBottom: '1rem', color: 'var(--text-muted)' }}>inventory_2</span>
                 <h3 style={{ color: 'var(--text-primary)', margin: 0, fontSize: '1.3rem' }}>No data matching parameters</h3>
                 <p className={styles.subtle} style={{ marginTop: '0.4rem' }}>Change your search or filters to see more results.</p>
               </div>
@@ -713,6 +723,7 @@ export default function AdminDowntimesTab() {
             {groupedAndFiltered.map(group => {
               const clanColor = CLAN_COLORS[group.clan] || 'var(--accent-purple)';
               const clanLogoUrl = symlogo(group.clan);
+              const clanWhiteLogoUrl = symlogoWhite(group.clan);
               return (
                 <div
                   key={group.key || group.character_id || group.player_name}
@@ -728,12 +739,114 @@ export default function AdminDowntimesTab() {
                     backdropFilter: 'var(--glass-blur)'
                   }}
                 >
-                  <header style={{ padding: '1rem 1.25rem', background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '1px solid var(--glass-border)' }}>
-                    <div style={{ flexShrink: 0, width: '44px', height: '44px', backgroundImage: clanLogoUrl ? `url(${clanLogoUrl})` : 'none', backgroundSize: 'cover', borderRadius: '50%', border: `2px solid ${clanColor}`, backgroundColor: 'rgba(255,255,255,0.95)', boxShadow: `0 0 15px ${clanColor}44` }}></div>
-                    <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                      <span style={{ fontWeight: 800, fontSize: '1.2rem', color: 'var(--text-color)', textShadow: '0 2px 4px rgba(0,0,0,0.5)', overflowWrap: 'anywhere' }}>{group.char_name || '(No Character)'}</span>
-                      <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: 'Fira Code, monospace', opacity: 0.8 }}>{group.player_name}</span>
+                  <header style={{ padding: '1rem 1.25rem', background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '1px solid var(--glass-border)', flexWrap: 'wrap' }}>
+                    <div
+                      style={{
+                        position: 'relative',
+                        flexShrink: 0,
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '50%',
+                        border: `2px solid ${clanColor}`,
+                        boxShadow: `0 0 14px ${clanColor}44`,
+                        overflow: 'hidden',
+                        background: 'rgba(15, 12, 25, 0.8)',
+                        cursor: group.character_id ? 'pointer' : 'default',
+                      }}
+                      onClick={() => {
+                        if (group.character_id) navigate(`/admin/character/${group.character_id}`);
+                      }}
+                      title={group.character_id ? `Open sheet for ${group.char_name || 'Character'}` : undefined}
+                    >
+                      <Avatar
+                        userId={group.user_id}
+                        hasAvatar={group.has_avatar}
+                        clan={group.clan}
+                        size={48}
+                        style={{ width: '100%', height: '100%', borderRadius: '50%' }}
+                        fallback={clanWhiteLogoUrl || '/img/ATT-logo(1).webp'}
+                      />
                     </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, justifyContent: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <span
+                          style={{
+                            fontWeight: 800,
+                            fontSize: '1.2rem',
+                            color: 'var(--text-color)',
+                            textShadow: '0 2px 4px rgba(0,0,0,0.5)',
+                            overflowWrap: 'anywhere',
+                            cursor: group.character_id ? 'pointer' : 'default',
+                          }}
+                          onClick={() => {
+                            if (group.character_id) navigate(`/admin/character/${group.character_id}`);
+                          }}
+                          title={group.character_id ? `Open sheet for ${group.char_name || 'Character'}` : undefined}
+                        >
+                          {group.char_name || '(No Character)'}
+                        </span>
+                        {group.character_id && (
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontFamily: 'Fira Code, monospace' }}>
+                            #{group.character_id}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '3px', flexWrap: 'wrap' }}>
+                        {clanWhiteLogoUrl && (
+                          <img
+                            src={clanWhiteLogoUrl}
+                            alt={group.clan || 'Clan'}
+                            style={{ width: '16px', height: '16px', objectFit: 'contain', opacity: 0.9 }}
+                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                          />
+                        )}
+                        <span style={{ fontSize: '0.85rem', color: clanColor, fontWeight: 700 }}>
+                          {group.clan || 'Unknown Clan'}
+                        </span>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>•</span>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: 'Fira Code, monospace', opacity: 0.85 }}>
+                          {group.player_name}
+                        </span>
+                      </div>
+                    </div>
+
+                    {clanWhiteLogoUrl && (
+                      <div
+                        style={{
+                          marginLeft: 'auto',
+                          flexShrink: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          background: 'rgba(255, 255, 255, 0.04)',
+                          padding: '6px 14px',
+                          borderRadius: '24px',
+                          border: `1px solid ${clanColor}44`,
+                          boxShadow: `0 0 12px ${clanColor}22`,
+                        }}
+                        title={`${group.clan || 'Clan'} Crest`}
+                      >
+                        <img
+                          src={clanWhiteLogoUrl}
+                          alt={group.clan || 'Clan'}
+                          style={{ width: '22px', height: '22px', objectFit: 'contain' }}
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                        <span
+                          style={{
+                            color: clanColor,
+                            fontWeight: 800,
+                            fontSize: '0.82rem',
+                            letterSpacing: '0.06em',
+                            textTransform: 'uppercase',
+                            fontFamily: 'Fira Code, monospace',
+                          }}
+                        >
+                          {group.clan}
+                        </span>
+                      </div>
+                    )}
                   </header>
 
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
