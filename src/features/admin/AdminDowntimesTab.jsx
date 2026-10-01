@@ -252,6 +252,69 @@ function getStatusBadgeStyle(status) {
   return {};
 }
 
+function isSceneDowntime(r) {
+  const s = String(r?.status || '').toLowerCase();
+  return s === 'needs a scene' || s === 'resolved in scene';
+}
+
+function formatSceneLabel(sceneId, sceneIndex = null) {
+  if (sceneIndex != null && sceneIndex >= 0) {
+    return `Scene ${sceneIndex + 1}`;
+  }
+  if (!sceneId) return 'Scene';
+  const match = String(sceneId).match(/^scene_(\d+)$/i);
+  if (match && parseInt(match[1], 10) < 1000) {
+    return `Scene ${match[1]}`;
+  }
+  return 'Scene';
+}
+
+// dragleave also fires when the pointer crosses into a child element; only treat it as a real leave
+// when the element being entered is outside the drop zone, otherwise highlights flicker on/off.
+function leftDropZone(e) {
+  return !e.currentTarget.contains(e.relatedTarget);
+}
+
+// Clicks on controls inside an expandable card must not toggle it.
+function isControlClick(e) {
+  return Boolean(e.target.closest('button, select, textarea, input, a, label'));
+}
+
+// Absolutely positioned so showing it never reflows the card under the cursor (which re-fires dragleave).
+function DropHint({ icon, text, color = '#ffcc00' }) {
+  return (
+    <div style={{ position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: 'rgba(10, 8, 0, 0.78)', color, fontWeight: 800, fontSize: '0.9rem', borderRadius: 'inherit' }}>
+      <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>{icon}</span>
+      {text}
+    </div>
+  );
+}
+
+function SceneActionDetails({ r, showResolution = true }) {
+  const label = { fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', fontWeight: 800, marginBottom: '6px' };
+  return (
+    <div style={{ flexBasis: '100%', display: 'grid', gap: '0.85rem', background: 'rgba(0, 0, 0, 0.35)', padding: '1rem', borderRadius: 'var(--radius-sm)', border: '1px dashed rgba(255, 255, 255, 0.1)', fontSize: '0.9rem', color: '#e0e0e5', cursor: 'auto' }}>
+      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Submitted {niceDate(r.created_at)}</div>
+      <div style={{ whiteSpace: 'pre-wrap' }}>
+        <div style={label}>Player Action Text:</div>
+        {r.body || <span style={{ color: 'var(--text-muted)' }}>(empty)</span>}
+      </div>
+      {r.gm_notes && (
+        <div style={{ whiteSpace: 'pre-wrap' }}>
+          <div style={label}>GM Notes (internal):</div>
+          {r.gm_notes}
+        </div>
+      )}
+      {showResolution && r.gm_resolution && (
+        <div style={{ whiteSpace: 'pre-wrap' }}>
+          <div style={label}>Current Resolution:</div>
+          {r.gm_resolution}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function StatusToggle({ status, checked, onChange }) {
   return (
     <label
@@ -321,6 +384,22 @@ export default function AdminDowntimesTab() {
     resolved: true,
     'Resolved in scene': true,
   });
+
+  const [customScenes, setCustomScenes] = useState([]);
+  const [sceneSearch, setSceneSearch] = useState({});
+  const [activeSearchScene, setActiveSearchScene] = useState(null);
+  const [sceneTitleBuf, setSceneTitleBuf] = useState({});
+  const [sceneActionExpanded, setSceneActionExpanded] = useState({});
+  // Scenes are read only until "Edit scene" is pressed; title, add player, disband, per character status/remove live behind it.
+  const [editingScenes, setEditingScenes] = useState({});
+
+  const [draggedDtId, setDraggedDtId] = useState(null);
+  const [dragOverTargetId, setDragOverTargetId] = useState(null);
+  const [dragOverSceneId, setDragOverSceneId] = useState(null);
+  const [dragOverUnassigned, setDragOverUnassigned] = useState(false);
+
+  const draggedDt = useMemo(() => rows.find(r => r.id === draggedDtId), [rows, draggedDtId]);
+  const isDraggingAssigned = Boolean(draggedDt && draggedDt.scene_id);
 
   const [buffer, setBuffer] = useState({});
 
@@ -433,9 +512,28 @@ export default function AdminDowntimesTab() {
     });
   }, [rows, q, statusFilter, hideStatus, viewMode]);
 
+  const standardFiltered = useMemo(() => {
+    return filtered.filter(r => !isSceneDowntime(r));
+  }, [filtered]);
+
+  const sceneFiltered = useMemo(() => {
+    return filtered.filter(r => isSceneDowntime(r));
+  }, [filtered]);
+
+  const scenesByPlayerKey = useMemo(() => {
+    const map = new Map();
+    for (const r of rows) {
+      if (isSceneDowntime(r)) {
+        const key = r.character_id != null ? `char_${r.character_id}` : (r.user_id != null ? `user_${r.user_id}` : (r.email || r.player_name || 'Unknown Player'));
+        map.set(key, (map.get(key) || 0) + 1);
+      }
+    }
+    return map;
+  }, [rows]);
+
   const groupedAndFiltered = useMemo(() => {
     const groups = new Map();
-    for (const r of filtered) {
+    for (const r of standardFiltered) {
       const key = r.character_id != null ? `char_${r.character_id}` : (r.user_id != null ? `user_${r.user_id}` : (r.email || r.player_name || 'Unknown Player'));
       if (!groups.has(key)) {
         groups.set(key, {
@@ -453,7 +551,199 @@ export default function AdminDowntimesTab() {
       groups.get(key).downtimes.push(r);
     }
     return Array.from(groups.values());
-  }, [filtered]);
+  }, [standardFiltered]);
+
+  const allSceneIds = useMemo(() => {
+    const ids = new Set(customScenes);
+    for (const r of rows) {
+      if (isSceneDowntime(r) && r.scene_id) {
+        ids.add(r.scene_id);
+      }
+    }
+    // Keep in sync with compareSceneIds in back/routes/downtimes.js: players see the same "Scene N".
+    // (Stripping every non digit used to glue the random suffix's digits onto the timestamp and scramble the order.)
+    const key = (id) => Number((/^scene_(\d+)/.exec(String(id)) || [])[1]) || 0;
+    return Array.from(ids).sort((a, b) => (key(a) - key(b)) || String(a).localeCompare(String(b)));
+  }, [customScenes, rows]);
+
+  const unassignedSceneDowntimes = useMemo(() => {
+    return sceneFiltered.filter(r => !r.scene_id);
+  }, [sceneFiltered]);
+
+  function handleCreateScene() {
+    const newId = `scene_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    setCustomScenes(prev => [...prev, newId]);
+    setEditingScenes(prev => ({ ...prev, [newId]: true }));
+  }
+
+  function getSceneTitle(sceneId) {
+    if (sceneTitleBuf[sceneId] !== undefined) return sceneTitleBuf[sceneId];
+    const match = rows.find(r => r.scene_id === sceneId && r.scene_title);
+    return match?.scene_title || '';
+  }
+
+  async function handleSaveSceneTitle(sceneId) {
+    const dtsInScene = rows.filter(r => r.scene_id === sceneId);
+    const newTitle = sceneTitleBuf[sceneId] !== undefined ? sceneTitleBuf[sceneId] : getSceneTitle(sceneId);
+    const storedTitle = dtsInScene.find(r => r.scene_title)?.scene_title || '';
+    if (dtsInScene.length > 0 && (newTitle || '') !== storedTitle) {
+      try {
+        await api.post('admin/downtimes/scenes/batch', {
+          downtime_ids: dtsInScene.map(r => r.id),
+          scene_title: newTitle || null
+        });
+        setRows(prev => prev.map(r => r.scene_id === sceneId ? { ...r, scene_title: newTitle || null } : r));
+      } catch (e) {
+        console.error('Failed to update scene title', e);
+      }
+    }
+  }
+
+  async function handleAddToScene(downtimeId, sceneId) {
+    const targetTitle = getSceneTitle(sceneId);
+    try {
+      await api.patch(`admin/downtimes/${downtimeId}`, {
+        scene_id: sceneId,
+        scene_title: targetTitle || null
+      });
+      setRows(prev => prev.map(r => r.id === downtimeId ? { ...r, scene_id: sceneId, scene_title: targetTitle || null } : r));
+      setActiveSearchScene(null);
+      setSceneSearch(prev => ({ ...prev, [sceneId]: '' }));
+    } catch (e) {
+      console.error('Failed to add to scene', e);
+    }
+  }
+
+  async function handleRemoveFromScene(downtimeId) {
+    try {
+      await api.patch(`admin/downtimes/${downtimeId}`, {
+        scene_id: null,
+        scene_title: null
+      });
+      setRows(prev => prev.map(r => r.id === downtimeId ? { ...r, scene_id: null, scene_title: null } : r));
+    } catch (e) {
+      console.error('Failed to remove from scene', e);
+    }
+  }
+
+  async function handleDisbandScene(sceneId, label) {
+    const dtsInScene = rows.filter(r => r.scene_id === sceneId);
+    if (dtsInScene.length > 0 && !window.confirm(`Disband ${label}? Its ${dtsInScene.length} ${dtsInScene.length === 1 ? 'character goes' : 'characters go'} back to Unassigned.`)) return;
+    if (dtsInScene.length > 0) {
+      try {
+        await api.post('admin/downtimes/scenes/batch', {
+          downtime_ids: dtsInScene.map(r => r.id),
+          scene_id: null,
+          scene_title: null
+        });
+        setRows(prev => prev.map(r => r.scene_id === sceneId ? { ...r, scene_id: null, scene_title: null } : r));
+      } catch (e) {
+        console.error('Failed to disband scene', e);
+      }
+    }
+    setCustomScenes(prev => prev.filter(id => id !== sceneId));
+  }
+
+  // Header toggle: flips every action in the scene between "Needs a Scene" and "Resolved in scene".
+  async function handleSetSceneStatus(sceneId, status, label) {
+    const ids = rows.filter(r => r.scene_id === sceneId && isSceneDowntime(r)).map(r => r.id);
+    if (ids.length === 0) return;
+    const who = `${ids.length} ${ids.length === 1 ? 'character' : 'characters'}`;
+    const question = status === 'Resolved in scene'
+      ? `Mark ${label} as resolved? All ${who} will be set to "Resolved in scene".`
+      : `Reopen ${label}? All ${who} will be set back to "Needs a Scene".`;
+    if (!window.confirm(question)) return;
+    try {
+      await api.post('admin/downtimes/scenes/batch', { downtime_ids: ids, status });
+      setRows(prev => prev.map(r => (ids.includes(r.id) ? { ...r, status } : r)));
+    } catch (e) {
+      console.error('Failed to update scene status', e);
+    }
+  }
+
+  function getSceneCandidates(sceneId) {
+    const query = (sceneSearch[sceneId] || '').trim().toLowerCase();
+    return rows.filter(r => {
+      if (!isSceneDowntime(r)) return false;
+      if (r.scene_id === sceneId) return false;
+      if (!query) return true;
+      const hay = `${r.char_name || ''} ${r.player_name || ''} ${r.clan || ''} ${r.title || ''}`.toLowerCase();
+      return hay.includes(query);
+    }).slice(0, 10);
+  }
+
+  function handleDragStart(e, dtId) {
+    e.dataTransfer.setData('text/plain', String(dtId));
+    e.dataTransfer.effectAllowed = 'move';
+    setDraggedDtId(dtId);
+  }
+
+  function handleDragEnd() {
+    setDraggedDtId(null);
+    setDragOverTargetId(null);
+    setDragOverSceneId(null);
+    setDragOverUnassigned(false);
+  }
+
+  async function handleDropOnAction(targetDtId) {
+    if (!draggedDtId || draggedDtId === targetDtId) {
+      handleDragEnd();
+      return;
+    }
+    const sourceDt = rows.find(r => r.id === draggedDtId);
+    const targetDt = rows.find(r => r.id === targetDtId);
+    if (!sourceDt || !targetDt) {
+      handleDragEnd();
+      return;
+    }
+
+    if (targetDt.scene_id) {
+      await handleAddToScene(sourceDt.id, targetDt.scene_id);
+    } else if (sourceDt.scene_id) {
+      await handleAddToScene(targetDt.id, sourceDt.scene_id);
+    } else {
+      const newId = `scene_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      setCustomScenes(prev => [...prev, newId]);
+      try {
+        await api.post('admin/downtimes/scenes/batch', {
+          downtime_ids: [sourceDt.id, targetDt.id],
+          scene_id: newId,
+          scene_title: null,
+          status: 'Needs a Scene'
+        });
+        setRows(prev => prev.map(r => (r.id === sourceDt.id || r.id === targetDt.id)
+          ? { ...r, scene_id: newId, status: r.status === 'Resolved in scene' ? 'Resolved in scene' : 'Needs a Scene' }
+          : r
+        ));
+      } catch (e) {
+        console.error('Failed to group into new scene', e);
+      }
+    }
+    handleDragEnd();
+  }
+
+  async function handleDropOnScene(sceneId) {
+    if (!draggedDtId) {
+      handleDragEnd();
+      return;
+    }
+    await handleAddToScene(draggedDtId, sceneId);
+    handleDragEnd();
+  }
+
+  async function handleDropOnUnassigned() {
+    if (!draggedDtId) {
+      handleDragEnd();
+      return;
+    }
+    const sourceDt = rows.find(r => r.id === draggedDtId);
+    if (!sourceDt || !sourceDt.scene_id) {
+      handleDragEnd();
+      return;
+    }
+    await handleRemoveFromScene(draggedDtId);
+    handleDragEnd();
+  }
 
   function toggleHideStatus(status) {
     setHideStatus(prev => ({ ...prev, [status]: !prev[status] }));
@@ -476,12 +766,20 @@ export default function AdminDowntimesTab() {
     if (patch.status !== undefined) updBuf(id, 'status', patch.status);
     if (patch.gm_notes !== undefined) updBuf(id, 'gm_notes', patch.gm_notes);
     if (patch.gm_resolution !== undefined) updBuf(id, 'gm_resolution', patch.gm_resolution);
+    if (patch.scene_id !== undefined) updBuf(id, 'scene_id', patch.scene_id);
+    if (patch.scene_title !== undefined) updBuf(id, 'scene_title', patch.scene_title);
 
     updBuf(id, 'saving', true);
     updBuf(id, 'error', ''); updBuf(id, 'info', '');
 
     try {
-      const payload = { status: merged.status, gm_notes: merged.gm_notes, gm_resolution: merged.gm_resolution };
+      const payload = {
+        status: merged.status,
+        gm_notes: merged.gm_notes,
+        gm_resolution: merged.gm_resolution,
+        scene_id: merged.scene_id,
+        scene_title: merged.scene_title,
+      };
       const { data } = await api.patch(`admin/downtimes/${id}`, payload);
       const updated = data?.downtime ? data.downtime : { ...rows.find(x => x.id === id), ...payload };
 
@@ -679,9 +977,33 @@ export default function AdminDowntimesTab() {
           ))}
         </div>
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginTop: '1.5rem' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginTop: '1.5rem', alignItems: 'center' }}>
           <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => { setQ(''); setStatusFilter('all'); }}>Clear Filters</button>
           <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={loadList}>Refresh</button>
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.btnPrimary}`}
+            style={{
+              background: '#ffcc00',
+              color: '#1a1400',
+              fontWeight: 800,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              border: 'none',
+              boxShadow: '0 2px 12px rgba(255, 204, 0, 0.35)',
+              cursor: 'pointer',
+              padding: '0.55rem 1.25rem',
+              borderRadius: 'var(--radius-sm)'
+            }}
+            onClick={() => {
+              const el = document.getElementById('scenes-section');
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '18px', color: '#1a1400' }}>theaters</span>
+            Take me to scenes
+          </button>
         </div>
 
         {listErr && <div className={`${styles.alert} ${styles.alertError}`} style={{ marginTop: '1.5rem' }}>{listErr}</div>}
@@ -852,6 +1174,25 @@ export default function AdminDowntimesTab() {
                         <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: 'Fira Code, monospace', opacity: 0.85 }}>
                           {group.player_name}
                         </span>
+                        {scenesByPlayerKey.get(group.key) > 0 && (
+                          <span
+                            style={{
+                              fontSize: '0.78rem',
+                              color: '#ffcc00',
+                              background: 'rgba(255, 204, 0, 0.12)',
+                              border: '1px solid rgba(255, 204, 0, 0.3)',
+                              borderRadius: '12px',
+                              padding: '2px 8px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                            title="Actions requiring scenes are managed in the Live Scenes section below"
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>theaters</span>
+                            {scenesByPlayerKey.get(group.key)} in Live Scenes below
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -912,6 +1253,549 @@ export default function AdminDowntimesTab() {
             })}
           </div>
         )}
+
+        {/* ============ Needs Scene : Live Event Scenes Section ============ */}
+        {/* scrollMarginTop: the site Nav and admin topbar are both sticky, so a plain scrollIntoView parks the header underneath them */}
+        <div id="scenes-section" style={{ marginTop: '3.5rem', borderTop: '2px solid rgba(255, 204, 0, 0.35)', paddingTop: '2.5rem', scrollMarginTop: 'calc(var(--nav-h, 64px) + var(--topbar-h, 60px) + 12px)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
+            <div>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(255, 204, 0, 0.12)', border: '1px solid rgba(255, 204, 0, 0.35)', borderRadius: '20px', padding: '4px 14px', marginBottom: '8px' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '1.1rem', color: '#ffcc00' }}>theaters</span>
+                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#ffcc00', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Event Management</span>
+              </div>
+              <h3 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                Needs Scene : Live Event Scenes
+              </h3>
+              <p style={{ margin: '6px 0 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                All actions marked as Needs a Scene or Resolved in scene, organized into group scenes for the upcoming event.
+              </p>
+            </div>
+
+            <button
+              className={styles.btn}
+              style={{
+                background: 'linear-gradient(135deg, rgba(255, 204, 0, 0.25) 0%, rgba(255, 170, 0, 0.4) 100%)',
+                color: '#fff',
+                border: '1px solid rgba(255, 204, 0, 0.5)',
+                fontWeight: 800,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '0.75rem 1.4rem',
+                borderRadius: 'var(--radius-md)',
+                boxShadow: '0 0 15px rgba(255, 204, 0, 0.15)'
+              }}
+              onClick={handleCreateScene}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '1.2rem', color: '#ffcc00' }}>add_circle</span>
+              Create New Scene
+            </button>
+          </div>
+
+          {/* Unassigned tray. Shown whenever any scene exists (not only when it has cards) so it is always
+              there as the "unassign" drop zone, and does not pop in mid-drag and shove the scenes down. */}
+          {(unassignedSceneDowntimes.length > 0 || allSceneIds.length > 0) && (
+            <div
+              style={{
+                position: 'relative',
+                background: dragOverUnassigned ? 'rgba(255, 82, 82, 0.12)' : 'rgba(255, 204, 0, 0.05)',
+                border: '1px dashed rgba(255, 204, 0, 0.4)',
+                outline: dragOverUnassigned ? '2px dashed #ff5252' : 'none',
+                outlineOffset: '-2px',
+                borderRadius: 'var(--radius-lg)',
+                padding: '1.5rem',
+                marginBottom: '2rem',
+                transition: 'background 0.2s ease'
+              }}
+              onDragOver={(e) => {
+                // Only an action that is currently in a scene can be dropped here (to unassign it).
+                if (isDraggingAssigned) {
+                  e.preventDefault();
+                  setDragOverUnassigned(true);
+                }
+              }}
+              onDragLeave={(e) => { if (leftDropZone(e)) setDragOverUnassigned(false); }}
+              onDrop={(e) => {
+                e.preventDefault();
+                handleDropOnUnassigned();
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '1rem' }}>
+                <h4 style={{ margin: 0, color: '#ffcc00', fontSize: '1.15rem', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '1.3rem', color: '#ffcc00' }}>pending_actions</span>
+                  Unassigned Scene Actions ({unassignedSceneDowntimes.length})
+                </h4>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                  Drag onto another character to group into a scene, or drag into a scene below
+                </span>
+              </div>
+
+              {dragOverUnassigned && isDraggingAssigned && (
+                <DropHint icon="person_remove" text="Drop here to unassign and remove from scene" color="#ff5252" />
+              )}
+
+              <div style={{ display: 'grid', gap: '0.85rem' }}>
+                {unassignedSceneDowntimes.length === 0 && (
+                  <div style={{ padding: '0.75rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                    Every scene action is assigned. Drag a character here to take them out of their scene.
+                  </div>
+                )}
+                {unassignedSceneDowntimes.map(dt => {
+                  const isBeingDragged = draggedDtId === dt.id;
+                  const isDropTarget = dragOverTargetId === dt.id;
+                  const isExpanded = sceneActionExpanded[dt.id];
+
+                  return (
+                    <div
+                      key={dt.id}
+                      draggable={true}
+                      onDragStart={(e) => handleDragStart(e, dt.id)}
+                      onDragEnd={handleDragEnd}
+                      onClick={(e) => {
+                        if (!isControlClick(e)) setSceneActionExpanded(prev => ({ ...prev, [dt.id]: !prev[dt.id] }));
+                      }}
+                      onDragOver={(e) => {
+                        // Unassigned onto unassigned = form a new scene. Assigned cards fall through to the tray (unassign).
+                        if (draggedDt && !draggedDt.scene_id && draggedDtId !== dt.id) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setDragOverTargetId(dt.id);
+                        }
+                      }}
+                      onDragLeave={(e) => {
+                        if (leftDropZone(e)) setDragOverTargetId(prev => (prev === dt.id ? null : prev));
+                      }}
+                      onDrop={(e) => {
+                        if (dragOverTargetId !== dt.id) return; // not ours, let the tray handle it
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleDropOnAction(dt.id);
+                      }}
+                      style={{
+                        position: 'relative',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: '1rem',
+                        background: isDropTarget ? 'rgba(255, 204, 0, 0.18)' : 'rgba(0, 0, 0, 0.45)',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        outline: isDropTarget ? '2px dashed #ffcc00' : 'none',
+                        outlineOffset: '-1px',
+                        borderRadius: 'var(--radius-md)',
+                        padding: '0.85rem 1.25rem',
+                        opacity: isBeingDragged ? 0.35 : 1,
+                        transition: 'background 0.15s ease, opacity 0.15s ease',
+                        cursor: 'grab'
+                      }}
+                    >
+                      {isDropTarget && <DropHint icon="group_add" text="Drop to group together into a new scene" />}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '220px' }}>
+                        <span
+                          className="material-symbols-outlined"
+                          style={{ color: '#ffcc00', opacity: 0.85, fontSize: '1.3rem', cursor: 'grab' }}
+                          title="Drag onto another character to group into a scene"
+                        >
+                          drag_indicator
+                        </span>
+                        <span style={{ fontWeight: 800, color: '#ffcc00', fontFamily: 'Fira Code, monospace', fontSize: '0.9rem' }}>#{dt.id}</span>
+                        <div>
+                          <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.95rem' }}>{dt.char_name || 'Character'}</div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{dt.clan || 'Unknown Clan'} • {dt.player_name || dt.email}</div>
+                        </div>
+                      </div>
+
+                      <div style={{ flex: '1 1 200px', minWidth: '180px' }}>
+                        <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          {dt.title}
+                          <span className="material-symbols-outlined" style={{ fontSize: '1.1rem', color: 'var(--text-muted)' }} title={isExpanded ? 'Hide details' : 'Show details'}>
+                            {isExpanded ? 'expand_less' : 'expand_more'}
+                          </span>
+                        </div>
+                        {!isExpanded && (
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '400px' }}>{dt.body}</div>
+                        )}
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span className={styles.statusBadge} style={getStatusBadgeStyle(dt.status)}>
+                          {dt.status}
+                        </span>
+                        <select
+                          className={styles.select}
+                          style={{ padding: '0.4rem 0.8rem', fontSize: '0.82rem', background: 'var(--glass-inset)', width: 'auto' }}
+                          defaultValue=""
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (!val) return;
+                            if (val === '__new__') {
+                              const newId = `scene_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+                              setCustomScenes(prev => [...prev, newId]);
+                              handleAddToScene(dt.id, newId);
+                            } else {
+                              handleAddToScene(dt.id, val);
+                            }
+                          }}
+                        >
+                          <option value="" disabled>Assign to Scene...</option>
+                          <option value="__new__">+ Create New Scene</option>
+                          {allSceneIds.map((sid, sIdx) => (
+                            <option key={sid} value={sid}>
+                              {formatSceneLabel(sid, sIdx)}{getSceneTitle(sid) ? `: ${getSceneTitle(sid)}` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {isExpanded && <SceneActionDetails r={dt} />}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+
+          {/* Grouped Scenes Grid */}
+          <div style={{ display: 'grid', gap: '2rem' }}>
+            {allSceneIds.length === 0 && unassignedSceneDowntimes.length === 0 && (
+              <div style={{ padding: '3.5rem 2rem', textAlign: 'center', background: 'var(--glass-inset)', borderRadius: 'var(--radius-lg)', border: '1px dashed var(--glass-border)', opacity: 0.7 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '3rem', color: '#ffcc00', display: 'block', marginBottom: '0.75rem' }}>theaters</span>
+                <h4 style={{ color: 'var(--text-primary)', margin: 0, fontSize: '1.25rem' }}>No Active Scenes Required</h4>
+                <p className={styles.subtle} style={{ marginTop: '0.35rem' }}>
+                  When actions are marked as Needs a Scene or Resolved in scene, they will appear here to be grouped and planned together.
+                </p>
+              </div>
+            )}
+
+            {allSceneIds.map((sceneId, sceneIndex) => {
+              const dtsInScene = rows.filter(r => isSceneDowntime(r) && r.scene_id === sceneId);
+              const sceneTitle = getSceneTitle(sceneId);
+              const isSearchOpen = activeSearchScene === sceneId;
+              const candidates = getSceneCandidates(sceneId);
+              const isSceneDropTarget = dragOverSceneId === sceneId;
+              const sceneResolved = dtsInScene.length > 0 && dtsInScene.every(r => r.status === 'Resolved in scene');
+              const isEditing = Boolean(editingScenes[sceneId]);
+              const sceneLabel = formatSceneLabel(sceneId, sceneIndex);
+
+              return (
+                <div
+                  key={sceneId}
+                  className={styles.sceneGroupCard}
+                  onDragOver={(e) => {
+                    // Dropping a character back into the scene it is already in is a no-op, so don't offer it.
+                    if (draggedDt && draggedDt.scene_id !== sceneId) {
+                      e.preventDefault();
+                      setDragOverSceneId(sceneId);
+                    }
+                  }}
+                  onDragLeave={(e) => {
+                    if (leftDropZone(e)) setDragOverSceneId(prev => (prev === sceneId ? null : prev));
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    handleDropOnScene(sceneId);
+                  }}
+                  style={{
+                    position: 'relative',
+                    // outline, not border: swapping the 5px left border for a dashed one shifted the whole card
+                    outline: isSceneDropTarget ? '2px dashed #ffcc00' : 'none',
+                    outlineOffset: '-2px',
+                    background: isSceneDropTarget ? 'rgba(255, 204, 0, 0.08)' : undefined,
+                    transition: 'background 0.2s ease'
+                  }}
+                >
+                  {/* Scene Block Header */}
+                  <div className={styles.sceneHeader}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap', flex: '1 1 300px', minWidth: 0 }}>
+                      <span className={styles.sceneBadge}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '1rem', color: '#ffcc00' }}>theaters</span>
+                        {sceneLabel}
+                      </span>
+
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          className={styles.input}
+                          style={{ flex: '1 1 200px', background: 'rgba(0, 0, 0, 0.4)', borderColor: 'rgba(255, 204, 0, 0.3)', padding: '0.35rem 0.75rem', fontSize: '0.9rem', fontWeight: 600 }}
+                          placeholder="Scene title: e.g. Elysium Confrontation (optional)"
+                          value={sceneTitleBuf[sceneId] !== undefined ? sceneTitleBuf[sceneId] : sceneTitle}
+                          onChange={(e) => setSceneTitleBuf(prev => ({ ...prev, [sceneId]: e.target.value }))}
+                          onBlur={() => handleSaveSceneTitle(sceneId)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+                          title="Saves automatically when you click away or press Enter"
+                        />
+                      ) : (
+                        <span style={{ fontSize: '1rem', fontWeight: 700, color: sceneTitle ? 'var(--text-primary)' : 'var(--text-muted)', fontStyle: sceneTitle ? 'normal' : 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {sceneTitle || 'Untitled scene'}
+                        </span>
+                      )}
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', fontWeight: 700 }}>
+                        {dtsInScene.length} {dtsInScene.length === 1 ? 'Character' : 'Characters'}
+                      </span>
+                      <button
+                        type="button"
+                        className={`${styles.btn} ${styles.btnSmall}`}
+                        disabled={dtsInScene.length === 0}
+                        onClick={() => handleSetSceneStatus(sceneId, sceneResolved ? 'Needs a Scene' : 'Resolved in scene', sceneLabel)}
+                        title={sceneResolved ? 'Click to reopen: set everyone back to Needs a Scene' : 'Mark every character in this scene as Resolved in scene'}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '0.4rem 0.8rem', fontSize: '0.8rem', fontWeight: 800, borderRadius: 'var(--radius-sm)',
+                          background: sceneResolved ? 'rgba(0, 230, 118, 0.15)' : '#ffcc00',
+                          color: sceneResolved ? '#00e676' : '#1a1400',
+                          border: sceneResolved ? '1px solid rgba(0, 230, 118, 0.45)' : '1px solid #ffcc00'
+                        }}
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>{sceneResolved ? 'check_circle' : 'task_alt'}</span>
+                        {sceneResolved ? 'Resolved in scene' : 'Mark resolved in scene'}
+                      </button>
+                      {isEditing && (
+                        <button
+                          type="button"
+                          className={`${styles.btn} ${styles.btnDanger} ${styles.btnSmall}`}
+                          style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)' }}
+                          onClick={() => handleDisbandScene(sceneId, sceneLabel)}
+                        >
+                          Disband Scene
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSmall}`}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '0.4rem 0.8rem', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)' }}
+                        onClick={() => {
+                          // Everything already saves as you go; Save just flushes a title still being typed and closes edit mode.
+                          if (isEditing) {
+                            handleSaveSceneTitle(sceneId);
+                            setActiveSearchScene(prev => (prev === sceneId ? null : prev));
+                          }
+                          setEditingScenes(prev => ({ ...prev, [sceneId]: !isEditing }));
+                        }}
+                        title={isEditing ? 'Changes save automatically; this closes editing' : 'Rename, add or remove characters, change status, disband'}
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>{isEditing ? 'check' : 'edit'}</span>
+                        {isEditing ? 'Save' : 'Edit scene'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {isSceneDropTarget && (
+                    <DropHint icon="add_task" text={`Drop character here to add to ${formatSceneLabel(sceneId, sceneIndex)}`} />
+                  )}
+
+                  {/* Scene with Search Autocomplete Bar (edit mode only) */}
+                  {isEditing && (
+                  <div className={styles.sceneSearchWrapper}>
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                      <span className="material-symbols-outlined" style={{ position: 'absolute', left: '12px', color: '#ffcc00', fontSize: '1.2rem', pointerEvents: 'none' }}>
+                        person_add
+                      </span>
+                      <input
+                        type="text"
+                        className={styles.input}
+                        style={{ padding: '0.35rem 0.75rem 0.35rem 2.5rem', fontSize: '0.85rem', background: 'rgba(0, 0, 0, 0.55)', borderColor: isSearchOpen ? '#ffcc00' : 'var(--glass-border)' }}
+                        placeholder="Add another player with a scene to this scene: search by name, clan or action..."
+                        value={sceneSearch[sceneId] || ''}
+                        onFocus={() => setActiveSearchScene(sceneId)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setSceneSearch(prev => ({ ...prev, [sceneId]: val }));
+                          setActiveSearchScene(sceneId);
+                        }}
+                      />
+                      {isSearchOpen && (
+                        <button
+                          type="button"
+                          onClick={() => setActiveSearchScene(null)}
+                          style={{ position: 'absolute', right: '10px', background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                          title="Close suggestions"
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {isSearchOpen && (
+                      <div className={styles.sceneSearchResults}>
+                        <div style={{ padding: '8px 12px', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: '#ffcc00', letterSpacing: '0.06em', borderBottom: '1px solid rgba(255, 255, 255, 0.07)', background: 'rgba(0,0,0,0.3)' }}>
+                          Eligible Scene Participants (Only characters with scenes appear)
+                        </div>
+                        {candidates.length === 0 ? (
+                          <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                            No other characters with pending scene actions found.
+                          </div>
+                        ) : (
+                          candidates.map(cand => (
+                            <div
+                              key={cand.id}
+                              className={styles.sceneSearchItem}
+                              onClick={() => handleAddToScene(cand.id, sceneId)}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                                <div style={{ width: '32px', height: '32px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0, border: '1px solid #ffcc00' }}>
+                                  <Avatar
+                                    userId={cand.user_id}
+                                    hasAvatar={cand.has_avatar}
+                                    clan={cand.clan}
+                                    size={32}
+                                    fallback={symlogoWhite(cand.clan) || '/img/ATT-logo(1).webp'}
+                                  />
+                                </div>
+                                <div style={{ minWidth: 0 }}>
+                                  <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                                    {cand.char_name || 'Character'}
+                                    <span style={{ fontSize: '0.8rem', color: '#ffcc00', fontWeight: 600, marginLeft: '6px' }}>[{cand.clan || 'Clan'}]</span>
+                                  </div>
+                                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    #{cand.id}: {cand.title} • {cand.player_name || cand.email}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                                {cand.scene_id && (
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'Fira Code, monospace' }}>
+                                    Currently in {formatSceneLabel(cand.scene_id, allSceneIds.indexOf(cand.scene_id) >= 0 ? allSceneIds.indexOf(cand.scene_id) : null)}
+                                  </span>
+                                )}
+                                <button
+                                  type="button"
+                                  className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSmall}`}
+                                  style={{ padding: '3px 10px', fontSize: '0.78rem', background: '#ffcc00', color: '#1a1400', fontWeight: 800 }}
+                                >
+                                  Add to Scene
+                                </button>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  )}
+
+                  {/* List of Characters and Actions in this Scene */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
+                    {dtsInScene.length === 0 ? (
+                      <div style={{ padding: '1.8rem', textAlign: 'center', background: 'rgba(0, 0, 0, 0.3)', borderRadius: 'var(--radius-md)', border: '1px dashed rgba(255, 204, 0, 0.2)' }}>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                          No characters added to this scene yet. Drag characters here, or press Edit scene and use the search.
+                        </span>
+                      </div>
+                    ) : (
+                      dtsInScene.map(r => {
+                        const isExpanded = sceneActionExpanded[r.id];
+                        const isBeingDragged = draggedDtId === r.id;
+                        const isCharDropTarget = dragOverTargetId === r.id;
+                        const rowErr = buffer[r.id]?.error;
+
+                        return (
+                          <div
+                            key={r.id}
+                            draggable={true}
+                            onDragStart={(e) => handleDragStart(e, r.id)}
+                            onDragEnd={handleDragEnd}
+                            onDragOver={(e) => {
+                              if (draggedDt && draggedDt.scene_id !== r.scene_id) {
+                                e.preventDefault();
+                                // Handled here: keep the parent scene from also lighting up / also receiving the drop.
+                                e.stopPropagation();
+                                setDragOverSceneId(null);
+                                setDragOverTargetId(r.id);
+                              }
+                            }}
+                            onDragLeave={(e) => {
+                              if (leftDropZone(e)) setDragOverTargetId(prev => (prev === r.id ? null : prev));
+                            }}
+                            onDrop={(e) => {
+                              if (dragOverTargetId !== r.id) return; // not ours, let the scene block handle it
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleDropOnAction(r.id);
+                            }}
+                            onClick={(e) => {
+                              if (!isControlClick(e)) setSceneActionExpanded(prev => ({ ...prev, [r.id]: !prev[r.id] }));
+                            }}
+                            style={{
+                              position: 'relative',
+                              background: isCharDropTarget ? 'rgba(255, 204, 0, 0.2)' : 'rgba(0, 0, 0, 0.45)',
+                              border: '1px solid rgba(255, 204, 0, 0.2)',
+                              outline: isCharDropTarget ? '2px dashed #ffcc00' : 'none',
+                              outlineOffset: '-1px',
+                              borderRadius: 'var(--radius-md)',
+                              padding: '0.5rem 0.75rem',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '0.5rem',
+                              opacity: isBeingDragged ? 0.35 : 1,
+                              transition: 'background 0.15s ease, opacity 0.15s ease',
+                              cursor: 'grab'
+                            }}
+                          >
+                            {isCharDropTarget && <DropHint icon="group_add" text="Drop here to add to this scene" />}
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                              <span className="material-symbols-outlined" style={{ color: '#ffcc00', opacity: 0.7, fontSize: '1.1rem', flexShrink: 0 }} title="Drag to move between scenes or unassign">
+                                drag_indicator
+                              </span>
+                              <div style={{ width: '28px', height: '28px', borderRadius: '50%', overflow: 'hidden', border: '1px solid #ffcc00', flexShrink: 0 }}>
+                                <Avatar userId={r.user_id} hasAvatar={r.has_avatar} clan={r.clan} size={28} fallback={symlogoWhite(r.clan) || '/img/ATT-logo(1).webp'} />
+                              </div>
+                              <div style={{ flexShrink: 0, display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                                <span style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-primary)' }}>{r.char_name || '(No Character)'}</span>
+                                <span style={{ fontSize: '0.75rem', color: '#ffcc00', fontWeight: 700 }}>[{r.clan || 'Clan'}]</span>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{r.player_name || r.email}</span>
+                              </div>
+                              <div style={{ flex: '1 1 auto', minWidth: 0, fontSize: '0.82rem', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                <b style={{ color: '#ffcc00', fontFamily: 'Fira Code, monospace', marginRight: '6px' }}>#{r.id}</b>
+                                {r.title}
+                              </div>
+                              <span className="material-symbols-outlined" style={{ fontSize: '1.2rem', color: 'var(--text-muted)', flexShrink: 0 }} title={isExpanded ? 'Hide details' : 'Show details'}>
+                                {isExpanded ? 'expand_less' : 'expand_more'}
+                              </span>
+                              {!isEditing && (
+                                <span className={styles.statusBadge} style={{ ...getStatusBadgeStyle(r.status), flexShrink: 0 }}>{r.status}</span>
+                              )}
+                              {isEditing && (<>
+                              <select
+                                className={styles.select}
+                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.78rem', width: 'auto', flexShrink: 0 }}
+                                value={buffer[r.id]?.status ?? r.status}
+                                disabled={buffer[r.id]?.saving}
+                                onChange={(e) => saveRow(r.id, { status: e.target.value })}
+                                title="Saves immediately"
+                              >
+                                <option value="Needs a Scene">Needs a Scene</option>
+                                <option value="Resolved in scene">Resolved in scene</option>
+                                <option value="approved">Approved (Remove from Scene)</option>
+                                <option value="resolved">Resolved (Remove from Scene)</option>
+                              </select>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveFromScene(r.id)}
+                                title="Remove from this scene"
+                                style={{ background: 'transparent', border: 'none', color: '#ff5252', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '2px', flexShrink: 0 }}
+                              >
+                                <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>person_remove</span>
+                              </button>
+                              </>)}
+                            </div>
+
+                            {rowErr && <div style={{ color: '#ff5252', fontSize: '0.8rem' }}>{rowErr}</div>}
+                            {isExpanded && <SceneActionDetails r={r} showResolution={false} />}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </section>
     </div>
   );

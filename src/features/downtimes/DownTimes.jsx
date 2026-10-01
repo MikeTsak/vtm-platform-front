@@ -47,6 +47,9 @@ const statusIsPast = (s) => {
   return status === 'resolved' || status === 'rejected' || status === 'resolved in scene';
 };
 
+// In-character names only; the account name is just a fallback for a character without one.
+const formatSceneWith = (participants) => participants.map(p => p.char_name || p.player_name).join(', ');
+
 const formatPlayerStatus = (s) => {
   const str = String(s || '').trim();
   if (str.toLowerCase().startsWith('approved')) return 'Approved';
@@ -272,6 +275,36 @@ function ActiveTrackItem({ dt, isProject }) {
         <>
           <h4 className={styles.trackTitle}>{displayTitle}</h4>
           <p className={styles.trackBody}>{dt.body}</p>
+          {status === 'needs a scene' && (
+            <div
+              style={{
+                background: 'rgba(255, 204, 0, 0.07)',
+                border: '1px solid rgba(255, 204, 0, 0.3)',
+                borderRadius: 'var(--radius-sm)',
+                padding: '0.85rem 1rem',
+                marginTop: '0.75rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.4rem'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ffcc00', fontWeight: 800, fontSize: '0.9rem' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '1.15rem', color: '#ffcc00' }}>theaters</span>
+                <span>{dt.scene_number ? `Scene ${dt.scene_number}` : 'Needs a Scene'}{dt.scene_title ? `: ${dt.scene_title}` : ''}</span>
+              </div>
+
+              {dt.scene_participants && dt.scene_participants.length > 0 && (
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+                  <strong style={{ color: 'var(--text-secondary)' }}>Scene with: </strong>
+                  {formatSceneWith(dt.scene_participants)}
+                </div>
+              )}
+
+              <div style={{ fontSize: '0.82rem', color: '#ffcc00', opacity: 0.9 }}>
+                Please communicate with the other players to find a time that works with you after the program comes out.
+              </div>
+            </div>
+          )}
           {canEdit && (
             <button
               className={styles.viewAllBtn}
@@ -321,6 +354,41 @@ function ArchiveItem({ dt, isProject, massReleaseCountdown }) {
       </div>
       <div className={styles.archiveCardBody}>
         <p className={styles.archiveCardText}>{dt.body}</p>
+
+        {(status === 'resolved in scene' || status === 'needs a scene') && (
+          <div
+            style={{
+              background: 'rgba(255, 204, 0, 0.07)',
+              border: '1px solid rgba(255, 204, 0, 0.3)',
+              borderRadius: 'var(--radius-sm)',
+              padding: '1rem',
+              marginTop: '1rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.45rem'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ffcc00', fontWeight: 800, fontSize: '0.95rem' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '1.25rem', color: '#ffcc00' }}>theaters</span>
+              <span>Resolved in Scene{dt.scene_number ? ` ${dt.scene_number}` : ''}{dt.scene_title ? `: ${dt.scene_title}` : ''}</span>
+            </div>
+
+            {dt.scene_participants && dt.scene_participants.length > 0 ? (
+              <div style={{ fontSize: '0.88rem', color: 'var(--text-primary)', marginTop: '2px' }}>
+                <strong style={{ color: 'var(--text-secondary)' }}>Scene with: </strong>
+                {formatSceneWith(dt.scene_participants)}
+              </div>
+            ) : (
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                Solo scene or participants to be assigned
+              </div>
+            )}
+
+            <div style={{ fontSize: '0.85rem', color: '#ffcc00', opacity: 0.9, marginTop: '4px' }}>
+              Please communicate with the other players to find a time that works with you after the program comes out.
+            </div>
+          </div>
+        )}
 
         {isPendingRelease ? (
           <div className={styles.resolutionBox} style={{ textAlign: 'center', opacity: 0.85, padding: '1.5rem', background: 'var(--glass-inset)' }}>
@@ -449,6 +517,13 @@ export default function DownTimes() {
 
   const active = useMemo(() => currentCategoryMine.filter(d => !statusIsPast(d.status)), [currentCategoryMine]);
   const pastRaw = useMemo(() => currentCategoryMine.filter(d => statusIsPast(d.status)), [currentCategoryMine]);
+
+  const upcomingScenes = useMemo(() => {
+    return currentCategoryMine.filter(d => {
+      const s = String(d.status || '').toLowerCase();
+      return s === 'needs a scene' || s === 'resolved in scene';
+    });
+  }, [currentCategoryMine]);
 
   const archiveList = useMemo(() => {
     let source = pastRaw;
@@ -591,6 +666,112 @@ export default function DownTimes() {
             />
           )}
         </motion.section>
+
+        {/* Highlighted Upcoming Live Event Scenes Card */}
+        {upcomingScenes.length > 0 && (
+          <motion.section
+            variants={{
+              hidden: { opacity: 0, y: 30, scale: 0.95 },
+              visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 25 } }
+            }}
+            style={{
+              background: 'rgba(25, 20, 10, 0.65)',
+              border: '1px solid rgba(255, 204, 0, 0.35)',
+              borderRadius: 'var(--radius-lg)',
+              padding: 'clamp(1rem, 3vw, 1.75rem)',
+              backdropFilter: 'var(--glass-blur)',
+              WebkitBackdropFilter: 'var(--glass-blur)',
+              boxShadow: '0 6px 30px rgba(255, 204, 0, 0.08), inset 0 1px 0 rgba(255, 204, 0, 0.15)'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', borderBottom: '1px solid rgba(255, 204, 0, 0.2)', paddingBottom: '1rem', marginBottom: '1.25rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: 'rgba(255, 204, 0, 0.15)', border: '1px solid rgba(255, 204, 0, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '1.5rem', color: '#ffcc00' }}>theaters</span>
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-color)' }}>
+                    Upcoming Live Event Scenes
+                  </h3>
+                  <p style={{ margin: '4px 0 0 0', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                    Your actions designated to be played out during the next game session.
+                  </p>
+                </div>
+              </div>
+              <span style={{ background: 'rgba(255, 204, 0, 0.15)', border: '1px solid rgba(255, 204, 0, 0.4)', color: '#ffcc00', padding: '4px 12px', borderRadius: '20px', fontSize: '0.82rem', fontWeight: 800 }}>
+                {upcomingScenes.length} {upcomingScenes.length === 1 ? 'Scene' : 'Scenes'} Scheduled
+              </span>
+            </div>
+
+            <div style={{ display: 'grid', gap: '1rem' }}>
+              {upcomingScenes.map(sc => {
+                const isProjDt = sc.title && sc.title.startsWith('[PROJECT]');
+                const displayTitle = isProjDt ? sc.title.replace('[PROJECT] ', '') : sc.title;
+                const participants = sc.scene_participants || [];
+
+                return (
+                  <div
+                    key={sc.id}
+                    style={{
+                      background: 'rgba(0, 0, 0, 0.4)',
+                      border: '1px solid rgba(255, 204, 0, 0.25)',
+                      borderLeft: '4px solid #ffcc00',
+                      borderRadius: 'var(--radius-md)',
+                      padding: '1.2rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.75rem'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ fontWeight: 800, color: '#ffcc00', fontFamily: 'Fira Code, monospace', fontSize: '0.9rem' }}>#{sc.id}</span>
+                        <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                          {displayTitle}
+                        </h4>
+                      </div>
+                      <span className={styles.statusBadge} style={{ background: 'rgba(255, 204, 0, 0.15)', color: '#ffcc00', border: '1px solid rgba(255, 204, 0, 0.4)', padding: '3px 10px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 700 }}>
+                        {formatPlayerStatus(sc.status)}
+                      </span>
+                    </div>
+
+                    {(sc.scene_number || sc.scene_title) && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', fontSize: '0.95rem', color: 'var(--text-primary)' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(255, 204, 0, 0.15)', border: '1px solid rgba(255, 204, 0, 0.4)', borderRadius: '12px', padding: '2px 10px', color: '#ffcc00', fontWeight: 800 }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>theaters</span>
+                          {sc.scene_number ? `Scene ${sc.scene_number}` : 'Scene'}
+                        </span>
+                        {sc.scene_title && <span style={{ fontWeight: 700 }}>{sc.scene_title}</span>}
+                      </div>
+                    )}
+
+                    <div style={{ background: 'rgba(255, 204, 0, 0.05)', border: '1px solid rgba(255, 204, 0, 0.2)', borderRadius: 'var(--radius-sm)', padding: '0.85rem 1rem' }}>
+                      <div style={{ fontSize: '0.9rem', color: 'var(--text-primary)', marginBottom: '6px' }}>
+                        <strong style={{ color: 'var(--text-secondary)' }}>Scene with: </strong>
+                        {participants.length > 0
+                          ? formatSceneWith(participants)
+                          : 'Solo scene or participants to be assigned'
+                        }
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: '#ffcc00', opacity: 0.95 }}>
+                        Please communicate with the other players to find a time that works with you after the program comes out.
+                      </div>
+                    </div>
+
+                    {sc.gm_resolution && !sc.is_pending_release && (
+                      <div style={{ background: 'rgba(0, 0, 0, 0.3)', padding: '0.75rem 1rem', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                        <div style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', fontWeight: 800, marginBottom: '4px' }}>
+                          Storyteller Note:
+                        </div>
+                        <div style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>{sc.gm_resolution}</div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </motion.section>
+        )}
 
         {/* Main Grid */}
         <motion.section 
