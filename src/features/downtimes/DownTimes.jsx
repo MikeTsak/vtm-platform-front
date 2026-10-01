@@ -14,6 +14,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import Avatar from '../../components/Avatar';
+import { symlogoWhite } from '../../data/clans';
 
 function useCountdown(targetDate, isEndOfDay = false) {
   const [now, setNow] = useState(new Date().getTime());
@@ -518,11 +520,19 @@ export default function DownTimes() {
   const active = useMemo(() => currentCategoryMine.filter(d => !statusIsPast(d.status)), [currentCategoryMine]);
   const pastRaw = useMemo(() => currentCategoryMine.filter(d => statusIsPast(d.status)), [currentCategoryMine]);
 
+  // Only scenes still to be played. "Resolved in scene" is done and lives in the archive instead.
+  // Grouped by scene so two of my actions in the same scene show as one card.
   const upcomingScenes = useMemo(() => {
-    return currentCategoryMine.filter(d => {
-      const s = String(d.status || '').toLowerCase();
-      return s === 'needs a scene' || s === 'resolved in scene';
-    });
+    const byScene = new Map();
+    for (const d of currentCategoryMine) {
+      if (String(d.status || '').toLowerCase() !== 'needs a scene') continue;
+      const key = d.scene_id || `unassigned_${d.id}`;
+      if (!byScene.has(key)) {
+        byScene.set(key, { key, number: d.scene_number, title: d.scene_title, participants: d.scene_participants || [], actions: [] });
+      }
+      byScene.get(key).actions.push(d);
+    }
+    return [...byScene.values()].sort((a, b) => (a.number || Infinity) - (b.number || Infinity));
   }, [currentCategoryMine]);
 
   const archiveList = useMemo(() => {
@@ -667,108 +677,82 @@ export default function DownTimes() {
           )}
         </motion.section>
 
-        {/* Highlighted Upcoming Live Event Scenes Card */}
+        {/* Upcoming live event scenes ("Needs a Scene" only) */}
         {upcomingScenes.length > 0 && (
           <motion.section
+            className={styles.sceneSection}
             variants={{
               hidden: { opacity: 0, y: 30, scale: 0.95 },
               visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 25 } }
             }}
-            style={{
-              background: 'rgba(25, 20, 10, 0.65)',
-              border: '1px solid rgba(255, 204, 0, 0.35)',
-              borderRadius: 'var(--radius-lg)',
-              padding: 'clamp(1rem, 3vw, 1.75rem)',
-              backdropFilter: 'var(--glass-blur)',
-              WebkitBackdropFilter: 'var(--glass-blur)',
-              boxShadow: '0 6px 30px rgba(255, 204, 0, 0.08), inset 0 1px 0 rgba(255, 204, 0, 0.15)'
-            }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', borderBottom: '1px solid rgba(255, 204, 0, 0.2)', paddingBottom: '1rem', marginBottom: '1.25rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: 'rgba(255, 204, 0, 0.15)', border: '1px solid rgba(255, 204, 0, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: '1.5rem', color: '#ffcc00' }}>theaters</span>
-                </div>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-color)' }}>
-                    Upcoming Live Event Scenes
-                  </h3>
-                  <p style={{ margin: '4px 0 0 0', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                    Your actions designated to be played out during the next game session.
-                  </p>
-                </div>
+            <div className={styles.sceneSectionHeader}>
+              <div>
+                <span className={styles.deadlineLabel}>Next Live Event</span>
+                <h3 className={styles.activeTrackTitle}>Your Upcoming Scenes</h3>
               </div>
-              <span style={{ background: 'rgba(255, 204, 0, 0.15)', border: '1px solid rgba(255, 204, 0, 0.4)', color: '#ffcc00', padding: '4px 12px', borderRadius: '20px', fontSize: '0.82rem', fontWeight: 800 }}>
-                {upcomingScenes.length} {upcomingScenes.length === 1 ? 'Scene' : 'Scenes'} Scheduled
+              <span className={styles.sceneCount}>
+                {upcomingScenes.length} {upcomingScenes.length === 1 ? 'scene' : 'scenes'} to play
               </span>
             </div>
 
-            <div style={{ display: 'grid', gap: '1rem' }}>
-              {upcomingScenes.map(sc => {
-                const isProjDt = sc.title && sc.title.startsWith('[PROJECT]');
-                const displayTitle = isProjDt ? sc.title.replace('[PROJECT] ', '') : sc.title;
-                const participants = sc.scene_participants || [];
+            <div className={styles.sceneList}>
+              {upcomingScenes.map(sc => (
+                <article key={sc.key} className={styles.sceneCard}>
+                  <span className={`material-symbols-outlined ${styles.deadlineCardIcon}`} aria-hidden="true">theaters</span>
 
-                return (
-                  <div
-                    key={sc.id}
-                    style={{
-                      background: 'rgba(0, 0, 0, 0.4)',
-                      border: '1px solid rgba(255, 204, 0, 0.25)',
-                      borderLeft: '4px solid #ffcc00',
-                      borderRadius: 'var(--radius-md)',
-                      padding: '1.2rem',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '0.75rem'
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <span style={{ fontWeight: 800, color: '#ffcc00', fontFamily: 'Fira Code, monospace', fontSize: '0.9rem' }}>#{sc.id}</span>
-                        <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                          {displayTitle}
-                        </h4>
-                      </div>
-                      <span className={styles.statusBadge} style={{ background: 'rgba(255, 204, 0, 0.15)', color: '#ffcc00', border: '1px solid rgba(255, 204, 0, 0.4)', padding: '3px 10px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 700 }}>
-                        {formatPlayerStatus(sc.status)}
-                      </span>
-                    </div>
-
-                    {(sc.scene_number || sc.scene_title) && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', fontSize: '0.95rem', color: 'var(--text-primary)' }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(255, 204, 0, 0.15)', border: '1px solid rgba(255, 204, 0, 0.4)', borderRadius: '12px', padding: '2px 10px', color: '#ffcc00', fontWeight: 800 }}>
-                          <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>theaters</span>
-                          {sc.scene_number ? `Scene ${sc.scene_number}` : 'Scene'}
-                        </span>
-                        {sc.scene_title && <span style={{ fontWeight: 700 }}>{sc.scene_title}</span>}
-                      </div>
-                    )}
-
-                    <div style={{ background: 'rgba(255, 204, 0, 0.05)', border: '1px solid rgba(255, 204, 0, 0.2)', borderRadius: 'var(--radius-sm)', padding: '0.85rem 1rem' }}>
-                      <div style={{ fontSize: '0.9rem', color: 'var(--text-primary)', marginBottom: '6px' }}>
-                        <strong style={{ color: 'var(--text-secondary)' }}>Scene with: </strong>
-                        {participants.length > 0
-                          ? formatSceneWith(participants)
-                          : 'Solo scene or participants to be assigned'
-                        }
-                      </div>
-                      <div style={{ fontSize: '0.85rem', color: '#ffcc00', opacity: 0.95 }}>
-                        Please communicate with the other players to find a time that works with you after the program comes out.
-                      </div>
-                    </div>
-
-                    {sc.gm_resolution && !sc.is_pending_release && (
-                      <div style={{ background: 'rgba(0, 0, 0, 0.3)', padding: '0.75rem 1rem', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                        <div style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', fontWeight: 800, marginBottom: '4px' }}>
-                          Storyteller Note:
-                        </div>
-                        <div style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>{sc.gm_resolution}</div>
-                      </div>
-                    )}
+                  <div className={styles.sceneNumber}>
+                    <span className={styles.sceneNumberLabel}>Scene</span>
+                    <span className={styles.sceneNumberValue}>{sc.number || '?'}</span>
                   </div>
-                );
-              })}
+
+                  <div className={styles.sceneBody}>
+                    <div>
+                      <h4 className={styles.sceneTitle}>
+                        {sc.title || sc.actions[0].title.replace('[PROJECT] ', '')}
+                      </h4>
+                      {sc.actions.map(a => (
+                        <div key={a.id} className={styles.sceneAction}>
+                          <span className={styles.sceneActionId}>#{a.id}</span>
+                          {a.title.replace('[PROJECT] ', '')}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div>
+                      <span className={styles.sceneWithLabel}>Scene with</span>
+                      {!sc.number ? (
+                        <div className={styles.sceneSolo}>The Storytellers have not placed you in a scene yet.</div>
+                      ) : sc.participants.length === 0 ? (
+                        <div className={styles.sceneSolo}>Solo scene</div>
+                      ) : (
+                        <div className={styles.sceneCast}>
+                          {sc.participants.map(p => (
+                            <span key={p.character_id} className={styles.sceneCastChip} title={p.clan || undefined}>
+                              <span className={styles.sceneCastAvatar}>
+                                <Avatar userId={p.user_id} hasAvatar={p.has_avatar} clan={p.clan} size={28} fallback={symlogoWhite(p.clan) || '/img/ATT-logo(1).webp'} />
+                              </span>
+                              {p.char_name || p.player_name}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className={styles.sceneNote}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '18px', flexShrink: 0 }}>forum</span>
+                      <span>Please communicate with the other players to find a time that works with you after the program comes out.</span>
+                    </div>
+
+                    {sc.actions.filter(a => a.gm_resolution && !a.is_pending_release).map(a => (
+                      <div key={a.id} className={styles.sceneStNote}>
+                        <span className={styles.sceneWithLabel}>Storyteller note</span>
+                        {a.gm_resolution}
+                      </div>
+                    ))}
+                  </div>
+                </article>
+              ))}
             </div>
           </motion.section>
         )}
