@@ -49,8 +49,11 @@ const statusIsPast = (s) => {
   return status === 'resolved' || status === 'rejected' || status === 'resolved in scene';
 };
 
-// In-character names only; the account name is just a fallback for a character without one.
-const formatSceneWith = (participants) => participants.map(p => p.char_name || p.player_name).join(', ');
+const formatCountdownText = (cd) => {
+  if (!cd || cd.isPast) return '00d 00h 00m 00s';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${pad(cd.days)}d ${pad(cd.hours)}h ${pad(cd.minutes)}m ${pad(cd.seconds)}s`;
+};
 
 const formatPlayerStatus = (s) => {
   const str = String(s || '').trim();
@@ -66,16 +69,7 @@ function niceDate(d) {
 }
 
 const CountdownDisplay = ({ title, countdown, subText, isProject, icon }) => {
-  const formatCountdown = (cd) => {
-    if (cd.isPast) return '00d 00h 00m 00s';
-    const d = String(cd.days).padStart(2, '0');
-    const h = String(cd.hours).padStart(2, '0');
-    const m = String(cd.minutes).padStart(2, '0');
-    const s = String(cd.seconds).padStart(2, '0');
-    return `${d}d ${h}h ${m}m ${s}s`;
-  };
-
-  let displayTime = formatCountdown(countdown);
+  const displayTime = formatCountdownText(countdown);
 
   return (
     <div className={`${styles.deadlineCard} ${isProject ? styles.deadlineCardProject : ''}`}>
@@ -85,7 +79,7 @@ const CountdownDisplay = ({ title, countdown, subText, isProject, icon }) => {
           {title}
         </span>
         <h2 className={styles.deadlineTitle}>
-          {countdown.isPast ? 'Passed' : niceDate(countdown.targetDate) || 'TBD'}
+          {!countdown.targetDate ? 'TBD' : countdown.isPast ? 'Passed' : niceDate(countdown.targetDate)}
         </h2>
         <span className={styles.deadlineSub}>{subText}</span>
       </div>
@@ -105,6 +99,14 @@ const submitSchema = z.object({
 function SubmitCard({ quota, isProject }) {
   const queryClient = useQueryClient();
   const isFull = quota.used >= quota.limit;
+  // Server decides if the form is open (phase, opening, deadline, late replacements for rejected actions).
+  const closedReason = quota.closed_reason?.[isProject ? 'project' : 'standard'] || null;
+  const blockedLabel = isFull ? 'No more actions'
+    : closedReason === 'deadline' ? 'Deadline passed'
+    : closedReason === 'not_open' ? 'Not open yet'
+    : closedReason ? 'Submissions closed'
+    : null;
+  const isBlocked = Boolean(blockedLabel);
 
   const { register, handleSubmit, reset, watch, formState: { errors } } = useForm({
     resolver: zodResolver(submitSchema),
@@ -137,7 +139,7 @@ function SubmitCard({ quota, isProject }) {
   });
 
   const onSubmit = (data) => {
-    if (isFull) return;
+    if (isBlocked) return;
     submitMutation.mutate(data);
   };
 
@@ -159,7 +161,7 @@ function SubmitCard({ quota, isProject }) {
                 type="text"
                 {...register('title')}
                 placeholder={isProject ? "e.g., Secure Haven Defenses (Phase 1)" : "e.g., Secure Haven Defenses"}
-                disabled={isFull || submitMutation.isPending}
+                disabled={isBlocked || submitMutation.isPending}
               />
               {errors.title && <span style={{ color: '#ef4444', fontSize: '0.85rem' }}>{errors.title.message}</span>}
             </div>
@@ -172,7 +174,7 @@ function SubmitCard({ quota, isProject }) {
               {...register('body')}
               placeholder={isProject ? "Describe exactly what you are doing, resources used, and who is involved..." : "Detail your character's actions, resources expended, and desired outcome..."}
               maxLength={isProject ? 3000 : 1500}
-              disabled={isFull || submitMutation.isPending}
+              disabled={isBlocked || submitMutation.isPending}
             />
             {errors.body && <span style={{ color: '#ef4444', fontSize: '0.85rem' }}>{errors.body.message}</span>}
             <span className={styles.counter}>{(bodyValue || '').length} / {isProject ? 3000 : 1500}</span>
@@ -189,14 +191,13 @@ function SubmitCard({ quota, isProject }) {
             <button
               type="submit"
               className={`${styles.submitBtn} ${isProject ? styles.submitBtnProject : ''}`}
-              disabled={isFull || submitMutation.isPending}
-              style={{ opacity: submitMutation.isPending ? 0.7 : 1 }}
+              disabled={isBlocked || submitMutation.isPending}
               data-cuelume-press
               data-cuelume-release="success"
               data-cuelume-hover
             >
-              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>send</span>
-              {submitMutation.isPending ? 'Submitting...' : 'Submit Action'}
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>{isBlocked ? 'block' : 'send'}</span>
+              {blockedLabel || (submitMutation.isPending ? 'Submitting...' : 'Submit Action')}
             </button>
           </div>
         </form>
@@ -205,7 +206,7 @@ function SubmitCard({ quota, isProject }) {
   );
 }
 
-function ActiveTrackItem({ dt, isProject }) {
+function ActiveTrackItem({ dt, isProject, massReleaseCountdown, deadlinePassed }) {
   const queryClient = useQueryClient();
   const status = (dt.status || 'submitted').toLowerCase();
   const displayTitle = isProject ? dt.title.replace('[PROJECT] ', '') : dt.title;
@@ -222,6 +223,11 @@ function ActiveTrackItem({ dt, isProject }) {
   });
 
   const canEdit = status === 'submitted' || status === 'needs a scene';
+  // No release timer on "Needs a Scene" (a scene isn't settled by the release) or "submitted" (sent back
+  // for editing). ST notes already written on either still appear once released.
+  const awaitingRelease = Boolean(dt.is_pending_release) && !massReleaseCountdown?.isPast && status !== 'needs a scene' && status !== 'submitted';
+  // Deadline is over but the ST hasn't written a resolution yet.
+  const awaitingST = deadlinePassed && !dt.gm_resolution && !dt.is_pending_release && (status === 'submitted' || status.startsWith('approved'));
 
   const updateMutation = useMutation({
     mutationFn: async (data) => {
@@ -278,36 +284,59 @@ function ActiveTrackItem({ dt, isProject }) {
           <h4 className={styles.trackTitle}>{displayTitle}</h4>
           <p className={styles.trackBody}>{dt.body}</p>
           {status === 'needs a scene' && (
-            <div
-              style={{
-                background: 'rgba(255, 204, 0, 0.07)',
-                border: '1px solid rgba(255, 204, 0, 0.3)',
-                borderRadius: 'var(--radius-sm)',
-                padding: '0.85rem 1rem',
-                marginTop: '0.75rem',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.4rem'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ffcc00', fontWeight: 800, fontSize: '0.9rem' }}>
-                <span className="material-symbols-outlined" style={{ fontSize: '1.15rem', color: '#ffcc00' }}>theaters</span>
-                <span>{dt.scene_number ? `Scene ${dt.scene_number}` : 'Needs a Scene'}{dt.scene_title ? `: ${dt.scene_title}` : ''}</span>
+            <div className={styles.trackScene}>
+              <div className={styles.sceneNumber}>
+                <span className={styles.sceneNumberLabel}>Scene</span>
+                <span className={styles.sceneNumberValue}>{dt.scene_number || '?'}</span>
               </div>
-
-              {dt.scene_participants && dt.scene_participants.length > 0 && (
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>
-                  <strong style={{ color: 'var(--text-secondary)' }}>Scene with: </strong>
-                  {formatSceneWith(dt.scene_participants)}
-                </div>
-              )}
-
-              <div style={{ fontSize: '0.82rem', color: '#ffcc00', opacity: 0.9 }}>
-                Please communicate with the other players to find a time that works with you after the program comes out.
+              <div className={styles.trackSceneBody}>
+                {dt.scene_title && <div className={styles.trackSceneTitle}>{dt.scene_title}</div>}
+                {!dt.scene_number ? (
+                  <div className={styles.sceneSolo}>The Storytellers have not placed you in a scene yet.</div>
+                ) : (dt.scene_participants || []).length === 0 ? (
+                  <div className={styles.sceneSolo}>Solo scene</div>
+                ) : (
+                  <div>
+                    <span className={styles.sceneWithLabel}>Scene with</span>
+                    <div className={styles.sceneCast}>
+                      {dt.scene_participants.map(p => (
+                        <span key={p.character_id} className={styles.sceneCastChip} title={p.clan || undefined}>
+                          <span className={styles.sceneCastAvatar}>
+                            <Avatar userId={p.user_id} hasAvatar={p.has_avatar} clan={p.clan} size={24} fallback={symlogoWhite(p.clan) || '/img/ATT-logo(1).webp'} />
+                          </span>
+                          {p.char_name || p.player_name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {dt.scene_number && (
+                  <div className={styles.sceneNote}>
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px', flexShrink: 0 }}>forum</span>
+                    <span>Please communicate with the other players to find a time that works with you after the program comes out.</span>
+                  </div>
+                )}
               </div>
             </div>
           )}
-          {canEdit && (
+          {awaitingRelease ? (
+            <div className={styles.trackPendingRelease}>
+              <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>schedule</span>
+              Resolution releases in {formatCountdownText(massReleaseCountdown)}
+            </div>
+          ) : dt.gm_resolution ? (
+            <div className={styles.resolutionBox} style={{ position: 'relative', zIndex: 1, marginTop: '12px' }}>
+              <span className={`${styles.resolutionLabel} ${styles.resolutionLabelApproved}`}>GM Resolution:</span>
+              <p className={styles.resolutionText}>{dt.gm_resolution}</p>
+            </div>
+          ) : awaitingST ? (
+            <div className={styles.trackNotice}>
+              <span className="material-symbols-outlined" style={{ fontSize: '16px', flexShrink: 0 }}>hourglass_top</span>
+              <span>The Storytellers are working as fast as they can to finish all resolutions before the next event. Please stay patient.</span>
+            </div>
+          ) : null}
+          {/* After the deadline only actions the ST sent back stay editable (the server enforces the same). */}
+          {canEdit && (!deadlinePassed || dt.reopened_at) && (
             <button
               className={styles.viewAllBtn}
               style={{ position: 'relative', zIndex: 10, marginTop: '8px' }}
@@ -324,7 +353,7 @@ function ActiveTrackItem({ dt, isProject }) {
   );
 }
 
-function ArchiveItem({ dt, isProject, massReleaseCountdown }) {
+function ArchiveItem({ dt, isProject }) {
   const status = (dt.status || 'resolved').toLowerCase();
   const displayTitle = isProject ? dt.title.replace('[PROJECT] ', '') : dt.title;
   
@@ -337,7 +366,6 @@ function ArchiveItem({ dt, isProject, massReleaseCountdown }) {
   if (status === 'rejected') badgeClass = styles.badgeRejected;
   if (status === 'submitted') badgeClass = styles.badgePending;
 
-  const isPendingRelease = Boolean(dt.is_pending_release && (!massReleaseCountdown || !massReleaseCountdown.isPast));
 
   return (
     <motion.div 
@@ -357,56 +385,15 @@ function ArchiveItem({ dt, isProject, massReleaseCountdown }) {
       <div className={styles.archiveCardBody}>
         <p className={styles.archiveCardText}>{dt.body}</p>
 
-        {(status === 'resolved in scene' || status === 'needs a scene') && (
-          <div
-            style={{
-              background: 'rgba(255, 204, 0, 0.07)',
-              border: '1px solid rgba(255, 204, 0, 0.3)',
-              borderRadius: 'var(--radius-sm)',
-              padding: '1rem',
-              marginTop: '1rem',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.45rem'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ffcc00', fontWeight: 800, fontSize: '0.95rem' }}>
-              <span className="material-symbols-outlined" style={{ fontSize: '1.25rem', color: '#ffcc00' }}>theaters</span>
-              <span>Resolved in Scene{dt.scene_number ? ` ${dt.scene_number}` : ''}{dt.scene_title ? `: ${dt.scene_title}` : ''}</span>
-            </div>
-
-            {dt.scene_participants && dt.scene_participants.length > 0 ? (
-              <div style={{ fontSize: '0.88rem', color: 'var(--text-primary)', marginTop: '2px' }}>
-                <strong style={{ color: 'var(--text-secondary)' }}>Scene with: </strong>
-                {formatSceneWith(dt.scene_participants)}
-              </div>
-            ) : (
-              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                Solo scene or participants to be assigned
-              </div>
-            )}
-
-            <div style={{ fontSize: '0.85rem', color: '#ffcc00', opacity: 0.9, marginTop: '4px' }}>
-              Please communicate with the other players to find a time that works with you after the program comes out.
-            </div>
+        {/* The scene is done: just a marker, no participants or scheduling note */}
+        {status === 'resolved in scene' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '1rem', color: 'var(--rev)', fontWeight: 700, fontSize: '0.9rem' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>theaters</span>
+            Resolved in Scene
           </div>
         )}
 
-        {isPendingRelease ? (
-          <div className={styles.resolutionBox} style={{ textAlign: 'center', opacity: 0.85, padding: '1.5rem', background: 'var(--glass-inset)' }}>
-             <h4 style={{ color: '#4da6ff', marginBottom: '8px', marginTop: 0 }}>Resolution Pending Mass Release</h4>
-             <p className={styles.resolutionText} style={{ fontFamily: 'Fira Code, monospace', fontSize: '1.1rem' }}>
-               Releasing in {(() => {
-                  if (!massReleaseCountdown || massReleaseCountdown.isPast) return '00d 00h 00m 00s';
-                  const d = String(massReleaseCountdown.days).padStart(2, '0');
-                  const h = String(massReleaseCountdown.hours).padStart(2, '0');
-                  const m = String(massReleaseCountdown.minutes).padStart(2, '0');
-                  const s = String(massReleaseCountdown.seconds).padStart(2, '0');
-                  return `${d}d ${h}h ${m}m ${s}s`;
-               })()}
-             </p>
-          </div>
-        ) : dt.gm_resolution ? (
+        {dt.gm_resolution ? (
           <div className={styles.resolutionBox}>
             <span className={`${styles.resolutionLabel} ${status === 'rejected' ? styles.resolutionLabelRejected : styles.resolutionLabelApproved}`}>
               GM Resolution:
@@ -475,8 +462,9 @@ export default function DownTimes() {
   const deadlineCountdown = useCountdown(configData?.downtime_deadline || '', true);
   deadlineCountdown.targetDate = configData?.downtime_deadline || '';
 
-  const openingCountdown = useCountdown(configData?.downtime_opening || '', false);
-  openingCountdown.targetDate = configData?.downtime_opening || '';
+  const nextModernEvent = configData?.next_modern_event || null;
+  const nextEventCountdown = useCountdown(nextModernEvent?.date || '', false);
+  nextEventCountdown.targetDate = nextModernEvent?.date || '';
 
   const projectCountdown = useCountdown(configData?.project_deadline || '', true);
   projectCountdown.targetDate = configData?.project_deadline || '';
@@ -517,23 +505,17 @@ export default function DownTimes() {
     return viewMode === 'project' ? mine.filter(isProj) : mine.filter(dt => !isProj(dt));
   }, [mine, viewMode]);
 
-  const active = useMemo(() => currentCategoryMine.filter(d => !statusIsPast(d.status)), [currentCategoryMine]);
-  const pastRaw = useMemo(() => currentCategoryMine.filter(d => statusIsPast(d.status)), [currentCategoryMine]);
+  // Finished actions whose resolution is still waiting on the mass release stay in Active Track;
+  // they move to Archive & Resolutions once the release time has passed.
+  const releaseDone = massReleaseCountdown.isPast;
+  const active = useMemo(() => currentCategoryMine.filter(d => !statusIsPast(d.status) || (d.is_pending_release && !releaseDone)), [currentCategoryMine, releaseDone]);
+  const pastRaw = useMemo(() => currentCategoryMine.filter(d => statusIsPast(d.status) && !(d.is_pending_release && !releaseDone)), [currentCategoryMine, releaseDone]);
 
-  // Only scenes still to be played. "Resolved in scene" is done and lives in the archive instead.
-  // Grouped by scene so two of my actions in the same scene show as one card.
-  const upcomingScenes = useMemo(() => {
-    const byScene = new Map();
-    for (const d of currentCategoryMine) {
-      if (String(d.status || '').toLowerCase() !== 'needs a scene') continue;
-      const key = d.scene_id || `unassigned_${d.id}`;
-      if (!byScene.has(key)) {
-        byScene.set(key, { key, number: d.scene_number, title: d.scene_title, participants: d.scene_participants || [], actions: [] });
-      }
-      byScene.get(key).actions.push(d);
-    }
-    return [...byScene.values()].sort((a, b) => (a.number || Infinity) - (b.number || Infinity));
-  }, [currentCategoryMine]);
+  const deadlinePassed = viewMode === 'project'
+    ? Boolean(configData?.project_deadline) && projectCountdown.isPast
+    : Boolean(configData?.downtime_deadline) && deadlineCountdown.isPast;
+
+
 
   const archiveList = useMemo(() => {
     let source = pastRaw;
@@ -560,6 +542,9 @@ export default function DownTimes() {
     const resultIds = new Set(results.map(r => r.id));
     return source.filter((_, idx) => resultIds.has(idx));
   }, [pastRaw, archiveFilter, q]);
+
+
+
 
   return (
     <Skeleton loading={isLoading} name="downtimes-page">
@@ -660,8 +645,10 @@ export default function DownTimes() {
               />
               <CountdownDisplay
                 title="Next Modern Event"
-                countdown={openingCountdown}
-                subText="Submissions are Open"
+                countdown={nextEventCountdown}
+                subText={nextModernEvent
+                  ? nextModernEvent.title.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim()
+                  : 'Nothing on the calendar yet'}
                 icon="event"
                 isProject={false}
               />
@@ -676,86 +663,6 @@ export default function DownTimes() {
             />
           )}
         </motion.section>
-
-        {/* Upcoming live event scenes ("Needs a Scene" only) */}
-        {upcomingScenes.length > 0 && (
-          <motion.section
-            className={styles.sceneSection}
-            variants={{
-              hidden: { opacity: 0, y: 30, scale: 0.95 },
-              visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 25 } }
-            }}
-          >
-            <div className={styles.sceneSectionHeader}>
-              <div>
-                <span className={styles.deadlineLabel}>Next Live Event</span>
-                <h3 className={styles.activeTrackTitle}>Your Upcoming Scenes</h3>
-              </div>
-              <span className={styles.sceneCount}>
-                {upcomingScenes.length} {upcomingScenes.length === 1 ? 'scene' : 'scenes'} to play
-              </span>
-            </div>
-
-            <div className={styles.sceneList}>
-              {upcomingScenes.map(sc => (
-                <article key={sc.key} className={styles.sceneCard}>
-                  <span className={`material-symbols-outlined ${styles.deadlineCardIcon}`} aria-hidden="true">theaters</span>
-
-                  <div className={styles.sceneNumber}>
-                    <span className={styles.sceneNumberLabel}>Scene</span>
-                    <span className={styles.sceneNumberValue}>{sc.number || '?'}</span>
-                  </div>
-
-                  <div className={styles.sceneBody}>
-                    <div>
-                      <h4 className={styles.sceneTitle}>
-                        {sc.title || sc.actions[0].title.replace('[PROJECT] ', '')}
-                      </h4>
-                      {sc.actions.map(a => (
-                        <div key={a.id} className={styles.sceneAction}>
-                          <span className={styles.sceneActionId}>#{a.id}</span>
-                          {a.title.replace('[PROJECT] ', '')}
-                        </div>
-                      ))}
-                    </div>
-
-                    <div>
-                      <span className={styles.sceneWithLabel}>Scene with</span>
-                      {!sc.number ? (
-                        <div className={styles.sceneSolo}>The Storytellers have not placed you in a scene yet.</div>
-                      ) : sc.participants.length === 0 ? (
-                        <div className={styles.sceneSolo}>Solo scene</div>
-                      ) : (
-                        <div className={styles.sceneCast}>
-                          {sc.participants.map(p => (
-                            <span key={p.character_id} className={styles.sceneCastChip} title={p.clan || undefined}>
-                              <span className={styles.sceneCastAvatar}>
-                                <Avatar userId={p.user_id} hasAvatar={p.has_avatar} clan={p.clan} size={28} fallback={symlogoWhite(p.clan) || '/img/ATT-logo(1).webp'} />
-                              </span>
-                              {p.char_name || p.player_name}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className={styles.sceneNote}>
-                      <span className="material-symbols-outlined" style={{ fontSize: '18px', flexShrink: 0 }}>forum</span>
-                      <span>Please communicate with the other players to find a time that works with you after the program comes out.</span>
-                    </div>
-
-                    {sc.actions.filter(a => a.gm_resolution && !a.is_pending_release).map(a => (
-                      <div key={a.id} className={styles.sceneStNote}>
-                        <span className={styles.sceneWithLabel}>Storyteller note</span>
-                        {a.gm_resolution}
-                      </div>
-                    ))}
-                  </div>
-                </article>
-              ))}
-            </div>
-          </motion.section>
-        )}
 
         {/* Main Grid */}
         <motion.section 
@@ -797,6 +704,8 @@ export default function DownTimes() {
                     key={dt.id}
                     dt={dt}
                     isProject={viewMode === 'project'}
+                    massReleaseCountdown={massReleaseCountdown}
+                    deadlinePassed={deadlinePassed}
                   />
                 ))
               )}
@@ -867,7 +776,7 @@ export default function DownTimes() {
               </div>
             ) : (
               archiveList.map(dt => (
-                <ArchiveItem key={dt.id} dt={dt} isProject={viewMode === 'project'} massReleaseCountdown={massReleaseCountdown} />
+                <ArchiveItem key={dt.id} dt={dt} isProject={viewMode === 'project'} />
               ))
             )}
           </div>

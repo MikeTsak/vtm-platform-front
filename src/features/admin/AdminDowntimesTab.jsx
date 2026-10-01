@@ -1,7 +1,8 @@
 // src/components/admin/AdminDowntimesTab.jsx
-import React, { useEffect, useMemo, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState, useRef, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api, { formatApiError } from "../../core/api";
+import { AuthCtx } from '../../core/AuthContext';
 import { formatEuDate } from '../../utils/dateFormatter';
 import styles from '../../styles/Admin.module.css';
 import Avatar from '../../components/Avatar';
@@ -56,6 +57,15 @@ const CLAN_SURFACES = {
   'Thin-blood': 'rgba(20, 35, 45, 0.7)',
 };
 /* ---------------------------------- */
+
+// datetime-local value in the admin's own time zone (toISOString would shift it to UTC, so a
+// 10:00 release showed as 07:00 here while the Calendar showed 10:00).
+function toLocalDateTimeInput(d) {
+  const dt = new Date(d);
+  if (isNaN(dt.getTime())) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+}
 
 function niceDate(d) {
   if (!d) return 'None';
@@ -397,6 +407,24 @@ export default function AdminDowntimesTab({ characters = [] }) {
 
   const [viewMode, setViewMode] = useState('standard');
 
+  // Collapsible panels (schedule settings, scenes). Open/closed is remembered per admin account in this browser.
+  const { user: authUser } = useContext(AuthCtx);
+  const drawerKey = `erebus.admin.downtimes.drawers.${authUser?.id ?? 'anon'}`;
+  const [drawers, setDrawers] = useState(() => {
+    try { return JSON.parse(window.localStorage.getItem(drawerKey)) || {}; } catch { return {}; }
+  });
+  function setDrawer(name, open) {
+    setDrawers(prev => {
+      const next = { ...prev, [name]: open === undefined ? !isDrawerOpen(prev, name) : open };
+      try { window.localStorage.setItem(drawerKey, JSON.stringify(next)); } catch { /* storage blocked: still works for this visit */ }
+      return next;
+    });
+  }
+  // Defaults: settings closed (the chips summarize them), scenes open.
+  const isDrawerOpen = (state, name) => (name === 'scenes' ? state[name] !== false : Boolean(state[name]));
+  const configOpen = isDrawerOpen(drawers, 'config');
+  const scenesOpen = isDrawerOpen(drawers, 'scenes');
+
   const [listLoading, setListLoading] = useState(false);
   const [listErr, setListErr] = useState('');
   const [rows, setRows] = useState([]);
@@ -447,7 +475,7 @@ export default function AdminDowntimesTab({ characters = [] }) {
         setProjectDeadline(ymd(data?.project_deadline || ''));
         setMasterPhase(data?.downtime_active_phase || 'standard');
         setMassReleaseMode(data?.downtime_mass_release_mode === 'true');
-        setMassReleaseDate(data?.downtime_mass_release_date ? new Date(data.downtime_mass_release_date).toISOString().slice(0, 16) : '');
+        setMassReleaseDate(data?.downtime_mass_release_date ? toLocalDateTimeInput(data.downtime_mass_release_date) : '');
       } catch (e) {
         console.error('[AdminDowntimesTab] Failed to load config', e);
         if (mounted) setCfgErr(formatApiError(e, 'Failed to load downtime config'));
@@ -476,7 +504,7 @@ export default function AdminDowntimesTab({ characters = [] }) {
       setProjectDeadline(ymd(data?.project_deadline || ''));
       setMasterPhase(data?.downtime_active_phase || 'standard');
       setMassReleaseMode(data?.downtime_mass_release_mode === 'true');
-      setMassReleaseDate(data?.downtime_mass_release_date ? new Date(data.downtime_mass_release_date).toISOString().slice(0, 16) : '');
+      setMassReleaseDate(data?.downtime_mass_release_date ? toLocalDateTimeInput(data.downtime_mass_release_date) : '');
       setCfgInfo('Configuration saved successfully.');
       setTimeout(() => setCfgInfo(''), 3000);
     } catch (e) {
@@ -502,7 +530,7 @@ export default function AdminDowntimesTab({ characters = [] }) {
         setProjectDeadline(ymd(data?.project_deadline || ''));
         setMasterPhase(data?.downtime_active_phase || 'standard');
         setMassReleaseMode(data?.downtime_mass_release_mode === 'true');
-        setMassReleaseDate(data?.downtime_mass_release_date ? new Date(data.downtime_mass_release_date).toISOString().slice(0, 16) : '');
+        setMassReleaseDate(data?.downtime_mass_release_date ? toLocalDateTimeInput(data.downtime_mass_release_date) : '');
       })
       .catch(e => {
         console.error('[AdminDowntimesTab] Failed to reload config', e);
@@ -828,138 +856,148 @@ export default function AdminDowntimesTab({ characters = [] }) {
   return (
     <div className={styles.stack12}>
 
-      {/* 1. TOP INTERACTIVE VIEW OVERVIEW OVERHAUL */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.8rem', background: 'var(--glass-inset)', padding: '5px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', width: 'fit-content', maxWidth: '100%' }}>
-        <button
-          className={styles.tab}
-          style={{
-            background: viewMode === 'standard' ? 'linear-gradient(135deg, var(--accent-purple-dark) 0%, var(--accent-purple) 100%)' : 'transparent',
-            color: viewMode === 'standard' ? 'var(--text-color)' : 'var(--text-secondary)',
-            boxShadow: viewMode === 'standard' ? '0 4px 15px var(--accent-purple-glow)' : 'none',
-            padding: '0.8rem 1.8rem',
-            borderRadius: 'var(--radius-md)',
-            fontWeight: 800
-          }}
-          onClick={() => setViewMode('standard')}
-        >
-          🦇 Standard Downtimes
-        </button>
-        <button
-          className={styles.tab}
-          style={{
-            background: viewMode === 'project' ? 'linear-gradient(135deg, #1b4c8c 0%, #4da6ff 100%)' : 'transparent',
-            color: viewMode === 'project' ? 'var(--text-color)' : 'var(--text-secondary)',
-            boxShadow: viewMode === 'project' ? '0 4px 15px rgba(77, 166, 255, 0.4)' : 'none',
-            padding: '0.8rem 1.8rem',
-            borderRadius: 'var(--radius-md)',
-            fontWeight: 800
-          }}
-          onClick={() => setViewMode('project')}
-        >
-          📜 Project Actions
-        </button>
-      </div>
+      {/* ============ Header: view switch, schedule at a glance, settings drawer ============ */}
+      <section className={styles.editorSection} style={{ borderTop: `4px solid ${viewMode === 'project' ? '#4da6ff' : 'var(--accent-purple)'}`, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+          <div role="tablist" style={{ display: 'flex', gap: '4px', background: 'var(--glass-inset)', padding: '4px', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)', maxWidth: '100%' }}>
+            {[
+              { id: 'standard', label: 'Monthly Actions', icon: 'event_note', bg: 'linear-gradient(135deg, var(--accent-purple-dark) 0%, var(--accent-purple) 100%)' },
+              { id: 'project', label: 'Projects', icon: 'history_edu', bg: 'linear-gradient(135deg, #1b4c8c 0%, #4da6ff 100%)' },
+            ].map(v => (
+              <button
+                key={v.id}
+                type="button"
+                role="tab"
+                aria-selected={viewMode === v.id}
+                onClick={() => setViewMode(v.id)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '0.5rem 1rem', borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer', fontWeight: 800, fontSize: '0.9rem', background: viewMode === v.id ? v.bg : 'transparent', color: viewMode === v.id ? 'var(--text-color)' : 'var(--text-secondary)' }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>{v.icon}</span>
+                {v.label}
+              </button>
+            ))}
+          </div>
 
-      {/* ============ Downtime Schedule (Config Panel) ============ */}
-      <section className={styles.editorSection} style={{ borderTop: `4px solid ${viewMode === 'project' ? '#4da6ff' : 'var(--accent-purple)'}` }}>
-        <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
-          <h4 style={{ margin: 0, color: viewMode === 'project' ? '#4da6ff' : 'var(--accent-purple)', fontSize: '1.4rem', fontWeight: 800 }}>
-            {viewMode === 'standard' ? 'Downtime Configuration' : 'Project Configuration'}
-          </h4>
-          <div className={styles.subtle}>Configure deadlines and release settings.</div>
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.btnSecondary}`}
+            onClick={() => setDrawer('config')}
+            aria-expanded={configOpen}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>tune</span>
+            Schedule & release
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>{configOpen ? 'expand_less' : 'expand_more'}</span>
+          </button>
+        </div>
+
+        {/* Live schedule at a glance (the same dates as the Calendar) */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+          {[
+            { icon: masterPhase === 'project' ? 'history_edu' : 'event_note', label: 'Players can submit', value: masterPhase === 'project' ? 'Projects' : masterPhase === 'closed' ? 'Nothing (closed)' : 'Monthly Actions' },
+            ...(viewMode === 'standard'
+              ? [
+                  { icon: 'lock_open_right', label: 'Opens', value: opening ? niceDate(opening) : 'Not set' },
+                  { icon: 'alarm_off', label: 'Deadline', value: deadline ? niceDate(deadline) : 'Not set' },
+                ]
+              : [{ icon: 'alarm_off', label: 'Project deadline', value: projectDeadline ? niceDate(projectDeadline) : 'Not set' }]),
+            {
+              icon: 'campaign',
+              label: 'Mass release',
+              value: !massReleaseMode ? 'Off (resolutions show at once)' : massReleaseDate ? `${niceDate(massReleaseDate)} ${massReleaseDate.slice(11, 16)}` : 'On, no date set',
+              accent: massReleaseMode ? '#4da6ff' : null,
+            },
+          ].map(chip => (
+            <span key={chip.label} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '999px', background: 'var(--glass-inset)', border: `1px solid ${chip.accent ? `${chip.accent}66` : 'var(--glass-border)'}`, fontSize: '0.8rem', maxWidth: '100%' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '15px', color: chip.accent || 'var(--text-secondary)' }}>{chip.icon}</span>
+              <span style={{ color: 'var(--text-secondary)' }}>{chip.label}:</span>
+              <strong style={{ color: chip.accent || 'var(--text-primary)' }}>{chip.value}</strong>
+            </span>
+          ))}
         </div>
 
         {cfgLoading && <div className={styles.loading}><span className={styles.spinner} /> Loading configuration...</div>}
         {cfgErr && <div className={`${styles.alert} ${styles.alertError}`}>{cfgErr}</div>}
         {cfgInfo && <div className={`${styles.alert} ${styles.alertInfo}`}>{cfgInfo}</div>}
 
-        {/* --- SYSTEM PHASE INTERACTIVE OVERRIDE --- */}
-        <div style={{ background: 'var(--glass-inset)', padding: '1.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)', borderLeft: masterPhase === 'project' ? '4px solid #4da6ff' : '4px solid var(--accent-purple)', marginBottom: '2rem', boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.4)' }}>
-          <h4 style={{ margin: '0 0 6px 0', fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span className="material-symbols-outlined" style={{ fontSize: '1.2rem', color: 'var(--accent-purple)' }}>public</span>
-            Default Phase
-          </h4>
-          <p style={{ margin: '0 0 15px 0', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-            Sets the default baseline view shown to all users inside their action panels.
-          </p>
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-            <button
-              className={styles.btn}
-              style={{ background: masterPhase === 'standard' ? 'linear-gradient(135deg, var(--accent-purple-dark) 0%, var(--accent-purple) 100%)' : 'rgba(255,255,255,0.03)', border: `1px solid ${masterPhase === 'standard' ? 'transparent' : 'var(--glass-border)'}`, color: 'var(--text-color)', fontWeight: 700 }}
-              onClick={() => handlePhaseToggle('standard')}
-              disabled={cfgSaving}
-            >
-              Standard
-            </button>
-            <button
-              className={styles.btn}
-              style={{ background: masterPhase === 'project' ? 'linear-gradient(135deg, #1b4c8c 0%, #4da6ff 100%)' : 'rgba(255,255,255,0.03)', border: `1px solid ${masterPhase === 'project' ? 'transparent' : 'var(--glass-border)'}`, color: 'var(--text-color)', fontWeight: 700 }}
-              onClick={() => handlePhaseToggle('project')}
-              disabled={cfgSaving}
-            >
-              Projects
-            </button>
-          </div>
-        </div>
-
-        <div className={styles.rGrid2}>
-          {viewMode === 'standard' ? (
-            <>
-              <label className={styles.labeledInput}>
-                <span>Downtime deadline</span>
-                <EuDateInput className={styles.input} value={deadline} onChange={setDeadline} />
-              </label>
-              <label className={styles.labeledInput}>
-                <span>Next Event Date</span>
-                <EuDateInput className={styles.input} value={opening} onChange={setOpening} />
-              </label>
-            </>
-          ) : (
-            <label className={styles.labeledInput}>
-              <span>Long-Term Project Deadline</span>
-              <EuDateInput className={styles.input} value={projectDeadline} onChange={setProjectDeadline} />
-            </label>
-          )}
-        </div>
-
-        <div style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', padding: 'clamp(1rem, 3vw, 2rem)', boxShadow: 'var(--glass-shadow)', marginTop: '2rem' }}>
-          <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
-            <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span className="material-symbols-outlined" style={{ fontSize: '1.5rem', color: '#4da6ff' }}>schedule</span>
-              Mass Release System
-            </h4>
-            <p style={{ margin: '5px 0 0 0', color: 'var(--text-secondary)' }}>Automates the simultaneous release of all GM resolutions to players.</p>
-          </div>
-
-          <div onClick={() => setMassReleaseMode(!massReleaseMode)} style={{ background: 'var(--glass-inset)', border: `2px solid ${massReleaseMode ? '#4da6ff' : 'var(--glass-border)'}`, borderRadius: 'var(--radius-md)', padding: '1.5rem', cursor: 'pointer', transition: 'all 0.3s ease', display: 'flex', flexDirection: 'column', gap: '1.5rem', boxShadow: massReleaseMode ? '0 0 20px rgba(77,166,255,0.1)' : 'none' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '15px', minWidth: 0 }}>
-                <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: massReleaseMode ? '#4da6ff' : 'var(--glass-border)', boxShadow: massReleaseMode ? '0 0 15px #4da6ff' : 'none', animation: massReleaseMode ? 'pulseGlow 2s infinite' : 'none' }} />
-                <h3 style={{ margin: 0, fontSize: 'clamp(1.05rem, 4vw, 1.4rem)', color: 'var(--text-color)' }}>Mass Release Mode</h3>
+        {configOpen && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--glass-inset)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '1rem', alignItems: 'end' }}>
+              <div className={styles.labeledInput}>
+                <span>Players can submit (saves at once)</span>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {[{ id: 'standard', label: 'Monthly Actions' }, { id: 'project', label: 'Projects' }].map(ph => (
+                    <button
+                      key={ph.id}
+                      type="button"
+                      className={styles.btn}
+                      onClick={() => handlePhaseToggle(ph.id)}
+                      disabled={cfgSaving}
+                      style={{ flex: 1, padding: '0.45rem 0.6rem', fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-color)', border: `1px solid ${masterPhase === ph.id ? 'transparent' : 'var(--glass-border)'}`, background: masterPhase === ph.id ? (ph.id === 'project' ? 'linear-gradient(135deg, #1b4c8c 0%, #4da6ff 100%)' : 'linear-gradient(135deg, var(--accent-purple-dark) 0%, var(--accent-purple) 100%)') : 'rgba(255,255,255,0.03)' }}
+                    >
+                      {ph.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div style={{ position: 'relative', width: '60px', height: '32px', background: massReleaseMode ? '#4da6ff' : 'var(--glass-border)', borderRadius: '32px', transition: 'background 0.3s ease' }}>
-                <div style={{ position: 'absolute', top: '4px', left: massReleaseMode ? '32px' : '4px', width: '24px', height: '24px', background: 'var(--text-color)', borderRadius: '50%', transition: 'left 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }} />
+
+              {viewMode === 'standard' ? (
+                <>
+                  <label className={styles.labeledInput}>
+                    <span>Downtimes open</span>
+                    <EuDateInput className={styles.input} value={opening} onChange={setOpening} />
+                  </label>
+                  <label className={styles.labeledInput}>
+                    <span>Downtime deadline</span>
+                    <EuDateInput className={styles.input} value={deadline} onChange={setDeadline} />
+                  </label>
+                </>
+              ) : (
+                <label className={styles.labeledInput}>
+                  <span>Long-Term Project deadline</span>
+                  <EuDateInput className={styles.input} value={projectDeadline} onChange={setProjectDeadline} />
+                </label>
+              )}
+
+              <div className={styles.labeledInput}>
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                  Mass release
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={massReleaseMode}
+                    onClick={() => setMassReleaseMode(!massReleaseMode)}
+                    title="When on, resolutions stay hidden from players until the release date"
+                    style={{ position: 'relative', width: '40px', height: '22px', borderRadius: '22px', border: 'none', cursor: 'pointer', background: massReleaseMode ? '#4da6ff' : 'var(--glass-border)', flexShrink: 0 }}
+                  >
+                    <span style={{ position: 'absolute', top: '3px', left: massReleaseMode ? '21px' : '3px', width: '16px', height: '16px', borderRadius: '50%', background: 'var(--text-color)', transition: 'left 0.2s ease' }} />
+                  </button>
+                </span>
+                <input
+                  type="datetime-local"
+                  className={styles.input}
+                  value={massReleaseDate}
+                  onChange={(e) => setMassReleaseDate(e.target.value)}
+                  disabled={!massReleaseMode}
+                  title="Resolutions become visible to players at this time"
+                />
               </div>
             </div>
 
-            {massReleaseMode && (
-              <div style={{ background: 'rgba(77,166,255,0.05)', borderRadius: '8px', padding: '15px', borderLeft: `4px solid #4da6ff` }} onClick={e => e.stopPropagation()}>
-                <h4 style={{ margin: '0 0 10px 0', color: '#4da6ff', fontSize: '1.1rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Enabled</h4>
-                <label className={styles.labeledInput}>
-                  <span style={{ color: 'var(--text-primary)' }}>Resolutions become visible on this date:</span>
-                  <input type="datetime-local" className={styles.input} value={massReleaseDate} onChange={(e) => setMassReleaseDate(e.target.value)} style={{ marginTop: '8px' }} />
-                </label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+              <span className={styles.subtle} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>calendar_month</span>
+                Same dates as the Calendar: saving here updates the live cycle there too.
+              </span>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={onReloadConfig}>Reset</button>
+                <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => onSaveConfig()} disabled={cfgSaving}>
+                  {cfgSaving ? 'Saving...' : 'Save schedule'}
+                </button>
               </div>
-            )}
+            </div>
           </div>
-        </div>
-
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginTop: '1.5rem', borderTop: '1px solid var(--glass-border)', paddingTop: '1.5rem' }}>
-          <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={onReloadConfig}>Reset Configuration</button>
-          <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => onSaveConfig()} disabled={cfgSaving}>
-            {cfgSaving ? 'Updating...' : 'Save Configuration'}
-          </button>
-        </div>
+        )}
       </section>
 
       {/* ============ Admin List Panel ============ */}
@@ -970,18 +1008,6 @@ export default function AdminDowntimesTab({ characters = [] }) {
           </h4>
           <div className={styles.subtle}>View and manage submitted downtimes and projects.</div>
         </div>
-
-        {massReleaseMode && (
-          <div style={{ background: 'rgba(77,166,255,0.1)', border: '1px solid rgba(77,166,255,0.3)', borderRadius: 'var(--radius-md)', padding: '15px', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <span className="material-symbols-outlined" style={{ fontSize: '2rem', color: '#4da6ff' }}>schedule</span>
-            <div>
-              <h4 style={{ margin: '0 0 5px 0', color: '#4da6ff', fontSize: '1.1rem' }}>Mass Release Active</h4>
-              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-                Resolutions you write are currently hidden from players. They will be published on: <strong style={{ color: 'var(--text-primary)' }}>{massReleaseDate ? formatEuDate(massReleaseDate) : 'No date set'}</strong>.
-              </p>
-            </div>
-          </div>
-        )}
 
         <div className={styles.rMainSide} style={{ alignItems: 'end', marginBottom: '1.5rem' }}>
           <label className={styles.labeledInput}>
@@ -1023,8 +1049,8 @@ export default function AdminDowntimesTab({ characters = [] }) {
               borderRadius: 'var(--radius-sm)'
             }}
             onClick={() => {
-              const el = document.getElementById('scenes-section');
-              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              setDrawer('scenes', true);
+              requestAnimationFrame(() => document.getElementById('scenes-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
             }}
           >
             <span className="material-symbols-outlined" style={{ fontSize: '18px', color: '#1a1400' }}>theaters</span>
@@ -1220,7 +1246,7 @@ export default function AdminDowntimesTab({ characters = [] }) {
                               alignItems: 'center',
                               gap: '4px'
                             }}
-                            title="Actions requiring scenes are managed in the Live Scenes section below"
+                            title="Actions requiring scenes are managed in the Modern Event Scenes section below"
                           >
                             <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>theaters</span>
                             {parts.join(', ')} below
@@ -1293,24 +1319,37 @@ export default function AdminDowntimesTab({ characters = [] }) {
           </div>
         )}
 
-        {/* ============ Needs Scene : Live Event Scenes Section ============ */}
+        {/* ============ Needs Scene : Modern Event Scenes Section ============ */}
         {/* scrollMarginTop: the site Nav and admin topbar are both sticky, so a plain scrollIntoView parks the header underneath them */}
         <div id="scenes-section" style={{ marginTop: '3.5rem', borderTop: '2px solid rgba(255, 204, 0, 0.35)', paddingTop: '2.5rem', scrollMarginTop: 'calc(var(--nav-h, 64px) + var(--topbar-h, 60px) + 12px)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
+          <div
+            role="button"
+            tabIndex={0}
+            aria-expanded={scenesOpen}
+            onClick={() => setDrawer('scenes')}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDrawer('scenes'); } }}
+            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: scenesOpen ? '1.5rem' : 0, cursor: 'pointer' }}
+          >
             <div>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(255, 204, 0, 0.12)', border: '1px solid rgba(255, 204, 0, 0.35)', borderRadius: '20px', padding: '4px 14px', marginBottom: '8px' }}>
                 <span className="material-symbols-outlined" style={{ fontSize: '1.1rem', color: '#ffcc00' }}>theaters</span>
                 <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#ffcc00', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Event Management</span>
               </div>
               <h3 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                Needs Scene : Live Event Scenes
+                Needs Scene : Modern Event Scenes
               </h3>
               <p style={{ margin: '6px 0 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                 All actions marked as Needs a Scene or Resolved in scene, organized into group scenes for the upcoming event.
               </p>
             </div>
-
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', fontWeight: 700, color: '#ffcc00' }}>
+              {allSceneIds.length} {allSceneIds.length === 1 ? 'scene' : 'scenes'}
+              {unassignedSceneDowntimes.length > 0 && ` · ${unassignedSceneDowntimes.length} unassigned`}
+              <span className="material-symbols-outlined" style={{ fontSize: '22px' }}>{scenesOpen ? 'expand_less' : 'expand_more'}</span>
+            </span>
           </div>
+
+          {scenesOpen && (<>
 
           {/* Unassigned tray. Shown whenever any scene exists (not only when it has cards) so it is always
               there as the "unassign" drop zone, and does not pop in mid-drag and shove the scenes down. */}
@@ -1818,6 +1857,7 @@ export default function AdminDowntimesTab({ characters = [] }) {
               );
             })}
           </div>
+          </>)}
         </div>
       </section>
     </div>

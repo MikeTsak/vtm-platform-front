@@ -88,6 +88,9 @@ export default function AdminCalendarTab() {
   const [downtimeOpening, setDowntimeOpening] = useState('');
   const [downtimeDeadline, setDowntimeDeadline] = useState('');
   const [downtimePhase, setDowntimePhase] = useState('standard');
+  const [projectDeadline, setProjectDeadline] = useState('');
+  const [massReleaseDate, setMassReleaseDate] = useState('');
+  const [massReleaseMode, setMassReleaseMode] = useState(false);
   const [savingDt, setSavingDt] = useState(false);
 
   // Multiple Downtime Cycles state
@@ -126,6 +129,26 @@ export default function AdminCalendarTab() {
     }
   };
 
+  // The calendar is the source of truth for every downtime date, and the Downtimes tab edits the
+  // same values: after any save, re-read both so this view shows what the server now holds.
+  const applyDowntimeConfig = (dtData) => {
+    setDowntimeOpening(formatDateOnly(dtData.downtime_opening) || '');
+    setDowntimeDeadline(formatDateOnly(dtData.downtime_deadline) || '');
+    setDowntimePhase(dtData.downtime_active_phase || 'standard');
+    setProjectDeadline(formatDateOnly(dtData.project_deadline) || '');
+    setMassReleaseDate(formatDateForInput(dtData.downtime_mass_release_date) || '');
+    setMassReleaseMode(dtData.downtime_mass_release_mode === 'true');
+  };
+
+  const reloadDowntimeSchedule = async () => {
+    const [dtRes, cyclesRes] = await Promise.all([
+      api.get('/downtimes/config'),
+      api.get('/admin/downtimes/cycles'),
+    ]);
+    applyDowntimeConfig(dtRes.data || {});
+    setDtCycles(cyclesRes.data?.cycles || []);
+  };
+
   const loadData = useCallback(async () => {
     setLoading(true);
     setErr('');
@@ -143,11 +166,7 @@ export default function AdminCalendarTab() {
 
       // Downtimes config
       const dtData = dtRes.data || {};
-      const curOpening = formatDateOnly(dtData.downtime_opening) || '';
-      const curDeadline = formatDateOnly(dtData.downtime_deadline) || '';
-      setDowntimeOpening(curOpening);
-      setDowntimeDeadline(curDeadline);
-      setDowntimePhase(dtData.downtime_active_phase || 'standard');
+      applyDowntimeConfig(dtData);
 
       // Multiple DT Cycles
       const loadedCycles = cyclesRes.data?.cycles || [];
@@ -324,6 +343,7 @@ export default function AdminCalendarTab() {
         downtime_deadline: closeStr,
         downtime_active_phase: downtimePhase
       });
+      await reloadDowntimeSchedule();
       showFeedback(`Downtime close set to Sunday ${formatEuDate(closeStr)} (1 week before ${cleanTitle(activeEvent.title)})`);
     } catch (error) {
       console.error('[AdminCalendarTab] Auto DT save failed', error);
@@ -340,8 +360,11 @@ export default function AdminCalendarTab() {
       await api.post('/admin/downtimes/config', {
         downtime_opening: downtimeOpening || null,
         downtime_deadline: downtimeDeadline || null,
+        project_deadline: projectDeadline || null,
+        downtime_mass_release_date: massReleaseDate || null,
         downtime_active_phase: downtimePhase
       });
+      await reloadDowntimeSchedule();
       showFeedback('Downtime schedule saved');
     } catch (error) {
       console.error('[AdminCalendarTab] Downtimes save failed', error);
@@ -380,7 +403,8 @@ export default function AdminCalendarTab() {
         cycles: updatedCycles,
         activeCycleId: activeId
       });
-      setDtCycles(updatedCycles);
+      // Server may have moved the live dates (and computed release dates): show its version.
+      await reloadDowntimeSchedule();
       if (activeId) {
         setActiveCycleId(activeId);
         const active = updatedCycles.find(c => c.id === activeId);
@@ -408,6 +432,15 @@ export default function AdminCalendarTab() {
 
   const handleDeleteCycle = async (id) => {
     const next = dtCycles.filter(c => c.id !== id);
+    await handleSaveCycles(next);
+  };
+
+  // Releasing before the deadline ends would hand out resolutions while players are still submitting.
+  const releaseBeforeClose = (cycle) => Boolean(cycle.release_date && cycle.closing_date && cycle.release_date.slice(0, 16) <= `${cycle.closing_date}T23:59`);
+
+  // Inline edit of a cycle in the table. If it is the live cycle, the server moves the live dates too.
+  const updateCycle = async (id, changes) => {
+    const next = dtCycles.map(c => (c.id === id ? { ...c, ...changes } : c));
     await handleSaveCycles(next);
   };
 
@@ -778,6 +811,20 @@ export default function AdminCalendarTab() {
     return map;
   }, [events, dtCycles]);
 
+  // Mass release: every cycle's release (its own, or the morning after it closes) plus the live setting.
+  const releaseMap = useMemo(() => {
+    const map = {};
+    const add = (value, title) => {
+      const day = String(value || '').slice(0, 10);
+      if (!day) return;
+      if (!map[day]) map[day] = [];
+      map[day].push({ title, time: String(value).slice(11, 16) });
+    };
+    for (const cycle of dtCycles) add(cycle.release_date, cycle.title);
+    if (massReleaseDate && !map[massReleaseDate.slice(0, 10)]) add(massReleaseDate, 'Active cycle');
+    return map;
+  }, [dtCycles, massReleaseDate]);
+
   // DT Open map: computes from configured dtCycles AND downtimeOpening
   const dtOpenMap = useMemo(() => {
     const map = {};
@@ -964,6 +1011,8 @@ export default function AdminCalendarTab() {
                   const dtOpenItems = dtOpenMap[dateStr] || [];
                   const isExplicitDtOpen = downtimeOpening === dateStr;
                   const hasDtOpen = dtOpenItems.length > 0 || isExplicitDtOpen;
+                  const releaseItems = releaseMap[dateStr] || [];
+                  const isProjectClose = projectDeadline === dateStr;
 
                   let bg = 'var(--glass-inset)';
                   let border = '1px solid var(--glass-border)';
@@ -1122,6 +1171,26 @@ export default function AdminCalendarTab() {
                             <span>DT OPEN</span>
                           </div>
                         )}
+
+                        {releaseItems.length > 0 && (
+                          <div
+                            style={{ fontSize: '0.6rem', fontWeight: 800, background: 'rgba(77, 166, 255, 0.22)', border: '1px solid #4da6ff', color: '#9ccfff', borderRadius: '3px', padding: '2px 4px', display: 'flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap', lineHeight: 1.2 }}
+                            title={`Mass release ${releaseItems[0].time ? `at ${releaseItems[0].time} ` : ''}for: ${releaseItems.map(r => cleanTitle(r.title)).join(', ')}${massReleaseMode ? '' : ' (mass release is OFF in the Downtimes tab)'}`}
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: '11px', flexShrink: 0 }}>campaign</span>
+                            <span>RELEASE {releaseItems[0].time}</span>
+                          </div>
+                        )}
+
+                        {isProjectClose && (
+                          <div
+                            style={{ fontSize: '0.6rem', fontWeight: 800, background: 'rgba(179, 136, 255, 0.22)', border: '1px solid #b388ff', color: '#d1b8ff', borderRadius: '3px', padding: '2px 4px', display: 'flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap', lineHeight: 1.2 }}
+                            title="Long Term Project deadline"
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: '11px', flexShrink: 0 }}>history_edu</span>
+                            <span>PROJ CLOSE</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -1156,6 +1225,14 @@ export default function AdminCalendarTab() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span className="material-symbols-outlined" style={{ fontSize: '14px', color: 'var(--color-success)' }}>lock_open_right</span>
             <span>Emerald: Downtime Opening</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#4da6ff' }}>campaign</span>
+            <span>Sky: Mass Release (morning after close unless changed)</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#b388ff' }}>history_edu</span>
+            <span>Violet: Project Deadline</span>
           </div>
         </div>
       </div>
@@ -1300,6 +1377,27 @@ export default function AdminCalendarTab() {
                 onChange={(e) => setDowntimeDeadline(e.target.value)}
               />
             </label>
+
+            <label className={styles.labeledInput}>
+              <span>Mass Release {massReleaseMode ? '' : '(mode OFF)'}</span>
+              <input
+                type="datetime-local"
+                className={styles.input}
+                value={massReleaseDate}
+                onChange={(e) => setMassReleaseDate(e.target.value)}
+                title="When held resolutions go out. Defaults to the morning after the deadline. Turn mass release on or off in the Downtimes tab."
+              />
+            </label>
+
+            <label className={styles.labeledInput}>
+              <span>Project Deadline</span>
+              <input
+                type="date"
+                className={styles.input}
+                value={projectDeadline}
+                onChange={(e) => setProjectDeadline(e.target.value)}
+              />
+            </label>
           </div>
 
           {/* Individual Feature: Auto calculate DT Close 1 week before event */}
@@ -1330,9 +1428,9 @@ export default function AdminCalendarTab() {
               style={{ width: 'auto', fontSize: '0.78rem', padding: '4px 8px' }}
               aria-label="Downtime Active Phase"
             >
-              <option value="standard">Standard Submission Phase</option>
-              <option value="resolving">Storyteller Resolving Phase</option>
-              <option value="closed">Closed Phase</option>
+              <option value="standard">Monthly Actions open</option>
+              <option value="project">Long Term Projects open</option>
+              <option value="closed">Submissions closed</option>
             </select>
             <button
               type="button"
@@ -1480,6 +1578,7 @@ export default function AdminCalendarTab() {
                   <th style={{ padding: '8px' }}>Operation / Cycle</th>
                   <th style={{ padding: '8px' }}>Opening Date</th>
                   <th style={{ padding: '8px' }}>Closing Deadline</th>
+                  <th style={{ padding: '8px' }}>Mass Release</th>
                   <th style={{ padding: '8px' }}>Active in System</th>
                   <th style={{ padding: '8px', textAlign: 'right' }}>Actions</th>
                 </tr>
@@ -1501,11 +1600,38 @@ export default function AdminCalendarTab() {
                           <span>{cycle.title}</span>
                         </div>
                       </td>
-                      <td style={{ padding: '8px', color: cycle.opening_date ? 'var(--color-success)' : 'var(--text-muted)' }}>
-                        {cycle.opening_date ? formatEuDate(cycle.opening_date) : 'Unset'}
+                      <td style={{ padding: '8px' }}>
+                        <input
+                          type="date"
+                          className={styles.input}
+                          style={{ padding: '2px 6px', fontSize: '0.78rem', color: 'var(--color-success)', width: 'auto' }}
+                          value={cycle.opening_date || ''}
+                          onChange={(e) => updateCycle(cycle.id, { opening_date: e.target.value || null })}
+                          disabled={savingCycles}
+                        />
                       </td>
-                      <td style={{ padding: '8px', color: '#ff80ab', fontWeight: 700 }}>
-                        {formatEuDate(cycle.closing_date)}
+                      <td style={{ padding: '8px' }}>
+                        <input
+                          type="date"
+                          className={styles.input}
+                          style={{ padding: '2px 6px', fontSize: '0.78rem', color: '#ff80ab', fontWeight: 700, width: 'auto' }}
+                          value={cycle.closing_date || ''}
+                          onChange={(e) => { if (e.target.value) updateCycle(cycle.id, { closing_date: e.target.value }); }}
+                          disabled={savingCycles}
+                        />
+                      </td>
+                      <td style={{ padding: '8px' }}>
+                        <input
+                          type="datetime-local"
+                          className={styles.input}
+                          style={{ padding: '2px 6px', fontSize: '0.78rem', width: 'auto', color: releaseBeforeClose(cycle) ? '#ff5252' : '#9ccfff', fontWeight: releaseBeforeClose(cycle) ? 800 : 400 }}
+                          value={(cycle.release_date || '').slice(0, 16)}
+                          onChange={(e) => { if (e.target.value) updateCycle(cycle.id, { release_date: e.target.value }); }}
+                          disabled={savingCycles}
+                          title={releaseBeforeClose(cycle)
+                            ? 'This release is before the deadline ends (23:59 on the closing day): players would get resolutions while still writing actions'
+                            : 'When this cycle\'s held resolutions go out'}
+                        />
                       </td>
                       <td style={{ padding: '8px' }}>
                         {isActive ? (
