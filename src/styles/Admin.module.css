@@ -738,6 +738,71 @@
   text-overflow: ellipsis;
 }
 
+.sidebarNavBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: #ff5252;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 0 8px rgba(255, 82, 82, 0.6);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.sidebarNavBadgeDot {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff5252;
+  box-shadow: 0 0 6px #ff5252;
+}
+
+.mobileBarBadge {
+  position: absolute;
+  top: 3px;
+  right: calc(50% - 15px);
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #ff5252;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 6px rgba(255, 82, 82, 0.6);
+  pointer-events: none;
+}
+
+.sheetItemBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: #ff5252;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+
 .sidebarEmpty {
   display: flex;
   flex-direction: column;

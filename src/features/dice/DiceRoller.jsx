@@ -5,7 +5,7 @@ import api from '../../core/api';
 import { trackEvent } from '../../utils/analytics';
 import D10Die from '../../ui/D10Die';
 import { getBatterySaverMode, setBatterySaverMode } from '../../ui/dice3d/sharedDiceEngine';
-import { rollD10, computeOutcome as computeRollOutcome } from '../../utils/liveSessionMechanics';
+import { computeOutcome as computeRollOutcome } from '../../utils/liveSessionMechanics';
 
 /**
  * Vampire: the Masquerade v5 Dice Roller (d10)
@@ -93,6 +93,7 @@ export default function DiceRoller({ characterId }) {
   const [wpUsed, setWpUsed] = useState(false);
   const [wpSelections, setWpSelections] = useState(new Set());
   const [wpMessage, setWpMessage] = useState('');
+  const [rollId, setRollId] = useState(null);
 
   // Rouse check state
   const [rouseVal, setRouseVal] = useState(null);
@@ -152,126 +153,84 @@ export default function DiceRoller({ characterId }) {
   if (isHidden) return null;
 
   // --- 5. Regular Functions ---
-  const logRollToApi = async (nDice, hDice, rollNote) => {
-    setIsSending(true);
-    try {
-      await api.post('/dice/rolls', {
-        pool: nDice.length + hDice.length,
-        hunger: hDice.length,
-        results: { normal: nDice, hunger: hDice },
-        difficulty: difficulty ? Number(difficulty) : undefined,
-        note: rollNote || undefined
-      });
-    } catch (e) {
-      console.error("Failed to log dice roll:", e);
-    } finally {
-      setIsSending(false);
-    }
-  };
-
+  // The dice are thrown by the server (POST /dice/roll) and logged in the one
+  // dice table; this roller only shows them.
   const roll = async () => {
     const total = Math.max(0, Math.min(30, Number(poolTotal) || 0));
     const hLvl = Math.max(0, Math.min(5, Number(hungerLevel) || 0));
 
-    const actualHungerCount = Math.min(total, hLvl);
-    const actualNormalCount = total - actualHungerCount;
-
-    const normal = Array.from({ length: actualNormalCount }, rollD10);
-    const hunger = Array.from({ length: actualHungerCount }, rollD10);
-
-    setNormalDice(normal);
-    setHungerDice(hunger);
     setHasRolled(true);
     setIsRolling(true);
-    
     setWpMode(false);
     setWpUsed(false);
     setWpSelections(new Set());
     setWpMessage('');
-    setRouseVal(null); 
-
+    setRouseVal(null);
+    setIsSending(true);
     trackEvent('roll_dice', { pool: total, hunger: hLvl, difficulty: difficulty || 0 });
 
-    setTimeout(() => {
-      setIsRolling(false);
-    }, 750);
-
-    await logRollToApi(normal, hunger, note);
+    try {
+      const { data } = await api.post('/dice/roll', {
+        mode: 'free', pool: total, hunger: hLvl,
+        difficulty: difficulty ? Number(difficulty) : undefined,
+        note: note || undefined,
+      });
+      setNormalDice(data.roll.results.normal || []);
+      setHungerDice(data.roll.results.hunger || []);
+      setRollId(data.roll.id);
+    } catch (e) {
+      console.error('Dice roll failed:', e);
+      setHasRolled(false);
+    } finally {
+      setIsSending(false);
+      setTimeout(() => setIsRolling(false), 750);
+    }
   };
 
+  // Willpower reroll: the server rerolls the chosen dice of this roll once and
+  // charges the Willpower to your character.
   const doWillpower = async () => {
-    if (wpSelections.size === 0 || wpSelections.size > 3) return;
-    
-    // Correctly calculate Max WP using Composure + Resolve
-    if (sheet) {
-      const comp = Number(sheet.attributes?.Composure) || 1;
-      const reso = Number(sheet.attributes?.Resolve) || 1;
-      const max = comp + reso;
-      const used = (Number(sheet.willpower?.superficial) || 0) + (Number(sheet.willpower?.aggravated) || 0);
-      
-      if (used >= max) {
-        setWpMessage('Not enough WP!');
-        return;
-      }
-    }
-
+    if (wpSelections.size === 0 || wpSelections.size > 3 || !rollId) return;
     setIsRolling(true);
-    const rerolled = normalDice.map((v, i) => (wpSelections.has(i) ? rollD10() : v));
-    
-    setTimeout(() => {
-      setNormalDice(rerolled);
-      setIsRolling(false);
+    try {
+      const { data } = await api.post(`/dice/rolls/${rollId}/reroll`, { indices: [...wpSelections] });
+      setNormalDice(data.roll.results.normal || []);
+      setRollId(data.roll.id);
+      if (data.sheet) setSheet(data.sheet);
       setWpUsed(true);
       setWpMode(false);
       setWpSelections(new Set());
-      setWpMessage('Applying WP cost...');
-    }, 700);
-
-    const rerollNote = note ? `${note} (WP Reroll)` : 'Willpower Reroll';
-    logRollToApi(rerolled, hungerDice, rerollNote);
-
-    if (sheet && character) {
-      try {
-        const newSheet = JSON.parse(JSON.stringify(sheet));
-        if (!newSheet.willpower) newSheet.willpower = { superficial: 0, aggravated: 0 };
-        newSheet.willpower.superficial = (Number(newSheet.willpower.superficial) || 0) + 1;
-        
-        setSheet(newSheet);
-        await api.put(targetUrl, { ...character, sheet: newSheet });
-        setWpMessage('1 WP (Sup) Spent');
-      } catch (e) {
-        console.error("Failed to apply WP cost", e);
-        setWpMessage('Error syncing WP');
-      }
-    } else {
-      setWpMessage('Manual deduction needed');
+      setWpMessage('1 WP (Sup) Spent');
+    } catch (e) {
+      setWpMessage(e?.response?.data?.error || 'Reroll failed');
+    } finally {
+      setTimeout(() => setIsRolling(false), 700);
     }
   };
 
+  // Rouse Check: on your own character the server rolls it and raises Hunger;
+  // without one it is just a logged d10.
   const doRouse = async () => {
     setIsRolling(true);
-    const val = rollD10();
-    const ok = val >= 6;
-    setRouseVal(val);
-    setRouseSuccess(ok);
-    
-    setTimeout(() => {
-      setIsRolling(false);
-    }, 650);
-
-    if (!ok) {
-      if (sheet && character) {
-        const currentBackendHunger = Number(sheet.hunger) || 0;
-        const nextHunger = Math.min(5, currentBackendHunger + 1);
-        
-        const newSheet = { ...sheet, hunger: nextHunger };
-        setSheet(newSheet);
-        setHungerLevel(nextHunger); 
-        
-        await api.put(targetUrl, { ...character, sheet: newSheet }).catch(console.error);
+    try {
+      const ownCharacter = character && !String(characterId || '').startsWith('npc:') && character.id;
+      if (ownCharacter) {
+        const { data } = await api.post(`/characters/${character.id}/rouse`, {});
+        setRouseVal(data.die1);
+        setRouseSuccess(data.success);
+        setSheet(data.sheet);
+        setHungerLevel(Number(data.nextHunger) || 0);
       } else {
-        setHungerLevel(h => Math.min(5, Math.max(0, (Number(h) || 0) + 1)));
+        const { data } = await api.post('/dice/roll', { mode: 'free', pool: 1, hunger: 0, note: 'Rouse Check' });
+        const val = data.roll.results.normal[0];
+        setRouseVal(val);
+        setRouseSuccess(val >= 6);
+        if (val < 6) setHungerLevel(h => Math.min(5, Math.max(0, (Number(h) || 0) + 1)));
       }
+    } catch (e) {
+      console.error('Rouse failed:', e);
+    } finally {
+      setTimeout(() => setIsRolling(false), 650);
     }
   };
 

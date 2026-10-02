@@ -237,10 +237,10 @@ const STATUS = [
 function getStatusBadgeStyle(status) {
   const s = String(status || '').toLowerCase();
   if (s === 'approved: kikos') {
-    return { background: 'rgba(0, 230, 118, 0.15)', color: '#00e676', border: '1px solid rgba(0, 230, 118, 0.4)' };
+    return { background: 'rgba(41, 121, 255, 0.15)', color: '#4da6ff', border: '1px solid rgba(41, 121, 255, 0.4)' };
   }
   if (s === 'approved: mike') {
-    return { background: 'rgba(0, 229, 255, 0.15)', color: '#00e5ff', border: '1px solid rgba(0, 229, 255, 0.4)' };
+    return { background: 'rgba(255, 82, 82, 0.15)', color: '#ff5252', border: '1px solid rgba(255, 82, 82, 0.4)' };
   }
   if (s === 'approved') {
     return { background: 'rgba(0, 230, 118, 0.12)', color: '#00e676', border: '1px solid rgba(0, 230, 118, 0.3)' };
@@ -1115,10 +1115,10 @@ export default function AdminDowntimesTab({ characters = [] }) {
           const QUICK_FILTERS = [
             { label: 'All', value: 'all', color: 'var(--text-secondary)', bg: 'var(--glass-inset)' },
             { label: 'Submitted', value: 'submitted', color: '#9d7cff', bg: 'rgba(157,124,255,0.12)' },
-            { label: 'Appr: Mike or Kikos', value: 'approved_st', color: '#00e5ff', bg: 'rgba(0,229,255,0.14)', customCount: stApprovedCount },
+            { label: 'Appr: Mike or Kikos', value: 'approved_st', color: '#c084fc', bg: 'rgba(192,132,252,0.14)', customCount: stApprovedCount },
             { label: 'Approved', value: 'approved', color: '#00e676', bg: 'rgba(0,230,118,0.1)' },
-            { label: 'Appr: Kikos', value: 'Approved: Kikos', color: '#00e676', bg: 'rgba(0,230,118,0.14)' },
-            { label: 'Appr: Mike', value: 'Approved: Mike', color: '#00e5ff', bg: 'rgba(0,229,255,0.14)' },
+            { label: 'Appr: Kikos', value: 'Approved: Kikos', color: '#4da6ff', bg: 'rgba(77,166,255,0.14)' },
+            { label: 'Appr: Mike', value: 'Approved: Mike', color: '#ff5252', bg: 'rgba(255,82,82,0.14)' },
             { label: 'Needs Scene', value: 'Needs a Scene', color: '#ffcc00', bg: 'rgba(255,204,0,0.1)' },
             { label: 'Resolved', value: 'resolved', color: '#4da6ff', bg: 'rgba(77,166,255,0.1)' },
             { label: 'Scene Done', value: 'Resolved in scene', color: '#4da6ff', bg: 'rgba(77,166,255,0.08)' },
@@ -2000,8 +2000,8 @@ function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel }
             <span>Quick Actions</span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem' }}>
               <button className={`${styles.btn} ${styles.btnSuccess} ${styles.btnSmall}`} type="button" onClick={() => onSave(r.id, { status: 'approved' })}>Approve</button>
-              <button className={`${styles.btn} ${styles.btnSmall}`} style={{ background: 'linear-gradient(135deg, #00897b 0%, #00e676 100%)', color: '#032612', fontWeight: 800, borderRadius: 'var(--radius-sm)' }} type="button" onClick={() => onSave(r.id, { status: 'Approved: Kikos' })}>Approve: Kikos</button>
-              <button className={`${styles.btn} ${styles.btnSmall}`} style={{ background: 'linear-gradient(135deg, #00838f 0%, #00e5ff 100%)', color: '#04222f', fontWeight: 800, borderRadius: 'var(--radius-sm)' }} type="button" onClick={() => onSave(r.id, { status: 'Approved: Mike' })}>Approve: Mike</button>
+              <button className={`${styles.btn} ${styles.btnSmall}`} style={{ background: 'linear-gradient(135deg, #1565c0 0%, #2979ff 100%)', color: '#ffffff', fontWeight: 800, borderRadius: 'var(--radius-sm)' }} type="button" onClick={() => onSave(r.id, { status: 'Approved: Kikos' })}>Approve: Kikos</button>
+              <button className={`${styles.btn} ${styles.btnSmall}`} style={{ background: 'linear-gradient(135deg, #c62828 0%, #ff5252 100%)', color: '#ffffff', fontWeight: 800, borderRadius: 'var(--radius-sm)' }} type="button" onClick={() => onSave(r.id, { status: 'Approved: Mike' })}>Approve: Mike</button>
               <button className={`${styles.btn} ${styles.btnWarning} ${styles.btnSmall}`} type="button" onClick={() => onSave(r.id, { status: 'Needs a Scene' })}>Needs Scene</button>
               <button className={`${styles.btn} ${styles.btnDanger} ${styles.btnSmall}`} type="button" onClick={() => onSave(r.id, { status: 'rejected' })} title="Rejected actions do not count toward the player's 3 per cycle, so they can write a new one">Reject</button>
               {String(r.status || 'submitted').toLowerCase() !== 'submitted' && (

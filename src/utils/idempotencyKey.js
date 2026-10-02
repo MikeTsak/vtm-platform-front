@@ -11,13 +11,19 @@
 // there), only called explicitly at the handful of call sites that opt in.
 
 /**
+ * The XP balance before the purchase is part of the key: repeated clicks on
+ * one purchase share it (one key, processed once), while a deliberate repeat
+ * of the same purchase later (Contacts +1 twice) comes after the balance
+ * moved, so it gets a fresh key instead of replaying the first response.
+ *
  * @param {object} payload the exact body being POSTed to an XP-spend endpoint
- * @returns {string} a stable key: identical payloads produce identical keys
+ * @param {number} [xpBefore] the character's XP balance when the purchase was made
+ * @returns {string} a stable key: identical payloads at the same balance produce identical keys
  */
-export function buildXpSpendIdempotencyKey(payload) {
+export function buildXpSpendIdempotencyKey(payload, xpBefore) {
   const { type, target, currentLevel, newLevel, ritualLevel, formulaLevel, dots, disciplineKind, specialty, powerName, powerId } = payload || {};
   return [
-    'xp-spend', type, target, currentLevel, newLevel,
+    'xp-spend', xpBefore, type, target, currentLevel, newLevel,
     ritualLevel, formulaLevel, dots, disciplineKind, specialty, powerName || powerId,
   ]
     .map((v) => (v === undefined || v === null ? '' : String(v)))

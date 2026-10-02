@@ -184,6 +184,7 @@ function matchNavItems(query) {
 function Sidebar({
   tab, setTab, collapsed, onToggleCollapse,
   searchQuery, setSearchQuery, searchInputRef,
+  unreadPremonitionsCount = 0,
 }) {
   const [closedSections, setClosedSections] = useState(() => {
     try {
@@ -306,6 +307,8 @@ function Sidebar({
 
               {openSection && section.items.map(({ id, icon, label, hint, matchedKeyword }) => {
                 const active = tab === id;
+                const isPremonitions = id === 'premonitions';
+                const hasUnreadPremonitions = isPremonitions && unreadPremonitionsCount > 0;
                 return (
                   <button
                     key={id}
@@ -314,17 +317,27 @@ function Sidebar({
                     onClick={() => handleSelect(id)}
                     data-tooltip={label}
                     aria-current={active ? 'page' : undefined}
-                    title={collapsed ? label : undefined}
+                    title={collapsed ? (hasUnreadPremonitions ? `${label} (${unreadPremonitionsCount} unread)` : label) : undefined}
                     data-cuelume-press
                     data-cuelume-hover
                   >
-                    <span className={`material-symbols-outlined ${styles.sidebarNavIcon}`} aria-hidden="true">{icon}</span>
+                    <span className={`material-symbols-outlined ${styles.sidebarNavIcon}`} aria-hidden="true">
+                      {icon}
+                      {collapsed && hasUnreadPremonitions && (
+                        <span className={styles.sidebarNavBadgeDot} aria-label={`${unreadPremonitionsCount} unread`} />
+                      )}
+                    </span>
                     <span className={styles.sidebarNavLabel}>
                       <span className={styles.sidebarNavLabelText}>{label}</span>
                       {searching && (matchedKeyword || hint) && (
                         <span className={styles.sidebarNavMatch}>{matchedKeyword ? `↳ ${matchedKeyword}` : hint}</span>
                       )}
                     </span>
+                    {!collapsed && hasUnreadPremonitions && (
+                      <span className={styles.sidebarNavBadge} title={`${unreadPremonitionsCount} unread premonitions`}>
+                        {unreadPremonitionsCount}
+                      </span>
+                    )}
                     {searching && firstMatch?.id === id && <kbd className={styles.sidebarEnterKbd}>↵</kbd>}
                   </button>
                 );
@@ -356,12 +369,13 @@ function Sidebar({
  * Mirrors the character view's bottom nav. One button per category;
  * tapping a category opens the tool sheet for it (Overview jumps straight home).
  */
-function MobileBottomBar({ tab, onSelectSection }) {
+function MobileBottomBar({ tab, onSelectSection, unreadPremonitionsCount = 0 }) {
   const activeSectionId = TAB_META[tab]?.section?.id;
   return (
     <nav className={styles.mobileBar} aria-label="Admin categories">
       {NAV_SECTIONS.map((section) => {
         const active = section.id === activeSectionId;
+        const hasUnread = section.id === 'chronicle' && unreadPremonitionsCount > 0;
         return (
           <button
             key={section.id}
@@ -374,6 +388,11 @@ function MobileBottomBar({ tab, onSelectSection }) {
           >
             <span className="material-symbols-outlined" aria-hidden="true">{section.icon}</span>
             <span className={styles.mobileBarLabel}>{section.shortLabel || section.label}</span>
+            {hasUnread && (
+              <span className={styles.mobileBarBadge} aria-label={`${unreadPremonitionsCount} unread`}>
+                {unreadPremonitionsCount}
+              </span>
+            )}
             {active && <span className={styles.mobileBarPill} aria-hidden="true" />}
           </button>
         );
@@ -386,7 +405,7 @@ function MobileBottomBar({ tab, onSelectSection }) {
  * Slides up from the bottom. Shows the tools of one category (or all of them),
  * with the search pinned at the top so every tool is reachable in two taps.
  */
-function MobileSheet({ open, section, tab, setTab, onClose, searchQuery, setSearchQuery, searchInputRef }) {
+function MobileSheet({ open, section, tab, setTab, onClose, searchQuery, setSearchQuery, searchInputRef, unreadPremonitionsCount = 0 }) {
   const searching = !!searchQuery.trim();
   const matched = useMemo(() => matchNavItems(searchQuery), [searchQuery]);
   const sections = searching ? matched : (section ? [section] : NAV_SECTIONS);
@@ -488,6 +507,11 @@ function MobileSheet({ open, section, tab, setTab, onClose, searchQuery, setSear
                       <span className={styles.sheetItemLabel}>{label}</span>
                       <span className={styles.sheetItemHint}>{matchedKeyword ? `↳ ${matchedKeyword}` : hint}</span>
                     </span>
+                    {id === 'premonitions' && unreadPremonitionsCount > 0 && (
+                      <span className={styles.sheetItemBadge} aria-label={`${unreadPremonitionsCount} unread`}>
+                        {unreadPremonitionsCount}
+                      </span>
+                    )}
                     <span className={`material-symbols-outlined ${styles.sheetItemChevron}`} aria-hidden="true">
                       {active ? 'check' : 'chevron_right'}
                     </span>
@@ -722,6 +746,11 @@ export default function Admin() {
   const [diceRolls, setDiceRolls] = useState([]);
   const [characters, setCharacters] = useState([]);
   const [ghouls, setGhouls] = useState([]);
+
+  const unreadPremonitionsCount = useMemo(() => {
+    if (!Array.isArray(premonitions)) return 0;
+    return premonitions.filter(p => Array.isArray(p.recipients) && p.recipients.length > 0 && p.recipients.some(r => !r.viewed_at)).length;
+  }, [premonitions]);
   
   const navigate = useNavigate();
   const openCharacterEditor = useCallback((char) => {
@@ -911,6 +940,8 @@ async function grantXP(character_id, delta) {
         diceRolls={diceRolls}
         xpLogs={xpLogs}
         allMessages={allMessages}
+        premonitions={premonitions}
+        unreadPremonitionsCount={unreadPremonitionsCount}
         setTab={setTab}
         onOpenEditor={openCharacterEditor}
       />
@@ -1003,6 +1034,7 @@ async function grantXP(character_id, delta) {
           searchQuery={navSearch}
           setSearchQuery={setNavSearch}
           searchInputRef={searchInputRef}
+          unreadPremonitionsCount={unreadPremonitionsCount}
         />
       )}
 
@@ -1044,7 +1076,11 @@ async function grantXP(character_id, delta) {
       {/* Mobile navigation: bottom category bar + slide-up tool sheet */}
       {isMobile && (
         <>
-          <MobileBottomBar tab={tab} onSelectSection={handleSelectSection} />
+          <MobileBottomBar
+            tab={tab}
+            onSelectSection={handleSelectSection}
+            unreadPremonitionsCount={unreadPremonitionsCount}
+          />
           <MobileSheet
             open={!!sheet}
             section={sheet?.section || null}
@@ -1054,6 +1090,7 @@ async function grantXP(character_id, delta) {
             searchQuery={navSearch}
             setSearchQuery={setNavSearch}
             searchInputRef={searchInputRef}
+            unreadPremonitionsCount={unreadPremonitionsCount}
           />
         </>
       )}

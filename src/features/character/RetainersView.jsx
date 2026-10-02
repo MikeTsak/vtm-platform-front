@@ -6,7 +6,6 @@ import Avatar from '../../components/Avatar';
 import { DISCIPLINES, iconPath } from '../../data/disciplines';
 import { allSelectableAdvantages } from '../../data/merits_flaws_retainers';
 import { generateGreekName } from '../../utils/nameGenerator';
-import { buildXpSpendIdempotencyKey } from '../../utils/idempotencyKey';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const CLAN_DISCIPLINES = {
@@ -1154,18 +1153,6 @@ export default function RetainersView() {
         const oldRetainer = retainers.find(r => r.id === wizardConfig.migrationId);
         const tierDiff = tier - (oldRetainer?.tier || 0);
 
-        if (wizardConfig.isUpgrade && !isAdminBypass && tierDiff > 0) {
-          const spendPayload = {
-            type: 'advantage',
-            target: `Upgrade Retainer ${name} to Tier ${tier}`,
-            dots: tierDiff
-          };
-          await api.post(`/characters/xp/spend`, spendPayload, {
-            headers: { 'Idempotency-Key': buildXpSpendIdempotencyKey(spendPayload) },
-          });
-          setCharacter(prev => ({ ...prev, xp: prev.xp - (tierDiff * 3) }));
-        }
-
         const endpoint = isAdminBypass
           ? `/retainers/${wizardConfig.migrationId}`
           : `/retainers/${wizardConfig.migrationId}/upgrade`;
@@ -1177,6 +1164,10 @@ export default function RetainersView() {
           xp: oldRetainer?.xp || 0
         });
         const updatedRetainer = res.data;
+        // The upgrade route charges the XP itself (3 per tier).
+        if (wizardConfig.isUpgrade && !isAdminBypass && tierDiff > 0) {
+          setCharacter(prev => ({ ...prev, xp: prev.xp - (tierDiff * 3) }));
+        }
         setRetainers(retainers.map(r => r.id === updatedRetainer.id ? updatedRetainer : r));
         setSelectedRetainerId(updatedRetainer.id);
 
@@ -1186,16 +1177,7 @@ export default function RetainersView() {
           await api.put(`/retainers/${updatedRetainer.id}/avatar`, formData);
         }
       } else {
-        if (!isAdminBypass) {
-          const spendPayload = {
-            type: 'advantage',
-            target: `Recruit Tier ${tier} Retainer: ${name}`,
-            dots: tier
-          };
-          await api.post(`/characters/xp/spend`, spendPayload, {
-            headers: { 'Idempotency-Key': buildXpSpendIdempotencyKey(spendPayload) },
-          });
-        }
+        // The create route charges the XP itself (3 per tier).
         const res = await api.post(`/characters/${character.id}/retainers`, {
           name,
           tier,
@@ -1279,19 +1261,6 @@ export default function RetainersView() {
       const targetTier = draftSheet.targetTier || selectedRetainer.tier;
       const tierDiff = targetTier - selectedRetainer.tier;
 
-      if (tierDiff > 0) {
-        const cost = tierDiff * 3;
-        const spendPayload = {
-          type: 'advantage',
-          target: `Upgrade Retainer ${selectedRetainer.name} to Tier ${targetTier}`,
-          dots: tierDiff
-        };
-        await api.post(`/characters/xp/spend`, spendPayload, {
-          headers: { 'Idempotency-Key': buildXpSpendIdempotencyKey(spendPayload) },
-        });
-        setCharacter(prev => ({ ...prev, xp: prev.xp - cost }));
-      }
-
       const sheetToSave = { ...draftSheet };
       delete sheetToSave.targetTier;
 
@@ -1301,6 +1270,8 @@ export default function RetainersView() {
         sheet: sheetToSave,
         xp: selectedRetainer.xp
       });
+      // The upgrade route charges the XP itself (3 per tier).
+      if (tierDiff > 0) setCharacter(prev => ({ ...prev, xp: prev.xp - tierDiff * 3 }));
       setRetainers(retainers.map(r => r.id === selectedRetainer.id ? { ...r, tier: targetTier, sheet: sheetToSave } : r));
       setIsEditing(false);
       setDraftSheet(null);

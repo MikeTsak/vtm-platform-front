@@ -1,5 +1,5 @@
 // src/features/admin/AdminHomeTab.jsx
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../core/api';
 import styles from '../../styles/AdminHomeTab.module.css';
@@ -31,6 +31,8 @@ export default function AdminHomeTab({
   diceRolls = [],
   xpLogs = [],
   allMessages = [],
+  premonitions = [],
+  unreadPremonitionsCount = 0,
   setTab,
   onOpenEditor,
 }) {
@@ -39,6 +41,47 @@ export default function AdminHomeTab({
     queryKey: ['adminDowntimesConfig'],
     queryFn: async () => {
       const { data } = await api.get('/downtimes/config');
+      return data;
+    },
+    staleTime: 60000,
+  });
+
+  // Fetch chronicle events for Next Event banner
+  const { data: eventsData } = useQuery({
+    queryKey: ['adminEvents'],
+    queryFn: async () => {
+      const { data } = await api.get('/admin/events');
+      return data;
+    },
+    staleTime: 60000,
+  });
+
+  // Fetch real time Athens comms status
+  const { data: commsData } = useQuery({
+    queryKey: ['adminCommsStatus'],
+    queryFn: async () => {
+      const { data } = await api.get('/comms/status');
+      return data;
+    },
+    staleTime: 30000,
+    refetchInterval: 30000,
+  });
+
+  // Fetch feeding cycle status
+  const { data: feedingStatusData } = useQuery({
+    queryKey: ['adminFeedingStatus'],
+    queryFn: async () => {
+      const { data } = await api.get('/feeding/status');
+      return data;
+    },
+    staleTime: 60000,
+  });
+
+  // Fetch feeding logs for current cycle turnout
+  const { data: feedingLogData } = useQuery({
+    queryKey: ['adminFeedingLog'],
+    queryFn: async () => {
+      const { data } = await api.get('/admin/feeding/log');
       return data;
     },
     staleTime: 60000,
@@ -236,9 +279,150 @@ export default function AdminHomeTab({
     }
   };
 
-  // State for Owed Downtimes section
+  // Global Kindred Quick Search (Spotlight Bar)
+  const [quickSearch, setQuickSearch] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchWrapRef = useRef(null);
+  const searchInputRef = useRef(null);
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        const tag = (e.target?.tagName || '').toLowerCase();
+        if (tag !== 'input' && tag !== 'textarea') {
+          e.preventDefault();
+          searchInputRef.current?.focus();
+          setSearchOpen(true);
+        }
+      } else if (e.key === 'Escape') {
+        setSearchOpen(false);
+      }
+    };
+    const onDocClick = (e) => {
+      if (searchWrapRef.current && !searchWrapRef.current.contains(e.target)) {
+        setSearchOpen(false);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onDocClick);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('mousedown', onDocClick);
+    };
+  }, []);
+
+  const quickSearchResults = useMemo(() => {
+    const q = quickSearch.trim().toLowerCase();
+    if (!q) return [];
+    return sanitizedCharacters
+      .filter(c => {
+        const nameMatch = (c.name || '').toLowerCase().includes(q);
+        const clanMatch = (c.clan || '').toLowerCase().includes(q);
+        const playerMatch = (c.player_name || '').toLowerCase().includes(q);
+        const idMatch = String(c.id) === q;
+        const user = sanitizedUsers.find(u => Number(u.id) === Number(c.user_id) || Number(u.character_id) === Number(c.id));
+        const userNameMatch = (user?.display_name || '').toLowerCase().includes(q);
+        return nameMatch || clanMatch || playerMatch || idMatch || userNameMatch;
+      })
+      .slice(0, 8);
+  }, [quickSearch, sanitizedCharacters, sanitizedUsers]);
+
+  // Next Event & Live Countdown
+  const nextEvent = useMemo(() => {
+    const list = eventsData?.events || [];
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const upcoming = list
+      .map(e => ({ ...e, eventDate: new Date(e.date) }))
+      .filter(e => !isNaN(e.eventDate.getTime()) && e.eventDate.getTime() >= startOfToday)
+      .sort((a, b) => a.eventDate.getTime() - b.eventDate.getTime());
+    return upcoming[0] || null;
+  }, [eventsData]);
+
+  const eventCountdownText = useMemo(() => {
+    if (!nextEvent) return null;
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const eventTime = nextEvent.eventDate.getTime();
+    const diffMs = eventTime - startOfToday;
+    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+    if (diffDays <= 0) return 'Today';
+    if (diffDays === 1) return 'Tomorrow';
+    return `${diffDays} days remaining`;
+  }, [nextEvent]);
+
+  // Cycle Feeding Turnout & Hunting Status
+  const currentFeedingCycleIndex = useMemo(() => {
+    if (feedingStatusData?.cycleIndex != null) return Number(feedingStatusData.cycleIndex);
+    return null;
+  }, [feedingStatusData]);
+
+  const currentCycleFeedings = useMemo(() => {
+    const log = feedingLogData?.log || [];
+    return log.filter(f => {
+      if (currentFeedingCycleIndex != null && Number(f.cycle_index) !== currentFeedingCycleIndex) return false;
+      if (isExcludedEntity(f.user_id, f.character_id)) return false;
+      return true;
+    });
+  }, [feedingLogData, currentFeedingCycleIndex]);
+
+  const feedingByCharMap = useMemo(() => {
+    const map = new Map();
+    currentCycleFeedings.forEach(f => {
+      const cid = Number(f.character_id);
+      if (cid) {
+        if (!map.has(cid) || f.status === 'resolved') {
+          map.set(cid, f);
+        }
+      }
+    });
+    return map;
+  }, [currentCycleFeedings]);
+
+  const feedingTurnoutData = useMemo(() => {
+    return activeCharacters.map(c => {
+      const cid = Number(c.id);
+      const uid = c.user_id ? Number(c.user_id) : null;
+      const user = sanitizedUsers.find(u => Number(u.id) === uid || Number(u.character_id) === cid);
+      const feeding = feedingByCharMap.get(cid);
+      const isFed = !!feeding && (feeding.status === 'resolved' || !!feeding.outcome);
+      return {
+        characterId: cid,
+        characterName: c.name || `Kindred #${cid}`,
+        clan: c.clan || 'Unknown',
+        userId: uid || (user ? Number(user.id) : null),
+        playerName: user?.display_name || user?.name || c.player_name || 'Kindred Player',
+        avatarUrl: user?.avatar_url || user?.avatar_url_thumb || '',
+        isFed,
+        outcome: feeding?.outcome || null,
+        status: feeding?.status || (isFed ? 'resolved' : 'unfed'),
+        division: feeding?.division || null,
+        created_at: feeding?.created_at || null,
+      };
+    }).sort((a, b) => {
+      if (a.isFed === b.isFed) return a.characterName.localeCompare(b.characterName);
+      return a.isFed ? 1 : -1;
+    });
+  }, [activeCharacters, sanitizedUsers, feedingByCharMap]);
+
+  const fedActiveCount = useMemo(() => {
+    return feedingTurnoutData.filter(f => f.isFed).length;
+  }, [feedingTurnoutData]);
+
+  const unfedActiveCount = useMemo(() => {
+    return Math.max(0, activeCharacters.length - fedActiveCount);
+  }, [activeCharacters.length, fedActiveCount]);
+
+  const feedingPct = useMemo(() => {
+    if (activeCharacters.length === 0) return 0;
+    return Math.round((fedActiveCount / activeCharacters.length) * 100);
+  }, [activeCharacters.length, fedActiveCount]);
+
+  // State for Player Turnout Ledger (Downtimes & Feeding)
   const [showOwedSection, setShowOwedSection] = useState(false);
+  const [ledgerMode, setLedgerMode] = useState('downtimes'); // 'downtimes' | 'feeding'
   const [owedFilter, setOwedFilter] = useState('owing');
+  const [feedingFilter, setFeedingFilter] = useState('unfed');
   const [owedSearch, setOwedSearch] = useState('');
 
   // Player Turnout: Ledger of active Kindred and how many DTs they owe
@@ -320,7 +504,37 @@ export default function AdminHomeTab({
     return owingPlayersData.filter(p => p.owed > 0).length;
   }, [owingPlayersData]);
 
+  const filteredFeedingPlayers = useMemo(() => {
+    let list = feedingTurnoutData;
+    if (feedingFilter === 'unfed') {
+      list = list.filter(p => !p.isFed);
+    } else if (feedingFilter === 'fed') {
+      list = list.filter(p => p.isFed);
+    }
+    const q = owedSearch.trim().toLowerCase();
+    if (!q) return list;
+    return list.filter(p =>
+      (p.characterName || '').toLowerCase().includes(q) ||
+      (p.playerName || '').toLowerCase().includes(q) ||
+      (p.clan || '').toLowerCase().includes(q)
+    );
+  }, [feedingTurnoutData, feedingFilter, owedSearch]);
+
   const handlePlayerTurnoutClick = () => {
+    setLedgerMode('downtimes');
+    setShowOwedSection(true);
+    setTimeout(() => {
+      const el = document.getElementById('owed-downtimes-section');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        el.classList.add(styles.sectionPulse);
+        setTimeout(() => el.classList.remove(styles.sectionPulse), 1600);
+      }
+    }, 60);
+  };
+
+  const handleFeedingTurnoutClick = () => {
+    setLedgerMode('feeding');
     setShowOwedSection(true);
     setTimeout(() => {
       const el = document.getElementById('owed-downtimes-section');
@@ -549,8 +763,8 @@ export default function AdminHomeTab({
     const s = String(status || 'submitted').toLowerCase();
     if (s === 'submitted') return <span className={`${styles.statusPill} ${styles.statusSubmitted}`}>Submitted</span>;
     if (s.includes('needs')) return <span className={`${styles.statusPill} ${styles.statusNeedsScene}`}>Needs Scene</span>;
-    if (s === 'approved: kikos') return <span className={styles.statusPill} style={{ background: 'rgba(0, 230, 118, 0.15)', color: '#00e676', border: '1px solid rgba(0, 230, 118, 0.35)' }}>Approved: Kikos</span>;
-    if (s === 'approved: mike') return <span className={styles.statusPill} style={{ background: 'rgba(0, 229, 255, 0.15)', color: '#00e5ff', border: '1px solid rgba(0, 229, 255, 0.35)' }}>Approved: Mike</span>;
+    if (s === 'approved: kikos') return <span className={styles.statusPill} style={{ background: 'rgba(41, 121, 255, 0.15)', color: '#4da6ff', border: '1px solid rgba(41, 121, 255, 0.35)' }}>Approved: Kikos</span>;
+    if (s === 'approved: mike') return <span className={styles.statusPill} style={{ background: 'rgba(255, 82, 82, 0.15)', color: '#ff5252', border: '1px solid rgba(255, 82, 82, 0.35)' }}>Approved: Mike</span>;
     if (s === 'approved') return <span className={`${styles.statusPill} ${styles.statusApproved}`}>Approved</span>;
     if (s === 'rejected') return <span className={`${styles.statusPill} ${styles.statusRejected}`}>Rejected</span>;
     return <span className={`${styles.statusPill} ${styles.statusResolved}`}>{status}</span>;
@@ -560,30 +774,219 @@ export default function AdminHomeTab({
     <div className={styles.dashboardContainer}>
       {/* Hero Header */}
       <div className={styles.heroBanner}>
-        <div className={styles.heroContent}>
-          <div className={styles.heroTitleRow}>
-            <span className={styles.heroBadge}>
-              <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>security</span>
-              Command Center
-            </span>
+        <div className={styles.heroTopRow}>
+          <div className={styles.heroContent}>
+            <div className={styles.heroTitleRow}>
+              <span className={styles.heroBadge}>
+                <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>security</span>
+                Command Center
+              </span>
+            </div>
+            <h2 className={styles.heroTitle}>SchreckNet Elysium Terminal</h2>
+            <p className={styles.heroSubtitle}>
+              Live chronicle overview, player activity telemetry, and Storyteller management.
+            </p>
           </div>
-          <h2 className={styles.heroTitle}>SchreckNet Elysium Terminal</h2>
-          <p className={styles.heroSubtitle}>
-            Live chronicle overview, player activity telemetry, and Storyteller management.
-          </p>
+
+          {/* Global Kindred Quick Search (Spotlight Bar) */}
+          <div className={styles.heroSearchCol} ref={searchWrapRef}>
+            <div className={styles.spotlightSearchWrap}>
+              <span className="material-symbols-outlined" style={{ fontSize: '18px', color: 'var(--text-muted)' }}>
+                search
+              </span>
+              <input
+                ref={searchInputRef}
+                type="text"
+                className={styles.spotlightSearchInput}
+                placeholder="Quick search Kindred, player, or clan... (Ctrl K)"
+                value={quickSearch}
+                onChange={(e) => {
+                  setQuickSearch(e.target.value);
+                  setSearchOpen(true);
+                }}
+                onFocus={() => setSearchOpen(true)}
+              />
+              {quickSearch ? (
+                <button
+                  type="button"
+                  className={styles.spotlightClearBtn}
+                  onClick={() => {
+                    setQuickSearch('');
+                    searchInputRef.current?.focus();
+                  }}
+                  title="Clear search"
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>close</span>
+                </button>
+              ) : (
+                <kbd className={styles.spotlightKbd}>Ctrl K</kbd>
+              )}
+            </div>
+
+            {/* Quick Search Dropdown Popover */}
+            {searchOpen && quickSearch.trim() && (
+              <div className={styles.spotlightDropdown} role="listbox">
+                {quickSearchResults.length === 0 ? (
+                  <div className={styles.spotlightNoResults}>
+                    <span className="material-symbols-outlined" style={{ fontSize: '18px', color: 'var(--text-muted)' }}>
+                      person_search
+                    </span>
+                    <span>No Kindred found matching "{quickSearch}"</span>
+                  </div>
+                ) : (
+                  quickSearchResults.map(c => {
+                    const clanColor = CLAN_COLORS[c.clan] || '#9d7cff';
+                    const clanLogo = symlogoWhite(c.clan);
+                    const user = sanitizedUsers.find(u => Number(u.id) === Number(c.user_id) || Number(u.character_id) === Number(c.id));
+                    return (
+                      <div
+                        key={c.id}
+                        className={styles.spotlightItem}
+                        onClick={() => {
+                          handleOpenCharacter(c.id);
+                          setSearchOpen(false);
+                        }}
+                        role="option"
+                        title={`Open sheet for ${c.name || 'Character'}`}
+                      >
+                        <div className={styles.spotlightClanBadge} style={{ borderColor: `${clanColor}55` }}>
+                          {clanLogo ? (
+                            <img src={clanLogo} alt="" className={styles.spotlightClanImg} />
+                          ) : (
+                            <span className="material-symbols-outlined" style={{ fontSize: '16px', color: clanColor }}>
+                              nightlight
+                            </span>
+                          )}
+                        </div>
+                        <div className={styles.spotlightItemInfo}>
+                          <div className={styles.spotlightItemName} style={{ color: clanColor }}>
+                            {c.name || `Kindred #${c.id}`}
+                          </div>
+                          <div className={styles.spotlightItemMeta}>
+                            <span>Player: {user?.display_name || c.player_name || 'Kindred Player'}</span>
+                            {c.clan && (
+                              <>
+                                <span>:</span>
+                                <span>{c.clan}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <span className="material-symbols-outlined" style={{ fontSize: '16px', color: 'var(--text-muted)', opacity: 0.7 }}>
+                          open_in_new
+                        </span>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className={styles.heroActions}>
+            <button
+              type="button"
+              className={styles.panelActionBtn}
+              onClick={() => setTab('downtimes')}
+              style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>schedule</span>
+              Manage Downtimes
+            </button>
+          </div>
         </div>
-        <div className={styles.heroActions}>
-          <button
-            type="button"
-            className={styles.panelActionBtn}
-            onClick={() => setTab('downtimes')}
-            style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+
+        {/* Live Chronicle Status Ribbon: Next Event & Comms Countdown */}
+        <div className={styles.heroRibbon}>
+          {/* Next Chronicle Session */}
+          <div
+            className={styles.heroRibbonItem}
+            onClick={() => setTab('calendar')}
+            title="Click to view Chronicle Calendar"
           >
-            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>schedule</span>
-            Manage Downtimes
-          </button>
+            <div className={styles.heroRibbonIconWrap}>
+              <span className="material-symbols-outlined" style={{ fontSize: '20px', color: '#ffb822' }}>
+                event
+              </span>
+            </div>
+            <div className={styles.heroRibbonContent}>
+              <span className={styles.heroRibbonLabel}>Next Chronicle Session</span>
+              {nextEvent ? (
+                <div className={styles.heroRibbonValue}>
+                  <strong className={styles.heroRibbonTitle}>{nextEvent.title}</strong>
+                  <span className={styles.heroRibbonSep}>:</span>
+                  <span className={styles.heroRibbonDate}>{formatEuDate(nextEvent.date)}</span>
+                  <span className={styles.heroCountdownBadge}>{eventCountdownText}</span>
+                </div>
+              ) : (
+                <div className={styles.heroRibbonValue} style={{ color: 'var(--text-muted)' }}>
+                  No upcoming session scheduled
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className={styles.heroRibbonDivider} />
+
+          {/* Athens Comms Status */}
+          <div
+            className={styles.heroRibbonItem}
+            onClick={() => setTab('master')}
+            title="Click to manage Comms in Master Control"
+          >
+            <div className={styles.heroRibbonIconWrap}>
+              <span className="material-symbols-outlined" style={{ fontSize: '20px', color: commsData?.comms_enabled ? '#00e676' : '#ff9100' }}>
+                {commsData?.comms_enabled ? 'sensors' : 'sensors_off'}
+              </span>
+            </div>
+            <div className={styles.heroRibbonContent}>
+              <span className={styles.heroRibbonLabel}>Athens Comms Window</span>
+              <div className={styles.heroRibbonValue}>
+                <span className={commsData?.comms_enabled ? styles.pulseDotGreen : styles.pulseDotAmber} />
+                <strong style={{ color: commsData?.comms_enabled ? '#00e676' : '#ffb822' }}>
+                  {commsData?.comms_enabled ? 'Comms Open' : 'Comms Closed'}
+                </strong>
+                {!commsData?.comms_enabled && commsData?.next_opening?.time && (
+                  <span className={styles.heroRibbonCommsHint}>
+                    (Opens {commsData.next_opening.time})
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Pending Premonitions Alert Banner */}
+      {unreadPremonitionsCount > 0 && (
+        <div
+          className={styles.premonitionAlertBanner}
+          onClick={() => setTab('premonitions')}
+          title="Click to view unread premonitions in Malkavian sight"
+        >
+          <div className={styles.premonitionAlertLeft}>
+            <div className={styles.premonitionAlertIconWrap}>
+              <span className="material-symbols-outlined" style={{ fontSize: '20px', color: '#c084fc' }}>
+                visibility
+              </span>
+            </div>
+            <div className={styles.premonitionAlertContent}>
+              <div className={styles.premonitionAlertTitle}>
+                Pending Premonitions
+              </div>
+              <div className={styles.premonitionAlertSub}>
+                {unreadPremonitionsCount} unread {unreadPremonitionsCount === 1 ? 'vision awaits' : 'visions await'} player view in SchreckNet
+              </div>
+            </div>
+          </div>
+          <div className={styles.premonitionAlertAction}>
+            <span>Review Premonitions</span>
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+              arrow_forward
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* KPI Cards Grid */}
       <div className={styles.statGrid}>
@@ -625,7 +1028,7 @@ export default function AdminHomeTab({
             <span>{cycleStats.resolvedCount} out of {cycleStats.totalCycle}</span>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
               <span
-                style={{ color: '#00e676', fontWeight: 600, cursor: 'pointer' }}
+                style={{ color: '#4da6ff', fontWeight: 600, cursor: 'pointer' }}
                 onClick={(e) => {
                   e.stopPropagation();
                   setTab('downtimes', { statusFilter: 'Approved: Kikos' });
@@ -636,7 +1039,7 @@ export default function AdminHomeTab({
               </span>
               <span>,</span>
               <span
-                style={{ color: '#00e5ff', fontWeight: 600, cursor: 'pointer' }}
+                style={{ color: '#ff5252', fontWeight: 600, cursor: 'pointer' }}
                 onClick={(e) => {
                   e.stopPropagation();
                   setTab('downtimes', { statusFilter: 'Approved: Mike' });
@@ -681,6 +1084,48 @@ export default function AdminHomeTab({
             <span>{cycleStats.playersSubmittedCount} of {cycleStats.eligiblePlayers} players</span>
             <span style={{ color: owingCount > 0 ? '#ffb822' : 'var(--text-muted)', fontWeight: 600 }}>
               {owingCount > 0 ? `${owingCount} owe DTs: View list` : 'All submitted'}
+            </span>
+          </div>
+        </div>
+
+        {/* Cycle Feeding Turnout */}
+        <div
+          className={styles.statCard}
+          onClick={handleFeedingTurnoutClick}
+          title="Click to view feeding turnout ledger"
+        >
+          <div className={styles.statHeader}>
+            <span className={styles.statTitle}>Cycle Feeding</span>
+            <div className={styles.statIconWrap}>
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>nightlight</span>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+            <div className={styles.statValue}>
+              {feedingPct}%
+            </div>
+            {currentFeedingCycleIndex != null && (
+              <span className={styles.cycleBadge}>
+                Cycle {currentFeedingCycleIndex}
+              </span>
+            )}
+          </div>
+          <div className={styles.progressBarWrap}>
+            <div
+              className={`${styles.progressBarFill} ${
+                feedingPct >= 80
+                  ? styles.progressBarFillGreen
+                  : feedingPct >= 40
+                  ? styles.progressBarFillYellow
+                  : styles.progressBarFillPurple
+              }`}
+              style={{ width: `${feedingPct}%` }}
+            />
+          </div>
+          <div className={styles.statSubtext}>
+            <span>{fedActiveCount} of {activeCharacters.length} Kindred fed</span>
+            <span style={{ color: unfedActiveCount > 0 ? '#ffb822' : 'var(--text-muted)', fontWeight: 600 }}>
+              {unfedActiveCount > 0 ? `${unfedActiveCount} owe hunting roll` : 'All Kindred fed'}
             </span>
           </div>
         </div>
@@ -1061,41 +1506,89 @@ export default function AdminHomeTab({
         </div>
       </div>
 
-      {/* Owed Downtimes Section (Player Turnout Ledger) */}
+      {/* Owed Downtimes & Feeding Section (Player Turnout Ledger) */}
       <div id="owed-downtimes-section" className={`${styles.owedSection} ${showOwedSection ? styles.owedSectionVisible : ''}`}>
+        {/* Ledger Category Tabs: Downtimes vs Feeding */}
+        <div className={styles.ledgerModeTabs}>
+          <button
+            type="button"
+            className={`${styles.ledgerModeTab} ${ledgerMode === 'downtimes' ? styles.ledgerModeTabActive : ''}`}
+            onClick={() => setLedgerMode('downtimes')}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>assignment_late</span>
+            <span>Downtime Submissions</span>
+            <span className={styles.ledgerModeBadge}>{owingCount}</span>
+          </button>
+
+          <button
+            type="button"
+            className={`${styles.ledgerModeTab} ${ledgerMode === 'feeding' ? styles.ledgerModeTabActive : ''}`}
+            onClick={() => setLedgerMode('feeding')}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>nightlight</span>
+            <span>Cycle Feeding Turnout</span>
+            <span className={styles.ledgerModeBadge}>{unfedActiveCount}</span>
+          </button>
+        </div>
+
         <div className={styles.owedHeader}>
           <div className={styles.owedTitleWrap}>
-            <span className="material-symbols-outlined" style={{ color: '#ffd700', fontSize: '24px' }}>
-              assignment_late
+            <span className="material-symbols-outlined" style={{ color: ledgerMode === 'downtimes' ? '#ffd700' : '#7ecfff', fontSize: '24px' }}>
+              {ledgerMode === 'downtimes' ? 'assignment_late' : 'nightlight'}
             </span>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                <h3 className={styles.owedTitle}>Downtime Submissions Ledger: Player Turnout</h3>
+                <h3 className={styles.owedTitle}>
+                  {ledgerMode === 'downtimes'
+                    ? 'Downtime Submissions Ledger: Player Turnout'
+                    : 'Feeding Status Ledger: Cycle Turnout'}
+                </h3>
                 <span className={styles.owedBadge}>
-                  {owingCount} {owingCount === 1 ? 'player owes actions' : 'players owe actions'}
+                  {ledgerMode === 'downtimes'
+                    ? `${owingCount} ${owingCount === 1 ? 'player owes actions' : 'players owe actions'}`
+                    : `${unfedActiveCount} ${unfedActiveCount === 1 ? 'Kindred owes hunt' : 'Kindred owe hunt'}`}
                 </span>
               </div>
               <p className={styles.owedSubtitle}>
-                Active Kindred who still owe downtime submissions for this cycle (quota limit: 3 per cycle)
+                {ledgerMode === 'downtimes'
+                  ? 'Active Kindred who still owe downtime submissions for this cycle (quota limit: 3 per cycle)'
+                  : `Hunting rolls and hunger maintenance for active Kindred in Cycle ${currentFeedingCycleIndex != null ? currentFeedingCycleIndex : ''}`}
               </p>
             </div>
           </div>
           <div className={styles.owedHeaderActions}>
             <div className={styles.owedFilterPills}>
-              {[
-                { id: 'owing', label: `Owing (${owingCount})` },
-                { id: 'all', label: `All Active (${owingPlayersData.length})` },
-                { id: 'fulfilled', label: `Fulfilled (${owingPlayersData.length - owingCount})` },
-              ].map(f => (
-                <button
-                  key={f.id}
-                  type="button"
-                  className={`${styles.owedFilterBtn} ${owedFilter === f.id ? styles.owedFilterBtnActive : ''}`}
-                  onClick={() => setOwedFilter(f.id)}
-                >
-                  {f.label}
-                </button>
-              ))}
+              {ledgerMode === 'downtimes' ? (
+                [
+                  { id: 'owing', label: `Owing (${owingCount})` },
+                  { id: 'all', label: `All Active (${owingPlayersData.length})` },
+                  { id: 'fulfilled', label: `Fulfilled (${owingPlayersData.length - owingCount})` },
+                ].map(f => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    className={`${styles.owedFilterBtn} ${owedFilter === f.id ? styles.owedFilterBtnActive : ''}`}
+                    onClick={() => setOwedFilter(f.id)}
+                  >
+                    {f.label}
+                  </button>
+                ))
+              ) : (
+                [
+                  { id: 'unfed', label: `Owes Hunt (${unfedActiveCount})` },
+                  { id: 'all', label: `All Active (${feedingTurnoutData.length})` },
+                  { id: 'fed', label: `Hunted (${fedActiveCount})` },
+                ].map(f => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    className={`${styles.owedFilterBtn} ${feedingFilter === f.id ? styles.owedFilterBtnActive : ''}`}
+                    onClick={() => setFeedingFilter(f.id)}
+                  >
+                    {f.label}
+                  </button>
+                ))
+              )}
             </div>
             <div className={styles.owedSearchWrap}>
               <span className="material-symbols-outlined" style={{ fontSize: '16px', color: 'var(--text-muted)' }}>search</span>
@@ -1120,132 +1613,254 @@ export default function AdminHomeTab({
           </div>
         </div>
 
-        {filteredOwingPlayers.length === 0 ? (
-          <div className={styles.emptyNotice}>
-            <span className={`material-symbols-outlined ${styles.emptyIcon}`}>verified</span>
-            <span>
-              {owedFilter === 'owing'
-                ? 'All active Kindred have submitted all required downtimes for this cycle!'
-                : 'No players match the search criteria.'}
-            </span>
-          </div>
-        ) : (
-          <div className={styles.owedGrid}>
-            {filteredOwingPlayers.map(p => {
-              const clanColor = CLAN_COLORS[p.clan] || '#9d7cff';
-              const clanLogo = symlogoWhite(p.clan);
-              const pct = Math.min(100, Math.round((p.submitted / p.limit) * 100));
+        {ledgerMode === 'downtimes' ? (
+          filteredOwingPlayers.length === 0 ? (
+            <div className={styles.emptyNotice}>
+              <span className={`material-symbols-outlined ${styles.emptyIcon}`}>verified</span>
+              <span>
+                {owedFilter === 'owing'
+                  ? 'All active Kindred have submitted all required downtimes for this cycle!'
+                  : 'No players match the search criteria.'}
+              </span>
+            </div>
+          ) : (
+            <div className={styles.owedGrid}>
+              {filteredOwingPlayers.map(p => {
+                const clanColor = CLAN_COLORS[p.clan] || '#9d7cff';
+                const clanLogo = symlogoWhite(p.clan);
+                const pct = Math.min(100, Math.round((p.submitted / p.limit) * 100));
 
-              return (
-                <div
-                  key={p.characterId || p.userId || p.characterName}
-                  className={styles.playerOwedCard}
-                  style={{ borderLeftColor: clanColor }}
-                >
-                  <div className={styles.playerOwedTop}>
-                    <div
-                      className={styles.clanBadgeWrap}
-                      style={{ borderColor: `${clanColor}44`, cursor: p.characterId ? 'pointer' : 'default' }}
-                      onClick={() => p.characterId && handleOpenCharacter(p.characterId)}
-                      title={p.characterId ? `Open sheet for ${p.characterName}` : undefined}
-                    >
-                      {clanLogo ? (
-                        <img
-                          src={clanLogo}
-                          alt={p.clan || 'Clan'}
-                          className={styles.clanSymbol}
-                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                        />
-                      ) : (
-                        <span className="material-symbols-outlined" style={{ fontSize: '18px', color: clanColor }}>
-                          nightlight
-                        </span>
-                      )}
-                    </div>
-                    <div className={styles.playerOwedDetails}>
+                return (
+                  <div
+                    key={p.characterId || p.userId || p.characterName}
+                    className={styles.playerOwedCard}
+                    style={{ borderLeftColor: clanColor }}
+                  >
+                    <div className={styles.playerOwedTop}>
                       <div
-                        className={styles.playerOwedCharName}
-                        style={{ color: clanColor, cursor: p.characterId ? 'pointer' : 'default' }}
+                        className={styles.clanBadgeWrap}
+                        style={{ borderColor: `${clanColor}44`, cursor: p.characterId ? 'pointer' : 'default' }}
                         onClick={() => p.characterId && handleOpenCharacter(p.characterId)}
                         title={p.characterId ? `Open sheet for ${p.characterName}` : undefined}
                       >
-                        {p.characterName}
+                        {clanLogo ? (
+                          <img
+                            src={clanLogo}
+                            alt={p.clan || 'Clan'}
+                            className={styles.clanSymbol}
+                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                          />
+                        ) : (
+                          <span className="material-symbols-outlined" style={{ fontSize: '18px', color: clanColor }}>
+                            nightlight
+                          </span>
+                        )}
                       </div>
-                      <div className={styles.playerOwedMeta}>
-                        <span
-                          style={{ cursor: p.userId ? 'pointer' : 'default' }}
-                          onClick={() => setTab('users')}
-                          title="View user in Users tab"
+                      <div className={styles.playerOwedDetails}>
+                        <div
+                          className={styles.playerOwedCharName}
+                          style={{ color: clanColor, cursor: p.characterId ? 'pointer' : 'default' }}
+                          onClick={() => p.characterId && handleOpenCharacter(p.characterId)}
+                          title={p.characterId ? `Open sheet for ${p.characterName}` : undefined}
                         >
-                          {p.playerName}
-                        </span>
-                        {p.clan && (
-                          <>
-                            <span>:</span>
-                            <span>{p.clan}</span>
-                          </>
+                          {p.characterName}
+                        </div>
+                        <div className={styles.playerOwedMeta}>
+                          <span
+                            style={{ cursor: p.userId ? 'pointer' : 'default' }}
+                            onClick={() => setTab('users')}
+                            title="View user in Users tab"
+                          >
+                            {p.playerName}
+                          </span>
+                          {p.clan && (
+                            <>
+                              <span>:</span>
+                              <span>{p.clan}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        {p.owed > 0 ? (
+                          <span className={p.owed === 3 ? styles.owedPillCritical : styles.owedPillWarning}>
+                            Owes {p.owed} {p.owed === 1 ? 'DT' : 'DTs'}
+                          </span>
+                        ) : (
+                          <span className={styles.owedPillFulfilled}>
+                            Fulfilled
+                          </span>
                         )}
                       </div>
                     </div>
-                    <div>
-                      {p.owed > 0 ? (
-                        <span className={p.owed === 3 ? styles.owedPillCritical : styles.owedPillWarning}>
-                          Owes {p.owed} {p.owed === 1 ? 'DT' : 'DTs'}
-                        </span>
-                      ) : (
-                        <span className={styles.owedPillFulfilled}>
-                          Fulfilled
-                        </span>
+
+                    <div className={styles.playerOwedProgressRow}>
+                      <div className={styles.progressBarWrap} style={{ margin: 0, flex: 1 }}>
+                        <div
+                          className={`${styles.progressBarFill} ${
+                            pct === 100
+                              ? styles.progressBarFillGreen
+                              : pct >= 50
+                              ? styles.progressBarFillYellow
+                              : styles.progressBarFillPurple
+                          }`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <span className={styles.playerOwedProgressText}>
+                        {p.submitted} of {p.limit} submitted
+                      </span>
+                    </div>
+
+                    <div className={styles.playerOwedActions}>
+                      {p.characterId && (
+                        <button
+                          type="button"
+                          className={styles.owedActionBtn}
+                          onClick={() => handleOpenCharacter(p.characterId)}
+                          title="Open character sheet"
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>description</span>
+                          Sheet
+                        </button>
                       )}
-                    </div>
-                  </div>
-
-                  <div className={styles.playerOwedProgressRow}>
-                    <div className={styles.progressBarWrap} style={{ margin: 0, flex: 1 }}>
-                      <div
-                        className={`${styles.progressBarFill} ${
-                          pct === 100
-                            ? styles.progressBarFillGreen
-                            : pct >= 50
-                            ? styles.progressBarFillYellow
-                            : styles.progressBarFillPurple
-                        }`}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                    <span className={styles.playerOwedProgressText}>
-                      {p.submitted} of {p.limit} submitted
-                    </span>
-                  </div>
-
-                  <div className={styles.playerOwedActions}>
-                    {p.characterId && (
                       <button
                         type="button"
                         className={styles.owedActionBtn}
-                        onClick={() => handleOpenCharacter(p.characterId)}
-                        title="Open character sheet"
+                        onClick={() => {
+                          setTab('downtimes');
+                        }}
+                        title="View downtimes"
                       >
-                        <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>description</span>
-                        Sheet
+                        <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>history_edu</span>
+                        Downtimes
                       </button>
-                    )}
-                    <button
-                      type="button"
-                      className={styles.owedActionBtn}
-                      onClick={() => {
-                        setTab('downtimes');
-                      }}
-                      title="View downtimes"
-                    >
-                      <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>history_edu</span>
-                      Downtimes
-                    </button>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )
+        ) : (
+          filteredFeedingPlayers.length === 0 ? (
+            <div className={styles.emptyNotice}>
+              <span className={`material-symbols-outlined ${styles.emptyIcon}`}>verified</span>
+              <span>
+                {feedingFilter === 'unfed'
+                  ? 'All active Kindred have completed their hunting rolls for this cycle!'
+                  : 'No players match the search criteria.'}
+              </span>
+            </div>
+          ) : (
+            <div className={styles.owedGrid}>
+              {filteredFeedingPlayers.map(p => {
+                const clanColor = CLAN_COLORS[p.clan] || '#9d7cff';
+                const clanLogo = symlogoWhite(p.clan);
+
+                return (
+                  <div
+                    key={p.characterId || p.userId || p.characterName}
+                    className={styles.playerOwedCard}
+                    style={{ borderLeftColor: clanColor }}
+                  >
+                    <div className={styles.playerOwedTop}>
+                      <div
+                        className={styles.clanBadgeWrap}
+                        style={{ borderColor: `${clanColor}44`, cursor: p.characterId ? 'pointer' : 'default' }}
+                        onClick={() => p.characterId && handleOpenCharacter(p.characterId)}
+                        title={p.characterId ? `Open sheet for ${p.characterName}` : undefined}
+                      >
+                        {clanLogo ? (
+                          <img
+                            src={clanLogo}
+                            alt={p.clan || 'Clan'}
+                            className={styles.clanSymbol}
+                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                          />
+                        ) : (
+                          <span className="material-symbols-outlined" style={{ fontSize: '18px', color: clanColor }}>
+                            nightlight
+                          </span>
+                        )}
+                      </div>
+                      <div className={styles.playerOwedDetails}>
+                        <div
+                          className={styles.playerOwedCharName}
+                          style={{ color: clanColor, cursor: p.characterId ? 'pointer' : 'default' }}
+                          onClick={() => p.characterId && handleOpenCharacter(p.characterId)}
+                          title={p.characterId ? `Open sheet for ${p.characterName}` : undefined}
+                        >
+                          {p.characterName}
+                        </div>
+                        <div className={styles.playerOwedMeta}>
+                          <span
+                            style={{ cursor: p.userId ? 'pointer' : 'default' }}
+                            onClick={() => setTab('users')}
+                            title="View user in Users tab"
+                          >
+                            {p.playerName}
+                          </span>
+                          {p.clan && (
+                            <>
+                              <span>:</span>
+                              <span>{p.clan}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        {p.isFed ? (
+                          <span className={styles.owedPillFulfilled}>
+                            Hunted: {p.outcome ? p.outcome.replace(/_/g, ' ') : 'Resolved'}
+                          </span>
+                        ) : (
+                          <span className={styles.owedPillCritical}>
+                            Owes Hunting Roll
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className={styles.playerOwedProgressRow}>
+                      <span className={styles.playerOwedProgressText}>
+                        {p.division ? `Domain: Division ${p.division}` : 'Domain: Unassigned'}
+                      </span>
+                      {p.created_at && (
+                        <span className={styles.playerOwedProgressText} style={{ marginLeft: 'auto' }}>
+                          {formatEuDate(p.created_at)}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className={styles.playerOwedActions}>
+                      {p.characterId && (
+                        <button
+                          type="button"
+                          className={styles.owedActionBtn}
+                          onClick={() => handleOpenCharacter(p.characterId)}
+                          title="Open character sheet"
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>description</span>
+                          Sheet
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className={styles.owedActionBtn}
+                        onClick={() => {
+                          setTab('feeding');
+                        }}
+                        title="Open Feeding Control"
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>nightlight</span>
+                        Feeding Control
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )
         )}
       </div>
 

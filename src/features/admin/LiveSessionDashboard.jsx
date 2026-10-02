@@ -5,7 +5,7 @@ import api from '../../core/api';
 import { copyToClipboard } from '../../utils/clipboard';
 import {
   getLiveSession, getLiveSessionPlayers, getLiveSessionRolls, getLiveSessionBroadcasts,
-  createLiveSession, sendLiveSessionBroadcast, logLiveSessionRoll, socket
+  createLiveSession, sendLiveSessionBroadcast, socket
 } from '../../api/liveSession';
 import { DISCIPLINES, ALL_DISCIPLINE_NAMES } from '../../data/disciplines';
 import { RITUALS } from '../../data/rituals';
@@ -13,7 +13,7 @@ import { ATTR_DESCRIPTIONS, SKILL_DESCRIPTIONS } from '../../data/descriptions';
 import { BOOKS, BOOK_BASE, parseSourceString, bookByName, bookUrl } from '../../data/books';
 import { clanRef } from '../../data/clanReference';
 import { powerMechanics } from '../../data/disciplineMechanics';
-import { rollPool, summarizeTrackers, getBloodPotencyStats, applyHealthDamage, remorsePool } from '../../utils/liveSessionMechanics';
+import { summarizeTrackers, getBloodPotencyStats, applyHealthDamage, remorsePool } from '../../utils/liveSessionMechanics';
 import { formatEuDate } from '../../utils/dateFormatter';
 import LiveSessionRollHistory from '../live-session/LiveSessionRollHistory';
 import sharedStyles from '../../styles/LiveSession.module.css';
@@ -557,22 +557,13 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
     const stains = Math.max(0, Number(remorseStains[charId] ?? sheet.stains ?? 1));
     const name = p.name ?? p.character_name ?? sheet.name ?? 'Unknown';
     const pool = remorsePool(humanity, stains);
-    const res = rollPool(pool, 0);
-    const feltRemorse = res.outcome.successes > 0;
-
-    await logLiveSessionRoll(sessionId, {
-      character_id: charId,
-      character_name: name,
-      roll_type: 'remorse',
-      pool,
-      hunger: 0,
-      difficulty: 1,
-      results: { normal: res.normalDice, hunger: [] },
-      successes: res.outcome.successes,
-      note: feltRemorse
-        ? `Remorse (Humanity ${humanity}, ${stains} stain${stains !== 1 ? 's' : ''}): feels remorse, Stains cleared`
-        : `Remorse (Humanity ${humanity}, ${stains} stain${stains !== 1 ? 's' : ''}): no remorse, Humanity falls to ${Math.max(0, humanity - 1)}`,
+    // Thrown and logged by the server like every other roll.
+    const roll = await stRoll({
+      rollType: 'remorse', characterId: charId, characterName: name, pool, hunger: 0, difficulty: 1,
+      note: `Remorse (Humanity ${humanity}, ${stains} stain${stains !== 1 ? 's' : ''})`,
     });
+    if (!roll) return;
+    const feltRemorse = roll.successes > 0;
 
     if (feltRemorse) {
       await adjustPlayer(charId, { stainsDelta: -stains });
@@ -588,22 +579,19 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
     const hunger = parseInt(rollerHunger) || 0;
     const diff = parseInt(rollerDiff) || 0;
 
-    const results = rollPool(normal, hunger);
+    await stRoll({ rollType: 'admin_roll', characterName: rollerEntity, pool: normal + hunger, hunger, difficulty: diff, note: rollerNote });
+  };
 
-    await logLiveSessionRoll(sessionId, {
-      character_id:   null,
-      character_name: rollerEntity,
-      roll_type:      'admin_roll',
-      pool:           normal + hunger,
-      hunger,
-      difficulty:     diff,
-      results:        { normal: results.normalDice, hunger: results.hungerDice },
-      successes:      results.outcome.successes,
-      has_critical:        results.outcome.hasCritical,
-      has_messy_critical:  results.outcome.hasMessyCritical,
-      has_bestial_failure: results.outcome.hasBestialFailure,
-      note:           rollerNote
-    });
+  // Storyteller rolls are thrown by the server too, into the same dice table
+  // and session feed as everyone else's.
+  const stRoll = async (body) => {
+    try {
+      const { data } = await api.post('/dice/roll', { mode: 'free', sessionId, ...body });
+      return data.roll;
+    } catch (e) {
+      flash(e?.response?.data?.error || 'Roll failed.');
+      return null;
+    }
   };
 
   const visibleTools = React.useMemo(() => {
@@ -1391,18 +1379,13 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
                   <input type="number" min="0" max="5" className={styles.formInput} style={{ width: '55px' }} value={oppHunger} onChange={e => setOppHunger(e.target.value)} />
                 </div>
                 <button className={styles.btnSecondary} onClick={async () => {
-                  const a = rollPool(parseInt(rollerNormal) || 0, parseInt(rollerHunger) || 0);
-                  const b = rollPool(parseInt(oppNormal) || 0, parseInt(oppHunger) || 0);
-                  const margin = a.outcome.successes - b.outcome.successes;
+                  const aHunger = parseInt(rollerHunger) || 0;
+                  const bHunger = parseInt(oppHunger) || 0;
+                  const a = await stRoll({ rollType: 'opposed_roll', characterName: rollerEntity, pool: (parseInt(rollerNormal) || 0) + aHunger, hunger: aHunger, note: `Opposed roll${rollerNote ? `: ${rollerNote}` : ''}` });
+                  const b = a && await stRoll({ rollType: 'opposed_roll', characterName: `Opponent of ${rollerEntity}`, pool: (parseInt(oppNormal) || 0) + bHunger, hunger: bHunger, note: 'Opposed roll (opponent)' });
+                  if (!a || !b) return;
+                  const margin = a.successes - b.successes;
                   const verdict = margin > 0 ? `${rollerEntity} wins by ${margin}` : margin < 0 ? `opponent wins by ${-margin}` : 'tie (defender / lower Hunger wins)';
-                  await logLiveSessionRoll(sessionId, {
-                    character_id: null, character_name: rollerEntity, roll_type: 'opposed_roll',
-                    pool: a.pool, hunger: a.hunger,
-                    results: { normal: a.normalDice, hunger: a.hungerDice },
-                    successes: a.outcome.successes,
-                    has_messy_critical: a.outcome.hasMessyCritical, has_bestial_failure: a.outcome.hasBestialFailure,
-                    note: `Opposed: ${rollerEntity} ${a.outcome.successes} vs ${b.outcome.successes}: ${verdict}. ${rollerNote}`,
-                  });
                   flash(verdict);
                 }}>Roll contest</button>
               </div>

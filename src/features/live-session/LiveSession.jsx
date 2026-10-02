@@ -11,9 +11,6 @@ import {
   computeOutcome,
   disciplineRequiresRouse,
   getPoolFromCharacter,
-  rerollNormalDice,
-  rollPool,
-  runRouseCheck,
   summarizeTrackers,
   getBloodPotencyStats
 } from '../../utils/liveSessionMechanics';
@@ -398,6 +395,44 @@ export default function LiveSession() {
     else if (outcome?.hasBestialFailure) setCompulsionPrompt({ kind: 'bestial' });
   };
 
+  // Every roll is thrown by the server (POST /dice/roll), which builds the pool
+  // from the stored sheet and logs it in the one dice table / session feed.
+  // The pool shown on screen is only a preview. This turns the server's
+  // answer into what the dice tray shows.
+  const showServerRoll = (row) => {
+    const normal = row?.results?.normal || [];
+    const hunger = row?.results?.hunger || [];
+    const roll = {
+      id: row.id, type: row.roll_type, note: row.note, pool: row.pool, hunger: row.hunger,
+      difficulty: row.difficulty || 0, normalDice: normal, hungerDice: hunger,
+      outcome: computeOutcome(normal, hunger, row.difficulty || 0),
+    };
+    setLastRoll(roll);
+    setWpSelections([]);
+    return roll;
+  };
+
+  const serverRoll = async (body) => {
+    setMobileTab('action');
+    setIsRolling(true);
+    try {
+      const { data } = await api.post('/dice/roll', { sessionId, isHidden: hiddenRollsActive, ...body });
+      if (data.sheet) { setSheet(data.sheet); setTrackers(summarizeTrackers(data.sheet)); }
+      const roll = showServerRoll(data.roll);
+      maybeCompulsion(roll.outcome);
+      return data;
+    } catch (e) {
+      setLastRoll({
+        normalDice: [], hungerDice: [],
+        outcome: { successes: 0, hasCritical: false, hasMessyCritical: false, hasBestialFailure: false, label: 'Error' },
+        type: body.mode, note: e?.response?.data?.error || 'Failed to communicate with server.',
+      });
+      return null;
+    } finally {
+      setTimeout(() => setIsRolling(false), 1500);
+    }
+  };
+
   const GENERAL_COMPULSIONS = [
     { name: 'Hunger', text: 'You must feed. −2 to any action that does not bring you closer to slaking a full Rouse of Hunger.' },
     { name: 'Dominance', text: 'You must assert control. −2 to any action not spent bending someone to your will.' },
@@ -410,17 +445,38 @@ export default function LiveSession() {
     await applySheetUpdate(next => { next.compulsion = text || null; return next; });
   };
 
+  // Mending is rolled and applied by the server (POST /characters/:id/mend):
+  // players can't write Health or Hunger themselves.
+  const mendOnServer = async (type) => {
+    try {
+      const { data } = await api.post(`/characters/${character.id}/mend`, { type, sessionId, isHidden: hiddenRollsActive });
+      setSheet(data.sheet);
+      setTrackers(summarizeTrackers(data.sheet));
+      const dice = data.rolls.flatMap(r => r.dice);
+      const fails = data.rolls.filter(r => !r.success).length;
+      const note = `Mend ${type}: healed ${data.healed}${fails ? `, Hunger +${fails}` : ''}`;
+      setLastRoll({
+        normalDice: [],
+        hungerDice: dice,
+        outcome: { successes: data.rolls.length - fails, hasCritical: false, hasMessyCritical: false, hasBestialFailure: false },
+        type: 'mend_rouse',
+        note,
+      });
+    } catch (e) {
+      setLastRoll({
+        normalDice: [], hungerDice: [],
+        outcome: { successes: 0, hasCritical: false, hasMessyCritical: false, hasBestialFailure: false, label: 'Error' },
+        type: 'mend_rouse', note: e?.response?.data?.error || 'Failed to communicate with server.',
+      });
+    }
+  };
+
   // Heal Superficial: one Rouse Check, then remove Mend Amount levels (V5).
   const mendSuperficialSelf = async () => {
     if (!trackers || trackers.health.superficial <= 0) return;
     setMobileTab('action');
     setIsRolling(true);
-    await handleRouse('mend_rouse', null, true);
-    await applySheetUpdate(next => {
-      next.health = next.health || { superficial: 0, aggravated: 0 };
-      next.health.superficial = Math.max(0, (Number(next.health.superficial) || 0) - bpStats.mendAmount);
-      return next;
-    });
+    await mendOnServer('superficial');
     setTimeout(() => setIsRolling(false), 1500);
   };
 
@@ -429,18 +485,20 @@ export default function LiveSession() {
     if (!trackers || trackers.health.aggravated <= 0) return;
     setMobileTab('action');
     setIsRolling(true);
-    for (let i = 0; i < 3; i += 1) await handleRouse('mend_rouse', null, true);
-    await applySheetUpdate(next => {
-      next.health = next.health || { superficial: 0, aggravated: 0 };
-      next.health.aggravated = Math.max(0, (Number(next.health.aggravated) || 0) - 1);
-      return next;
-    });
+    await mendOnServer('aggravated');
     setTimeout(() => setIsRolling(false), 1500);
   };
 
   // Spend 1 Superficial Willpower for a rules-defined effect.
   const spendWillpower = async (why) => {
     if (trackers.willpower.superficial + trackers.willpower.aggravated >= trackers.willpower.max) return;
+    if (why === 'ignore_impairment') {
+      // Charged by the server together with the next roll, and only if that roll is impaired.
+      setWpIgnoreImpair(true);
+      setSignalNote('Impairment ignored for your next roll: 1 Willpower is spent with it.');
+      setTimeout(() => setSignalNote(''), 3000);
+      return;
+    }
     try {
       const { data } = await api.post(`/characters/${character.id}/spend-wp`);
       setSheet(data.sheet);
@@ -455,145 +513,51 @@ export default function LiveSession() {
     setTimeout(() => setSignalNote(''), 3000);
   };
 
-  const executeRoll = async (pool, type, note) => {
-    setMobileTab('action');
-    setIsRolling(true);
-    let currentHunger = trackers?.hunger ?? 0;
-
-    let finalNote = note;
-    const trait1 = selectedTraits[0] || null;
-    const trait2 = selectedTraits[1] || null;
-    const hasDiscipline = (trait1 && (sheet?.disciplines?.[trait1] !== undefined || isDisciplineTrait(trait1))) || (trait2 && (sheet?.disciplines?.[trait2] !== undefined || isDisciplineTrait(trait2)));
-    if (hasDiscipline && bpStats.disciplineBonus > 0) finalNote += ` (+${bpStats.disciplineBonus} BP Disc)`;
-    if (specialtyActive) finalNote += ' (Specialty)';
-    const usedEffects = [...myEffects, ...powerMods].filter(e => activeEffectIds.includes(e.id));
-    for (const e of usedEffects) finalNote += ` (${e.label} ${Number(e.mod) > 0 ? '+' : ''}${e.mod})`;
-    if (Number(situationalMod)) finalNote += ` (${situationalMod > 0 ? '+' : ''}${situationalMod}${modReason ? ` ${modReason}` : ''})`;
+  const executeRoll = async () => {
+    const effectIds = activeEffectIds.filter(id => myEffects.some(e => e.id === id));
+    const powerIds = powerMods.filter(pm => activeEffectIds.includes(pm.id)).map(pm => pm.id.replace(/^pw-/, ''));
+    await serverRoll({
+      mode: 'traits',
+      traits: selectedTraits,
+      specialty: specialtyActive,
+      bloodSurge: bloodSurgeActive,
+      effectIds,
+      powerIds,
+      situational: Number(situationalMod) ? { mod: Number(situationalMod), reason: modReason } : null,
+      ignoreImpairment: wpIgnoreImpair,
+    });
     setSituationalMod(0);
     setModReason('');
     setActiveEffectIds([]);
     setWpIgnoreImpair(false);
-
-    // Process Blood Surge immediately (vampires at Hunger 5 cannot Rouse)
-    if (bloodSurgeActive && currentHunger < 5) {
-      const rouseResult = runRouseCheck(currentHunger);
-      currentHunger = rouseResult.nextHunger;
-      await applySheetUpdate(next => { next.hunger = currentHunger; return next; });
-      setBloodSurgeActive(false);
-      setSpecialtyActive(false);
-
-      await pushRoll('blood_surge', {
-        characterId: character?.id, roll_type: 'blood_surge', pool: 1,
-        hunger: currentHunger,
-        results: { normal: [], rouse: [rouseResult.die] },
-        successes: rouseResult.success ? 1 : 0,
-        note: rouseResult.success ? 'Blood Surge: No hunger gained' : 'Blood Surge: Hunger +1',
-      });
-      finalNote += ` (Blood Surge +${bpStats.surgeBonus})`;
-    } else {
-      if (bloodSurgeActive) setBloodSurgeActive(false);
-      setSpecialtyActive(false);
-    }
-
-    const roll = rollPool(pool, currentHunger, 0);
-    setLastRoll({ ...roll, type, note: finalNote });
-    setWpSelections([]);
-    maybeCompulsion(roll.outcome);
-
-    await pushRoll(type, {
-      characterId: character?.id, roll_type: type,
-      pool: roll.pool, hunger: roll.hunger,
-      results: { normal: roll.normalDice, hunger: roll.hungerDice },
-      successes: roll.outcome.successes,
-      has_critical: roll.outcome.hasCritical,
-      has_messy_critical: roll.outcome.hasMessyCritical,
-      has_bestial_failure: roll.outcome.hasBestialFailure,
-      note: finalNote,
-    });
-
-    // Animate slot machine for 1.5s
-    setTimeout(() => {
-      setIsRolling(false);
-    }, 1500);
+    setBloodSurgeActive(false);
+    setSpecialtyActive(false);
   };
 
   // The ST asked for a specific pool. The player can't retune the traits or add
   // their own specialty: the ST already decided both. Impairment, Hunger, the
   // Blood Potency Discipline bonus and any ST-granted specialty still apply.
   const resolveRollRequest = async (req) => {
-    setMobileTab('action');
-    setIsRolling(true);
-
-    const t1 = req.trait1, t2 = req.trait2;
-    let pool = getPoolFromCharacter(sheet, t1, t2);
-    const hasDiscipline = (sheet?.disciplines?.[t1] !== undefined || isDisciplineTrait(t1)) || (sheet?.disciplines?.[t2] !== undefined || isDisciplineTrait(t2));
-    if (hasDiscipline) pool += bpStats.disciplineBonus;
-    if (req.specialty) pool += 1;
-
-    if (trackers && !sheet?.frenzyState) {
-      const phys = ['Strength', 'Dexterity', 'Stamina', 'Athletics', 'Brawl', 'Craft', 'Drive', 'Firearms', 'Larceny', 'Melee', 'Stealth', 'Survival'];
-      if (trackers.health.superficial + trackers.health.aggravated >= trackers.health.max
-        && (phys.includes(t1) || phys.includes(t2))) pool -= 2;
-      if (trackers.willpower.superficial + trackers.willpower.aggravated >= trackers.willpower.max
-        && (!phys.includes(t1) || !phys.includes(t2))) pool -= 2;
-    }
-    pool = Math.max(0, pool);
-
-    const hunger = trackers?.hunger ?? 0;
-    const roll = rollPool(pool, hunger, req.difficulty || 0);
-    const discLabel = (hasDiscipline && bpStats.disciplineBonus > 0) ? ` + BP Disc ${bpStats.disciplineBonus}` : '';
-    const label = `${t1} + ${t2}${req.specialty ? ` + ${req.specialty}` : ''}${discLabel}`;
-    setLastRoll({ ...roll, type: 'requested_roll', note: `Storyteller's request: ${label}` });
-    setWpSelections([]);
+    await serverRoll({ mode: 'request', requestId: req.id });
     setWpIgnoreImpair(false);
-    maybeCompulsion(roll.outcome);
-
-    await pushRoll('requested_roll', {
-      characterId: character?.id, roll_type: 'requested_roll',
-      pool: roll.pool, hunger: roll.hunger, difficulty: req.difficulty || 0,
-      results: { normal: roll.normalDice, hunger: roll.hungerDice },
-      successes: roll.outcome.successes,
-      has_critical: roll.outcome.hasCritical,
-      has_messy_critical: roll.outcome.hasMessyCritical,
-      has_bestial_failure: roll.outcome.hasBestialFailure,
-      note: `[${req.id.slice(-6)}] ${label}${req.difficulty ? ` · Diff ${req.difficulty}` : ''}${req.specialty ? ' (Specialty)' : ''}${req.note ? `: ${req.note}` : ''}`,
-    });
-
-    setTimeout(() => setIsRolling(false), 1500);
   };
 
   const handleWillpowerReroll = async () => {
-    if (!lastRoll || !wpSelections.length ||
+    if (!lastRoll?.id || !wpSelections.length ||
       trackers.willpower.superficial + trackers.willpower.aggravated >= trackers.willpower.max) return;
 
     setMobileTab('action');
     setIsRolling(true);
-
     try {
-      const { data } = await api.post(`/characters/${character.id}/spend-wp`);
+      const { data } = await api.post(`/dice/rolls/${lastRoll.id}/reroll`, { indices: wpSelections });
       setSheet(data.sheet);
       setTrackers(summarizeTrackers(data.sheet));
-
-      const { rerolled } = rerollNormalDice(lastRoll.normalDice, wpSelections);
-      const outcome = computeOutcome(rerolled, lastRoll.hungerDice, lastRoll.difficulty);
-      const updated = { ...lastRoll, normalDice: rerolled, outcome, note: 'Willpower Reroll' };
-
-      setLastRoll(updated);
-      setWpSelections([]);
-
-      await pushRoll('willpower_reroll', {
-        characterId: character?.id, roll_type: 'willpower_reroll',
-        pool: updated.pool, hunger: updated.hunger,
-        results: { normal: updated.normalDice, hunger: updated.hungerDice },
-        successes: updated.outcome.successes, note: 'Spent 1 WP',
-      });
+      showServerRoll(data.roll);
     } catch (e) {
-      console.error(e);
+      setSignalNote(e?.response?.data?.error || 'Reroll failed.');
+      setTimeout(() => setSignalNote(''), 3000);
     }
-
-    setTimeout(() => {
-      setIsRolling(false);
-    }, 1500);
+    setTimeout(() => setIsRolling(false), 1500);
   };
 
   const handleRouse = async (source = 'rouse_check', autoActivate = null, chain = false) => {
@@ -609,22 +573,15 @@ export default function LiveSession() {
       note: 'Calculating...',
     });
 
-    let advantage = false;
-    if (autoActivate && autoActivate.power?.level <= bpStats.rouseRerollLevel) {
-      advantage = true;
-    }
-
     try {
-      const prevHunger = trackers?.hunger || 0;
-      const { data } = await api.post(`/characters/${character.id}/rouse`, { advantage });
+      // The server grants the Blood Potency reroll die itself, for an owned
+      // power at or below the reroll level, and sets hunger frenzy at Hunger 5.
+      const usedPower = autoActivate?.power?.id ? { discipline: autoActivate.discName, powerId: autoActivate.power.id } : {};
+      const { data } = await api.post(`/characters/${character.id}/rouse`, { ...usedPower, source, sessionId, isHidden: hiddenRollsActive });
 
-      const { success, die1, die2, nextHunger, sheet: nextSheet } = data;
+      const { success, die1, die2, advantage, nextHunger, sheet: nextSheet } = data;
       setSheet(nextSheet);
       setTrackers(summarizeTrackers(nextSheet));
-
-      if (!success && prevHunger === 5) {
-        await applySheetUpdate(next => { next.frenzyState = 'hunger'; return next; });
-      }
 
       const rollNote = success
         ? (advantage ? 'Pass : No Hunger Gained (BP Reroll Advantage)' : 'Pass : No Hunger Gained')
@@ -638,16 +595,6 @@ export default function LiveSession() {
         note: rollNote,
       });
       setWpSelections([]);
-
-      await pushRoll(source, {
-        characterId: character?.id, roll_type: source, pool: advantage ? 2 : 1,
-        hunger: nextHunger,
-        results: { normal: [], rouse: advantage ? [die1, die2].filter(Boolean) : [die1] },
-        successes: success ? 1 : 0,
-        note: success
-          ? (advantage ? 'No hunger gained (BP Reroll Advantage)' : 'No hunger gained')
-          : (advantage ? 'Hunger +1 (BP Reroll Advantage)' : 'Hunger +1'),
-      });
 
       if (autoActivate && autoActivate.logActivation !== false) {
         await pushRoll('discipline_activation', {
@@ -672,38 +619,10 @@ export default function LiveSession() {
     if (!chain) setTimeout(() => setIsRolling(false), 1500);
   };
 
-  // Roll a discipline power's activation pool (attribute + discipline/skill),
-  // with the Blood Potency Discipline bonus and impairment applied.
-  const rollDisciplinePower = async (power, discName, traits) => {
-    const [t1, t2] = traits;
-    let pool = getPoolFromCharacter(sheet, t1, t2);
-    if (bpStats.disciplineBonus > 0) pool += bpStats.disciplineBonus;
-    if (trackers && !sheet?.frenzyState) {
-      const phys = ['Strength', 'Dexterity', 'Stamina', ...SKILL_GROUPS.Physical];
-      if (trackers.health.superficial + trackers.health.aggravated >= trackers.health.max
-        && (phys.includes(t1) || phys.includes(t2))) pool -= 2;
-      if (trackers.willpower.superficial + trackers.willpower.aggravated >= trackers.willpower.max
-        && !(phys.includes(t1) && phys.includes(t2))) pool -= 2;
-    }
-    pool = Math.max(0, pool);
-
-    const roll = rollPool(pool, trackers?.hunger ?? 0, 0);
-    const bpBonusText = bpStats.disciplineBonus > 0 ? ` (+${bpStats.disciplineBonus} BP Disc)` : '';
-    setLastRoll({ ...roll, type: 'discipline_roll', note: `${discName} • ${power.name} (${t1} + ${t2}${bpBonusText})` });
-    setWpSelections([]);
+  // Roll a discipline power's activation pool (server-built from the power's own dice pool).
+  const rollDisciplinePower = async (power, discName) => {
+    await serverRoll({ mode: 'power', discipline: discName, powerId: power.id });
     setWpIgnoreImpair(false);
-    maybeCompulsion(roll.outcome);
-    await pushRoll('discipline_roll', {
-      characterId: character?.id, roll_type: 'discipline_roll',
-      pool: roll.pool, hunger: roll.hunger,
-      results: { normal: roll.normalDice, hunger: roll.hungerDice },
-      successes: roll.outcome.successes,
-      has_critical: roll.outcome.hasCritical,
-      has_messy_critical: roll.outcome.hasMessyCritical,
-      has_bestial_failure: roll.outcome.hasBestialFailure,
-      note: `${discName} • ${power.name}: ${t1} + ${t2}${bpBonusText}`,
-      disc: discName, power_name: power.name,
-    });
   };
 
   const handleDisciplineActivate = async (power, discName) => {
@@ -736,7 +655,7 @@ export default function LiveSession() {
     // Roll the activation pool if the power has one; otherwise just log it.
     const traits = parseDicePool(power.dice_pool);
     if (traits) {
-      await rollDisciplinePower(power, discName, traits);
+      await rollDisciplinePower(power, discName);
     } else {
       if (rouseCount === 0) {
         setLastRoll(null);
@@ -752,44 +671,10 @@ export default function LiveSession() {
     setTimeout(() => setIsRolling(false), 1500);
   };
 
+  // Resist frenzy: Willpower + Humanity/3, rolled by the server, which clears the frenzy on a success.
   const handleResistFrenzy = async () => {
-    const currentFrenzy = sheet?.frenzyState;
-    if (!currentFrenzy) return;
-
-    setMobileTab('action');
-    setIsRolling(true);
-
-    const humanityVal = Number(sheet?.humanity ?? sheet?.morality?.humanity ?? 7);
-    const bonus = Math.floor(humanityVal / 3);
-    const willpowerRating = trackers?.willpower?.max || 0;
-    // Brujah Bane: lose Bane Severity dice when resisting a fury frenzy.
-    const brujahPenalty = (clan === 'Brujah' && currentFrenzy === 'fury') ? bpStats.baneSeverity : 0;
-    const pool = Math.max(0, willpowerRating + bonus - brujahPenalty);
-    const frenzyLabel = FRENZY_ALERTS[currentFrenzy]?.label || 'Frenzy';
-
-    const roll = rollPool(pool, 0, 0);
-    const resisted = roll.outcome.successes > 0;
-
-    setLastRoll({
-      ...roll,
-      type: 'frenzy_resistance',
-      note: `Resisting ${frenzyLabel} (Willpower ${willpowerRating} + Humanity/3 ${bonus}${brujahPenalty ? ` − Bane ${brujahPenalty}` : ''})`,
-    });
-    setWpSelections([]);
-
-    await pushRoll('frenzy_resistance', {
-      characterId: character?.id, roll_type: 'frenzy_resistance',
-      pool: roll.pool, hunger: 0,
-      results: { normal: roll.normalDice, hunger: [] },
-      successes: roll.outcome.successes,
-      note: resisted ? `Resisted ${frenzyLabel}` : `Failed to resist ${frenzyLabel}: the Beast holds control`,
-    });
-
-    if (resisted) {
-      await applySheetUpdate(next => { next.frenzyState = null; return next; });
-    }
-
-    setTimeout(() => setIsRolling(false), 1500);
+    if (!sheet?.frenzyState) return;
+    await serverRoll({ mode: 'frenzy' });
   };
 
   if (isAdmin) {
@@ -906,7 +791,7 @@ export default function LiveSession() {
 
   // V5: Willpower can't be spent to reroll frenzy, Remorse, Rouse or Humanity tests.
   const rerollAllowed = lastRoll
-    && !['frenzy_resistance', 'remorse', 'rouse_check', 'discipline_rouse_check', 'blush_of_life', 'blood_surge'].includes(lastRoll.type)
+    && !['frenzy_resistance', 'remorse', 'rouse_check', 'discipline_rouse_check', 'blush_of_life', 'blood_surge', 'mend_rouse', 'willpower_reroll'].includes(lastRoll.type)
     && !(trackers.willpower.superficial + trackers.willpower.aggravated >= trackers.willpower.max);
 
   const runCommonRoll = (r) => {
@@ -1456,7 +1341,7 @@ export default function LiveSession() {
               </div>
               <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                 <button className={styles.btnOutline} onClick={() => setSelectedTraits([])}>CLEAR</button>
-                <button className={styles.btnPrimary} disabled={selectedTraits.length === 0} onClick={() => executeRoll(currentPool, 'pool_roll', selectedTraits.join(' + '))}>ROLL {currentPool} DICE</button>
+                <button className={styles.btnPrimary} disabled={selectedTraits.length === 0} onClick={() => executeRoll()}>ROLL {currentPool} DICE</button>
               </div>
             </div>
 

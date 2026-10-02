@@ -893,7 +893,7 @@ export default function CharacterView({
     setErr(''); setMsg('');
     try {
       const { data } = await api.post(paths.spend, payload, {
-        headers: { 'Idempotency-Key': buildXpSpendIdempotencyKey(payload) },
+        headers: { 'Idempotency-Key': buildXpSpendIdempotencyKey(payload, ch?.xp) },
       });
       const obj = data.character || data.npc || null;
       setCh(attachStructured(obj));
