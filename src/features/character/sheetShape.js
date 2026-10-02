@@ -277,17 +277,18 @@ export function attachStructured(raw) {
         const p = typeof rawPick === 'string' ? { id: rawPick } : { ...rawPick };
         let level = Number(p.level);
 
-        if (!Number.isInteger(level) || level <= 0) {
-          const keys = [p.id, p.slug, p.key, p.code, p.power_id, p.name]
-            .filter(Boolean)
-            .map(s => String(s).toLowerCase());
-          if (index) {
-            for (const k of keys) {
-              const guessed = index.byId.get(k) ?? index.byName.get(k);
-              if (Number.isInteger(guessed) && guessed > 0) {
-                level = guessed;
-                break;
-              }
+        // A known power's own tier always wins over the stored one: older
+        // saves wrote the slot level (e.g. Daunt, a Level-1 power, stored
+        // as level 3 when picked for the third Presence dot).
+        const keys = [p.id, p.slug, p.key, p.code, p.power_id, p.name]
+          .filter(Boolean)
+          .map(s => String(s).toLowerCase());
+        if (index) {
+          for (const k of keys) {
+            const known = index.byId.get(k) ?? index.byName.get(k);
+            if (Number.isInteger(known) && known > 0) {
+              level = known;
+              break;
             }
           }
         }

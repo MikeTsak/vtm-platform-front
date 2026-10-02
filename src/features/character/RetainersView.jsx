@@ -71,7 +71,10 @@ const SmallDots = ({ value, max = 5 }) => (
   </div>
 );
 
-// --- ADVANTAGE PICKER HELPERS ---
+// Coterie Retainers: the Background's dots are the budget, tiers spend from it.
+const coterieFreeDots = (c) => c.dots - c.retainers.reduce((sum, r) => sum + r.tier, 0);
+const coterieMember = (c, characterId) => c?.members.find(m => m.character_id === characterId);
+const TIER_TITLES = { 1: 'Pawn', 2: 'Associate', 3: 'Specialist' };
 
 // --- ADVANTAGE PICKER HELPERS ---
 
@@ -108,14 +111,14 @@ function getRandomStats(tier) {
   return { attributes, skills };
 }
 
-const MarketplaceRow = ({ title, cost, disabled, onBuy }) => (
+const MarketplaceRow = ({ title, cost, disabled, onBuy, costLabel, buttonLabel = 'Recruit' }) => (
   <div className={styles.shopItem}>
     <div className={styles.shopInfo}>
       <h5 className={styles.shopTitle}>{title}</h5>
-      <span className={styles.shopCost}>Cost: {cost} XP</span>
+      <span className={styles.shopCost}>{costLabel || `Cost: ${cost} XP`}</span>
     </div>
     <button className={styles.btnPrimary} disabled={disabled} onClick={onBuy}>
-      Recruit
+      {buttonLabel}
     </button>
   </div>
 );
@@ -427,7 +430,7 @@ const getValidationErrors = (draftSheet, tier) => {
 
 // --- MULTI-STEP WIZARD COMPONENT ---
 
-const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel, onConfirm, isMigration, isAdminBypass, initialName, initialSheet, minTier = 1, onChangeTier, saving }) => {
+const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel, onConfirm, isMigration, isAdminBypass, initialName, initialSheet, minTier = 1, onChangeTier, saving, freeMessage, confirmLabel, extraStep1 }) => {
   const [step, setStep] = useState(1);
   const [name, setName] = useState('');
   const [draftSheet, setDraftSheet] = useState({ attributes: {}, skills: {}, disciplines: {}, advantages: [], flaws: [], isGhoul: false, powers: [] });
@@ -612,6 +615,8 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
                 </div>
               )}
 
+              {extraStep1}
+
               {!canAfford && !isMigration && (
                 <div className={styles.errorBannerStitch} style={{ marginBottom: '24px' }}>
                   <span className="material-symbols-outlined">error</span>
@@ -621,7 +626,7 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
               {isMigration && (
                 <div className={styles.successBannerStitch} style={{ marginBottom: '24px' }}>
                   <span className="material-symbols-outlined">check_circle</span>
-                  This is a free migration to finalize your old Tier {tier} retainer's sheet.
+                  {freeMessage || `This is a free migration to finalize your old Tier ${tier} retainer's sheet.`}
                 </div>
               )}
 
@@ -965,7 +970,7 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
               disabled={validationErrors.length > 0 || (!isAdminBypass && !canAfford) || saving}
               className={styles.btnNextStitch}
             >
-              {saving ? "Processing..." : (isMigration ? "Complete Migration" : `Confirm & Pay ${cost} XP`)}
+              {saving ? "Processing..." : (isMigration ? (confirmLabel || "Complete Migration") : `Confirm & Pay ${cost} XP`)}
               <span className="material-symbols-outlined">military_tech</span>
             </button>
           )}
@@ -986,6 +991,8 @@ export default function RetainersView() {
 
   const [character, setCharacter] = useState(stateCharacter || null);
   const [retainers, setRetainers] = useState([]);
+  const [coteries, setCoteries] = useState([]); // coteries with their shared retainers
+  const [transferPick, setTransferPick] = useState({}); // coterieId -> personal retainer id to move in
   const [selectedRetainerId, setSelectedRetainerId] = useState(preselectRetainerId || null);
   const [sortBy, setSortBy] = useState('power');
 
@@ -1029,9 +1036,13 @@ export default function RetainersView() {
 
   const fetchRetainers = async () => {
     try {
-      const res = await api.get(`/characters/${character.id}/retainers`);
+      const [res, cot] = await Promise.all([
+        api.get(`/characters/${character.id}/retainers`),
+        api.get(`/characters/${character.id}/coterie-retainers`).catch(() => ({ data: [] })),
+      ]);
       const data = Array.isArray(res.data) ? res.data : [];
       setRetainers(data);
+      setCoteries(Array.isArray(cot.data) ? cot.data : []);
       if (data.length > 0 && !selectedRetainerId) {
         setSelectedRetainerId(data[0].id);
       }
@@ -1042,7 +1053,11 @@ export default function RetainersView() {
     }
   };
 
-  const selectedRetainer = retainers.find(r => r.id === selectedRetainerId);
+  // Retainer ids are unique across personal and coterie rows (same table).
+  const selectedCoterie = coteries.find(c => c.retainers.some(r => r.id === selectedRetainerId));
+  const selectedRetainer = retainers.find(r => r.id === selectedRetainerId)
+    || selectedCoterie?.retainers.find(r => r.id === selectedRetainerId);
+  const selectedDomitor = selectedCoterie && coterieMember(selectedCoterie, selectedRetainer?.domitor_character_id);
 
   // When selected retainer changes, exit edit mode
   useEffect(() => {
@@ -1055,6 +1070,62 @@ export default function RetainersView() {
     return CLAN_DISCIPLINES[character.clan] || [];
   }, [character]);
 
+  // A coterie ghoul draws its discipline from its domitor's clan.
+  const sheetDisciplines = selectedCoterie ? (CLAN_DISCIPLINES[selectedDomitor?.clan] || []) : clanDisciplines;
+  const wizardCoterie = wizardConfig.coterie && coteries.find(c => c.id === wizardConfig.coterie.coterieId);
+  const wizardDisciplines = wizardCoterie
+    ? (CLAN_DISCIPLINES[coterieMember(wizardCoterie, wizardConfig.coterie.domitorId)?.clan] || [])
+    : clanDisciplines;
+
+  const selectRetainer = (id) => {
+    setSelectedRetainerId(id);
+    if (window.innerWidth <= 768) {
+      setTimeout(() => {
+        sheetRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    }
+  };
+
+  // Build (no retainer) or rebuild/upgrade (retainer) a coterie sheet. Free:
+  // the coterie's dots are already paid for; the server checks the budget.
+  const openCoterieWizard = (coterie, tier, retainer = null) => {
+    const domitorId = retainer?.domitor_character_id
+      || coterieMember(coterie, character.id)?.character_id
+      || coterie.members[0]?.character_id
+      || null;
+    setWizardConfig({ isOpen: true, tier, isMigration: true, migrationId: null, coterie: { coterieId: coterie.id, retainer, domitorId } });
+  };
+
+  const handleCoterieRelease = async (coterie, r) => {
+    if (!window.confirm(`Release ${r.name} from ${coterie.name}'s service? Their sheet is deleted and ${r.tier} Retainers dot(s) become unassigned.`)) return;
+    try {
+      setSaving(true);
+      await api.delete(`/coteries/${coterie.id}/retainers/${r.id}`);
+      setSelectedRetainerId(null);
+      await fetchRetainers();
+    } catch (e) {
+      alert(formatApiError(e, "Failed to release retainer"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleTransfer = async (coterie) => {
+    const r = retainers.find(x => x.id === Number(transferPick[coterie.id]));
+    if (!r) return;
+    if (!window.confirm(`Move ${r.name} into ${coterie.name}? They become a shared coterie retainer and leave your personal roster.`)) return;
+    try {
+      setSaving(true);
+      await api.post(`/coteries/${coterie.id}/retainers/transfer`, { retainer_id: r.id });
+      await fetchRetainers();
+      setSelectedRetainerId(r.id);
+    } catch (e) {
+      alert(formatApiError(e, "Failed to move retainer"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleOpenWizard = (tier, isMigration = false, migrationId = null, isUpgrade = false) => {
     setWizardConfig({ isOpen: true, tier, isMigration, isUpgrade, migrationId });
   };
@@ -1066,7 +1137,20 @@ export default function RetainersView() {
     try {
       setSaving(true);
 
-      if (wizardConfig.isMigration || wizardConfig.isUpgrade) {
+      if (wizardConfig.coterie) {
+        const { coterieId, retainer, domitorId } = wizardConfig.coterie;
+        const payload = { name, tier, sheet: newSheet, domitor_character_id: domitorId };
+        const { data } = retainer
+          ? await api.put(`/coteries/${coterieId}/retainers/${retainer.id}`, payload)
+          : await api.post(`/coteries/${coterieId}/retainers`, payload);
+        if (pendingAvatar) {
+          const formData = new FormData();
+          formData.append('avatar', pendingAvatar);
+          await api.put(`/retainers/${data.id}/avatar`, formData);
+        }
+        await fetchRetainers();
+        setSelectedRetainerId(data.id);
+      } else if (wizardConfig.isMigration || wizardConfig.isUpgrade) {
         const oldRetainer = retainers.find(r => r.id === wizardConfig.migrationId);
         const tierDiff = tier - (oldRetainer?.tier || 0);
 
@@ -1326,11 +1410,27 @@ export default function RetainersView() {
         tier={wizardConfig.tier}
         cost={wizardConfig.tier * 3}
         domitorXp={character.xp || 0}
-        clanDisciplines={clanDisciplines}
+        clanDisciplines={wizardDisciplines}
         isMigration={wizardConfig.isMigration}
         isAdminBypass={isAdminBypass}
-        initialName={wizardConfig.isMigration ? selectedRetainer?.name : ''}
-        initialSheet={wizardConfig.isMigration ? selectedRetainer?.sheet : null}
+        initialName={wizardConfig.coterie ? (wizardConfig.coterie.retainer?.name || '') : (wizardConfig.isMigration ? selectedRetainer?.name : '')}
+        initialSheet={wizardConfig.coterie ? (wizardConfig.coterie.retainer?.sheet || null) : (wizardConfig.isMigration ? selectedRetainer?.sheet : null)}
+        freeMessage={wizardCoterie && `Uses ${wizardConfig.tier} of ${wizardCoterie.name}'s Retainers dots. They are already paid for, so this costs no XP.`}
+        confirmLabel={wizardCoterie && (wizardConfig.coterie.retainer ? 'Save Coterie Retainer' : 'Bind to Coterie')}
+        extraStep1={wizardCoterie && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
+            <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '2px' }}>Domitor (if ghouled)</label>
+            <select
+              className={styles.inputStitch}
+              value={wizardConfig.coterie.domitorId || ''}
+              onChange={e => { const domitorId = Number(e.target.value); setWizardConfig(p => ({ ...p, coterie: { ...p.coterie, domitorId } })); }}
+            >
+              {wizardCoterie.members.filter(m => m.character_id).map(m => (
+                <option key={m.character_id} value={m.character_id}>{m.character_name}{m.clan ? ` (${m.clan})` : ''}</option>
+              ))}
+            </select>
+          </div>
+        )}
         minTier={wizardConfig.isMigration ? (selectedRetainer?.tier || 1) : 1}
         onCancel={() => setWizardConfig({ isOpen: false, tier: 1, isMigration: false, migrationId: null })}
         onConfirm={handleWizardConfirm}
@@ -1386,14 +1486,7 @@ export default function RetainersView() {
                   <React.Fragment key={r.id}>
                     <button
                       className={`${styles.rosterItem} ${selectedRetainerId === r.id ? styles.rosterItemActive : ''}`}
-                      onClick={() => {
-                        setSelectedRetainerId(r.id);
-                        if (window.innerWidth <= 768) {
-                          setTimeout(() => {
-                            sheetRef.current?.scrollIntoView({ behavior: 'smooth' });
-                          }, 100);
-                        }
-                      }}
+                      onClick={() => selectRetainer(r.id)}
                     >
                       <div className={styles.rosterAvatar}>
                         <Avatar retainerId={r.id} size={48} fallback="/img/ATT-logo(1).webp" />
@@ -1423,6 +1516,90 @@ export default function RetainersView() {
               </div>
             )}
           </div>
+
+          {/* Coterie Retainers: sheets for each coterie's shared Retainers Background */}
+          {coteries.length > 0 && (
+            <div className={styles.glassPanel}>
+              <h3 className={styles.panelTitle}>
+                <span className="material-symbols-outlined" style={{ color: '#e0dedd' }}>diversity_3</span>
+                Coterie Retainers
+              </h3>
+              {coteries.map(c => {
+                const free = coterieFreeDots(c);
+                const movable = retainers.filter(r => r.tier <= free && r.name !== 'Migrated Retainer');
+                return (
+                  <div key={c.id} style={{ marginBottom: '20px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <h4 className={styles.rosterName} style={{ margin: 0 }}>{c.name}</h4>
+                      <SmallDots value={c.dots} />
+                    </div>
+                    {c.note && <p style={{ color: '#e0dedd', opacity: 0.7, fontSize: '12px', fontStyle: 'italic', margin: '0 0 8px' }}>{c.note}</p>}
+                    {c.dots === 0 && c.retainers.length === 0 && (
+                      <p style={{ color: '#e0dedd', opacity: 0.7, fontSize: '13px' }}>This coterie holds no Retainers Background.</p>
+                    )}
+                    {free < 0 && (
+                      <div className={styles.errorBannerStitch} style={{ marginBottom: '8px', fontSize: '12px' }}>
+                        <span className="material-symbols-outlined">warning</span>
+                        These sheets use {-free} more dot(s) than the coterie's Retainers rating. A Storyteller should review.
+                      </div>
+                    )}
+                    {c.retainers.length > 0 && (
+                      <div className={styles.rosterList}>
+                        {c.retainers.map(r => (
+                          <button
+                            key={r.id}
+                            className={`${styles.rosterItem} ${selectedRetainerId === r.id ? styles.rosterItemActive : ''}`}
+                            onClick={() => selectRetainer(r.id)}
+                          >
+                            <div className={styles.rosterAvatar}>
+                              <Avatar retainerId={r.id} size={48} fallback="/img/ATT-logo(1).webp" />
+                            </div>
+                            <div className={styles.rosterInfo}>
+                              <h4 className={styles.rosterName}>{r.name}</h4>
+                              <SmallDots value={r.tier} max={3} />
+                            </div>
+                            <span className={`material-symbols-outlined ${styles.chevron}`}>chevron_right</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {free > 0 && (
+                      <>
+                        <p style={{ color: '#e0dedd', opacity: 0.8, fontSize: '13px', margin: '8px 0' }}>
+                          {free} unassigned Retainers dot{free > 1 ? 's' : ''}. They are already paid for, so building a sheet is free.
+                        </p>
+                        <div className={styles.shopList}>
+                          {[1, 2, 3].filter(t => t <= free).map(t => (
+                            <MarketplaceRow
+                              key={t}
+                              title={`Tier ${t} ${TIER_TITLES[t]}`}
+                              costLabel={`Uses ${t} coterie dot${t > 1 ? 's' : ''}`}
+                              buttonLabel="Build"
+                              disabled={saving}
+                              onBuy={() => openCoterieWizard(c, t)}
+                            />
+                          ))}
+                        </div>
+                        {movable.length > 0 && (
+                          <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                            <select
+                              className={styles.inputStitch}
+                              value={transferPick[c.id] || ''}
+                              onChange={e => setTransferPick(p => ({ ...p, [c.id]: e.target.value }))}
+                            >
+                              <option value="">Move one of your retainers here...</option>
+                              {movable.map(r => <option key={r.id} value={r.id}>{r.name} (Tier {r.tier})</option>)}
+                            </select>
+                            <button className={styles.btnPrimary} disabled={saving || !transferPick[c.id]} onClick={() => handleTransfer(c)}>Move</button>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           {/* Recruit New */}
           <div className={styles.glassPanel}>
@@ -1464,12 +1641,12 @@ export default function RetainersView() {
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <h2 className={styles.sheetName}>{selectedRetainer.name}</h2>
-                        {isAdminBypass && (
+                        {isAdminBypass && !selectedCoterie && (
                           <button onClick={handleRename} style={{ background: 'none', border: 'none', color: 'var(--tint)', cursor: 'pointer', padding: 0 }} title="Rename Retainer">
                             <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>edit</span>
                           </button>
                         )}
-                        {isAdminBypass && (
+                        {isAdminBypass && !selectedCoterie && (
                           <button onClick={() => handleDelete(selectedRetainer.id)} style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer', padding: 0 }} title="Delete Retainer (Admin Only)">
                             <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>delete</span>
                           </button>
@@ -1494,12 +1671,24 @@ export default function RetainersView() {
                           )}
                         </div>
                       ) : (
-                        <p className={styles.sheetTier}>Tier {selectedRetainer.tier} {currentSheet.isGhoul ? 'Ghoul' : 'Mortal'}</p>
+                        <p className={styles.sheetTier}>
+                          Tier {selectedRetainer.tier} {currentSheet.isGhoul ? 'Ghoul' : 'Mortal'}
+                          {selectedCoterie && ` · ${selectedCoterie.name}`}
+                          {selectedCoterie && currentSheet.isGhoul && ` · Domitor: ${selectedDomitor?.character_name || 'unknown'}`}
+                        </p>
                       )}
 
                     </div>
                     <div className={styles.sheetControls}>
-                      {!isEditing ? (
+                      {!isEditing && selectedCoterie ? (
+                        <>
+                          <button className={styles.btnPrimary} onClick={() => openCoterieWizard(selectedCoterie, selectedRetainer.tier, selectedRetainer)} disabled={saving}>Rebuild Sheet</button>
+                          {[2, 3].filter(t => t > selectedRetainer.tier && t - selectedRetainer.tier <= coterieFreeDots(selectedCoterie)).map(t => (
+                            <button key={t} className={styles.btnPrimary} onClick={() => openCoterieWizard(selectedCoterie, t, selectedRetainer)} disabled={saving}>Upgrade to Tier {t}</button>
+                          ))}
+                          <button className={`${styles.btnPrimary} ${styles.btnDanger}`} onClick={() => handleCoterieRelease(selectedCoterie, selectedRetainer)} disabled={saving}>Release</button>
+                        </>
+                      ) : !isEditing ? (
                         <>
                           {isAdminBypass && (
                             <button className={styles.btnPrimary} onClick={startEditing} disabled={saving}>Edit Sheet</button>
@@ -1689,12 +1878,12 @@ export default function RetainersView() {
                   <h3 className={styles.statsBoxTitle}>Disciplines</h3>
                   {!currentSheet.isGhoul ? (
                     <p style={{ color: '#e0dedd', opacity: 0.7 }}>Mortals cannot learn disciplines. Enable 'Is Ghoul?' to unlock 1 dot.</p>
-                  ) : clanDisciplines.length === 0 ? (
+                  ) : sheetDisciplines.length === 0 ? (
                     <p style={{ color: '#e0dedd', opacity: 0.7 }}>No in-clan disciplines available for domitor clan.</p>
                   ) : (
                     <>
                       <div className={styles.disciplinesGrid}>
-                        {clanDisciplines.map(disc => {
+                        {sheetDisciplines.map(disc => {
                           const level = (currentSheet.disciplines || {})[disc] || 0;
                           const selectedPower = (currentSheet.powers || []).find(p => p.discipline === disc);
                           return (

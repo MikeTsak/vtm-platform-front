@@ -44,6 +44,34 @@ export default function AdminHomeTab({
     staleTime: 60000,
   });
 
+  // Helper to completely exclude test user Tilemachos (user_id = 2, character_id = 34)
+  const isExcludedEntity = (userId, charId) => {
+    const uid = Number(userId);
+    const cid = Number(charId);
+    return uid === 2 || cid === 34;
+  };
+
+  // Filter raw collections so test user Tilemachos is never counted in any stats or activity
+  const sanitizedUsers = useMemo(() => {
+    return users.filter(u => !isExcludedEntity(u.id, u.character_id));
+  }, [users]);
+
+  const sanitizedCharacters = useMemo(() => {
+    return characters.filter(c => !isExcludedEntity(c.user_id, c.id));
+  }, [characters]);
+
+  const sanitizedDowntimes = useMemo(() => {
+    return downtimes.filter(d => !isExcludedEntity(d.user_id, d.character_id));
+  }, [downtimes]);
+
+  const sanitizedDiceRolls = useMemo(() => {
+    return diceRolls.filter(r => !isExcludedEntity(r.user_id, r.character_id));
+  }, [diceRolls]);
+
+  const sanitizedXpLogs = useMemo(() => {
+    return xpLogs.filter(x => !isExcludedEntity(x.user_id, x.character_id));
+  }, [xpLogs]);
+
   // Helper to verify if a sheet object or JSON string marks the character as active
   const isSheetActive = (sheet) => {
     if (!sheet) return false;
@@ -54,13 +82,13 @@ export default function AdminHomeTab({
     return parsed?.is_active === true;
   };
 
-  // Active Kindred and active player sets (strictly excluding deactivated, deceased, left, or missing)
+  // Active Kindred and active player sets (strictly excluding deactivated, deceased, left, missing, and test users)
   const { activeCharacters, activeCharIdSet, activeUserIdSet, eligiblePlayersCount } = useMemo(() => {
     const charSet = new Set();
     const userSet = new Set();
 
-    // 1. Identify active characters from characters prop
-    const activeChars = characters.filter(c => {
+    // 1. Identify active characters from sanitized characters
+    const activeChars = sanitizedCharacters.filter(c => {
       const isActive = isSheetActive(c.sheet) && !c.is_deceased && !c.is_left && !c.is_missing;
       if (isActive) {
         charSet.add(Number(c.id));
@@ -69,8 +97,8 @@ export default function AdminHomeTab({
       return isActive;
     });
 
-    // 2. Identify active players from users prop
-    const activeUsers = users.filter(u => {
+    // 2. Identify active players from sanitized users
+    const activeUsers = sanitizedUsers.filter(u => {
       if (!u.character_id) return false;
       const isSheetOk = isSheetActive(u.sheet) && !u.is_deceased && !u.is_left && !u.is_missing;
       const isCharListOk = charSet.has(Number(u.character_id));
@@ -86,12 +114,12 @@ export default function AdminHomeTab({
     const eligibleCount = activeUsers.length || activeChars.length || 1;
 
     return {
-      activeCharacters: activeChars.length > 0 ? activeChars : characters.filter(c => charSet.has(Number(c.id))),
+      activeCharacters: activeChars.length > 0 ? activeChars : sanitizedCharacters.filter(c => charSet.has(Number(c.id))),
       activeCharIdSet: charSet,
       activeUserIdSet: userSet,
       eligiblePlayersCount: eligibleCount,
     };
-  }, [characters, users]);
+  }, [sanitizedCharacters, sanitizedUsers]);
 
   // Cycle Metrics (Calculated from last downtime opening)
   const cycleStats = useMemo(() => {
@@ -101,8 +129,8 @@ export default function AdminHomeTab({
     const hasOpening = openingDate && !isNaN(openingDate.getTime());
 
     // Filter downtimes submitted in this cycle (since opening date)
-    // Exclude downtimes from deactivated, deceased, left, or missing players
-    const cycleDowntimes = downtimes.filter(d => {
+    // Exclude downtimes from deactivated, deceased, left, missing players, or test user
+    const cycleDowntimes = sanitizedDowntimes.filter(d => {
       if (!hasOpening) return true;
       const dDate = new Date(d.created_at || 0);
       if (dDate < openingDate) return false;
@@ -124,19 +152,26 @@ export default function AdminHomeTab({
     });
     const resolvedCount = resolvedDowntimes.length;
 
-    // Single Storyteller approvals awaiting 2nd approval (Approved: Kikos, Approved: Mike)
-    const stApprovedDowntimes = cycleDowntimes.filter(d => {
-      const s = String(d.status || '').toLowerCase();
-      return s === 'approved: kikos' || s === 'approved: mike';
-    });
-    const stApprovedCount = stApprovedDowntimes.length;
+    // Storyteller specific approvals awaiting second ST action or resolution
+    const kikosCount = cycleDowntimes.filter(d => String(d.status || '').toLowerCase() === 'approved: kikos').length;
+    const mikeCount = cycleDowntimes.filter(d => String(d.status || '').toLowerCase() === 'approved: mike').length;
+    const stApprovedCount = kikosCount + mikeCount;
 
-    // Scenes needed in this cycle
+    // Scenes needed in this cycle (actions grouped by scene_id form 1 scene; unassigned actions count 1 each)
     const scenesNeededDowntimes = cycleDowntimes.filter(d => {
       const s = String(d.status || '').toLowerCase();
       return s === 'needs a scene';
     });
-    const scenesNeededCount = scenesNeededDowntimes.length;
+    const uniqueSceneIds = new Set();
+    let unassignedSceneCount = 0;
+    scenesNeededDowntimes.forEach(d => {
+      if (d.scene_id) {
+        uniqueSceneIds.add(d.scene_id);
+      } else {
+        unassignedSceneCount += 1;
+      }
+    });
+    const totalScenesNeeded = uniqueSceneIds.size + unassignedSceneCount;
 
     // Actions submitted and awaiting Storyteller review in this cycle
     const submittedInCycle = cycleDowntimes.filter(d => {
@@ -168,14 +203,17 @@ export default function AdminHomeTab({
       totalCycle,
       resolvedCount,
       stApprovedCount,
-      scenesNeededCount,
+      kikosCount,
+      mikeCount,
+      totalScenesNeeded,
+      scenesNeededActionsCount: scenesNeededDowntimes.length,
       submittedCount,
       resolutionPct,
       playersSubmittedCount,
       eligiblePlayers,
       participationPct,
     };
-  }, [downtimes, dtConfig, activeCharIdSet, activeUserIdSet, eligiblePlayersCount]);
+  }, [sanitizedDowntimes, dtConfig, activeCharIdSet, activeUserIdSet, eligiblePlayersCount]);
 
   // Open Character Sheet / Editor Modal
   const handleOpenCharacter = (charIdOrName) => {
@@ -183,7 +221,7 @@ export default function AdminHomeTab({
       setTab('characters');
       return;
     }
-    const found = characters.find(c => 
+    const found = sanitizedCharacters.find(c => 
       c.id === Number(charIdOrName) || 
       (c.name && c.name.toLowerCase() === String(charIdOrName).toLowerCase())
     );
@@ -212,7 +250,7 @@ export default function AdminHomeTab({
     const dtCountByChar = new Map();
     const dtCountByUser = new Map();
 
-    downtimes.forEach(d => {
+    sanitizedDowntimes.forEach(d => {
       if (hasOpening) {
         const dDate = new Date(d.created_at || 0);
         if (dDate < openingDate) return;
@@ -237,7 +275,7 @@ export default function AdminHomeTab({
     activeCharacters.forEach(c => {
       const cid = Number(c.id);
       const uid = c.user_id ? Number(c.user_id) : null;
-      const user = users.find(u => Number(u.id) === uid || Number(u.character_id) === cid);
+      const user = sanitizedUsers.find(u => Number(u.id) === uid || Number(u.character_id) === cid);
 
       const submitted = dtCountByChar.has(cid)
         ? (dtCountByChar.get(cid) || 0)
@@ -260,7 +298,7 @@ export default function AdminHomeTab({
     });
 
     return entries.sort((a, b) => (b.owed - a.owed) || a.characterName.localeCompare(b.characterName));
-  }, [activeCharacters, users, downtimes, dtConfig]);
+  }, [activeCharacters, sanitizedUsers, sanitizedDowntimes, dtConfig]);
 
   const filteredOwingPlayers = useMemo(() => {
     let list = owingPlayersData;
@@ -296,7 +334,7 @@ export default function AdminHomeTab({
 
   // Pending Actions: Count ONLY submitted actions
   const pendingDowntimes = useMemo(() => {
-    return downtimes.filter(d => {
+    return sanitizedDowntimes.filter(d => {
       const s = String(d.status || '').toLowerCase();
       if (s !== 'submitted') return false;
       if (activeCharIdSet.size > 0 && d.character_id && !activeCharIdSet.has(Number(d.character_id))) {
@@ -311,11 +349,11 @@ export default function AdminHomeTab({
       }
       return true;
     });
-  }, [downtimes, activeCharIdSet, activeUserIdSet, cycleStats.hasOpening, dtConfig]);
+  }, [sanitizedDowntimes, activeCharIdSet, activeUserIdSet, cycleStats.hasOpening, dtConfig]);
 
   // Scenes Needed in this cycle
   const scenesNeededList = useMemo(() => {
-    return downtimes.filter(d => {
+    return sanitizedDowntimes.filter(d => {
       const s = String(d.status || '').toLowerCase();
       if (s !== 'needs a scene') return false;
       if (activeCharIdSet.size > 0 && d.character_id && !activeCharIdSet.has(Number(d.character_id))) {
@@ -330,23 +368,23 @@ export default function AdminHomeTab({
       }
       return true;
     });
-  }, [downtimes, activeCharIdSet, activeUserIdSet, cycleStats.hasOpening, dtConfig]);
+  }, [sanitizedDowntimes, activeCharIdSet, activeUserIdSet, cycleStats.hasOpening, dtConfig]);
 
   const diceStats = useMemo(() => {
     let messy = 0;
     let bestial = 0;
     let crits = 0;
-    diceRolls.forEach(r => {
+    sanitizedDiceRolls.forEach(r => {
       if (r.messy_crit) messy++;
       if (r.bestial_failure) bestial++;
       if (r.crit_pairs > 0) crits++;
     });
-    return { messy, bestial, crits, total: diceRolls.length };
-  }, [diceRolls]);
+    return { messy, bestial, crits, total: sanitizedDiceRolls.length };
+  }, [sanitizedDiceRolls]);
 
   // Recent Downtime Submissions
   const recentDowntimes = useMemo(() => {
-    return [...downtimes]
+    return [...sanitizedDowntimes]
       .filter(d => {
         if (activeCharIdSet.size > 0 && d.character_id && !activeCharIdSet.has(Number(d.character_id))) {
           return false;
@@ -358,7 +396,7 @@ export default function AdminHomeTab({
       })
       .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
       .slice(0, 7);
-  }, [downtimes, activeCharIdSet, activeUserIdSet]);
+  }, [sanitizedDowntimes, activeCharIdSet, activeUserIdSet]);
 
   // Clean up and format trait/power target names
   const formatTraitName = (target, action) => {
@@ -379,11 +417,11 @@ export default function AdminHomeTab({
     const events = [];
 
     // Filter and map XP logs (exclude 0-cost power picks to focus strictly on XP transactions)
-    xpLogs.forEach(x => {
+    sanitizedXpLogs.forEach(x => {
       const cost = Number(x.cost || 0);
       if (cost === 0) return;
 
-      const charObj = characters.find(c => c.id === x.character_id);
+      const charObj = sanitizedCharacters.find(c => c.id === x.character_id);
       const name = x.character_name || x.char_name || charObj?.name || (x.character_id ? `Character #${x.character_id}` : 'Kindred');
       const clan = charObj?.clan || x.clan;
       const clanColor = (clan && CLAN_COLORS[clan]) ? CLAN_COLORS[clan] : '#e8e6f0';
@@ -505,7 +543,7 @@ export default function AdminHomeTab({
     return events
       .sort((a, b) => b.timestamp - a.timestamp)
       .slice(0, 10);
-  }, [xpLogs, characters, onOpenEditor]);
+  }, [sanitizedXpLogs, sanitizedCharacters, onOpenEditor]);
 
   const getStatusBadge = (status) => {
     const s = String(status || 'submitted').toLowerCase();
@@ -584,16 +622,30 @@ export default function AdminHomeTab({
             />
           </div>
           <div className={styles.statSubtext}>
-            <span>{cycleStats.resolvedCount} of {cycleStats.totalCycle} resolved</span>
-            {cycleStats.stApprovedCount > 0 ? (
-              <span style={{ color: '#00e5ff', fontWeight: 600 }}>
-                {cycleStats.stApprovedCount} waiting for 2nd ST
+            <span>{cycleStats.resolvedCount} out of {cycleStats.totalCycle}</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              <span
+                style={{ color: '#00e676', fontWeight: 600, cursor: 'pointer' }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setTab('downtimes', { statusFilter: 'Approved: Kikos' });
+                }}
+                title="Filter Approved: Kikos"
+              >
+                {cycleStats.kikosCount} Kikos
               </span>
-            ) : cycleStats.totalCycle - cycleStats.resolvedCount > 0 ? (
-              <span style={{ color: '#ffaa00', fontWeight: 600 }}>
-                {cycleStats.totalCycle - cycleStats.resolvedCount} pending
+              <span>,</span>
+              <span
+                style={{ color: '#00e5ff', fontWeight: 600, cursor: 'pointer' }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setTab('downtimes', { statusFilter: 'Approved: Mike' });
+                }}
+                title="Filter Approved: Mike"
+              >
+                {cycleStats.mikeCount} Mike
               </span>
-            ) : null}
+            </span>
           </div>
         </div>
 
@@ -659,24 +711,28 @@ export default function AdminHomeTab({
 
         {/* Scenes Needed */}
         <div
-          className={`${styles.statCard} ${scenesNeededList.length > 0 ? styles.statCardScenes : ''}`}
+          className={`${styles.statCard} ${cycleStats.totalScenesNeeded > 0 ? styles.statCardScenes : ''}`}
           onClick={() => setTab('downtimes', { statusFilter: 'Needs a Scene' })}
           title="Click to view actions requiring a scene"
         >
           <div className={styles.statHeader}>
             <span className={styles.statTitle}>Scenes Needed</span>
-            <div className={`${styles.statIconWrap} ${scenesNeededList.length > 0 ? styles.statIconWrapScenes : ''}`}>
+            <div className={`${styles.statIconWrap} ${cycleStats.totalScenesNeeded > 0 ? styles.statIconWrapScenes : ''}`}>
               <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>theaters</span>
             </div>
           </div>
-          <div className={styles.statValue} style={scenesNeededList.length > 0 ? { color: '#ffd700' } : {}}>
-            {scenesNeededList.length}
+          <div className={styles.statValue} style={cycleStats.totalScenesNeeded > 0 ? { color: '#ffd700' } : {}}>
+            {cycleStats.totalScenesNeeded}
           </div>
           <div className={styles.statSubtext}>
-            {scenesNeededList.length === 1 ? (
-              <span style={{ color: '#ffd700', fontWeight: 600 }}>1 scene required this cycle</span>
-            ) : scenesNeededList.length > 1 ? (
-              <span style={{ color: '#ffd700', fontWeight: 600 }}>{scenesNeededList.length} scenes required this cycle</span>
+            {cycleStats.totalScenesNeeded === 1 ? (
+              <span style={{ color: '#ffd700', fontWeight: 600 }}>
+                1 scene required this cycle{cycleStats.scenesNeededActionsCount > 1 ? ` (${cycleStats.scenesNeededActionsCount} actions)` : ''}
+              </span>
+            ) : cycleStats.totalScenesNeeded > 1 ? (
+              <span style={{ color: '#ffd700', fontWeight: 600 }}>
+                {cycleStats.totalScenesNeeded} scenes required this cycle{cycleStats.scenesNeededActionsCount > cycleStats.totalScenesNeeded ? ` (${cycleStats.scenesNeededActionsCount} actions)` : ''}
+              </span>
             ) : (
               <span>No scenes required this cycle</span>
             )}
@@ -697,7 +753,7 @@ export default function AdminHomeTab({
           </div>
           <div className={styles.statValue}>{activeCharacters.length}</div>
           <div className={styles.statSubtext}>
-            <span>{users.length} registered accounts</span>
+            <span>{sanitizedUsers.length} registered accounts</span>
           </div>
         </div>
 
@@ -1196,7 +1252,7 @@ export default function AdminHomeTab({
       {/* Embedded Global Activity Heatmap */}
       <div>
         <ActivityHeatmap
-          users={users}
+          users={sanitizedUsers}
           globalOnly={true}
           onOpenCompare={() => setTab('activity')}
         />

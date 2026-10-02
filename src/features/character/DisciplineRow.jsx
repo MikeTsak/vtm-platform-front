@@ -88,9 +88,12 @@ function PowerItem({ level, picked, unlocked, discName, boxMode, onPickMissing }
 
 function DisciplineRow({ name, level = 0, powers = [], phantomPowers = [], boxMode, onPickMissingPower }) {
   const icon = iconPath(name);
-  const byLevel = new Map((powers || []).map(p => [Number(p.level), { id: p.id, name: p.name }]));
-  const maxPicked = Math.max(0, ...Array.from(byLevel.keys()));
-  const displayMax = Math.min(5, Math.max(level || 0, maxPicked || 0) || 0) || level || 0 || 0;
+  // One slot per dot, filled by count, not by level number: V5 allows
+  // several powers of the same tier (three Level-1 Dominate powers), so a
+  // per-level map hid them and showed phantom "missing" Level 2/3 slots
+  // that no pick could ever fill. Same rule as findMissingPicks.
+  const owned = (powers || []).slice().sort((a, b) => Number(a.level) - Number(b.level));
+  const missing = Math.max(0, level - owned.length);
 
   return (
     <div className={styles.disciplineRow} data-box-mode={boxMode}>
@@ -115,23 +118,26 @@ function DisciplineRow({ name, level = 0, powers = [], phantomPowers = [], boxMo
 
       {/* Force a column layout so the accordion animations don't break horizontal flows */}
       <ul className={styles.powerList}>
-        {Array.from({ length: Math.max(displayMax, level || 0) || 0 }).map((_, i) => {
-          const L = i + 1;
-          const picked = byLevel.get(L);
-          const unlocked = L <= level;
-
-          return (
-            <PowerItem 
-              key={L} 
-              level={L} 
-              picked={picked} 
-              unlocked={unlocked} 
-              discName={name} 
-              boxMode={boxMode}
-              onPickMissing={onPickMissingPower}
-            />
-          );
-        })}
+        {owned.map((p, i) => (
+          <PowerItem
+            key={p.id || p.name || i}
+            level={Number(p.level)}
+            picked={{ id: p.id, name: p.name }}
+            unlocked={Number(p.level) <= level}
+            discName={name}
+            boxMode={boxMode}
+          />
+        ))}
+        {Array.from({ length: missing }).map((_, i) => (
+          <PowerItem
+            key={`missing-${i}`}
+            level={level}
+            unlocked
+            discName={name}
+            boxMode={boxMode}
+            onPickMissing={onPickMissingPower}
+          />
+        ))}
         {phantomPowers.length > 0 && (
           <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--border-color, #444)' }}>
             <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>

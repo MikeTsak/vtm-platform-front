@@ -203,7 +203,9 @@ function normalizeSheet(s) {
       if (typeof p === 'string') return { id: p, name: p, level: 0 };
       const name = typeof p.name === 'string' ? p.name : (typeof p.name?.name === 'string' ? p.name.name : '');
       const id = (typeof p.id === 'string' || typeof p.id === 'number') ? p.id : (typeof p.id?.id !== 'undefined' ? p.id.id : undefined);
-      const level = Number((typeof p.level === 'object' ? p.level?.level : p.level) || 0);
+      // The power's real tier wins over the stored one (old saves wrote the slot level).
+      const known = getPowersForDiscipline(discName).find(k => k.id === id || k.name === name);
+      const level = known ? known.level : Number((typeof p.level === 'object' ? p.level?.level : p.level) || 0);
       return { id, name, level };
     }).filter(Boolean);
   });

@@ -1185,7 +1185,11 @@ export default function CharacterView({
   const computeMissingPicks = useCallback(() => findMissingPicks(sheet), [sheet, findMissingPicks]);
 
   useEffect(() => {
-    setModalDismissed(false);
+    if (!ch?.id) return;
+    try {
+      const dismissed = sessionStorage.getItem(`vtm_missing_powers_dismissed_${ch.id}`) === 'true';
+      if (dismissed) setModalDismissed(true);
+    } catch (e) {}
   }, [ch?.id]);
 
   useEffect(() => {
@@ -1288,6 +1292,9 @@ export default function CharacterView({
           setModalOpen(true);
         } else {
           setModalDismissed(false);
+          try {
+            if (ch?.id) sessionStorage.removeItem(`vtm_missing_powers_dismissed_${ch.id}`);
+          } catch (e) {}
           setMsg('All discipline powers are now specified.');
         }
       }
@@ -1298,6 +1305,9 @@ export default function CharacterView({
 
   const handlePickMissingPower = useCallback(({ name, level }) => {
     setModalDismissed(false);
+    try {
+      if (ch?.id) sessionStorage.removeItem(`vtm_missing_powers_dismissed_${ch?.id}`);
+    } catch (e) {}
     setModalCfg({
       name,
       current: level - 1,
@@ -1309,7 +1319,7 @@ export default function CharacterView({
       ownedPowers: sheet.disciplinePowers?.[name] || []
     });
     setModalOpen(true);
-  }, [ch?.clan, sheet.disciplines, sheet.disciplinePowers]);
+  }, [ch?.clan, ch?.id, sheet.disciplines, sheet.disciplinePowers]);
 
   const knownRitualIds = useMemo(() => new Set([
     ...(sheet.rituals?.blood_sorcery || []).map(r => r.id),
@@ -2501,7 +2511,14 @@ export default function CharacterView({
         {modalOpen && modalCfg && (
           <DisciplinePowerModal
             cfg={modalCfg}
-            onClose={() => { setModalOpen(false); setModalCfg(null); setModalDismissed(true); }}
+            onClose={() => {
+              setModalOpen(false);
+              setModalCfg(null);
+              setModalDismissed(true);
+              try {
+                if (ch?.id) sessionStorage.setItem(`vtm_missing_powers_dismissed_${ch.id}`, 'true');
+              } catch (e) {}
+            }}
             onConfirm={(sel) => confirmDisciplinePurchase({ ...modalCfg, ...sel })}
           />
         )}
@@ -3204,7 +3221,9 @@ function DisciplinePowerModal({ cfg, onClose, onConfirm }) {
         selectedPowerLevel: sel.__level
       });
       if (maybe && typeof maybe.then === 'function') await maybe;
-      handleClose();
+      // No handleClose() here: confirmDisciplinePurchase already closes this
+      // drawer, or reopens it for the next missing power. Closing again
+      // 300ms later killed that next prompt and flagged it "dismissed".
     } catch (e) {
       setSaveErr(formatApiError(e, 'Failed to assign power.'));
     } finally {

@@ -287,7 +287,10 @@ export default function CoterieManager() {
         character_entry_id: characterEntryId,
       });
       publish({
-        message: `${data.contributed.name} now belongs to the coterie (rated ${data.contributed.dots}).`,
+        message: `${data.contributed.name} now belongs to the coterie (rated ${data.contributed.dots}).`
+          + (data.contributed.key === 'retainers'
+            ? ' On the Retainers page you can now build their sheets, or move one of your own retainers into the coterie.'
+            : ''),
         type: 'success',
       });
       await Promise.all([loadDetail(detail.coterie.id), loadMine(), loadMyCharacter()]);
