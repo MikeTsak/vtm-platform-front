@@ -1,9 +1,11 @@
 // src/utils/pdfGenerator.js
 import api from '../core/api';
 import { listAllItems } from '../data/merits_flaws';
+import { RITUALS } from '../data/rituals';
+import { SKILL_DESCRIPTIONS } from '../data/descriptions';
 
 // The generated sheet opens as a real HTML document in a new window (not a
-// sandboxed preview), so any player/admin-entered free text (names, notes,
+// sandboxed preview), so any player/admin entered free text (names, notes,
 // touchstone backgrounds, item descriptions) must be escaped before being
 // interpolated into the template. Otherwise a stray "<" or a deliberately
 // crafted note becomes live HTML/script in that window.
@@ -40,7 +42,7 @@ export default async function generateVTMCharacterSheetPDF(character) {
     }
   }
 
-  // --- Date Formatter ---
+  // Date Formatter
   const formatExportDate = () => {
     const now = new Date();
     const hh = String(now.getHours()).padStart(2, '0');
@@ -49,10 +51,10 @@ export default async function generateVTMCharacterSheetPDF(character) {
     const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
     const mmm = months[now.getMonth()];
     const yyyy = now.getFullYear();
-    return `${hh}:${mm} - ${dd} ${mmm} ${yyyy}`;
+    return `${hh}:${mm} : ${dd} ${mmm} ${yyyy}`;
   };
 
-  // --- Helpers for dots and boxes ---
+  // Helpers for dots and boxes
   const renderDots = (value, max = 5) => {
     let html = '<div class="dots-container">';
     for (let i = 1; i <= max; i++) {
@@ -101,14 +103,62 @@ export default async function generateVTMCharacterSheetPDF(character) {
     return html;
   };
 
-  // --- Data Extraction with Ultra-Safe Null Checks ---
+  // Data Extraction with Safe Null Checks
   const attrs = sheet.attributes || {};
   const skills = sheet.skills || {};
+  const charSpecialties = sheet.specialties || character.specialties;
+  const charRituals = sheet.rituals || character.rituals || {};
   
   const getAttr = (k) => Number(attrs[k] ?? attrs[k.toLowerCase()] ?? 1);
-  const getSkill = (k) => {
-    const node = skills[k] ?? skills[k.toLowerCase()];
-    return (node && typeof node === 'object') ? Number(node.dots || 0) : Number(node || 0);
+  
+  const getSkillData = (k) => {
+    const keyLower = k.toLowerCase();
+    const foundKey = Object.keys(skills).find(key => key.toLowerCase() === keyLower);
+    const node = foundKey ? skills[foundKey] : undefined;
+    const dots = (node && typeof node === 'object') ? Number(node.dots || 0) : Number(node || 0);
+
+    const specs = [];
+    if (node && typeof node === 'object' && Array.isArray(node.specialties)) {
+      specs.push(...node.specialties);
+    }
+    if (charSpecialties) {
+      if (Array.isArray(charSpecialties)) {
+        charSpecialties.forEach(s => {
+          const str = String(s || '').trim();
+          let val = '';
+          if (str.toLowerCase().startsWith(keyLower + ':')) {
+            val = str.slice(keyLower.length + 1).trim();
+          } else if (str.toLowerCase().startsWith(keyLower + ' (')) {
+            val = str.slice(keyLower.length + 2).replace(/\)$/, '').trim();
+          } else if (str.toLowerCase().startsWith(keyLower + ' ')) {
+            val = str.slice(keyLower.length + 1).trim();
+          }
+          if (val && !specs.includes(val)) specs.push(val);
+        });
+      } else if (typeof charSpecialties === 'object') {
+        const specKey = Object.keys(charSpecialties).find(key => key.toLowerCase() === keyLower);
+        if (specKey && Array.isArray(charSpecialties[specKey])) {
+          charSpecialties[specKey].forEach(val => {
+            if (val && !specs.includes(val)) specs.push(val);
+          });
+        }
+      }
+    }
+    return { dots, specialties: specs.filter(Boolean) };
+  };
+
+  const renderSkillRow = (name) => {
+    const { dots, specialties } = getSkillData(name);
+    const desc = SKILL_DESCRIPTIONS[name] || '';
+    return `
+      <div class="stat-row" style="align-items: flex-start; margin-bottom: 5px;" title="${escapeHtml(desc)}">
+        <div style="display: flex; flex-direction: column; max-width: 160px;">
+          <span>${escapeHtml(name)}</span>
+          ${specialties.length ? `<span style="font-size: 11px; color: #666; font-style: italic; line-height: 1.2;">(${escapeHtml(specialties.join(', '))})</span>` : ''}
+        </div>
+        ${renderDots(dots)}
+      </div>
+    `;
   };
   
   let disciplines = {};
@@ -137,18 +187,108 @@ export default async function generateVTMCharacterSheetPDF(character) {
     return [];
   };
 
-  // Purchased merit/flaw/background entries on the sheet don't always carry
-  // their own `.description` (it depends which flow added them), so backfill
-  // from the catalog by id: the same lookup MeritsBackgroundsSection uses.
-  const catalogById = new Map(listAllItems().map(item => [item.id, item]));
-  const withCatalogDescription = (entry) => ({
-    ...entry,
-    description: entry.description || catalogById.get(entry.id)?.description || '',
+  // Rituals and Ceremonies Extraction
+  const getRitualFullData = (category, powerId) => {
+    const cat = RITUALS[category];
+    if (!cat || !cat.levels || !powerId) return null;
+    const idStr = String(powerId).toLowerCase().trim();
+    for (const level of Object.values(cat.levels)) {
+      const found = level.find(p => 
+        String(p.id).toLowerCase() === idStr || 
+        String(p.name).toLowerCase() === idStr
+      );
+      if (found) return found;
+    }
+    return null;
+  };
+
+  let bsRituals = [];
+  let obCeremonies = [];
+  if (Array.isArray(charRituals?.blood_sorcery)) {
+    bsRituals = charRituals.blood_sorcery;
+  }
+  if (Array.isArray(charRituals?.oblivion)) {
+    obCeremonies = charRituals.oblivion;
+  }
+  if (Array.isArray(charRituals)) {
+    charRituals.forEach(r => {
+      const idOrName = typeof r === 'object' ? (r.id || r.name) : r;
+      if (getRitualFullData('blood_sorcery', idOrName)) bsRituals.push(r);
+      else if (getRitualFullData('oblivion', idOrName)) obCeremonies.push(r);
+    });
+  }
+
+  const dedupRituals = (arr) => {
+    const seen = new Set();
+    return arr.filter(r => {
+      const key = String(r?.id || r?.name || r || '').toLowerCase();
+      if (!key) return true;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
+
+  const sortRituals = (a, b) => {
+    const lvlA = Number(a?.level || 1);
+    const lvlB = Number(b?.level || 1);
+    if (lvlA !== lvlB) return lvlA - lvlB;
+    const nameA = String(a?.name || a?.id || a || '');
+    const nameB = String(b?.name || b?.id || b || '');
+    return nameA.localeCompare(nameB);
+  };
+  const sortedBsRituals = dedupRituals([...bsRituals]).sort(sortRituals);
+  const sortedObCeremonies = dedupRituals([...obCeremonies]).sort(sortRituals);
+
+  // Catalog item lookup with fuzzy name/id fallback and user edits support
+  const allCatalogItems = listAllItems();
+  const catalogById = new Map();
+  const catalogByName = new Map();
+
+  allCatalogItems.forEach(item => {
+    if (item.id) catalogById.set(String(item.id).toLowerCase(), item);
+    if (item.name) catalogByName.set(String(item.name).toLowerCase(), item);
   });
+
+  const findCatalogItem = (entry) => {
+    if (!entry) return null;
+    const idKey = String(entry.id || '').toLowerCase().trim();
+    const nameKey = String(entry.name || '').toLowerCase().trim();
+    if (idKey && catalogById.has(idKey)) return catalogById.get(idKey);
+    if (nameKey && catalogByName.has(nameKey)) return catalogByName.get(nameKey);
+    return allCatalogItems.find(i => {
+      const cId = String(i.id || '').toLowerCase();
+      const cName = String(i.name || '').toLowerCase();
+      return (idKey && cId.includes(idKey)) || (nameKey && cName === nameKey) || (nameKey && cId.endsWith(`__${nameKey}`));
+    }) || null;
+  };
+
+  const withCatalogDescription = (entry) => {
+    const catalogItem = findCatalogItem(entry);
+    const desc = entry.desc || entry.description || entry.notes || catalogItem?.description || '';
+    const name = entry.name || catalogItem?.name || entry.id || 'Advantage';
+    return {
+      ...entry,
+      name,
+      description: desc,
+    };
+  };
 
   const merits = (Array.isArray(sheet.advantages?.merits) ? sheet.advantages.merits : []).map(withCatalogDescription);
   const flaws = (Array.isArray(sheet.advantages?.flaws) ? sheet.advantages.flaws : []).map(withCatalogDescription);
-  const backgrounds = (Array.isArray(sheet.backgrounds) ? sheet.backgrounds : []).map(withCatalogDescription);
+  const rawBackgrounds = [
+    ...(Array.isArray(sheet.backgrounds) ? sheet.backgrounds : []),
+    ...(Array.isArray(sheet.advantages?.backgrounds) ? sheet.advantages.backgrounds : [])
+  ];
+  const seenBgs = new Set();
+  const dedupedBackgrounds = rawBackgrounds.filter(b => {
+    const key = (b.id || b.name || '').toLowerCase();
+    if (!key) return true;
+    if (seenBgs.has(key)) return false;
+    seenBgs.add(key);
+    return true;
+  });
+  const backgrounds = dedupedBackgrounds.map(withCatalogDescription);
   const convictions = Array.isArray(sheet.convictions) ? sheet.convictions.filter(Boolean) : [];
   const touchstones = Array.isArray(sheet.touchstones)
     ? sheet.touchstones.filter(t => t && (t.name || t.background || t.description)).map(t => ({
@@ -183,15 +323,14 @@ export default async function generateVTMCharacterSheetPDF(character) {
   const logoUrl = window.location.origin + '/img/ATT-logo(1).webp';
   const exportDateString = formatExportDate();
 
-  // --- STRICTLY NO SPACES IN FILENAME ---
   const charName = (character.name || sheet.name || 'Character').trim();
-  let rawFileName = `${charName}-Athens-Through-Time-VTM-${exportDateString}.pdf`;
-  const finalFileName = rawFileName.replace(/[\s:]+/g, '-').replace(/-+/g, '-');
+  let rawFileName = `${charName} Athens Through Time VTM ${exportDateString}.pdf`;
+  const finalFileName = rawFileName.replace(/[\s:]+/g, '_').replace(/_+/g, '_');
   
   // Very important: Escape single quotes so it doesn't break the injected javascript
   const safeFileName = finalFileName.replace(/'/g, "\\'");
 
-  // --- HTML Template for the VTM Sheet ---
+  // HTML Template for the VTM Sheet
   const contentHtml = `
     <div id="vtm-sheet-content" style="font-family: 'Crimson Text', serif; color: #222; background: #fff; padding: 20px 40px; width: 800px; margin: 0 auto; box-sizing: border-box;">
       <style>
@@ -199,7 +338,6 @@ export default async function generateVTMCharacterSheetPDF(character) {
         
         #vtm-sheet-content h1, #vtm-sheet-content h2, #vtm-sheet-content h3, #vtm-sheet-content .section-title { font-family: 'Oswald', sans-serif; text-transform: uppercase; }
         
-        /* Updated Header for Logo and Subtitle */
         #vtm-sheet-content .header { display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 30px; border-bottom: 2px solid #8a0303; padding-bottom: 10px; }
         #vtm-sheet-content .header img { height: 65px; width: auto; object-fit: contain; }
         #vtm-sheet-content .header-text { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; }
@@ -226,15 +364,14 @@ export default async function generateVTMCharacterSheetPDF(character) {
         #vtm-sheet-content .adv-entry { margin-bottom: 10px; }
         #vtm-sheet-content .adv-desc { padding-left: 4px; font-size: 12px; color: #555; line-height: 1.4; margin-top: 2px; }
         #vtm-sheet-content .adv-empty { font-size: 13px; color: #999; font-style: italic; }
-        /* Keeps a merit/touchstone/item block from being sliced across a page boundary */
-        #vtm-sheet-content .avoid-break, #vtm-sheet-content .section-title { page-break-inside: avoid; break-inside: avoid; }
+        #vtm-sheet-content .avoid-break, #vtm-sheet-content .section-title, #vtm-sheet-content .adv-entry { page-break-inside: avoid; break-inside: avoid; }
       </style>
 
       <div class="header">
         <img src="${logoUrl}" alt="ATT Logo" />
         <div class="header-text">
           <h1>VAMPIRE THE MASQUERADE</h1>
-          <div class="subtitle">Chronicle: Athens Through-Time LARP</div>
+          <div class="subtitle">Chronicle: Athens Through Time LARP</div>
         </div>
       </div>
 
@@ -281,37 +418,37 @@ export default async function generateVTMCharacterSheetPDF(character) {
       <div class="section-title">SKILLS</div>
       <div class="three-col">
         <div>
-          <div class="stat-row"><span>Athletics</span> ${renderDots(getSkill('Athletics'))}</div>
-          <div class="stat-row"><span>Brawl</span> ${renderDots(getSkill('Brawl'))}</div>
-          <div class="stat-row"><span>Craft</span> ${renderDots(getSkill('Craft'))}</div>
-          <div class="stat-row"><span>Drive</span> ${renderDots(getSkill('Drive'))}</div>
-          <div class="stat-row"><span>Firearms</span> ${renderDots(getSkill('Firearms'))}</div>
-          <div class="stat-row"><span>Larceny</span> ${renderDots(getSkill('Larceny'))}</div>
-          <div class="stat-row"><span>Melee</span> ${renderDots(getSkill('Melee'))}</div>
-          <div class="stat-row"><span>Stealth</span> ${renderDots(getSkill('Stealth'))}</div>
-          <div class="stat-row"><span>Survival</span> ${renderDots(getSkill('Survival'))}</div>
+          ${renderSkillRow('Athletics')}
+          ${renderSkillRow('Brawl')}
+          ${renderSkillRow('Craft')}
+          ${renderSkillRow('Drive')}
+          ${renderSkillRow('Firearms')}
+          ${renderSkillRow('Larceny')}
+          ${renderSkillRow('Melee')}
+          ${renderSkillRow('Stealth')}
+          ${renderSkillRow('Survival')}
         </div>
         <div>
-          <div class="stat-row"><span>Animal Ken</span> ${renderDots(getSkill('Animal Ken'))}</div>
-          <div class="stat-row"><span>Etiquette</span> ${renderDots(getSkill('Etiquette'))}</div>
-          <div class="stat-row"><span>Insight</span> ${renderDots(getSkill('Insight'))}</div>
-          <div class="stat-row"><span>Intimidation</span> ${renderDots(getSkill('Intimidation'))}</div>
-          <div class="stat-row"><span>Leadership</span> ${renderDots(getSkill('Leadership'))}</div>
-          <div class="stat-row"><span>Performance</span> ${renderDots(getSkill('Performance'))}</div>
-          <div class="stat-row"><span>Persuasion</span> ${renderDots(getSkill('Persuasion'))}</div>
-          <div class="stat-row"><span>Streetwise</span> ${renderDots(getSkill('Streetwise'))}</div>
-          <div class="stat-row"><span>Subterfuge</span> ${renderDots(getSkill('Subterfuge'))}</div>
+          ${renderSkillRow('Animal Ken')}
+          ${renderSkillRow('Etiquette')}
+          ${renderSkillRow('Insight')}
+          ${renderSkillRow('Intimidation')}
+          ${renderSkillRow('Leadership')}
+          ${renderSkillRow('Performance')}
+          ${renderSkillRow('Persuasion')}
+          ${renderSkillRow('Streetwise')}
+          ${renderSkillRow('Subterfuge')}
         </div>
         <div>
-          <div class="stat-row"><span>Academics</span> ${renderDots(getSkill('Academics'))}</div>
-          <div class="stat-row"><span>Awareness</span> ${renderDots(getSkill('Awareness'))}</div>
-          <div class="stat-row"><span>Finance</span> ${renderDots(getSkill('Finance'))}</div>
-          <div class="stat-row"><span>Investigation</span> ${renderDots(getSkill('Investigation'))}</div>
-          <div class="stat-row"><span>Medicine</span> ${renderDots(getSkill('Medicine'))}</div>
-          <div class="stat-row"><span>Occult</span> ${renderDots(getSkill('Occult'))}</div>
-          <div class="stat-row"><span>Politics</span> ${renderDots(getSkill('Politics'))}</div>
-          <div class="stat-row"><span>Science</span> ${renderDots(getSkill('Science'))}</div>
-          <div class="stat-row"><span>Technology</span> ${renderDots(getSkill('Technology'))}</div>
+          ${renderSkillRow('Academics')}
+          ${renderSkillRow('Awareness')}
+          ${renderSkillRow('Finance')}
+          ${renderSkillRow('Investigation')}
+          ${renderSkillRow('Medicine')}
+          ${renderSkillRow('Occult')}
+          ${renderSkillRow('Politics')}
+          ${renderSkillRow('Science')}
+          ${renderSkillRow('Technology')}
         </div>
       </div>
 
@@ -338,7 +475,7 @@ export default async function generateVTMCharacterSheetPDF(character) {
         </div>
       </div>
 
-      <div class="section-title">DISCIPLINES & POWERS</div>
+      <div class="section-title">DISCIPLINES &amp; POWERS</div>
       <div class="three-col avoid-break">
         ${Object.entries(disciplines).filter(([_,v]) => Number(v)>0).map(([d, val]) => `
           <div>
@@ -350,7 +487,53 @@ export default async function generateVTMCharacterSheetPDF(character) {
         `).join('')}
       </div>
 
-      <div class="section-title">ADVANTAGES & FLAWS</div>
+      ${(sortedBsRituals.length || sortedObCeremonies.length) ? `
+        <div class="section-title">RITUALS &amp; CEREMONIES</div>
+        <div class="${(sortedBsRituals.length && sortedObCeremonies.length) ? 'two-col' : ''}">
+          ${sortedBsRituals.length ? `
+            <div>
+              <div class="col-header">Blood Sorcery Rituals</div>
+              ${sortedBsRituals.map(r => {
+                const full = getRitualFullData('blood_sorcery', r.id || r.name || r) || {};
+                const name = r.name || full.name || r.id || String(r);
+                const lvl = r.level || full.level || 1;
+                const effect = r.desc || r.description || r.effect || full.effect || full.description || '';
+                return `
+                  <div class="adv-entry avoid-break">
+                    <div class="stat-row">
+                      <span><strong>${escapeHtml(name)}</strong></span>
+                      <span style="font-family: 'Oswald', sans-serif; font-size: 12px; color: #8a0303; text-transform: uppercase;">Level ${escapeHtml(lvl)}</span>
+                    </div>
+                    ${effect ? `<div class="adv-desc">${escapeHtml(effect)}</div>` : ''}
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          ` : ''}
+          ${sortedObCeremonies.length ? `
+            <div>
+              <div class="col-header">Oblivion Ceremonies</div>
+              ${sortedObCeremonies.map(r => {
+                const full = getRitualFullData('oblivion', r.id || r.name || r) || {};
+                const name = r.name || full.name || r.id || String(r);
+                const lvl = r.level || full.level || 1;
+                const effect = r.desc || r.description || r.effect || full.effect || full.description || '';
+                return `
+                  <div class="adv-entry avoid-break">
+                    <div class="stat-row">
+                      <span><strong>${escapeHtml(name)}</strong></span>
+                      <span style="font-family: 'Oswald', sans-serif; font-size: 12px; color: #8a0303; text-transform: uppercase;">Level ${escapeHtml(lvl)}</span>
+                    </div>
+                    ${effect ? `<div class="adv-desc">${escapeHtml(effect)}</div>` : ''}
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          ` : ''}
+        </div>
+      ` : ''}
+
+      <div class="section-title">ADVANTAGES &amp; FLAWS</div>
       <div class="two-col">
         <div>
           <div class="col-header">Merits</div>
@@ -429,7 +612,7 @@ export default async function generateVTMCharacterSheetPDF(character) {
     <html lang="en">
       <head>
         <meta charset="UTF-8">
-        <title>${escapeHtml(charName)} - V5 Sheet</title>
+        <title>${escapeHtml(charName)}: V5 Sheet</title>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
         <style>
           body {
