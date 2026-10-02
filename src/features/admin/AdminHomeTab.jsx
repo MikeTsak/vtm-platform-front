@@ -763,8 +763,8 @@ export default function AdminHomeTab({
     const s = String(status || 'submitted').toLowerCase();
     if (s === 'submitted') return <span className={`${styles.statusPill} ${styles.statusSubmitted}`}>Submitted</span>;
     if (s.includes('needs')) return <span className={`${styles.statusPill} ${styles.statusNeedsScene}`}>Needs Scene</span>;
-    if (s === 'approved: kikos') return <span className={styles.statusPill} style={{ background: 'rgba(41, 121, 255, 0.15)', color: '#4da6ff', border: '1px solid rgba(41, 121, 255, 0.35)' }}>Approved: Kikos</span>;
-    if (s === 'approved: mike') return <span className={styles.statusPill} style={{ background: 'rgba(255, 82, 82, 0.15)', color: '#ff5252', border: '1px solid rgba(255, 82, 82, 0.35)' }}>Approved: Mike</span>;
+    if (s === 'approved: kikos') return <span className={styles.statusPill} style={{ background: 'rgba(0, 255, 136, 0.15)', color: '#00ff88', border: '1px solid rgba(0, 255, 136, 0.35)' }}>Approved: Kikos</span>;
+    if (s === 'approved: mike') return <span className={styles.statusPill} style={{ background: 'rgba(0, 229, 255, 0.15)', color: '#00e5ff', border: '1px solid rgba(0, 229, 255, 0.35)' }}>Approved: Mike</span>;
     if (s === 'approved') return <span className={`${styles.statusPill} ${styles.statusApproved}`}>Approved</span>;
     if (s === 'rejected') return <span className={`${styles.statusPill} ${styles.statusRejected}`}>Rejected</span>;
     return <span className={`${styles.statusPill} ${styles.statusResolved}`}>{status}</span>;
@@ -1028,7 +1028,7 @@ export default function AdminHomeTab({
             <span>{cycleStats.resolvedCount} out of {cycleStats.totalCycle}</span>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
               <span
-                style={{ color: '#4da6ff', fontWeight: 600, cursor: 'pointer' }}
+                style={{ color: '#00ff88', fontWeight: 600, cursor: 'pointer' }}
                 onClick={(e) => {
                   e.stopPropagation();
                   setTab('downtimes', { statusFilter: 'Approved: Kikos' });
@@ -1039,7 +1039,7 @@ export default function AdminHomeTab({
               </span>
               <span>,</span>
               <span
-                style={{ color: '#ff5252', fontWeight: 600, cursor: 'pointer' }}
+                style={{ color: '#00e5ff', fontWeight: 600, cursor: 'pointer' }}
                 onClick={(e) => {
                   e.stopPropagation();
                   setTab('downtimes', { statusFilter: 'Approved: Mike' });

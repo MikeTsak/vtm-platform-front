@@ -3,6 +3,7 @@ import api, { formatApiError } from '../../core/api';
 import CharacterSetup from '../character/CharacterSetup';
 import { formatAthensDateTime } from '../../utils/dateFormatter';
 import { Link } from 'react-router-dom';
+import generateVTMCharacterSheetPDF from '../../utils/pdfGenerator';
 
 export default function NPCs() {
   const [list, setList] = useState([]);
@@ -58,6 +59,13 @@ export default function NPCs() {
                   <td>{formatAthensDateTime(n.created_at)}</td>
                   <td>
                     <Link to={`/admin/npcs/${n.id}`}><button>View</button></Link>{' '}
+                    <button
+                      type="button"
+                      title={`Open ${n.name || 'NPC'}'s sheet as printable PDF in a new tab`}
+                      onClick={() => generateVTMCharacterSheetPDF({ ...n, isNPC: true })}
+                    >
+                      PDF
+                    </button>{' '}
                     <button onClick={()=>remove(n.id)}>Delete</button>
                   </td>
                 </tr>

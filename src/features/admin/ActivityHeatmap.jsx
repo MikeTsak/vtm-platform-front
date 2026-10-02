@@ -128,13 +128,32 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
     return u ? u.display_name : `User #${val}`;
   };
 
-  const calculateLevel = (minutes) => {
-    if (!minutes || minutes <= 0) return 0;
-    if (minutes < 15) return 1;
-    if (minutes < 45) return 2;
-    if (minutes < 90) return 3;
-    if (minutes < 180) return 4;
-    return 5;
+  // Compute percentile-based dynamic level thresholds from a dataset.
+  // Returns { entries: [...with level assigned], thresholds: [t1,t2,t3,t4,t5] }
+  const computeDynamicLevels = (entries) => {
+    const nonZero = entries.filter(e => e.count > 0).map(e => e.count).sort((a, b) => a - b);
+    if (nonZero.length === 0) {
+      return { thresholds: [0, 0, 0, 0, 0], assignLevel: () => 0 };
+    }
+
+    // Split into 5 quintile buckets by percentile rank
+    const pct = (p) => {
+      const idx = Math.ceil((p / 100) * nonZero.length) - 1;
+      return nonZero[Math.max(0, idx)];
+    };
+    const thresholds = [pct(20), pct(40), pct(60), pct(80), nonZero[nonZero.length - 1]];
+
+    // Assign level: 0 = zero, 1..5 = which quintile the count falls into
+    const assignLevel = (count) => {
+      if (!count || count <= 0) return 0;
+      if (count <= thresholds[0]) return 1;
+      if (count <= thresholds[1]) return 2;
+      if (count <= thresholds[2]) return 3;
+      if (count <= thresholds[3]) return 4;
+      return 5;
+    };
+
+    return { thresholds, assignLevel };
   };
 
   // Ensure calendar spans the chronicle season starting September 1st in Athens time through August 31st
@@ -161,26 +180,40 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
     map.set(startOfSeasonStr, { date: startOfSeasonStr, count: 0, level: 0, activeUsers: 0, sessionCount: 0 });
     map.set(endOfSeasonStr, { date: endOfSeasonStr, count: 0, level: 0, activeUsers: 0, sessionCount: 0 });
 
+    // First pass: collect entries without levels
+    const rawEntries = [];
     if (Array.isArray(data)) {
       data.forEach(item => {
         if (!item || !item.date) return;
         const count = Number(item.count) || 0;
-        const level = item.level !== undefined ? Number(item.level) : calculateLevel(count);
-        map.set(item.date, {
+        const entry = {
           date: item.date,
           count,
-          level,
+          level: 0,
           activeUsers: item.activeUsers !== undefined ? Number(item.activeUsers) : (count > 0 ? 1 : 0),
           sessionCount: item.sessionCount !== undefined ? Number(item.sessionCount) : (count > 0 ? 1 : 0),
-        });
+        };
+        rawEntries.push(entry);
+        map.set(item.date, entry);
       });
     }
 
-    return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
+    // Second pass: compute dynamic levels from the full dataset
+    const allEntries = Array.from(map.values());
+    const { thresholds, assignLevel } = computeDynamicLevels(allEntries);
+    for (const entry of allEntries) {
+      entry.level = assignLevel(entry.count);
+    }
+
+    const sorted = allEntries.sort((a, b) => a.date.localeCompare(b.date));
+    return { data: sorted, thresholds };
   };
 
-  const safeData1 = useMemo(() => getSafeData(data1), [data1]);
-  const safeData2 = useMemo(() => getSafeData(data2), [data2]);
+  const processed1 = useMemo(() => getSafeData(data1), [data1]);
+  const processed2 = useMemo(() => getSafeData(data2), [data2]);
+  const safeData1 = processed1.data;
+  const safeData2 = processed2.data;
+  const levelThresholds1 = processed1.thresholds;
 
   // Aggregate monthly intelligence from safeData1 ordered from September through August
   const monthlyStats1 = useMemo(() => {
@@ -654,7 +687,7 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
                     totalCount: '{{count}} minutes logged in season (Athens Time)',
                     legend: {
                       less: '0 min',
-                      more: '180+ min',
+                      more: `${formatDurationDHM(levelThresholds1[4])}+`,
                     },
                   }}
                   showWeekdayLabels={true}
@@ -711,7 +744,7 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
                       totalCount: '{{count}} minutes logged in season (Athens Time)',
                       legend: {
                         less: '0 min',
-                        more: '180+ min',
+                      more: `${formatDurationDHM(levelThresholds1[4])}+`,
                       },
                     }}
                     showWeekdayLabels={true}
@@ -759,15 +792,29 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
 
           <div className={styles.legendScale}>
             <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>0m</span>
-            {currentTheme.levels.map((color, idx) => (
-              <span
-                key={idx}
-                className={styles.legendBox}
-                style={{ background: color }}
-                title={`Level ${idx}: ${idx === 0 ? '0 min' : idx === 1 ? '1 to 15 min' : idx === 2 ? '15 to 45 min' : idx === 3 ? '45 to 90 min' : idx === 4 ? '90 to 180 min' : '180+ min'}`}
-              />
-            ))}
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>180m+</span>
+            {currentTheme.levels.map((color, idx) => {
+              const t = levelThresholds1;
+              const rangeLabel = idx === 0
+                ? '0 min'
+                : idx === 1
+                  ? `1 to ${formatDurationDHM(t[0])}` 
+                  : idx === 2
+                    ? `${formatDurationDHM(t[0])} to ${formatDurationDHM(t[1])}`
+                    : idx === 3
+                      ? `${formatDurationDHM(t[1])} to ${formatDurationDHM(t[2])}`
+                      : idx === 4
+                        ? `${formatDurationDHM(t[2])} to ${formatDurationDHM(t[3])}`
+                        : `${formatDurationDHM(t[3])}+`;
+              return (
+                <span
+                  key={idx}
+                  className={styles.legendBox}
+                  style={{ background: color }}
+                  title={`Level ${idx}: ${rangeLabel}`}
+                />
+              );
+            })}
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{formatDurationDHM(levelThresholds1[4])}+</span>
           </div>
         </div>
 

@@ -27,9 +27,11 @@ export default async function generateVTMCharacterSheetPDF(character) {
   }
 
   // Inventory lives in its own table, not the sheet JSON, fetch it
-  // best-effort so a failure here never blocks the rest of the sheet.
+  // best effort so a failure here never blocks the rest of the sheet.
+  // NPCs do not have character inventory rows, so skip for NPCs.
   let inventoryItems = [];
-  if (character.id) {
+  const isNpc = character.isNPC || character.is_npc || character.type === 'npc' || character.pickFrom === 'npc';
+  if (character.id && !isNpc) {
     try {
       const { data } = await api.get(`/characters/${character.id}/inventory`);
       inventoryItems = Array.isArray(data?.items) ? data.items : [];
@@ -103,10 +105,37 @@ export default async function generateVTMCharacterSheetPDF(character) {
   const attrs = sheet.attributes || {};
   const skills = sheet.skills || {};
   
-  // Safely extract skill dots whether they are an object or a flat number
-  const getSkill = (k) => (skills[k] && typeof skills[k] === 'object') ? skills[k].dots : (skills[k] || 0);
+  const getAttr = (k) => Number(attrs[k] ?? attrs[k.toLowerCase()] ?? 1);
+  const getSkill = (k) => {
+    const node = skills[k] ?? skills[k.toLowerCase()];
+    return (node && typeof node === 'object') ? Number(node.dots || 0) : Number(node || 0);
+  };
   
-  const disciplines = sheet.disciplines || {};
+  let disciplines = {};
+  if (Array.isArray(sheet.disciplines)) {
+    sheet.disciplines.forEach(d => {
+      if (d && typeof d === 'object' && d.discipline) {
+        const name = d.discipline.charAt(0).toUpperCase() + d.discipline.slice(1);
+        disciplines[name] = Math.max(disciplines[name] || 0, Number(d.level || 1));
+      }
+    });
+  } else if (sheet.disciplines && typeof sheet.disciplines === 'object') {
+    disciplines = { ...sheet.disciplines };
+  }
+
+  const getPowersForDisc = (discName) => {
+    if (Array.isArray(sheet.disciplinePowers?.[discName])) {
+      return sheet.disciplinePowers[discName];
+    }
+    const foundKey = Object.keys(sheet.disciplinePowers || {}).find(k => k.toLowerCase() === discName.toLowerCase());
+    if (foundKey && Array.isArray(sheet.disciplinePowers[foundKey])) {
+      return sheet.disciplinePowers[foundKey];
+    }
+    if (Array.isArray(sheet.disciplines)) {
+      return sheet.disciplines.filter(d => (d.discipline || '').toLowerCase() === discName.toLowerCase());
+    }
+    return [];
+  };
 
   // Purchased merit/flaw/background entries on the sheet don't always carry
   // their own `.description` (it depends which flow added them), so backfill
@@ -130,7 +159,7 @@ export default async function generateVTMCharacterSheetPDF(character) {
     : [];
 
   // Calculate dynamic max values and current tracker status
-  const stamina = Number(attrs.Stamina) || 1;
+  const stamina = getAttr('Stamina');
   let maxHealth = stamina + 3;
   
   const fortitudePowers = Array.isArray(sheet.disciplinePowers?.Fortitude) ? sheet.disciplinePowers.Fortitude : [];
@@ -138,7 +167,7 @@ export default async function generateVTMCharacterSheetPDF(character) {
      maxHealth += Number(sheet.disciplines?.Fortitude || 0);
   }
   
-  const maxWillpower = (Number(attrs.Composure) || 1) + (Number(attrs.Resolve) || 1);
+  const maxWillpower = getAttr('Composure') + getAttr('Resolve');
 
   const healthAgg = sheet.health?.aggravated || 0;
   const healthSup = sheet.health?.superficial || 0;
@@ -231,21 +260,21 @@ export default async function generateVTMCharacterSheetPDF(character) {
       <div class="three-col">
         <div>
           <div class="col-header">Physical</div>
-          <div class="stat-row"><span>Strength</span> ${renderDots(attrs.Strength)}</div>
-          <div class="stat-row"><span>Dexterity</span> ${renderDots(attrs.Dexterity)}</div>
-          <div class="stat-row"><span>Stamina</span> ${renderDots(attrs.Stamina)}</div>
+          <div class="stat-row"><span>Strength</span> ${renderDots(getAttr('Strength'))}</div>
+          <div class="stat-row"><span>Dexterity</span> ${renderDots(getAttr('Dexterity'))}</div>
+          <div class="stat-row"><span>Stamina</span> ${renderDots(getAttr('Stamina'))}</div>
         </div>
         <div>
           <div class="col-header">Social</div>
-          <div class="stat-row"><span>Charisma</span> ${renderDots(attrs.Charisma)}</div>
-          <div class="stat-row"><span>Manipulation</span> ${renderDots(attrs.Manipulation)}</div>
-          <div class="stat-row"><span>Composure</span> ${renderDots(attrs.Composure)}</div>
+          <div class="stat-row"><span>Charisma</span> ${renderDots(getAttr('Charisma'))}</div>
+          <div class="stat-row"><span>Manipulation</span> ${renderDots(getAttr('Manipulation'))}</div>
+          <div class="stat-row"><span>Composure</span> ${renderDots(getAttr('Composure'))}</div>
         </div>
         <div>
           <div class="col-header">Mental</div>
-          <div class="stat-row"><span>Intelligence</span> ${renderDots(attrs.Intelligence)}</div>
-          <div class="stat-row"><span>Wits</span> ${renderDots(attrs.Wits)}</div>
-          <div class="stat-row"><span>Resolve</span> ${renderDots(attrs.Resolve)}</div>
+          <div class="stat-row"><span>Intelligence</span> ${renderDots(getAttr('Intelligence'))}</div>
+          <div class="stat-row"><span>Wits</span> ${renderDots(getAttr('Wits'))}</div>
+          <div class="stat-row"><span>Resolve</span> ${renderDots(getAttr('Resolve'))}</div>
         </div>
       </div>
 
@@ -315,7 +344,7 @@ export default async function generateVTMCharacterSheetPDF(character) {
           <div>
             <div class="stat-row"><strong>${escapeHtml(d)}</strong> ${renderDots(val)}</div>
             <div style="padding-left:10px; font-size:13px; color:#555;">
-              ${(Array.isArray(sheet.disciplinePowers?.[d]) ? sheet.disciplinePowers[d] : []).map(p => `• ${escapeHtml(p.name || p.id)}`).join('<br>')}
+              ${getPowersForDisc(d).map(p => `• ${escapeHtml(p.name || p.id)}`).join('<br>')}
             </div>
           </div>
         `).join('')}

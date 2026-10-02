@@ -7,6 +7,7 @@ import Avatar from '../../components/Avatar';
 import api from '../../core/api';
 import { formatEuDate } from '../../utils/dateFormatter';
 import { symlogo, CLAN_HEX as CLAN_COLORS } from '../../data/clans';
+import generateVTMCharacterSheetPDF from '../../utils/pdfGenerator';
 
 export default function AdminNPCsTab({ npcs, onReload, onDelete }) {
   const [mode, setMode] = React.useState('list');
@@ -74,6 +75,15 @@ export default function AdminNPCsTab({ npcs, onReload, onDelete }) {
                             Disable
                           </button>
                         )}
+                        <button
+                          type="button"
+                          className={`${styles.btn} ${styles.btnSecondary}`}
+                          style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
+                          title={`Open ${n.name || 'NPC'}'s sheet as printable PDF in a new tab`}
+                          onClick={() => generateVTMCharacterSheetPDF({ ...n, isNPC: true })}
+                        >
+                          PDF
+                        </button>
                         <Link className={`${styles.btn} ${styles.btnSecondary}`} style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }} to={`/admin/npcs/${n.id}`}>
                           Edit
                         </Link>
