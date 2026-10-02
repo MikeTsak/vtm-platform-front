@@ -3,7 +3,7 @@ import styles from '../../styles/CharacterView.module.css';
 import { DISCIPLINES } from '../../data/disciplines';
 import DisciplineRow from './DisciplineRow';
 
-const DisciplinesDisplaySection = ({ sheet, boxMode }) => {
+const DisciplinesDisplaySection = ({ sheet, boxMode, onPickMissingPower }) => {
   const disciplineNamesSet = new Set(Object.keys(DISCIPLINES));
   if (Array.isArray(sheet?.mystic_powers) && sheet.mystic_powers.length > 0) {
     disciplineNamesSet.add('Oblivion');
@@ -41,6 +41,7 @@ const DisciplinesDisplaySection = ({ sheet, boxMode }) => {
               powers={sheet?.disciplinePowers?.[name] || []}
               phantomPowers={phantomPowers}
               boxMode={boxMode}
+              onPickMissingPower={onPickMissingPower}
             />
           );
         })}

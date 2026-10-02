@@ -1,5 +1,5 @@
 // src/features/admin/AdminHomeTab.jsx
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../core/api';
 import styles from '../../styles/AdminHomeTab.module.css';
@@ -116,11 +116,34 @@ export default function AdminHomeTab({
     });
 
     const totalCycle = cycleDowntimes.length;
+    // Count as resolved: resolved, resolved in scene, needs a scene
+    // Count as NOT resolved: submitted, approved: kikos, approved: mike
     const resolvedDowntimes = cycleDowntimes.filter(d => {
       const s = String(d.status || '').toLowerCase();
-      return s === 'approved' || s.startsWith('approved:') || s === 'rejected' || s === 'resolved' || s === 'resolved in scene';
+      return s === 'resolved' || s === 'resolved in scene' || s === 'needs a scene';
     });
     const resolvedCount = resolvedDowntimes.length;
+
+    // Single Storyteller approvals awaiting 2nd approval (Approved: Kikos, Approved: Mike)
+    const stApprovedDowntimes = cycleDowntimes.filter(d => {
+      const s = String(d.status || '').toLowerCase();
+      return s === 'approved: kikos' || s === 'approved: mike';
+    });
+    const stApprovedCount = stApprovedDowntimes.length;
+
+    // Scenes needed in this cycle
+    const scenesNeededDowntimes = cycleDowntimes.filter(d => {
+      const s = String(d.status || '').toLowerCase();
+      return s === 'needs a scene';
+    });
+    const scenesNeededCount = scenesNeededDowntimes.length;
+
+    // Actions submitted and awaiting Storyteller review in this cycle
+    const submittedInCycle = cycleDowntimes.filter(d => {
+      const s = String(d.status || '').toLowerCase();
+      return s === 'submitted';
+    });
+    const submittedCount = submittedInCycle.length;
 
     const resolutionPct = totalCycle > 0
       ? Math.round((resolvedCount / totalCycle) * 100)
@@ -144,6 +167,9 @@ export default function AdminHomeTab({
       deadlineLabel: deadlineStr ? formatEuDate(deadlineStr) : null,
       totalCycle,
       resolvedCount,
+      stApprovedCount,
+      scenesNeededCount,
+      submittedCount,
       resolutionPct,
       playersSubmittedCount,
       eligiblePlayers,
@@ -172,21 +198,139 @@ export default function AdminHomeTab({
     }
   };
 
-  // KPI Metrics
+  // State for Owed Downtimes section
+  const [showOwedSection, setShowOwedSection] = useState(false);
+  const [owedFilter, setOwedFilter] = useState('owing');
+  const [owedSearch, setOwedSearch] = useState('');
+
+  // Player Turnout: Ledger of active Kindred and how many DTs they owe
+  const owingPlayersData = useMemo(() => {
+    const openingStr = dtConfig?.downtime_opening;
+    const openingDate = openingStr ? new Date(openingStr) : null;
+    const hasOpening = openingDate && !isNaN(openingDate.getTime());
+
+    const dtCountByChar = new Map();
+    const dtCountByUser = new Map();
+
+    downtimes.forEach(d => {
+      if (hasOpening) {
+        const dDate = new Date(d.created_at || 0);
+        if (dDate < openingDate) return;
+      }
+      const s = String(d.status || '').toLowerCase();
+      // Rejected actions do not consume quota
+      if (s === 'rejected') return;
+
+      if (d.character_id) {
+        const cid = Number(d.character_id);
+        dtCountByChar.set(cid, (dtCountByChar.get(cid) || 0) + 1);
+      }
+      if (d.user_id) {
+        const uid = Number(d.user_id);
+        dtCountByUser.set(uid, (dtCountByUser.get(uid) || 0) + 1);
+      }
+    });
+
+    const standardLimit = 3;
+    const entries = [];
+
+    activeCharacters.forEach(c => {
+      const cid = Number(c.id);
+      const uid = c.user_id ? Number(c.user_id) : null;
+      const user = users.find(u => Number(u.id) === uid || Number(u.character_id) === cid);
+
+      const submitted = dtCountByChar.has(cid)
+        ? (dtCountByChar.get(cid) || 0)
+        : (uid && dtCountByUser.has(uid) ? (dtCountByUser.get(uid) || 0) : 0);
+
+      const owed = Math.max(0, standardLimit - submitted);
+
+      entries.push({
+        characterId: cid,
+        characterName: c.name || `Kindred #${cid}`,
+        clan: c.clan || 'Unknown',
+        userId: uid || (user ? Number(user.id) : null),
+        playerName: user?.display_name || user?.name || c.player_name || 'Kindred Player',
+        email: user?.email || '',
+        avatarUrl: user?.avatar_url || user?.avatar_url_thumb || '',
+        submitted,
+        limit: standardLimit,
+        owed,
+      });
+    });
+
+    return entries.sort((a, b) => (b.owed - a.owed) || a.characterName.localeCompare(b.characterName));
+  }, [activeCharacters, users, downtimes, dtConfig]);
+
+  const filteredOwingPlayers = useMemo(() => {
+    let list = owingPlayersData;
+    if (owedFilter === 'owing') {
+      list = list.filter(p => p.owed > 0);
+    } else if (owedFilter === 'fulfilled') {
+      list = list.filter(p => p.owed === 0);
+    }
+    const q = owedSearch.trim().toLowerCase();
+    if (!q) return list;
+    return list.filter(p =>
+      (p.characterName || '').toLowerCase().includes(q) ||
+      (p.playerName || '').toLowerCase().includes(q) ||
+      (p.clan || '').toLowerCase().includes(q)
+    );
+  }, [owingPlayersData, owedFilter, owedSearch]);
+
+  const owingCount = useMemo(() => {
+    return owingPlayersData.filter(p => p.owed > 0).length;
+  }, [owingPlayersData]);
+
+  const handlePlayerTurnoutClick = () => {
+    setShowOwedSection(true);
+    setTimeout(() => {
+      const el = document.getElementById('owed-downtimes-section');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        el.classList.add(styles.sectionPulse);
+        setTimeout(() => el.classList.remove(styles.sectionPulse), 1600);
+      }
+    }, 60);
+  };
+
+  // Pending Actions: Count ONLY submitted actions
   const pendingDowntimes = useMemo(() => {
     return downtimes.filter(d => {
       const s = String(d.status || '').toLowerCase();
-      const isPending = s === 'submitted' || s === 'needs a scene';
-      if (!isPending) return false;
+      if (s !== 'submitted') return false;
       if (activeCharIdSet.size > 0 && d.character_id && !activeCharIdSet.has(Number(d.character_id))) {
         return false;
       }
       if (activeUserIdSet.size > 0 && d.user_id && !activeUserIdSet.has(Number(d.user_id))) {
         return false;
       }
+      if (cycleStats.hasOpening && dtConfig?.downtime_opening) {
+        const dDate = new Date(d.created_at || 0);
+        if (dDate < new Date(dtConfig.downtime_opening)) return false;
+      }
       return true;
     });
-  }, [downtimes, activeCharIdSet, activeUserIdSet]);
+  }, [downtimes, activeCharIdSet, activeUserIdSet, cycleStats.hasOpening, dtConfig]);
+
+  // Scenes Needed in this cycle
+  const scenesNeededList = useMemo(() => {
+    return downtimes.filter(d => {
+      const s = String(d.status || '').toLowerCase();
+      if (s !== 'needs a scene') return false;
+      if (activeCharIdSet.size > 0 && d.character_id && !activeCharIdSet.has(Number(d.character_id))) {
+        return false;
+      }
+      if (activeUserIdSet.size > 0 && d.user_id && !activeUserIdSet.has(Number(d.user_id))) {
+        return false;
+      }
+      if (cycleStats.hasOpening && dtConfig?.downtime_opening) {
+        const dDate = new Date(d.created_at || 0);
+        if (dDate < new Date(dtConfig.downtime_opening)) return false;
+      }
+      return true;
+    });
+  }, [downtimes, activeCharIdSet, activeUserIdSet, cycleStats.hasOpening, dtConfig]);
 
   const diceStats = useMemo(() => {
     let messy = 0;
@@ -408,8 +552,8 @@ export default function AdminHomeTab({
         {/* Cycle Resolution % */}
         <div
           className={styles.statCard}
-          onClick={() => setTab('downtimes')}
-          title="Click to view downtimes"
+          onClick={() => setTab('downtimes', { statusFilter: 'approved_st' })}
+          title="Click to view downtimes approved by one Storyteller"
         >
           <div className={styles.statHeader}>
             <span className={styles.statTitle}>Downtimes Resolved</span>
@@ -441,19 +585,23 @@ export default function AdminHomeTab({
           </div>
           <div className={styles.statSubtext}>
             <span>{cycleStats.resolvedCount} of {cycleStats.totalCycle} resolved</span>
-            {cycleStats.totalCycle - cycleStats.resolvedCount > 0 && (
+            {cycleStats.stApprovedCount > 0 ? (
+              <span style={{ color: '#00e5ff', fontWeight: 600 }}>
+                {cycleStats.stApprovedCount} waiting for 2nd ST
+              </span>
+            ) : cycleStats.totalCycle - cycleStats.resolvedCount > 0 ? (
               <span style={{ color: '#ffaa00', fontWeight: 600 }}>
                 {cycleStats.totalCycle - cycleStats.resolvedCount} pending
               </span>
-            )}
+            ) : null}
           </div>
         </div>
 
         {/* Player Turnout % */}
         <div
           className={styles.statCard}
-          onClick={() => setTab('downtimes')}
-          title="Click to view player submissions"
+          onClick={handlePlayerTurnoutClick}
+          title="Click to view player submission ledger"
         >
           <div className={styles.statHeader}>
             <span className={styles.statTitle}>Player Turnout</span>
@@ -479,15 +627,17 @@ export default function AdminHomeTab({
           </div>
           <div className={styles.statSubtext}>
             <span>{cycleStats.playersSubmittedCount} of {cycleStats.eligiblePlayers} players</span>
-            <span style={{ color: 'var(--text-muted)' }}>submitted</span>
+            <span style={{ color: owingCount > 0 ? '#ffb822' : 'var(--text-muted)', fontWeight: 600 }}>
+              {owingCount > 0 ? `${owingCount} owe DTs: View list` : 'All submitted'}
+            </span>
           </div>
         </div>
 
-        {/* Pending Downtimes */}
+        {/* Pending Actions (Submitted Only) */}
         <div
           className={`${styles.statCard} ${pendingDowntimes.length > 0 ? styles.statCardAlert : ''}`}
-          onClick={() => setTab('downtimes')}
-          title="Click to view downtimes"
+          onClick={() => setTab('downtimes', { statusFilter: 'submitted' })}
+          title="Click to view submitted actions"
         >
           <div className={styles.statHeader}>
             <span className={styles.statTitle}>Pending Actions</span>
@@ -502,7 +652,33 @@ export default function AdminHomeTab({
             {pendingDowntimes.length > 0 ? (
               <span style={{ color: '#ffb822', fontWeight: 600 }}>Needs Storyteller review</span>
             ) : (
-              <span>All submissions resolved</span>
+              <span>All submissions reviewed</span>
+            )}
+          </div>
+        </div>
+
+        {/* Scenes Needed */}
+        <div
+          className={`${styles.statCard} ${scenesNeededList.length > 0 ? styles.statCardScenes : ''}`}
+          onClick={() => setTab('downtimes', { statusFilter: 'Needs a Scene' })}
+          title="Click to view actions requiring a scene"
+        >
+          <div className={styles.statHeader}>
+            <span className={styles.statTitle}>Scenes Needed</span>
+            <div className={`${styles.statIconWrap} ${scenesNeededList.length > 0 ? styles.statIconWrapScenes : ''}`}>
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>theaters</span>
+            </div>
+          </div>
+          <div className={styles.statValue} style={scenesNeededList.length > 0 ? { color: '#ffd700' } : {}}>
+            {scenesNeededList.length}
+          </div>
+          <div className={styles.statSubtext}>
+            {scenesNeededList.length === 1 ? (
+              <span style={{ color: '#ffd700', fontWeight: 600 }}>1 scene required this cycle</span>
+            ) : scenesNeededList.length > 1 ? (
+              <span style={{ color: '#ffd700', fontWeight: 600 }}>{scenesNeededList.length} scenes required this cycle</span>
+            ) : (
+              <span>No scenes required this cycle</span>
             )}
           </div>
         </div>
@@ -827,6 +1003,194 @@ export default function AdminHomeTab({
             )}
           </div>
         </div>
+      </div>
+
+      {/* Owed Downtimes Section (Player Turnout Ledger) */}
+      <div id="owed-downtimes-section" className={`${styles.owedSection} ${showOwedSection ? styles.owedSectionVisible : ''}`}>
+        <div className={styles.owedHeader}>
+          <div className={styles.owedTitleWrap}>
+            <span className="material-symbols-outlined" style={{ color: '#ffd700', fontSize: '24px' }}>
+              assignment_late
+            </span>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <h3 className={styles.owedTitle}>Downtime Submissions Ledger: Player Turnout</h3>
+                <span className={styles.owedBadge}>
+                  {owingCount} {owingCount === 1 ? 'player owes actions' : 'players owe actions'}
+                </span>
+              </div>
+              <p className={styles.owedSubtitle}>
+                Active Kindred who still owe downtime submissions for this cycle (quota limit: 3 per cycle)
+              </p>
+            </div>
+          </div>
+          <div className={styles.owedHeaderActions}>
+            <div className={styles.owedFilterPills}>
+              {[
+                { id: 'owing', label: `Owing (${owingCount})` },
+                { id: 'all', label: `All Active (${owingPlayersData.length})` },
+                { id: 'fulfilled', label: `Fulfilled (${owingPlayersData.length - owingCount})` },
+              ].map(f => (
+                <button
+                  key={f.id}
+                  type="button"
+                  className={`${styles.owedFilterBtn} ${owedFilter === f.id ? styles.owedFilterBtnActive : ''}`}
+                  onClick={() => setOwedFilter(f.id)}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+            <div className={styles.owedSearchWrap}>
+              <span className="material-symbols-outlined" style={{ fontSize: '16px', color: 'var(--text-muted)' }}>search</span>
+              <input
+                type="text"
+                placeholder="Search character, player, clan..."
+                value={owedSearch}
+                onChange={(e) => setOwedSearch(e.target.value)}
+                className={styles.owedSearchInput}
+              />
+              {owedSearch && (
+                <button
+                  type="button"
+                  onClick={() => setOwedSearch('')}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }}
+                  title="Clear search"
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>close</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {filteredOwingPlayers.length === 0 ? (
+          <div className={styles.emptyNotice}>
+            <span className={`material-symbols-outlined ${styles.emptyIcon}`}>verified</span>
+            <span>
+              {owedFilter === 'owing'
+                ? 'All active Kindred have submitted all required downtimes for this cycle!'
+                : 'No players match the search criteria.'}
+            </span>
+          </div>
+        ) : (
+          <div className={styles.owedGrid}>
+            {filteredOwingPlayers.map(p => {
+              const clanColor = CLAN_COLORS[p.clan] || '#9d7cff';
+              const clanLogo = symlogoWhite(p.clan);
+              const pct = Math.min(100, Math.round((p.submitted / p.limit) * 100));
+
+              return (
+                <div
+                  key={p.characterId || p.userId || p.characterName}
+                  className={styles.playerOwedCard}
+                  style={{ borderLeftColor: clanColor }}
+                >
+                  <div className={styles.playerOwedTop}>
+                    <div
+                      className={styles.clanBadgeWrap}
+                      style={{ borderColor: `${clanColor}44`, cursor: p.characterId ? 'pointer' : 'default' }}
+                      onClick={() => p.characterId && handleOpenCharacter(p.characterId)}
+                      title={p.characterId ? `Open sheet for ${p.characterName}` : undefined}
+                    >
+                      {clanLogo ? (
+                        <img
+                          src={clanLogo}
+                          alt={p.clan || 'Clan'}
+                          className={styles.clanSymbol}
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                      ) : (
+                        <span className="material-symbols-outlined" style={{ fontSize: '18px', color: clanColor }}>
+                          nightlight
+                        </span>
+                      )}
+                    </div>
+                    <div className={styles.playerOwedDetails}>
+                      <div
+                        className={styles.playerOwedCharName}
+                        style={{ color: clanColor, cursor: p.characterId ? 'pointer' : 'default' }}
+                        onClick={() => p.characterId && handleOpenCharacter(p.characterId)}
+                        title={p.characterId ? `Open sheet for ${p.characterName}` : undefined}
+                      >
+                        {p.characterName}
+                      </div>
+                      <div className={styles.playerOwedMeta}>
+                        <span
+                          style={{ cursor: p.userId ? 'pointer' : 'default' }}
+                          onClick={() => setTab('users')}
+                          title="View user in Users tab"
+                        >
+                          {p.playerName}
+                        </span>
+                        {p.clan && (
+                          <>
+                            <span>:</span>
+                            <span>{p.clan}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      {p.owed > 0 ? (
+                        <span className={p.owed === 3 ? styles.owedPillCritical : styles.owedPillWarning}>
+                          Owes {p.owed} {p.owed === 1 ? 'DT' : 'DTs'}
+                        </span>
+                      ) : (
+                        <span className={styles.owedPillFulfilled}>
+                          Fulfilled
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className={styles.playerOwedProgressRow}>
+                    <div className={styles.progressBarWrap} style={{ margin: 0, flex: 1 }}>
+                      <div
+                        className={`${styles.progressBarFill} ${
+                          pct === 100
+                            ? styles.progressBarFillGreen
+                            : pct >= 50
+                            ? styles.progressBarFillYellow
+                            : styles.progressBarFillPurple
+                        }`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <span className={styles.playerOwedProgressText}>
+                      {p.submitted} of {p.limit} submitted
+                    </span>
+                  </div>
+
+                  <div className={styles.playerOwedActions}>
+                    {p.characterId && (
+                      <button
+                        type="button"
+                        className={styles.owedActionBtn}
+                        onClick={() => handleOpenCharacter(p.characterId)}
+                        title="Open character sheet"
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>description</span>
+                        Sheet
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className={styles.owedActionBtn}
+                      onClick={() => {
+                        setTab('downtimes');
+                      }}
+                      title="View downtimes"
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>history_edu</span>
+                      Downtimes
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Embedded Global Activity Heatmap */}

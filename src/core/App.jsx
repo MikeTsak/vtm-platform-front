@@ -28,6 +28,7 @@ const RouteLoader = () => (
 const Home = lazyWithRetry(() => import('../pages/Home'));
 const Login = lazyWithRetry(() => import('../features/auth/Login'));
 const Register = lazyWithRetry(() => import('../features/auth/Register'));
+const DebugLogin = lazyWithRetry(() => import('../features/auth/DebugLogin'));
 const DiceRoller = lazyWithRetry(() => import('../features/dice/DiceRoller'));
 const CharacterView = lazyWithRetry(() => import('../features/character/CharacterView'));
 const CharacterEdit = lazyWithRetry(() => import('../features/character/CharacterEdit'));
@@ -116,6 +117,21 @@ function MalkavianOrAdminOnly({ children }) {
   }
 
   return children;
+}
+
+// Always visible while an admin is inside a player's account via a debug code,
+// so it can't be mistaken for the admin's own session.
+function DebugSessionBar() {
+  const { user, logout } = useContext(AuthCtx);
+  if (!user?.imp) return null;
+  const end = async () => { await logout(); window.location.assign('/login'); };
+  return (
+    <div role="status" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', padding: '0.4rem 1rem', background: '#b45309', color: '#fff', fontSize: '0.9rem', position: 'sticky', top: 0, zIndex: 10000 }}>
+      <span className="material-symbols-outlined" aria-hidden="true">bug_report</span>
+      <span>Debug session: you are signed in as <strong>{user.display_name || user.email}</strong>. Actions are real.</span>
+      <button type="button" onClick={end} style={{ background: '#fff', color: '#b45309', border: 0, borderRadius: 4, padding: '0.2rem 0.6rem', cursor: 'pointer', fontWeight: 600 }}>End session</button>
+    </div>
+  );
 }
 
 const IMMERSIVE_ROUTES = ['/schrecknet'];
@@ -239,6 +255,7 @@ function AppLayout() {
         <link rel="canonical" href={`https://portal.attlarp.gr${location.pathname}`} />
       </Helmet>
       <GlobalBanner />
+      <DebugSessionBar />
       <Nav />
       <div
         style={
@@ -281,6 +298,7 @@ function AppLayout() {
             <Route path="/reset" element={<ResetPassword />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/debug-login" element={<DebugLogin />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/legal" element={<Legal />} />
             <Route path="/privacy" element={<Privacy />} />

@@ -15,10 +15,10 @@
  * @returns {string} a stable key: identical payloads produce identical keys
  */
 export function buildXpSpendIdempotencyKey(payload) {
-  const { type, target, currentLevel, newLevel, ritualLevel, formulaLevel, dots, disciplineKind, specialty, powerName } = payload || {};
+  const { type, target, currentLevel, newLevel, ritualLevel, formulaLevel, dots, disciplineKind, specialty, powerName, powerId } = payload || {};
   return [
     'xp-spend', type, target, currentLevel, newLevel,
-    ritualLevel, formulaLevel, dots, disciplineKind, specialty, powerName,
+    ritualLevel, formulaLevel, dots, disciplineKind, specialty, powerName || powerId,
   ]
     .map((v) => (v === undefined || v === null ? '' : String(v)))
     .join('|');

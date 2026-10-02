@@ -79,6 +79,15 @@ export default function AuthProvider({ children }) {
       throw new Error('Account created, but could not confirm your session. Please try again.');
     }
   };
+  // Admin debug login (back/routes/debugLogin.js): a one-time code opens a
+  // short-lived session as that player; /auth/me then carries `imp`.
+  const debugLogin = async (email, code) => {
+    await api.post('/auth/debug-login', { email, code });
+    queryClient.clear();
+    const confirmed = await loadMe();
+    if (!confirmed) throw new Error('Code accepted, but could not confirm the session. Please try again.');
+    return confirmed;
+  };
   const logout = async () => {
     try {
       // Clears the httpOnly cookie server-side: JS can't clear it itself.
@@ -92,5 +101,5 @@ export default function AuthProvider({ children }) {
     trackEvent('logout');
   };
 
-  return <AuthCtx.Provider value={{ user, loading, login, register, logout }}>{children}</AuthCtx.Provider>;
+  return <AuthCtx.Provider value={{ user, loading, login, register, debugLogin, logout }}>{children}</AuthCtx.Provider>;
 }

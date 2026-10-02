@@ -4,6 +4,7 @@ import styles from '../../styles/Admin.module.css';
 import { Skeleton } from 'boneyard-js/react';
 import Avatar from '../../components/Avatar';
 import { CLAN_HEX as CLAN_COLORS } from '../../data/clans';
+import api, { formatApiError } from '../../core/api';
 
 export default function AdminUsersTab({ users = [], onSave, loading = false }) {
   const [drafts, setDrafts] = useState(() => new Map((users || []).map((u) => [u.id, { display_name: u.display_name ?? '', email: u.email ?? '', role: u.role ?? 'user', discord_id: u.discord_id ?? '' }])));
@@ -16,6 +17,39 @@ export default function AdminUsersTab({ users = [], onSave, loading = false }) {
 
   const roleChoices = useMemo(() => ['user', 'courtuser', 'admin'], []);
 
+  // Prefilled via the URL fragment: never sent to the server or its logs, and
+  // DebugLogin strips it from the address bar on load.
+  const debugLink = (d) => `${window.location.origin}/debug-login#${new URLSearchParams({ email: d.email, code: d.code })}`;
+
+  // Debug login (back/routes/debugLogin.js). One browser holds one login, so
+  // switching here replaces the admin's session with the player's; the orange
+  // bar's "End session" goes back to /login.
+  const switchToPlayer = async (u) => {
+    const name = u.display_name || u.email;
+    if (!window.confirm(`Log in as ${name}?
+
+This signs you out of admin in this browser. ${name} stays logged in on their own devices. Use "End session" on the orange bar when done.`)) return;
+    try {
+      const { data } = await api.post(`/admin/users/${u.id}/debug-login-code`);
+      await api.post('/auth/debug-login', { email: data.email, code: data.code });
+      window.location.assign('/'); // full reload: fresh auth state, sockets and caches as the player
+    } catch (e) {
+      setDebugCode({ error: formatApiError(e, 'Failed to log in as player') });
+    }
+  };
+
+  // Link variant, for a phone or private window: shown once, never stored.
+  const [debugCode, setDebugCode] = useState(null);
+  const generateDebugCode = async (u) => {
+    if (!window.confirm(`Generate a one-time debug login link for ${u.display_name || u.email}?`)) return;
+    try {
+      const { data } = await api.post(`/admin/users/${u.id}/debug-login-code`);
+      setDebugCode({ ...data, name: u.display_name || u.email });
+    } catch (e) {
+      setDebugCode({ error: formatApiError(e, 'Failed to generate code') });
+    }
+  };
+
   return (
     <Skeleton name="admin-users-tab" loading={loading}>
       <div className={`${styles.editorSection} ${styles.characterCard}`}>
@@ -23,6 +57,23 @@ export default function AdminUsersTab({ users = [], onSave, loading = false }) {
           <h3 className={styles.hl}>Admin • Users</h3>
           <p className={styles.subtle}>Edit user accounts. Character data is read-only.</p>
         </div>
+
+        {debugCode && (
+          <div className={styles.editorSection} role="status" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+            {debugCode.error ? (
+              <span style={{ color: '#ef4444' }}>{debugCode.error}</span>
+            ) : (
+              <>
+                <span className="material-symbols-outlined" aria-hidden="true">bug_report</span>
+                <span>Debug login for <strong>{debugCode.name}</strong> ({debugCode.email}):</span>
+                <code style={{ fontSize: '1.1rem', letterSpacing: '0.1em', userSelect: 'all' }}>{debugCode.code}</code>
+                <span className={styles.subtle}>Single use, expires in {debugCode.expires_in_minutes} min. Open the link on a phone or in a private window.</span>
+                <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => navigator.clipboard?.writeText(debugLink(debugCode))}>Copy link</button>
+              </>
+            )}
+            <button className={`${styles.btn} ${styles.btnSecondary}`} style={{ marginLeft: 'auto' }} onClick={() => setDebugCode(null)}>Dismiss</button>
+          </div>
+        )}
 
         <div className={styles.tableContainer}>
           <div className={styles.table}>
@@ -72,6 +123,16 @@ export default function AdminUsersTab({ users = [], onSave, loading = false }) {
                     <div className={`${styles.td} ${styles.rowEnd} ${styles.userActions}`}>
                       <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => onSave?.({ id: u.id, ...draft })}>Save</button>
                       <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => resetRow(u)}>Reset</button>
+                      {u.role !== 'admin' && (
+                        <>
+                          <button className={`${styles.btn} ${styles.btnSecondary}`} title="Log in as this player (debug)" aria-label={`Log in as ${u.display_name || u.email}`} onClick={() => switchToPlayer(u)}>
+                            <span className="material-symbols-outlined" aria-hidden="true" style={{ fontSize: '18px', verticalAlign: 'middle' }}>bug_report</span>
+                          </button>
+                          <button className={`${styles.btn} ${styles.btnSecondary}`} title="Debug login link for a phone or private window" aria-label={`Debug login link for ${u.display_name || u.email}`} onClick={() => generateDebugCode(u)}>
+                            <span className="material-symbols-outlined" aria-hidden="true" style={{ fontSize: '18px', verticalAlign: 'middle' }}>link</span>
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 );

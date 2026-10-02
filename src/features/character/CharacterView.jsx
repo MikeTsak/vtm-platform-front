@@ -661,6 +661,8 @@ export default function CharacterView({
   const [msg, setMsg] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [modalCfg, setModalCfg] = useState(null);
+  const [modalDismissed, setModalDismissed] = useState(false);
+  const sheetRef = useRef(null);
   const [identityModalOpen, setIdentityModalOpen] = useState(false);
   const [moralityModalOpen, setMoralityModalOpen] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
@@ -1141,6 +1143,7 @@ export default function CharacterView({
     } catch (e) {}
   }, [boxMode]);
   const sheet = useMemo(() => ch?.sheet || {}, [ch]);
+  sheetRef.current = sheet;
   const xp = ch?.xp ?? 0;
 
   const disciplinesMap = useMemo(
@@ -1182,10 +1185,18 @@ export default function CharacterView({
   const computeMissingPicks = useCallback(() => findMissingPicks(sheet), [sheet, findMissingPicks]);
 
   useEffect(() => {
+    setModalDismissed(false);
+  }, [ch?.id]);
+
+  useEffect(() => {
     if (!ch) return;
     const q = computeMissingPicks();
     setPendingFixes(q);
-    if (q.length && !modalOpen) {
+    if (!q.length) {
+      setModalDismissed(false);
+      return;
+    }
+    if (q.length && !modalOpen && !modalDismissed) {
       const first = q[0];
       setModalCfg({
         name: first.name,
@@ -1199,10 +1210,11 @@ export default function CharacterView({
       });
       setModalOpen(true);
     }
-  }, [ch, computeMissingPicks, modalOpen, sheet]);
+  }, [ch, computeMissingPicks, modalOpen, modalDismissed, sheet]);
 
   async function confirmDisciplinePurchase({ name, selectedPowerId, selectedPowerName, selectedPowerLevel, current, next, kind, assignOnly }) {
-    const nextSheet = JSON.parse(JSON.stringify(sheet));
+    const baseSheet = sheetRef.current || sheet;
+    const nextSheet = JSON.parse(JSON.stringify(baseSheet));
     nextSheet.disciplines = nextSheet.disciplines || {};
     nextSheet.disciplinePowers = nextSheet.disciplinePowers || {};
 
@@ -1228,11 +1240,12 @@ export default function CharacterView({
           target: name,
           currentLevel: Number(nextSheet.disciplines[name] || 0),
           newLevel: Number(nextSheet.disciplines[name] || 0),
+          powerName: selectedPowerName,
+          powerId: selectedPowerId,
           patchSheet: nextSheet
         };
-        await api.post(paths.spend, assignPayload, {
-          headers: { 'Idempotency-Key': buildXpSpendIdempotencyKey(assignPayload) },
-        });
+        // Free power selection must never be blocked by or replay stale idempotency keys
+        await api.post(paths.spend, assignPayload);
       } else {
         await spendXP({
           type: 'discipline',
@@ -1240,24 +1253,25 @@ export default function CharacterView({
           target: name,
           currentLevel: current,
           newLevel: next,
+          powerName: selectedPowerName,
+          powerId: selectedPowerId,
           patchSheet: nextSheet
         });
       }
 
       const r = await api.get(paths.load);
       const obj = r.data[paths.pickFrom] || r.data.character || r.data.npc || null;
-      setCh(attachStructured(obj));
+      const structured = attachStructured(obj);
+      setCh(structured);
+      const updatedSheet = structured?.sheet || nextSheet;
+      sheetRef.current = updatedSheet;
 
       setModalOpen(false);
       setModalCfg(null);
 
       if (assignOnly) {
-        // Compute against the just-saved nextSheet, not the stale `sheet` this
-        // closure was created with: `sheet` hasn't re-rendered yet, so
-        // computeMissingPicks() here would keep reporting the level we just
-        // filled as still missing, reopening the modal on the same dot and
-        // clobbering it on every subsequent pick (the infinite-loop bug).
-        const rest = findMissingPicks(nextSheet);
+        // Compute against the just-saved updatedSheet from server
+        const rest = findMissingPicks(updatedSheet);
         setPendingFixes(rest);
         if (rest.length) {
           const first = rest[0];
@@ -1267,12 +1281,13 @@ export default function CharacterView({
             next: first.level,
             kind: 'select',
             assignOnly: true,
-            // Add these two lines using the updated 'nextSheet'
-            disciplineDots: nextSheet.disciplines,
-            ownedPowers: nextSheet.disciplinePowers?.[first.name] || []
+            characterClan: ch.clan,
+            disciplineDots: updatedSheet.disciplines,
+            ownedPowers: updatedSheet.disciplinePowers?.[first.name] || []
           });
           setModalOpen(true);
         } else {
+          setModalDismissed(false);
           setMsg('All discipline powers are now specified.');
         }
       }
@@ -1280,6 +1295,21 @@ export default function CharacterView({
       setErr(formatApiError(e, 'Failed to save selection'));
     }
   }
+
+  const handlePickMissingPower = useCallback(({ name, level }) => {
+    setModalDismissed(false);
+    setModalCfg({
+      name,
+      current: level - 1,
+      next: level,
+      kind: 'select',
+      assignOnly: true,
+      characterClan: ch?.clan,
+      disciplineDots: sheet.disciplines,
+      ownedPowers: sheet.disciplinePowers?.[name] || []
+    });
+    setModalOpen(true);
+  }, [ch?.clan, sheet.disciplines, sheet.disciplinePowers]);
 
   const knownRitualIds = useMemo(() => new Set([
     ...(sheet.rituals?.blood_sorcery || []).map(r => r.id),
@@ -1881,7 +1911,7 @@ export default function CharacterView({
                 <h3 className={styles.sectionHeading} style={{ margin: 0, fontFamily: 'var(--font-title)', fontSize: '24px' }}>Disciplines</h3>
               </div>
               <div className={styles.contentCardBody}>
-                <DisciplinesDisplaySection sheet={sheet} boxMode={boxMode} />
+                <DisciplinesDisplaySection sheet={sheet} boxMode={boxMode} onPickMissingPower={handlePickMissingPower} />
                 <RitualsDisplaySection sheet={sheet} boxMode={boxMode} />
               </div>
               <div className={styles.contentCardFoot}>
@@ -2471,7 +2501,7 @@ export default function CharacterView({
         {modalOpen && modalCfg && (
           <DisciplinePowerModal
             cfg={modalCfg}
-            onClose={() => { setModalOpen(false); setModalCfg(null); }}
+            onClose={() => { setModalOpen(false); setModalCfg(null); setModalDismissed(true); }}
             onConfirm={(sel) => confirmDisciplinePurchase({ ...modalCfg, ...sel })}
           />
         )}

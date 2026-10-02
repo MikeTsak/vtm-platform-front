@@ -621,11 +621,19 @@ export default function Admin() {
   const [searchParams, setSearchParams] = useSearchParams();
   const urlTab = searchParams.get('tab');
   const tab = urlTab && TAB_META[urlTab] ? urlTab : DEFAULT_TAB;
-  const setTab = useCallback((next) => {
+  const setTab = useCallback((next, extraParams = null) => {
     const id = TAB_META[next] ? next : DEFAULT_TAB;
     setSearchParams(prev => {
       const p = new URLSearchParams(prev);
       if (id === DEFAULT_TAB) p.delete('tab'); else p.set('tab', id);
+      if (extraParams && typeof extraParams === 'object') {
+        Object.entries(extraParams).forEach(([k, v]) => {
+          if (v === null || v === undefined) p.delete(k);
+          else p.set(k, String(v));
+        });
+      } else {
+        p.delete('statusFilter');
+      }
       return p;
     }, { replace: false });
   }, [setSearchParams]);

@@ -1,6 +1,6 @@
 // src/components/admin/AdminDowntimesTab.jsx
 import React, { useEffect, useMemo, useState, useRef, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import api, { formatApiError } from "../../core/api";
 import { AuthCtx } from '../../core/AuthContext';
 import { formatEuDate } from '../../utils/dateFormatter';
@@ -429,8 +429,11 @@ export default function AdminDowntimesTab({ characters = [] }) {
   const [listErr, setListErr] = useState('');
   const [rows, setRows] = useState([]);
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlStatusFilter = searchParams.get('statusFilter');
+
   const [q, setQ] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState(() => urlStatusFilter || 'all');
 
   const [hideStatus, setHideStatus] = useState({
     submitted: false,
@@ -442,6 +445,34 @@ export default function AdminDowntimesTab({ characters = [] }) {
     resolved: true,
     'Resolved in scene': true,
   });
+
+  useEffect(() => {
+    if (urlStatusFilter) {
+      setStatusFilter(urlStatusFilter);
+      if (urlStatusFilter === 'approved_st' || urlStatusFilter === 'Approved: Mike or Kikos') {
+        setHideStatus(prev => ({ ...prev, 'Approved: Kikos': false, 'Approved: Mike': false }));
+      } else if (urlStatusFilter === 'submitted') {
+        setHideStatus(prev => ({ ...prev, submitted: false }));
+      } else if (urlStatusFilter === 'Needs a Scene') {
+        setHideStatus(prev => ({ ...prev, 'Needs a Scene': false }));
+      }
+    }
+  }, [urlStatusFilter]);
+
+  const handleSelectStatusFilter = (val) => {
+    setStatusFilter(val);
+    setSearchParams(prev => {
+      const p = new URLSearchParams(prev);
+      if (val === 'all') p.delete('statusFilter');
+      else p.set('statusFilter', val);
+      return p;
+    }, { replace: true });
+    if (val === 'approved_st' || val === 'Approved: Mike or Kikos') {
+      setHideStatus(prev => ({ ...prev, 'Approved: Kikos': false, 'Approved: Mike': false }));
+    } else if (val && hideStatus[val]) {
+      setHideStatus(prev => ({ ...prev, [val]: false }));
+    }
+  };
 
   const [sceneSearch, setSceneSearch] = useState({});
   const [activeSearchScene, setActiveSearchScene] = useState(null);
@@ -562,9 +593,20 @@ export default function AdminDowntimesTab({ characters = [] }) {
       if (viewMode === 'project' && !isProj) return false;
 
       const rowStatus = String(r.status || 'submitted');
-      const dropdownOk = statusFilter === 'all' || rowStatus === statusFilter;
+      let dropdownOk = false;
+      if (statusFilter === 'all') {
+        dropdownOk = true;
+      } else if (statusFilter === 'approved_st' || statusFilter === 'Approved: Mike or Kikos') {
+        dropdownOk = rowStatus === 'Approved: Kikos' || rowStatus === 'Approved: Mike';
+      } else {
+        dropdownOk = rowStatus === statusFilter;
+      }
       if (!dropdownOk) return false;
-      if (hideStatus[rowStatus]) return false;
+      if (statusFilter === 'approved_st' || statusFilter === 'Approved: Mike or Kikos') {
+        // Do not hide when explicitly filtering for Storyteller approvals
+      } else if (hideStatus[rowStatus]) {
+        return false;
+      }
       if (!qq) return true;
       const hay = `${r.title || ''} ${r.body || ''} ${r.gm_notes || ''} ${r.gm_resolution || ''} ${r.player_name || ''} ${r.char_name || ''} ${r.clan || ''} ${r.status || ''}`.toLowerCase();
       return hay.includes(qq);
@@ -1016,8 +1058,9 @@ export default function AdminDowntimesTab({ characters = [] }) {
           </label>
           <label className={styles.labeledInput}>
             <span>Filter by Status</span>
-            <select className={styles.select} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <select className={styles.select} value={statusFilter} onChange={(e) => handleSelectStatusFilter(e.target.value)}>
               <option value="all">All</option>
+              <option value="approved_st">Only Approved: Mike or Kikos</option>
               {STATUS.map(s => <option key={s} value={s}>{`Only ${s}`}</option>)}
             </select>
           </label>
@@ -1030,7 +1073,7 @@ export default function AdminDowntimesTab({ characters = [] }) {
         </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginTop: '1.5rem', alignItems: 'center' }}>
-          <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => { setQ(''); setStatusFilter('all'); }}>Clear Filters</button>
+          <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => { setQ(''); handleSelectStatusFilter('all'); }}>Clear Filters</button>
           <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={loadList}>Refresh</button>
           <button
             type="button"
@@ -1068,9 +1111,11 @@ export default function AdminDowntimesTab({ characters = [] }) {
             const s = r.status || 'submitted';
             counts[s] = (counts[s] || 0) + 1;
           });
+          const stApprovedCount = (counts['Approved: Kikos'] || 0) + (counts['Approved: Mike'] || 0);
           const QUICK_FILTERS = [
             { label: 'All', value: 'all', color: 'var(--text-secondary)', bg: 'var(--glass-inset)' },
             { label: 'Submitted', value: 'submitted', color: '#9d7cff', bg: 'rgba(157,124,255,0.12)' },
+            { label: 'Appr: Mike or Kikos', value: 'approved_st', color: '#00e5ff', bg: 'rgba(0,229,255,0.14)', customCount: stApprovedCount },
             { label: 'Approved', value: 'approved', color: '#00e676', bg: 'rgba(0,230,118,0.1)' },
             { label: 'Appr: Kikos', value: 'Approved: Kikos', color: '#00e676', bg: 'rgba(0,230,118,0.14)' },
             { label: 'Appr: Mike', value: 'Approved: Mike', color: '#00e5ff', bg: 'rgba(0,229,255,0.14)' },
@@ -1090,38 +1135,44 @@ export default function AdminDowntimesTab({ characters = [] }) {
                 <span style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                   Overview:
                 </span>
-                {QUICK_FILTERS.filter(f => f.value !== 'all' && counts[f.value] > 0).map(f => (
-                  <span key={f.value} style={{
-                    background: f.bg, border: `1px solid ${f.color}`,
-                    color: f.color, borderRadius: '20px', padding: '3px 12px',
-                    fontSize: '0.8rem', fontWeight: 700,
-                  }}>
-                    {f.label}: {counts[f.value] || 0}
-                  </span>
-                ))}
+                {QUICK_FILTERS.filter(f => f.value !== 'all' && (f.customCount !== undefined ? f.customCount > 0 : counts[f.value] > 0)).map(f => {
+                  const cnt = f.customCount !== undefined ? f.customCount : (counts[f.value] || 0);
+                  return (
+                    <span key={f.value} style={{
+                      background: f.bg, border: `1px solid ${f.color}`,
+                      color: f.color, borderRadius: '20px', padding: '3px 12px',
+                      fontSize: '0.8rem', fontWeight: 700,
+                    }}>
+                      {f.label}: {cnt}
+                    </span>
+                  );
+                })}
                 <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                   {totalFiltered} total
                 </span>
               </div>
               {/* Quick-filter pills */}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                {QUICK_FILTERS.map(f => (
-                  <button
-                    key={f.value}
-                    type="button"
-                    onClick={() => setStatusFilter(f.value)}
-                    style={{
-                      background: statusFilter === f.value ? f.bg : 'var(--glass-inset)',
-                      border: `1px solid ${statusFilter === f.value ? f.color : 'var(--glass-border)'}`,
-                      color: statusFilter === f.value ? f.color : 'var(--text-muted)',
-                      borderRadius: '20px', padding: '4px 14px', cursor: 'pointer',
-                      fontSize: '0.8rem', fontWeight: 600, transition: 'all 0.2s',
-                      boxShadow: statusFilter === f.value ? `0 0 8px ${f.color}44` : 'none',
-                    }}
-                  >
-                    {f.label}{f.value !== 'all' && counts[f.value] ? ` (${counts[f.value]})` : ''}
-                  </button>
-                ))}
+                {QUICK_FILTERS.map(f => {
+                  const cnt = f.customCount !== undefined ? f.customCount : counts[f.value];
+                  return (
+                    <button
+                      key={f.value}
+                      type="button"
+                      onClick={() => handleSelectStatusFilter(f.value)}
+                      style={{
+                        background: statusFilter === f.value ? f.bg : 'var(--glass-inset)',
+                        border: `1px solid ${statusFilter === f.value ? f.color : 'var(--glass-border)'}`,
+                        color: statusFilter === f.value ? f.color : 'var(--text-muted)',
+                        borderRadius: '20px', padding: '4px 14px', cursor: 'pointer',
+                        fontSize: '0.8rem', fontWeight: 600, transition: 'all 0.2s',
+                        boxShadow: statusFilter === f.value ? `0 0 8px ${f.color}44` : 'none',
+                      }}
+                    >
+                      {f.label}{f.value !== 'all' && cnt ? ` (${cnt})` : ''}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           );

@@ -14,7 +14,7 @@ const getPowerFullData = (discName, powerId) => {
 };
 
 // Sub-component so each power pill can animate its own open/close state independently
-function PowerItem({ level, picked, unlocked, discName, boxMode }) {
+function PowerItem({ level, picked, unlocked, discName, boxMode, onPickMissing }) {
   const [isOpen, setIsOpen] = useState(false);
   
   // Fetch the actual rules and text for this specific power
@@ -25,7 +25,15 @@ function PowerItem({ level, picked, unlocked, discName, boxMode }) {
   if (!unlocked) cls += ` ${styles.powerPillLocked}`;
   else if (!picked) cls += ` ${styles.powerPillMissing}`;
 
-  const isClickable = !!fullData;
+  const isClickable = !!fullData || (!picked && unlocked && typeof onPickMissing === 'function');
+
+  const handleClick = () => {
+    if (fullData) {
+      setIsOpen(!isOpen);
+    } else if (!picked && unlocked && typeof onPickMissing === 'function') {
+      onPickMissing({ name: discName, level });
+    }
+  };
 
   return (
     <li className={styles.powerItem} data-box-mode={boxMode}>
@@ -33,14 +41,14 @@ function PowerItem({ level, picked, unlocked, discName, boxMode }) {
       <div 
         className={cls} 
         data-box-mode={boxMode}
-        onClick={() => isClickable && setIsOpen(!isOpen)}
+        onClick={handleClick}
         style={{ 
           cursor: isClickable ? 'pointer' : 'default',
           userSelect: 'none',
           width: '100%',
           boxSizing: 'border-box'
         }}
-        title={isClickable ? 'Click to view power details' : undefined}
+        title={isClickable ? (fullData ? 'Click to view power details' : 'Click to select missing power') : undefined}
       >
         <span className={styles.levelBadge} data-box-mode={boxMode}>L{level}</span>
         <span className={styles.powerName} data-box-mode={boxMode}>{label}</span>
@@ -78,7 +86,7 @@ function PowerItem({ level, picked, unlocked, discName, boxMode }) {
   );
 }
 
-function DisciplineRow({ name, level = 0, powers = [], phantomPowers = [], boxMode }) {
+function DisciplineRow({ name, level = 0, powers = [], phantomPowers = [], boxMode, onPickMissingPower }) {
   const icon = iconPath(name);
   const byLevel = new Map((powers || []).map(p => [Number(p.level), { id: p.id, name: p.name }]));
   const maxPicked = Math.max(0, ...Array.from(byLevel.keys()));
@@ -120,6 +128,7 @@ function DisciplineRow({ name, level = 0, powers = [], phantomPowers = [], boxMo
               unlocked={unlocked} 
               discName={name} 
               boxMode={boxMode}
+              onPickMissing={onPickMissingPower}
             />
           );
         })}
