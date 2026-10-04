@@ -517,6 +517,9 @@ export default function DownTimes() {
 
 
 
+  const currentClosedReason = quota?.closed_reason?.[viewMode === 'project' ? 'project' : 'standard'] || null;
+  const isSubmissionOpen = !currentClosedReason && !deadlinePassed;
+
   const archiveList = useMemo(() => {
     let source = pastRaw;
     if (archiveFilter === 'approved') source = source.filter(d => d.status.toLowerCase() !== 'rejected');
@@ -566,11 +569,45 @@ export default function DownTimes() {
           }}
         >
           <div className={styles.heroContent}>
-            <h1 className={styles.title}>Downtime Management</h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              <h1 className={styles.title}>Downtime Management</h1>
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '4px 12px',
+                  borderRadius: '999px',
+                  background: isSubmissionOpen ? 'rgba(0, 230, 118, 0.16)' : 'rgba(255, 82, 82, 0.16)',
+                  border: `1px solid ${isSubmissionOpen ? 'rgba(0, 230, 118, 0.6)' : 'rgba(255, 82, 82, 0.6)'}`,
+                  color: isSubmissionOpen ? '#00e676' : '#ff5252',
+                  fontSize: '0.82rem',
+                  fontWeight: 800,
+                  boxShadow: isSubmissionOpen ? '0 0 10px rgba(0, 230, 118, 0.2)' : '0 0 10px rgba(255, 82, 82, 0.2)'
+                }}
+              >
+                <span
+                  style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    background: isSubmissionOpen ? '#00e676' : '#ff5252',
+                    boxShadow: `0 0 6px ${isSubmissionOpen ? '#00e676' : '#ff5252'}`
+                  }}
+                />
+                <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>
+                  {isSubmissionOpen ? 'lock_open' : 'lock'}
+                </span>
+                <span>Downtimes:</span>
+                <strong style={{ textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  {isSubmissionOpen ? 'Open' : 'Closed'}
+                </strong>
+              </span>
+            </div>
             <p className={styles.subtitle}>
               {viewMode === 'standard'
                 ? 'Orchestrate your nocturnal endeavors. Submit monthly actions to the Storyteller.'
-                : 'Advance long-term grand projects over the course of multiple months.'}
+                : 'Advance long term grand projects over the course of multiple months.'}
             </p>
           </div>
           <div className={styles.modeSwitcher}>
