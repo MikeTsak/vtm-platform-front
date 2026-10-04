@@ -48,17 +48,17 @@ const CORNERSTONE_SKILLS = new Set([
    ========================================================================= */
 
 export const BLOOD_POTENCY_TABLE = [
-  { bp: 0, surge: 1, mend: 1, bonus: 0, bane: 0 },
-  { bp: 1, surge: 2, mend: 1, bonus: 0, bane: 1 },
-  { bp: 2, surge: 2, mend: 2, bonus: 1, bane: 1 },
-  { bp: 3, surge: 3, mend: 2, bonus: 1, bane: 2 },
-  { bp: 4, surge: 3, mend: 3, bonus: 2, bane: 2 },
-  { bp: 5, surge: 4, mend: 3, bonus: 2, bane: 3 },
-  { bp: 6, surge: 4, mend: 3, bonus: 3, bane: 3 },
+  { bp: 0, surge: 1, mend: 1, bonus: 0, bane: 1 },
+  { bp: 1, surge: 2, mend: 1, bonus: 0, bane: 2 },
+  { bp: 2, surge: 2, mend: 2, bonus: 1, bane: 2 },
+  { bp: 3, surge: 3, mend: 2, bonus: 1, bane: 3 },
+  { bp: 4, surge: 3, mend: 3, bonus: 2, bane: 3 },
+  { bp: 5, surge: 4, mend: 3, bonus: 2, bane: 4 },
+  { bp: 6, surge: 4, mend: 3, bonus: 3, bane: 4 },
   { bp: 7, surge: 5, mend: 3, bonus: 3, bane: 4 },
-  { bp: 8, surge: 5, mend: 4, bonus: 4, bane: 4 },
-  { bp: 9, surge: 6, mend: 4, bonus: 4, bane: 5 },
-  { bp: 10, surge: 6, mend: 5, bonus: 5, bane: 5 },
+  { bp: 8, surge: 5, mend: 4, bonus: 4, bane: 5 },
+  { bp: 9, surge: 6, mend: 4, bonus: 4, bane: 6 },
+  { bp: 10, surge: 6, mend: 5, bonus: 5, bane: 6 },
 ];
 
 /* =========================================================================

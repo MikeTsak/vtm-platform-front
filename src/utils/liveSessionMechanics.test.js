@@ -73,8 +73,8 @@ describe('liveSessionMechanics', () => {
     expect(bp0.mendAmount).toBe(1);
     expect(bp0.disciplineBonus).toBe(0);
     expect(bp0.rouseRerollLevel).toBe(0);
-    expect(bp0.baneSeverity).toBe(0);
-    expect(bp0.feedingPenalty).toBe('No effect');
+    expect(bp0.baneSeverity).toBe(1);
+    expect(bp0.feedingPenalty).toBe('No penalty');
 
     const bp1 = getBloodPotencyStats(1);
     expect(bp1.surgeBonus).toBe(2);
@@ -82,7 +82,7 @@ describe('liveSessionMechanics', () => {
     expect(bp1.disciplineBonus).toBe(0);
     expect(bp1.rouseRerollLevel).toBe(1);
     expect(bp1.baneSeverity).toBe(2);
-    expect(bp1.feedingPenalty).toBe('No effect');
+    expect(bp1.feedingPenalty).toBe('No penalty');
 
     const bp2 = getBloodPotencyStats(2);
     expect(bp2.surgeBonus).toBe(2);
@@ -104,6 +104,20 @@ describe('liveSessionMechanics', () => {
     expect(bp5.disciplineBonus).toBe(2);
     expect(bp5.rouseRerollLevel).toBe(3);
     expect(bp5.baneSeverity).toBe(4);
+
+    const bp7 = getBloodPotencyStats(7);
+    expect(bp7.surgeBonus).toBe(5);
+    expect(bp7.mendAmount).toBe(3);
+    expect(bp7.disciplineBonus).toBe(3);
+    expect(bp7.rouseRerollLevel).toBe(4);
+    expect(bp7.baneSeverity).toBe(4);
+
+    const bp10 = getBloodPotencyStats(10);
+    expect(bp10.surgeBonus).toBe(6);
+    expect(bp10.mendAmount).toBe(5);
+    expect(bp10.disciplineBonus).toBe(5);
+    expect(bp10.rouseRerollLevel).toBe(5);
+    expect(bp10.baneSeverity).toBe(6);
   });
 
   test('summarizeTrackers reads blood_potency and handles Thin-bloods', () => {

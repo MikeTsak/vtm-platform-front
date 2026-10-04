@@ -3,6 +3,22 @@ import api from '../core/api';
 import { listAllItems } from '../data/merits_flaws';
 import { RITUALS } from '../data/rituals';
 import { SKILL_DESCRIPTIONS } from '../data/descriptions';
+import { ALL_DISCIPLINE_NAMES, DISCIPLINES } from '../data/disciplines';
+import { clanRef } from '../data/clanReference';
+
+export const BLOOD_POTENCY_MILESTONES = {
+  0: { surge: '+1 die', mend: '1 Superficial', bonus: 'None', rouse: 'None', feeding: 'No penalty', bane: 1 },
+  1: { surge: '+2 dice', mend: '1 Superficial', bonus: 'None', rouse: 'Level 1', feeding: 'No penalty', bane: 2 },
+  2: { surge: '+2 dice', mend: '2 Superficial', bonus: '+1 die', rouse: 'Level 1', feeding: 'Animal and bagged blood slake half as much hunger', bane: 2 },
+  3: { surge: '+3 dice', mend: '2 Superficial', bonus: '+1 die', rouse: 'Level 2 and below', feeding: 'Animal and bagged blood slake nothing', bane: 3 },
+  4: { surge: '+3 dice', mend: '3 Superficial', bonus: '+2 dice', rouse: 'Level 2 and below', feeding: 'Animal and bagged blood slake nothing, slakes 1 less per human', bane: 3 },
+  5: { surge: '+4 dice', mend: '3 Superficial', bonus: '+2 dice', rouse: 'Level 3 and below', feeding: 'Animal and bagged blood slake nothing, slakes 1 less per human, must drain a human to go below Hunger 2', bane: 4 },
+  6: { surge: '+4 dice', mend: '3 Superficial', bonus: '+3 dice', rouse: 'Level 3 and below', feeding: 'Animal and bagged blood slake nothing, slakes 2 less per human, must drain a human to go below Hunger 2', bane: 4 },
+  7: { surge: '+5 dice', mend: '3 Superficial', bonus: '+3 dice', rouse: 'Level 4 and below', feeding: 'Animal and bagged blood slake nothing, slakes 2 less per human, must drain a human to go below Hunger 2', bane: 4 },
+  8: { surge: '+5 dice', mend: '4 Superficial', bonus: '+4 dice', rouse: 'Level 4 and below', feeding: 'Animal and bagged blood slake nothing, slakes 2 less per human, must drain a human to go below Hunger 3', bane: 5 },
+  9: { surge: '+6 dice', mend: '4 Superficial', bonus: '+4 dice', rouse: 'Level 5 and below', feeding: 'Animal and bagged blood slake nothing, slakes 2 less per human, must drain a human to go below Hunger 3', bane: 6 },
+  10: { surge: '+6 dice', mend: '5 Superficial', bonus: '+5 dice', rouse: 'Level 5 and below', feeding: 'Animal and bagged blood slake nothing, slakes 3 less per human, must drain a human to go below Hunger 3', bane: 6 },
+};
 
 // The generated sheet opens as a real HTML document in a new window (not a
 // sandboxed preview), so any player/admin entered free text (names, notes,
@@ -161,30 +177,125 @@ export default async function generateVTMCharacterSheetPDF(character) {
     `;
   };
   
+  const normalizeDiscName = (raw) => {
+    const s = String(raw || '').trim().toLowerCase();
+    const canon = ALL_DISCIPLINE_NAMES.find(n => n.toLowerCase() === s);
+    if (canon) return canon;
+    return String(raw || '').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  };
+
   let disciplines = {};
-  if (Array.isArray(sheet.disciplines)) {
-    sheet.disciplines.forEach(d => {
-      if (d && typeof d === 'object' && d.discipline) {
-        const name = d.discipline.charAt(0).toUpperCase() + d.discipline.slice(1);
-        disciplines[name] = Math.max(disciplines[name] || 0, Number(d.level || 1));
+  const rawDiscs = sheet.disciplines || character.disciplines || {};
+  if (Array.isArray(rawDiscs)) {
+    rawDiscs.forEach(d => {
+      if (d && typeof d === 'object') {
+        const dName = d.discipline || d.name || '';
+        if (dName) {
+          const name = normalizeDiscName(dName);
+          disciplines[name] = Math.max(disciplines[name] || 0, Number(d.level || d.dots || 1));
+        }
       }
     });
-  } else if (sheet.disciplines && typeof sheet.disciplines === 'object') {
-    disciplines = { ...sheet.disciplines };
+  } else if (rawDiscs && typeof rawDiscs === 'object') {
+    Object.entries(rawDiscs).forEach(([k, v]) => {
+      if (!k) return;
+      const name = normalizeDiscName(k);
+      disciplines[name] = Math.max(disciplines[name] || 0, Number(v || 0));
+    });
   }
 
+  const getDisciplinePowerFullData = (discName, powerEntry) => {
+    if (!powerEntry) return null;
+    const idStr = String(powerEntry.id || powerEntry.power_id || (typeof powerEntry === 'string' ? powerEntry : '')).trim().toLowerCase();
+    const nameStr = String(powerEntry.name || powerEntry.power || powerEntry.title || (typeof powerEntry === 'string' ? powerEntry : '')).trim().toLowerCase();
+
+    // 1. Specific discipline search
+    const dKey = Object.keys(DISCIPLINES || {}).find(k => k.toLowerCase() === String(discName || '').toLowerCase());
+    const discObj = dKey ? DISCIPLINES[dKey] : null;
+
+    if (discObj && discObj.levels) {
+      for (const [lvl, powersList] of Object.entries(discObj.levels)) {
+        if (!Array.isArray(powersList)) continue;
+        const found = powersList.find(p => {
+          const pId = String(p.id || '').trim().toLowerCase();
+          const pName = String(p.name || '').trim().toLowerCase();
+          return (idStr && pId === idStr) || 
+                 (nameStr && pName === nameStr) ||
+                 (nameStr && (pId === nameStr.replace(/[^a-z0-9]+/g, '_') || pId.replace(/_/g, ' ') === nameStr)) ||
+                 (idStr && (pName === idStr.replace(/_+/g, ' ') || pName.replace(/[^a-z0-9]+/g, '_') === idStr));
+        });
+        if (found) {
+          return { ...found, level: Number(lvl) };
+        }
+      }
+    }
+
+    // 2. Global discipline fallback search
+    for (const disc of Object.values(DISCIPLINES || {})) {
+      if (!disc || !disc.levels) continue;
+      for (const [lvl, powersList] of Object.entries(disc.levels)) {
+        if (!Array.isArray(powersList)) continue;
+        const found = powersList.find(p => {
+          const pId = String(p.id || '').trim().toLowerCase();
+          const pName = String(p.name || '').trim().toLowerCase();
+          return (idStr && pId === idStr) || (nameStr && pName === nameStr);
+        });
+        if (found) {
+          return { ...found, level: Number(lvl) };
+        }
+      }
+    }
+
+    return null;
+  };
+
   const getPowersForDisc = (discName) => {
-    if (Array.isArray(sheet.disciplinePowers?.[discName])) {
-      return sheet.disciplinePowers[discName];
+    const dLower = String(discName || '').toLowerCase().trim();
+    const result = [];
+    const seen = new Set();
+
+    const addPower = (p) => {
+      if (!p) return;
+      const key = String(p.id || p.name || p.power || p || '').toLowerCase().trim();
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      result.push(typeof p === 'object' ? p : { id: p, name: p });
+    };
+
+    // 1. Check sheet.disciplinePowers and character.disciplinePowers
+    const discPowersObj = sheet.disciplinePowers || character.disciplinePowers;
+    if (discPowersObj && typeof discPowersObj === 'object' && !Array.isArray(discPowersObj)) {
+      const matchKey = Object.keys(discPowersObj).find(k => k.toLowerCase().trim() === dLower);
+      if (matchKey && Array.isArray(discPowersObj[matchKey])) {
+        discPowersObj[matchKey].forEach(addPower);
+      }
+    } else if (Array.isArray(discPowersObj)) {
+      discPowersObj.forEach(p => {
+        if (p && typeof p === 'object' && String(p.discipline || '').toLowerCase().trim() === dLower) {
+          addPower(p);
+        }
+      });
     }
-    const foundKey = Object.keys(sheet.disciplinePowers || {}).find(k => k.toLowerCase() === discName.toLowerCase());
-    if (foundKey && Array.isArray(sheet.disciplinePowers[foundKey])) {
-      return sheet.disciplinePowers[foundKey];
+
+    // 2. Check sheet.disciplines and character.disciplines if array contains power objects
+    const rawList = sheet.disciplines || character.disciplines;
+    if (Array.isArray(rawList)) {
+      rawList.forEach(d => {
+        if (!d || typeof d !== 'object') return;
+        const dName = String(d.discipline || d.name || '').toLowerCase().trim();
+        if (dName === dLower) {
+          if (Array.isArray(d.powers)) {
+            d.powers.forEach(addPower);
+          } else if (d.power) {
+            addPower(d.power);
+          } else if (d.powerName || d.powerId) {
+            addPower({ id: d.powerId, name: d.powerName, level: d.level });
+          }
+        }
+      });
     }
-    if (Array.isArray(sheet.disciplines)) {
-      return sheet.disciplines.filter(d => (d.discipline || '').toLowerCase() === discName.toLowerCase());
-    }
-    return [];
+
+    return result;
   };
 
   // Rituals and Ceremonies Extraction
@@ -302,9 +413,18 @@ export default async function generateVTMCharacterSheetPDF(character) {
   const stamina = getAttr('Stamina');
   let maxHealth = stamina + 3;
   
-  const fortitudePowers = Array.isArray(sheet.disciplinePowers?.Fortitude) ? sheet.disciplinePowers.Fortitude : [];
-  if (fortitudePowers.some(p => String(p?.name || p?.id || '').toLowerCase().includes('resilience'))) {
-     maxHealth += Number(sheet.disciplines?.Fortitude || 0);
+  // Calculate Fortitude bonus if present on character
+  const fortitudeDots = Number(
+    disciplines['Fortitude'] || 
+    (typeof sheet.disciplines === 'object' && !Array.isArray(sheet.disciplines) ? (sheet.disciplines.Fortitude || sheet.disciplines.fortitude) : 0) || 
+    (typeof character.disciplines === 'object' && !Array.isArray(character.disciplines) ? (character.disciplines.Fortitude || character.disciplines.fortitude) : 0) ||
+    0
+  );
+  if (fortitudeDots > 0) {
+    maxHealth += fortitudeDots;
+  }
+  if (Number(sheet.health_max || character.health_max || 0) > maxHealth) {
+    maxHealth = Number(sheet.health_max || character.health_max);
   }
   
   const maxWillpower = getAttr('Composure') + getAttr('Resolve');
@@ -330,6 +450,140 @@ export default async function generateVTMCharacterSheetPDF(character) {
   // Very important: Escape single quotes so it doesn't break the injected javascript
   const safeFileName = finalFileName.replace(/'/g, "\\'");
 
+  const getClanTextLogoUrl = (rawClan) => {
+    if (!rawClan) return null;
+    let str = String(rawClan).trim().toLowerCase();
+    str = str.replace(/^clan\s+/i, '').trim();
+
+    const clanMap = {
+      'banu haqim': 'Banu_Haqim',
+      'banu_haqim': 'Banu_Haqim',
+      'brujah': 'Brujah',
+      'caitiff': 'Caitiff',
+      'gangrel': 'Gangrel',
+      'hecata': 'Hecata',
+      'lasombra': 'Lasombra',
+      'malkavian': 'Malkavian',
+      'ministry': 'Ministry',
+      'the ministry': 'Ministry',
+      'the_ministry': 'Ministry',
+      'nosferatu': 'Nosferatu',
+      'ravnos': 'Ravnos',
+      'salubri': 'Salubri',
+      'thin-blood': 'Thinblood',
+      'thin blood': 'Thinblood',
+      'thinblood': 'Thinblood',
+      'toreador': 'Toreador',
+      'tremere': 'Tremere',
+      'tzimisce': 'Tzimisce',
+      'ventrue': 'Ventrue',
+    };
+
+    const fileName = clanMap[str] || clanMap[str.replace(/[\s_-]+/g, ' ')];
+    if (fileName) {
+      return `${window.location.origin}/img/clans/text/300px-${fileName}_logo.webp`;
+    }
+    return null;
+  };
+
+  const rawClanVal = character.clan || sheet.clan || '';
+  const charClan = (typeof rawClanVal === 'object' && rawClanVal !== null)
+    ? String(rawClanVal.name || rawClanVal.title || rawClanVal.clan || '').trim()
+    : String(rawClanVal || '').trim();
+  const clanLogoUrl = getClanTextLogoUrl(charClan);
+  const predatorName = typeof sheet.predatorType === 'object' && sheet.predatorType
+    ? (sheet.predatorType.name || sheet.predatorType.title || '')
+    : (sheet.predatorType || sheet.predator_type || '');
+
+  // Avatar URL resolution
+  let avatarUrl = null;
+  const userId = character.user_id || character.userId;
+  const charId = character.id;
+  if (character.avatar_url || character.avatarUrl || sheet.avatar_url) {
+    const raw = character.avatar_url || character.avatarUrl || sheet.avatar_url;
+    avatarUrl = raw.startsWith('http') ? raw : `${window.location.origin}${raw.startsWith('/') ? '' : '/'}${raw}`;
+  } else if (isNpc && charId) {
+    avatarUrl = `${window.location.origin}/api/npcs/${charId}/avatar`;
+  } else if (userId) {
+    avatarUrl = `${window.location.origin}/api/users/${userId}/avatar`;
+  }
+
+  // Domain Title, Status & XP Summary
+  const titles = Array.isArray(character.camarilla_titles)
+    ? character.camarilla_titles.filter(Boolean).join(', ')
+    : (character.camarilla_titles || character.title || sheet.title || '');
+  const sect = character.sect || sheet.sect || '';
+  const domainTitle = [sect, titles].filter(Boolean).join(': ') || 'Citizen';
+  const charStatus = String(character.status || sheet.status || 'Active').trim();
+  const currentXp = Number(character.xp ?? sheet.xp ?? 0);
+  const totalXp = Number(character.total_xp ?? character.totalXp ?? sheet.total_xp ?? currentXp);
+  const xpSummary = `${currentXp} Available, ${totalXp} Lifetime`;
+
+  // Blood Potency & Clan Curse calculations
+  const clanData = clanRef(charClan);
+  const bpLevel = Math.min(10, Math.max(0, Number(sheet.blood_potency || sheet.bloodPotency || character.blood_potency || 1)));
+  const bpInfo = BLOOD_POTENCY_MILESTONES[bpLevel] || BLOOD_POTENCY_MILESTONES[1];
+  const baneSeverity = bpInfo.bane;
+
+  // Typography rule compliance: convert hyphens, minus, and dashes to commas or words
+  const cleanClanBane = clanData?.bane
+    ? clanData.bane.replace(/[—–]/g, ', ').replace(/[−\-]/g, 'minus ')
+    : '';
+  const cleanClanCompulsion = clanData?.compulsion
+    ? clanData.compulsion.replace(/[—–]/g, ', ').replace(/[−\-]/g, 'minus ')
+    : '';
+
+  const renderDisciplineBlock = (discName, dots) => {
+    const powers = getPowersForDisc(discName);
+    return `
+      <div class="avoid-break" style="margin-bottom: 16px;">
+        <div class="stat-row" style="border-bottom: 1px solid #8a0303; padding-bottom: 2px; margin-bottom: 8px;">
+          <strong style="color: #8a0303; font-size: 15px; font-family: 'Oswald', sans-serif; text-transform: uppercase;">${escapeHtml(discName)}</strong>
+          ${renderDots(dots)}
+        </div>
+        ${powers.length ? powers.map(p => {
+          const full = getDisciplinePowerFullData(discName, p) || {};
+          const powerName = p.name || full.name || p.id || 'Power';
+          const lvl = p.level || full.level;
+          const roll = p.dice_pool || p.roll || full.dice_pool || '';
+          const opposing = p.opposing_pool || full.opposing_pool || '';
+          let rollText = '';
+          if (roll && roll !== '—') {
+            if (opposing && opposing !== 'None' && opposing !== '—') {
+              rollText = `${roll} vs ${opposing}`;
+            } else {
+              rollText = roll;
+            }
+          }
+          const cleanRoll = rollText.replace(/[—–]/g, '');
+          const source = (p.source || full.source || '').replace(/[—–]/g, ', ');
+          const desc = (p.notes || p.description || p.effect || p.system || full.notes || full.description || full.effect || full.system || '').replace(/[—–]/g, ', ');
+
+          return `
+            <div class="adv-entry avoid-break" style="margin-bottom: 10px;">
+              <div class="stat-row" style="margin-bottom: 2px;">
+                <span><strong>${escapeHtml(powerName)}</strong></span>
+                ${lvl ? `<span style="font-family: 'Oswald', sans-serif; font-size: 11px; color: #8a0303; text-transform: uppercase;">Level ${escapeHtml(lvl)}</span>` : ''}
+              </div>
+              ${desc ? `<div class="adv-desc" style="margin-bottom: 3px;">${escapeHtml(desc)}</div>` : ''}
+              ${(cleanRoll || source) ? `
+                <div style="font-size: 11px; color: #666; margin-top: 2px; display: flex; flex-wrap: wrap; gap: 10px;">
+                  ${cleanRoll ? `<span><strong>Roll:</strong> ${escapeHtml(cleanRoll)}</span>` : ''}
+                  ${source ? `<span><strong>Page:</strong> ${escapeHtml(source)}</span>` : ''}
+                </div>
+              ` : ''}
+            </div>
+          `;
+        }).join('') : '<div class="adv-empty" style="padding-left: 4px;">No powers selected</div>'}
+      </div>
+    `;
+  };
+
+  const activeDisciplines = Object.entries(disciplines).filter(([_, v]) => Number(v) > 0);
+  const halfDiscs = Math.ceil(activeDisciplines.length / 2);
+  const leftDiscs = activeDisciplines.slice(0, halfDiscs);
+  const rightDiscs = activeDisciplines.slice(halfDiscs);
+
   // HTML Template for the VTM Sheet
   const contentHtml = `
     <div id="vtm-sheet-content" style="font-family: 'Crimson Text', serif; color: #222; background: #fff; padding: 20px 40px; width: 800px; margin: 0 auto; box-sizing: border-box;">
@@ -338,11 +592,14 @@ export default async function generateVTMCharacterSheetPDF(character) {
         
         #vtm-sheet-content h1, #vtm-sheet-content h2, #vtm-sheet-content h3, #vtm-sheet-content .section-title { font-family: 'Oswald', sans-serif; text-transform: uppercase; }
         
-        #vtm-sheet-content .header { display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 30px; border-bottom: 2px solid #8a0303; padding-bottom: 10px; }
-        #vtm-sheet-content .header img { height: 65px; width: auto; object-fit: contain; }
+        #vtm-sheet-content .header { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 25px; border-bottom: 2px solid #8a0303; padding-bottom: 12px; }
+        #vtm-sheet-content .header-brand { display: flex; align-items: center; gap: 20px; }
+        #vtm-sheet-content .header-brand img.logo-img { height: 65px; width: auto; object-fit: contain; }
         #vtm-sheet-content .header-text { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; }
-        #vtm-sheet-content .header h1 { color: #8a0303; font-size: 32px; letter-spacing: 2px; margin: 0; line-height: 1.1; }
-        #vtm-sheet-content .header .subtitle { font-family: 'Oswald', sans-serif; font-size: 16px; color: #555; letter-spacing: 1px; margin-top: 2px; text-transform: uppercase; }
+        #vtm-sheet-content .header h1 { color: #8a0303; font-size: 30px; letter-spacing: 2px; margin: 0; line-height: 1.1; }
+        #vtm-sheet-content .header .subtitle { font-family: 'Oswald', sans-serif; font-size: 15px; color: #555; letter-spacing: 1px; margin-top: 2px; text-transform: uppercase; }
+        #vtm-sheet-content .header-avatar { display: flex; align-items: center; justify-content: center; }
+        #vtm-sheet-content .header-avatar img { width: 68px; height: 68px; border-radius: 50%; object-fit: cover; border: 2px solid #8a0303; box-shadow: 0 2px 6px rgba(0,0,0,0.25); }
         
         #vtm-sheet-content .meta-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px 30px; margin-bottom: 30px; font-size: 14px; }
         #vtm-sheet-content .meta-field { display: flex; border-bottom: 1px solid #ccc; padding-bottom: 2px; }
@@ -368,29 +625,45 @@ export default async function generateVTMCharacterSheetPDF(character) {
       </style>
 
       <div class="header">
-        <img src="${logoUrl}" alt="ATT Logo" />
-        <div class="header-text">
-          <h1>VAMPIRE THE MASQUERADE</h1>
-          <div class="subtitle">Chronicle: Athens Through Time LARP</div>
+        <div class="header-brand">
+          <img class="logo-img" src="${logoUrl}" alt="ATT Logo" />
+          <div class="header-text">
+            <h1>VAMPIRE THE MASQUERADE</h1>
+            <div class="subtitle">Chronicle: Athens Through Time LARP</div>
+          </div>
         </div>
+        ${avatarUrl ? `
+          <div class="header-avatar">
+            <img src="${avatarUrl}" alt="${escapeHtml(charName)}" onerror="this.parentElement.style.display='none';" />
+          </div>
+        ` : ''}
       </div>
 
       <div class="meta-grid">
         <div class="meta-field"><strong>Name:</strong> <span>${escapeHtml(charName)}</span></div>
         <div class="meta-field"><strong>Concept:</strong> <span>${escapeHtml(sheet.concept)}</span></div>
-        <div class="meta-field"><strong>Predator:</strong> <span>${escapeHtml(sheet.predatorType || sheet.predator_type)}</span></div>
+        <div class="meta-field"><strong>Predator:</strong> <span>${escapeHtml(predatorName)}</span></div>
 
         <div class="meta-field"><strong>Exported:</strong> <span>${escapeHtml(exportDateString)}</span></div>
         <div class="meta-field"><strong>Ambition:</strong> <span>${escapeHtml(sheet.ambition)}</span></div>
         <div class="meta-field"><strong>Sire:</strong> <span>${escapeHtml(sheet.sire)}</span></div>
 
-        <div class="meta-field"><strong>Clan:</strong> <span>${escapeHtml(character.clan || sheet.clan)}</span></div>
+        <div class="meta-field" style="align-items: center;">
+          <strong>Clan:</strong>
+          <span style="display: inline-flex; align-items: center; min-height: 22px;">
+            ${clanLogoUrl ? `<img src="${clanLogoUrl}" alt="${escapeHtml(charClan)}" style="max-height: 22px; max-width: 140px; object-fit: contain; vertical-align: middle;" />` : escapeHtml(charClan)}
+          </span>
+        </div>
         <div class="meta-field"><strong>Desire:</strong> <span>${escapeHtml(sheet.desire)}</span></div>
         <div class="meta-field"><strong>Generation:</strong> <span>${escapeHtml(sheet.generation)}</span></div>
 
         <div class="meta-field"><strong>Chronicle:</strong> <span>${escapeHtml(sheet.chronicle)}</span></div>
         <div class="meta-field"><strong>Coterie:</strong> <span>${escapeHtml(sheet.coterie)}</span></div>
         <div class="meta-field"><strong>Blood Potency:</strong> <span>${escapeHtml(sheet.blood_potency)}</span></div>
+
+        <div class="meta-field"><strong>Title:</strong> <span>${escapeHtml(domainTitle)}</span></div>
+        <div class="meta-field"><strong>Status:</strong> <span>${escapeHtml(charStatus)}</span></div>
+        <div class="meta-field"><strong>Experience:</strong> <span>${escapeHtml(xpSummary)}</span></div>
       </div>
 
       <div class="section-title">ATTRIBUTES</div>
@@ -475,17 +748,55 @@ export default async function generateVTMCharacterSheetPDF(character) {
         </div>
       </div>
 
-      <div class="section-title">DISCIPLINES &amp; POWERS</div>
-      <div class="three-col avoid-break">
-        ${Object.entries(disciplines).filter(([_,v]) => Number(v)>0).map(([d, val]) => `
-          <div>
-            <div class="stat-row"><strong>${escapeHtml(d)}</strong> ${renderDots(val)}</div>
-            <div style="padding-left:10px; font-size:13px; color:#555;">
-              ${getPowersForDisc(d).map(p => `• ${escapeHtml(p.name || p.id)}`).join('<br>')}
-            </div>
+      <div class="section-title">BLOOD POTENCY &amp; CLAN CURSE</div>
+      <div class="two-col avoid-break" style="margin-bottom: 20px;">
+        <div style="background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; padding: 12px 16px;">
+          <div style="font-family: 'Oswald', sans-serif; font-size: 15px; color: #8a0303; border-bottom: 1px solid #8a0303; padding-bottom: 4px; margin-bottom: 8px; text-transform: uppercase;">
+            Blood Potency Milestones (Rating ${bpLevel})
           </div>
-        `).join('')}
+          <div style="font-size: 13px; line-height: 1.5; color: #333;">
+            <div style="margin-bottom: 4px;"><strong>Blood Surge:</strong> ${escapeHtml(bpInfo.surge)}</div>
+            <div style="margin-bottom: 4px;"><strong>Damage Mended:</strong> ${escapeHtml(bpInfo.mend)} per Rouse Check</div>
+            <div style="margin-bottom: 4px;"><strong>Power Bonus:</strong> ${escapeHtml(bpInfo.bonus)}</div>
+            <div style="margin-bottom: 4px;"><strong>Rouse Re:roll:</strong> ${escapeHtml(bpInfo.rouse)}</div>
+            <div style="margin-bottom: 4px;"><strong>Feeding Penalty:</strong> ${escapeHtml(bpInfo.feeding)}</div>
+            <div><strong>Bane Severity:</strong> Rating ${escapeHtml(baneSeverity)}</div>
+          </div>
+        </div>
+
+        <div style="background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; padding: 12px 16px;">
+          <div style="font-family: 'Oswald', sans-serif; font-size: 15px; color: #8a0303; border-bottom: 1px solid #8a0303; padding-bottom: 4px; margin-bottom: 8px; text-transform: uppercase;">
+            Clan Curse (${escapeHtml(charClan)})
+          </div>
+          <div style="font-size: 13px; line-height: 1.5; color: #333;">
+            ${cleanClanBane ? `
+              <div style="margin-bottom: 8px;">
+                <strong style="color: #8a0303;">Bane (Severity ${escapeHtml(baneSeverity)}):</strong>
+                <div style="font-size: 12px; color: #555; margin-top: 2px; line-height: 1.35;">${escapeHtml(cleanClanBane)}</div>
+              </div>
+            ` : ''}
+            ${cleanClanCompulsion ? `
+              <div>
+                <strong style="color: #8a0303;">Compulsion:</strong>
+                <div style="font-size: 12px; color: #555; margin-top: 2px; line-height: 1.35;">${escapeHtml(cleanClanCompulsion)}</div>
+              </div>
+            ` : ''}
+            ${(!cleanClanBane && !cleanClanCompulsion) ? '<div style="font-style: italic; color: #999;">No clan curse recorded</div>' : ''}
+          </div>
+        </div>
       </div>
+
+      <div class="section-title">DISCIPLINES &amp; POWERS</div>
+      ${activeDisciplines.length ? `
+        <div class="two-col">
+          <div>
+            ${leftDiscs.map(([d, val]) => renderDisciplineBlock(d, val)).join('')}
+          </div>
+          <div>
+            ${rightDiscs.map(([d, val]) => renderDisciplineBlock(d, val)).join('')}
+          </div>
+        </div>
+      ` : '<div class="adv-empty" style="text-align: center; margin-bottom: 10px;">None</div>'}
 
       ${(sortedBsRituals.length || sortedObCeremonies.length) ? `
         <div class="section-title">RITUALS &amp; CEREMONIES</div>
@@ -497,14 +808,20 @@ export default async function generateVTMCharacterSheetPDF(character) {
                 const full = getRitualFullData('blood_sorcery', r.id || r.name || r) || {};
                 const name = r.name || full.name || r.id || String(r);
                 const lvl = r.level || full.level || 1;
-                const effect = r.desc || r.description || r.effect || full.effect || full.description || '';
+                const effect = (r.desc || r.description || r.effect || full.effect || full.description || '').replace(/[—–]/g, ', ');
+                const source = (r.source || full.source || '').replace(/[—–]/g, ', ');
                 return `
                   <div class="adv-entry avoid-break">
                     <div class="stat-row">
                       <span><strong>${escapeHtml(name)}</strong></span>
                       <span style="font-family: 'Oswald', sans-serif; font-size: 12px; color: #8a0303; text-transform: uppercase;">Level ${escapeHtml(lvl)}</span>
                     </div>
-                    ${effect ? `<div class="adv-desc">${escapeHtml(effect)}</div>` : ''}
+                    ${effect ? `<div class="adv-desc" style="margin-bottom: 3px;">${escapeHtml(effect)}</div>` : ''}
+                    ${source ? `
+                      <div style="font-size: 11px; color: #666; margin-top: 2px;">
+                        <span><strong>Page:</strong> ${escapeHtml(source)}</span>
+                      </div>
+                    ` : ''}
                   </div>
                 `;
               }).join('')}
@@ -517,14 +834,20 @@ export default async function generateVTMCharacterSheetPDF(character) {
                 const full = getRitualFullData('oblivion', r.id || r.name || r) || {};
                 const name = r.name || full.name || r.id || String(r);
                 const lvl = r.level || full.level || 1;
-                const effect = r.desc || r.description || r.effect || full.effect || full.description || '';
+                const effect = (r.desc || r.description || r.effect || full.effect || full.description || '').replace(/[—–]/g, ', ');
+                const source = (r.source || full.source || '').replace(/[—–]/g, ', ');
                 return `
                   <div class="adv-entry avoid-break">
                     <div class="stat-row">
                       <span><strong>${escapeHtml(name)}</strong></span>
                       <span style="font-family: 'Oswald', sans-serif; font-size: 12px; color: #8a0303; text-transform: uppercase;">Level ${escapeHtml(lvl)}</span>
                     </div>
-                    ${effect ? `<div class="adv-desc">${escapeHtml(effect)}</div>` : ''}
+                    ${effect ? `<div class="adv-desc" style="margin-bottom: 3px;">${escapeHtml(effect)}</div>` : ''}
+                    ${source ? `
+                      <div style="font-size: 11px; color: #666; margin-top: 2px;">
+                        <span><strong>Page:</strong> ${escapeHtml(source)}</span>
+                      </div>
+                    ` : ''}
                   </div>
                 `;
               }).join('')}

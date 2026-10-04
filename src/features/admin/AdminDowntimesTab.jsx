@@ -268,16 +268,12 @@ function isSceneDowntime(r) {
   return s === 'needs a scene' || s === 'resolved in scene';
 }
 
-function formatSceneLabel(sceneId, sceneIndex = null) {
-  if (sceneIndex != null && sceneIndex >= 0) {
-    return `Scene ${sceneIndex + 1}`;
+function formatSceneLabel(sceneId, sceneIndex = null, title = null) {
+  const num = (sceneIndex != null && sceneIndex >= 0) ? (sceneIndex + 1) : null;
+  if (title) {
+    return num ? `Scene: ${title} (Scene ID: ${num})` : `Scene: ${title}`;
   }
-  if (!sceneId) return 'Scene';
-  const match = String(sceneId).match(/^scene_(\d+)$/i);
-  if (match && parseInt(match[1], 10) < 1000) {
-    return `Scene ${match[1]}`;
-  }
-  return 'Scene';
+  return num ? `Scene (Scene ID: ${num})` : 'Scene';
 }
 
 function newSceneId() {
@@ -407,6 +403,25 @@ export default function AdminDowntimesTab({ characters = [] }) {
 
   const [viewMode, setViewMode] = useState('standard');
 
+  const isSubmissionOpen = useMemo(() => {
+    if (masterPhase === 'closed') return false;
+    const isProj = viewMode === 'project';
+    if (masterPhase === 'project' && !isProj) return false;
+    if (masterPhase === 'standard' && isProj) return false;
+
+    const now = new Date();
+    if (opening) {
+      const op = new Date(opening.includes('T') ? opening : `${opening}T00:00:00`);
+      if (!isNaN(op.getTime()) && now < op) return false;
+    }
+    const currentDl = isProj ? projectDeadline : deadline;
+    if (currentDl) {
+      const dl = new Date(currentDl.includes('T') ? currentDl : `${currentDl}T23:59:59`);
+      if (!isNaN(dl.getTime()) && now > dl) return false;
+    }
+    return true;
+  }, [masterPhase, viewMode, opening, deadline, projectDeadline]);
+
   // Collapsible panels (schedule settings, scenes). Open/closed is remembered per admin account in this browser.
   const { user: authUser } = useContext(AuthCtx);
   const drawerKey = `erebus.admin.downtimes.drawers.${authUser?.id ?? 'anon'}`;
@@ -424,6 +439,43 @@ export default function AdminDowntimesTab({ characters = [] }) {
   const isDrawerOpen = (state, name) => (name === 'scenes' ? state[name] !== false : Boolean(state[name]));
   const configOpen = isDrawerOpen(drawers, 'config');
   const scenesOpen = isDrawerOpen(drawers, 'scenes');
+  const lateSubmitOpen = isDrawerOpen(drawers, 'lateSubmit');
+
+  // Late downtime manual submission drawer
+  const [owingLoading, setOwingLoading] = useState(false);
+  const [owingErr, setOwingErr] = useState('');
+  const [owingData, setOwingData] = useState({ cycle: null, is_closed: false, available_cycles: [], owing_characters: [] });
+  const [selectedCycleId, setSelectedCycleId] = useState('');
+  const [selectedCharId, setSelectedCharId] = useState('');
+  const [lateTitle, setLateTitle] = useState('');
+  const [lateBody, setLateBody] = useState('');
+  const [lateFeed, setLateFeed] = useState('');
+  const [lateStatus, setLateStatus] = useState('submitted');
+  const [lateIsProject, setLateIsProject] = useState(false);
+  const [submittingLate, setSubmittingLate] = useState(false);
+  const [lateSubmitSuccess, setLateSubmitSuccess] = useState('');
+
+  const sceneCollapseKey = `erebus.admin.downtimes.scenes.collapsed.${authUser?.id ?? 'anon'}`;
+  const [collapsedScenes, setCollapsedScenes] = useState(() => {
+    try { return JSON.parse(window.localStorage.getItem(sceneCollapseKey)) || {}; } catch { return {}; }
+  });
+
+  function toggleSceneCollapse(sceneId) {
+    setCollapsedScenes(prev => {
+      const next = { ...prev, [sceneId]: !prev[sceneId] };
+      try { window.localStorage.setItem(sceneCollapseKey, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }
+
+  function toggleAllScenes(collapse) {
+    setCollapsedScenes(prev => {
+      const next = { ...prev };
+      allSceneIds.forEach(id => { next[id] = collapse; });
+      try { window.localStorage.setItem(sceneCollapseKey, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }
 
   const [listLoading, setListLoading] = useState(false);
   const [listErr, setListErr] = useState('');
@@ -488,6 +540,76 @@ export default function AdminDowntimesTab({ characters = [] }) {
 
   const draggedDt = useMemo(() => rows.find(r => r.id === draggedDtId), [rows, draggedDtId]);
   const isDraggingAssigned = Boolean(draggedDt && draggedDt.scene_id);
+
+  const scrollSpeedRef = useRef(0);
+  const animFrameRef = useRef(null);
+
+  useEffect(() => {
+    if (!draggedDtId) return;
+
+    const scrollZone = 150;
+    const maxSpeed = 24;
+
+    const stopAutoScroll = () => {
+      scrollSpeedRef.current = 0;
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+        animFrameRef.current = null;
+      }
+    };
+
+    const startAutoScroll = () => {
+      if (animFrameRef.current) return;
+      const step = () => {
+        const speed = scrollSpeedRef.current;
+        if (speed !== 0) {
+          window.scrollBy({ top: speed, left: 0, behavior: 'instant' });
+          animFrameRef.current = requestAnimationFrame(step);
+        } else {
+          animFrameRef.current = null;
+        }
+      };
+      animFrameRef.current = requestAnimationFrame(step);
+    };
+
+    const handleGlobalDragOver = (e) => {
+      const y = e.clientY;
+      const h = window.innerHeight;
+      const distBottom = h - y;
+      const distTop = y - 100;
+
+      if (distBottom < scrollZone && distBottom >= 0) {
+        const ratio = 1 - Math.max(0, distBottom) / scrollZone;
+        scrollSpeedRef.current = Math.ceil(ratio * maxSpeed);
+        startAutoScroll();
+      } else if (distTop < scrollZone && y >= 0) {
+        const ratio = 1 - Math.max(0, distTop) / scrollZone;
+        scrollSpeedRef.current = -Math.ceil(ratio * maxSpeed);
+        startAutoScroll();
+      } else {
+        scrollSpeedRef.current = 0;
+      }
+    };
+
+    const handleGlobalWheel = (e) => {
+      if (e.deltaY) {
+        window.scrollBy({ top: e.deltaY, left: 0, behavior: 'instant' });
+      }
+    };
+
+    window.addEventListener('dragover', handleGlobalDragOver, { capture: true, passive: true });
+    window.addEventListener('wheel', handleGlobalWheel, { capture: true, passive: true });
+    window.addEventListener('dragend', stopAutoScroll, { capture: true });
+    window.addEventListener('drop', stopAutoScroll, { capture: true });
+
+    return () => {
+      stopAutoScroll();
+      window.removeEventListener('dragover', handleGlobalDragOver, { capture: true });
+      window.removeEventListener('wheel', handleGlobalWheel, { capture: true });
+      window.removeEventListener('dragend', stopAutoScroll, { capture: true });
+      window.removeEventListener('drop', stopAutoScroll, { capture: true });
+    };
+  }, [draggedDtId]);
 
   const [buffer, setBuffer] = useState({});
 
@@ -585,6 +707,86 @@ export default function AdminDowntimesTab({ characters = [] }) {
   }
   useEffect(() => { loadList(); }, []);
 
+  async function loadOwingPlayers(cycleId) {
+    setOwingLoading(true);
+    setOwingErr('');
+    try {
+      const params = {};
+      if (cycleId) params.cycle_id = cycleId;
+      const { data } = await api.get('admin/downtimes/owing-players', { params });
+      setOwingData(data || { cycle: null, is_closed: false, available_cycles: [], owing_characters: [] });
+      if (data?.cycle?.id && !cycleId) {
+        setSelectedCycleId(data.cycle.id);
+      }
+    } catch (e) {
+      console.error('[AdminDowntimesTab] Failed to load owing players', e);
+      setOwingErr(formatApiError(e, 'Failed to load characters owing downtimes'));
+    } finally {
+      setOwingLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (lateSubmitOpen) {
+      loadOwingPlayers(selectedCycleId);
+    }
+  }, [lateSubmitOpen, selectedCycleId]);
+
+  function handleSelectOwingChar(charId) {
+    setSelectedCharId(charId);
+    setLateSubmitSuccess('');
+    setOwingErr('');
+    if (!charId) return;
+    const found = (owingData?.owing_characters || []).find(c => String(c.character_id) === String(charId));
+    if (found) {
+      setLateFeed(found.default_feeding_type || '');
+    }
+  }
+
+  async function handleSubmitLateDowntime(e) {
+    if (e) e.preventDefault();
+    if (!selectedCharId) {
+      setOwingErr('Please select a character who owes actions');
+      return;
+    }
+    if (!lateTitle.trim()) {
+      setOwingErr('Action title is required');
+      return;
+    }
+    if (!lateBody.trim()) {
+      setOwingErr('Action details body is required');
+      return;
+    }
+    setSubmittingLate(true);
+    setOwingErr('');
+    setLateSubmitSuccess('');
+    try {
+      const payload = {
+        character_id: Number(selectedCharId),
+        title: lateTitle.trim(),
+        body: lateBody.trim(),
+        feeding_type: lateFeed.trim() || undefined,
+        status: lateStatus,
+        cycle_id: selectedCycleId || undefined,
+        is_project: lateIsProject
+      };
+      const { data } = await api.post('admin/downtimes/force-submit', payload);
+      const chosenChar = (owingData?.owing_characters || []).find(c => String(c.character_id) === String(selectedCharId));
+      const charName = chosenChar?.character_name || 'Character';
+      setLateSubmitSuccess(
+        `Late downtime recorded for ${charName}.` + (data?.backdated ? ' Action was backdated to cycle closing date.' : '')
+      );
+      setLateTitle('');
+      setLateBody('');
+      loadList();
+      loadOwingPlayers(selectedCycleId);
+    } catch (err) {
+      setOwingErr(formatApiError(err, 'Failed to record late action'));
+    } finally {
+      setSubmittingLate(false);
+    }
+  }
+
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase();
     return rows.filter(r => {
@@ -671,20 +873,37 @@ export default function AdminDowntimesTab({ characters = [] }) {
   }, [rows]);
 
   const unassignedSceneDowntimes = useMemo(() => {
-    return sceneFiltered.filter(r => !r.scene_id);
-  }, [sceneFiltered]);
+    const qq = q.trim().toLowerCase();
+    return rows.filter(r => {
+      if (!isSceneDowntime(r)) return false;
+      if (r.scene_id) return false;
+      const isProj = r.title && r.title.startsWith('[PROJECT]');
+      if (viewMode === 'standard' && isProj) return false;
+      if (viewMode === 'project' && !isProj) return false;
+      // Do not hide unassigned scene actions when general status filters (like 'submitted', 'approved', etc.) are clicked.
+      // Only filter by status if the user explicitly clicked a scene specific status.
+      if (statusFilter === 'Needs a Scene' || statusFilter === 'Resolved in scene') {
+        if (r.status !== statusFilter) return false;
+      }
+      if (!qq) return true;
+      const hay = `${r.title || ''} ${r.body || ''} ${r.gm_notes || ''} ${r.gm_resolution || ''} ${r.player_name || ''} ${r.char_name || ''} ${r.clan || ''} ${r.status || ''}`.toLowerCase();
+      return hay.includes(qq);
+    });
+  }, [rows, q, statusFilter, viewMode]);
 
   function getSceneTitle(sceneId) {
     if (sceneTitleBuf[sceneId] !== undefined) return sceneTitleBuf[sceneId];
     const match = rows.find(r => r.scene_id === sceneId && r.scene_title);
-    return match?.scene_title || '';
+    if (match?.scene_title) return match.scene_title;
+    // Fallback: name after the first participant's downtime action ("named after the things")
+    const firstDt = rows.find(r => r.scene_id === sceneId && r.title);
+    return firstDt ? autoSceneTitle(firstDt) : '';
   }
 
   async function handleSaveSceneTitle(sceneId) {
     const dtsInScene = rows.filter(r => r.scene_id === sceneId);
     const newTitle = sceneTitleBuf[sceneId] !== undefined ? sceneTitleBuf[sceneId] : getSceneTitle(sceneId);
-    const storedTitle = dtsInScene.find(r => r.scene_title)?.scene_title || '';
-    if (dtsInScene.length > 0 && (newTitle || '') !== storedTitle) {
+    if (dtsInScene.length > 0 && dtsInScene.some(r => (r.scene_title || '') !== (newTitle || ''))) {
       try {
         await api.post('admin/downtimes/scenes/batch', {
           downtime_ids: dtsInScene.map(r => r.id),
@@ -780,6 +999,11 @@ export default function AdminDowntimesTab({ characters = [] }) {
     setDragOverTargetId(null);
     setDragOverSceneId(null);
     setDragOverUnassigned(false);
+    scrollSpeedRef.current = 0;
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
+    }
   }
 
   async function handleDropOnAction(targetDtId) {
@@ -859,7 +1083,13 @@ export default function AdminDowntimesTab({ characters = [] }) {
     const merged = { ...(buffer[id] || {}), ...patch };
     if (!buffer[id]) openBuf(rows.find(x => x.id === id));
 
-    if (patch.status !== undefined) updBuf(id, 'status', patch.status);
+    if (patch.status !== undefined) {
+      updBuf(id, 'status', patch.status);
+      if (!isSceneDowntime({ status: patch.status })) {
+        if (patch.scene_id === undefined) patch.scene_id = null;
+        if (patch.scene_title === undefined) patch.scene_title = null;
+      }
+    }
     if (patch.gm_notes !== undefined) updBuf(id, 'gm_notes', patch.gm_notes);
     if (patch.gm_resolution !== undefined) updBuf(id, 'gm_resolution', patch.gm_resolution);
     if (patch.scene_id !== undefined) updBuf(id, 'scene_id', patch.scene_id);
@@ -873,8 +1103,8 @@ export default function AdminDowntimesTab({ characters = [] }) {
         status: merged.status,
         gm_notes: merged.gm_notes,
         gm_resolution: merged.gm_resolution,
-        scene_id: merged.scene_id,
-        scene_title: merged.scene_title,
+        scene_id: merged.scene_id !== undefined ? merged.scene_id : (patch.scene_id !== undefined ? patch.scene_id : undefined),
+        scene_title: merged.scene_title !== undefined ? merged.scene_title : (patch.scene_title !== undefined ? patch.scene_title : undefined),
       };
       const { data } = await api.patch(`admin/downtimes/${id}`, payload);
       const updated = data?.downtime ? data.downtime : { ...rows.find(x => x.id === id), ...payload };
@@ -920,21 +1150,76 @@ export default function AdminDowntimesTab({ characters = [] }) {
             ))}
           </div>
 
-          <button
-            type="button"
-            className={`${styles.btn} ${styles.btnSecondary}`}
-            onClick={() => setDrawer('config')}
-            aria-expanded={configOpen}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>tune</span>
-            Schedule & release
-            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>{configOpen ? 'expand_less' : 'expand_more'}</span>
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className={`${styles.btn} ${styles.btnSecondary}`}
+              onClick={() => setDrawer('lateSubmit')}
+              aria-expanded={lateSubmitOpen}
+              title="Open late downtime submission drawer for players who missed the deadline"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                border: lateSubmitOpen ? '1px solid var(--accent-purple, #9d7cff)' : '1px dashed var(--glass-border)',
+                background: lateSubmitOpen ? 'rgba(157, 124, 255, 0.15)' : 'transparent',
+                color: lateSubmitOpen ? '#fff' : 'var(--text-secondary)'
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '18px', color: '#c084fc' }}>post_add</span>
+              Late submission
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>{lateSubmitOpen ? 'expand_less' : 'expand_more'}</span>
+            </button>
+
+            <button
+              type="button"
+              className={`${styles.btn} ${styles.btnSecondary}`}
+              onClick={() => setDrawer('config')}
+              aria-expanded={configOpen}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>tune</span>
+              Schedule & release
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>{configOpen ? 'expand_less' : 'expand_more'}</span>
+            </button>
+          </div>
         </div>
 
         {/* Live schedule at a glance (the same dates as the Calendar) */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '4px 12px',
+              borderRadius: '999px',
+              background: isSubmissionOpen ? 'rgba(0, 230, 118, 0.16)' : 'rgba(255, 82, 82, 0.16)',
+              border: `1px solid ${isSubmissionOpen ? 'rgba(0, 230, 118, 0.6)' : 'rgba(255, 82, 82, 0.6)'}`,
+              color: isSubmissionOpen ? '#00e676' : '#ff5252',
+              fontSize: '0.8rem',
+              fontWeight: 800,
+              boxShadow: isSubmissionOpen ? '0 0 10px rgba(0, 230, 118, 0.2)' : '0 0 10px rgba(255, 82, 82, 0.2)'
+            }}
+          >
+            <span
+              style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: isSubmissionOpen ? '#00e676' : '#ff5252',
+                boxShadow: `0 0 6px ${isSubmissionOpen ? '#00e676' : '#ff5252'}`
+              }}
+            />
+            <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>
+              {isSubmissionOpen ? 'lock_open' : 'lock'}
+            </span>
+            <span>Downtimes:</span>
+            <strong style={{ textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              {isSubmissionOpen ? 'Open' : 'Closed'}
+            </strong>
+          </span>
+
           {[
             { icon: masterPhase === 'project' ? 'history_edu' : 'event_note', label: 'Players can submit', value: masterPhase === 'project' ? 'Projects' : masterPhase === 'closed' ? 'Nothing (closed)' : 'Monthly Actions' },
             ...(viewMode === 'standard'
@@ -1038,6 +1323,213 @@ export default function AdminDowntimesTab({ characters = [] }) {
                 </button>
               </div>
             </div>
+          </div>
+        )}
+
+        {lateSubmitOpen && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', background: 'var(--glass-inset)', padding: '1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid rgba(192, 132, 252, 0.35)', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '24px', color: '#c084fc' }}>post_add</span>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                    Record Missed Downtime Action
+                  </h4>
+                  <div className={styles.subtle} style={{ fontSize: '0.82rem' }}>
+                    Storyteller override tool to insert actions for players after cycle closure
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnSecondary}`}
+                onClick={() => setDrawer('lateSubmit', false)}
+                style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}
+              >
+                Close Drawer
+              </button>
+            </div>
+
+            {/* Disclaimers banner */}
+            <div style={{
+              background: 'rgba(157, 124, 255, 0.08)',
+              border: '1px solid rgba(157, 124, 255, 0.25)',
+              borderRadius: 'var(--radius-sm)',
+              padding: '0.9rem 1.1rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.5rem',
+              fontSize: '0.85rem',
+              color: 'var(--text-secondary)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, color: '#ffcc00' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>shield</span>
+                Important Disclaimers
+              </div>
+              <div style={{ lineHeight: 1.5 }}>
+                • <strong>Backdating Guarantee:</strong> Submitting into a closed cycle automatically timestamps the action on the final day of that cycle (at 20:00). It will count in that cycle quota and archives without reopening deadlines for players.
+              </div>
+              <div style={{ lineHeight: 1.5 }}>
+                • <strong>Owed Actions Filter:</strong> The selector below lists only characters who have submitted fewer than 3 actions for the target cycle. Players with complete quotas are omitted.
+              </div>
+              <div style={{ lineHeight: 1.5 }}>
+                • <strong>Resolution Queue:</strong> Once created, this action immediately becomes available in the management list above for approval, scene assignment, or resolution.
+              </div>
+            </div>
+
+            {/* Target Cycle and Player selection row */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '1rem', alignItems: 'end' }}>
+              <label className={styles.labeledInput}>
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  Target Downtime Cycle
+                  {owingData?.is_closed && (
+                    <span style={{ fontSize: '0.72rem', color: '#ff5252', fontWeight: 700, textTransform: 'uppercase' }}>
+                      [Closed: Auto Backdating]
+                    </span>
+                  )}
+                </span>
+                <select
+                  className={styles.select}
+                  value={selectedCycleId}
+                  onChange={(e) => {
+                    setSelectedCycleId(e.target.value);
+                    setSelectedCharId('');
+                  }}
+                  disabled={owingLoading}
+                >
+                  {(owingData?.available_cycles || []).map(c => (
+                    <option key={c.id} value={c.id}>
+                      {`${c.title || c.id} (${c.opening_date} to ${c.closing_date})${c.is_closed ? ' [Closed]' : ' [Active]'}`}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className={styles.labeledInput}>
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  Select Player Owed Actions
+                  {owingLoading && <span className={styles.spinner} style={{ width: '12px', height: '12px' }} />}
+                </span>
+                <select
+                  className={styles.select}
+                  value={selectedCharId}
+                  onChange={(e) => handleSelectOwingChar(e.target.value)}
+                  disabled={owingLoading || (owingData?.owing_characters || []).length === 0}
+                >
+                  <option value="">
+                    {(owingData?.owing_characters || []).length === 0
+                      ? 'No characters owe actions for this cycle'
+                      : `Choose a character (${(owingData?.owing_characters || []).length} owe actions)...`}
+                  </option>
+                  {(owingData?.owing_characters || []).map(ch => (
+                    <option key={ch.character_id} value={ch.character_id}>
+                      {`${ch.character_name} (${ch.player_name || 'No player account'}, ${ch.clan}): ${ch.owed_count} missing (${ch.submitted_count} of 3 submitted)`}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            {owingErr && <div className={`${styles.alert} ${styles.alertError}`}>{owingErr}</div>}
+            {lateSubmitSuccess && <div className={`${styles.alert} ${styles.alertInfo}`} style={{ borderLeft: '4px solid #00e676', color: '#00e676' }}>{lateSubmitSuccess}</div>}
+
+            {selectedCharId && (
+              <form onSubmit={handleSubmitLateDowntime} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--glass-border)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '1rem' }}>
+                  <label className={styles.labeledInput}>
+                    <span>Action Title</span>
+                    <input
+                      className={styles.input}
+                      value={lateTitle}
+                      onChange={(e) => setLateTitle(e.target.value)}
+                      placeholder="Title of the endeavor"
+                      required
+                    />
+                  </label>
+
+                  <label className={styles.labeledInput}>
+                    <span>Feeding Type</span>
+                    <input
+                      className={styles.input}
+                      value={lateFeed}
+                      onChange={(e) => setLateFeed(e.target.value)}
+                      placeholder="Autodetected from predator type"
+                    />
+                  </label>
+
+                  <label className={styles.labeledInput}>
+                    <span>Initial Status</span>
+                    <select
+                      className={styles.select}
+                      value={lateStatus}
+                      onChange={(e) => setLateStatus(e.target.value)}
+                    >
+                      <option value="submitted">submitted (pending review)</option>
+                      <option value="Approved: Mike">Approved: Mike</option>
+                      <option value="Approved: Kikos">Approved: Kikos</option>
+                      <option value="approved">approved (general)</option>
+                      <option value="Needs a Scene">Needs a Scene</option>
+                    </select>
+                  </label>
+
+                  <div className={styles.labeledInput}>
+                    <span>Submission Type</span>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', height: '38px', color: 'var(--text-primary)' }}>
+                      <input
+                        type="checkbox"
+                        checked={lateIsProject}
+                        onChange={(e) => setLateIsProject(e.target.checked)}
+                        style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                      />
+                      <span>Mark as Long Term Project</span>
+                    </label>
+                  </div>
+                </div>
+
+                <label className={styles.labeledInput}>
+                  <span>Action Details / Narrative Body</span>
+                  <textarea
+                    className={styles.textarea}
+                    rows={4}
+                    value={lateBody}
+                    onChange={(e) => setLateBody(e.target.value)}
+                    placeholder="Enter what the player attempts to accomplish and how..."
+                    required
+                  />
+                </label>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+                  <button
+                    type="button"
+                    className={`${styles.btn} ${styles.btnSecondary}`}
+                    onClick={() => {
+                      setLateTitle('');
+                      setLateBody('');
+                      setOwingErr('');
+                      setLateSubmitSuccess('');
+                    }}
+                  >
+                    Reset Form
+                  </button>
+                  <button
+                    type="submit"
+                    className={`${styles.btn} ${styles.btnPrimary}`}
+                    disabled={submittingLate || !lateTitle.trim() || !lateBody.trim()}
+                    style={{
+                      background: 'linear-gradient(135deg, var(--accent-purple-dark) 0%, var(--accent-purple) 100%)',
+                      color: '#fff',
+                      fontWeight: 800,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>save</span>
+                    {submittingLate ? 'Recording Action...' : 'Record Late Action'}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         )}
       </section>
@@ -1280,9 +1772,11 @@ export default function AdminDowntimesTab({ characters = [] }) {
                         {scenesByPlayerKey.has(group.key) && (() => {
                           const pending = scenesByPlayerKey.get(group.key);
                           const parts = [...pending.sceneIds]
-                            .map(id => allSceneIds.indexOf(id))
-                            .sort((a, b) => a - b)
-                            .map(idx => formatSceneLabel(null, idx));
+                            .map(id => {
+                              const idx = allSceneIds.indexOf(id);
+                              const title = getSceneTitle(id);
+                              return title ? `Scene: ${title} (Scene ID: ${idx >= 0 ? idx + 1 : '?'})` : `Scene ID: ${idx >= 0 ? idx + 1 : '?'}`;
+                            });
                           if (pending.unassigned) parts.push(`${pending.unassigned} not yet in a scene`);
                           return (
                           <span
@@ -1393,11 +1887,28 @@ export default function AdminDowntimesTab({ characters = [] }) {
                 All actions marked as Needs a Scene or Resolved in scene, organized into group scenes for the upcoming event.
               </p>
             </div>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', fontWeight: 700, color: '#ffcc00' }}>
-              {allSceneIds.length} {allSceneIds.length === 1 ? 'scene' : 'scenes'}
-              {unassignedSceneDowntimes.length > 0 && ` · ${unassignedSceneDowntimes.length} unassigned`}
-              <span className="material-symbols-outlined" style={{ fontSize: '22px' }}>{scenesOpen ? 'expand_less' : 'expand_more'}</span>
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              {allSceneIds.length > 0 && scenesOpen && (
+                <button
+                  type="button"
+                  className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSmall}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const allCollapsed = allSceneIds.every(id => Boolean(collapsedScenes[id]));
+                    toggleAllScenes(!allCollapsed);
+                  }}
+                  style={{ padding: '0.25rem 0.75rem', fontSize: '0.78rem', borderRadius: 'var(--radius-sm)' }}
+                  title={allSceneIds.every(id => Boolean(collapsedScenes[id])) ? 'Expand all scenes' : 'Collapse all scenes'}
+                >
+                  {allSceneIds.every(id => Boolean(collapsedScenes[id])) ? 'Expand all scenes' : 'Collapse all scenes'}
+                </button>
+              )}
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', fontWeight: 700, color: '#ffcc00' }}>
+                {allSceneIds.length} {allSceneIds.length === 1 ? 'scene' : 'scenes'}
+                {unassignedSceneDowntimes.length > 0 && ` · ${unassignedSceneDowntimes.length} unassigned`}
+                <span className="material-symbols-outlined" style={{ fontSize: '22px' }}>{scenesOpen ? 'expand_less' : 'expand_more'}</span>
+              </span>
+            </div>
           </div>
 
           {scenesOpen && (<>
@@ -1529,9 +2040,34 @@ export default function AdminDowntimesTab({ characters = [] }) {
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                         <SheetPdfButton character={charById.get(dt.character_id)} />
-                        <span className={styles.statusBadge} style={getStatusBadgeStyle(dt.status)}>
-                          {dt.status}
-                        </span>
+                        <select
+                          className={styles.select}
+                          style={{
+                            padding: '0.35rem 0.65rem',
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            borderRadius: 'var(--radius-sm)',
+                            cursor: 'pointer',
+                            width: 'auto',
+                            ...getStatusBadgeStyle(buffer[dt.id]?.status ?? dt.status)
+                          }}
+                          value={buffer[dt.id]?.status ?? dt.status}
+                          disabled={buffer[dt.id]?.saving}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            saveRow(dt.id, { status: e.target.value, scene_id: null, scene_title: null });
+                          }}
+                          title="Change status: selecting submitted or approved removes this action from scenes"
+                        >
+                          <option value="Needs a Scene">Needs a Scene</option>
+                          <option value="submitted">Submitted</option>
+                          <option value="approved">Approved</option>
+                          <option value="Approved: Kikos">Approved: Kikos</option>
+                          <option value="Approved: Mike">Approved: Mike</option>
+                          <option value="rejected">Rejected</option>
+                          <option value="resolved">Resolved</option>
+                        </select>
                         {allSceneIds.length > 0 && (
                           <select
                             className={styles.select}
@@ -1540,11 +2076,14 @@ export default function AdminDowntimesTab({ characters = [] }) {
                             onChange={(e) => { if (e.target.value) handleAddToScene(dt.id, e.target.value); }}
                           >
                             <option value="" disabled>Assign to Scene...</option>
-                            {allSceneIds.map((sid, sIdx) => (
-                              <option key={sid} value={sid}>
-                                {formatSceneLabel(sid, sIdx)}{getSceneTitle(sid) ? `: ${getSceneTitle(sid)}` : ''}
-                              </option>
-                            ))}
+                            {allSceneIds.map((sid, sIdx) => {
+                              const sTitle = getSceneTitle(sid);
+                              return (
+                                <option key={sid} value={sid}>
+                                  {sTitle ? `Scene: ${sTitle} (Scene ID: ${sIdx + 1})` : `Scene (Scene ID: ${sIdx + 1})`}
+                                </option>
+                              );
+                            })}
                           </select>
                         )}
                         <button
@@ -1558,6 +2097,9 @@ export default function AdminDowntimesTab({ characters = [] }) {
                           New scene
                         </button>
                       </div>
+
+                      {buffer[dt.id]?.saving && <div style={{ color: '#ffcc00', fontSize: '0.8rem', width: '100%' }}>Saving status...</div>}
+                      {buffer[dt.id]?.error && <div style={{ color: '#ff5252', fontSize: '0.8rem', width: '100%' }}>{buffer[dt.id]?.error}</div>}
 
                       {isExpanded && <SceneActionDetails r={dt} />}
                     </div>
@@ -1588,7 +2130,9 @@ export default function AdminDowntimesTab({ characters = [] }) {
               const isSceneDropTarget = dragOverSceneId === sceneId;
               const sceneResolved = dtsInScene.length > 0 && dtsInScene.every(r => r.status === 'Resolved in scene');
               const isEditing = Boolean(editingScenes[sceneId]);
-              const sceneLabel = formatSceneLabel(sceneId, sceneIndex);
+              const isCollapsed = Boolean(collapsedScenes[sceneId]);
+              const sceneLabel = formatSceneLabel(sceneId, sceneIndex, sceneTitle);
+              const characterNames = Array.from(new Set(dtsInScene.map(r => r.char_name || r.player_name || 'Character')));
 
               return (
                 <div
@@ -1618,18 +2162,45 @@ export default function AdminDowntimesTab({ characters = [] }) {
                   }}
                 >
                   {/* Scene Block Header */}
-                  <div className={styles.sceneHeader}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap', flex: '1 1 300px', minWidth: 0 }}>
+                  <div
+                    className={styles.sceneHeader}
+                    style={{
+                      cursor: 'pointer',
+                      borderBottom: isCollapsed ? 'none' : '1px solid var(--glass-border)',
+                      paddingBottom: isCollapsed ? 0 : '0.75rem',
+                      userSelect: 'none'
+                    }}
+                    onClick={(e) => {
+                      if (!isControlClick(e)) {
+                        toggleSceneCollapse(sceneId);
+                      }
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', flex: '1 1 300px', minWidth: 0 }}>
+                      <span
+                        className="material-symbols-outlined"
+                        style={{
+                          fontSize: '1.3rem',
+                          color: '#ffcc00',
+                          transition: 'transform 0.2s ease',
+                          transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+                          flexShrink: 0
+                        }}
+                        title={isCollapsed ? 'Click to expand scene' : 'Click to collapse scene'}
+                      >
+                        expand_more
+                      </span>
+
                       <span className={styles.sceneBadge}>
                         <span className="material-symbols-outlined" style={{ fontSize: '1rem', color: '#ffcc00' }}>theaters</span>
-                        {sceneLabel}
+                        Scene
                       </span>
 
                       {isEditing ? (
                         <input
                           type="text"
                           className={styles.input}
-                          style={{ flex: '1 1 200px', background: 'rgba(0, 0, 0, 0.4)', borderColor: 'rgba(255, 204, 0, 0.3)', padding: '0.35rem 0.75rem', fontSize: '0.9rem', fontWeight: 600 }}
+                          style={{ flex: '1 1 240px', background: 'rgba(0, 0, 0, 0.4)', borderColor: 'rgba(255, 204, 0, 0.3)', padding: '0.35rem 0.75rem', fontSize: '0.95rem', fontWeight: 700 }}
                           placeholder="Scene title: e.g. Elysium Confrontation (optional)"
                           value={sceneTitleBuf[sceneId] !== undefined ? sceneTitleBuf[sceneId] : sceneTitle}
                           onChange={(e) => setSceneTitleBuf(prev => ({ ...prev, [sceneId]: e.target.value }))}
@@ -1638,16 +2209,61 @@ export default function AdminDowntimesTab({ characters = [] }) {
                           title="Saves automatically when you click away or press Enter"
                         />
                       ) : (
-                        <span style={{ fontSize: '1rem', fontWeight: 700, color: sceneTitle ? 'var(--text-primary)' : 'var(--text-muted)', fontStyle: sceneTitle ? 'normal' : 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <span style={{ fontSize: '1.05rem', fontWeight: 700, color: sceneTitle ? 'var(--text-primary)' : 'var(--text-muted)', fontStyle: sceneTitle ? 'normal' : 'italic' }}>
                           {sceneTitle || 'Untitled scene'}
                         </span>
                       )}
+
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          fontSize: '0.78rem',
+                          fontWeight: 800,
+                          color: '#ffcc00',
+                          background: 'rgba(255, 204, 0, 0.12)',
+                          border: '1px solid rgba(255, 204, 0, 0.3)',
+                          borderRadius: '12px',
+                          padding: '2px 8px',
+                          letterSpacing: '0.04em',
+                          whiteSpace: 'nowrap',
+                          flexShrink: 0
+                        }}
+                        title={`Scene index in event: ${sceneIndex + 1}`}
+                      >
+                        Scene ID: {sceneIndex + 1}
+                      </span>
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', fontWeight: 700 }}>
-                        {dtsInScene.length} {dtsInScene.length === 1 ? 'Character' : 'Characters'}
-                      </span>
+                      {isCollapsed ? (
+                        <span
+                          style={{
+                            fontSize: '0.82rem',
+                            color: '#ffcc00',
+                            fontWeight: 700,
+                            background: 'rgba(255, 204, 0, 0.1)',
+                            border: '1px solid rgba(255, 204, 0, 0.25)',
+                            borderRadius: '12px',
+                            padding: '3px 10px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            flexWrap: 'wrap',
+                            whiteSpace: 'normal',
+                            lineHeight: '1.4'
+                          }}
+                          title={characterNames.length > 0 ? characterNames.join(', ') : 'No characters in scene'}
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#ffcc00', flexShrink: 0 }}>groups</span>
+                          <span>{characterNames.length > 0 ? characterNames.join(', ') : 'No characters'}</span>
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', fontWeight: 700 }}>
+                          {dtsInScene.length} {dtsInScene.length === 1 ? 'Character' : 'Characters'}
+                        </span>
+                      )}
                       <button
                         type="button"
                         className={`${styles.btn} ${styles.btnSmall}`}
@@ -1683,10 +2299,12 @@ export default function AdminDowntimesTab({ characters = [] }) {
                           if (isEditing) {
                             handleSaveSceneTitle(sceneId);
                             setActiveSearchScene(prev => (prev === sceneId ? null : prev));
+                          } else {
+                            setCollapsedScenes(prev => ({ ...prev, [sceneId]: false }));
                           }
                           setEditingScenes(prev => ({ ...prev, [sceneId]: !isEditing }));
                         }}
-                        title={isEditing ? 'Changes save automatically; this closes editing' : 'Rename, add or remove characters, change status, disband'}
+                        title={isEditing ? 'Changes save automatically: this closes editing' : 'Rename, add or remove characters, change status, disband'}
                       >
                         <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>{isEditing ? 'check' : 'edit'}</span>
                         {isEditing ? 'Save' : 'Edit scene'}
@@ -1695,8 +2313,10 @@ export default function AdminDowntimesTab({ characters = [] }) {
                   </div>
 
                   {isSceneDropTarget && (
-                    <DropHint icon="add_task" text={`Drop character here to add to ${formatSceneLabel(sceneId, sceneIndex)}`} />
+                    <DropHint icon="add_task" text={`Drop character here to add to ${sceneLabel}`} />
                   )}
+
+                  {!isCollapsed && (<>
 
                   {/* Scene with Search Autocomplete Bar (edit mode only) */}
                   {isEditing && (
@@ -1770,7 +2390,7 @@ export default function AdminDowntimesTab({ characters = [] }) {
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                                 {cand.scene_id && (
                                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'Fira Code, monospace' }}>
-                                    Currently in {formatSceneLabel(cand.scene_id, allSceneIds.indexOf(cand.scene_id) >= 0 ? allSceneIds.indexOf(cand.scene_id) : null)}
+                                    Currently in {formatSceneLabel(cand.scene_id, allSceneIds.indexOf(cand.scene_id) >= 0 ? allSceneIds.indexOf(cand.scene_id) : null, getSceneTitle(cand.scene_id))}
                                   </span>
                                 )}
                                 <button
@@ -1883,8 +2503,12 @@ export default function AdminDowntimesTab({ characters = [] }) {
                               >
                                 <option value="Needs a Scene">Needs a Scene</option>
                                 <option value="Resolved in scene">Resolved in scene</option>
+                                <option value="submitted">Submitted (Remove from Scene)</option>
                                 <option value="approved">Approved (Remove from Scene)</option>
+                                <option value="Approved: Kikos">Approved: Kikos (Remove from Scene)</option>
+                                <option value="Approved: Mike">Approved: Mike (Remove from Scene)</option>
                                 <option value="resolved">Resolved (Remove from Scene)</option>
+                                <option value="rejected">Rejected (Remove from Scene)</option>
                               </select>
                               <button
                                 type="button"
@@ -1904,6 +2528,7 @@ export default function AdminDowntimesTab({ characters = [] }) {
                       })
                     )}
                   </div>
+                  </>)}
                 </div>
               );
             })}

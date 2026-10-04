@@ -130,32 +130,53 @@ export default function AdminGhoulsTab({ ghouls }) {
                     )}
                   </td>
                   <td style={{ padding: '0.75rem 1rem' }}>
-                    <button
-                      type="button"
-                      className={styles.btnSmall}
-                      style={{
-                        background: 'linear-gradient(135deg, var(--accent-purple-dark, #6b3fa0) 0%, var(--accent-purple) 100%)',
-                        color: '#fff', padding: '6px 14px', border: 'none',
-                        borderRadius: 'var(--radius-sm)', cursor: 'pointer',
-                        fontWeight: 700, fontSize: '0.82rem',
-                        boxShadow: '0 2px 8px var(--accent-purple-glow)',
-                        transition: 'opacity 0.15s',
-                      }}
-                      onClick={() => navigate('/retainers', {
-                        state: {
-                          character: {
-                            id: g.domitor_id,
-                            name: g.domitor_name,
-                            clan: g.domitor_clan,
-                            xp: g.domitor_xp,
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <button
+                        type="button"
+                        className={styles.btnSmall}
+                        style={{
+                          background: '#8a0303',
+                          color: '#fff', padding: '6px 12px', border: 'none',
+                          borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                          fontWeight: 700, fontSize: '0.82rem',
+                          boxShadow: '0 2px 8px rgba(138, 3, 3, 0.4)',
+                          transition: 'opacity 0.15s',
+                        }}
+                        onClick={async () => {
+                          const { default: generateGhoulPDF } = await import('../../utils/ghoulPdfGenerator');
+                          generateGhoulPDF(g);
+                        }}
+                        title="Export Ghoul PDF Record"
+                      >
+                        PDF
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.btnSmall}
+                        style={{
+                          background: 'linear-gradient(135deg, var(--accent-purple-dark, #6b3fa0) 0%, var(--accent-purple) 100%)',
+                          color: '#fff', padding: '6px 14px', border: 'none',
+                          borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                          fontWeight: 700, fontSize: '0.82rem',
+                          boxShadow: '0 2px 8px var(--accent-purple-glow)',
+                          transition: 'opacity 0.15s',
+                        }}
+                        onClick={() => navigate('/retainers', {
+                          state: {
+                            character: {
+                              id: g.domitor_id,
+                              name: g.domitor_name,
+                              clan: g.domitor_clan,
+                              xp: g.domitor_xp,
+                            },
+                            preselectRetainerId: g.id,
+                            isAdminBypass: true,
                           },
-                          preselectRetainerId: g.id,
-                          isAdminBypass: true,
-                        },
-                      })}
-                    >
-                      Manage
-                    </button>
+                        })}
+                      >
+                        Manage
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );

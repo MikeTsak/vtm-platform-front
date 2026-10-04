@@ -7,6 +7,7 @@ import MiniSearch from 'minisearch';
 import Avatar from '../../components/Avatar';
 import { symlogo, CLAN_HEX as CLAN_COLORS } from '../../data/clans';
 import { maxHealth as deriveMaxHealth } from '../../utils/derivedStats';
+import { getBloodPotencyStats } from '../../utils/liveSessionMechanics';
 
 // ---------- TRACKER DISPLAY ----------
 const TrackerDisplay = ({ label, currentObj, max, onUpdate, isValueTracker = false, value = 0, stains = 0 }) => {
@@ -358,12 +359,22 @@ export default function AdminCharactersTab({ users, onDelete, onOpenEditor }) {
                   {/* CARD BODY */}
                   <div className={styles.charCardBody}>
                 {/* Vitals Summary */}
-                <div className={styles.charVitalsRow}>
-                  <div className={styles.charVitalChip}><b>XP:</b> {c.xp}</div>
-                  <div className={styles.charVitalChip}><b>Gen:</b> {data.generation || 'Unset'}</div>
-                  <div className={styles.charVitalChip}><b>BP:</b> {data.blood_potency || 1}</div>
-                  <div className={styles.charVitalChip}><b>Sire:</b> {data.sire || 'Unknown'}</div>
-                </div>
+                {(() => {
+                  const bpStats = getBloodPotencyStats(data.blood_potency || 1);
+                  return (
+                    <div className={styles.charVitalsRow}>
+                      <div className={styles.charVitalChip}><b>XP:</b> {c.xp}</div>
+                      <div className={styles.charVitalChip}><b>Gen:</b> {data.generation || 'Unset'}</div>
+                      <div
+                        className={styles.charVitalChip}
+                        title={`Surge +${bpStats.surgeBonus}, Mend ${bpStats.mendAmount}, Bane ${bpStats.baneSeverity}, Feeding: ${bpStats.feedingPenalty}`}
+                      >
+                        <b>BP:</b> {data.blood_potency || 1}
+                      </div>
+                      <div className={styles.charVitalChip}><b>Sire:</b> {data.sire || 'Unknown'}</div>
+                    </div>
+                  );
+                })()}
 
                 {/* Trackers (Always Visible) */}
                 <div className={styles.charTrackersPanel}>

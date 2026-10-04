@@ -1653,6 +1653,20 @@ export default function RetainersView() {
                     <div className={styles.sheetControls}>
                       {!isEditing && selectedCoterie ? (
                         <>
+                          <button
+                            className={styles.btnPrimary}
+                            onClick={async () => {
+                              const { default: generateGhoulPDF } = await import('../../utils/ghoulPdfGenerator');
+                              generateGhoulPDF(selectedRetainer, {
+                                character,
+                                selectedCoterie,
+                                selectedDomitor,
+                              });
+                            }}
+                            style={{ background: 'linear-gradient(135deg, #8a0303 0%, #5a0202 100%)' }}
+                          >
+                            Export PDF
+                          </button>
                           <button className={styles.btnPrimary} onClick={() => openCoterieWizard(selectedCoterie, selectedRetainer.tier, selectedRetainer)} disabled={saving}>Rebuild Sheet</button>
                           {[2, 3].filter(t => t > selectedRetainer.tier && t - selectedRetainer.tier <= coterieFreeDots(selectedCoterie)).map(t => (
                             <button key={t} className={styles.btnPrimary} onClick={() => openCoterieWizard(selectedCoterie, t, selectedRetainer)} disabled={saving}>Upgrade to Tier {t}</button>
@@ -1661,6 +1675,20 @@ export default function RetainersView() {
                         </>
                       ) : !isEditing ? (
                         <>
+                          <button
+                            className={styles.btnPrimary}
+                            onClick={async () => {
+                              const { default: generateGhoulPDF } = await import('../../utils/ghoulPdfGenerator');
+                              generateGhoulPDF(selectedRetainer, {
+                                character,
+                                selectedCoterie,
+                                selectedDomitor,
+                              });
+                            }}
+                            style={{ background: 'linear-gradient(135deg, #8a0303 0%, #5a0202 100%)' }}
+                          >
+                            Export PDF
+                          </button>
                           {isAdminBypass && (
                             <button className={styles.btnPrimary} onClick={startEditing} disabled={saving}>Edit Sheet</button>
                           )}

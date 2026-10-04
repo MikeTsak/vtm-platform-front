@@ -900,7 +900,7 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
                     <span title="Superficial damage mended per Rouse Check">Mend {bpStats.mendAmount}</span>
                     <span title="Rouse Checks at or below this Discipline level get the reroll">Rouse&nbsp;reroll &le;{bpStats.rouseRerollLevel}</span>
                     <span title="Bonus dice to Discipline pools">Disc +{bpStats.disciplineBonus}</span>
-                    {bpStats.feedingPenalty && bpStats.feedingPenalty !== 'No effect' && (
+                    {bpStats.feedingPenalty && !['No effect', 'No penalty', 'None'].includes(bpStats.feedingPenalty) && (
                       <span title={bpStats.feedingPenalty} style={{ color: 'var(--danger)' }}>Feeding: {bpStats.feedingPenalty}</span>
                     )}
                   </div>

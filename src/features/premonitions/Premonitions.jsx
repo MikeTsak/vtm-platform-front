@@ -136,7 +136,10 @@ function PlayerPremonitions() {
 function PremonitionItem({ item, index }) {
   const [revealed, setRevealed] = useState(false);
   const [imgStatus, setImgStatus] = useState("loading"); // loading | loaded | error
-  const [videoStatus, setVideoStatus] = useState("idle"); // idle | playing | error
+  const [videoStatus, setVideoStatus] = useState("idle"); // idle | loading | playing | error
+  const [videoErrorDetails, setVideoErrorDetails] = useState(null);
+  const [isBuffering, setIsBuffering] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
   const imgRef = useRef(null);
 
   const when = useMemo(() => {
@@ -147,15 +150,45 @@ function PremonitionItem({ item, index }) {
   const kind = item.content_type;
   const isMedia = (kind === "image" || kind === "video") && !!item.content_url;
   const mediaUrl = isMedia ? qualifyUrl(item.content_url) : null;
+  const [resolvedUrl, setResolvedUrl] = useState(() => {
+    if (!item.content_url) return null;
+    if (item.content_url.startsWith("http://") || item.content_url.startsWith("https://")) {
+      return item.content_url;
+    }
+    return qualifyUrl(item.content_url);
+  });
   const warningsList = Array.isArray(item.warnings) ? item.warnings : [];
   const hasWarnings = warningsList.length > 0;
 
-  // Active preload to prevent browser stalled loading
+  // Pre-resolve relative API media URLs to direct CDN URLs using authenticated session
   useEffect(() => {
-    if (revealed && kind === "image" && mediaUrl) {
+    let cancelled = false;
+    if (isMedia && item.content_url && !item.content_url.startsWith("http")) {
+      let endpoint = item.content_url;
+      if (endpoint.startsWith("/api/")) endpoint = endpoint.slice(4);
+      api
+        .get(endpoint + (endpoint.includes("?") ? "&info=1" : "?info=1"))
+        .then((res) => {
+          if (!cancelled && res.data?.url) {
+            setResolvedUrl(res.data.url);
+          }
+        })
+        .catch(() => {
+          // Keep qualifyUrl fallback
+        });
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [isMedia, item.content_url]);
+
+  // Active preload for images
+  useEffect(() => {
+    const activeUrl = resolvedUrl || mediaUrl;
+    if (revealed && kind === "image" && activeUrl) {
       setImgStatus("loading");
       const img = new Image();
-      img.src = mediaUrl;
+      img.src = activeUrl;
       if (img.complete) {
         if (img.naturalWidth > 0) {
           setImgStatus("loaded");
@@ -167,7 +200,56 @@ function PremonitionItem({ item, index }) {
         img.onerror = () => setImgStatus("error");
       }
     }
-  }, [revealed, kind, mediaUrl]);
+  }, [revealed, kind, resolvedUrl, mediaUrl]);
+
+  const handleVideoLoadStart = () => {
+    setIsBuffering(true);
+  };
+
+  const handleVideoWaiting = () => {
+    setIsBuffering(true);
+  };
+
+  const handleVideoPlaying = () => {
+    setIsBuffering(false);
+    setVideoStatus("playing");
+  };
+
+  const handleVideoCanPlay = () => {
+    setIsBuffering(false);
+    if (videoStatus !== "playing") {
+      setVideoStatus("playing");
+    }
+  };
+
+  const handleVideoError = (e) => {
+    setIsBuffering(false);
+    const mediaErr = e?.currentTarget?.error;
+    let code = mediaErr?.code || 0;
+    let reason = "The video signal could not be received";
+
+    if (code === 1) {
+      reason = "Video reception was aborted";
+    } else if (code === 2) {
+      reason = "Network error: Connection was interrupted while receiving stream. Please check your internet connection";
+    } else if (code === 3) {
+      reason = "Decode error: The video signal is corrupted or cannot be decoded";
+    } else if (code === 4) {
+      reason = "Video format or codec unsupported by this browser: e.g. HEVC or QuickTime format";
+    } else if (mediaErr?.message) {
+      reason = mediaErr.message;
+    }
+
+    setVideoErrorDetails({ code, reason });
+    setVideoStatus("error");
+  };
+
+  const handleRetryVideo = () => {
+    setVideoStatus("loading");
+    setVideoErrorDetails(null);
+    setIsBuffering(true);
+    setRetryKey((k) => k + 1);
+  };
 
   return (
     <article 
@@ -261,7 +343,11 @@ function PremonitionItem({ item, index }) {
                 className={s.revealBtn}
                 onClick={() => {
                   setRevealed(true);
-                  if (kind === "video") setVideoStatus("playing");
+                  if (kind === "video") {
+                    setVideoStatus("loading");
+                    setVideoErrorDetails(null);
+                    setIsBuffering(true);
+                  }
                 }}
               >
                 <FaGlyph name="fa-eye" size={15} />
@@ -271,10 +357,31 @@ function PremonitionItem({ item, index }) {
           ) : (
             <>
               {/* IMAGE HANDLING */}
-              {kind === "image" && mediaUrl && (
+              {kind === "image" && (resolvedUrl || mediaUrl) && (
                 <>
                   {imgStatus === "error" ? (
-                    <div className={s.mediaError}>Signal Corrupted</div>
+                    <div className={s.videoErrorContainer}>
+                      <div className={s.mediaError}>
+                        <div className={s.errorHeading}>
+                          <FaGlyph name="fa-triangle-exclamation" size={16} />
+                          <span>Signal Corrupted</span>
+                        </div>
+                        <div className={s.errorReason}>
+                          Image signal could not be displayed by browser
+                        </div>
+                      </div>
+                      <div className={s.errorActionsRow}>
+                        <a
+                          href={resolvedUrl || mediaUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={s.directMediaLink}
+                        >
+                          <FaGlyph name="fa-arrow-up-right-from-square" size={13} />
+                          <span>Open Direct Image</span>
+                        </a>
+                      </div>
+                    </div>
                   ) : (
                     <>
                       {imgStatus !== "loaded" && (
@@ -284,7 +391,7 @@ function PremonitionItem({ item, index }) {
                       )}
                       <img
                         ref={imgRef}
-                        src={mediaUrl}
+                        src={resolvedUrl || mediaUrl}
                         alt="Premonition"
                         className={s.mediaContent}
                         style={
@@ -301,19 +408,71 @@ function PremonitionItem({ item, index }) {
               )}
 
               {/* VIDEO HANDLING */}
-              {kind === "video" && mediaUrl && (
+              {kind === "video" && (resolvedUrl || mediaUrl) && (
                 <>
                   {videoStatus === "error" ? (
-                    <div className={s.mediaError}>Video Signal Lost</div>
+                    <div className={s.videoErrorContainer}>
+                      <div className={s.mediaError}>
+                        <div className={s.errorHeading}>
+                          <FaGlyph name="fa-triangle-exclamation" size={16} />
+                          <span>Video Signal Lost</span>
+                        </div>
+                        <div className={s.errorReason}>
+                          {videoErrorDetails?.reason || "Video signal interrupted or unavailable"}
+                        </div>
+                      </div>
+
+                      <div className={s.errorActionsRow}>
+                        <button
+                          type="button"
+                          className={s.retryBtn}
+                          onClick={handleRetryVideo}
+                        >
+                          <FaGlyph name="fa-rotate-right" size={13} />
+                          <span>Retry Signal</span>
+                        </button>
+
+                        <a
+                          href={resolvedUrl || mediaUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={s.directMediaLink}
+                        >
+                          <FaGlyph name="fa-arrow-up-right-from-square" size={13} />
+                          <span>Open Direct Signal</span>
+                        </a>
+
+                        <a
+                          href={resolvedUrl || mediaUrl}
+                          download
+                          className={s.directMediaLink}
+                        >
+                          <FaGlyph name="fa-download" size={13} />
+                          <span>Download Vision</span>
+                        </a>
+                      </div>
+                    </div>
                   ) : (
-                    <video
-                      src={mediaUrl}
-                      controls
-                      playsInline
-                      autoPlay
-                      className={s.mediaContent}
-                      onError={() => setVideoStatus("error")}
-                    />
+                    <div className={s.videoWrapper}>
+                      {isBuffering && (
+                        <div className={s.videoBufferingOverlay}>
+                          <span className={s.glitchText}>Receiving Video Signal...</span>
+                        </div>
+                      )}
+                      <video
+                        key={retryKey}
+                        src={resolvedUrl || mediaUrl}
+                        controls
+                        playsInline
+                        preload="metadata"
+                        className={s.mediaContent}
+                        onLoadStart={handleVideoLoadStart}
+                        onWaiting={handleVideoWaiting}
+                        onPlaying={handleVideoPlaying}
+                        onCanPlay={handleVideoCanPlay}
+                        onError={handleVideoError}
+                      />
+                    </div>
                   )}
                 </>
               )}
@@ -324,7 +483,11 @@ function PremonitionItem({ item, index }) {
                   className={s.concealBtn}
                   onClick={() => {
                     setRevealed(false);
-                    if (kind === "video") setVideoStatus("idle");
+                    if (kind === "video") {
+                      setVideoStatus("idle");
+                      setVideoErrorDetails(null);
+                      setIsBuffering(false);
+                    }
                   }}
                 >
                   <FaGlyph name="fa-eye-slash" size={12} />

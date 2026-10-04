@@ -33,6 +33,8 @@ import { buildSuggestions, article } from '../xp-shop/suggestions';
 import { getPushSettings, updatePushSettings, subscribeToWebPush, getPushUnsupportedReason } from '../../utils/push';
 import { maxHealth as deriveMaxHealth } from '../../utils/derivedStats';
 import { attachStructured } from './sheetShape';
+import BloodPotencyModal from './BloodPotencyModal';
+import { getBloodPotencyStats } from '../../utils/liveSessionMechanics';
 const msSearchText = (arr, query) => {
   const ms = new MiniSearch({ fields: ['text'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
   const docs = arr.map((text, id) => ({ id, text }));
@@ -668,6 +670,7 @@ export default function CharacterView({
   const [savingProfile, setSavingProfile] = useState(false);
   const [mysticFixOpen, setMysticFixOpen] = useState(false);
   const [mysticFixBusy, setMysticFixBusy] = useState(false);
+  const [bpModalOpen, setBpModalOpen] = useState(false);
 
   const [activeShopTab, setActiveShopTab] = useState('Suggested');
   const [currentSearches, setShopSearches] = useState({});
@@ -1561,8 +1564,31 @@ export default function CharacterView({
               </div>
               <div className={styles.mobileHeaderMeta}>
                 <h1 className={styles.mobileHeaderName}>{ch.name}</h1>
-                <span className={styles.mobileHeaderSub}>
-                  {ch.clan}{sheet?.blood_potency ? ` · BP ${sheet.blood_potency}` : ''}{sheet?.generation ? ` · Gen ${sheet.generation}` : ''}
+                <span className={styles.mobileHeaderSub} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                  <span>{ch.clan}</span>
+                  {sheet?.blood_potency !== undefined && (
+                    <>
+                      <span>·</span>
+                      <button
+                        type="button"
+                        onClick={() => setBpModalOpen(true)}
+                        style={{
+                          background: 'rgba(225, 29, 72, 0.15)',
+                          border: '1px solid rgba(225, 29, 72, 0.35)',
+                          color: '#fda4af',
+                          borderRadius: '4px',
+                          padding: '1px 6px',
+                          fontSize: '0.75rem',
+                          cursor: 'pointer',
+                          fontWeight: 600,
+                        }}
+                        title="View Blood Potency details and milestones"
+                      >
+                        BP {sheet.blood_potency}
+                      </button>
+                    </>
+                  )}
+                  {sheet?.generation ? <span>· Gen {sheet.generation}</span> : null}
                 </span>
               </div>
             </div>
@@ -1617,7 +1643,27 @@ export default function CharacterView({
                   {symlogoWhite(ch.clan) && <img src={symlogoWhite(ch.clan)} alt={ch.clan} style={{ height: '24px', opacity: 0.9, objectFit: 'contain' }} />}
                   {textlogoWhite(ch.clan) ? <img src={textlogoWhite(ch.clan)} alt={ch.clan} style={{ height: '20px', opacity: 0.95, objectFit: 'contain' }} /> : <span>{ch.clan}</span>}
                   <span style={{ opacity: 0.5 }}>•</span>
-                  <span>BP: {sheet?.blood_potency ?? 'Unspecified'}</span>
+                  <button
+                    type="button"
+                    onClick={() => setBpModalOpen(true)}
+                    style={{
+                      background: 'rgba(225, 29, 72, 0.12)',
+                      border: '1px solid rgba(225, 29, 72, 0.3)',
+                      color: '#fecdd3',
+                      borderRadius: '4px',
+                      padding: '2px 8px',
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      fontWeight: 500,
+                    }}
+                    title="View Blood Potency details, Bane Severity, and milestones"
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '15px', color: '#f43f5e' }}>water_drop</span>
+                    BP: {sheet?.blood_potency ?? 'Unspecified'}
+                  </button>
                 </p>
               </div>
             </div>
@@ -2048,15 +2094,87 @@ export default function CharacterView({
                     const canRaise = current < max;
                     const cost = XP_RULES.bloodPotency(next);
                     const afford = xp >= cost;
+                    const currentStats = getBloodPotencyStats(current);
+                    const nextStats = canRaise ? getBloodPotencyStats(next) : null;
                     return (
-                      <ShopRow
-                        title={`Blood Potency (${current})`}
-                        subtitle={canRaise ? `Raise to ${next}` : 'Max reached'}
-                        cost={cost}
-                        disabled={!canRaise || !afford}
-                        hint={!canRaise ? `Max ${max}` : (!afford ? 'Not enough XP' : '')}
-                        onBuy={() => buyBloodPotency(current, next)}
-                      />
+                      <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                        <div
+                          style={{
+                            padding: '16px 20px',
+                            background: 'rgba(225, 29, 72, 0.06)',
+                            border: '1px solid rgba(225, 29, 72, 0.2)',
+                            borderRadius: '8px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '12px',
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span className="material-symbols-outlined" style={{ color: '#e11d48' }}>water_drop</span>
+                              <span style={{ fontWeight: 600, fontSize: '1rem', color: '#f8fafc' }}>
+                                Blood Potency {current}
+                              </span>
+                              <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
+                                (Bane Severity {currentStats.baneSeverity})
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setBpModalOpen(true)}
+                              className={styles.ghostBtn}
+                              style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '4px' }}
+                            >
+                              View All Milestones
+                            </button>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px', fontSize: '0.8rem' }}>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '8px 10px', borderRadius: '4px' }}>
+                              <span style={{ color: '#94a3b8' }}>Surge: </span>
+                              <b style={{ color: '#38bdf8' }}>+{currentStats.surgeBonus} dice</b>
+                              {nextStats && nextStats.surgeBonus !== currentStats.surgeBonus && (
+                                <span style={{ color: '#4ade80', marginLeft: '4px' }}>&rarr; +{nextStats.surgeBonus}</span>
+                              )}
+                            </div>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '8px 10px', borderRadius: '4px' }}>
+                              <span style={{ color: '#94a3b8' }}>Mend: </span>
+                              <b style={{ color: '#4ade80' }}>{currentStats.mendAmount} sup</b>
+                              {nextStats && nextStats.mendAmount !== currentStats.mendAmount && (
+                                <span style={{ color: '#4ade80', marginLeft: '4px' }}>&rarr; {nextStats.mendAmount}</span>
+                              )}
+                            </div>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '8px 10px', borderRadius: '4px' }}>
+                              <span style={{ color: '#94a3b8' }}>Discipline: </span>
+                              <b style={{ color: '#f59e0b' }}>{currentStats.disciplineBonus > 0 ? `+${currentStats.disciplineBonus}` : 'None'}</b>
+                              {nextStats && nextStats.disciplineBonus !== currentStats.disciplineBonus && (
+                                <span style={{ color: '#4ade80', marginLeft: '4px' }}>&rarr; +{nextStats.disciplineBonus}</span>
+                              )}
+                            </div>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '8px 10px', borderRadius: '4px' }}>
+                              <span style={{ color: '#94a3b8' }}>Rouse Reroll: </span>
+                              <b style={{ color: '#a855f7' }}>{currentStats.rouseRerollLevel > 0 ? `Lvl ${currentStats.rouseRerollLevel}` : 'None'}</b>
+                              {nextStats && nextStats.rouseRerollLevel !== currentStats.rouseRerollLevel && (
+                                <span style={{ color: '#4ade80', marginLeft: '4px' }}>&rarr; Lvl {nextStats.rouseRerollLevel}</span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div style={{ fontSize: '0.8rem', color: '#cbd5e1' }}>
+                            <span style={{ color: '#94a3b8' }}>Feeding: </span>
+                            <span>{currentStats.feedingPenalty}</span>
+                          </div>
+                        </div>
+
+                        <ShopRow
+                          title={`Blood Potency (${current})`}
+                          subtitle={canRaise ? `Raise to ${next}` : 'Max reached'}
+                          cost={cost}
+                          disabled={!canRaise || !afford}
+                          hint={!canRaise ? `Max ${max}` : (!afford ? 'Not enough XP' : '')}
+                          onBuy={() => buyBloodPotency(current, next)}
+                        />
+                      </div>
                     );
                   })()}
                 </>
@@ -2567,6 +2685,13 @@ export default function CharacterView({
             }}
           />
         )}
+
+        <BloodPotencyModal
+          isOpen={bpModalOpen}
+          onClose={() => setBpModalOpen(false)}
+          bloodPotency={sheet?.blood_potency ?? 1}
+          clan={ch?.clan || ''}
+        />
       </div>
     </Skeleton>
   );

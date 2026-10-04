@@ -102,19 +102,19 @@ export function getBloodPotencyStats(bp) {
   const rouseRerollLevels = [0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5];
   const mendAmounts = [1, 1, 2, 2, 3, 3, 3, 3, 4, 4, 5];
   const disciplineBonuses = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5];
-  const baneSeverities = [0, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6];
+  const baneSeverities = [1, 2, 2, 3, 3, 4, 4, 4, 5, 6, 6];
   const feedingPenalties = [
-    'No effect',
-    'No effect',
-    'Animal and bagged blood slake half Hunger',
-    'Animal and bagged blood slake no Hunger',
-    'Animal and bagged blood slake no Hunger: slake 1 less Hunger per human',
-    'Animal and bagged blood slake no Hunger: slake 1 less Hunger per human, must kill to reduce Hunger below 2',
-    'Animal and bagged blood slake no Hunger: slake 2 less Hunger per human, must kill to reduce Hunger below 2',
-    'Animal and bagged blood slake no Hunger: slake 2 less Hunger per human, must kill to reduce Hunger below 3',
-    'Animal and bagged blood slake no Hunger: slake 2 less Hunger per human, must kill to reduce Hunger below 3',
-    'Animal and bagged blood slake no Hunger: slake 3 less Hunger per human, must kill to reduce Hunger below 4',
-    'Animal and bagged blood slake no Hunger: slake 3 less Hunger per human, must kill to reduce Hunger below 5',
+    'No penalty',
+    'No penalty',
+    'Animal and bagged blood slake half as much hunger',
+    'Animal and bagged blood slake nothing',
+    'Animal and bagged blood slake nothing, slakes 1 less per human',
+    'Animal and bagged blood slake nothing, slakes 1 less per human, must drain a human to go below Hunger 2',
+    'Animal and bagged blood slake nothing, slakes 2 less per human, must drain a human to go below Hunger 2',
+    'Animal and bagged blood slake nothing, slakes 2 less per human, must drain a human to go below Hunger 2',
+    'Animal and bagged blood slake nothing, slakes 2 less per human, must drain a human to go below Hunger 3',
+    'Animal and bagged blood slake nothing, slakes 2 less per human, must drain a human to go below Hunger 3',
+    'Animal and bagged blood slake nothing, slakes 3 less per human, must drain a human to go below Hunger 3',
   ];
 
   return {

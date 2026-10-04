@@ -1089,7 +1089,7 @@ export default function LiveSession() {
                   <strong style={{ color: 'var(--error)' }}>{bpStats.baneSeverity}</strong>
                 </div>
               </div>
-              {bpStats.feedingPenalty && bpStats.feedingPenalty !== 'No effect' && (
+              {bpStats.feedingPenalty && !['No effect', 'No penalty', 'None'].includes(bpStats.feedingPenalty) && (
                 <div style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '0.4rem 0.6rem', borderRadius: '4px' }}>
                   <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--error)', lineHeight: '1.35' }}>
                     <strong>Feeding: </strong>{bpStats.feedingPenalty}
