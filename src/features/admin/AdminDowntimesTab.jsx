@@ -67,11 +67,11 @@ function toLocalDateTimeInput(d) {
   return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
 }
 
-function niceDate(d) {
+function niceDate(d, options = {}) {
   if (!d) return 'None';
   const dt = new Date(d);
   if (isNaN(dt.getTime())) return 'None';
-  return formatEuDate(d);
+  return formatEuDate(d, { includeSeconds: false, ...options });
 }
 
 function ymd(d) {
@@ -875,21 +875,16 @@ export default function AdminDowntimesTab({ characters = [] }) {
   const unassignedSceneDowntimes = useMemo(() => {
     const qq = q.trim().toLowerCase();
     return rows.filter(r => {
-      if (!isSceneDowntime(r)) return false;
+      if (String(r?.status || '').toLowerCase() !== 'needs a scene') return false;
       if (r.scene_id) return false;
       const isProj = r.title && r.title.startsWith('[PROJECT]');
       if (viewMode === 'standard' && isProj) return false;
       if (viewMode === 'project' && !isProj) return false;
-      // Do not hide unassigned scene actions when general status filters (like 'submitted', 'approved', etc.) are clicked.
-      // Only filter by status if the user explicitly clicked a scene specific status.
-      if (statusFilter === 'Needs a Scene' || statusFilter === 'Resolved in scene') {
-        if (r.status !== statusFilter) return false;
-      }
       if (!qq) return true;
       const hay = `${r.title || ''} ${r.body || ''} ${r.gm_notes || ''} ${r.gm_resolution || ''} ${r.player_name || ''} ${r.char_name || ''} ${r.clan || ''} ${r.status || ''}`.toLowerCase();
       return hay.includes(qq);
     });
-  }, [rows, q, statusFilter, viewMode]);
+  }, [rows, q, viewMode]);
 
   function getSceneTitle(sceneId) {
     if (sceneTitleBuf[sceneId] !== undefined) return sceneTitleBuf[sceneId];
@@ -980,7 +975,7 @@ export default function AdminDowntimesTab({ characters = [] }) {
   function getSceneCandidates(sceneId) {
     const query = (sceneSearch[sceneId] || '').trim().toLowerCase();
     return rows.filter(r => {
-      if (!isSceneDowntime(r)) return false;
+      if (String(r?.status || '').toLowerCase() !== 'needs a scene') return false;
       if (r.scene_id === sceneId) return false;
       if (!query) return true;
       const hay = `${r.char_name || ''} ${r.player_name || ''} ${r.clan || ''} ${r.title || ''}`.toLowerCase();
@@ -1231,7 +1226,7 @@ export default function AdminDowntimesTab({ characters = [] }) {
             {
               icon: 'campaign',
               label: 'Mass release',
-              value: !massReleaseMode ? 'Off (resolutions show at once)' : massReleaseDate ? `${niceDate(massReleaseDate)} ${massReleaseDate.slice(11, 16)}` : 'On, no date set',
+              value: !massReleaseMode ? 'Off (resolutions show at once)' : massReleaseDate ? niceDate(massReleaseDate) : 'On, no date set',
               accent: massReleaseMode ? '#4da6ff' : null,
             },
           ].map(chip => (
@@ -1423,7 +1418,7 @@ export default function AdminDowntimesTab({ characters = [] }) {
                   </option>
                   {(owingData?.owing_characters || []).map(ch => (
                     <option key={ch.character_id} value={ch.character_id}>
-                      {`${ch.character_name} (${ch.player_name || 'No player account'}, ${ch.clan}): ${ch.owed_count} missing (${ch.submitted_count} of 3 submitted)`}
+                      {`${ch.character_name} (${ch.player_name || 'No player account'}, ${ch.clan}): ${ch.owed_count} missing, Feeding: ${ch.has_fed ? 'Done' : 'Not done'} (${ch.submitted_count} of 3 submitted)`}
                     </option>
                   ))}
                 </select>
@@ -1435,6 +1430,46 @@ export default function AdminDowntimesTab({ characters = [] }) {
 
             {selectedCharId && (
               <form onSubmit={handleSubmitLateDowntime} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--glass-border)' }}>
+                {(() => {
+                  const ch = (owingData?.owing_characters || []).find(c => String(c.character_id) === String(selectedCharId));
+                  if (!ch) return null;
+                  return (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center', justifyContent: 'space-between', padding: '0.65rem 0.9rem', background: 'var(--glass-inset)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--glass-border)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '18px', color: '#c084fc' }}>person</span>
+                        <strong style={{ color: 'var(--text-primary)' }}>{ch.character_name}</strong>
+                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>({ch.clan || 'Unknown clan'}, {ch.player_name || 'No user'})</span>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                          Quota: <strong style={{ color: 'var(--text-primary)' }}>{ch.submitted_count} of 3 submitted ({ch.owed_count} missing)</strong>
+                        </span>
+
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            padding: '3px 10px',
+                            borderRadius: '999px',
+                            fontSize: '0.78rem',
+                            fontWeight: 700,
+                            background: ch.has_fed ? 'rgba(0, 230, 118, 0.15)' : 'rgba(255, 170, 0, 0.15)',
+                            border: `1px solid ${ch.has_fed ? 'rgba(0, 230, 118, 0.4)' : 'rgba(255, 170, 0, 0.4)'}`,
+                            color: ch.has_fed ? '#00e676' : '#ffaa00'
+                          }}
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>
+                            {ch.has_fed ? 'check_circle' : 'hourglass_bottom'}
+                          </span>
+                          Feeding: {ch.has_fed ? 'Completed (Unlocked)' : 'Not done (Overridden by Storyteller)'}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '1rem' }}>
                   <label className={styles.labeledInput}>
                     <span>Action Title</span>
@@ -2061,6 +2096,7 @@ export default function AdminDowntimesTab({ characters = [] }) {
                           title="Change status: selecting submitted or approved removes this action from scenes"
                         >
                           <option value="Needs a Scene">Needs a Scene</option>
+                          <option value="Resolved in scene">Resolved in scene</option>
                           <option value="submitted">Submitted</option>
                           <option value="approved">Approved</option>
                           <option value="Approved: Kikos">Approved: Kikos</option>
