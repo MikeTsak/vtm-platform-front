@@ -187,7 +187,17 @@ export default function LiveSession() {
   const [characterChecked, setCharacterChecked] = useState(false);
   const [sheet, setSheet] = useState(null);
   const [trackers, setTrackers] = useState(null);
-  const [sessionId, setSessionId] = useState(localStorage.getItem('liveSessionId') || '');
+  const [sessionId, setSessionId] = useState(() => {
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      const fromUrl = sp.get('session') || sp.get('id');
+      if (fromUrl) {
+        localStorage.setItem('liveSessionId', fromUrl);
+        return fromUrl;
+      }
+    } catch (e) {}
+    return localStorage.getItem('liveSessionId') || '';
+  });
   const [session, setSession] = useState(null);
   const [broadcasts, setBroadcasts] = useState([]);
 
@@ -200,6 +210,7 @@ export default function LiveSession() {
   const [lastRoll, setLastRoll] = useState(null);
   const [isRolling, setIsRolling] = useState(false);
   const [wpSelections, setWpSelections] = useState([]);
+  const [wpRerollMode, setWpRerollMode] = useState(false);
   const [bloodSurgeActive, setBloodSurgeActive] = useState(false);
   const [situationalMod, setSituationalMod] = useState(0);
   const [modReason, setModReason] = useState('');
@@ -313,60 +324,99 @@ export default function LiveSession() {
 
   useEffect(() => { loadCharacter(); }, []);
 
+  const loadSession = async (targetId = sessionId) => {
+    if (!targetId) return;
+    try {
+      const [sData, bData, rData, pData] = await Promise.all([
+        getLiveSession(targetId).catch(() => ({})),
+        getLiveSessionBroadcasts(targetId).catch(() => ({ broadcasts: [] })),
+        getLiveSessionRolls(targetId).catch(() => ({ rolls: [] })),
+        api.get(`/live-session/${targetId}/players`).then(res => res.data).catch(() => ({ players: [] }))
+      ]);
+
+      const sessionObj = sData.session || sData || {};
+      sessionObj.players = pData.players || [];
+      setSession(sessionObj);
+
+      const bList = bData.broadcasts || bData.messages || [];
+      const rList = rData.rolls || rData || [];
+
+      const combined = [...bList, ...rList].sort((a, b) => new Date(b.created_at || b.createdAt) - new Date(a.created_at || a.createdAt));
+      setBroadcasts(combined);
+    } catch (e) { }
+  };
+
+  const handleConnect = async (targetId) => {
+    const sid = String(targetId || sessionId || '').trim();
+    if (!sid) return;
+    try {
+      await joinLiveSession(sid, { characterId: character?.id });
+      socket.emit('join_session', sid);
+      await loadSession(sid);
+      setConnStatus('Connected successfully');
+      setTimeout(() => setConnStatus(''), 3000);
+    } catch (e) {
+      setConnStatus('Failed to connect');
+      setTimeout(() => setConnStatus(''), 3000);
+    }
+  };
+
   useEffect(() => {
     if (!sessionId) return;
-    const load = async () => {
-      try {
-        const [sData, bData, rData, pData] = await Promise.all([
-          getLiveSession(sessionId).catch(() => ({})),
-          getLiveSessionBroadcasts(sessionId).catch(() => ({ broadcasts: [] })),
-          getLiveSessionRolls(sessionId).catch(() => ({ rolls: [] })),
-          api.get(`/live-session/${sessionId}/players`).then(res => res.data).catch(() => ({ players: [] }))
-        ]);
+    loadSession();
 
-        const sessionObj = sData.session || sData || {};
-        sessionObj.players = pData.players || [];
-        setSession(sessionObj);
+    if (character?.id) {
+      joinLiveSession(sessionId, { characterId: character.id }).catch(() => {});
+    }
 
-        const bList = bData.broadcasts || bData.messages || [];
-        const rList = rData.rolls || rData || [];
-
-        const combined = [...bList, ...rList].sort((a, b) => new Date(b.created_at || b.createdAt) - new Date(a.created_at || a.createdAt));
-        setBroadcasts(combined);
-      } catch (e) { }
-    };
-    load();
     // ST tracker adjustments (hunger, health, frenzy, etc.) land on our own character row too:
     // refresh it alongside the session so changes made by the Storyteller actually show up here.
-    const onRefresh = () => { load(); loadCharacter(); };
+    const onRefresh = () => { loadSession(); loadCharacter(); };
     const rejoin = () => socket.emit('join_session', sessionId);
     rejoin();
     socket.on('connect', rejoin);
     socket.on('refresh_session', onRefresh);
+
+    // Fallback polling interval in case socket connection drops (mirrors admin dashboard)
+    const pollId = setInterval(() => { loadSession(); }, 5000);
+
     return () => {
       socket.off('refresh_session', onRefresh);
       socket.off('connect', rejoin);
+      clearInterval(pollId);
     };
-  }, [sessionId]);
+  }, [sessionId, character?.id]);
 
   useEffect(() => {
-    if (!session?.created_at && !session?.createdAt) return;
-    const startTimeStr = session.created_at || session.createdAt;
-    const start = new Date(startTimeStr).getTime();
+    if (!session) return;
+
+    if (session.status === 'ended') {
+      const finalSec = Number(session.duration_seconds) || 0;
+      const h = Math.floor(finalSec / 3600).toString().padStart(2, '0');
+      const m = Math.floor((finalSec % 3600) / 60).toString().padStart(2, '0');
+      const s = (finalSec % 60).toString().padStart(2, '0');
+      setSessionRuntime(`${h}:${m}:${s}`);
+      return;
+    }
+
+    const baseDuration = typeof session.duration_seconds === 'number'
+      ? session.duration_seconds
+      : Math.max(0, Math.floor((Date.now() - new Date(session.created_at || session.createdAt || Date.now()).getTime()) / 1000));
+    const fetchPerfTime = performance.now();
 
     const tick = () => {
-      const diff = Math.floor((Date.now() - start) / 1000);
-      if (diff < 0) return;
-      const h = Math.floor(diff / 3600).toString().padStart(2, '0');
-      const m = Math.floor((diff % 3600) / 60).toString().padStart(2, '0');
-      const s = (diff % 60).toString().padStart(2, '0');
+      const elapsedSinceFetch = Math.floor((performance.now() - fetchPerfTime) / 1000);
+      const totalSec = Math.max(0, baseDuration + elapsedSinceFetch);
+      const h = Math.floor(totalSec / 3600).toString().padStart(2, '0');
+      const m = Math.floor((totalSec % 3600) / 60).toString().padStart(2, '0');
+      const s = (totalSec % 60).toString().padStart(2, '0');
       setSessionRuntime(`${h}:${m}:${s}`);
     };
 
     tick();
     const int = setInterval(tick, 1000);
     return () => clearInterval(int);
-  }, [session?.created_at, session?.createdAt]);
+  }, [session?.duration_seconds, session?.status, session?.id, session?.created_at]);
 
   const applySheetUpdate = async (mutator) => {
     setSheet(prev => {
@@ -403,12 +453,20 @@ export default function LiveSession() {
     const normal = row?.results?.normal || [];
     const hunger = row?.results?.hunger || [];
     const roll = {
-      id: row.id, type: row.roll_type, note: row.note, pool: row.pool, hunger: row.hunger,
-      difficulty: row.difficulty || 0, normalDice: normal, hungerDice: hunger,
+      id: row.id,
+      type: row.roll_type || row.rollType,
+      note: row.note,
+      pool: row.pool,
+      hunger: row.hunger,
+      difficulty: row.difficulty || 0,
+      normalDice: normal,
+      hungerDice: hunger,
       outcome: computeOutcome(normal, hunger, row.difficulty || 0),
+      rerolled: Boolean(row.rerolled),
     };
     setLastRoll(roll);
     setWpSelections([]);
+    setWpRerollMode(false);
     return roll;
   };
 
@@ -542,22 +600,99 @@ export default function LiveSession() {
     setWpIgnoreImpair(false);
   };
 
+  // V5: Willpower can't be spent to reroll frenzy, Remorse, Rouse or Humanity tests.
+  // Only regular dice can be rerolled (up to 3), once per roll.
+  const rerollAllowed = Boolean(
+    lastRoll
+    && !lastRoll.rerolled
+    && lastRoll.type !== 'willpower_reroll'
+    && !['frenzy_resistance', 'remorse', 'rouse_check', 'discipline_rouse_check', 'blush_of_life', 'blood_surge', 'mend_rouse'].includes(lastRoll.type)
+    && (lastRoll.normalDice?.length > 0)
+    && trackers?.willpower
+    && ((Number(trackers.willpower.superficial) || 0) + (Number(trackers.willpower.aggravated) || 0) < (Number(trackers.willpower.max) || 1))
+  );
+
+  const startWillpowerReroll = (targetRoll = lastRoll) => {
+    const roll = targetRoll || lastRoll;
+    if (!roll || !rerollAllowed) return;
+    const normals = roll.normalDice || [];
+    if (!normals.length) return;
+    const fails = [];
+    normals.forEach((d, idx) => {
+      if (d < 6 && fails.length < 3) fails.push(idx);
+    });
+    if (fails.length < 3) {
+      normals.forEach((d, idx) => {
+        if (!fails.includes(idx) && fails.length < 3 && d < 10) fails.push(idx);
+      });
+    }
+    if (fails.length < 3) {
+      normals.forEach((_, idx) => {
+        if (!fails.includes(idx) && fails.length < 3) fails.push(idx);
+      });
+    }
+    setWpSelections(fails);
+    setWpRerollMode(true);
+  };
+
+  const cancelWillpowerReroll = () => {
+    setWpRerollMode(false);
+    setWpSelections([]);
+  };
+
+  const toggleDieSelection = (index) => {
+    if (isRolling) return;
+    if (!wpRerollMode) {
+      if (rerollAllowed) {
+        setWpRerollMode(true);
+        setWpSelections([index]);
+      }
+      return;
+    }
+    setWpSelections(prev => {
+      if (prev.includes(index)) return prev.filter(i => i !== index);
+      if (prev.length < 3) return [...prev, index];
+      return prev;
+    });
+  };
+
   const handleWillpowerReroll = async () => {
-    if (!lastRoll?.id || !wpSelections.length ||
-      trackers.willpower.superficial + trackers.willpower.aggravated >= trackers.willpower.max) return;
+    if (!lastRoll?.id || !wpSelections.length || !rerollAllowed) return;
 
     setMobileTab('action');
     setIsRolling(true);
     try {
       const { data } = await api.post(`/dice/rolls/${lastRoll.id}/reroll`, { indices: wpSelections });
-      setSheet(data.sheet);
-      setTrackers(summarizeTrackers(data.sheet));
+      if (data.sheet) {
+        setSheet(data.sheet);
+        setCharacter(prev => prev ? { ...prev, sheet: data.sheet } : prev);
+        setTrackers(summarizeTrackers(data.sheet));
+      }
+      setWpRerollMode(false);
+      setWpSelections([]);
       showServerRoll(data.roll);
+      setSignalNote('1 Willpower spent: dice rerolled.');
+      setTimeout(() => setSignalNote(''), 3000);
     } catch (e) {
       setSignalNote(e?.response?.data?.error || 'Reroll failed.');
       setTimeout(() => setSignalNote(''), 3000);
+    } finally {
+      setTimeout(() => setIsRolling(false), 1200);
     }
-    setTimeout(() => setIsRolling(false), 1500);
+  };
+
+  const openRerollFromFeed = (row) => {
+    const roll = showServerRoll(row);
+    setMobileTab('action');
+    const isAllowed = !row.rerolled
+      && !['frenzy_resistance', 'remorse', 'rouse_check', 'discipline_rouse_check', 'blush_of_life', 'blood_surge', 'mend_rouse', 'willpower_reroll'].includes(row.roll_type)
+      && (roll.normalDice?.length > 0)
+      && trackers?.willpower
+      && ((Number(trackers.willpower.superficial) || 0) + (Number(trackers.willpower.aggravated) || 0) < (Number(trackers.willpower.max) || 1));
+
+    if (isAllowed) {
+      startWillpowerReroll(roll);
+    }
   };
 
   const handleRouse = async (source = 'rouse_check', autoActivate = null, chain = false) => {
@@ -788,11 +923,6 @@ export default function LiveSession() {
     .filter(r => !broadcasts.some(b => b.roll_type === 'requested_roll'
       && String(b.character_id ?? b.characterId) === String(character?.id)
       && (b.note || '').includes(r.id.slice(-6))));
-
-  // V5: Willpower can't be spent to reroll frenzy, Remorse, Rouse or Humanity tests.
-  const rerollAllowed = lastRoll
-    && !['frenzy_resistance', 'remorse', 'rouse_check', 'discipline_rouse_check', 'blush_of_life', 'blood_surge', 'mend_rouse', 'willpower_reroll'].includes(lastRoll.type)
-    && !(trackers.willpower.superficial + trackers.willpower.aggravated >= trackers.willpower.max);
 
   const runCommonRoll = (r) => {
     setSelectedTraits([r.attribute, r.skill]);
@@ -1250,7 +1380,7 @@ export default function LiveSession() {
                     </span>
                     <span className={styles.sessionBarMeta}>
                       <span className="material-symbols-outlined">group</span>
-                      <strong>{session.players?.length || 1}</strong> Players
+                      <strong>{session.players?.length ?? 0}</strong> Players
                     </span>
                     <span className={styles.sessionBarMeta}>
                       <span className="material-symbols-outlined">timer</span>
@@ -1267,17 +1397,9 @@ export default function LiveSession() {
                   value={sessionId}
                   onChange={e => { setSessionId(e.target.value); localStorage.setItem('liveSessionId', e.target.value); }}
                 />
-                <button className={styles.btnPrimary} style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }} onClick={async () => {
-                  try {
-                    await joinLiveSession(sessionId, { characterId: character?.id });
-                    socket.emit('join_session', sessionId);
-                    setConnStatus('Connected successfully!');
-                    setTimeout(() => setConnStatus(''), 3000);
-                  } catch (e) {
-                    setConnStatus('Failed to connect.');
-                    setTimeout(() => setConnStatus(''), 3000);
-                  }
-                }}>Connect</button>
+                <button className={styles.btnPrimary} style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }} onClick={() => handleConnect()}>
+                  Connect
+                </button>
                 {connStatus && (
                   <span className={styles.sessionBarStatus} data-ok={connStatus.includes('success')}>{connStatus}</span>
                 )}
@@ -1528,19 +1650,38 @@ export default function LiveSession() {
 
           {/* Roll Overlay */}
           {lastRoll && (
-            <div className={styles.rollOverlay} onClick={(e) => { if (e.target === e.currentTarget && !isRolling) setLastRoll(null); }}>
+            <div className={styles.rollOverlay} onClick={(e) => { if (e.target === e.currentTarget && !isRolling) { setLastRoll(null); setWpRerollMode(false); setWpSelections([]); } }}>
               <div className={styles.rollResultCard} style={{ background: 'var(--surface-container)', borderRadius: '1rem', border: '1px solid var(--outline-variant)', textAlign: 'center', boxShadow: '0 24px 64px rgba(0,0,0,0.8)', maxWidth: '90%', maxHeight: '90%', overflowY: 'auto' }}>
                 <h2 className={styles.displayLg} style={{ color: isRolling ? 'var(--on-surface)' : (lastRoll.outcome.hasBestialFailure || lastRoll.outcome.hasMessyCritical ? 'var(--error)' : 'var(--primary)'), marginBottom: '0.5rem' }}>
                   {isRolling ? 'Rolling...' : lastRoll.outcome.label}
                 </h2>
-                <p className={styles.textMuted} style={{ marginBottom: '2rem' }}>{lastRoll.note}</p>
+                <p className={styles.textMuted} style={{ marginBottom: wpRerollMode ? '1rem' : '2rem' }}>{lastRoll.note}</p>
+
+                {wpRerollMode && (
+                  <div style={{
+                    background: 'rgba(198, 40, 40, 0.12)',
+                    border: '1px solid var(--primary)',
+                    borderRadius: '8px',
+                    padding: '0.6rem 1rem',
+                    marginBottom: '1.25rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                    color: 'var(--on-surface)',
+                    fontSize: '0.85rem',
+                  }}>
+                    <span className="material-symbols-outlined" style={{ color: 'var(--primary)', fontSize: '1.1rem' }}>info</span>
+                    <span>Select up to 3 regular dice to reroll : <strong style={{ color: 'var(--primary)' }}>{wpSelections.length} / 3 selected</strong></span>
+                  </div>
+                )}
 
                 <div className={styles.diceContainer} style={{ gap: '1.25rem', alignItems: 'center', justifyContent: 'center' }}>
                   {lastRoll.normalDice.map((die, i) => {
                     const isSelected = wpSelections.includes(i);
                     const totalCount = (lastRoll.normalDice?.length || 0) + (lastRoll.hungerDice?.length || 0);
                     return (
-                      <div key={`n-${i}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      <div key={`n_${i}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                         <D10Die
                           index={i}
                           value={die}
@@ -1548,11 +1689,7 @@ export default function LiveSession() {
                           isRolling={isRolling}
                           selectable={!isRolling && rerollAllowed}
                           selected={isSelected}
-                          onClick={() => {
-                            if (!isRolling && rerollAllowed) {
-                              setWpSelections(prev => prev.includes(i) ? prev.filter(v => v !== i) : prev.length < 3 ? [...prev, i] : prev);
-                            }
-                          }}
+                          onClick={() => toggleDieSelection(i)}
                           size="lg"
                           poolCount={totalCount}
                           showNumber={true}
@@ -1568,7 +1705,7 @@ export default function LiveSession() {
                   {lastRoll.hungerDice.map((die, i) => {
                     const totalCount = (lastRoll.normalDice?.length || 0) + (lastRoll.hungerDice?.length || 0);
                     return (
-                      <div key={`h-${i}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      <div key={`h_${i}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', opacity: wpRerollMode ? 0.45 : 1, transition: 'opacity 0.2s' }}>
                         <D10Die
                           index={i}
                           value={die}
@@ -1578,19 +1715,71 @@ export default function LiveSession() {
                           poolCount={totalCount}
                           showNumber={true}
                         />
+                        {wpRerollMode && (
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.65rem', marginTop: 4 }}>
+                            Hunger
+                          </span>
+                        )}
                       </div>
                     );
                   })}
                 </div>
 
+                {wpRerollMode && lastRoll.hungerDice.length > 0 && (
+                  <p style={{ marginTop: '0.75rem', marginBottom: 0, fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                    Hunger dice cannot be rerolled with Willpower
+                  </p>
+                )}
+
                 {!isRolling && (
-                  <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-                    <button className={styles.btnOutline} onClick={() => setLastRoll(null)}>Dismiss</button>
-                    {rerollAllowed && wpSelections.length > 0 && (
-                      <button className={styles.btnPrimary} onClick={handleWillpowerReroll}>Spend 1 WP to Reroll {wpSelections.length} Dice</button>
-                    )}
-                    {!rerollAllowed && lastRoll.normalDice.length > 0 && (
-                      <span style={{ alignSelf: 'center', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Willpower cannot be spent on this test.</span>
+                  <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
+                    {wpRerollMode ? (
+                      <>
+                        <button className={styles.btnOutline} onClick={cancelWillpowerReroll}>
+                          Cancel
+                        </button>
+                        <button
+                          className={styles.btnPrimary}
+                          disabled={wpSelections.length === 0}
+                          onClick={handleWillpowerReroll}
+                          title={wpSelections.length === 0 ? 'Select at least 1 die to reroll' : 'Spend 1 Willpower to reroll selected dice'}
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize: '1.1rem', marginRight: '0.4rem', verticalAlign: 'middle' }}>refresh</span>
+                          Reroll {wpSelections.length} {wpSelections.length === 1 ? 'Die' : 'Dice'} (Cost: 1 WP)
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button className={styles.btnOutline} onClick={() => { setLastRoll(null); setWpRerollMode(false); setWpSelections([]); }}>
+                          Dismiss
+                        </button>
+                        {rerollAllowed && (
+                          <button className={styles.btnPrimary} onClick={() => startWillpowerReroll()}>
+                            <span className="material-symbols-outlined" style={{ fontSize: '1.1rem', marginRight: '0.4rem', verticalAlign: 'middle' }}>refresh</span>
+                            Willpower Reroll
+                          </button>
+                        )}
+                        {!rerollAllowed && lastRoll.rerolled && (
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                            Roll already rerolled
+                          </span>
+                        )}
+                        {!rerollAllowed && !lastRoll.rerolled && (Number(trackers?.willpower?.superficial || 0) + Number(trackers?.willpower?.aggravated || 0) >= Number(trackers?.willpower?.max || 1)) && (
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                            No Willpower remaining
+                          </span>
+                        )}
+                        {!rerollAllowed && !lastRoll.rerolled && !(Number(trackers?.willpower?.superficial || 0) + Number(trackers?.willpower?.aggravated || 0) >= Number(trackers?.willpower?.max || 1)) && lastRoll.normalDice?.length === 0 && (
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                            No regular dice to reroll
+                          </span>
+                        )}
+                        {!rerollAllowed && !lastRoll.rerolled && ['frenzy_resistance', 'remorse', 'rouse_check', 'discipline_rouse_check', 'blush_of_life', 'blood_surge', 'mend_rouse'].includes(lastRoll.type) && (
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                            Willpower cannot be spent on this test
+                          </span>
+                        )}
+                      </>
                     )}
                   </div>
                 )}
@@ -1615,7 +1804,7 @@ export default function LiveSession() {
               Session Players
             </button>
           </div>
-          {showAdminTab === 'feed' && <LiveSessionRollHistory rolls={broadcasts} currentCharacterId={character?.id} isAdmin={isAdmin} onReroll={(r) => { showServerRoll(r); setMobileTab('action'); }} />}
+          {showAdminTab === 'feed' && <LiveSessionRollHistory rolls={broadcasts} currentCharacterId={character?.id} isAdmin={isAdmin} onReroll={openRerollFromFeed} />}
           {showAdminTab === 'players' && <LiveSessionPlayerList players={session?.players || []} adminName={session?.admin_name} />}
         </aside>
       </main>

@@ -23,10 +23,11 @@ export default function LiveSessionPlayerList({ players = [], adminName }) {
         const id = player.character_id || player.characterId || player.id;
         const name = player.name || player.character_name || 'Unknown';
         const clan = player.clan || 'Unknown Clan';
+        const itemKey = player.character_id ? `c_${player.character_id}` : (player.user_id ? `u_${player.user_id}` : `p_${id}`);
         
         return (
           <article 
-            key={id} 
+            key={itemKey} 
             className={styles.trackerBox} 
             style={{ 
               padding: '0.75rem 1rem',
@@ -36,10 +37,15 @@ export default function LiveSessionPlayerList({ players = [], adminName }) {
             }}
           >
             <Avatar userId={player.user_id || undefined} npcId={player.is_npc || player.isNpc ? id : undefined} clan={clan} size={40} style={{ borderRadius: '50%' }} fallback={symlogo(clan)} />
-            <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, color: 'var(--primary)', fontFamily: 'var(--font-display)', fontSize: '1.1rem' }}>
-              {name}
-              {player.is_npc || player.isNpc ? <span style={{ fontSize: '0.6rem', border: '1px solid var(--outline)', padding: '2px 4px', borderRadius: '4px', color: 'var(--text-muted)' }}>NPC</span> : null}
-            </h4>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, color: 'var(--primary)', fontFamily: 'var(--font-display)', fontSize: '1.1rem' }}>
+                {name}
+                {player.is_npc || player.isNpc ? <span style={{ fontSize: '0.6rem', border: '1px solid var(--outline)', padding: '2px 4px', borderRadius: '4px', color: 'var(--text-muted)' }}>NPC</span> : null}
+              </h4>
+              {player.user_name && player.user_name !== name && (
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Player: {player.user_name}</span>
+              )}
+            </div>
           </article>
         );
       })}

@@ -1,4 +1,4 @@
-// src/utils/ghoulPdfGenerator.js
+import api from '../core/api';
 import { listAllItems } from '../data/merits_flaws';
 import { SKILL_DESCRIPTIONS } from '../data/descriptions';
 import { ALL_DISCIPLINE_NAMES, DISCIPLINES } from '../data/disciplines';
@@ -98,15 +98,60 @@ export default async function generateGhoulCharacterSheetPDF(retainer, options =
 
   const playerName = (retainer.player_name || options.playerName || 'Kindred Retainer').trim();
 
-  // Avatar URL
-  let avatarUrl = null;
-  const retainerId = retainer.id || sheet.id;
-  if (retainer.avatar_url || sheet.avatar_url) {
-    const raw = retainer.avatar_url || sheet.avatar_url;
-    avatarUrl = raw.startsWith('http') ? raw : `${window.location.origin}${raw.startsWith('/') ? '' : '/'}${raw}`;
-  } else if (retainerId) {
-    avatarUrl = `${window.location.origin}/api/retainers/${retainerId}/avatar`;
-  }
+  // Helpers to convert images/blobs to Base64 Data URLs
+  const blobToDataUrl = (blob) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+
+  const fetchUrlAsDataUrl = async (url) => {
+    if (!url || typeof url !== 'string') return null;
+    if (url.startsWith('data:')) return url;
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      return await blobToDataUrl(blob);
+    } catch {
+      return null;
+    }
+  };
+
+  const resolveGhoulAvatarDataUrl = async (retainerObj, sheetObj) => {
+    const rawCandidate = retainerObj.avatar_url || retainerObj.avatarUrl || retainerObj.image_url || sheetObj?.avatar_url || sheetObj?.image_url;
+    if (rawCandidate && typeof rawCandidate === 'string' && rawCandidate.startsWith('data:')) {
+      return rawCandidate;
+    }
+
+    const retainerId = retainerObj.id || sheetObj?.id;
+    if (retainerId) {
+      try {
+        const res = await api.get(`/retainers/${retainerId}/avatar?raw=1&t=${Date.now()}`, { responseType: 'blob' });
+        if (res.data && res.data.size > 0) {
+          const dUrl = await blobToDataUrl(res.data);
+          if (dUrl) return dUrl;
+        }
+      } catch {
+        // Fallback to next candidate
+      }
+    }
+
+    if (rawCandidate && typeof rawCandidate === 'string') {
+      try {
+        const url = rawCandidate.startsWith('http')
+          ? rawCandidate
+          : `${window.location.origin}${rawCandidate.startsWith('/') ? '' : '/'}${rawCandidate}`;
+        const dUrl = await fetchUrlAsDataUrl(url);
+        if (dUrl) return dUrl;
+      } catch {
+        // Fallback
+      }
+    }
+
+    return null;
+  };
 
   // Domitor Clan Logo
   const getClanTextLogoUrl = (rawClan) => {
@@ -304,6 +349,16 @@ export default async function generateGhoulCharacterSheetPDF(retainer, options =
   const exportDateString = formatExportDate();
   const safeFileName = `${ghoulName}_Ghoul_Record_${exportDateString}`.replace(/[\s:]+/g, '_').replace(/_+/g, '_').replace(/'/g, "\\'");
 
+  // Pre-load all assets as Data URLs so html2canvas renders them synchronously without CORS issues
+  const [logoDataUrl, clanLogoDataUrl, avatarDataUrl] = await Promise.all([
+    fetchUrlAsDataUrl(logoUrl),
+    fetchUrlAsDataUrl(clanLogoUrl),
+    resolveGhoulAvatarDataUrl(retainer, sheet),
+  ]);
+
+  const effectiveLogoUrl = logoDataUrl || logoUrl;
+  const effectiveClanLogoUrl = clanLogoDataUrl || clanLogoUrl;
+
   const contentHtml = `
     <div id="vtm-sheet-content" style="font-family: 'Crimson Text', serif; color: #222; background: #fff; padding: 20px 40px; width: 800px; margin: 0 auto; box-sizing: border-box;">
       <style>
@@ -347,15 +402,15 @@ export default async function generateGhoulCharacterSheetPDF(retainer, options =
 
       <div class="header">
         <div class="header-brand">
-          <img class="logo-img" src="${logoUrl}" alt="ATT Logo" />
+          <img class="logo-img" src="${effectiveLogoUrl}" alt="ATT Logo" />
           <div class="header-text">
             <h1>VAMPIRE THE MASQUERADE</h1>
             <div class="subtitle">Ghoul and Retainer Record: Athens Through Time LARP</div>
           </div>
         </div>
-        ${avatarUrl ? `
+        ${avatarDataUrl ? `
           <div class="header-avatar">
-            <img src="${avatarUrl}" alt="${escapeHtml(ghoulName)}" onerror="this.parentElement.style.display='none';" />
+            <img src="${avatarDataUrl}" alt="${escapeHtml(ghoulName)}" onerror="this.parentElement.style.display='none';" />
           </div>
         ` : ''}
       </div>
@@ -370,7 +425,7 @@ export default async function generateGhoulCharacterSheetPDF(retainer, options =
         <div class="meta-field" style="align-items: center;">
           <strong>Domitor Clan:</strong>
           <span style="display: inline-flex; align-items: center; min-height: 22px;">
-            ${clanLogoUrl ? `<img src="${clanLogoUrl}" alt="${escapeHtml(domitorClan)}" style="max-height: 22px; max-width: 130px; object-fit: contain; vertical-align: middle;" />` : escapeHtml(domitorClan || 'Unknown')}
+            ${effectiveClanLogoUrl ? `<img src="${effectiveClanLogoUrl}" alt="${escapeHtml(domitorClan)}" style="max-height: 22px; max-width: 130px; object-fit: contain; vertical-align: middle;" />` : escapeHtml(domitorClan || 'Unknown')}
           </span>
         </div>
 

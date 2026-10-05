@@ -5,6 +5,7 @@ import { RITUALS } from '../data/rituals';
 import { SKILL_DESCRIPTIONS } from '../data/descriptions';
 import { ALL_DISCIPLINE_NAMES, DISCIPLINES } from '../data/disciplines';
 import { clanRef } from '../data/clanReference';
+import { symlogo } from '../data/clans';
 
 export const BLOOD_POTENCY_MILESTONES = {
   0: { surge: '+1 die', mend: '1 Superficial', bonus: 'None', rouse: 'None', feeding: 'No penalty', bane: 1 },
@@ -439,7 +440,91 @@ export default async function generateVTMCharacterSheetPDF(character) {
   const stains = sheet.stains || 0;
   const hungerVal = sheet.hunger || 0;
 
-  // Use the absolute URL so html2pdf and the new window can definitely find your image
+  // Helpers to convert images/blobs to Base64 Data URLs
+  const blobToDataUrl = (blob) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+
+  const fetchUrlAsDataUrl = async (url) => {
+    if (!url || typeof url !== 'string') return null;
+    if (url.startsWith('data:')) return url;
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      return await blobToDataUrl(blob);
+    } catch {
+      return null;
+    }
+  };
+
+  const resolveAvatarDataUrl = async (charObj, sheetObj, isNpcFlag, clanName) => {
+    const rawCandidate = charObj.avatar_url || charObj.avatarUrl || charObj.image_url || charObj.imageUrl || sheetObj?.avatar_url || sheetObj?.image_url;
+    if (rawCandidate && typeof rawCandidate === 'string' && rawCandidate.startsWith('data:')) {
+      return rawCandidate;
+    }
+
+    const userId = charObj.user_id || charObj.userId || sheetObj?.user_id;
+    const charId = charObj.id || sheetObj?.id;
+
+    // 1. Try server avatar routes with ?raw=1 so Fastify proxies image bytes with CORS headers
+    if (isNpcFlag && charId) {
+      try {
+        const res = await api.get(`/npcs/${charId}/avatar?raw=1&t=${Date.now()}`, { responseType: 'blob' });
+        if (res.data && res.data.size > 0) {
+          const dUrl = await blobToDataUrl(res.data);
+          if (dUrl) return dUrl;
+        }
+      } catch {
+        // Fallback to next candidate
+      }
+    }
+
+    if (userId) {
+      try {
+        const res = await api.get(`/users/${userId}/avatar?raw=1&t=${Date.now()}`, { responseType: 'blob' });
+        if (res.data && res.data.size > 0) {
+          const dUrl = await blobToDataUrl(res.data);
+          if (dUrl) return dUrl;
+        }
+      } catch {
+        // Fallback to next candidate
+      }
+    }
+
+    // 2. If a direct URL or path candidate exists
+    if (rawCandidate && typeof rawCandidate === 'string') {
+      try {
+        const url = rawCandidate.startsWith('http')
+          ? rawCandidate
+          : `${window.location.origin}${rawCandidate.startsWith('/') ? '' : '/'}${rawCandidate}`;
+        const dUrl = await fetchUrlAsDataUrl(url);
+        if (dUrl) return dUrl;
+      } catch {
+        // Fallback
+      }
+    }
+
+    // 3. Fallback: if no custom avatar found, use clan symbol
+    if (clanName) {
+      try {
+        const clanSymbolUrl = symlogo(clanName);
+        if (clanSymbolUrl) {
+          const dUrl = await fetchUrlAsDataUrl(clanSymbolUrl);
+          if (dUrl) return dUrl;
+        }
+      } catch {
+        // Fallback
+      }
+    }
+
+    return null;
+  };
+
+  // Base assets
   const logoUrl = window.location.origin + '/img/ATT-logo(1).webp';
   const exportDateString = formatExportDate();
 
@@ -495,18 +580,15 @@ export default async function generateVTMCharacterSheetPDF(character) {
     ? (sheet.predatorType.name || sheet.predatorType.title || '')
     : (sheet.predatorType || sheet.predator_type || '');
 
-  // Avatar URL resolution
-  let avatarUrl = null;
-  const userId = character.user_id || character.userId;
-  const charId = character.id;
-  if (character.avatar_url || character.avatarUrl || sheet.avatar_url) {
-    const raw = character.avatar_url || character.avatarUrl || sheet.avatar_url;
-    avatarUrl = raw.startsWith('http') ? raw : `${window.location.origin}${raw.startsWith('/') ? '' : '/'}${raw}`;
-  } else if (isNpc && charId) {
-    avatarUrl = `${window.location.origin}/api/npcs/${charId}/avatar`;
-  } else if (userId) {
-    avatarUrl = `${window.location.origin}/api/users/${userId}/avatar`;
-  }
+  // Pre-load all assets as Data URLs so html2canvas renders them synchronously without CORS issues
+  const [logoDataUrl, clanLogoDataUrl, avatarDataUrl] = await Promise.all([
+    fetchUrlAsDataUrl(logoUrl),
+    fetchUrlAsDataUrl(clanLogoUrl),
+    resolveAvatarDataUrl(character, sheet, isNpc, charClan),
+  ]);
+
+  const effectiveLogoUrl = logoDataUrl || logoUrl;
+  const effectiveClanLogoUrl = clanLogoDataUrl || clanLogoUrl;
 
   // Domain Title, Status & XP Summary
   const titles = Array.isArray(character.camarilla_titles)
@@ -626,15 +708,15 @@ export default async function generateVTMCharacterSheetPDF(character) {
 
       <div class="header">
         <div class="header-brand">
-          <img class="logo-img" src="${logoUrl}" alt="ATT Logo" />
+          <img class="logo-img" src="${effectiveLogoUrl}" alt="ATT Logo" />
           <div class="header-text">
             <h1>VAMPIRE THE MASQUERADE</h1>
             <div class="subtitle">Chronicle: Athens Through Time LARP</div>
           </div>
         </div>
-        ${avatarUrl ? `
+        ${avatarDataUrl ? `
           <div class="header-avatar">
-            <img src="${avatarUrl}" alt="${escapeHtml(charName)}" onerror="this.parentElement.style.display='none';" />
+            <img src="${avatarDataUrl}" alt="${escapeHtml(charName)}" onerror="this.parentElement.style.display='none';" />
           </div>
         ` : ''}
       </div>
@@ -651,7 +733,7 @@ export default async function generateVTMCharacterSheetPDF(character) {
         <div class="meta-field" style="align-items: center;">
           <strong>Clan:</strong>
           <span style="display: inline-flex; align-items: center; min-height: 22px;">
-            ${clanLogoUrl ? `<img src="${clanLogoUrl}" alt="${escapeHtml(charClan)}" style="max-height: 22px; max-width: 140px; object-fit: contain; vertical-align: middle;" />` : escapeHtml(charClan)}
+            ${effectiveClanLogoUrl ? `<img src="${effectiveClanLogoUrl}" alt="${escapeHtml(charClan)}" style="max-height: 22px; max-width: 140px; object-fit: contain; vertical-align: middle;" />` : escapeHtml(charClan)}
           </span>
         </div>
         <div class="meta-field"><strong>Desire:</strong> <span>${escapeHtml(sheet.desire)}</span></div>

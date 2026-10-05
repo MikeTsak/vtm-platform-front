@@ -16,6 +16,7 @@ import { powerMechanics } from '../../data/disciplineMechanics';
 import { summarizeTrackers, getBloodPotencyStats, applyHealthDamage, remorsePool } from '../../utils/liveSessionMechanics';
 import { formatEuDate } from '../../utils/dateFormatter';
 import LiveSessionRollHistory from '../live-session/LiveSessionRollHistory';
+import WikiReferenceBar from '../live-session/WikiReferenceBar';
 import sharedStyles from '../../styles/LiveSession.module.css';
 import adminStyles from '../../styles/LiveSessionAdmin.module.css';
 
@@ -292,13 +293,26 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
   }, [sessionId]);
 
   useEffect(() => {
-    if (session?.status === 'active' && session?.created_at) {
-      const origin = new Date(session.created_at).getTime();
-      const id = setInterval(() => setDuration(Math.floor((Date.now() - origin) / 1000)), 1000);
+    if (session?.status === 'ended') {
+      setDuration(session.duration_seconds ?? 0);
+      return;
+    }
+    if (session?.status === 'active') {
+      const baseDuration = typeof session.duration_seconds === 'number'
+        ? session.duration_seconds
+        : Math.max(0, Math.floor((Date.now() - new Date(session.created_at || Date.now()).getTime()) / 1000));
+      const fetchPerfTime = performance.now();
+
+      const tick = () => {
+        const elapsed = Math.floor((performance.now() - fetchPerfTime) / 1000);
+        setDuration(Math.max(0, baseDuration + elapsed));
+      };
+
+      tick();
+      const id = setInterval(tick, 1000);
       return () => clearInterval(id);
     }
-    if (session?.status === 'ended') setDuration(session.duration_seconds ?? 0);
-  }, [session]);
+  }, [session?.duration_seconds, session?.status, session?.id, session?.created_at]);
 
   useEffect(() => { fetchArchives(); }, []);
 
@@ -611,7 +625,8 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
   }, [broadcasts, rolls]);
 
   return (
-    <div className={styles.dashboardContainer}>
+    <>
+      <div className={styles.dashboardContainer}>
 
       <div className={styles.pane}>
         <div className={styles.paneHeader}><h2>ST Controls</h2></div>
@@ -1036,7 +1051,7 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
               Summary
             </button>
           </div>
-          <div style={{ flex: 1, overflowY: 'auto' }}>
+          <div style={{ flex: 1, overflowY: 'auto', paddingBottom: '3.5rem' }}>
             <LiveSessionRollHistory
               rolls={feedItems}
               isAdmin={true}
@@ -1459,6 +1474,8 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
         </div>
       </div>
 
-    </div>
+      </div>
+      <WikiReferenceBar />
+    </>
   );
 }

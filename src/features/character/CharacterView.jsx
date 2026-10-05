@@ -1985,7 +1985,10 @@ export default function CharacterView({
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
             <button className={styles.ghostBtn} onClick={async () => {
               const { default: generatePDF } = await import('../../utils/pdfGenerator');
-              generatePDF(ch);
+              const pdfTarget = adminNPCId
+                ? { ...ch, isNPC: true, id: adminNPCId }
+                : { ...ch, user_id: ch?.user_id || user?.id };
+              generatePDF(pdfTarget);
             }}>
               Export PDF Record
             </button>
