@@ -61,6 +61,15 @@ const formatPlayerStatus = (s) => {
   return str;
 };
 
+const formatResolverName = (name) => {
+  if (!name) return '';
+  const str = String(name).trim();
+  const lower = str.toLowerCase();
+  if (lower === 'admin') return 'Mike';
+  if (lower === 'st kikos') return 'Kikos';
+  return str;
+};
+
 function niceDate(d) {
   if (!d) return 'None';
   const dt = new Date(d);
@@ -326,7 +335,14 @@ function ActiveTrackItem({ dt, isProject, massReleaseCountdown, deadlinePassed }
             </div>
           ) : dt.gm_resolution ? (
             <div className={styles.resolutionBox} style={{ position: 'relative', zIndex: 1, marginTop: '12px' }}>
-              <span className={`${styles.resolutionLabel} ${styles.resolutionLabelApproved}`}>GM Resolution:</span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '4px' }}>
+                <span className={`${styles.resolutionLabel} ${styles.resolutionLabelApproved}`}>GM Resolution:</span>
+                {dt.resolved_by_name ? (
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted, #a3a3a3)', fontWeight: 600 }}>
+                    Resolved by: {formatResolverName(dt.resolved_by_name)}
+                  </span>
+                ) : null}
+              </div>
               <p className={styles.resolutionText}>{dt.gm_resolution}</p>
             </div>
           ) : awaitingST ? (
@@ -395,9 +411,16 @@ function ArchiveItem({ dt, isProject }) {
 
         {dt.gm_resolution ? (
           <div className={styles.resolutionBox}>
-            <span className={`${styles.resolutionLabel} ${status === 'rejected' ? styles.resolutionLabelRejected : styles.resolutionLabelApproved}`}>
-              GM Resolution:
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '4px' }}>
+              <span className={`${styles.resolutionLabel} ${status === 'rejected' ? styles.resolutionLabelRejected : styles.resolutionLabelApproved}`}>
+                GM Resolution:
+              </span>
+              {dt.resolved_by_name ? (
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted, #a3a3a3)', fontWeight: 600 }}>
+                  Resolved by: {formatResolverName(dt.resolved_by_name)}
+                </span>
+              ) : null}
+            </div>
             <p className={styles.resolutionText}>{dt.gm_resolution}</p>
           </div>
         ) : null}

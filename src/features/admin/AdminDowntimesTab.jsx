@@ -343,7 +343,7 @@ function SceneActionDetails({ r, showResolution = true }) {
       )}
       {showResolution && r.gm_resolution && (
         <div style={{ whiteSpace: 'pre-wrap' }}>
-          <div style={label}>Current Resolution:</div>
+          <div style={label}>Current Resolution{r.resolved_by_name ? ` (Resolved by: ${r.resolved_by_name})` : ''}:</div>
           {r.gm_resolution}
         </div>
       )}
@@ -477,6 +477,7 @@ export default function AdminDowntimesTab({ characters = [] }) {
     });
   }
 
+  const [adminsList, setAdminsList] = useState([]);
   const [listLoading, setListLoading] = useState(false);
   const [listErr, setListErr] = useState('');
   const [rows, setRows] = useState([]);
@@ -507,6 +508,8 @@ export default function AdminDowntimesTab({ characters = [] }) {
         setHideStatus(prev => ({ ...prev, submitted: false }));
       } else if (urlStatusFilter === 'Needs a Scene') {
         setHideStatus(prev => ({ ...prev, 'Needs a Scene': false }));
+      } else if (urlStatusFilter === 'unassigned_resolver' || urlStatusFilter === 'resolved_mike' || urlStatusFilter === 'resolved_kikos') {
+        setHideStatus(prev => ({ ...prev, resolved: false, 'Resolved in scene': false }));
       }
     }
   }, [urlStatusFilter]);
@@ -521,6 +524,8 @@ export default function AdminDowntimesTab({ characters = [] }) {
     }, { replace: true });
     if (val === 'approved_st' || val === 'Approved: Mike or Kikos') {
       setHideStatus(prev => ({ ...prev, 'Approved: Kikos': false, 'Approved: Mike': false }));
+    } else if (val === 'unassigned_resolver' || val === 'resolved_mike' || val === 'resolved_kikos') {
+      setHideStatus(prev => ({ ...prev, resolved: false, 'Resolved in scene': false }));
     } else if (val && hideStatus[val]) {
       setHideStatus(prev => ({ ...prev, [val]: false }));
     }
@@ -698,6 +703,9 @@ export default function AdminDowntimesTab({ characters = [] }) {
     try {
       const { data } = await api.get('admin/downtimes');
       setRows((data?.downtimes || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
+      if (Array.isArray(data?.admins)) {
+        setAdminsList(data.admins);
+      }
     } catch (e) {
       console.error('[AdminDowntimesTab] Failed to load downtimes', e);
       setListErr(formatApiError(e, 'Failed to load downtimes'));
@@ -800,12 +808,18 @@ export default function AdminDowntimesTab({ characters = [] }) {
         dropdownOk = true;
       } else if (statusFilter === 'approved_st' || statusFilter === 'Approved: Mike or Kikos') {
         dropdownOk = rowStatus === 'Approved: Kikos' || rowStatus === 'Approved: Mike';
+      } else if (statusFilter === 'unassigned_resolver') {
+        dropdownOk = (rowStatus === 'resolved' || rowStatus === 'Resolved in scene') && !r.resolved_by;
+      } else if (statusFilter === 'resolved_mike') {
+        dropdownOk = (rowStatus === 'resolved' || rowStatus === 'Resolved in scene') && (r.resolved_by === 3 || String(r.resolved_by_name || '').toLowerCase() === 'mike');
+      } else if (statusFilter === 'resolved_kikos') {
+        dropdownOk = (rowStatus === 'resolved' || rowStatus === 'Resolved in scene') && (r.resolved_by === 5 || String(r.resolved_by_name || '').toLowerCase() === 'kikos');
       } else {
         dropdownOk = rowStatus === statusFilter;
       }
       if (!dropdownOk) return false;
-      if (statusFilter === 'approved_st' || statusFilter === 'Approved: Mike or Kikos') {
-        // Do not hide when explicitly filtering for Storyteller approvals
+      if (statusFilter === 'approved_st' || statusFilter === 'Approved: Mike or Kikos' || statusFilter === 'unassigned_resolver' || statusFilter === 'resolved_mike' || statusFilter === 'resolved_kikos') {
+        // Do not hide when explicitly filtering for Storyteller approvals or resolutions
       } else if (hideStatus[rowStatus]) {
         return false;
       }
@@ -1066,7 +1080,15 @@ export default function AdminDowntimesTab({ characters = [] }) {
 
   function openBuf(r) {
     setBuffer(prev => prev[r.id] ? prev : ({
-      ...prev, [r.id]: { status: r.status || 'submitted', gm_notes: r.gm_notes || '', gm_resolution: r.gm_resolution || '', saving: false, error: '', info: '' }
+      ...prev, [r.id]: {
+        status: r.status || 'submitted',
+        gm_notes: r.gm_notes || '',
+        gm_resolution: r.gm_resolution || '',
+        resolved_by: r.resolved_by ?? '',
+        saving: false,
+        error: '',
+        info: ''
+      }
     }));
   }
 
@@ -1087,6 +1109,7 @@ export default function AdminDowntimesTab({ characters = [] }) {
     }
     if (patch.gm_notes !== undefined) updBuf(id, 'gm_notes', patch.gm_notes);
     if (patch.gm_resolution !== undefined) updBuf(id, 'gm_resolution', patch.gm_resolution);
+    if (patch.resolved_by !== undefined) updBuf(id, 'resolved_by', patch.resolved_by);
     if (patch.scene_id !== undefined) updBuf(id, 'scene_id', patch.scene_id);
     if (patch.scene_title !== undefined) updBuf(id, 'scene_title', patch.scene_title);
 
@@ -1098,6 +1121,9 @@ export default function AdminDowntimesTab({ characters = [] }) {
         status: merged.status,
         gm_notes: merged.gm_notes,
         gm_resolution: merged.gm_resolution,
+        resolved_by: merged.resolved_by !== undefined && merged.resolved_by !== ''
+          ? Number(merged.resolved_by)
+          : (merged.resolved_by === '' ? null : undefined),
         scene_id: merged.scene_id !== undefined ? merged.scene_id : (patch.scene_id !== undefined ? patch.scene_id : undefined),
         scene_title: merged.scene_title !== undefined ? merged.scene_title : (patch.scene_title !== undefined ? patch.scene_title : undefined),
       };
@@ -1118,6 +1144,17 @@ export default function AdminDowntimesTab({ characters = [] }) {
 
   function cancelRow(id) {
     setBuffer(prev => { const next = { ...prev }; delete next[id]; return next; });
+  }
+
+  async function quickAssignResolver(id, adminId) {
+    try {
+      const { data } = await api.patch(`admin/downtimes/${id}`, { resolved_by: adminId });
+      if (data?.downtime) {
+        setRows(prev => prev.map(x => (x.id === id ? { ...x, ...data.downtime } : x)));
+      }
+    } catch (e) {
+      console.error('Quick assign resolver failed', e);
+    }
   }
 
   return (
@@ -1588,6 +1625,9 @@ export default function AdminDowntimesTab({ characters = [] }) {
             <select className={styles.select} value={statusFilter} onChange={(e) => handleSelectStatusFilter(e.target.value)}>
               <option value="all">All</option>
               <option value="approved_st">Only Approved: Mike or Kikos</option>
+              <option value="unassigned_resolver">Resolved: Unassigned Resolver</option>
+              <option value="resolved_mike">Resolved: Mike</option>
+              <option value="resolved_kikos">Resolved: Kikos</option>
               {STATUS.map(s => <option key={s} value={s}>{`Only ${s}`}</option>)}
             </select>
           </label>
@@ -1639,6 +1679,9 @@ export default function AdminDowntimesTab({ characters = [] }) {
             counts[s] = (counts[s] || 0) + 1;
           });
           const stApprovedCount = (counts['Approved: Kikos'] || 0) + (counts['Approved: Mike'] || 0);
+          const unassignedResolverCount = rows.filter(r => (r.status === 'resolved' || r.status === 'Resolved in scene') && !r.resolved_by).length;
+          const resolvedMikeCount = rows.filter(r => (r.status === 'resolved' || r.status === 'Resolved in scene') && (r.resolved_by === 3 || String(r.resolved_by_name || '').toLowerCase() === 'mike')).length;
+          const resolvedKikosCount = rows.filter(r => (r.status === 'resolved' || r.status === 'Resolved in scene') && (r.resolved_by === 5 || String(r.resolved_by_name || '').toLowerCase() === 'kikos')).length;
           const QUICK_FILTERS = [
             { label: 'All', value: 'all', color: 'var(--text-secondary)', bg: 'var(--glass-inset)' },
             { label: 'Submitted', value: 'submitted', color: '#9d7cff', bg: 'rgba(157,124,255,0.12)' },
@@ -1648,6 +1691,9 @@ export default function AdminDowntimesTab({ characters = [] }) {
             { label: 'Appr: Mike', value: 'Approved: Mike', color: '#00e5ff', bg: 'rgba(0, 229, 255, 0.14)' },
             { label: 'Needs Scene', value: 'Needs a Scene', color: '#ffcc00', bg: 'rgba(255,204,0,0.1)' },
             { label: 'Resolved', value: 'resolved', color: '#4da6ff', bg: 'rgba(77,166,255,0.1)' },
+            { label: 'Unassigned Resolver', value: 'unassigned_resolver', color: '#f59e0b', bg: 'rgba(245,158,11,0.14)', customCount: unassignedResolverCount },
+            { label: 'Resolved: Mike', value: 'resolved_mike', color: '#38bdf8', bg: 'rgba(56,189,248,0.14)', customCount: resolvedMikeCount },
+            { label: 'Resolved: Kikos', value: 'resolved_kikos', color: '#34d399', bg: 'rgba(52,211,153,0.14)', customCount: resolvedKikosCount },
             { label: 'Scene Done', value: 'Resolved in scene', color: '#4da6ff', bg: 'rgba(77,166,255,0.08)' },
             { label: 'Rejected', value: 'rejected', color: '#ff5252', bg: 'rgba(255,82,82,0.1)' },
           ];
@@ -1890,6 +1936,8 @@ export default function AdminDowntimesTab({ characters = [] }) {
                         onUpdate={updBuf}
                         onSave={saveRow}
                         onCancel={cancelRow}
+                        adminsList={adminsList}
+                        onQuickAssign={quickAssignResolver}
                       />
                     ))}
                   </div>
@@ -2576,7 +2624,7 @@ export default function AdminDowntimesTab({ characters = [] }) {
   );
 }
 
-function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel }) {
+function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel, adminsList = [], onQuickAssign }) {
   const editing = !!editBuffer;
   const isProj = r.title && r.title.startsWith('[PROJECT]');
   const displayTitle = isProj ? r.title.replace('[PROJECT] ', '') : r.title;
@@ -2594,8 +2642,46 @@ function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel }
           <b style={{ color: 'var(--accent-purple)', fontFamily: 'Fira Code, monospace', marginRight: '10px' }}>#{r.id}</b> {displayTitle}
         </div>
         <div style={{ fontFamily: 'Fira Code, monospace', fontSize: '0.8rem', color: 'var(--text-secondary)', opacity: 0.8 }}>{niceDate(r.created_at)}</div>
-        <div>
-          {r.is_read ? <span style={{ marginRight: '8px', opacity: 0.6 }} title="Read by player">👁️</span> : null}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', flexWrap: 'wrap' }}>
+          {/* Quick resolver assignment pills for rapid backlog processing */}
+          {adminsList.length > 0 && (
+            <div
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginRight: '4px' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {adminsList.map(a => {
+                const isSelected = r.resolved_by === a.id || (r.resolved_by_name && r.resolved_by_name.toLowerCase() === a.display_name.toLowerCase());
+                return (
+                  <button
+                    key={a.id}
+                    type="button"
+                    title={isSelected ? `Assigned to ${a.display_name}. Click to unassign.` : `Click to assign resolution to ${a.display_name}`}
+                    onClick={() => onQuickAssign && onQuickAssign(r.id, isSelected ? null : a.id)}
+                    style={{
+                      border: isSelected ? '1px solid #4da6ff' : '1px solid var(--glass-border)',
+                      background: isSelected ? 'rgba(77, 166, 255, 0.25)' : 'rgba(255, 255, 255, 0.04)',
+                      color: isSelected ? '#ffffff' : 'var(--text-muted)',
+                      fontWeight: isSelected ? 800 : 500,
+                      fontSize: '0.72rem',
+                      padding: '2px 8px',
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      boxShadow: isSelected ? '0 0 6px rgba(77, 166, 255, 0.4)' : 'none'
+                    }}
+                  >
+                    {a.display_name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {r.resolved_by_name && !adminsList.some(a => a.id === r.resolved_by || a.display_name.toLowerCase() === r.resolved_by_name.toLowerCase()) ? (
+            <span style={{ marginRight: '8px', fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+              Resolved: {r.resolved_by_name}
+            </span>
+          ) : null}
+          {r.is_read ? <span style={{ marginRight: '4px', opacity: 0.6 }} title="Read by player">👁️</span> : null}
           <span className={styles.statusBadge} data-status={r.status} style={getStatusBadgeStyle(r.status)}>
             {r.status}
           </span>
@@ -2650,12 +2736,28 @@ function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel }
         </div>
 
         <div className={styles.rGrid2} style={{ background: 'var(--glass-bg)', padding: 'clamp(0.9rem, 3vw, 1.5rem)', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)', boxShadow: '0 4px 15px rgba(0,0,0,0.2)' }}>
-          <label className={styles.labeledInput}>
-            <span>Status</span>
-            <select className={styles.select} value={b.status} onChange={(e) => onUpdate(r.id, 'status', e.target.value)}>
-              {STATUS.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </label>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem' }}>
+            <label className={styles.labeledInput}>
+              <span>Status</span>
+              <select className={styles.select} value={b.status} onChange={(e) => onUpdate(r.id, 'status', e.target.value)}>
+                {STATUS.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </label>
+
+            <label className={styles.labeledInput}>
+              <span>Resolved By</span>
+              <select
+                className={styles.select}
+                value={b.resolved_by ?? ''}
+                onChange={(e) => onUpdate(r.id, 'resolved_by', e.target.value)}
+              >
+                <option value="">Auto: Current Storyteller</option>
+                {adminsList.map(a => (
+                  <option key={a.id} value={a.id}>{a.display_name}</option>
+                ))}
+              </select>
+            </label>
+          </div>
 
           <div className={styles.labeledInput}>
             <span>Quick Actions</span>

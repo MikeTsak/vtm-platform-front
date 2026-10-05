@@ -34,6 +34,15 @@ function getInitials(name) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+function formatResolverName(name) {
+  if (!name) return '';
+  const trimmed = String(name).trim();
+  const lower = trimmed.toLowerCase();
+  if (lower === 'admin') return 'Mike';
+  if (lower === 'st kikos') return 'Kikos';
+  return trimmed;
+}
+
 
 
 export default function Boons() {
@@ -1182,9 +1191,19 @@ export default function Boons() {
                         <span className="hidden md:inline">Desc: </span>
                         {boon.description || 'No details provided'}
                       </p>
-                      <p className="text-[10px] text-on-surface-variant/70 mt-1 text-right">
-                        Rec: {relDate(boon.created_at)} {settled && boon.updated_at ? ` | Set: ${relDate(boon.updated_at)}` : ''}
-                      </p>
+                      <div className="text-[10px] text-on-surface-variant/70 mt-1 flex flex-wrap items-center justify-end gap-x-2 gap-y-0.5">
+                        <span>Rec: {relDate(boon.created_at)}</span>
+                        {boon.recorded_by_name ? (
+                          <span className="font-semibold text-on-surface-variant">
+                            Recorded by: {formatResolverName(boon.recorded_by_name)}
+                          </span>
+                        ) : null}
+                        {settled && (boon.resolved_by_name || boon.updated_at) ? (
+                          <span>
+                            , Settled: {settled && boon.resolved_by_name ? `by ${formatResolverName(boon.resolved_by_name)}` : relDate(boon.updated_at)}
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
                   
@@ -1519,8 +1538,13 @@ function BoonPrintModal({ target, boons, onClose }) {
                     </div>
                   )}
 
-                  <div className="text-[10px] text-[#9ca3af] text-right mt-2">
-                    Recorded on: {b.created_at ? formatAthensDate(b.created_at) : 'Archive Record'}
+                  <div className="text-[10px] text-[#9ca3af] mt-2 flex justify-between items-center">
+                    <span>
+                      {b.recorded_by_name ? `Recorded by: ${formatResolverName(b.recorded_by_name)}` : ''}
+                    </span>
+                    <span>
+                      Recorded on: {b.created_at ? formatAthensDate(b.created_at) : 'Archive Record'}
+                    </span>
                   </div>
                 </div>
               );
@@ -1568,6 +1592,9 @@ function BoonPrintModal({ target, boons, onClose }) {
                 <div>
                   <div className="border-b border-black w-48 mx-auto mb-2 h-10"></div>
                   <span className="font-bold text-[#44403c] uppercase text-[10px]">Date: {formatAthensDate(target.created_at || Date.now())}</span>
+                  {target.recorded_by_name ? (
+                    <div className="text-[10px] text-[#78716c] uppercase font-bold mt-0.5">Recorded by: {formatResolverName(target.recorded_by_name)}</div>
+                  ) : null}
                 </div>
               </div>
             </div>

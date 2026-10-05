@@ -34,8 +34,9 @@ export default function AdminBoonsTab() {
     return (
       (b.from_name || '').toLowerCase().includes(search) ||
       (b.to_name || '').toLowerCase().includes(search) ||
-      (b.type || '').toLowerCase().includes(search) ||
-      (b.details || '').toLowerCase().includes(search)
+      (b.level || b.type || '').toLowerCase().includes(search) ||
+      (b.description || b.details || '').toLowerCase().includes(search) ||
+      (b.recorded_by_name || '').toLowerCase().includes(search)
     );
   });
 
@@ -44,7 +45,7 @@ export default function AdminBoonsTab() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
         <div>
           <h2 style={{ color: 'var(--text-primary)', margin: 0, fontSize: '1.6rem', fontWeight: 800 }}>🤝 Boon Registry</h2>
-          <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0', fontSize: '0.85rem' }}>All registered life-boons, blood-boons, and minor debts.</p>
+          <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0', fontSize: '0.85rem' }}>All registered life boons, blood boons, and minor debts.</p>
         </div>
         <button onClick={loadBoons} className={`${styles.btn} ${styles.btnSecondary}`}>Refresh Registry</button>
       </div>
@@ -70,6 +71,7 @@ export default function AdminBoonsTab() {
                 <th style={{ padding: '0.75rem 1rem', textAlign: 'left', color: 'var(--text-secondary)' }}>Creditor (Owed)</th>
                 <th style={{ padding: '0.75rem 1rem', textAlign: 'left', color: 'var(--text-secondary)' }}>Type</th>
                 <th style={{ padding: '0.75rem 1rem', textAlign: 'left', color: 'var(--text-secondary)' }}>Details</th>
+                <th style={{ padding: '0.75rem 1rem', textAlign: 'left', color: 'var(--text-secondary)' }}>Recorded By</th>
               </tr>
             </thead>
             <tbody>
@@ -78,13 +80,14 @@ export default function AdminBoonsTab() {
                   <td style={{ padding: '0.75rem 1rem', whiteSpace: 'nowrap' }}>{formatEuDate(b.created_at)}</td>
                   <td style={{ padding: '0.75rem 1rem', color: '#ff5252', fontWeight: 600 }}>{b.from_name}</td>
                   <td style={{ padding: '0.75rem 1rem', color: '#00e676', fontWeight: 600 }}>{b.to_name}</td>
-                  <td style={{ padding: '0.75rem 1rem', textTransform: 'capitalize' }}>{b.type.replace('_', ' ')}</td>
-                  <td style={{ padding: '0.75rem 1rem', fontSize: '0.9rem' }}>{b.details}</td>
+                  <td style={{ padding: '0.75rem 1rem', textTransform: 'capitalize' }}>{(b.level || b.type || 'trivial').replace('_', ' ')}</td>
+                  <td style={{ padding: '0.75rem 1rem', fontSize: '0.9rem' }}>{b.description || b.details || 'None'}</td>
+                  <td style={{ padding: '0.75rem 1rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{b.recorded_by_name || 'Court Archive'}</td>
                 </tr>
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan="5" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>No boons match your search.</td>
+                  <td colSpan="6" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>No boons match your search.</td>
                 </tr>
               )}
             </tbody>
