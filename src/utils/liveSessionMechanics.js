@@ -163,8 +163,8 @@ export function getTraitValue(sheet, traitName) {
   return 0;
 }
 
-export function getPoolFromCharacter(sheet, trait1, trait2) {
-  return getTraitValue(sheet, trait1) + getTraitValue(sheet, trait2);
+export function getPoolFromCharacter(sheet, ...traits) {
+  return traits.reduce((sum, trait) => sum + getTraitValue(sheet, trait), 0);
 }
 
 export function disciplineRequiresRouse(power) {

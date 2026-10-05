@@ -2,6 +2,7 @@ import React from 'react';
 import Avatar from '../../components/Avatar';
 import styles from '../../styles/LiveSession.module.css';
 import { symlogo } from '../../data/clans';
+import generateVTMCharacterSheetPDF from '../../utils/pdfGenerator';
 
 export default function LiveSessionPlayerList({ players = [], adminName }) {
   if (!players.length) {
@@ -37,7 +38,7 @@ export default function LiveSessionPlayerList({ players = [], adminName }) {
             }}
           >
             <Avatar userId={player.user_id || undefined} npcId={player.is_npc || player.isNpc ? id : undefined} clan={clan} size={40} style={{ borderRadius: '50%' }} fallback={symlogo(clan)} />
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
               <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, color: 'var(--primary)', fontFamily: 'var(--font-display)', fontSize: '1.1rem' }}>
                 {name}
                 {player.is_npc || player.isNpc ? <span style={{ fontSize: '0.6rem', border: '1px solid var(--outline)', padding: '2px 4px', borderRadius: '4px', color: 'var(--text-muted)' }}>NPC</span> : null}

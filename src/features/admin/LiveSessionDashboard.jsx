@@ -15,6 +15,7 @@ import { clanRef } from '../../data/clanReference';
 import { powerMechanics } from '../../data/disciplineMechanics';
 import { summarizeTrackers, getBloodPotencyStats, applyHealthDamage, remorsePool } from '../../utils/liveSessionMechanics';
 import { formatEuDate } from '../../utils/dateFormatter';
+import generateVTMCharacterSheetPDF from '../../utils/pdfGenerator';
 import LiveSessionRollHistory from '../live-session/LiveSessionRollHistory';
 import WikiReferenceBar from '../live-session/WikiReferenceBar';
 import sharedStyles from '../../styles/LiveSession.module.css';
@@ -220,6 +221,7 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
   const [broadcastTarget, setBroadcastTarget] = useState(''); // '' means global
   const [archives,    setArchives]    = useState([]);
   const [duration,    setDuration]    = useState(0);
+  const [topHeight,   setTopHeight]   = useState('50%');
 
   const [wikiQuery, setWikiQuery] = useState('');
   const [toolQuery, setToolQuery] = useState('');
@@ -715,7 +717,7 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
 
       <div className={styles.pane} style={{ flex: 1 }}>
 
-        <div className={styles.centerTop}>
+        <div className={styles.centerTop} style={{ flex: 'none', height: topHeight }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
             <h2 style={{ margin: 0, fontFamily: 'var(--font-display)', color: 'var(--primary)', fontSize: '1.5rem' }}>Live Player Overview</h2>
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -973,6 +975,15 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
                     >
                       +3 XP
                     </button>
+                    <button
+                      className={styles.btnOutline}
+                      style={{ padding: '0.25rem', fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center', gap: '3px', justifyContent: 'center' }}
+                      onClick={() => generateVTMCharacterSheetPDF({ ...p, id: charId, name, clan, sheet })}
+                      title="Export character sheet as PDF"
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: '0.85rem' }}>picture_as_pdf</span>
+                      PDF
+                    </button>
                   </div>
                   <input
                     className={styles.quickNote}
@@ -993,8 +1004,48 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
           )}
         </div>
 
+        <div
+          onMouseDown={(e) => {
+            const startY = e.clientY;
+            const topNode = e.currentTarget.previousElementSibling;
+            const paneNode = topNode.parentElement;
+            const initialTopHeightPx = topNode.getBoundingClientRect().height;
+            const paneHeightPx = paneNode.getBoundingClientRect().height;
+
+            const onMouseMove = (moveEvent) => {
+              const delta = moveEvent.clientY - startY;
+              const newHeightPx = initialTopHeightPx + delta;
+              const newHeightPct = (newHeightPx / paneHeightPx) * 100;
+              setTopHeight(`${Math.max(10, Math.min(90, newHeightPct))}%`);
+            };
+            
+            const onMouseUp = () => {
+              document.removeEventListener('mousemove', onMouseMove);
+              document.removeEventListener('mouseup', onMouseUp);
+              document.body.style.cursor = 'default';
+              document.body.style.userSelect = 'auto';
+            };
+            
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+            document.body.style.cursor = 'ns-resize';
+            document.body.style.userSelect = 'none';
+          }}
+          style={{
+            height: '6px',
+            cursor: 'ns-resize',
+            background: 'var(--surface-container-high)',
+            borderBottom: 'var(--glass-border)',
+            borderTop: 'var(--glass-border)',
+            zIndex: 10,
+            transition: 'background 0.2s',
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.background = 'var(--primary)'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'var(--surface-container-high)'}
+        />
+
         <div className={styles.centerBottom}>
-          <div className={styles.paneHeader} style={{ borderTop: '1px solid var(--outline-variant)', gap: '0.4rem' }}>
+          <div className={styles.paneHeader} style={{ borderTop: 'none', gap: '0.4rem' }}>
             <h2>Live Activity Feed</h2>
             <button
               className={styles.btnOutline}

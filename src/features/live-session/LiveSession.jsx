@@ -15,6 +15,7 @@ import {
   getBloodPotencyStats
 } from '../../utils/liveSessionMechanics';
 import { getLiveSession, joinLiveSession, logLiveSessionRoll, getLiveSessionBroadcasts, getLiveSessionRolls, socket, sendLiveSessionSignal } from '../../api/liveSession';
+import generateVTMCharacterSheetPDF from '../../utils/pdfGenerator';
 import LiveSessionPlayerList from './LiveSessionPlayerList';
 import LiveSessionRollHistory from './LiveSessionRollHistory';
 import LiveSessionAdminDashboard from '../admin/LiveSessionDashboard';
@@ -227,7 +228,6 @@ export default function LiveSession() {
   const [hiddenRollsActive, setHiddenRollsActive] = useState(false);
   const [expandedPower, setExpandedPower] = useState(null);
   const [runningPowers, setRunningPowers] = useState([]);
-  const [sessionRuntime, setSessionRuntime] = useState('00:00:00');
 
   const bpStats = useMemo(() => getBloodPotencyStats(trackers?.bloodPotency ?? 1), [trackers?.bloodPotency]);
 
@@ -248,12 +248,10 @@ export default function LiveSession() {
     .filter(Boolean), [runningPowers, sheet]);
 
   const currentPool = useMemo(() => {
-    const trait1 = selectedTraits[0] || null;
-    const trait2 = selectedTraits[1] || null;
-    let pool = getPoolFromCharacter(sheet, trait1, trait2);
+    let pool = getPoolFromCharacter(sheet, ...selectedTraits);
 
     // Add Discipline Power Bonus if rolling a Discipline
-    const hasDiscipline = (trait1 && (sheet?.disciplines?.[trait1] !== undefined || isDisciplineTrait(trait1))) || (trait2 && (sheet?.disciplines?.[trait2] !== undefined || isDisciplineTrait(trait2)));
+    const hasDiscipline = selectedTraits.some(t => sheet?.disciplines?.[t] !== undefined || isDisciplineTrait(t));
     if (hasDiscipline) pool += bpStats.disciplineBonus;
 
     if (bloodSurgeActive) pool += bpStats.surgeBonus;
@@ -265,8 +263,8 @@ export default function LiveSession() {
     // V5 Impairment: −2 to Physical (Health) / Social & Mental (Willpower) pools.
     // The Beast ignores pain during frenzy; a spent Willpower can also negate it.
     if (trackers && !sheet?.frenzyState && !wpIgnoreImpair) {
-      if (trackers.healthImpaired && (PHYS_TRAITS.has(trait1) || PHYS_TRAITS.has(trait2))) pool -= 2;
-      if (trackers.willpowerImpaired && (MENTAL_SOCIAL_TRAITS.has(trait1) || MENTAL_SOCIAL_TRAITS.has(trait2))) pool -= 2;
+      if (trackers.healthImpaired && selectedTraits.some(t => PHYS_TRAITS.has(t))) pool -= 2;
+      if (trackers.willpowerImpaired && selectedTraits.some(t => MENTAL_SOCIAL_TRAITS.has(t))) pool -= 2;
     }
     // Degeneration: −2 to everything.
     if (trackers?.degeneration && !sheet?.frenzyState) pool -= 2;
@@ -306,7 +304,7 @@ export default function LiveSession() {
   const toggleTrait = (trait) => {
     setSelectedTraits(prev => {
       if (prev.includes(trait)) return prev.filter(t => t !== trait);
-      if (prev.length >= 2) return [prev[1], trait];
+      if (prev.length >= 3) return [prev[1], prev[2], trait];
       return [...prev, trait];
     });
   };
@@ -373,7 +371,15 @@ export default function LiveSession() {
     // refresh it alongside the session so changes made by the Storyteller actually show up here.
     const onRefresh = () => { loadSession(); loadCharacter(); };
     const rejoin = () => socket.emit('join_session', sessionId);
-    rejoin();
+    
+    const initSession = async () => {
+      if (character?.id) {
+        await joinLiveSession(sessionId, { characterId: character.id }).catch(() => {});
+      }
+      rejoin();
+    };
+    initSession();
+    
     socket.on('connect', rejoin);
     socket.on('refresh_session', onRefresh);
 
@@ -386,37 +392,6 @@ export default function LiveSession() {
       clearInterval(pollId);
     };
   }, [sessionId, character?.id]);
-
-  useEffect(() => {
-    if (!session) return;
-
-    if (session.status === 'ended') {
-      const finalSec = Number(session.duration_seconds) || 0;
-      const h = Math.floor(finalSec / 3600).toString().padStart(2, '0');
-      const m = Math.floor((finalSec % 3600) / 60).toString().padStart(2, '0');
-      const s = (finalSec % 60).toString().padStart(2, '0');
-      setSessionRuntime(`${h}:${m}:${s}`);
-      return;
-    }
-
-    const baseDuration = typeof session.duration_seconds === 'number'
-      ? session.duration_seconds
-      : Math.max(0, Math.floor((Date.now() - new Date(session.created_at || session.createdAt || Date.now()).getTime()) / 1000));
-    const fetchPerfTime = performance.now();
-
-    const tick = () => {
-      const elapsedSinceFetch = Math.floor((performance.now() - fetchPerfTime) / 1000);
-      const totalSec = Math.max(0, baseDuration + elapsedSinceFetch);
-      const h = Math.floor(totalSec / 3600).toString().padStart(2, '0');
-      const m = Math.floor((totalSec % 3600) / 60).toString().padStart(2, '0');
-      const s = (totalSec % 60).toString().padStart(2, '0');
-      setSessionRuntime(`${h}:${m}:${s}`);
-    };
-
-    tick();
-    const int = setInterval(tick, 1000);
-    return () => clearInterval(int);
-  }, [session?.duration_seconds, session?.status, session?.id, session?.created_at]);
 
   const applySheetUpdate = async (mutator) => {
     setSheet(prev => {
@@ -1082,13 +1057,15 @@ export default function LiveSession() {
         {/* LEFT COLUMN: IDENTITY & TRACKERS */}
         <aside className={`${styles.leftColumn} ${mobileTab !== 'character' ? styles.mobileHidden : ''}`}>
           {/* Identity */}
-          <section style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <Avatar userId={character?.user_id || character?.id} clan={clan} size={64} style={{ borderRadius: 8, border: '1px solid var(--outline-variant)' }} fallback={symlogoWhite(clan)} />
-            <div>
-              <h2 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--primary)' }}>{charName}</h2>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.15rem' }}>
-                {clan !== 'Unknown Clan' && <img src={symlogoWhite(clan)} alt={clan} style={{ width: 14, height: 14, objectFit: 'contain', opacity: 0.85 }} onError={(e) => { e.target.style.display = 'none'; }} />}
-                <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>{clan} • BP {bp}</p>
+          <section style={{ display: 'flex', gap: '1rem', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <Avatar userId={character?.user_id || character?.id} clan={clan} size={64} style={{ borderRadius: 8, border: '1px solid var(--outline-variant)' }} fallback={symlogoWhite(clan)} />
+              <div>
+                <h2 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--primary)' }}>{charName}</h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.15rem' }}>
+                  {clan !== 'Unknown Clan' && <img src={symlogoWhite(clan)} alt={clan} style={{ width: 14, height: 14, objectFit: 'contain', opacity: 0.85 }} onError={(e) => { e.target.style.display = 'none'; }} />}
+                  <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>{clan} • BP {bp}</p>
+                </div>
               </div>
             </div>
           </section>
@@ -1381,10 +1358,6 @@ export default function LiveSession() {
                     <span className={styles.sessionBarMeta}>
                       <span className="material-symbols-outlined">group</span>
                       <strong>{session.players?.length ?? 0}</strong> Players
-                    </span>
-                    <span className={styles.sessionBarMeta}>
-                      <span className="material-symbols-outlined">timer</span>
-                      <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>{sessionRuntime}</span>
                     </span>
                   </>
                 )}
