@@ -2,7 +2,10 @@ import React from 'react';
 import styles from '../../styles/LiveSession.module.css';
 import D10Die from '../../ui/D10Die';
 
-export default function LiveSessionRollHistory({ rolls = [], onBroadcast, currentCharacterId, isAdmin }) {
+// V5: Willpower can't reroll these tests (mirrors NO_REROLL on the server).
+const NO_REROLL = ['frenzy_resistance', 'remorse', 'rouse_check', 'discipline_rouse_check', 'blush_of_life', 'blood_surge', 'mend_rouse', 'willpower_reroll'];
+
+export default function LiveSessionRollHistory({ rolls = [], onBroadcast, onReroll, currentCharacterId, isAdmin }) {
   if (!rolls.length) {
     return <div className={styles.textMuted} style={{ padding: '1rem', textAlign: 'center' }}>No rolls yet.</div>;
   }
@@ -28,6 +31,8 @@ export default function LiveSessionRollHistory({ rolls = [], onBroadcast, curren
         const hasCrit = roll.crit_pairs > 0;
         const isFailure = roll.is_failure;
         const note = roll.note;
+        const canReroll = onReroll && roll.id && !roll.rerolled && roll.character_id && roll.character_id === currentCharacterId
+          && !NO_REROLL.includes(roll.roll_type) && (roll.results?.normal?.length || 0) > 0;
 
         if (roll.is_whisper) {
           const isWhisper = Boolean(roll.target_character_id);
@@ -82,6 +87,14 @@ export default function LiveSessionRollHistory({ rolls = [], onBroadcast, curren
               {hasBestial && <span style={{ color: 'var(--error)', fontWeight: 700 }}>Bestial</span>}
               {hasMessy && <span style={{ color: 'var(--error)', fontWeight: 700 }}>Messy Crit</span>}
               
+              {canReroll && (
+                <button
+                  onClick={() => onReroll(roll)}
+                  style={{ background: 'var(--surface-hover)', border: '1px solid var(--border)', color: 'var(--on-surface)', fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer', marginLeft: 'auto' }}
+                >
+                  Reroll with Willpower
+                </button>
+              )}
               {(hasBestial || hasMessy) && onBroadcast && (
                 <button 
                   onClick={() => {

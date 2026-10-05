@@ -1615,7 +1615,7 @@ export default function LiveSession() {
               Session Players
             </button>
           </div>
-          {showAdminTab === 'feed' && <LiveSessionRollHistory rolls={broadcasts} currentCharacterId={character?.id} isAdmin={isAdmin} />}
+          {showAdminTab === 'feed' && <LiveSessionRollHistory rolls={broadcasts} currentCharacterId={character?.id} isAdmin={isAdmin} onReroll={(r) => { showServerRoll(r); setMobileTab('action'); }} />}
           {showAdminTab === 'players' && <LiveSessionPlayerList players={session?.players || []} adminName={session?.admin_name} />}
         </aside>
       </main>
