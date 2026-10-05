@@ -237,10 +237,13 @@ export default function CoterieBuilder({
     rulesOverride: s.rulesOverride,
   }), [s]);
 
-  const { budget } = check;
-  
-  const xpCost = s.bonusPoints * (XP_PER_DOT || 3);
-  const canAffordBonus = editingId ? true : (personalXp >= xpCost);
+  const startingBonus = useMemo(() => {
+    return editingId ? (Number(initial?.bonusPoints) || 0) : 0;
+  }, [editingId, initial]);
+
+  const deltaBonus = Math.max(0, (Number(s.bonusPoints) || 0) - startingBonus);
+  const xpCost = (!editingId ? (Number(s.bonusPoints) || 0) : deltaBonus) * (XP_PER_DOT || 3);
+  const canAffordBonus = personalXp >= xpCost;
   const canSave = check.errors.length === 0 && !saving && (canAffordBonus || isAdmin || s.rulesOverride);
 
   // A Domain Merit is meaningless without dots in the trait it hangs off.
@@ -611,7 +614,7 @@ export default function CoterieBuilder({
               label="Contributed Advantage dots"
               value={s.bonusPoints}
               onChange={(v) => set({ bonusPoints: v })}
-              min={0}
+              min={editingId && !isAdmin && !s.rulesOverride ? startingBonus : 0}
               max={30}
               hint={
                 !editingId ? (
@@ -626,11 +629,22 @@ export default function CoterieBuilder({
                     </span>
                   </>
                 ) : (
-                  "Dots the players moved off their own sheets into the coterie."
+                  deltaBonus > 0 ? (
+                    <>
+                      <span style={{ color: '#ef4444' }}>
+                        This {deltaBonus * (XP_PER_DOT || 3)} XP will be deducted from your sheet.{' '}
+                      </span>
+                      <span style={{ color: '#22c55e' }}>
+                        Remaining XP: {Math.max(0, personalXp - (deltaBonus * (XP_PER_DOT || 3)))}
+                      </span>
+                    </>
+                  ) : (
+                    "Dots the players moved off their own sheets into the coterie."
+                  )
                 )
               }
             />
-            {!editingId && s.bonusPoints > 0 && personalXp < s.bonusPoints * (XP_PER_DOT || 3) && (
+            {s.bonusPoints > (editingId ? startingBonus : 0) && personalXp < xpCost && (
               <Muted tone="error" className={styles.tightNote}>
                 You do not have enough personal XP to contribute this many dots.
               </Muted>

@@ -225,8 +225,7 @@ export default function CoterieManager() {
       }
       setEditing(null);
       setEditingId(null);
-      await loadMine();
-      await loadDetail(id);
+      await Promise.all([loadMine(), loadDetail(id), loadMyCharacter()]);
       setTab('mine');
     } catch (e) {
       publish({ message: errText(e, 'Could not save the coterie.'), type: 'error' });
@@ -265,11 +264,12 @@ export default function CoterieManager() {
           + (data.spent.from_personal ? ` (${data.spent.from_personal} from your sheet).` : '.'),
         type: 'success',
       });
-      if (data.spent.from_personal) {
+      if (data.remaining_personal_xp != null) {
+        setPersonalXp(data.remaining_personal_xp);
+      } else if (data.spent.from_personal) {
         setPersonalXp((v) => Math.max(0, v - data.spent.from_personal));
       }
-      await loadDetail(detail.coterie.id);
-      await loadMine();
+      await Promise.all([loadDetail(detail.coterie.id), loadMine(), loadMyCharacter()]);
       return true;
     } catch (e) {
       publish({ message: errText(e, 'Could not complete the purchase.'), type: 'error' });
