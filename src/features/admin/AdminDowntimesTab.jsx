@@ -2643,42 +2643,38 @@ function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel, 
         </div>
         <div style={{ fontFamily: 'Fira Code, monospace', fontSize: '0.8rem', color: 'var(--text-secondary)', opacity: 0.8 }}>{niceDate(r.created_at)}</div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', flexWrap: 'wrap' }}>
-          {/* Quick resolver assignment pills for rapid backlog processing */}
-          {adminsList.length > 0 && (
+          {/* Quick resolver assignment pills: ONLY appear if resolved AND not resolved by an admin (the old legacy ones) */}
+          {(r.status === 'resolved' || r.status === 'Resolved in scene') && !r.resolved_by && !r.resolved_by_name && adminsList.length > 0 && (
             <div
               style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginRight: '4px' }}
               onClick={(e) => e.stopPropagation()}
             >
-              {adminsList.map(a => {
-                const isSelected = r.resolved_by === a.id || (r.resolved_by_name && r.resolved_by_name.toLowerCase() === a.display_name.toLowerCase());
-                return (
-                  <button
-                    key={a.id}
-                    type="button"
-                    title={isSelected ? `Assigned to ${a.display_name}. Click to unassign.` : `Click to assign resolution to ${a.display_name}`}
-                    onClick={() => onQuickAssign && onQuickAssign(r.id, isSelected ? null : a.id)}
-                    style={{
-                      border: isSelected ? '1px solid #4da6ff' : '1px solid var(--glass-border)',
-                      background: isSelected ? 'rgba(77, 166, 255, 0.25)' : 'rgba(255, 255, 255, 0.04)',
-                      color: isSelected ? '#ffffff' : 'var(--text-muted)',
-                      fontWeight: isSelected ? 800 : 500,
-                      fontSize: '0.72rem',
-                      padding: '2px 8px',
-                      borderRadius: '12px',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                      boxShadow: isSelected ? '0 0 6px rgba(77, 166, 255, 0.4)' : 'none'
-                    }}
-                  >
-                    {a.display_name}
-                  </button>
-                );
-              })}
+              {adminsList.map(a => (
+                <button
+                  key={a.id}
+                  type="button"
+                  title={`Click to assign resolution to ${a.display_name}`}
+                  onClick={() => onQuickAssign && onQuickAssign(r.id, a.id)}
+                  style={{
+                    border: '1px solid var(--glass-border)',
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    color: 'var(--text-muted)',
+                    fontWeight: 600,
+                    fontSize: '0.72rem',
+                    padding: '2px 8px',
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  {a.display_name}
+                </button>
+              ))}
             </div>
           )}
-          {r.resolved_by_name && !adminsList.some(a => a.id === r.resolved_by || a.display_name.toLowerCase() === r.resolved_by_name.toLowerCase()) ? (
+          {(r.resolved_by_name || (r.resolved_by && adminsList.find(a => a.id === r.resolved_by)?.display_name)) ? (
             <span style={{ marginRight: '8px', fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-              Resolved: {r.resolved_by_name}
+              Resolved: {r.resolved_by_name || adminsList.find(a => a.id === r.resolved_by)?.display_name}
             </span>
           ) : null}
           {r.is_read ? <span style={{ marginRight: '4px', opacity: 0.6 }} title="Read by player">👁️</span> : null}
