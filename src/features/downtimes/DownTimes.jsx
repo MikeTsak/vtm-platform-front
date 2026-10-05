@@ -62,7 +62,7 @@ const formatPlayerStatus = (s) => {
 };
 
 const formatResolverName = (name) => {
-  if (!name) return '';
+  if (!name) return 'Storyteller';
   const str = String(name).trim();
   const lower = str.toLowerCase();
   if (lower === 'admin') return 'Mike';
@@ -337,11 +337,9 @@ function ActiveTrackItem({ dt, isProject, massReleaseCountdown, deadlinePassed }
             <div className={styles.resolutionBox} style={{ position: 'relative', zIndex: 1, marginTop: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '4px' }}>
                 <span className={`${styles.resolutionLabel} ${styles.resolutionLabelApproved}`}>GM Resolution:</span>
-                {dt.resolved_by_name ? (
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted, #a3a3a3)', fontWeight: 600 }}>
-                    Resolved by: {formatResolverName(dt.resolved_by_name)}
-                  </span>
-                ) : null}
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted, #a3a3a3)', fontWeight: 600 }}>
+                  Resolved by: {formatResolverName(dt.resolved_by_name)}
+                </span>
               </div>
               <p className={styles.resolutionText}>{dt.gm_resolution}</p>
             </div>
@@ -403,9 +401,16 @@ function ArchiveItem({ dt, isProject }) {
 
         {/* The scene is done: just a marker, no participants or scheduling note */}
         {status === 'resolved in scene' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '1rem', color: 'var(--rev)', fontWeight: 700, fontSize: '0.9rem' }}>
-            <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>theaters</span>
-            Resolved in Scene
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginTop: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--rev)', fontWeight: 700, fontSize: '0.9rem' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>theaters</span>
+              Resolved in Scene
+            </div>
+            {!dt.gm_resolution && (
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted, #a3a3a3)', fontWeight: 600 }}>
+                Resolved by: {formatResolverName(dt.resolved_by_name)}
+              </span>
+            )}
           </div>
         )}
 
@@ -415,11 +420,9 @@ function ArchiveItem({ dt, isProject }) {
               <span className={`${styles.resolutionLabel} ${status === 'rejected' ? styles.resolutionLabelRejected : styles.resolutionLabelApproved}`}>
                 GM Resolution:
               </span>
-              {dt.resolved_by_name ? (
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted, #a3a3a3)', fontWeight: 600 }}>
-                  Resolved by: {formatResolverName(dt.resolved_by_name)}
-                </span>
-              ) : null}
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted, #a3a3a3)', fontWeight: 600 }}>
+                Resolved by: {formatResolverName(dt.resolved_by_name)}
+              </span>
             </div>
             <p className={styles.resolutionText}>{dt.gm_resolution}</p>
           </div>
