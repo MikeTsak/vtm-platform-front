@@ -60,7 +60,7 @@
 
 /* Import checkbox styles */
 .customCheckbox {
-  composes: customcheckbox from './Admin.module.css';
+  composes: customCheckbox from './Admin.module.css';
 }
 
 .checkmark {
@@ -291,6 +291,16 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 0.25rem;
+    /* keep the name/date clear of the absolutely positioned result icon */
+    padding-right: 3.5rem;
+  }
+
+  /* name on one line, date under it, both allowed to wrap */
+  .rollUser {
+    display: flex;
+    flex-direction: column;
+    max-width: 100%;
+    overflow-wrap: anywhere;
   }
 
   .rollSuccesses {

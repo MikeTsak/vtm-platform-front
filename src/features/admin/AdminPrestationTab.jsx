@@ -100,7 +100,7 @@ export default function AdminPrestationTab({ directMessages, npcMessages, npcs, 
         outDiv.style.border = '1px solid #444';
         const model = e.item.getModel();
         const isNode = e.item.getType() === 'node';
-        const title = isNode ? model.label : `${model.source} ➔ ${model.target}`;
+        const title = isNode ? model.label : `${model.source} → ${model.target}`;
         outDiv.innerHTML = `<strong>${title}</strong><br/>${model.detail || ''}`;
         return outDiv;
       }

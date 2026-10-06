@@ -1,3 +1,4 @@
+import FaGlyph from '../../ui/FaGlyph';
 import React, { useState, useEffect, useRef } from 'react';
 import api from '../../core/api';
 import styles from '../../styles/Admin.module.css';
@@ -154,7 +155,7 @@ export default function AdminBloodWebTab() {
 
   return (
     <div className={styles.adminCard}>
-      <h2 style={{ color: 'var(--text-primary)', margin: '0 0 4px 0', fontSize: '1.6rem', fontWeight: 800 }}>🩸 The Blood Web (G6 v4)</h2>
+      <h2 style={{ color: 'var(--text-primary)', margin: '0 0 4px 0', fontSize: '1.6rem', fontWeight: 800 }}><FaGlyph name="fa-droplet" size={24} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />The Blood Web (G6 v4)</h2>
       <p style={{ color: 'var(--text-secondary)', margin: '0 0 2rem 0', fontSize: '0.85rem' }}>Interactive city-wide hunger and blood potency radar.</p>
 
       <div className={styles.rGrid3} style={{ marginBottom: '2rem' }}>

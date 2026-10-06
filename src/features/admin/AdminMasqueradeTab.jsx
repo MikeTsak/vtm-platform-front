@@ -1,3 +1,4 @@
+import FaGlyph from '../../ui/FaGlyph';
 import React, { useState } from 'react';
 import api from '../../core/api';
 import styles from '../../styles/Admin.module.css';
@@ -22,7 +23,7 @@ export default function AdminMasqueradeTab() {
 
   return (
     <div className={styles.adminCard}>
-      <h2 style={{ color: 'var(--text-primary)', margin: '0 0 4px 0', fontSize: '1.6rem', fontWeight: 800 }}>⚠️ Masquerade Threat Dial</h2>
+      <h2 style={{ color: 'var(--text-primary)', margin: '0 0 4px 0', fontSize: '1.6rem', fontWeight: 800 }}><FaGlyph name="fa-triangle-exclamation" size={24} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Masquerade Threat Dial</h2>
       <p style={{ color: 'var(--text-secondary)', margin: '0 0 2rem 0', fontSize: '0.85rem' }}>Set the global Second Inquisition / Masquerade Threat level.</p>
 
       {err && <div className={`${styles.alert} ${styles.alertError}`}>{err}</div>}

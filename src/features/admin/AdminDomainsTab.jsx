@@ -1,3 +1,4 @@
+import FaGlyph from '../../ui/FaGlyph';
 import React, { useState, useEffect } from 'react';
 import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/Admin.module.css';
@@ -67,11 +68,11 @@ export default function AdminDomainsTab() {
     <div className={styles.adminCard}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '2rem' }}>
         <div>
-          <h2 style={{ color: 'var(--text-primary)', margin: 0, fontSize: '1.6rem', fontWeight: 800 }}>🗺️ Domain Threats & Safety</h2>
+          <h2 style={{ color: 'var(--text-primary)', margin: 0, fontSize: '1.6rem', fontWeight: 800 }}><FaGlyph name="fa-map" size={24} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Domain Threats & Safety</h2>
           <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0', fontSize: '0.85rem' }}>Track the safety ratings of all city domains. Messy criticals reduce safety automatically.</p>
         </div>
         <button onClick={drawMonthly} disabled={drawing} className={`${styles.btn} ${styles.btnPrimary}`} style={{ background: '#ff5252', boxShadow: '0 2px 10px rgba(255,82,82,0.3)' }}>
-          {drawing ? 'Drawing...' : '🎲 Draw Monthly Problems (3)'}
+          {drawing ? 'Drawing...' : <><FaGlyph name="fa-dice" size={15} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Draw Monthly Problems (3)</>}
         </button>
       </div>
 

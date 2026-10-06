@@ -1,3 +1,4 @@
+import FaGlyph from '../../ui/FaGlyph';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import styles from '../../styles/Admin.module.css';
@@ -34,7 +35,7 @@ export default function AdminGhoulsTab({ ghouls }) {
   if (!ghouls || ghouls.length === 0) {
     return (
       <div className={styles.adminCard} style={{ textAlign: 'center', padding: '4rem 2rem', opacity: 0.7 }}>
-        <span style={{ fontSize: '3rem', display: 'block', marginBottom: '1rem' }}>🩸</span>
+        <span style={{ fontSize: '3rem', display: 'block', marginBottom: '1rem' }}><FaGlyph name="fa-droplet" size={48} /></span>
         <h3 style={{ color: 'var(--text-primary)', margin: 0 }}>No Ghouls Found</h3>
         <p style={{ color: 'var(--text-secondary)', marginTop: '0.5rem' }}>No Kindred have created ghouls yet.</p>
       </div>
@@ -47,7 +48,7 @@ export default function AdminGhoulsTab({ ghouls }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '1.5rem' }}>
         <div>
           <h2 style={{ color: 'var(--text-primary)', margin: 0, fontSize: '1.6rem', fontWeight: 800 }}>
-            🩸 Ghouls Directory
+            <FaGlyph name="fa-droplet" size={24} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Ghouls Directory
           </h2>
           <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0', fontSize: '0.85rem' }}>
             {ghouls.length} ghoul{ghouls.length !== 1 ? 's' : ''} bound by the Blood Oath

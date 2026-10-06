@@ -1,3 +1,4 @@
+import FaGlyph from '../../ui/FaGlyph';
 import React, { useState, useEffect, useRef } from 'react';
 import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/Admin.module.css';
@@ -139,7 +140,7 @@ export default function AdminCoteriesTab() {
 
   return (
     <div className={styles.adminCard}>
-      <h2 style={{ color: 'var(--text-primary)', margin: '0 0 4px 0', fontSize: '1.6rem', fontWeight: 800 }}>🐺 Coterie Network (G6 v4)</h2>
+      <h2 style={{ color: 'var(--text-primary)', margin: '0 0 4px 0', fontSize: '1.6rem', fontWeight: 800 }}><FaGlyph name="fa-paw" size={24} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Coterie Network (G6 v4)</h2>
       <p style={{ color: 'var(--text-secondary)', margin: '0 0 2rem 0', fontSize: '0.85rem' }}>Visual representation of city coteries and their members.</p>
 
       {err && <div className={`${styles.alert} ${styles.alertError}`}>{err}</div>}

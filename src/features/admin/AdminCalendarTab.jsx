@@ -78,6 +78,7 @@ export default function AdminCalendarTab() {
 
   // Events state
   const [events, setEvents] = useState([]);
+  const [liveSessions, setLiveSessions] = useState([]); // Live Session records, shown as read-only markers
   const [selectedEventId, setSelectedEventId] = useState(null);
   const [eventTitle, setEventTitle] = useState('');
   const [eventDate, setEventDate] = useState('');
@@ -153,16 +154,18 @@ export default function AdminCalendarTab() {
     setLoading(true);
     setErr('');
     try {
-      const [eventsRes, dtRes, commsRes, rsvpRes, cyclesRes] = await Promise.all([
+      const [eventsRes, dtRes, commsRes, rsvpRes, cyclesRes, sessionsRes] = await Promise.all([
         api.get('/admin/events').catch(() => ({ data: { events: [] } })),
         api.get('/downtimes/config').catch(() => ({ data: {} })),
         api.get('/admin/comms/config').catch(() => ({ data: { schedule: {} } })),
         api.get('/admin/events/rsvp').catch(() => ({ data: { config: null, roster: [] } })),
-        api.get('/admin/downtimes/cycles').catch(() => ({ data: { cycles: [] } }))
+        api.get('/admin/downtimes/cycles').catch(() => ({ data: { cycles: [] } })),
+        api.get('/admin/live-sessions').catch(() => ({ data: { sessions: [] } }))
       ]);
 
       const loadedEvents = eventsRes.data?.events || [];
       setEvents(loadedEvents);
+      setLiveSessions(sessionsRes.data?.sessions || []);
 
       // Downtimes config
       const dtData = dtRes.data || {};
@@ -811,6 +814,20 @@ export default function AdminCalendarTab() {
     return map;
   }, [events, dtCycles]);
 
+  // Live Sessions that actually ran, by day. Unlike the dates above these are
+  // records (the day it was started), not something to schedule, so they are
+  // markers only: managed from the Live Session dashboard.
+  const liveSessionMap = useMemo(() => {
+    const map = {};
+    for (const ls of liveSessions) {
+      const day = formatDateOnly(ls.created_at);
+      if (!day) continue;
+      if (!map[day]) map[day] = [];
+      map[day].push(ls);
+    }
+    return map;
+  }, [liveSessions]);
+
   // Mass release: every cycle's release (its own, or the morning after it closes) plus the live setting.
   const releaseMap = useMemo(() => {
     const map = {};
@@ -1012,6 +1029,7 @@ export default function AdminCalendarTab() {
                   const isExplicitDtOpen = downtimeOpening === dateStr;
                   const hasDtOpen = dtOpenItems.length > 0 || isExplicitDtOpen;
                   const releaseItems = releaseMap[dateStr] || [];
+                  const sessionItems = liveSessionMap[dateStr] || [];
                   const isProjectClose = projectDeadline === dateStr;
 
                   let bg = 'var(--glass-inset)';
@@ -1182,6 +1200,16 @@ export default function AdminCalendarTab() {
                           </div>
                         )}
 
+                        {sessionItems.length > 0 && (
+                          <div
+                            style={{ fontSize: '0.6rem', fontWeight: 800, background: 'rgba(38, 198, 218, 0.22)', border: '1px solid #26c6da', color: '#80deea', borderRadius: '3px', padding: '2px 4px', display: 'flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap', lineHeight: 1.2 }}
+                            title={`Live Session: ${sessionItems.map(ls => `${ls.name || 'Session'} (${ls.status === 'active' ? 'running' : `${Math.round((ls.duration_seconds || 0) / 60)} min`}, ${ls.player_count || 0} players)`).join('; ')}`}
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: '11px', flexShrink: 0 }}>casino</span>
+                            <span>SESSION{sessionItems.length > 1 ? ` x${sessionItems.length}` : ''}</span>
+                          </div>
+                        )}
+
                         {isProjectClose && (
                           <div
                             style={{ fontSize: '0.6rem', fontWeight: 800, background: 'rgba(179, 136, 255, 0.22)', border: '1px solid #b388ff', color: '#d1b8ff', borderRadius: '3px', padding: '2px 4px', display: 'flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap', lineHeight: 1.2 }}
@@ -1233,6 +1261,10 @@ export default function AdminCalendarTab() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#b388ff' }}>history_edu</span>
             <span>Violet: Project Deadline</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#26c6da' }}>casino</span>
+            <span>Teal: Live Session held (from the Live Session dashboard)</span>
           </div>
         </div>
       </div>
@@ -1357,7 +1389,7 @@ export default function AdminCalendarTab() {
             </span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+          <div className={styles.rGrid2} style={{ gap: '0.75rem' }}>
             <label className={styles.labeledInput}>
               <span>DT Opening Date</span>
               <input
@@ -1420,7 +1452,7 @@ export default function AdminCalendarTab() {
             </button>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', flexWrap: 'wrap', gap: '0.5rem' }}>
             <select
               value={downtimePhase}
               onChange={(e) => setDowntimePhase(e.target.value)}
@@ -1523,7 +1555,7 @@ export default function AdminCalendarTab() {
         )}
 
         {/* Single Cycle Quick Add Row */}
-        <form onSubmit={handleAddSingleCycle} style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 2fr) minmax(130px, 1fr) minmax(130px, 1fr) auto', gap: '8px', alignItems: 'flex-end' }}>
+        <form onSubmit={handleAddSingleCycle} className={styles.rFormRow}>
           <label className={styles.labeledInput} style={{ margin: 0 }}>
             <span>New Cycle Name</span>
             <input
@@ -1682,7 +1714,7 @@ export default function AdminCalendarTab() {
             </p>
           </div>
 
-          <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-primary)', cursor: 'pointer' }}>
               <input
                 type="checkbox"
@@ -1730,7 +1762,7 @@ export default function AdminCalendarTab() {
         </div>
 
         {/* Inputs to tune counts */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+        <div className={styles.rGrid2} style={{ gap: '1rem' }}>
           <label className={styles.labeledInput}>
             <span>Confirmed Attendees Count</span>
             <input

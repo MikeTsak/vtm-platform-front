@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import api, { formatApiError } from '../../core/api';
 import { formatEuDate } from '../../utils/dateFormatter';
+import FaGlyph from '../../ui/FaGlyph';
 import styles from '../../styles/Admin.module.css';
 import MiniSearch from 'minisearch';
 import { symlogoWhite, CLAN_HEX as CLAN_COLORS } from '../../data/clans';
@@ -243,7 +244,7 @@ export default function AdminXPTab({ users, onGrant, onBulkGrant, adminxp }) {
                 <h3 style={{ color: CLAN_COLORS[charModal.clan] || 'var(--text-color)' }}>{charModal.name}'s XP History</h3>
                 <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Current Balance: <strong style={{color: 'var(--text-color)'}}>{charModal.xp} XP</strong></div>
               </div>
-              <button className={`${styles.btn} ${styles.btnSecondary}`} style={{ borderRadius: '50%', width: '40px', height: '40px', padding: 0 }} onClick={() => setCharModal(null)}>✕</button>
+              <button className={`${styles.btn} ${styles.btnSecondary}`} style={{ borderRadius: '50%', width: '40px', height: '40px', padding: 0 }} onClick={() => setCharModal(null)} aria-label="Close"><FaGlyph name="fa-xmark" size={14} /></button>
             </div>
             <div className={styles.modalBody} style={{ padding: '20px', gap: '10px' }}>
               {logs.filter(l => l.character_id === charModal.id).length === 0 ? (

@@ -1,4 +1,5 @@
 // src/components/admin/AdminNpcEmailTab.jsx
+import FaGlyph from '../../ui/FaGlyph';
 import React, { useEffect, useState, useRef } from 'react';
 import api from '../../core/api';
 import { formatEuDate } from '../../utils/dateFormatter';
@@ -128,7 +129,7 @@ export default function AdminNpcEmailTab() {
             {threads.map(t => (
               <div key={t.id} onClick={() => loadThreadMessages(t.id)} style={{ padding: '1.25rem', cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.03)', background: selectedThreadId === t.id ? 'var(--glass-bg-hover)' : 'transparent', borderLeft: `3px solid ${selectedThreadId === t.id ? 'var(--accent-purple)' : 'transparent'}`, transition: 'all 0.2s' }}>
                 <div style={{ fontWeight: t.unread_count > 0 ? 800 : 600, color: t.unread_count > 0 ? 'var(--accent-purple)' : 'var(--text-color)', textShadow: t.unread_count > 0 ? '0 0 10px var(--accent-purple-glow)' : 'none', fontSize: '0.95rem' }}>{t.subject}</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>{t.user_name} ➔ {t.identity_name}</div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>{t.user_name} → {t.identity_name}</div>
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '6px', textAlign: 'right', fontFamily: 'monospace' }}>{formatEuDate(t.updated_at)}</div>
               </div>
             ))}
@@ -145,7 +146,7 @@ export default function AdminNpcEmailTab() {
                   <span className="material-symbols-outlined" style={{ fontSize: 18 }} aria-hidden="true">arrow_back</span> Inbox
                 </button>
                 <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-color)', overflowWrap: 'anywhere' }}>{activeThread.subject}</h3>
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '6px' }}>From: <span style={{ color: 'var(--text-color)', fontWeight: 700 }}>{activeThread.user_name} [{activeThread.char_name || 'Kindred'}]</span> ➔ To: <span style={{ color: 'var(--accent-purple)', fontFamily: 'monospace' }}>{activeThread.email_address}</span></div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '6px' }}>From: <span style={{ color: 'var(--text-color)', fontWeight: 700 }}>{activeThread.user_name} [{activeThread.char_name || 'Kindred'}]</span> → To: <span style={{ color: 'var(--accent-purple)', fontFamily: 'monospace' }}>{activeThread.email_address}</span></div>
               </div>
 
               <div style={{ flex: 1, overflowY: 'auto', padding: 'clamp(0.9rem, 3vw, 2rem)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -179,7 +180,7 @@ export default function AdminNpcEmailTab() {
             </>
           ) : (
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.4, flexDirection: 'column', gap: '1rem' }}>
-              <span style={{ fontSize: '3rem' }}>✉️</span>
+              <span style={{ fontSize: '3rem' }}><FaGlyph name="fa-envelope" size={48} /></span>
               <h3 style={{ margin: 0, color: 'var(--text-secondary)' }}>Select a thread to view messages</h3>
             </div>
           )}

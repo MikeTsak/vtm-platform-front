@@ -1,3 +1,4 @@
+import FaGlyph from '../../ui/FaGlyph';
 import React, { useState, useEffect } from 'react';
 import api, { formatApiError } from '../../core/api';
 import { formatEuDate } from '../../utils/dateFormatter';
@@ -44,7 +45,7 @@ export default function AdminBoonsTab() {
     <div className={styles.adminCard}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
         <div>
-          <h2 style={{ color: 'var(--text-primary)', margin: 0, fontSize: '1.6rem', fontWeight: 800 }}>🤝 Boon Registry</h2>
+          <h2 style={{ color: 'var(--text-primary)', margin: 0, fontSize: '1.6rem', fontWeight: 800 }}><FaGlyph name="fa-handshake" size={24} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Boon Registry</h2>
           <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0', fontSize: '0.85rem' }}>All registered life boons, blood boons, and minor debts.</p>
         </div>
         <button onClick={loadBoons} className={`${styles.btn} ${styles.btnSecondary}`}>Refresh Registry</button>

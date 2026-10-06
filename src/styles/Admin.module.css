@@ -1320,19 +1320,40 @@
   }
 
   /* Native inputs ≥16px so iOS Safari doesn't zoom the page when focusing */
-  .input,
-  .select,
-  .textarea {
+  /* (.content prefix: the base .input/.btn rules are declared later in this
+     file, so equal specificity would let them win and undo these.) */
+  .content .input,
+  .content .select,
+  .content .textarea {
     font-size: 16px;
   }
 
-  /* Generous touch targets */
-  .btn {
+  /* Generous touch targets; long labels wrap instead of overflowing the card */
+  .content .btn {
     min-height: 40px;
+    max-width: 100%;
+    white-space: normal;
+    text-align: center;
   }
 
-  .btnSmall {
+  .content .btnSmall {
     min-height: 34px;
+  }
+
+  /* Touch targets for every tool at once, without touching each component.
+     :where() keeps specificity at zero so any component rule still wins. */
+  :where(.content) :is(
+    button,
+    select,
+    input:not([type='checkbox'], [type='radio'], [type='range'], [type='hidden'], [type='file'], [type='color'])
+  ) {
+    min-height: 38px;
+  }
+
+  /* Native checkboxes / radios can't be resized reliably (some are custom-
+     styled toggles), but a transform scales both the glyph and its hit area. */
+  :where(.content) :is(input[type='checkbox'], input[type='radio']) {
+    transform: scale(1.3);
   }
 }
 
@@ -1383,6 +1404,14 @@
 .rInput {
   width: 300px;
   max-width: 100%;
+}
+
+/* Inline "add" form: name + two dates + submit on one row (desktop) */
+.rFormRow {
+  display: grid;
+  grid-template-columns: minmax(180px, 2fr) minmax(130px, 1fr) minmax(130px, 1fr) auto;
+  gap: 8px;
+  align-items: flex-end;
 }
 
 /* Scrolling wrapper for bare <table> elements */
@@ -1480,13 +1509,58 @@
 }
 
 @media (max-width: 900px) {
+  /* minmax(0, 1fr), not 1fr: a bare 1fr track can't shrink below its content's
+     min-content, so one wide child (a date input, a table, a long word) would
+     stretch the whole column past the viewport and clip the right edge. */
   .rGrid2,
   .rGrid3,
   .rSideMain,
   .rMainSide,
   .rGraphLayout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 1rem;
+  }
+
+  .rGrid2 > *,
+  .rGrid3 > *,
+  .rSideMain > *,
+  .rMainSide > *,
+  .rGraphLayout > * {
+    min-width: 0;
+  }
+
+  /* Log-style tables: each row becomes a small card instead of a sideways scroll
+     with a sliver-wide "details" column (!important beats the inline cell padding). */
+  .stackTable,
+  .stackTable tbody,
+  .stackTable tr,
+  .stackTable td {
+    display: block;
+    width: 100%;
+  }
+
+  .stackTable thead {
+    display: none;
+  }
+
+  .stackTable tr {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--glass-border);
+  }
+
+  .stackTable td {
+    padding: 2px 12px !important;
+    overflow-wrap: anywhere;
+  }
+
+  /* Inline form row (e.g. Calendar "new cycle"): 2 per row, name + button full width */
+  .rFormRow {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .rFormRow > :first-child,
+  .rFormRow > :last-child {
+    grid-column: 1 / -1;
   }
 
   .rGraphCanvas {
@@ -2377,8 +2451,60 @@ tr:hover .clanIcon,
    ═══════════════════════════════════════════════ */
 .characterCardGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(440px, 100%), 1fr));
   gap: 1.75rem;
+}
+
+/* All widths: avatar + name block can shrink and wrap, so a long email or name
+   never pushes the clan pill off the right edge of the card. */
+.charCardHeader > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.cardOwnerInfo {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.charCardName {
+  flex-wrap: wrap;
+  row-gap: 6px;
+  overflow-wrap: anywhere;
+}
+
+/* Phones: tighter card header and smaller name */
+@media (max-width: 900px) {
+  .characterCardGrid {
+    gap: 1rem;
+  }
+
+  .charCardHeader {
+    gap: 10px;
+    padding: 14px 14px 14px 12px;
+  }
+
+  .charCardName {
+    gap: 6px 10px;
+    font-size: 1.15rem;
+  }
+
+  .charCardOwnerLabel {
+    letter-spacing: 0.05em;
+    text-transform: none;
+  }
+
+  .charCardHeaderRight {
+    gap: 8px;
+  }
+
+  .charCardClanLogo {
+    display: none;
+  }
+
+  .charCardBody {
+    padding: 16px 14px;
+  }
 }
 
 .characterCard {
@@ -3577,7 +3703,7 @@ tr:hover .clanIcon,
   }
 
   .characterCardGrid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 1rem;
   }
 
@@ -3642,11 +3768,23 @@ tr:hover .clanIcon,
     flex-basis: 100%;
   }
 
-  .userRow .td[data-label="Email"],
-  .userRow .td[data-label="Discord ID"],
-  .userRow .td[data-label="Display Name"],
+  .userRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* One field per line: half-width cells squeezed the role select to "us" and
+     the character / clan / XP text into overlapping fragments. */
+  .userRow .td,
   .userRow .userActions {
     grid-column: 1 / -1;
+  }
+
+  .userRow .td .select {
+    width: 100%;
+  }
+
+  .userRow .td[data-label="Clan / XP"] .row {
+    flex-wrap: wrap;
   }
 
   .userRow .userActions {

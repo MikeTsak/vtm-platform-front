@@ -1,5 +1,5 @@
 // src/features/admin/LiveSessionDashboard.jsx
-import React, { useEffect, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import MiniSearch from 'minisearch';
 import api from '../../core/api';
 import { copyToClipboard } from '../../utils/clipboard';
@@ -22,6 +22,7 @@ import sharedStyles from '../../styles/LiveSession.module.css';
 import adminStyles from '../../styles/LiveSessionAdmin.module.css';
 
 const styles = { ...sharedStyles, ...adminStyles };
+const PlayerScreen = lazy(() => import('../live-session/LiveSession'));
 
 const RULES = [
   {
@@ -47,7 +48,7 @@ const RULES = [
   {
     category: 'rules',
     title: 'Frenzy',
-    content: 'Triggered by anger (Fury), hunger (Hunger), or fear (Terror).\nRoll Willpower + (Humanity / 3) to resist. Success suppresses the frenzy.\nFailure means the Beast takes over. During Frenzy, immune to health penalties and can only use physical Disciplines.'
+    content: 'Triggered by anger (Fury), hunger (Hunger), or fear (Terror).\nRoll unspent Willpower + (Humanity / 3, rounded down) to resist. Success suppresses the frenzy.\nFailure means the Beast takes over. During Frenzy, immune to health penalties and can only use physical Disciplines.'
   }
 ];
 
@@ -260,6 +261,8 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
   const [oppNormal, setOppNormal] = useState(3);
   const [oppHunger, setOppHunger] = useState(0);
   const [actionMsg, setActionMsg] = useState('');
+  const [wrapUp, setWrapUp] = useState(null); // { xp, recap } while the End Session dialog is open
+  const [previewId, setPreviewId] = useState(null); // character id whose screen the ST is previewing; null = off
 
   const flash = (msg) => { setActionMsg(msg); setTimeout(() => setActionMsg(''), 3000); };
 
@@ -285,10 +288,18 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
     rejoin();
     socket.on('connect', rejoin);
     socket.on('refresh_session', poll);
-    const id = setInterval(poll, 5000);
+    socket.on('session_presence', poll); // someone joined or dropped
+    // Sockets deliver updates; polling is the safety net: every 5s while the
+    // socket is down, otherwise only a slow 30s resync.
+    let tick = 0;
+    const id = setInterval(() => {
+      tick += 1;
+      if (!socket.connected || tick % 6 === 0) poll();
+    }, 5000);
 
     return () => {
       socket.off('refresh_session', poll);
+      socket.off('session_presence', poll);
       socket.off('connect', rejoin);
       clearInterval(id);
     };
@@ -338,12 +349,30 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
     fetchArchives();
   };
 
+  // Ending asks for a wrap-up first: optional XP for everyone seated, and a recap
+  // kept with the session. Ending removes every player from the table.
   const endSession = async () => {
-    if (!window.confirm('End this Live Session? The timer will be locked.')) return;
+    const xp = Math.trunc(Number(wrapUp?.xp) || 0);
+    const recap = (wrapUp?.recap || '').trim();
+    const charIds = players.map(p => p.character_id).filter(Boolean);
+    setWrapUp(null);
+    if (recap) await updateMetadata({ recap }); // must precede the end: metadata is locked afterwards
+    if (xp > 0 && charIds.length) {
+      await api.patch('/admin/characters/xp/bulk', { delta: xp, character_ids: charIds })
+        .then(() => flash(`Awarded ${xp} XP to ${charIds.length} player(s).`))
+        .catch(() => alert('The session will end, but the XP could not be awarded. Use the XP tab.'));
+    }
     await api.post(`/live-session/${sessionId}/end`).catch(() => {});
     const sData = await getLiveSession(sessionId).catch(() => null);
     if (sData) setSession(sData.session ?? sData);
     fetchArchives();
+  };
+
+  const removePlayer = async (userId, name) => {
+    if (!window.confirm(`Remove ${name} from this session? They can rejoin with the code.`)) return;
+    await api.delete(`/live-session/${sessionId}/participants/${userId}`).catch(() => alert('Could not remove the player.'));
+    setPlayers(prev => prev.filter(p => p.user_id !== userId));
+    flash(`${name} removed.`);
   };
 
   // Mirror of session.metadata that stays current within a single tick, so two
@@ -626,9 +655,65 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
     );
   }, [broadcasts, rolls]);
 
+  // Players who have a character can be previewed; the card's sheet is what their screen would show.
+  const previewPlayers = players.filter(p => p.character_id);
+  const previewPlayer = previewId == null ? null : previewPlayers.find(p => String(p.character_id) === String(previewId)) ?? null;
+  const previewProp = useMemo(() => (previewPlayer ? {
+    sessionId,
+    character: { id: previewPlayer.character_id, name: previewPlayer.name, clan: previewPlayer.clan, user_id: previewPlayer.user_id, sheet: previewPlayer.sheet },
+  } : null), [previewPlayer, sessionId]);
+  const pickRandomPreview = () => {
+    if (previewPlayers.length) setPreviewId(previewPlayers[Math.floor(Math.random() * previewPlayers.length)].character_id);
+  };
+
   return (
     <>
       <div className={styles.dashboardContainer}>
+
+          {wrapUp && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={() => setWrapUp(null)}>
+              <div style={{ background: 'var(--surface-container-highest)', border: '1px solid var(--outline-variant)', borderRadius: '10px', padding: '1.25rem', width: 'min(440px, 100%)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }} onClick={e => e.stopPropagation()}>
+                <h3 style={{ margin: 0, fontFamily: 'var(--font-display)', color: 'var(--primary)' }}>End this session?</h3>
+                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                  The timer is locked and everyone is removed from the table.
+                </p>
+                <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  XP for each of the {players.length} player(s) seated (optional)
+                  <input type="number" min="0" className={styles.formInput} value={wrapUp.xp} onChange={e => setWrapUp(w => ({ ...w, xp: e.target.value }))} placeholder="0" />
+                </label>
+                <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  Recap (optional, kept with the session)
+                  <textarea className={styles.formInput} rows={4} value={wrapUp.recap} onChange={e => setWrapUp(w => ({ ...w, recap: e.target.value }))} placeholder="What happened tonight..." />
+                </label>
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                  <button className={styles.btnOutline} onClick={() => setWrapUp(null)}>Cancel</button>
+                  <button className={styles.btnPrimary} style={{ width: 'auto' }} onClick={endSession}>End Session</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+      {/* Read-only look at one player's screen, to tell them where to click. */}
+      {previewPlayer && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 2500, overflow: 'auto', background: '#131313' }}>
+          <div style={{ position: 'sticky', top: 0, zIndex: 20, display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', padding: '0.6rem 1rem', background: 'var(--surface-container-highest)', borderBottom: '1px solid var(--outline-variant)' }}>
+            <strong style={{ color: 'var(--primary)' }}>Player view</strong>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>read only: nothing here is sent</span>
+            <select className={styles.formInput} style={{ width: 'auto', marginLeft: 'auto' }} value={previewPlayer.character_id} onChange={e => setPreviewId(Number(e.target.value))}>
+              {previewPlayers.map(p => <option key={p.character_id} value={p.character_id}>{p.name ?? p.character_name}</option>)}
+            </select>
+            <button className={styles.btnOutline} onClick={pickRandomPreview}>Random player</button>
+            <button className={styles.btnPrimary} style={{ width: 'auto' }} onClick={() => setPreviewId(null)}>Close</button>
+          </div>
+          {/* inert: no clicks, focus or keys reach the player screen. */}
+          <div inert style={{ pointerEvents: 'none' }}>
+            <Suspense fallback={<div style={{ padding: '2rem', color: 'var(--text-muted)' }}>Loading...</div>}>
+              <PlayerScreen preview={previewProp} />
+            </Suspense>
+          </div>
+        </div>
+      )}
+
 
       <div className={styles.pane}>
         <div className={styles.paneHeader}><h2>ST Controls</h2></div>
@@ -652,7 +737,22 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
               </div>
               <div style={{ fontSize: '1.5rem', fontFamily: 'monospace', fontWeight: 800 }}>{fmtTime(duration)}</div>
               {session.status === 'active' && (
-                <button className={styles.btnOutline} style={{ marginTop: '0.75rem', width: '100%', borderColor: 'var(--danger)', color: 'var(--danger)' }} onClick={endSession}>End Session</button>
+                <button className={styles.btnOutline} style={{ marginTop: '0.75rem', width: '100%', borderColor: 'var(--danger)', color: 'var(--danger)' }} onClick={() => setWrapUp({ xp: '', recap: '' })}>End Session</button>
+              )}
+              {session.status === 'active' && (
+                <>
+                  <button
+                    className={styles.btnOutline}
+                    style={{ marginTop: '0.5rem', width: '100%', fontSize: '0.75rem' }}
+                    onClick={() => copyToClipboard(`${window.location.origin}/live-session?session=${session.session_code ?? sessionId}`).then(ok => flash(ok ? 'Join link copied.' : 'Copy failed.'))}
+                  >
+                    Copy join link
+                  </button>
+                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', marginTop: '0.6rem', fontSize: '0.72rem', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={!!session.metadata?.keepOpen} onChange={e => updateMetadata({ keepOpen: e.target.checked })} />
+                    Keep open past 24h
+                  </label>
+                </>
               )}
             </div>
           ) : sessionId && (
@@ -705,6 +805,13 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
                     <div key={arch.id} className={styles.npcItem} onClick={() => { setSessionId(code); localStorage.setItem('adminLiveSessionId', code); }}>
                       <div style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{arch.name}</div>
                       <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{formatEuDate(arch.created_at)} · Code: {code}</div>
+                      {(() => {
+                        let m = arch.metadata;
+                        try { m = typeof m === 'string' ? JSON.parse(m) : m; } catch (e) { m = null; }
+                        return m?.recap
+                          ? <div title={m.recap} style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontStyle: 'italic', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.recap}</div>
+                          : null;
+                      })()}
                     </div>
                   );
                 })
@@ -728,6 +835,7 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
               <input className={styles.formInput} style={{ width: '220px' }} value={broadcast} onChange={e => setBroadcast(e.target.value)} placeholder="ST Broadcast or Whisper..." disabled={session?.status === 'ended'} />
               <button className={styles.btnPrimary} style={{ width: 'auto' }} onClick={sendBroadcast} disabled={session?.status === 'ended'}>Send</button>
               <button className={styles.btnOutline} style={{ borderColor: 'var(--warning)', color: 'var(--warning)' }} onClick={() => Promise.all(players.map(p => adjustPlayer(p.character_id ?? p.id, { hungerDelta: 1 })))} disabled={session?.status === 'ended'}>+1 Ambient Hunger</button>
+              <button className={styles.btnOutline} onClick={previewPlayer ? () => setPreviewId(null) : pickRandomPreview} disabled={!previewPlayers.length} title="See a random player's screen (read only) so you can tell them where to click">{previewPlayer ? 'Hide player view' : 'Player view'}</button>
               <button className={styles.btnOutline} onClick={() => Promise.all(players.map(p => adjustPlayer(p.character_id ?? p.id, { forceRouseCheck: true })))} disabled={session?.status === 'ended'}>Rouse All</button>
               <button className={styles.btnOutline} onClick={() => Promise.all(players.map(p => adjustPlayer(p.character_id ?? p.id, { frenzyState: null })))} disabled={session?.status === 'ended'}>Clear All Frenzy</button>
               <button className={styles.btnOutline} onClick={restoreWillpower} disabled={session?.status === 'ended'} title="Recover Superficial Willpower = higher of Composure/Resolve (start of session)">Restore WP</button>
@@ -770,7 +878,13 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.75rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '1.1rem', color: 'var(--on-surface)', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
+                        <div style={{ fontSize: '1.1rem', color: 'var(--on-surface)', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <span
+                            title={p.online ? 'At the table' : 'Not connected'}
+                            style={{ display: 'inline-block', width: 9, height: 9, borderRadius: '50%', marginRight: 7, background: p.online ? 'var(--success)' : 'transparent', border: `1px solid ${p.online ? 'var(--success)' : 'var(--outline)'}` }}
+                          />
+                          {name}
+                        </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '2px' }}>
                           <span className={styles.playerClan}>{clan} · BP {bp}</span>
                           <div style={{ display: 'flex', gap: '2px', marginLeft: 'auto' }}>
@@ -795,6 +909,16 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
                           </div>
                         </div>
                       </div>
+                      {session?.status !== 'ended' && p.user_id && (
+                        <button
+                          className={styles.btnOutline}
+                          style={{ padding: '0.1rem 0.4rem', fontSize: '0.65rem', marginLeft: '0.5rem', borderColor: 'var(--danger)', color: 'var(--danger)', flexShrink: 0 }}
+                          title="Remove from the session"
+                          onClick={() => removePlayer(p.user_id, name)}
+                        >
+                          Remove
+                        </button>
+                      )}
                     </div>
                     {(frenzy || torpor || impaired || willBroken || degeneration || compulsion) && (
                       <div className={styles.badgeRow}>

@@ -1,3 +1,4 @@
+import FaGlyph from '../../ui/FaGlyph';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import api from '../../core/api';
 import { formatEuDate } from '../../utils/dateFormatter';
@@ -219,19 +220,19 @@ export default function AdminTimelineTab({ users }) {
           <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', paddingBottom: '0.5rem' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '1rem', fontWeight: 600 }}>
               <input type="checkbox" checked={showXP} onChange={e => setShowXP(e.target.checked)} style={{ transform: 'scale(1.2)' }} />
-              ⭐ XP
+              <FaGlyph name="fa-star" size={15} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />XP
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '1rem', fontWeight: 600 }}>
               <input type="checkbox" checked={showRolls} onChange={e => setShowRolls(e.target.checked)} style={{ transform: 'scale(1.2)' }} />
-              🎲 Rolls
+              <FaGlyph name="fa-dice" size={15} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Rolls
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '1rem', fontWeight: 600 }}>
               <input type="checkbox" checked={showBoons} onChange={e => setShowBoons(e.target.checked)} style={{ transform: 'scale(1.2)' }} />
-              🤝 Boons
+              <FaGlyph name="fa-handshake" size={15} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Boons
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '1rem', fontWeight: 600 }}>
               <input type="checkbox" checked={showDowntimes} onChange={e => setShowDowntimes(e.target.checked)} style={{ transform: 'scale(1.2)' }} />
-              🌙 Downtimes
+              <FaGlyph name="fa-moon" size={15} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Downtimes
             </label>
           </div>
         </div>

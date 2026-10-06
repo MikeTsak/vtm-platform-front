@@ -668,7 +668,7 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
 
         {/* Heatmap Area */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '28px' }}>
-          <div style={{ flex: '1 1 500px' }}>
+          <div style={{ flex: '1 1 min(500px, 100%)', minWidth: 0 }}>
             {!globalOnly && <h4 style={{ marginBottom: '14px', color: 'var(--text-primary)' }}>{getName(selectedUser1)}</h4>}
             {isLoading1 ? (
               <div style={{ color: 'var(--text-secondary)' }}>Loading activity data...</div>
@@ -725,7 +725,7 @@ export default function ActivityHeatmap({ users = [], globalOnly = false, onOpen
           </div>
 
           {!globalOnly && selectedUser2 !== 'none' && (
-            <div style={{ flex: '1 1 500px' }}>
+            <div style={{ flex: '1 1 min(500px, 100%)', minWidth: 0 }}>
               <h4 style={{ marginBottom: '14px', color: 'var(--text-primary)' }}>{getName(selectedUser2)}</h4>
               {isLoading2 ? (
                 <div style={{ color: 'var(--text-secondary)' }}>Loading activity data...</div>

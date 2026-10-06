@@ -1,4 +1,5 @@
 // src/features/admin/AdminChatLogsTab.jsx
+import FaGlyph from '../../ui/FaGlyph';
 import React, { useEffect, useLayoutEffect, useMemo, useState, useRef, useCallback } from 'react';
 import api from '../../core/api';
 import { formatEuDate } from '../../utils/dateFormatter';
@@ -107,9 +108,10 @@ const ReactionRow = ({ reactions }) => {
 // player-facing ChatSystem.jsx StatusIcon.
 const StatusIcon = ({ msg }) => {
   if (!msg) return null;
-  if (msg.read_at) return <span title={`Read: ${formatTimestamp(msg.read_at)}`} style={{ color: 'var(--accent-purple)', fontSize: '11px' }}>✓✓</span>;
-  if (msg.delivered_at) return <span title={`Delivered: ${formatTimestamp(msg.delivered_at)}`} style={{ color: 'var(--text-muted)', fontSize: '11px' }}>✓✓</span>;
-  return <span title="Sent" style={{ color: 'var(--text-muted)', fontSize: '11px' }}>✓</span>;
+  const tick = <FaGlyph name="fa-check" size={10} />;
+  if (msg.read_at) return <span title={`Read: ${formatTimestamp(msg.read_at)}`} style={{ color: 'var(--accent-purple)', display: 'inline-flex', gap: 1 }}>{tick}{tick}</span>;
+  if (msg.delivered_at) return <span title={`Delivered: ${formatTimestamp(msg.delivered_at)}`} style={{ color: 'var(--text-muted)', display: 'inline-flex', gap: 1 }}>{tick}{tick}</span>;
+  return <span title="Sent" style={{ color: 'var(--text-muted)', display: 'inline-flex' }}>{tick}</span>;
 };
 
 const PendingTag = () => (
@@ -172,7 +174,7 @@ const MediaAttachment = ({ attachmentId }) => {
   }, [attachmentId]);
 
   if (loading) return <div style={{ display: 'flex', padding: '1rem', justifyContent: 'center' }}><span className={styles.spinner} style={{ width: '20px', height: '20px', borderWidth: '2px' }} /></div>;
-  if (error) return <div style={{ fontSize: '0.8rem', color: 'var(--color-error)', margin: '8px 0', padding: '6px 12px', background: 'rgba(255,77,77,0.05)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(255,77,77,0.1)' }}>⚠ Media Link Unavailable</div>;
+  if (error) return <div style={{ fontSize: '0.8rem', color: 'var(--color-error)', margin: '8px 0', padding: '6px 12px', background: 'rgba(255,77,77,0.05)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(255,77,77,0.1)' }}><FaGlyph name="fa-triangle-exclamation" size={15} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Media Link Unavailable</div>;
 
   if (mediaInfo?.mime?.startsWith('audio/')) {
     return <audio controls src={mediaInfo.url} style={{ width: '100%', maxWidth: '300px', display: 'block', marginTop: '8px', marginBottom: '8px' }} />;
@@ -307,7 +309,7 @@ export default function AdminChatLogsTab({ messages, charIndex, npcMessages = []
       if (!msg.read_at) group.unreadCount++;
       if (msgTimestamp > group.latestTimestamp) {
         group.latestTimestamp = msgTimestamp;
-        group.latestSnippet = msg.attachment_id && !msg.body ? '📷 Attachment' : msg.body;
+        group.latestSnippet = msg.attachment_id && !msg.body ? <><FaGlyph name="fa-camera" size={15} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Attachment</> : msg.body;
       }
     }
     groups.forEach(g => g.messages.sort((a, b) => new Date(a.created_at) - new Date(b.created_at)));
@@ -560,7 +562,7 @@ export default function AdminChatLogsTab({ messages, charIndex, npcMessages = []
               value={globalQuery} onChange={e => setGlobalQuery(e.target.value)}
             />
             {globalQuery && (
-              <button type="button" onClick={() => setGlobalQuery('')} className={styles.btnGhost} style={{ border: 'none', background: 'transparent', padding: '0 4px', color: 'var(--text-muted)' }}>✕</button>
+              <button type="button" onClick={() => setGlobalQuery('')} className={styles.btnGhost} style={{ border: 'none', background: 'transparent', padding: '0 4px', color: 'var(--text-muted)' }} aria-label="Clear search"><FaGlyph name="fa-xmark" size={12} /></button>
             )}
           </div>
 
@@ -666,7 +668,7 @@ export default function AdminChatLogsTab({ messages, charIndex, npcMessages = []
 
         {((viewMode === 'direct' && !selectedConversationKey) || (viewMode === 'npc' && !selectedNpcConversation) || (viewMode === 'group' && !selectedGroup)) && (
           <div className={styles.placeholderCard}>
-            <span style={{ fontSize: '3rem', opacity: 0.5, marginBottom: '1rem', display: 'block' }}>💬</span>
+            <span style={{ fontSize: '3rem', opacity: 0.5, marginBottom: '1rem', display: 'block' }}><FaGlyph name="fa-comments" size={48} /></span>
             <h3>Select a Transmission</h3>
             <p className={styles.subtle}>Choose a thread to view its full history — attachments, reactions, and status included.</p>
           </div>

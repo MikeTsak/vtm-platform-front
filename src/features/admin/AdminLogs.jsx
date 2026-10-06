@@ -1,4 +1,5 @@
 // src/pages/AdminLogs.jsx
+import FaGlyph from '../../ui/FaGlyph';
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import api from "../../core/api";
 import { formatEuDate } from "../../utils/dateFormatter";
@@ -6,7 +7,7 @@ import { copyToClipboard } from "../../utils/clipboard";
 import styles from '../../styles/Admin.module.css';
 import MiniSearch from 'minisearch';
 
-const EMO = { start: "🚀", auth: "🔐", char: "🧛", xp: "✨", dt: "🕰️", dom: "🏰", adm: "🛡️", ok: "✅", warn: "⚠️", err: "💥", req: "➡️", res: "⬅️", mail: "✉️", db: "🗄️", info: "ℹ️", http: "🌐", dbg: "🐛", sys: "⚙️" };
+const CAT_ICON = { start: "rocket", auth: "lock", char: "user", xp: "wand-magic-sparkles", dt: "clock", dom: "chess-rook", adm: "shield-halved", ok: "circle-check", warn: "triangle-exclamation", err: "burst", req: "arrow-right", res: "arrow-left", mail: "envelope", db: "database", info: "circle-info", http: "globe", dbg: "bug", sys: "gear" };
 const LEVELS = ["debug", "info", "warn", "error"];
 
 // Replaced flat colors with glass transparency and glow logic
@@ -108,7 +109,7 @@ export default function AdminLogs() {
 
   return (
     <div style={{ padding: '2rem', background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', boxShadow: 'var(--glass-shadow)' }}>
-      <h2 style={{ margin: '0 0 1.5rem 0', color: 'var(--text-color)', fontSize: '1.8rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem' }}>📜 System Terminal</h2>
+      <h2 style={{ margin: '0 0 1.5rem 0', color: 'var(--text-color)', fontSize: '1.8rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem' }}><FaGlyph name="fa-scroll" size={24} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />System Terminal</h2>
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', background: 'var(--glass-inset)', padding: '0.5rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)' }}>
@@ -140,7 +141,7 @@ export default function AdminLogs() {
             </Chip>
           );
         })}
-        <a href={`${apiBase}/admin/logs/download`} target="_blank" rel="noreferrer" className={`${styles.btn} ${styles.btnGhost}`} style={{ marginLeft: 'auto' }}>⬇️ Export .log</a>
+        <a href={`${apiBase}/admin/logs/download`} target="_blank" rel="noreferrer" className={`${styles.btn} ${styles.btnGhost}`} style={{ marginLeft: 'auto' }}><FaGlyph name="fa-download" size={15} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Export .log</a>
       </div>
 
       {error && <div className={`${styles.alert} ${styles.alertError}`}>{error}</div>}
@@ -158,7 +159,7 @@ export default function AdminLogs() {
 
 function LogRow({ log, wrap }) {
   const sty = LEVEL_STYLE[log.level] || LEVEL_STYLE.info;
-  const emoji = EMO[log.cat] || "";
+  const catIcon = CAT_ICON[log.cat];
   const timeLocal = formatClockLocal(log.time);
 
   return (
@@ -166,7 +167,7 @@ function LogRow({ log, wrap }) {
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         {timeLocal && <span style={{ color: "var(--text-muted)", fontSize: 11, minWidth: 110 }}>{timeLocal}</span>}
         <Chip style={{ background: "rgba(0,0,0,0.3)", color: sty.fg, border: `1px solid ${sty.border}` }}>{sty.label}</Chip>
-        <span style={{ color: "var(--text-color)", fontWeight: 800 }}>{emoji ? `${emoji} ` : ""}{log.cat}</span>
+        <span style={{ color: "var(--text-color)", fontWeight: 800 }}>{catIcon ? <FaGlyph name={`fa-${catIcon}`} size={13} style={{ marginRight: 6, verticalAlign: '-0.1em' }} /> : null}{log.cat}</span>
         <span style={{ color: "#e0e0e0", whiteSpace: wrap ? "pre-wrap" : "pre", wordBreak: wrap ? "break-word" : "normal", flex: 1 }}>{log.msg}</span>
         <button className={styles.btnGhost} style={{ padding: "4px 8px", fontSize: '0.8rem', borderRadius: '6px' }} onClick={() => copyToClipboard(log.source === "json" ? JSON.stringify({ time: log.time, level: log.level, cat: log.cat, msg: log.msg, ...(log.ctx || {}) }, null, 2) : `${log.time || ""} [${(log.level || "").toUpperCase()}] ${log.cat}: ${log.msg}${log.ctx ? ` | ${JSON.stringify(log.ctx)}` : ""}`)}>⧉ Copy</button>
       </div>

@@ -2,6 +2,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import api from '../../core/api';
 import styles from '../../styles/Admin.module.css';
+import FaGlyph from '../../ui/FaGlyph';
 import generateVTMCharacterSheetPDF from '../../utils/pdfGenerator';
 import MiniSearch from 'minisearch';
 import Avatar from '../../components/Avatar';
@@ -25,7 +26,7 @@ const TrackerDisplay = ({ label, currentObj, max, onUpdate, isValueTracker = fal
       if (i >= trackSize - stains) content = '/';
       if (isFilled) {
          if (label === 'Hunger') {
-           content = '🩸';
+           content = <FaGlyph name="fa-droplet" size={12} />;
          } else {
            // We'll handle filled state via className
          }

@@ -1,4 +1,5 @@
 // src/components/admin/AdminDowntimesTab.jsx
+import FaGlyph from '../../ui/FaGlyph';
 import React, { useEffect, useMemo, useState, useRef, useContext } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api, { formatApiError } from "../../core/api";
@@ -2677,7 +2678,7 @@ function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel, 
               Resolved: {r.resolved_by_name || adminsList.find(a => a.id === r.resolved_by)?.display_name}
             </span>
           ) : null}
-          {r.is_read ? <span style={{ marginRight: '4px', opacity: 0.6 }} title="Read by player">👁️</span> : null}
+          {r.is_read ? <span style={{ marginRight: '4px', opacity: 0.6 }} title="Read by player"><FaGlyph name="fa-eye" size={48} /></span> : null}
           <span className={styles.statusBadge} data-status={r.status} style={getStatusBadgeStyle(r.status)}>
             {r.status}
           </span>

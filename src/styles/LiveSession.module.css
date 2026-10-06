@@ -52,6 +52,7 @@
 
 .container {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   background-color: var(--background);
@@ -143,6 +144,41 @@
   display: none;
 }
 
+/* "Tonight's session" card(s) on the not-connected screen: one tap to join. */
+.openSessions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-bottom: 1.5rem;
+}
+.openSession {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  width: 100%;
+  padding: 1rem 1.1rem;
+  text-align: left;
+  color: var(--on-surface);
+  background-color: var(--primary-container);
+  border: 1px solid var(--primary);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  box-shadow: 0px 4px 12px rgba(136, 8, 8, 0.3);
+}
+.openSession:active { transform: scale(0.99); }
+.openSession .material-symbols-outlined { font-size: 2rem; color: var(--primary); }
+.openSessionText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.openSessionText strong { font-size: 1.05rem; }
+.openSessionText small { color: var(--text-muted); font-size: 0.78rem; }
+
+/* Clear + Roll. On phones the trait lists are long, so the Roll button is
+   pinned just above the bottom nav instead of scrolling away at the top. */
+.rollActions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
 @media (max-width: 1024px) {
   .leftColumn, .rightColumn {
     width: 100%;
@@ -155,6 +191,36 @@
   
   .mobileHidden {
     display: none !important;
+  }
+
+  /* One tab shows at a time, so the column slide-ins would replay on every
+     switch (and a transform would break the fixed roll bar below). */
+  .leftColumn, .centerColumn, .rightColumn {
+    animation: none;
+  }
+
+  .centerColumn {
+    padding-bottom: 4.5rem; /* clear the pinned roll bar */
+  }
+
+  .rollActions {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 70px; /* sits on the bottom nav */
+    z-index: 90;
+    flex-wrap: nowrap;
+    gap: 0.75rem;
+    padding: 0.6rem 1rem;
+    background-color: var(--surface-container);
+    border-top: 1px solid rgba(90, 65, 61, 0.2);
+    box-shadow: 0px -4px 12px rgba(0, 0, 0, 0.3);
+  }
+  .rollActions button {
+    padding: 0.8rem 1rem;
+  }
+  .rollActions button:last-child {
+    flex: 1;
   }
 
   .mainContent {
@@ -1211,6 +1277,17 @@
 
   /* Compulsion picker fits the viewport */
   .compulsionChoice { font-size: 0.75rem; padding: 0.5rem 0.6rem; }
+}
+
+/* Three Physical/Social/Mental columns share a phone's width: let long trait
+   names wrap instead of pushing the grid wider than the screen. */
+@media (max-width: 480px) {
+  .traitGrid { gap: 0.5rem; }
+  .traitGrid > * { min-width: 0; }
+  .selectableItem {
+    padding: 0.5rem 0.5rem;
+    overflow-wrap: anywhere;
+  }
 }
 
 /* ─────────────────────────────────────────────

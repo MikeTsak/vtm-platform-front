@@ -40,6 +40,10 @@ export default function LiveSessionPlayerList({ players = [], adminName }) {
             <Avatar userId={player.user_id || undefined} npcId={player.is_npc || player.isNpc ? id : undefined} clan={clan} size={40} style={{ borderRadius: '50%' }} fallback={symlogo(clan)} />
             <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
               <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, color: 'var(--primary)', fontFamily: 'var(--font-display)', fontSize: '1.1rem' }}>
+                <span
+                  title={player.online ? 'At the table' : 'Not connected'}
+                  style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: player.online ? 'var(--success, #4ade80)' : 'transparent', border: `1px solid ${player.online ? 'var(--success, #4ade80)' : 'var(--outline)'}` }}
+                />
                 {name}
                 {player.is_npc || player.isNpc ? <span style={{ fontSize: '0.6rem', border: '1px solid var(--outline)', padding: '2px 4px', borderRadius: '4px', color: 'var(--text-muted)' }}>NPC</span> : null}
               </h4>

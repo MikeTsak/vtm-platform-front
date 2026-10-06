@@ -587,8 +587,18 @@
 }
 
 @media (max-width: 1080px) {
+  /* minmax(0, 1fr): a bare 1fr track grows to its widest child's min-content */
   .mainGrid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mainGrid > * {
+    min-width: 0;
+  }
+
+  .downtimeMeta {
+    flex-wrap: wrap;
+    white-space: normal;
   }
 }
 

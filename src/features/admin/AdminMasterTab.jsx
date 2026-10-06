@@ -1,4 +1,5 @@
 // src/components/admin/AdminMasterTab.jsx
+import FaGlyph from '../../ui/FaGlyph';
 import React, { useState, useEffect, useContext } from 'react';
 import api, { formatApiError } from '../../core/api';
 import { formatAthensDateTime } from '../../utils/dateFormatter';
@@ -845,7 +846,7 @@ export default function AdminMasterTab() {
     setDangerLoading(true); setMsg(''); setErr('');
     try {
       const { data } = await api.delete('/admin/downtimes/resolved');
-      setMsg(`✅ Wiped ${data.deleted || 0} resolved downtime(s) older than 30 days.`);
+      setMsg(`Wiped ${data.deleted || 0} resolved downtime(s) older than 30 days.`);
       setTimeout(() => setMsg(''), 5000);
     } catch (e) { setErr(formatApiError(e, 'Failed to wipe downtimes.')); }
     finally { setDangerLoading(false); }
@@ -857,7 +858,7 @@ export default function AdminMasterTab() {
     setDangerLoading(true); setMsg(''); setErr('');
     try {
       const { data } = await api.delete('/admin/dice/rolls/all');
-      setMsg(`✅ Cleared ${data.deleted || 0} dice roll record(s).`);
+      setMsg(`Cleared ${data.deleted || 0} dice roll record(s).`);
       setTimeout(() => setMsg(''), 5000);
     } catch (e) { setErr(formatApiError(e, 'Failed to clear dice logs.')); }
     finally { setDangerLoading(false); }
@@ -920,7 +921,7 @@ export default function AdminMasterTab() {
       {/* PERSONAL ADMIN PREFS */}
       <div style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', padding: '2rem', boxShadow: 'var(--glass-shadow)' }}>
         <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
-          <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-color)' }}>🛠️ Personal Admin Preferences</h4>
+          <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-color)' }}><FaGlyph name="fa-screwdriver-wrench" size={22} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Personal Admin Preferences</h4>
           <p style={{ margin: '5px 0 0 0', color: 'var(--text-secondary)' }}>Settings that only apply to your own account.</p>
         </div>
         <button 
@@ -960,7 +961,7 @@ export default function AdminMasterTab() {
       {/* COMMS KILLSWITCH */}
       <div style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', padding: '2rem', boxShadow: 'var(--glass-shadow)' }}>
         <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
-          <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-color)' }}>⚙️ Network Infrastructure</h4>
+          <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-color)' }}><FaGlyph name="fa-gear" size={22} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Network Infrastructure</h4>
           <p style={{ margin: '5px 0 0 0', color: 'var(--text-secondary)' }}>Global overrides for the SchreckNet communications grid.</p>
         </div>
 
@@ -976,7 +977,9 @@ export default function AdminMasterTab() {
           </div>
           <div style={{ background: bgColor, borderRadius: '8px', padding: '15px', borderLeft: `4px solid ${themeColor}` }}>
             <h4 style={{ margin: '0 0 4px 0', color: themeColor, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Killswitch: {isOnline ? 'ON' : 'OFF'}</h4>
-            <h4 style={{ margin: '0 0 8px 0', color: resolvedCommsEnabled ? 'var(--color-success)' : 'var(--color-error)', fontSize: '1.1rem', textTransform: 'uppercase', letterSpacing: '1px' }}>{resolvedCommsEnabled ? '🟢 Comms are Online right now' : '🛑 Comms are Offline right now'}</h4>
+            <h4 style={{ margin: '0 0 8px 0', color: resolvedCommsEnabled ? 'var(--color-success)' : 'var(--color-error)', fontSize: '1.1rem', textTransform: 'uppercase', letterSpacing: '1px' }}>{resolvedCommsEnabled
+              ? <><FaGlyph name="fa-circle-check" size={18} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Comms are Online right now</>
+              : <><FaGlyph name="fa-circle-xmark" size={18} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Comms are Offline right now</>}</h4>
             <p style={{ margin: 0, color: 'var(--text-primary)', lineHeight: '1.5' }}>{resolvedCommsEnabled ? "All players and administrators can freely send and receive messages, create groups, and upload media across the network." : "Players can log in and read their chat history, but all inputs are disabled."}</p>
             {isOnline !== resolvedCommsEnabled && (
               <p style={{ margin: '10px 0 0 0', color: 'var(--text-muted)', fontSize: '0.85rem', fontStyle: 'italic' }}>
@@ -992,7 +995,7 @@ export default function AdminMasterTab() {
       {/* COMMS SCHEDULE */}
       <div style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', padding: '2rem', boxShadow: 'var(--glass-shadow)' }}>
         <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
-          <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-color)' }}>🗓️ Comms Schedule</h4>
+          <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-color)' }}><FaGlyph name="fa-calendar-days" size={22} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Comms Schedule</h4>
           <p style={{ margin: '5px 0 0 0', color: 'var(--text-secondary)' }}>Click days to toggle exceptions: <span style={{ color: '#0096FF' }}>Blue = 5PM Start</span>, <span style={{ color: 'var(--color-error)' }}>Red = Force OFF</span>, <span style={{ color: 'var(--color-success)' }}>Green = Midnight Start</span>, <span style={{ color: '#ffb300' }}>Amber = Event (OFF)</span>. If blank, it follows the Master Killswitch above.</p>
         </div>
         {renderCalendar()}
@@ -1001,7 +1004,7 @@ export default function AdminMasterTab() {
       {/* BANNER CONTROLS */}
       <div style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', padding: '2rem', boxShadow: 'var(--glass-shadow)' }}>
         <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
-          <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-color)' }}>📢 Global Announcement Banner</h4>
+          <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-color)' }}><FaGlyph name="fa-bullhorn" size={22} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Global Announcement Banner</h4>
           <p style={{ margin: '5px 0 0 0', color: 'var(--text-secondary)' }}>Displays a site-wide banner at the absolute top of the portal. Use this for critical event countdowns.</p>
         </div>
 
@@ -1033,14 +1036,14 @@ export default function AdminMasterTab() {
       {/* NTFY PUSH NOTIFICATIONS */}
       <div style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', padding: '2rem', boxShadow: 'var(--glass-shadow)' }}>
         <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
-          <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-color)' }}>📱 Admin Push Notifications (Ntfy)</h4>
+          <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-color)' }}><FaGlyph name="fa-mobile-screen" size={22} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Admin Push Notifications (Ntfy)</h4>
           <p style={{ margin: '5px 0 0 0', color: 'var(--text-secondary)' }}>Receive critical system alerts and logs directly to your phone/desktop.</p>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {ntfyTopic ? (
             <div style={{ background: 'rgba(0, 230, 118, 0.05)', borderLeft: '4px solid var(--color-success)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
-              <div style={{ fontWeight: 700, color: 'var(--color-success)', marginBottom: '10px' }}>✅ Your Push Topic is Active</div>
+              <div style={{ fontWeight: 700, color: 'var(--color-success)', marginBottom: '10px' }}><FaGlyph name="fa-circle-check" size={15} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Your Push Topic is Active</div>
               <div style={{ color: 'var(--text-primary)', marginBottom: '10px', fontSize: '1.1rem' }}>
                 Topic Key: <strong style={{ userSelect: 'all', background: '#000', padding: '2px 8px', borderRadius: '4px', fontFamily: 'monospace' }}>{ntfyTopic}</strong>
               </div>
@@ -1052,10 +1055,10 @@ export default function AdminMasterTab() {
               
               <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
                 <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={testNtfy} disabled={actionLoading}>
-                  🔔 Send Test Ping
+                  <FaGlyph name="fa-bell" size={15} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Send Test Ping
                 </button>
                 <button className={`${styles.btn}`} onClick={generateNtfyKey} disabled={actionLoading} style={{ background: 'var(--glass-border)', color: 'var(--text-color)' }}>
-                  🔄 Regenerate Key
+                  <FaGlyph name="fa-rotate" size={15} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Regenerate Key
                 </button>
               </div>
 
@@ -1098,7 +1101,7 @@ export default function AdminMasterTab() {
                 </label>
                 
                 <button className={`${styles.btn}`} onClick={saveNtfyPrefs} disabled={actionLoading} style={{ marginTop: '15px', background: 'var(--accent-purple)', color: '#fff', border: 'none' }}>
-                  💾 Save NPC Preferences
+                  <FaGlyph name="fa-floppy-disk" size={15} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Save NPC Preferences
                 </button>
               </div>
             </div>
@@ -1107,7 +1110,7 @@ export default function AdminMasterTab() {
               <h4 style={{ margin: '0 0 10px 0', color: 'var(--text-primary)' }}>No Ntfy Key Configured</h4>
               <p style={{ margin: '0 0 15px 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Generate a unique key to start receiving backend server error logs and notifications on your mobile device.</p>
               <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={generateNtfyKey} disabled={actionLoading}>
-                ✨ Generate Push Key
+                <FaGlyph name="fa-wand-magic-sparkles" size={15} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Generate Push Key
               </button>
             </div>
           )}
@@ -1121,7 +1124,7 @@ export default function AdminMasterTab() {
           onClick={() => setUiToolsOpen(o => !o)}
         >
           <div>
-            <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-color)' }}>🎨 UI / Asset Testing</h4>
+            <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-color)' }}><FaGlyph name="fa-palette" size={22} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />UI / Asset Testing</h4>
             <p style={{ margin: '5px 0 0 0', color: 'var(--text-secondary)' }}>Test character builders and view visual assets.</p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -1253,7 +1256,7 @@ export default function AdminMasterTab() {
           onClick={() => setSysToolsOpen(o => !o)}
         >
           <div>
-            <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-color)' }}>🛠️ System Tools</h4>
+            <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-color)' }}><FaGlyph name="fa-screwdriver-wrench" size={22} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />System Tools</h4>
             <p style={{ margin: '5px 0 0 0', color: 'var(--text-secondary)' }}>Execute legacy background scripts and migrations.</p>
           </div>
           <span style={{ color: 'var(--text-secondary)', fontSize: '1.4rem', transition: 'transform 0.3s', transform: sysToolsOpen ? 'rotate(180deg)' : 'none' }}>▼</span>
@@ -1614,7 +1617,7 @@ export default function AdminMasterTab() {
           onClick={() => setDangerOpen(o => !o)}
         >
           <div>
-            <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--color-error)' }}>⚠️ Danger Zone</h4>
+            <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--color-error)' }}><FaGlyph name="fa-triangle-exclamation" size={22} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Danger Zone</h4>
             <p style={{ margin: '5px 0 0 0', color: 'var(--text-secondary)', fontSize: '0.88rem' }}>Destructive operations. Each action requires confirmation.</p>
           </div>
           <span style={{ color: 'var(--color-error)', fontSize: '1.4rem', transition: 'transform 0.3s', transform: dangerOpen ? 'rotate(180deg)' : 'none' }}>▼</span>
@@ -1639,7 +1642,7 @@ export default function AdminMasterTab() {
             {/* Wipe Resolved Downtimes */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--glass-inset)', borderRadius: 'var(--radius-md)', padding: '1.2rem 1.5rem', border: '1px solid rgba(255,82,82,0.2)' }}>
               <div>
-                <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>🗑️ Wipe Resolved Downtimes</div>
+                <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}><FaGlyph name="fa-trash" size={15} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Wipe Resolved Downtimes</div>
                 <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Permanently deletes all downtimes with status "resolved" or "Resolved in scene" older than 30 days.</div>
               </div>
               <button
@@ -1656,7 +1659,7 @@ export default function AdminMasterTab() {
             {/* Clear Dice Logs */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--glass-inset)', borderRadius: 'var(--radius-md)', padding: '1.2rem 1.5rem', border: '1px solid rgba(255,82,82,0.2)' }}>
               <div>
-                <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>🎲 Clear All Dice Logs</div>
+                <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}><FaGlyph name="fa-dice" size={15} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Clear All Dice Logs</div>
                 <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Permanently deletes all dice roll records across all characters. Stats charts will be reset.</div>
               </div>
               <button

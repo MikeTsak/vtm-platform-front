@@ -1,3 +1,4 @@
+import FaGlyph from '../../ui/FaGlyph';
 import React, { useState, useEffect } from 'react';
 import api, { formatApiError } from '../../core/api';
 import { formatEuDate } from '../../utils/dateFormatter';
@@ -62,7 +63,7 @@ export default function AdminEventsTab() {
   return (
     <div className={styles.adminCard}>
       <div style={{ marginBottom: '1.5rem' }}>
-        <h2 style={{ color: 'var(--text-primary)', margin: 0, fontSize: '1.6rem', fontWeight: 800 }}>📅 Event Scheduler</h2>
+        <h2 style={{ color: 'var(--text-primary)', margin: 0, fontSize: '1.6rem', fontWeight: 800 }}><FaGlyph name="fa-calendar-days" size={24} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Event Scheduler</h2>
         <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0', fontSize: '0.85rem' }}>Manage IC/OOC events that appear on the player dashboard.</p>
       </div>
 

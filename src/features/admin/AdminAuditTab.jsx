@@ -1,3 +1,4 @@
+import FaGlyph from '../../ui/FaGlyph';
 import React, { useState, useEffect } from 'react';
 import api from '../../core/api';
 import { formatEuDate } from '../../utils/dateFormatter';
@@ -18,14 +19,14 @@ export default function AdminAuditTab() {
 
   return (
     <div className={styles.adminCard}>
-      <h2 style={{ color: 'var(--text-primary)', margin: '0 0 4px 0', fontSize: '1.6rem', fontWeight: 800 }}>📜 ST Audit Logs</h2>
+      <h2 style={{ color: 'var(--text-primary)', margin: '0 0 4px 0', fontSize: '1.6rem', fontWeight: 800 }}><FaGlyph name="fa-scroll" size={24} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />ST Audit Logs</h2>
       <p style={{ color: 'var(--text-secondary)', margin: '0 0 2rem 0', fontSize: '0.85rem' }}>Watching the watchers. Read-only log of critical system changes and ST actions.</p>
 
       {err && <div className={`${styles.alert} ${styles.alertError}`}>{err}</div>}
 
       <Skeleton loading={loading} name="audit-logs">
         <div style={{ background: 'var(--glass-inset)', borderRadius: 'var(--radius-lg)', overflowX: 'auto' }}>
-          <table className={styles.table} style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+          <table className={`${styles.table} ${styles.stackTable}`} style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
             <thead>
               <tr style={{ background: 'rgba(255,255,255,0.05)', borderBottom: '2px solid var(--glass-border)' }}>
                 <th style={{ textAlign: 'left', padding: '12px', color: 'var(--text-secondary)' }}>Timestamp</th>

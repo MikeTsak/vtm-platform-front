@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useRef } from 'react';
 import html2canvas from 'html2canvas';
 import styles from '../../styles/Admin.module.css';
+import FaGlyph from '../../ui/FaGlyph';
 import { symlogo as clanSymbol, CLAN_HEX as CLAN_COLORS } from '../../data/clans';
 
 /** ---------- Helpers ---------- */
@@ -662,9 +663,10 @@ const popStats = useMemo(() => {
           <button 
             onClick={handleExport} 
             disabled={isExporting}
-            style={{ background: 'var(--ok)', color: 'var(--bg-color)', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: isExporting ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+            className={`${styles.btn} ${styles.btnPrimary}`}
+            style={{ cursor: isExporting ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
           >
-            {isExporting ? <span className={styles.spinner} style={{ borderColor: 'black', borderTopColor: 'transparent' }}/> : '📸'} 
+            {isExporting ? <span className={styles.spinner} /> : <FaGlyph name="fa-camera" size={16} />}
             {isExporting ? 'Generating...' : 'Export Graphic'}
           </button>
         </div>

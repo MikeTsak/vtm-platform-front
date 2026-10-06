@@ -1,3 +1,4 @@
+import FaGlyph from '../../ui/FaGlyph';
 import React, { useState } from 'react';
 import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/Admin.module.css';
@@ -37,7 +38,7 @@ export default function AdminBroadcastTab() {
   return (
     <div className={styles.adminCard} style={{ maxWidth: '600px', margin: '0 auto' }}>
       <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
-        <span style={{ fontSize: '3rem', display: 'block', marginBottom: '1rem' }}>📡</span>
+        <span style={{ fontSize: '3rem', display: 'block', marginBottom: '1rem' }}><FaGlyph name="fa-satellite-dish" size={48} /></span>
         <h2 style={{ color: 'var(--text-primary)', margin: 0, fontSize: '1.8rem', fontWeight: 800 }}>Global Broadcast Tool</h2>
         <p style={{ color: 'var(--text-secondary)', margin: '8px 0 0', fontSize: '0.9rem', lineHeight: 1.5 }}>
           Send a push notification to all players. Use this for major IC announcements or critical OOC updates. 
@@ -83,7 +84,7 @@ export default function AdminBroadcastTab() {
             boxShadow: '0 4px 15px rgba(255, 82, 82, 0.3)'
           }}
         >
-          {sending ? 'Transmitting...' : '🚨 Send Global Broadcast'}
+          {sending ? 'Transmitting...' : <><FaGlyph name="fa-bullhorn" size={15} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Send Global Broadcast</>}
         </button>
       </div>
     </div>

@@ -182,13 +182,17 @@ const FRENZY_PERMITTED_DISCIPLINES = ['Celerity', 'Potence', 'Fortitude', 'Prote
 /* ─────────────────────────────────────────────
    MAIN COMPONENT
 ───────────────────────────────────────────── */
-export default function LiveSession() {
+// `preview` ({ sessionId, character }) is the Storyteller's read-only look at one
+// player's screen (LiveSessionDashboard): it supplies the character instead of
+// /characters/me and never joins the session, so it can't act as anyone.
+export default function LiveSession({ preview = null }) {
   const { user } = useContext(AuthCtx);
   const [character, setCharacter] = useState(null);
   const [characterChecked, setCharacterChecked] = useState(false);
   const [sheet, setSheet] = useState(null);
   const [trackers, setTrackers] = useState(null);
   const [sessionId, setSessionId] = useState(() => {
+    if (preview) return String(preview.sessionId || '');
     try {
       const sp = new URLSearchParams(window.location.search);
       const fromUrl = sp.get('session') || sp.get('id');
@@ -199,11 +203,15 @@ export default function LiveSession() {
     } catch (e) {}
     return localStorage.getItem('liveSessionId') || '';
   });
+  // What's typed in the Session ID box; it only becomes the session once Connect is pressed.
+  const [codeInput, setCodeInput] = useState(sessionId);
+  const [openSessions, setOpenSessions] = useState([]); // running sessions the player can tap to join
   const [session, setSession] = useState(null);
   const [broadcasts, setBroadcasts] = useState([]);
 
-  const isAdmin = session?.isAdmin || user?.role === 'admin' || character?.isST;
+  const isAdmin = !preview && (session?.isAdmin || user?.role === 'admin' || character?.isST);
   const [mobileTab, setMobileTab] = useState('action');
+  useEffect(() => { if (!preview) window.scrollTo(0, 0); }, [mobileTab]);
   const [showBlushModal, setShowBlushModal] = useState(false);
 
   const [specialtyActive, setSpecialtyActive] = useState(false);
@@ -310,6 +318,7 @@ export default function LiveSession() {
   };
 
   const loadCharacter = async () => {
+    if (preview) return;
     const { data } = await api.get('/characters/me');
     const char = data.character ?? null;
     if (!char) { setCharacterChecked(true); return; }
@@ -320,24 +329,61 @@ export default function LiveSession() {
     setCharacterChecked(true);
   };
 
-  useEffect(() => { loadCharacter(); }, []);
+  // Preview: the dashboard hands us the player's current character (and re-hands it as it changes).
+  useEffect(() => {
+    if (!preview?.character) return;
+    const parsed = typeof preview.character.sheet === 'string' ? JSON.parse(preview.character.sheet) : preview.character.sheet;
+    setCharacter(preview.character);
+    setSheet(parsed);
+    setTrackers(summarizeTrackers(parsed));
+    setCharacterChecked(true);
+  }, [preview]);
+
+  // The session effect waits for this attempt to finish (even a failed one) so a
+  // slow character fetch can't make us look like a non-participant.
+  const [charAttempted, setCharAttempted] = useState(false);
+  useEffect(() => { loadCharacter().catch(() => {}).finally(() => setCharAttempted(true)); }, []);
+
+  // Back to "Not Connected": the session ended (ST or auto-close) or the ST removed us.
+  const leaveSession = (message) => {
+    if (!preview) { try { localStorage.removeItem('liveSessionId'); } catch (e) {} }
+    setSessionId('');
+    setCodeInput('');
+    setSession(null);
+    setBroadcasts([]);
+    setConnStatus(message);
+    setTimeout(() => setConnStatus(''), 8000);
+  };
 
   const loadSession = async (targetId = sessionId) => {
     if (!targetId) return;
     try {
       const [sData, bData, rData, pData] = await Promise.all([
-        getLiveSession(targetId).catch(() => ({})),
+        // 403 = we are not (or no longer) a participant.
+        getLiveSession(targetId).catch(e => (e?.response?.status === 403 ? { forbidden: true } : {})),
         getLiveSessionBroadcasts(targetId).catch(() => ({ broadcasts: [] })),
         getLiveSessionRolls(targetId).catch(() => ({ rolls: [] })),
         api.get(`/live-session/${targetId}/players`).then(res => res.data).catch(() => ({ players: [] }))
       ]);
 
+      if (sData.forbidden) return leaveSession('You are no longer part of that session.');
+
       const sessionObj = sData.session || sData || {};
+
+      // The ST ended it (or it was left over from a past night): drop out so
+      // the player can't keep acting in, or auto-rejoin, a closed session.
+      if (sessionObj.status === 'ended') return leaveSession('That session has ended.');
+
       sessionObj.players = pData.players || [];
       setSession(sessionObj);
 
-      const bList = bData.broadcasts || bData.messages || [];
-      const rList = rData.rolls || rData || [];
+      let bList = bData.broadcasts || bData.messages || [];
+      let rList = rData.rolls || rData || [];
+      if (preview) {
+        const mine = String(preview.character?.id);
+        bList = bList.filter(b => !b.target_character_id || String(b.target_character_id) === mine);
+        rList = rList.filter(r => !r.is_hidden || String(r.character_id) === mine);
+      }
 
       const combined = [...bList, ...rList].sort((a, b) => new Date(b.created_at || b.createdAt) - new Date(a.created_at || a.createdAt));
       setBroadcasts(combined);
@@ -345,53 +391,88 @@ export default function LiveSession() {
   };
 
   const handleConnect = async (targetId) => {
-    const sid = String(targetId || sessionId || '').trim();
+    const sid = String(targetId || codeInput || '').trim();
     if (!sid) return;
     try {
       await joinLiveSession(sid, { characterId: character?.id });
+      try { localStorage.setItem('liveSessionId', sid); } catch (e) {}
+      setCodeInput(sid);
+      setSessionId(sid);
       socket.emit('join_session', sid);
       await loadSession(sid);
       setConnStatus('Connected successfully');
       setTimeout(() => setConnStatus(''), 3000);
     } catch (e) {
-      setConnStatus('Failed to connect');
-      setTimeout(() => setConnStatus(''), 3000);
+      setConnStatus(e?.response?.data?.error || 'Failed to connect');
+      setTimeout(() => setConnStatus(''), 4000);
     }
   };
 
+  // Not in a session: list the running one(s) so a player can tap to join
+  // instead of typing the code. Re-checked every 15s in case the ST starts it
+  // while this screen is open.
   useEffect(() => {
-    if (!sessionId) return;
-    loadSession();
+    if (sessionId) { setOpenSessions([]); return undefined; }
+    let alive = true;
+    const find = () => api.get('/live-session/active')
+      .then(res => { if (alive) setOpenSessions(res.data?.sessions || []); })
+      .catch(() => {});
+    find();
+    const id = setInterval(find, 15000);
+    return () => { alive = false; clearInterval(id); };
+  }, [sessionId]);
 
-    if (character?.id) {
-      joinLiveSession(sessionId, { characterId: character.id }).catch(() => {});
-    }
+  useEffect(() => {
+    // Wait for the character check: joining (or being judged "not a participant")
+    // before it lands would drop a player who simply hasn't loaded yet.
+    if (!sessionId || !charAttempted) return undefined;
 
     // ST tracker adjustments (hunger, health, frenzy, etc.) land on our own character row too:
     // refresh it alongside the session so changes made by the Storyteller actually show up here.
-    const onRefresh = () => { loadSession(); loadCharacter(); };
+    // Bursts of events (everyone rolling at once) collapse into one reload.
+    let timer = null;
+    const onRefresh = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => { loadSession(); loadCharacter(); }, 300); // loadCharacter is a no-op in preview
+    };
+    // Someone joined or dropped: only the roster changes.
+    const onPresence = () => {
+      api.get(`/live-session/${sessionId}/players`)
+        .then(res => setSession(s => (s ? { ...s, players: res.data?.players || [] } : s)))
+        .catch(() => {});
+    };
     const rejoin = () => socket.emit('join_session', sessionId);
-    
+
     const initSession = async () => {
-      if (character?.id) {
-        await joinLiveSession(sessionId, { characterId: character.id }).catch(() => {});
+      if (!preview) {
+        await joinLiveSession(sessionId, { characterId: character?.id }).catch(() => {});
+        rejoin();
       }
-      rejoin();
+      // Session data is participants-only, so load it after the join lands.
+      loadSession();
     };
     initSession();
-    
-    socket.on('connect', rejoin);
-    socket.on('refresh_session', onRefresh);
 
-    // Fallback polling interval in case socket connection drops (mirrors admin dashboard)
-    const pollId = setInterval(() => { loadSession(); }, 5000);
+    if (!preview) socket.on('connect', rejoin);
+    socket.on('refresh_session', onRefresh);
+    socket.on('session_presence', onPresence);
+
+    // Sockets deliver updates; polling is the safety net. Every 5s while the
+    // socket is down, otherwise only a slow 30s resync.
+    let tick = 0;
+    const pollId = setInterval(() => {
+      tick += 1;
+      if (!socket.connected || tick % 6 === 0) loadSession();
+    }, 5000);
 
     return () => {
+      clearTimeout(timer);
       socket.off('refresh_session', onRefresh);
+      socket.off('session_presence', onPresence);
       socket.off('connect', rejoin);
       clearInterval(pollId);
     };
-  }, [sessionId, character?.id]);
+  }, [sessionId, character?.id, charAttempted]);
 
   const applySheetUpdate = async (mutator) => {
     setSheet(prev => {
@@ -587,26 +668,12 @@ export default function LiveSession() {
     && ((Number(trackers.willpower.superficial) || 0) + (Number(trackers.willpower.aggravated) || 0) < (Number(trackers.willpower.max) || 1))
   );
 
+  // Opens the reroll picker. Nothing is pre-selected: the player chooses up to
+  // three regular dice (hunger dice can't be rerolled).
   const startWillpowerReroll = (targetRoll = lastRoll) => {
     const roll = targetRoll || lastRoll;
-    if (!roll || !rerollAllowed) return;
-    const normals = roll.normalDice || [];
-    if (!normals.length) return;
-    const fails = [];
-    normals.forEach((d, idx) => {
-      if (d < 6 && fails.length < 3) fails.push(idx);
-    });
-    if (fails.length < 3) {
-      normals.forEach((d, idx) => {
-        if (!fails.includes(idx) && fails.length < 3 && d < 10) fails.push(idx);
-      });
-    }
-    if (fails.length < 3) {
-      normals.forEach((_, idx) => {
-        if (!fails.includes(idx) && fails.length < 3) fails.push(idx);
-      });
-    }
-    setWpSelections(fails);
+    if (!roll || !rerollAllowed || !(roll.normalDice || []).length) return;
+    setWpSelections([]);
     setWpRerollMode(true);
   };
 
@@ -781,7 +848,7 @@ export default function LiveSession() {
     setTimeout(() => setIsRolling(false), 1500);
   };
 
-  // Resist frenzy: Willpower + Humanity/3, rolled by the server, which clears the frenzy on a success.
+  // Resist frenzy: unspent Willpower + Humanity/3, rolled by the server, which clears the frenzy on a success.
   const handleResistFrenzy = async () => {
     if (!sheet?.frenzyState) return;
     await serverRoll({ mode: 'frenzy' });
@@ -797,10 +864,10 @@ export default function LiveSession() {
   }
 
   if (characterChecked && !character) {
-    return <div className={styles.container}><div style={{ margin: 'auto', textAlign: 'center' }}>You need an approved character before you can join a Live Session.</div></div>;
+    return <div className={`${styles.container} ${styles.theme}`}><div style={{ margin: 'auto', textAlign: 'center' }}>You need an approved character before you can join a Live Session.</div></div>;
   }
 
-  if (!trackers) return <div className={styles.container}><div style={{ margin: 'auto' }}>Loading LARP Interface...</div></div>;
+  if (!trackers) return <div className={`${styles.container} ${styles.theme}`}><div style={{ margin: 'auto' }}>Loading LARP Interface...</div></div>;
 
   const humanity = sheet?.humanity ?? sheet?.morality?.humanity ?? 7;
 
@@ -905,7 +972,7 @@ export default function LiveSession() {
   };
 
   return (
-    <div className={styles.container}>
+    <div className={`${styles.container} ${styles.theme}`}>
       {/* Blush of Life Modal */}
       {showBlushModal && (
         <div className={styles.modalOverlay}>
@@ -937,7 +1004,7 @@ export default function LiveSession() {
           </div>
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
             <button style={{ color: 'var(--primary)', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 'bold' }} disabled={isRolling} onClick={handleResistFrenzy}>
-              Resist (Willpower + Humanity/3)
+              Resist (unspent Willpower + Humanity/3)
             </button>
             <button
               style={{ color: 'var(--on-surface)', background: 'transparent', border: '1px solid var(--outline)', borderRadius: 4, padding: '0.2rem 0.5rem', cursor: 'pointer', fontSize: '0.75rem' }}
@@ -1367,8 +1434,9 @@ export default function LiveSession() {
                 <input
                   className={styles.sessionBarInput}
                   placeholder="Session ID"
-                  value={sessionId}
-                  onChange={e => { setSessionId(e.target.value); localStorage.setItem('liveSessionId', e.target.value); }}
+                  value={codeInput}
+                  onChange={e => setCodeInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleConnect(); }}
                 />
                 <button className={styles.btnPrimary} style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }} onClick={() => handleConnect()}>
                   Connect
@@ -1378,6 +1446,21 @@ export default function LiveSession() {
                 )}
               </div>
             </div>
+
+            {/* Running session(s): one tap to join instead of typing a code */}
+            {!session && openSessions.length > 0 && (
+              <div className={styles.openSessions}>
+                {openSessions.map(s => (
+                  <button key={s.session_code} className={styles.openSession} onClick={() => handleConnect(s.session_code)}>
+                    <span className="material-symbols-outlined">play_circle</span>
+                    <span className={styles.openSessionText}>
+                      <strong>{s.name || 'Live Session'}</strong>
+                      <small>Storyteller {s.admin_name || 'Admin'} · tap to join</small>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Scene & Clocks Banner */}
             {(session?.metadata?.scene || session?.metadata?.clocks?.length > 0 || session?.metadata?.initiative?.length > 0) && (
@@ -1434,7 +1517,7 @@ export default function LiveSession() {
                 <h1 className={styles.displayLg}>Pool Assembly</h1>
                 <p className={styles.textMuted}>Combine your eternal potential into action.</p>
               </div>
-              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+              <div className={styles.rollActions}>
                 <button className={styles.btnOutline} onClick={() => setSelectedTraits([])}>CLEAR</button>
                 <button className={styles.btnPrimary} disabled={selectedTraits.length === 0} onClick={() => executeRoll()}>ROLL {currentPool} DICE</button>
               </div>
