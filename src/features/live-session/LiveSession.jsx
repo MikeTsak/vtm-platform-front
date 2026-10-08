@@ -656,14 +656,19 @@ export default function LiveSession({ preview = null }) {
     setWpIgnoreImpair(false);
   };
 
+  // House rule: Hunger dice can't be rerolled, except a Hunger 10 that makes the
+  // roll a Messy Critical. wpSelections holds regular dice as numbers and those
+  // Hunger dice as 'h<index>'; together at most three.
+  const messyHungerTen = (roll) => !!roll?.outcome?.hasMessyCritical && (roll.hungerDice || []).includes(10);
+
   // V5: Willpower can't be spent to reroll frenzy, Remorse, Rouse or Humanity tests.
-  // Only regular dice can be rerolled (up to 3), once per roll.
+  // Up to 3 dice, once per roll.
   const rerollAllowed = Boolean(
     lastRoll
     && !lastRoll.rerolled
     && lastRoll.type !== 'willpower_reroll'
     && !['frenzy_resistance', 'remorse', 'rouse_check', 'discipline_rouse_check', 'blush_of_life', 'blood_surge', 'mend_rouse'].includes(lastRoll.type)
-    && (lastRoll.normalDice?.length > 0)
+    && (lastRoll.normalDice?.length > 0 || messyHungerTen(lastRoll))
     && trackers?.willpower
     && ((Number(trackers.willpower.superficial) || 0) + (Number(trackers.willpower.aggravated) || 0) < (Number(trackers.willpower.max) || 1))
   );
@@ -672,7 +677,7 @@ export default function LiveSession({ preview = null }) {
   // three regular dice (hunger dice can't be rerolled).
   const startWillpowerReroll = (targetRoll = lastRoll) => {
     const roll = targetRoll || lastRoll;
-    if (!roll || !rerollAllowed || !(roll.normalDice || []).length) return;
+    if (!roll || !rerollAllowed || !((roll.normalDice || []).length || messyHungerTen(roll))) return;
     setWpSelections([]);
     setWpRerollMode(true);
   };
@@ -704,7 +709,10 @@ export default function LiveSession({ preview = null }) {
     setMobileTab('action');
     setIsRolling(true);
     try {
-      const { data } = await api.post(`/dice/rolls/${lastRoll.id}/reroll`, { indices: wpSelections });
+      const { data } = await api.post(`/dice/rolls/${lastRoll.id}/reroll`, {
+        indices: wpSelections.filter(k => typeof k === 'number'),
+        hungerIndices: wpSelections.filter(k => typeof k === 'string').map(k => Number(k.slice(1))),
+      });
       if (data.sheet) {
         setSheet(data.sheet);
         setCharacter(prev => prev ? { ...prev, sheet: data.sheet } : prev);
@@ -728,7 +736,7 @@ export default function LiveSession({ preview = null }) {
     setMobileTab('action');
     const isAllowed = !row.rerolled
       && !['frenzy_resistance', 'remorse', 'rouse_check', 'discipline_rouse_check', 'blush_of_life', 'blood_surge', 'mend_rouse', 'willpower_reroll'].includes(row.roll_type)
-      && (roll.normalDice?.length > 0)
+      && (roll.normalDice?.length > 0 || messyHungerTen(roll))
       && trackers?.willpower
       && ((Number(trackers.willpower.superficial) || 0) + (Number(trackers.willpower.aggravated) || 0) < (Number(trackers.willpower.max) || 1));
 
@@ -1728,7 +1736,7 @@ export default function LiveSession({ preview = null }) {
                     fontSize: '0.85rem',
                   }}>
                     <span className="material-symbols-outlined" style={{ color: 'var(--primary)', fontSize: '1.1rem' }}>info</span>
-                    <span>Select up to 3 regular dice to reroll : <strong style={{ color: 'var(--primary)' }}>{wpSelections.length} / 3 selected</strong></span>
+                    <span>Select up to 3 {messyHungerTen(lastRoll) ? "dice (regular, or the Messy Critical's Hunger 10)" : 'regular dice'} to reroll : <strong style={{ color: 'var(--primary)' }}>{wpSelections.length} / 3 selected</strong></span>
                   </div>
                 )}
 
@@ -1760,18 +1768,27 @@ export default function LiveSession({ preview = null }) {
                   })}
                   {lastRoll.hungerDice.map((die, i) => {
                     const totalCount = (lastRoll.normalDice?.length || 0) + (lastRoll.hungerDice?.length || 0);
+                    const canPick = rerollAllowed && die === 10 && !!lastRoll.outcome?.hasMessyCritical;
+                    const isSelected = wpSelections.includes(`h${i}`);
                     return (
-                      <div key={`h_${i}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', opacity: wpRerollMode ? 0.45 : 1, transition: 'opacity 0.2s' }}>
+                      <div key={`h_${i}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', opacity: wpRerollMode && !canPick ? 0.45 : 1, transition: 'opacity 0.2s' }}>
                         <D10Die
                           index={i}
                           value={die}
                           isHunger={true}
                           isRolling={isRolling}
+                          selectable={!isRolling && canPick}
+                          selected={isSelected}
+                          onClick={canPick ? () => toggleDieSelection(`h${i}`) : undefined}
                           size="lg"
                           poolCount={totalCount}
                           showNumber={true}
                         />
-                        {wpRerollMode && (
+                        {isSelected && !isRolling ? (
+                          <span style={{ color: 'var(--primary)', fontSize: '0.75rem', marginTop: 4, fontWeight: 'bold' }}>
+                            Reroll
+                          </span>
+                        ) : wpRerollMode && (
                           <span style={{ color: 'var(--text-muted)', fontSize: '0.65rem', marginTop: 4 }}>
                             Hunger
                           </span>
@@ -1783,7 +1800,7 @@ export default function LiveSession({ preview = null }) {
 
                 {wpRerollMode && lastRoll.hungerDice.length > 0 && (
                   <p style={{ marginTop: '0.75rem', marginBottom: 0, fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                    Hunger dice cannot be rerolled with Willpower
+                    Hunger dice cannot be rerolled with Willpower{messyHungerTen(lastRoll) ? ', except the 10 of a Messy Critical' : ''}
                   </p>
                 )}
 

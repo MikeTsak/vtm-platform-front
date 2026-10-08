@@ -801,7 +801,7 @@ export default function Home() {
                 <div className={styles.quotaTrack}>
                   <div className={styles.quotaFill} style={{ width: `${quotaPct}%` }} />
                 </div>
-                <span className={styles.quotaCount}>{quota.used} / {quota.limit} USED</span>
+                <span className={styles.quotaCount}>{quota.used} / {quota.limit} USED{quota.rejected > 0 ? ` + ${quota.rejected} REJECTED` : ''}</span>
               </div>
             </div>
           </motion.header>
