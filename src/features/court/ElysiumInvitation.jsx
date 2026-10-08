@@ -3,7 +3,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import ClanSymbol from '../../components/ClanSymbol';
 import { factionLogo } from '../../data/factions';
 import styles from '../../styles/court/ElysiumInvitation.module.css';
-import { DEFAULT_TEXT, resolveDesign, surfaceBackground, personalize, formatElysiumDate } from './elysiumPresets';
+import { DEFAULT_TEXT, STRINGS, resolveDesign, surfaceBackground, personalize, formatElysiumDate, hasGreek, greekAttrs } from './elysiumPresets';
 
 /* ── Ornament artwork (stroke = currentColor, coloured by the accent) ── */
 
@@ -100,7 +100,16 @@ export function InvitationCard({ invitation, eventDate, guest, barred = false })
   const { card, accentDef: accent, fontDef, ornament, seal } = design;
   // The Keeper's words as saved; a cleared line stays cleared. Only the title falls back.
   const text = (k) => inv[k] || (k === 'name' ? DEFAULT_TEXT.name : '');
-  const when = formatElysiumDate(eventDate);
+  const lang = design.lang === 'el' ? 'el' : 'en';
+  const L = STRINGS[lang];
+  const when = formatElysiumDate(eventDate, lang);
+  const salutation = personalize(text('salutation'), guest, lang);
+  // A fixed line is set whole in the Greek face when it, or the text beside it, has Greek.
+  const g = (...parts) => greekAttrs(parts.filter(Boolean).join(' '));
+  const title = text('name');
+  const signature = text('signature');
+  // lang="el" also makes uppercase drop Greek accents correctly.
+  const script = (str) => (hasGreek(str) ? { className: styles.scriptGreek, lang: 'el' } : {});
 
   const vars = {
     '--ink': barred ? '#e6dcd8' : card.ink,
@@ -118,31 +127,31 @@ export function InvitationCard({ invitation, eventDate, guest, barred = false })
       <div className={styles.inner}>
         {barred ? (
           <>
-            <p className={styles.eyebrow}>Elysium</p>
-            <h2 className={styles.title}>The doors are closed to you</h2>
+            <p className={styles.eyebrow}>{L.barredEyebrow}</p>
+            <h2 className={styles.title} lang={lang === 'el' ? 'el' : undefined} style={lang === 'el' ? fontDef.greek : undefined}>{L.barredTitle}</h2>
             <Divider kind="minimal" />
-            <p className={styles.body}>
-              {personalize('{name}, the Keeper of Elysium has not extended you an invitation to this gathering. Do not seek entry.', guest)}
+            <p className={styles.body} {...g(L.barredBody, guest?.name)}>
+              {personalize(L.barredBody, guest, lang)}
             </p>
-            <p className={styles.date}>{when.day}</p>
+            <p className={styles.date} {...g(when.day)}>{when.day}</p>
             <Seal kind={seal === 'none' ? 'rose' : seal} accent={accent} broken />
           </>
         ) : (
           <>
-            <p className={styles.eyebrow}>An Invitation to Elysium</p>
-            <p className={styles.salutation}>{personalize(text('salutation'), guest)}</p>
-            <h2 className={styles.title}>{text('name')}</h2>
+            <p className={styles.eyebrow} {...g(L.eyebrow)}>{L.eyebrow}</p>
+            <p className={`${styles.salutation} ${script(salutation).className || ''}`} lang={script(salutation).lang}>{salutation}</p>
+            <h2 className={styles.title} lang={hasGreek(title) ? 'el' : undefined} style={hasGreek(title) ? fontDef.greek : undefined}>{title}</h2>
             <Divider kind={ornament} />
-            <p className={styles.date}>{when.day}</p>
-            {when.time && <p className={styles.time}>at {when.time}</p>}
-            {text('location') && <p className={styles.location}>{text('location')}</p>}
+            <p className={styles.date} {...g(when.day)}>{when.day}</p>
+            {when.time && <p className={styles.time} {...g(L.timePrefix, when.time)}>{L.timePrefix} {when.time}</p>}
+            {text('location') && <p className={styles.location} data-prefix={L.locationPrefix} {...g(L.locationPrefix, text('location'))}>{text('location')}</p>}
             <div className={styles.body}>
-              {personalize(text('body'), guest).split(/\n{2,}/).map((para, i) => <p key={i}>{para}</p>)}
+              {personalize(text('body'), guest, lang).split(/\n{2,}/).map((para, i) => <p key={i} {...greekAttrs(para)}>{para}</p>)}
             </div>
             {text('dress_code') && (
-              <p className={styles.dress}><span>Attire</span>{text('dress_code')}</p>
+              <p className={styles.dress} {...g(lang === 'el' ? L.attire : '', text('dress_code'))}><span {...greekAttrs(L.attire)}>{L.attire}</span>{text('dress_code')}</p>
             )}
-            <p className={styles.signature}>{text('signature')}</p>
+            <p className={`${styles.signature} ${script(signature).className || ''}`} lang={script(signature).lang}>{signature}</p>
             <Seal kind={seal} accent={accent} />
           </>
         )}

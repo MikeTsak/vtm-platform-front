@@ -4,8 +4,8 @@ import styles from '../../styles/court/CourtActions.module.css';
 import { InvitationCard } from './ElysiumInvitation';
 import ElysiumInvitationModal from './ElysiumInvitation';
 import {
-  SURFACES, ACCENTS, ORNAMENTS, FONTS, SEALS, DEFAULT_DESIGN, DEFAULT_TEXT,
-  resolveDesign, surfaceBackground, formatElysiumDate,
+  SURFACES, ACCENTS, ORNAMENTS, FONTS, SEALS, LANGS, DEFAULT_DESIGN, DEFAULT_TEXT, DEFAULT_TEXT_BY_LANG,
+  resolveDesign, surfaceBackground, formatElysiumDate, greekAttrs,
 } from './elysiumPresets';
 
 const Icon = ({ name, size = 18 }) => (
@@ -13,6 +13,31 @@ const Icon = ({ name, size = 18 }) => (
 );
 
 const TEXT_KEYS = ['name', 'location', 'salutation', 'body', 'dress_code', 'signature'];
+
+// Inline SVG flags (no emoji): Greece for the Greek card, the Union Jack for English.
+function Flag({ id }) {
+  const box = { width: 24, height: 16, borderRadius: 2, boxShadow: '0 0 0 1px rgba(255,255,255,0.25)', verticalAlign: '-3px', marginRight: 8 };
+  if (id === 'el') {
+    return (
+      <svg viewBox="0 0 27 18" style={box} aria-hidden="true">
+        <rect width="27" height="18" fill="#fff" />
+        {[0, 4, 8, 12, 16].map(y => <rect key={y} y={y} width="27" height="2" fill="#0d5eaf" />)}
+        <rect width="10" height="10" fill="#0d5eaf" />
+        <rect x="4" width="2" height="10" fill="#fff" />
+        <rect y="4" width="10" height="2" fill="#fff" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 60 30" style={box} aria-hidden="true">
+      <rect width="60" height="30" fill="#012169" />
+      <path d="M0 0L60 30M60 0L0 30" stroke="#fff" strokeWidth="6" />
+      <path d="M0 0L60 30M60 0L0 30" stroke="#c8102e" strokeWidth="2" />
+      <path d="M30 0V30M0 15H60" stroke="#fff" strokeWidth="10" />
+      <path d="M30 0V30M0 15H60" stroke="#c8102e" strokeWidth="6" />
+    </svg>
+  );
+}
 
 function Swatches({ value, onChange }) {
   return (
@@ -81,8 +106,8 @@ export function HomeBannerPreview({ name, date, design, location }) {
   return (
     <div className={styles.banner} style={{ background: surfaceBackground(d.banner, d.bannerImage), color: d.banner.ink }}>
       <span className={styles.bannerEyebrow}>Next Modern Event</span>
-      <span className={styles.bannerTitle}>{name || DEFAULT_TEXT.name}</span>
-      <span style={{ fontSize: '0.85rem', opacity: 0.85 }}>{when.day}{location ? ` · ${location}` : ''}</span>
+      <span className={styles.bannerTitle} {...greekAttrs(name)}>{name || DEFAULT_TEXT.name}</span>
+      <span style={{ fontSize: '0.85rem', opacity: 0.85, ...greekAttrs(location).style }} lang={greekAttrs(location).lang}>{when.day}{location ? ` · ${location}` : ''}</span>
     </div>
   );
 }
@@ -112,6 +137,18 @@ export default function KeeperPanel() {
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const setDesign = (k, v) => setForm(f => ({ ...f, design: { ...f.design, [k]: v } }));
+
+  // Switching the card's language also switches any line still holding the other
+  // language's house text; lines the Keeper has changed are left alone.
+  const setLang = (next) => setForm(f => {
+    const prev = f.design.lang === 'el' ? 'el' : 'en';
+    if (prev === next) return f;
+    const from = DEFAULT_TEXT_BY_LANG[prev];
+    const to = DEFAULT_TEXT_BY_LANG[next];
+    const out = { ...f, design: { ...f.design, lang: next } };
+    for (const k of ['salutation', 'body', 'dress_code', 'signature']) if (!f[k] || f[k] === from[k]) out[k] = to[k];
+    return out;
+  });
 
   const flash = (m) => { setMsg(m); setErr(''); setTimeout(() => setMsg(''), 3500); };
 
@@ -198,6 +235,12 @@ export default function KeeperPanel() {
 
         <section className={styles.panel}>
           <h2 className={styles.panelTitle}><Icon name="ink_pen" /> The Words</h2>
+          <h3 className={styles.sectionLabel}>Language of the card</h3>
+          <Chips options={LANGS} value={form.design.lang === 'el' ? 'el' : 'en'} onChange={setLang}
+            render={l => <><Flag id={l.id} />{l.label}</>} />
+          <p className={styles.hint} style={{ marginTop: '0.5rem' }}>
+            Translates everything the card says by itself: the heading, "at" and the time, "Attire", the date, and the "doors are closed" card. Your own lines below always show exactly as you wrote them; switching the language swaps a line to its house text only if you have not changed it.
+          </p>
           <p className={styles.hint}>Write <b>{'{name}'}</b> and <b>{'{clan}'}</b> anywhere: each guest sees their own character's name and clan.</p>
           <label className={styles.field}><span>Salutation</span>
             <input className={styles.input} value={form.salutation} maxLength={255} onChange={e => set('salutation', e.target.value)} />

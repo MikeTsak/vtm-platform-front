@@ -5,6 +5,9 @@
 const lattice = (alpha) =>
   `repeating-conic-gradient(from 45deg, rgba(255,255,255,${alpha}) 0 25%, transparent 0 50%) 0 0 / 26px 26px`;
 
+// HISTORY: the server stores only preset ids (cardPreset, accent, ornament...),
+// not what they look like. The admin history redraws old invitations from these
+// tables, so never change an existing preset's colours or art: add a new id.
 export const SURFACES = [
   {
     id: 'velvet-rose', label: 'Rose Velvet', ink: '#f7e8dc', muted: 'rgba(247,232,220,0.74)',
@@ -46,11 +49,19 @@ export const ORNAMENTS = [
   { id: 'minimal', label: 'Single Rule' },
 ];
 
+// `greek` is the whole-line face used when the text contains Greek: none of the
+// Latin display faces carry Greek glyphs, and a per-letter fallback would mix hands.
 export const FONTS = [
-  { id: 'cinzel', label: 'Engraved Capitals', family: "'Cinzel', 'Playfair Display', serif" },
-  { id: 'playfair', label: 'Opera Serif', family: "'Playfair Display', Georgia, serif" },
-  { id: 'script', label: 'Calligraphy', family: "'Pinyon Script', 'Playfair Display', cursive" },
+  { id: 'cinzel', label: 'Engraved Capitals', family: "'Cinzel', 'Noto Serif Display', serif", greek: { fontFamily: "'Noto Serif Display', serif", textTransform: 'uppercase', letterSpacing: '0.08em' } },
+  { id: 'playfair', label: 'Opera Serif', family: "'Playfair Display', 'Noto Serif Display', serif", greek: { fontFamily: "'Noto Serif Display', serif" } },
+  { id: 'script', label: 'Calligraphy', family: "'Pinyon Script', 'Noto Serif Display', serif", greek: { fontFamily: "'Noto Serif Display', serif", fontStyle: 'italic', fontWeight: 600 } },
 ];
+
+// Props for any line of free text: if it contains Greek the WHOLE line is set in
+// one Greek-capable face (a per-letter fallback would mix two typefaces in a line).
+export const greekAttrs = (str) => (hasGreek(str) ? { lang: 'el', style: { fontFamily: "'Noto Serif Display', serif" } } : {});
+
+export const hasGreek = (s) => /[\u0370-\u03FF\u1F00-\u1FFF]/.test(s || '');
 
 export const SEALS = [
   { id: 'toreador', label: 'Clan Toreador' },
@@ -60,7 +71,7 @@ export const SEALS = [
 ];
 
 export const DEFAULT_DESIGN = {
-  cardPreset: 'velvet-rose', bannerPreset: 'velvet-rose', accent: 'gold', ornament: 'nouveau', font: 'cinzel', seal: 'toreador',
+  cardPreset: 'velvet-rose', bannerPreset: 'velvet-rose', accent: 'gold', ornament: 'nouveau', font: 'cinzel', seal: 'toreador', lang: 'en',
 };
 
 export const DEFAULT_TEXT = {
@@ -70,6 +81,52 @@ export const DEFAULT_TEXT = {
   body: 'The Keeper of Elysium requests the pleasure of your company at the coming gathering of the Court of Athens.\n\nWithin these walls the Traditions are kept. Let no blade be drawn, no blood be taken, no Discipline be raised in anger. Arrive as a guest, and depart as one.',
   dress_code: 'Evening attire. Masks are welcome.',
   signature: 'The Keeper of Elysium',
+};
+
+// Language of the card's FIXED wording (stored in the invitation's design as `lang`).
+// The Keeper's own text is always shown exactly as written.
+export const LANGS = [
+  { id: 'el', label: 'Ελληνικά' },
+  { id: 'en', label: 'English' },
+];
+
+export const STRINGS = {
+  en: {
+    eyebrow: 'An Invitation to Elysium',
+    barredEyebrow: 'Elysium',
+    barredTitle: 'The doors are closed to you',
+    barredBody: '{name}, the Keeper of Elysium has not extended you an invitation to this gathering. Do not seek entry.',
+    timePrefix: 'at',
+    locationPrefix: 'at',
+    attire: 'Attire',
+    guest: 'Honoured Guest',
+    clan: 'the Blood',
+  },
+  el: {
+    eyebrow: 'Πρόσκληση στο Elysium',
+    barredEyebrow: 'Elysium',
+    barredTitle: 'Οι πύλες είναι κλειστές για εσάς',
+    barredBody: '{name}, ο Φύλακας του Elysium δεν σας έχει απευθύνει πρόσκληση σε αυτή τη συγκέντρωση. Μην επιχειρήσετε να εισέλθετε.',
+    timePrefix: 'ώρα',
+    locationPrefix: 'Τοποθεσία:',
+    attire: 'Ενδυμασία',
+    guest: 'Τιμημένο Καλεσμένο',
+    clan: 'του Αίματος',
+  },
+};
+
+// House text per language. Switching language swaps a field only while it still
+// holds the other language's house text, so the Keeper's own edits are never lost.
+export const DEFAULT_TEXT_BY_LANG = {
+  en: DEFAULT_TEXT,
+  el: {
+    name: 'Elysium',
+    location: '',
+    salutation: 'Προς {name}, της φυλής {clan}',
+    body: 'Ο Φύλακας του Elysium σάς προσκαλεί να τιμήσετε με την παρουσία σας την επικείμενη συνάντηση της Αυλής των Αθηνών.\n\nΜέσα σε αυτούς τους τοίχους οι Παραδόσεις τηρούνται. Κανένα ξίφος δεν θα σηκωθεί, κανένα αίμα δεν θα χυθεί, καμία Πειθαρχία δεν θα ενεργοποιηθεί από οργή. Ελάτε ως καλεσμένος και αναχωρήστε ως τέτοιος.',
+    dress_code: 'Βραδινή περιβολή. Οι μάσκες είναι ευπρόσδεκτες.',
+    signature: 'Ο Φύλακας του Elysium',
+  },
 };
 
 const find = (list, id) => list.find(x => x.id === id) || list[0];
@@ -94,10 +151,11 @@ export function surfaceBackground(preset, image) {
 }
 
 // {name} / {clan} tokens in the Keeper's text become the reader's character.
-export function personalize(text, guest) {
+export function personalize(text, guest, lang = 'en') {
+  const L = STRINGS[lang] || STRINGS.en;
   return String(text || '')
-    .replace(/\{name\}/gi, guest?.name || 'Honoured Guest')
-    .replace(/\{clan\}/gi, guest?.clan || 'the Blood');
+    .replace(/\{name\}/gi, guest?.name || L.guest)
+    .replace(/\{clan\}/gi, guest?.clan || L.clan);
 }
 
 const ordinal = (n) => {
@@ -106,14 +164,14 @@ const ordinal = (n) => {
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 };
 
-// "Saturday, the 10th of October, 2026" and "18:00", in Athens time.
-export function formatElysiumDate(date) {
+// English: "Saturday, the 10th of October, 2026". Greek: "Σάββατο 10 Οκτωβρίου 2026".
+// Time as "18:00". All in Athens time.
+export function formatElysiumDate(date, lang = 'en') {
   if (!date) return { day: '', time: '' };
   const d = new Date(date);
-  const parts = Object.fromEntries(
-    new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Athens', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-      .formatToParts(d).map(p => [p.type, p.value])
-  );
+  const opts = { timeZone: 'Europe/Athens', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
   const time = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Athens', hour: '2-digit', minute: '2-digit' }).format(d);
+  if (lang === 'el') return { day: new Intl.DateTimeFormat('el-GR', opts).format(d), time };
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-GB', opts).formatToParts(d).map(x => [x.type, x.value]));
   return { day: `${parts.weekday}, the ${ordinal(Number(parts.day))} of ${parts.month}, ${parts.year}`, time };
 }

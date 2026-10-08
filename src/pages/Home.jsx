@@ -17,7 +17,7 @@ import { useTheme } from '../core/ThemeContext';
 import Loading from '../ui/Loading';
 import { formatAthensWeekdayDate } from '../utils/dateFormatter';
 import ElysiumInvitationModal from '../features/court/ElysiumInvitation';
-import { resolveDesign, surfaceBackground } from '../features/court/elysiumPresets';
+import { resolveDesign, surfaceBackground, greekAttrs } from '../features/court/elysiumPresets';
 
 /* ── Relative time ──────────────────────────────────────────────── */
 const formatTimestamp = (ts) => {
@@ -283,23 +283,25 @@ export default function Home() {
     })();
   }, [nav]);
 
-  // A new, unread invitation opens itself once; reading it is recorded server-side.
+  // A new, unread invitation opens itself once. Every opening is logged server-side
+  // (the Storytellers' invitation history shows who read it, when and how often).
+  const openInvitation = (data = elysium) => {
+    setShowInvite(true);
+    if (!data?.event || data.status === 'pending') return;
+    api.post(`/elysium/${data.event.id}/read`).catch(() => {});
+    setElysium(e => (e ? { ...e, read: true } : e));
+  };
+
   useEffect(() => {
     let live = true;
     api.get('/elysium/current').then(({ data }) => {
       if (!live) return;
       setElysium(data);
-      if (data?.event && data.status !== 'pending' && !data.read) setShowInvite(true);
+      if (data?.event && data.status !== 'pending' && !data.read) openInvitation(data);
     }).catch(() => {});
     return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const openInvitation = () => setShowInvite(true);
-  useEffect(() => {
-    if (!showInvite || !elysium?.event || elysium.read) return;
-    api.post(`/elysium/${elysium.event.id}/read`).catch(() => {});
-    setElysium(e => (e ? { ...e, read: true } : e));
-  }, [showInvite, elysium]);
 
   const currentMe = me || authUser;
   const safeMe = currentMe || { display_name: '', id: '0', role: 'user', ui_sounds_enabled: true };
@@ -585,14 +587,14 @@ export default function Home() {
           >
             <div className={styles.eventInfo}>
               <h3 className={styles.eventHeader}>NEXT MODERN EVENT</h3>
-              <h2 className={styles.eventTitle}>{elysium?.event ? (elysium.invitation?.name || elysium.event.name || 'Elysium Gathering') : 'No Current Event'}</h2>
+              <h2 className={styles.eventTitle} {...greekAttrs(elysium?.invitation?.name || elysium?.event?.name)}>{elysium?.event ? (elysium.invitation?.name || elysium.event.name || 'Elysium Gathering') : 'No Current Event'}</h2>
               {elysium?.event && !eventCd.isPast && (
                 <p className={styles.eventLocation} style={{ color: 'var(--tint)' }}>
                   Starts in: {eventCd.days}d {eventCd.hours}h {eventCd.mins}m
                 </p>
               )}
               {elysium?.event && (
-                <p className={styles.eventLocation}>
+                <p className={styles.eventLocation} {...greekAttrs(elysium.invitation?.location)}>
                   {elysium.status === 'invited' && elysium.invitation?.location
                     ? `Location: ${elysium.invitation.location}`
                     : elysium.status === 'barred' ? 'You have not been invited.' : 'Location: revealed in the invitation'}
@@ -602,7 +604,7 @@ export default function Home() {
             {elysium?.event && (elysium.status === 'pending' ? (
               <button className={styles.rsvpBtn} disabled style={{ minHeight: '48px', minWidth: '120px', opacity: 0.6, cursor: 'default' }}>Invitation Pending</button>
             ) : (
-              <button className={styles.rsvpBtn} onClick={openInvitation} style={{ minHeight: '48px', minWidth: '120px', position: 'relative' }}>
+              <button className={styles.rsvpBtn} onClick={() => openInvitation()} style={{ minHeight: '48px', minWidth: '120px', position: 'relative' }}>
                 View Invitation
                 {!elysium.read && <span aria-label="unread" style={{ position: 'absolute', top: 6, right: 6, width: 9, height: 9, borderRadius: '50%', background: '#ff5252', boxShadow: '0 0 8px #ff5252' }} />}
               </button>

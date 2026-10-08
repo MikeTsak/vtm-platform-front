@@ -39,7 +39,7 @@
     0 0 0 1px rgba(0, 0, 0, 0.6),
     inset 0 0 120px rgba(0, 0, 0, 0.35);
   text-align: center;
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: 'Playfair Display', 'Noto Serif', serif;
 }
 
 .light {
@@ -112,7 +112,7 @@
 
 .eyebrow {
   margin: 0;
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', 'Noto Serif Display', serif;
   font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: 0.42em;
@@ -122,7 +122,7 @@
 
 .salutation {
   margin: 1.1rem 0 0.2rem;
-  font-family: 'Pinyon Script', 'Playfair Display', cursive;
+  font-family: 'Pinyon Script', 'Noto Serif Display', serif;
   font-size: 1.75rem;
   line-height: 1.25;
   color: var(--ink);
@@ -152,7 +152,7 @@
 
 .date {
   margin: 0;
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', 'Noto Serif Display', serif;
   font-size: 0.95rem;
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -172,7 +172,7 @@
 }
 
 .location::before {
-  content: 'at ';
+  content: attr(data-prefix) ' ';
   color: var(--muted);
 }
 
@@ -196,7 +196,7 @@
 
 .dress span {
   display: block;
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', 'Noto Serif Display', serif;
   font-style: normal;
   font-size: 0.66rem;
   letter-spacing: 0.32em;
@@ -207,7 +207,7 @@
 
 .signature {
   margin: 1.2rem 0 0;
-  font-family: 'Pinyon Script', 'Playfair Display', cursive;
+  font-family: 'Pinyon Script', 'Noto Serif Display', serif;
   font-size: 1.6rem;
   color: var(--ink);
 }
@@ -268,7 +268,7 @@
   border: 1px solid rgba(212, 175, 95, 0.45);
   background: rgba(0, 0, 0, 0.55);
   color: #f1e5c9;
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', 'Noto Serif Display', serif;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   font-size: 0.78rem;
@@ -283,3 +283,13 @@
   .corner { width: 70px; height: 70px; }
   .salutation { font-size: 1.5rem; }
 }
+
+/* Pinyon Script and Cinzel have no Greek letters. A line containing Greek
+   switches whole to Noto Serif Display, so it never mixes two hands. */
+.scriptGreek {
+  font-family: 'Noto Serif Display', serif;
+  font-style: italic;
+  font-size: 1.45rem;
+}
+
+.signature.scriptGreek { font-size: 1.35rem; }

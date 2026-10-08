@@ -20,7 +20,7 @@
 
 .heroEyebrow {
   margin: 0;
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', 'Noto Serif Display', serif;
   font-size: 0.72rem;
   letter-spacing: 0.35em;
   text-transform: uppercase;
@@ -29,7 +29,7 @@
 
 .heroTitle {
   margin: 0.25rem 0 0.4rem;
-  font-family: 'Playfair Display', serif;
+  font-family: 'Playfair Display', 'Noto Serif Display', serif;
   font-size: clamp(1.8rem, 5vw, 2.6rem);
 }
 
@@ -43,7 +43,7 @@
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--tint) 55%, transparent);
   background: color-mix(in srgb, var(--tint) 16%, transparent);
-  font-family: 'Cinzel', serif;
+  font-family: 'Cinzel', 'Noto Serif Display', serif;
   font-size: 0.78rem;
   letter-spacing: 0.08em;
 }
@@ -96,7 +96,7 @@
   align-items: center;
   gap: 0.5rem;
   margin: 0 0 0.25rem;
-  font-family: 'Playfair Display', serif;
+  font-family: 'Playfair Display', 'Noto Serif Display', serif;
   font-size: 1.25rem;
 }
 
@@ -160,7 +160,7 @@ textarea.input { min-height: 96px; resize: vertical; line-height: 1.5; }
 
 .itemHead { display: flex; justify-content: space-between; gap: 0.75rem; align-items: baseline; flex-wrap: wrap; }
 
-.itemName { font-family: 'Playfair Display', serif; font-size: 1.1rem; font-weight: 700; }
+.itemName { font-family: 'Playfair Display', 'Noto Serif Display', serif; font-size: 1.1rem; font-weight: 700; }
 
 .itemMeta { font-size: 0.76rem; color: var(--text-muted); }
 
@@ -194,7 +194,7 @@ textarea.input { min-height: 96px; resize: vertical; line-height: 1.5; }
 
 .stat { border: 1px solid var(--border-color); border-radius: 10px; padding: 0.75rem; background: rgba(0, 0, 0, 0.18); }
 
-.statValue { font-family: 'Playfair Display', serif; font-size: 1.8rem; font-weight: 700; line-height: 1; }
+.statValue { font-family: 'Playfair Display', 'Noto Serif Display', serif; font-size: 1.8rem; font-weight: 700; line-height: 1; }
 
 .statLabel { margin-top: 0.3rem; font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
 
@@ -204,7 +204,7 @@ textarea.input { min-height: 96px; resize: vertical; line-height: 1.5; }
 
 .rankNum { color: var(--text-muted); font-variant-numeric: tabular-nums; }
 
-.guide dt { font-family: 'Cinzel', serif; font-weight: 700; color: var(--tint); margin-top: 0.7rem; }
+.guide dt { font-family: 'Cinzel', 'Noto Serif Display', serif; font-weight: 700; color: var(--tint); margin-top: 0.7rem; }
 
 .guide dd { margin: 0.15rem 0 0; color: var(--text-muted); line-height: 1.5; font-size: 0.9rem; }
 
@@ -285,9 +285,9 @@ textarea.input { min-height: 96px; resize: vertical; line-height: 1.5; }
 
 .bannerEyebrow { font-size: 0.66rem; letter-spacing: 0.25em; text-transform: uppercase; opacity: 0.75; }
 
-.bannerTitle { font-family: 'Playfair Display', serif; font-size: 1.4rem; font-weight: 700; }
+.bannerTitle { font-family: 'Playfair Display', 'Noto Serif Display', serif; font-size: 1.4rem; font-weight: 700; }
 
-.sectionLabel { margin: 1.25rem 0 0.5rem; font-family: 'Cinzel', serif; font-size: 0.78rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--tint); }
+.sectionLabel { margin: 1.25rem 0 0.5rem; font-family: 'Cinzel', 'Noto Serif Display', serif; font-size: 0.78rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--tint); }
 
 .sectionLabel:first-child { margin-top: 0; }
 

@@ -32,6 +32,7 @@ const AdminGhoulsTab = lazyWithRetry(() => import('./AdminGhoulsTab'));
 const AdminPremonitionsTab = lazyWithRetry(() => import('./AdminPremonitionsTab'));
 const AdminEventsTab = lazyWithRetry(() => import('./AdminEventsTab'));
 const AdminCalendarTab = lazyWithRetry(() => import('./AdminCalendarTab'));
+const AdminElysiumTab = lazyWithRetry(() => import('./AdminElysiumTab'));
 const AdminBroadcastTab = lazyWithRetry(() => import('./AdminBroadcastTab'));
 const AdminTimelineTab = lazyWithRetry(() => import('./AdminTimelineTab'));
 const AdminDomainsTab = lazyWithRetry(() => import('./AdminDomainsTab'));
@@ -83,6 +84,7 @@ const NAV_SECTIONS = [
     items: [
       { id: 'downtimes',    icon: 'schedule',       label: 'Downtimes',    hint: 'Review and resolve player actions', keywords: ['actions', 'between sessions', 'projects', 'approve', 'reject', 'needs scene', 'resolve', 'filter pipelines', 'reset configuration', 'sync records'] },
       { id: 'calendar',     icon: 'calendar_month', label: 'Calendar',     hint: 'Deadlines, events, and scheduling', keywords: ['calendar', 'events', 'downtimes', 'comms', 'schedule', 'rsvp'] },
+      { id: 'elysium',      icon: 'local_florist',  label: 'Elysium Invitations', hint: 'Every invitation, its versions, and who read it', keywords: ['elysium', 'invitation', 'keeper', 'history', 'versions', 'audit', 'log', 'read', 'opened', 'guest list', 'design'] },
       { id: 'events',       icon: 'event',          label: 'Events',       hint: 'Game sessions and dates', keywords: ['calendar', 'timeline', 'schedule', 'sessions', 'dates', 'venue', 'planning'] },
       { id: 'prestation',   icon: 'handshake',      label: 'Prestation',   hint: 'Boons, debts, and favors', keywords: ['boons', 'debts', 'favors', 'harpy', 'trivial', 'minor', 'major', 'blood', 'life', 'transfer', 'record', 'clear', 'relationships', 'conversations', 'messages', 'network', 'who talks to whom'] },
       { id: 'premonitions', icon: 'visibility',     label: 'Premonitions', hint: 'Visions for Malkavians', keywords: ['visions', 'future', 'auspex', 'dreams', 'prophecy', 'omens', 'sight', 'clues'] },
@@ -960,6 +962,7 @@ async function grantXP(character_id, delta) {
     disciplines: () => <AdminDisciplinesTab />,
     // Chronicle
     calendar:     () => <AdminCalendarTab />,
+    elysium:      () => <AdminElysiumTab />,
     downtimes:    () => <AdminDowntimesTab rows={downtimes} onSave={saveDowntime} characters={characters} />,
     feeding:      () => <AdminFeedingTab />,
     claims:       () => <AdminClaimsTab users={users} />,
