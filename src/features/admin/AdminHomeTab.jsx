@@ -972,15 +972,15 @@ export default function AdminHomeTab({
             title="Click to manage Comms in Master Control"
           >
             <div className={styles.heroRibbonIconWrap}>
-              <span className="material-symbols-outlined" style={{ fontSize: '20px', color: commsData?.comms_enabled ? '#00e676' : '#ff9100' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '20px', color: commsData?.comms_enabled ? '#00e676' : '#ff4444' }}>
                 {commsData?.comms_enabled ? 'sensors' : 'sensors_off'}
               </span>
             </div>
             <div className={styles.heroRibbonContent}>
               <span className={styles.heroRibbonLabel}>Athens Comms Window</span>
               <div className={styles.heroRibbonValue}>
-                <span className={commsData?.comms_enabled ? styles.pulseDotGreen : styles.pulseDotAmber} />
-                <strong style={{ color: commsData?.comms_enabled ? '#00e676' : '#ffb822' }}>
+                <span className={commsData?.comms_enabled ? styles.pulseDotGreen : styles.pulseDotRed} />
+                <strong style={{ color: commsData?.comms_enabled ? '#00e676' : '#ff4444' }}>
                   {commsData?.comms_enabled ? 'Comms Open' : 'Comms Closed'}
                 </strong>
                 {commsData?.comms_enabled && commsData?.next_closing?.formatted && (
@@ -1012,15 +1012,15 @@ export default function AdminHomeTab({
             title="Click to manage Downtimes"
           >
             <div className={styles.heroRibbonIconWrap}>
-              <span className="material-symbols-outlined" style={{ fontSize: '20px', color: isDtOpen ? '#00e676' : '#ff9100' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '20px', color: isDtOpen ? '#00e676' : '#ff4444' }}>
                 {isDtOpen ? 'lock_open' : 'lock'}
               </span>
             </div>
             <div className={styles.heroRibbonContent}>
               <span className={styles.heroRibbonLabel}>Downtime Window</span>
               <div className={styles.heroRibbonValue}>
-                <span className={isDtOpen ? styles.pulseDotGreen : styles.pulseDotAmber} />
-                <strong style={{ color: isDtOpen ? '#00e676' : '#ffb822' }}>
+                <span className={isDtOpen ? styles.pulseDotGreen : styles.pulseDotRed} />
+                <strong style={{ color: isDtOpen ? '#00e676' : '#ff4444' }}>
                   {isDtOpen ? 'Downtimes Open' : 'Downtimes Closed'}
                 </strong>
                 {isDtOpen && dtDeadlineIso && (
@@ -1038,6 +1038,9 @@ export default function AdminHomeTab({
                       Opens in {dtCountdown?.text || '...'}
                     </span>
                   </>
+                )}
+                {!isDtOpen && (!dtOpeningIso || new Date(dtOpeningIso).getTime() <= Date.now()) && (
+                  <span className={styles.heroRibbonDate} style={{ opacity: 0.7 }}>(No scheduled opening)</span>
                 )}
               </div>
             </div>

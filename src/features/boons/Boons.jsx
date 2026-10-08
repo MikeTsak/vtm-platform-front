@@ -23,7 +23,7 @@ function relDate(ts) {
   const diff = Math.floor((Date.now() - d) / 86400000);
   if (diff === 0) return 'Today';
   if (diff === 1) return 'Yesterday';
-  if (diff < 30)  return `${diff}d ago`;
+  if (diff <= 5)  return `${diff}d ago`;
   return d.toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
