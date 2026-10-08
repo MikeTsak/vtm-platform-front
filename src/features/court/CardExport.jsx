@@ -46,13 +46,14 @@ export default function DownloadCardButton({ invitation, eventDate, guest, barre
       const node = holder.current?.firstElementChild;
       if (!node) throw new Error('The card did not render');
       node.setAttribute('data-exporting', ''); // switches off the sheen animation
-      const { toPng } = await import('html-to-image');
-      const url = await toPng(node, { pixelRatio: PIXEL_RATIO });
-      
       if (action === 'discord' && eventId) {
+        const { toJpeg } = await import('html-to-image');
+        const url = await toJpeg(node, { pixelRatio: PIXEL_RATIO, quality: 0.85 });
         await api.post(`/admin/elysium/invitations/${eventId}/discord`, { image: url, text });
         alert('Invitation pushed to Discord successfully.');
       } else {
+        const { toPng } = await import('html-to-image');
+        const url = await toPng(node, { pixelRatio: PIXEL_RATIO });
         const a = document.createElement('a');
         a.href = url;
         a.download = `${fileSlug(filename || invitation?.name)}.png`;

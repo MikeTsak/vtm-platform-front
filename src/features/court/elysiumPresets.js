@@ -2,8 +2,10 @@
 // the server stores (routes/elysium.js only accepts [a-z0-9-] slugs and https
 // image URLs), so renaming an id orphans saved designs: add, don't rename.
 
-const lattice = (alpha) =>
-  `repeating-conic-gradient(from 45deg, rgba(255,255,255,${alpha}) 0 25%, transparent 0 50%) 0 0 / 26px 26px`;
+const lattice = (alpha) => {
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='26' height='26'><polygon points='13,13 26,0 26,26' fill='rgba(255,255,255,${alpha})'/><polygon points='13,13 0,0 0,26' fill='rgba(255,255,255,${alpha})'/></svg>`;
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}") 0 0 / 26px 26px`;
+};
 
 // HISTORY: the server stores only preset ids (cardPreset, accent, ornament...),
 // not what they look like. The admin history redraws old invitations from these

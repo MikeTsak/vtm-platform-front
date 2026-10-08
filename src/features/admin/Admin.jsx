@@ -114,7 +114,7 @@ const NAV_SECTIONS = [
       { id: 'npc_emails',     icon: 'mail',          label: 'NPC Comms',  hint: 'NPC inboxes and mail threads', keywords: ['emails', 'messages', 'inbox', 'outbox', 'send reply', 'delete identity', 'create identity'] },
       { id: 'broadcast',      icon: 'campaign',      label: 'Broadcast',  hint: 'Push announcements to everyone', keywords: ['announcements', 'alerts', 'notifications', 'global', 'news', 'urgent', 'messages', 'push'] },
       { id: 'discord',        icon: 'sensors',       label: 'Discord',    hint: 'Bot sync and webhooks', keywords: ['bots', 'sync', 'webhooks', 'integration', 'messages', 'channels', 'setup', 'permissions'] },
-      { id: 'news_templates', icon: 'article',       label: 'News',       hint: 'Templates and writer permissions', keywords: ['news', 'templates', 'writers', 'permissions', 'articles'] },
+      { id: 'news_templates', icon: 'article',       label: 'News',       hint: 'Articles, readers and writer permissions', keywords: ['news', 'templates', 'writers', 'permissions', 'articles', 'readers', 'reads', 'views'] },
     ],
   },
   {

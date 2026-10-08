@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Helmet } from 'react-helmet-async';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import api from '../../core/api';
@@ -55,7 +56,15 @@ export default function PublicArticleView() {
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
+  const [zoomed, setZoomed] = useState(false);
+
+  useEffect(() => {
+    if (!zoomed) return;
+    const onKey = (e) => e.key === 'Escape' && setZoomed(false);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [zoomed]);
+
   const navigate = useNavigate();
   const location = useLocation();
   const isRumor = location.pathname.startsWith('/rumors');
@@ -107,7 +116,20 @@ export default function PublicArticleView() {
     if (isVideoUrl(article.media_url)) {
       return <video src={mediaUrl} controls style={{ width: '100%', borderRadius }} />;
     }
-    return <img src={mediaUrl} alt="News Media" style={{ width: '100%', borderRadius }} />;
+    return (
+      <>
+        <img src={mediaUrl} alt="News Media" onClick={() => setZoomed(true)} style={{ width: '100%', borderRadius, cursor: 'zoom-in' }} />
+        {zoomed && createPortal(
+          <div
+            onClick={() => setZoomed(false)}
+            style={{ position: 'fixed', inset: 0, zIndex: 100000, background: 'rgba(0,0,0,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'zoom-out', padding: '1rem' }}
+          >
+            <img src={mediaUrl} alt="News Media" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+          </div>,
+          document.body
+        )}
+      </>
+    );
   };
 
   const articleDate = formatAthensDateTime(article.created_at);
@@ -576,7 +598,7 @@ export default function PublicArticleView() {
             <h2 className={styles.rumorTitle}>{article.title}</h2>
             {mediaUrl && (
               <div className={styles.mediaFrame}>
-                {isVideoUrl(article.media_url) ? <video src={mediaUrl} controls /> : <img src={mediaUrl} alt="Proof" />}
+                {renderMedia()}
               </div>
             )}
             <div className={styles.rumorBodyText} dangerouslySetInnerHTML={{ __html: sanitizeHtml(article.body) }} />
