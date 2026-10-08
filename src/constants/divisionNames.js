@@ -15,6 +15,20 @@ export const DIVISION_NAMES = {
   45: 'Korydallos, Nikaia, Agia Barbara', 46: 'Glyfada', 47: 'Gkyzh', 48: 'Eleysina', 49: 'Aspropirgos',
 };
 
+// The outer municipalities (50+) the Domains map added later. Kept apart so
+// DIVISION_OPTIONS (the coterie domain picker) is unchanged; name lookups
+// should go through getDivisionName, which reads both.
+export const OUTER_DIVISION_NAMES = {
+  50: "Magoylas", 51: "Mandras", 52: "Vilion", 53: "Erythron", 54: "Oinois",
+  55: "Neas Peramoy", 56: "Ano Liosion", 57: "Zefyrioy", 58: "Rodopoleos", 59: "Stamatas",
+  60: "Anthoysas", 61: "Agioy Stefanoy", 62: "Anoixeos", 63: "Dionysoy", 64: "Drosias",
+  65: "Pallinis", 66: "Spaton - Loytsas", 67: "Thrakomakedonon", 68: "Agioy Konstantinoy", 69: "Rafinas",
+  70: "Varnava", 71: "Pikermioy", 72: "Neas Makris", 73: "Koyvara", 74: "Palaias Fokaias",
+  75: "Afidnon", 76: "Oropion", 77: "Kalamoy", 78: "Malakasis", 79: "Kapandritioy",
+  80: "Sykaminoy", 81: "Polydendrioy", 82: "Methanon", 83: "Salamina", 84: "Fyli, Xasia",
+  85: "Axarnes, Menidi", 86: "Koropi", 87: "Markopoylo Mesogaias", 88: "Skaramagkas", 89: "Penteli",
+};
+
 export const DIVISION_OPTIONS = Object.entries(DIVISION_NAMES)
   .map(([id, name]) => ({
     value: Number(id),
@@ -24,5 +38,5 @@ export const DIVISION_OPTIONS = Object.entries(DIVISION_NAMES)
 
 export function getDivisionName(division) {
   if (division == null) return '';
-  return DIVISION_NAMES[division] || `Division ${division}`;
+  return DIVISION_NAMES[division] || OUTER_DIVISION_NAMES[division] || `Division ${division}`;
 }

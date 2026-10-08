@@ -94,7 +94,8 @@ const getTopRole = (rawTitles, authorRole, authorName) => {
 };
 
 // --- Main View ---
-export default function AnnouncementsView({ canEdit: propCanEdit }) {
+// canPush: the Prince/Seneschal may push a decree to every player (Court Actions).
+export default function AnnouncementsView({ canEdit: propCanEdit, canPush = false }) {
   const { user } = useContext(AuthCtx);
   const isCourtOrAdmin = user?.role === 'admin' || user?.role === 'courtuser';
   const canEdit = propCanEdit !== undefined ? propCanEdit : isCourtOrAdmin;
@@ -187,12 +188,15 @@ export default function AnnouncementsView({ canEdit: propCanEdit }) {
         media_url = uploadRes.data.url; 
       }
 
-      await api.post('/news', { 
+      const { data: created } = await api.post('/news', { 
         type: 'announcement', 
         title: e.target.title.value, 
         body: contentRef.current.value || contentRef.current.innerHTML, // Support either input or contentEditable
         media_url: media_url 
       });
+      if (canPush && e.target.push?.checked && created?.id) {
+        await api.post(`/court-actions/decrees/${created.id}/push`).catch(err => alert(formatApiError(err, 'Published, but the push could not be sent.')));
+      }
 
       closeModal();
       fetchItems();
@@ -362,6 +366,12 @@ export default function AnnouncementsView({ canEdit: propCanEdit }) {
                   </div>
                 </div>
 
+                {canPush && (
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0 1.5rem 1rem', fontSize: '0.9rem', cursor: 'pointer' }}>
+                    <input type="checkbox" name="push" defaultChecked disabled={isUploading} style={{ width: 18, height: 18 }} />
+                    Proclaim it: send a push notification to every player
+                  </label>
+                )}
                 <footer className={styles.modalFooter}>
                   <button type="button" className={styles.cancelBtn} onClick={closeModal} disabled={isUploading} data-cuelume-press="pop" data-cuelume-hover>Cancel</button>
                   <button type="submit" className={styles.submitBtn} disabled={isUploading} data-cuelume-press data-cuelume-release="success" data-cuelume-hover>

@@ -10,13 +10,14 @@ import Avatar from '../components/Avatar';
 import GoogleAd from '../components/GoogleAd';
 import ClanSymbol from '../components/ClanSymbol';
 import ClanTextLogo from '../components/ClanTextLogo';
-import { symlogo, textlogo, symlogoWhite, textlogoWhite, clanTint, clanBackground, CLAN_NAMES } from '../data/clans';
+import { symlogo, textlogo, symlogoWhite, textlogoWhite, clanTint, clanBackground } from '../data/clans';
 import { factionLogo } from '../data/factions';
 import { AuthCtx } from '../core/AuthContext';
 import { useTheme } from '../core/ThemeContext';
 import Loading from '../ui/Loading';
-import FaGlyph from '../ui/FaGlyph';
 import { formatAthensWeekdayDate } from '../utils/dateFormatter';
+import ElysiumInvitationModal from '../features/court/ElysiumInvitation';
+import { resolveDesign, surfaceBackground } from '../features/court/elysiumPresets';
 
 /* ── Relative time ──────────────────────────────────────────────── */
 const formatTimestamp = (ts) => {
@@ -141,7 +142,9 @@ export default function Home() {
   const [me, setMe] = useState(() => authUser);
   const [ch, setCh] = useState(null);
   const [quota, setQuota] = useState({ used: 0, limit: 3 });
-  const [openingDate, setOpeningDate] = useState(null);
+  // The coming Elysium and this character's invitation (routes/elysium.js).
+  const [elysium, setElysium] = useState(null);
+  const [showInvite, setShowInvite] = useState(false);
   const [loading, setLoading] = useState(true);
   const [recentDowntimes, setRecentDowntimes] = useState([]);
   const [recentChats, setRecentChats] = useState([]);
@@ -157,16 +160,15 @@ export default function Home() {
   // Theme is owned app-wide by ThemeProvider (src/core/ThemeContext.jsx), it
   // applies data-theme / --tint on every route and syncs with the server. Here
   // we only read the current value and drive the picker below.
-  const { theme: activeTheme, setTheme: handleThemeChange, clan: currentClan, clanOverride, setClanOverride } = useTheme();
+  const { theme: activeTheme, setTheme: handleThemeChange } = useTheme();
   const [isShattering, setIsShattering] = useState(false);
   const [clickPoint, setClickPoint] = useState(null);
   const [shards, setShards] = useState([]);
   const [activeFeedTab, setActiveFeedTab] = useState('whispers');
-  const [showRsvp, setShowRsvp] = useState(false);
   const overlayRef = useRef(null);
   const nav = useNavigate();
 
-  const eventCd = useCountdown(openingDate);
+  const eventCd = useCountdown(elysium?.event?.date);
 
   /* ── Shatter trigger ── */
   const handlePremonitionClick = (e) => {
@@ -219,91 +221,18 @@ export default function Home() {
   }, [authUser, me]);
 
   const isAdmin = authUser?.role === 'admin' || me?.role === 'admin';
-  const isPreviewApproved = typeof window !== 'undefined' && (
-    sessionStorage.getItem('vtm_admin_preview') === 'true' ||
-    new URLSearchParams(window.location.search).get('preview') === 'true'
-  );
-
-  // If preview was launched via query param, persist approval for this session
+  // Admins have no player home; to see it as a player, use debug login.
   useEffect(() => {
-    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('preview') === 'true') {
-      sessionStorage.setItem('vtm_admin_preview', 'true');
-    }
-  }, []);
-
-  // Admins can only access the ordinary home from Master Control (preview mode)
-  useEffect(() => {
-    if (!loading && isAdmin && !isPreviewApproved) {
+    if (!loading && isAdmin) {
       nav('/admin', { replace: true });
     }
-  }, [loading, isAdmin, isPreviewApproved, nav]);
+  }, [loading, isAdmin, nav]);
 
   // Strip admin-theme when the player Home is rendered so the purple admin
   // glass never leaks into the player experience.
   useEffect(() => {
     document.documentElement.classList.remove('admin-theme');
   }, []);
-
-  // Clean exit from Home Preview: strip clan overrides, restore admin theme, navigate to /admin
-  const handleExitPreview = () => {
-    sessionStorage.removeItem('vtm_admin_preview');
-    setClanOverride(null);
-    try {
-      localStorage.removeItem('vtm_clan_override');
-      localStorage.removeItem('vtm_clan_name');
-      localStorage.removeItem('vtm_clan_bg');
-    } catch {}
-
-    const root = document.documentElement;
-    root.removeAttribute('data-clan');
-    root.setAttribute('data-theme', 'camarilla');
-    root.classList.add('admin-theme');
-
-    for (let i = 1; i <= 5; i++) {
-      root.style.removeProperty(`--clan-color-${i}`);
-    }
-    root.style.removeProperty('--clan-primary');
-    root.style.removeProperty('--clan-secondary');
-    root.style.removeProperty('--clan-border');
-    root.style.removeProperty('--clan-text');
-    root.style.removeProperty('--clan-surface');
-    root.style.removeProperty('--clan-bg');
-    root.style.removeProperty('--clan-bg-image');
-    root.style.removeProperty('--clan-bg-opacity');
-    root.style.removeProperty('--clan-symbol-color');
-    root.style.removeProperty('--clan-text-logo-color');
-    root.style.removeProperty('--tint');
-    root.style.removeProperty('--dynamic-tint');
-    root.style.removeProperty('--theme-primary');
-    root.style.removeProperty('--border-color');
-    root.style.removeProperty('--text-color');
-    root.style.removeProperty('--surface-color');
-    root.style.removeProperty('--bg-color');
-
-    handleThemeChange('camarilla');
-    nav('/admin');
-  };
-
-  const [adminChars, setAdminChars] = useState([]);
-  const [selectedCharIndex, setSelectedCharIndex] = useState(0);
-
-  // Fetch all characters for admin clan preview
-  useEffect(() => {
-    if (!isAdmin) return;
-    let live = true;
-    api.get('/admin/characters')
-      .then((res) => {
-        if (live && res.data?.characters) {
-          setAdminChars(res.data.characters);
-        }
-      })
-      .catch((e) => {
-        console.warn('Failed to load admin characters for preview', e);
-      });
-    return () => {
-      live = false;
-    };
-  }, [isAdmin]);
 
   /* ── Data fetch ── */
   useEffect(() => {
@@ -328,7 +257,6 @@ export default function Home() {
           setRecentDowntimes(d.downtimes || []);
           setRecentChats(d.chats || []);
           setRecentNews(d.news || []);
-          setOpeningDate(d.config?.downtime_opening || null);
           if (d.banner?.masquerade_threat_level) {
             setThreatLevel(d.banner.masquerade_threat_level);
           }
@@ -355,42 +283,33 @@ export default function Home() {
     })();
   }, [nav]);
 
-  const activeClanName = (clanOverride || currentClan || ch?.clan || 'Ventrue').trim();
+  // A new, unread invitation opens itself once; reading it is recorded server-side.
+  useEffect(() => {
+    let live = true;
+    api.get('/elysium/current').then(({ data }) => {
+      if (!live) return;
+      setElysium(data);
+      if (data?.event && data.status !== 'pending' && !data.read) setShowInvite(true);
+    }).catch(() => {});
+    return () => { live = false; };
+  }, []);
 
-  // Find characters belonging to the active clan
-  const matchingClanChars = React.useMemo(() => {
-    if (!isAdmin || !adminChars.length) return [];
-    return adminChars.filter((c) => (c.clan || '').trim().toLowerCase() === activeClanName.toLowerCase());
-  }, [isAdmin, adminChars, activeClanName]);
-
-  const activeClanChar = React.useMemo(() => {
-    if (!isAdmin || !matchingClanChars.length) return null;
-    return matchingClanChars[selectedCharIndex % matchingClanChars.length];
-  }, [isAdmin, matchingClanChars, selectedCharIndex]);
+  const openInvitation = () => setShowInvite(true);
+  useEffect(() => {
+    if (!showInvite || !elysium?.event || elysium.read) return;
+    api.post(`/elysium/${elysium.event.id}/read`).catch(() => {});
+    setElysium(e => (e ? { ...e, read: true } : e));
+  }, [showInvite, elysium]);
 
   const currentMe = me || authUser;
   const safeMe = currentMe || { display_name: '', id: '0', role: 'user', ui_sounds_enabled: true };
+  const isCourtUser = safeMe.role === 'courtuser';
 
-  // Resolve active character: when admin, use the matched clan player, or an empty clan card
-  let resolvedCh = ch;
-  if (isAdmin) {
-    if (activeClanChar) {
-      resolvedCh = activeClanChar;
-    } else {
-      resolvedCh = {
-        name: 'Unclaimed Bloodline',
-        clan: activeClanName,
-        xp: 0,
-        sheet: { clan: activeClanName, hunger: 0, health: { max: 5, superficial: 0, aggravated: 0 }, willpower: { superficial: 0, aggravated: 0 } }
-      };
-    }
-  }
-
-  const safeCh = resolvedCh || { name: '', clan: activeClanName, xp: 0, sheet: {} };
+  const safeCh = ch || { name: '', clan: '', xp: 0, sheet: {} };
 
   if (!loading) {
     if (!currentMe) return <div className={styles.loadingScreen}>Please log in.</div>;
-    if (!ch && !isAdmin) return (
+    if (!ch) return (
       <div className={styles.noCharPage}>
         <div className={styles.noCharCard}>
           <div className={styles.noCharRose}>🥀</div>
@@ -484,161 +403,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* ── STICKY ADMIN CLAN PREVIEW BAR ── */}
-      {isAdmin && (
-        <div
-          style={{
-            position: 'sticky',
-            top: 0,
-            zIndex: 120,
-            marginBottom: '1rem',
-            padding: '10px 16px',
-            background: 'rgba(9, 11, 20, 0.92)',
-            backdropFilter: 'blur(16px)',
-            border: '1px solid rgba(255, 255, 255, 0.12)',
-            borderTop: 'none',
-            borderRadius: '0 0 14px 14px',
-            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.6)'
-          }}
-        >
-          {/* Top Row : Status & Player Controls */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '8px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '3px 8px', borderRadius: '5px', background: 'rgba(255, 255, 255, 0.08)', border: '1px solid var(--tint)' }}>
-                <FaGlyph name="fa-crown" style={{ color: 'var(--tint)', fontSize: '0.8rem' }} />
-                <span style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.08em', color: 'var(--text-color)', textTransform: 'uppercase' }}>
-                  Admin Preview
-                </span>
-              </div>
-
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', color: 'var(--text-color)' }}>
-                <ClanSymbol clan={activeClanName} size={18} />
-                <span style={{ fontWeight: 700 }}>Clan {activeClanName}</span>
-              </div>
-
-              {activeClanChar ? (
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: 'rgba(255, 255, 255, 0.75)' }}>
-                  <span>Player: <strong style={{ color: 'var(--text-color)' }}>{activeClanChar.name}</strong></span>
-                  {matchingClanChars.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedCharIndex(i => i + 1)}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        background: 'rgba(255, 255, 255, 0.1)',
-                        border: '1px solid rgba(255, 255, 255, 0.2)',
-                        color: 'var(--text-color)',
-                        fontSize: '0.72rem',
-                        cursor: 'pointer'
-                      }}
-                      title="Cycle to next player of this clan"
-                    >
-                      <FaGlyph name="fa-shuffle" style={{ fontSize: '0.7rem' }} />
-                      <span>Next Player ({selectedCharIndex % matchingClanChars.length + 1}/{matchingClanChars.length})</span>
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                  No player registered for Clan {activeClanName}
-                </span>
-              )}
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-              <Link
-                to="/admin"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '10px 14px',
-                  minHeight: '44px',
-                  borderRadius: '6px',
-                  background: 'rgba(255, 255, 255, 0.08)',
-                  border: '1px solid var(--border-color)',
-                  color: 'var(--text-color)',
-                  fontSize: '0.8rem',
-                  textDecoration: 'none',
-                  fontWeight: 600,
-                  touchAction: 'manipulation'
-                }}
-              >
-                <FaGlyph name="fa-gear" style={{ fontSize: '0.75rem' }} />
-                <span>Master Control</span>
-              </Link>
-              <button
-                type="button"
-                onClick={handleExitPreview}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '10px 14px',
-                  minHeight: '44px',
-                  borderRadius: '6px',
-                  background: 'rgba(157, 124, 255, 0.15)',
-                  border: '1px solid rgba(157, 124, 255, 0.5)',
-                  color: '#c4b0ff',
-                  fontSize: '0.8rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  touchAction: 'manipulation'
-                }}
-                title="Exit preview and return to Admin"
-              >
-                <FaGlyph name="fa-arrow-right-from-bracket" size={12} />
-                <span>Exit Preview</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Bottom Row : Clan Chips */}
-          <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px', scrollbarWidth: 'thin' }}>
-            {CLAN_NAMES.map(c => {
-              const isSelected = activeClanName.toLowerCase() === c.toLowerCase();
-              return (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => {
-                    handleThemeChange('clan');
-                    setClanOverride(c);
-                    setSelectedCharIndex(0);
-                  }}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '10px 12px',
-                    minHeight: '44px',
-                    borderRadius: '6px',
-                    fontSize: '0.75rem',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0,
-                    border: isSelected ? '1px solid var(--tint)' : '1px solid rgba(255, 255, 255, 0.08)',
-                    background: isSelected ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.35)',
-                    color: isSelected ? 'var(--text-color)' : 'rgba(255, 255, 255, 0.65)',
-                    fontWeight: isSelected ? 700 : 500,
-                    boxShadow: isSelected ? '0 0 8px rgba(0,0,0,0.5)' : 'none',
-                    transition: 'all 0.2s ease',
-                    touchAction: 'manipulation'
-                  }}
-                >
-                  <ClanSymbol clan={c} size={14} />
-                  <span>{c}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       <div className={styles.dashboardLayout}>
         
         {/* ── LEFT MAIN COLUMN ── */}
@@ -671,17 +435,7 @@ export default function Home() {
             <span className={`${styles.corner} ${styles.cornerBR}`} />
             
             <div className={styles.headerInner}>
-              {isAdmin ? (
-                <Avatar 
-                  userId={activeClanChar?.user_id} 
-                  avatarUrl={activeClanChar?.image_url || activeClanChar?.avatar} 
-                  clan={safeCh.clan} 
-                  size={110} 
-                  editable={false} 
-                />
-              ) : (
-                <Avatar userId={safeMe.id} size={110} editable={true} />
-              )}
+              <Avatar userId={safeMe.id} size={110} editable={true} />
 
               <div className={styles.clanRing} title={`Clan ${safeCh.clan || 'Caitiff'}`}>
                 <ClanSymbol clan={safeCh.clan} size={50} />
@@ -818,10 +572,12 @@ export default function Home() {
             </div>
           )}
 
-          {/* 2. NEXT MODERN EVENT */}
+          {/* 2. NEXT MODERN EVENT: the Keeper's Elysium */}
           <motion.section 
             className={styles.eventCard} 
-            style={{ backgroundImage: "url('/img/ui/newspaper_bg.webp')" }}
+            style={elysium?.invitation?.design
+              ? (() => { const d = resolveDesign(elysium.invitation.design); return { background: surfaceBackground(d.banner, d.bannerImage), color: d.banner.ink }; })()
+              : { backgroundImage: "url('/img/ui/newspaper_bg.webp')" }}
             variants={{
               hidden: { opacity: 0, x: -30 },
               visible: { opacity: 1, x: 0, transition: { type: 'spring', stiffness: 300, damping: 25 } }
@@ -829,40 +585,38 @@ export default function Home() {
           >
             <div className={styles.eventInfo}>
               <h3 className={styles.eventHeader}>NEXT MODERN EVENT</h3>
-              <h2 className={styles.eventTitle}>{openingDate ? 'Elysium Gathering' : 'No Current Event'}</h2>
-              {openingDate && !eventCd.isPast ? (
+              <h2 className={styles.eventTitle}>{elysium?.event ? (elysium.invitation?.name || elysium.event.name || 'Elysium Gathering') : 'No Current Event'}</h2>
+              {elysium?.event && !eventCd.isPast && (
                 <p className={styles.eventLocation} style={{ color: 'var(--tint)' }}>
                   Starts in: {eventCd.days}d {eventCd.hours}h {eventCd.mins}m
                 </p>
-              ) : (
-                <p className={styles.eventLocation}>Location: Elysium Hall</p>
+              )}
+              {elysium?.event && (
+                <p className={styles.eventLocation}>
+                  {elysium.status === 'invited' && elysium.invitation?.location
+                    ? `Location: ${elysium.invitation.location}`
+                    : elysium.status === 'barred' ? 'You have not been invited.' : 'Location: revealed in the invitation'}
+                </p>
               )}
             </div>
-            <button className={styles.rsvpBtn} onClick={() => setShowRsvp(true)} style={{ minHeight: '48px', minWidth: '120px' }}>RSVP</button>
+            {elysium?.event && (elysium.status === 'pending' ? (
+              <button className={styles.rsvpBtn} disabled style={{ minHeight: '48px', minWidth: '120px', opacity: 0.6, cursor: 'default' }}>Invitation Pending</button>
+            ) : (
+              <button className={styles.rsvpBtn} onClick={openInvitation} style={{ minHeight: '48px', minWidth: '120px', position: 'relative' }}>
+                View Invitation
+                {!elysium.read && <span aria-label="unread" style={{ position: 'absolute', top: 6, right: 6, width: 9, height: 9, borderRadius: '50%', background: '#ff5252', boxShadow: '0 0 8px #ff5252' }} />}
+              </button>
+            ))}
           </motion.section>
 
-          {showRsvp && (
-            <div 
-              className={styles.rsvpModalOverlay} 
-              onClick={() => setShowRsvp(false)} 
-              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
-            >
-              <div 
-                className={styles.rsvpModal} 
-                onClick={e => e.stopPropagation()} 
-                style={{ background: 'var(--surface-color)', padding: '2rem', borderRadius: '12px', border: '1px solid var(--tint)', maxWidth: '400px', width: '100%', textAlign: 'center', boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}
-              >
-                <h3 style={{ marginTop: 0, fontFamily: 'Playfair Display, serif', color: 'var(--tint)' }}>RSVP Confirmed</h3>
-                <p style={{ color: 'var(--text-muted)' }}>The Harpy has noted your intent to attend the upcoming gathering. Do not be late.</p>
-                <button 
-                  onClick={() => setShowRsvp(false)} 
-                  style={{ marginTop: '1.5rem', background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-color)', padding: '0.5rem 1.5rem', minHeight: '48px', width: '100%', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          )}
+          <ElysiumInvitationModal
+            open={showInvite}
+            onClose={() => setShowInvite(false)}
+            invitation={elysium?.invitation}
+            eventDate={elysium?.event?.date}
+            guest={elysium?.character || { name: safeMe?.display_name }}
+            barred={elysium?.status === 'barred'}
+          />
 
           {/* 3. NAV GRID */}
           <motion.section 
@@ -891,13 +645,25 @@ export default function Home() {
                 </Link>
               </motion.div>
             ))}
-            {((safeCh && safeCh.sheet?.is_active === true) || safeMe?.role === 'courtuser') && (
-              <div className={styles.sectionHeader}>
-                <span className="material-symbols-outlined">gavel</span>
-                <h3>Court Actions</h3>
-              </div>
+            {isCourtUser && (
+              <motion.div
+                variants={{
+                  hidden: { opacity: 0, scale: 0.8, y: 20 },
+                  visible: { opacity: 1, scale: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 20 } }
+                }}
+                whileHover={{ scale: 1.05, y: -5 }}
+                whileTap={{ scale: 0.95 }}
+                style={{ display: 'flex' }}
+              >
+                <Link to="/court/actions" className={styles.navCard} style={{ '--card-bg': `url('/img/ui/marble_court.webp')`, width: '100%' }}>
+                  <div className={styles.navCardIcon}>
+                    <span className="material-symbols-outlined" style={{ position: 'relative', zIndex: 2 }}>gavel</span>
+                  </div>
+                  <span className={styles.navCardTitle} style={{ position: 'relative', zIndex: 2 }}>Court Actions</span>
+                </Link>
+              </motion.div>
             )}
-            {((safeCh && safeCh.sheet?.is_active === true) || safeMe?.role === 'courtuser') && (
+            {((safeCh && safeCh.sheet?.is_active === true) || isCourtUser) && (
               <motion.div
                 variants={{
                   hidden: { opacity: 0, scale: 0.8, y: 20 },
@@ -1024,89 +790,6 @@ export default function Home() {
               ))}
             </div>
 
-            {(authUser?.role === 'admin' || clanOverride) && (
-              <div 
-                style={{ 
-                  marginTop: '16px', 
-                  padding: '12px 14px', 
-                  borderRadius: '10px', 
-                  background: 'rgba(10, 12, 20, 0.75)', 
-                  border: '1px solid rgba(255, 255, 255, 0.12)', 
-                  backdropFilter: 'blur(16px)' 
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <FaGlyph name="fa-eye" style={{ color: 'var(--tint)', fontSize: '0.85rem' }} />
-                    <span style={{ fontSize: '0.78rem', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-color)' }}>
-                      Admin Bloodline Preview
-                    </span>
-                    {clanOverride && (
-                      <span style={{ 
-                        fontSize: '0.7rem', 
-                        padding: '2px 8px', 
-                        borderRadius: '4px', 
-                        background: 'rgba(255, 255, 255, 0.1)', 
-                        color: 'var(--tint)',
-                        border: '1px solid var(--tint)'
-                      }}>
-                        Active: {clanOverride}
-                      </span>
-                    )}
-                  </div>
-                  {clanOverride && (
-                    <button
-                      type="button"
-                      onClick={() => setClanOverride(null)}
-                      style={{
-                        background: 'transparent',
-                        border: '1px solid var(--border-color)',
-                        color: 'var(--text-color)',
-                        fontSize: '0.72rem',
-                        padding: '3px 10px',
-                        borderRadius: '4px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Reset to My Character
-                    </button>
-                  )}
-                </div>
-
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                  {CLAN_NAMES.map(c => {
-                    const isSelected = (clanOverride || currentClan) === c;
-                    return (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => {
-                          handleThemeChange('clan');
-                          setClanOverride(c);
-                        }}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          padding: '5px 10px',
-                          borderRadius: '6px',
-                          fontSize: '0.76rem',
-                          cursor: 'pointer',
-                          border: isSelected ? '1px solid var(--tint)' : '1px solid rgba(255, 255, 255, 0.08)',
-                          background: isSelected ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.3)',
-                          color: isSelected ? 'var(--text-color)' : 'rgba(255, 255, 255, 0.65)',
-                          boxShadow: isSelected ? '0 0 10px rgba(0, 0, 0, 0.4)' : 'none',
-                          transition: 'all 0.2s ease'
-                        }}
-                      >
-                        <ClanSymbol clan={c} size={14} />
-                        <span>{c}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
           </motion.section>
 
         </div>

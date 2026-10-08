@@ -17,6 +17,25 @@ const DEFAULT_MOCK_NAMES = [
   'Dimitris Loukas', 'Aurelia Vex', 'Constantine Ward', 'Iris Sterling'
 ];
 
+// One open Blood Hunt and its end date, editable from the Calendar.
+function HuntEndRow({ hunt, onSave }) {
+  const toLocal = (d) => {
+    if (!d) return '';
+    const t = new Date(d);
+    return new Date(t.getTime() - t.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  };
+  const [value, setValue] = useState(toLocal(hunt.expires_at));
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.82rem' }}>
+      <span style={{ fontWeight: 700, color: 'var(--text-primary)', minWidth: '10rem' }}>{hunt.target_name}</span>
+      <span style={{ color: 'var(--text-secondary)' }}>{hunt.status === 'proposed' ? 'awaiting the Prince' : 'active'}</span>
+      <input type="datetime-local" value={value} onChange={e => setValue(e.target.value)} className={styles.input} style={{ width: 'auto', padding: '4px 6px' }} aria-label={`End of the Blood Hunt on ${hunt.target_name}`} />
+      <button type="button" className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => onSave(hunt, value)} style={{ padding: '4px 10px', fontSize: '0.78rem' }}>Save end</button>
+      {hunt.expires_at && <button type="button" className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => onSave(hunt, null)} style={{ padding: '4px 10px', fontSize: '0.78rem' }}>No end</button>}
+    </div>
+  );
+}
+
 function cleanTitle(title) {
   if (!title) return '';
   return title
@@ -83,6 +102,9 @@ export default function AdminCalendarTab() {
   const [eventTitle, setEventTitle] = useState('');
   const [eventDate, setEventDate] = useState('');
   const [eventDescription, setEventDescription] = useState('');
+  const [eventIsElysium, setEventIsElysium] = useState(false);
+  const [eventElysiumName, setEventElysiumName] = useState(''); // the Keeper's name for it (Court Actions)
+  const [bloodHunts, setBloodHunts] = useState([]); // open hunts; their end dates are calendar markers
   const [savingEvent, setSavingEvent] = useState(false);
 
   // Downtimes state (Single active)
@@ -162,6 +184,7 @@ export default function AdminCalendarTab() {
         api.get('/admin/downtimes/cycles').catch(() => ({ data: { cycles: [] } })),
         api.get('/admin/live-sessions').catch(() => ({ data: { sessions: [] } }))
       ]);
+      api.get('/admin/blood-hunts').then(({ data }) => setBloodHunts(data.hunts || [])).catch(() => setBloodHunts([]));
 
       const loadedEvents = eventsRes.data?.events || [];
       setEvents(loadedEvents);
@@ -204,6 +227,8 @@ export default function AdminCalendarTab() {
         setEventTitle(cleanTitle(upcoming.title) || '');
         setEventDate(formatDateForInput(upcoming.date));
         setEventDescription(upcoming.description || '');
+        setEventIsElysium(!!upcoming.is_elysium);
+        setEventElysiumName(upcoming.elysium_name || '');
 
         const uDate = new Date(upcoming.date);
         if (!isNaN(uDate.getTime())) {
@@ -230,6 +255,8 @@ export default function AdminCalendarTab() {
     setEventTitle(cleanTitle(ev.title) || '');
     setEventDate(formatDateForInput(ev.date));
     setEventDescription(ev.description || '');
+    setEventIsElysium(!!ev.is_elysium);
+    setEventElysiumName(ev.elysium_name || '');
 
     const evDate = new Date(ev.date);
     if (!isNaN(evDate.getTime())) {
@@ -303,12 +330,14 @@ export default function AdminCalendarTab() {
       await api.patch(`/admin/events/${activeEvent.id}`, {
         title: eventTitle,
         date_string: eventDate,
-        description: eventDescription
+        description: eventDescription,
+        is_elysium: eventIsElysium,
+        ...(eventIsElysium ? { elysium_name: eventElysiumName } : {})
       });
       showFeedback('Event updated successfully');
       setEvents(prev => prev.map(ev => {
         if (ev.id === activeEvent.id) {
-          return { ...ev, title: eventTitle, date: new Date(eventDate), description: eventDescription };
+          return { ...ev, title: eventTitle, date: new Date(eventDate), description: eventDescription, is_elysium: eventIsElysium ? 1 : 0, elysium_name: eventIsElysium ? eventElysiumName : ev.elysium_name };
         }
         return ev;
       }));
@@ -828,6 +857,28 @@ export default function AdminCalendarTab() {
     return map;
   }, [liveSessions]);
 
+  // Blood Hunts with an end date (set by the Prince in Court Actions, or here).
+  const huntEndMap = useMemo(() => {
+    const map = {};
+    for (const h of bloodHunts) {
+      const day = h.expires_at ? formatDateOnly(h.expires_at) : null;
+      if (!day) continue;
+      (map[day] = map[day] || []).push(h);
+    }
+    return map;
+  }, [bloodHunts]);
+
+  const saveHuntEnd = async (hunt, value) => {
+    try {
+      await api.patch(`/court-actions/blood-hunts/${hunt.id}`, { expires_at: value ? new Date(value).toISOString() : null });
+      const { data } = await api.get('/admin/blood-hunts');
+      setBloodHunts(data.hunts || []);
+      showFeedback(value ? `Blood Hunt on ${hunt.target_name} now ends ${formatEuDate(value)}` : `Blood Hunt on ${hunt.target_name} has no end date`);
+    } catch (error) {
+      showFeedback(formatApiError(error, 'Failed to change the Blood Hunt end'), true);
+    }
+  };
+
   // Mass release: every cycle's release (its own, or the morning after it closes) plus the live setting.
   const releaseMap = useMemo(() => {
     const map = {};
@@ -1031,6 +1082,7 @@ export default function AdminCalendarTab() {
                   const releaseItems = releaseMap[dateStr] || [];
                   const sessionItems = liveSessionMap[dateStr] || [];
                   const isProjectClose = projectDeadline === dateStr;
+                  const huntEnds = huntEndMap[dateStr] || [];
 
                   let bg = 'var(--glass-inset)';
                   let border = '1px solid var(--glass-border)';
@@ -1126,7 +1178,7 @@ export default function AdminCalendarTab() {
                               textOverflow: 'ellipsis',
                               lineHeight: 1.2
                             }}
-                            title={`Live Event: ${cleanTitle(hasEvent.title)}`}
+                            title={`Live Event: ${cleanTitle(hasEvent.title)}${hasEvent.elysium_name ? ` (Elysium: ${hasEvent.elysium_name}${hasEvent.invitation_published_at ? ', invitation sent' : ''})` : ''}`}
                           >
                             <span className="material-symbols-outlined" style={{ fontSize: '12px', flexShrink: 0 }}>celebration</span>
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -1210,6 +1262,16 @@ export default function AdminCalendarTab() {
                           </div>
                         )}
 
+                        {huntEnds.length > 0 && (
+                          <div
+                            style={{ fontSize: '0.6rem', fontWeight: 800, background: 'rgba(255, 23, 68, 0.22)', border: '1px solid #ff1744', color: '#ff8a9a', borderRadius: '3px', padding: '2px 4px', display: 'flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap', lineHeight: 1.2 }}
+                            title={`Blood Hunt ends: ${huntEnds.map(h => h.target_name).join(', ')}`}
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: '11px', flexShrink: 0 }}>bloodtype</span>
+                            <span>HUNT ENDS</span>
+                          </div>
+                        )}
+
                         {isProjectClose && (
                           <div
                             style={{ fontSize: '0.6rem', fontWeight: 800, background: 'rgba(179, 136, 255, 0.22)', border: '1px solid #b388ff', color: '#d1b8ff', borderRadius: '3px', padding: '2px 4px', display: 'flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap', lineHeight: 1.2 }}
@@ -1266,7 +1328,23 @@ export default function AdminCalendarTab() {
             <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#26c6da' }}>casino</span>
             <span>Teal: Live Session held (from the Live Session dashboard)</span>
           </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#ff1744' }}>bloodtype</span>
+            <span>Red: Blood Hunt ends (edit below, or by the Prince in Court Actions)</span>
+          </div>
         </div>
+
+        {bloodHunts.length > 0 && (
+          <div style={{ padding: '0.75rem', background: 'var(--glass-inset)', borderRadius: 'var(--radius-sm)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div style={{ fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '16px', color: '#ff1744' }}>bloodtype</span>
+              Open Blood Hunts
+            </div>
+            {bloodHunts.map(h => (
+              <HuntEndRow key={`${h.id}-${h.expires_at || ''}`} hunt={h} onSave={saveHuntEnd} />
+            ))}
+          </div>
+        )}
       </div>
     );
   };
@@ -1349,6 +1427,25 @@ export default function AdminCalendarTab() {
                 required
               />
             </label>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-primary)', cursor: 'pointer' }}>
+              <input type="checkbox" checked={eventIsElysium} onChange={(e) => setEventIsElysium(e.target.checked)} />
+              Elysium (the Keeper of Elysium sends its invitation from Court Actions)
+            </label>
+
+            {eventIsElysium && (
+              <label className={styles.labeledInput}>
+                <span>Elysium Name (shared with the Keeper{activeEvent?.invitation_published_at ? '; invitation already sent' : ''})</span>
+                <input
+                  type="text"
+                  className={styles.input}
+                  value={eventElysiumName}
+                  onChange={(e) => setEventElysiumName(e.target.value)}
+                  placeholder="e.g. The Feast of Thorns"
+                  maxLength={160}
+                />
+              </label>
+            )}
 
             <label className={styles.labeledInput}>
               <span>Description or Venue</span>

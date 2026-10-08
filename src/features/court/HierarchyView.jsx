@@ -9,6 +9,7 @@ import { symlogoWhite, textlogoWhite, getClanThemeRules, getClanPalette, clanTin
 import ClanSymbol from '../../components/ClanSymbol';
 import FaGlyph from '../../ui/FaGlyph';
 import { factionLogo, factionType } from '../../data/factions';
+import { CourtAccessModal, CourtNotices } from './CourtAccess';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -67,6 +68,7 @@ export default function HierarchyView({ canEdit: propCanEdit }) {
   const [filterSection, setFilterSection] = useState("all");
   const [inspectingKindred, setInspectingKindred] = useState(null);
   const [stableSortKey, setStableSortKey] = useState(0);
+  const [courtPrompt, setCourtPrompt] = useState(null); // role mismatches to offer fixing
 
   useEffect(() => {
     setIsEditMode(canEdit);
@@ -103,7 +105,9 @@ export default function HierarchyView({ canEdit: propCanEdit }) {
     ));
 
     try {
-      await api.patch('/admin/camarilla/update', { id, type, field, value });
+      const { data } = await api.patch('/admin/camarilla/update', { id, type, field, value });
+      // A title change may mean this account should (or should no longer) be a court user.
+      if (data?.court_access) setCourtPrompt([data.court_access]);
     } catch (e) {
       setRoster(previousRoster);
       alert("Update failed.");
@@ -121,6 +125,16 @@ export default function HierarchyView({ canEdit: propCanEdit }) {
       update(t.id, t.type, 'is_bloodhunted', true);
     });
     setSelectedClan("");
+  };
+
+  const handleSyncCourtAccess = async () => {
+    try {
+      const { data } = await api.get('/admin/camarilla/court-access');
+      if (data.mismatches?.length) setCourtPrompt(data.mismatches);
+      else alert('Every office holder is a court user, and every court user holds an office.');
+    } catch (e) {
+      alert('Could not check court access.');
+    }
   };
 
   const handleRefreshOrder = () => {
@@ -299,7 +313,17 @@ export default function HierarchyView({ canEdit: propCanEdit }) {
           </p>
         </motion.header>
         
+        <CourtNotices />
+        {courtPrompt && <CourtAccessModal items={courtPrompt} onClose={() => setCourtPrompt(null)} />}
+
         {/* Admin Storyteller Toolbar */}
+        {canEdit && isAdmin && (
+          <button type="button" onClick={handleSyncCourtAccess} className={styles.adminFilterSelect}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', marginBottom: '0.75rem', width: 'auto' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>admin_panel_settings</span>
+            Sync court access with the Hierarchy
+          </button>
+        )}
         {canEdit && (
           <div className={styles.adminPanel}>
             <div className={styles.adminTopRow}>

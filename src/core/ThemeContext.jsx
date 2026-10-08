@@ -41,6 +41,8 @@ const ThemeCtx = createContext(null);
 export const useTheme = () =>
   useContext(ThemeCtx) || { theme: DEFAULT_THEME, setTheme: () => {}, clan: null, tint: null, palette: null, rules: null, themes: THEMES };
 
+const CLAN_CACHE_KEYS = [TINT_CACHE_KEY, PALETTE_CACHE_KEY, RULES_CACHE_KEY, BG_CACHE_KEY, 'vtm_clan_name'];
+
 function readStoredTheme() {
   try {
     const t = localStorage.getItem(STORAGE_KEY);
@@ -203,37 +205,13 @@ function paintTheme(theme, clan, tintHex) {
 }
 
 export default function ThemeProvider({ children }) {
-  const { user } = useContext(AuthCtx);
-  const [theme, setThemeState] = useState(() => {
-    try {
-      const urlClan = new URLSearchParams(window.location.search).get('clan');
-      if (urlClan) return 'clan';
-    } catch {}
-    return readStoredTheme();
-  });
-  const [clan, setClan] = useState(null);
-  const [clanOverride, setClanOverrideState] = useState(() => {
-    try {
-      const urlClan = new URLSearchParams(window.location.search).get('clan') || new URLSearchParams(window.location.search).get('previewClan');
-      if (urlClan) return urlClan;
-      return localStorage.getItem('vtm_clan_override') || null;
-    } catch {
-      return null;
-    }
-  });
+  const { user, loading: authLoading } = useContext(AuthCtx);
+  const [theme, setThemeState] = useState(readStoredTheme);
+  // undefined = not known yet (keep what public/theme-init.js pre-painted from
+  // the cache), null = known to have no clan.
+  const [clan, setClan] = useState(undefined);
   const serverAdopted = useRef(false);
   const pendingSync = useRef(null);
-
-  const setClanOverride = useCallback((nextClan) => {
-    setClanOverrideState(nextClan);
-    try {
-      if (nextClan) {
-        localStorage.setItem('vtm_clan_override', nextClan);
-      } else {
-        localStorage.removeItem('vtm_clan_override');
-      }
-    } catch {}
-  }, []);
 
   // Adopt the server's saved theme once per session. After that, local picks
   // win (and are pushed back to the server by setTheme).
@@ -253,47 +231,49 @@ export default function ThemeProvider({ children }) {
   // falls back to crimson (handled in stylesheet).
   useEffect(() => {
     if (!user) {
-      setClan(null);
+      if (!authLoading) setClan(null);
       return;
     }
     let live = true;
+    setClan(undefined);
     api
       .get('/characters/me')
       .then(({ data }) => {
         if (live) setClan(data?.character?.clan || null);
       })
       .catch(() => {
-        /* no character / request failed */
+        /* request failed: keep the cached paint */
       });
     return () => {
       live = false;
     };
-  }, [user]);
+  }, [user, authLoading]);
 
-  const activeClan = clanOverride || clan;
+  const activeClan = clan;
   const tint = activeClan ? clanTint(activeClan) : null;
   const palette = activeClan ? getClanPalette(activeClan) : null;
   const rules = activeClan ? getClanThemeRules(activeClan) : null;
   const bgUrl = activeClan ? clanBackground(activeClan) : null;
 
   // Apply on every change, and cache for the next cold load's pre paint script.
+  // While the clan is still unknown, leave the pre-paint alone: repainting with
+  // no clan here flashed crimson (or a stale cached clan) until the character
+  // request came back.
   useEffect(() => {
+    if (theme === 'clan' && activeClan === undefined) return;
     paintTheme(theme, activeClan, tint);
     try {
       localStorage.setItem(STORAGE_KEY, theme);
+      if (!activeClan) {
+        CLAN_CACHE_KEYS.forEach((k) => localStorage.removeItem(k));
+        return;
+      }
+      localStorage.setItem('vtm_clan_name', activeClan);
       if (tint) localStorage.setItem(TINT_CACHE_KEY, tint);
       if (palette) localStorage.setItem(PALETTE_CACHE_KEY, JSON.stringify(palette));
       if (rules) localStorage.setItem(RULES_CACHE_KEY, JSON.stringify(rules));
-      if (activeClan) {
-        localStorage.setItem('vtm_clan_name', activeClan);
-      } else {
-        localStorage.removeItem('vtm_clan_name');
-      }
-      if (bgUrl) {
-        localStorage.setItem(BG_CACHE_KEY, bgUrl);
-      } else {
-        localStorage.removeItem(BG_CACHE_KEY);
-      }
+      if (bgUrl) localStorage.setItem(BG_CACHE_KEY, bgUrl);
+      else localStorage.removeItem(BG_CACHE_KEY);
     } catch {
       /* storage disabled */
     }
@@ -306,17 +286,6 @@ export default function ThemeProvider({ children }) {
       return next;
     });
   }, []);
-
-  // Developer and console preview bridge
-  useEffect(() => {
-    window.__vtmSetClan = (c) => {
-      setClanOverride(c);
-      if (c) setTheme('clan');
-    };
-    return () => {
-      delete window.__vtmSetClan;
-    };
-  }, [setClanOverride, setTheme]);
 
   // Persist a user initiated pick to the server (kept out of state updater
   // so React StrictMode's double invoked reducer cannot fire the request twice).
@@ -334,10 +303,7 @@ export default function ThemeProvider({ children }) {
     <ThemeCtx.Provider value={{
       theme,
       setTheme,
-      clan: activeClan,
-      nativeClan: clan,
-      clanOverride,
-      setClanOverride,
+      clan: activeClan ?? null,
       tint,
       palette,
       rules,

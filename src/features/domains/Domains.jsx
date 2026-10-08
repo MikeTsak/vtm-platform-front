@@ -18,6 +18,7 @@ import { AuthCtx } from '../../core/AuthContext';
 import { formatAthensDate } from '../../utils/dateFormatter';
 import { symlogo, symlogoWhite, clanTint, fileify } from '../../data/clans';
 import { DIVISION_NAMES } from '../../constants/divisionNames';
+import { SAFETY_TIERS, UNKNOWN_TIER, safetyTier } from './data/safetyTiers';
 import { DIVISION_POPULATIONS, POPULATION_GROUP_MEMBERS } from './data/divisionPopulations';
 import { HUNTING_DIFFICULTY, HUNTING_DIFFICULTY_MAX, huntingLabel } from './data/huntingDifficulty';
 import { getDivisionChasse } from './data/chasseMerits';
@@ -270,21 +271,7 @@ function LayerSubRow({ label, active, onClick, swatch }) {
 }
 
 
-// ── Masquerade safety tiers ───────────────────────────────
-// A null rating is a distinct "Unknown" state (not assessed yet), not the
-// same as a numeric 10: a fresh claim or untouched division hasn't been
-// vetted by the Court, so it shouldn't silently read as "Secure".
-const SAFETY_TIERS = [
-  { min: 8, label: 'Secure', color: '#22c55e' },
-  { min: 5, label: 'Stable', color: '#eab308' },
-  { min: 3, label: 'At Risk', color: '#f97316' },
-  { min: 0, label: 'Critical', color: '#ef4444' },
-];
-const UNKNOWN_TIER = { label: 'Unknown', color: '#64748b' };
-function safetyTier(rating) {
-  if (rating == null) return UNKNOWN_TIER;
-  return SAFETY_TIERS.find(t => rating >= t.min) || SAFETY_TIERS[SAFETY_TIERS.length - 1];
-}
+// ── Masquerade safety tiers: see data/safetyTiers.js ──
 
 // Continuous green→red ramp for the map border, keyed off the same stops as
 // SAFETY_TIERS. Unlike the discrete tiers above (used for labels/gauges),

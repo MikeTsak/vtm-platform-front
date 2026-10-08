@@ -214,6 +214,9 @@ export default function Nav() {
                   <NavLink 
   data-cuelume-press 
   data-cuelume-hover to="/court/hierarchy" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Court Hierarchy</NavLink>
+                  {(user?.role === 'courtuser' || user?.role === 'admin') && (
+                    <NavLink data-cuelume-press data-cuelume-hover to="/court/actions" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Court Actions</NavLink>
+                  )}
                   <NavLink 
   data-cuelume-press 
   data-cuelume-hover to="/court/announcements" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Announcements</NavLink>
@@ -331,6 +334,9 @@ export default function Nav() {
                 <NavLink 
   data-cuelume-press 
   data-cuelume-hover to="/court/hierarchy" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Court Hierarchy</NavLink>
+                  {(user?.role === 'courtuser' || user?.role === 'admin') && (
+                    <NavLink data-cuelume-press data-cuelume-hover to="/court/actions" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Court Actions</NavLink>
+                  )}
                 <NavLink 
   data-cuelume-press 
   data-cuelume-hover to="/court/announcements" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Announcements</NavLink>

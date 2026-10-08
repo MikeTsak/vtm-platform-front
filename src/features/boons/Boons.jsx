@@ -1272,7 +1272,7 @@ export default function Boons() {
 /* ══════════════════════════════════════════════
    BOON FORM
 ══════════════════════════════════════════════ */
-function BoonForm({ entities, boon, onSave, onCancel }) {
+export function BoonForm({ entities, boon, onSave, onCancel }) {
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
     from_key: 'npc', from_id: '', from_name: '',

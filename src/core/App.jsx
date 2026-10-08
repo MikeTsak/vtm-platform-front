@@ -44,6 +44,7 @@ const NotFound = lazyWithRetry(() => import('../pages/404'));
 const Hierarchy = lazyWithRetry(() => import('../features/court/HierarchyView'));
 const Announcements = lazyWithRetry(() => import('../features/announcements/AnnouncementsView'));
 const Coteries = lazyWithRetry(() => import('../features/coterie/CoterieManager'));
+const CourtActions = lazyWithRetry(() => import('../features/court/CourtActions'));
 const LiveSession = lazyWithRetry(() => import('../features/live-session/LiveSession'));
 const LiveSessionDashboard = lazyWithRetry(() => import('../features/admin/LiveSessionDashboard'));
 const SchreckNet = lazyWithRetry(() => import('../features/comms/schrecknet/SchreckNet'));
@@ -281,6 +282,7 @@ function AppLayout() {
             <Route path="/court/announcements" element={<Private><Announcements /></Private>} />
             <Route path="/court/announcements/:id" element={<PublicArticleView />} />
             <Route path="/court/coteries" element={<Private><Coteries /></Private>} />
+            <Route path="/court/actions" element={<CourtOnly><CourtActions /></CourtOnly>} />
 
             <Route path="/news" element={<News />} />
             <Route path="/news/:id" element={<PublicArticleView />} />

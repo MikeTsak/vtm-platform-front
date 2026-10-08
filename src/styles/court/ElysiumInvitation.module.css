@@ -1,0 +1,285 @@
+/* Elysium invitation: the Keeper's card. Colours arrive as custom properties
+   from InvitationCard (--ink, --muted, --acc-a/b/c, --display). */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  overflow-y: auto;
+  background: radial-gradient(ellipse at 50% 40%, rgba(40, 6, 14, 0.82), rgba(0, 0, 0, 0.94) 70%);
+  backdrop-filter: blur(6px);
+  perspective: 1400px;
+}
+
+.stage {
+  width: min(520px, 100%);
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  transform-origin: 50% 0%;
+}
+
+.card {
+  --foil: linear-gradient(115deg, var(--acc-c) 0%, var(--acc-a) 28%, var(--acc-b) 48%, var(--acc-a) 66%, var(--acc-c) 100%);
+  position: relative;
+  width: 100%;
+  min-height: 640px;
+  color: var(--ink);
+  border-radius: 6px;
+  overflow: hidden;
+  isolation: isolate;
+  box-shadow:
+    0 40px 90px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(0, 0, 0, 0.6),
+    inset 0 0 120px rgba(0, 0, 0, 0.35);
+  text-align: center;
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
+.light {
+  box-shadow: 0 40px 90px rgba(0, 0, 0, 0.6), inset 0 0 80px rgba(110, 70, 30, 0.25);
+}
+
+/* One slow sheen across the foil when the card arrives. */
+.card::after {
+  content: '';
+  position: absolute;
+  inset: -40% -60%;
+  background: linear-gradient(105deg, transparent 42%, rgba(255, 240, 200, 0.16) 50%, transparent 58%);
+  transform: translateX(-60%);
+  animation: sheen 2.6s 0.5s ease-out 1 forwards;
+  pointer-events: none;
+  z-index: 3;
+}
+
+@keyframes sheen {
+  to { transform: translateX(60%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card::after { animation: none; display: none; }
+}
+
+/* Double foil border */
+.frame {
+  position: absolute;
+  inset: 14px;
+  border: 2px solid transparent;
+  border-image: var(--foil) 1;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.frame::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border: 1px solid transparent;
+  border-image: var(--foil) 1;
+  opacity: 0.6;
+}
+
+.corner {
+  position: absolute;
+  width: 92px;
+  height: 92px;
+  color: var(--acc-a);
+  filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0.35));
+  z-index: 2;
+  pointer-events: none;
+}
+
+.tl { top: 8px; left: 8px; }
+.tr { top: 8px; right: 8px; transform: scaleX(-1); }
+.bl { bottom: 8px; left: 8px; transform: scaleY(-1); }
+.br { bottom: 8px; right: 8px; transform: scale(-1, -1); }
+
+.inner {
+  position: relative;
+  z-index: 2;
+  padding: 3.6rem 2.6rem 2.8rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.eyebrow {
+  margin: 0;
+  font-family: 'Cinzel', serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.salutation {
+  margin: 1.1rem 0 0.2rem;
+  font-family: 'Pinyon Script', 'Playfair Display', cursive;
+  font-size: 1.75rem;
+  line-height: 1.25;
+  color: var(--ink);
+}
+
+.title {
+  margin: 0.2rem 0 0;
+  font-family: var(--display);
+  font-size: clamp(2rem, 7vw, 2.9rem);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: 0.04em;
+  background: var(--foil);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.35));
+  overflow-wrap: anywhere;
+}
+
+.divider {
+  width: 210px;
+  max-width: 80%;
+  margin: 0.9rem 0 0.7rem;
+  color: var(--acc-a);
+}
+
+.date {
+  margin: 0;
+  font-family: 'Cinzel', serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.time {
+  margin: 0;
+  font-style: italic;
+  color: var(--muted);
+}
+
+.location {
+  margin: 0.7rem 0 0;
+  font-size: 1.15rem;
+  font-style: italic;
+  color: var(--ink);
+}
+
+.location::before {
+  content: 'at ';
+  color: var(--muted);
+}
+
+.body {
+  margin: 1.1rem 0 0.4rem;
+  max-width: 36ch;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--ink);
+  white-space: pre-line;
+}
+
+.body p { margin: 0 0 0.8rem; }
+
+.dress {
+  margin: 0.3rem 0 0;
+  font-size: 0.9rem;
+  font-style: italic;
+  color: var(--muted);
+}
+
+.dress span {
+  display: block;
+  font-family: 'Cinzel', serif;
+  font-style: normal;
+  font-size: 0.66rem;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--acc-a);
+  margin-bottom: 0.15rem;
+}
+
+.signature {
+  margin: 1.2rem 0 0;
+  font-family: 'Pinyon Script', 'Playfair Display', cursive;
+  font-size: 1.6rem;
+  color: var(--ink);
+}
+
+.signature::before { content: '\2014\00a0'; color: var(--muted); }
+
+/* Wax seal */
+.seal {
+  position: relative;
+  width: 74px;
+  height: 74px;
+  margin-top: 1.3rem;
+  border-radius: 47% 53% 50% 50% / 52% 48% 52% 48%;
+  background:
+    radial-gradient(circle at 35% 30%, rgba(255, 140, 140, 0.35), transparent 40%),
+    radial-gradient(circle at 50% 55%, #8e1428 0%, #5c0716 62%, #3a030c 100%);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.55), inset 0 -4px 8px rgba(0, 0, 0, 0.45), inset 0 3px 5px rgba(255, 170, 170, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.seal::before {
+  content: '';
+  position: absolute;
+  inset: 9px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(0, 0, 0, 0.35);
+  box-shadow: 0 1px 0 rgba(255, 170, 170, 0.25);
+}
+
+.sealMark {
+  position: relative;
+  display: flex;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.5));
+}
+
+.sealImg { width: 34px; height: 34px; object-fit: contain; opacity: 0.9; }
+
+.sealBroken { transform: rotate(-9deg); filter: saturate(0.55) brightness(0.8); }
+
+/* A crack through the wax. */
+.sealBroken::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  background: #0b0204;
+  clip-path: polygon(49% 0, 56% 0, 47% 40%, 61% 57%, 50% 100%, 43% 100%, 54% 58%, 40% 41%);
+}
+
+.closeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 48px;
+  padding: 0.6rem 1.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(212, 175, 95, 0.45);
+  background: rgba(0, 0, 0, 0.55);
+  color: #f1e5c9;
+  font-family: 'Cinzel', serif;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.closeBtn:hover, .closeBtn:focus-visible { border-color: #d4af5f; background: rgba(40, 8, 14, 0.8); }
+
+@media (max-width: 480px) {
+  .card { min-height: 0; }
+  .inner { padding: 3.2rem 1.6rem 2.4rem; }
+  .corner { width: 70px; height: 70px; }
+  .salutation { font-size: 1.5rem; }
+}

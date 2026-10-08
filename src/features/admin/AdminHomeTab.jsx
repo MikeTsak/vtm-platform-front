@@ -75,6 +75,16 @@ export default function AdminHomeTab({
     staleTime: 60000,
   });
 
+  // Fetch all downtime cycles to find the next scheduled opening
+  const { data: cyclesData } = useQuery({
+    queryKey: ['adminDowntimesCycles'],
+    queryFn: async () => {
+      const { data } = await api.get('/admin/downtimes/cycles');
+      return data;
+    },
+    staleTime: 60000,
+  });
+
   // Fetch chronicle events for Next Event banner
   const { data: eventsData } = useQuery({
     queryKey: ['adminEvents'],
@@ -385,7 +395,14 @@ export default function AdminHomeTab({
   const dtDeadMs = dtDeadlineIso ? new Date(dtDeadlineIso).getTime() : null;
   
   const isDtOpen = dtOpenMs && dtDeadMs && nowMs >= dtOpenMs && nowMs <= dtDeadMs;
-  const targetDtIso = isDtOpen ? dtDeadlineIso : (dtOpenMs && dtOpenMs > nowMs ? dtOpeningIso : null);
+  
+  // If not open and active cycle is in the past, look for the next future opening from scheduled cycles
+  const futureCycles = (cyclesData?.cycles || [])
+    .filter(c => c.opening_date && new Date(c.opening_date).getTime() > nowMs)
+    .sort((a, b) => new Date(a.opening_date).getTime() - new Date(b.opening_date).getTime());
+  const nextCycleOpeningIso = futureCycles.length > 0 ? futureCycles[0].opening_date : null;
+
+  const targetDtIso = isDtOpen ? dtDeadlineIso : (dtOpenMs && dtOpenMs > nowMs ? dtOpeningIso : nextCycleOpeningIso);
   const dtCountdown = useLiveCountdown(targetDtIso);
 
   // Cycle Feeding Turnout & Hunting Status
@@ -1039,7 +1056,15 @@ export default function AdminHomeTab({
                     </span>
                   </>
                 )}
-                {!isDtOpen && (!dtOpeningIso || new Date(dtOpeningIso).getTime() <= Date.now()) && (
+                {!isDtOpen && (!dtOpeningIso || new Date(dtOpeningIso).getTime() <= Date.now()) && nextCycleOpeningIso && (
+                  <>
+                    <span className={styles.heroRibbonDate}>{formatEuDate(nextCycleOpeningIso)}</span>
+                    <span className={styles.heroCountdownBadge}>
+                      Opens in {dtCountdown?.text || '...'}
+                    </span>
+                  </>
+                )}
+                {!isDtOpen && (!dtOpeningIso || new Date(dtOpeningIso).getTime() <= Date.now()) && !nextCycleOpeningIso && (
                   <span className={styles.heroRibbonDate} style={{ opacity: 0.7 }}>(No scheduled opening)</span>
                 )}
               </div>
