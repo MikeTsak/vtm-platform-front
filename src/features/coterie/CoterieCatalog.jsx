@@ -209,6 +209,13 @@ export function RulesOverview() {
           of a Domain Trait costs one dot from the coterie pool. Domain Traits cover a lot of ground:
           use them as abstractions, not constraints.
         </p>
+        <Muted tone="warn" className={styles.tightNote}>
+          <b>House rule for this chronicle:</b> Chasse and the Chasse (feeding-ground) Merits are fixed
+          features of each Domain division on the map. They cost nothing and can never be bought,
+          contributed, raised or removed. A coterie's Chasse is 7 minus its division's Hunting
+          Difficulty, so the Lethal city-centre divisions are Chasse 0. Only Lien and Portillon cost pool
+          dots or XP.
+        </Muted>
         <ul className={styles.traitList}>
           {DOMAIN_TRAITS.map((k) => {
             const info = DOMAIN_TRAIT_INFO[k];

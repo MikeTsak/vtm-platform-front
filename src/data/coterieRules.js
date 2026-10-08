@@ -12,6 +12,8 @@
 // Sources: V:tM 5th ed. Corebook pp. 195-199; V5 Players Guide (Coterie
 // Backgrounds and Merits).
 
+import { huntingDifficulty as divisionHuntingDifficulty } from '../features/domains/data/huntingDifficulty';
+
 export const DOMAIN_TRAITS = ['chasse', 'lien', 'portillon'];
 export const MAX_DOTS = 5;
 export const MIN_MEMBERS = 3;
@@ -65,6 +67,24 @@ export function huntingDifficulty(chasse) {
   if (c < 1) return null;
   return Math.max(1, 7 - Math.min(MAX_DOTS, c));
 }
+
+/** The map's Hunting Difficulty for a Domain division, or null without one. */
+export function divisionDifficulty(division) {
+  if (division == null || division === '') return null;
+  return divisionHuntingDifficulty(Number(division));
+}
+
+/**
+ * House rule: Chasse is fixed by the Domain division and never bought,
+ * contributed or edited. It inverts the corebook formula against the map's
+ * Hunting Difficulty (Difficulty 3 -> Chasse 4, Lethal 7 -> Chasse 0).
+ * Mirrors back/utils/coterieRules.js, which is authoritative.
+ */
+export function chasseForDivision(division) {
+  const diff = divisionDifficulty(division);
+  return diff == null ? 0 : Math.max(0, Math.min(MAX_DOTS, 7 - diff));
+}
+
 export function lienBonusDice(lien) {
   return Math.min(MAX_DOTS, Math.max(0, Number(lien) || 0));
 }
@@ -495,6 +515,7 @@ export function validateCoterie(input = {}) {
   for (const k of DOMAIN_TRAITS) {
     traits[k] = Math.max(0, Math.min(MAX_DOTS, Number((input.traits || {})[k]) || 0));
   }
+  traits.chasse = chasseForDivision(domainId);
 
   const backgrounds = Array.isArray(input.backgrounds) ? input.backgrounds : [];
   const merits = Array.isArray(input.merits) ? input.merits : [];
@@ -521,10 +542,7 @@ export function validateCoterie(input = {}) {
   const hasDomain = domainId != null && Number.isFinite(domainId);
   const anyTrait = DOMAIN_TRAITS.some((k) => traits[k] > 0);
   if (!hasDomain && anyTrait) {
-    errors.push('Chasse, Lien and Portillon describe a Domain. Claim a Domain division, or set all three to zero.');
-  }
-  if (hasDomain && traits.chasse < 1) {
-    errors.push('A claimed Domain needs at least Chasse • to work as a hunting ground.');
+    errors.push('Lien and Portillon describe a Domain. Claim a Domain division, or set both to zero.');
   }
   if (!hasDomain) warnings.push(NO_DOMAIN_NOTE);
 
@@ -630,9 +648,10 @@ export function seedFromType(typeData) {
   const flaws = [];
   const unmapped = [];
 
+  // A type's listed Chasse is ignored: Chasse comes from the division.
   const d = typeData && typeData.domain;
   if (d && typeof d === 'object') {
-    for (const k of DOMAIN_TRAITS) {
+    for (const k of DOMAIN_TRAITS.filter((t) => t !== 'chasse')) {
       traits[k] = Math.max(0, Math.min(MAX_DOTS, Number(d[k]) || 0));
     }
   }
@@ -680,7 +699,8 @@ export function checkTypeCompliance({ required, traits, backgrounds }) {
       unmet.push({ label: (COTERIE_BACKGROUNDS[key] || {}).name || key, needed: Number(needed), have });
     }
   }
-  for (const k of DOMAIN_TRAITS) {
+  // Chasse is fixed by the division, so older saved types' Chasse is never "unmet".
+  for (const k of DOMAIN_TRAITS.filter((t) => t !== 'chasse')) {
     const needed = Number((required.domain || {})[k]) || 0;
     const have = Number((traits || {})[k]) || 0;
     if (needed && have < needed) {

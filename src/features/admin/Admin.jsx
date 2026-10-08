@@ -70,7 +70,7 @@ const NAV_SECTIONS = [
       { id: 'characters',  icon: 'account_circle', label: 'Characters',   hint: 'Sheets, trackers, and PDF export', keywords: ['sheets', 'stats', 'pdf', 'inventory', 'traits', 'disciplines', 'blood potency', 'generation', 'clan', 'sect', 'sire', 'approvals', 'merits', 'flaws', 'health', 'willpower', 'humanity', 'export', 'delete', 'add character'] },
       { id: 'users',       icon: 'person',         label: 'Users',        hint: 'Accounts, roles, and Discord IDs', keywords: ['accounts', 'passwords', 'emails', 'roles', 'login', 'reset password', 'delete user', 'ban', 'unban', 'discord id', 'st role', 'vip role', 'admin role'] },
       { id: 'coteries',    icon: 'group_work',     label: 'Coteries',     hint: 'Player coteries and shared havens', keywords: ['groups', 'factions', 'alliances', 'coterie type', 'domain size', 'chantry', 'shared resources', 'members'] },
-      { id: 'ghouls',      icon: 'pets',           label: 'Ghouls',       hint: 'Retainers and blood bonds', keywords: ['retainers', 'thralls', 'servants', 'domitor', 'blood bonds', 'ghoul sheet', 'disciplines', 'tier', 'player'] },
+      { id: 'ghouls',      icon: 'pets',           label: 'Retainers & Ghouls', hint: 'Every retainer: personal, ghoul and coterie-owned', keywords: ['ghouls', 'retainers', 'mortal', 'coterie retainers', 'blood', 'thralls', 'servants', 'domitor', 'blood bonds', 'ghoul sheet', 'disciplines', 'tier', 'player'] },
       { id: 'xp',          icon: 'stars',          label: 'XP & Rewards', hint: 'Grant, subtract, and bulk XP', keywords: ['experience', 'levels', 'progression', 'grants', 'apply to all', 'view history', 'refresh data', 'subtract xp', 'bulk grant'] },
       { id: 'disciplines', icon: 'auto_awesome',   label: 'Disciplines',  hint: 'Out of clan access requests', keywords: ['out of clan', 'unlock', 'access', 'request', 'approve', 'reject', 'grant', 'revoke', 'powers', 'clan restriction'] },
     ],
@@ -745,7 +745,7 @@ export default function Admin() {
   const [premonitions, setPremonitions] = useState([]);
   const [diceRolls, setDiceRolls] = useState([]);
   const [characters, setCharacters] = useState([]);
-  const [ghouls, setGhouls] = useState([]);
+  const [retainers, setRetainers] = useState([]);
 
   const unreadPremonitionsCount = useMemo(() => {
     if (!Array.isArray(premonitions)) return 0;
@@ -797,7 +797,7 @@ export default function Admin() {
       api.get('/admin/characters').then(res => setCharacters(res.data.characters || [])).catch(e => console.error('Failed chars', e)).finally(inc),
       api.get('/admin/downtimes').then(res => setDowntimes(res.data.downtimes || [])).catch(e => console.error('Failed downtimes', e)).finally(inc),
       api.get('/admin/npcs').then(res => setNPCs(res.data.npcs || [])).catch(e => console.error('Failed NPCs', e)).finally(inc),
-      api.get('/admin/ghouls').then(res => setGhouls(res.data.ghouls || [])).catch(e => console.error('Failed ghouls', e)).finally(inc),
+      api.get('/admin/retainers').then(res => setRetainers(res.data.retainers || [])).catch(e => console.error('Failed retainers', e)).finally(inc),
       api.get('/admin/chat/all').then(res => setAllMessages(res.data.messages || [])).catch(e => console.error('Failed chat all', e)).finally(inc),
       api.get('/admin/chat/npc/all').then(res => setAllNpcMessages(res.data.messages || [])).catch(e => console.error('Failed NPC chat', e)).finally(inc),
       api.get('/admin/users').then(res => {
@@ -955,7 +955,7 @@ async function grantXP(character_id, delta) {
         onOpenEditor={openCharacterEditor}
       />
     ),
-    ghouls:      () => <AdminGhoulsTab ghouls={ghouls} />,
+    ghouls:      () => <AdminGhoulsTab retainers={retainers} />,
     xp:          () => <AdminXPTab users={users} onGrant={grantXP} onBulkGrant={grantBulkXP} adminxp={adminxp} />,
     disciplines: () => <AdminDisciplinesTab />,
     // Chronicle

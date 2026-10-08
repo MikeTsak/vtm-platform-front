@@ -24,6 +24,35 @@ function timeAgo(dateInput) {
   return formatEuDate(dateInput);
 }
 
+function useLiveCountdown(targetDateInput) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const int = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(int);
+  }, []);
+  
+  if (!targetDateInput) return null;
+  const target = new Date(targetDateInput).getTime();
+  if (isNaN(target)) return null;
+
+  const diffMs = target - now;
+  const isPast = diffMs <= 0;
+  const absDiff = Math.abs(diffMs);
+
+  const days = Math.floor(absDiff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((absDiff / (1000 * 60 * 60)) % 24);
+  const minutes = Math.floor((absDiff / 1000 / 60) % 60);
+  const seconds = Math.floor((absDiff / 1000) % 60);
+
+  let parts = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0 || days > 0) parts.push(`${hours}h`);
+  if (minutes > 0 || hours > 0 || days > 0) parts.push(`${minutes}m`);
+  parts.push(`${seconds}s`);
+
+  return { isPast, text: parts.join(' '), days, hours, minutes, seconds };
+}
+
 export default function AdminHomeTab({
   users = [],
   characters = [],
@@ -339,17 +368,25 @@ export default function AdminHomeTab({
     return upcoming[0] || null;
   }, [eventsData]);
 
-  const eventCountdownText = useMemo(() => {
-    if (!nextEvent) return null;
-    const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const eventTime = nextEvent.eventDate.getTime();
-    const diffMs = eventTime - startOfToday;
-    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
-    if (diffDays <= 0) return 'Today';
-    if (diffDays === 1) return 'Tomorrow';
-    return `${diffDays} days remaining`;
-  }, [nextEvent]);
+  const eventCountdown = useLiveCountdown(nextEvent ? nextEvent.date : null);
+  const eventCountdownText = eventCountdown 
+    ? (eventCountdown.isPast ? 'Started/Past' : `in ${eventCountdown.text}`)
+    : null;
+
+  // Comms Countdown
+  const commsOpenCountdown = useLiveCountdown(commsData?.next_opening?.iso);
+  const commsCloseCountdown = useLiveCountdown(commsData?.next_closing?.iso);
+
+  // Downtimes Countdown
+  const dtOpeningIso = dtConfig?.downtime_opening;
+  const dtDeadlineIso = dtConfig?.downtime_deadline;
+  const nowMs = Date.now();
+  const dtOpenMs = dtOpeningIso ? new Date(dtOpeningIso).getTime() : null;
+  const dtDeadMs = dtDeadlineIso ? new Date(dtDeadlineIso).getTime() : null;
+  
+  const isDtOpen = dtOpenMs && dtDeadMs && nowMs >= dtOpenMs && nowMs <= dtDeadMs;
+  const targetDtIso = isDtOpen ? dtDeadlineIso : (dtOpenMs && dtOpenMs > nowMs ? dtOpeningIso : null);
+  const dtCountdown = useLiveCountdown(targetDtIso);
 
   // Cycle Feeding Turnout & Hunting Status
   const currentFeedingCycleIndex = useMemo(() => {
@@ -946,10 +983,61 @@ export default function AdminHomeTab({
                 <strong style={{ color: commsData?.comms_enabled ? '#00e676' : '#ffb822' }}>
                   {commsData?.comms_enabled ? 'Comms Open' : 'Comms Closed'}
                 </strong>
-                {!commsData?.comms_enabled && commsData?.next_opening?.time && (
-                  <span className={styles.heroRibbonCommsHint}>
-                    (Opens {commsData.next_opening.time})
-                  </span>
+                {commsData?.comms_enabled && commsData?.next_closing?.formatted && (
+                  <>
+                    <span className={styles.heroRibbonDate}>until {commsData.next_closing.formatted}</span>
+                    <span className={styles.heroCountdownBadge}>
+                      Closes in {commsCloseCountdown?.text || '...'}
+                    </span>
+                  </>
+                )}
+                {!commsData?.comms_enabled && commsData?.next_opening?.formatted && (
+                  <>
+                    <span className={styles.heroRibbonDate}>{commsData.next_opening.formatted}</span>
+                    <span className={styles.heroCountdownBadge}>
+                      Opens in {commsOpenCountdown?.text || '...'}
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className={styles.heroRibbonDivider} />
+
+          {/* Downtime Window Status */}
+          <div
+            className={styles.heroRibbonItem}
+            onClick={() => setTab('downtimes')}
+            title="Click to manage Downtimes"
+          >
+            <div className={styles.heroRibbonIconWrap}>
+              <span className="material-symbols-outlined" style={{ fontSize: '20px', color: isDtOpen ? '#00e676' : '#ff9100' }}>
+                {isDtOpen ? 'lock_open' : 'lock'}
+              </span>
+            </div>
+            <div className={styles.heroRibbonContent}>
+              <span className={styles.heroRibbonLabel}>Downtime Window</span>
+              <div className={styles.heroRibbonValue}>
+                <span className={isDtOpen ? styles.pulseDotGreen : styles.pulseDotAmber} />
+                <strong style={{ color: isDtOpen ? '#00e676' : '#ffb822' }}>
+                  {isDtOpen ? 'Downtimes Open' : 'Downtimes Closed'}
+                </strong>
+                {isDtOpen && dtDeadlineIso && (
+                  <>
+                    <span className={styles.heroRibbonDate}>until {formatEuDate(dtDeadlineIso)}</span>
+                    <span className={styles.heroCountdownBadge}>
+                      Closes in {dtCountdown?.text || '...'}
+                    </span>
+                  </>
+                )}
+                {!isDtOpen && dtOpeningIso && new Date(dtOpeningIso).getTime() > Date.now() && (
+                  <>
+                    <span className={styles.heroRibbonDate}>{formatEuDate(dtOpeningIso)}</span>
+                    <span className={styles.heroCountdownBadge}>
+                      Opens in {dtCountdown?.text || '...'}
+                    </span>
+                  </>
                 )}
               </div>
             </div>

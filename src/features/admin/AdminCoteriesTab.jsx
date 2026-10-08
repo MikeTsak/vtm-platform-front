@@ -4,8 +4,40 @@ import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/Admin.module.css';
 import { Skeleton } from 'boneyard-js/react';
 import G6 from '@antv/g6';
+import CoterieManager from '../coterie/CoterieManager';
+import { chasseForDivision } from '../../data/coterieRules';
 
+// Sheets (default): the full coterie screens — every coterie, its sheet,
+// bank, ledger, award/deduct, edit, delete and retainers — which already work
+// on a phone. Network: the relationship graph, best on a wide screen.
 export default function AdminCoteriesTab() {
+  const [view, setView] = useState('sheets');
+  const toggle = (key, label) => (
+    <button
+      type="button"
+      onClick={() => setView(key)}
+      aria-pressed={view === key}
+      style={{
+        minHeight: '40px', padding: '6px 16px', borderRadius: '999px', cursor: 'pointer', fontWeight: 600,
+        border: `1px solid ${view === key ? 'var(--accent-purple)' : 'var(--glass-border)'}`,
+        background: view === key ? 'rgba(157, 124, 255, 0.15)' : 'transparent', color: 'var(--text-primary)',
+      }}
+    >
+      {label}
+    </button>
+  );
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        {toggle('sheets', 'Coterie sheets')}
+        {toggle('network', 'Network graph')}
+      </div>
+      {view === 'sheets' ? <CoterieManager adminMode /> : <CoterieNetwork />}
+    </div>
+  );
+}
+
+function CoterieNetwork() {
   const [loading, setLoading] = useState(true);
   const [coteries, setCoteries] = useState([]);
   const [members, setMembers] = useState([]);
@@ -46,7 +78,7 @@ export default function AdminCoteriesTab() {
       nodes.push({
         id: `coterie-${c.id}`,
         label: c.name,
-        detail: `Type: ${c.type || 'Standard'}<br/>Chasse: ${c.chasse || 0}<br/>Lien: ${c.lien || 0}<br/>Portillon: ${c.portillon || 0}`,
+        detail: `Type: ${c.type || 'Standard'}<br/>Chasse: ${chasseForDivision(c.domain_id)}<br/>Lien: ${c.lien || 0}<br/>Portillon: ${c.portillon || 0}`,
         size: [120, 50],
         type: 'rect',
         style: { fill: '#311b92', stroke: '#7e57c2', radius: 8, lineWidth: 3 },
@@ -60,7 +92,6 @@ export default function AdminCoteriesTab() {
       nodes.push({
         id: nodeId,
         label: m.char_name || 'Unknown',
-        detail: `Role: ${m.is_leader ? 'Leader' : 'Member'}`,
         size: 40,
         type: 'circle',
         style: { fill: '#1e1e1e', stroke: '#4da6ff', lineWidth: 2 },
@@ -70,10 +101,7 @@ export default function AdminCoteriesTab() {
       edges.push({
         source: `coterie-${m.coterie_id}`,
         target: nodeId,
-        style: {
-          stroke: m.is_leader ? '#ffcc00' : '#4da6ff',
-          lineWidth: m.is_leader ? 4 : 2,
-        },
+        style: { stroke: '#4da6ff', lineWidth: 2 },
       });
     });
 
@@ -163,7 +191,7 @@ export default function AdminCoteriesTab() {
                     {c.type || 'Standard'}
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px 10px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                    <span>Chasse: {c.chasse || 0}</span>
+                    <span>Chasse: {chasseForDivision(c.domain_id)}</span>
                     <span>Lien: {c.lien || 0}</span>
                     <span>Port: {c.portillon || 0}</span>
                   </div>

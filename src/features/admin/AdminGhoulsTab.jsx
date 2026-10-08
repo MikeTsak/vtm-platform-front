@@ -1,190 +1,242 @@
+// Admin directory of every retainer: personal mortals, ghouls, and those
+// owned by a coterie. One card per retainer so it reads on a phone; filters
+// narrow it to one kind. "Manage" opens the Retainers page as the owner (or,
+// for a coterie retainer, its domitor or a member) with admin bypass.
 import FaGlyph from '../../ui/FaGlyph';
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styles from '../../styles/Admin.module.css';
 import Avatar from '../../components/Avatar';
 
-// Parse ghoul sheet to extract discipline summary (name, level, first power)
-function parseDisciplineSummary(sheet) {
-  try {
-    const parsed = typeof sheet === 'string' ? JSON.parse(sheet) : (sheet || {});
-    const disciplines = parsed.disciplines || {};
-    const powers = parsed.disciplinePowers || {};
-
-    const entries = Object.entries(disciplines).filter(([, lvl]) => Number(lvl) > 0);
-    if (!entries.length) return null;
-
-    return entries.map(([disc, lvl]) => {
-      const discPowers = powers[disc] || [];
-      const firstPower = discPowers[0];
-      const powerLabel = firstPower
-        ? `: ${firstPower.name || firstPower.id || '?'}`
-        : '';
-      return `${disc} Lv${lvl}${powerLabel}`;
-    }).join(', ');
-  } catch {
-    return null;
-  }
-}
-
 const LEVEL_COLORS = { 1: '#b8860b', 2: '#9d7cff', 3: '#c21807' };
 
-export default function AdminGhoulsTab({ ghouls }) {
-  const navigate = useNavigate();
+const FILTERS = [
+  { key: 'all', label: 'All' },
+  { key: 'ghoul', label: 'Ghouls' },
+  { key: 'mortal', label: 'Mortal retainers' },
+  { key: 'coterie', label: 'Coterie-owned' },
+  { key: 'personal', label: 'Personal' },
+];
 
-  if (!ghouls || ghouls.length === 0) {
-    return (
-      <div className={styles.adminCard} style={{ textAlign: 'center', padding: '4rem 2rem', opacity: 0.7 }}>
-        <span style={{ fontSize: '3rem', display: 'block', marginBottom: '1rem' }}><FaGlyph name="fa-droplet" size={48} /></span>
-        <h3 style={{ color: 'var(--text-primary)', margin: 0 }}>No Ghouls Found</h3>
-        <p style={{ color: 'var(--text-secondary)', marginTop: '0.5rem' }}>No Kindred have created ghouls yet.</p>
-      </div>
-    );
-  }
+const isGhoul = (r) => r.sheet?.isGhoul === true;
+
+// "Dominate (Compel)", plus whose blood gave it on a coterie ghoul.
+function disciplineLines(r) {
+  const sheet = r.sheet || {};
+  return Object.entries(sheet.disciplines || {})
+    .filter(([, lvl]) => Number(lvl) > 0)
+    .map(([disc]) => {
+      const power = (sheet.powers || []).find((p) => p && p.discipline === disc);
+      const from = r.blood_from?.[disc];
+      return { disc, power: power?.name || null, from };
+    });
+}
+
+const chip = (color) => ({
+  display: 'inline-flex', alignItems: 'center', gap: '4px',
+  borderRadius: '999px', padding: '2px 10px', fontSize: '0.75rem', fontWeight: 700,
+  background: `${color}22`, border: `1px solid ${color}`, color,
+});
+
+export default function AdminGhoulsTab({ retainers }) {
+  const navigate = useNavigate();
+  const [filter, setFilter] = useState('all');
+  const [q, setQ] = useState('');
+
+  const list = retainers || [];
+  const counts = useMemo(() => ({
+    all: list.length,
+    ghoul: list.filter(isGhoul).length,
+    mortal: list.filter((r) => !isGhoul(r)).length,
+    coterie: list.filter((r) => r.coterie_id).length,
+    personal: list.filter((r) => !r.coterie_id).length,
+  }), [list]);
+
+  const shown = useMemo(() => {
+    const term = q.trim().toLowerCase();
+    return list
+      .filter((r) => filter === 'all'
+        || (filter === 'ghoul' && isGhoul(r))
+        || (filter === 'mortal' && !isGhoul(r))
+        || (filter === 'coterie' && r.coterie_id)
+        || (filter === 'personal' && !r.coterie_id))
+      .filter((r) => !term || [r.name, r.owner_name, r.owner_player, r.coterie_name, r.domitor_name, r.domitor_player]
+        .some((v) => (v || '').toLowerCase().includes(term)));
+  }, [list, filter, q]);
+
+  const manage = (r) => navigate('/retainers', {
+    state: {
+      character: { id: r.manage_id, name: r.manage_name, clan: r.manage_clan, xp: r.manage_xp },
+      preselectRetainerId: r.id,
+      isAdminBypass: true,
+    },
+  });
+
+  const exportPdf = async (r) => {
+    const { default: generateGhoulPDF } = await import('../../utils/ghoulPdfGenerator');
+    generateGhoulPDF({ ...r, retainer_name: r.name }, {
+      domitorName: r.domitor_name || r.owner_name,
+      domitorClan: r.domitor_clan || r.owner_clan,
+      playerName: r.domitor_player || r.owner_player,
+    });
+  };
 
   return (
     <div className={styles.adminCard}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '1.5rem' }}>
-        <div>
-          <h2 style={{ color: 'var(--text-primary)', margin: 0, fontSize: '1.6rem', fontWeight: 800 }}>
-            <FaGlyph name="fa-droplet" size={24} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Ghouls Directory
-          </h2>
-          <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0', fontSize: '0.85rem' }}>
-            {ghouls.length} ghoul{ghouls.length !== 1 ? 's' : ''} bound by the Blood Oath
-          </p>
-        </div>
+      <div style={{ marginBottom: '1rem' }}>
+        <h2 style={{ color: 'var(--text-primary)', margin: 0, fontSize: '1.6rem', fontWeight: 800 }}>
+          <FaGlyph name="fa-droplet" size={24} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Retainers &amp; Ghouls
+        </h2>
+        <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0', fontSize: '0.85rem' }}>
+          {counts.ghoul} ghoul{counts.ghoul !== 1 ? 's' : ''} · {counts.mortal} mortal retainer{counts.mortal !== 1 ? 's' : ''} · {counts.coterie} owned by a coterie
+        </p>
       </div>
 
-      {/* Table */}
-      <div className={styles.rTable}>
-        <table className={styles.table} style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ borderBottom: '2px solid var(--glass-border)' }}>
-              <th style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)', fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Ghoul</th>
-              <th style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)', fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Tier</th>
-              <th style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)', fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Domitor</th>
-              <th style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)', fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Player</th>
-              <th style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)', fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Discipline</th>
-              <th style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)', fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ghouls.map((g, i) => {
-              const disciplineSummary = parseDisciplineSummary(g.sheet);
-              return (
-                <tr
-                  key={g.id}
-                  style={{
-                    borderBottom: '1px solid var(--glass-border)',
-                    background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)',
-                    transition: 'background 0.15s',
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
-                  onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)'}
-                >
-                  <td style={{ padding: '0.75rem 1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <Avatar retainerId={g.id} size={40} editable={true} />
-                      <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{g.retainer_name}</span>
-                    </div>
-                  </td>
-                  <td style={{ padding: '0.75rem 1rem' }}>
-                    <span style={{
-                      display: 'inline-flex', alignItems: 'center', gap: '4px',
-                      background: `${LEVEL_COLORS[g.tier] || '#555'}22`,
-                      border: `1px solid ${LEVEL_COLORS[g.tier] || '#555'}`,
-                      color: LEVEL_COLORS[g.tier] || '#ccc',
-                      borderRadius: '20px', padding: '2px 10px',
-                      fontSize: '0.8rem', fontWeight: 700,
-                    }}>
-                      {'●'.repeat(g.tier || 1)}
-                    </span>
-                  </td>
-                  <td style={{ padding: '0.75rem 1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <Avatar userId={g.user_id} size={32} />
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ color: 'var(--text-primary)' }}>{g.domitor_name}</span>
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '2px' }}>{g.domitor_clan}</span>
-                      </div>
-                    </div>
-                  </td>
-                  <td style={{ padding: '0.75rem 1rem' }}>
-                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{g.player_name || 'Unknown'}</span>
-                  </td>
-                  <td style={{ padding: '0.75rem 1rem' }}>
-                    {disciplineSummary ? (
-                      <span style={{
-                        background: 'rgba(157, 124, 255, 0.1)',
-                        border: '1px solid rgba(157, 124, 255, 0.3)',
-                        color: 'var(--accent-purple)',
-                        borderRadius: 'var(--radius-sm)',
-                        padding: '3px 10px',
-                        fontSize: '0.82rem',
-                        fontWeight: 600,
-                      }}>
-                        {disciplineSummary}
-                      </span>
-                    ) : (
-                      <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>None</span>
-                    )}
-                  </td>
-                  <td style={{ padding: '0.75rem 1rem' }}>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      <button
-                        type="button"
-                        className={styles.btnSmall}
-                        style={{
-                          background: '#8a0303',
-                          color: '#fff', padding: '6px 12px', border: 'none',
-                          borderRadius: 'var(--radius-sm)', cursor: 'pointer',
-                          fontWeight: 700, fontSize: '0.82rem',
-                          boxShadow: '0 2px 8px rgba(138, 3, 3, 0.4)',
-                          transition: 'opacity 0.15s',
-                        }}
-                        onClick={async () => {
-                          const { default: generateGhoulPDF } = await import('../../utils/ghoulPdfGenerator');
-                          generateGhoulPDF(g);
-                        }}
-                        title="Export Ghoul PDF Record"
-                      >
-                        PDF
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.btnSmall}
-                        style={{
-                          background: 'linear-gradient(135deg, var(--accent-purple-dark, #6b3fa0) 0%, var(--accent-purple) 100%)',
-                          color: '#fff', padding: '6px 14px', border: 'none',
-                          borderRadius: 'var(--radius-sm)', cursor: 'pointer',
-                          fontWeight: 700, fontSize: '0.82rem',
-                          boxShadow: '0 2px 8px var(--accent-purple-glow)',
-                          transition: 'opacity 0.15s',
-                        }}
-                        onClick={() => navigate('/retainers', {
-                          state: {
-                            character: {
-                              id: g.domitor_id,
-                              name: g.domitor_name,
-                              clan: g.domitor_clan,
-                              xp: g.domitor_xp,
-                            },
-                            preselectRetainerId: g.id,
-                            isAdminBypass: true,
-                          },
-                        })}
-                      >
-                        Manage
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px', marginBottom: '0.75rem' }}>
+        {FILTERS.map((f) => (
+          <button
+            key={f.key}
+            type="button"
+            onClick={() => setFilter(f.key)}
+            aria-pressed={filter === f.key}
+            style={{
+              flex: '0 0 auto', minHeight: '40px', padding: '6px 14px', borderRadius: '999px', cursor: 'pointer',
+              border: `1px solid ${filter === f.key ? 'var(--accent-purple)' : 'var(--glass-border)'}`,
+              background: filter === f.key ? 'rgba(157, 124, 255, 0.15)' : 'transparent',
+              color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.85rem',
+            }}
+          >
+            {f.label} <span style={{ opacity: 0.6 }}>{counts[f.key]}</span>
+          </button>
+        ))}
       </div>
+
+      <input
+        type="search"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="Search by name, owner, player or coterie…"
+        style={{
+          width: '100%', minHeight: '44px', padding: '0.55rem 0.8rem', marginBottom: '1rem', fontSize: '16px',
+          borderRadius: 'var(--radius-sm)', border: '1px solid var(--glass-border)',
+          background: 'rgba(0,0,0,0.25)', color: 'var(--text-primary)', boxSizing: 'border-box',
+        }}
+      />
+
+      {shown.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
+          {list.length === 0 ? 'No retainers have been created yet.' : 'Nothing matches this filter.'}
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 20rem), 1fr))' }}>
+          {shown.map((r) => {
+            const ghoul = isGhoul(r);
+            const discs = disciplineLines(r);
+            const tierColor = LEVEL_COLORS[r.tier] || '#888';
+            return (
+              <article
+                key={r.id}
+                style={{
+                  display: 'flex', flexDirection: 'column', gap: '0.6rem', padding: '0.9rem',
+                  borderRadius: 'var(--radius-md, 12px)', border: '1px solid var(--glass-border)',
+                  background: 'rgba(255,255,255,0.02)', minWidth: 0,
+                }}
+              >
+                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', minWidth: 0 }}>
+                  <Avatar retainerId={r.id} size={44} editable />
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ color: 'var(--text-primary)', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {r.name}
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
+                      <span style={chip(tierColor)}>Tier {r.tier} {'●'.repeat(r.tier || 1)}</span>
+                      <span style={chip(ghoul ? '#c21807' : '#6b8aa8')}>{ghoul ? 'Ghoul' : 'Mortal'}</span>
+                      <span style={chip(r.coterie_id ? '#9d7cff' : '#4a9d6b')}>{r.coterie_id ? 'Coterie' : 'Personal'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '2px 10px', fontSize: '0.85rem' }}>
+                  {r.coterie_id ? (
+                    <>
+                      <dt style={{ color: 'var(--text-muted)' }}>Coterie</dt>
+                      <dd style={{ margin: 0, color: 'var(--text-primary)' }}>{r.coterie_name}</dd>
+                    </>
+                  ) : (
+                    <>
+                      <dt style={{ color: 'var(--text-muted)' }}>Owner</dt>
+                      <dd style={{ margin: 0, color: 'var(--text-primary)' }}>
+                        {r.owner_name}{r.owner_clan ? ` · ${r.owner_clan}` : ''}
+                      </dd>
+                    </>
+                  )}
+                  {ghoul && (
+                    <>
+                      <dt style={{ color: 'var(--text-muted)' }}>Domitor</dt>
+                      <dd style={{ margin: 0, color: 'var(--text-primary)' }}>
+                        {r.coterie_id
+                          ? `${r.domitor_name || 'none'}${r.domitor_clan ? ` · ${r.domitor_clan}` : ''}`
+                          : `${r.owner_name}${r.owner_clan ? ` · ${r.owner_clan}` : ''}`}
+                      </dd>
+                    </>
+                  )}
+                  <dt style={{ color: 'var(--text-muted)' }}>Player</dt>
+                  <dd style={{ margin: 0, color: 'var(--text-secondary)' }}>
+                    {r.coterie_id ? (r.domitor_player || 'shared by the coterie') : (r.owner_player || 'Unknown')}
+                  </dd>
+                </dl>
+
+                {ghoul && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                    {discs.length === 0 ? (
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>No Discipline chosen</span>
+                    ) : discs.map((d) => (
+                      <span
+                        key={d.disc}
+                        title={d.from ? `${d.from}'s blood` : 'Domitor\'s blood'}
+                        style={{
+                          background: 'rgba(157, 124, 255, 0.1)', border: '1px solid rgba(157, 124, 255, 0.3)',
+                          color: 'var(--accent-purple)', borderRadius: 'var(--radius-sm)', padding: '3px 8px',
+                          fontSize: '0.8rem', fontWeight: 600,
+                        }}
+                      >
+                        {d.disc}{d.power ? `: ${d.power}` : ''}{d.from ? ` (${d.from}'s blood)` : ''}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>
+                  <button
+                    type="button"
+                    onClick={() => exportPdf(r)}
+                    style={{
+                      flex: 1, minHeight: '40px', background: '#8a0303', color: '#fff', border: 'none',
+                      borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem',
+                    }}
+                  >
+                    PDF
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!r.manage_id}
+                    title={r.manage_id ? undefined : 'No member character to open this as'}
+                    onClick={() => manage(r)}
+                    style={{
+                      flex: 1, minHeight: '40px', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)',
+                      cursor: r.manage_id ? 'pointer' : 'not-allowed', fontWeight: 700, fontSize: '0.85rem',
+                      background: 'linear-gradient(135deg, var(--accent-purple-dark, #6b3fa0) 0%, var(--accent-purple) 100%)',
+                      opacity: r.manage_id ? 1 : 0.5,
+                    }}
+                  >
+                    Manage
+                  </button>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

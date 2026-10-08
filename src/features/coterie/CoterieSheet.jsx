@@ -7,6 +7,7 @@
 // Chasse/Lien/Portillon were three numbers with no stated effect anywhere in
 // the app, so the Domain, the whole reason to have a coterie, was invisible.
 import React, { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import styles from '../../styles/Coteries.module.css';
 import Avatar from '../../components/Avatar';
 import { formatAthensDateTime } from '../../utils/dateFormatter';
@@ -23,7 +24,7 @@ import {
   NO_DOMAIN_NOTE,
   XP_PER_DOT,
   checkTypeCompliance,
-  huntingDifficulty,
+  divisionDifficulty,
   lienBonusDice,
   portillonPenaltyDice,
   xpForDots,
@@ -34,7 +35,7 @@ import FaGlyph from '../../ui/FaGlyph';
 
 const CATALOGS = {
   domain: null,
-  background: COTERIE_BACKGROUNDS,
+  background: Object.fromEntries(Object.entries(COTERIE_BACKGROUNDS).filter(([, d]) => !d.isFlawSide)),
   // Chasse merits are landmarks of a real city, fixed by the Domain: the
   // server refuses to sell them, so the dialog does not offer them.
   merit: Object.fromEntries(Object.entries(COTERIE_MERITS).filter(([k]) => !CHASSE_MERIT_KEYS.has(k))),
@@ -103,12 +104,17 @@ function PurchaseDialog({ coterie, personalXp, onClose, onConfirm, busy }) {
             type="button"
             className={styles.buttonPrimary}
             disabled={busy || alreadyMaxed || !canAfford || cost <= 0}
-            onClick={() => onConfirm({
-              target: { kind, key },
-              to_dots: effectiveTo,
-              from_bank: fromBank,
-              from_personal: personal,
-            })}
+            onClick={() => {
+              const name = kind === 'domain' ? DOMAIN_TRAIT_INFO[key].name : def?.name || key;
+              const split = personal > 0 ? ` (${fromBank} from the bank, ${personal} from your own sheet)` : ' from the coterie bank';
+              if (!window.confirm(`Buy ${name} ${currentDots} → ${effectiveTo} for ${cost} XP${split}? Purchases cannot be refunded.`)) return;
+              onConfirm({
+                target: { kind, key },
+                to_dots: effectiveTo,
+                from_bank: fromBank,
+                from_personal: personal,
+              });
+            }}
           >
             {busy ? 'Working…' : `Buy for ${cost} XP`}
           </button>
@@ -244,6 +250,8 @@ function ContributeDialog({ coterie, entries, onClose, onConfirm, busy }) {
   const held = (coterie.backgrounds || []).find((b) => b.key === key);
   const heldDots = held ? Number(held.dots) || 0 : 0;
   const given = entry ? Number(entry.dots) || 0 : 0;
+  const max = (COTERIE_BACKGROUNDS[key] || {}).max || MAX_DOTS;
+  const overflow = heldDots + given > max;
 
   return (
     <Modal
@@ -256,8 +264,11 @@ function ContributeDialog({ coterie, entries, onClose, onConfirm, busy }) {
           <button
             type="button"
             className={styles.buttonPrimary}
-            disabled={busy || !entry}
-            onClick={() => onConfirm(entry.id)}
+            disabled={busy || !entry || overflow}
+            onClick={() => {
+              if (!window.confirm(`Give your ${COTERIE_BACKGROUNDS[key]?.name || entry.name} ${given} to ${coterie.name}? It leaves your sheet for good.`)) return;
+              onConfirm(entry.id);
+            }}
           >
             {busy ? 'Working…' : 'Contribute'}
           </button>
@@ -283,15 +294,34 @@ function ContributeDialog({ coterie, entries, onClose, onConfirm, busy }) {
 
       {entry && (
         <div style={{ marginTop: '1rem' }}>
-          <Muted tone="warn">
-            {heldDots >= given
-              ? `The coterie already holds ${heldDots}; it stays at ${heldDots} and your ${given} is removed from your sheet.`
-              : `The coterie goes from ${heldDots} to ${given}, and it is removed from your sheet.`}
-            {' '}This cannot be undone.
+          <Muted tone={overflow ? 'error' : 'warn'}>
+            {overflow
+              ? `The coterie holds ${heldDots}; adding your ${given} would pass the maximum of ${max}.`
+              : `The coterie goes from ${heldDots} to ${heldDots + given}, and it is removed from your sheet. This cannot be undone.`}
           </Muted>
         </div>
       )}
     </Modal>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Retainers background: who has a sheet, and where they are managed
+ * ------------------------------------------------------------------ */
+
+function RetainerSheetsNote({ dots, retainers, isMember }) {
+  const free = (Number(dots) || 0) - retainers.reduce((n, r) => n + (Number(r.tier) || 0), 0);
+  return (
+    <Muted className={styles.tightNote}>
+      {retainers.length > 0 && (
+        <>Sheets: {retainers.map((r) => `${r.name} (Tier ${r.tier}${r.domitor_character_id ? ', ghoul' : ''})`).join(', ')}. </>
+      )}
+      {free > 0 && `${free} dot${free > 1 ? 's' : ''} without a sheet yet. `}
+      {free < 0 && `Sheets use ${-free} more dot(s) than the rating: a Storyteller should review. `}
+      Every member sees these sheets. Any member builds, rebuilds or releases a mortal retainer for
+      free; a ghoul is managed only by its domitor.{' '}
+      {isMember && <Link to="/retainers">Manage on the Retainers page</Link>}
+    </Muted>
   );
 }
 
@@ -303,6 +333,7 @@ export default function CoterieSheet({
   coterie,
   members = [],
   xpLog = [],
+  retainers = [],
   domainLabel,
   isAdmin,
   canEdit,
@@ -314,16 +345,18 @@ export default function CoterieSheet({
   onAward,
   onPurchase,
   onContribute,
+  onDeposit,
   busy,
 }) {
   const [showPurchase, setShowPurchase] = useState(false);
   const [showContribute, setShowContribute] = useState(false);
   const contributable = useMemo(() => contributableEntries(myCharacter), [myCharacter]);
   const [awardAmount, setAwardAmount] = useState(3);
+  const [depositAmount, setDepositAmount] = useState(3);
 
   const t = coterie.traits || { chasse: 0, lien: 0, portillon: 0 };
   const hasDomain = coterie.domain_id != null;
-  const difficulty = huntingDifficulty(t.chasse);
+  const difficulty = divisionDifficulty(coterie.domain_id);
   const lien = lienBonusDice(t.lien);
   const portillon = portillonPenaltyDice(t.portillon);
 
@@ -384,8 +417,8 @@ export default function CoterieSheet({
             <div className={styles.statRow}>
               <Stat
                 label="Hunting Difficulty"
-                value={difficulty == null ? 'None' : difficulty}
-                hint={difficulty == null ? 'No Chasse: the Storyteller sets it' : 'inside the domain'}
+                value={difficulty == null ? 'None' : `${difficulty}/7`}
+                hint={difficulty == null ? 'Unknown division: the Storyteller sets it' : 'set by the division'}
                 tone={difficulty != null && difficulty <= 3 ? 'good' : undefined}
               />
               <Stat
@@ -412,6 +445,11 @@ export default function CoterieSheet({
                       <Dots value={t[k]} label={info.name} />
                     </div>
                     <Muted className={styles.tightNote}>{info.rule}</Muted>
+                    {k === 'chasse' && (
+                      <Muted className={styles.tightNote}>
+                        <b>Fixed by the division.</b> Chasse is never bought, contributed or removed.
+                      </Muted>
+                    )}
                     {k === 'chasse' && t.chasse > 0 && (
                       <Muted className={styles.tightNote}>
                         <b>Roughly this size:</b> {CHASSE_SIZE_TABLE[t.chasse]}
@@ -526,6 +564,9 @@ export default function CoterieSheet({
                     </div>
                     {b.note && <Muted className={styles.tightNote}>{b.note}</Muted>}
                     {def && def.desc && <Muted className={styles.caveat}>{def.desc}</Muted>}
+                    {b.key === 'retainers' && (
+                      <RetainerSheetsNote dots={b.dots} retainers={retainers} isMember={isMember} />
+                    )}
                   </li>
                 );
               })}
@@ -632,7 +673,8 @@ export default function CoterieSheet({
       >
         <Muted className={styles.tightNote}>
           Advancement costs {XP_PER_DOT} XP per new dot. Spend from the coterie bank, top it up from your
-          own character’s XP, or split the cost between the two.
+          own character’s XP, or split the cost between the two. Any member can deposit personal XP
+          into the bank; deposits are one-way.
         </Muted>
 
         <div className={styles.cardActionRow}>
@@ -645,6 +687,32 @@ export default function CoterieSheet({
             >
               Spend XP
             </button>
+          )}
+          {isMember && (
+            <div className={styles.awardRow}>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                className={styles.inputSmall}
+                value={depositAmount}
+                onChange={(e) => setDepositAmount(Math.trunc(Number(e.target.value || 0)))}
+                aria-label="Personal XP to deposit"
+              />
+              <button
+                type="button"
+                className={styles.buttonSecondary}
+                disabled={busy || depositAmount < 1 || depositAmount > (Number(personalXp) || 0)}
+                title={`You have ${Number(personalXp) || 0} personal XP. Deposits are one-way.`}
+                onClick={() => {
+                  if (window.confirm(`Move ${depositAmount} XP from your character into the coterie bank? Deposits cannot be taken back.`)) {
+                    onDeposit(depositAmount);
+                  }
+                }}
+              >
+                Deposit to bank
+              </button>
+            </div>
           )}
           {isAdmin && (
             <div className={styles.awardRow}>
@@ -681,7 +749,9 @@ export default function CoterieSheet({
             <summary className={styles.summaryLink}>Ledger ({xpLog.length})</summary>
             <ul className={styles.ledgerList}>
               {xpLog.map((row) => {
-                const total = (Number(row.bank_delta) || 0) + (Number(row.personal_delta) || 0);
+                const total = row.kind === 'deposit'
+                  ? Number(row.bank_delta) || 0
+                  : (Number(row.bank_delta) || 0) + (Number(row.personal_delta) || 0);
                 return (
                   <li key={row.id} className={styles.ledgerRow}>
                     <span className={styles.ledgerAmount} data-sign={total >= 0 ? 'plus' : 'minus'}>
@@ -693,7 +763,8 @@ export default function CoterieSheet({
                           ? `${row.target_name} ${row.from_dots} → ${row.to_dots}`
                           : row.kind === 'contribute'
                             ? `${row.target_name} contributed ${row.from_dots} → ${row.to_dots}`
-                            : row.kind === 'award' ? 'Storyteller award' : 'Adjustment'}
+                            : row.kind === 'deposit' ? 'Member deposit'
+                              : row.kind === 'award' ? 'Storyteller award' : 'Adjustment'}
                       </span>
                       {row.kind === 'spend' && Number(row.personal_delta) !== 0 && (
                         <span className={styles.ledgerMeta}>

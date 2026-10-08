@@ -18,7 +18,7 @@ import { RulesOverview, TypesBrowser } from './CoterieCatalog';
 import { getCoterie } from '../../data/cotteries';
 import {
   DOMAIN_TRAIT_INFO,
-  huntingDifficulty,
+  divisionDifficulty,
   lienBonusDice,
   portillonPenaltyDice,
   seedFromType,
@@ -34,7 +34,7 @@ const errText = (e, fallback) =>
  * ------------------------------------------------------------------ */
 
 function RegistryCard({ c, domainLabel }) {
-  const difficulty = huntingDifficulty(c.chasse);
+  const difficulty = divisionDifficulty(c.domain_id);
   const lien = lienBonusDice(c.lien);
   const portillon = portillonPenaltyDice(c.portillon);
 
@@ -75,7 +75,9 @@ function RegistryCard({ c, domainLabel }) {
  * Manager
  * ------------------------------------------------------------------ */
 
-export default function CoterieManager() {
+// adminMode: rendered inside the admin panel, where an admin's "mine" list is
+// every coterie in the city.
+export default function CoterieManager({ adminMode = false }) {
   const [tab, setTab] = useState('mine');
   const [currentUser, setCurrentUser] = useState(null);
   const [personalXp, setPersonalXp] = useState(0);
@@ -238,6 +240,10 @@ export default function CoterieManager() {
 
   const award = async (delta) => {
     if (!detail) return;
+    const msg = delta >= 0
+      ? `Award ${delta} XP to ${detail.coterie.name}'s bank?`
+      : `Deduct ${Math.abs(delta)} XP from ${detail.coterie.name}'s bank?`;
+    if (!window.confirm(msg)) return;
     setBusy(true);
     try {
       await api.post(`/coteries/${detail.coterie.id}/xp`, { delta });
@@ -274,6 +280,21 @@ export default function CoterieManager() {
     } catch (e) {
       publish({ message: errText(e, 'Could not complete the purchase.'), type: 'error' });
       return false;
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const deposit = async (amount) => {
+    if (!detail) return;
+    setBusy(true);
+    try {
+      const { data } = await api.post(`/coteries/${detail.coterie.id}/deposit`, { amount });
+      publish({ message: `Deposited ${amount} XP into the coterie bank.`, type: 'success' });
+      setPersonalXp(data.remaining_personal_xp);
+      await Promise.all([loadDetail(detail.coterie.id), loadMine(), loadMyCharacter()]);
+    } catch (e) {
+      publish({ message: errText(e, 'Could not deposit XP.'), type: 'error' });
     } finally {
       setBusy(false);
     }
@@ -322,7 +343,7 @@ export default function CoterieManager() {
   /* ---- render ---- */
 
   const tabs = [
-    { value: 'mine', label: 'My Coteries', badge: mine.length || undefined },
+    { value: 'mine', label: adminMode ? 'All Coteries' : 'My Coteries', badge: mine.length || undefined },
     { value: 'all', label: 'Registry' },
     ...(editing ? [{ value: 'builder', label: editingId ? 'Editing' : 'New Coterie' }] : []),
     { value: 'types', label: 'Types' },
@@ -350,7 +371,7 @@ export default function CoterieManager() {
           <div className={styles.toolbar}>
             <Muted className={styles.tightNote}>
               {mine.length === 0
-                ? 'You are not in a registered coterie yet.'
+                ? (adminMode ? 'No coteries are registered yet.' : 'You are not in a registered coterie yet.')
                 : `${mine.length} coterie${mine.length === 1 ? '' : 's'}.`}
             </Muted>
             {currentUser && (
@@ -373,7 +394,7 @@ export default function CoterieManager() {
                 className={styles.backLink}
                 onClick={() => { setSelectedId(null); setDetail(null); }}
               >
-                ← All my coteries
+                {adminMode ? '← All coteries' : '← All my coteries'}
               </button>
               {loadingDetail ? (
                 <Card><Spinner /></Card>
@@ -382,6 +403,7 @@ export default function CoterieManager() {
                   coterie={detail.coterie}
                   members={detail.members}
                   xpLog={detail.xp_log || []}
+                  retainers={detail.retainers || []}
                   domainLabel={detail.coterie.domain_id
                     ? `#${detail.coterie.domain_id} : ${domainLabelFor(detail.coterie.domain_id) || 'Unknown'}`
                     : null}
@@ -396,13 +418,14 @@ export default function CoterieManager() {
                   onAward={award}
                   onPurchase={purchase}
                   onContribute={contribute}
+                  onDeposit={deposit}
                 />
               )}
             </>
           ) : (
             <div className={styles.cardGrid}>
               {mine.map((c) => {
-                const diff = huntingDifficulty(c.traits?.chasse);
+                const diff = divisionDifficulty(c.domain_id);
                 return (
                   <Card
                     key={c.id}
@@ -417,7 +440,23 @@ export default function CoterieManager() {
                       <Stat label="Lien" value={`+${lienBonusDice(c.traits?.lien)}`} />
                       <Stat label="Portillon" value={`−${portillonPenaltyDice(c.traits?.portillon)}`} />
                       <Stat label="Members" value={(c.members || []).length} />
+                      {c.budget && (
+                        <Stat
+                          label="Pool left"
+                          value={c.budget.remaining}
+                          tone={c.budget.remaining < 0 ? 'bad' : undefined}
+                        />
+                      )}
                     </div>
+                    {(c.members || []).length > 0 && (
+                      <div className={styles.rosterInline}>
+                        {c.members.map((m) => (
+                          <span key={m.user_id} className={styles.chip}>
+                            {m.character_name || m.display_name}{m.clan ? ` · ${m.clan}` : ''}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     <div className={styles.cardActionRow}>
                       <button
                         type="button"

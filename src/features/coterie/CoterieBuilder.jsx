@@ -30,7 +30,8 @@ import {
   MERIT_GROUPS,
   MIN_MEMBERS,
   CHASSE_SIZE_TABLE,
-  huntingDifficulty,
+  chasseForDivision,
+  divisionDifficulty,
   lienBonusDice,
   portillonPenaltyDice,
   seedFromType,
@@ -174,8 +175,13 @@ export default function CoterieBuilder({
     return { ...emptyState(), ...data, merits };
   };
 
-  const [s, setS] = useState(() => cleanInitial(initial));
+  const [state, setS] = useState(() => cleanInitial(initial));
   const set = useCallback((patch) => setS((prev) => ({ ...prev, ...patch })), []);
+  // Chasse is fixed by the Domain division (house rule): derived, never edited.
+  const s = useMemo(() => ({
+    ...state,
+    traits: { ...state.traits, chasse: chasseForDivision(state.domainId) },
+  }), [state]);
 
   useEffect(() => {
     if (initial) setS(cleanInitial(initial));
@@ -236,6 +242,7 @@ export default function CoterieBuilder({
     flaws: s.flaws,
     rulesOverride: s.rulesOverride,
   }), [s]);
+  const budget = check.budget;
 
   const startingBonus = useMemo(() => {
     return editingId ? (Number(initial?.bonusPoints) || 0) : 0;
@@ -276,9 +283,19 @@ export default function CoterieBuilder({
     return getDivisionChasse(s.domainId);
   }, [s.domainId]);
 
-  const difficulty = huntingDifficulty(s.traits.chasse);
+  const difficulty = divisionDifficulty(s.domainId);
 
-  const submit = () => onSave({
+  const submit = () => {
+    const lines = [editingId ? `Save the changes to ${s.name.trim()}?` : `Found ${s.name.trim()}?`];
+    if (xpCost > 0 && !s.rulesOverride) lines.push(`${xpCost} XP will be deducted from your character for the contributed dots.`);
+    const removed = editingId
+      ? (initial?.members || []).filter((m) => !s.members.some((x) => x.id === m.id)).map((m) => m.name)
+      : [];
+    if (removed.length) lines.push(`Removed from the coterie: ${removed.join(', ')}.`);
+    if (window.confirm(lines.join('\n\n'))) save();
+  };
+
+  const save = () => onSave({
     name: s.name.trim(),
     concept: s.concept.trim() || null,
     type: s.type || null,
@@ -430,22 +447,6 @@ export default function CoterieBuilder({
             tone="flaw"
           />
 
-          <Card title="Save" tone={check.errors.length ? 'warn' : 'success'}>
-            <IssueList errors={check.errors} warnings={check.warnings} />
-            <div className={styles.cardActionRow}>
-              <button
-                type="button"
-                className={styles.buttonPrimary}
-                disabled={!canSave}
-                onClick={submit}
-              >
-                {saving ? 'Saving…' : editingId ? 'Save changes' : 'Found the coterie'}
-              </button>
-              <button type="button" className={styles.buttonSecondary} onClick={onCancel}>
-                Cancel
-              </button>
-            </div>
-          </Card>
         </div>
 
         {/* ---- Side column ---- */}
@@ -498,7 +499,7 @@ export default function CoterieBuilder({
                             {info.name}
                             {k === 'chasse' && (
                               <span style={{ fontSize: '0.75em', fontWeight: 'normal', color: 'var(--text-muted, gray)', marginLeft: '6px' }}>
-                                (is not calculated to the pool)
+                                (fixed by the division, free)
                               </span>
                             )}
                           </span>
@@ -526,7 +527,7 @@ export default function CoterieBuilder({
               <div className={styles.effectBox}>
                 <div className={styles.effectRow}>
                   <span>Hunting Difficulty here</span>
-                  <b>{difficulty == null ? 'ST sets it' : difficulty}</b>
+                  <b>{difficulty == null ? 'ST sets it' : `${difficulty}/7`}</b>
                 </div>
                 <div className={styles.effectRow}>
                   <span>Lien bonus dice</span>
@@ -687,6 +688,24 @@ export default function CoterieBuilder({
           )}
         </div>
       </div>
+
+      {/* Below both columns, so on a phone it comes after Domain and Pool settings. */}
+      <Card title="Save" tone={check.errors.length ? 'warn' : 'success'}>
+        <IssueList errors={check.errors} warnings={check.warnings} />
+        <div className={styles.cardActionRow}>
+          <button
+            type="button"
+            className={styles.buttonPrimary}
+            disabled={!canSave}
+            onClick={submit}
+          >
+            {saving ? 'Saving…' : editingId ? 'Save changes' : 'Found the coterie'}
+          </button>
+          <button type="button" className={styles.buttonSecondary} onClick={onCancel}>
+            Cancel
+          </button>
+        </div>
+      </Card>
     </div>
   );
 }

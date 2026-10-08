@@ -1128,3 +1128,31 @@
     justify-content: center;
   }
 }
+
+/* Phones and tablets: the roster and the sheet are stacked in one column, so
+   the sheet gets a way back up to the roster. Hidden once they sit side by side. */
+.backToRoster {
+  position: sticky;
+  top: 8px;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  margin-bottom: 12px;
+  padding: 8px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-color) 85%, transparent);
+  backdrop-filter: blur(8px);
+  color: var(--text-color);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+@media (min-width: 1280px) {
+  .backToRoster {
+    display: none;
+  }
+}
