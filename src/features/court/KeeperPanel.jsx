@@ -3,6 +3,7 @@ import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/court/CourtActions.module.css';
 import { InvitationCard } from './ElysiumInvitation';
 import ElysiumInvitationModal from './ElysiumInvitation';
+import DownloadCardButton from './CardExport';
 import {
   SURFACES, ACCENTS, ORNAMENTS, FONTS, SEALS, LANGS, DEFAULT_DESIGN, DEFAULT_TEXT, DEFAULT_TEXT_BY_LANG,
   resolveDesign, surfaceBackground, formatElysiumDate, greekAttrs,
@@ -112,6 +113,14 @@ export function HomeBannerPreview({ name, date, design, location }) {
   );
 }
 
+// What is sent to the server: empty image slots dropped. Also the unit of 'has this changed'.
+const toPayload = (f) => {
+  const design = { ...f.design };
+  for (const k of ['cardImage', 'bannerImage']) if (!design[k]) delete design[k];
+  return { ...f, design };
+};
+const snap = (f) => JSON.stringify(toPayload(f));
+
 export default function KeeperPanel() {
   const [loaded, setLoaded] = useState(null);
   const [form, setForm] = useState(null);
@@ -120,6 +129,9 @@ export default function KeeperPanel() {
   const [err, setErr] = useState('');
   const [guestQuery, setGuestQuery] = useState('');
   const [fullPreview, setFullPreview] = useState(false);
+  const [previewGuestId, setPreviewGuestId] = useState('');
+  const [savedAt, setSavedAt] = useState(null);
+  const savedSnap = useRef(null); // what the server holds, to tell when there are unsaved changes
 
   const hydrate = (data) => {
     setLoaded(data);
@@ -129,6 +141,7 @@ export default function KeeperPanel() {
     // A new cycle starts from the house text where the last invitation left nothing;
     // a saved invitation keeps its cleared lines cleared.
     for (const k of TEXT_KEYS) f[k] = inv[k] ?? (inv.is_new && k !== 'name' ? DEFAULT_TEXT[k] : '');
+    savedSnap.current = snap(f);
     setForm(f);
   };
 
@@ -155,9 +168,7 @@ export default function KeeperPanel() {
   const save = async () => {
     setBusy(true);
     try {
-      const design = { ...form.design };
-      for (const k of ['cardImage', 'bannerImage']) if (!design[k]) delete design[k];
-      await api.put(`/court-actions/elysium/${loaded.event.id}`, { ...form, design });
+      await api.put(`/court-actions/elysium/${loaded.event.id}`, toPayload(form));
       await load();
       flash('The invitation is saved.');
       return true;
@@ -190,6 +201,33 @@ export default function KeeperPanel() {
     return (loaded?.guests || []).filter(g => !q || g.name.toLowerCase().includes(q) || (g.clan || '').toLowerCase().includes(q));
   }, [loaded, guestQuery]);
 
+  const published = !!loaded?.invitation?.published_at;
+  const dirty = !!form && snap(form) !== savedSnap.current;
+
+  // A draft saves itself two seconds after the last change. A published invitation never
+  // does: what players see changes only when the Keeper presses Save changes.
+  useEffect(() => {
+    if (!form || !loaded?.event || published || busy) return undefined;
+    const s = snap(form);
+    if (s === savedSnap.current) return undefined;
+    const t = setTimeout(async () => {
+      try {
+        await api.put(`/court-actions/elysium/${loaded.event.id}`, { ...toPayload(form), autosave: true });
+        savedSnap.current = s;
+        setSavedAt(new Date());
+      } catch { /* the Save draft button reports errors */ }
+    }, 2000);
+    return () => clearTimeout(t);
+  }, [form, loaded, published, busy]);
+
+  // Leaving with edits that were not saved asks first.
+  useEffect(() => {
+    if (!dirty) return undefined;
+    const warn = (e) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
+
   const toggleBar = (id) => setForm(f => ({ ...f, barred: f.barred.includes(id) ? f.barred.filter(x => x !== id) : [...f.barred, id] }));
 
   if (err && !form) return <div className={styles.error}>{err}</div>;
@@ -203,10 +241,14 @@ export default function KeeperPanel() {
     );
   }
 
-  const inv = loaded.invitation;
-  const published = !!inv?.published_at;
   const when = formatElysiumDate(loaded.event.date);
-  const sampleGuest = { name: 'Your Guest', clan: 'Toreador' };
+  // Preview (and image) as a sample guest, or as a real character, including a struck one.
+  const previewGuest = (loaded.guests || []).find(g => String(g.id) === previewGuestId);
+  const sampleGuest = previewGuest ? { name: previewGuest.name, clan: previewGuest.clan } : { name: 'Your Guest', clan: 'Toreador' };
+  const previewBarred = !!previewGuest && (!!previewGuest.is_bloodhunted || form.barred.includes(previewGuest.id));
+  const saveState = published
+    ? (dirty ? 'Unsaved changes: players still see the last saved version' : 'All changes saved and live')
+    : (dirty ? 'Saving draft...' : savedAt ? `Draft saved ${savedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}` : 'Draft: only you can see it');
   const barredCount = form.barred.length + (loaded.guests || []).filter(g => g.is_bloodhunted && !form.barred.includes(g.id)).length;
 
   return (
@@ -309,12 +351,24 @@ export default function KeeperPanel() {
           {published && <button className={styles.btn} disabled={busy} onClick={() => publish(true, true)}><Icon name="notifications_active" /> Send again</button>}
           {published && <button className={`${styles.btn} ${styles.btnDanger}`} disabled={busy} onClick={() => publish(false)}>Withdraw</button>}
           <button className={styles.btn} onClick={() => setFullPreview(true)}><Icon name="open_in_full" /> Preview</button>
+          <DownloadCardButton className={styles.btn} invitation={form} eventDate={loaded.event.date} guest={sampleGuest} barred={previewBarred} filename={form.name || 'elysium'}>
+            <Icon name="download" /> Download image
+          </DownloadCardButton>
         </div>
+        <div className={styles.statusChip} role="status" style={dirty && published ? { color: '#ffb300' } : undefined}>
+          <Icon name={dirty && published ? 'warning' : 'cloud_done'} size={16} /> {saveState}
+        </div>
+        <label className={styles.field} style={{ marginBottom: 0 }}><span>Preview and image as</span>
+          <select className={styles.input} value={previewGuestId} onChange={e => setPreviewGuestId(e.target.value)}>
+            <option value="">A sample guest</option>
+            {(loaded.guests || []).map(g => <option key={g.id} value={g.id}>{g.name}{g.clan ? ` (${g.clan})` : ''}</option>)}
+          </select>
+        </label>
         <HomeBannerPreview name={form.name} date={loaded.event.date} design={form.design} location={form.location} />
-        <InvitationCard invitation={form} eventDate={loaded.event.date} guest={sampleGuest} />
+        <InvitationCard invitation={form} eventDate={loaded.event.date} guest={sampleGuest} barred={previewBarred} />
       </aside>
 
-      <ElysiumInvitationModal open={fullPreview} onClose={() => setFullPreview(false)} invitation={form} eventDate={loaded.event.date} guest={sampleGuest} />
+      <ElysiumInvitationModal open={fullPreview} onClose={() => setFullPreview(false)} invitation={form} eventDate={loaded.event.date} guest={sampleGuest} barred={previewBarred} />
     </div>
   );
 }

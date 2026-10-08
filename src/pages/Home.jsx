@@ -587,7 +587,14 @@ export default function Home() {
           >
             <div className={styles.eventInfo}>
               <h3 className={styles.eventHeader}>NEXT MODERN EVENT</h3>
-              <h2 className={styles.eventTitle} {...greekAttrs(elysium?.invitation?.name || elysium?.event?.name)}>{elysium?.event ? (elysium.invitation?.name || elysium.event.name || 'Elysium Gathering') : 'No Current Event'}</h2>
+              {!elysium?.event ? (
+                <h2 className={styles.eventTitle}>No Current Event</h2>
+              ) : elysium.status === 'pending' ? (
+                // Nothing is announced yet: the date from the Calendar is all there is to show.
+                <h2 className={styles.eventTitle}>{formatAthensWeekdayDate(elysium.event.date)}</h2>
+              ) : (
+                <h2 className={styles.eventTitle} {...greekAttrs(elysium.invitation?.name || elysium.event.name)}>{elysium.invitation?.name || elysium.event.name || 'Elysium Gathering'}</h2>
+              )}
               {elysium?.event && !eventCd.isPast && (
                 <p className={styles.eventLocation} style={{ color: 'var(--tint)' }}>
                   Starts in: {eventCd.days}d {eventCd.hours}h {eventCd.mins}m
@@ -595,20 +602,21 @@ export default function Home() {
               )}
               {elysium?.event && (
                 <p className={styles.eventLocation} {...greekAttrs(elysium.invitation?.location)}>
-                  {elysium.status === 'invited' && elysium.invitation?.location
-                    ? `Location: ${elysium.invitation.location}`
-                    : elysium.status === 'barred' ? 'You have not been invited.' : 'Location: revealed in the invitation'}
+                  {elysium.status === 'pending'
+                    ? 'The name and venue have not yet been announced by the Keeper.'
+                    : elysium.status === 'barred'
+                      ? 'You have not been invited.'
+                      : elysium.invitation?.location ? `Location: ${elysium.invitation.location}` : 'Location: revealed in the invitation'}
                 </p>
               )}
             </div>
-            {elysium?.event && (elysium.status === 'pending' ? (
-              <button className={styles.rsvpBtn} disabled style={{ minHeight: '48px', minWidth: '120px', opacity: 0.6, cursor: 'default' }}>Invitation Pending</button>
-            ) : (
+            {/* The button only exists once the Keeper has published an invitation. */}
+            {elysium?.event && elysium.status !== 'pending' && (
               <button className={styles.rsvpBtn} onClick={() => openInvitation()} style={{ minHeight: '48px', minWidth: '120px', position: 'relative' }}>
                 View Invitation
                 {!elysium.read && <span aria-label="unread" style={{ position: 'absolute', top: 6, right: 6, width: 9, height: 9, borderRadius: '50%', background: '#ff5252', boxShadow: '0 0 8px #ff5252' }} />}
               </button>
-            ))}
+            )}
           </motion.section>
 
           <ElysiumInvitationModal

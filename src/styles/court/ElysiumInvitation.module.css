@@ -44,6 +44,17 @@
 
 .light {
   box-shadow: 0 40px 90px rgba(0, 0, 0, 0.6), inset 0 0 80px rgba(110, 70, 30, 0.25);
+  font-weight: 500;
+}
+
+.light .body {
+  font-weight: 500;
+}
+
+.light .salutation,
+.light .signature,
+.light .location {
+  font-weight: 600;
 }
 
 /* One slow sheen across the foil when the card arrives. */
@@ -293,3 +304,6 @@
 }
 
 .signature.scriptGreek { font-size: 1.35rem; }
+
+/* The downloaded image is a still: no sheen sweeping across it. */
+.card[data-exporting]::after { display: none; }

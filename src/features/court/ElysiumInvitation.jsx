@@ -3,7 +3,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import ClanSymbol from '../../components/ClanSymbol';
 import { factionLogo } from '../../data/factions';
 import styles from '../../styles/court/ElysiumInvitation.module.css';
-import { DEFAULT_TEXT, STRINGS, resolveDesign, surfaceBackground, personalize, formatElysiumDate, hasGreek, greekAttrs } from './elysiumPresets';
+import { DEFAULT_TEXT_BY_LANG, STRINGS, resolveDesign, surfaceBackground, personalize, formatElysiumDate, hasGreek, greekAttrs } from './elysiumPresets';
 
 /* ── Ornament artwork (stroke = currentColor, coloured by the accent) ── */
 
@@ -99,7 +99,7 @@ export function InvitationCard({ invitation, eventDate, guest, barred = false })
   const design = resolveDesign(inv.design);
   const { card, accentDef: accent, fontDef, ornament, seal } = design;
   // The Keeper's words as saved; a cleared line stays cleared. Only the title falls back.
-  const text = (k) => inv[k] || (k === 'name' ? DEFAULT_TEXT.name : '');
+  const text = (k) => inv[k] || (k === 'name' ? DEFAULT_TEXT_BY_LANG[design.lang === 'el' ? 'el' : 'en'].name : '');
   const lang = design.lang === 'el' ? 'el' : 'en';
   const L = STRINGS[lang];
   const when = formatElysiumDate(eventDate, lang);
@@ -127,7 +127,7 @@ export function InvitationCard({ invitation, eventDate, guest, barred = false })
       <div className={styles.inner}>
         {barred ? (
           <>
-            <p className={styles.eyebrow}>{L.barredEyebrow}</p>
+            <p className={styles.eyebrow} {...g(L.barredEyebrow)}>{L.barredEyebrow}</p>
             <h2 className={styles.title} lang={lang === 'el' ? 'el' : undefined} style={lang === 'el' ? fontDef.greek : undefined}>{L.barredTitle}</h2>
             <Divider kind="minimal" />
             <p className={styles.body} {...g(L.barredBody, guest?.name)}>

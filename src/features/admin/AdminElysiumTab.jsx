@@ -4,6 +4,7 @@ import { formatEuDate } from '../../utils/dateFormatter';
 import styles from '../../styles/Admin.module.css';
 import { InvitationCard } from '../court/ElysiumInvitation';
 import { HomeBannerPreview } from '../court/KeeperPanel';
+import DownloadCardButton from '../court/CardExport';
 import { SURFACES, ACCENTS, ORNAMENTS, FONTS, SEALS, LANGS, resolveDesign } from '../court/elysiumPresets';
 
 const ACTIONS = {
@@ -196,6 +197,15 @@ export default function AdminElysiumTab() {
                       </label>
                       <HomeBannerPreview name={version.name} date={detail.event.date} design={version.design} location={readerBarred ? '' : version.location} />
                       <InvitationCard invitation={version} eventDate={detail.event.date} guest={guest} barred={readerBarred} />
+                      <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                        <DownloadCardButton className={`${styles.btn} ${styles.btnSecondary}`} invitation={version} eventDate={detail.event.date} guest={guest} barred={readerBarred}
+                          filename={`${version.name || detail.event.title}-v${vIndex + 1}${viewer ? `-${guest.name}` : ''}`}>
+                          <Icon name="download" /> Download v{vIndex + 1}
+                        </DownloadCardButton>
+                        <DownloadCardButton action="discord" eventId={detail.event.id} className={`${styles.btn} ${styles.btnPrimary}`} invitation={version} eventDate={detail.event.date} guest={guest} barred={readerBarred}>
+                          <Icon name="send" /> Push v{vIndex + 1} to Discord
+                        </DownloadCardButton>
+                      </div>
                       <DesignSummary design={version.design} names={names} barred={version.barred} />
                     </div>
                   )}
