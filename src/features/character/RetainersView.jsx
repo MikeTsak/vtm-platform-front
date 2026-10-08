@@ -1158,10 +1158,10 @@ export default function RetainersView() {
   // Build (no retainer) or rebuild/upgrade (retainer) a coterie sheet. Free:
   // the coterie's dots are already paid for; the server checks the budget.
   const openCoterieWizard = (coterie, tier, retainer = null) => {
-    const domitorId = retainer?.domitor_character_id
-      || coterieMember(coterie, character.id)?.character_id
-      || coterie.members[0]?.character_id
-      || null;
+    // A player is always the domitor of a ghoul they make; only an admin picks.
+    const domitorId = isAdminBypass
+      ? (retainer?.domitor_character_id || coterie.members.find(m => m.character_id)?.character_id || null)
+      : (coterieMember(coterie, character.id)?.character_id || null);
     setWizardConfig({ isOpen: true, tier, isMigration: true, migrationId: null, coterie: { coterieId: coterie.id, retainer, domitorId } });
   };
 
@@ -1506,16 +1506,33 @@ export default function RetainersView() {
         confirmLabel={wizardCoterie && (wizardConfig.coterie.retainer ? 'Save Coterie Retainer' : 'Bind to Coterie')}
         extraStep1={wizardCoterie && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '2px' }}>Domitor (if ghouled)</label>
-            <select
-              className={styles.inputStitch}
-              value={wizardConfig.coterie.domitorId || ''}
-              onChange={e => { const domitorId = Number(e.target.value); setWizardConfig(p => ({ ...p, coterie: { ...p.coterie, domitorId } })); }}
-            >
-              {wizardCoterie.members.filter(m => m.character_id).map(m => (
-                <option key={m.character_id} value={m.character_id}>{m.character_name}{m.clan ? ` (${m.clan})` : ''}</option>
-              ))}
-            </select>
+            <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '2px' }}>Blood bond (if ghouled)</label>
+            {isAdminBypass ? (
+              <select
+                className={styles.inputStitch}
+                value={wizardConfig.coterie.domitorId || ''}
+                onChange={e => { const domitorId = Number(e.target.value); setWizardConfig(p => ({ ...p, coterie: { ...p.coterie, domitorId } })); }}
+              >
+                <option value="" disabled>Choose the domitor…</option>
+                {wizardCoterie.members.filter(m => m.character_id).map(m => (
+                  <option key={m.character_id} value={m.character_id}>{m.character_name}{m.clan ? ` (${m.clan})` : ''}</option>
+                ))}
+              </select>
+            ) : (() => {
+              // House rule: whoever makes the ghoul is its domitor. Other
+              // members add their Disciplines afterwards with their own blood.
+              const dom = coterieMember(wizardCoterie, wizardConfig.coterie.domitorId);
+              return dom ? (
+                <p style={{ margin: 0, color: '#e0dedd', fontSize: '14px' }}>
+                  Bound to <b>{dom.character_name}</b>{dom.clan ? ` (${dom.clan})` : ''}: the Discipline comes from {dom.character_name === character.name ? 'your' : 'their'} clan.
+                  Other members can add theirs later with their own blood, one per Tier.
+                </p>
+              ) : (
+                <p style={{ margin: 0, color: '#ffb4a7', fontSize: '14px' }}>
+                  Your character is not linked to this coterie's roster, so you cannot be a domitor here. Ask a Storyteller to check the coterie's members.
+                </p>
+              );
+            })()}
           </div>
         )}
         minTier={wizardConfig.isMigration ? (selectedRetainer?.tier || 1) : 1}

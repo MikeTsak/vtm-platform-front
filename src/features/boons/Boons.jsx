@@ -1187,10 +1187,12 @@ export default function Boons() {
                     </div>
                     
                     <div className="text-right">
-                      <p className="text-[12px] font-bold text-on-surface-variant text-right">
-                        <span className="hidden md:inline">Desc: </span>
-                        {boon.description || 'No details provided'}
-                      </p>
+                      {boon.description ? (
+                        <p className="text-[12px] font-bold text-on-surface-variant text-right">
+                          <span className="hidden md:inline">Desc: </span>
+                          {boon.description}
+                        </p>
+                      ) : null}
                       <div className="text-[10px] text-on-surface-variant/70 mt-1 flex flex-wrap items-center justify-end gap-x-2 gap-y-0.5">
                         <span>Rec: {relDate(boon.created_at)}</span>
                         {boon.recorded_by_name ? (
