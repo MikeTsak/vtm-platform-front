@@ -75,6 +75,11 @@ function HuntCard({ hunt, ctx, onChanged }) {
               {hunt.status === 'active' ? 'Lift the hunt' : 'Withdraw'}
             </button>
           )}
+          {hunt.status === 'active' && ctx.can.callBloodHunt && (
+            <button className={`${styles.btn} ${styles.btnSmall}`} disabled={busy} onClick={() => act('resend', `Resend the Blood Hunt announcement for ${hunt.target_name} to Discord?`)}>
+              <Icon name="campaign" size={16} /> Resend
+            </button>
+          )}
           {ctx.can.callBloodHunt && (
             <span className={styles.row} style={{ gap: '0.3rem' }}>
               <input type="datetime-local" className={styles.input} style={{ width: 'auto', minHeight: 34 }} value={expiry}
@@ -124,6 +129,11 @@ function WantedList({ wanted, canClose, reload }) {
     try { await api.post(`/court-actions/wanted/${id}/close`); reload(); }
     catch (e) { alert(formatApiError(e, 'Could not update the board.')); }
   };
+  const resend = async (id) => {
+    if (!window.confirm('Resend this notice to Discord?')) return;
+    try { await api.post(`/court-actions/wanted/${id}/resend`); alert('Announcement resent!'); }
+    catch (e) { alert(formatApiError(e, 'Could not resend the notice.')); }
+  };
   if (!wanted.length) return <div className={styles.empty}>The board is empty.</div>;
   return (
     <div className={styles.list}>
@@ -131,7 +141,12 @@ function WantedList({ wanted, canClose, reload }) {
         <div key={w.id} className={styles.item}>
           <div className={styles.itemHead}>
             <span className={styles.itemName}>{w.target_name}</span>
-            {canClose && <button className={`${styles.btn} ${styles.btnSmall}`} onClick={() => close(w.id)}>Found / Strike</button>}
+            {canClose && (
+              <span className={styles.row} style={{ gap: '0.3rem' }}>
+                <button className={`${styles.btn} ${styles.btnSmall}`} onClick={() => resend(w.id)} title="Resend Discord Announcement"><Icon name="campaign" size={16} /></button>
+                <button className={`${styles.btn} ${styles.btnSmall}`} onClick={() => close(w.id)}>Found / Strike</button>
+              </span>
+            )}
           </div>
           <p className={styles.itemBody}>{w.reason}</p>
           <div className={styles.itemMeta}>Posted by the {w.posted_office || 'Court'}{w.posted_by_name ? `, ${w.posted_by_name}` : ''} on {fmt(w.created_at)}</div>

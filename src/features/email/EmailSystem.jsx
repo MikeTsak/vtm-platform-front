@@ -816,6 +816,23 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
               ))}
             </select>
 
+            <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #aaa)', marginTop: 8 }}>Sender Identity</label>
+            <select
+              className={styles.input}
+              onChange={e => {
+                const selected = adminEmailIdentities.find(id => id.id === parseInt(e.target.value));
+                if (selected) {
+                  setAdminDmForm({ ...adminDmForm, display: selected.display_name, email: selected.email_address });
+                }
+              }}
+              defaultValue=""
+            >
+              <option value="">-- Custom / Type below --</option>
+              {adminEmailIdentities.map(i => (
+                <option key={i.id} value={i.id}>{i.display_name} &lt;{i.email_address}&gt;</option>
+              ))}
+            </select>
+
             <label style={{ fontSize: '0.78rem', color: 'var(--text-muted, #aaa)', marginTop: 8 }}>Sender Display Name</label>
             <input
               className={styles.input}

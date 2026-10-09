@@ -41,6 +41,7 @@ const AdminMasqueradeTab = lazyWithRetry(() => import('./AdminMasqueradeTab'));
 const AdminPrestationTab = lazyWithRetry(() => import('./AdminPrestationTab'));const AdminCoteriesTab = lazyWithRetry(() => import('./AdminCoteriesTab'));
 const AdminAuditTab = lazyWithRetry(() => import('./AdminAuditTab'));
 const AdminNewsTab = lazyWithRetry(() => import('./AdminNewsTab'));
+const AdminCourtActionsTab = lazyWithRetry(() => import('./AdminCourtActionsTab'));
 
 /* ---------------- Sidebar navigation config ----------------
  * Every tool is grouped by the *job* a Storyteller is doing:
@@ -112,6 +113,7 @@ const NAV_SECTIONS = [
       { id: 'chat',           icon: 'chat',          label: 'Chat Logs',  hint: 'Transcripts, rooms, and direct messages', keywords: ['messages', 'history', 'rooms', 'groups', 'transcripts', 'channel', 'direct messages', 'all time', 'last 7 days'] },
       { id: 'npcs',           icon: 'recent_actors', label: 'NPCs',       hint: 'Storyteller characters and cast', keywords: ['spc', 'storyteller characters', 'cast', 'add temp actor', 'stats', 'disciplines', 'clans', 'generation', 'notes', 'create'] },
       { id: 'npc_emails',     icon: 'mail',          label: 'NPC Comms',  hint: 'NPC inboxes and mail threads', keywords: ['emails', 'messages', 'inbox', 'outbox', 'send reply', 'delete identity', 'create identity'] },
+      { id: 'court_actions',  icon: 'gavel',         label: 'Court Actions', hint: 'View and resend blood hunts and wanted notices', keywords: ['blood', 'hunt', 'wanted', 'sheriff', 'prince', 'resend', 'announcement', 'court'] },
       { id: 'broadcast',      icon: 'campaign',      label: 'Broadcast',  hint: 'Push announcements to everyone', keywords: ['announcements', 'alerts', 'notifications', 'global', 'news', 'urgent', 'messages', 'push'] },
       { id: 'discord',        icon: 'sensors',       label: 'Discord',    hint: 'Bot sync and webhooks', keywords: ['bots', 'sync', 'webhooks', 'integration', 'messages', 'channels', 'setup', 'permissions'] },
       { id: 'news_templates', icon: 'article',       label: 'News',       hint: 'Articles, readers and writer permissions', keywords: ['news', 'templates', 'writers', 'permissions', 'articles', 'readers', 'reads', 'views'] },
@@ -983,6 +985,7 @@ async function grantXP(character_id, delta) {
     // Cast & Comms
     npcs:           () => <AdminNPCsTab npcs={npcs} onReload={load} onDelete={deleteNPC} />,
     npc_emails:     () => <AdminNpcEmailTab npcs={npcs} />,
+    court_actions:  () => <AdminCourtActionsTab />,
     broadcast:      () => <AdminBroadcastTab />,
     news_templates: () => <AdminNewsTab users={users} />,
     discord:        () => <AdminDiscordTab users={users} />,
