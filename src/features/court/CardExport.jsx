@@ -9,7 +9,15 @@ const EXPORT_WIDTH = 520;
 const PIXEL_RATIO = 2;
 const CDN_HOST = 'img.miketsak.gr';
 
-const nextFrames = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+// html-to-image copies every computed style onto its clone. Chrome lists the legacy
+// -webkit-border-image among them, and that one always fills the box's middle, so the
+// card's foil frame came out as one big gradient. Copy everything except it.
+const captureOptions = () => ({
+  pixelRatio: PIXEL_RATIO,
+  includeStyleProperties: [...getComputedStyle(document.documentElement)].filter(n => n !== '-webkit-border-image'),
+});
+
+const nextFrames =() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
 // The image CDN allows no cross-origin reads, so an uploaded background cannot be
 // drawn into the picture directly. It comes through the API (Keeper / admin only).
@@ -48,12 +56,12 @@ export default function DownloadCardButton({ invitation, eventDate, guest, barre
       node.setAttribute('data-exporting', ''); // switches off the sheen animation
       if (action === 'discord' && eventId) {
         const { toJpeg } = await import('html-to-image');
-        const url = await toJpeg(node, { pixelRatio: PIXEL_RATIO, quality: 0.85 });
+        const url = await toJpeg(node, { ...captureOptions(), quality: 0.85 });
         await api.post(`/admin/elysium/invitations/${eventId}/discord`, { image: url, text });
         alert('Invitation pushed to Discord successfully.');
       } else {
         const { toPng } = await import('html-to-image');
-        const url = await toPng(node, { pixelRatio: PIXEL_RATIO });
+        const url = await toPng(node, captureOptions());
         const a = document.createElement('a');
         a.href = url;
         a.download = `${fileSlug(filename || invitation?.name)}.png`;

@@ -230,7 +230,7 @@ function DangerousDomainsPanel() {
   if (!domains) return <div className={styles.empty}>Gathering reports from the streets...</div>;
 
   // Anything below Secure is worth the court's attention; fall back to the top 10.
-  const troubled = domains.filter(d => d.safety_rating < 8 || d.open_incidents > 0);
+  const troubled = domains.filter(d => d.safety_rating < 8);
   const shown = showAll ? domains : (troubled.length ? troubled : domains.slice(0, 10));
   const worst = domains[0];
 
@@ -238,8 +238,7 @@ function DangerousDomainsPanel() {
     <section className={styles.panel}>
       <h2 className={styles.panelTitle}><Icon name="warning" /> The Most Dangerous Domains</h2>
       <p className={styles.hint}>
-        Ranked by Masquerade safety, worst first; unresolved incidents break ties. Every incident drags a domain's rating down until it is dealt with.
-        Divisions the Court has not yet assessed are left out.
+        Ranked by Masquerade safety, worst first. Divisions the Court has not yet assessed are left out.
       </p>
       {worst && (
         <div className={`${styles.item} ${worst.safety_rating < 5 ? styles.huntActive : ''}`} style={{ marginBottom: '1rem' }}>
@@ -248,28 +247,18 @@ function DangerousDomainsPanel() {
             <span className={styles.itemName} style={{ fontSize: '1.5rem' }}>{getDivisionName(worst.division)}</span>
             <SafetyBadge rating={worst.safety_rating} />
           </div>
-          <div className={styles.itemMeta}>{ownerLine(worst)}{worst.open_incidents ? ` · ${worst.open_incidents} open incident${worst.open_incidents > 1 ? 's' : ''}` : ''}</div>
+          <div className={styles.itemMeta}>{ownerLine(worst)}</div>
         </div>
       )}
       <div className={styles.list}>
         {shown.map(d => (
-          <details key={d.division} className={styles.item}>
-            <summary style={{ cursor: d.incidents.length ? 'pointer' : 'default', listStyle: 'none' }}>
-              <div className={styles.itemHead}>
-                <span><span className={styles.rankNum}>{domains.indexOf(d) + 1}.</span> <b>{getDivisionName(d.division)}</b></span>
-                <span className={styles.row} style={{ gap: '0.4rem' }}>
-                  {d.open_incidents > 0 && <span className={`${styles.badge} ${styles.bProposed}`}><Icon name="report" size={12} />{d.open_incidents}</span>}
-                  <SafetyBadge rating={d.safety_rating} />
-                </span>
-              </div>
-              <div className={styles.itemMeta}>{ownerLine(d)}</div>
-            </summary>
-            {d.incidents.length > 0 && (
-              <ul style={{ margin: '0.6rem 0 0', paddingLeft: '1.2rem', lineHeight: 1.5 }}>
-                {d.incidents.map((inc, k) => <li key={k}>{inc.text} <span className={styles.itemMeta}>({fmt(inc.at)})</span></li>)}
-              </ul>
-            )}
-          </details>
+          <div key={d.division} className={styles.item}>
+            <div className={styles.itemHead}>
+              <span><span className={styles.rankNum}>{domains.indexOf(d) + 1}.</span> <b>{getDivisionName(d.division)}</b></span>
+              <SafetyBadge rating={d.safety_rating} />
+            </div>
+            <div className={styles.itemMeta}>{ownerLine(d)}</div>
+          </div>
         ))}
         {!domains.length && <div className={styles.empty}>No division has been assessed yet.</div>}
       </div>
