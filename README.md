@@ -1,19 +1,33 @@
-# Vampire Platform - Frontend
+<div align="center">
+  <img src="https://img.shields.io/badge/Vampire%20Platform-Frontend-darkred?style=for-the-badge&logo=react" alt="Vampire Platform Frontend" />
+  <h1>🦇 Vampire Platform — Frontend 🦇</h1>
+  <p><strong>Current Version: 2.15</strong></p>
 
-React single-page application serving as the primary interface for players and game masters in the Vampire: The Masquerade V5 LARP platform. Communicates with the Express/MariaDB backend via JWT-authenticated HTTP requests.
+  <p>
+    <img src="https://img.shields.io/badge/React%2019-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
+    <img src="https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite" />
+    <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS" />
+    <img src="https://img.shields.io/badge/Zustand-000000?style=for-the-badge&logo=react&logoColor=white" alt="Zustand" />
+    <img src="https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge" alt="License" />
+  </p>
+</div>
 
-## Overview
+## 📖 Overview
 
-This frontend provides the main user interface for the Vampire Platform, offering:
+The React single-page application (SPA) serving as the primary interface for players and game masters in the **Vampire: The Masquerade V5 LARP** platform.
 
-- **Character Management**: Create and develop Kindred characters using V5 rules
-- **XP Economy**: Earn and spend experience points on attributes, skills, disciplines, and powers
-- **Downtime System**: Submit and track player actions between game sessions
-- **Domain Management**: Interactive mapping system for tracking territorial control
-- **Administrative Console**: Tools for game masters to manage users, characters, NPCs, and game state
-- **Mobile Companion Integration**: Works in tandem with the Erebus mobile app for on-the-go access
+It communicates seamlessly with the Fastify/MariaDB backend via JWT-authenticated HTTP requests, offering a rich, responsive, and immersive experience for all participants.
 
-## Features
+## ✨ Latest Features
+- **Modern React 19 Engine**: Built on the latest React architecture with Vite for blazing-fast HMR and optimized builds.
+- **Interactive Maps & Geography**: Integrated `deck.gl`, `maplibre-gl`, and `turf` for complex mapping and spatial analysis of character domains.
+- **Advanced State Management**: Leveraging `Zustand` and `@tanstack/react-query` for effortless data synchronization.
+- **Beautiful UI/UX**: Styled with TailwindCSS, `framer-motion` for fluid animations, and `sonner` for elegant toast notifications.
+- **PDF Generation**: Embedded `jspdf` and `html2canvas` for direct character sheet exports.
+- **Comprehensive Forms**: Powered by `react-hook-form` and `zod` for strict schema validation.
+- **Dark Mode Support**: Complete gothic-noir aesthetic tailored to the World of Darkness.
+
+## ⚙️ Core Features
 
 ### Player Features
 - **Authentication**: Secure registration, login, and session persistence
