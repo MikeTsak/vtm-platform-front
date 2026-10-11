@@ -18,6 +18,7 @@ import Nav from '../ui/Nav';
 import Footer from '../ui/Footer';
 import Loading from '../ui/Loading';
 
+import { roleFlags } from './useRole';
 const RouteLoader = () => (
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '80vh', width: '100%' }}>
     <Loading />
@@ -71,7 +72,7 @@ function AdminOnly({ children }) {
   const { user, loading } = useContext(AuthCtx);
   if (loading) return <RouteLoader />;
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role !== 'admin') return <Navigate to="/" replace />;
+  if (!roleFlags(user).isAdmin) return <Navigate to="/" replace />;
   return children;
 }
 
@@ -80,7 +81,7 @@ function CourtOnly({ children }) {
   const { user, loading } = useContext(AuthCtx);
   if (loading) return <RouteLoader />;
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role !== 'admin' && user.role !== 'courtuser') return <Navigate to="/" replace />;
+  if (!roleFlags(user).isCourt) return <Navigate to="/" replace />;
   return children;
 }
 
@@ -100,7 +101,7 @@ function MalkavianOrAdminOnly({ children }) {
     api.get('/characters/me')
       .then(({ data }) => {
         const isMalkavian = data.character?.clan?.toLowerCase() === 'malkavian';
-        setIsAllowed(!!user && (user.role === 'admin' || isMalkavian));
+        setIsAllowed(!!user && (roleFlags(user).isAdmin || isMalkavian));
         setLoading(false);
       })
       .catch(() => {
@@ -158,7 +159,7 @@ function AppLayout() {
   }, [user]);
 
   useEffect(() => {
-    if (user && user.role === 'admin') {
+    if (roleFlags(user).isAdmin) {
       document.body.classList.add('admin-theme');
     } else {
       document.body.classList.remove('admin-theme');

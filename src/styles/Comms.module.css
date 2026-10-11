@@ -111,6 +111,40 @@
   text-shadow: 0 0 15px rgb(48 209 88 / 40%);
 }
 
+/* Surface Web tabs (mail / anonymous notes) are both unsafe: red on either,
+   overriding the SchreckNet green the first tab would otherwise get. */
+.wrapper[data-mode="email"] .modeSwitch button.activeMode {
+  border-bottom-color: #b01423 !important;
+}
+
+.wrapper[data-mode="email"] .modeSwitch button.activeMode .modeTitle {
+  text-shadow: 0 0 15px rgb(176 20 35 / 60%);
+}
+
+.wrapper[data-mode="email"] .modeSwitch button.activeMode .modeSubtitle {
+  color: #d93025;
+}
+
+.modeSwitch button:disabled {
+  cursor: default;
+}
+
+.tabBadge {
+  display: inline-block;
+  margin-left: 6px;
+  min-width: 18px;
+  padding: 1px 5px;
+  border-radius: 99px;
+  background: #b01423;
+  color: #fff;
+  font-family: Inter, sans-serif;
+  font-size: 0.65rem;
+  letter-spacing: 0;
+  line-height: 16px;
+  text-align: center;
+  vertical-align: middle;
+}
+
 /* --- Mobile Responsiveness --- */
 @media (width <=768px) {
   .wrapper {

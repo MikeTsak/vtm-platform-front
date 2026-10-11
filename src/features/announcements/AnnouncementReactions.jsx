@@ -1,37 +1,18 @@
 import React, { useState, useEffect, useContext, useMemo, useRef, useCallback } from 'react';
 import { AuthCtx } from '../../core/AuthContext';
+import { roleFlags } from '../../core/useRole';
 import api from '../../core/api';
 import { socket } from '../../api/liveSession';
 import Avatar from '../../components/Avatar';
-import { ReactionGlyph, clanToken, ALL_CREST_NAMES } from '../../components/ReactionGlyph';
-import { symlogo as localSymlogo, CLAN_HEX as CLAN_COLORS } from '../../data/clans';
+import { ReactionGlyph, clanToken, customClanEmojis, EMOJI_PICKER_CATEGORIES, emojiObjectToToken } from '../../components/ReactionGlyph';
 
 const EmojiPicker = React.lazy(() => import('emoji-picker-react'));
 
 const ANKH = '☥';
 
-const customClanEmojis = ALL_CREST_NAMES.map(clan => ({
-  id: clan.toLowerCase().replace(/[^a-z0-9]/g, '_'),
-  names: [clan],
-  imgUrl: localSymlogo(clan)
-}));
-
-const EMOJI_PICKER_CATEGORIES = [
-  { category: 'suggested', name: 'Recently Used' },
-  { category: 'custom', name: 'Clans' },
-  { category: 'smileys_people', name: 'Smileys and People' },
-  { category: 'animals_nature', name: 'Animals and Nature' },
-  { category: 'food_drink', name: 'Food and Drink' },
-  { category: 'travel_places', name: 'Travel and Places' },
-  { category: 'activities', name: 'Activities' },
-  { category: 'objects', name: 'Objects' },
-  { category: 'symbols', name: 'Symbols' },
-  { category: 'flags', name: 'Flags' }
-];
-
 export default function AnnouncementReactions({ announcementId, initialReactions = null }) {
   const { user: currentUser } = useContext(AuthCtx);
-  const isAdmin = currentUser?.role === 'admin';
+  const { isAdmin } = roleFlags(currentUser);
 
   const [reactions, setReactions] = useState(initialReactions || []);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -140,13 +121,7 @@ export default function AnnouncementReactions({ announcementId, initialReactions
     pillHoldFiredRef.current = false;
   };
 
-  const onCustomEmojiClick = (emojiObject) => {
-    const clanTag = emojiObject.isCustom && emojiObject.names && emojiObject.names[0]
-      ? emojiObject.names[0].replace(/\s+/g, '_')
-      : (emojiObject.unified || 'unknown');
-    const token = emojiObject.isCustom ? `:${clanTag}:` : emojiObject.emoji;
-    toggleReaction(token);
-  };
+  const onCustomEmojiClick = (emojiObject) => toggleReaction(emojiObjectToToken(emojiObject));
 
   const totalCount = useMemo(() => {
     return (reactions || []).reduce((acc, r) => acc + (r.count || 0), 0);

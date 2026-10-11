@@ -37,7 +37,9 @@ export default function AdminMasterTab() {
   // text needs this, not the raw switch position, or it tells admins players
   // can chat when they can't.
   const [resolvedCommsEnabled, setResolvedCommsEnabled] = useState(true);
-  const [disabledClans, setDisabledClans] = useState([]);
+  // null until loaded from the server: toggling sends the WHOLE list, so a
+  // toggle from a guessed list would silently re-enable every other clan.
+  const [disabledClans, setDisabledClans] = useState(null);
   const [clanSaving, setClanSaving] = useState(false);
   const [chatSchedule, setChatSchedule] = useState({});
   const [currentMonth, setCurrentMonth] = useState(() => {
@@ -379,7 +381,7 @@ export default function AdminMasterTab() {
         api.get('/system/banner'),
         api.get('/admin/ntfy').catch(() => ({ data: { topic: '', subscribed_npcs: [] } })),
         api.get('/admin/npcs').catch(() => ({ data: { npcs: [] } })),
-        api.get('/clans/config').catch(() => ({ data: { disabledClans: [] } }))
+        api.get('/clans/config').catch(() => ({ data: null }))
       ]);
       setCommsEnabled(commsRes.data.master_enabled);
       setChatSchedule(commsRes.data.schedule || {});
@@ -394,6 +396,7 @@ export default function AdminMasterTab() {
       setSubscribeDowntimes(ntfyRes.data.subscribe_downtimes || false);
       setBannerSettings(bannerRes.data);
       setAvailableNpcs(npcsRes.data.npcs || []);
+      setDisabledClans(clansRes.data?.disabledClans ?? null);
     } catch (e) {
       console.error('[AdminMasterTab] Failed to load settings', e);
       setErr(formatApiError(e, 'Failed to load Master Settings'));
@@ -401,14 +404,14 @@ export default function AdminMasterTab() {
   };
 
   const toggleClanAvailability = async (clanName) => {
-    if (clanSaving) return;
+    if (clanSaving || !disabledClans) return;
     const next = disabledClans.includes(clanName)
       ? disabledClans.filter(c => c !== clanName)
       : [...disabledClans, clanName];
     setClanSaving(true); setMsg(''); setErr('');
     try {
-      await api.post('/admin/clans/config', { disabledClans: next });
-      setDisabledClans(next);
+      const { data } = await api.post('/admin/clans/config', { disabledClans: next });
+      setDisabledClans(data.disabledClans);
       setMsg(`${clanName} is now ${next.includes(clanName) ? 'unavailable' : 'available'} for character creation.`);
       setTimeout(() => setMsg(''), 3000);
     } catch (e) { setErr('Failed to update clan availability.'); } finally { setClanSaving(false); }
@@ -1107,7 +1110,7 @@ export default function AdminMasterTab() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {CLAN_NAMES.map(clan => {
-                const isDisabled = disabledClans.includes(clan);
+                const isDisabled = (disabledClans || []).includes(clan);
                 return (
                   <div key={clan} style={{ display: 'grid', gridTemplateColumns: '1.1fr repeat(4, 1fr) auto', gap: '1rem', alignItems: 'center', background: 'var(--glass-inset)', padding: '1rem', borderRadius: 'var(--radius-md)', border: `1px solid ${isDisabled ? 'rgba(255,82,82,0.35)' : 'var(--glass-border)'}` }}>
                     <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '1.05rem' }}>{clan}</div>
@@ -1132,7 +1135,7 @@ export default function AdminMasterTab() {
                     <button
                       type="button"
                       onClick={() => toggleClanAvailability(clan)}
-                      disabled={clanSaving}
+                      disabled={clanSaving || !disabledClans}
                       title={isDisabled ? `Enable ${clan} for character creation` : `Disable ${clan} for character creation`}
                       style={{
                         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', minWidth: '70px',

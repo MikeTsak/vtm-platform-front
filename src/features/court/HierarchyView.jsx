@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useContext } from 'react';
 import { AuthCtx } from '../../core/AuthContext';
+import { roleFlags } from '../../core/useRole';
 import Avatar from '../../components/Avatar';
 import api from '../../core/api';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -41,24 +42,13 @@ const TITLES = [
 const HIGH_OFFICES = ["Prince", "Seneschal", "Primogen", "Sheriff", "Keeper", "Harpy"];
 const COURT_OFFICERS = ["Assistant Harpy", "Hound", "Shadow", "Whip", "Scourge"];
 
-const mainCourtTitles = [
-  "Prince", 
-  "Seneschal", 
-  "Sheriff", 
-  "Keeper", 
-  "Harpy", 
-  "Assistant Harpy", 
-  "Hound", 
-  "Shadow", 
-  "Scourge"
-];
-
 export default function HierarchyView({ canEdit: propCanEdit }) {
   const { user } = useContext(AuthCtx);
-  const isAdmin = user?.role === 'admin';
+  const { isAdmin } = roleFlags(user);
   const canEdit = propCanEdit !== undefined ? propCanEdit : isAdmin;
 
   const [roster, setRoster] = useState([]);
+  const [mainCourtTitles, setMainCourtTitles] = useState([]); // ordered main-court offices, served by the roster endpoint
   const [loading, setLoading] = useState(true);
   const [isEditMode, setIsEditMode] = useState(canEdit); 
   const [enlargedImage, setEnlargedImage] = useState(null); 
@@ -80,11 +70,11 @@ export default function HierarchyView({ canEdit: propCanEdit }) {
       try {
         const path = canEdit ? '/admin/camarilla/roster' : '/camarilla/roster';
         const { data } = await api.get(path); 
-        if (isMounted) setRoster(data.roster || []);
+        if (isMounted) { setRoster(data.roster || []); setMainCourtTitles(data.main_court || []); }
       } catch (e) {
         if (e.response?.status === 403 && canEdit) {
           const { data } = await api.get('/camarilla/roster');
-          if (isMounted) setRoster(data.roster || []);
+          if (isMounted) { setRoster(data.roster || []); setMainCourtTitles(data.main_court || []); }
         } else {
           console.error("Roster load error.");
         }
@@ -238,7 +228,7 @@ export default function HierarchyView({ canEdit: propCanEdit }) {
       if (rankA !== rankB) return rankA - rankB;
       return sortByStatusThenClan(a, b);
     });
-  }, [activeMembers, isEditMode, sortIndexMap]);
+  }, [activeMembers, isEditMode, sortIndexMap, mainCourtTitles]);
 
   const primogen = useMemo(() => {
     const items = activeMembers.filter(r => 
@@ -313,7 +303,7 @@ export default function HierarchyView({ canEdit: propCanEdit }) {
           </p>
         </motion.header>
         
-        <CourtNotices />
+        <CourtNotices roster={roster} />
         {courtPrompt && <CourtAccessModal items={courtPrompt} onClose={() => setCourtPrompt(null)} />}
 
         {/* Admin Storyteller Toolbar */}

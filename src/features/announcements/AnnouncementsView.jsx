@@ -3,11 +3,18 @@ import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/Court.module.css';
 import { Skeleton } from 'boneyard-js/react';
 import { AuthCtx } from '../../core/AuthContext';
+import { roleFlags } from '../../core/useRole';
 import { formatAthensDate } from '../../utils/dateFormatter';
 import Avatar from '../../components/Avatar';
 import { motion } from 'framer-motion';
 import { sanitizeHtml } from '../../utils/sanitizeHtml';
 import AnnouncementReactions from './AnnouncementReactions';
+import { customClanEmojis, EMOJI_PICKER_CATEGORIES, emojiObjectToToken, crestifyHtml } from '../../components/ReactionGlyph';
+
+const EmojiPicker = React.lazy(() => import('emoji-picker-react'));
+
+// Decree body as safe HTML, with ':Clan_Name:' tokens drawn as crests.
+const decreeHtml = (body, opts) => crestifyHtml(sanitizeHtml(String(body ?? '').replace(/\n/g, '<br/>')), opts);
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -97,7 +104,7 @@ const getTopRole = (rawTitles, authorRole, authorName) => {
 // canPush: the Prince/Seneschal may push a decree to every player (Court Actions).
 export default function AnnouncementsView({ canEdit: propCanEdit, canPush = false }) {
   const { user } = useContext(AuthCtx);
-  const isCourtOrAdmin = user?.role === 'admin' || user?.role === 'courtuser';
+  const { isAdmin, isCourt: isCourtOrAdmin } = roleFlags(user);
   const canEdit = propCanEdit !== undefined ? propCanEdit : isCourtOrAdmin;
 
   const [items, setItems] = useState([]);
@@ -125,6 +132,23 @@ export default function AnnouncementsView({ canEdit: propCanEdit, canPush = fals
   const [isUploading, setIsUploading] = useState(false);
   
   const contentRef = useRef(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  // Admins may issue a decree in an NPC's name; loaded when the draft opens.
+  const [npcs, setNpcs] = useState(null);
+
+  useEffect(() => {
+    if (!showModal || !isAdmin || npcs) return;
+    api.get('/admin/npcs')
+      .then(({ data }) => setNpcs((data.npcs || []).filter(n => !n.is_disabled).sort((a, b) => a.name.localeCompare(b.name))))
+      .catch(() => setNpcs([]));
+  }, [showModal, isAdmin, npcs]);
+
+  const insertEmoji = (emojiObject) => {
+    const ta = contentRef.current;
+    if (!ta) return;
+    ta.setRangeText(emojiObjectToToken(emojiObject), ta.selectionStart, ta.selectionEnd, 'end');
+    ta.focus();
+  };
 
   const fetchItems = async () => {
     setLoading(true);
@@ -192,7 +216,8 @@ export default function AnnouncementsView({ canEdit: propCanEdit, canPush = fals
         type: 'announcement', 
         title: e.target.title.value, 
         body: contentRef.current.value || contentRef.current.innerHTML, // Support either input or contentEditable
-        media_url: media_url 
+        media_url: media_url,
+        npc_id: e.target.npc_id?.value || null
       });
       if (canPush && e.target.push?.checked && created?.id) {
         await api.post(`/court-actions/decrees/${created.id}/push`).catch(err => alert(formatApiError(err, 'Published, but the push could not be sent.')));
@@ -209,6 +234,7 @@ export default function AnnouncementsView({ canEdit: propCanEdit, canPush = fals
 
   const closeModal = () => {
     setShowModal(false);
+    setShowEmojiPicker(false);
     setSelectedFile(null);
     if (previewBlob) URL.revokeObjectURL(previewBlob);
     setPreviewBlob(null);
@@ -260,7 +286,7 @@ export default function AnnouncementsView({ canEdit: propCanEdit, canPush = fals
                 <div className={styles.decreeContent}>
                   <header className={styles.decreeMeta}>
                     <div className={styles.decreeAuthorInfo}>
-                      <Avatar userId={item.author_id} size={48} className={styles.decreeAuthorAvatar} fallback="/img/ATT-logo(1).webp" />
+                      <Avatar userId={item.npc_id ? undefined : item.author_id} npcId={item.npc_id || undefined} size={48} className={styles.decreeAuthorAvatar} fallback="/img/ATT-logo(1).webp" />
                       <div>
                         <h3 className={styles.decreeAuthorName}>{authorName}</h3>
                         <p className={styles.decreeAuthorRole}>{authorRole}</p>
@@ -275,7 +301,7 @@ export default function AnnouncementsView({ canEdit: propCanEdit, canPush = fals
                   
                   {item.media_url && <BlobImage url={item.media_url} />}
 
-                  <div className={styles.decreeBodyText} dangerouslySetInnerHTML={{__html: sanitizeHtml(String(item.body ?? '').replace(/\n/g, '<br/>'))}} />
+                  <div className={styles.decreeBodyText} dangerouslySetInnerHTML={{__html: decreeHtml(item.body)}} />
                   <AnnouncementReactions announcementId={item.id} />
                 </div>
 
@@ -294,7 +320,7 @@ export default function AnnouncementsView({ canEdit: propCanEdit, canPush = fals
                   </button>
                   {canEdit && (
                     <>
-                      {user?.role === 'admin' && (
+                      {isAdmin && (
                         <button onClick={() => handleBroadcast(item.id)} className={styles.revokeBtn} style={{ color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.3)' }} data-cuelume-press="thud" data-cuelume-hover>
                           <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>campaign</span>
                           Resend to Discord
@@ -328,13 +354,37 @@ export default function AnnouncementsView({ canEdit: propCanEdit, canPush = fals
               
               <form onSubmit={handlePost} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
                 <div className={styles.modalBody}>
+                  {isAdmin && (
+                    <div className={styles.inputGroup}>
+                      <label>Issue As</label>
+                      <select name="npc_id" className={styles.decreeInput} defaultValue="" disabled={isUploading || !npcs}>
+                        <option value="">{npcs ? 'Myself' : 'Loading NPCs...'}</option>
+                        {(npcs || []).map(n => (
+                          <option key={n.id} value={n.id}>{n.name} ({getTopRole(n.camarilla_titles, null, n.name)})</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                   <div className={styles.inputGroup}>
                     <label>Subject Title</label>
                     <input name="title" className={styles.decreeInput} placeholder="e.g., Declaration of Elysium..." required disabled={isUploading} />
                   </div>
                   
                   <div className={styles.inputGroup}>
-                    <label>Proclamation Body</label>
+                    <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      Proclamation Body
+                      <button
+                        type="button"
+                        onClick={() => setShowEmojiPicker(v => !v)}
+                        disabled={isUploading}
+                        title="Insert emoji"
+                        aria-label="Insert emoji"
+                        aria-expanded={showEmojiPicker}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: showEmojiPicker ? 'var(--primary)' : 'var(--outline)', display: 'flex', padding: 0 }}
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>mood</span>
+                      </button>
+                    </label>
                     <textarea 
                       ref={contentRef} 
                       className={`${styles.decreeInput} ${styles.decreeTextarea}`} 
@@ -342,6 +392,20 @@ export default function AnnouncementsView({ canEdit: propCanEdit, canPush = fals
                       required 
                       disabled={isUploading}
                     />
+                    {showEmojiPicker && (
+                      <div style={{ marginTop: '8px' }}>
+                        <React.Suspense fallback={<div style={{ padding: '1rem', fontSize: '13px', color: 'var(--outline)' }}>Loading emojis...</div>}>
+                          <EmojiPicker
+                            theme="dark"
+                            onEmojiClick={insertEmoji}
+                            customEmojis={customClanEmojis}
+                            categories={EMOJI_PICKER_CATEGORIES}
+                            width="100%"
+                            height={320}
+                          />
+                        </React.Suspense>
+                      </div>
+                    )}
                   </div>
 
                   <div className={styles.inputGroup}>
@@ -482,7 +546,7 @@ function DecreePrintModal({ target, items, onClose }) {
 
                 <div
                   style={{ fontSize: '0.95rem', lineHeight: '1.6', color: '#27272a' }}
-                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(String(item.body ?? '').replace(/\n/g, '<br/>')) }}
+                  dangerouslySetInnerHTML={{ __html: decreeHtml(item.body, { white: false }) }}
                 />
 
                 <div style={{ marginTop: '20px', paddingTop: '10px', borderTop: '1px solid #f4f4f5', display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#a1a1aa' }}>

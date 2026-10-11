@@ -333,7 +333,7 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
         target: merit.id,
         dots: Number(targetDots),
         patchSheet: nextSheet,
-      });
+      }, `${merit.name} ${targetDots}`);
       return;
     }
 
@@ -405,7 +405,7 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
       target: merit.id,
       dots: delta,
       patchSheet: nextSheet,
-    });
+    }, `${merit.name} ${targetDots}`);
   }, [sheet, xp, spendXP]);
 
   const handleFlawAdd = useCallback(async (flaw, targetDots) => {
@@ -427,7 +427,7 @@ const MeritsBackgroundsSection = ({ sheet, xp, ch, knownPowerNamesAndIds, search
       target: flaw.id,
       dots: Number(targetDots),
       patchSheet: nextSheet
-    });
+    }, `${flaw.name} ${targetDots}`);
   }, [sheet, xp, spendXP]);
 
   const handlePurchase = () => {

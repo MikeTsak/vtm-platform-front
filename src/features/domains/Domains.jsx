@@ -15,6 +15,7 @@ import styles from '../../styles/Domains.module.css';
 import api, { formatApiError } from '../../core/api';
 import Avatar from '../../components/Avatar';
 import { AuthCtx } from '../../core/AuthContext';
+import { roleFlags } from '../../core/useRole';
 import { formatAthensDate } from '../../utils/dateFormatter';
 import { symlogo, symlogoWhite, clanTint, fileify } from '../../data/clans';
 import { DIVISION_NAMES } from '../../constants/divisionNames';
@@ -723,7 +724,7 @@ const NO_ENTRY_ICON = 'data:image/svg+xml;utf8,' + encodeURIComponent(`
 
 export default function Domains() {
   const { user } = useContext(AuthCtx);
-  const isAdmin = user?.role === 'admin'; // catacombs overlay is admin-only, no exceptions
+  const { isAdmin } = roleFlags(user); // catacombs overlay is admin-only, no exceptions
   const queryClient = useQueryClient();
 
   // Running the claims map (approving requests, assigning/vacating divisions,

@@ -1,4 +1,4 @@
-import React, { createContext, useEffect, useState } from 'react';
+import React, { createContext, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import api from './api';
 import { trackEvent, clearUserTracking } from '../utils/analytics';
@@ -53,6 +53,31 @@ export default function AuthProvider({ children }) {
     // before asking the server whether we're logged in, so always ask.
     loadMe();
   }, []);
+
+  // The server reads the role live, so a promotion/demotion or a revoked session
+  // shows up here as soon as the tab is looked at again. Quiet: keeps the same
+  // user object when nothing changed so effects keyed on `user` do not re-run.
+  const lastCheck = useRef(0);
+  useEffect(() => {
+    if (!user) return undefined;
+    const refresh = async () => {
+      if (document.visibilityState !== 'visible' || Date.now() - lastCheck.current < 30000) return;
+      lastCheck.current = Date.now();
+      try {
+        const { data } = await api.get('/auth/me');
+        setUser(prev => (JSON.stringify(prev) === JSON.stringify(data.user) ? prev : data.user));
+      } catch (e) {
+        const status = e?.response?.status;
+        if (status === 401 || status === 403) setUser(null); // session revoked
+      }
+    };
+    document.addEventListener('visibilitychange', refresh);
+    window.addEventListener('focus', refresh);
+    return () => {
+      document.removeEventListener('visibilitychange', refresh);
+      window.removeEventListener('focus', refresh);
+    };
+  }, [!!user]);
 
   const login = async (email, password) => {
     await api.post('/auth/login', { email, password }); // server sets the httpOnly cookie

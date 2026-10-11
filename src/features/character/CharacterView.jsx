@@ -1,9 +1,10 @@
 // src/pages/CharacterView.jsx
 import React, { useEffect, useMemo, useState, useCallback, useRef, useContext } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import api, { formatApiError } from '../../core/api';
 import { AuthCtx } from '../../core/AuthContext';
+import { roleFlags } from '../../core/useRole';
 import { DISCIPLINES, ALL_DISCIPLINE_NAMES, iconPath } from '../../data/disciplines';
 import { RITUALS } from '../../data/rituals';
 import { PREDATOR_TYPES } from '../../data/predator_types';
@@ -16,6 +17,7 @@ import { ATTR_DESCRIPTIONS, SKILL_DESCRIPTIONS } from '../../data/descriptions';
 import { MERITS_AND_FLAWS, listAllItems } from '../../data/merits_flaws';
 import { buildXpSpendIdempotencyKey } from '../../utils/idempotencyKey';
 import { XP_RULES } from '../../utils/xpCosts';
+import FaGlyph from '../../ui/FaGlyph';
 import Inventory from '../inventory/Inventory';
 import TouchstonesConvictionsSection from './TouchstonesConvictionsSection';
 import AttributesSection from './AttributesSection';
@@ -616,7 +618,7 @@ export default function CharacterView({
   const navigate = useNavigate();
 
   const { user } = useContext(AuthCtx) || {};
-  const isAdmin = user?.role === 'admin';
+  const { isAdmin } = roleFlags(user);
 
   // Memoize all merits and flaws so we can look up their full descriptions later
   const allMeritsFlat = useMemo(() => allSelectableMerits(), []);
@@ -671,6 +673,9 @@ export default function CharacterView({
   const [mysticFixOpen, setMysticFixOpen] = useState(false);
   const [mysticFixBusy, setMysticFixBusy] = useState(false);
   const [bpModalOpen, setBpModalOpen] = useState(false);
+  // The purchase waiting for the player's confirmation (see spendXP / PurchasePrompt).
+  const [purchaseAsk, setPurchaseAsk] = useState(null);
+  const [dtQuota, setDtQuota] = useState(null);
 
   const [activeShopTab, setActiveShopTab] = useState('Suggested');
   const [currentSearches, setShopSearches] = useState({});
@@ -892,42 +897,32 @@ export default function CharacterView({
   };
 
 
-  async function spendXP(payload) {
+  // Every XP purchase is confirmed here, in one prompt (PurchasePrompt), which then runs it so a
+  // refusal shows inside the prompt. Resolves true when bought, false when the player cancels.
+  function spendXP(payload, label) {
     setErr(''); setMsg('');
+    const trained = trainsByDowntime && DOWNTIME_TRAINED.includes(payload.type) && payload.disciplineKind !== 'select';
+    const ask = { label: label || purchaseLabel(payload), cost: purchaseCost(payload), trained, xp };
+    return new Promise(resolve => setPurchaseAsk({
+      ...ask,
+      run: () => postSpend(payload, ask).then(() => resolve(true)),
+      cancel: () => resolve(false),
+    }));
+  }
+
+  async function postSpend(payload, ask) {
     try {
       const { data } = await api.post(paths.spend, payload, {
         headers: { 'Idempotency-Key': buildXpSpendIdempotencyKey(payload, ch?.xp) },
       });
       const obj = data.character || data.npc || null;
       setCh(attachStructured(obj));
-
-      let itemPurchased = payload.target || payload.type;
-      if (payload.type === 'specialty' && payload.specialty) {
-        itemPurchased = `${payload.target} (${payload.specialty})`;
-      } else if (payload.type === 'discipline_power' && payload.powerName) {
-        itemPurchased = payload.powerName;
-      }
-
-      setMsg(`Action successful! Purchased ${itemPurchased}.`);
-
-      setTimeout(() => setMsg(''), 2500);
-
-      // Auto-scroll
-      setTimeout(() => {
-        let targetId = null;
-        const type = payload.type;
-        if (type === 'attribute') targetId = 'attributes-section';
-        else if (type === 'skill' || type === 'specialty') targetId = 'skills-section';
-        else if (type === 'discipline' || type === 'discipline_power') targetId = 'disciplines-section';
-        else if (type === 'merit' || type === 'flaw') targetId = 'merits-section';
-
-        if (targetId) {
-          document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, 100);
-
+      // Stay where the player is (they're usually still shopping); a toast says what happened.
+      setMsg(`Purchased ${ask.label} for ${data.spent ?? ask.cost} XP${ask.trained ? ' and 1 downtime action' : ''}.`);
+      setTimeout(() => setMsg(''), 3000);
+      if (ask.trained) loadDtQuota();
     } catch (e) {
-      setErr(formatApiError(e, 'Failed to update character sheet'));
+      if (ask.trained) loadDtQuota();
       throw e;
     }
   }
@@ -1149,6 +1144,14 @@ export default function CharacterView({
   sheetRef.current = sheet;
   const xp = ch?.xp ?? 0;
 
+  // An activated player character pays Attribute / Discipline / Blood Potency dots with a downtime
+  // action too (the server files it, resolved). Storytellers and not-yet-activated characters don't.
+  const trainsByDowntime = paths.spend === '/characters/xp/spend' && sheet.is_active === true;
+  const loadDtQuota = useCallback(() => {
+    api.get('/downtimes/quota').then(r => setDtQuota(r.data)).catch(() => setDtQuota(null));
+  }, []);
+  useEffect(() => { if (trainsByDowntime) loadDtQuota(); }, [trainsByDowntime, loadDtQuota]);
+
   const disciplinesMap = useMemo(
     () => (sheet?.disciplines && typeof sheet.disciplines === 'object' ? sheet.disciplines : {}),
     [sheet]
@@ -1254,7 +1257,7 @@ export default function CharacterView({
         // Free power selection must never be blocked by or replay stale idempotency keys
         await api.post(paths.spend, assignPayload);
       } else {
-        await spendXP({
+        const bought = await spendXP({
           type: 'discipline',
           disciplineKind: kind,
           target: name,
@@ -1264,6 +1267,7 @@ export default function CharacterView({
           powerId: selectedPowerId,
           patchSheet: nextSheet
         });
+        if (bought === false) return;
       }
 
       const r = await api.get(paths.load);
@@ -1364,7 +1368,7 @@ export default function CharacterView({
     nextSheet.rituals.blood_sorcery = nextSheet.rituals.blood_sorcery || [];
     if (knownRitualIds.has(rit.id)) return;
     nextSheet.rituals.blood_sorcery.push({ id: rit.id, name: rit.name, level });
-    await spendXP({ type: 'ritual', target: rit.id, ritualLevel: level, patchSheet: nextSheet });
+    await spendXP({ type: 'ritual', target: rit.id, ritualLevel: level, patchSheet: nextSheet }, rit.name);
   }
   async function buyCeremony(cer, level, cost) {
     const nextSheet = JSON.parse(JSON.stringify(sheet));
@@ -1372,7 +1376,7 @@ export default function CharacterView({
     nextSheet.rituals.oblivion = nextSheet.rituals.oblivion || [];
     if (knownRitualIds.has(cer.id)) return;
     nextSheet.rituals.oblivion.push({ id: cer.id, name: cer.name, level });
-    await spendXP({ type: 'ceremony', target: cer.id, ritualLevel: level, patchSheet: nextSheet });
+    await spendXP({ type: 'ceremony', target: cer.id, ritualLevel: level, patchSheet: nextSheet }, cer.name);
   }
 
   /* --- Flaw/Merit Rule Calculations (with Self-Healing) --- */
@@ -1470,7 +1474,6 @@ export default function CharacterView({
           key={s.id}
           {...common}
           leftIcon={iconPath(s.target)}
-          noConfirm
           hint={s.affordable ? 'Expand to pick a power' : common.hint}
         >
           {s.affordable && (
@@ -1501,7 +1504,7 @@ export default function CharacterView({
 
     if (s.kind === 'specialty') {
       return (
-        <ShopRow key={s.id} {...common} hideDots noConfirm forceExpanded={s.affordable}>
+        <ShopRow key={s.id} {...common} hideDots forceExpanded={s.affordable}>
           <SuggestedSpecialtyRow
             skill={s.target}
             disabled={!s.affordable}
@@ -1521,7 +1524,6 @@ export default function CharacterView({
           hideDots
           disabled={false}
           hint=""
-          noConfirm
           actionLabel="Browse"
           onBuy={() => setActiveShopTab('Rituals')}
         />
@@ -1537,7 +1539,6 @@ export default function CharacterView({
           hideDots
           disabled={false}
           hint=""
-          noConfirm
           actionLabel="Browse"
           onBuy={() => setActiveShopTab('Merits & Flaws')}
         />
@@ -1760,57 +1761,10 @@ export default function CharacterView({
         >
           {err && <div className={styles.alertError}>{err}</div>}
           {msg && (
-            <>
-              <div
-                style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)', animation: 'fadeIn 0.3s ease-out' }}
-                onClick={() => setMsg('')}
-              />
-              <div style={{
-                position: 'fixed',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                zIndex: 9999,
-                background: 'color-mix(in srgb, var(--surface-color) 70%, black)',
-                backdropFilter: 'blur(16px)',
-                color: 'var(--text-color)',
-                padding: '40px 60px',
-                borderRadius: '16px',
-                fontFamily: "'Playfair Display', serif",
-                fontSize: '28px',
-                boxShadow: '0 30px 60px rgba(0, 0, 0, 0.9), 0 0 0 1px var(--tint)',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '20px',
-                textAlign: 'center',
-                animation: 'fadeIn 0.3s ease-out'
-              }}>
-                <button
-                  onClick={() => setMsg('')}
-                  style={{
-                    position: 'absolute',
-                    top: '16px',
-                    right: '16px',
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'var(--text-muted)',
-                    cursor: 'pointer',
-                    padding: '4px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    transition: 'color 0.2s'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-color)'}
-                  onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>close</span>
-                </button>
-                <span className="material-symbols-outlined" style={{ fontSize: '72px', color: 'var(--tint)' }}>verified</span>
-                <span>{msg}</span>
-              </div>
-            </>
+            <div className={styles.toast} role="status" onClick={() => setMsg('')}>
+              <FaGlyph name="fa-circle-check" size={18} style={{ color: 'var(--tint)' }} />
+              <span>{msg}</span>
+            </div>
           )}
           {saveStatus && isAdmin && <div style={{ fontSize: '0.85rem', color: 'var(--accent)', opacity: 0.8, textAlign: 'center' }}>{saveStatus}</div>}
 
@@ -2052,6 +2006,9 @@ export default function CharacterView({
                   />
                 </div>
               </div>
+              {trainsByDowntime && ['Suggested', 'Attributes', 'Disciplines', 'Blood Potency'].includes(activeShopTab) && (
+                <TrainingRuleBanner quota={dtQuota} />
+              )}
               {activeShopTab === 'Suggested' && !isSearching && (
                 <>
                   <div className={styles.suggestIntro} style={{ gridColumn: '1 / -1' }}>
@@ -2328,7 +2285,6 @@ export default function CharacterView({
                               leftIcon={iconPath(name)}
                               disabled={!canRaise || !afford}
                               hint={!canRaise ? `Max ${max}` : (!afford ? 'Not enough XP' : 'Expand to select a power')}
-                              noConfirm={true}
                               forceExpanded={isSearching}
                             >
                               {canRaise && afford && (
@@ -2388,7 +2344,6 @@ export default function CharacterView({
                                 leftIcon={iconPath(name)}
                                 disabled={!canRaise || !afford}
                                 hint={!canRaise ? 'Max 5' : (!afford ? 'Not enough XP' : 'Expand to select a power')}
-                                noConfirm={true}
                                 forceExpanded={isSearching}
                               >
                                 {canRaise && afford && (
@@ -2447,7 +2402,6 @@ export default function CharacterView({
                                 leftIcon={iconPath(name)}
                                 disabled={!afford}
                                 hint={!afford ? 'Not enough XP' : 'Expand to select a power'}
-                                noConfirm={true}
                                 forceExpanded={isSearching}
                               >
                                 {afford && (
@@ -2512,7 +2466,6 @@ export default function CharacterView({
                               leftIcon={iconPath(name)}
                               disabled={false}
                               hint={grantedMax > 0 ? `Ask for access beyond level ${grantedMax}` : 'Expand to request access'}
-                              noConfirm={true}
                               forceExpanded={isSearching}
                             >
                               <DisciplineRequestForm
@@ -2553,7 +2506,6 @@ export default function CharacterView({
                             cost="-"
                             disabled={false}
                             hint="Expand to browse"
-                            noConfirm={true}
                             forceExpanded={isSearching}
                           >
                             <InlineRitualPicker
@@ -2577,7 +2529,6 @@ export default function CharacterView({
                             cost="-"
                             disabled={false}
                             hint="Expand to browse"
-                            noConfirm={true}
                             forceExpanded={isSearching}
                           >
                             <InlineRitualPicker
@@ -2629,6 +2580,9 @@ export default function CharacterView({
         </motion.main>
 
         {/* ----- Modals ----- */}
+        {purchaseAsk && (
+          <PurchasePrompt ask={purchaseAsk} quota={dtQuota} onDone={() => setPurchaseAsk(null)} />
+        )}
         {modalOpen && modalCfg && (
           <DisciplinePowerModal
             cfg={modalCfg}
@@ -2724,21 +2678,9 @@ function renderSpecs(specs = []) {
 
 /* ---------- Ritual/Ceremony row with prereq/recall info ---------- */
 function RitualRow({ item, level, cost, owned, allowed, afford, prereqUnmet = [], onBuy }) {
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [working, setWorking] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
   const disabled = owned || !allowed || !afford || prereqUnmet.length > 0;
-
-  async function handleConfirm() {
-    setWorking(true);
-    try {
-      await onBuy?.();
-      setConfirmOpen(false);
-    } finally {
-      setWorking(false);
-    }
-  }
 
   // Determine hint logic
   let hint = '';
@@ -2772,10 +2714,10 @@ function RitualRow({ item, level, cost, owned, allowed, afford, prereqUnmet = []
             {hint && <span className={styles.shopCardHint}>{hint}</span>}
             <button
               className={styles.shopCardAcquireBtn}
-              disabled={disabled || working}
+              disabled={disabled}
               onClick={(e) => {
                 e.stopPropagation();
-                setConfirmOpen(true);
+                onBuy?.();
               }}
             >
               Acquire
@@ -2798,21 +2740,6 @@ function RitualRow({ item, level, cost, owned, allowed, afford, prereqUnmet = []
         </div>
       </div>
 
-      {confirmOpen && (
-        <ConfirmModal
-          title="Confirm Purchase"
-          onCancel={() => setConfirmOpen(false)}
-          onConfirm={handleConfirm}
-          busy={working}
-        >
-          <p>Buy <b>{item.name}</b> (Level {level}) for <b>{cost}</b> XP?</p>
-          {prereqUnmet.length > 0 && (
-            <p className={styles.muted} style={{ marginTop: 6 }}>
-              Needs: {prereqUnmet.join(', ')}
-            </p>
-          )}
-        </ConfirmModal>
-      )}
     </article>
   );
 }
@@ -3023,6 +2950,141 @@ function InlineRitualPicker({ type, itemsObj, knownIds, knownPowerNamesAndIds, b
   );
 }
 /* ===== Inline Discipline Power Picker ===== */
+/* ---------- Downtime action for trained dots ---------- */
+// Mirrors DOWNTIME_TRAINED in back/utils/xpPurchase.js, which is what actually enforces it.
+const DOWNTIME_TRAINED = ['attribute', 'discipline', 'blood_potency'];
+
+// Why the next trained dot can't be bought right now, in the player's terms. `block` is the
+// quota endpoint's submit_block ({ code, message }), the same check the server runs on purchase.
+function TrainingBlockReason({ block, limit, onNavigate }) {
+  if (block.code === 'not_fed') {
+    return (
+      <>
+        You haven't fed yet this cycle, and a downtime action can't be filed before you feed.
+        Make your hunting roll on the <Link to="/downtimes" onClick={onNavigate}>Downtimes page</Link> first,
+        then come back to buy this.
+      </>
+    );
+  }
+  if (block.code === 'limit') {
+    return <>You have used all {limit} downtime actions this cycle. You can buy this when the next cycle opens.</>;
+  }
+  return <>{block.message} You can buy this once downtime submissions are open again.</>;
+}
+
+function TrainingRuleBanner({ quota }) {
+  const left = quota ? Math.max(0, quota.limit - quota.used) : null;
+  const block = quota?.submit_block;
+  return (
+    <div className={styles.ruleBanner}>
+      <FaGlyph name="fa-clock" size={16} style={{ color: 'var(--tint)', marginTop: 2 }} />
+      <p>
+        Attributes, Disciplines and Blood Potency also use <b>1 downtime action</b>.
+        {block ? <> <TrainingBlockReason block={block} limit={quota.limit} /></>
+          : left != null ? <> <b>{left} of {quota.limit}</b> left this cycle.</> : null}
+      </p>
+    </div>
+  );
+}
+
+const PURCHASE_COST = {
+  attribute: (p) => XP_RULES.attribute(p.newLevel),
+  skill: (p) => XP_RULES.skill(p.newLevel),
+  specialty: () => XP_RULES.specialty(),
+  blood_potency: (p) => XP_RULES.bloodPotency(p.newLevel),
+  discipline: (p) => (p.disciplineKind === 'other' ? XP_RULES.disciplineOther(p.newLevel)
+    : p.disciplineKind === 'caitiff' ? XP_RULES.disciplineCaitiff(p.newLevel) : XP_RULES.disciplineClan(p.newLevel)),
+  ritual: (p) => XP_RULES.ritual(p.ritualLevel),
+  ceremony: (p) => XP_RULES.ceremony(p.ritualLevel),
+  advantage: (p) => XP_RULES.advantageDot(p.dots),
+};
+// What the prompt shows; the server still decides the real price.
+const purchaseCost = (p) => PURCHASE_COST[p.type]?.(p) ?? 0;
+
+function purchaseLabel(p) {
+  if (p.type === 'specialty') return `${p.specialty} (${p.target} specialty)`;
+  if (p.type === 'blood_potency') return `Blood Potency ${p.newLevel}`;
+  if (p.newLevel != null) return `${p.target} ${p.newLevel}${p.powerName ? ` (${p.powerName})` : ''}`;
+  return p.target;
+}
+
+// The confirmation for every XP purchase. A dot that is trained (DOWNTIME_TRAINED) also spends one
+// of the cycle's downtime actions, which the player must acknowledge before the button unlocks.
+function PurchasePrompt({ ask, quota, onDone }) {
+  const { label, cost, trained, xp, run, cancel } = ask;
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [understood, setUnderstood] = useState(false);
+  const limit = quota?.limit ?? 3;
+  const used = quota ? Math.min(quota.used, limit) : null;
+  const block = trained ? quota?.submit_block : null;
+  const close = () => { cancel(); onDone(); };
+  const confirm = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      await run();
+      onDone();
+    } catch (e) {
+      setError(formatApiError(e, 'The purchase failed.'));
+      setBusy(false);
+    }
+  };
+  const isFree = cost === 0;
+  return (
+    <ConfirmModal
+      title={trained ? `Uses 1 of your ${limit} downtime actions` : 'Confirm purchase'}
+      onCancel={close}
+      onConfirm={confirm}
+      busy={busy}
+      confirmDisabled={!!block || (trained && !understood)}
+      confirmLabel={isFree ? 'Add' : trained ? `Use 1 action + ${cost} XP` : `Buy for ${cost} XP`}
+      cancelLabel="Cancel"
+    >
+      {trained && used != null && <DowntimeSlots used={used} limit={limit} spending={!block} />}
+      <p style={{ margin: 0 }}>
+        {isFree ? <>Add <b>{label}</b>? It costs no XP.</>
+          : <>Buy <b>{label}</b> for <b>{cost} XP</b>{trained ? <> and <b>1 downtime action</b></> : null}?</>}
+      </p>
+      {!isFree && <p className={styles.muted} style={{ margin: 0 }}>{xp} XP now, {xp - cost} after.</p>}
+      {block ? (
+        <div className={styles.alertError} style={{ margin: 0 }}>
+          <TrainingBlockReason block={block} limit={limit} onNavigate={close} />
+        </div>
+      ) : trained && (
+        <>
+          <p className={styles.alertWarning} style={{ margin: 0, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+            <FaGlyph name="fa-triangle-exclamation" size={16} style={{ marginTop: 3 }} />
+            <span>Can't be undone. The action is filed for you and stays used this cycle.</span>
+          </p>
+          <label className={styles.ackRow}>
+            <input type="checkbox" checked={understood} onChange={(e) => setUnderstood(e.target.checked)} disabled={busy} />
+            <span>I understand this uses 1 of my {limit} downtime actions.</span>
+          </label>
+        </>
+      )}
+      {error && <div className={styles.alertError} style={{ margin: 0 }} role="alert">{error}</div>}
+    </ConfirmModal>
+  );
+}
+
+// The cycle's downtime actions: used ones dimmed, the one this purchase takes highlighted.
+function DowntimeSlots({ used, limit, spending }) {
+  return (
+    <div className={styles.dtSlots} role="img" aria-label={`${used} of ${limit} downtime actions already used this cycle`}>
+      {Array.from({ length: limit }, (_, i) => {
+        const state = i < used ? 'used' : (spending && i === used ? 'this' : 'free');
+        return (
+          <div key={i} className={styles.dtSlot} data-state={state}>
+            <FaGlyph name={state === 'used' ? 'fa-check' : 'fa-clock'} size={22} />
+            <span>{state === 'this' ? 'This one' : state === 'used' ? 'Used' : 'Free'}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function InlineDisciplinePicker({ cfg, onConfirm, searchQuery }) {
   const {
     name, next, assignOnly, characterClan,

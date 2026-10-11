@@ -2,19 +2,332 @@
 import React, { useState, useEffect, useContext, useMemo, useRef } from 'react';
 import api, { formatApiError } from '../../core/api';
 import { AuthCtx } from '../../core/AuthContext';
+import { roleFlags } from '../../core/useRole';
 import { Skeleton } from 'boneyard-js/react';
 import { formatAthensDate } from '../../utils/dateFormatter';
 import MiniSearch from 'minisearch';
 import Avatar from '../../components/Avatar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const BOON_LEVELS  = ['trivial', 'minor', 'major', 'life'];
 const BOON_STATUSES = ['owed', 'paid', 'excused'];
 
 const LEVEL_LABELS = { trivial: 'Trivial', minor: 'Minor', major: 'Major', life: 'Life' };
 const STATUS_LABELS = { owed: 'Active', paid: 'Paid', excused: 'Excused' };
+
+export const BOON_DEFINITIONS = [
+  {
+    level: 'trivial',
+    name: 'Trivial Boon',
+    weight: 'Weight: 1',
+    colorClasses: {
+      border: 'border-on-surface-variant/30',
+      badgeBg: 'bg-on-surface-variant/20',
+      badgeText: 'text-on-surface-variant',
+      accent: 'bg-on-surface-variant',
+      glow: 'border-on-surface-variant/40',
+    },
+    icon: 'local_cafe',
+    summary: 'There is no risk or material cost to the granter, and these courtesies might not even be formally tracked within a coterie.',
+    repaymentTerm: 'Minor courtesy: commonly repaid within one month or settled through casual everyday courtesies.',
+    examples: [
+      { text: 'Helping to find blood or hunting vessels for the night', icon: 'water_drop' },
+      { text: 'Securing an invitation to an exclusive or popular nightclub', icon: 'confirmation_number' },
+      { text: 'Making temporary space in a haven for safety', icon: 'night_shelter' },
+      { text: 'Carrying a discreet message across town', icon: 'mail' },
+    ]
+  },
+  {
+    level: 'minor',
+    name: 'Minor Boon',
+    weight: 'Weight: 2',
+    colorClasses: {
+      border: 'border-blue-500/30',
+      badgeBg: 'bg-blue-500/20',
+      badgeText: 'text-blue-400',
+      accent: 'bg-blue-500',
+      glow: 'border-blue-500/40',
+    },
+    icon: 'handshake',
+    summary: 'Requires notable effort and going out of one’s way. Entails tangible effort or moderate social and physical risks.',
+    repaymentTerm: 'Substantial favor: repaid when the creditor calls upon moderate assistance or political backing.',
+    examples: [
+      { text: 'Voting in favor of another when social harm or backlash is minimal', icon: 'how_to_vote' },
+      { text: 'Eliminating an unimportant human who stands in the way', icon: 'person_remove' },
+      { text: 'Providing refuge to someone in dire need such as sanctuary or sustenance', icon: 'shield' },
+      { text: 'Providing access to ancient occult tomes or guarded archives', icon: 'menu_book' },
+      { text: 'Temporarily lending an influential mortal contact or skilled ghoul', icon: 'group' },
+    ]
+  },
+  {
+    level: 'major',
+    name: 'Major Boon',
+    weight: 'Weight: 3',
+    colorClasses: {
+      border: 'border-tertiary/30',
+      badgeBg: 'bg-tertiary/20',
+      badgeText: 'text-tertiary',
+      accent: 'bg-tertiary',
+      glow: 'border-tertiary/40',
+    },
+    icon: 'military_tech',
+    summary: 'Never granted lightly as the risk and expense can be profound. Involves valuable territory, high status, or critical assets.',
+    repaymentTerm: 'Major debt: alters court standing and can take years or decades to balance.',
+    examples: [
+      { text: 'Granting rich hunting grounds or valuable territory to another Kindred', icon: 'location_on' },
+      { text: 'Revealing a major secret that provides critical political leverage', icon: 'lock_open' },
+      { text: 'Leveraging significant personal resources towards another Kindred agenda', icon: 'domain' },
+      { text: 'Changing an expected vote in the Primogen council', icon: 'gavel' },
+      { text: 'Sponsoring an unacknowledged fledgling before the Prince and court', icon: 'verified' },
+    ]
+  },
+  {
+    level: 'life',
+    name: 'Life Boon',
+    weight: 'Weight: 4',
+    colorClasses: {
+      border: 'border-primary-container/30',
+      badgeBg: 'bg-primary-container/20',
+      badgeText: 'text-primary-container',
+      accent: 'bg-primary-container',
+      glow: 'border-primary-container/50',
+    },
+    icon: 'bloodtype',
+    summary: 'The rarest and most solemn prestation debt. Sworn when Final Death or the destruction of a Touchstone is on the immediate horizon.',
+    repaymentTerm: 'Eternal obligation: the debtor owes their continued existence, inherited by heirs and cannot be transferred lightly.',
+    examples: [
+      { text: 'Desperate attempt to save one’s own unlife from execution or destruction', icon: 'emergency' },
+      { text: 'Desperate attempt to preserve the mortal life of a cherished Touchstone', icon: 'favorite' },
+      { text: 'Keeping a deadly secret that would otherwise summon a citywide Blood Hunt', icon: 'visibility_off' },
+      { text: 'Intervening directly before the Prince to stay an execution sentence', icon: 'shield' },
+    ]
+  }
+];
+
+export function BoonGuideDrawer({ isOpen, onClose }) {
+  const [activeTab, setActiveTab] = useState('all');
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isOpen) onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  // Lock background scroll when drawer is active
+  useEffect(() => {
+    if (isOpen) {
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = prevOverflow;
+      };
+    }
+  }, [isOpen]);
+
+  const filteredDefinitions = activeTab === 'all' 
+    ? BOON_DEFINITIONS 
+    : BOON_DEFINITIONS.filter(d => d.level === activeTab);
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[120] flex justify-end overflow-hidden">
+          {/* Backdrop with fade animation */}
+          <motion.div
+            className="fixed inset-0 bg-black/75 backdrop-blur-sm cursor-pointer"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            onClick={onClose}
+          />
+
+          {/* Drawer Sheet with smooth spring slide in and slide out animation */}
+          <motion.div
+            className="relative z-10 w-full max-w-full sm:max-w-xl md:max-w-2xl bg-surface-container-high border-l border-outline-variant/20 shadow-2xl flex flex-col h-full max-h-screen overflow-hidden"
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'spring', damping: 28, stiffness: 280 }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Mobile Header Drag Accent */}
+            <div className="sm:hidden flex items-center justify-center pt-2 pb-1 bg-surface-container-highest shrink-0">
+              <div className="w-12 h-1 rounded-full bg-outline-variant/30" />
+            </div>
+
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between p-4 sm:p-5 md:p-6 border-b border-outline-variant/10 bg-surface-container-highest shrink-0">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center text-primary shrink-0">
+                  <span className="material-symbols-outlined text-[20px] sm:text-[22px]">menu_book</span>
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-headline-md text-[17px] sm:text-[20px] md:text-[22px] font-bold text-on-surface truncate">
+                    Prestation Codex: Boon Levels
+                  </h3>
+                  <p className="text-[11px] sm:text-xs text-on-surface-variant truncate">
+                    Official Camarilla classifications and examples for Kindred
+                  </p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                className="text-on-surface-variant hover:text-on-surface p-2 rounded-lg hover:bg-surface-variant/40 transition-colors cursor-pointer shrink-0 ml-2"
+                onClick={onClose}
+                title="Close Prestation Codex"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            {/* Horizontal Scrollable Tabs */}
+            <div className="p-3 sm:p-4 border-b border-outline-variant/10 bg-surface-container flex items-center gap-2 overflow-x-auto custom-scrollbar shrink-0">
+              <button
+                type="button"
+                className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-colors gothic-etched-border cursor-pointer ${activeTab === 'all' ? 'bg-primary-container text-on-primary-container' : 'bg-surface-container-lowest text-on-surface-variant hover:text-on-surface'}`}
+                onClick={() => setActiveTab('all')}
+              >
+                All Levels
+              </button>
+              {BOON_DEFINITIONS.map(def => (
+                <button
+                  key={def.level}
+                  type="button"
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-colors gothic-etched-border cursor-pointer ${activeTab === def.level ? `${def.colorClasses.badgeBg} ${def.colorClasses.badgeText}` : 'bg-surface-container-lowest text-on-surface-variant hover:text-on-surface'}`}
+                  onClick={() => setActiveTab(def.level)}
+                >
+                  {def.name}
+                </button>
+              ))}
+              <button
+                type="button"
+                className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-colors gothic-etched-border cursor-pointer ${activeTab === 'laws' ? 'bg-primary-container text-on-primary-container' : 'bg-surface-container-lowest text-on-surface-variant hover:text-on-surface'}`}
+                onClick={() => setActiveTab('laws')}
+              >
+                Court Laws
+              </button>
+            </div>
+
+            {/* Scrollable Body */}
+            <div className="p-4 sm:p-5 md:p-6 overflow-y-auto custom-scrollbar flex-1 space-y-4 sm:space-y-6 overscroll-contain">
+              {activeTab !== 'laws' && (
+                <div className="space-y-4 sm:space-y-6">
+                  {filteredDefinitions.map(def => (
+                    <div 
+                      key={def.level}
+                      className={`bg-surface-container p-4 sm:p-5 rounded-xl gothic-etched-border border-l-4 ${def.colorClasses.accent.replace('bg-', 'border-')} relative overflow-hidden`}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-[20px] text-on-surface-variant">
+                            {def.icon}
+                          </span>
+                          <h4 className="font-headline-md text-[17px] sm:text-[18px] font-bold text-on-surface">
+                            {def.name}
+                          </h4>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`${def.colorClasses.badgeBg} ${def.colorClasses.badgeText} text-[10px] font-bold px-2.5 py-1 rounded tracking-widest uppercase`}>
+                            {def.weight}
+                          </span>
+                        </div>
+                      </div>
+
+                      <p className="text-xs sm:text-sm text-on-surface leading-relaxed mb-3">
+                        {def.summary}
+                      </p>
+
+                      <div className="bg-surface-container-lowest/60 p-3 rounded-lg gothic-etched-border mb-3 sm:mb-4 text-xs text-on-surface-variant">
+                        <span className="font-bold text-on-surface uppercase tracking-wider block mb-0.5">
+                          Settlement Guideline
+                        </span>
+                        {def.repaymentTerm}
+                      </div>
+
+                      <div>
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant block mb-2">
+                          Examples from Prestation Lore
+                        </span>
+                        <ul className="space-y-2">
+                          {def.examples.map((ex, idx) => (
+                            <li 
+                              key={idx}
+                              className="flex items-start gap-2.5 text-xs text-on-surface/90 bg-surface-container-high/40 p-2.5 rounded border border-outline-variant/10"
+                            >
+                              <span className="material-symbols-outlined text-[16px] text-primary shrink-0 mt-0.5">
+                                {ex.icon}
+                              </span>
+                              <span>{ex.text}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {(activeTab === 'all' || activeTab === 'laws') && (
+                <div className="bg-surface-container p-4 sm:p-5 rounded-xl gothic-etched-border space-y-4">
+                  <div className="flex items-center gap-2.5 border-b border-outline-variant/10 pb-3">
+                    <span className="material-symbols-outlined text-[20px] text-primary">
+                      gavel
+                    </span>
+                    <h4 className="font-headline-md text-[17px] sm:text-[18px] font-bold text-on-surface">
+                      The Laws of Prestation
+                    </h4>
+                  </div>
+
+                  <div className="space-y-3 text-xs leading-relaxed">
+                    <div className="p-3 bg-surface-container-lowest/60 rounded border border-outline-variant/10">
+                      <p className="font-bold text-on-surface uppercase tracking-wider mb-1">The Harpy Ledger</p>
+                      <p className="text-on-surface-variant">
+                        A boon is a debt of favour between Kindred. The Harpy keeps the ledger, and the ledger is the court memory: a debt the Harpy has not recorded is a debt that can be denied.
+                      </p>
+                    </div>
+
+                    <div className="p-3 bg-surface-container-lowest/60 rounded border border-outline-variant/10">
+                      <p className="font-bold text-on-surface uppercase tracking-wider mb-1">Reneging on Sworn Debts</p>
+                      <p className="text-on-surface-variant">
+                        Refusing a fair call on a boon is a public disgrace. The Harpy may strip Status from the debtor, recording the outcome across Elysium.
+                      </p>
+                    </div>
+
+                    <div className="p-3 bg-surface-container-lowest/60 rounded border border-outline-variant/10">
+                      <p className="font-bold text-on-surface uppercase tracking-wider mb-1">Repaid or Excused</p>
+                      <p className="text-on-surface-variant">
+                        When the creditor names the favour and it is fulfilled, the boon is marked Paid. A creditor may also forgive the debt, recorded as Excused.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Drawer Footer */}
+            <div className="p-4 border-t border-outline-variant/10 bg-surface-container flex items-center justify-between shrink-0 text-xs">
+              <span className="text-on-surface-variant italic truncate mr-2">
+                Elysium Prestation Registry
+              </span>
+              <button 
+                type="button" 
+                className="px-5 py-2.5 bg-surface-container-highest hover:bg-surface-variant text-on-surface font-bold uppercase tracking-wider rounded transition-colors cursor-pointer shrink-0"
+                onClick={onClose}
+              >
+                Close Codex
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+}
 
 /* ── Relative date ──────────────────────────── */
 function relDate(ts) {
@@ -84,10 +397,10 @@ export default function Boons() {
   const searchRef = useRef(null);
   const [toolbarVisible, setToolbarVisible] = useState(false);
   const [legendOpen, setLegendOpen] = useState(false);
+  const [guideDrawerOpen, setGuideDrawerOpen] = useState(false);
+  const [topGuideOpen, setTopGuideOpen] = useState(false);
 
-  const isAdmin  = user?.role === 'admin' || user?.permission_level === 'admin';
-  const isCourt  = user?.role === 'courtuser';
-  const canManage = isAdmin || isCourt;
+  const { isAdmin, isCourt: canManage } = roleFlags(user);
 
   // React Query Fetching
   const { data: boonsData, isLoading: boonsLoading, error: boonsErrorObj } = useQuery({
@@ -593,11 +906,25 @@ export default function Boons() {
         />
       )}
 
+      {/* ── Boon Guide Drawer ── */}
+      <BoonGuideDrawer
+        isOpen={guideDrawerOpen}
+        onClose={() => setGuideDrawerOpen(false)}
+      />
+
       {/* Top App Bar */}
       <header className="fixed top-0 w-full z-40 bg-surface-container-highest border-b border-outline-variant/10 h-16 flex items-center justify-between px-4 lg:px-8 lg:hidden">
         <h1 className="font-headline-md text-[20px] font-bold text-primary">Blood Registry</h1>
-        <div className="flex items-center gap-4">
-          <button className="text-on-surface-variant active:opacity-80 transition-colors flex" onClick={() => setToolbarVisible(v => !v)}>
+        <div className="flex items-center gap-3">
+          <button 
+            type="button"
+            className="text-on-surface-variant active:opacity-80 transition-colors flex items-center p-1.5 cursor-pointer" 
+            onClick={() => setGuideDrawerOpen(true)}
+            title="Open Boon Guide Drawer"
+          >
+            <span className="material-symbols-outlined">menu_book</span>
+          </button>
+          <button type="button" className="text-on-surface-variant active:opacity-80 transition-colors flex p-1.5 cursor-pointer" onClick={() => setToolbarVisible(v => !v)}>
             <span className="material-symbols-outlined">search</span>
           </button>
           <span className="material-symbols-outlined text-on-surface-variant">history_edu</span>
@@ -705,6 +1032,16 @@ export default function Boons() {
             </div>
             <div className="flex items-center gap-3">
               <button
+                type="button"
+                onClick={() => setGuideDrawerOpen(true)}
+                className="flex items-center justify-center gap-2 bg-surface-container-highest text-on-surface border border-outline-variant/30 px-5 py-3 rounded-sm font-bold tracking-widest uppercase hover:border-primary transition-colors active:scale-95 text-xs cursor-pointer"
+                title="Open Boon Levels and Prestation Guide Drawer"
+              >
+                <span className="material-symbols-outlined text-[16px]">menu_book</span>
+                Boon Guide
+              </button>
+              <button
+                type="button"
                 onClick={handlePrintRegistry}
                 className="flex items-center justify-center gap-2 bg-surface-container-highest text-on-surface border border-outline-variant/30 px-5 py-3 rounded-sm font-bold tracking-widest uppercase hover:border-primary transition-colors active:scale-95 text-xs cursor-pointer"
                 title="Print blood registry"
@@ -713,12 +1050,119 @@ export default function Boons() {
                 Print Registry
               </button>
               {canManage && (
-                <button onClick={openCreate} className="flex items-center justify-center gap-2 bg-primary-container text-on-primary-container px-6 py-3 rounded-sm font-bold tracking-widest uppercase hover:brightness-110 transition-colors active:scale-95 text-xs cursor-pointer">
+                <button type="button" onClick={openCreate} className="flex items-center justify-center gap-2 bg-primary-container text-on-primary-container px-6 py-3 rounded-sm font-bold tracking-widest uppercase hover:brightness-110 transition-colors active:scale-95 text-xs cursor-pointer">
                   <span className="material-symbols-outlined">add_circle</span>
                   Record Boon
                 </button>
               )}
             </div>
+          </div>
+
+          {/* Top Prestation Drawer Banner for New Kindred */}
+          <div className="bg-surface-container-high/80 gothic-etched-border rounded-xl p-4 md:p-5 mb-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center text-primary shrink-0">
+                  <span className="material-symbols-outlined text-[20px]">school</span>
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold uppercase tracking-widest text-on-surface flex items-center gap-2">
+                    Prestation Lore: Boon Hierarchy and Examples
+                  </h3>
+                  <p className="text-xs text-on-surface-variant">
+                    Official Camarilla classifications and examples for new Kindred
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+                <button
+                  type="button"
+                  onClick={() => setTopGuideOpen(prev => !prev)}
+                  className="text-xs font-bold text-on-surface-variant hover:text-on-surface transition-colors flex items-center justify-center flex-1 sm:flex-none gap-1.5 bg-surface-container px-3.5 py-2 rounded gothic-etched-border cursor-pointer"
+                  title="Toggle quick preview of boon levels and examples"
+                >
+                  <span className="material-symbols-outlined text-[16px] transition-transform duration-300">
+                    {topGuideOpen ? 'expand_less' : 'expand_more'}
+                  </span>
+                  {topGuideOpen ? 'Close Preview' : 'Quick Preview'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGuideDrawerOpen(true)}
+                  className="text-xs font-bold text-primary-container hover:brightness-125 transition-all flex items-center justify-center flex-1 sm:flex-none gap-1.5 bg-primary-container/20 border border-primary-container/30 px-4 py-2 rounded cursor-pointer"
+                  title="Open slide drawer with full Prestation Codex"
+                >
+                  <span className="material-symbols-outlined text-[16px]">side_navigation</span>
+                  Open Side Drawer
+                </button>
+              </div>
+            </div>
+
+            {/* In-place expandable preview drawer */}
+            <AnimatePresence>
+              {topGuideOpen && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.28, ease: 'easeInOut' }}
+                  className="overflow-hidden"
+                >
+                  <div className="mt-4 pt-4 border-t border-outline-variant/10 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {BOON_DEFINITIONS.map(def => (
+                      <div
+                        key={def.level}
+                        className={`bg-surface-container p-4 rounded-xl gothic-etched-border border-l-4 ${def.colorClasses.accent.replace('bg-', 'border-')} flex flex-col justify-between`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
+                                {def.icon}
+                              </span>
+                              <h4 className="font-headline-md text-[16px] font-bold text-on-surface">
+                                {def.name}
+                              </h4>
+                            </div>
+                            <span className={`${def.colorClasses.badgeBg} ${def.colorClasses.badgeText} text-[10px] font-bold px-2 py-0.5 rounded tracking-widest uppercase`}>
+                              {def.weight}
+                            </span>
+                          </div>
+                          <p className="text-xs text-on-surface leading-relaxed mb-3">
+                            {def.summary}
+                          </p>
+                        </div>
+
+                        <div className="space-y-2 mt-auto">
+                          <div className="bg-surface-container-lowest/60 p-2.5 rounded text-[11px] text-on-surface-variant">
+                            <span className="font-bold text-on-surface uppercase tracking-wider block mb-0.5">
+                              Settlement Guideline
+                            </span>
+                            {def.repaymentTerm}
+                          </div>
+
+                          <div className="bg-surface-container-high/40 p-2.5 rounded border border-outline-variant/10">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant block mb-1.5">
+                              Official Examples
+                            </span>
+                            <ul className="space-y-1.5 text-xs">
+                              {def.examples.map((ex, idx) => (
+                                <li key={idx} className="flex items-start gap-2 text-on-surface/90">
+                                  <span className="material-symbols-outlined text-[14px] text-primary shrink-0 mt-0.5">
+                                    {ex.icon}
+                                  </span>
+                                  <span>{ex.text}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Top Mini Statuses: Most in Debt, Your Debt, Most Owed */}
@@ -1217,48 +1661,113 @@ export default function Boons() {
           {/* Legend Section (Collapsible) */}
           <div className="mt-12 mb-8">
             <button 
-              className="w-full bg-surface-container-high p-4 rounded-xl flex items-center justify-between border border-outline-variant/10" 
+              type="button"
+              className="w-full bg-surface-container-high p-4 rounded-xl flex items-center justify-between border border-outline-variant/10 cursor-pointer hover:border-primary/40 transition-colors" 
               onClick={() => setLegendOpen(!legendOpen)}
             >
-              <span className="font-headline-md text-[24px] font-bold text-on-surface">Registry Legend</span>
-              <span className={`material-symbols-outlined transition-transform duration-300 ${legendOpen ? 'rotate-180' : 'rotate-0'}`}>expand_more</span>
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-primary text-[24px]">menu_book</span>
+                <div className="text-left">
+                  <span className="font-headline-md text-[20px] md:text-[24px] font-bold text-on-surface block">
+                    Prestation Legend: Boon Hierarchy and Examples
+                  </span>
+                  <span className="text-xs text-on-surface-variant">
+                    Official Camarilla definitions, settlement rules, and example deeds
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setGuideDrawerOpen(true);
+                  }}
+                  className="hidden sm:flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider bg-surface-container-highest px-3 py-1.5 rounded gothic-etched-border text-on-surface hover:text-primary transition-colors cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[16px]">side_navigation</span>
+                  Open Side Drawer
+                </button>
+                <span className={`material-symbols-outlined transition-transform duration-300 ${legendOpen ? 'rotate-180' : 'rotate-0'}`}>expand_more</span>
+              </div>
             </button>
             
-            <div className={`overflow-hidden transition-all duration-300 bg-surface-container-low border-x border-b border-outline-variant/10 rounded-b-xl space-y-4 ${legendOpen ? 'max-h-[1000px] p-4 border-t-0' : 'max-h-0 p-0 border-transparent opacity-0'}`}>
-              <div className="flex gap-4">
-                <div className="w-1 h-12 bg-primary-container rounded"></div>
-                <div>
-                  <p className="text-[16px] font-bold text-primary-container">Life Boon</p>
-                  <p className="text-[14px] text-on-surface-variant">The debtor owes their very existence to the creditor. Cannot be transferred.</p>
-                </div>
+            <div className={`overflow-hidden transition-all duration-300 bg-surface-container-low border-x border-b border-outline-variant/10 rounded-b-xl space-y-5 ${legendOpen ? 'max-h-[3000px] p-5 border-t-0' : 'max-h-0 p-0 border-transparent opacity-0'}`}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {BOON_DEFINITIONS.map(def => (
+                  <div
+                    key={def.level}
+                    className={`bg-surface-container p-4 rounded-xl gothic-etched-border border-l-4 ${def.colorClasses.accent.replace('bg-', 'border-')} flex flex-col justify-between`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
+                            {def.icon}
+                          </span>
+                          <h4 className="font-headline-md text-[16px] font-bold text-on-surface">
+                            {def.name}
+                          </h4>
+                        </div>
+                        <span className={`${def.colorClasses.badgeBg} ${def.colorClasses.badgeText} text-[10px] font-bold px-2 py-0.5 rounded tracking-widest uppercase`}>
+                          {def.weight}
+                        </span>
+                      </div>
+                      <p className="text-xs text-on-surface leading-relaxed mb-3">
+                        {def.summary}
+                      </p>
+                    </div>
+
+                    <div className="space-y-2 mt-auto">
+                      <div className="bg-surface-container-lowest/60 p-2.5 rounded text-[11px] text-on-surface-variant">
+                        <span className="font-bold text-on-surface uppercase tracking-wider block mb-0.5">
+                          Settlement Guideline
+                        </span>
+                        {def.repaymentTerm}
+                      </div>
+
+                      <div className="bg-surface-container-high/40 p-2.5 rounded border border-outline-variant/10">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant block mb-1.5">
+                          Official Examples
+                        </span>
+                        <ul className="space-y-1.5 text-xs">
+                          {def.examples.map((ex, idx) => (
+                            <li key={idx} className="flex items-start gap-2 text-on-surface/90">
+                              <span className="material-symbols-outlined text-[14px] text-primary shrink-0 mt-0.5">
+                                {ex.icon}
+                              </span>
+                              <span>{ex.text}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="flex gap-4">
-                <div className="w-1 h-12 bg-tertiary rounded"></div>
-                <div>
-                  <p className="text-[16px] font-bold text-tertiary">Major Boon</p>
-                  <p className="text-[14px] text-on-surface-variant">Involves territory, significant status, or survival of progeny.</p>
+
+              <div className="pt-4 border-t border-outline-variant/10 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <div className="bg-surface-container p-3 rounded gothic-etched-border">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="w-2.5 h-2.5 bg-primary rounded-full animate-pulse"></span>
+                    <p className="text-[11px] text-on-surface uppercase font-bold tracking-wider">Active Obligation</p>
+                  </div>
+                  <p className="text-on-surface-variant text-[11px]">Boon is actively owed and has not been settled or excused.</p>
                 </div>
-              </div>
-              <div className="flex gap-4">
-                <div className="w-1 h-12 bg-blue-500 rounded"></div>
-                <div>
-                  <p className="text-[16px] font-bold text-blue-400">Minor Boon</p>
-                  <p className="text-[14px] text-on-surface-variant">Significant effort required. Access to territory, physical protection, or political influence.</p>
+                <div className="bg-surface-container p-3 rounded gothic-etched-border">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="w-2.5 h-2.5 bg-secondary rounded-full"></span>
+                    <p className="text-[11px] text-on-surface uppercase font-bold tracking-wider">Paid In Full</p>
+                  </div>
+                  <p className="text-on-surface-variant text-[11px]">Creditor called upon the favor and the obligation was fully executed.</p>
                 </div>
-              </div>
-              <div className="flex gap-4">
-                <div className="w-1 h-12 bg-on-surface-variant rounded"></div>
-                <div>
-                  <p className="text-[16px] font-bold text-on-surface-variant">Trivial Boon</p>
-                  <p className="text-[14px] text-on-surface-variant">Minor favors, small pieces of information, or temporary shelter. Rarely lasts beyond a month.</p>
+                <div className="bg-surface-container p-3 rounded gothic-etched-border">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="w-2.5 h-2.5 bg-on-surface-variant rounded-full"></span>
+                    <p className="text-[11px] text-on-surface uppercase font-bold tracking-wider">Excused Debt</p>
+                  </div>
+                  <p className="text-on-surface-variant text-[11px]">Creditor freely forgave the obligation without demanding repayment.</p>
                 </div>
-              </div>
-              <div className="pt-4 border-t border-outline-variant/10">
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 bg-primary rounded-full animate-pulse"></span>
-                  <p className="text-[12px] text-on-surface uppercase font-bold">Active</p>
-                </div>
-                <p className="text-[14px] text-on-surface-variant mt-1">Boon is actively owed and has not been settled or excused.</p>
               </div>
             </div>
           </div>

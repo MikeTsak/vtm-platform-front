@@ -112,6 +112,7 @@ export default function AdminCalendarTab() {
   const [downtimeDeadline, setDowntimeDeadline] = useState('');
   const [downtimePhase, setDowntimePhase] = useState('standard');
   const [projectDeadline, setProjectDeadline] = useState('');
+  const [bannerCountdown, setBannerCountdown] = useState(''); // global banner countdown (datetime-local); same setting the Master tab edits
   const [massReleaseDate, setMassReleaseDate] = useState('');
   const [massReleaseMode, setMassReleaseMode] = useState(false);
   const [savingDt, setSavingDt] = useState(false);
@@ -185,6 +186,7 @@ export default function AdminCalendarTab() {
         api.get('/admin/live-sessions').catch(() => ({ data: { sessions: [] } }))
       ]);
       api.get('/admin/blood-hunts').then(({ data }) => setBloodHunts(data.hunts || [])).catch(() => setBloodHunts([]));
+      api.get('/system/banner').then(({ data }) => setBannerCountdown(data.banner_countdown || '')).catch(() => {});
 
       const loadedEvents = eventsRes.data?.events || [];
       setEvents(loadedEvents);
@@ -857,6 +859,21 @@ export default function AdminCalendarTab() {
     return map;
   }, [liveSessions]);
 
+  // Willpower heals the day after every Modern Day (non Past Time) event, after the last day of a
+  // back-to-back run. Derived from the events, so moving an event moves the reset. Mirrors
+  // back/services/willpowerReset.js.
+  const willpowerResetMap = useMemo(() => {
+    const days = new Set(events.filter(e => !/past time/i.test(e.title || '')).map(e => formatDateOnly(e.date)).filter(Boolean));
+    const map = {};
+    for (const day of days) {
+      const d = new Date(`${day}T12:00:00`);
+      d.setDate(d.getDate() + 1);
+      const next = formatDateOnly(d);
+      if (!days.has(next)) map[next] = day;
+    }
+    return map;
+  }, [events]);
+
   // Blood Hunts with an end date (set by the Prince in Court Actions, or here).
   const huntEndMap = useMemo(() => {
     const map = {};
@@ -867,6 +884,15 @@ export default function AdminCalendarTab() {
     }
     return map;
   }, [bloodHunts]);
+
+  const saveBannerCountdown = async () => {
+    try {
+      await api.post('/admin/system/banner', { banner_countdown: bannerCountdown || null });
+      showFeedback(bannerCountdown ? `Banner countdown now ends ${formatEuDate(bannerCountdown)}` : 'Banner countdown cleared');
+    } catch (error) {
+      showFeedback(formatApiError(error, 'Failed to save the banner countdown'), true);
+    }
+  };
 
   const saveHuntEnd = async (hunt, value) => {
     try {
@@ -1082,7 +1108,9 @@ export default function AdminCalendarTab() {
                   const releaseItems = releaseMap[dateStr] || [];
                   const sessionItems = liveSessionMap[dateStr] || [];
                   const isProjectClose = projectDeadline === dateStr;
+                  const isBannerEnd = bannerCountdown.slice(0, 10) === dateStr;
                   const huntEnds = huntEndMap[dateStr] || [];
+                  const wpResetFor = willpowerResetMap[dateStr];
 
                   let bg = 'var(--glass-inset)';
                   let border = '1px solid var(--glass-border)';
@@ -1272,6 +1300,16 @@ export default function AdminCalendarTab() {
                           </div>
                         )}
 
+                        {wpResetFor && (
+                          <div
+                            style={{ fontSize: '0.6rem', fontWeight: 800, background: 'rgba(102, 187, 106, 0.22)', border: '1px solid #66bb6a', color: '#a5d6a7', borderRadius: '3px', padding: '2px 4px', display: 'flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap', lineHeight: 1.2 }}
+                            title={`Willpower resets to full for every character at 00:08 (after the ${formatEuDate(wpResetFor)} event). Move the event to move the reset.`}
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: '11px', flexShrink: 0 }}>self_improvement</span>
+                            <span>WP RESET</span>
+                          </div>
+                        )}
+
                         {isProjectClose && (
                           <div
                             style={{ fontSize: '0.6rem', fontWeight: 800, background: 'rgba(179, 136, 255, 0.22)', border: '1px solid #b388ff', color: '#d1b8ff', borderRadius: '3px', padding: '2px 4px', display: 'flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap', lineHeight: 1.2 }}
@@ -1279,6 +1317,16 @@ export default function AdminCalendarTab() {
                           >
                             <span className="material-symbols-outlined" style={{ fontSize: '11px', flexShrink: 0 }}>history_edu</span>
                             <span>PROJ CLOSE</span>
+                          </div>
+                        )}
+
+                        {isBannerEnd && (
+                          <div
+                            style={{ fontSize: '0.6rem', fontWeight: 800, background: 'rgba(255, 167, 38, 0.22)', border: '1px solid #ffa726', color: '#ffcc80', borderRadius: '3px', padding: '2px 4px', display: 'flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap', lineHeight: 1.2 }}
+                            title={`Banner countdown ends ${bannerCountdown.slice(11, 16)}`}
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: '11px', flexShrink: 0 }}>timer</span>
+                            <span>BANNER ENDS</span>
                           </div>
                         )}
                       </div>
@@ -1325,12 +1373,20 @@ export default function AdminCalendarTab() {
             <span>Violet: Project Deadline</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#ffa726' }}>timer</span>
+            <span>Amber: Banner countdown ends</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#26c6da' }}>casino</span>
             <span>Teal: Live Session held (from the Live Session dashboard)</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#ff1744' }}>bloodtype</span>
             <span>Red: Blood Hunt ends (edit below, or by the Prince in Court Actions)</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#66bb6a' }}>self_improvement</span>
+            <span>Green: Willpower resets to full (day after a Modern Day event; follows the event date)</span>
           </div>
         </div>
 
@@ -1526,6 +1582,20 @@ export default function AdminCalendarTab() {
                 value={projectDeadline}
                 onChange={(e) => setProjectDeadline(e.target.value)}
               />
+            </label>
+
+            <label className={styles.labeledInput}>
+              <span>Banner Countdown</span>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <input
+                  type="datetime-local"
+                  className={styles.input}
+                  value={bannerCountdown}
+                  onChange={(e) => setBannerCountdown(e.target.value)}
+                  title="The countdown shown in the site-wide banner. Saved on its own; the banner text is edited in the Master tab."
+                />
+                <button type="button" className={`${styles.btn} ${styles.btnSecondary}`} onClick={saveBannerCountdown} style={{ fontSize: '0.78rem', padding: '0.3rem 0.7rem' }}>Save</button>
+              </div>
             </label>
           </div>
 

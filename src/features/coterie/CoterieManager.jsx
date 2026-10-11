@@ -8,6 +8,7 @@
 // screens' worth of markup and ~120 inline style objects, which is why the
 // page did not survive a phone viewport.
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { roleFlags } from '../../core/useRole';
 import api from '../../core/api';
 import { publish } from '../../utils/notification';
 import styles from '../../styles/Coteries.module.css';
@@ -97,7 +98,7 @@ export default function CoterieManager({ adminMode = false }) {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const isAdmin = currentUser?.role === 'admin' || currentUser?.permission_level === 'admin';
+  const { isAdmin } = roleFlags(currentUser);
   const domainOptions = DIVISION_OPTIONS;
   const domainLabelFor = useCallback(
     (id) => (id != null ? getDivisionName(Number(id)) : null),

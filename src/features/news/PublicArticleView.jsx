@@ -11,6 +11,7 @@ import { apiJoin, isVideoUrl } from '../../utils/newsUtils';
 import { sanitizeHtml } from '../../utils/sanitizeHtml';
 import { Skeleton } from 'boneyard-js/react';
 // import GoogleAd from '../../components/GoogleAd';
+import { crestifyHtml } from '../../components/ReactionGlyph';
 import Avatar from '../../components/Avatar';
 import courtStyles from '../../styles/Court.module.css';
 import AnnouncementReactions from '../announcements/AnnouncementReactions';
@@ -559,7 +560,7 @@ export default function PublicArticleView() {
             <div className={courtStyles.decreeContent}>
               <header className={courtStyles.decreeMeta}>
                 <div className={courtStyles.decreeAuthorInfo}>
-                  <Avatar userId={article.author_id} size={48} className={courtStyles.decreeAuthorAvatar} fallback="/img/ATT-logo(1).webp" />
+                  <Avatar userId={article.npc_id ? undefined : article.author_id} npcId={article.npc_id || undefined} size={48} className={courtStyles.decreeAuthorAvatar} fallback="/img/ATT-logo(1).webp" />
                   <div>
                     <h3 className={courtStyles.decreeAuthorName}>{authorName}</h3>
                     <p className={courtStyles.decreeAuthorRole}>{authorRole}</p>
@@ -574,7 +575,7 @@ export default function PublicArticleView() {
               
               {renderMedia('8px')}
 
-              <div className={courtStyles.decreeBodyText} dangerouslySetInnerHTML={{__html: sanitizeHtml(String(article.body ?? '').replace(/\n/g, '<br/>'))}} style={{ marginTop: '1.5rem', lineHeight: '1.6' }} />
+              <div className={courtStyles.decreeBodyText} dangerouslySetInnerHTML={{__html: crestifyHtml(sanitizeHtml(String(article.body ?? '').replace(/\n/g, '<br/>')))}} style={{ marginTop: '1.5rem', lineHeight: '1.6' }} />
               <AnnouncementReactions announcementId={article.id} />
               <div style={{ marginTop: '1.5rem' }}>
                 <PrintArticleButton />

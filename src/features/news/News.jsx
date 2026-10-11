@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { Helmet } from 'react-helmet-async';
 import api, { formatApiError } from '../../core/api';
 import { AuthCtx } from '../../core/AuthContext';
+import { roleFlags } from '../../core/useRole';
 import styles from '../../styles/News.module.css';
 import { NEWS_OUTLETS } from '../../constants/outletConstants';
 import { apiJoin, isVideoUrl } from '../../utils/newsUtils';
@@ -26,8 +27,7 @@ export default function News() {
   const [fullscreenRumor, setFullscreenRumor] = useState(null);
   const [rumorPrintTarget, setRumorPrintTarget] = useState(null);
 
-  const isAdmin = user?.role === 'admin';
-  const isCourt = user?.role === 'courtuser';
+  const { isAdmin, isCourt } = roleFlags(user);
 
   const handlePrintAllRumors = () => {
     setRumorPrintTarget('all');

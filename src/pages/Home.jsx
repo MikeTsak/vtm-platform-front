@@ -13,6 +13,7 @@ import ClanTextLogo from '../components/ClanTextLogo';
 import { symlogo, textlogo, symlogoWhite, textlogoWhite, clanTint, clanBackground } from '../data/clans';
 import { factionLogo } from '../data/factions';
 import { AuthCtx } from '../core/AuthContext';
+import { roleFlags } from '../core/useRole';
 import { useTheme } from '../core/ThemeContext';
 import Loading from '../ui/Loading';
 import { formatAthensWeekdayDate } from '../utils/dateFormatter';
@@ -220,7 +221,7 @@ export default function Home() {
     }
   }, [authUser, me]);
 
-  const isAdmin = authUser?.role === 'admin' || me?.role === 'admin';
+  const isAdmin = roleFlags(authUser).isAdmin || roleFlags(me).isAdmin;
   // Admins have no player home; to see it as a player, use debug login.
   useEffect(() => {
     if (!loading && isAdmin) {
@@ -305,7 +306,7 @@ export default function Home() {
 
   const currentMe = me || authUser;
   const safeMe = currentMe || { display_name: '', id: '0', role: 'user', ui_sounds_enabled: true };
-  const isCourtUser = safeMe.role === 'courtuser';
+  const isCourtUser = roleFlags(safeMe).isCourt;
 
   const safeCh = ch || { name: '', clan: '', xp: 0, sheet: {} };
 

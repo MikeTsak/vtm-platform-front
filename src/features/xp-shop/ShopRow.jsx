@@ -2,15 +2,25 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import styles from '../../styles/CharacterView.module.css';
 
-export function ConfirmModal({ title = 'Confirm Purchase', children, onConfirm, onCancel, busy = false }) {
+export function ConfirmModal({ title = 'Confirm Purchase', children, onConfirm, onCancel, busy = false, confirmDisabled = false, confirmLabel = 'Yes', cancelLabel = 'No' }) {
   return createPortal(
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', display: 'grid', placeItems: 'center', zIndex: 9999 }}>
-      <div className={styles.card} style={{ maxWidth: 520, width: 'min(92vw,520px)' }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', display: 'grid', placeItems: 'center', zIndex: 9999, padding: 16 }}>
+      {/* .card is transparent on the page; a dialog needs its own surface, and must scroll on a short phone screen. */}
+      <div
+        className={styles.card}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        style={{
+          maxWidth: 520, width: '100%', maxHeight: 'calc(100dvh - 32px)', overflowY: 'auto',
+          background: 'var(--surface-color, #141417)', border: '1px solid var(--border-color)', borderRadius: 12,
+        }}
+      >
         <div className={styles.cardHead}><b>{title}</b></div>
         <div className={styles.grid} style={{ gap: 12 }}>{children}</div>
         <div className={styles.rowForm} style={{ justifyContent: 'flex-end' }}>
-          <button className={styles.ghostBtn} onClick={onCancel} disabled={busy}>No</button>
-          <button className={styles.cta} onClick={onConfirm} disabled={busy}>{busy ? 'Working…' : 'Yes'}</button>
+          <button className={styles.ghostBtn} onClick={onCancel} disabled={busy}>{cancelLabel}</button>
+          <button className={styles.cta} onClick={onConfirm} disabled={busy || confirmDisabled}>{busy ? 'Working…' : confirmLabel}</button>
         </div>
       </div>
     </div>,
@@ -18,22 +28,10 @@ export function ConfirmModal({ title = 'Confirm Purchase', children, onConfirm, 
   );
 }
 
-export function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, leftIcon, description = '', noConfirm = false, forceExpanded = false, hideDots = false, note = '', badge = null, tag = null, actionLabel = 'Acquire', compact = false, owned, children }) {
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [working, setWorking] = useState(false);
+export function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, leftIcon, description = '', forceExpanded = false, hideDots = false, note = '', badge = null, tag = null, actionLabel = 'Acquire', compact = false, owned, children }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const displayExpanded = isExpanded || forceExpanded;
-
-  async function handleConfirm() {
-    setWorking(true);
-    try {
-      await onBuy?.();
-    } finally {
-      setWorking(false);
-      setConfirmOpen(false);
-    }
-  }
 
   // Attempt to parse the target level from subtitle to render dots
   const match = subtitle?.match(/\d+/);
@@ -93,14 +91,11 @@ export function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, lef
           {!children && (
             <button
               className={styles.shopCardAcquireBtn}
-              disabled={disabled || working}
+              disabled={disabled}
               onClick={(e) => {
                 e.stopPropagation();
-                if (noConfirm) {
-                  onBuy?.();
-                } else {
-                  setConfirmOpen(true);
-                }
+                // Purchases confirm in CharacterView's PurchasePrompt, which also shows any error.
+                Promise.resolve(onBuy?.()).catch(() => {});
               }}
             >
               {actionLabel}
@@ -124,19 +119,6 @@ export function ShopRow({ title, subtitle, cost, disabled, hint = '', onBuy, lef
         </div>
       </div>
 
-      {confirmOpen && (
-        <ConfirmModal
-          title="Confirm Purchase"
-          onCancel={() => setConfirmOpen(false)}
-          onConfirm={handleConfirm}
-          busy={working}
-        >
-          <p>
-            Are you sure you want to buy <b>{title}</b>
-            {subtitle ? <>: {subtitle}</> : null} for <b>{cost}</b> XP?
-          </p>
-        </ConfirmModal>
-      )}
     </article>
   );
 }

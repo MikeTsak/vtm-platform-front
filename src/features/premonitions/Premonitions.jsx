@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState, useContext, useCallback } from "react";
 import { AuthCtx } from "../../core/AuthContext";
+import { roleFlags } from '../../core/useRole';
 import AdminPremonitionsTab from "../admin/AdminPremonitionsTab";
 import { formatAthensDateTime } from "../../utils/dateFormatter";
 import s from "../../styles/Premonitions.module.css";
@@ -48,7 +49,7 @@ const qualifyUrl = (u) => {
 
 export default function Premonitions() {
   const { user } = useContext(AuthCtx);
-  const isAdmin = user?.role === "admin" || user?.permission_level === "admin";
+  const { isAdmin } = roleFlags(user);
 
   if (isAdmin) {
     return (

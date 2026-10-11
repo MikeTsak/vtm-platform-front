@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { AuthCtx } from '../../core/AuthContext';
+import { roleFlags } from '../../core/useRole';
 import api, { formatApiError } from '../../core/api';
 import { copyToClipboard } from '../../utils/clipboard';
 import { formatAthensDateTime } from '../../utils/dateFormatter';
@@ -501,7 +502,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   const nextOpening = propNextOpening !== undefined ? propNextOpening : commsHook.nextOpening;
 
   const { user: currentUser } = useContext(AuthCtx);
-  const isAdmin = currentUser?.role === 'admin';
+  const { isAdmin } = roleFlags(currentUser);
 
   const [users, setUsers] = useState([]);
   const [npcs, setNpcs] = useState([]);

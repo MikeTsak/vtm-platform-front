@@ -1,5 +1,6 @@
 // src/components/EmailSystem.jsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { roleFlags } from '../../core/useRole';
 import { toast } from 'sonner';
 import api, { formatApiError } from '../../core/api';
 import { socket } from '../../api/liveSession';
@@ -24,7 +25,7 @@ const EditorToolbar = ({ onCmd }) => (
   </div>
 );
 
-const TextEditor = ({ value, onChange, placeholder, disabled = false }) => {
+export const TextEditor = ({ value, onChange, placeholder, disabled = false }) => {
   const contentRef = useRef(null);
 
   useEffect(() => {
@@ -62,7 +63,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
   const commsHook = useCommsEnabled();
   const commsEnabled = typeof propCommsEnabled === 'boolean' ? propCommsEnabled : commsHook.commsEnabled;
   const nextOpening = propNextOpening !== undefined ? propNextOpening : commsHook.nextOpening;
-  const isAdmin = user?.role === 'admin';
+  const { isAdmin } = roleFlags(user);
   const [loading, setLoading] = useState(true);
   const [threads, setThreads] = useState([]);
   const [selectedThread, setSelectedThread] = useState(null);

@@ -1,6 +1,7 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { AuthCtx } from '../core/AuthContext';
+import { roleFlags } from '../core/useRole';
 import { useTheme } from '../core/ThemeContext';
 import api from '../core/api';
 import { useCommsUnread } from '../features/comms/useCommsUnread';
@@ -91,6 +92,7 @@ const getNavItemClass = ({ isActive, isDropdownItem = false, isMobile = false })
 
 export default function Nav() {
   const { user, logout } = useContext(AuthCtx);
+  const { isAdmin, isCourt } = roleFlags(user);
   const { clan: themeClan } = useTheme();
   const [characterClan, setCharacterClan] = useState(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -135,7 +137,7 @@ export default function Nav() {
       return;
     }
 
-    if (user.role === 'admin' || user.role === 'courtuser') {
+    if (isCourt) {
       setIsCharActive(true);
     }
 
@@ -144,7 +146,7 @@ export default function Nav() {
         if (!live) return;
         const c = data?.character?.clan || null;
         setCharacterClan(c);
-        if (user.role !== 'admin' && user.role !== 'courtuser') {
+        if (!isCourt) {
           setIsCharActive(data?.character?.sheet?.is_active === true);
         }
       })
@@ -181,7 +183,7 @@ export default function Nav() {
           {/* Logo & Brand */}
           <Link 
   data-cuelume-press 
-  data-cuelume-hover to={user?.role === 'admin' ? '/admin' : '/'} className="flex items-center gap-3 z-[1001] group" onClick={closeMenu}>
+  data-cuelume-hover to={isAdmin ? '/admin' : '/'} className="flex items-center gap-3 z-[1001] group" onClick={closeMenu}>
             <picture className="w-8 h-8 flex-shrink-0">
               <source type="image/webp" srcSet="/img/animated.webp" />
               <img src="/img/animated.gif" alt="ATT Logo" width="32" height="32" className="w-8 h-8 object-contain rounded-md border border-outline-variant/50 bg-surface-container p-0.5 shadow-lg group-hover:border-primary transition-colors" />
@@ -214,7 +216,7 @@ export default function Nav() {
                   <NavLink 
   data-cuelume-press 
   data-cuelume-hover to="/court/hierarchy" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Court Hierarchy</NavLink>
-                  {(user?.role === 'courtuser' || user?.role === 'admin') && (
+                  {isCourt && (
                     <NavLink data-cuelume-press data-cuelume-hover to="/court/actions" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Court Actions</NavLink>
                   )}
                   <NavLink 
@@ -255,9 +257,9 @@ export default function Nav() {
               </>
             )}
 
-            {user?.role === 'admin' && (
+            {isAdmin && (
               <NavDropdown title="Admin" icon="admin_panel_settings" isMobile={false}>
-                {user?.role === 'admin' && (
+                {isAdmin && (
                   <NavLink
   data-cuelume-press
   data-cuelume-hover to="/admin" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Admin Panel</NavLink>
@@ -334,7 +336,7 @@ export default function Nav() {
                 <NavLink 
   data-cuelume-press 
   data-cuelume-hover to="/court/hierarchy" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Court Hierarchy</NavLink>
-                  {(user?.role === 'courtuser' || user?.role === 'admin') && (
+                  {isCourt && (
                     <NavLink data-cuelume-press data-cuelume-hover to="/court/actions" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Court Actions</NavLink>
                   )}
                 <NavLink 
@@ -373,11 +375,11 @@ export default function Nav() {
                 <span className="font-['Playfair_Display'] font-bold text-[16px] tracking-wide">Live Session</span>
               </NavLink>
 
-              {user?.role === 'admin' && (
+              {isAdmin && (
                 <div className="pt-4 mt-4 border-t border-outline-variant/20">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-primary-container px-3 mb-2 block">Administration</span>
                   <NavDropdown title="Admin" icon="admin_panel_settings" isMobile={true} isOpen={openMobileDropdown === 'Admin'} toggleOpen={() => handleMobileDropdownToggle('Admin')}>
-                    {user?.role === 'admin' && (
+                    {isAdmin && (
                       <NavLink
   data-cuelume-press
   data-cuelume-hover to="/admin" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Admin Panel</NavLink>
