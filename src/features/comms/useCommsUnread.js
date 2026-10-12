@@ -1,6 +1,6 @@
 // src/features/comms/useCommsUnread.js
 //
-// Unread totals for the nav's SchreckNet / Surface Web badges. Refreshed on
+// Unread totals for the nav's SchreckNet / Surface Web / Anonymous Notes badges. Refreshed on
 // the chat:refresh / emails:refresh socket signals (new message or a read),
 // on route change, on returning to the tab, and by a slow safety-net poll.
 
@@ -12,16 +12,18 @@ import { socket } from '../../api/liveSession';
 export function useCommsUnread(enabled) {
   const [chat, setChat] = useState(0);
   const [email, setEmail] = useState(0);
+  const [notes, setNotes] = useState({ total: 0, unread: 0 });
   const location = useLocation();
 
   const refresh = useCallback(() => {
     if (!enabled || document.hidden) return;
     api.get('/chat/unread-count').then(({ data }) => setChat(data.count || 0)).catch(() => { });
     api.get('/emails/unread-count').then(({ data }) => setEmail(data.count || 0)).catch(() => { });
+    api.get('/notes/summary').then(({ data }) => setNotes({ total: data.total || 0, unread: data.unread || 0 })).catch(() => { });
   }, [enabled]);
 
   useEffect(() => {
-    if (!enabled) { setChat(0); setEmail(0); }
+    if (!enabled) { setChat(0); setEmail(0); setNotes({ total: 0, unread: 0 }); }
   }, [enabled]);
 
   useEffect(() => { refresh(); }, [refresh, location.pathname]);
@@ -31,16 +33,18 @@ export function useCommsUnread(enabled) {
     const interval = setInterval(refresh, 60000);
     socket.on('chat:refresh', refresh);
     socket.on('emails:refresh', refresh);
+    socket.on('notes:refresh', refresh);
     socket.on('connect', refresh);
     document.addEventListener('visibilitychange', refresh);
     return () => {
       clearInterval(interval);
       socket.off('chat:refresh', refresh);
       socket.off('emails:refresh', refresh);
+      socket.off('notes:refresh', refresh);
       socket.off('connect', refresh);
       document.removeEventListener('visibilitychange', refresh);
     };
   }, [enabled, refresh]);
 
-  return { chat, email };
+  return { chat, email, notes };
 }

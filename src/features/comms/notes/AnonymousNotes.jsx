@@ -1,7 +1,7 @@
-// src/features/comms/surfaceweb/AnonymousNotes.jsx
+// src/features/comms/notes/AnonymousNotes.jsx
 //
 // Anonymous notes: one-off messages a Storyteller drops into a player's
-// Surface Web. Players only read them (no sender, no reply); admins compose
+// Comms > Anonymous Notes tab. Players only read them (no sender, no reply); admins compose
 // them (text + images, one or many recipients) and see what was sent / read.
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -12,7 +12,7 @@ import { sanitizeHtml } from '../../../utils/sanitizeHtml';
 import { formatAthensDateTime } from '../../../utils/dateFormatter';
 import { TextEditor } from '../../email/EmailSystem';
 import mail from '../../../styles/EmailSystem.module.css';
-import styles from '../../../styles/comms/surfaceweb/AnonymousNotes.module.css';
+import styles from '../../../styles/comms/notes/AnonymousNotes.module.css';
 
 const MAX_IMAGES = 10;
 
@@ -29,8 +29,8 @@ export function useMyNotes(enabled) {
   useEffect(() => {
     reload();
     if (!enabled) return;
-    socket.on('emails:refresh', reload);
-    return () => socket.off('emails:refresh', reload);
+    socket.on('notes:refresh', reload);
+    return () => socket.off('notes:refresh', reload);
   }, [enabled, reload]);
 
   return { notes, setNotes, reload };
@@ -79,7 +79,7 @@ function NoteReader({ note, heading, onClose }) {
   );
 }
 
-function NoteCard({ note, title, unread, onOpen, action }) {
+function NoteCard({ note, title, sub, unread, onOpen, action }) {
   const text = snippet(note.body);
   return (
     <div className={`${styles.card} ${unread ? styles.unread : ''}`}>
@@ -98,6 +98,7 @@ function NoteCard({ note, title, unread, onOpen, action }) {
             )}
             {text || (note.images.length ? 'Image' : '')}
           </span>
+          {sub && <span className={styles.cardSub}>{sub}</span>}
         </span>
       </button>
       {action}
@@ -253,18 +254,29 @@ function AdminNotes() {
   const [loading, setLoading] = useState(true);
   const [composing, setComposing] = useState(false);
   const [openId, setOpenId] = useState(null);
+  const readIds = useRef(null); // note ids already seen as read; null until the first load
 
   const load = useCallback(() => {
     api.get('/admin/notes')
-      .then(({ data }) => setNotes(data.notes || []))
+      .then(({ data }) => {
+        const list = data.notes || [];
+        const nowRead = new Set(list.filter(n => n.read_at).map(n => n.id));
+        // A read receipt landing while this tab is open: tell the admin who read it.
+        if (readIds.current) {
+          list.filter(n => nowRead.has(n.id) && !readIds.current.has(n.id))
+            .forEach(n => toast(`${n.char_name || n.display_name} read a note.`));
+        }
+        readIds.current = nowRead;
+        setNotes(list);
+      })
       .catch(() => toast.error('Failed to load notes.'))
       .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
     load();
-    socket.on('emails:refresh', load);
-    return () => socket.off('emails:refresh', load);
+    socket.on('notes:refresh', load);
+    return () => socket.off('notes:refresh', load);
   }, [load]);
 
   const remove = async (n) => {
@@ -294,11 +306,13 @@ function AdminNotes() {
           key={n.id}
           note={n}
           title={`To ${who(n)}`}
+          sub={n.sender_name ? `Sent by ${n.sender_name}` : null}
           onOpen={() => setOpenId(n.id)}
           action={(
             <div className={styles.cardSide}>
               <span className={n.read_at ? styles.read : styles.unreadTag} title={n.read_at ? `Read ${formatAthensDateTime(n.read_at)}` : 'Not read yet'}>
-                <span className="material-symbols-outlined">{n.read_at ? 'done_all' : 'schedule'}</span>
+                <span className="material-symbols-outlined">{n.read_at ? 'visibility' : 'schedule'}</span>
+                {n.read_at && <small>{formatAthensDateTime(n.read_at)}</small>}
               </span>
               <button className={styles.iconBtn} onClick={() => remove(n)} aria-label="Delete note" title="Delete note">
                 <span className="material-symbols-outlined">delete</span>

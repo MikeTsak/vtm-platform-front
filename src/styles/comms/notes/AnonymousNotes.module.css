@@ -105,7 +105,9 @@
 .imgCount :global(.material-symbols-outlined) { font-size: 16px; }
 
 .cardSide { display: flex; align-items: center; gap: 4px; padding-right: 8px; }
-.read { color: #30d158; display: inline-flex; }
+.read { color: #30d158; display: inline-flex; align-items: center; gap: 4px; }
+.read small { font-size: 0.68rem; color: var(--text-muted); }
+.cardSub { display: block; font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; }
 .unreadTag { color: var(--text-muted); display: inline-flex; }
 
 .iconBtn {

@@ -775,6 +775,13 @@
   color: color-mix(in srgb, var(--on-surface-variant) 50%, transparent);
 }
 
+.oldScenesSummary {
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--on-surface-variant);
+}
+
 .archiveGrid {
   display: grid;
   grid-template-columns: 1fr;

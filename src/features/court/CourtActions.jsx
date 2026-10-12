@@ -5,6 +5,7 @@ import styles from '../../styles/court/CourtActions.module.css';
 import AnnouncementsView from '../announcements/AnnouncementsView';
 import HarpyPanel from './HarpyPanel';
 import KeeperPanel from './KeeperPanel';
+import GhoulsRegistryPanel from './GhoulsRegistryPanel';
 import { getDivisionName } from '../../constants/divisionNames';
 import { safetyTier } from '../domains/data/safetyTiers';
 
@@ -357,6 +358,7 @@ export default function CourtActions() {
     const { can } = ctx;
     if (can.keeper) t.push({ id: 'keeper', icon: 'local_florist', label: 'Elysium Invitation' });
     if (can.harpy) t.push({ id: 'harpy', icon: 'handshake', label: 'Prestation' });
+    if (can.ghoulsRegistry) t.push({ id: 'ghouls', icon: 'groups', label: 'Ghouls Registry' });
     if (can.callBloodHunt || can.proposeBloodHunt) t.push({ id: 'hunt', icon: 'bloodtype', label: 'Blood Hunt' });
     if (can.wanted) t.push({ id: 'wanted', icon: 'person_search', label: 'Wanted Board' });
     if (can.security) t.push({ id: 'security', icon: 'warning', label: 'Dangerous Domains' });
@@ -395,6 +397,7 @@ export default function CourtActions() {
 
       {current === 'keeper' && <KeeperPanel />}
       {current === 'harpy' && <HarpyPanel />}
+      {current === 'ghouls' && <GhoulsRegistryPanel />}
       {current === 'hunt' && (
         <div className={styles.grid2}>
           <BloodHuntPanel ctx={ctx} reload={reload} />

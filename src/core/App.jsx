@@ -50,6 +50,7 @@ const LiveSession = lazyWithRetry(() => import('../features/live-session/LiveSes
 const LiveSessionDashboard = lazyWithRetry(() => import('../features/admin/LiveSessionDashboard'));
 const SchreckNet = lazyWithRetry(() => import('../features/comms/schrecknet/SchreckNet'));
 const SurfaceWeb = lazyWithRetry(() => import('../features/comms/surfaceweb/SurfaceWeb'));
+const AnonymousNotesPage = lazyWithRetry(() => import('../features/comms/notes/AnonymousNotesPage'));
 const Admin = lazyWithRetry(() => import('../features/admin/Admin'));
 const NPCs = lazyWithRetry(() => import('../features/npcs/NPCs'));
 const AdminNPCView = lazyWithRetry(() => import('../features/admin/AdminNPCView'));
@@ -277,6 +278,7 @@ function AppLayout() {
             <Route path="/boons" element={<Private><Boons /></Private>} />
             <Route path="/schrecknet" element={<Private><SchreckNet /></Private>} />
             <Route path="/surfaceweb" element={<Private><SurfaceWeb /></Private>} />
+            <Route path="/notes" element={<Private><AnonymousNotesPage /></Private>} />
             <Route path="/live-session" element={<Private><LiveSession /></Private>} />
             <Route path="/court" element={<Navigate to="/court/hierarchy" replace />} />
             <Route path="/court/hierarchy" element={<Private><Hierarchy /></Private>} />

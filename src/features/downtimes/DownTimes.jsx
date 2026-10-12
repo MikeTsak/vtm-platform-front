@@ -49,6 +49,11 @@ const statusIsPast = (s) => {
   return status === 'resolved' || status === 'rejected' || status === 'resolved in scene';
 };
 
+const isSceneStatus = (s) => {
+  const status = String(s || '').toLowerCase();
+  return status === 'needs a scene' || status === 'resolved in scene';
+};
+
 const formatCountdownText = (cd) => {
   if (!cd || cd.isPast) return '00d 00h 00m 00s';
   const pad = (n) => String(n).padStart(2, '0');
@@ -534,8 +539,15 @@ export default function DownTimes() {
   // Finished actions whose resolution is still waiting on the mass release stay in Active Track;
   // they move to Archive & Resolutions once the release time has passed.
   const releaseDone = massReleaseCountdown.isPast;
-  const active = useMemo(() => currentCategoryMine.filter(d => !statusIsPast(d.status) || (d.is_pending_release && !releaseDone)), [currentCategoryMine, releaseDone]);
-  const pastRaw = useMemo(() => currentCategoryMine.filter(d => statusIsPast(d.status) && !(d.is_pending_release && !releaseDone)), [currentCategoryMine, releaseDone]);
+
+  // Scene actions get their own section: this cycle's up front, earlier cycles tucked in a drawer.
+  const sceneActions = useMemo(() => currentCategoryMine.filter(d => isSceneStatus(d.status)), [currentCategoryMine]);
+  const nonScene = useMemo(() => currentCategoryMine.filter(d => !isSceneStatus(d.status)), [currentCategoryMine]);
+  const currentScenes = useMemo(() => sceneActions.filter(d => !d.is_past_cycle), [sceneActions]);
+  const oldScenes = useMemo(() => sceneActions.filter(d => d.is_past_cycle), [sceneActions]);
+
+  const active = useMemo(() => nonScene.filter(d => !statusIsPast(d.status) || (d.is_pending_release && !releaseDone)), [nonScene, releaseDone]);
+  const pastRaw = useMemo(() => nonScene.filter(d => statusIsPast(d.status) && !(d.is_pending_release && !releaseDone)), [nonScene, releaseDone]);
 
   const deadlinePassed = viewMode === 'project'
     ? Boolean(configData?.project_deadline) && projectCountdown.isPast
@@ -778,6 +790,43 @@ export default function DownTimes() {
           </motion.div>
         </AnimatePresence>
         </FeedingGate>
+
+        {/* Scenes: this cycle's up front, earlier cycles in a collapsed drawer. */}
+        <section className={styles.archiveSection}>
+          <div className={styles.archiveHeader}>
+            <h3 className={styles.archiveTitle}>Scenes</h3>
+          </div>
+          <div className={styles.archiveGrid}>
+            {currentScenes.length === 0 ? (
+              <div className={styles.empty} style={{ gridColumn: '1 / -1' }}>
+                <span className={`material-symbols-outlined ${styles.emptyIcon}`}>theaters</span>
+                <div className={styles.emptyText}>No scenes in this downtime cycle so far.</div>
+              </div>
+            ) : (
+              currentScenes.map(dt => String(dt.status).toLowerCase() === 'needs a scene' ? (
+                <ActiveTrackItem
+                  key={dt.id}
+                  dt={dt}
+                  isProject={viewMode === 'project'}
+                  massReleaseCountdown={massReleaseCountdown}
+                  deadlinePassed={deadlinePassed}
+                />
+              ) : (
+                <ArchiveItem key={dt.id} dt={dt} isProject={viewMode === 'project'} />
+              ))
+            )}
+          </div>
+          {oldScenes.length > 0 && (
+            <details className={styles.oldScenes}>
+              <summary className={styles.oldScenesSummary}>Previous scenes ({oldScenes.length})</summary>
+              <div className={styles.archiveGrid} style={{ marginTop: '16px' }}>
+                {oldScenes.map(dt => (
+                  <ArchiveItem key={dt.id} dt={dt} isProject={viewMode === 'project'} />
+                ))}
+              </div>
+            </details>
+          )}
+        </section>
 
         {/* Submission History List: always visible and searchable, even
             before this cycle's Feeding roll is resolved. Only *new*

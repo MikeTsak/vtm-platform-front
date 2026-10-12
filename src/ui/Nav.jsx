@@ -18,7 +18,7 @@ function UnreadBadge({ count }) {
   );
 }
 
-function NavDropdown({ title, icon, children, isMobile, isOpen, toggleOpen }) {
+function NavDropdown({ title, icon, badge = 0, children, isMobile, isOpen, toggleOpen }) {
   const [isHovered, setIsHovered] = useState(false);
 
   if (isMobile) {
@@ -35,6 +35,7 @@ function NavDropdown({ title, icon, children, isMobile, isOpen, toggleOpen }) {
           <div className="flex items-center gap-3">
             {icon && <span className="material-symbols-outlined text-[20px]">{icon}</span>}
             <span className="font-['Playfair_Display'] font-bold text-[16px] tracking-wide">{title}</span>
+            <UnreadBadge count={badge} />
           </div>
           <span className={`material-symbols-outlined transition-transform duration-300 ${isOpen ? 'rotate-180 text-primary' : 'text-on-surface-variant'}`}>
             expand_more
@@ -60,6 +61,7 @@ function NavDropdown({ title, icon, children, isMobile, isOpen, toggleOpen }) {
       <div className={`cursor-pointer flex items-center gap-1.5 px-3 py-2 rounded transition-colors text-[13px] uppercase tracking-widest font-bold font-['Inter'] ${isHovered ? 'text-primary bg-surface-variant/30' : 'text-on-surface-variant'}`}>
         {icon && <span className="material-symbols-outlined text-[18px] mb-[2px]">{icon}</span>}
         {title}
+        <UnreadBadge count={badge} />
         <span className={`material-symbols-outlined text-[16px] transition-transform duration-300 ${isHovered ? 'rotate-180 text-primary' : 'opacity-70'}`}>
           expand_more
         </span>
@@ -239,13 +241,16 @@ export default function Nav() {
   data-cuelume-hover to="/rumors" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Rumors</NavLink>
                 </NavDropdown>
 
-                <NavDropdown title="Comms" icon="rss_feed" isMobile={false}>
+                <NavDropdown title="Comms" icon="rss_feed" badge={unread.chat + unread.email + unread.notes.unread} isMobile={false}>
                   <NavLink 
   data-cuelume-press 
   data-cuelume-hover to="/schrecknet" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>SchreckNet<UnreadBadge count={unread.chat} /></NavLink>
                   <NavLink 
   data-cuelume-press 
   data-cuelume-hover to="/surfaceweb" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Surface Web<UnreadBadge count={unread.email} /></NavLink>
+                {(isAdmin || unread.notes.total > 0) && (
+                  <NavLink data-cuelume-press data-cuelume-hover to="/notes" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Anonymous Notes<UnreadBadge count={unread.notes.unread} /></NavLink>
+                )}
                 </NavDropdown>
 
                 <NavLink 
@@ -359,13 +364,16 @@ export default function Nav() {
   data-cuelume-hover to="/rumors" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Rumors</NavLink>
               </NavDropdown>
 
-              <NavDropdown title="Comms" icon="rss_feed" isMobile={true} isOpen={openMobileDropdown === 'Comms'} toggleOpen={() => handleMobileDropdownToggle('Comms')}>
+              <NavDropdown title="Comms" icon="rss_feed" badge={unread.chat + unread.email + unread.notes.unread} isMobile={true} isOpen={openMobileDropdown === 'Comms'} toggleOpen={() => handleMobileDropdownToggle('Comms')}>
                 <NavLink 
   data-cuelume-press 
   data-cuelume-hover to="/schrecknet" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>SchreckNet<UnreadBadge count={unread.chat} /></NavLink>
                 <NavLink 
   data-cuelume-press 
   data-cuelume-hover to="/surfaceweb" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Surface Web<UnreadBadge count={unread.email} /></NavLink>
+                {(isAdmin || unread.notes.total > 0) && (
+                  <NavLink data-cuelume-press data-cuelume-hover to="/notes" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Anonymous Notes<UnreadBadge count={unread.notes.unread} /></NavLink>
+                )}
               </NavDropdown>
 
               <NavLink 
