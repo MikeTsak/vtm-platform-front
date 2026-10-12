@@ -14,8 +14,19 @@ function pick(obj, key) {
 
 /** RAW: Fortitude adds to the Health track only through the Resilience power. */
 export function hasResilience(sheet) {
-  const powers = pick(sheet?.disciplinePowers, 'Fortitude');
-  return Array.isArray(powers) && powers.some(p => /resilien/i.test(String(p?.id ?? p?.name ?? p ?? '')));
+  const mainPowers = pick(sheet?.disciplinePowers, 'Fortitude');
+  const flaw = sheet?.ingrained_discipline_flaw;
+  const isFortFlaw = String(flaw?.discipline || '').toLowerCase() === 'fortitude';
+  const bonusPowers = (isFortFlaw && flaw?.active !== false && Array.isArray(flaw?.bonus_powers))
+    ? flaw.bonus_powers
+    : [];
+
+  const combined = [
+    ...(Array.isArray(mainPowers) ? mainPowers : []),
+    ...bonusPowers,
+  ];
+
+  return combined.some(p => /resilien/i.test(String(p?.id ?? p?.name ?? p ?? '')));
 }
 
 /** Stamina + 3, plus Fortitude dots when Resilience is owned. */

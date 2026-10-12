@@ -262,6 +262,52 @@ export default function LiveSession({ preview = null }) {
     })
     .filter(Boolean), [runningPowers, sheet]);
 
+  const activeFluentPower = useMemo(() => {
+    if (!sheet) return null;
+    const norm = (v) => String(v ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const hasP = (disc, id) => {
+      const target = norm(id);
+      const owned = (sheet.disciplinePowers?.[disc] || []).some(p => norm(p?.id ?? p?.name ?? p) === target);
+      if (owned) return true;
+      const flaw = sheet.ingrained_discipline_flaw;
+      if (flaw && flaw.active !== false && norm(flaw.discipline) === norm(disc)) {
+        return (flaw.bonus_powers || []).some(p => norm(p?.id ?? p?.name ?? p) === target);
+      }
+      return false;
+    };
+    const tLower = selectedTraits.map(t => String(t).toLowerCase());
+    if (hasP('Fortitude', 'fluent_endurance') && tLower.some(t => t === 'stamina' || t === 'fortitude')) {
+      return { id: 'fluent_endurance', name: 'Fluent Endurance', discipline: 'Fortitude', traits: 'Stamina or Fortitude' };
+    }
+    if (hasP('Potence', 'fluent_strength') && tLower.some(t => t === 'strength' || t === 'potence')) {
+      return { id: 'fluent_strength', name: 'Fluent Strength', discipline: 'Potence', traits: 'Strength or Potence' };
+    }
+    if (hasP('Celerity', 'fluent_swiftness') && tLower.some(t => t === 'dexterity' || t === 'celerity')) {
+      return { id: 'fluent_swiftness', name: 'Fluent Swiftness', discipline: 'Celerity', traits: 'Dexterity or Celerity' };
+    }
+    return null;
+  }, [sheet, selectedTraits]);
+
+  const ownedFluentPowers = useMemo(() => {
+    if (!sheet) return [];
+    const norm = (v) => String(v ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const hasP = (disc, id) => {
+      const target = norm(id);
+      const owned = (sheet.disciplinePowers?.[disc] || []).some(p => norm(p?.id ?? p?.name ?? p) === target);
+      if (owned) return true;
+      const flaw = sheet.ingrained_discipline_flaw;
+      if (flaw && flaw.active !== false && norm(flaw.discipline) === norm(disc)) {
+        return (flaw.bonus_powers || []).some(p => norm(p?.id ?? p?.name ?? p) === target);
+      }
+      return false;
+    };
+    const list = [];
+    if (hasP('Fortitude', 'fluent_endurance')) list.push({ id: 'fluent_endurance', name: 'Fluent Endurance', discipline: 'Fortitude', trait: 'Stamina' });
+    if (hasP('Potence', 'fluent_strength')) list.push({ id: 'fluent_strength', name: 'Fluent Strength', discipline: 'Potence', trait: 'Strength' });
+    if (hasP('Celerity', 'fluent_swiftness')) list.push({ id: 'fluent_swiftness', name: 'Fluent Swiftness', discipline: 'Celerity', trait: 'Dexterity' });
+    return list;
+  }, [sheet]);
+
   const currentPool = useMemo(() => {
     let pool = getPoolFromCharacter(sheet, ...selectedTraits);
 
@@ -548,7 +594,7 @@ export default function LiveSession({ preview = null }) {
   // from the stored sheet and logs it in the one dice table / session feed.
   // The pool shown on screen is only a preview. This turns the server's
   // answer into what the dice tray shows.
-  const showServerRoll = (row) => {
+  const showServerRoll = (row, surgeRow = null) => {
     const normal = row?.results?.normal || [];
     const hunger = row?.results?.hunger || [];
     const roll = {
@@ -562,6 +608,7 @@ export default function LiveSession({ preview = null }) {
       hungerDice: hunger,
       outcome: computeOutcome(normal, hunger, row.difficulty || 0),
       rerolled: Boolean(row.rerolled),
+      surgeRoll: surgeRow || row.surgeRoll || null,
     };
     setLastRoll(roll);
     setWpSelections([]);
@@ -575,7 +622,8 @@ export default function LiveSession({ preview = null }) {
     try {
       const { data } = await api.post('/dice/roll', { sessionId, isHidden: hiddenRollsActive, ...body });
       if (data.sheet) { setSheet(data.sheet); setTrackers(summarizeTrackers(data.sheet)); }
-      const roll = showServerRoll(data.roll);
+      const surgeRow = (data.rolls || []).find(r => (r.roll_type || r.rollType) === 'blood_surge');
+      const roll = showServerRoll(data.roll, surgeRow);
       maybeCompulsion(roll.outcome, body);
       return data;
     } catch (e) {
@@ -831,10 +879,12 @@ export default function LiveSession({ preview = null }) {
     try {
       // The server grants the Blood Potency reroll die itself, for an owned
       // power at or below the reroll level, and sets hunger frenzy at Hunger 5.
-      const usedPower = autoActivate?.power?.id ? { discipline: autoActivate.discName, powerId: autoActivate.power.id } : {};
+      const usedPower = autoActivate?.power?.id
+        ? { discipline: autoActivate.discName, powerId: autoActivate.power.id }
+        : (autoActivate?.trait ? { trait: autoActivate.trait } : {});
       const { data } = await api.post(`/characters/${character.id}/rouse`, { ...usedPower, source, sessionId, isHidden: hiddenRollsActive });
 
-      const { success, die1, die2, advantage, nextHunger, sheet: nextSheet } = data;
+      const { success, die1, die2, advantage, fluentLabel, nextHunger, sheet: nextSheet } = data;
       setSheet(nextSheet);
       setTrackers(summarizeTrackers(nextSheet));
 
@@ -890,14 +940,24 @@ export default function LiveSession({ preview = null }) {
         }
       }
 
-      const rollNote = success
-        ? (advantage ? 'Pass : No Hunger Gained (BP Reroll Advantage)' : 'Pass : No Hunger Gained')
-        : (advantage ? 'Fail : Hunger +1 (BP Reroll Advantage)' : 'Fail : Hunger +1');
+      const rollNote = source === 'blood_surge'
+        ? (success
+            ? `Pass : No Hunger Gained (Blood Surge${fluentLabel ? `, ${fluentLabel} Reroll` : ''})`
+            : `Fail : Hunger +1 (Blood Surge${fluentLabel ? `, ${fluentLabel} Reroll` : ''})`)
+        : (success
+            ? (advantage ? 'Pass : No Hunger Gained (BP Reroll Advantage)' : 'Pass : No Hunger Gained')
+            : (advantage ? 'Fail : Hunger +1 (BP Reroll Advantage)' : 'Fail : Hunger +1'));
 
       setLastRoll({
         normalDice: [],
         hungerDice: advantage ? [die1, die2].filter(Boolean) : [die1],
-        outcome: { successes: success ? 1 : 0, hasCritical: false, hasMessyCritical: false, hasBestialFailure: false },
+        outcome: {
+          successes: success ? 1 : 0,
+          label: success ? 'Rouse Check Passed' : 'Rouse Check Failed',
+          hasCritical: false,
+          hasMessyCritical: false,
+          hasBestialFailure: false
+        },
         type: source,
         note: rollNote,
       });
@@ -1394,6 +1454,18 @@ export default function LiveSession({ preview = null }) {
                   Discipline Rouse (BP Reroll &le; {bpStats.rouseRerollLevel})
                 </button>
               )}
+              {ownedFluentPowers.map(fp => (
+                <button
+                  key={fp.id}
+                  className={styles.btnOutline}
+                  style={{ width: '100%', padding: '0.35rem', fontSize: '0.72rem', marginTop: '0.4rem', borderColor: 'rgba(239, 68, 68, 0.4)', color: 'var(--primary)' }}
+                  disabled={isRolling}
+                  onClick={() => handleRouse('blood_surge', { trait: fp.trait })}
+                  title={`${fp.name}: Rouse check for Blood Surge on ${fp.trait} with reroll advantage`}
+                >
+                  Blood Surge Rouse ({fp.name} Reroll)
+                </button>
+              ))}
               {sheet?.ingrained_discipline_flaw?.active && sheet?.ingrained_discipline_flaw?.flaw_name === 'Daymares' && (
                 <button
                   className={styles.btnOutline}
@@ -1861,13 +1933,32 @@ export default function LiveSession({ preview = null }) {
                     if (trackers?.hunger >= 5) return;
                     setBloodSurgeActive(!bloodSurgeActive);
                   }}
-                  title={trackers?.hunger >= 5 ? 'Cannot Blood Surge at Hunger 5: slake your hunger first' : `Blood Surge (+${bpStats.surgeBonus})`}
+                  title={trackers?.hunger >= 5 ? 'Cannot Blood Surge at Hunger 5: slake your hunger first' : `Blood Surge (+${bpStats.surgeBonus})${activeFluentPower ? ` with ${activeFluentPower.name} Rouse reroll advantage` : ''}`}
                   style={trackers?.hunger >= 5 ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
                 >
                   <div className={`${styles.toggleTrack} ${bloodSurgeActive ? styles.active : ''}`}>
                     <div className={styles.toggleThumb} />
                   </div>
-                  <span style={{ fontWeight: 'bold', color: bloodSurgeActive ? 'var(--primary)' : 'var(--text-muted)' }}>Blood Surge (+{bpStats.surgeBonus})</span>
+                  <span style={{ fontWeight: 'bold', color: bloodSurgeActive ? 'var(--primary)' : 'var(--text-muted)' }}>
+                    Blood Surge (+{bpStats.surgeBonus})
+                  </span>
+                  {activeFluentPower && (
+                    <span style={{
+                      fontSize: '0.72rem',
+                      background: 'rgba(239, 68, 68, 0.15)',
+                      color: '#f87171',
+                      border: '1px solid rgba(239, 68, 68, 0.35)',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      fontWeight: 600,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '0.85rem' }}>refresh</span>
+                      {activeFluentPower.name} Reroll
+                    </span>
+                  )}
                 </div>
               )}
               <div className={styles.toggleContainer} onClick={() => setSpecialtyActive(!specialtyActive)}>
@@ -1898,6 +1989,21 @@ export default function LiveSession({ preview = null }) {
                 value={modReason}
                 onChange={e => setModReason(e.target.value)}
               />
+              {activeFluentPower && (
+                <span
+                  className={styles.commonRollBtn}
+                  style={{
+                    cursor: 'default',
+                    background: 'rgba(239, 68, 68, 0.12)',
+                    borderColor: 'rgba(239, 68, 68, 0.4)',
+                    color: '#f87171'
+                  }}
+                  title={`${activeFluentPower.name} applies Rouse check reroll on ${activeFluentPower.traits}`}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '0.9rem', marginRight: '4px', verticalAlign: 'middle' }}>autorenew</span>
+                  {activeFluentPower.name} Ready
+                </span>
+              )}
               {(trackers.healthImpaired || trackers.willpowerImpaired) && !activeFrenzy && (
                 <button
                   className={`${styles.commonRollBtn} ${wpIgnoreImpair ? styles.commonRollOn : ''}`}
@@ -2018,6 +2124,55 @@ export default function LiveSession({ preview = null }) {
                 </h2>
                 <p className={styles.textMuted} style={{ marginBottom: wpRerollMode ? '1rem' : '2rem' }}>{lastRoll.note}</p>
 
+                {lastRoll.surgeRoll && (
+                  <div style={{
+                    background: 'rgba(225, 29, 72, 0.08)',
+                    border: '1px solid rgba(225, 29, 72, 0.35)',
+                    borderRadius: '8px',
+                    padding: '0.6rem 1rem',
+                    marginBottom: '1.25rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.75rem',
+                    flexWrap: 'wrap',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <span className="material-symbols-outlined" style={{ color: 'var(--primary)', fontSize: '1.2rem' }}>bloodtype</span>
+                      <strong style={{ fontSize: '0.85rem', color: 'var(--on-surface)' }}>Blood Surge Rouse:</strong>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                      {(lastRoll.surgeRoll.results?.rouse || []).map((d, idx) => (
+                        <D10Die key={`surge_die_${idx}`} value={d} isHunger={true} size="sm" showNumber={true} />
+                      ))}
+                    </div>
+                    <span style={{
+                      fontSize: '0.82rem',
+                      fontWeight: 600,
+                      color: lastRoll.surgeRoll.successes > 0 ? 'var(--success)' : 'var(--error)',
+                    }}>
+                      {lastRoll.surgeRoll.successes > 0 ? 'Passed (No Hunger gained)' : 'Failed (Hunger +1)'}
+                    </span>
+                    {lastRoll.surgeRoll.note?.includes('Fluent') && (
+                      <span style={{
+                        fontSize: '0.7rem',
+                        background: 'rgba(239, 68, 68, 0.15)',
+                        border: '1px solid rgba(239, 68, 68, 0.35)',
+                        color: '#f87171',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        fontWeight: 600,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px',
+                      }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '0.8rem' }}>autorenew</span>
+                        Fluent Reroll Advantage
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 {wpRerollMode && (
                   <div style={{
                     background: 'rgba(198, 40, 40, 0.12)',
@@ -2129,6 +2284,46 @@ export default function LiveSession({ preview = null }) {
                             Willpower Reroll
                           </button>
                         )}
+                        {lastRoll.surgeRoll && (
+                          <div
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.4rem',
+                              padding: '0.45rem 0.85rem',
+                              borderRadius: '6px',
+                              background: 'rgba(225, 29, 72, 0.12)',
+                              border: '1px solid rgba(225, 29, 72, 0.4)',
+                              color: 'var(--on-surface)',
+                              fontSize: '0.8rem',
+                              fontWeight: 600,
+                            }}
+                            title={lastRoll.surgeRoll.note || 'Blood Surge Rouse check applied to this roll'}
+                          >
+                            <span className="material-symbols-outlined" style={{ color: 'var(--primary)', fontSize: '1.1rem' }}>bloodtype</span>
+                            <span>
+                              {lastRoll.surgeRoll.note?.includes('Fluent')
+                                ? 'Blood Surge: Fluent Reroll Active'
+                                : 'Blood Surge Active'}
+                            </span>
+                          </div>
+                        )}
+                        {lastRoll.type === 'blood_surge' && ownedFluentPowers.length > 0 && (
+                          <button
+                            className={styles.btnPrimary}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.4rem',
+                              fontSize: '0.82rem',
+                            }}
+                            onClick={() => handleRouse('blood_surge', { trait: ownedFluentPowers[0].trait })}
+                            title={`Roll Blood Surge Rouse check with ${ownedFluentPowers[0].name} reroll advantage`}
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>autorenew</span>
+                            {ownedFluentPowers[0].name} Rouse Reroll
+                          </button>
+                        )}
                         {!rerollAllowed && lastRoll.rerolled && (
                           <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                             Roll already rerolled
@@ -2174,7 +2369,16 @@ export default function LiveSession({ preview = null }) {
               Session Players
             </button>
           </div>
-          {showAdminTab === 'feed' && <LiveSessionRollHistory rolls={broadcasts} currentCharacterId={character?.id} isAdmin={isAdmin} onReroll={openRerollFromFeed} />}
+          {showAdminTab === 'feed' && (
+            <LiveSessionRollHistory
+              rolls={broadcasts}
+              currentCharacterId={character?.id}
+              isAdmin={isAdmin}
+              onReroll={openRerollFromFeed}
+              ownedFluentPowers={ownedFluentPowers}
+              onFluentReroll={(trait) => handleRouse('blood_surge', { trait })}
+            />
+          )}
           {showAdminTab === 'players' && <LiveSessionPlayerList players={session?.players || []} adminName={session?.admin_name} />}
         </aside>
       </main>

@@ -5,7 +5,7 @@ import D10Die from '../../ui/D10Die';
 // V5: Willpower can't reroll these tests (mirrors NO_REROLL on the server).
 const NO_REROLL = ['frenzy_resistance', 'remorse', 'rouse_check', 'discipline_rouse_check', 'blush_of_life', 'blood_surge', 'mend_rouse', 'willpower_reroll'];
 
-export default function LiveSessionRollHistory({ rolls = [], onBroadcast, onReroll, currentCharacterId, isAdmin }) {
+export default function LiveSessionRollHistory({ rolls = [], onBroadcast, onReroll, currentCharacterId, isAdmin, ownedFluentPowers = [], onFluentReroll }) {
   if (!rolls.length) {
     return <div className={styles.textMuted} style={{ padding: '1rem', textAlign: 'center' }}>No rolls yet.</div>;
   }
@@ -81,11 +81,16 @@ export default function LiveSessionRollHistory({ rolls = [], onBroadcast, onRero
               </small>
             </div>
 
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', gap: '0.75rem', marginBottom: '0.5rem', alignItems: 'center' }}>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', gap: '0.75rem', marginBottom: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
               {roll.pool !== undefined && roll.pool !== null && <span>Pool: <b style={{ color: 'var(--on-surface)' }}>{roll.pool}</b></span>}
               {roll.hunger !== undefined && roll.hunger !== null && <span>Hunger: <b style={{ color: 'var(--on-surface)' }}>{roll.hunger}</b></span>}
               {hasBestial && <span style={{ color: 'var(--error)', fontWeight: 700 }}>Bestial</span>}
               {hasMessy && <span style={{ color: 'var(--error)', fontWeight: 700 }}>Messy Crit</span>}
+              {(roll.note?.includes('Fluent') || (roll.results?.rouse?.length || 0) > 1) && (
+                <span style={{ color: '#f87171', fontWeight: 600, background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.35)', padding: '1px 5px', borderRadius: '3px' }}>
+                  Fluent Reroll
+                </span>
+              )}
               
               {canReroll && (
                 <button
@@ -93,6 +98,15 @@ export default function LiveSessionRollHistory({ rolls = [], onBroadcast, onRero
                   style={{ background: 'var(--surface-hover)', border: '1px solid var(--border)', color: 'var(--on-surface)', fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer', marginLeft: 'auto' }}
                 >
                   Reroll with Willpower
+                </button>
+              )}
+              {roll.roll_type === 'blood_surge' && roll.character_id === currentCharacterId && ownedFluentPowers?.length > 0 && onFluentReroll && (
+                <button
+                  onClick={() => onFluentReroll(ownedFluentPowers[0].trait)}
+                  title={`Reroll Blood Surge Rouse check with ${ownedFluentPowers[0].name} advantage`}
+                  style={{ background: 'var(--surface-hover)', border: '1px solid rgba(239, 68, 68, 0.4)', color: '#f87171', fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer', marginLeft: canReroll ? '6px' : 'auto' }}
+                >
+                  Reroll Blood Surge
                 </button>
               )}
               {(hasBestial || hasMessy) && onBroadcast && (
