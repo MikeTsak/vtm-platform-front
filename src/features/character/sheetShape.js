@@ -179,6 +179,19 @@ export function normalizeFromFlatAny(source) {
   sheet.stains = flat.stains ?? 0;
   sheet.hunger = flat.hunger ?? 1;
 
+  sheet.ingrained_discipline_flaw = flat.ingrained_discipline_flaw && typeof flat.ingrained_discipline_flaw === 'object'
+    ? {
+        discipline: flat.ingrained_discipline_flaw.discipline,
+        flaw_name: flat.ingrained_discipline_flaw.flaw_name,
+        active: Number(sheet.disciplines?.[flat.ingrained_discipline_flaw.discipline] || 0) >= 3,
+        bonus_powers: Array.isArray(flat.ingrained_discipline_flaw.bonus_powers) ? flat.ingrained_discipline_flaw.bonus_powers : []
+      }
+    : null;
+
+  const isFlawActive = sheet.ingrained_discipline_flaw && Number(sheet.disciplines?.[sheet.ingrained_discipline_flaw.discipline] || 0) >= 3;
+  const isMonstrous = isFlawActive && sheet.ingrained_discipline_flaw.flaw_name === 'Monstrous';
+  sheet.effective_humanity = isMonstrous ? Math.max(0, (sheet.humanity ?? 7) - 3) : (sheet.humanity ?? 7);
+
   sheet.blood_potency = Number(flat.bloodPotency ?? flat.blood_potency ?? 1);
 
   sheet.health_max = deriveMaxHealth(sheet);
@@ -325,6 +338,18 @@ export function attachStructured(raw) {
   sheet.rituals.oblivion = sheet.rituals.oblivion || [];
   if (sheet.blood_potency == null) sheet.blood_potency = 1;
   sheet.disciplinePowers = sheet.disciplinePowers || {};
+
+  if (sheet.ingrained_discipline_flaw) {
+    sheet.ingrained_discipline_flaw = {
+      discipline: sheet.ingrained_discipline_flaw.discipline,
+      flaw_name: sheet.ingrained_discipline_flaw.flaw_name,
+      active: Number(sheet.disciplines?.[sheet.ingrained_discipline_flaw.discipline] || 0) >= 3,
+      bonus_powers: Array.isArray(sheet.ingrained_discipline_flaw.bonus_powers) ? sheet.ingrained_discipline_flaw.bonus_powers : []
+    };
+  }
+  const isFlawActiveRaw = sheet.ingrained_discipline_flaw && Number(sheet.disciplines?.[sheet.ingrained_discipline_flaw.discipline] || 0) >= 3;
+  const isMonstrousRaw = isFlawActiveRaw && sheet.ingrained_discipline_flaw.flaw_name === 'Monstrous';
+  sheet.effective_humanity = isMonstrousRaw ? Math.max(0, (sheet.humanity ?? 7) - 3) : (sheet.humanity ?? 7);
 
   sheet = ensureDisciplinePicksHaveLevels(sheet);
 

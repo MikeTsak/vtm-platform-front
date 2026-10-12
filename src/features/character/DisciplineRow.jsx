@@ -86,7 +86,7 @@ function PowerItem({ level, picked, unlocked, discName, boxMode, onPickMissing }
   );
 }
 
-function DisciplineRow({ name, level = 0, powers = [], phantomPowers = [], boxMode, onPickMissingPower }) {
+function DisciplineRow({ name, level = 0, powers = [], phantomPowers = [], ingrainedPowers = [], ingrainedFlawName = '', boxMode, onPickMissingPower }) {
   const icon = iconPath(name);
   // One slot per dot, filled by count, not by level number: V5 allows
   // several powers of the same tier (three Level-1 Dominate powers), so a
@@ -150,6 +150,23 @@ function DisciplineRow({ name, level = 0, powers = [], phantomPowers = [], boxMo
                 picked={p}
                 unlocked={true}
                 discName={name} 
+                boxMode={boxMode}
+              />
+            ))}
+          </div>
+        )}
+        {ingrainedPowers.length > 0 && (
+          <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--border-color, #444)' }}>
+            <div style={{ fontSize: '11px', color: '#e11d48', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Bonus Powers ({ingrainedFlawName || 'Ingrained Flaw'})
+            </div>
+            {ingrainedPowers.map((p, idx) => (
+              <PowerItem
+                key={`ingrained-${idx}`}
+                level={p.level}
+                picked={p}
+                unlocked={true}
+                discName={name}
                 boxMode={boxMode}
               />
             ))}

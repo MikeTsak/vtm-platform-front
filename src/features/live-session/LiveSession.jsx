@@ -3,6 +3,7 @@ import api from '../../core/api';
 import { AuthCtx } from '../../core/AuthContext';
 import Avatar from '../../components/Avatar';
 import { DISCIPLINES, iconPath, ALL_DISCIPLINE_NAMES } from '../../data/disciplines';
+import { INGRAINED_DISCIPLINE_FLAWS } from '../../data/ingrainedFlaws';
 import { symlogo, symlogoWhite } from '../../data/clans';
 import { clanRef } from '../../data/clanReference';
 import { powerMechanics, resolveMechAmount } from '../../data/disciplineMechanics';
@@ -283,10 +284,14 @@ export default function LiveSession({ preview = null }) {
   const activePowers = useMemo(() => {
     if (!activeDisc || !DISCIPLINES[activeDisc]) return [];
 
-    const owned = sheet?.disciplinePowers?.[activeDisc];
-    if (!Array.isArray(owned) || owned.length === 0) return [];
+    const owned = sheet?.disciplinePowers?.[activeDisc] || [];
+    const bonus = (sheet?.ingrained_discipline_flaw?.active && sheet?.ingrained_discipline_flaw?.discipline === activeDisc)
+      ? (sheet?.ingrained_discipline_flaw?.bonus_powers || [])
+      : [];
+    const combined = [...(Array.isArray(owned) ? owned : []), ...(Array.isArray(bonus) ? bonus : [])];
+    if (combined.length === 0) return [];
 
-    const ownedIds = owned.map(o => String(o.id || o.name).toLowerCase().replace(/[^a-z0-9]/g, ''));
+    const ownedIds = combined.map(o => String(o.id || o.name).toLowerCase().replace(/[^a-z0-9]/g, ''));
 
     let powers = [];
     const levels = DISCIPLINES[activeDisc].levels || {};
@@ -298,7 +303,7 @@ export default function LiveSession({ preview = null }) {
       }
     }
     return powers;
-  }, [activeDisc, sheet?.disciplinePowers]);
+  }, [activeDisc, sheet?.disciplinePowers, sheet?.ingrained_discipline_flaw]);
 
   // Non-physical Discipline selected while frenzied: the roll is still allowed
   // (the ST has the final say) but the player is warned it breaks V5 rules.
@@ -878,6 +883,9 @@ export default function LiveSession({ preview = null }) {
   if (!trackers) return <div className={`${styles.container} ${styles.theme}`}><div style={{ margin: 'auto' }}>Loading LARP Interface...</div></div>;
 
   const humanity = sheet?.humanity ?? sheet?.morality?.humanity ?? 7;
+  const isFlawActive = sheet?.ingrained_discipline_flaw && Number(sheet?.disciplines?.[sheet.ingrained_discipline_flaw.discipline] || 0) >= 3;
+  const isMonstrous = isFlawActive && sheet?.ingrained_discipline_flaw?.flaw_name === 'Monstrous';
+  const effectiveHumanity = isMonstrous ? Math.max(0, humanity - 3) : humanity;
 
   const getBlushOfLifeInfo = (hum) => {
     if (hum >= 10) return { cost: 0, text: 'You appear completely human. Blush of Life is innately active.' };
@@ -886,7 +894,7 @@ export default function LiveSession({ preview = null }) {
     if (hum >= 4) return { cost: 1, text: 'You look like a corpse. Blush makes you look human & allows digestion.' };
     return { cost: 2, text: 'You look like a hideous corpse. Blush requires 2 Rouse Checks.' };
   };
-  const blushInfo = getBlushOfLifeInfo(humanity);
+  const blushInfo = getBlushOfLifeInfo(effectiveHumanity);
 
   const getHumanityEffects = (hum) => {
     if (hum >= 10) return "Can pass for mortal. Appear entirely human. Can eat food without Blush of Life. Fake sexual intercourse without a roll. Blush of Life is always active. Waking early has no penalty.";
@@ -894,11 +902,11 @@ export default function LiveSession({ preview = null }) {
     if (hum === 8) return "Can pass for mortal. Still subscribe to most social norms. Must use Blush of Life to have sexual intercourse and eat food (costs 1 Rouse Check).";
     if (hum === 7) return "Can pass for mortal, subscribing to strong social norms like viewing murder as wrong. Blush of Life costs 1 Rouse Check. Fake sex requires Dex+Cha vs Composure/Wits. Without Blush, eating causes vomiting (Composure+Stamina vs Diff 3).";
     if (hum >= 5) return "Noticeably pale and sickly. Blush of Life costs 1 Rouse Check. Fake sex requires Dex+Cha vs Composure/Wits. Without Blush, eating causes vomiting (Composure+Stamina vs Diff 3).";
-    if (hum === 4) return "Corpse-like and disturbing. -1 to Social dice pools vs mortals. Blush of Life costs 1 Rouse Check.";
+    if (hum === 4) return "Corpse like and disturbing. -1 to Social dice pools vs mortals. Blush of Life costs 1 Rouse Check.";
     if (hum >= 1) return "Hideous corpse, clearly unnatural. -2 to Social dice pools vs mortals. Blush of Life costs 2 Rouse Checks.";
     return "Wight. You are entirely lost to the Beast.";
   };
-  const humanityEffects = getHumanityEffects(humanity);
+  const humanityEffects = getHumanityEffects(effectiveHumanity);
 
   // Player -> Storyteller signal. Non-admin players can't hit /broadcast, so
   // hand-raises, rules questions, AFK and Blush status all go through /signal.
@@ -1288,6 +1296,11 @@ export default function LiveSession({ preview = null }) {
                   {humanity}{trackers.stains > 0 && <span style={{ color: 'var(--error)', fontWeight: 'normal' }}> · {trackers.stains} stain{trackers.stains === 1 ? '' : 's'}</span>}
                 </span>
               </div>
+              {isMonstrous && (
+                <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 'bold' }}>
+                  Effective Humanity: {effectiveHumanity} (Oblivion: Monstrous)
+                </p>
+              )}
               <div className={styles.dotRow} style={{ gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
                 {Array.from({ length: 10 }).map((_, i) => {
                   const filled = i < humanity;
@@ -1314,6 +1327,21 @@ export default function LiveSession({ preview = null }) {
                 </p>
                 <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: '1.45' }}>
                   <strong style={{ color: 'var(--primary)' }}>Compulsion:</strong> {cref.compulsion}
+                </p>
+              </div>
+            )}
+
+            {/* Ingrained Discipline Flaw */}
+            {sheet?.ingrained_discipline_flaw && (
+              <div className={styles.trackerBox} style={{ padding: '1rem 1.25rem', marginBottom: '1rem', background: 'var(--surface-container-high)', border: isFlawActive ? '1px solid rgba(225,29,72,0.3)' : '1px solid rgba(156,163,175,0.2)' }}>
+                <div className={styles.trackerHeader} style={{ marginBottom: '0.6rem' }}>
+                  <span className={styles.labelMd}>Ingrained Flaw: {sheet.ingrained_discipline_flaw.flaw_name}</span>
+                  <span style={{ fontSize: '0.7rem', color: isFlawActive ? 'var(--primary)' : 'var(--text-muted)', fontWeight: 'bold' }}>
+                    {isFlawActive ? 'ACTIVE' : 'INACTIVE'}
+                  </span>
+                </div>
+                <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--on-surface)', lineHeight: '1.45' }}>
+                  {INGRAINED_DISCIPLINE_FLAWS[sheet.ingrained_discipline_flaw.discipline]?.description || sheet.ingrained_discipline_flaw.discipline}
                 </p>
               </div>
             )}

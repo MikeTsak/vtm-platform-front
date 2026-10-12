@@ -4,6 +4,7 @@ import { listAllItems } from '../data/merits_flaws';
 import { RITUALS } from '../data/rituals';
 import { SKILL_DESCRIPTIONS } from '../data/descriptions';
 import { ALL_DISCIPLINE_NAMES, DISCIPLINES } from '../data/disciplines';
+import { INGRAINED_DISCIPLINE_FLAWS } from '../data/ingrainedFlaws';
 import { clanRef } from '../data/clanReference';
 import { symlogo } from '../data/clans';
 
@@ -296,6 +297,12 @@ export default async function generateVTMCharacterSheetPDF(character) {
       });
     }
 
+    // 3. Check bonus powers from ingrained_discipline_flaw
+    const ingrained = sheet.ingrained_discipline_flaw;
+    if (ingrained && String(ingrained.discipline || '').toLowerCase().trim() === dLower && Array.isArray(ingrained.bonus_powers)) {
+      ingrained.bonus_powers.forEach(addPower);
+    }
+
     return result;
   };
 
@@ -387,7 +394,14 @@ export default async function generateVTMCharacterSheetPDF(character) {
   };
 
   const merits = (Array.isArray(sheet.advantages?.merits) ? sheet.advantages.merits : []).map(withCatalogDescription);
-  const flaws = (Array.isArray(sheet.advantages?.flaws) ? sheet.advantages.flaws : []).map(withCatalogDescription);
+  const ingrainedFlawEntry = sheet.ingrained_discipline_flaw
+    ? [{
+        name: `Ingrained Flaw: ${sheet.ingrained_discipline_flaw.flaw_name} (${sheet.ingrained_discipline_flaw.discipline})`,
+        description: INGRAINED_DISCIPLINE_FLAWS[sheet.ingrained_discipline_flaw.discipline]?.description || 'Ingrained Discipline Flaw',
+        dots: 0,
+      }]
+    : [];
+  const flaws = [...ingrainedFlawEntry, ...(Array.isArray(sheet.advantages?.flaws) ? sheet.advantages.flaws : []).map(withCatalogDescription)];
   const rawBackgrounds = [
     ...(Array.isArray(sheet.backgrounds) ? sheet.backgrounds : []),
     ...(Array.isArray(sheet.advantages?.backgrounds) ? sheet.advantages.backgrounds : [])
@@ -437,6 +451,9 @@ export default async function generateVTMCharacterSheetPDF(character) {
   const wpSup = sheet.willpower?.superficial || 0;
 
   const humanityVal = sheet.morality?.humanity ?? sheet.humanity ?? 7;
+  const isFlawActive = sheet?.ingrained_discipline_flaw && Number(disciplines?.[sheet.ingrained_discipline_flaw.discipline] || 0) >= 3;
+  const isMonstrous = isFlawActive && sheet?.ingrained_discipline_flaw?.flaw_name === 'Monstrous';
+  const effectiveHumanityVal = isMonstrous ? Math.max(0, humanityVal - 3) : humanityVal;
   const stains = sheet.stains || 0;
   const hungerVal = sheet.hunger || 0;
 
@@ -823,6 +840,7 @@ export default async function generateVTMCharacterSheetPDF(character) {
             <strong>HUMANITY</strong>
             ${renderTrackerBoxes(10, 0, 0, true, humanityVal, stains, false)}
           </div>
+          ${isMonstrous ? `<div style="font-size: 10px; color: #8a0303; margin-top: 2px;">Effective Humanity: ${effectiveHumanityVal} (Oblivion: Monstrous)</div>` : ''}
           <div class="tracker-row">
             <strong>HUNGER</strong>
             ${renderTrackerBoxes(5, 0, 0, true, hungerVal, 0, true)}

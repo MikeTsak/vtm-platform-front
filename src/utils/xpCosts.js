@@ -25,6 +25,13 @@ export const calculateAdvantageCost = (dots) => dots * 3;
 /** Cost for a new level of Blood Potency. */
 export const calculateBloodPotencyCost = (newLevel) => newLevel * 10;
 
+/** Cost for a bonus discipline power unlocked via an Ingrained Discipline Flaw. */
+export const calculateIngrainedDisciplinePowerCost = (level, kind = 'clan') => {
+  if (kind === 'other') return level * 7;
+  if (kind === 'caitiff') return level * 6;
+  return level * 5;
+};
+
 /** Same costs, keyed the way character-sheet call sites expect (XP_RULES.attribute(next), etc). */
 export const XP_RULES = {
   attribute: calculateAttributeCost,
@@ -37,4 +44,6 @@ export const XP_RULES = {
   ritual: calculateRitualCost,
   ceremony: calculateRitualCost,
   bloodPotency: calculateBloodPotencyCost,
+  ingrainedDisciplineFlaw: () => 0,
+  ingrainedDisciplinePower: calculateIngrainedDisciplinePowerCost,
 };

@@ -15,6 +15,7 @@ import homeStyles from '../../styles/Home.module.css';
 import CharacterSetup from './CharacterSetup';
 import { ATTR_DESCRIPTIONS, SKILL_DESCRIPTIONS } from '../../data/descriptions';
 import { MERITS_AND_FLAWS, listAllItems } from '../../data/merits_flaws';
+import { INGRAINED_DISCIPLINE_FLAWS } from '../../data/ingrainedFlaws';
 import { buildXpSpendIdempotencyKey } from '../../utils/idempotencyKey';
 import { XP_RULES } from '../../utils/xpCosts';
 import FaGlyph from '../../ui/FaGlyph';
@@ -65,6 +66,7 @@ const SHOP_TABS = [
   { key: 'Attributes', icon: 'monitor_heart', label: 'Attributes' },
   { key: 'Skills', icon: 'fitness_center', label: 'Skills' },
   { key: 'Merits & Flaws', icon: 'garlic', label: 'Merits' },
+  { key: 'Discipline Flaws', icon: 'whatshot', label: 'D. Flaws' },
   { key: 'Rituals', icon: 'hanukiah', label: 'Rituals' },
   { key: 'Blood Potency', icon: 'water_drop', label: 'Potency' },
 ];
@@ -1851,6 +1853,11 @@ export default function CharacterView({
             {/* Humanity */}
             <div className={`${styles.level1} ${styles.glassCard} ${styles.trackerCard}`} data-box-mode={boxMode}>
               <TrackerBlock label="Humanity" val={tempHumanity} max={10} filled={tempHumanity} stains={tempStains} />
+              {sheet?.ingrained_discipline_flaw?.discipline === 'Oblivion' && sheet?.ingrained_discipline_flaw?.flaw_name === 'Monstrous' && Number(sheet?.disciplines?.Oblivion || 0) >= 3 && (
+                <div style={{ marginTop: '6px', fontSize: '0.8rem', color: '#f87171', textAlign: 'center', fontWeight: 600 }}>
+                  Effective Humanity: {Math.max(0, tempHumanity - 3)} (Oblivion: Monstrous)
+                </div>
+              )}
               {isAdmin && (
                 <div className={styles.trackerAdminControls}>
                   <div className={styles.trackerAdminGroup}>
@@ -1893,6 +1900,40 @@ export default function CharacterView({
                     editable={(!adminNPCId && String(user?.id) === String(ch?.user_id)) || isAdmin}
                     onUpdateDesc={handleUpdateDesc}
                   />
+                  {sheet.ingrained_discipline_flaw && (
+                    <div style={{
+                      marginTop: '16px',
+                      padding: '16px',
+                      background: 'rgba(239, 68, 68, 0.06)',
+                      border: '1px solid rgba(239, 68, 68, 0.25)',
+                      borderRadius: '4px'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <FaGlyph name="fa-fire" size={16} style={{ color: '#ef4444' }} />
+                          <span style={{ fontWeight: 600, fontSize: '0.95rem', color: '#f8fafc' }}>
+                            {sheet.ingrained_discipline_flaw.flaw_name} ({sheet.ingrained_discipline_flaw.discipline})
+                          </span>
+                        </div>
+                        <span style={{
+                          fontSize: '0.75rem',
+                          padding: '2px 8px',
+                          borderRadius: '3px',
+                          background: sheet.ingrained_discipline_flaw.active ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                          color: sheet.ingrained_discipline_flaw.active ? '#4ade80' : '#f87171',
+                          fontWeight: 600
+                        }}>
+                          {sheet.ingrained_discipline_flaw.active ? 'Active' : 'Inactive: Dots below 3'}
+                        </span>
+                      </div>
+                      <p style={{ margin: '0 0 10px 0', fontSize: '0.85rem', color: '#cbd5e1', lineHeight: 1.4 }}>
+                        {INGRAINED_DISCIPLINE_FLAWS[sheet.ingrained_discipline_flaw.discipline]?.description}
+                      </p>
+                      <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                        Bonus Rank Budget: {(sheet.ingrained_discipline_flaw.bonus_powers || []).reduce((s, p) => s + (p.level || 0), 0)} of 3 ranks used
+                      </div>
+                    </div>
+                  )}
                   <div style={{ marginTop: '16px', textAlign: 'center' }}>
                     <button className={styles.cta} onClick={() => navigate('/retainers', { state: { character: ch, sheet } })}>
                       Retainer Marketplace
@@ -2006,7 +2047,7 @@ export default function CharacterView({
                   />
                 </div>
               </div>
-              {trainsByDowntime && ['Suggested', 'Attributes', 'Disciplines', 'Blood Potency'].includes(activeShopTab) && (
+              {trainsByDowntime && ['Suggested', 'Attributes', 'Disciplines', 'Blood Potency', 'Discipline Flaws'].includes(activeShopTab) && (
                 <TrainingRuleBanner quota={dtQuota} />
               )}
               {activeShopTab === 'Suggested' && !isSearching && (
@@ -2565,6 +2606,21 @@ export default function CharacterView({
               </div>
             )}
 
+            {(activeShopTab === 'Discipline Flaws' || isSearching) && (
+              <div style={{ marginTop: '2rem' }}>
+                <DisciplineFlawsShopSection
+                  sheet={sheet}
+                  ch={ch}
+                  xp={xp}
+                  isSearching={isSearching}
+                  currentSearch={currentSearch}
+                  spendXP={spendXP}
+                  isAdmin={isAdmin}
+                  disciplineKindFor={disciplineKindFor}
+                />
+              </div>
+            )}
+
             {activeShopTab === 'Skills' && !isSearching && (
               <div style={{ marginTop: '2rem' }}>
                 <Card>
@@ -2952,7 +3008,7 @@ function InlineRitualPicker({ type, itemsObj, knownIds, knownPowerNamesAndIds, b
 /* ===== Inline Discipline Power Picker ===== */
 /* ---------- Downtime action for trained dots ---------- */
 // Mirrors DOWNTIME_TRAINED in back/utils/xpPurchase.js, which is what actually enforces it.
-const DOWNTIME_TRAINED = ['attribute', 'discipline', 'blood_potency'];
+const DOWNTIME_TRAINED = ['attribute', 'discipline', 'blood_potency', 'ingrained_discipline_flaw'];
 
 // Why the next trained dot can't be bought right now, in the player's terms. `block` is the
 // quota endpoint's submit_block ({ code, message }), the same check the server runs on purchase.
@@ -2979,7 +3035,7 @@ function TrainingRuleBanner({ quota }) {
     <div className={styles.ruleBanner}>
       <FaGlyph name="fa-clock" size={16} style={{ color: 'var(--tint)', marginTop: 2 }} />
       <p>
-        Attributes, Disciplines and Blood Potency also use <b>1 downtime action</b>.
+        Attributes, Disciplines, Blood Potency and Ingrained Flaws also use <b>1 downtime action</b>.
         {block ? <> <TrainingBlockReason block={block} limit={quota.limit} /></>
           : left != null ? <> <b>{left} of {quota.limit}</b> left this cycle.</> : null}
       </p>
@@ -2997,6 +3053,8 @@ const PURCHASE_COST = {
   ritual: (p) => XP_RULES.ritual(p.ritualLevel),
   ceremony: (p) => XP_RULES.ceremony(p.ritualLevel),
   advantage: (p) => XP_RULES.advantageDot(p.dots),
+  ingrained_discipline_flaw: () => XP_RULES.ingrainedDisciplineFlaw(),
+  ingrained_discipline_power: (p) => XP_RULES.ingrainedDisciplinePower(p.powerLevel, p.disciplineKind || 'clan'),
 };
 // What the prompt shows; the server still decides the real price.
 const purchaseCost = (p) => PURCHASE_COST[p.type]?.(p) ?? 0;
@@ -3004,6 +3062,8 @@ const purchaseCost = (p) => PURCHASE_COST[p.type]?.(p) ?? 0;
 function purchaseLabel(p) {
   if (p.type === 'specialty') return `${p.specialty} (${p.target} specialty)`;
   if (p.type === 'blood_potency') return `Blood Potency ${p.newLevel}`;
+  if (p.type === 'ingrained_discipline_flaw') return `Ingrained Flaw: ${p.flawName || p.target}`;
+  if (p.type === 'ingrained_discipline_power') return `Bonus Power: ${p.powerName} (${p.target})`;
   if (p.newLevel != null) return `${p.target} ${p.newLevel}${p.powerName ? ` (${p.powerName})` : ''}`;
   return p.target;
 }
@@ -3792,6 +3852,363 @@ function SpecialtyAdder({ xp, onAdd }) {
           Unlock Specialty
         </button>
       </div>
+    </div>
+  );
+}
+
+/* ---------- Ingrained Discipline Flaws Shop Section ---------- */
+function DisciplineFlawsShopSection({ sheet, ch, xp, isSearching, currentSearch, spendXP, isAdmin, disciplineKindFor }) {
+  const [confirmFlaw, setConfirmFlaw] = useState(null);
+  const [buyingPowerId, setBuyingPowerId] = useState(null);
+  const [expandedPowerId, setExpandedPowerId] = useState(null);
+
+  const existingFlaw = sheet?.ingrained_discipline_flaw;
+
+  // Mode A: No flaw acquired yet
+  if (!existingFlaw) {
+    const eligibleDisciplines = Object.entries(sheet?.disciplines || {})
+      .filter(([name, dots]) => {
+        const dNum = Number(dots) || 0;
+        if (dNum < 3) return false;
+        const kind = disciplineKindFor?.(ch, name);
+        return kind === 'clan' || ch?.clan === 'Caitiff' || isAdmin;
+      })
+      .map(([name]) => name);
+
+    let displayList = eligibleDisciplines;
+    if (isSearching) {
+      displayList = displayList.filter(name => {
+        const flaw = INGRAINED_DISCIPLINE_FLAWS[name];
+        const searchPool = [name, flaw?.name || '', flaw?.description || ''];
+        return msSearchText(searchPool, currentSearch).length > 0;
+      });
+    }
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{
+          padding: '16px 20px',
+          background: 'rgba(225, 29, 72, 0.06)',
+          border: '1px solid rgba(225, 29, 72, 0.25)',
+          borderRadius: '8px'
+        }}>
+          <h3 style={{ margin: '0 0 6px 0', color: 'var(--tint)', fontFamily: 'var(--font-title)', fontSize: '1.2rem' }}>
+            Ingrained Discipline Flaws
+          </h3>
+          <p style={{ margin: 0, fontSize: '0.85rem', color: '#cbd5e1', lineHeight: 1.5 }}>
+            Characters with 3 or more dots in an in clan Discipline may take 1 Ingrained Discipline Flaw across their sheet. The Flaw costs 0 XP, is irreversible, uses 1 downtime action, and unlocks up to 3 ranks worth of bonus powers in that Discipline.
+          </p>
+        </div>
+
+        {displayList.length === 0 ? (
+          <div style={{
+            padding: '24px',
+            textAlign: 'center',
+            background: 'var(--surface-color)',
+            border: '1px solid var(--border-color)',
+            borderRadius: '8px',
+            color: 'var(--text-muted)'
+          }}>
+            {eligibleDisciplines.length === 0
+              ? 'No eligible Disciplines. You need at least 3 dots in an in clan Discipline to take an Ingrained Flaw.'
+              : 'No matching eligible Disciplines found for this search.'}
+          </div>
+        ) : (
+          displayList.map(discName => {
+            const flaw = INGRAINED_DISCIPLINE_FLAWS[discName];
+            if (!flaw) return null;
+            return (
+              <ShopRow
+                key={discName}
+                title={`${flaw.name} (${discName})`}
+                subtitle={`Ingrained Flaw: ${discName}`}
+                cost={0}
+                owned={sheet?.disciplines?.[discName]}
+                leftIcon={iconPath(discName)}
+                disabled={false}
+                hint="Costs 0 XP and 1 downtime action"
+                description={flaw.description}
+                actionLabel="Acquire Flaw"
+                onBuy={() => setConfirmFlaw({ discName, flaw })}
+              />
+            );
+          })
+        )}
+
+        {confirmFlaw && (
+          <ConfirmModal
+            title={`Acquire ${confirmFlaw.flaw.name}`}
+            confirmLabel="Acquire Flaw"
+            cancelLabel="Cancel"
+            onCancel={() => setConfirmFlaw(null)}
+            onConfirm={async () => {
+              const { discName, flaw } = confirmFlaw;
+              setConfirmFlaw(null);
+              await spendXP(
+                { type: 'ingrained_discipline_flaw', target: discName, flawName: flaw.name },
+                `Ingrained Flaw: ${flaw.name}`
+              );
+            }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.9rem', lineHeight: 1.5 }}>
+              <p style={{ margin: 0, color: '#f87171', fontWeight: 600 }}>
+                Warning: Acquiring an Ingrained Discipline Flaw is permanent and irreversible.
+              </p>
+              <div style={{ padding: '10px 14px', background: 'rgba(255, 255, 255, 0.04)', borderRadius: '6px' }}>
+                <div style={{ fontWeight: 600, color: 'var(--tint)', marginBottom: '4px' }}>
+                  Flaw Drawback ({confirmFlaw.discName})
+                </div>
+                <div style={{ color: '#cbd5e1' }}>{confirmFlaw.flaw.description}</div>
+              </div>
+              <div style={{ padding: '10px 14px', background: 'rgba(255, 255, 255, 0.04)', borderRadius: '6px' }}>
+                <div style={{ fontWeight: 600, color: '#38bdf8', marginBottom: '4px' }}>
+                  Benefit Unlocked
+                </div>
+                <div style={{ color: '#cbd5e1' }}>
+                  Unlocks up to 3 ranks worth of bonus powers in {confirmFlaw.discName} to purchase with Experience Points.
+                </div>
+              </div>
+              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                Cost: 0 XP and 1 downtime action.
+              </p>
+            </div>
+          </ConfirmModal>
+        )}
+      </div>
+    );
+  }
+
+  // Mode B: Flaw already acquired
+  const flawDisc = existingFlaw.discipline;
+  const flawInfo = INGRAINED_DISCIPLINE_FLAWS[flawDisc];
+  const discDots = Number(sheet?.disciplines?.[flawDisc] || 0);
+  const isFlawActive = existingFlaw.active && discDots >= 3;
+  const bonusPowers = Array.isArray(existingFlaw.bonus_powers) ? existingFlaw.bonus_powers : [];
+  const usedRanks = bonusPowers.reduce((sum, p) => sum + (Number(p.level) || 0), 0);
+  const remainingRanks = Math.max(0, 3 - usedRanks);
+  const discKind = disciplineKindFor?.(ch, flawDisc) || 'clan';
+
+  const discLevels = DISCIPLINES?.[flawDisc]?.levels || {};
+  const allPowersInDisc = [];
+  for (let lvl = 1; lvl <= discDots; lvl++) {
+    for (const p of (discLevels[lvl] || [])) {
+      allPowersInDisc.push({ ...p, __level: lvl });
+    }
+  }
+
+  const normStr = (v) => String(v ?? '').trim().toLowerCase();
+  const mainPowers = Array.isArray(sheet?.disciplinePowers?.[flawDisc]) ? sheet.disciplinePowers[flawDisc] : [];
+  const ownedKeys = new Set([
+    ...mainPowers.flatMap(p => [normStr(p?.id), normStr(p?.name)]),
+    ...bonusPowers.flatMap(p => [normStr(p?.id), normStr(p?.name)])
+  ].filter(Boolean));
+
+  const dotsByDisc = new Map();
+  Object.entries(sheet?.disciplines || {}).forEach(([k, v]) => dotsByDisc.set(normStr(k).replace(/\s+/g, ' '), Number(v) || 0));
+
+  const countDotsHelper = (s = '') => {
+    const bullets = (s.match(/[•●○]/g) || []).length;
+    const matchResult = s.match(/\b(\d+)\b/);
+    const digits = matchResult ? parseInt(matchResult[1], 10) : 0;
+    return Math.max(bullets, digits || 1);
+  };
+
+  const parseAmalgamHelper = (s = '') =>
+    s.split(/(?:,|&|\+|and)/i)
+      .map(part => part.trim())
+      .filter(Boolean)
+      .map(part => {
+        const nameMatch = part.match(/^[^\d•●○]+/);
+        const dName = (nameMatch ? nameMatch[0] : part).trim().replace(/[:.-]+$/, '');
+        return { disc: dName, dots: countDotsHelper(part) };
+      });
+
+  const availablePowers = allPowersInDisc.map(p => {
+    const pKeys = [normStr(p.id), normStr(p.name)].filter(Boolean);
+    const owned = pKeys.some(k => ownedKeys.has(k));
+    const budgetExceeded = p.__level > remainingRanks;
+    const clanLockUnmet = p.clan && p.clan !== ch?.clan;
+
+    const unmet = [];
+    if (p.amalgam) {
+      const reqs = parseAmalgamHelper(String(p.amalgam));
+      for (const req of reqs) {
+        const have = dotsByDisc.get(normStr(req.disc).replace(/\s+/g, ' ')) || 0;
+        if (have < (req.dots || 1)) {
+          unmet.push(`${req.disc} ${'•'.repeat(req.dots || 1)}`);
+        }
+      }
+    }
+
+    const cost = XP_RULES.ingrainedDisciplinePower(p.__level, discKind);
+    const afford = xp >= cost;
+    const available = !owned && !budgetExceeded && !clanLockUnmet && unmet.length === 0 && isFlawActive;
+
+    return {
+      ...p,
+      __cost: cost,
+      __owned: owned,
+      __budgetExceeded: budgetExceeded,
+      __clanLockUnmet: clanLockUnmet,
+      __unmet: unmet,
+      __afford: afford,
+      __available: available
+    };
+  });
+
+  let filteredPowers = availablePowers;
+  if (isSearching) {
+    filteredPowers = filteredPowers.filter(p => {
+      return msSearchText([p.name, p.effect || '', p.notes || ''], currentSearch).length > 0;
+    });
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div style={{
+        padding: '16px 20px',
+        background: isFlawActive ? 'rgba(225, 29, 72, 0.06)' : 'rgba(156, 163, 175, 0.06)',
+        border: isFlawActive ? '1px solid rgba(225, 29, 72, 0.25)' : '1px solid rgba(156, 163, 175, 0.25)',
+        borderRadius: '8px'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <FaGlyph name="fa-fire" size={18} style={{ color: isFlawActive ? '#e11d48' : '#94a3b8' }} />
+            <h3 style={{ margin: 0, color: 'var(--tint)', fontFamily: 'var(--font-title)', fontSize: '1.2rem' }}>
+              {existingFlaw.flaw_name} ({flawDisc})
+            </h3>
+          </div>
+          <span style={{
+            fontSize: '0.75rem',
+            padding: '3px 10px',
+            borderRadius: '4px',
+            background: isFlawActive ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+            color: isFlawActive ? '#4ade80' : '#f87171',
+            fontWeight: 600
+          }}>
+            {isFlawActive ? 'Active' : 'Inactive: Dots below 3'}
+          </span>
+        </div>
+        <p style={{ margin: '0 0 10px 0', fontSize: '0.85rem', color: '#cbd5e1', lineHeight: 1.45 }}>
+          {flawInfo?.description}
+        </p>
+        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', fontSize: '0.85rem', color: '#94a3b8' }}>
+          <span>Rank Budget: <b style={{ color: '#f8fafc' }}>{usedRanks} of 3</b> used</span>
+          <span>Remaining: <b style={{ color: remainingRanks > 0 ? '#38bdf8' : '#94a3b8' }}>{remainingRanks} ranks</b></span>
+        </div>
+      </div>
+
+      {!isFlawActive && (
+        <div className={styles.alertWarning}>
+          Your rating in {flawDisc} is currently below 3 dots. The Flaw and bonus powers remain inactive until the Discipline is restored to 3 dots or higher.
+        </div>
+      )}
+
+      {remainingRanks === 0 && (
+        <div style={{
+          padding: '16px',
+          background: 'var(--surface-color)',
+          border: '1px solid var(--border-color)',
+          borderRadius: '8px',
+          textAlign: 'center',
+          color: 'var(--text-muted)',
+          fontSize: '0.9rem'
+        }}>
+          All 3 bonus power ranks have been acquired for {flawDisc}.
+        </div>
+      )}
+
+      {isFlawActive && remainingRanks > 0 && (
+        <div>
+          <h4 style={{ margin: '0 0 12px 0', fontFamily: 'var(--font-title)', color: 'var(--tint)' }}>
+            Available Bonus Powers ({flawDisc})
+          </h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {filteredPowers.length === 0 ? (
+              <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                No purchasable bonus powers match this search or budget.
+              </div>
+            ) : (
+              filteredPowers.map(p => {
+                const isExpanded = expandedPowerId === p.id;
+                const disabled = !p.__available || !p.__afford || buyingPowerId === p.id;
+
+                let hint = '';
+                if (p.__owned) hint = 'Already known';
+                else if (p.__budgetExceeded) hint = `Requires ${p.__level} ranks (only ${remainingRanks} left)`;
+                else if (p.__clanLockUnmet) hint = `Requires Clan: ${p.clan}`;
+                else if (p.__unmet.length > 0) hint = `Needs: ${p.__unmet.join(', ')}`;
+                else if (!p.__afford) hint = 'Not enough XP';
+
+                return (
+                  <article
+                    key={p.id}
+                    className={`${styles.shopCard} ${isExpanded ? styles.shopCardExpanded : ''} ${!p.__available ? styles.shopCardLocked : ''}`}
+                  >
+                    <div className={styles.shopCardHeader} onClick={() => setExpandedPowerId(isExpanded ? null : p.id)}>
+                      <div className={styles.shopCardTitleRow}>
+                        <div>
+                          <h2 className={styles.shopCardTitle}>{p.name}</h2>
+                          <p className={styles.shopCardSubtitle}>Level {p.__level} {flawDisc}</p>
+                        </div>
+                        <span className={`material-symbols-outlined ${styles.expandIcon}`}>expand_more</span>
+                      </div>
+
+                      <div className={styles.shopCardFooter}>
+                        <span className={styles.shopCardPrice}>{p.__cost} XP</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', minWidth: 0 }}>
+                          {hint && <span className={styles.shopCardHint}>{hint}</span>}
+                          {p.__available && (
+                            <button
+                              className={styles.shopCardAcquireBtn}
+                              disabled={disabled}
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                setBuyingPowerId(p.id);
+                                try {
+                                  await spendXP(
+                                    {
+                                      type: 'ingrained_discipline_power',
+                                      target: flawDisc,
+                                      powerId: p.id,
+                                      powerName: p.name,
+                                      powerLevel: p.__level,
+                                      disciplineKind: discKind
+                                    },
+                                    `Bonus Power: ${p.name}`
+                                  );
+                                } finally {
+                                  setBuyingPowerId(null);
+                                }
+                              }}
+                            >
+                              {buyingPowerId === p.id ? 'Working...' : 'Acquire'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className={styles.shopCardContent}>
+                      <div className={styles.shopCardText}>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+                          {p.dice_pool && <span style={{ padding: '2px 8px', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '12px' }}><b>Dice Pool:</b> {p.dice_pool}</span>}
+                          {p.difficulty && <span style={{ padding: '2px 8px', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '12px' }}><b>Difficulty:</b> {p.difficulty}</span>}
+                          {p.amalgam && <span style={{ padding: '2px 8px', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '12px' }}><b>Amalgam:</b> {p.amalgam}</span>}
+                          {p.source && <span style={{ padding: '2px 8px', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '12px' }}><b>Source:</b> {p.source}</span>}
+                        </div>
+                        {p.effect && <div style={{ marginBottom: '8px' }}><b>Effect:</b> {p.effect}</div>}
+                        {p.notes && <div>{p.notes}</div>}
+                        {!p.effect && !p.notes && `Learn ${p.name} as a bonus power for ${p.__cost} Experience Points.`}
+                      </div>
+                    </div>
+                  </article>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
