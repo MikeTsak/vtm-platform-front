@@ -952,7 +952,7 @@ function AttributesSection({ sheet, setAttr }) {
   );
 }
 
-function TrackerBox({ label, max, agg = 0, sup = 0, isValue = false, value = 0, stains = 0, onAdjust }) {
+function TrackerBox({ label, max, agg = 0, sup = 0, isValue = false, value = 0, stains = 0, onAdjust, note }) {
   const boxes = [];
   for (let i = 0; i < max; i++) {
     let content = '';
@@ -973,7 +973,7 @@ function TrackerBox({ label, max, agg = 0, sup = 0, isValue = false, value = 0, 
     <div className={styles.trackerBoxGroup}>
       <div className={styles.row} style={{ justifyContent: 'space-between' }}>
         <b>{label}</b>
-        <span className={styles.entrySub}>Max {max}</span>
+        <span className={styles.entrySub}>{note || `Max ${max}`}</span>
       </div>
       <div className={styles.trackerBoxes}>{boxes}</div>
       <div className={styles.row}>
@@ -1014,6 +1014,11 @@ function TrackersSection({ sheet, updateTracker }) {
   const willpower = sheet.willpower || {};
   const humanity = sheet.morality?.humanity ?? sheet.humanity ?? 7;
 
+  const ingrainedFlaw = sheet.ingrained_discipline_flaw;
+  const hasMonstrous = Boolean(ingrainedFlaw?.active && ingrainedFlaw?.flaw_name === 'Monstrous' && Number(sheet.disciplines?.Oblivion || 0) >= 3);
+  const effectiveHumanity = hasMonstrous ? Math.max(0, humanity - 3) : humanity;
+  const humanityNote = hasMonstrous ? `Eff: ${effectiveHumanity}${effectiveHumanity < 1 ? ' (Repulsive)' : ''} · Max 10` : 'Max 10';
+
   return (
     <div>
       <h2 className={styles.contentTitle}>Trackers</h2>
@@ -1021,7 +1026,7 @@ function TrackersSection({ sheet, updateTracker }) {
       <div className={styles.trackerGrid}>
         <TrackerBox label="Health" max={maxHealth} agg={health.aggravated || 0} sup={health.superficial || 0} onAdjust={(f, d) => updateTracker('health', f, d)} />
         <TrackerBox label="Willpower" max={maxWillpower} agg={willpower.aggravated || 0} sup={willpower.superficial || 0} onAdjust={(f, d) => updateTracker('willpower', f, d)} />
-        <TrackerBox label="Humanity" max={10} isValue value={humanity} stains={sheet.stains || 0} onAdjust={(f, d) => updateTracker('humanity', f, d)} />
+        <TrackerBox label="Humanity" max={10} isValue value={humanity} stains={sheet.stains || 0} onAdjust={(f, d) => updateTracker('humanity', f, d)} note={humanityNote} />
         <TrackerBox label="Hunger" max={5} isValue value={sheet.hunger || 0} onAdjust={(f, d) => updateTracker('hunger', f, d)} />
       </div>
     </div>

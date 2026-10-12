@@ -235,8 +235,16 @@ export default function DiceRoller({ characterId }) {
   };
 
   // --- 6. Local Rendering Variables ---
-  const canEnterWp = hasRolled && !wpUsed && normalIdx.length > 0;
-  const canConfirmWp = wpSelections.size > 0 && wpSelections.size <= 3;
+  const hasMonstrous = Boolean(sheet?.ingrained_discipline_flaw?.active && sheet?.ingrained_discipline_flaw?.flaw_name === 'Monstrous' && Number(sheet?.disciplines?.Oblivion || 0) >= 3);
+  const rawHum = Number(sheet?.humanity ?? sheet?.morality?.humanity ?? 7);
+  const effectiveHum = hasMonstrous ? Math.max(0, rawHum - 3) : rawHum;
+
+  const hasBlunt = Boolean(sheet?.ingrained_discipline_flaw?.active && sheet?.ingrained_discipline_flaw?.flaw_name === 'Blunt' && Number(sheet?.disciplines?.Dominate || 0) >= 3);
+  const isSocialTest = Boolean(note && ['charisma', 'manipulation', 'composure', 'etiquette', 'insight', 'intimidation', 'leadership', 'performance', 'persuasion', 'streetwise', 'subterfuge', 'social'].some(k => note.toLowerCase().includes(k)));
+  const isBluntBlocked = hasBlunt && isSocialTest;
+
+  const canEnterWp = hasRolled && !wpUsed && normalIdx.length > 0 && !isBluntBlocked;
+  const canConfirmWp = wpSelections.size > 0 && wpSelections.size <= 3 && !isBluntBlocked;
   
   // Calculate WP tracking for the button display
   const comp = Number(sheet?.attributes?.Composure) || 1;
@@ -392,14 +400,20 @@ export default function DiceRoller({ characterId }) {
                      <span className={canAffordWp ? 'text-on-surface' : 'text-error'}>{remainingWp} / {maxWp}</span>
                    </div>
                  )}
+                 {hasMonstrous && (
+                   <div className="text-xs text-on-surface-variant/80 mb-1">
+                     Humanity {rawHum} <span style={{ color: effectiveHum < 1 ? 'var(--danger, #f87171)' : '#c084fc' }}>(Eff: {effectiveHum}{effectiveHum < 1 ? ', Repulsive flaw' : ''})</span>
+                   </div>
+                 )}
                  
                  {!wpMode && !wpUsed && (
                     <button 
-                      className={`w-full py-2 rounded text-sm font-semibold transition-colors ${canAffordWp && canEnterWp ? 'bg-surface-container-lowest hover:bg-primary/20 text-primary border border-primary/30' : 'bg-surface-container-lowest text-on-surface-variant/50 border border-outline/10 cursor-not-allowed'}`}
-                      disabled={!canEnterWp || !canAffordWp} 
+                      className={`w-full py-2 rounded text-sm font-semibold transition-colors ${canAffordWp && canEnterWp && !isBluntBlocked ? 'bg-surface-container-lowest hover:bg-primary/20 text-primary border border-primary/30' : 'bg-surface-container-lowest text-on-surface-variant/50 border border-outline/10 cursor-not-allowed'}`}
+                      disabled={!canEnterWp || !canAffordWp || isBluntBlocked} 
                       onClick={() => setWpMode(true)}
+                      title={isBluntBlocked ? 'Dominate: Blunt flaw prevents Willpower rerolls on Social tests' : undefined}
                     >
-                      {canAffordWp ? 'Spend 1 WP to Reroll' : 'No Willpower Remaining'}
+                      {isBluntBlocked ? 'Blunt: Reroll Forbidden on Social Tests' : canAffordWp ? 'Spend 1 WP to Reroll' : 'No Willpower Remaining'}
                     </button>
                  )}
                  {wpMode && (

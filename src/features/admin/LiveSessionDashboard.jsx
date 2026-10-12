@@ -890,6 +890,8 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
 
                     const ingrainedFlaw = sheet?.ingrained_discipline_flaw;
                     const hasIngrainedFlaw = Boolean(ingrainedFlaw?.active);
+                    const hasMonstrous = Boolean(hasIngrainedFlaw && ingrainedFlaw?.flaw_name === 'Monstrous' && Number(sheet?.disciplines?.Oblivion || 0) >= 3);
+                    const effectiveHumanity = hasMonstrous ? Math.max(0, humanity - 3) : humanity;
 
                     return (
                       <div key={charId} className={styles.playerCard} style={{ borderColor: frenzy?.color ?? 'var(--outline-variant)' }}>
@@ -982,7 +984,15 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
 
                     <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', padding: '0.5rem', borderRadius: '8px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>
-                        <span>Humanity</span><span>{humanity}{stains > 0 && <span style={{ color: 'var(--danger)' }}> · {stains} st</span>}</span>
+                        <span>
+                          Humanity
+                          {hasMonstrous && (
+                            <span style={{ color: effectiveHumanity < 1 ? 'var(--danger)' : '#c084fc', marginLeft: '4px', textTransform: 'none', fontWeight: 500 }} title="Oblivion: Monstrous flaw. True Humanity preserved for remorse and daylight.">
+                              (Eff: {effectiveHumanity}{effectiveHumanity < 1 ? ', Repulsive' : ''})
+                            </span>
+                          )}
+                        </span>
+                        <span>{humanity}{stains > 0 && <span style={{ color: 'var(--danger)' }}> · {stains} st</span>}</span>
                       </div>
                       <div style={{ display: 'flex', gap: 2, padding: '2px 0', height: '14px' }}>
                         {Array.from({ length: 10 }).map((_, i) => {
@@ -1633,15 +1643,25 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
             <div style={{ paddingTop: visibleTools[0] !== 'remorse' ? '1rem' : '0', borderTop: visibleTools[0] !== 'remorse' ? '1px solid var(--outline-variant)' : 'none' }}>
               <h3 style={{ fontSize: '1rem', color: 'var(--on-surface)', marginBottom: '0.35rem' }}>Remorse (End of Session)</h3>
               <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.75rem 0' }}>
-                Rolls (10 &minus; Humanity &minus; Stains). No success means the character loses a point of Humanity &mdash; applied automatically.
+                Rolls (10 &minus; Humanity &minus; Stains). No success means the character loses a point of Humanity: applied automatically.
               </p>
               {players.length === 0 && <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No players connected.</div>}
               {players.map(p => {
                 const charId = p.character_id ?? p.id;
+                const sheet = parseSheet(p.sheet);
+                const humanity = Number(sheet.humanity ?? sheet.morality?.humanity ?? 7);
+                const currentStains = Math.max(0, Number(remorseStains[charId] ?? sheet.stains ?? 1));
+                const hasFaded = Boolean(sheet?.ingrained_discipline_flaw?.active && sheet?.ingrained_discipline_flaw?.flaw_name === 'Faded');
+                const pool = remorsePool(humanity, currentStains, hasFaded);
                 const name = p.name ?? p.character_name ?? 'Unknown';
                 return (
                   <div key={charId} className={styles.remorseRow}>
-                    <span className={styles.remorseName}>{name}</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+                      <span className={styles.remorseName}>{name}</span>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                        Hum {humanity}, Pool: {pool}d {hasFaded ? '(Faded: 1 fewer die)' : ''}
+                      </span>
+                    </div>
                     <input
                       type="number"
                       min="0"

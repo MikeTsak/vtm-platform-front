@@ -235,6 +235,8 @@ export default function LiveSession({ preview = null }) {
   const [connStatus, setConnStatus] = useState('');
   const [signalNote, setSignalNote] = useState('');
   const [handRaised, setHandRaised] = useState(false);
+  const [sanguinaryDistracted, setSanguinaryDistracted] = useState(false);
+  const [stasisIncompleteForm, setStasisIncompleteForm] = useState(false);
 
   // Discipline state
   const [activeDisc, setActiveDisc] = useState(null);
@@ -282,8 +284,26 @@ export default function LiveSession({ preview = null }) {
     // Degeneration: −2 to everything.
     if (trackers?.degeneration && !sheet?.frenzyState) pool -= 2;
 
+    // Blood Sorcery Ingrained Flaw Sanguinary Animism: 2 dice distraction penalty on Social and Mental pools
+    const hasSanguinaryAnimism = (sanguinaryDistracted || sheet?.sanguinaryDistracted) &&
+      sheet?.ingrained_discipline_flaw?.active &&
+      sheet?.ingrained_discipline_flaw?.flaw_name === 'Sanguinary Animism';
+    if (hasSanguinaryAnimism && selectedTraits.some(t => MENTAL_SOCIAL_TRAITS.has(t))) {
+      pool -= 2;
+    }
+
+    // Oblivion Ingrained Flaw Monstrous: if effective Humanity is below 1, Repulsive flaw applies (2 dice penalty on positive Social pools)
+    const isMonstrousActive = sheet?.ingrained_discipline_flaw?.active &&
+      sheet?.ingrained_discipline_flaw?.flaw_name === 'Monstrous';
+    if (isMonstrousActive && selectedTraits.some(t => SOCIAL_TRAITS.has(t))) {
+      const effHum = Math.max(0, (trackers?.humanity ?? 7) - 3);
+      if (effHum < 1) {
+        pool -= 2;
+      }
+    }
+
     return Math.max(0, pool);
-  }, [sheet, selectedTraits, bloodSurgeActive, bpStats.surgeBonus, bpStats.disciplineBonus, specialtyActive, situationalMod, myEffects, powerMods, activeEffectIds, wpIgnoreImpair, trackers]);
+  }, [sheet, selectedTraits, bloodSurgeActive, bpStats.surgeBonus, bpStats.disciplineBonus, specialtyActive, situationalMod, myEffects, powerMods, activeEffectIds, wpIgnoreImpair, trackers, sanguinaryDistracted]);
 
   const activePowers = useMemo(() => {
     if (!activeDisc || !DISCIPLINES[activeDisc]) return [];
@@ -512,11 +532,12 @@ export default function LiveSession({ preview = null }) {
     if (sheet?.ingrained_discipline_flaw?.active && sheet?.ingrained_discipline_flaw?.flaw_name === 'Egomaniac') {
       const isPresence = body?.discipline === 'Presence' || (Array.isArray(body?.traits) && body.traits.includes('Presence')) || selectedTraits.includes('Presence');
       if (isPresence && (outcome?.hasMessyCritical || !outcome?.metDifficulty)) {
-        setSignalNote('Egomaniac Flaw: Make a Fury Frenzy test at Difficulty 2!');
+        await applySheetUpdate(next => { next.frenzyState = 'fury'; return next; });
+        setSignalNote('Egomaniac Flaw: Presence power failed or Messy Critical! Make a Fury Frenzy test at Difficulty 2.');
         await pushRoll('flaw_trigger', {
           characterId: character?.id,
           roll_type: 'flaw_trigger',
-          note: 'Egomaniac Flaw: Presence power failed or Messy Critical! Make a Fury Frenzy test at Difficulty 2',
+          note: 'Egomaniac Flaw: Presence power failed or Messy Critical! Test Fury Frenzy at Difficulty 2',
           character_name: character?.name || sheet?.name || 'Unknown'
         });
       }
@@ -598,6 +619,16 @@ export default function LiveSession({ preview = null }) {
         type: 'mend_rouse',
         note,
       });
+
+      if (data.healed > 0 && sheet?.ingrained_discipline_flaw?.active && sheet?.ingrained_discipline_flaw?.flaw_name === 'Scar Tissue') {
+        setSignalNote('Scar Tissue Flaw: Mended wounds remain visibly mutilated until day rest (risk of Masquerade breach)!');
+        await pushRoll('flaw_trigger', {
+          characterId: character?.id,
+          roll_type: 'flaw_trigger',
+          note: 'Scar Tissue Flaw: Mended injuries remain visibly mutilated until day rest (risk of Masquerade breach)',
+          character_name: character?.name || sheet?.name || 'Unknown'
+        });
+      }
     } catch (e) {
       setLastRoll({
         normalDice: [], hungerDice: [],
@@ -685,10 +716,17 @@ export default function LiveSession({ preview = null }) {
 
   // V5: Willpower can't be spent to reroll frenzy, Remorse, Rouse or Humanity tests.
   // Up to 3 dice, once per roll.
+  const isBluntBlocked = Boolean(
+    sheet?.ingrained_discipline_flaw?.active
+    && sheet?.ingrained_discipline_flaw?.flaw_name === 'Blunt'
+    && (selectedTraits.some(t => SOCIAL_TRAITS.has(t)) || (Array.isArray(lastRoll?.traits) && lastRoll.traits.some(t => SOCIAL_TRAITS.has(t))) || /social|charisma|manipulation|composure|etiquette|insight|intimidation|leadership|persuasion|streetwise|subterfuge/i.test(String(lastRoll?.note || '')))
+  );
+
   const rerollAllowed = Boolean(
     lastRoll
     && !lastRoll.rerolled
     && lastRoll.type !== 'willpower_reroll'
+    && !isBluntBlocked
     && !['frenzy_resistance', 'remorse', 'rouse_check', 'discipline_rouse_check', 'blush_of_life', 'blood_surge', 'mend_rouse'].includes(lastRoll.type)
     && (lastRoll.normalDice?.length > 0 || messyHungerTen(lastRoll))
     && trackers?.willpower
@@ -824,19 +862,29 @@ export default function LiveSession({ preview = null }) {
             character_name: character?.name || sheet?.name || 'Unknown'
           });
         } else if (autoActivate.discName === 'Potence' && flaw.flaw_name === 'Killer Instinct') {
-          setSignalNote('Killer Instinct Flaw: Failed Potence Rouse check! Test for Fury Frenzy immediately.');
+          nextSheet.frenzyState = 'fury';
+          setSheet({ ...nextSheet });
+          setTrackers(summarizeTrackers(nextSheet));
+          if (character?.id && sessionId) {
+            api.patch(`/live-session/${sessionId}/players/${character.id}`, { frenzyState: 'fury' }).catch(() => {});
+          }
+          setSignalNote('Killer Instinct Flaw: Failed Potence Rouse check! Entered Fury Frenzy test.');
           await pushRoll('flaw_trigger', {
             characterId: character?.id,
             roll_type: 'flaw_trigger',
-            note: 'Killer Instinct Flaw: Failed Potence Rouse check! Test for Fury Frenzy immediately',
+            note: 'Killer Instinct Flaw: Failed Potence Rouse check! Entered Fury Frenzy test',
             character_name: character?.name || sheet?.name || 'Unknown'
           });
         } else if (autoActivate.discName === 'Protean' && flaw.flaw_name === 'Stasis') {
+          nextSheet.stasisIncompleteForm = true;
+          setStasisIncompleteForm(true);
+          setSheet({ ...nextSheet });
+          setTrackers(summarizeTrackers(nextSheet));
           setSignalNote('Stasis Flaw: Failed Protean Rouse check! Reverting leaves an incomplete change.');
           await pushRoll('flaw_trigger', {
             characterId: character?.id,
             roll_type: 'flaw_trigger',
-            note: 'Stasis Flaw: Failed Protean Rouse check! Reverting leaves an incomplete change',
+            note: 'Stasis Flaw: Failed Protean Rouse check! Reversion leaves an incomplete change',
             character_name: character?.name || sheet?.name || 'Unknown'
           });
         }
@@ -934,6 +982,75 @@ export default function LiveSession({ preview = null }) {
   const handleResistFrenzy = async () => {
     if (!sheet?.frenzyState) return;
     await serverRoll({ mode: 'frenzy' });
+  };
+
+  // Ride the Wave: focus the Beast instead of resisting
+  const handleRideTheWave = async () => {
+    if (!sheet?.frenzyState) return;
+    const resPool = (Number(sheet?.attributes?.Resolve) || 1) + (Number(sheet?.attributes?.Composure) || 1);
+    const data = await serverRoll({
+      mode: 'free',
+      pool: resPool,
+      hunger: 0,
+      difficulty: 3,
+      note: 'Ride the Wave: focusing the Beast',
+    });
+    const succeeded = Boolean(data?.roll?.results?.normal?.some(d => d >= 6));
+    if (succeeded) {
+      await applySheetUpdate(next => { next.frenzyState = null; return next; });
+      setSignalNote('Rode the Wave: The Beast is channeled and frenzy subsides.');
+    } else {
+      const isUntamed = sheet?.ingrained_discipline_flaw?.active && sheet?.ingrained_discipline_flaw?.flaw_name === 'Untamed';
+      if (isUntamed) {
+        // Animalism Untamed Flaw: failing to Ride the Wave inflicts two Stains (cannot be mitigated by Convictions)
+        await applySheetUpdate(next => {
+          next.stains = Math.min(10, (Number(next.stains) || 0) + 2);
+          return next;
+        });
+        if (sessionId && character?.id) {
+          api.patch(`/live-session/${sessionId}/players/${character.id}`, { stainsDelta: 2 }).catch(() => {});
+        }
+        setSignalNote('Untamed Flaw: Failed to Ride the Wave! Received 2 Stains (cannot be mitigated by Convictions).');
+        await pushRoll('flaw_trigger', {
+          characterId: character?.id,
+          roll_type: 'flaw_trigger',
+          note: 'Untamed Flaw: Failed to Ride the Wave! 2 Stains inflicted (no Conviction mitigation)',
+          character_name: character?.name || sheet?.name || 'Unknown'
+        });
+      } else {
+        setSignalNote('Failed to Ride the Wave: The Beast rages on.');
+      }
+    }
+  };
+
+  // Sever Stasis Form: Protean Ingrained Flaw Stasis
+  const handleSeverStasisForm = async () => {
+    if (!character?.id) return;
+    const maxHp = trackers.health.max;
+    const currentAgg = sheet?.health?.aggravated || 0;
+    const currentSup = sheet?.health?.superficial || 0;
+    const nextHealth = {
+      superal: Math.max(0, currentSup - (currentAgg + 1 > maxHp ? 1 : 0)),
+      superficial: Math.max(0, currentSup - (currentAgg + 1 > maxHp ? 1 : 0)),
+      aggravated: Math.min(maxHp, currentAgg + 1)
+    };
+    delete nextHealth.superal;
+    await applySheetUpdate(next => {
+      next.health = nextHealth;
+      next.stasisIncompleteForm = false;
+      return next;
+    });
+    setStasisIncompleteForm(false);
+    if (sessionId) {
+      api.patch(`/live-session/${sessionId}/players/${character.id}`, { healthAggDelta: 1 }).catch(() => {});
+    }
+    setSignalNote('Severed incomplete transformation: 1 Aggravated Damage sustained.');
+    await pushRoll('flaw_trigger', {
+      characterId: character?.id,
+      roll_type: 'flaw_trigger',
+      note: 'Stasis Flaw: Severed incomplete transformation (1 Aggravated Health damage sustained)',
+      character_name: character?.name || sheet?.name || 'Unknown'
+    });
   };
 
   if (isAdmin) {
@@ -1087,7 +1204,7 @@ export default function LiveSession({ preview = null }) {
             <span className="material-symbols-outlined">warning</span>
             <span style={{ textTransform: 'uppercase', letterSpacing: '-0.02em' }}>{FRENZY_ALERTS[activeFrenzy]?.label || 'Frenzy State Active'}</span>
           </div>
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <button style={{ color: 'var(--primary)', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 'bold' }} disabled={isRolling} onClick={handleResistFrenzy}>
               Resist (unspent Willpower + Humanity/3)
             </button>
@@ -1098,6 +1215,14 @@ export default function LiveSession({ preview = null }) {
               title="Spend 1 Superficial Willpower to act freely for one turn"
             >
               Spend WP: act 1 turn
+            </button>
+            <button
+              style={{ color: '#f87171', background: 'transparent', border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: 4, padding: '0.2rem 0.5rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}
+              disabled={isRolling}
+              onClick={handleRideTheWave}
+              title={sheet?.ingrained_discipline_flaw?.active && sheet?.ingrained_discipline_flaw?.flaw_name === 'Untamed' ? 'Untamed Flaw: Failing to Ride the Wave inflicts two Stains unmitigated by Convictions' : 'Ride the Wave to guide the Frenzy'}
+            >
+              Ride the Wave
             </button>
           </div>
         </div>
@@ -1373,16 +1498,21 @@ export default function LiveSession({ preview = null }) {
 
             {/* Humanity */}
             <div className={styles.trackerBox} style={{ padding: '1.25rem 1.5rem', marginBottom: '1rem', background: 'var(--surface-container-high)' }}>
-              <div className={styles.trackerHeader} style={{ marginBottom: '1rem' }}>
+              <div className={styles.trackerHeader} style={{ marginBottom: '0.6rem' }}>
                 <span className={styles.labelMd}>Humanity</span>
                 <span style={{ color: 'var(--primary)', fontWeight: 'bold' }}>
                   {humanity}{trackers.stains > 0 && <span style={{ color: 'var(--error)', fontWeight: 'normal' }}> · {trackers.stains} stain{trackers.stains === 1 ? '' : 's'}</span>}
                 </span>
               </div>
               {isMonstrous && (
-                <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 'bold' }}>
+                <div style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 'bold' }}>
                   Effective Humanity: {effectiveHumanity} (Oblivion: Monstrous)
-                </p>
+                  {effectiveHumanity < 1 && (
+                    <div style={{ color: 'var(--error)', fontSize: '0.72rem', marginTop: '2px', fontWeight: 'bold' }}>
+                      Repulsive Flaw active: 2 dice penalty on positive Social pools
+                    </div>
+                  )}
+                </div>
               )}
               <div className={styles.dotRow} style={{ gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
                 {Array.from({ length: 10 }).map((_, i) => {
@@ -1390,6 +1520,10 @@ export default function LiveSession({ preview = null }) {
                   const stained = !filled && i >= 10 - trackers.stains;
                   return <div key={i} className={filled ? styles.dotFilled : stained ? styles.dotStained : styles.dotEmpty} />;
                 })}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                <span>Remorse Pool: <strong style={{ color: 'var(--on-surface)' }}>{remorsePool(humanity, trackers.stains, trackers.isFaded)}</strong> dice</span>
+                {trackers.isFaded && <span style={{ color: '#f87171', fontWeight: 600 }}>Faded: 1 fewer die</span>}
               </div>
               {trackers.degeneration && (
                 <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.75rem', color: 'var(--error)', fontWeight: 'bold' }}>
@@ -1427,8 +1561,26 @@ export default function LiveSession({ preview = null }) {
                   {INGRAINED_DISCIPLINE_FLAWS[sheet.ingrained_discipline_flaw.discipline]?.description || sheet.ingrained_discipline_flaw.discipline}
                 </p>
                 {sheet.ingrained_discipline_flaw.active && sheet.ingrained_discipline_flaw.flaw_name === 'Sanguinary Animism' && (
-                  <div style={{ marginTop: '6px', fontSize: '0.7rem', color: '#f87171', fontWeight: 600 }}>
-                    Distraction: 2 dice penalty from Social and Mental pools in the scene following feeding.
+                  <div style={{ marginTop: '8px' }}>
+                    <div style={{ fontSize: '0.7rem', color: '#f87171', fontWeight: 600, marginBottom: '4px' }}>
+                      Distraction: 2 dice penalty from Social and Mental pools in the scene following feeding.
+                    </div>
+                    <button
+                      className={styles.btnOutline}
+                      style={{
+                        padding: '0.25rem 0.5rem',
+                        fontSize: '0.7rem',
+                        borderColor: (sanguinaryDistracted || sheet?.sanguinaryDistracted) ? '#f87171' : 'var(--outline-variant)',
+                        color: (sanguinaryDistracted || sheet?.sanguinaryDistracted) ? '#f87171' : 'var(--text-muted)',
+                      }}
+                      onClick={() => {
+                        const next = !sanguinaryDistracted;
+                        setSanguinaryDistracted(next);
+                        applySheetUpdate(s => { s.sanguinaryDistracted = next; return s; });
+                      }}
+                    >
+                      {(sanguinaryDistracted || sheet?.sanguinaryDistracted) ? 'Distraction Active (2 dice penalty)' : 'Toggle Post Feeding Distraction'}
+                    </button>
                   </div>
                 )}
                 {sheet.ingrained_discipline_flaw.active && sheet.ingrained_discipline_flaw.flaw_name === 'Monstrous' && (
@@ -1437,8 +1589,19 @@ export default function LiveSession({ preview = null }) {
                   </div>
                 )}
                 {sheet.ingrained_discipline_flaw.active && sheet.ingrained_discipline_flaw.flaw_name === 'Stasis' && (
-                  <div style={{ marginTop: '6px', fontSize: '0.7rem', color: '#f87171', fontWeight: 600 }}>
-                    Stasis: Failed Protean Rouse check leaves an incomplete change (sever area taking 1 Agg damage, or wait for day sleep).
+                  <div style={{ marginTop: '8px' }}>
+                    <div style={{ fontSize: '0.7rem', color: '#f87171', fontWeight: 600, marginBottom: '4px' }}>
+                      Stasis: Failed Protean Rouse check leaves an incomplete change (sever area taking 1 Agg damage, or wait for day sleep).
+                    </div>
+                    {(stasisIncompleteForm || sheet?.stasisIncompleteForm) && (
+                      <button
+                        className={styles.btnPrimary}
+                        style={{ padding: '0.3rem 0.6rem', fontSize: '0.7rem', background: '#dc2626' }}
+                        onClick={handleSeverStasisForm}
+                      >
+                        Sever Incomplete Form (1 Agg Damage)
+                      </button>
+                    )}
                   </div>
                 )}
                 {sheet.ingrained_discipline_flaw.active && sheet.ingrained_discipline_flaw.flaw_name === 'Scar Tissue' && (

@@ -2618,6 +2618,7 @@ export default function CharacterView({
                   spendXP={spendXP}
                   isAdmin={isAdmin}
                   disciplineKindFor={disciplineKindFor}
+                  trainsByDowntime={trainsByDowntime}
                 />
               </div>
             )}
@@ -3858,7 +3859,7 @@ function SpecialtyAdder({ xp, onAdd }) {
 }
 
 /* ---------- Ingrained Discipline Flaws Shop Section ---------- */
-function DisciplineFlawsShopSection({ sheet, ch, xp, isSearching, currentSearch, spendXP, isAdmin, disciplineKindFor }) {
+function DisciplineFlawsShopSection({ sheet, ch, xp, isSearching, currentSearch, spendXP, isAdmin, disciplineKindFor, trainsByDowntime }) {
   const [confirmFlaw, setConfirmFlaw] = useState(null);
   const [buyingPowerId, setBuyingPowerId] = useState(null);
   const [expandedPowerId, setExpandedPowerId] = useState(null);
@@ -3897,7 +3898,7 @@ function DisciplineFlawsShopSection({ sheet, ch, xp, isSearching, currentSearch,
             Ingrained Discipline Flaws
           </h3>
           <p style={{ margin: 0, fontSize: '0.85rem', color: '#cbd5e1', lineHeight: 1.5 }}>
-            Characters with 3 or more dots in an in clan Discipline may take 1 Ingrained Discipline Flaw across their sheet. The Flaw costs 0 XP, is irreversible, uses 1 downtime action, and unlocks up to 3 ranks worth of bonus powers in that Discipline.
+            Characters with 3 or more dots in an in clan Discipline may take 1 Ingrained Discipline Flaw across their sheet. The Flaw costs 0 XP, is irreversible, {trainsByDowntime ? 'uses 1 downtime action' : 'requires no downtime action for unactivated characters'}, and unlocks up to 3 ranks worth of bonus powers in that Discipline.
           </p>
         </div>
 
@@ -3927,7 +3928,7 @@ function DisciplineFlawsShopSection({ sheet, ch, xp, isSearching, currentSearch,
                 owned={sheet?.disciplines?.[discName]}
                 leftIcon={iconPath(discName)}
                 disabled={false}
-                hint="Costs 0 XP and 1 downtime action"
+                hint={trainsByDowntime ? 'Costs 0 XP and 1 downtime action' : 'Costs 0 XP (no downtime required)'}
                 description={flaw.description}
                 actionLabel="Acquire Flaw"
                 onBuy={() => setConfirmFlaw({ discName, flaw })}
@@ -3970,7 +3971,7 @@ function DisciplineFlawsShopSection({ sheet, ch, xp, isSearching, currentSearch,
                 </div>
               </div>
               <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                Cost: 0 XP and 1 downtime action.
+                Cost: 0 XP{trainsByDowntime ? ' and 1 downtime action' : ' (no downtime action required)'}.
               </p>
             </div>
           </ConfirmModal>

@@ -11,7 +11,7 @@ import { maxHealth as deriveMaxHealth } from '../../utils/derivedStats';
 import { getBloodPotencyStats } from '../../utils/liveSessionMechanics';
 
 // ---------- TRACKER DISPLAY ----------
-const TrackerDisplay = ({ label, currentObj, max, onUpdate, isValueTracker = false, value = 0, stains = 0 }) => {
+const TrackerDisplay = ({ label, currentObj, max, onUpdate, isValueTracker = false, value = 0, stains = 0, extraInfo }) => {
   const trackSize = max || 1;
   const agg = currentObj?.aggravated || 0;
   const sup = currentObj?.superficial || 0;
@@ -58,7 +58,10 @@ const TrackerDisplay = ({ label, currentObj, max, onUpdate, isValueTracker = fal
   return (
     <div className={styles.trackerContainer}>
       <div className={styles.trackerLabel}>
-        <span>{label}</span>
+        <span>
+          {label}
+          {extraInfo && <span style={{ fontSize: '0.72rem', color: '#c084fc', textTransform: 'none', marginLeft: '4px' }}>{extraInfo}</span>}
+        </span>
         <span className={styles.trackerMax}>MAX: {trackSize}</span>
       </div>
       <div className={styles.trackerBoxes}>{boxes}</div>
@@ -381,7 +384,23 @@ export default function AdminCharactersTab({ users, onDelete, onOpenEditor }) {
                 <div className={styles.charTrackersPanel}>
                   <TrackerDisplay label="Health" max={maxHealth} currentObj={data.health || {}} onUpdate={(type, delta) => updateTracker(c, 'health', type, delta)} />
                   <TrackerDisplay label="Willpower" max={maxWillpower} currentObj={data.willpower || {}} onUpdate={(type, delta) => updateTracker(c, 'willpower', type, delta)} />
-                  <TrackerDisplay label="Humanity" max={10} isValueTracker={true} value={data.morality?.humanity ?? data.humanity ?? 7} stains={data.stains || 0} onUpdate={(type, delta) => updateTracker(c, 'humanity', type, delta)} />
+                  {(() => {
+                    const hasMonstrous = Boolean(data.ingrained_discipline_flaw?.active && data.ingrained_discipline_flaw?.flaw_name === 'Monstrous' && Number(data.disciplines?.Oblivion || 0) >= 3);
+                    const rawHum = data.morality?.humanity ?? data.humanity ?? 7;
+                    const effHum = hasMonstrous ? Math.max(0, rawHum - 3) : rawHum;
+                    const humExtra = hasMonstrous ? `(Eff: ${effHum}${effHum < 1 ? ', Repulsive' : ''})` : null;
+                    return (
+                      <TrackerDisplay
+                        label="Humanity"
+                        max={10}
+                        isValueTracker={true}
+                        value={rawHum}
+                        stains={data.stains || 0}
+                        extraInfo={humExtra}
+                        onUpdate={(type, delta) => updateTracker(c, 'humanity', type, delta)}
+                      />
+                    );
+                  })()}
                   <TrackerDisplay label="Hunger" max={5} isValueTracker={true} value={data.hunger || 0} onUpdate={(type, delta) => updateTracker(c, 'hunger', type, delta)} />
                 </div>
 

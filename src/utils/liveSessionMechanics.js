@@ -73,8 +73,10 @@ export function applyHealthDamage(track, rawAmount, type = 'superficial', opts =
   return { superficial: sup, aggravated: agg, appliedAmount: amount };
 }
 
-export const remorsePool = (humanity, stains) =>
-  Math.max(1, 10 - (Number(humanity) || 0) - (Number(stains) || 0));
+export const remorsePool = (humanity, stains, hasFaded = false) => {
+  const base = Math.max(1, 10 - (Number(humanity) || 0) - (Number(stains) || 0));
+  return hasFaded ? Math.max(1, base - 1) : base;
+};
 
 export function rollPool(pool, hunger, difficulty = 0, rng = Math.random) {
   const totalPool = clamp(pool, 0, 30);
@@ -196,10 +198,37 @@ export function summarizeTrackers(sheet) {
   const defaultBP = isThinblood ? 0 : 1;
   const rawBP = sheet?.blood_potency ?? sheet?.bloodPotency ?? defaultBP;
 
+  const isFlawActive = Boolean(sheet?.ingrained_discipline_flaw && Number(sheet?.disciplines?.[sheet.ingrained_discipline_flaw.discipline] || 0) >= 3);
+  const isMonstrous = isFlawActive && sheet?.ingrained_discipline_flaw?.flaw_name === 'Monstrous';
+  const effectiveHumanity = isMonstrous ? Math.max(0, humanity - 3) : humanity;
+  const isFaded = isFlawActive && sheet?.ingrained_discipline_flaw?.flaw_name === 'Faded';
+  const isBlunt = isFlawActive && sheet?.ingrained_discipline_flaw?.flaw_name === 'Blunt';
+  const isBreakdown = isFlawActive && sheet?.ingrained_discipline_flaw?.flaw_name === 'Breakdown';
+  const isKillerInstinct = isFlawActive && sheet?.ingrained_discipline_flaw?.flaw_name === 'Killer Instinct';
+  const isEgomaniac = isFlawActive && sheet?.ingrained_discipline_flaw?.flaw_name === 'Egomaniac';
+  const isStasis = isFlawActive && sheet?.ingrained_discipline_flaw?.flaw_name === 'Stasis';
+  const isUntamed = isFlawActive && sheet?.ingrained_discipline_flaw?.flaw_name === 'Untamed';
+  const isDaymares = isFlawActive && sheet?.ingrained_discipline_flaw?.flaw_name === 'Daymares';
+  const isSanguinaryAnimism = isFlawActive && sheet?.ingrained_discipline_flaw?.flaw_name === 'Sanguinary Animism';
+  const isScarTissue = isFlawActive && sheet?.ingrained_discipline_flaw?.flaw_name === 'Scar Tissue';
+
   return {
     hunger: clamp(sheet?.hunger ?? 1, 0, 5),
     bloodPotency: clamp(rawBP, 0, 10),
     humanity,
+    effectiveHumanity,
+    isMonstrous,
+    repulsiveFlawActive: isMonstrous && effectiveHumanity < 1,
+    isFaded,
+    isBlunt,
+    isBreakdown,
+    isKillerInstinct,
+    isEgomaniac,
+    isStasis,
+    isUntamed,
+    isDaymares,
+    isSanguinaryAnimism,
+    isScarTissue,
     stains,
     health,
     willpower,
