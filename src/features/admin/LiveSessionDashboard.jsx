@@ -18,6 +18,7 @@ import { formatEuDate } from '../../utils/dateFormatter';
 import generateVTMCharacterSheetPDF from '../../utils/pdfGenerator';
 import LiveSessionRollHistory from '../live-session/LiveSessionRollHistory';
 import WikiReferenceBar from '../live-session/WikiReferenceBar';
+import { INGRAINED_DISCIPLINE_FLAWS } from '../../data/ingrainedFlaws';
 import sharedStyles from '../../styles/LiveSession.module.css';
 import adminStyles from '../../styles/LiveSessionAdmin.module.css';
 
@@ -97,7 +98,14 @@ const RITUAL_ENTRIES = Object.entries(RITUALS).flatMap(([kind, { meta = {}, leve
   )
 );
 
-const ALL_REFERENCE = [...RULES, ...DISC_ENTRIES, ...RITUAL_ENTRIES, ...MERITS, ...FLAWS];
+const INGRAINED_ENTRIES = Object.entries(INGRAINED_DISCIPLINE_FLAWS).map(([disc, info]) => ({
+  category: 'ingrained flaws',
+  title: `${info.name} (${disc})`,
+  content: `Ingrained Discipline Flaw (${disc})\n${info.description}`,
+  source: info.source || 'Tattered Façade, p. 108',
+}));
+
+const ALL_REFERENCE = [...RULES, ...DISC_ENTRIES, ...RITUAL_ENTRIES, ...MERITS, ...FLAWS, ...INGRAINED_ENTRIES];
 
 const wikiSearch = new MiniSearch({
   fields: ['title', 'content', 'category'],
@@ -601,11 +609,18 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
     // Prefer the tracked Stains count; fall back to the manual input.
     const stains = Math.max(0, Number(remorseStains[charId] ?? sheet.stains ?? 1));
     const name = p.name ?? p.character_name ?? sheet.name ?? 'Unknown';
-    const pool = remorsePool(humanity, stains);
+    let pool = remorsePool(humanity, stains);
+    const hasFaded = sheet?.ingrained_discipline_flaw?.active && sheet?.ingrained_discipline_flaw?.flaw_name === 'Faded';
+    if (hasFaded) {
+      pool = Math.max(1, pool - 1);
+    }
+    const remorseNote = hasFaded
+      ? `Remorse: Humanity ${humanity}, ${stains} stain${stains !== 1 ? 's' : ''} (Faded: 1 fewer die)`
+      : `Remorse: Humanity ${humanity}, ${stains} stain${stains !== 1 ? 's' : ''}`;
     // Thrown and logged by the server like every other roll.
     const roll = await stRoll({
       rollType: 'remorse', characterId: charId, characterName: name, pool, hunger: 0, difficulty: 1,
-      note: `Remorse (Humanity ${humanity}, ${stains} stain${stains !== 1 ? 's' : ''})`,
+      note: remorseNote,
     });
     if (!roll) return;
     const feltRemorse = roll.successes > 0;
@@ -873,63 +888,67 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
               const dmg = dmgState[charId] || { amount: '', type: 'superficial', halve: true };
               const eff = effState[charId] || { label: '', mod: '', soak: '' };
 
-              return (
-                <div key={charId} className={styles.playerCard} style={{ borderColor: frenzy?.color ?? 'var(--outline-variant)' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '1.1rem', color: 'var(--on-surface)', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          <span
-                            title={p.online ? 'At the table' : 'Not connected'}
-                            style={{ display: 'inline-block', width: 9, height: 9, borderRadius: '50%', marginRight: 7, background: p.online ? 'var(--success)' : 'transparent', border: `1px solid ${p.online ? 'var(--success)' : 'var(--outline)'}` }}
-                          />
-                          {name}
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '2px' }}>
-                          <span className={styles.playerClan}>{clan} · BP {bp}</span>
-                          <div style={{ display: 'flex', gap: '2px', marginLeft: 'auto' }}>
-                            <button
-                              className={styles.btnOutline}
-                              style={{ padding: '0.1rem 0.35rem', fontSize: '0.65rem', display: 'inline-flex', alignItems: 'center', gap: '2px' }}
-                              title="Decrease Blood Potency"
-                              disabled={bp <= 0}
-                              onClick={() => adjustPlayer(charId, { bloodPotencyDelta: -1 })}
-                            >
-                              BP <span className="material-symbols-outlined" style={{ fontSize: '0.75rem' }}>remove</span>
-                            </button>
-                            <button
-                              className={styles.btnOutline}
-                              style={{ padding: '0.1rem 0.35rem', fontSize: '0.65rem', display: 'inline-flex', alignItems: 'center', gap: '2px' }}
-                              title="Increase Blood Potency"
-                              disabled={bp >= 10}
-                              onClick={() => adjustPlayer(charId, { bloodPotencyDelta: 1 })}
-                            >
-                              BP <span className="material-symbols-outlined" style={{ fontSize: '0.75rem' }}>add</span>
-                            </button>
+                    const ingrainedFlaw = sheet?.ingrained_discipline_flaw;
+                    const hasIngrainedFlaw = Boolean(ingrainedFlaw?.active);
+
+                    return (
+                      <div key={charId} className={styles.playerCard} style={{ borderColor: frenzy?.color ?? 'var(--outline-variant)' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: '1.1rem', color: 'var(--on-surface)', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                <span
+                                  title={p.online ? 'At the table' : 'Not connected'}
+                                  style={{ display: 'inline-block', width: 9, height: 9, borderRadius: '50%', marginRight: 7, background: p.online ? 'var(--success)' : 'transparent', border: `1px solid ${p.online ? 'var(--success)' : 'var(--outline)'}` }}
+                                />
+                                {name}
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '2px' }}>
+                                <span className={styles.playerClan}>{clan} · BP {bp}</span>
+                                <div style={{ display: 'flex', gap: '2px', marginLeft: 'auto' }}>
+                                  <button
+                                    className={styles.btnOutline}
+                                    style={{ padding: '0.1rem 0.35rem', fontSize: '0.65rem', display: 'inline-flex', alignItems: 'center', gap: '2px' }}
+                                    title="Decrease Blood Potency"
+                                    disabled={bp <= 0}
+                                    onClick={() => adjustPlayer(charId, { bloodPotencyDelta: -1 })}
+                                  >
+                                    BP <span className="material-symbols-outlined" style={{ fontSize: '0.75rem' }}>remove</span>
+                                  </button>
+                                  <button
+                                    className={styles.btnOutline}
+                                    style={{ padding: '0.1rem 0.35rem', fontSize: '0.65rem', display: 'inline-flex', alignItems: 'center', gap: '2px' }}
+                                    title="Increase Blood Potency"
+                                    disabled={bp >= 10}
+                                    onClick={() => adjustPlayer(charId, { bloodPotencyDelta: 1 })}
+                                  >
+                                    BP <span className="material-symbols-outlined" style={{ fontSize: '0.75rem' }}>add</span>
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                            {session?.status !== 'ended' && p.user_id && (
+                              <button
+                                className={styles.btnOutline}
+                                style={{ padding: '0.1rem 0.4rem', fontSize: '0.65rem', marginLeft: '0.5rem', borderColor: 'var(--danger)', color: 'var(--danger)', flexShrink: 0 }}
+                                title="Remove from the session"
+                                onClick={() => removePlayer(p.user_id, name)}
+                              >
+                                Remove
+                              </button>
+                            )}
                           </div>
-                        </div>
-                      </div>
-                      {session?.status !== 'ended' && p.user_id && (
-                        <button
-                          className={styles.btnOutline}
-                          style={{ padding: '0.1rem 0.4rem', fontSize: '0.65rem', marginLeft: '0.5rem', borderColor: 'var(--danger)', color: 'var(--danger)', flexShrink: 0 }}
-                          title="Remove from the session"
-                          onClick={() => removePlayer(p.user_id, name)}
-                        >
-                          Remove
-                        </button>
-                      )}
-                    </div>
-                    {(frenzy || torpor || impaired || willBroken || degeneration || compulsion) && (
-                      <div className={styles.badgeRow}>
-                        {frenzy && <span className={styles.badge} style={{ color: frenzy.color, borderColor: frenzy.color }}>{frenzy.label}</span>}
-                        {torpor && <span className={styles.badge} style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}>TORPOR</span>}
-                        {!torpor && impaired && <span className={styles.badge} style={{ color: 'var(--warning)', borderColor: 'var(--warning)' }}>IMPAIRED &minus;2</span>}
-                        {willBroken && <span className={styles.badge} style={{ color: 'var(--warning)', borderColor: 'var(--warning)' }}>WILL BROKEN &minus;2</span>}
-                        {degeneration && <span className={styles.badge} style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}>DEGENERATION</span>}
-                        {compulsion && <span className={styles.badge} style={{ color: '#c084fc', borderColor: '#c084fc' }} title={compulsion}>COMPULSION</span>}
-                      </div>
-                    )}
+                          {(frenzy || torpor || impaired || willBroken || degeneration || compulsion || hasIngrainedFlaw) && (
+                            <div className={styles.badgeRow}>
+                              {hasIngrainedFlaw && <span className={styles.badge} style={{ color: '#f87171', borderColor: '#f87171' }} title={INGRAINED_DISCIPLINE_FLAWS[ingrainedFlaw.discipline]?.description}>FLAW: {ingrainedFlaw.flaw_name}</span>}
+                              {frenzy && <span className={styles.badge} style={{ color: frenzy.color, borderColor: frenzy.color }}>{frenzy.label}</span>}
+                              {torpor && <span className={styles.badge} style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}>TORPOR</span>}
+                              {!torpor && impaired && <span className={styles.badge} style={{ color: 'var(--warning)', borderColor: 'var(--warning)' }}>IMPAIRED &minus;2</span>}
+                              {willBroken && <span className={styles.badge} style={{ color: 'var(--warning)', borderColor: 'var(--warning)' }}>WILL BROKEN &minus;2</span>}
+                              {degeneration && <span className={styles.badge} style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}>DEGENERATION</span>}
+                              {compulsion && <span className={styles.badge} style={{ color: '#c084fc', borderColor: '#c084fc' }} title={compulsion}>COMPULSION</span>}
+                            </div>
+                          )}
                     <select
                       className={styles.formInput}
                       style={{ width: '100%', padding: '0.3rem 0.5rem', fontSize: '0.75rem', borderColor: frenzy?.color ?? 'inherit', color: frenzy?.color ?? 'inherit' }}
@@ -1073,6 +1092,33 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
                     </details>
                   )}
 
+                  {ingrainedFlaw && (
+                    <div style={{
+                      margin: '0.4rem 0',
+                      padding: '0.4rem 0.6rem',
+                      borderRadius: '6px',
+                      background: ingrainedFlaw.active ? 'rgba(239, 68, 68, 0.12)' : 'rgba(156, 163, 175, 0.08)',
+                      border: ingrainedFlaw.active ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(156, 163, 175, 0.2)',
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 'bold', color: ingrainedFlaw.active ? 'var(--danger)' : 'var(--text-muted)' }}>
+                          Flaw: {ingrainedFlaw.flaw_name} ({ingrainedFlaw.discipline})
+                        </span>
+                        <span style={{ fontSize: '0.65rem', color: ingrainedFlaw.active ? '#4ade80' : 'var(--text-muted)', fontWeight: 600 }}>
+                          {ingrainedFlaw.active ? 'ACTIVE' : 'INACTIVE'}
+                        </span>
+                      </div>
+                      <p style={{ margin: 0, fontSize: '0.68rem', color: 'var(--on-surface)', lineHeight: 1.35 }}>
+                        {INGRAINED_DISCIPLINE_FLAWS[ingrainedFlaw.discipline]?.description || ''}
+                      </p>
+                      {ingrainedFlaw.active && ingrainedFlaw.flaw_name === 'Monstrous' && (
+                        <div style={{ fontSize: '0.68rem', color: '#f87171', fontWeight: 600, marginTop: '2px' }}>
+                          Effective Humanity: {Math.max(0, humanity - 3)} (Blush, Social, Appearance)
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className={styles.quickActions}>
                     <button
                       className={styles.btnOutline}
@@ -1210,6 +1256,7 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
                   if (t.inTorpor) bits.push('TORPOR');
                   if (t.degeneration) bits.push('DEGENERATION');
                   if (s.compulsion) bits.push(`Compulsion: ${s.compulsion}`);
+                  if (s.ingrained_discipline_flaw?.active) bits.push(`FLAW:${s.ingrained_discipline_flaw.flaw_name} (${s.ingrained_discipline_flaw.discipline})`);
                   lines.push(`- ${nm}: ${bits.join(' · ')}`);
                   const note = session?.metadata?.notes?.[p.character_id ?? p.id];
                   if (note) lines.push(`    ST note: ${note}`);

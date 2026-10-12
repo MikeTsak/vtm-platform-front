@@ -61,7 +61,7 @@ const SKILLS = {
 };
 
 const SHOP_TABS = [
-  { key: 'Suggested', icon: 'auto_fix_high', label: 'Suggested', wide: true },
+  { key: 'Suggested', icon: 'auto_fix_high', label: 'Suggested' },
   { key: 'Disciplines', icon: 'droplet_plus', label: 'Disciplines' },
   { key: 'Attributes', icon: 'monitor_heart', label: 'Attributes' },
   { key: 'Skills', icon: 'fitness_center', label: 'Skills' },
@@ -1929,8 +1929,9 @@ export default function CharacterView({
                       <p style={{ margin: '0 0 10px 0', fontSize: '0.85rem', color: '#cbd5e1', lineHeight: 1.4 }}>
                         {INGRAINED_DISCIPLINE_FLAWS[sheet.ingrained_discipline_flaw.discipline]?.description}
                       </p>
-                      <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-                        Bonus Rank Budget: {(sheet.ingrained_discipline_flaw.bonus_powers || []).reduce((s, p) => s + (p.level || 0), 0)} of 3 ranks used
+                      <div style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                        <span>Bonus Rank Budget: {(sheet.ingrained_discipline_flaw.bonus_powers || []).reduce((s, p) => s + (p.level || 0), 0)} of 3 ranks used</span>
+                        <span style={{ fontStyle: 'italic' }}>Source: {INGRAINED_DISCIPLINE_FLAWS[sheet.ingrained_discipline_flaw.discipline]?.source || 'Tattered Façade, p. 108'}</span>
                       </div>
                     </div>
                   )}
@@ -4095,6 +4096,7 @@ function DisciplineFlawsShopSection({ sheet, ch, xp, isSearching, currentSearch,
         <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', fontSize: '0.85rem', color: '#94a3b8' }}>
           <span>Rank Budget: <b style={{ color: '#f8fafc' }}>{usedRanks} of 3</b> used</span>
           <span>Remaining: <b style={{ color: remainingRanks > 0 ? '#38bdf8' : '#94a3b8' }}>{remainingRanks} ranks</b></span>
+          <span style={{ marginLeft: 'auto', fontStyle: 'italic' }}>Source: {flawInfo?.source || 'Tattered Façade, p. 108'}</span>
         </div>
       </div>
 

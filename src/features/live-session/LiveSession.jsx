@@ -120,6 +120,10 @@ const MENTAL_SOCIAL_TRAITS = new Set([
   ...ATTRIBUTE_GROUPS.Social, ...ATTRIBUTE_GROUPS.Mental,
   ...SKILL_GROUPS.Social, ...SKILL_GROUPS.Mental,
 ]);
+const SOCIAL_TRAITS = new Set([
+  ...ATTRIBUTE_GROUPS.Social,
+  ...SKILL_GROUPS.Social,
+]);
 const isDisciplineTrait = (t) => ALL_DISCIPLINE_NAMES.includes(t) || /alchemy/i.test(t);
 
 // Discipline powers store their activation roll as e.g. "Charisma + Presence",
@@ -501,9 +505,22 @@ export default function LiveSession({ preview = null }) {
 
   // Messy Critical / Bestial Failure: the Beast acts out. Prompt the player to
   // pick a Compulsion (V5 core: general four + clan-specific).
-  const maybeCompulsion = (outcome) => {
+  const maybeCompulsion = async (outcome, body = null) => {
     if (outcome?.hasMessyCritical) setCompulsionPrompt({ kind: 'messy' });
     else if (outcome?.hasBestialFailure) setCompulsionPrompt({ kind: 'bestial' });
+
+    if (sheet?.ingrained_discipline_flaw?.active && sheet?.ingrained_discipline_flaw?.flaw_name === 'Egomaniac') {
+      const isPresence = body?.discipline === 'Presence' || (Array.isArray(body?.traits) && body.traits.includes('Presence')) || selectedTraits.includes('Presence');
+      if (isPresence && (outcome?.hasMessyCritical || !outcome?.metDifficulty)) {
+        setSignalNote('Egomaniac Flaw: Make a Fury Frenzy test at Difficulty 2!');
+        await pushRoll('flaw_trigger', {
+          characterId: character?.id,
+          roll_type: 'flaw_trigger',
+          note: 'Egomaniac Flaw: Presence power failed or Messy Critical! Make a Fury Frenzy test at Difficulty 2',
+          character_name: character?.name || sheet?.name || 'Unknown'
+        });
+      }
+    }
   };
 
   // Every roll is thrown by the server (POST /dice/roll), which builds the pool
@@ -538,7 +555,7 @@ export default function LiveSession({ preview = null }) {
       const { data } = await api.post('/dice/roll', { sessionId, isHidden: hiddenRollsActive, ...body });
       if (data.sheet) { setSheet(data.sheet); setTrackers(summarizeTrackers(data.sheet)); }
       const roll = showServerRoll(data.roll);
-      maybeCompulsion(roll.outcome);
+      maybeCompulsion(roll.outcome, body);
       return data;
     } catch (e) {
       setLastRoll({
@@ -683,6 +700,16 @@ export default function LiveSession({ preview = null }) {
   const startWillpowerReroll = (targetRoll = lastRoll) => {
     const roll = targetRoll || lastRoll;
     if (!roll || !rerollAllowed || !((roll.normalDice || []).length || messyHungerTen(roll))) return;
+
+    if (sheet?.ingrained_discipline_flaw?.active && sheet?.ingrained_discipline_flaw?.flaw_name === 'Blunt') {
+      const isSocial = selectedTraits.some(t => SOCIAL_TRAITS.has(t)) || (Array.isArray(roll?.traits) && roll.traits.some(t => SOCIAL_TRAITS.has(t)));
+      if (isSocial) {
+        setSignalNote('Blunt Flaw: You cannot spend Willpower to reroll a Social test.');
+        setTimeout(() => setSignalNote(''), 4000);
+        return;
+      }
+    }
+
     setWpSelections([]);
     setWpRerollMode(true);
   };
@@ -772,6 +799,48 @@ export default function LiveSession({ preview = null }) {
       const { success, die1, die2, advantage, nextHunger, sheet: nextSheet } = data;
       setSheet(nextSheet);
       setTrackers(summarizeTrackers(nextSheet));
+
+      if (!success && autoActivate?.discName && sheet?.ingrained_discipline_flaw?.active) {
+        const flaw = sheet.ingrained_discipline_flaw;
+        if (autoActivate.discName === 'Celerity' && flaw.flaw_name === 'Breakdown') {
+          const maxHp = trackers.health.max;
+          const currentAgg = nextSheet?.health?.aggravated || 0;
+          const currentSup = nextSheet?.health?.superficial || 0;
+          const nextHealth = {
+            superficial: Math.max(0, currentSup - (currentAgg + 1 > maxHp ? 1 : 0)),
+            aggravated: Math.min(maxHp, currentAgg + 1)
+          };
+          nextSheet.health = nextHealth;
+          setSheet({ ...nextSheet });
+          setTrackers(summarizeTrackers(nextSheet));
+          if (character?.id && sessionId) {
+            api.patch(`/live-session/${sessionId}/players/${character.id}`, { healthAggDelta: 1 }).catch(() => {});
+          }
+          setSignalNote('Breakdown Flaw: 1 Aggravated Damage sustained from failed Celerity Rouse Check!');
+          await pushRoll('flaw_trigger', {
+            characterId: character?.id,
+            roll_type: 'flaw_trigger',
+            note: 'Breakdown Flaw: Sustained 1 Aggravated Damage from failed Celerity Rouse check',
+            character_name: character?.name || sheet?.name || 'Unknown'
+          });
+        } else if (autoActivate.discName === 'Potence' && flaw.flaw_name === 'Killer Instinct') {
+          setSignalNote('Killer Instinct Flaw: Failed Potence Rouse check! Test for Fury Frenzy immediately.');
+          await pushRoll('flaw_trigger', {
+            characterId: character?.id,
+            roll_type: 'flaw_trigger',
+            note: 'Killer Instinct Flaw: Failed Potence Rouse check! Test for Fury Frenzy immediately',
+            character_name: character?.name || sheet?.name || 'Unknown'
+          });
+        } else if (autoActivate.discName === 'Protean' && flaw.flaw_name === 'Stasis') {
+          setSignalNote('Stasis Flaw: Failed Protean Rouse check! Reverting leaves an incomplete change.');
+          await pushRoll('flaw_trigger', {
+            characterId: character?.id,
+            roll_type: 'flaw_trigger',
+            note: 'Stasis Flaw: Failed Protean Rouse check! Reverting leaves an incomplete change',
+            character_name: character?.name || sheet?.name || 'Unknown'
+          });
+        }
+      }
 
       const rollNote = success
         ? (advantage ? 'Pass : No Hunger Gained (BP Reroll Advantage)' : 'Pass : No Hunger Gained')
@@ -1200,6 +1269,20 @@ export default function LiveSession({ preview = null }) {
                   Discipline Rouse (BP Reroll &le; {bpStats.rouseRerollLevel})
                 </button>
               )}
+              {sheet?.ingrained_discipline_flaw?.active && sheet?.ingrained_discipline_flaw?.flaw_name === 'Daymares' && (
+                <button
+                  className={styles.btnOutline}
+                  style={{ width: '100%', padding: '0.35rem', fontSize: '0.72rem', marginTop: '0.4rem', borderColor: 'rgba(239, 68, 68, 0.5)', color: '#f87171' }}
+                  disabled={isRolling}
+                  onClick={async () => {
+                    await handleRouse('awakening_rouse');
+                    await handleRouse('awakening_rouse');
+                  }}
+                  title="Daymares Flaw: Awaken for the night with two Rouse Checks"
+                >
+                  Awaken (2 Rouse Checks : Daymares)
+                </button>
+              )}
             </div>
             {/* Health */}
             <div>
@@ -1343,6 +1426,29 @@ export default function LiveSession({ preview = null }) {
                 <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--on-surface)', lineHeight: '1.45' }}>
                   {INGRAINED_DISCIPLINE_FLAWS[sheet.ingrained_discipline_flaw.discipline]?.description || sheet.ingrained_discipline_flaw.discipline}
                 </p>
+                {sheet.ingrained_discipline_flaw.active && sheet.ingrained_discipline_flaw.flaw_name === 'Sanguinary Animism' && (
+                  <div style={{ marginTop: '6px', fontSize: '0.7rem', color: '#f87171', fontWeight: 600 }}>
+                    Distraction: 2 dice penalty from Social and Mental pools in the scene following feeding.
+                  </div>
+                )}
+                {sheet.ingrained_discipline_flaw.active && sheet.ingrained_discipline_flaw.flaw_name === 'Monstrous' && (
+                  <div style={{ marginTop: '6px', fontSize: '0.7rem', color: '#f87171', fontWeight: 600 }}>
+                    Monstrous: Effective Humanity is {Math.max(0, trackers.humanity - 3)} (Blush of Life, Social pools, appearance).
+                  </div>
+                )}
+                {sheet.ingrained_discipline_flaw.active && sheet.ingrained_discipline_flaw.flaw_name === 'Stasis' && (
+                  <div style={{ marginTop: '6px', fontSize: '0.7rem', color: '#f87171', fontWeight: 600 }}>
+                    Stasis: Failed Protean Rouse check leaves an incomplete change (sever area taking 1 Agg damage, or wait for day sleep).
+                  </div>
+                )}
+                {sheet.ingrained_discipline_flaw.active && sheet.ingrained_discipline_flaw.flaw_name === 'Scar Tissue' && (
+                  <div style={{ marginTop: '6px', fontSize: '0.7rem', color: '#f87171', fontWeight: 600 }}>
+                    Scar Tissue: Physical injuries remain visible until resting for the day (risk of Masquerade breaches).
+                  </div>
+                )}
+                <div style={{ marginTop: '6px', fontSize: '0.66rem', color: 'var(--text-muted)' }}>
+                  Source: {INGRAINED_DISCIPLINE_FLAWS[sheet.ingrained_discipline_flaw.discipline]?.source || 'Tattered Façade, p. 108'}
+                </div>
               </div>
             )}
           </section>
