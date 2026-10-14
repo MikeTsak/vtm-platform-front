@@ -736,14 +736,49 @@
 }
 
 .imgDeceased {
-  filter: grayscale(100%) blur(3px);
-  opacity: 0.7;
-  transition: filter 0.3s ease, opacity 0.3s ease;
+  filter: grayscale(100%) blur(8px) brightness(0.65) contrast(0.85);
+  opacity: 0.65;
+  user-select: none;
+  pointer-events: none;
+  transition: none !important;
 }
 
-.imgDeceased:hover {
-  filter: grayscale(60%) blur(1px);
-  opacity: 0.9;
+.imgDeceased:hover,
+.imgDeceased:focus,
+.imgDeceased:active {
+  filter: grayscale(100%) blur(8px) brightness(0.65) contrast(0.85) !important;
+  opacity: 0.65 !important;
+}
+
+.imgWrapperDeceased {
+  cursor: default !important;
+}
+
+.deceasedVeil {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 10, 15, 0.45);
+  backdrop-filter: blur(2px);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.deceasedLabel {
+  position: absolute;
+  bottom: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.85);
+  padding: 0.125rem 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #9ca3af;
+  border-radius: 3px;
+  pointer-events: none;
+  z-index: 2;
 }
 
 .deceasedTitle {

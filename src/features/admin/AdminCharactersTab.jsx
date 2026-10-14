@@ -101,7 +101,7 @@ const TrackerDisplay = ({ label, currentObj, max, onUpdate, isValueTracker = fal
 };
 
 // ---------- MAIN COMPONENT ----------
-export default function AdminCharactersTab({ users, onDelete, onOpenEditor }) {
+export default function AdminCharactersTab({ users, onDelete, onOpenEditor, onChanged }) {
   const baseChars = useMemo(() => users.filter(u => u.character_id).map(u => ({
     id: u.character_id, user_id: u.id, name: u.char_name || '', clan: u.clan || '',
     xp: u.xp || 0, sheet: u.sheet || null, owner: `${u.display_name} <${u.email}>`,
@@ -118,6 +118,16 @@ export default function AdminCharactersTab({ users, onDelete, onOpenEditor }) {
   // inert while the route transition and character fetch are in flight.
   const [openingId, setOpeningId] = useState(null);
   const [confirmDialog, setConfirmDialog] = useState(null);
+  // Retired characters (one account plays one character at a time; see
+  // back/services/characterRetirement.js). Fetched with the roster.
+  const [retired, setRetired] = useState([]);
+  const [actionErr, setActionErr] = useState('');
+
+  useEffect(() => {
+    api.get('/admin/characters?retired=1')
+      .then(({ data }) => setRetired(data.characters || []))
+      .catch(() => setActionErr('Could not load retired characters.'));
+  }, [users]);
 
   useEffect(() => {
     const newStates = {};
@@ -302,6 +312,27 @@ export default function AdminCharactersTab({ users, onDelete, onOpenEditor }) {
     } catch (error) { alert("Error saving some characters. Check console."); }
   };
 
+  const runCharAction = async (path, okMsg) => {
+    setActionErr('');
+    try {
+      await api.post(path);
+      onChanged?.();
+      alert(okMsg);
+    } catch (e) {
+      setActionErr(e?.response?.data?.error || 'Action failed.');
+    }
+  };
+  const requestRetire = (c) => setConfirmDialog({
+    title: 'Retire character',
+    message: `Retire ${c.name}? They leave play and any coterie, and ${c.owner} can create a new character. The sheet, domains and history stay; a retired character can be restored later.`,
+    onConfirm: () => runCharAction(`/admin/characters/${c.id}/retire`, `${c.name} retired.`),
+  });
+  const requestRestore = (r) => setConfirmDialog({
+    title: 'Restore character',
+    message: `Make ${r.name} ${r.display_name}'s current character again? Their current character, if any, is retired in its place. Final Death is cleared; coterie membership is not restored.`,
+    onConfirm: () => runCharAction(`/admin/characters/${r.id}/restore`, `${r.name} restored.`),
+  });
+
   const handleToggleActive = (char) => updateSheetData(char, d => { d.is_active = !(d.is_active === true); return d; });
   const handleReset = (char) => { if(window.confirm(`Allow Re-Roll?`)) updateSheetData(char, d => { d.allow_reset = true; return d; }); };
   const handleRevokeReset = (char) => { if(window.confirm(`Revoke Re-Roll?`)) updateSheetData(char, d => { d.allow_reset = false; return d; }); };
@@ -464,6 +495,7 @@ export default function AdminCharactersTab({ users, onDelete, onOpenEditor }) {
                   <button className={`${styles.btn} ${data.allow_reset ? styles.btnGhost : styles.btnWarning}`} onClick={() => data.allow_reset ? handleRevokeReset(c) : handleReset(c)}>
                     {data.allow_reset ? 'Revoke Re-Roll' : 'Allow Re-Roll'}
                   </button>
+                  <button className={`${styles.btn} ${styles.btnWarning}`} onClick={() => requestRetire(c)} title="Final Death or leaving play: frees the player to make a new character">Retire</button>
                   <button className={`${styles.btn} ${styles.btnDanger}`} onClick={() => onDelete(c.id)}>Delete</button>
                 </div>
               </div>
@@ -473,6 +505,30 @@ export default function AdminCharactersTab({ users, onDelete, onOpenEditor }) {
           );
         })}
       </div>
+
+      {actionErr && <div className={`${styles.alert} ${styles.alertError}`} role="alert">{actionErr}</div>}
+
+      {retired.length > 0 && (
+        <details className={styles.charSectionBlock}>
+          <summary className={styles.charSectionTitle} style={{ cursor: 'pointer' }}>Retired characters ({retired.length})</summary>
+          <div className={styles.stack12} style={{ marginTop: '0.75rem' }}>
+            {retired.map(r => (
+              <div key={r.id} className={styles.row} style={{ flexWrap: 'wrap', gap: '10px', justifyContent: 'space-between' }}>
+                <div>
+                  <b>{r.name}</b> <span className={styles.subtle}>{r.clan} (#{r.id}){r.is_deceased ? ' · Final Death' : ''}</span>
+                  <div className={styles.subtle}>
+                    {r.display_name} &lt;{r.email}&gt; · retired {r.retired_at ? new Date(r.retired_at).toLocaleDateString() : ''}
+                  </div>
+                </div>
+                <div className={styles.row} style={{ gap: '8px' }}>
+                  <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => onOpenEditor({ id: r.id, owner: `${r.display_name} <${r.email}>` })}>Open</button>
+                  <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => requestRestore(r)}>Restore</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
 
       {/* CONFIRM DIALOG */}
       {confirmDialog && (

@@ -13,6 +13,7 @@ import styles from '../../styles/CharacterView.module.css';
 import homeStyles from '../../styles/Home.module.css';
 
 import CharacterSetup from './CharacterSetup';
+import PastCharacters from './PastCharacters';
 import { ATTR_DESCRIPTIONS, SKILL_DESCRIPTIONS } from '../../data/descriptions';
 import { MERITS_AND_FLAWS, listAllItems } from '../../data/merits_flaws';
 import { INGRAINED_DISCIPLINE_FLAWS } from '../../data/ingrainedFlaws';
@@ -616,6 +617,7 @@ export default function CharacterView({
   adminNPCId = null,
   loadPath,
   xpSpendPath,
+  readOnly = false, // a retired character's archived sheet: view only
 }) {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -781,7 +783,7 @@ export default function CharacterView({
         setCh(structured);
 
         if (structured && structured.sheet) {
-          if (structured.sheet._needsMysticFix) {
+          if (structured.sheet._needsMysticFix && !readOnly) {
             setMysticFixOpen(true);
           }
           
@@ -798,7 +800,7 @@ export default function CharacterView({
         setErr(formatApiError(e, 'Failed to load character'));
       });
     return () => { mounted = false; };
-  }, [paths, adminNPCId, loadPath]);
+  }, [paths, adminNPCId, loadPath, readOnly]);
 
   // Out-of-clan discipline access (see routes/disciplineAccess.js). Self-serve
   // only: an admin editing someone else's sheet manages this from the admin
@@ -859,7 +861,7 @@ export default function CharacterView({
   }
 
   useEffect(() => {
-    if (isInitialTrackerLoad.current || !ch || !isAdmin) return;
+    if (isInitialTrackerLoad.current || !ch || !isAdmin || readOnly) return;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
 
     saveTimeoutRef.current = setTimeout(() => {
@@ -888,7 +890,7 @@ export default function CharacterView({
     }, 1000);
 
     return () => clearTimeout(saveTimeoutRef.current);
-  }, [tempHealth, tempWillpower, tempHunger, tempHumanity, tempStains, ch, paths.update, isAdmin]);
+  }, [tempHealth, tempWillpower, tempHunger, tempHumanity, tempStains, ch, paths.update, isAdmin, readOnly]);
 
   const updateTracker = (type, kind, delta) => {
     if (!isAdmin) return;
@@ -1202,7 +1204,7 @@ export default function CharacterView({
   }, [ch?.id]);
 
   useEffect(() => {
-    if (!ch) return;
+    if (!ch || readOnly) return;
     const q = computeMissingPicks();
     setPendingFixes(q);
     if (!q.length) {
@@ -1223,7 +1225,7 @@ export default function CharacterView({
       });
       setModalOpen(true);
     }
-  }, [ch, computeMissingPicks, modalOpen, modalDismissed, sheet]);
+  }, [ch, computeMissingPicks, modalOpen, modalDismissed, sheet, readOnly]);
 
   async function confirmDisciplinePurchase({ name, selectedPowerId, selectedPowerName, selectedPowerLevel, current, next, kind, assignOnly }) {
     const baseSheet = sheetRef.current || sheet;
@@ -1425,6 +1427,7 @@ export default function CharacterView({
                 <button className={styles.cta} onClick={() => setShowSetup(true)}>
                   Create Character
                 </button>
+                <PastCharacters />
               </div>
             )}
           </div>
@@ -1556,6 +1559,12 @@ export default function CharacterView({
     return <ShopRow key={s.id} {...common} onBuy={onBuy} />;
   };
 
+  // Archived sheets render inside a disabled fieldset: every control is inert
+  // without each one having to know about it (the server has no write route
+  // for them either).
+  const ReadOnlyBody = readOnly ? 'fieldset' : React.Fragment;
+  const readOnlyBodyProps = readOnly ? { disabled: true, className: styles.readOnlyBody } : {};
+
   return (
     <Skeleton name="character-view" loading={!ch}>
       <div className={styles.root} style={{ '--tint': tint }} data-box-mode={boxMode}>
@@ -1564,7 +1573,7 @@ export default function CharacterView({
           <div className={styles.mobileHeaderInner}>
             <div className={styles.mobileHeaderLeft}>
               <div className={styles.mobileHeaderAvatar}>
-                <Avatar userId={!adminNPCId ? ch?.user_id : undefined} npcId={adminNPCId} size="100%" editable={(!adminNPCId && String(user?.id) === String(ch?.user_id)) || isAdmin} />
+                <Avatar userId={!adminNPCId ? ch?.user_id : undefined} npcId={adminNPCId} avatarUrl={readOnly ? (ch?.avatar_url || undefined) : undefined} size="100%" editable={!readOnly && ((!adminNPCId && String(user?.id) === String(ch?.user_id)) || isAdmin)} />
               </div>
               <div className={styles.mobileHeaderMeta}>
                 <h1 className={styles.mobileHeaderName}>{ch.name}</h1>
@@ -1639,7 +1648,7 @@ export default function CharacterView({
           <div className={styles.topAppBarContent}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               <div className={styles.avatarBox}>
-                <Avatar userId={!adminNPCId ? ch?.user_id : undefined} npcId={adminNPCId} size="100%" editable={(!adminNPCId && String(user?.id) === String(ch?.user_id)) || isAdmin} />
+                <Avatar userId={!adminNPCId ? ch?.user_id : undefined} npcId={adminNPCId} avatarUrl={readOnly ? (ch?.avatar_url || undefined) : undefined} size="100%" editable={!readOnly && ((!adminNPCId && String(user?.id) === String(ch?.user_id)) || isAdmin)} />
               </div>
               <div>
                 <h1 className={styles.charTitle}>{ch.name}</h1>
@@ -1712,9 +1721,11 @@ export default function CharacterView({
                     <span className="material-symbols-outlined">{sysNotifOn ? 'notifications_active' : 'notifications_off'}</span>
                   </button>
                 )}
-                <button className={styles.navActionBtn} onClick={() => setIdentityModalOpen(true)} title="Edit Identity">
-                  <span className="material-symbols-outlined">settings</span>
-                </button>
+                {!readOnly && (
+                  <button className={styles.navActionBtn} onClick={() => setIdentityModalOpen(true)} title="Edit Identity">
+                    <span className="material-symbols-outlined">settings</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -1770,6 +1781,26 @@ export default function CharacterView({
             </div>
           )}
           {saveStatus && isAdmin && <div style={{ fontSize: '0.85rem', color: 'var(--accent)', opacity: 0.8, textAlign: 'center' }}>{saveStatus}</div>}
+          {readOnly && (
+            <div className={styles.deathNotice} role="status">
+              <h2>Archived character</h2>
+              <p style={{ margin: '0 0 1rem' }}>
+                {ch.name} is no longer in play{ch.is_deceased ? ': they met Final Death' : ''}. This sheet is read-only.
+                {' '}A Storyteller can bring them back if needed.
+              </p>
+              <Link className={styles.cta} to="/character">Back to my character</Link>
+            </div>
+          )}
+          {isOwnCharacter && !!ch.is_deceased && (
+            <div className={styles.deathNotice} role="status">
+              <h2>Final Death</h2>
+              <p style={{ margin: '0 0 1rem' }}>
+                {ch.name} has met Final Death. You can create a new character; this sheet stays in your past characters.
+              </p>
+              <button className={styles.cta} onClick={() => navigate('/make')}>Create a new character</button>
+            </div>
+          )}
+          <ReadOnlyBody {...readOnlyBodyProps}>
 
           {/* --- Mobile Meta Data Section --- */}
           <motion.section variants={itemVariants} className={styles.mobileMetaSection}>
@@ -1992,6 +2023,7 @@ export default function CharacterView({
           </div>
 
           {/* ===== XP SHOP ===== */}
+          {!readOnly && (
           <motion.section id="xp-shop-section" variants={itemVariants} ref={shopRef} className={`${styles.section} ${styles.scrollAnchor}`} style={{ padding: 0 }}>
             {/* New Balance Header */}
             <div className={styles.xpBalanceHeader}>
@@ -2640,6 +2672,9 @@ export default function CharacterView({
               </div>
             )}
           </motion.section>
+          )}
+          </ReadOnlyBody>
+          {isOwnCharacter && <PastCharacters />}
         </motion.main>
 
         {/* ----- Modals ----- */}

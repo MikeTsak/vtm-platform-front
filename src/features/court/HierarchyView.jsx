@@ -637,7 +637,11 @@ export default function HierarchyView({ canEdit: propCanEdit }) {
               <button className={styles.closeLightboxBtn} onClick={() => setEnlargedImage(null)} title="Close image">
                 <FaGlyph name="fa-xmark" size={14} />
               </button>
-              <img src={enlargedImage} alt="Enlarged portrait" className={styles.lightboxImage} />
+              <img 
+                src={typeof enlargedImage === 'string' ? enlargedImage : enlargedImage?.url} 
+                alt="Enlarged portrait" 
+                className={`${styles.lightboxImage} ${enlargedImage?.isDeceased ? styles.imgDeceased : ''}`} 
+              />
             </div>
           </div>
         )}
@@ -667,6 +671,8 @@ function MemberCard({ ent, specialClass = "", canEdit, onManage, onImageClick })
   const baseUrl = import.meta.env.VITE_API_URL || '';
   let avatarUrl = null;
   if (ent.type === 'player' && ent.user_id) avatarUrl = `${baseUrl}/users/${ent.user_id}/avatar`;
+  // A retired character (no account any more) keeps the portrait saved at retirement.
+  else if (ent.type === 'player') avatarUrl = ent.saved_avatar_url || null;
   else if (ent.type === 'npc') avatarUrl = `${baseUrl}/npcs/${ent.id}/avatar`;
 
   const clanLogoUrl = symlogoWhite(clan); 
@@ -675,10 +681,10 @@ function MemberCard({ ent, specialClass = "", canEdit, onManage, onImageClick })
   const hiddenClass = ent.is_hidden ? styles.hiddenCard : "";
   
   let imgClass = styles.sharpImg;
-  if (ent.is_bloodhunted) {
-    imgClass = `${styles.sharpImg} ${styles.imgBloodhunted}`;
-  } else if (ent.is_deceased) {
+  if (ent.is_deceased) {
     imgClass = `${styles.sharpImg} ${styles.imgDeceased}`;
+  } else if (ent.is_bloodhunted) {
+    imgClass = `${styles.sharpImg} ${styles.imgBloodhunted}`;
   } else if (ent.is_missing || ent.is_exiled || ent.is_left || ent.is_called) {
     imgClass = `${styles.sharpImg} ${styles.grayscale}`;
   }
@@ -732,10 +738,16 @@ function MemberCard({ ent, specialClass = "", canEdit, onManage, onImageClick })
 
       <div className={styles.imgContainer}>
         {ent.type === 'player' || ent.type === 'npc' ? (
-          <div className={styles.imgWrapper} onClick={() => onImageClick(avatarUrl)}>
+          <div 
+            className={`${styles.imgWrapper} ${ent.is_deceased ? styles.imgWrapperDeceased : ''}`} 
+            onClick={ent.is_deceased ? undefined : () => onImageClick(avatarUrl)}
+            style={ent.is_deceased ? { cursor: 'default' } : undefined}
+            title={ent.is_deceased ? "Final Death: Deceased Kindred cannot be unblurred" : "Click to view full portrait"}
+          >
             <Avatar 
                userId={ent.type === 'player' ? ent.user_id : null} 
                npcId={ent.type === 'npc' ? ent.id : null}
+               avatarUrl={ent.type === 'player' && !ent.user_id ? (ent.saved_avatar_thumb || ent.saved_avatar_url || undefined) : undefined}
                hasAvatar={ent.has_avatar}
                clan={clan}
                fallback={clanLogoUrl || '/img/ATT-logo(1).webp'}
@@ -745,6 +757,12 @@ function MemberCard({ ent, specialClass = "", canEdit, onManage, onImageClick })
                imgClassName={imgClass} 
             />
             {ent.is_bloodhunted && <div className={styles.targetLabel}>Target</div>}
+            {ent.is_deceased && (
+              <>
+                <div className={styles.deceasedVeil} aria-hidden="true" />
+                <div className={styles.deceasedLabel}>Deceased</div>
+              </>
+            )}
           </div>
         ) : (
           <div className={styles.imgPlaceholder}>
@@ -856,6 +874,7 @@ function KindredInspectorModal({ kindred, onClose, update, baseUrl }) {
 
   let avatarUrl = null;
   if (kindred.type === 'player' && kindred.user_id) avatarUrl = `${baseUrl}/users/${kindred.user_id}/avatar`;
+  else if (kindred.type === 'player') avatarUrl = kindred.saved_avatar_url || null;
   else if (kindred.type === 'npc') avatarUrl = `${baseUrl}/npcs/${kindred.id}/avatar`;
   const clanLogoUrl = symlogoWhite(clan);
 
@@ -939,13 +958,16 @@ function KindredInspectorModal({ kindred, onClose, update, baseUrl }) {
             <Avatar 
               userId={kindred.type === 'player' ? kindred.user_id : null} 
               npcId={kindred.type === 'npc' ? kindred.id : null}
+              avatarUrl={kindred.type === 'player' && !kindred.user_id ? (kindred.saved_avatar_url || undefined) : undefined}
               hasAvatar={kindred.has_avatar}
               clan={clan}
               fallback={clanLogoUrl || '/img/ATT-logo(1).webp'}
               size="100%" 
               editable={false}
               style={{ width: '100%', height: '100%', borderRadius: 0 }} 
+              imgClassName={kindred.is_deceased ? `${styles.sharpImg} ${styles.imgDeceased}` : styles.sharpImg}
             />
+            {kindred.is_deceased && <div className={styles.deceasedLabel}>Deceased</div>}
           </div>
 
           <div className={styles.inspectorHeaderInfo}>

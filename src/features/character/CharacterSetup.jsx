@@ -195,6 +195,9 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
     api.get('/characters/me').then(r => {
       const char = r.data.character;
       setExisting(char);
+      // Final Death: the player builds a brand-new character (the server
+      // retires the dead one), never a re-roll of it.
+      if (char?.is_deceased) return;
 
       // If the character exists but the sheet is empty (Admin Wiped it) OR an admin allowed it, automatically open the wizard!
       if (char && char.sheet && char.sheet.allow_reset === true) {
@@ -461,7 +464,7 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
 
   /* ---------- Render ---------- */
 
-  if (existing && !isRebuilding && !isTesting) {
+  if (existing && !existing.is_deceased && !isRebuilding && !isTesting) {
     return (
       <div className={styles.sheetCard}>
         <h3 className={styles.cardTitle}>Your Character</h3>

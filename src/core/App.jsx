@@ -1,6 +1,6 @@
 // src/App.jsx
 import React, { useContext, useState, useEffect, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
 import { HelmetProvider, Helmet } from 'react-helmet-async';
 import AuthProvider, { AuthCtx } from './AuthContext';
 import ThemeProvider from './ThemeContext';
@@ -34,6 +34,12 @@ const DiceRoller = lazyWithRetry(() => import('../features/dice/DiceRoller'));
 const CharacterView = lazyWithRetry(() => import('../features/character/CharacterView'));
 const CharacterEdit = lazyWithRetry(() => import('../features/character/CharacterEdit'));
 const CharacterSetup = lazyWithRetry(() => import('../features/character/CharacterSetup'));
+
+// A retired character's sheet, read-only (back/services/characterRetirement.js).
+function ArchivedCharacter() {
+  const { archiveId } = useParams();
+  return <CharacterView key={archiveId} loadPath={`/characters/archive/${archiveId}`} readOnly />;
+}
 const Domains = lazyWithRetry(() => import('../features/domains/Domains'));
 const DownTimes = lazyWithRetry(() => import('../features/downtimes/DownTimes'));
 const Boons = lazyWithRetry(() => import('../features/boons/Boons'));
@@ -271,6 +277,7 @@ function AppLayout() {
           <Routes>
             <Route path="/" element={<Private><Home /></Private>} />
             <Route path="/character" element={<Private><CharacterView /></Private>} />
+            <Route path="/character/archive/:archiveId" element={<Private><ArchivedCharacter /></Private>} />
             <Route path="/retainers" element={<Private><RetainersView /></Private>} />
             <Route path="/make" element={<Private><CharacterSetup /></Private>} />
             <Route path="/domains" element={<Private><Domains /></Private>} />

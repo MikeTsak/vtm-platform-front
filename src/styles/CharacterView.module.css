@@ -4560,3 +4560,57 @@ select.input:focus {
   flex-shrink: 0;
   accent-color: var(--tint);
 }
+
+/* Past characters (retired ones, read-only) + Final Death notice */
+.pastChars {
+  margin-top: 1.5rem;
+  text-align: left;
+}
+
+.pastCharsList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+}
+
+.pastCharsLink {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  padding: .6rem .8rem;
+  min-height: 44px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  color: var(--text-color);
+  text-decoration: none;
+}
+
+.pastCharsLink:hover,
+.pastCharsLink:focus-visible {
+  border-color: var(--tint);
+}
+
+.deathNotice {
+  padding: 20px;
+  border: 1px solid var(--tint);
+  background: color-mix(in srgb, var(--tint) 10%, transparent);
+  text-align: center;
+}
+
+.deathNotice h2 {
+  margin: 0 0 .5rem;
+  font-family: var(--font-title);
+  color: var(--tint);
+}
+
+/* Archived sheet: the whole body is a disabled fieldset, laid out as if absent */
+.readOnlyBody {
+  display: contents;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}

@@ -957,6 +957,7 @@ async function grantXP(character_id, delta) {
         users={users}
         onDelete={deleteCharacter}
         onOpenEditor={openCharacterEditor}
+        onChanged={load}
       />
     ),
     ghouls:      () => <AdminGhoulsTab retainers={retainers} />,
