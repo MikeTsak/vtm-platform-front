@@ -18,6 +18,7 @@ import { MERITS_AND_FLAWS, listAllItems } from '../../data/merits_flaws';
 import { INGRAINED_DISCIPLINE_FLAWS } from '../../data/ingrainedFlaws';
 import { buildXpSpendIdempotencyKey } from '../../utils/idempotencyKey';
 import { XP_RULES } from '../../utils/xpCosts';
+import { bloodPotencyLimits, bloodPotencyLimitMessage } from '../../utils/bloodPotencyLimits';
 import FaGlyph from '../../ui/FaGlyph';
 import Inventory from '../inventory/Inventory';
 import TouchstonesConvictionsSection from './TouchstonesConvictionsSection';
@@ -2091,9 +2092,10 @@ export default function CharacterView({
                       if (msSearchText(['Blood Potency'], currentSearch).length === 0) return null;
                     }
                     const current = Number(sheet.blood_potency ?? 1);
-                    const max = 10;
+                    const max = bloodPotencyLimits(sheet.generation).max;
                     const next = Math.min(current + 1, max);
                     const canRaise = current < max;
+                    const capped = !canRaise && max < 10;
                     const cost = XP_RULES.bloodPotency(next);
                     const afford = xp >= cost;
                     const currentStats = getBloodPotencyStats(current);
@@ -2168,9 +2170,12 @@ export default function CharacterView({
                           </div>
                         </div>
 
+                        {capped && (
+                          <div className={styles.alertWarning}>{bloodPotencyLimitMessage(sheet.generation)}</div>
+                        )}
                         <ShopRow
                           title={`Blood Potency (${current})`}
-                          subtitle={canRaise ? `Raise to ${next}` : 'Max reached'}
+                          subtitle={canRaise ? `Raise to ${next}` : (capped ? `Capped by generation (max ${max})` : 'Max reached')}
                           cost={cost}
                           disabled={!canRaise || !afford}
                           hint={!canRaise ? `Max ${max}` : (!afford ? 'Not enough XP' : '')}

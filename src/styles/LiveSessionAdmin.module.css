@@ -1,22 +1,22 @@
 .dashboardContainer {
-  /* SchreckNet Liquid-Glass Admin Tokens */
+  /* SchreckNet Solid Purple Admin Tokens */
   --primary: #9d7cff;
-  --primary-container: rgba(157, 124, 255, 0.12);
-  --background: #0a0a0f;
-  --surface-container: rgba(255, 255, 255, 0.04);
-  --surface-container-low: rgba(0, 0, 0, 0.32);
-  --surface-container-high: rgba(255, 255, 255, 0.06);
-  --surface-container-highest: rgba(255, 255, 255, 0.08);
-  --outline: rgba(157, 124, 255, 0.48);
-  --outline-variant: rgba(157, 124, 255, 0.18);
+  --primary-container: #261a42;
+  --background: #0d0b14;
+  --surface-container: #171326;
+  --surface-container-low: #110e1c;
+  --surface-container-high: #201a35;
+  --surface-container-highest: #292144;
+  --outline: rgba(157, 124, 255, 0.45);
+  --outline-variant: rgba(157, 124, 255, 0.2);
   --text-muted: #9896a8;
-  --on-surface: #e8e6f0;
+  --on-surface: #f1effa;
   --success: #34d399;
   --danger: #fb7185;
   --warning: #fbbf24;
-  --glass-border: 1px solid rgba(157, 124, 255, 0.18);
-  --glass-shadow: 0 8px 40px rgba(0, 0, 0, 0.55);
-  --glass-blur: blur(18px) saturate(1.4);
+  --glass-border: 1px solid rgba(157, 124, 255, 0.22);
+  --glass-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+  --glass-blur: none;
 
   display: grid;
   grid-template-columns: 300px 1fr 350px;
@@ -37,8 +37,6 @@
   flex-direction: column;
   overflow: hidden;
   background: var(--surface-container);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
   border-right: var(--glass-border);
   box-shadow: var(--glass-shadow);
 }
@@ -51,8 +49,6 @@
   padding: 1rem 1.5rem;
   background: var(--surface-container-high);
   border-bottom: var(--glass-border);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -94,8 +90,6 @@
   flex: 1;
   overflow-y: hidden;
   background: var(--surface-container-low);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
   display: flex;
   flex-direction: column;
 }
@@ -115,8 +109,6 @@
   flex-direction: column;
   gap: 0.75rem;
   position: relative;
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 
@@ -267,13 +259,11 @@
 .formInput {
   width: 100%;
   padding: 0.5rem;
-  background: rgba(0, 0, 0, 0.2);
+  background: #0f0d19;
   border: var(--glass-border);
   border-radius: 4px;
   color: var(--on-surface);
   font-size: 0.85rem;
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
 }
 
 .formInput:focus {
@@ -338,8 +328,6 @@
   justify-content: space-between;
   align-items: center;
   cursor: pointer;
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
 }
 
 .npcItem:hover, .npcItem.active {

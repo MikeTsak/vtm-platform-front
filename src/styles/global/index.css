@@ -1557,33 +1557,34 @@ option {
 }
 
 /* ═══════════════════════════════════════════════
-   ADMIN THEME (Purple Liquid Glass)
+   ADMIN THEME (Solid Purple Admin)
    ═══════════════════════════════════════════════ */
 .admin-theme {
   --tint: #9d7cff;
   --dynamic-tint: #9d7cff;
   --theme-primary: #9d7cff;
-  --theme-primary-container: rgba(157, 124, 255, 0.12);
-  --theme-on-primary-container: #e8e6f0;
+  --theme-primary-container: #261a42;
+  --theme-on-primary-container: #f1effa;
   
-  --theme-background: #0a0a0f;
-  --bg-color: #0a0a0f;
-  --theme-surface: #0a0a0f;
-  --surface-color: #0a0a0f;
+  --theme-background: #0d0b14;
+  --bg-color: #0d0b14;
+  --theme-surface: #141022;
+  --surface-color: #141022;
+  --surface-lighter: #1e1832;
   
-  --theme-surface-container-lowest: #050508;
-  --theme-surface-container-low: #0a0a0f;
-  --theme-surface-container: rgba(255, 255, 255, 0.04);
-  --theme-surface-container-high: rgba(255, 255, 255, 0.08);
-  --theme-surface-container-highest: rgba(255, 255, 255, 0.12);
+  --theme-surface-container-lowest: #09070e;
+  --theme-surface-container-low: #110e1c;
+  --theme-surface-container: #171326;
+  --theme-surface-container-high: #201a35;
+  --theme-surface-container-highest: #292144;
   
-  --theme-outline: rgba(157, 124, 255, 0.48);
-  --border-color: rgba(157, 124, 255, 0.48);
-  --theme-outline-variant: rgba(157, 124, 255, 0.18);
+  --theme-outline: rgba(157, 124, 255, 0.45);
+  --border-color: rgba(157, 124, 255, 0.25);
+  --theme-outline-variant: rgba(157, 124, 255, 0.2);
   
-  --theme-on-surface: #e8e6f0;
-  --text-color: #e8e6f0;
-  --theme-on-surface-variant: #9896a8;
+  --theme-on-surface: #f1effa;
+  --text-color: #f1effa;
+  --theme-on-surface-variant: #a6a0bd;
   --theme-secondary: #c8c6c5;
 }
 

@@ -1,0 +1,198 @@
+/* src/styles/comms/drafts/DraftsDrawer.module.css
+ *
+ * Drafts drawer (features/comms/drafts/DraftsDrawer.jsx). Theme colours are
+ * plain var()s in tailwind.config.js, so Tailwind's /NN opacity modifiers
+ * don't exist for them: translucent shades are mixed here with color-mix().
+ * Amber marks "held, not sent"; green marks "comms open / sent".
+ */
+
+.root {
+  --d-amber: #f5b13d;
+  --d-green: #4ade80;
+  --d-surface: var(--theme-surface-container, #201f1f);
+  --d-text: var(--theme-on-surface, #e5e2e1);
+  --d-muted: var(--theme-on-surface-variant, #e4beba);
+  --d-line: color-mix(in srgb, var(--theme-outline-variant, #5b403e) 75%, transparent);
+  --d-line-strong: color-mix(in srgb, var(--theme-outline, #ab8986) 55%, transparent);
+  --d-primary: var(--theme-primary, #ffb3ae);
+  /* Clan tints can be dark (Brujah, Tremere reds): text on the dark card is
+     lifted toward white so it always reads. */
+  --d-primary-text: color-mix(in srgb, var(--d-primary), #fff 38%);
+  --d-on-primary: var(--theme-on-primary, #680008);
+  --d-error: var(--theme-error, #ffb4ab);
+  --d-ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Opaque even over the admin "liquid glass" theme (see .chat-overlay-surface). */
+.surface {
+  background:
+    linear-gradient(var(--d-surface), var(--d-surface)),
+    var(--bg-color, #0d0d0f);
+}
+
+/* ---------- Bar ---------- */
+
+.bar {
+  border-bottom: 1px solid color-mix(in srgb, var(--d-amber) 28%, transparent);
+  transition: border-color 0.3s var(--d-ease), filter 0.2s var(--d-ease);
+}
+.bar:hover { filter: brightness(1.15); }
+.bar:focus-visible { outline: 2px solid color-mix(in srgb, var(--d-amber) 70%, transparent); outline-offset: -2px; }
+.barOpen { border-bottom-color: color-mix(in srgb, var(--d-green) 32%, transparent); }
+
+.title { color: var(--d-text); }
+.preview { color: color-mix(in srgb, var(--d-muted) 75%, transparent); }
+
+.count {
+  background: color-mix(in srgb, var(--d-amber) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--d-amber) 45%, transparent);
+  color: #fcd38a;
+}
+
+.chipLocked { color: color-mix(in srgb, var(--d-muted) 65%, transparent); }
+.chipOpen { color: var(--d-green); }
+.ping { animation: ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite; }
+@keyframes ping {
+  75%, 100% { transform: scale(2.2); opacity: 0; }
+}
+
+.chevron { color: var(--d-muted); }
+
+/* ---------- Panel ---------- */
+
+.panel {
+  background: color-mix(in srgb, #000 62%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  backdrop-filter: blur(14px) saturate(1.2);
+  border-bottom: 1px solid color-mix(in srgb, var(--d-amber) 25%, transparent);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.75);
+}
+
+.hint { color: color-mix(in srgb, var(--d-muted) 50%, transparent); }
+
+.handle {
+  width: 40px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--d-line-strong);
+  transition: width 0.2s var(--d-ease), background-color 0.2s var(--d-ease);
+}
+.grip:hover .handle { width: 56px; background: color-mix(in srgb, var(--d-amber) 60%, transparent); }
+.grip:active .handle { width: 64px; background: var(--d-amber); }
+
+/* ---------- Card ---------- */
+
+.card {
+  border: 1px solid var(--d-line);
+  border-radius: 8px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 4px 14px rgba(0, 0, 0, 0.35);
+  transition: border-color 0.3s var(--d-ease), box-shadow 0.3s var(--d-ease);
+  touch-action: pan-y;
+}
+/* A thin amber spine: this is held, not sent. */
+.card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+  border-radius: 2px;
+  background: linear-gradient(var(--d-amber), color-mix(in srgb, var(--d-amber) 20%, transparent));
+  opacity: 0.7;
+  transition: background 0.3s var(--d-ease), opacity 0.3s var(--d-ease);
+}
+.card:hover { border-color: var(--d-line-strong); }
+.card:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--d-amber) 65%, transparent);
+  outline-offset: 2px;
+}
+.card[data-state='editing'] {
+  border-color: color-mix(in srgb, var(--d-amber) 70%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--d-amber) 25%, transparent), 0 0 18px color-mix(in srgb, var(--d-amber) 16%, transparent);
+}
+.card[data-state='editing']::before { opacity: 1; }
+.card[data-state='sent'] {
+  border-color: color-mix(in srgb, var(--d-green) 70%, transparent);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--d-green) 20%, transparent);
+}
+.card[data-state='sent']::before { background: var(--d-green); }
+
+.meta { color: color-mix(in srgb, var(--d-muted) 65%, transparent); }
+.metaIcon { color: color-mix(in srgb, var(--d-amber) 85%, transparent); }
+.editingTag { color: var(--d-amber); }
+.subline { color: var(--d-muted); }
+.body { color: var(--d-text); }
+.empty { color: color-mix(in srgb, var(--d-muted) 60%, transparent); font-style: italic; }
+.more { color: color-mix(in srgb, var(--d-primary-text) 80%, transparent); }
+.more:hover { color: var(--d-primary-text); }
+.copied { color: var(--d-green); }
+
+.html p { margin: 0.25rem 0; }
+.html ul { list-style: disc; padding-left: 1.25rem; }
+.html ol { list-style: decimal; padding-left: 1.25rem; }
+.html h3 { font-weight: 700; margin: 0.25rem 0; }
+
+/* Effects layered inside the card. */
+.sweep {
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--d-amber) 18%, transparent), transparent);
+}
+.holdFill {
+  background: color-mix(in srgb, var(--d-amber) 12%, transparent);
+  border-right: 1px solid color-mix(in srgb, var(--d-amber) 45%, transparent);
+}
+.sentWash {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--d-green) 16%, transparent), color-mix(in srgb, var(--d-green) 6%, transparent));
+  border-right: 1px solid color-mix(in srgb, var(--d-green) 50%, transparent);
+}
+
+/* ---------- Swipe underlay ---------- */
+
+.underlay {
+  background: #7f1d1d;
+  color: #ffe1e1;
+  transition: background-color 0.15s ease;
+}
+.underlayArmed { background: #c62828; }
+
+/* ---------- Buttons ---------- */
+
+.send {
+  border: 1px solid color-mix(in srgb, var(--d-primary) 45%, transparent);
+  background: color-mix(in srgb, var(--d-primary) 16%, transparent);
+  color: var(--d-primary-text);
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.send:not(:disabled):hover { background: var(--d-primary); color: var(--d-on-primary); }
+.sendLocked {
+  border: 1px dashed var(--d-line-strong);
+  background: transparent;
+  color: color-mix(in srgb, var(--d-muted) 70%, transparent);
+  cursor: not-allowed;
+}
+.sendDone {
+  border: 1px solid color-mix(in srgb, var(--d-green) 55%, transparent);
+  background: color-mix(in srgb, var(--d-green) 14%, transparent);
+  color: var(--d-green);
+}
+
+.icon {
+  color: var(--d-muted);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.icon:not(:disabled):hover { color: var(--d-text); background: color-mix(in srgb, var(--d-text) 9%, transparent); }
+.iconDanger:not(:disabled):hover { color: var(--d-error); background: color-mix(in srgb, var(--d-error) 12%, transparent); }
+.icon:disabled { opacity: 0.3; }
+
+/* ---------- Badge (contact list / inbox) ---------- */
+
+.badge {
+  border: 1px solid color-mix(in srgb, #f5b13d 45%, transparent);
+  background: color-mix(in srgb, #f5b13d 12%, transparent);
+  color: #fcd38a;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ping { animation: none; }
+  .card, .bar, .handle { transition: none; }
+}

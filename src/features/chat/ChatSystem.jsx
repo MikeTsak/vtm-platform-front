@@ -19,6 +19,8 @@ import { getPushSettings, updatePushSettings, subscribeToWebPush, getPushUnsuppo
 import { socket } from '../../api/liveSession';
 import { symlogo as localSymlogo, CLAN_HEX as CLAN_COLORS, CLAN_PALETTES, clanTint } from '../../data/clans';
 import { useCommsEnabled } from '../comms/useCommsEnabled';
+import { useCommsDrafts, useDraftSummary } from '../comms/drafts/useCommsDrafts';
+import DraftsDrawer, { DraftBadge, flyDraft } from '../comms/drafts/DraftsDrawer';
 
 /* --- Clan assets & colors --- */
 const NAME_OVERRIDES = { 'The Ministry': 'Ministry', 'Banu Haqim': 'Banu_Haqim', 'Thin-blood': 'Thinblood' };
@@ -537,6 +539,22 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   const [pendingQueue, setPendingQueue] = useState([]);
   const [pendingLoading, setPendingLoading] = useState(false);
   const [pendingRefreshTick, setPendingRefreshTick] = useState(0);
+
+  // Drafts (comms/drafts): while SchreckNet is closed the composer keeps what
+  // the player writes as a draft in a drawer on top of the conversation; it's
+  // sent by hand once SchreckNet opens. A Storyteller voicing an NPC has the
+  // Send Later queue instead.
+  const draftTarget = useMemo(() => (
+    selectedContact && !(isAdmin && selectedContact.type === 'npc') ? { kind: selectedContact.type, id: selectedContact.id } : null
+  ), [selectedContact, isAdmin]);
+  const commsDrafts = useCommsDrafts(draftTarget);
+  const draftSummary = useDraftSummary();
+  const draftMode = !canSend && isCharActive && !!draftTarget;
+  const [draftsOpen, setDraftsOpen] = useState(false);
+  // The draft loaded into the composer for editing, and what the composer
+  // held before, so Cancel can put it back.
+  const [editingDraft, setEditingDraft] = useState(null); // { id, before, thread }
+  const savingDraftRef = useRef(false);
 
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
@@ -1626,21 +1644,23 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
 
   /* --- Sending Logic --- */
   // `text` sends something other than the composer (the conversation emoji).
-  const doSend = async ({ queue = false, text, emojiSize = null } = {}) => {
-    if (!canSend) return;
+  // Resolves true once the message is stored; a draft is only deleted then.
+  const doSend = async ({ queue = false, text, emojiSize = null, withReply = true } = {}) => {
+    if (!canSend) return false;
     // The conversation emoji button sends `text` on its own: the typed draft
     // and any picked attachment stay in the composer.
     const fromComposer = text == null;
     const body = (fromComposer ? newMessage : text).trim();
     const file = fromComposer ? attachment : null;
 
-    if ((!body && !file) || !selectedContact) return;
-    if (isAdmin && selectedContact.type === 'npc' && !selectedPlayerId) return;
-    if (sendingRef.current) return;
+    if ((!body && !file) || !selectedContact) return false;
+    if (isAdmin && selectedContact.type === 'npc' && !selectedPlayerId) return false;
+    if (sendingRef.current) return false;
 
     sendingRef.current = true;
     let attachmentId = null;
-    const sig = [threadKey, body, file?.name, file?.size, replyTo?.id, queue, emojiSize].join('|');
+    const quoted = withReply ? replyTo : null;
+    const sig = [threadKey, body, file?.name, file?.size, quoted?.id, queue, emojiSize].join('|');
     if (sendKeyRef.current?.sig !== sig) sendKeyRef.current = { sig, key: crypto.randomUUID() };
     const idem = { headers: { 'Idempotency-Key': sendKeyRef.current.key } };
 
@@ -1664,11 +1684,11 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
           toast.error(formatApiError(err, 'Failed to upload file. Check file size and type.'));
           sendingRef.current = false;
           setIsUploading(false);
-          return;
+          return false;
         }
       }
 
-      const payload = { body, attachment_id: attachmentId, reply_to_id: replyTo?.id || null, emoji_size: emojiSize };
+      const payload = { body, attachment_id: attachmentId, reply_to_id: quoted?.id || null, emoji_size: emojiSize };
       let newMsg = null;
 
       if (selectedContact.type === 'group') {
@@ -1771,7 +1791,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
       if (newMsg) {
         // Show the quote right away; the next history poll replaces this
         // with the server's own copy of the reply preview.
-        if (replyTo) newMsg = { ...newMsg, reply: replyTo };
+        if (quoted) newMsg = { ...newMsg, reply: quoted };
         // A poll or socket refresh that ran while this POST was in flight may
         // already have added the server's copy; appending again showed it twice.
         setMessages(prev => prev.some(m => m.id === newMsg.id) ? prev : [...prev, newMsg]);
@@ -1782,7 +1802,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
       }
 
       sendKeyRef.current = null;
-      setReplyTo(null);
+      if (quoted) setReplyTo(null);
       if (fromComposer) {
         setNewMessage('');
         setShowEmojiPicker(false);
@@ -1792,9 +1812,11 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
         userScrollingRef.current = false;
         scrollToBottom(true);
       }
+      return true;
 
     } catch (err) {
       setError(err?.response?.status === 401 ? 'Your session expired. Please log in again.' : 'Failed to send message.');
+      return false;
     } finally {
       sendingRef.current = false;
       setIsUploading(false);
@@ -1802,10 +1824,101 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     }
   };
 
-  const handleSendMessage = (e) => {
+  const handleSendMessage = async (e) => {
     e?.preventDefault?.();
-    doSend();
+    const editing = editingDraft;
+    if (await doSend() && editing) {
+      setEditingDraft(null);
+      commsDrafts.remove(editing.id);
+    }
   };
+
+  /* --- Drafts --- */
+  const clearComposer = () => {
+    setNewMessage('');
+    setDrafts(prev => ({ ...prev, [threadKey]: '' }));
+    if (textareaRef.current) textareaRef.current.style.height = 'auto';
+  };
+
+  // Composer -> drawer: a new draft, or the edited one updated in place.
+  // The drawer stays as it was (writing several drafts in a row shouldn't
+  // keep covering the chat): the text flies into the bar instead.
+  const saveDraft = async () => {
+    const body = newMessage.trim();
+    if (!body || !draftTarget || savingDraftRef.current) return;
+    savingDraftRef.current = true;
+    const from = textareaRef.current?.getBoundingClientRect();
+    try {
+      if (editingDraft) {
+        await commsDrafts.update(editingDraft.id, { body });
+        setNewMessage(editingDraft.before);
+        setEditingDraft(null);
+      } else {
+        await commsDrafts.save({ body });
+        clearComposer();
+      }
+      flyDraft(from, body, 'chat');
+      if (attachment) toast('Drafts keep text only: the attachment stays in the composer.');
+      navigator.vibrate?.(10);
+      setShowEmojiPicker(false);
+    } catch (err) {
+      toast.error(formatApiError(err, 'Could not save the draft.'));
+    } finally {
+      savingDraftRef.current = false;
+    }
+  };
+
+  const sendDraft = async (draft) => {
+    const ok = await doSend({ text: draft.body, withReply: false });
+    if (ok) {
+      userScrollingRef.current = false;
+      scrollToBottom(true);
+    }
+    return ok;
+  };
+
+  const sentDraft = (draft) => {
+    if (editingDraft?.id === draft.id) setEditingDraft(null);
+    commsDrafts.remove(draft.id);
+  };
+
+  const deleteDraft = (draft) => {
+    if (editingDraft?.id === draft.id) {
+      setNewMessage(editingDraft.before);
+      setEditingDraft(null);
+    }
+    commsDrafts.discard(draft);
+  };
+
+  const editDraft = (draft) => {
+    setEditingDraft(prev => ({ id: draft.id, before: prev ? prev.before : newMessage, thread: threadKey }));
+    setNewMessage(draft.body);
+    setReplyTo(null);
+    setDraftsOpen(false);
+    setTimeout(() => {
+      const ta = textareaRef.current;
+      if (!ta) return;
+      ta.focus();
+      ta.setSelectionRange(ta.value.length, ta.value.length);
+    }, 50);
+  };
+
+  const cancelEditDraft = () => {
+    if (!editingDraft) return;
+    setNewMessage(editingDraft.before);
+    setEditingDraft(null);
+  };
+
+  // Leaving the conversation closes the drawer and drops an unfinished edit:
+  // the draft is untouched on the server, and that chat's composer gets back
+  // what it held before the edit (not the draft text).
+  useEffect(() => { setDraftsOpen(false); }, [threadKey]);
+  useEffect(() => {
+    if (editingDraft && editingDraft.thread !== threadKey) {
+      setDrafts(prev => ({ ...prev, [editingDraft.thread]: editingDraft.before }));
+      setEditingDraft(null);
+    }
+  }, [threadKey, editingDraft]);
 
   // Hold the conversation emoji to inflate it: the longer the hold the bigger
   // it's sent (1-3); see EMOJI_GROW/WARN/POP_MS for the timeline.
@@ -1874,9 +1987,13 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey && !IS_TOUCH) {
       e.preventDefault();
-      doSend({ queue: showQueueOption });
+      if (draftMode) saveDraft();
+      else if (editingDraft) handleSendMessage();
+      else doSend({ queue: showQueueOption });
     } else if (e.key === 'Escape' && replyTo) {
       setReplyTo(null);
+    } else if (e.key === 'Escape' && editingDraft) {
+      cancelEditDraft();
     }
   };
 
@@ -2124,7 +2241,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   // Which button the composer's single slot shows. A button that is still
   // animating out keeps its old props (e.g. the text just sent), so taps on it
   // are dropped: its slot no longer matches the current one.
-  const composerSlot = (newMessage.trim() || attachment) ? (showQueueOption ? 'queue' : 'send') : 'emoji';
+  const composerSlot = (newMessage.trim() || attachment) ? (draftMode ? 'draft' : showQueueOption ? 'queue' : 'send') : 'emoji';
   const composerSlotRef = useRef(composerSlot);
   composerSlotRef.current = composerSlot;
   const dropIfStale = (slot) => (e) => {
@@ -2487,7 +2604,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     // after this message, it's been "answered" and can no longer be edited
     // (delete stays unaffected, same as the API).
     const answeredSince = canEditDelete && messages.some(m => new Date(m.created_at).getTime() > createdAt && !isMine(m));
-    return { mine, sent, canEditDelete, canEdit: canEditDelete && !answeredSince, canReply: sent && editingMsgId !== item.id };
+    return { mine, sent, canEditDelete, canEdit: canEditDelete && !answeredSince, canReply: sent && canSend && editingMsgId !== item.id };
   };
 
   const renderActionSheet = () => {
@@ -2925,7 +3042,10 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                         </div>
                         <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate`}>{g.name}</span>
                       </div>
-                      <UnreadCount count={g.unread_count} />
+                      <div className="flex items-center gap-2 shrink-0">
+                        <DraftBadge count={draftSummary.countFor('group', g.id)} />
+                        <UnreadCount count={g.unread_count} />
+                      </div>
                     </li>
                   );
                 })}
@@ -2956,6 +3076,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                       </span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
+                      <DraftBadge count={draftSummary.countFor('user', u.id)} />
                       {u.clan && <span className="text-[9px] bg-surface-dim px-1 rounded border border-outline-variant/30 uppercase max-w-[40px] truncate">{u.clan.slice(0, 3)}</span>}
                       <UnreadCount count={u.unread_count} />
                     </div>
@@ -2990,7 +3111,10 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                           <span className="truncate">{u.display_name}</span>
                         </span>
                       </div>
-                      <UnreadCount count={u.unread_count} />
+                      <div className="flex items-center gap-2 shrink-0">
+                        <DraftBadge count={draftSummary.countFor('user', u.id)} />
+                        <UnreadCount count={u.unread_count} />
+                      </div>
                     </li>
                   );
                 })}
@@ -3022,6 +3146,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                       </span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
+                      {!isAdmin && <DraftBadge count={draftSummary.countFor('npc', n.id)} />}
                       <span className="text-[8px] bg-tertiary-container/20 text-tertiary px-1 rounded border border-tertiary/30 uppercase">NPC</span>
                       <UnreadCount count={n.unread_count} />
                     </div>
@@ -3199,6 +3324,24 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                 <span className="font-system-code text-[11px] md:text-sm text-error tracking-widest uppercase font-bold">Awaiting ST Approval</span>
               </div>
             ) : null}
+
+            {/* Drafts written while SchreckNet was closed */}
+            {draftTarget && (
+              <DraftsDrawer
+                drafts={commsDrafts.drafts}
+                open={draftsOpen}
+                onOpenChange={setDraftsOpen}
+                commsEnabled={canSend}
+                nextOpening={nextOpening}
+                network="SchreckNet"
+                barId="chat"
+                editingId={editingDraft?.id}
+                onSend={sendDraft}
+                onSent={sentDraft}
+                onDelete={deleteDraft}
+                onEdit={editDraft}
+              />
+            )}
 
             {/* Chat History Area */}
             <div className={`${styles.messageList} custom-scrollbar`} ref={messagesListRef} onScroll={handleListScroll}>
@@ -3545,6 +3688,42 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                     </button>
                   </div>
                 )}
+                {editingDraft && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ type: 'spring', stiffness: 500, damping: 34 }}
+                    className="flex items-center gap-2 mx-1.5 md:mx-2 mt-1.5 md:mt-2 pl-2 pr-1 py-1.5 rounded bg-surface-container-high border-l-2 border-amber-400"
+                  >
+                    <span className="material-symbols-outlined text-[18px] text-amber-400 shrink-0">edit_note</span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-[10px] font-bold font-system-code text-amber-400 truncate uppercase tracking-wider">Editing draft</span>
+                      <span className="block text-[11px] text-on-surface-variant truncate">
+                        {draftMode ? 'Save keeps it in the drawer' : 'Send delivers it now, or keep it as a draft'}
+                      </span>
+                    </span>
+                    {!draftMode && (
+                      <button
+                        type="button"
+                        onClick={saveDraft}
+                        onMouseDown={(e) => e.preventDefault()}
+                        disabled={!newMessage.trim()}
+                        className="h-9 px-2.5 shrink-0 flex items-center gap-1 rounded text-[11px] font-system-code uppercase tracking-wider text-amber-300 border border-amber-500/40 hover:bg-amber-500/15 transition-colors disabled:opacity-30"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">save</span>Keep
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={cancelEditDraft}
+                      aria-label="Stop editing the draft"
+                      title="Stop editing (Esc): the draft stays as it was"
+                      className="w-9 h-9 shrink-0 flex items-center justify-center rounded text-on-surface-variant hover:text-error hover:bg-surface-variant/40 transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">close</span>
+                    </button>
+                  </motion.div>
+                )}
                 <div className="flex items-end gap-2 p-1.5 md:p-2">
 
                 {/* Attachments & Previews */}
@@ -3590,11 +3769,11 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                     onChange={e => setNewMessage(e.target.value)}
                     onKeyDown={handleKeyDown}
                     enterKeyHint={IS_TOUCH ? 'enter' : 'send'}
-                    placeholder={showQueueOption ? "SchreckNet offline : send queues it, hold send to deliver now" : !canSend ? (nextOpening ? `SchreckNet offline : Opens again ${nextOpening.day} at ${nextOpening.time}` : "System Offline...") : (!isCharActive ? "Waiting for ST approval..." : "Transmit response...")}
+                    placeholder={showQueueOption ? "SchreckNet offline : send queues it, hold send to deliver now" : draftMode ? (nextOpening ? `SchreckNet offline : write a draft, send it after ${nextOpening.day} ${nextOpening.time}` : 'SchreckNet offline : write a draft, send it later') : !canSend ? (nextOpening ? `SchreckNet offline : Opens again ${nextOpening.day} at ${nextOpening.time}` : "System Offline...") : (!isCharActive ? "Waiting for ST approval..." : "Transmit response...")}
                     className="w-full bg-transparent border-none text-on-surface font-system-code text-[16px] md:text-[14px] placeholder-on-surface-variant/40 focus:ring-0 resize-none py-2 px-1 max-h-32 custom-scrollbar break-words"
                     rows={1}
                     style={{ minHeight: '40px' }}
-                    disabled={!canSend || !isCharActive || (isAdmin && selectedContact?.type === 'npc' && !selectedPlayerId)}
+                    disabled={!(canSend || draftMode) || !isCharActive || (isAdmin && selectedContact?.type === 'npc' && !selectedPlayerId)}
                   />
                 </div>
 
@@ -3602,7 +3781,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                   <button
                     type="button"
                     onClick={() => setShowEmojiPicker(val => !val)}
-                    disabled={!isCharActive || !canSend}
+                    disabled={!isCharActive || !(canSend || draftMode)}
                     className={`w-10 h-10 items-center justify-center transition-colors rounded hover:bg-surface-variant/30 flex disabled:opacity-30 ${showEmojiPicker ? 'text-primary bg-surface-variant/40' : 'text-on-surface-variant hover:text-primary'}`}
                     title="Add emoji"
                     aria-label="Add emoji"
@@ -3629,7 +3808,19 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                         transition={{ type: 'spring', stiffness: 520, damping: 30 }}
                       >
                       {(newMessage.trim() || attachment) ? (
-                        showQueueOption ? (
+                        draftMode ? (
+                          <button
+                            type="button"
+                            onClick={saveDraft}
+                            onMouseDown={(e) => e.preventDefault()}
+                            disabled={!newMessage.trim()}
+                            title={editingDraft ? 'Save the draft' : 'Keep as a draft: you send it yourself once SchreckNet opens'}
+                            aria-label={editingDraft ? 'Save the draft' : 'Keep as a draft'}
+                            className="flex items-center justify-center h-10 w-10 rounded border bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20 transition-colors disabled:opacity-30"
+                          >
+                            <span className="material-symbols-outlined text-[22px]">{editingDraft ? 'save' : 'edit_note'}</span>
+                          </button>
+                        ) : showQueueOption ? (
                           <button
                             type="button"
                             onClick={(e) => { if (e.detail === 0) doSend({ queue: true }); }}

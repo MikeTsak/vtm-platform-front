@@ -11,6 +11,8 @@ import Avatar from '../../components/Avatar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCommsEnabled } from '../comms/useCommsEnabled';
 import { formatAthensDate, formatAthensDateTime } from '../../utils/dateFormatter';
+import { useCommsDrafts, useDraftSummary } from '../comms/drafts/useCommsDrafts';
+import DraftsDrawer, { DraftBadge, hasHtmlText, htmlToText, flyDraft } from '../comms/drafts/DraftsDrawer';
 
 // --- Secure Rich Text Editor Component ---
 const EditorToolbar = ({ onCmd }) => (
@@ -28,10 +30,13 @@ const EditorToolbar = ({ onCmd }) => (
 export const TextEditor = ({ value, onChange, placeholder, disabled = false }) => {
   const contentRef = useRef(null);
 
+  // Typing round-trips through onChange, so value only differs from the DOM
+  // when the parent sets it: cleared after sending, or a draft loaded back.
   useEffect(() => {
-    if (contentRef.current && (value === '' || value === '<br>')) {
-      contentRef.current.innerHTML = '';
-    }
+    const el = contentRef.current;
+    if (!el) return;
+    if (value === '' || value === '<br>') el.innerHTML = '';
+    else if (value !== el.innerHTML) el.innerHTML = sanitizeHtml(value);
   }, [value]);
 
   const executeCmd = (cmd, val) => {
@@ -98,6 +103,19 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
     if (next.has(userId)) next.delete(userId); else next.add(userId);
     return next;
   });
+
+  // Drafts (comms/drafts): while Surface Web is closed a player can still
+  // write replies and new emails; they wait in a drawer until sent by hand.
+  const draftMode = !commsEnabled && !isAdmin;
+  const replyDrafts = useCommsDrafts(selectedThread && !isAdmin ? { kind: 'email', id: selectedThread.id } : null);
+  const newEmailDrafts = useCommsDrafts(isAdmin ? null : { kind: 'email-new', id: null });
+  const draftSummary = useDraftSummary(!isAdmin);
+  const [replyDraftsOpen, setReplyDraftsOpen] = useState(false);
+  const [newDraftsOpen, setNewDraftsOpen] = useState(true);
+  const [editingReplyDraft, setEditingReplyDraft] = useState(null); // { id, before, thread }
+  const [editingNewDraft, setEditingNewDraft] = useState(null); // draft id loaded in the compose modal
+  const savingDraftRef = useRef(false);
+  const replyBoxRef = useRef(null);
 
   const emailEndRef = useRef(null);
   const [replyOpen, setReplyOpen] = useState(false);
@@ -282,6 +300,14 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
   };
 
   const canComposeReply = commsEnabled || isAdmin;
+  const canWriteReply = canComposeReply || draftMode;
+
+  const reloadOpenThread = async () => {
+    const url = isAdmin ? `/admin/emails/threads/${selectedThread.id}` : `/emails/thread/${selectedThread.id}`;
+    const { data } = await api.get(url);
+    setEmailMessages(data.messages);
+    setTimeout(() => scrollToBottom(), 80);
+  };
 
   const handleEmailReply = async ({ queue = false } = {}) => {
     if (!canComposeReply || !emailReplyBody.trim() || replySending) return;
@@ -289,12 +315,13 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
     try {
       const endpoint = isAdmin ? '/admin/emails/reply' : '/emails/send';
       await api.post(endpoint, { thread_id: selectedThread.id, body: emailReplyBody, queue });
+      if (editingReplyDraft) {
+        replyDrafts.remove(editingReplyDraft.id);
+        setEditingReplyDraft(null);
+      }
       setEmailReplyBody('');
       setReplyOpen(false);
-      const url = isAdmin ? `/admin/emails/threads/${selectedThread.id}` : `/emails/thread/${selectedThread.id}`;
-      const { data } = await api.get(url);
-      setEmailMessages(data.messages);
-      setTimeout(() => scrollToBottom(), 80);
+      await reloadOpenThread();
       if (queue) fetchPendingQueue();
     } catch (e) {
       toast.error('Failed to reply to email.');
@@ -303,26 +330,136 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
     }
   };
 
-  const handleEmailSend = async (e) => {
-    e.preventDefault();
-    if (!commsEnabled) return;
+  /* --- Reply drafts --- */
+  const saveReplyDraft = async () => {
+    if (!hasHtmlText(emailReplyBody) || savingDraftRef.current) return;
+    savingDraftRef.current = true;
+    const from = replyBoxRef.current?.getBoundingClientRect();
+    const text = htmlToText(emailReplyBody);
     try {
-      await api.post('/emails/send', {
-        to_email: emailForm.to,
-        subject: emailForm.subject,
-        body: emailForm.body
-      });
-      setEmailComposeOpen(false);
-      setEmailForm({ to: '', subject: '', body: '' });
+      if (editingReplyDraft) {
+        await replyDrafts.update(editingReplyDraft.id, { body: emailReplyBody });
+        setEmailReplyBody(editingReplyDraft.before);
+        setEditingReplyDraft(null);
+      } else {
+        await replyDrafts.save({ body: emailReplyBody });
+        setEmailReplyBody('');
+      }
+      setReplyOpen(false);
+      flyDraft(from, text, 'email-reply');
+      navigator.vibrate?.(10);
+    } catch (e) {
+      toast.error(formatApiError(e, 'Could not save the draft.'));
+    } finally {
+      savingDraftRef.current = false;
+    }
+  };
+
+  const sendReplyDraft = async (draft) => {
+    try {
+      await api.post('/emails/send', { thread_id: selectedThread.id, body: draft.body });
+      await reloadOpenThread();
+      return true;
+    } catch (e) {
+      toast.error(formatApiError(e, 'Failed to send the draft.'));
+      return false;
+    }
+  };
+
+  const editReplyDraft = (draft) => {
+    setEditingReplyDraft(prev => ({ id: draft.id, before: prev ? prev.before : emailReplyBody, thread: selectedThread.id }));
+    setEmailReplyBody(draft.body);
+    setReplyOpen(true);
+    setReplyDraftsOpen(false);
+  };
+
+  const cancelEditReplyDraft = () => {
+    if (!editingReplyDraft) return;
+    setEmailReplyBody(editingReplyDraft.before);
+    setEditingReplyDraft(null);
+  };
+
+  const deleteReplyDraft = (draft) => {
+    if (editingReplyDraft?.id === draft.id) cancelEditReplyDraft();
+    replyDrafts.discard(draft);
+  };
+
+  const sentReplyDraft = (draft) => {
+    if (editingReplyDraft?.id === draft.id) cancelEditReplyDraft();
+    replyDrafts.remove(draft.id);
+  };
+
+  // Another thread: close its drawer and drop an unfinished edit (the draft
+  // itself stays as it was).
+  useEffect(() => { setReplyDraftsOpen(false); }, [selectedThread?.id]);
+  useEffect(() => {
+    if (editingReplyDraft && editingReplyDraft.thread !== selectedThread?.id) {
+      setEmailReplyBody(editingReplyDraft.before);
+      setEditingReplyDraft(null);
+    }
+  }, [selectedThread?.id, editingReplyDraft]);
+
+  /* --- New-email drafts --- */
+  const resetCompose = () => {
+    setEmailComposeOpen(false);
+    setEmailForm({ to: '', subject: '', body: '' });
+    setEditingNewDraft(null);
+  };
+
+  // Resolves true once sent. 404 = no such address.
+  const sendNewEmail = async ({ to, subject, body }) => {
+    try {
+      await api.post('/emails/send', { to_email: to, subject, body });
       loadEmails();
       toast.success('Email sent.');
+      return true;
     } catch (e) {
       if (e.response?.status === 404) {
         toast.error('Delivery Status Notification: The specified email address does not exist.');
       } else {
         toast.error('Failed to send email.');
       }
+      return false;
     }
+  };
+
+  const saveNewEmailDraft = async () => {
+    if (savingDraftRef.current) return;
+    savingDraftRef.current = true;
+    const fields = { to_address: emailForm.to, subject: emailForm.subject, body: emailForm.body };
+    try {
+      if (editingNewDraft) await newEmailDrafts.update(editingNewDraft, fields);
+      else await newEmailDrafts.save(fields);
+      resetCompose();
+      setNewDraftsOpen(true);
+      toast.success('Kept as a draft.');
+    } catch (e) {
+      toast.error(formatApiError(e, 'Could not save the draft.'));
+    } finally {
+      savingDraftRef.current = false;
+    }
+  };
+
+  const sendNewEmailDraft = async (draft) => {
+    if (!draft.to_address || !draft.subject) {
+      toast.error('This draft needs a recipient and a subject: edit it first.');
+      return false;
+    }
+    return sendNewEmail({ to: draft.to_address, subject: draft.subject, body: draft.body });
+  };
+
+  const editNewEmailDraft = (draft) => {
+    setEmailForm({ to: draft.to_address || '', subject: draft.subject || '', body: draft.body || '' });
+    setEditingNewDraft(draft.id);
+    setEmailComposeOpen(true);
+  };
+
+  const handleEmailSend = async (e) => {
+    e.preventDefault();
+    if (!commsEnabled) return;
+    if (!await sendNewEmail(emailForm)) return;
+    if (editingNewDraft) newEmailDrafts.remove(editingNewDraft);
+    resetCompose();
   };
 
   const handleCreateIdentity = async () => {
@@ -431,13 +568,37 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
                 </button>
               </>
             )}
-            {!isAdmin && commsEnabled && (
-              <button className={`${styles.composeBtn} blood-border-glow`} onClick={() => setEmailComposeOpen(true)}>
-                <span className="material-symbols-outlined" style={{ fontSize: 18, verticalAlign: 'middle', marginRight: 4 }}>edit</span>Compose
+            {!isAdmin && (
+              <button
+                className={`${styles.composeBtn} blood-border-glow`}
+                onClick={() => setEmailComposeOpen(true)}
+                title={commsEnabled ? 'Write a new email' : 'Surface Web is closed: write a draft to send later'}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 18, verticalAlign: 'middle', marginRight: 4 }}>{commsEnabled ? 'edit' : 'edit_note'}</span>{commsEnabled ? 'Compose' : 'Draft'}
               </button>
             )}
           </div>
         </div>
+        {!isAdmin && (
+          <DraftsDrawer
+            drafts={newEmailDrafts.drafts}
+            open={newDraftsOpen}
+            onOpenChange={setNewDraftsOpen}
+            commsEnabled={commsEnabled}
+            nextOpening={nextOpening}
+            network="Surface Web"
+            title="Unsent emails"
+            barId="email-new"
+            html
+            overlay={false}
+            editingId={emailComposeOpen ? editingNewDraft : null}
+            describe={(d) => `To ${d.to_address || '(no recipient)'} · ${d.subject || '(no subject)'}`}
+            onSend={sendNewEmailDraft}
+            onSent={(d) => newEmailDrafts.remove(d.id)}
+            onDelete={(d) => newEmailDrafts.discard(d)}
+            onEdit={editNewEmailDraft}
+          />
+        )}
         <div className={styles.threadList}>
           {loading && <Skeleton loading={true} name="email-system-loader" />}
           {!loading && threads.length === 0 && (
@@ -461,9 +622,11 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
               playerMap.get(key).threads.push(t);
             });
 
-            return Array.from(playerMap.values()).map(player => {
+            const unreadOf = p => p.threads.reduce((n, t) => n + (t.unread_count || 0), 0);
+            // Players with unread mail first (stable sort keeps server order otherwise)
+            return Array.from(playerMap.values()).sort((x, y) => (unreadOf(y) > 0) - (unreadOf(x) > 0)).map(player => {
               const isOpen = openDrawers.has(player.user_id);
-              const hasUnread = player.threads.some(t => t.unread_count > 0);
+              const unreadTotal = unreadOf(player);
               return (
                 <div key={player.user_id}>
                   {/* Player header */}
@@ -486,7 +649,7 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
                         <span className={styles.playerDrawerSub}>{player.user_name}</span>
                       )}
                     </div>
-                    {hasUnread && <span className={styles.drawerUnreadDot} />}
+                    {unreadTotal > 0 && <span className={styles.unreadBadge}>{unreadTotal}</span>}
                     <span className={`material-symbols-outlined ${styles.drawerChevron} ${isOpen ? styles.open : ''}`}>expand_more</span>
                   </div>
 
@@ -552,7 +715,10 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
                 <div className={styles.threadContent}>
                   <div className={styles.threadTopRow}>
                     <span className={styles.threadSender}>{senderName}</span>
-                    <span className={styles.threadDate}>{formatAthensDate(t.updated_at)}</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <DraftBadge count={draftSummary.countFor('email', t.id)} />
+                      <span className={styles.threadDate}>{formatAthensDate(t.updated_at)}</span>
+                    </span>
                   </div>
                   <div className={styles.threadSubject}>{t.subject}</div>
                   <div className={styles.threadSnippet}>{t.snippet ? t.snippet.replace(/<[^>]+>/g, '').slice(0, 40) + '...' : 'No preview available'}</div>
@@ -592,6 +758,24 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
                 }
               </div>
             </div>
+
+            {!isAdmin && (
+              <DraftsDrawer
+                drafts={replyDrafts.drafts}
+                open={replyDraftsOpen}
+                onOpenChange={setReplyDraftsOpen}
+                commsEnabled={commsEnabled}
+                nextOpening={nextOpening}
+                network="Surface Web"
+                barId="email-reply"
+                html
+                editingId={editingReplyDraft?.id}
+                onSend={sendReplyDraft}
+                onSent={sentReplyDraft}
+                onDelete={deleteReplyDraft}
+                onEdit={editReplyDraft}
+              />
+            )}
 
             <div className={styles.emailBodyScroll} ref={scrollContainerRef}>
               {emailMessages.map(m => {
@@ -659,20 +843,34 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
 
             {isMobile && !replyOpen && !emailReplyBody ? (
               <div className={styles.emailReplyBox}>
-                <button className={styles.btnPri} style={{ width: '100%', minHeight: 44 }} disabled={!canComposeReply} onClick={() => setReplyOpen(true)}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 20, verticalAlign: 'middle', marginRight: 6 }}>reply</span>Reply
+                <button className={styles.btnPri} style={{ width: '100%', minHeight: 44 }} disabled={!canWriteReply} onClick={() => setReplyOpen(true)}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 20, verticalAlign: 'middle', marginRight: 6 }}>{draftMode ? 'edit_note' : 'reply'}</span>{draftMode ? 'Write a draft' : 'Reply'}
                 </button>
               </div>
             ) : (
-            <div className={styles.emailReplyBox} style={{ opacity: !canComposeReply ? 0.6 : 1, pointerEvents: !canComposeReply ? 'none' : 'auto' }}>
+            <div ref={replyBoxRef} className={styles.emailReplyBox} style={{ opacity: !canWriteReply ? 0.6 : 1, pointerEvents: !canWriteReply ? 'none' : 'auto' }}>
+              {editingReplyDraft && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, padding: '6px 6px 6px 10px', borderLeft: '2px solid #f59e0b', background: 'rgba(245,158,11,0.08)', borderRadius: 4 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#f59e0b' }}>edit_note</span>
+                  <span style={{ flex: 1, fontSize: '0.75rem', color: '#f59e0b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Editing draft</span>
+                  <button type="button" onClick={cancelEditReplyDraft} className={styles.iconBtn} aria-label="Stop editing the draft" title="Stop editing: the draft stays as it was">
+                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>close</span>
+                  </button>
+                </div>
+              )}
               <TextEditor
                 value={emailReplyBody}
                 onChange={setEmailReplyBody}
-                placeholder={!canComposeReply ? (nextOpening ? `Offline : Opens again ${nextOpening.day} at ${nextOpening.time}` : "System Offline...") : "Reply..."}
-                disabled={!canComposeReply}
+                placeholder={draftMode ? (nextOpening ? `Offline : write a draft, send it after ${nextOpening.day} ${nextOpening.time}` : 'Offline : write a draft, send it later') : !canComposeReply ? (nextOpening ? `Offline : Opens again ${nextOpening.day} at ${nextOpening.time}` : "System Offline...") : "Reply..."}
+                disabled={!canWriteReply}
               />
               <div style={{ textAlign: 'right', marginTop: '10px', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                {!commsEnabled && isAdmin ? (
+                {draftMode ? (
+                  <button onClick={saveReplyDraft} className={styles.btnPri} disabled={!hasHtmlText(emailReplyBody)} title="Keep as a draft: you send it yourself once Surface Web opens">
+                    <span className="material-symbols-outlined" style={{ fontSize: 18, verticalAlign: 'middle', marginRight: 4 }}>{editingReplyDraft ? 'save' : 'edit_note'}</span>
+                    {editingReplyDraft ? 'Save Draft' : 'Keep as Draft'}
+                  </button>
+                ) : !commsEnabled && isAdmin ? (
                   <>
                     <button onClick={() => handleEmailReply({ queue: true })} className={styles.btnSec} disabled={replySending || !emailReplyBody.trim()} title="Queue — sends automatically when SurfaceWeb reopens">
                       Queue
@@ -682,7 +880,12 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
                     </button>
                   </>
                 ) : (
-                  <button onClick={() => handleEmailReply()} className={styles.btnPri} disabled={!canComposeReply || replySending}>Send Reply</button>
+                  <>
+                    {editingReplyDraft && (
+                      <button onClick={saveReplyDraft} className={styles.btnSec} disabled={replySending || !hasHtmlText(emailReplyBody)}>Keep Draft</button>
+                    )}
+                    <button onClick={() => handleEmailReply()} className={styles.btnPri} disabled={!canComposeReply || replySending}>Send Reply</button>
+                  </>
                 )}
               </div>
             </div>
@@ -700,7 +903,13 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
       {emailComposeOpen && (
         <div className={styles.modalBackdrop}>
           <div className={styles.modal}>
-            <h3>New Message</h3>
+            <h3>{editingNewDraft ? 'Edit Draft' : commsEnabled ? 'New Message' : 'New Draft'}</h3>
+            {!commsEnabled && (
+              <p style={{ fontSize: '0.75rem', color: '#f59e0b', margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>lock_clock</span>
+                Surface Web is closed{nextOpening ? ` until ${nextOpening.day} ${nextOpening.time}` : ''}. This is kept as a draft; you send it yourself once it opens.
+              </p>
+            )}
             <input
               className={styles.input}
               placeholder="To"
@@ -722,8 +931,19 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
               />
             </div>
             <div className={styles.modalActions}>
-              <button onClick={() => setEmailComposeOpen(false)} className={styles.btnSec}>Discard</button>
-              <button className={styles.btnPri} onClick={handleEmailSend} disabled={!emailForm.to || !emailForm.subject}>Send</button>
+              <button onClick={resetCompose} className={styles.btnSec}>{editingNewDraft ? 'Cancel' : 'Discard'}</button>
+              {(!commsEnabled || editingNewDraft) && (
+                <button
+                  className={commsEnabled ? styles.btnSec : styles.btnPri}
+                  onClick={saveNewEmailDraft}
+                  disabled={!emailForm.subject.trim() && !hasHtmlText(emailForm.body)}
+                >
+                  {editingNewDraft ? 'Save Draft' : 'Keep as Draft'}
+                </button>
+              )}
+              {commsEnabled && (
+                <button className={styles.btnPri} onClick={handleEmailSend} disabled={!emailForm.to || !emailForm.subject}>Send</button>
+              )}
             </div>
           </div>
         </div>

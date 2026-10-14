@@ -7,6 +7,7 @@ import styles from '../../styles/Admin.module.css';
 import { Skeleton } from 'boneyard-js/react';
 import { Link } from 'react-router-dom';
 import { AuthCtx } from '../../core/AuthContext';
+import { socket } from '../../api/liveSession';
 import { CLAN_NAMES, symlogo, textlogo } from '../../data/clans';
 
 // The schedule this calendar edits is keyed and evaluated entirely in
@@ -29,14 +30,25 @@ const getAthensYearMonth = () => {
 
 export default function AdminMasterTab() {
   const { me, setMe } = useContext(AuthCtx);
-  const [commsEnabled, setCommsEnabled] = useState(true);
-  // Distinct from commsEnabled (the raw master killswitch this toggle sets):
-  // this is what resolveCommsSchedule() actually resolves to right now, which
-  // also depends on today's schedule entry. The killswitch can be ON while an
-  // explicit "Force OFF"/event day still keeps comms closed, so the banner
-  // text needs this, not the raw switch position, or it tells admins players
-  // can chat when they can't.
-  const [resolvedCommsEnabled, setResolvedCommsEnabled] = useState(true);
+  // The master switch (services/commsState.js): it shows the live state and
+  // follows the calendar on its own. Flipping it is an emergency override that
+  // lasts until the calendar next changes, then the calendar takes over again.
+  const [comms, setComms] = useState({ enabled: true, calendar: true, override: null, nextOpening: null, nextClosing: null });
+  const applyCommsStatus = (data) => {
+    if (!data || typeof data.comms_enabled !== 'boolean') return;
+    setComms({
+      enabled: data.comms_enabled,
+      calendar: data.calendar_enabled ?? data.comms_enabled,
+      override: data.override || null,
+      nextOpening: data.next_opening || null,
+      nextClosing: data.next_closing || null,
+    });
+  };
+  // The calendar (or an override running out) flips comms while this tab is open.
+  useEffect(() => {
+    socket.on('comms:status', applyCommsStatus);
+    return () => socket.off('comms:status', applyCommsStatus);
+  }, []);
   // null until loaded from the server: toggling sends the WHOLE list, so a
   // toggle from a guessed list would silently re-enable every other clan.
   const [disabledClans, setDisabledClans] = useState(null);
@@ -376,18 +388,15 @@ export default function AdminMasterTab() {
   const loadConfig = async () => {
     setLoading(true);
     try {
-      const [commsRes, statusRes, bannerRes, ntfyRes, npcsRes, clansRes] = await Promise.all([
+      const [commsRes, bannerRes, ntfyRes, npcsRes, clansRes] = await Promise.all([
         api.get('/admin/comms/config'),
-        api.get('/comms/status').catch(() => ({ data: null })),
         api.get('/system/banner'),
         api.get('/admin/ntfy').catch(() => ({ data: { topic: '', subscribed_npcs: [] } })),
         api.get('/admin/npcs').catch(() => ({ data: { npcs: [] } })),
         api.get('/clans/config').catch(() => ({ data: null }))
       ]);
-      setCommsEnabled(commsRes.data.master_enabled);
+      applyCommsStatus(commsRes.data);
       setChatSchedule(commsRes.data.schedule || {});
-      if (statusRes.data) setResolvedCommsEnabled(!!statusRes.data.comms_enabled);
-      else setResolvedCommsEnabled(commsRes.data.master_enabled);
       setBannerEnabled(bannerRes.data.banner_enabled);
       setBannerMessage(bannerRes.data.banner_message || '');
       setBannerCountdown(bannerRes.data.banner_countdown || '');
@@ -419,28 +428,27 @@ export default function AdminMasterTab() {
     } catch (e) { setErr('Failed to update clan availability.'); } finally { setClanSaving(false); }
   };
 
-  const toggleComms = async () => {
+  // body: { comms_enabled } flips the switch, { follow_calendar: true } drops the override.
+  const setCommsSwitch = async (body) => {
     if (actionLoading) return;
-    const newVal = !commsEnabled;
     setActionLoading(true); setMsg(''); setErr('');
     try {
-      const { data } = await api.post('/admin/comms/status', { comms_enabled: newVal });
-      setCommsEnabled(newVal);
-      // The response already carries the schedule-resolved status — use it
-      // instead of assuming newVal, since an explicit schedule override for
-      // today can keep comms closed (or open) independent of this switch.
-      setResolvedCommsEnabled(!!data?.comms_enabled);
-      setMsg(`Killswitch updated: comms are ${data?.comms_enabled ? 'ONLINE' : 'OFFLINE'} right now.`);
-      setTimeout(() => setMsg(''), 3000);
-    } catch (e) { setErr('Failed to update status.'); } finally { setActionLoading(false); }
+      const { data } = await api.post('/admin/comms/status', body);
+      applyCommsStatus(data);
+      setMsg(data.override
+        ? `Override: comms forced ${data.override.state ? 'ONLINE' : 'OFFLINE'} until the calendar next changes.`
+        : `Following the calendar: comms are ${data.comms_enabled ? 'ONLINE' : 'OFFLINE'} right now.`);
+      setTimeout(() => setMsg(''), 4000);
+    } catch (e) { setErr(formatApiError(e, 'Failed to update status.')); } finally { setActionLoading(false); }
   };
+  const toggleComms = () => setCommsSwitch({ comms_enabled: !comms.enabled });
 
   const saveSchedule = async (customSchedule = null) => {
     const targetSchedule = customSchedule && typeof customSchedule === 'object' && !customSchedule.nativeEvent ? customSchedule : chatSchedule;
     setActionLoading(true); setMsg(''); setErr('');
     try {
       const { data } = await api.post('/admin/comms/schedule', { schedule: targetSchedule });
-      if (data) setResolvedCommsEnabled(!!data.comms_enabled);
+      applyCommsStatus(data);
       setMsg('Comms schedule saved.');
       setTimeout(() => setMsg(''), 3000);
     } catch (e) { setErr('Failed to save comms schedule.'); } finally { setActionLoading(false); }
@@ -867,7 +875,10 @@ export default function AdminMasterTab() {
     finally { setDangerLoading(false); }
   };
 
-  const isOnline = commsEnabled;
+  const isOnline = comms.enabled;
+  const overridden = !!comms.override;
+  const untilText = comms.override?.until ? formatAthensDateTime(comms.override.until) : null;
+  const nextChange = comms.enabled ? comms.nextClosing : comms.nextOpening;
   const themeColor = isOnline ? 'var(--color-success)' : 'var(--color-error)';
   const bgColor = isOnline ? 'rgba(0, 230, 118, 0.05)' : 'rgba(255, 77, 77, 0.05)';
   const isBannerOnline = bannerEnabled;
@@ -938,27 +949,40 @@ export default function AdminMasterTab() {
             </div>
           </div>
           <div style={{ background: bgColor, borderRadius: '8px', padding: '15px', borderLeft: `4px solid ${themeColor}` }}>
-            <h4 style={{ margin: '0 0 4px 0', color: themeColor, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Killswitch: {isOnline ? 'ON' : 'OFF'}</h4>
-            <h4 style={{ margin: '0 0 8px 0', color: resolvedCommsEnabled ? 'var(--color-success)' : 'var(--color-error)', fontSize: '1.1rem', textTransform: 'uppercase', letterSpacing: '1px' }}>{resolvedCommsEnabled
+            <h4 style={{ margin: '0 0 4px 0', color: overridden ? '#ffb300' : 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <FaGlyph name={overridden ? 'fa-triangle-exclamation' : 'fa-calendar-days'} size={13} />
+              {overridden ? `Emergency override: forced ${comms.override.state ? 'ON' : 'OFF'}` : 'Following the calendar'}
+            </h4>
+            <h4 style={{ margin: '0 0 8px 0', color: themeColor, fontSize: '1.1rem', textTransform: 'uppercase', letterSpacing: '1px' }}>{isOnline
               ? <><FaGlyph name="fa-circle-check" size={18} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Comms are Online right now</>
               : <><FaGlyph name="fa-circle-xmark" size={18} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Comms are Offline right now</>}</h4>
-            <p style={{ margin: 0, color: 'var(--text-primary)', lineHeight: '1.5' }}>{resolvedCommsEnabled ? "All players and administrators can freely send and receive messages, create groups, and upload media across the network." : "Players can log in and read their chat history, but all inputs are disabled."}</p>
-            {isOnline !== resolvedCommsEnabled && (
-              <p style={{ margin: '10px 0 0 0', color: 'var(--text-muted)', fontSize: '0.85rem', fontStyle: 'italic' }}>
-                {isOnline
-                  ? "The killswitch is ON, but today's schedule below has comms closed right now — flipping this switch off won't change that."
-                  : "The killswitch is OFF, but today's schedule below has comms open right now — flipping this switch on won't change that."}
-              </p>
-            )}
+            <p style={{ margin: 0, color: 'var(--text-primary)', lineHeight: '1.5' }}>{isOnline ? "All players and administrators can freely send and receive messages, create groups, and upload media across the network." : "Players can log in and read their chat history, but all inputs are disabled."}</p>
+            <p style={{ margin: '10px 0 0 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+              {overridden
+                ? <>The calendar says <b>{comms.calendar ? 'ON' : 'OFF'}</b>. {untilText ? <>The override ends when the calendar next changes, on <b>{untilText}</b>; after that the calendar is in charge again.</> : 'The calendar has no change coming up, so this holds until you return to the calendar.'}</>
+                : <>The switch flips on its own with the calendar below. {nextChange ? <>Next change: <b>{isOnline ? 'closes' : 'opens'} {nextChange.formatted}</b>.</> : 'No change scheduled.'} Click it for an emergency override.</>}
+            </p>
           </div>
         </div>
+        {overridden && (
+          <button
+            type="button"
+            onClick={() => setCommsSwitch({ follow_calendar: true })}
+            disabled={actionLoading}
+            className={styles.btnGhost}
+            style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', border: '1px solid #ffb300', color: '#ffb300' }}
+          >
+            <FaGlyph name="fa-calendar-days" size={16} />
+            Back to calendar (comms {comms.calendar ? 'ON' : 'OFF'})
+          </button>
+        )}
       </div>
 
       {/* COMMS SCHEDULE */}
       <div style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', padding: '2rem', boxShadow: 'var(--glass-shadow)' }}>
         <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
           <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-color)' }}><FaGlyph name="fa-calendar-days" size={22} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Comms Schedule</h4>
-          <p style={{ margin: '5px 0 0 0', color: 'var(--text-secondary)' }}>Click days to toggle exceptions: <span style={{ color: '#0096FF' }}>Blue = 5PM Start</span>, <span style={{ color: 'var(--color-error)' }}>Red = Force OFF</span>, <span style={{ color: 'var(--color-success)' }}>Green = Midnight Start</span>, <span style={{ color: '#ffb300' }}>Amber = Event (OFF)</span>. If blank, it follows the Master Killswitch above.</p>
+          <p style={{ margin: '5px 0 0 0', color: 'var(--text-secondary)' }}>Click days to toggle exceptions: <span style={{ color: '#0096FF' }}>Blue = 5PM Start</span>, <span style={{ color: 'var(--color-error)' }}>Red = Force OFF</span>, <span style={{ color: 'var(--color-success)' }}>Green = Midnight Start</span>, <span style={{ color: '#ffb300' }}>Amber = Event (OFF)</span>. Blank days are OFF. The switch above follows this calendar on its own.</p>
         </div>
         {renderCalendar()}
       </div>

@@ -202,18 +202,45 @@ export default function AdminCharactersTab({ users, onDelete, onOpenEditor }) {
     return { maxHealth, maxWillpower, sheetObj: data };
   };
 
+  // Only the top-level keys that changed go to the server, which sets them on
+  // the stored sheet. Sending the whole cached sheet would undo anything saved
+  // since this tab loaded (XP purchases, rouses, other Storytellers' edits).
+  const changedKeys = (before, after) => Object.fromEntries(
+    Object.keys(after).filter(k => JSON.stringify(after[k]) !== JSON.stringify(before[k])).map(k => [k, after[k]])
+  );
+
+  // Take the server's fresh sheet, keeping the local value of the keys just
+  // sent (the notes box saves per keystroke; an older reply must not undo typing).
+  const refreshSheet = (charId, fresh, sentKeys) => {
+    if (!fresh) return;
+    setSheetStates(prev => {
+      let local = {};
+      try { local = JSON.parse(prev[charId] || '{}'); } catch { /* keep server copy */ }
+      const kept = Object.fromEntries(sentKeys.filter(k => k in local).map(k => [k, local[k]]));
+      return { ...prev, [charId]: JSON.stringify({ ...fresh, ...kept }, null, 2) };
+    });
+  };
+
+  const patchSheet = async (char, before, after) => {
+    const sheetPatch = changedKeys(before, after);
+    const keys = Object.keys(sheetPatch);
+    if (!keys.length) return;
+    const { data } = await api.patch(`/admin/characters/${char.id}`, { sheetPatch });
+    refreshSheet(char.id, data?.character?.sheet, keys);
+  };
+
   // --- UNIFIED SHEET UPDATER (Handles Trackers, Notes, Active/Reset flags) ---
   const updateSheetData = async (char, updaterFn) => {
     const sheetObj = getSheetObj(char.id);
     let data = {};
-    try { data = JSON.parse(JSON.stringify(sheetObj)); } 
+    try { data = JSON.parse(JSON.stringify(sheetObj)); }
     catch (e) { alert("Invalid JSON. Please fix syntax errors before updating."); return; }
 
     data = updaterFn(data);
     setSheetState(char.id, data);
 
     try {
-      await api.patch(`/admin/characters/${char.id}`, { name: char.name, clan: char.clan, sheet: data });
+      await patchSheet(char, sheetObj, data);
     } catch (error) {
       console.error("Auto-save failed:", error);
       alert("Failed to auto-save. Check your connection.");
@@ -266,7 +293,7 @@ export default function AdminCharactersTab({ users, onDelete, onOpenEditor }) {
       if (trackersToReset.includes('hunger')) data.hunger = 1;
 
       setSheetState(c.id, data);
-      return api.patch(`/admin/characters/${c.id}`, { name: c.name, clan: c.clan, sheet: data });
+      return patchSheet(c, sheetObj, data);
     });
 
     try {

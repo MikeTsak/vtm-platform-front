@@ -15,6 +15,7 @@ import { clanRef } from '../../data/clanReference';
 import { powerMechanics } from '../../data/disciplineMechanics';
 import { summarizeTrackers, getBloodPotencyStats, applyHealthDamage, remorsePool } from '../../utils/liveSessionMechanics';
 import { formatEuDate } from '../../utils/dateFormatter';
+import { clampBloodPotency } from '../../utils/bloodPotencyLimits';
 import generateVTMCharacterSheetPDF from '../../utils/pdfGenerator';
 import LiveSessionRollHistory from '../live-session/LiveSessionRollHistory';
 import WikiReferenceBar from '../live-session/WikiReferenceBar';
@@ -411,13 +412,13 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
 
       if (deltas.bloodPotencyDelta !== undefined) {
         const currentBP = Number(sheet.blood_potency ?? sheet.bloodPotency ?? 1);
-        const nextBP = Math.max(0, Math.min(10, currentBP + Number(deltas.bloodPotencyDelta)));
+        const nextBP = clampBloodPotency(currentBP + Number(deltas.bloodPotencyDelta), sheet.generation);
         sheet.blood_potency = nextBP;
         sheet.bloodPotency = nextBP;
       }
 
       if (deltas.bloodPotency !== undefined) {
-        const nextBP = Math.max(0, Math.min(10, Number(deltas.bloodPotency)));
+        const nextBP = clampBloodPotency(deltas.bloodPotency, sheet.generation);
         sheet.blood_potency = nextBP;
         sheet.bloodPotency = nextBP;
       }

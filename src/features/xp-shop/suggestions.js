@@ -18,6 +18,7 @@
 import { PREDATOR_TYPES } from '../../data/predator_types.js';
 import { ALL_DISCIPLINE_NAMES } from '../../data/disciplines.js';
 import { RITUALS } from '../../data/rituals.js';
+import { bloodPotencyLimits } from '../../utils/bloodPotencyLimits';
 
 export const ATTR_GROUPS = {
   Physical: ['Strength', 'Dexterity', 'Stamina'],
@@ -1173,7 +1174,7 @@ export function buildSuggestions({ ch, sheet, xp = 0, costs, disciplineKind, dis
      5. Blood Potency Engine (Rules.md Section 15 Blood Potency Table)
      ----------------------------------------------------------------------- */
   const bp = Number(sheet?.blood_potency ?? 1);
-  if (bp < MAX_BLOOD_POTENCY) {
+  if (bp < Math.min(MAX_BLOOD_POTENCY, bloodPotencyLimits(sheet?.generation).max)) {
     const next = bp + 1;
     const cost = costs.bloodPotency(next);
     const why = [];
