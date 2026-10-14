@@ -39,25 +39,53 @@
     -webkit-backdrop-filter: blur(12px);
 }
 
-.bubble-left::after {
-    content: '';
-    position: absolute;
-    left: -8px;
-    top: 0;
-    width: 0;
-    height: 0;
-    border-top: 12px solid #2a2a2a;
-    border-left: 12px solid transparent;
+/* Speech-bubble tail, drawn from the bubble's own colours so any chat theme
+   matches: ::before is the outline band (inherits border-color), ::after the
+   fill (inherits background-color). The bubble has no border on the tail side,
+   so the tail joins it seamlessly and the outline runs on along the diagonal. */
+/* Own-message fill; a chat theme overrides it inline. (bg-blood-accent/90
+   compiles to nothing: Tailwind can't apply opacity to a var() colour.) */
+.bubble-right {
+    background-color: color-mix(in srgb, var(--theme-blood-accent, #b01423) 90%, transparent);
 }
+.bubble-left::before,
+.bubble-right::before,
+.bubble-left::after,
 .bubble-right::after {
     content: '';
     position: absolute;
-    right: -8px;
-    top: 0;
+    pointer-events: none;
+}
+.bubble-left::before,
+.bubble-right::before {
+    top: -1px;
     width: 0;
     height: 0;
-    border-top: 12px solid #b01423;
-    border-right: 12px solid transparent;
+    border: 7px solid;
+    border-color: inherit;
+}
+.bubble-left::after,
+.bubble-right::after {
+    top: 0;
+    width: 11px;
+    height: 11px;
+    background-color: inherit;
+}
+.bubble-right::before {
+    right: -14px;
+    clip-path: polygon(0 0, 14px 0, 0 14px, 0 12px, 11px 1px, 0 1px);
+}
+.bubble-right::after {
+    right: -11px;
+    clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+.bubble-left::before {
+    left: -14px;
+    clip-path: polygon(14px 0, 0 0, 14px 14px, 14px 12px, 3px 1px, 14px 1px);
+}
+.bubble-left::after {
+    left: -11px;
+    clip-path: polygon(100% 0, 0 0, 100% 100%);
 }
 
 /* Custom scrollbar for terminal feel */

@@ -3431,7 +3431,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                           style={mine && bubbleTheme && !bigEmoji ? bubbleTheme : undefined}
                           className={bigEmoji
                             ? `relative w-fit max-w-full select-none leading-none rounded ${flashMsgId === item.id ? 'ring-2 ring-primary' : ''}`
-                            : `relative chat-glass p-2 md:p-3 w-fit max-w-full shadow-[0_4px_12px_rgba(0,0,0,0.5)] select-none transition-shadow duration-300 ${flashMsgId === item.id ? 'ring-2 ring-primary' : ''} ${mine ? 'bg-blood-accent/90 text-white rounded-l-lg rounded-br-lg bubble-right border-l border-t border-b border-[#b01423]' : 'bg-surface-container-high border border-outline-variant/30 text-on-surface rounded-r-lg rounded-bl-lg bubble-left'}`}
+                            : `relative chat-glass p-2 md:p-3 w-fit max-w-full shadow-[0_4px_12px_rgba(0,0,0,0.5)] select-none transition-shadow duration-300 ${flashMsgId === item.id ? 'ring-2 ring-primary' : ''} ${mine ? 'text-white rounded-l-lg rounded-br-lg bubble-right border-l border-t border-b border-[#b01423]' : 'bg-surface-container-high border-r border-t border-b border-outline-variant/30 text-on-surface rounded-r-lg rounded-bl-lg bubble-left'}`}
                         >
 
                           {/* Quoted message this one replies to */}
