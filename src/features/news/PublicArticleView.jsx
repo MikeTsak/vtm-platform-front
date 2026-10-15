@@ -296,8 +296,10 @@ export default function PublicArticleView() {
           <LeftAdSidebar />
           <div className={`${themeStyles.articleBody} ${themeStyles.alphaArticle}`}>
             <h1 className={themeStyles.alphaTitle}>{article.title}</h1>
-            <div className={themeStyles.alphaMeta} style={{ margin: '1rem 0 2rem 0' }}>
-              <span>{article.category || 'ΕΙΔΗΣΕΙΣ'}</span> <span style={{ marginLeft: '1rem' }}>{articleDate}</span>
+            <div className={themeStyles.alphaMeta} style={{ margin: '1rem 0 2rem 0', display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <span>{article.category || 'ΕΙΔΗΣΕΙΣ'}</span>
+              <span>ΣΥΝΤΑΞΗ: {article.journalist_name || 'ALPHA NEWSROOM'}</span>
+              <span>{articleDate}</span>
             </div>
             {renderMedia('8px')}
             {article.subtitle && <h3 style={{ margin: '2rem 0 1rem', fontSize: '1.4rem', fontWeight: 'bold', color: themeObj.color }}>{article.subtitle}</h3>}
@@ -333,8 +335,9 @@ export default function PublicArticleView() {
           <div className={`${themeStyles.articleBody} ${themeStyles.ertArticle}`}>
             <h1 className={themeStyles.ertTitle}>{article.title}</h1>
             {article.subtitle && <h3 style={{ margin: '1rem 0', fontSize: '1.2rem', color: '#555' }}>{article.subtitle}</h3>}
-            <div className={themeStyles.ertMeta} style={{ margin: '1rem 0', borderBottom: '1px solid #eee', paddingBottom: '1rem' }}>
-              <span>{articleDate}</span>
+            <div className={themeStyles.ertMeta} style={{ margin: '1rem 0', borderBottom: '1px solid #eee', paddingBottom: '1rem', display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <span>ΣΥΝΤΑΞΗ: {article.journalist_name || 'ERT NEWS'}</span>
+              <span style={{ color: '#555', fontWeight: 'normal' }}>{articleDate}</span>
             </div>
             {renderMedia()}
             <div className={styles.fsBody} dangerouslySetInnerHTML={{ __html: sanitizeHtml(article.body) }} style={{ marginTop: '2rem', color: 'inherit', fontFamily: 'inherit' }} />
@@ -368,9 +371,12 @@ export default function PublicArticleView() {
         <div className={themeStyles.mainContent} style={{ marginTop: '2rem' }}>
           <LeftAdSidebar />
           <div className={`${themeStyles.articleBody} ${themeStyles.megaArticle}`}>
-            <div className={themeStyles.megaMeta} style={{ marginBottom: '1rem' }}>{articleDate}</div>
             <h1 className={themeStyles.megaTitle}>{article.title}</h1>
-            {article.subtitle && <h3 style={{ margin: '1rem 0 2rem', fontSize: '1.4rem', color: '#aaa', fontWeight: 'normal' }}>{article.subtitle}</h3>}
+            {article.subtitle && <h3 style={{ margin: '1rem 0 1.5rem', fontSize: '1.4rem', color: '#aaa', fontWeight: 'normal' }}>{article.subtitle}</h3>}
+            <div className={themeStyles.megaMeta} style={{ margin: '1rem 0 2rem', display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <span>ΡΕΠΟΡΤΑΖ: {article.journalist_name || 'MEGA NEWS'}</span>
+              <span style={{ color: '#aaa' }}>{articleDate}</span>
+            </div>
             {renderMedia()}
             <div className={styles.fsBody} dangerouslySetInnerHTML={{ __html: sanitizeHtml(article.body) }} style={{ marginTop: '2rem', color: 'inherit', fontFamily: 'inherit' }} />
             <DisclaimerText />
@@ -402,11 +408,12 @@ export default function PublicArticleView() {
         <div className={themeStyles.mainContent} style={{ marginTop: '2rem' }}>
           <LeftAdSidebar />
           <div className={`${themeStyles.articleBody} ${themeStyles.gossipArticle}`}>
-            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+            <h1 className={themeStyles.gossipTitle} style={{ textAlign: 'center' }}>{article.title}</h1>
+            {article.subtitle && <h3 style={{ margin: '1rem 0 1.5rem', fontSize: '1.2rem', color: '#e6007e', textAlign: 'center' }}>{article.subtitle}</h3>}
+            <div style={{ textAlign: 'center', margin: '1rem 0 1.5rem', display: 'flex', justifyContent: 'center', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <span className={themeStyles.gossipMeta}>By: {article.journalist_name || 'Gossip Team'}</span>
               <span className={themeStyles.gossipMeta}>{articleDate}</span>
             </div>
-            <h1 className={themeStyles.gossipTitle} style={{ textAlign: 'center' }}>{article.title}</h1>
-            {article.subtitle && <h3 style={{ margin: '1rem 0 2rem', fontSize: '1.2rem', color: '#e6007e', textAlign: 'center' }}>{article.subtitle}</h3>}
             {renderMedia('15px')}
             <div className={styles.fsBody} dangerouslySetInnerHTML={{ __html: sanitizeHtml(article.body) }} style={{ marginTop: '2rem', color: 'inherit', fontFamily: 'inherit' }} />
             <DisclaimerText />
@@ -441,8 +448,9 @@ export default function PublicArticleView() {
           <div className={`${themeStyles.articleBody} ${themeStyles.skaiArticle}`}>
             <h1 className={themeStyles.skaiTitle}>{article.title}</h1>
             {article.subtitle && <h3 style={{ margin: '1rem 0', fontSize: '1.3rem', color: '#555' }}>{article.subtitle}</h3>}
-            <div className={themeStyles.skaiMeta} style={{ margin: '1rem 0 2rem' }}>
-              <span style={{ fontWeight: 'bold' }}>Ενημερώθηκε:</span> {articleDate}
+            <div className={themeStyles.skaiMeta} style={{ margin: '1rem 0 2rem', display: 'flex', gap: '2rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <div><span style={{ fontWeight: 'bold' }}>Σύνταξη:</span> {article.journalist_name || 'skai.gr'}</div>
+              <div><span style={{ fontWeight: 'bold' }}>Ενημερώθηκε:</span> {articleDate}</div>
             </div>
             {renderMedia()}
             <div className={styles.fsBody} dangerouslySetInnerHTML={{ __html: sanitizeHtml(article.body) }} style={{ marginTop: '2rem', color: 'inherit', fontFamily: 'inherit' }} />
@@ -475,9 +483,12 @@ export default function PublicArticleView() {
         <div className={themeStyles.mainContent} style={{ marginTop: '2rem' }}>
           <LeftAdSidebar />
           <div className={`${themeStyles.articleBody} ${themeStyles.openArticle}`}>
-            <div className={themeStyles.openMeta} style={{ marginBottom: '1rem' }}>{articleDate}</div>
             <h1 className={themeStyles.openTitle}>{article.title}</h1>
-            {article.subtitle && <h3 style={{ margin: '1rem 0 2rem', fontSize: '1.4rem', color: '#444' }}>{article.subtitle}</h3>}
+            {article.subtitle && <h3 style={{ margin: '1rem 0 1.5rem', fontSize: '1.4rem', color: '#444' }}>{article.subtitle}</h3>}
+            <div className={themeStyles.openMeta} style={{ margin: '1rem 0 2rem', display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <span>ΡΕΠΟΡΤΑΖ: {article.journalist_name || 'OPEN NEWSROOM'}</span>
+              <span style={{ color: '#666' }}>{articleDate}</span>
+            </div>
             {renderMedia()}
             <div className={styles.fsBody} dangerouslySetInnerHTML={{ __html: sanitizeHtml(article.body) }} style={{ marginTop: '2rem', color: 'inherit', fontFamily: 'inherit' }} />
             <DisclaimerText />
@@ -488,7 +499,6 @@ export default function PublicArticleView() {
       </div>
     );
   }
-
   // 8. ALTER
   if (article.theme === 'ALTER') {
     return (
