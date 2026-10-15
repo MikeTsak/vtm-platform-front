@@ -887,6 +887,15 @@ export default function AdminDowntimesTab({ characters = [] }) {
     return Array.from(ids).sort((a, b) => (key(a) - key(b)) || String(a).localeCompare(String(b)));
   }, [rows]);
 
+  // A scene is done once every character in it is "Resolved in scene"; done scenes sit in a drawer at the bottom.
+  const resolvedSceneIds = useMemo(() => {
+    const open = new Set();
+    for (const r of rows) {
+      if (isSceneDowntime(r) && r.scene_id && r.status !== 'Resolved in scene') open.add(r.scene_id);
+    }
+    return new Set(allSceneIds.filter(id => !open.has(id)));
+  }, [rows, allSceneIds]);
+
   const unassignedSceneDowntimes = useMemo(() => {
     const qq = q.trim().toLowerCase();
     return rows.filter(r => {
@@ -2207,7 +2216,8 @@ export default function AdminDowntimesTab({ characters = [] }) {
               </div>
             )}
 
-            {allSceneIds.map((sceneId, sceneIndex) => {
+            {(() => {
+            const renderScene = (sceneId, sceneIndex) => {
               const dtsInScene = rows.filter(r => isSceneDowntime(r) && r.scene_id === sceneId);
               const sceneTitle = getSceneTitle(sceneId);
               const isSearchOpen = activeSearchScene === sceneId;
@@ -2616,7 +2626,29 @@ export default function AdminDowntimesTab({ characters = [] }) {
                   </>)}
                 </div>
               );
-            })}
+            };
+            // sceneIndex stays the position in allSceneIds so "Scene N" matches what players see.
+            const openScenes = allSceneIds.map((id, i) => [id, i]).filter(([id]) => !resolvedSceneIds.has(id));
+            const doneScenes = allSceneIds.map((id, i) => [id, i]).filter(([id]) => resolvedSceneIds.has(id));
+            return (
+              <>
+                {openScenes.map(([id, i]) => renderScene(id, i))}
+                {openScenes.length === 0 && doneScenes.length > 0 && unassignedSceneDowntimes.length === 0 && (
+                  <div className={styles.subtle} style={{ textAlign: 'center', padding: '1rem' }}>No open scenes. Resolved scenes are in the drawer below.</div>
+                )}
+                {doneScenes.length > 0 && (
+                  <details style={{ background: 'var(--glass-inset)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-lg)', padding: '0.75rem 1rem' }}>
+                    <summary style={{ cursor: 'pointer', fontWeight: 600, userSelect: 'none' }}>
+                      Resolved scenes ({doneScenes.length})
+                    </summary>
+                    <div style={{ display: 'grid', gap: '2rem', marginTop: '1rem' }}>
+                      {doneScenes.map(([id, i]) => renderScene(id, i))}
+                    </div>
+                  </details>
+                )}
+              </>
+            );
+            })()}
           </div>
           </>)}
         </div>

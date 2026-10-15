@@ -2,7 +2,6 @@ import React from 'react';
 import Avatar from '../../components/Avatar';
 import styles from '../../styles/LiveSession.module.css';
 import { symlogo } from '../../data/clans';
-import generateVTMCharacterSheetPDF from '../../utils/pdfGenerator';
 
 export default function LiveSessionPlayerList({ players = [], adminName }) {
   if (!players.length) {
@@ -47,6 +46,13 @@ export default function LiveSessionPlayerList({ players = [], adminName }) {
                 {name}
                 {player.is_npc || player.isNpc ? <span style={{ fontSize: '0.6rem', border: '1px solid var(--outline)', padding: '2px 4px', borderRadius: '4px', color: 'var(--text-muted)' }}>NPC</span> : null}
               </h4>
+              {Number.isInteger(player.hunger) && (
+                <span title={`Hunger ${player.hunger}`} style={{ display: 'flex', gap: 1, marginTop: 2 }}>
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <span key={i} className={`material-symbols-outlined ${styles.hungerDroplet} ${i < player.hunger ? styles.active : ''}`} style={{ fontSize: '0.95rem' }}>water_drop</span>
+                  ))}
+                </span>
+              )}
               {player.user_name && player.user_name !== name && (
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Player: {player.user_name}</span>
               )}

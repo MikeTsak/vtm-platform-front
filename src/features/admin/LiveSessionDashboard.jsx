@@ -17,6 +17,7 @@ import { summarizeTrackers, getBloodPotencyStats, applyHealthDamage, remorsePool
 import { formatEuDate } from '../../utils/dateFormatter';
 import { clampBloodPotency } from '../../utils/bloodPotencyLimits';
 import generateVTMCharacterSheetPDF from '../../utils/pdfGenerator';
+import useRole from '../../core/useRole';
 import LiveSessionRollHistory from '../live-session/LiveSessionRollHistory';
 import WikiReferenceBar from '../live-session/WikiReferenceBar';
 import { INGRAINED_DISCIPLINE_FLAWS } from '../../data/ingrainedFlaws';
@@ -220,6 +221,7 @@ function skillSpecialties(sheet, skill) {
 }
 
 export default function LiveSessionDashboard({ initialSessionId, character } = {}) {
+  const { isAdmin: canExportPdf } = useRole(); // Court users reach this page too; PDFs stay Storyteller-only
   const [sessionId, setSessionId] = useState(initialSessionId || localStorage.getItem('adminLiveSessionId') || '');
   const [sessionName, setSessionName] = useState('VTM Live Scene');
   const [session, setSession] = useState(null);
@@ -1156,15 +1158,17 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
                     >
                       +3 XP
                     </button>
-                    <button
-                      className={styles.btnOutline}
-                      style={{ padding: '0.25rem', fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center', gap: '3px', justifyContent: 'center' }}
-                      onClick={() => generateVTMCharacterSheetPDF({ ...p, id: charId, name, clan, sheet })}
-                      title="Export character sheet as PDF"
-                    >
-                      <span className="material-symbols-outlined" style={{ fontSize: '0.85rem' }}>picture_as_pdf</span>
-                      PDF
-                    </button>
+                    {canExportPdf && (
+                      <button
+                        className={styles.btnOutline}
+                        style={{ padding: '0.25rem', fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center', gap: '3px', justifyContent: 'center' }}
+                        onClick={() => generateVTMCharacterSheetPDF({ ...p, id: charId, name, clan, sheet })}
+                        title="Export character sheet as PDF"
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: '0.85rem' }}>picture_as_pdf</span>
+                        PDF
+                      </button>
+                    )}
                   </div>
                   <input
                     className={styles.quickNote}

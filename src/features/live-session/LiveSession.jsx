@@ -16,7 +16,6 @@ import {
   getBloodPotencyStats
 } from '../../utils/liveSessionMechanics';
 import { getLiveSession, joinLiveSession, logLiveSessionRoll, getLiveSessionBroadcasts, getLiveSessionRolls, socket, sendLiveSessionSignal } from '../../api/liveSession';
-import generateVTMCharacterSheetPDF from '../../utils/pdfGenerator';
 import LiveSessionPlayerList from './LiveSessionPlayerList';
 import LiveSessionRollHistory from './LiveSessionRollHistory';
 import LiveSessionAdminDashboard from '../admin/LiveSessionDashboard';

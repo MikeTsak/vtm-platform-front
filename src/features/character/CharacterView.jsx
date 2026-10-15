@@ -1677,6 +1677,12 @@ export default function CharacterView({
                     <span className="material-symbols-outlined" style={{ fontSize: '15px', color: '#f43f5e' }}>water_drop</span>
                     BP: {sheet?.blood_potency ?? 'Unspecified'}
                   </button>
+                  {sheet?.generation ? (
+                    <>
+                      <span style={{ opacity: 0.5 }}>•</span>
+                      <span>Gen {sheet.generation}</span>
+                    </>
+                  ) : null}
                 </p>
               </div>
             </div>
