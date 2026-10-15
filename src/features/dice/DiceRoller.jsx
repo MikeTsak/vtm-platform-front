@@ -39,7 +39,6 @@ export default function DiceRoller({ characterId }) {
   const [open, setOpen] = useState(false);
 
   const location = useLocation();
-  const isHidden = location.pathname.includes('/live-session');
 
   useEffect(() => {
     const handleToggle = () => setOpen(prev => !prev);
@@ -119,7 +118,6 @@ export default function DiceRoller({ characterId }) {
   // --- 3. All useEffect Hooks ---
   useEffect(() => {
     const loadCharacter = async () => {
-      if (location.pathname.includes('/live-session')) return; 
       try {
         const { data } = await api.get(targetUrl);
         const char = data.character || data.npc || data;
@@ -148,9 +146,6 @@ export default function DiceRoller({ characterId }) {
 
     return () => clearInterval(interval);
   }, [targetUrl, location]);
-
-  // --- 4. Early Returns ---
-  if (isHidden) return null;
 
   // --- 5. Regular Functions ---
   // The dice are thrown by the server (POST /dice/roll) and logged in the one
