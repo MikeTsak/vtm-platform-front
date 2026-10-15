@@ -252,7 +252,11 @@ const asUserContact = (u) => ({
   titles: u.titles || [],
   court_status: u.court_status ?? null,
   unread_count: u.unread_count || 0,
-  last_message_at: u.last_message_at ? new Date(u.last_message_at).getTime() : 0
+  last_message_at: u.last_message_at ? new Date(u.last_message_at).getTime() : 0,
+  is_active: u.is_active,
+  is_deceased: u.is_deceased,
+  is_left: u.is_left,
+  is_missing: u.is_missing
 });
 
 const asNpcContact = (n) => ({
@@ -2122,8 +2126,25 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     return list.filter(u => idSet.has(u.id));
   }, [users, filter]);
 
-  const usersNoChar = useMemo(() => filteredUsers.filter(u => !u.char_id || Number(u.char_id) === 1), [filteredUsers]);
-  const usersWithChar = useMemo(() => filteredUsers.filter(u => u.char_id && Number(u.char_id) !== 1), [filteredUsers]);
+  const isTilemachosUser = (u) => {
+    const uid = Number(u.id);
+    const cid = Number(u.char_id);
+    const cn = String(u.char_name || '').toLowerCase();
+    const dn = String(u.display_name || '').toLowerCase();
+    return uid === 2 || cid === 34 || cn.includes('tilemachos') || cn.includes('τηλέμαχος') || dn.includes('tilemachos');
+  };
+
+  const isUserActiveContact = (u) => {
+    if (!u.char_id || Number(u.char_id) === 1) return false;
+    if (isTilemachosUser(u)) return false;
+    if (u.is_active === false) return false;
+    if (u.is_deceased || u.is_left || u.is_missing) return false;
+    if (typeof u.is_active === 'boolean') return u.is_active;
+    return true;
+  };
+
+  const usersWithChar = useMemo(() => filteredUsers.filter(u => isUserActiveContact(u)), [filteredUsers]);
+  const usersNoChar = useMemo(() => filteredUsers.filter(u => !isUserActiveContact(u)), [filteredUsers]);
 
   const filteredNpcs = useMemo(() => {
     const q = filter.trim();
@@ -3086,33 +3107,38 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
             </ul>
           </div>
 
-          {/* No Char Toggle */}
+          {/* No Char / Inactive Toggle */}
           <div className="mb-6">
             <div onClick={() => setNoCharOpen(!noCharOpen)} className="px-4 text-[10px] text-on-surface-variant/50 mb-2 font-bold tracking-widest flex items-center justify-between cursor-pointer hover:text-on-surface transition-colors">
               <div className="flex items-center gap-1">
                 <span className="material-symbols-outlined text-[14px] transition-transform" style={{ transform: noCharOpen ? 'rotate(180deg)' : 'none' }}>expand_more</span>
-                NO CHARACTER ({usersNoChar.length})
+                NO CHARACTER / INACTIVE ({usersNoChar.length})
               </div>
             </div>
             {noCharOpen && (
               <ul className="flex flex-col">
                 {usersNoChar.map(u => {
                   const isActive = selectedContact?.type === 'user' && selectedContact?.id === u.id;
+                  const crest = localSymlogo(u.clan);
                   return (
                     <li key={`u-${u.id}`} onClick={() => openChat(u)} className={`${isActive ? 'blood-active border-l-4' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all opacity-80`}>
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="relative shrink-0">
                           <div className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center border border-outline-variant/30 overflow-hidden">
-                            <Avatar userId={u.id} size="100%" style={{ width: '100%', height: '100%' }} imgClassName="opacity-80" fallback="/img/ATT-logo(1).webp" />
+                            <Avatar userId={u.id} size="100%" style={{ width: '100%', height: '100%' }} imgClassName="opacity-80" fallback={crest || '/img/ATT-logo(1).webp'} />
                           </div>
                           <OnlineDot online={isUserOnline(u.id)} />
                         </div>
                         <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate min-w-0 flex flex-col`}>
-                          <span className="truncate">{u.display_name}</span>
+                          <span className="truncate">{u.char_name || u.display_name}</span>
+                          {u.char_name && u.char_name !== u.display_name && (
+                            <span className="text-[10px] text-on-surface-variant/70 truncate">{u.display_name}</span>
+                          )}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <DraftBadge count={draftSummary.countFor('user', u.id)} />
+                        {u.clan && <span className="text-[9px] bg-surface-dim px-1 rounded border border-outline-variant/30 uppercase max-w-[40px] truncate">{u.clan.slice(0, 3)}</span>}
                         <UnreadCount count={u.unread_count} />
                       </div>
                     </li>
