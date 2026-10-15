@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Helmet } from 'react-helmet-async';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import api from '../../core/api';
 import { formatAthensDateTime } from '../../utils/dateFormatter';
 import styles from '../../styles/News.module.css';
@@ -245,14 +245,16 @@ export default function PublicArticleView() {
         {backBtn}
         <header className={themeStyles.kathimeriniHeader} style={{ flexDirection: 'column', padding: '0' }}>
           <div style={{ width: '100%', padding: '1.5rem', display: 'flex', justifyContent: 'center', borderBottom: '1px solid #ddd' }}>
-            <img src={themeObj.logo} alt={themeObj.name} style={{ height: '65px', width: 'auto', objectFit: 'contain' }} />
+            <Link to="/news/outlet/kathimerini">
+              <img src={themeObj.logo} alt={themeObj.name} style={{ height: '65px', width: 'auto', objectFit: 'contain' }} />
+            </Link>
           </div>
           <nav style={{ width: '100%', padding: '0.8rem', display: 'flex', justifyContent: 'center', gap: '2.5rem', fontSize: '0.9rem', fontWeight: 'bold', textTransform: 'uppercase' }}>
-            <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#111', textDecoration: 'none' }}>ΠΟΛΙΤΙΚΗ</a>
-            <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#111', textDecoration: 'none' }}>ΟΙΚΟΝΟΜΙΑ</a>
-            <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#111', textDecoration: 'none' }}>ΕΛΛΑΔΑ</a>
-            <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#111', textDecoration: 'none' }}>ΚΟΣΜΟΣ</a>
-            <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#111', textDecoration: 'none' }}>ΠΟΛΙΤΙΣΜΟΣ</a>
+            <Link to="/news/outlet/kathimerini" style={{ color: '#111', textDecoration: 'none' }}>ΠΟΛΙΤΙΚΗ</Link>
+            <Link to="/news/outlet/kathimerini" style={{ color: '#111', textDecoration: 'none' }}>ΟΙΚΟΝΟΜΙΑ</Link>
+            <Link to="/news/outlet/kathimerini" style={{ color: '#111', textDecoration: 'none' }}>ΕΛΛΑΔΑ</Link>
+            <Link to="/news/outlet/kathimerini" style={{ color: '#111', textDecoration: 'none' }}>ΚΟΣΜΟΣ</Link>
+            <Link to="/news/outlet/kathimerini" style={{ color: '#111', textDecoration: 'none' }}>ΠΟΛΙΤΙΣΜΟΣ</Link>
           </nav>
         </header>
         <div className={themeStyles.mainContent}>
@@ -282,14 +284,16 @@ export default function PublicArticleView() {
         {backBtn}
         <header style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{ backgroundColor: '#111', padding: '1rem 2rem', display: 'flex', alignItems: 'center' }}>
-            <img src={themeObj.logo} alt={themeObj.name} className={themeStyles.alphaLogo} style={{ height: '35px', marginRight: '2rem' }} />
-            <div style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.2rem', letterSpacing: '2px' }}>NEWS</div>
+            <Link to="/news/outlet/alpha" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+              <img src={themeObj.logo} alt={themeObj.name} className={themeStyles.alphaLogo} style={{ height: '35px', marginRight: '2rem' }} />
+              <div style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.2rem', letterSpacing: '2px' }}>NEWS</div>
+            </Link>
           </div>
           <nav style={{ backgroundColor: '#fff', borderBottom: '2px solid #ff3b3b', padding: '0.8rem 2rem', display: 'flex', gap: '1rem', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
-            <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#111', textDecoration: 'none', border: '1px solid #ddd', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold' }}>ΚΟΙΝΩΝΙΑ</a>
-            <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#111', textDecoration: 'none', border: '1px solid #ddd', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold' }}>ΠΟΛΙΤΙΚΗ</a>
-            <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#111', textDecoration: 'none', border: '1px solid #ddd', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold' }}>ΔΙΕΘΝΗ</a>
-            <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#111', textDecoration: 'none', border: '1px solid #ddd', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold' }}>ΟΙΚΟΝΟΜΙΑ</a>
+            <Link to="/news/outlet/alpha" style={{ color: '#111', textDecoration: 'none', border: '1px solid #ddd', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold' }}>ΚΟΙΝΩΝΙΑ</Link>
+            <Link to="/news/outlet/alpha" style={{ color: '#111', textDecoration: 'none', border: '1px solid #ddd', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold' }}>ΠΟΛΙΤΙΚΗ</Link>
+            <Link to="/news/outlet/alpha" style={{ color: '#111', textDecoration: 'none', border: '1px solid #ddd', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold' }}>ΔΙΕΘΝΗ</Link>
+            <Link to="/news/outlet/alpha" style={{ color: '#111', textDecoration: 'none', border: '1px solid #ddd', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold' }}>ΟΙΚΟΝΟΜΙΑ</Link>
           </nav>
         </header>
         <div className={themeStyles.mainContent} style={{ marginTop: '2rem' }}>
@@ -321,13 +325,15 @@ export default function PublicArticleView() {
         {backBtn}
         <header className={themeStyles.ertHeader} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '0' }}>
           <div style={{ padding: '1rem 2rem', width: '100%' }}>
-            <img src={themeObj.logo} alt={themeObj.name} style={{ height: '40px' }} />
+            <Link to="/news/outlet/ert">
+              <img src={themeObj.logo} alt={themeObj.name} style={{ height: '40px' }} />
+            </Link>
           </div>
           <nav style={{ width: '100%', backgroundColor: '#000', padding: '0.8rem 2rem', display: 'flex', gap: '2rem', fontSize: '0.9rem', color: '#fff', fontWeight: 'bold' }}>
-            <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#fff', textDecoration: 'none' }}>ΕΛΛΑΔΑ</a>
-            <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#fff', textDecoration: 'none' }}>ΠΕΡΙΦΕΡΕΙΑ</a>
-            <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#fff', textDecoration: 'none' }}>ΠΟΛΙΤΙΚΗ</a>
-            <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#fff', textDecoration: 'none' }}>ΚΟΣΜΟΣ</a>
+            <Link to="/news/outlet/ert" style={{ color: '#fff', textDecoration: 'none' }}>ΕΛΛΑΔΑ</Link>
+            <Link to="/news/outlet/ert" style={{ color: '#fff', textDecoration: 'none' }}>ΠΕΡΙΦΕΡΕΙΑ</Link>
+            <Link to="/news/outlet/ert" style={{ color: '#fff', textDecoration: 'none' }}>ΠΟΛΙΤΙΚΗ</Link>
+            <Link to="/news/outlet/ert" style={{ color: '#fff', textDecoration: 'none' }}>ΚΟΣΜΟΣ</Link>
           </nav>
         </header>
         <div className={themeStyles.mainContent} style={{ marginTop: '2rem' }}>
@@ -358,12 +364,14 @@ export default function PublicArticleView() {
         {backBtn}
         <header className={themeStyles.megaHeader}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
-            <img src={themeObj.logo} alt={themeObj.name} style={{ height: '40px', marginRight: '2rem' }} />
+            <Link to="/news/outlet/mega">
+              <img src={themeObj.logo} alt={themeObj.name} style={{ height: '40px', marginRight: '2rem' }} />
+            </Link>
             <nav style={{ display: 'flex', gap: '1.5rem', fontWeight: 'bold' }}>
-              <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#fff', textDecoration: 'none' }}>ΕΛΛΑΔΑ</a>
-              <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#fff', textDecoration: 'none' }}>ΚΟΣΜΟΣ</a>
-              <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#fff', textDecoration: 'none' }}>ΠΟΛΙΤΙΚΗ</a>
-              <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#fff', textDecoration: 'none' }}>ΟΙΚΟΝΟΜΙΑ</a>
+              <Link to="/news/outlet/mega" style={{ color: '#fff', textDecoration: 'none' }}>ΕΛΛΑΔΑ</Link>
+              <Link to="/news/outlet/mega" style={{ color: '#fff', textDecoration: 'none' }}>ΚΟΣΜΟΣ</Link>
+              <Link to="/news/outlet/mega" style={{ color: '#fff', textDecoration: 'none' }}>ΠΟΛΙΤΙΚΗ</Link>
+              <Link to="/news/outlet/mega" style={{ color: '#fff', textDecoration: 'none' }}>ΟΙΚΟΝΟΜΙΑ</Link>
             </nav>
           </div>
           <div style={{ color: '#cc0000', fontWeight: 'bold' }}>LIVE TV</div>
@@ -396,13 +404,15 @@ export default function PublicArticleView() {
         {backBtn}
         <header className={themeStyles.gossipHeader} style={{ flexDirection: 'column', padding: '0' }}>
           <div style={{ width: '100%', padding: '1rem', display: 'flex', justifyContent: 'center' }}>
-            <img src={themeObj.logo} alt={themeObj.name} style={{ height: '60px', borderRadius: '10px', border: '2px solid #fff' }} />
+            <Link to="/news/outlet/gossip">
+              <img src={themeObj.logo} alt={themeObj.name} style={{ height: '60px', borderRadius: '10px', border: '2px solid #fff' }} />
+            </Link>
           </div>
           <nav style={{ width: '100%', backgroundColor: '#ff99cc', padding: '0.8rem', display: 'flex', justifyContent: 'center', gap: '2rem', fontWeight: '900', color: '#fff' }}>
-            <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#fff', textDecoration: 'none' }}>SHOWBIZ</a>
-            <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#fff', textDecoration: 'none' }}>MEDIA</a>
-            <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#fff', textDecoration: 'none' }}>GOSSIP</a>
-            <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#fff', textDecoration: 'none' }}>ROYALS</a>
+            <Link to="/news/outlet/gossip" style={{ color: '#fff', textDecoration: 'none' }}>SHOWBIZ</Link>
+            <Link to="/news/outlet/gossip" style={{ color: '#fff', textDecoration: 'none' }}>MEDIA</Link>
+            <Link to="/news/outlet/gossip" style={{ color: '#fff', textDecoration: 'none' }}>GOSSIP</Link>
+            <Link to="/news/outlet/gossip" style={{ color: '#fff', textDecoration: 'none' }}>ROYALS</Link>
           </nav>
         </header>
         <div className={themeStyles.mainContent} style={{ marginTop: '2rem' }}>
@@ -433,13 +443,15 @@ export default function PublicArticleView() {
         {backBtn}
         <header className={themeStyles.skaiHeader}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
-            <img src={themeObj.logo} alt={themeObj.name} style={{ height: '34px', marginRight: '3rem', objectFit: 'contain' }} />
+            <Link to="/news/outlet/skai">
+              <img src={themeObj.logo} alt={themeObj.name} style={{ height: '34px', marginRight: '3rem', objectFit: 'contain' }} />
+            </Link>
             <nav style={{ display: 'flex', gap: '1.5rem', fontWeight: 'bold' }}>
-              <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#005bfe', textDecoration: 'none' }}>ΕΛΛΑΔΑ</a>
-              <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#005bfe', textDecoration: 'none' }}>ΚΟΣΜΟΣ</a>
-              <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#005bfe', textDecoration: 'none' }}>ΠΟΛΙΤΙΚΗ</a>
-              <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#005bfe', textDecoration: 'none' }}>ΟΙΚΟΝΟΜΙΑ</a>
-              <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#005bfe', textDecoration: 'none' }}>ΑΘΛΗΤΙΚΑ</a>
+              <Link to="/news/outlet/skai" style={{ color: '#005bfe', textDecoration: 'none' }}>ΕΛΛΑΔΑ</Link>
+              <Link to="/news/outlet/skai" style={{ color: '#005bfe', textDecoration: 'none' }}>ΚΟΣΜΟΣ</Link>
+              <Link to="/news/outlet/skai" style={{ color: '#005bfe', textDecoration: 'none' }}>ΠΟΛΙΤΙΚΗ</Link>
+              <Link to="/news/outlet/skai" style={{ color: '#005bfe', textDecoration: 'none' }}>ΟΙΚΟΝΟΜΙΑ</Link>
+              <Link to="/news/outlet/skai" style={{ color: '#005bfe', textDecoration: 'none' }}>ΑΘΛΗΤΙΚΑ</Link>
             </nav>
           </div>
         </header>
@@ -471,12 +483,14 @@ export default function PublicArticleView() {
         {backBtn}
         <header className={themeStyles.openHeader}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
-            <img src={themeObj.logo} alt={themeObj.name} style={{ height: '40px', marginRight: '3rem' }} />
+            <Link to="/news/outlet/opentv">
+              <img src={themeObj.logo} alt={themeObj.name} style={{ height: '40px', marginRight: '3rem' }} />
+            </Link>
             <nav style={{ display: 'flex', gap: '2rem', fontWeight: 'bold' }}>
-              <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#fa8301', textDecoration: 'none' }}>NEWS</a>
-              <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#fff', textDecoration: 'none' }}>ΕΛΛΑΔΑ</a>
-              <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#fff', textDecoration: 'none' }}>ΚΟΣΜΟΣ</a>
-              <a href="#" onClick={e=>e.preventDefault()} style={{ color: '#fff', textDecoration: 'none' }}>ΠΟΛΙΤΙΚΗ</a>
+              <Link to="/news/outlet/opentv" style={{ color: '#fa8301', textDecoration: 'none' }}>NEWS</Link>
+              <Link to="/news/outlet/opentv" style={{ color: '#fff', textDecoration: 'none' }}>ΕΛΛΑΔΑ</Link>
+              <Link to="/news/outlet/opentv" style={{ color: '#fff', textDecoration: 'none' }}>ΚΟΣΜΟΣ</Link>
+              <Link to="/news/outlet/opentv" style={{ color: '#fff', textDecoration: 'none' }}>ΠΟΛΙΤΙΚΗ</Link>
             </nav>
           </div>
         </header>
@@ -508,8 +522,10 @@ export default function PublicArticleView() {
         <header className={themeStyles.alterHeader}>
           <div className={themeStyles.alterTopBar}>
             <div className={themeStyles.alterLogoContainer}>
-              <img src={themeObj.logo} alt={themeObj.name} className={themeStyles.alterLogo} />
-              <span className={themeStyles.alterSlogan}>ΤΟ ΚΑΝΑΛΙ ΤΗΣ ΕΝΗΜΕΡΩΣΗΣ</span>
+              <Link to="/news/outlet/alter" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+                <img src={themeObj.logo} alt={themeObj.name} className={themeStyles.alterLogo} />
+                <span className={themeStyles.alterSlogan}>ΤΟ ΚΑΝΑΛΙ ΤΗΣ ΕΝΗΜΕΡΩΣΗΣ</span>
+              </Link>
             </div>
             <div className={themeStyles.alterLiveBadge}>
               <span className={themeStyles.alterLiveDot} />
@@ -517,12 +533,12 @@ export default function PublicArticleView() {
             </div>
           </div>
           <nav className={themeStyles.alterNav}>
-            <a href="#" onClick={e=>e.preventDefault()}>ΡΟΗ ΕΙΔΗΣΕΩΝ</a>
-            <a href="#" onClick={e=>e.preventDefault()}>ΠΟΛΙΤΙΚΗ</a>
-            <a href="#" onClick={e=>e.preventDefault()}>ΕΡΕΥΝΑ</a>
-            <a href="#" onClick={e=>e.preventDefault()}>ΚΟΙΝΩΝΙΑ</a>
-            <a href="#" onClick={e=>e.preventDefault()}>ΑΠΟΚΑΛΥΨΕΙΣ</a>
-            <a href="#" onClick={e=>e.preventDefault()}>ΚΟΣΜΟΣ</a>
+            <Link to="/news/outlet/alter">ΡΟΗ ΕΙΔΗΣΕΩΝ</Link>
+            <Link to="/news/outlet/alter">ΠΟΛΙΤΙΚΗ</Link>
+            <Link to="/news/outlet/alter">ΕΡΕΥΝΑ</Link>
+            <Link to="/news/outlet/alter">ΚΟΙΝΩΝΙΑ</Link>
+            <Link to="/news/outlet/alter">ΑΠΟΚΑΛΥΨΕΙΣ</Link>
+            <Link to="/news/outlet/alter">ΚΟΣΜΟΣ</Link>
           </nav>
           <div className={themeStyles.alterTickerBar}>
             <span className={themeStyles.alterTickerLabel}>ΕΚΤΑΚΤΟ</span>

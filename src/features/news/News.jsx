@@ -8,7 +8,7 @@ import { NEWS_OUTLETS } from '../../constants/outletConstants';
 import { apiJoin, isVideoUrl } from '../../utils/newsUtils';
 import { sanitizeHtml } from '../../utils/sanitizeHtml';
 import { formatAthensDate } from '../../utils/dateFormatter';
-import { useLocation, Link } from 'react-router-dom';
+import { useLocation, Link, useNavigate } from 'react-router-dom';
 import CreateNewsModal from './CreateNewsModal';
 import FullscreenArticleModal from '../../components/FullscreenArticleModal';
 import { Skeleton } from 'boneyard-js/react';
@@ -20,6 +20,7 @@ export default function News() {
   const { user } = useContext(AuthCtx);
   const queryClient = useQueryClient();
   const location = useLocation();
+  const navigate = useNavigate();
   const isRumorsPage = location.pathname.startsWith('/rumors');
 
   const [modalMode, setModalMode] = useState(null);
@@ -231,6 +232,36 @@ export default function News() {
           {/* News Section */}
           {!isRumorsPage && (
             <div className={styles.column}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1.5rem', padding: '0.75rem 1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-muted, #888)' }}>
+                  Browse by Outlet:
+                </span>
+                {Object.entries(NEWS_OUTLETS)
+                  .filter(([key]) => key !== 'RUMOR')
+                  .map(([key, outlet]) => (
+                    <Link
+                      key={key}
+                      to={`/news/outlet/${key.toLowerCase()}`}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '4px 10px',
+                        borderRadius: '16px',
+                        fontSize: '0.8rem',
+                        fontWeight: 'bold',
+                        color: '#fff',
+                        backgroundColor: 'rgba(255,255,255,0.08)',
+                        border: `1px solid ${outlet.color}44`,
+                        textDecoration: 'none',
+                        transition: 'all 0.2s ease',
+                      }}
+                    >
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: outlet.color }} />
+                      <span>{outlet.name}</span>
+                    </Link>
+                  ))}
+              </div>
               <div className={styles.masonry}>
                 {newsItems.map(item => {
                   const theme = NEWS_OUTLETS[item.theme] || NEWS_OUTLETS['ERT'];
@@ -256,7 +287,18 @@ export default function News() {
                           <div className={styles.headerOverlay}>
                             <div className={styles.headerTitleGroup}>
                               <span className={styles.live} style={{ backgroundColor: theme.color }}>LIVE</span>
-                              <span className={styles.outletName} style={{ color: theme.color }}>{theme.name}</span>
+                              <span
+                                className={styles.outletName}
+                                style={{ color: theme.color, cursor: 'pointer' }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  navigate(`/news/outlet/${(item.theme || 'ERT').toLowerCase()}`);
+                                }}
+                                title={`Visit ${theme.name} subsite`}
+                              >
+                                {theme.name}
+                              </span>
                             </div>
                           </div>
                         </div>

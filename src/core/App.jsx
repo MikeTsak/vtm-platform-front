@@ -46,6 +46,7 @@ const Boons = lazyWithRetry(() => import('../features/boons/Boons'));
 const MediaViewer = lazyWithRetry(() => import('../pages/MediaViewer'));
 const Premonitions = lazyWithRetry(() => import('../features/premonitions/Premonitions'));
 const News = lazyWithRetry(() => import('../features/news/News'));
+const OutletView = lazyWithRetry(() => import('../features/news/OutletView'));
 const PublicArticleView = lazyWithRetry(() => import('../features/news/PublicArticleView'));
 const NotFound = lazyWithRetry(() => import('../pages/404'));
 const Hierarchy = lazyWithRetry(() => import('../features/court/HierarchyView'));
@@ -295,6 +296,7 @@ function AppLayout() {
             <Route path="/court/actions" element={<CourtOnly><CourtActions /></CourtOnly>} />
 
             <Route path="/news" element={<News />} />
+            <Route path="/news/outlet/:theme" element={<OutletView />} />
             <Route path="/news/:id" element={<PublicArticleView />} />
             <Route path="/rumors" element={<News />} />
             <Route path="/rumors/:id" element={<PublicArticleView />} />
