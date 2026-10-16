@@ -405,10 +405,12 @@ export default function CharacterEdit() {
 
   const setDisciplineDots = (name, val) => updateDraft(d => {
     d.disciplines = d.disciplines || {};
-    // V5 hard cap: 5, same as attributes/skills above — there's no power
-    // data past level 5 (see disciplines.js), so a 6th dot here breaks the
-    // player's own power picker into a permanent reopen loop.
-    d.disciplines[name] = Math.max(0, Math.min(5, Number(val) || 0));
+    // V5 caps a discipline at 5. House rule: ONE in-clan discipline may reach 6
+    // (same rule the server enforces in utils/xpPurchase.js). The 6th dot buys
+    // an extra power from levels 1-5, picked like any other.
+    const otherAtSix = Object.entries(d.disciplines).some(([k, v]) => k !== name && Number(v) > 5);
+    const cap = discKinds[name] === 'clan' && !otherAtSix ? 6 : 5;
+    d.disciplines[name] = Math.max(0, Math.min(cap, Number(val) || 0));
   });
   const addDiscipline = (name) => {
     const n = name.trim();
@@ -609,7 +611,25 @@ export default function CharacterEdit() {
       }
       // Mirror into morality.* like the sheet view does, so the two copies never drift.
       const sheetOut = { ...draftSheet, morality: { ...(draftSheet.morality || {}), touchstones: draftSheet.touchstones, convictions: draftSheet.convictions } };
-      await api.patch(`/admin/characters/${id}`, { name: charName, clan: charClan, sheet: sheetOut });
+      // Send only the top-level keys the admin changed (merged server-side under
+      // a row lock). Sending the whole draft overwrote live state (Hunger after a
+      // feeding, Willpower, health) with the values loaded when the editor opened.
+      const sheetPatch = {};
+      for (const k of Object.keys(sheetOut)) {
+        if (JSON.stringify(sheetOut[k]) !== JSON.stringify(originalSheet[k])) sheetPatch[k] = sheetOut[k];
+      }
+      const sheetUnset = Object.keys(originalSheet).filter(k => !(k in sheetOut));
+      // morality is replaced whole and carries Humanity/Stains: keep the live ones unless edited here.
+      if (sheetPatch.morality) {
+        const { data } = await api.get(`/characters/user/${id}`);
+        const live = data.character?.sheet?.morality || {};
+        for (const k of ['humanity', 'stains']) {
+          if (JSON.stringify(sheetOut.morality?.[k]) === JSON.stringify(originalSheet.morality?.[k])) {
+            if (live[k] === undefined) delete sheetPatch.morality[k]; else sheetPatch.morality[k] = live[k];
+          }
+        }
+      }
+      await api.patch(`/admin/characters/${id}`, { name: charName, clan: charClan, sheetPatch, sheetUnset });
 
       setOriginalSheet(deepClone(draftSheet));
       setOrigName(charName); setOrigClan(charClan);
@@ -1099,14 +1119,21 @@ function SkillsSection({ sheet, setSkillDots, setSkillSpecsCSV, removeSkill }) {
 function DisciplinesSection({ sheet, discKinds, setDiscKinds, setDisciplineDots, addDiscipline, removeDiscipline, addPower, removePower, openPowerSwap }) {
   const [newDiscName, setNewDiscName] = useState('');
   const [newPowerPick, setNewPowerPick] = useState({});
+  const sixName = Object.keys(sheet.disciplines || {}).find(n => Number(sheet.disciplines[n]) > 5);
 
   return (
     <div>
       <h2 className={styles.contentTitle}>Disciplines & Powers</h2>
       <p className={styles.contentHint}>Per-dot cost depends on kind: Clan ×5, Caitiff ×6, Out-of-Clan ×7.</p>
+      <p className={styles.contentHint}>
+        House rule, level 6: one in-clan discipline may reach 6 dots. {sixName
+          ? <strong>Granted: {sixName} is at 6.</strong>
+          : <strong>Not granted: no discipline is at 6.</strong>}
+      </p>
 
       {Object.keys(sheet.disciplines || {}).sort().map(name => {
         const level = Number(sheet.disciplines?.[name] || 0);
+        const canSix = discKinds[name] === 'clan' && (!sixName || sixName === name);
         const powers = sheet.disciplinePowers?.[name] || [];
         const available = getPowersForDiscipline(name).filter(p => p.level <= level && !powers.some(owned => String(owned.id || owned.name).toLowerCase() === String(p.id || p.name).toLowerCase()));
 
@@ -1115,7 +1142,11 @@ function DisciplinesSection({ sheet, discKinds, setDiscKinds, setDisciplineDots,
             <div className={styles.entryHead}>
               <div className={styles.entryTitle}>{name}</div>
               <div className={styles.row}>
-                <DotRow label="" value={level} max={6} onDotClick={(n) => setDisciplineDots(name, n === level ? n - 1 : n)} />
+                <DotRow label="" value={level} max={canSix ? 6 : 5} onDotClick={(n) => setDisciplineDots(name, n === level ? n - 1 : n)} />
+                {level === 5 && canSix && (
+                  <button className={styles.btnGhost} onClick={() => setDisciplineDots(name, 6)} title="House rule: one in-clan discipline may reach 6">Grant level 6</button>
+                )}
+                {level > 5 && <span className={styles.contentHint} style={{ margin: 0 }}>House rule 6</span>}
                 <select className={styles.select} value={discKinds[name] || 'other'} onChange={e => setDiscKinds(p => ({ ...p, [name]: e.target.value }))}>
                   {DISC_KINDS.map(k => <option key={k.key} value={k.key}>{k.label}</option>)}
                 </select>
