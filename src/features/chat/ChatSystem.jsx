@@ -2628,6 +2628,16 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     return { mine, sent, canEditDelete, canEdit: canEditDelete && !answeredSince, canReply: sent && canSend && editingMsgId !== item.id };
   };
 
+  const handleCopyMessage = useCallback(async (text) => {
+    if (!text) return;
+    const ok = await copyToClipboard(text);
+    if (ok) {
+      toast.success('Copied to clipboard');
+    } else {
+      toast.error('Failed to copy');
+    }
+  }, []);
+
   const renderActionSheet = () => {
     const item = actionSheetMsg;
     const { mine, sent, canEditDelete, canEdit, canReply } = messagePerms(item);
@@ -2635,7 +2645,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     const run = (fn) => () => { close(); fn(); };
     const actions = [
       canReply && { icon: 'reply', label: 'Reply', fn: () => startReply(item) },
-      item.body && { icon: 'content_copy', label: 'Copy text', fn: () => copyToClipboard(item.body) },
+      item.body && { icon: 'content_copy', label: 'Copy text', fn: () => handleCopyMessage(item.body) },
       reactionsByMsgId[item.id]?.length > 0 && { icon: 'groups', label: 'See reactions', fn: () => { setSelectedReactionTab('all'); setViewingReactionsMsg(item); } },
       canEdit && !editingMsgId && { icon: 'edit', label: 'Edit', fn: () => { setEditingMsgId(item.id); setEditBody(item.body); } },
       !mine && sent && isAdmin && selectedContact?.type === 'npc' && { icon: 'mark_chat_unread', label: 'Mark unread from here', fn: () => handleMarkNpcUnread(item.id) },
@@ -3574,16 +3584,27 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                         {/* Action Buttons (Hover) */}
                         <div className="hidden md:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           {canReply && (
-                            <button onClick={() => startReply(item)} className="text-[10px] text-on-surface-variant hover:text-primary transition-colors">Reply</button>
+                            <button type="button" onClick={() => startReply(item)} className="text-[10px] text-on-surface-variant hover:text-primary transition-colors">Reply</button>
                           )}
                           {!String(item.id).startsWith('temp_') && (
                             <button
+                              type="button"
                               data-reaction-ui="true"
                               onClick={() => setReactionPickerFor(p => p === item.id ? null : item.id)}
                               title="React"
                               className="text-[10px] text-on-surface-variant hover:text-primary transition-colors"
                             >
                               React
+                            </button>
+                          )}
+                          {item.body && (
+                            <button
+                              type="button"
+                              onClick={() => handleCopyMessage(item.body)}
+                              title="Copy text"
+                              className="text-[10px] text-on-surface-variant hover:text-primary transition-colors"
+                            >
+                              Copy
                             </button>
                           )}
                           {!String(item.id).startsWith('temp_') && reactionsByMsgId[item.id]?.length > 0 && (
@@ -3602,45 +3623,51 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                           {canEditDelete && !editingMsgId && (
                             <>
                               {canEdit && (
-                                <button onClick={() => { setEditingMsgId(item.id); setEditBody(item.body); }} className="text-[10px] text-on-surface-variant hover:text-primary transition-colors">Edit</button>
+                                <button type="button" onClick={() => { setEditingMsgId(item.id); setEditBody(item.body); }} className="text-[10px] text-on-surface-variant hover:text-primary transition-colors">Edit</button>
                               )}
-                              <button onClick={() => handleDeleteMessage(item.id)} className="text-[10px] text-on-surface-variant hover:text-error transition-colors">Del</button>
+                              <button type="button" onClick={() => handleDeleteMessage(item.id)} className="text-[10px] text-on-surface-variant hover:text-error transition-colors">Del</button>
                             </>
                           )}
-                          {!mine && (
-                            <>
-                              {isAdmin && selectedContact?.type === 'npc' && !String(item.id).startsWith('temp_') && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleMarkNpcUnread(item.id)}
-                                  title="Mark unread from this message"
-                                  className="text-[10px] text-on-surface-variant hover:text-primary transition-colors flex items-center gap-0.5 cursor-pointer"
-                                >
-                                  <span className="material-symbols-outlined text-[11px]">mark_chat_unread</span>
-                                  Unread
-                                </button>
-                              )}
-                              {item.body && (
-                                <button onClick={() => copyToClipboard(item.body)} className="text-[10px] text-on-surface-variant hover:text-primary transition-colors">Copy</button>
-                              )}
-                            </>
+                          {!mine && isAdmin && selectedContact?.type === 'npc' && !String(item.id).startsWith('temp_') && (
+                            <button
+                              type="button"
+                              onClick={() => handleMarkNpcUnread(item.id)}
+                              title="Mark unread from this message"
+                              className="text-[10px] text-on-surface-variant hover:text-primary transition-colors flex items-center gap-0.5 cursor-pointer"
+                            >
+                              <span className="material-symbols-outlined text-[11px]">mark_chat_unread</span>
+                              Unread
+                            </button>
                           )}
                         </div>
                       </div>
                     </div>
 
-                    {/* Reply arrow beside the bubble (desktop; mobile swipes instead) */}
-                    {canReply && (
-                      <button
-                        type="button"
-                        onClick={() => startReply(item)}
-                        title="Reply"
-                        aria-label="Reply to this message"
-                        className="hidden md:flex self-center shrink-0 w-8 h-8 items-center justify-center rounded-full text-on-surface-variant hover:text-primary hover:bg-surface-variant/40 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
-                      >
-                        <span className="material-symbols-outlined text-[20px]">reply</span>
-                      </button>
-                    )}
+                    {/* Quick action buttons beside the bubble (desktop; mobile swipes or holds instead) */}
+                    <div className="hidden md:flex items-center gap-0.5 self-center shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                      {canReply && (
+                        <button
+                          type="button"
+                          onClick={() => startReply(item)}
+                          title="Reply"
+                          aria-label="Reply to this message"
+                          className="w-8 h-8 flex items-center justify-center rounded-full text-on-surface-variant hover:text-primary hover:bg-surface-variant/40 transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-[20px]">reply</span>
+                        </button>
+                      )}
+                      {item.body && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopyMessage(item.body)}
+                          title="Copy text"
+                          aria-label="Copy text"
+                          className="w-8 h-8 flex items-center justify-center rounded-full text-on-surface-variant hover:text-primary hover:bg-surface-variant/40 transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">content_copy</span>
+                        </button>
+                      )}
+                    </div>
                   </SwipeRow>
                 );
               })}
