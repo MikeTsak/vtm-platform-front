@@ -1,16 +1,14 @@
 /* InventoryItemModal.module.css */
-:root {
-  --tint: #b8860b;
+/* Modal overlay */
+.modalOverlay {
+  /* Scoped here: a :root block in a CSS module is global and used to repaint
+     the whole app's --tint gold whenever an inventory loaded. */
   --accent: #00f5ff;
   --radius: 0px;
   --font-title: 'Libre Caslon Text', serif;
   --font-body: 'Geist', system-ui, sans-serif;
   --font-label: 'Space Mono', monospace;
   --success: #1faa70;
-}
-
-/* Modal overlay */
-.modalOverlay {
   position: fixed;
   inset: 0;
   top: 0;

@@ -29,6 +29,7 @@ const AdminDiscordTab = lazyWithRetry(() => import('./AdminDiscordTab'));
 const AdminNpcEmailTab = lazyWithRetry(() => import('./AdminNpcEmailTab'));
 const AdminMasterTab = lazyWithRetry(() => import('./AdminMasterTab'));
 const AdminGhoulsTab = lazyWithRetry(() => import('./AdminGhoulsTab'));
+const AdminInventoryTab = lazyWithRetry(() => import('./AdminInventoryTab'));
 const AdminPremonitionsTab = lazyWithRetry(() => import('./AdminPremonitionsTab'));
 const AdminEventsTab = lazyWithRetry(() => import('./AdminEventsTab'));
 const AdminCalendarTab = lazyWithRetry(() => import('./AdminCalendarTab'));
@@ -73,6 +74,7 @@ const NAV_SECTIONS = [
       { id: 'users',       icon: 'person',         label: 'Users',        hint: 'Accounts, roles, and Discord IDs', keywords: ['accounts', 'passwords', 'emails', 'roles', 'login', 'reset password', 'delete user', 'ban', 'unban', 'discord id', 'st role', 'vip role', 'admin role'] },
       { id: 'coteries',    icon: 'group_work',     label: 'Coteries',     hint: 'Player coteries and shared havens', keywords: ['groups', 'factions', 'alliances', 'coterie type', 'domain size', 'chantry', 'shared resources', 'members'] },
       { id: 'ghouls',      icon: 'pets',           label: 'Retainers & Ghouls', hint: 'Every retainer: personal, ghoul and coterie-owned', keywords: ['ghouls', 'retainers', 'mortal', 'coterie retainers', 'blood', 'thralls', 'servants', 'domitor', 'blood bonds', 'ghoul sheet', 'disciplines', 'tier', 'player'] },
+      { id: 'inventory',   icon: 'backpack',       label: 'Inventory',    hint: 'Items, world QR codes, and research', keywords: ['items', 'inventory', 'gear', 'relics', 'artifacts', 'weapons', 'qr', 'qr code', 'world items', 'research', 'researched', 'give item', 'loot', 'props'] },
       { id: 'xp',          icon: 'stars',          label: 'XP & Rewards', hint: 'Grant, subtract, and bulk XP', keywords: ['experience', 'levels', 'progression', 'grants', 'apply to all', 'view history', 'refresh data', 'subtract xp', 'bulk grant'] },
       { id: 'disciplines', icon: 'auto_awesome',   label: 'Disciplines',  hint: 'Out of clan access requests', keywords: ['out of clan', 'unlock', 'access', 'request', 'approve', 'reject', 'grant', 'revoke', 'powers', 'clan restriction'] },
     ],
@@ -961,6 +963,7 @@ async function grantXP(character_id, delta) {
       />
     ),
     ghouls:      () => <AdminGhoulsTab retainers={retainers} />,
+    inventory:   () => <AdminInventoryTab characters={characters} />,
     xp:          () => <AdminXPTab users={users} onGrant={grantXP} onBulkGrant={grantBulkXP} adminxp={adminxp} />,
     disciplines: () => <AdminDisciplinesTab />,
     // Chronicle

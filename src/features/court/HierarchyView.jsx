@@ -181,7 +181,7 @@ export default function HierarchyView({ canEdit: propCanEdit }) {
   // Filter roster by search and clan
   const filteredRoster = useMemo(() => {
     let list = isEditMode ? roster : roster.filter(r => !r.is_hidden);
-    list = list.filter(r => r.type !== 'player' || r.is_active !== false);
+    list = list.filter(r => r.type !== 'player' || r.is_bloodhunted || r.is_deceased || r.is_missing || r.is_active !== false);
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();

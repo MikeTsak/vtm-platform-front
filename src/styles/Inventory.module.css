@@ -221,15 +221,21 @@
   transform: rotate(180deg);
 }
 
-/* Details Section */
+/* Details Section: grid-rows 0fr -> 1fr animates to the real height (the old
+   max-height: 500px cut long descriptions and notes off). */
 .itemDetails {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.3s ease-in-out;
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s ease-in-out;
 }
 
 .itemCard.expanded .itemDetails {
-  max-height: 500px;
+  grid-template-rows: 1fr;
+}
+
+.itemDetailsClip {
+  overflow: hidden;
+  min-height: 0;
 }
 
 .itemDetailsInner {
@@ -354,6 +360,7 @@
   border-color: var(--clan-box-border, #b09e4f) !important;
 }
 
+:global([data-box-mode="illuminated"]) .headerRow h3,
 :global([data-box-mode="illuminated"]) .itemCardTitle {
   color: var(--clan-box-ink, #141417) !important;
 }
@@ -405,3 +412,571 @@
   background-color: rgba(0, 0, 0, 0.3) !important;
   border-color: color-mix(in srgb, var(--border-color) 70%, var(--tint) 30%) !important;
 }
+/* ==================================================================
+   Storyteller-run inventory: Get / Pass item, research lock, notes
+   ================================================================== */
+
+/* The card header is a real button now (keyboard + screen readers). */
+.itemCardHeader {
+  width: 100%;
+  gap: 0.75rem;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: inherit;
+}
+
+.itemCardHeader:focus-visible {
+  outline: 2px solid var(--tint);
+  outline-offset: -2px;
+}
+
+.itemCardLeft,
+.itemCardText {
+  min-width: 0;
+}
+
+.itemCardTitle {
+  overflow-wrap: anywhere;
+}
+
+.itemIcon {
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.itemIcon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.itemCardRight {
+  flex-shrink: 0;
+}
+
+.badgeResearched,
+.badgeUnknown {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.badgeResearched :global(.material-symbols-outlined),
+.badgeUnknown :global(.material-symbols-outlined) {
+  font-size: 13px;
+}
+
+.itemMechanics p,
+.itemNotes p {
+  margin: 0.25rem 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.stOnly {
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.itemLocked {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px dashed var(--border-color);
+  border-radius: 0.375rem;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.itemLocked :global(.material-symbols-outlined) {
+  color: var(--tint);
+  font-size: 20px;
+}
+
+.itemNotes {
+  margin-bottom: 1rem;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.itemNotes strong,
+.itemMechanics strong {
+  color: var(--text-color);
+}
+
+.itemNotes textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0.4rem 0 0.5rem;
+  padding: 0.6rem;
+  font: inherit;
+  font-size: 16px; /* 16px stops iOS zooming into the field */
+  color: var(--text-color);
+  background: var(--surface-lowest, rgba(0, 0, 0, 0.3));
+  border: 1px solid var(--border-color);
+  border-radius: 0.375rem;
+  resize: vertical;
+}
+
+.muted {
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+
+.itemActions {
+  flex-wrap: wrap;
+}
+
+.editBtn,
+.deleteBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+}
+
+.editBtn :global(.material-symbols-outlined),
+.deleteBtn :global(.material-symbols-outlined) {
+  font-size: 18px;
+}
+
+.stActions {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--border-color);
+}
+
+.headerControls {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.addBtn,
+.getBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+}
+
+.addBtn :global(.material-symbols-outlined),
+.getBtn :global(.material-symbols-outlined) {
+  font-size: 18px;
+}
+
+.getBtn {
+  padding: 0.5rem 1.1rem;
+  border-radius: 9999px;
+  border: 1px solid var(--tint);
+  background: var(--tint);
+  color: var(--tint-contrast, #fff);
+  font-family: var(--font-label, 'JetBrains Mono', monospace);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.getBtn:hover {
+  filter: brightness(1.15);
+}
+
+/* --- Modals: centred on desktop, a bottom sheet on phones --- */
+.sheetHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: -10px -10px -10px 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.fullBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+}
+
+.errorBox {
+  padding: 0.6rem 0.8rem;
+  border: 1px solid rgba(255, 68, 68, 0.5);
+  background: rgba(255, 0, 0, 0.08);
+  color: var(--text-color);
+  font-size: 14px;
+}
+
+/* Scanner */
+.scanViewport {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  max-height: 55dvh;
+  background: #000;
+  overflow: hidden;
+}
+
+.scanVideo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.scanFrame {
+  position: absolute;
+  inset: 18%;
+  border: 3px solid rgba(255, 255, 255, 0.85);
+  border-radius: 12px;
+  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.35);
+  animation: scanPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes scanPulse {
+  50% { border-color: var(--tint); }
+}
+
+.scanBusy,
+.scanMessage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 1.5rem;
+  text-align: center;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.65);
+  font-size: 15px;
+}
+
+.scanHint {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.manualRow {
+  display: flex;
+  gap: 8px;
+}
+
+.manualRow input {
+  flex: 1;
+  min-width: 0;
+  font-size: 16px;
+}
+
+/* Pass item */
+.stepper {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.stepper button,
+.stepper input {
+  min-height: 44px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-color);
+  font-size: 16px;
+}
+
+.stepper button {
+  width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.stepper button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.stepper input {
+  width: 4.5rem;
+  text-align: center;
+}
+
+.stepper .stepperAll {
+  width: auto;
+  padding: 0 0.9rem;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+}
+
+.passQr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: center;
+}
+
+.qrImage {
+  padding: 10px;
+  background: #fff;
+  border-radius: 8px;
+}
+
+.passCount {
+  margin: 0.25rem 0 0;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.passTimer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+/* --- "Transaction confirmed" seal --- */
+.confirmOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--tint) 28%, #050506) 0%, rgba(3, 3, 5, 0.96) 65%);
+}
+
+.confirmStage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  max-width: 22rem;
+  text-align: center;
+}
+
+.confirmItem {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid color-mix(in srgb, var(--tint) 60%, white);
+  background: rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 30px color-mix(in srgb, var(--tint) 50%, transparent);
+}
+
+.confirmItem img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.confirmItem :global(.material-symbols-outlined) {
+  font-size: 44px;
+  color: #fff;
+}
+
+.sealWrap {
+  position: relative;
+  width: 132px;
+  height: 132px;
+}
+
+.confirmSeal {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.sealRing {
+  fill: none;
+  stroke: color-mix(in srgb, var(--tint) 70%, white);
+  stroke-width: 4;
+  stroke-linecap: round;
+  transform: rotate(-90deg);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.sealFill {
+  fill: var(--tint);
+  filter: drop-shadow(0 0 12px color-mix(in srgb, var(--tint) 70%, transparent));
+}
+
+.sealCheck {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sealPulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid var(--tint);
+  pointer-events: none;
+}
+
+.confirmText h2 {
+  margin: 0;
+  font-family: var(--font-title, 'Playfair Display', serif);
+  font-size: 26px;
+  color: #fff;
+  letter-spacing: 0.02em;
+}
+
+.confirmName {
+  margin: 0.4rem 0 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.confirmSub {
+  margin: 0.25rem 0 0;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.confirmBtn {
+  margin-top: 1.5rem;
+  min-height: 48px;
+  min-width: 12rem;
+  padding: 0.6rem 1.5rem;
+  border: 1px solid color-mix(in srgb, var(--tint) 60%, white);
+  border-radius: 9999px;
+  background: var(--tint);
+  color: var(--tint-contrast, #fff);
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.claimPage {
+  min-height: 60dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--text-color);
+}
+
+.claimPage :global(.material-symbols-outlined) {
+  font-size: 48px;
+  color: var(--tint);
+}
+
+/* --- Phones --- */
+@media (max-width: 600px) {
+  .headerRow {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .headerControls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .getBtn {
+    flex: 1;
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  .itemCardHeader {
+    padding: 0.75rem;
+  }
+
+  .itemCardTitle {
+    font-size: 17px;
+    line-height: 22px;
+  }
+
+  .itemIcon {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+
+  .editBtn,
+  .deleteBtn {
+    flex: 1 1 40%;
+  }
+
+  .sheetOverlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .sheetCard {
+    max-width: none;
+    max-height: 100dvh;
+    border-radius: 16px 16px 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .itemDetails {
+    transition: none;
+  }
+
+  .scanFrame {
+    animation: none;
+  }
+}
+
+/* Receive flow (ReceiveFlow.jsx) */
+.receiveItem {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.receiveItem .itemCardText {
+  display: flex;
+  flex-direction: column;
+  color: var(--text-color);
+}
+
+.receiveQuestion {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.4;
+  color: var(--text-color);
+}

@@ -62,6 +62,7 @@ const Admin = lazyWithRetry(() => import('../features/admin/Admin'));
 const NPCs = lazyWithRetry(() => import('../features/npcs/NPCs'));
 const AdminNPCView = lazyWithRetry(() => import('../features/admin/AdminNPCView'));
 const RetainersView = lazyWithRetry(() => import('../features/character/RetainersView'));
+const ClaimItemPage = lazyWithRetry(() => import('../features/inventory/ClaimItemPage'));
 const ForgotPassword = lazyWithRetry(() => import('../features/auth/ForgotPassword'));
 const ResetPassword = lazyWithRetry(() => import('../features/auth/ResetPassword'));
 const Terms = lazyWithRetry(() => import('../pages/Terms'));
@@ -71,8 +72,10 @@ const ClearCache = lazyWithRetry(() => import('../pages/ClearCache'));
 
 function Private({ children }) {
   const { user, loading } = useContext(AuthCtx);
+  const location = useLocation();
   if (loading) return <RouteLoader />;
-  if (!user) return <Navigate to="/login" replace />;
+  // Login sends them back here (a scanned /item/<code> link must survive signing in).
+  if (!user) return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
   return children;
 }
 
@@ -280,6 +283,7 @@ function AppLayout() {
             <Route path="/character" element={<Private><CharacterView /></Private>} />
             <Route path="/character/archive/:archiveId" element={<Private><ArchivedCharacter /></Private>} />
             <Route path="/retainers" element={<Private><RetainersView /></Private>} />
+            <Route path="/item/:code" element={<Private><ClaimItemPage /></Private>} />
             <Route path="/make" element={<Private><CharacterSetup /></Private>} />
             <Route path="/domains" element={<Private><Domains /></Private>} />
             <Route path="/downtimes" element={<Private><DownTimes /></Private>} />

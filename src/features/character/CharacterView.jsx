@@ -1927,7 +1927,11 @@ export default function CharacterView({
 
               <div className={`${styles.level1} ${styles.glassCard} ${styles.contentCard}`} data-box-mode={boxMode}>
                 <div id="inventory-section" className={styles.scrollAnchor}>
-                  <Inventory characterId={ch?.id} />
+                  <Inventory
+                    characterId={ch?.id}
+                    readOnly={readOnly}
+                    canTrade={!readOnly && !adminNPCId && String(user?.id) === String(ch?.user_id)}
+                  />
                 </div>
                 <div id="merits-section" className={styles.scrollAnchor} style={{ marginTop: '24px' }}>
                   <MeritsFlawsDisplay

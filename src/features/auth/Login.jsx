@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { AuthCtx } from '../../core/AuthContext';
 import { formatApiError } from '../../core/api';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -22,6 +22,9 @@ const loginSchema = z.object({
 export default function Login() {
   const { login } = useContext(AuthCtx);
   const nav = useNavigate();
+  // Where Private bounced them from; same-site paths only.
+  const from = useLocation().state?.from;
+  const returnTo = typeof from === 'string' && from.startsWith('/') && !from.startsWith('//') && from !== '/login' ? from : null;
   const [showPwd, setShowPwd] = useState(false);
   const pwdRef = useRef(null);
 
@@ -69,7 +72,9 @@ export default function Login() {
       } catch { }
 
       toast.success('Welcome back!');
-      if (data.loggedInUser?.role === 'admin') {
+      if (returnTo) {
+        nav(returnTo, { replace: true });
+      } else if (data.loggedInUser?.role === 'admin') {
         nav('/admin', { replace: true });
       } else {
         nav('/', { replace: true });

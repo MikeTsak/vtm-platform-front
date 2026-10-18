@@ -1,0 +1,299 @@
+/* Admin > Inventory (features/admin/AdminInventoryTab.jsx) */
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.muted {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.filters {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin-bottom: 0.75rem;
+}
+
+.chip {
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: transparent;
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.chip span {
+  opacity: 0.6;
+}
+
+.chip[aria-pressed='true'] {
+  border-color: var(--accent-purple);
+  background: rgba(157, 124, 255, 0.15);
+}
+
+.search {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.55rem 0.8rem;
+  margin-bottom: 1rem;
+  font-size: 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--glass-border);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--text-primary);
+  box-sizing: border-box;
+}
+
+.empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text-muted);
+}
+
+.grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.9rem;
+  min-width: 0;
+  border-radius: var(--radius-md, 12px);
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.cardTop {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  min-width: 0;
+}
+
+.thumb {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--glass-border);
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--accent-purple);
+}
+
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cardText {
+  min-width: 0;
+  flex: 1;
+}
+
+.name {
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.sub {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #9fd3b0;
+  border: 1px solid rgba(74, 157, 107, 0.45);
+  background: rgba(74, 157, 107, 0.12);
+}
+
+.tagWorld {
+  color: #f0c27a;
+  border-color: rgba(240, 194, 122, 0.45);
+  background: rgba(240, 194, 122, 0.12);
+}
+
+.desc,
+.mech {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.mech {
+  padding-left: 0.5rem;
+  border-left: 2px solid var(--accent-purple);
+}
+
+.switch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.switch input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent-purple);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: auto;
+}
+
+.btn,
+.btnGhost,
+.btnDanger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm, 8px);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn {
+  border: 1px solid var(--accent-purple);
+  background: rgba(157, 124, 255, 0.2);
+  color: var(--text-primary);
+}
+
+.btnGhost {
+  flex: 1;
+  border: 1px solid var(--glass-border);
+  background: transparent;
+  color: var(--text-primary);
+}
+
+.btnDanger {
+  border: 1px solid rgba(255, 82, 82, 0.4);
+  background: transparent;
+  color: #ff8a80;
+}
+
+.btn:disabled,
+.btnGhost:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.btn :global(.material-symbols-outlined),
+.btnGhost :global(.material-symbols-outlined),
+.btnDanger :global(.material-symbols-outlined),
+.title :global(.material-symbols-outlined) {
+  font-size: 1.2em;
+}
+
+/* QR modal */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(5, 6, 10, 0.75);
+  backdrop-filter: blur(4px);
+}
+
+.qrCard {
+  width: 100%;
+  max-width: 380px;
+  max-height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  text-align: center;
+  border-radius: var(--radius-md, 12px);
+  border: 1px solid var(--glass-border);
+  background: #101015;
+  color: var(--text-primary);
+}
+
+.qrCard h3 {
+  margin: 0;
+}
+
+.qrCard img {
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.code {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  word-break: break-all;
+}
+
+.qrCard .row {
+  width: 100%;
+}
+
+.qrCard .row > * {
+  flex: 1;
+}
