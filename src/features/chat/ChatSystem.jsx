@@ -2144,7 +2144,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
   };
 
   const usersWithChar = useMemo(() => filteredUsers.filter(u => isUserActiveContact(u)), [filteredUsers]);
-  const usersNoChar = useMemo(() => filteredUsers.filter(u => !isUserActiveContact(u)), [filteredUsers]);
+  const usersNoChar = useMemo(() => filteredUsers.filter(u => !isUserActiveContact(u) && !u.char_id && u.is_active !== false && u.role === 'admin'), [filteredUsers]);
 
   const filteredNpcs = useMemo(() => {
     const q = filter.trim();
@@ -2170,7 +2170,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
 
   const adminAllPlayersFiltered = useMemo(() => {
     const q = adminPlayerFilter.trim();
-    const list = users || [];
+    const list = (users || []).filter(u => u.is_active !== false && (!u.char_id || u.is_char_active !== 0));
     if (!q) return list;
     const ms = new MiniSearch({ fields: ['display_name', 'char_name'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
     ms.addAll(list);
@@ -2181,20 +2181,15 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
 
   const adminRecentPlayers = useMemo(() => {
     const byId = new Map((users || []).map(u => [u.id, u]));
-    return (npcConvos || []).map(r => {
-      const u = byId.get(r.user_id);
-      return u
-        ? { ...u, last_message_at: r.last_message_at, unread_count: r.unread_count }
-        : {
-          type: 'user',
-          id: r.user_id,
-          display_name: r.display_name || 'Unknown',
-          char_name: r.char_name || 'Unknown',
-          clan: undefined,
-          last_message_at: r.last_message_at,
-          unread_count: r.unread_count || 0
-        };
-    });
+    return (npcConvos || [])
+      .filter(r => {
+        const u = byId.get(r.user_id);
+        return u && u.is_active !== false && (!u.char_id || u.is_char_active !== 0);
+      })
+      .map(r => {
+        const u = byId.get(r.user_id);
+        return { ...u, last_message_at: r.last_message_at, unread_count: r.unread_count };
+      });
   }, [npcConvos, users]);
 
   const headerLabel = (() => {
@@ -3117,46 +3112,48 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
             </ul>
           </div>
 
-          {/* No Char / Inactive Toggle */}
-          <div className="mb-6">
-            <div onClick={() => setNoCharOpen(!noCharOpen)} className="px-4 text-[10px] text-on-surface-variant/50 mb-2 font-bold tracking-widest flex items-center justify-between cursor-pointer hover:text-on-surface transition-colors">
-              <div className="flex items-center gap-1">
-                <span className="material-symbols-outlined text-[14px] transition-transform" style={{ transform: noCharOpen ? 'rotate(180deg)' : 'none' }}>expand_more</span>
-                NO CHARACTER / INACTIVE ({usersNoChar.length})
+          {/* No Char Toggle */}
+          {usersNoChar.length > 0 && (
+            <div className="mb-6">
+              <div onClick={() => setNoCharOpen(!noCharOpen)} className="px-4 text-[10px] text-on-surface-variant/50 mb-2 font-bold tracking-widest flex items-center justify-between cursor-pointer hover:text-on-surface transition-colors">
+                <div className="flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[14px] transition-transform" style={{ transform: noCharOpen ? 'rotate(180deg)' : 'none' }}>expand_more</span>
+                  NO CHARACTER ({usersNoChar.length})
+                </div>
               </div>
-            </div>
-            {noCharOpen && (
-              <ul className="flex flex-col">
-                {usersNoChar.map(u => {
-                  const isActive = selectedContact?.type === 'user' && selectedContact?.id === u.id;
-                  const crest = localSymlogo(u.clan);
-                  return (
-                    <li key={`u-${u.id}`} onClick={() => openChat(u)} className={`${isActive ? 'blood-active border-l-4' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all opacity-80`}>
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="relative shrink-0">
-                          <div className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center border border-outline-variant/30 overflow-hidden">
-                            <Avatar userId={u.id} size="100%" style={{ width: '100%', height: '100%' }} imgClassName="opacity-80" fallback={crest || '/img/ATT-logo(1).webp'} />
+              {noCharOpen && (
+                <ul className="flex flex-col">
+                  {usersNoChar.map(u => {
+                    const isActive = selectedContact?.type === 'user' && selectedContact?.id === u.id;
+                    const crest = localSymlogo(u.clan);
+                    return (
+                      <li key={`u-${u.id}`} onClick={() => openChat(u)} className={`${isActive ? 'blood-active border-l-4' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all opacity-80`}>
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="relative shrink-0">
+                            <div className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center border border-outline-variant/30 overflow-hidden">
+                              <Avatar userId={u.id} size="100%" style={{ width: '100%', height: '100%' }} imgClassName="opacity-80" fallback={crest || '/img/ATT-logo(1).webp'} />
+                            </div>
+                            <OnlineDot online={isUserOnline(u.id)} />
                           </div>
-                          <OnlineDot online={isUserOnline(u.id)} />
+                          <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate min-w-0 flex flex-col`}>
+                            <span className="truncate">{u.char_name || u.display_name}</span>
+                            {u.char_name && u.char_name !== u.display_name && (
+                              <span className="text-[10px] text-on-surface-variant/70 truncate">{u.display_name}</span>
+                            )}
+                          </span>
                         </div>
-                        <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate min-w-0 flex flex-col`}>
-                          <span className="truncate">{u.char_name || u.display_name}</span>
-                          {u.char_name && u.char_name !== u.display_name && (
-                            <span className="text-[10px] text-on-surface-variant/70 truncate">{u.display_name}</span>
-                          )}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <DraftBadge count={draftSummary.countFor('user', u.id)} />
-                        {u.clan && <span className="text-[9px] bg-surface-dim px-1 rounded border border-outline-variant/30 uppercase max-w-[40px] truncate">{u.clan.slice(0, 3)}</span>}
-                        <UnreadCount count={u.unread_count} />
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <DraftBadge count={draftSummary.countFor('user', u.id)} />
+                          {u.clan && <span className="text-[9px] bg-surface-dim px-1 rounded border border-outline-variant/30 uppercase max-w-[40px] truncate">{u.clan.slice(0, 3)}</span>}
+                          <UnreadCount count={u.unread_count} />
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          )}
 
           {/* NPCs */}
           <div className="mb-6">

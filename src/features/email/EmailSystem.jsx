@@ -216,7 +216,15 @@ export default function EmailSystem({ user, isMobile, commsEnabled: propCommsEna
   useEffect(() => {
     if (!isAdmin) return;
     api.get('/admin/users').then(({ data }) => {
-      setAllPlayers(data.users || []);
+      const activeKindred = (data.users || []).filter(p => {
+        let active = false;
+        try {
+          const s = typeof p.sheet === 'string' ? JSON.parse(p.sheet) : p.sheet;
+          active = s?.is_active === true;
+        } catch { active = false; }
+        return p.character_id && active && !p.is_deceased && !p.is_left && !p.is_missing;
+      });
+      setAllPlayers(activeKindred);
     }).catch(() => {});
   }, [isAdmin]);
 

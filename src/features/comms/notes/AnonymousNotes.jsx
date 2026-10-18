@@ -142,7 +142,17 @@ function Composer({ onClose, onSent }) {
   const fileRef = useRef(null);
 
   useEffect(() => {
-    api.get('/admin/users').then(({ data }) => setPlayers(data.users || [])).catch(() => { });
+    api.get('/admin/users').then(({ data }) => {
+      const activeKindred = (data.users || []).filter(p => {
+        let active = false;
+        try {
+          const s = typeof p.sheet === 'string' ? JSON.parse(p.sheet) : p.sheet;
+          active = s?.is_active === true;
+        } catch { active = false; }
+        return p.character_id && active && !p.is_deceased && !p.is_left && !p.is_missing;
+      });
+      setPlayers(activeKindred);
+    }).catch(() => { });
   }, []);
 
   const toggle = (id) => setPicked(prev => {
