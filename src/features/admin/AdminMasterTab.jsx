@@ -840,7 +840,7 @@ export default function AdminMasterTab() {
         subscribe_downtimes: subscribeDowntimes,
         subscribe_notes: subscribeNotes
       });
-      setMsg(`Ntfy preferences saved.`);
+      setMsg(`Preferences saved.`);
       setTimeout(() => setMsg(''), 3000);
     } catch (e) { setErr('Failed to save NPC preferences.'); } finally { setActionLoading(false); }
   };
@@ -1019,6 +1019,33 @@ export default function AdminMasterTab() {
         </div>
       </div>
 
+      {/* MY NPCS: which NPCs push to this admin's devices (normal web push, with the player's avatar) */}
+      <div style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', padding: '2rem', boxShadow: 'var(--glass-shadow)' }}>
+        <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
+          <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-color)' }}><FaGlyph name="fa-user" size={22} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />My NPCs</h4>
+          <p style={{ margin: '5px 0 0 0', color: 'var(--text-secondary)' }}>
+            Tick the NPCs you play. When a player messages one of them you get a push notification titled with the NPC's name and showing the player's avatar. Requires chat notifications enabled on this device.
+          </p>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '10px', maxHeight: '220px', overflowY: 'auto', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '4px' }}>
+          {availableNpcs.map(npc => (
+            <label key={npc.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: 'var(--text-color)', fontSize: '0.9rem' }}>
+              <input
+                type="checkbox"
+                checked={subscribedNpcs.includes(npc.id)}
+                onChange={() => toggleNpcSub(npc.id)}
+                disabled={actionLoading}
+              />
+              {npc.name}
+            </label>
+          ))}
+          {availableNpcs.length === 0 && <span style={{ color: 'var(--text-secondary)' }}>No NPCs found.</span>}
+        </div>
+        <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={saveNtfyPrefs} disabled={actionLoading} style={{ marginTop: '15px' }}>
+          <FaGlyph name="fa-floppy-disk" size={15} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Save My NPCs
+        </button>
+      </div>
+
       {/* NTFY PUSH NOTIFICATIONS */}
       <div style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', padding: '2rem', boxShadow: 'var(--glass-shadow)' }}>
         <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
@@ -1049,24 +1076,7 @@ export default function AdminMasterTab() {
               </div>
 
               <div style={{ marginTop: '20px', borderTop: '1px solid var(--glass-border)', paddingTop: '15px' }}>
-                <h5 style={{ margin: '0 0 10px 0', color: 'var(--text-primary)' }}>NPC DM Subscriptions</h5>
-                <p style={{ margin: '0 0 10px 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Select which NPCs you want to receive push notifications for when players message them.</p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', maxHeight: '150px', overflowY: 'auto', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '4px' }}>
-                  {availableNpcs.map(npc => (
-                    <label key={npc.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: 'var(--text-color)', fontSize: '0.9rem' }}>
-                      <input 
-                        type="checkbox" 
-                        checked={subscribedNpcs.includes(npc.id)} 
-                        onChange={() => toggleNpcSub(npc.id)} 
-                        disabled={actionLoading}
-                      />
-                      {npc.name}
-                    </label>
-                  ))}
-                  {availableNpcs.length === 0 && <span style={{ color: 'var(--text-secondary)' }}>No NPCs found.</span>}
-                </div>
-                
-                <h5 style={{ margin: '15px 0 10px 0', color: 'var(--text-primary)' }}>System Subscriptions</h5>
+                <h5 style={{ margin: '0 0 10px 0', color: 'var(--text-primary)' }}>System Subscriptions</h5>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: 'var(--text-color)', fontSize: '0.9rem' }}>
                   <input 
                     type="checkbox" 
@@ -1096,7 +1106,7 @@ export default function AdminMasterTab() {
                 </label>
                 
                 <button className={`${styles.btn}`} onClick={saveNtfyPrefs} disabled={actionLoading} style={{ marginTop: '15px', background: 'var(--accent-purple)', color: '#fff', border: 'none' }}>
-                  <FaGlyph name="fa-floppy-disk" size={15} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Save NPC Preferences
+                  <FaGlyph name="fa-floppy-disk" size={15} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Save Ntfy Preferences
                 </button>
               </div>
             </div>
