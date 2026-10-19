@@ -13,7 +13,8 @@ import {
   disciplineRequiresRouse,
   getPoolFromCharacter,
   summarizeTrackers,
-  getBloodPotencyStats
+  getBloodPotencyStats,
+  remorsePool
 } from '../../utils/liveSessionMechanics';
 import { getLiveSession, joinLiveSession, logLiveSessionRoll, getLiveSessionBroadcasts, getLiveSessionRolls, socket, sendLiveSessionSignal } from '../../api/liveSession';
 import LiveSessionPlayerList from './LiveSessionPlayerList';
