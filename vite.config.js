@@ -26,8 +26,18 @@ const BONEYARD_ROUTES = [
 ];
 
 // https://vitejs.dev/config/
-export default defineConfig(async () => {
-  const { boneyardPlugin } = await import('boneyard-js/vite');
+export default defineConfig(async ({ mode }) => {
+  // The boneyard plugin launches headless Chromium on dev-server start AND after
+  // every file save (20 routes x 3 breakpoints, well over a minute each pass).
+  // Only load it on demand: `npm run dev:bones`. Normal `npm run dev` skips it.
+  const boneyard = mode === 'bones'
+    ? [(await import('boneyard-js/vite')).boneyardPlugin({
+        out: './src/bones',
+        routes: BONEYARD_ROUTES,
+        breakpoints: [375, 768, 1280],
+        wait: 1200
+      })]
+    : [];
 
   return {
   plugins: [
@@ -39,12 +49,7 @@ export default defineConfig(async () => {
     // string paths, which is why the masters live under src/assets/ instead
     // of public/ now.
     imagetools(),
-    boneyardPlugin({
-      out: './src/bones',
-      routes: BONEYARD_ROUTES,
-      breakpoints: [375, 768, 1280],
-      wait: 1200
-    })
+    ...boneyard
   ],
   server: {
     port: 3002,

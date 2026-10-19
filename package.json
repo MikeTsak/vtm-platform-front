@@ -47,6 +47,7 @@
   "scripts": {
     "start": "vite",
     "dev": "vite",
+    "dev:bones": "vite --mode bones",
     "build": "vite build",
     "bones": "boneyard-js build --url http://localhost:3002 --force",
     "preview": "vite preview",
