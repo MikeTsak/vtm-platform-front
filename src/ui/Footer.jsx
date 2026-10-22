@@ -81,6 +81,9 @@ export default function Footer() {
               <a href="https://cerebralproductions.eu/" target="_blank" rel="noreferrer" className="opacity-60 hover:opacity-100 transition-opacity active:scale-95" aria-label="Cerebral Productions">
                 <img src="/img/cerebralproductions.webp" alt="Cerebral Productions" className="h-6 object-contain" draggable="false" />
               </a>
+              <a href="https://agileadvisors.gr/" target="_blank" rel="noreferrer" className="opacity-60 hover:opacity-100 transition-opacity active:scale-95" aria-label="Agile Advisors" title="Agile Advisors">
+                <img src="/img/agileadvisors.webp" alt="Agile Advisors" className="h-6 object-contain" draggable="false" />
+              </a>
               <a href="https://www.paradoxinteractive.com/games/world-of-darkness/community/dark-pack-agreement" target="_blank" rel="noreferrer" className="opacity-60 hover:opacity-100 transition-opacity active:scale-95" aria-label="Dark Pack Agreement">
                 <img src="/img/DarkPack_Logo2.webp" alt="World of Darkness: Dark Pack" className="h-6 object-contain" draggable="false" />
               </a>
@@ -95,7 +98,7 @@ export default function Footer() {
             <div className="text-center lg:text-left text-[9px] font-['Inter'] text-on-surface-variant/50 max-w-4xl leading-tight">
               Portions of the materials are copyrights and trademarks of Paradox Interactive AB, used with permission. All rights reserved. Visit <a href="https://www.worldofdarkness.com" target="_blank" rel="noreferrer" className="hover:text-primary transition-colors underline decoration-outline-variant/30 underline-offset-2">worldofdarkness.com</a>. 
               This is <b className="font-bold text-on-surface-variant/70">unofficial fan content</b>, not approved or endorsed by Paradox Interactive. 
-              Vampire: The Masquerade and World of Darkness are trademarks of Paradox Interactive AB.
+              Vampire: The Masquerade and World of Darkness are trademarks of Paradox Interactive AB. This software is owned by <a href="https://agileadvisors.gr/" target="_blank" rel="noreferrer" className="hover:text-primary transition-colors underline decoration-outline-variant/30 underline-offset-2">Agile Advisors</a>.
             </div>
 
             {/* Links Row */}
