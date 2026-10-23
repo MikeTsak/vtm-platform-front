@@ -1,6 +1,6 @@
 // src/components/admin/AdminMasterTab.jsx
 import FaGlyph from '../../ui/FaGlyph';
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useMemo } from 'react';
 import api, { formatApiError } from '../../core/api';
 import { formatAthensDateTime } from '../../utils/dateFormatter';
 import styles from '../../styles/Admin.module.css';
@@ -8,7 +8,7 @@ import { Skeleton } from 'boneyard-js/react';
 import { Link } from 'react-router-dom';
 import { AuthCtx } from '../../core/AuthContext';
 import { socket } from '../../api/liveSession';
-import { CLAN_NAMES, symlogo, textlogo } from '../../data/clans';
+import { CLAN_NAMES, symlogo, textlogo, symlogoWhite, fileify } from '../../data/clans';
 
 // The schedule this calendar edits is keyed and evaluated entirely in
 // Europe/Athens calendar days (see resolveCommsSchedule in back/routes/comms.js).
@@ -28,7 +28,7 @@ const getAthensYearMonth = () => {
   return { year, month };
 };
 
-export default function AdminMasterTab() {
+export default function AdminMasterTab({ characters: propChars = null, users: propUsers = null }) {
   const { me, setMe } = useContext(AuthCtx);
   // The master switch (services/commsState.js): it shows the live state and
   // follows the calendar on its own. Flipping it is an emergency override that
@@ -79,8 +79,9 @@ export default function AdminMasterTab() {
   const [dangerPin, setDangerPin] = useState('');
 
   // UI Drawer states
-  const [uiToolsOpen, setUiToolsOpen] = useState(false);
+  const [uiToolsOpen, setUiToolsOpen] = useState(true);
   const [sysToolsOpen, setSysToolsOpen] = useState(false);
+  const [fetchedCharacters, setFetchedCharacters] = useState([]);
 
   // Migration Runner state
   const [migrationRunning, setMigrationRunning] = useState(false);
@@ -388,12 +389,13 @@ export default function AdminMasterTab() {
   const loadConfig = async () => {
     setLoading(true);
     try {
-      const [commsRes, bannerRes, ntfyRes, npcsRes, clansRes] = await Promise.all([
+      const [commsRes, bannerRes, ntfyRes, npcsRes, clansRes, charsRes] = await Promise.all([
         api.get('/admin/comms/config'),
         api.get('/system/banner'),
         api.get('/admin/ntfy').catch(() => ({ data: { topic: '', subscribed_npcs: [] } })),
         api.get('/admin/npcs').catch(() => ({ data: { npcs: [] } })),
-        api.get('/clans/config').catch(() => ({ data: null }))
+        api.get('/clans/config').catch(() => ({ data: null })),
+        api.get('/admin/characters').catch(() => ({ data: { characters: [] } }))
       ]);
       applyCommsStatus(commsRes.data);
       setChatSchedule(commsRes.data.schedule || {});
@@ -408,11 +410,61 @@ export default function AdminMasterTab() {
       setBannerSettings(bannerRes.data);
       setAvailableNpcs(npcsRes.data.npcs || []);
       setDisabledClans(clansRes.data?.disabledClans ?? null);
+      if (charsRes?.data?.characters) {
+        setFetchedCharacters(charsRes.data.characters);
+      }
     } catch (e) {
       console.error('[AdminMasterTab] Failed to load settings', e);
       setErr(formatApiError(e, 'Failed to load Master Settings'));
     } finally { setLoading(false); }
   };
+
+  // Clan population distribution (excluding NPCs, excluding test accounts, excluding deceased/departed/retired)
+  const effectiveCharacters = (propChars && propChars.length > 0) ? propChars : fetchedCharacters;
+
+  const isExcludedEntity = (userId, charId) => {
+    const uid = Number(userId);
+    const cid = Number(charId);
+    return uid === 2 || cid === 34; // Tilemachos test user
+  };
+
+  const clanCounts = useMemo(() => {
+    const counts = {};
+    if (!Array.isArray(effectiveCharacters)) return counts;
+    const validChars = effectiveCharacters.filter(c => {
+      if (!c || !c.clan) return false;
+      if (isExcludedEntity(c.user_id, c.id)) return false;
+      if (c.is_deceased || c.is_left || c.is_missing || c.retired_user_id) return false;
+      return true;
+    });
+    validChars.forEach(c => {
+      const clan = c.clan.trim();
+      counts[clan] = (counts[clan] || 0) + 1;
+    });
+    return counts;
+  }, [effectiveCharacters]);
+
+  const sortedClanCounts = useMemo(() => {
+    const entries = Object.entries(clanCounts)
+      .filter(([_, count]) => count > 0)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+
+    if (entries.length === 0) return [];
+
+    const counts = entries.map(e => e[1]);
+    const maxCount = Math.max(...counts);
+    const minCount = Math.min(...counts);
+
+    return entries.map(([clan, count]) => {
+      // Red for most (t = 1, hue = 0), green for least (t = 0, hue = 120), yellow for middle
+      const t = maxCount === minCount ? 0 : (count - minCount) / (maxCount - minCount);
+      const hue = Math.round((1 - t) * 120);
+      const color = `hsl(${hue}, 88%, 56%)`;
+      return { clan, count, color, hue };
+    });
+  }, [clanCounts]);
+
+  const totalKindredCount = useMemo(() => sortedClanCounts.reduce((acc, c) => acc + c.count, 0), [sortedClanCounts]);
 
   const toggleClanAvailability = async (clanName) => {
     if (clanSaving || !disabledClans) return;
@@ -1122,14 +1174,14 @@ export default function AdminMasterTab() {
         </div>
       </div>
 
-      {/* UI / ASSET TESTING SECTION */}
+      {/* ASSET TESTING AND ALLOWED CLANS SECTION */}
       <div style={{ background: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--glass-border)', padding: '2rem', boxShadow: 'var(--glass-shadow)' }}>
         <div
           style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', paddingBottom: uiToolsOpen ? '1.5rem' : 0, borderBottom: uiToolsOpen ? '1px solid var(--glass-border)' : 'none', marginBottom: uiToolsOpen ? '1.5rem' : 0, transition: 'all 0.3s' }}
           onClick={() => setUiToolsOpen(o => !o)}
         >
           <div>
-            <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-color)' }}><FaGlyph name="fa-palette" size={22} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />UI / Asset Testing</h4>
+            <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-color)' }}><FaGlyph name="fa-palette" size={22} style={{ marginRight: '0.5rem', verticalAlign: '-0.15em' }} />Asset Testing and Allowed Clans</h4>
             <p style={{ margin: '5px 0 0 0', color: 'var(--text-secondary)' }}>Test character builders and view visual assets.</p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -1142,6 +1194,103 @@ export default function AdminMasterTab() {
 
         {uiToolsOpen && (
           <>
+            {/* Live Clan Player Counts Row */}
+            <div style={{
+              background: 'var(--glass-inset)',
+              border: '1px solid var(--glass-border)',
+              borderRadius: 'var(--radius-md)',
+              padding: '1.1rem 1.25rem',
+              marginBottom: '1.75rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.85rem'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <FaGlyph name="fa-users" size={14} style={{ color: 'var(--accent-purple)' }} />
+                  Clan Player Distribution
+                </span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  Total: {totalKindredCount} player characters, excluding NPCs
+                </span>
+              </div>
+
+              <div style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                gap: '0.65rem'
+              }}>
+                {sortedClanCounts.map(({ clan, count, color, hue }) => {
+                  const logoUrl = symlogoWhite(clan);
+                  return (
+                    <div
+                      key={clan}
+                      onClick={() => {
+                        const target = document.getElementById(`clan-row-${fileify(clan)}`);
+                        if (target) {
+                          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          target.style.transition = 'box-shadow 0.3s ease, border-color 0.3s ease';
+                          target.style.boxShadow = `0 0 15px hsla(${hue}, 88%, 56%, 0.45)`;
+                          target.style.borderColor = color;
+                          setTimeout(() => {
+                            target.style.boxShadow = '';
+                            target.style.borderColor = '';
+                          }, 1600);
+                        }
+                      }}
+                      title={`${clan}: ${count} player characters`}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.55rem',
+                        background: 'rgba(255, 255, 255, 0.04)',
+                        border: '1px solid rgba(255, 255, 255, 0.09)',
+                        borderRadius: '24px',
+                        padding: '0.35rem 0.75rem 0.35rem 0.5rem',
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 6px rgba(0, 0, 0, 0.25)',
+                        transition: 'transform 0.15s ease, background 0.15s ease, border-color 0.15s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.borderColor = `${color}aa`;
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.09)';
+                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
+                      }}
+                    >
+                      <img
+                        src={logoUrl}
+                        alt={clan}
+                        style={{
+                          width: '26px',
+                          height: '26px',
+                          objectFit: 'contain',
+                          filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.6))'
+                        }}
+                      />
+                      <span
+                        style={{
+                          fontSize: '1.15rem',
+                          fontWeight: 800,
+                          color: color,
+                          textShadow: `0 0 10px hsla(${hue}, 88%, 56%, 0.35)`,
+                          fontVariantNumeric: 'tabular-nums',
+                          lineHeight: 1
+                        }}
+                      >
+                        {count}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             <h5 style={{ color: 'var(--text-primary)', marginBottom: '0.25rem', fontSize: '1.2rem' }}>Clan Logos &amp; Availability</h5>
             <p style={{ margin: '0 0 1rem 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
               Toggle which clans players can select in the character creator.
@@ -1158,7 +1307,7 @@ export default function AdminMasterTab() {
               {CLAN_NAMES.map(clan => {
                 const isDisabled = (disabledClans || []).includes(clan);
                 return (
-                  <div key={clan} style={{ display: 'grid', gridTemplateColumns: '1.1fr repeat(4, 1fr) auto', gap: '1rem', alignItems: 'center', background: 'var(--glass-inset)', padding: '1rem', borderRadius: 'var(--radius-md)', border: `1px solid ${isDisabled ? 'rgba(255,82,82,0.35)' : 'var(--glass-border)'}` }}>
+                  <div key={clan} id={`clan-row-${fileify(clan)}`} style={{ display: 'grid', gridTemplateColumns: '1.1fr repeat(4, 1fr) auto', gap: '1rem', alignItems: 'center', background: 'var(--glass-inset)', padding: '1rem', borderRadius: 'var(--radius-md)', border: `1px solid ${isDisabled ? 'rgba(255,82,82,0.35)' : 'var(--glass-border)'}` }}>
                     <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '1.05rem' }}>{clan}</div>
                     <div style={{ textAlign: 'center' }}>
                       <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '10px' }}>Symbol</div>

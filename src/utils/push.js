@@ -56,27 +56,40 @@ export async function subscribeToWebPush() {
     throw new Error('Notification permission was not granted. Please check your browser site settings and allow notifications.');
   }
 
-  // Register the service worker
-  const registration = await navigator.serviceWorker.register('/service-worker.js', {
-    scope: '/'
-  });
+  return syncWebPush();
+}
 
-  // Wait for the service worker to be ready
+function sameKey(a, b) {
+  if (!a) return true; // browsers that don't expose it: nothing to compare
+  const x = new Uint8Array(a);
+  return x.length === b.length && x.every((v, i) => v === b[i]);
+}
+
+// Makes sure this device has a live subscription on file for the signed-in
+// user. Run on every app open, so pushes heal themselves after the browser
+// drops or rotates a subscription, the server prunes a dead one, the VAPID key
+// changes, or someone else logs in on this device — instead of silently
+// stopping until the player re-toggles notifications. Never prompts: does
+// nothing unless permission was already granted.
+export async function syncWebPush() {
+  if (getPushUnsupportedReason() || Notification.permission !== 'granted') return null;
+
+  const registration = await navigator.serviceWorker.register('/service-worker.js', { scope: '/' });
   await navigator.serviceWorker.ready;
 
-  // Get the VAPID Public Key from the server
   const vapidRes = await api.get('/push/vapidPublicKey');
   const applicationServerKey = urlBase64ToUint8Array(vapidRes.data.publicKey);
 
-  // Subscribe to push
-  const subscription = await registration.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey
-  });
+  let subscription = await registration.pushManager.getSubscription();
+  if (subscription && !sameKey(subscription.options?.applicationServerKey, applicationServerKey)) {
+    await subscription.unsubscribe();
+    subscription = null;
+  }
+  if (!subscription) {
+    subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey });
+  }
 
-  // Send the subscription to our server
   await api.post('/push/web-subscribe', { subscription });
-  
   return subscription;
 }
 

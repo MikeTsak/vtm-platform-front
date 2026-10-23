@@ -1024,7 +1024,7 @@ async function grantXP(character_id, delta) {
     ),
     dice:     () => <AdminDiceLogsTab />,
     bloodweb: () => <AdminBloodWebTab />,    // System
-    master:     () => <AdminMasterTab />,
+    master:     () => <AdminMasterTab characters={characters} users={users} />,
     masquerade: () => <AdminMasqueradeTab />,
     audit:      () => <AdminAuditTab />,
     logs:       () => <AdminLogs />,

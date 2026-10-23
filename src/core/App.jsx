@@ -10,6 +10,7 @@ import api from './api';
 import { Skeleton } from 'boneyard-js/react';
 import { trackPageView, setUserId, setUserProperties } from '../utils/analytics';
 import { lazyWithRetry } from '../utils/lazyWithRetry';
+import { syncWebPush } from '../utils/push';
 
 // Pages & Components (Critical Path)
 import GlobalBanner from '../components/GlobalBanner';
@@ -191,6 +192,13 @@ function AppLayout() {
       }).catch(() => { /* skip if err */ });
     }
   }, [user]);
+
+  // Re-register this device's push subscription for whoever is signed in.
+  // Debug sessions are skipped: the server refuses them (it would move the
+  // admin's device onto the player).
+  useEffect(() => {
+    if (user && !user.imp) syncWebPush().catch(() => { });
+  }, [user?.id, user?.imp]);
 
   // Google Analytics: Track Page Views
   useEffect(() => {
