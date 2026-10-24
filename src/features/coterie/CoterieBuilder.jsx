@@ -64,7 +64,7 @@ const emptyState = () => ({
  * Members
  * ------------------------------------------------------------------ */
 
-function MembersPicker({ members, onChange, roster, currentUser, isAdmin }) {
+function MembersPicker({ members, onChange, roster, currentUser, isAdmin, editingId, onLeave }) {
   const [q, setQ] = useState('');
 
   const chosen = useMemo(() => new Set(members.map((m) => m.id)), [members]);
@@ -104,7 +104,8 @@ function MembersPicker({ members, onChange, roster, currentUser, isAdmin }) {
           {members.map((m) => {
             // A non-admin may not remove themselves: the server requires the
             // caller to remain in the coterie they are editing.
-            const locked = !isAdmin && currentUser && currentUser.id === m.id;
+            const isSelf = currentUser && currentUser.id === m.id;
+            const locked = !isAdmin && isSelf;
             return (
               <li key={m.id} className={styles.rosterItem}>
                 <div className={styles.rosterAvatar}>
@@ -114,7 +115,7 @@ function MembersPicker({ members, onChange, roster, currentUser, isAdmin }) {
                   <div className={styles.rosterName}>{m.name}</div>
                   {m.clan && <div className={styles.rosterClan}>{m.clan}</div>}
                 </div>
-                {!locked && (
+                {!locked ? (
                   <button
                     type="button"
                     className={styles.dangerButton}
@@ -123,7 +124,16 @@ function MembersPicker({ members, onChange, roster, currentUser, isAdmin }) {
                   >
                     Remove
                   </button>
-                )}
+                ) : editingId && onLeave ? (
+                  <button
+                    type="button"
+                    className={styles.dangerButton}
+                    onClick={onLeave}
+                    aria-label="Leave coterie"
+                  >
+                    Leave coterie
+                  </button>
+                ) : null}
               </li>
             );
           })}
@@ -167,6 +177,7 @@ export default function CoterieBuilder({
   personalXp,
   saving,
   onSave,
+  onLeave,
   onCancel,
 }) {
   const cleanInitial = (data) => {
@@ -409,6 +420,8 @@ export default function CoterieBuilder({
             roster={roster}
             currentUser={currentUser}
             isAdmin={isAdmin}
+            editingId={editingId}
+            onLeave={onLeave}
           />
 
           <AdvantagePicker
@@ -704,6 +717,16 @@ export default function CoterieBuilder({
           <button type="button" className={styles.buttonSecondary} onClick={onCancel}>
             Cancel
           </button>
+          {editingId && onLeave && (
+            <button
+              type="button"
+              className={styles.dangerButton}
+              onClick={onLeave}
+              disabled={saving}
+            >
+              Leave coterie
+            </button>
+          )}
         </div>
       </Card>
     </div>

@@ -333,6 +333,7 @@ export default function CoterieSheet({
   coterie,
   members = [],
   xpLog = [],
+  events = [],
   retainers = [],
   domainLabel,
   isAdmin,
@@ -341,6 +342,7 @@ export default function CoterieSheet({
   myCharacter,
   isMember,
   onEdit,
+  onLeave,
   onDelete,
   onAward,
   onPurchase,
@@ -391,6 +393,16 @@ export default function CoterieSheet({
             {canEdit && (
               <button type="button" className={styles.buttonSecondary} onClick={onEdit}>Edit</button>
             )}
+            {isMember && onLeave && (
+              <button
+                type="button"
+                className={styles.dangerButton}
+                onClick={onLeave}
+                disabled={busy}
+              >
+                Leave coterie
+              </button>
+            )}
             {isAdmin && (
               <button type="button" className={styles.dangerButton} onClick={onDelete}>Delete</button>
             )}
@@ -402,6 +414,28 @@ export default function CoterieSheet({
           <Muted tone="warn">
             A Storyteller has flagged this coterie as an approved exception to the point rules.
           </Muted>
+        )}
+        {Array.isArray(events) && events.length > 0 && (
+          <div className={styles.coterieEventsBox}>
+            <div className={styles.coterieEventsHeader}>
+              <i className="fa-solid fa-clock-rotate-left" />
+              <span>Recent Activity</span>
+            </div>
+            <ul className={styles.coterieEventsList}>
+              {events.map((ev) => (
+                <li key={ev.id} className={styles.coterieEventItem}>
+                  <span className={styles.coterieEventText}>
+                    {ev.kind === 'member_left'
+                      ? `${ev.target_name || 'Character'} left the coterie`
+                      : (ev.note || ev.target_name || 'Event')}
+                  </span>
+                  <span className={styles.coterieEventTime}>
+                    {formatAthensDateTime(ev.created_at)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
       </Card>
 
@@ -749,6 +783,23 @@ export default function CoterieSheet({
             <summary className={styles.summaryLink}>Ledger ({xpLog.length})</summary>
             <ul className={styles.ledgerList}>
               {xpLog.map((row) => {
+                if (row.kind === 'member_left') {
+                  return (
+                    <li key={row.id} className={styles.ledgerRow}>
+                      <span className={styles.ledgerAmount} data-sign="event">
+                        <i className="fa-solid fa-user-minus" />
+                      </span>
+                      <span className={styles.ledgerBody}>
+                        <span className={styles.ledgerTitle}>
+                          {row.target_name || 'Character'} left the coterie
+                        </span>
+                        <span className={styles.ledgerMeta}>
+                          {formatAthensDateTime(row.created_at)}
+                        </span>
+                      </span>
+                    </li>
+                  );
+                }
                 const total = row.kind === 'deposit'
                   ? Number(row.bank_delta) || 0
                   : (Number(row.bank_delta) || 0) + (Number(row.personal_delta) || 0);

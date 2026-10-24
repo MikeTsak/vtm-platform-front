@@ -955,6 +955,7 @@
 }
 .ledgerAmount[data-sign='plus'] { color: #6bbd7c; }
 .ledgerAmount[data-sign='minus'] { color: #ff9d92; }
+.ledgerAmount[data-sign='event'] { color: #e6a23c; }
 
 .ledgerBody { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
 .ledgerTitle { font-size: 0.86rem; font-weight: 600; overflow-wrap: anywhere; }
@@ -1168,6 +1169,68 @@
   height: 100%;
   background: var(--danger-color, #f85149);
   transition: width 0.2s ease;
+}
+
+/* ================================================================== *
+ * Coterie Events & Activity
+ * ================================================================== */
+
+.coterieEventsBox {
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.85rem;
+  background: rgba(179, 38, 30, 0.08);
+  border: 1px solid rgba(179, 38, 30, 0.25);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.coterieEventsHeader {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #ff9d92;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.coterieEventsList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.coterieEventItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.84rem;
+}
+
+.coterieEventText {
+  color: var(--text-color);
+  font-weight: 500;
+}
+
+.coterieEventTime {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.eventsNoticeCard {
+  margin-top: 0.75rem;
+  padding: 0.85rem 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
 }
 
 /* ================================================================== *

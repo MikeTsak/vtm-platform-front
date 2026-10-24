@@ -12,6 +12,7 @@ import { roleFlags } from '../../core/useRole';
 import api from '../../core/api';
 import { publish } from '../../utils/notification';
 import styles from '../../styles/Coteries.module.css';
+import { formatAthensDateTime } from '../../utils/dateFormatter';
 import { Card, Empty, Muted, Spinner, Stat, Tabs } from './ui';
 import CoterieBuilder from './CoterieBuilder';
 import CoterieSheet from './CoterieSheet';
@@ -341,6 +342,25 @@ export default function CoterieManager({ adminMode = false }) {
     }
   };
 
+  const leave = async (id) => {
+    if (!window.confirm('Are you sure you want to leave this coterie?')) return;
+    setBusy(true);
+    try {
+      await api.post(`/coteries/${id}/leave`);
+      publish({ message: 'You have left the coterie.', type: 'success' });
+      setDetail(null);
+      setSelectedId(null);
+      setEditing(null);
+      setEditingId(null);
+      await Promise.all([loadMine(), loadRegistry(), loadMyCharacter()]);
+      setTab('mine');
+    } catch (e) {
+      publish({ message: errText(e, 'Could not leave the coterie.'), type: 'error' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   /* ---- render ---- */
 
   const tabs = [
@@ -404,6 +424,7 @@ export default function CoterieManager({ adminMode = false }) {
                   coterie={detail.coterie}
                   members={detail.members}
                   xpLog={detail.xp_log || []}
+                  events={detail.events || []}
                   retainers={detail.retainers || []}
                   domainLabel={detail.coterie.domain_id
                     ? `#${detail.coterie.domain_id} : ${domainLabelFor(detail.coterie.domain_id) || 'Unknown'}`
@@ -415,6 +436,7 @@ export default function CoterieManager({ adminMode = false }) {
                   isMember={(detail.members || []).some((m) => Number(m.user_id) === Number(currentUser?.id))}
                   busy={busy}
                   onEdit={() => startEdit(detail.coterie, detail.members)}
+                  onLeave={() => leave(detail.coterie.id)}
                   onDelete={() => remove(detail.coterie.id)}
                   onAward={award}
                   onPurchase={purchase}
@@ -456,6 +478,28 @@ export default function CoterieManager({ adminMode = false }) {
                             {m.character_name || m.display_name}{m.clan ? ` · ${m.clan}` : ''}
                           </span>
                         ))}
+                      </div>
+                    )}
+                    {Array.isArray(c.events) && c.events.length > 0 && (
+                      <div className={styles.coterieEventsBox}>
+                        <div className={styles.coterieEventsHeader}>
+                          <i className="fa-solid fa-clock-rotate-left" />
+                          <span>Recent Activity</span>
+                        </div>
+                        <ul className={styles.coterieEventsList}>
+                          {c.events.map((ev) => (
+                            <li key={ev.id} className={styles.coterieEventItem}>
+                              <span className={styles.coterieEventText}>
+                                {ev.kind === 'member_left'
+                                  ? `${ev.target_name || 'Character'} left the coterie`
+                                  : (ev.note || ev.target_name || 'Event')}
+                              </span>
+                              <span className={styles.coterieEventTime}>
+                                {formatAthensDateTime(ev.created_at)}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
                       </div>
                     )}
                     <div className={styles.cardActionRow}>
@@ -501,6 +545,7 @@ export default function CoterieManager({ adminMode = false }) {
           personalXp={personalXp}
           saving={busy}
           onSave={save}
+          onLeave={editingId ? () => leave(editingId) : undefined}
           onCancel={() => { setEditing(null); setEditingId(null); setTab('mine'); }}
         />
       )}
