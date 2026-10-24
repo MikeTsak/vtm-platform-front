@@ -23,6 +23,7 @@ const FIELDS = [
 ];
 
 const when = (d) => (d ? new Date(d).toLocaleString('en-GB', { timeZone: 'Europe/Athens', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '');
+const cleanTitle = (t) => (t ? t.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').replace(/modern\s*day\s*event/gi, 'Elysium').replace(/[-—]/g, ':').trim() : '');
 const label = (list, id) => list.find(x => x.id === id)?.label || id || 'default';
 const Icon = ({ name, size = 16, color }) => (
   <span className="material-symbols-outlined" style={{ fontSize: size, color, verticalAlign: '-3px' }} aria-hidden="true">{name}</span>
@@ -131,9 +132,9 @@ export default function AdminElysiumTab() {
                   background: i.id === eventId ? 'rgba(212,175,95,0.14)' : 'var(--glass-inset)',
                   border: `1px solid ${i.id === eventId ? '#d4af5f' : 'var(--glass-border)'}`, color: 'var(--text-primary)',
                 }}>
-                <div style={{ fontWeight: 700 }}>{i.name || i.title}</div>
+                <div style={{ fontWeight: 700 }}>{i.name || cleanTitle(i.title)}</div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                  {formatEuDate(i.date)} · {i.published_at ? 'Published' : i.version_count ? 'Draft' : 'No invitation'}
+                  {i.name ? `${cleanTitle(i.title)} · ` : ''}{formatEuDate(i.date)} · {i.published_at ? 'Published' : i.version_count ? 'Draft' : 'No invitation'}
                   {i.version_count ? ` · ${i.version_count} versions · ${i.reader_count} opened` : ''}
                 </div>
               </button>
@@ -144,9 +145,9 @@ export default function AdminElysiumTab() {
           {!detail ? <p style={{ color: 'var(--text-secondary)' }}>Loading...</p> : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', minWidth: 0 }}>
               <div>
-                <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>{detail.invitation?.name || detail.event.title}</h3>
+                <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>{detail.invitation?.name || cleanTitle(detail.event.title)}</h3>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                  {detail.event.title} · {when(detail.event.date)}
+                  {cleanTitle(detail.event.title)} · {when(detail.event.date)}
                   {detail.last_reannounce ? ` · last sent again ${when(detail.last_reannounce)}` : ''}
                 </div>
               </div>

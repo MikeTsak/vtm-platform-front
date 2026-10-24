@@ -106,7 +106,7 @@ export function HomeBannerPreview({ name, date, design, location }) {
   const when = formatElysiumDate(date);
   return (
     <div className={styles.banner} style={{ background: surfaceBackground(d.banner, d.bannerImage), color: d.banner.ink }}>
-      <span className={styles.bannerEyebrow}>Next Modern Event</span>
+      <span className={styles.bannerEyebrow}>Next Elysium</span>
       <span className={styles.bannerTitle} {...greekAttrs(name)}>{name || DEFAULT_TEXT.name}</span>
       <span style={{ fontSize: '0.85rem', opacity: 0.85, ...greekAttrs(location).style }} lang={greekAttrs(location).lang}>{when.day}{location ? ` · ${location}` : ''}</span>
     </div>

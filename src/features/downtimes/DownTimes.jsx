@@ -719,10 +719,10 @@ export default function DownTimes() {
                 isProject={false}
               />
               <CountdownDisplay
-                title="Next Modern Event"
+                title="Next Elysium"
                 countdown={nextEventCountdown}
                 subText={nextModernEvent
-                  ? nextModernEvent.title.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim()
+                  ? (nextModernEvent.elysium_name || nextModernEvent.title.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').replace(/[-—]/g, ':').trim())
                   : 'Nothing on the calendar yet'}
                 icon="event"
                 isProject={false}

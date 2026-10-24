@@ -40,6 +40,7 @@ function cleanTitle(title) {
   if (!title) return '';
   return title
     .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
+    .replace(/modern\s*day\s*event/gi, 'Elysium')
     .replace(/[-—]/g, ':')
     .trim();
 }
@@ -1206,11 +1207,11 @@ export default function AdminCalendarTab() {
                               textOverflow: 'ellipsis',
                               lineHeight: 1.2
                             }}
-                            title={`Live Event: ${cleanTitle(hasEvent.title)}${hasEvent.elysium_name ? ` (Elysium: ${hasEvent.elysium_name}${hasEvent.invitation_published_at ? ', invitation sent' : ''})` : ''}`}
+                            title={`Live Event: ${cleanTitle(hasEvent.title)}${hasEvent.elysium_name ? ` (${hasEvent.elysium_name}${hasEvent.invitation_published_at ? ', invitation sent' : ''})` : ''}`}
                           >
                             <span className="material-symbols-outlined" style={{ fontSize: '12px', flexShrink: 0 }}>celebration</span>
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {cleanTitle(hasEvent.title) || 'EVENT'}
+                              {hasEvent.elysium_name || cleanTitle(hasEvent.title) || 'EVENT'}
                             </span>
                           </div>
                         )}
@@ -1233,7 +1234,7 @@ export default function AdminCalendarTab() {
                               textOverflow: 'ellipsis',
                               lineHeight: 1.2
                             }}
-                            title={`Downtime Deadline for: ${dtCloseItems.map(e => cleanTitle(e.title)).join(', ') || 'Next Event'}`}
+                            title={`Downtime Deadline for: ${dtCloseItems.map(e => e.elysium_name || cleanTitle(e.title)).join(', ') || 'Next Event'}`}
                           >
                             <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
                               <span className="material-symbols-outlined" style={{ fontSize: '11px', flexShrink: 0 }}>alarm_off</span>
@@ -1241,7 +1242,7 @@ export default function AdminCalendarTab() {
                             </div>
                             {dtCloseItems.length > 0 && (
                               <div style={{ fontSize: '0.54rem', opacity: 0.9, overflow: 'hidden', textOverflow: 'ellipsis', color: '#ffb2dd' }}>
-                                {cleanTitle(dtCloseItems[0].title).replace(/Modern Day Event|Past Time Event|Grand Event/gi, 'Event')}
+                                {cleanTitle(dtCloseItems[0].elysium_name || dtCloseItems[0].title).replace(/Modern Day Event|Past Time Event|Grand Event/gi, 'Event')}
                               </div>
                             )}
                           </div>
@@ -1451,11 +1452,14 @@ export default function AdminCalendarTab() {
                 style={{ width: 'auto', fontSize: '0.78rem', padding: '4px 8px' }}
                 aria-label="Select Target Event"
               >
-                {events.map(ev => (
-                  <option key={ev.id} value={ev.id}>
-                    {cleanTitle(ev.title)} ({formatEuDate(ev.date)})
-                  </option>
-                ))}
+                {events.map(ev => {
+                  const display = ev.elysium_name ? `${ev.elysium_name} (${cleanTitle(ev.title)})` : cleanTitle(ev.title);
+                  return (
+                    <option key={ev.id} value={ev.id}>
+                      {display} ({formatEuDate(ev.date)})
+                    </option>
+                  );
+                })}
               </select>
             )}
           </div>

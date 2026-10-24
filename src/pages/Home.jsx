@@ -20,6 +20,8 @@ import { formatAthensWeekdayDate } from '../utils/dateFormatter';
 import ElysiumInvitationModal from '../features/court/ElysiumInvitation';
 import { resolveDesign, surfaceBackground, greekAttrs } from '../features/court/elysiumPresets';
 
+const cleanTitle = (t) => (t ? t.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').replace(/modern\s*day\s*event/gi, 'Elysium').replace(/[-—]/g, ':').trim() : '');
+
 /* ── Relative time ──────────────────────────────────────────────── */
 const formatTimestamp = (ts) => {
   if (!ts) return '';
@@ -587,14 +589,14 @@ export default function Home() {
             }}
           >
             <div className={styles.eventInfo}>
-              <h3 className={styles.eventHeader}>NEXT MODERN EVENT</h3>
+              <h3 className={styles.eventHeader}>NEXT ELYSIUM</h3>
               {!elysium?.event ? (
                 <h2 className={styles.eventTitle}>No Current Event</h2>
               ) : elysium.status === 'pending' ? (
                 // Nothing is announced yet: the date from the Calendar is all there is to show.
                 <h2 className={styles.eventTitle}>{formatAthensWeekdayDate(elysium.event.date)}</h2>
               ) : (
-                <h2 className={styles.eventTitle} {...greekAttrs(elysium.invitation?.name || elysium.event.name)}>{elysium.invitation?.name || elysium.event.name || 'Elysium Gathering'}</h2>
+                <h2 className={styles.eventTitle} {...greekAttrs(elysium.invitation?.name || cleanTitle(elysium.event.name))}>{elysium.invitation?.name || cleanTitle(elysium.event.name) || 'Elysium Gathering'}</h2>
               )}
               {elysium?.event && !eventCd.isPast && (
                 <p className={styles.eventLocation} style={{ color: 'var(--tint)' }}>
