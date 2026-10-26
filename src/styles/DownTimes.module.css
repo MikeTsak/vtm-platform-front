@@ -690,10 +690,8 @@
   margin: 0;
   position: relative;
   z-index: 10;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* Archive Section */
@@ -870,10 +868,8 @@
   line-height: 20px;
   color: var(--on-surface-variant);
   margin: 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .resolutionBox {
@@ -907,6 +903,52 @@
   color: var(--on-surface);
   font-style: italic;
   margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.expandableWrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.clampedText {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.expandedText {
+  display: block;
+  overflow: visible;
+}
+
+.readMoreBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  padding: 4px 0 0;
+  color: var(--primary);
+  font-family: var(--font-label-md);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  align-self: flex-start;
+  transition: opacity 0.15s ease;
+  opacity: 0.9;
+}
+
+.readMoreBtn:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.readMoreIcon {
+  font-size: 16px;
+  line-height: 1;
 }
 
 /* Animations & Utils */

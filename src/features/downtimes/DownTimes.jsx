@@ -1,5 +1,5 @@
 // src/pages/DownTimes.jsx
-import React, { useMemo, useState, useContext, useEffect } from 'react';
+import React, { useMemo, useState, useContext, useEffect, useRef } from 'react';
 import { AuthCtx } from '../../core/AuthContext';
 import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/DownTimes.module.css';
@@ -220,6 +220,80 @@ function SubmitCard({ quota, isProject }) {
   );
 }
 
+function ExpandableText({
+  text,
+  clampLines = 3,
+  className = '',
+  buttonClassName = '',
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [canExpand, setCanExpand] = useState(() => {
+    if (!text) return false;
+    return text.length > clampLines * 45 || text.includes('\n');
+  });
+  const textRef = useRef(null);
+
+  useEffect(() => {
+    setExpanded(false);
+  }, [text]);
+
+  useEffect(() => {
+    const el = textRef.current;
+    if (!el) return;
+    const check = () => {
+      if (!expanded) {
+        setCanExpand(el.scrollHeight > el.clientHeight + 1);
+      }
+    };
+    check();
+    document.fonts?.ready?.then(check);
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, [text, expanded, clampLines]);
+
+  if (!text) return null;
+
+  const isClamped = !expanded && canExpand;
+
+  const handleTextClick = () => {
+    if (window.getSelection()?.toString()) return;
+    if (canExpand) setExpanded(v => !v);
+  };
+
+  return (
+    <div className={styles.expandableWrap}>
+      <p
+        ref={textRef}
+        className={`${className} ${isClamped ? styles.clampedText : styles.expandedText}`}
+        style={{
+          WebkitLineClamp: isClamped ? clampLines : 'unset',
+          cursor: canExpand ? 'pointer' : 'inherit',
+        }}
+        onClick={handleTextClick}
+      >
+        {text}
+      </p>
+      {canExpand && (
+        <button
+          type="button"
+          className={buttonClassName || styles.readMoreBtn}
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpanded(v => !v);
+          }}
+          data-cuelume-press
+          data-cuelume-hover
+        >
+          <span>{expanded ? 'Show less' : 'Read more'}</span>
+          <span className={`material-symbols-outlined ${styles.readMoreIcon}`}>
+            {expanded ? 'expand_less' : 'expand_more'}
+          </span>
+        </button>
+      )}
+    </div>
+  );
+}
+
 function ActiveTrackItem({ dt, isProject, massReleaseCountdown, deadlinePassed }) {
   const queryClient = useQueryClient();
   const status = (dt.status || 'submitted').toLowerCase();
@@ -296,7 +370,11 @@ function ActiveTrackItem({ dt, isProject, massReleaseCountdown, deadlinePassed }
       ) : (
         <>
           <h4 className={styles.trackTitle}>{displayTitle}</h4>
-          <p className={styles.trackBody}>{dt.body}</p>
+          <ExpandableText
+            text={dt.body}
+            clampLines={2}
+            className={styles.trackBody}
+          />
           {status === 'needs a scene' && (
             <div className={styles.trackScene}>
               <div className={styles.sceneNumber}>
@@ -346,7 +424,11 @@ function ActiveTrackItem({ dt, isProject, massReleaseCountdown, deadlinePassed }
                   Resolved by: {formatResolverName(dt.resolved_by_name)}
                 </span>
               </div>
-              <p className={styles.resolutionText}>{dt.gm_resolution}</p>
+              <ExpandableText
+                text={dt.gm_resolution}
+                clampLines={4}
+                className={styles.resolutionText}
+              />
             </div>
           ) : awaitingST ? (
             <div className={styles.trackNotice}>
@@ -402,7 +484,11 @@ function ArchiveItem({ dt, isProject }) {
         <span className={`${styles.archiveStatusTag} ${badgeClass}`}>{formatPlayerStatus(dt.status)}</span>
       </div>
       <div className={styles.archiveCardBody}>
-        <p className={styles.archiveCardText}>{dt.body}</p>
+        <ExpandableText
+          text={dt.body}
+          clampLines={3}
+          className={styles.archiveCardText}
+        />
 
         {/* The scene is done: just a marker, no participants or scheduling note */}
         {status === 'resolved in scene' && (
@@ -429,7 +515,11 @@ function ArchiveItem({ dt, isProject }) {
                 Resolved by: {formatResolverName(dt.resolved_by_name)}
               </span>
             </div>
-            <p className={styles.resolutionText}>{dt.gm_resolution}</p>
+            <ExpandableText
+              text={dt.gm_resolution}
+              clampLines={4}
+              className={styles.resolutionText}
+            />
           </div>
         ) : null}
       </div>
