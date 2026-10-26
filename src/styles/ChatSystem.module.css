@@ -5,10 +5,14 @@
   display: flex;
   height: calc(100vh - 60px);
   width: 100%;
+  max-width: 100%;
   background-color: var(--bg-color);
   color: var(--text-color);
   font-family: var(--font-body);
   overflow: hidden;
+  overflow-x: hidden;
+  overflow-x: clip;
+  overscroll-behavior-x: none;
   position: relative;
 }
 
@@ -269,6 +273,11 @@
   background-color: var(--bg-color);
   position: relative;
   min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-x: clip;
+  overscroll-behavior-x: none;
 }
 
 .chatHeader {
@@ -278,6 +287,10 @@
   display: flex;
   flex-direction: column;
   z-index: 5;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  flex-shrink: 0;
 }
 
 .chatWith {
@@ -499,6 +512,9 @@
   flex: 1;
   padding: 20px;
   overflow-y: auto;
+  overflow-x: hidden;
+  overflow-x: clip;
+  overscroll-behavior-x: none;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -1030,6 +1046,11 @@
     inset: 0;
     z-index: 20;
     height: 100%;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    overflow-x: clip;
+    overscroll-behavior-x: none;
   }
 
   .mobileChatActive .userList {
@@ -1039,10 +1060,19 @@
   .mobileChatActive .chatWindow {
     display: flex;
     flex-direction: column;
+    width: 100%;
+    max-width: 100%;
   }
 
   .mobileContactsBtn {
     display: block;
+  }
+
+  .messageList {
+    padding: 16px 12px;
+    overflow-x: hidden;
+    overflow-x: clip;
+    overscroll-behavior-x: none;
   }
 
   .messageBubble {
@@ -1050,6 +1080,9 @@
   }
 
   .messageInputForm {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
     padding-bottom: max(16px, env(safe-area-inset-bottom));
   }
 }

@@ -151,6 +151,8 @@
     padding: 0;
     max-width: none;
     background: var(--bg-color);
+    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   .modeSwitch {

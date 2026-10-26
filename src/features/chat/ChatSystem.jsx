@@ -190,7 +190,7 @@ const SwipeRow = ({ enabled, onReply, onSwipeStart, children, className, ...rest
     <motion.div
       {...rest}
       className={`${className} relative`}
-      style={{ x }}
+      style={{ x, touchAction: enabled ? 'pan-y' : 'auto' }}
       drag={enabled ? 'x' : false}
       dragDirectionLock
       dragConstraints={{ left: 0, right: 0 }}
