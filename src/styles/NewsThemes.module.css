@@ -27,19 +27,31 @@
 }
 
 .sidebarLeft, .sidebarRight {
-  flex: 1 1 200px;
+  flex: 0 0 170px;
   display: flex;
   flex-direction: column;
   gap: 2rem;
-  min-width: 200px;
+  min-width: 170px;
 }
 
 .adContainer {
   text-align: center;
-  background-color: var(--bg-tertiary);
-  padding: 1rem;
+  background-color: transparent;
+  padding: 0;
   border-radius: 4px;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.adSticky {
+  position: sticky;
+  top: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
 }
 
 .adLabel {
@@ -49,6 +61,21 @@
   letter-spacing: 1px;
   display: block;
   margin-bottom: 0.5rem;
+}
+
+.desktopAd {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.mobileAdTop {
+  display: none;
+  width: 100%;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  margin: 0.5rem 0;
 }
 
 .adImage {
@@ -517,16 +544,22 @@
   .sidebarLeft {
     width: 100% !important;
     flex: none !important;
-    padding: 1rem !important;
+    padding: 0.5rem 0 !important;
     order: 1;
-    margin-bottom: 0 !important;
+    margin-bottom: 0.5rem !important;
+    min-width: 0 !important;
   }
 
   .sidebarRight {
-    width: 100% !important;
-    flex: none !important;
-    padding: 0 1rem 2rem 1rem !important;
-    order: 3;
+    display: none !important;
+  }
+
+  .desktopAd {
+    display: none !important;
+  }
+
+  .mobileAdTop {
+    display: flex !important;
   }
 
   /* Header adjustments */

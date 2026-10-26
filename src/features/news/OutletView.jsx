@@ -10,6 +10,7 @@ import outletStyles from '../../styles/OutletView.module.css';
 import { Skeleton } from 'boneyard-js/react';
 import { useQuery } from '@tanstack/react-query';
 import FaGlyph from '../../ui/FaGlyph';
+import AdsterraBanner from '../../components/AdsterraBanner';
 
 // Per outlet navigation sections
 const OUTLET_NAV = {
@@ -450,6 +451,17 @@ export default function OutletView() {
             <strong>Disclaimer:</strong> This content is entirely fictional and created for the <em>Athens Through Time</em> Live Action Role Playing (LARP) game.
           </div>
 
+          {/* Top Banner Ad */}
+          <div className="no-print" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '1.5rem 0' }}>
+            <span style={{ display: 'block', fontSize: '0.7rem', color: '#888', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '6px' }}>Advertisement</span>
+            <div className={themeStyles.desktopAd}>
+              <AdsterraBanner adKey="89871f5fce924410602b3310f0df6cfd" width={728} height={90} />
+            </div>
+            <div className={themeStyles.mobileAdTop}>
+              <AdsterraBanner adKey="9d189d3847aa7621a217714bdf23b4fe" width={320} height={50} />
+            </div>
+          </div>
+
           {allArticles.length === 0 && !isLoading && (
             <div className={outletStyles.empty}>
               <FaGlyph name="fa-newspaper" style={{ width: '48px', height: '48px', opacity: 0.4 }} />
@@ -466,6 +478,17 @@ export default function OutletView() {
               ))}
             </div>
           )}
+
+          {/* Bottom Banner Ad */}
+          <div className="no-print" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+            <span style={{ display: 'block', fontSize: '0.7rem', color: '#888', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Advertisement</span>
+            <div className={themeStyles.desktopAd}>
+              <AdsterraBanner adKey="89871f5fce924410602b3310f0df6cfd" width={728} height={90} />
+            </div>
+            <div className={themeStyles.mobileAdTop}>
+              <AdsterraBanner adKey="0ceb033e24e9ee12e9c25715806625f1" width={300} height={250} />
+            </div>
+          </div>
         </div>
       </div>
     </Skeleton>

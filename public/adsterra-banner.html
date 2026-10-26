@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Advertisement</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: transparent;
+    }
+    #ad-container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+  <div id="ad-container"></div>
+  <script>
+    (function() {
+      try {
+        var params = new URLSearchParams(window.location.search);
+        var key = params.get('key');
+        var width = parseInt(params.get('width'), 10);
+        var height = parseInt(params.get('height'), 10);
+
+        if (key && width && height) {
+          window.atOptions = {
+            'key': key,
+            'format': 'iframe',
+            'height': height,
+            'width': width,
+            'params': {}
+          };
+
+          var s = document.createElement('script');
+          s.type = 'text/javascript';
+          s.src = 'https://bicea.org/22/' + encodeURIComponent(key);
+          document.getElementById('ad-container').appendChild(s);
+        }
+      } catch (e) {
+        console.error('Ad load error:', e);
+      }
+    })();
+  </script>
+</body>
+</html>

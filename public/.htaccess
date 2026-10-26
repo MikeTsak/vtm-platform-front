@@ -49,13 +49,22 @@ RewriteBase /
 # chrome://inspect ("Fetch API cannot load data:image/... Refused to connect
 # because it violates the document's Content Security Policy").
 <IfModule mod_headers.c>
-    Header set Content-Security-Policy "default-src 'self'; script-src 'self' https://www.googletagmanager.com https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.doubleclick.net https://www.clarity.ms https://*.clarity.ms; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https: wss: data: blob:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://*.doubleclick.net; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; upgrade-insecure-requests"
+    Header set Content-Security-Policy "default-src 'self'; script-src 'self' https://www.googletagmanager.com https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.doubleclick.net https://www.clarity.ms https://*.clarity.ms; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https: wss: data: blob:; frame-src 'self' https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://*.doubleclick.net; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; upgrade-insecure-requests"
     Header set X-Content-Type-Options "nosniff"
     Header set X-Frame-Options "SAMEORIGIN"
     Header set Referrer-Policy "strict-origin-when-cross-origin"
     Header set Permissions-Policy "geolocation=(), camera=(), microphone=(), payment=()"
     Header set Cross-Origin-Opener-Policy "same-origin"
 </IfModule>
+
+<Files "adsterra-banner.html">
+    <IfModule mod_headers.c>
+        Header unset Content-Security-Policy
+        Header unset Cross-Origin-Opener-Policy
+        Header set Content-Security-Policy "default-src 'self' 'unsafe-inline' https: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; frame-src * data: blob:; img-src * data: blob:; connect-src *;"
+        Header set Cross-Origin-Opener-Policy "unsafe-none"
+    </IfModule>
+</Files>
 
 # ----------------------------------------
 # 🚀 1. Routing Rules (SPA & API)

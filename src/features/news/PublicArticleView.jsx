@@ -10,7 +10,7 @@ import { NEWS_OUTLETS } from '../../constants/outletConstants';
 import { apiJoin, isVideoUrl } from '../../utils/newsUtils';
 import { sanitizeHtml } from '../../utils/sanitizeHtml';
 import { Skeleton } from 'boneyard-js/react';
-// import GoogleAd from '../../components/GoogleAd';
+import AdsterraBanner from '../../components/AdsterraBanner';
 import { crestifyHtml } from '../../components/ReactionGlyph';
 import Avatar from '../../components/Avatar';
 import courtStyles from '../../styles/Court.module.css';
@@ -181,27 +181,40 @@ export default function PublicArticleView() {
   // Render left and right sidebar ads + bottom banner
   const LeftAdSidebar = () => (
     <aside className={`${themeStyles.sidebarLeft} no-print`}>
-      {/* <div className={themeStyles.adContainer} style={{ background: 'transparent', padding: '0' }}>
-        <span className={themeStyles.adLabel}>Advertisement</span>
-        <GoogleAd format="vertical" style={{ minHeight: '600px' }} />
-      </div> */}
+      <div className={themeStyles.adSticky}>
+        <div className={themeStyles.desktopAd}>
+          <span className={themeStyles.adLabel}>Advertisement</span>
+          <AdsterraBanner adKey="ddc18f1b4a8a6dd43b7a93d73c129bb8" width={160} height={600} />
+        </div>
+        <div className={themeStyles.mobileAdTop}>
+          <span className={themeStyles.adLabel}>Advertisement</span>
+          <AdsterraBanner adKey="9d189d3847aa7621a217714bdf23b4fe" width={320} height={50} />
+        </div>
+      </div>
     </aside>
   );
 
   const RightAdSidebar = () => (
     <aside className={`${themeStyles.sidebarRight} no-print`}>
-      {/* <div className={themeStyles.adContainer} style={{ background: 'transparent', padding: '0' }}>
-        <span className={themeStyles.adLabel}>Advertisement</span>
-        <GoogleAd format="vertical" style={{ minHeight: '600px' }} />
-      </div> */}
+      <div className={themeStyles.adSticky}>
+        <div className={themeStyles.desktopAd}>
+          <span className={themeStyles.adLabel}>Advertisement</span>
+          <AdsterraBanner adKey="4b156de36dae03b65add64dcf8b6fa52" width={160} height={300} />
+        </div>
+      </div>
     </aside>
   );
 
   // Only one bottom banner ad per article
   const BottomAd = () => (
-    <div className="no-print" style={{ background: 'transparent', padding: '1rem 0', marginTop: '2rem', borderTop: '1px solid rgba(0,0,0,0.1)' }}>
-      {/* <span style={{ display: 'block', fontSize: '0.7rem', color: '#aaa', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Advertisement</span>
-      <GoogleAd format="horizontal" style={{ minHeight: '90px' }} /> */}
+    <div className="no-print" style={{ background: 'transparent', padding: '1rem 0', marginTop: '2rem', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <span style={{ display: 'block', fontSize: '0.7rem', color: '#aaa', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Advertisement</span>
+      <div className={themeStyles.desktopAd}>
+        <AdsterraBanner adKey="89871f5fce924410602b3310f0df6cfd" width={728} height={90} />
+      </div>
+      <div className={themeStyles.mobileAdTop}>
+        <AdsterraBanner adKey="0ceb033e24e9ee12e9c25715806625f1" width={300} height={250} />
+      </div>
     </div>
   );
 
