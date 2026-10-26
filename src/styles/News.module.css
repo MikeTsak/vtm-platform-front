@@ -1145,3 +1145,98 @@
     padding-top: 0 !important;
   }
 }
+
+/* Drafts Banner and Status */
+.draftNoticeBanner {
+  background: rgba(202, 138, 4, 0.12);
+  border: 1px solid rgba(202, 138, 4, 0.35);
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin: 12px 20px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.85rem;
+  color: #fef08a;
+}
+
+.draftNoticeActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btnResumeDraft {
+  background: #ca8a04;
+  color: #111827;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.btnResumeDraft:hover {
+  background: #eab308;
+}
+
+.btnDismissDraft {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.btnDismissDraft:hover {
+  color: var(--text-color);
+  border-color: var(--text-muted);
+}
+
+.draftStatusWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: auto;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.draftStatusSaving {
+  color: #f59e0b;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.draftStatusSaved {
+  color: #10b981;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btnDiscardDraft {
+  background: transparent;
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btnDiscardDraft:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
+}

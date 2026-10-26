@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/Admin.module.css';
+import FaGlyph from '../../ui/FaGlyph';
 import CreateNewsModal from '../news/CreateNewsModal';
+import { DISCORD_PREFIX_OPTIONS, getDefaultDiscordPrefix } from '../../constants/outletConstants';
 import { formatEuDate, formatAthensDateTime } from '../../utils/dateFormatter';
 
 const OUTLETS = [
@@ -55,8 +57,15 @@ export default function AdminNewsTab({ users = [] }) {
   const [view, setView] = useState('articles');
   const [permissions, setPermissions] = useState([]);
   const [news, setNews] = useState([]);
+  const [drafts, setDrafts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingDraft, setEditingDraft] = useState(null);
+  const [publishingArticle, setPublishingArticle] = useState(null);
+  const [publishDiscordPrefix, setPublishDiscordPrefix] = useState(getDefaultDiscordPrefix('news'));
+  const [isCustomPublishPrefix, setIsCustomPublishPrefix] = useState(false);
+  const [skipPublishDiscord, setSkipPublishDiscord] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -67,12 +76,14 @@ export default function AdminNewsTab({ users = [] }) {
 
   const fetchData = async () => {
     try {
-      const [permRes, newsRes] = await Promise.all([
+      const [permRes, newsRes, draftsRes] = await Promise.all([
         api.get('/admin/news-permissions').catch(() => ({ data: [] })),
         api.get('/admin/news').catch(() => ({ data: { items: [] } })),
+        api.get('/news/drafts').catch(() => ({ data: { drafts: [] } })),
       ]);
       setPermissions(permRes.data || []);
       setNews(newsRes.data.items || []);
+      setDrafts(draftsRes.data.drafts || []);
     } catch (e) {
       console.error(e);
     }
@@ -84,10 +95,11 @@ export default function AdminNewsTab({ users = [] }) {
 
   const totals = useMemo(() => ({
     articles: news.length,
+    drafts: drafts.length,
     priv: news.filter(n => n.is_private).length,
     readers: news.reduce((a, n) => a + Number(n.reader_count || 0), 0),
     opens: news.reduce((a, n) => a + Number(n.open_total || 0), 0),
-  }), [news]);
+  }), [news, drafts]);
 
   const shown = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -112,6 +124,32 @@ export default function AdminNewsTab({ users = [] }) {
     }, null, 'Failed to grant permission');
   };
 
+  const handleOpenPublishModal = (article) => {
+    setPublishingArticle(article);
+    setPublishDiscordPrefix(getDefaultDiscordPrefix('news'));
+    setIsCustomPublishPrefix(false);
+    setSkipPublishDiscord(false);
+  };
+
+  const handleConfirmPublish = async () => {
+    if (!publishingArticle) return;
+    setIsPublishing(true);
+    try {
+      const chosenPrefix = isCustomPublishPrefix ? publishDiscordPrefix : (publishDiscordPrefix || getDefaultDiscordPrefix('news'));
+      const payload = {
+        skip_discord: skipPublishDiscord,
+        discord_prefix: chosenPrefix
+      };
+      await api.patch(`/news/${publishingArticle.id}/publish`, payload);
+      setPublishingArticle(null);
+      await fetchData();
+    } catch (e) {
+      alert(formatApiError(e, 'Failed to publish news'));
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
   if (loading) return <div>Loading...</div>;
 
   return (
@@ -121,7 +159,13 @@ export default function AdminNewsTab({ users = [] }) {
           <h3 className={styles.hl}>News</h3>
           <p className={styles.subtle}>Articles, who has read them, and who may write.</p>
         </div>
-        <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => setShowCreateModal(true)}>
+        <button
+          className={`${styles.btn} ${styles.btnPrimary}`}
+          onClick={() => {
+            setEditingDraft(null);
+            setShowCreateModal(true);
+          }}
+        >
           + Create News Article
         </button>
       </div>
@@ -130,22 +174,190 @@ export default function AdminNewsTab({ users = [] }) {
         <CreateNewsModal
           mode="news"
           themes={{ all: true }}
-          onClose={() => setShowCreateModal(false)}
-          onSuccess={() => { setShowCreateModal(false); fetchData(); }}
+          initialDraft={editingDraft}
+          onClose={() => {
+            setShowCreateModal(false);
+            setEditingDraft(null);
+          }}
+          onSuccess={() => {
+            setShowCreateModal(false);
+            setEditingDraft(null);
+            fetchData();
+          }}
+          onDraftDiscard={() => {
+            setShowCreateModal(false);
+            setEditingDraft(null);
+            fetchData();
+          }}
         />
+      )}
+
+      {publishingArticle && (
+        <div className={styles.modalBackdrop} onClick={() => !isPublishing && setPublishingArticle(null)}>
+          <div className={styles.modalCard} onClick={e => e.stopPropagation()} style={{ maxWidth: '520px' }}>
+            <div className={styles.modalHeader}>
+              <div className={styles.modalHeaderContent}>
+                <h3>Publish News Article</h3>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                  This article will become public in the news feed.
+                </div>
+              </div>
+              <button
+                className={`${styles.btn} ${styles.btnSecondary}`}
+                style={{ borderRadius: '50%', width: '36px', height: '36px', padding: 0 }}
+                onClick={() => setPublishingArticle(null)}
+                disabled={isPublishing}
+                aria-label="Close"
+              >
+                <FaGlyph name="fa-xmark" size={14} />
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              <div style={{ padding: '10px 14px', background: 'rgba(255, 255, 255, 0.04)', borderRadius: '6px', border: '1px solid var(--glass-border)' }}>
+                <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                  Headline ({publishingArticle.theme || 'Mortal Press'})
+                </div>
+                <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '1rem' }}>
+                  {publishingArticle.title}
+                </div>
+                {publishingArticle.subtitle && (
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                    {publishingArticle.subtitle}
+                  </div>
+                )}
+              </div>
+
+              <div className={styles.formGroup} style={{ marginTop: '0.5rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginBottom: '0.75rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={skipPublishDiscord}
+                    onChange={e => setSkipPublishDiscord(e.target.checked)}
+                    disabled={isPublishing}
+                  />
+                  <span>Do not send a Discord notification</span>
+                </label>
+              </div>
+
+              {!skipPublishDiscord && (
+                <div className={styles.formGroup}>
+                  <label>Discord Announcement Style</label>
+                  <select
+                    className={styles.input}
+                    value={isCustomPublishPrefix ? 'custom' : publishDiscordPrefix}
+                    onChange={(e) => {
+                      if (e.target.value === 'custom') {
+                        setIsCustomPublishPrefix(true);
+                        setPublishDiscordPrefix('');
+                      } else {
+                        setIsCustomPublishPrefix(false);
+                        setPublishDiscordPrefix(e.target.value);
+                      }
+                    }}
+                    disabled={isPublishing}
+                  >
+                    {DISCORD_PREFIX_OPTIONS.news.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                    <option value="custom">✎ Custom Message...</option>
+                  </select>
+                  {isCustomPublishPrefix && (
+                    <input
+                      placeholder="Type your custom discord message..."
+                      className={styles.input}
+                      style={{ marginTop: '0.5rem' }}
+                      value={publishDiscordPrefix}
+                      onChange={e => setPublishDiscordPrefix(e.target.value)}
+                      disabled={isPublishing}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+            <div className={styles.modalFooter}>
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnSecondary}`}
+                onClick={() => setPublishingArticle(null)}
+                disabled={isPublishing}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnSuccess}`}
+                onClick={handleConfirmPublish}
+                disabled={isPublishing}
+              >
+                {isPublishing ? 'Publishing...' : 'Publish Article'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', margin: '1rem 0' }}>
         {stat('Articles', totals.articles)}
-        {stat('Private drafts', totals.priv)}
-        {stat('Player readers', totals.readers)}
-        {stat('Total opens', totals.opens)}
+        {stat('Unpublished Drafts', totals.drafts)}
+        {stat('Private Articles', totals.priv)}
+        {stat('Player Readers', totals.readers)}
+        {stat('Total Opens', totals.opens)}
       </div>
 
       <div className={styles.modeSwitcher}>
         <button className={`${styles.tab} ${view === 'articles' ? styles.tabActive : ''}`} onClick={() => setView('articles')}>Articles</button>
+        <button className={`${styles.tab} ${view === 'drafts' ? styles.tabActive : ''}`} onClick={() => setView('drafts')}>Drafts ({drafts.length})</button>
         <button className={`${styles.tab} ${view === 'writers' ? styles.tabActive : ''}`} onClick={() => setView('writers')}>Writers ({permissions.length})</button>
       </div>
+
+      {view === 'drafts' && (
+        <div className={styles.tableContainer} style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+          <table className={styles.table} style={{ minWidth: 720 }}>
+            <thead>
+              <tr><th>ID</th><th>Headline</th><th>Outlet</th><th>Author</th><th>Last Updated</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+              {drafts.map(d => (
+                <tr key={d.id}>
+                  <td className={styles.idCell}>{d.id}</td>
+                  <td>
+                    <strong>{d.title || 'Untitled Draft'}</strong>
+                    {d.subtitle && <div className={styles.subtle}>{d.subtitle}</div>}
+                  </td>
+                  <td>{d.theme || 'ERT'}</td>
+                  <td>
+                    {d.author_char_name ? `${d.author_char_name}${d.author_clan ? ` (${d.author_clan})` : ''}` : (d.author_name || 'Unknown')}
+                    <span className={styles.subtle}> #{d.user_id}</span>
+                  </td>
+                  <td>{formatAthensDateTime(d.updated_at)}</td>
+                  <td>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <button
+                        className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSmall}`}
+                        onClick={() => {
+                          setEditingDraft(d);
+                          setShowCreateModal(true);
+                        }}
+                      >
+                        Resume
+                      </button>
+                      <button
+                        className={`${styles.btn} ${styles.btnDanger} ${styles.btnSmall}`}
+                        onClick={() => act(() => api.delete(`/news/drafts/${d.id}`), 'Permanently delete this draft?', 'Failed to delete draft')}
+                      >
+                        Del
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {drafts.length === 0 && (
+                <tr><td colSpan="6" style={{ padding: '2rem 1rem', textAlign: 'center' }} className={styles.subtle}>No news article drafts found.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {view === 'articles' && (
         <>
@@ -184,7 +396,7 @@ export default function AdminNewsTab({ users = [] }) {
                       <td>
                         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                           {n.is_private ? (
-                            <button className={`${styles.btn} ${styles.btnSuccess} ${styles.btnSmall}`} onClick={() => act(() => api.patch(`/news/${n.id}/publish`), 'Publish this private news article? It will appear in the public feed and broadcast to Discord.', 'Failed to publish news')}>Publish</button>
+                            <button className={`${styles.btn} ${styles.btnSuccess} ${styles.btnSmall}`} onClick={() => handleOpenPublishModal(n)}>Publish</button>
                           ) : null}
                           <button className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSmall}`} onClick={() => window.open(`/news/${n.id}`, '_blank')}>View</button>
                           <button className={`${styles.btn} ${styles.btnDanger} ${styles.btnSmall}`} onClick={() => act(() => api.delete(`/news/${n.id}`), 'Permanently delete this news article?', 'Failed to delete news')}>Del</button>

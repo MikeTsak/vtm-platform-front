@@ -18,3 +18,33 @@ export const GREEK_REPORTERS = [
   "Thanasis Konstantinou", "Vasilis Alexiou", "Maria Christodoulou",
   "Andreas Makris", "Ioanna Louka", "Stavros Lymperis", "Christina Panagiotou"
 ];
+
+export const DISCORD_PREFIX_OPTIONS = {
+  news: [
+    { value: '🔥 **Hot news from the mortal world!** 🔥', label: '🔥 **Hot news from the mortal world!** 🔥' },
+    { value: '💅 **Gossip from the mortal world!** 💅', label: '💅 **Gossip from the mortal world!** 💅' },
+    { value: '🚨 **Breaking news from the mortal world!** 🚨', label: '🚨 **Breaking news from the mortal world!** 🚨' },
+    { value: '📢 **Special report from the mortal press!** 📢', label: '📢 **Special report from the mortal press!** 📢' },
+    { value: '🗞️ **Headlines from the mortal world!** 🗞️', label: '🗞️ **Headlines from the mortal world!** 🗞️' }
+  ],
+  announcement: [
+    { value: '📜 **New Court Announcement!** 📜', label: '📜 **New Court Announcement!** 📜' },
+    { value: '🎙️ **ANNOUNCEMENT FROM THE COURT** 🎙️', label: '🎙️ **ANNOUNCEMENT FROM THE COURT** 🎙️' },
+    { value: '👑 **ROYAL DECREE** 👑', label: '👑 **ROYAL DECREE** 👑' },
+    { value: '🩸 **KINDRED BULLETIN** 🩸', label: '🩸 **KINDRED BULLETIN** 🩸' },
+    { value: '⚖️ **Decree of the Primogen Council** ⚖️', label: '⚖️ **Decree of the Primogen Council** ⚖️' }
+  ],
+  rumor: [
+    { value: '🤫 A new whisper echoes in the night...', label: '🤫 A new whisper echoes...' },
+    { value: '🕷️ The Cobweb twitches with new gossip...', label: '🕷️ The Cobweb twitches...' },
+    { value: '📜 An unsigned note was found...', label: '📜 An unsigned note was found...' },
+    { value: '🍷 Overheard at the Elysium salon...', label: '🍷 Overheard at the Elysium salon...' },
+    { value: '👀 Murmurs in the dark corners...', label: '👀 Murmurs in the dark corners...' }
+  ]
+};
+
+export const getDefaultDiscordPrefix = (mode) => {
+  if (mode === 'rumor') return '🤫 A new whisper echoes in the night...';
+  if (mode === 'announcement') return '📜 **New Court Announcement!** 📜';
+  return '🔥 **Hot news from the mortal world!** 🔥';
+};

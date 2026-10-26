@@ -2,10 +2,11 @@
 // Wishlist section for XP Shop: allows players to bookmark powers and rituals
 // for fast quick reference, XP planning, and future progression.
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import styles from '../../styles/CharacterView.module.css';
 import { DISCIPLINES, ALL_DISCIPLINE_NAMES, iconPath } from '../../data/disciplines';
 import { RITUALS } from '../../data/rituals';
+import { CLAN_DISCIPLINES } from '../../data/clans';
 import { XP_RULES } from '../../utils/xpCosts';
 import FaGlyph from '../../ui/FaGlyph';
 
@@ -61,11 +62,47 @@ export default function WishlistSection({
   const [expandedId, setExpandedId] = useState(null);
   const [showCatalogBrowser, setShowCatalogBrowser] = useState(false);
 
+  // Out of clan toggle switch (off by default)
+  const [showOutOfClan, setShowOutOfClan] = useState(false);
+
+  // In clan disciplines and rituals calculation (Caitiff explicitly excluded per rules)
+  const effectiveClan = (clan || sheet?.clan || '').trim();
+  const isCaitiff = effectiveClan.toLowerCase() === 'caitiff';
+  const clanKey = useMemo(() => {
+    if (isCaitiff || !effectiveClan) return null;
+    return Object.keys(CLAN_DISCIPLINES).find(k => k.toLowerCase() === effectiveClan.toLowerCase()) || null;
+  }, [effectiveClan, isCaitiff]);
+
+  const inClanDisciplines = useMemo(() => {
+    if (!clanKey) return [];
+    return (CLAN_DISCIPLINES[clanKey] || []).filter(d => d !== 'Choose Any');
+  }, [clanKey]);
+
+  const hasInClanBloodSorcery = useMemo(() => inClanDisciplines.includes('Blood Sorcery'), [inClanDisciplines]);
+  const hasInClanOblivion = useMemo(() => inClanDisciplines.includes('Oblivion'), [inClanDisciplines]);
+
+  const inClanRitualCategories = useMemo(() => {
+    const cats = [];
+    if (hasInClanBloodSorcery) cats.push('Blood Sorcery Rituals');
+    if (hasInClanOblivion) cats.push('Oblivion Ceremonies');
+    return cats;
+  }, [hasInClanBloodSorcery, hasInClanOblivion]);
+
   // Catalog browser filter states
   const [catalogType, setCatalogType] = useState('power');
-  const [catalogDiscipline, setCatalogDiscipline] = useState('Animalism');
+  const [catalogDiscipline, setCatalogDiscipline] = useState(() => {
+    if (inClanDisciplines.length > 0) return inClanDisciplines[0];
+    return ALL_DISCIPLINE_NAMES[0] || 'Animalism';
+  });
   const [catalogLevel, setCatalogLevel] = useState('all');
   const [catalogSearch, setCatalogSearch] = useState('');
+
+  // Sync initial discipline when in clan disciplines are computed
+  useEffect(() => {
+    if (!showOutOfClan && inClanDisciplines.length > 0 && !inClanDisciplines.includes(catalogDiscipline) && catalogType === 'power') {
+      setCatalogDiscipline(inClanDisciplines[0]);
+    }
+  }, [inClanDisciplines, showOutOfClan, catalogType, catalogDiscipline]);
 
   // Sets of known items on sheet for instant ownership check
   const knownRitualIds = useMemo(() => new Set([
@@ -126,6 +163,9 @@ export default function WishlistSection({
   const browserItems = useMemo(() => {
     const list = [];
     if (catalogType === 'power') {
+      if (!showOutOfClan && inClanDisciplines.length > 0 && !inClanDisciplines.includes(catalogDiscipline)) {
+        return [];
+      }
       const disc = DISCIPLINES?.[catalogDiscipline];
       if (disc?.levels) {
         Object.entries(disc.levels).forEach(([lvlStr, powers]) => {
@@ -145,6 +185,10 @@ export default function WishlistSection({
         });
       }
     } else {
+      if (!showOutOfClan) {
+        if (inClanRitualCategories.length === 0) return [];
+        if (!inClanRitualCategories.includes(catalogDiscipline)) return [];
+      }
       const cat = catalogDiscipline === 'Oblivion Ceremonies' ? 'oblivion' : 'blood_sorcery';
       const discName = cat === 'oblivion' ? 'Oblivion' : 'Blood Sorcery';
       const ritLevels = RITUALS?.[cat]?.levels || {};
@@ -176,7 +220,7 @@ export default function WishlistSection({
     }
 
     return list;
-  }, [catalogType, catalogDiscipline, catalogLevel, catalogSearch]);
+  }, [catalogType, catalogDiscipline, catalogLevel, catalogSearch, showOutOfClan, inClanDisciplines, inClanRitualCategories]);
 
   const powerCount = useMemo(() => wishlist.filter(i => i.item_type === 'power').length, [wishlist]);
   const ritualCount = useMemo(() => wishlist.filter(i => i.item_type === 'ritual').length, [wishlist]);
@@ -214,9 +258,9 @@ export default function WishlistSection({
           style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: '8px 14px' }}
         >
           <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
-            {showCatalogBrowser ? 'close' : 'add'}
+            {showCatalogBrowser ? 'close' : 'menu_book'}
           </span>
-          {showCatalogBrowser ? 'Close Catalog Browser' : 'Browse & Add to Wishlist'}
+          {showCatalogBrowser ? 'Close Catalog Browser' : 'Browse Catalog'}
         </button>
       </div>
 
@@ -231,65 +275,258 @@ export default function WishlistSection({
           flexDirection: 'column',
           gap: '14px'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
             <h4 style={{ margin: 0, fontSize: '15px', color: 'var(--tint)', fontFamily: 'var(--font-title)' }}>
-              Explore Full Rules Catalog
+              Explore Rules Catalog
             </h4>
             <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
               {browserItems.length} options matching filters
             </span>
           </div>
 
-          {/* Catalog Controls */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
-            <div style={{ display: 'flex', gap: '4px' }}>
-              <button
-                type="button"
-                className={catalogType === 'power' ? styles.shopTabBtnActive : styles.shopTabBtn}
-                style={{ fontSize: '12px', padding: '6px 12px' }}
-                onClick={() => {
-                  setCatalogType('power');
-                  setCatalogDiscipline(ALL_DISCIPLINE_NAMES[0]);
-                }}
-              >
-                Discipline Powers
-              </button>
-              <button
-                type="button"
-                className={catalogType === 'ritual' ? styles.shopTabBtnActive : styles.shopTabBtn}
-                style={{ fontSize: '12px', padding: '6px 12px' }}
-                onClick={() => {
-                  setCatalogType('ritual');
-                  setCatalogDiscipline('Blood Sorcery Rituals');
-                }}
-              >
-                Rituals & Ceremonies
-              </button>
-            </div>
-
-            <select
-              className={styles.input}
-              value={catalogDiscipline}
-              onChange={(e) => setCatalogDiscipline(e.target.value)}
-              style={{ flex: '1 1 180px', minWidth: '150px' }}
+          {/* Mode Switch: Powers vs Rituals */}
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className={catalogType === 'power' ? styles.shopTabBtnActive : styles.shopTabBtn}
+              style={{ fontSize: '12px', padding: '6px 14px' }}
+              onClick={() => {
+                setCatalogType('power');
+                if (inClanDisciplines.length > 0 && (!catalogDiscipline || !inClanDisciplines.includes(catalogDiscipline))) {
+                  setCatalogDiscipline(inClanDisciplines[0]);
+                }
+              }}
             >
-              {catalogType === 'power' ? (
-                ALL_DISCIPLINE_NAMES.map(name => (
-                  <option key={name} value={name}>{name}</option>
-                ))
+              Discipline Powers
+            </button>
+            <button
+              type="button"
+              className={catalogType === 'ritual' ? styles.shopTabBtnActive : styles.shopTabBtn}
+              style={{ fontSize: '12px', padding: '6px 14px' }}
+              onClick={() => {
+                setCatalogType('ritual');
+                if (inClanRitualCategories.length > 0) {
+                  setCatalogDiscipline(inClanRitualCategories[0]);
+                } else {
+                  setCatalogDiscipline('Blood Sorcery Rituals');
+                }
+              }}
+            >
+              Rituals and Ceremonies
+            </button>
+          </div>
+
+          {/* Out of Clan Toggle Switch */}
+          <div className={styles.wishlistToggleRow}>
+            <label className={styles.wishlistToggleLabel}>
+              <input
+                type="checkbox"
+                className={styles.wishlistToggleCheck}
+                checked={showOutOfClan}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setShowOutOfClan(checked);
+                  if (!checked) {
+                    if (catalogType === 'power' && inClanDisciplines.length > 0 && !inClanDisciplines.includes(catalogDiscipline)) {
+                      setCatalogDiscipline(inClanDisciplines[0]);
+                    } else if (catalogType === 'ritual' && inClanRitualCategories.length > 0 && !inClanRitualCategories.includes(catalogDiscipline)) {
+                      setCatalogDiscipline(inClanRitualCategories[0]);
+                    }
+                  }
+                }}
+              />
+              <span style={{ fontWeight: 600 }}>Show out of clan disciplines and rituals</span>
+            </label>
+            <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+              {showOutOfClan
+                ? 'All disciplines and rituals unlocked'
+                : (inClanDisciplines.length > 0
+                    ? `Showing in clan for ${clanKey || effectiveClan}`
+                    : 'Showing canon options')}
+            </span>
+          </div>
+
+          {/* Discipline Selection for Powers */}
+          {catalogType === 'power' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {inClanDisciplines.length > 0 && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '6px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-color)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      In Clan Disciplines
+                    </span>
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                      Select a discipline to view powers
+                    </span>
+                  </div>
+
+                  <div className={styles.wishlistDiscGrid}>
+                    {inClanDisciplines.map(discName => {
+                      const isSelected = catalogDiscipline === discName;
+                      return (
+                        <button
+                          key={discName}
+                          type="button"
+                          className={`${styles.wishlistDiscCard} ${isSelected ? styles.wishlistDiscCardActive : ''}`}
+                          onClick={() => setCatalogDiscipline(discName)}
+                        >
+                          <img
+                            src={iconPath(discName)}
+                            alt={discName}
+                            className={styles.wishlistDiscIcon}
+                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                          />
+                          <div className={styles.wishlistDiscInfo}>
+                            <span className={styles.wishlistDiscName}>{discName}</span>
+                            <span className={styles.wishlistDiscBadge}>In Clan</span>
+                          </div>
+                          {isSelected && (
+                            <span className="material-symbols-outlined" style={{ fontSize: '18px', color: '#fb7185' }}>
+                              check_circle
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Extended picker if Out of Clan is active or clan has no fixed 3 disciplines */}
+              {(showOutOfClan || inClanDisciplines.length === 0) && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                    {inClanDisciplines.length > 0 ? 'All Disciplines:' : 'Discipline:'}
+                  </span>
+                  <select
+                    className={styles.input}
+                    value={catalogDiscipline}
+                    onChange={(e) => setCatalogDiscipline(e.target.value)}
+                    style={{ flex: '1 1 200px', minWidth: '160px' }}
+                  >
+                    {ALL_DISCIPLINE_NAMES.map(name => {
+                      const isInClan = inClanDisciplines.includes(name);
+                      return (
+                        <option key={name} value={name}>
+                          {name} {isInClan ? '(In Clan)' : '(Out of Clan)'}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Ritual Selection */}
+          {catalogType === 'ritual' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {!showOutOfClan && inClanRitualCategories.length === 0 ? (
+                <div style={{
+                  padding: '24px 16px',
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  border: '1px dashed var(--border-color)',
+                  borderRadius: '6px',
+                  textAlign: 'center'
+                }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '32px', color: 'var(--text-muted)', marginBottom: '8px' }}>
+                    auto_fix_normal
+                  </span>
+                  <h4 style={{ margin: '0 0 6px 0', fontSize: '14px', color: 'var(--text-color)' }}>
+                    No In Clan Rituals
+                  </h4>
+                  <p style={{ margin: '0 0 14px 0', fontSize: '12.5px', color: 'var(--text-muted)', maxWidth: '420px', marginLeft: 'auto', marginRight: 'auto' }}>
+                    {clanKey || effectiveClan || 'Your clan'} does not possess Blood Sorcery or Oblivion as an in clan discipline. Toggle the out of clan switch to explore sorcery rituals and ceremonies.
+                  </p>
+                  <button
+                    type="button"
+                    className={styles.cta}
+                    onClick={() => {
+                      setShowOutOfClan(true);
+                      setCatalogDiscipline('Blood Sorcery Rituals');
+                    }}
+                    style={{ fontSize: '11.5px', padding: '6px 14px' }}
+                  >
+                    Show Out of Clan Rituals
+                  </button>
+                </div>
               ) : (
                 <>
-                  <option value="Blood Sorcery Rituals">Blood Sorcery Rituals</option>
-                  <option value="Oblivion Ceremonies">Oblivion Ceremonies</option>
+                  {inClanRitualCategories.length > 0 && (
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '6px' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-color)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                          In Clan Rituals and Ceremonies
+                        </span>
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                          Select category
+                        </span>
+                      </div>
+                      <div className={styles.wishlistDiscGrid} style={{ gridTemplateColumns: inClanRitualCategories.length === 1 ? '1fr' : 'repeat(2, 1fr)' }}>
+                        {inClanRitualCategories.map(catName => {
+                          const isSelected = catalogDiscipline === catName;
+                          const discKey = catName.includes('Oblivion') ? 'Oblivion' : 'Blood Sorcery';
+                          return (
+                            <button
+                              key={catName}
+                              type="button"
+                              className={`${styles.wishlistDiscCard} ${isSelected ? styles.wishlistDiscCardActive : ''}`}
+                              onClick={() => setCatalogDiscipline(catName)}
+                            >
+                              <img
+                                src={iconPath(discKey)}
+                                alt={catName}
+                                className={styles.wishlistDiscIcon}
+                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                              />
+                              <div className={styles.wishlistDiscInfo}>
+                                <span className={styles.wishlistDiscName}>{catName}</span>
+                                <span className={styles.wishlistDiscBadge}>In Clan</span>
+                              </div>
+                              {isSelected && (
+                                <span className="material-symbols-outlined" style={{ fontSize: '18px', color: '#fb7185' }}>
+                                  check_circle
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {showOutOfClan && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                        Category:
+                      </span>
+                      <select
+                        className={styles.input}
+                        value={catalogDiscipline}
+                        onChange={(e) => setCatalogDiscipline(e.target.value)}
+                        style={{ flex: '1 1 200px', minWidth: '160px' }}
+                      >
+                        <option value="Blood Sorcery Rituals">
+                          Blood Sorcery Rituals {hasInClanBloodSorcery ? '(In Clan)' : '(Out of Clan)'}
+                        </option>
+                        <option value="Oblivion Ceremonies">
+                          Oblivion Ceremonies {hasInClanOblivion ? '(In Clan)' : '(Out of Clan)'}
+                        </option>
+                      </select>
+                    </div>
+                  )}
                 </>
               )}
-            </select>
+            </div>
+          )}
 
+          {/* Level and Search Filters */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
             <select
               className={styles.input}
               value={catalogLevel}
               onChange={(e) => setCatalogLevel(e.target.value)}
-              style={{ width: '110px' }}
+              style={{ width: '120px' }}
             >
               <option value="all">All Levels</option>
               <option value="1">Level 1</option>
@@ -458,8 +695,9 @@ export default function WishlistSection({
             type="button"
             className={styles.cta}
             onClick={() => setShowCatalogBrowser(true)}
-            style={{ fontSize: '13px' }}
+            style={{ fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '8px', margin: '0 auto' }}
           >
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>menu_book</span>
             Explore Catalog Now
           </button>
         </div>

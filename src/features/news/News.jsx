@@ -7,8 +7,9 @@ import styles from '../../styles/News.module.css';
 import { NEWS_OUTLETS } from '../../constants/outletConstants';
 import { apiJoin, isVideoUrl } from '../../utils/newsUtils';
 import { sanitizeHtml } from '../../utils/sanitizeHtml';
-import { formatAthensDate } from '../../utils/dateFormatter';
+import { formatAthensDate, formatAthensDateTime } from '../../utils/dateFormatter';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
+import FaGlyph from '../../ui/FaGlyph';
 import CreateNewsModal from './CreateNewsModal';
 import FullscreenArticleModal from '../../components/FullscreenArticleModal';
 import { Skeleton } from 'boneyard-js/react';
@@ -24,6 +25,8 @@ export default function News() {
   const isRumorsPage = location.pathname.startsWith('/rumors');
 
   const [modalMode, setModalMode] = useState(null);
+  const [editingDraft, setEditingDraft] = useState(null);
+  const [showDraftsDrawer, setShowDraftsDrawer] = useState(false);
   const [fullscreenArticle, setFullscreenArticle] = useState(null);
   const [fullscreenRumor, setFullscreenRumor] = useState(null);
   const [rumorPrintTarget, setRumorPrintTarget] = useState(null);
@@ -79,6 +82,27 @@ export default function News() {
     },
     enabled: !!user && !isRumorsPage
   });
+
+  const { data: draftsData } = useQuery({
+    queryKey: ['news-drafts'],
+    queryFn: async () => {
+      const res = await api.get('/news/drafts');
+      return res.data;
+    },
+    enabled: !!user && !isRumorsPage && (isAdmin || (myThemes && (myThemes.all || myThemes.length > 0)))
+  });
+  const myDrafts = draftsData?.drafts || [];
+
+  const handleDeleteDraft = async (id) => {
+    if (!window.confirm('Permanently delete this draft?')) return;
+    try {
+      await api.delete(`/news/drafts/${id}`);
+      toast.success('Draft deleted');
+      queryClient.invalidateQueries({ queryKey: ['news-drafts'] });
+    } catch (e) {
+      toast.error(formatApiError(e, 'Failed to delete draft'));
+    }
+  };
 
   const deleteNewsMutation = useMutation({
     mutationFn: async (id) => {
@@ -192,9 +216,28 @@ export default function News() {
           <h1 className={styles.pageTitle}>{isRumorsPage ? 'Rumors' : 'Official News'}</h1>
           <div className={styles.headerActions}>
             {!isRumorsPage && (isAdmin || (myThemes && (myThemes.all || myThemes.length > 0))) && (
-              <button className={styles.createBtn} onClick={() => setModalMode('news')}>
-                + Write Article
-              </button>
+              <>
+                {myDrafts.length > 0 && (
+                  <button
+                    className={styles.createBtn}
+                    style={{ background: 'rgba(202, 138, 4, 0.2)', borderColor: '#ca8a04', color: '#fbbf24' }}
+                    onClick={() => setShowDraftsDrawer(true)}
+                    title="View unpublished article drafts"
+                  >
+                    <FaGlyph name="fa-floppy-disk" size={13} style={{ marginRight: '6px', verticalAlign: 'text-bottom' }} />
+                    Drafts ({myDrafts.length})
+                  </button>
+                )}
+                <button
+                  className={styles.createBtn}
+                  onClick={() => {
+                    setEditingDraft(null);
+                    setModalMode('news');
+                  }}
+                >
+                  + Write Article
+                </button>
+              </>
             )}
             {isRumorsPage && canPostRumor && (
               <button
@@ -403,12 +446,36 @@ export default function News() {
       {modalMode && (
         <CreateNewsModal
           mode={modalMode}
-          onClose={() => setModalMode(null)}
+          initialDraft={editingDraft}
+          onClose={() => {
+            setModalMode(null);
+            setEditingDraft(null);
+          }}
           onSuccess={() => {
             setModalMode(null);
+            setEditingDraft(null);
             queryClient.invalidateQueries({ queryKey: [modalMode === 'rumor' ? 'rumors' : 'news'] });
+            queryClient.invalidateQueries({ queryKey: ['news-drafts'] });
+          }}
+          onDraftDiscard={() => {
+            setModalMode(null);
+            setEditingDraft(null);
+            queryClient.invalidateQueries({ queryKey: ['news-drafts'] });
           }}
           themes={myThemes}
+        />
+      )}
+
+      {showDraftsDrawer && (
+        <NewsDraftsModal
+          drafts={myDrafts}
+          onResume={(d) => {
+            setEditingDraft(d);
+            setShowDraftsDrawer(false);
+            setModalMode('news');
+          }}
+          onDelete={handleDeleteDraft}
+          onClose={() => setShowDraftsDrawer(false)}
         />
       )}{fullscreenArticle && (
         <FullscreenArticleModal item={fullscreenArticle} onClose={() => setFullscreenArticle(null)} />
@@ -611,6 +678,88 @@ function FullscreenRumorModal({ item, onClose }) {
           }}
         >
           HEARD ON: {formatAthensDate(item.created_at)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NewsDraftsModal({ drafts, onResume, onDelete, onClose }) {
+  return (
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} className={styles.createModal} style={{ maxWidth: 640 }}>
+        <div className={styles.createModalHeader}>
+          <h2>Your Article Drafts</h2>
+          <button onClick={onClose} aria-label="Close modal">×</button>
+        </div>
+        <div style={{ padding: '20px' }}>
+          {drafts.length === 0 ? (
+            <p className={styles.emptyText} style={{ textAlign: 'center', margin: '2rem 0' }}>No saved drafts found.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {drafts.map(d => (
+                <div
+                  key={d.id}
+                  style={{
+                    background: 'var(--surface-lighter, rgba(255,255,255,0.04))',
+                    border: '1px solid var(--border-color, rgba(255,255,255,0.1))',
+                    borderRadius: '8px',
+                    padding: '14px 16px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '16px'
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                      <span style={{
+                        background: 'rgba(202, 138, 4, 0.2)',
+                        color: '#fbbf24',
+                        fontSize: '0.7rem',
+                        fontWeight: 700,
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        textTransform: 'uppercase'
+                      }}>
+                        {d.theme || 'ERT'}
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        Saved {formatAthensDateTime(d.updated_at)}
+                      </span>
+                    </div>
+                    <h4 style={{ margin: '0 0 4px', fontSize: '1rem', color: 'var(--text-color)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {d.title || 'Untitled Draft'}
+                    </h4>
+                    {d.subtitle && (
+                      <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {d.subtitle}
+                      </p>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                    <button
+                      type="button"
+                      className={styles.btnResumeDraft}
+                      onClick={() => onResume(d)}
+                      style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                    >
+                      <FaGlyph name="fa-pen-to-square" size={13} /> Resume
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.btnDiscardDraft}
+                      onClick={() => onDelete(d.id)}
+                      style={{ padding: '6px 10px', fontSize: '0.8rem' }}
+                      title="Delete draft"
+                    >
+                      <FaGlyph name="fa-trash" size={13} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -10,6 +10,7 @@ import { motion } from 'framer-motion';
 import { sanitizeHtml } from '../../utils/sanitizeHtml';
 import AnnouncementReactions from './AnnouncementReactions';
 import { customClanEmojis, EMOJI_PICKER_CATEGORIES, emojiObjectToToken, crestifyHtml } from '../../components/ReactionGlyph';
+import { DISCORD_PREFIX_OPTIONS, getDefaultDiscordPrefix } from '../../constants/outletConstants';
 
 const EmojiPicker = React.lazy(() => import('emoji-picker-react'));
 
@@ -130,6 +131,8 @@ export default function AnnouncementsView({ canEdit: propCanEdit, canPush = fals
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewBlob, setPreviewBlob] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [discordPrefix, setDiscordPrefix] = useState(getDefaultDiscordPrefix('announcement'));
+  const [isCustomDiscordPrefix, setIsCustomDiscordPrefix] = useState(false);
   
   const contentRef = useRef(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -217,7 +220,8 @@ export default function AnnouncementsView({ canEdit: propCanEdit, canPush = fals
         title: e.target.title.value, 
         body: contentRef.current.value || contentRef.current.innerHTML, // Support either input or contentEditable
         media_url: media_url,
-        npc_id: e.target.npc_id?.value || null
+        npc_id: e.target.npc_id?.value || null,
+        discord_prefix: discordPrefix
       });
       if (canPush && e.target.push?.checked && created?.id) {
         await api.post(`/court-actions/decrees/${created.id}/push`).catch(err => alert(formatApiError(err, 'Published, but the push could not be sent.')));
@@ -238,6 +242,8 @@ export default function AnnouncementsView({ canEdit: propCanEdit, canPush = fals
     setSelectedFile(null);
     if (previewBlob) URL.revokeObjectURL(previewBlob);
     setPreviewBlob(null);
+    setDiscordPrefix(getDefaultDiscordPrefix('announcement'));
+    setIsCustomDiscordPrefix(false);
   };
 
   return (
@@ -368,6 +374,39 @@ export default function AnnouncementsView({ canEdit: propCanEdit, canPush = fals
                   <div className={styles.inputGroup}>
                     <label>Subject Title</label>
                     <input name="title" className={styles.decreeInput} placeholder="e.g., Declaration of Elysium..." required disabled={isUploading} />
+                  </div>
+
+                  <div className={styles.inputGroup}>
+                    <label>Discord Announcement Style</label>
+                    <select
+                      value={isCustomDiscordPrefix ? 'custom' : discordPrefix}
+                      onChange={(e) => {
+                        if (e.target.value === 'custom') {
+                          setIsCustomDiscordPrefix(true);
+                          setDiscordPrefix('');
+                        } else {
+                          setIsCustomDiscordPrefix(false);
+                          setDiscordPrefix(e.target.value);
+                        }
+                      }}
+                      className={styles.decreeInput}
+                      disabled={isUploading}
+                    >
+                      {DISCORD_PREFIX_OPTIONS.announcement.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                      <option value="custom">✎ Custom Message...</option>
+                    </select>
+                    {isCustomDiscordPrefix && (
+                      <input
+                        placeholder="Type your custom discord message..."
+                        className={styles.decreeInput}
+                        style={{ marginTop: '0.5rem' }}
+                        value={discordPrefix}
+                        onChange={(e) => setDiscordPrefix(e.target.value)}
+                        disabled={isUploading}
+                      />
+                    )}
                   </div>
                   
                   <div className={styles.inputGroup}>

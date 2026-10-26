@@ -533,26 +533,31 @@
 }
 
 .cta {
-  background: var(--tint);
-  color: var(--tint-contrast, var(--text-color));
-  border-color: var(--tint);
-  text-shadow: none;
-  font-weight: bold;
+  background: linear-gradient(135deg, rgba(145, 18, 32, 0.95) 0%, rgba(105, 12, 22, 0.98) 50%, rgba(65, 8, 14, 1) 100%);
+  color: #ffffff;
+  border: 1px solid rgba(225, 29, 72, 0.55);
+  border-radius: 4px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .cta:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--tint) 80%, black);
-  border-color: color-mix(in srgb, var(--tint) 80%, black);
-  box-shadow: 0 0 10px color-mix(in srgb, var(--tint) 40%, transparent);
-  transform: none;
+  background: linear-gradient(135deg, rgba(185, 24, 42, 1) 0%, rgba(135, 15, 28, 1) 50%, rgba(85, 10, 18, 1) 100%);
+  border-color: rgba(244, 63, 94, 0.85);
+  box-shadow: 0 0 14px rgba(225, 29, 72, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
 }
 
 .cta:disabled {
-  background: var(--surface-color);
-  border-color: var(--border-color);
-  color: var(--border-color);
+  background: rgba(30, 30, 36, 0.6);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.35);
   cursor: not-allowed;
   box-shadow: none;
+  transform: none;
 }
 
 .ghostBtn {
@@ -1385,24 +1390,35 @@ select.input:focus {
 }
 
 .cta {
-  background: linear-gradient(180deg, color-mix(in oklab, var(--accent) 85%, var(--bg-color)), color-mix(in oklab, var(--accent) 60%, var(--bg-color)));
-  border: 1px solid color-mix(in oklab, var(--accent) 60%, var(--bg-color));
-  color: var(--text-color);
-  border-radius: 12px;
-  padding: 10px 14px;
+  background: linear-gradient(135deg, rgba(145, 18, 32, 0.95) 0%, rgba(105, 12, 22, 0.98) 50%, rgba(65, 8, 14, 1) 100%);
+  border: 1px solid rgba(225, 29, 72, 0.55);
+  color: #ffffff;
+  border-radius: 4px;
+  padding: 8px 18px;
   cursor: pointer;
-  box-shadow: 0 4px 18px color-mix(in oklab, var(--accent) 22%, transparent);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transition: all 0.2s ease;
 }
 
-.cta:hover {
-  filter: brightness(1.06);
+.cta:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(185, 24, 42, 1) 0%, rgba(135, 15, 28, 1) 50%, rgba(85, 10, 18, 1) 100%);
+  border-color: rgba(244, 63, 94, 0.85);
+  box-shadow: 0 0 14px rgba(225, 29, 72, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
 }
 
 .cta:disabled {
-  opacity: .65;
+  background: rgba(30, 30, 36, 0.6);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.35);
   cursor: not-allowed;
   box-shadow: none;
-  filter: grayscale(.2) brightness(.9);
+  transform: none;
+  filter: none;
 }
 
 /* Alert slot (reuses your existing .alert if present) */
@@ -4614,3 +4630,144 @@ select.input:focus {
   padding: 0;
   min-width: 0;
 }
+
+/* Wishlist In-Clan Disciplines & Out-of-Clan Switch Styles */
+.wishlistDiscGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+
+.wishlistDiscCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: rgba(18, 18, 24, 0.85);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 52px;
+  text-align: left;
+}
+
+.wishlistDiscCard:hover {
+  border-color: rgba(225, 29, 72, 0.6);
+  background: rgba(32, 16, 22, 0.9);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+  transform: translateY(-1px);
+}
+
+.wishlistDiscCardActive {
+  border-color: rgba(225, 29, 72, 0.9) !important;
+  background: linear-gradient(135deg, rgba(145, 18, 32, 0.35) 0%, rgba(28, 14, 18, 0.95) 100%) !important;
+  box-shadow: 0 0 12px rgba(225, 29, 72, 0.35), inset 0 0 10px rgba(225, 29, 72, 0.18) !important;
+}
+
+.wishlistDiscIcon {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+  flex-shrink: 0;
+}
+
+.wishlistDiscInfo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.wishlistDiscName {
+  font-family: var(--font-title, 'Cinzel', serif);
+  font-size: 14px;
+  font-weight: 700;
+  color: #f1f5f9;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wishlistDiscBadge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: #fb7185;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 2px;
+}
+
+.wishlistToggleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 14px;
+  background: rgba(18, 18, 24, 0.7);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+  border-radius: 6px;
+}
+
+.wishlistToggleLabel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 13px;
+  color: var(--text-color, #e2e8f0);
+}
+
+.wishlistToggleCheck {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.wishlistToggleCheck:checked {
+  background: #9f1239;
+  border-color: #f43f5e;
+}
+
+.wishlistToggleCheck::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ffffff;
+  transition: transform 0.2s ease;
+}
+
+.wishlistToggleCheck:checked::before {
+  transform: translateX(16px);
+}
+
+@media (max-width: 640px) {
+  .wishlistDiscGrid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .wishlistToggleRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+}
+

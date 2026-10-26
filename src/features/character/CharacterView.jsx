@@ -2032,6 +2032,7 @@ export default function CharacterView({
                   )}
                   <div style={{ marginTop: '16px', textAlign: 'center' }}>
                     <button className={styles.cta} onClick={() => navigate('/retainers', { state: { character: ch, sheet } })}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>storefront</span>
                       Retainer Marketplace
                     </button>
                   </div>
