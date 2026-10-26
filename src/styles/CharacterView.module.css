@@ -1945,7 +1945,7 @@ select.input:focus {
    the "Suggested" tab spanning two makes an exact 2x4 block. */
 .shopTabsGrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
   width: 100%;
 }

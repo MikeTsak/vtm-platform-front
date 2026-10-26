@@ -43,6 +43,7 @@ const AdminPrestationTab = lazyWithRetry(() => import('./AdminPrestationTab'));c
 const AdminAuditTab = lazyWithRetry(() => import('./AdminAuditTab'));
 const AdminNewsTab = lazyWithRetry(() => import('./AdminNewsTab'));
 const AdminCourtActionsTab = lazyWithRetry(() => import('./AdminCourtActionsTab'));
+const AdminWishlistsTab = lazyWithRetry(() => import('./AdminWishlistsTab'));
 
 /* ---------------- Sidebar navigation config ----------------
  * Every tool is grouped by the *job* a Storyteller is doing:
@@ -77,6 +78,7 @@ const NAV_SECTIONS = [
       { id: 'inventory',   icon: 'backpack',       label: 'Inventory',    hint: 'Items, world QR codes, and research', keywords: ['items', 'inventory', 'gear', 'relics', 'artifacts', 'weapons', 'qr', 'qr code', 'world items', 'research', 'researched', 'give item', 'loot', 'props'] },
       { id: 'xp',          icon: 'stars',          label: 'XP & Rewards', hint: 'Grant, subtract, and bulk XP', keywords: ['experience', 'levels', 'progression', 'grants', 'apply to all', 'view history', 'refresh data', 'subtract xp', 'bulk grant'] },
       { id: 'disciplines', icon: 'auto_awesome',   label: 'Disciplines',  hint: 'Out of clan access requests', keywords: ['out of clan', 'unlock', 'access', 'request', 'approve', 'reject', 'grant', 'revoke', 'powers', 'clan restriction'] },
+      { id: 'wishlists',   icon: 'bookmark',       label: 'Wishlists',    hint: 'Player power and ritual wishlists', keywords: ['wishlist', 'wishlists', 'powers', 'rituals', 'xp', 'shop', 'desired', 'progression'] },
     ],
   },
   {
@@ -966,6 +968,7 @@ async function grantXP(character_id, delta) {
     inventory:   () => <AdminInventoryTab characters={characters} />,
     xp:          () => <AdminXPTab users={users} onGrant={grantXP} onBulkGrant={grantBulkXP} adminxp={adminxp} />,
     disciplines: () => <AdminDisciplinesTab />,
+    wishlists:   () => <AdminWishlistsTab />,
     // Chronicle
     calendar:     () => <AdminCalendarTab />,
     elysium:      () => <AdminElysiumTab />,

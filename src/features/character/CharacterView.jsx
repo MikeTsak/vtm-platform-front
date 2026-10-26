@@ -39,6 +39,7 @@ import { getPushSettings, updatePushSettings, subscribeToWebPush, getPushUnsuppo
 import { maxHealth as deriveMaxHealth } from '../../utils/derivedStats';
 import { attachStructured } from './sheetShape';
 import BloodPotencyModal from './BloodPotencyModal';
+import WishlistSection from './WishlistSection';
 import { getBloodPotencyStats } from '../../utils/liveSessionMechanics';
 const msSearchText = (arr, query) => {
   const ms = new MiniSearch({ fields: ['text'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
@@ -64,6 +65,7 @@ const SKILLS = {
 
 const SHOP_TABS = [
   { key: 'Suggested', icon: 'auto_fix_high', label: 'Suggested' },
+  { key: 'Wishlist', icon: 'bookmark', label: 'Wishlist' },
   { key: 'Disciplines', icon: 'droplet_plus', label: 'Disciplines' },
   { key: 'Attributes', icon: 'monitor_heart', label: 'Attributes' },
   { key: 'Skills', icon: 'fitness_center', label: 'Skills' },
@@ -833,6 +835,55 @@ export default function CharacterView({
     return data.request;
   }
 
+  const [wishlist, setWishlist] = useState([]);
+  const [wishlistLoaded, setWishlistLoaded] = useState(false);
+
+  const loadWishlist = useCallback(async () => {
+    if (!isOwnCharacter) return;
+    try {
+      const res = await api.get('/characters/me/wishlist');
+      setWishlist(res.data?.wishlist || []);
+      setWishlistLoaded(true);
+    } catch {
+      setWishlistLoaded(true);
+    }
+  }, [isOwnCharacter]);
+
+  useEffect(() => {
+    loadWishlist();
+  }, [loadWishlist, ch?.id]);
+
+  const toggleWishlist = useCallback(async (item) => {
+    try {
+      const res = await api.post('/characters/me/wishlist/toggle', item);
+      if (res.data?.action === 'added' && res.data?.item) {
+        setWishlist(prev => [...prev.filter(x => !(x.item_type === item.item_type && x.item_id === item.item_id)), res.data.item]);
+      } else {
+        setWishlist(prev => prev.filter(x => !(x.item_type === item.item_type && x.item_id === item.item_id)));
+      }
+      return res.data;
+    } catch (e) {
+      console.error('Failed to toggle wishlist item', e);
+      throw e;
+    }
+  }, []);
+
+  const removeWishlistById = useCallback(async (id) => {
+    try {
+      await api.delete(`/characters/me/wishlist/${id}`);
+      setWishlist(prev => prev.filter(x => x.id !== id));
+    } catch (e) {
+      console.error('Failed to remove wishlist item', e);
+      throw e;
+    }
+  }, []);
+
+  const wishlistKeySet = useMemo(() => {
+    const s = new Set();
+    wishlist.forEach(w => s.add(`${w.item_type}:${w.item_id}`));
+    return s;
+  }, [wishlist]);
+
   const prevHealthRef = useRef(tempHealth);
   const prevWillpowerRef = useRef(tempWillpower);
   const prevHungerRef = useRef(tempHunger);
@@ -1502,6 +1553,8 @@ export default function CharacterView({
                 assignOnly: false,
                 ...sel,
               })}
+              wishlistKeySet={wishlistKeySet}
+              onToggleWishlist={toggleWishlist}
             />
           )}
         </ShopRow>
@@ -2075,7 +2128,7 @@ export default function CharacterView({
 
             <div className={`${styles.shopGrid} ${
               activeShopTab === 'Suggested' ? styles.shopGridSuggest
-                : ['Disciplines', 'Rituals'].includes(activeShopTab) ? styles.shopGridSingle
+                : ['Disciplines', 'Rituals', 'Wishlist'].includes(activeShopTab) ? styles.shopGridSingle
                   : ''
             }`}>
               {/* Category Search Bar */}
@@ -2125,6 +2178,19 @@ export default function CharacterView({
                     </>
                   )}
                 </>
+              )}
+
+              {(activeShopTab === 'Wishlist' || (isSearching && activeShopTab === 'Wishlist')) && (
+                <WishlistSection
+                  wishlist={wishlist}
+                  wishlistKeySet={wishlistKeySet}
+                  onToggleWishlist={toggleWishlist}
+                  onRemoveWishlist={removeWishlistById}
+                  sheet={sheet}
+                  clan={ch?.clan || ''}
+                  currentXp={xp}
+                  searchQuery={currentSearch}
+                />
               )}
 
               {(activeShopTab === 'Blood Potency' || isSearching) && (
@@ -2397,6 +2463,8 @@ export default function CharacterView({
                                     assignOnly: false,
                                     ...sel
                                   })}
+                                  wishlistKeySet={wishlistKeySet}
+                                  onToggleWishlist={toggleWishlist}
                                 />
                               )}
                             </ShopRow>
@@ -2447,6 +2515,8 @@ export default function CharacterView({
                                     }}
                                     searchQuery={currentSearch}
                                     onConfirm={(sel) => confirmDisciplinePurchase({ name, current, next, kind: 'caitiff', assignOnly: false, ...sel })}
+                                    wishlistKeySet={wishlistKeySet}
+                                    onToggleWishlist={toggleWishlist}
                                   />
                                 )}
                               </ShopRow>
@@ -2505,6 +2575,8 @@ export default function CharacterView({
                                     }}
                                     searchQuery={currentSearch}
                                     onConfirm={(sel) => confirmDisciplinePurchase({ name, current, next, kind: 'other', assignOnly: false, ...sel })}
+                                    wishlistKeySet={wishlistKeySet}
+                                    onToggleWishlist={toggleWishlist}
                                   />
                                 )}
                               </ShopRow>
@@ -2607,6 +2679,8 @@ export default function CharacterView({
                               onBuy={buyRitual}
                               xp={xp}
                               searchQuery={currentSearch}
+                              wishlistKeySet={wishlistKeySet}
+                              onToggleWishlist={toggleWishlist}
                             />
                           </ShopRow>
                         )}
@@ -2630,6 +2704,8 @@ export default function CharacterView({
                               onBuy={buyCeremony}
                               xp={xp}
                               searchQuery={currentSearch}
+                              wishlistKeySet={wishlistKeySet}
+                              onToggleWishlist={toggleWishlist}
                             />
                           </ShopRow>
                         )}
@@ -2889,7 +2965,7 @@ function ritualPrereqStatus(rit, knownPowerSet) {
 }
 
 /* ===== Inline Ritual Picker ===== */
-function InlineRitualPicker({ type, itemsObj, knownIds, knownPowerNamesAndIds, basePowerNamesAndIds, canLearnFn, onBuy, xp, searchQuery }) {
+function InlineRitualPicker({ type, itemsObj, knownIds, knownPowerNamesAndIds, basePowerNamesAndIds, canLearnFn, onBuy, xp, searchQuery, wishlistKeySet, onToggleWishlist }) {
   const [expandedId, setExpandedId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState('');
@@ -2995,8 +3071,41 @@ function InlineRitualPicker({ type, itemsObj, knownIds, knownPowerNamesAndIds, b
                     Level {r.__level} • {isOwned ? 'Owned' : (isAvailable ? 'Available' : 'Restricted')}
                   </span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   {!isOwned && <span className={styles.shopCardPrice}>{r.__cost} XP</span>}
+                  {onToggleWishlist && (
+                    <button
+                      type="button"
+                      title={wishlistKeySet?.has(`ritual:${r.id}`) ? 'Remove from wishlist' : 'Add to wishlist'}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleWishlist({
+                          item_type: 'ritual',
+                          item_id: r.id,
+                          name: r.name,
+                          discipline: type === 'blood_sorcery' ? 'Blood Sorcery' : 'Oblivion',
+                          level: r.__level,
+                        });
+                      }}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: wishlistKeySet?.has(`ritual:${r.id}`) ? 'var(--tint)' : 'var(--text-muted)',
+                      }}
+                    >
+                      <span
+                        className="material-symbols-outlined"
+                        style={{ fontSize: '18px', fontVariationSettings: wishlistKeySet?.has(`ritual:${r.id}`) ? "'FILL' 1" : "'FILL' 0" }}
+                      >
+                        bookmark
+                      </span>
+                    </button>
+                  )}
                   <span
                     className={`material-symbols-outlined ${styles.expandIcon}`}
                     style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s ease' }}
@@ -3197,7 +3306,7 @@ function DowntimeSlots({ used, limit, spending }) {
   );
 }
 
-function InlineDisciplinePicker({ cfg, onConfirm, searchQuery }) {
+function InlineDisciplinePicker({ cfg, onConfirm, searchQuery, wishlistKeySet, onToggleWishlist }) {
   const {
     name, next, assignOnly, characterClan,
     ownedPowerIds = [], ownedPowerNames = [], ownedPowers = [], disciplineDots = {}
@@ -3349,12 +3458,47 @@ function InlineDisciplinePicker({ cfg, onConfirm, searchQuery }) {
                     Level {p.__level} • {isOwned ? 'Owned' : (isAvailable ? 'Available' : 'Restricted')}
                   </span>
                 </div>
-                <span
-                  className={`material-symbols-outlined ${styles.expandIcon}`}
-                  style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s ease' }}
-                >
-                  expand_more
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {onToggleWishlist && (
+                    <button
+                      type="button"
+                      title={wishlistKeySet?.has(`power:${p.id}`) ? 'Remove from wishlist' : 'Add to wishlist'}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleWishlist({
+                          item_type: 'power',
+                          item_id: p.id,
+                          name: p.name,
+                          discipline: name,
+                          level: p.__level,
+                        });
+                      }}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: wishlistKeySet?.has(`power:${p.id}`) ? 'var(--tint)' : 'var(--text-muted)',
+                      }}
+                    >
+                      <span
+                        className="material-symbols-outlined"
+                        style={{ fontSize: '18px', fontVariationSettings: wishlistKeySet?.has(`power:${p.id}`) ? "'FILL' 1" : "'FILL' 0" }}
+                      >
+                        bookmark
+                      </span>
+                    </button>
+                  )}
+                  <span
+                    className={`material-symbols-outlined ${styles.expandIcon}`}
+                    style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s ease' }}
+                  >
+                    expand_more
+                  </span>
+                </div>
               </div>
 
               <div className={styles.shopCardContentWrap} style={{ gridTemplateRows: isExpanded ? '1fr' : '0fr' }}>
