@@ -281,7 +281,10 @@ function newSceneId() {
   return `scene_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
 }
 
-
+// New scenes are named after a participant's downtime title (scene_title is VARCHAR(150)).
+function autoSceneTitle(dt) {
+  return String(dt?.title || '').replace(/^\[PROJECT\]\s*/, '').trim().slice(0, 150) || null;
+}
 // dragleave also fires when the pointer crosses into a child element; only treat it as a real leave
 // when the element being entered is outside the drop zone, otherwise highlights flicker on/off.
 function leftDropZone(e) {
@@ -909,7 +912,9 @@ export default function AdminDowntimesTab({ characters = [] }) {
   function getSceneTitle(sceneId) {
     if (sceneTitleBuf[sceneId] !== undefined) return sceneTitleBuf[sceneId];
     const match = rows.find(r => r.scene_id === sceneId && r.scene_title);
-    return match?.scene_title || '';
+    if (match?.scene_title) return match.scene_title;
+    const firstDt = rows.find(r => r.scene_id === sceneId && r.title);
+    return firstDt ? autoSceneTitle(firstDt) : '';
   }
 
   async function handleSaveSceneTitle(sceneId) {
@@ -1034,8 +1039,9 @@ export default function AdminDowntimesTab({ characters = [] }) {
       await handleAddToScene(sourceDt.id, targetDt.scene_id);
     } else if (sourceDt.scene_id) {
       await handleAddToScene(targetDt.id, sourceDt.scene_id);
+    } else {
       const newId = newSceneId();
-      const title = null;
+      const title = autoSceneTitle(targetDt) || autoSceneTitle(sourceDt);
       try {
         await api.post('admin/downtimes/scenes/batch', {
           downtime_ids: [sourceDt.id, targetDt.id],
@@ -2175,8 +2181,8 @@ export default function AdminDowntimesTab({ characters = [] }) {
                         <button
                           type="button"
                           className={`${styles.btn} ${styles.btnSmall}`}
-                          onClick={() => handleAddToScene(dt.id, newSceneId(), null)}
-                          title="Start a new scene with this character. Drag others onto it to join."
+                          onClick={() => handleAddToScene(dt.id, newSceneId(), autoSceneTitle(dt))}
+                          title="Start a new scene with this character, named after their downtime. Drag others onto it to join."
                           style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '0.4rem 0.8rem', fontSize: '0.8rem', fontWeight: 800, background: 'rgba(255, 204, 0, 0.15)', color: '#ffcc00', border: '1px solid rgba(255, 204, 0, 0.45)', borderRadius: 'var(--radius-sm)' }}
                         >
                           <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>add_circle</span>
