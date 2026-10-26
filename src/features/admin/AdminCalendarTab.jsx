@@ -846,6 +846,25 @@ export default function AdminCalendarTab() {
     return map;
   }, [events, dtCycles]);
 
+  // Elysium Invitation Auto-Send schedule map: Monday before every Elysium event
+  const elysiumInviteMap = useMemo(() => {
+    const map = {};
+    for (const ev of events) {
+      if (!ev.date || !ev.is_elysium) continue;
+      const evDate = new Date(ev.date);
+      if (isNaN(evDate.getTime())) continue;
+      const d = evDate.getDay();
+      const sub = d === 0 ? 6 : (d === 1 ? 7 : d - 1);
+      const monObj = new Date(evDate.getFullYear(), evDate.getMonth(), evDate.getDate() - sub);
+      const monStr = formatDateOnly(monObj);
+      if (monStr) {
+        if (!map[monStr]) map[monStr] = [];
+        map[monStr].push(ev);
+      }
+    }
+    return map;
+  }, [events]);
+
   // Live Sessions that actually ran, by day. Unlike the dates above these are
   // records (the day it was started), not something to schedule, so they are
   // markers only: managed from the Live Session dashboard.
@@ -1112,6 +1131,7 @@ export default function AdminCalendarTab() {
                   const isBannerEnd = bannerCountdown.slice(0, 10) === dateStr;
                   const huntEnds = huntEndMap[dateStr] || [];
                   const wpResetFor = willpowerResetMap[dateStr];
+                  const elysiumInvites = elysiumInviteMap[dateStr] || [];
 
                   let bg = 'var(--glass-inset)';
                   let border = '1px solid var(--glass-border)';
@@ -1215,6 +1235,45 @@ export default function AdminCalendarTab() {
                             </span>
                           </div>
                         )}
+
+                        {elysiumInvites.map(ev => {
+                          const isSent = !!ev.discord_posted_at;
+                          const isPublished = !!ev.invitation_published_at;
+                          const statusLabel = isSent ? 'Sent' : (isPublished ? 'Scheduled' : 'Draft');
+                          const badgeColor = isSent ? '#00e676' : (isPublished ? '#d4af5f' : '#b0bec5');
+                          const badgeBg = isSent ? 'rgba(0, 230, 118, 0.2)' : (isPublished ? 'rgba(212, 175, 95, 0.2)' : 'rgba(255, 255, 255, 0.08)');
+                          const badgeBorder = isSent ? 'rgba(0, 230, 118, 0.6)' : (isPublished ? 'rgba(212, 175, 95, 0.6)' : 'rgba(255, 255, 255, 0.2)');
+                          return (
+                            <div
+                              key={ev.id}
+                              style={{
+                                fontSize: '0.6rem',
+                                fontWeight: 800,
+                                background: badgeBg,
+                                border: `1px solid ${badgeBorder}`,
+                                color: badgeColor,
+                                borderRadius: '3px',
+                                padding: '2px 4px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '1px',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                lineHeight: 1.2
+                              }}
+                              title={`Elysium Invitation: ${cleanTitle(ev.elysium_name || ev.title)} (${statusLabel})`}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                <span className="material-symbols-outlined" style={{ fontSize: '11px', flexShrink: 0 }}>mail</span>
+                                <span>INVITATION: {statusLabel}</span>
+                              </div>
+                              <div style={{ fontSize: '0.54rem', opacity: 0.9, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {cleanTitle(ev.elysium_name || ev.title)}
+                              </div>
+                            </div>
+                          );
+                        })}
 
                         {hasDtClose && (
                           <div
@@ -1494,17 +1553,31 @@ export default function AdminCalendarTab() {
             </label>
 
             {eventIsElysium && (
-              <label className={styles.labeledInput}>
-                <span>Elysium Name (shared with the Keeper{activeEvent?.invitation_published_at ? '; invitation already sent' : ''})</span>
-                <input
-                  type="text"
-                  className={styles.input}
-                  value={eventElysiumName}
-                  onChange={(e) => setEventElysiumName(e.target.value)}
-                  placeholder="e.g. The Feast of Thorns"
-                  maxLength={160}
-                />
-              </label>
+              <>
+                <label className={styles.labeledInput}>
+                  <span>Elysium Name (shared with the Keeper)</span>
+                  <input
+                    type="text"
+                    className={styles.input}
+                    value={eventElysiumName}
+                    onChange={(e) => setEventElysiumName(e.target.value)}
+                    placeholder="e.g. The Feast of Thorns"
+                    maxLength={160}
+                  />
+                </label>
+                <div style={{ fontSize: '0.78rem', padding: '6px 10px', borderRadius: '6px', background: 'var(--glass-inset)', border: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)' }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '18px', color: activeEvent?.discord_posted_at ? '#00e676' : activeEvent?.invitation_published_at ? '#d4af5f' : '#b0bec5' }}>
+                    {activeEvent?.discord_posted_at ? 'mark_email_read' : 'mail'}
+                  </span>
+                  <span>
+                    {activeEvent?.discord_posted_at
+                      ? `Discord invitation sent on ${formatEuDate(activeEvent.discord_posted_at)}`
+                      : activeEvent?.invitation_published_at
+                        ? 'Published: will auto send to Discord on the Monday before gathering (or upon publication during event week)'
+                        : 'Draft or not published: will auto send on the Monday before gathering once published'}
+                  </span>
+                </div>
+              </>
             )}
 
             <label className={styles.labeledInput}>

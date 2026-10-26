@@ -3,7 +3,7 @@ import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/court/CourtActions.module.css';
 import { InvitationCard } from './ElysiumInvitation';
 import ElysiumInvitationModal from './ElysiumInvitation';
-import DownloadCardButton from './CardExport';
+import DownloadCardButton, { renderCardDataUrl } from './CardExport';
 import {
   SURFACES, ACCENTS, ORNAMENTS, FONTS, SEALS, LANGS, DEFAULT_DESIGN, DEFAULT_TEXT, DEFAULT_TEXT_BY_LANG,
   resolveDesign, surfaceBackground, formatElysiumDate, greekAttrs,
@@ -168,7 +168,9 @@ export default function KeeperPanel() {
   const save = async () => {
     setBusy(true);
     try {
-      await api.put(`/court-actions/elysium/${loaded.event.id}`, toPayload(form));
+      let renderedImage = null;
+      try { renderedImage = await renderCardDataUrl(form, loaded.event.date, true); } catch (_) {}
+      await api.put(`/court-actions/elysium/${loaded.event.id}`, { ...toPayload(form), renderedImage });
       await load();
       flash('The invitation is saved.');
       return true;
@@ -188,7 +190,11 @@ export default function KeeperPanel() {
     if (publishIt && !(await save())) return;
     setBusy(true);
     try {
-      await api.post(`/court-actions/elysium/${loaded.event.id}/publish`, { publish: publishIt, reannounce });
+      let renderedImage = null;
+      if (publishIt) {
+        try { renderedImage = await renderCardDataUrl(form, loaded.event.date, true); } catch (_) {}
+      }
+      await api.post(`/court-actions/elysium/${loaded.event.id}/publish`, { publish: publishIt, reannounce, renderedImage });
       await load();
       flash(publishIt ? 'The invitation is out.' : 'The invitation is withdrawn.');
     } catch (e) {
@@ -242,9 +248,15 @@ export default function KeeperPanel() {
   }
 
   const when = formatElysiumDate(loaded.event.date);
-  // Preview (and image) as a sample guest, or as a real character, including a struck one.
+  // Preview (and image) as generic, a sample guest, or as a real character, including a struck one.
+  const isGeneric = !previewGuestId;
+  const isSample = previewGuestId === 'sample';
   const previewGuest = (loaded.guests || []).find(g => String(g.id) === previewGuestId);
-  const sampleGuest = previewGuest ? { name: previewGuest.name, clan: previewGuest.clan } : { name: 'Your Guest', clan: 'Toreador' };
+  const sampleGuest = isSample
+    ? { name: 'Your Guest', clan: 'Toreador' }
+    : previewGuest
+      ? { name: previewGuest.name, clan: previewGuest.clan }
+      : null;
   const previewBarred = !!previewGuest && (!!previewGuest.is_bloodhunted || form.barred.includes(previewGuest.id));
   const saveState = published
     ? (dirty ? 'Unsaved changes: players still see the last saved version' : 'All changes saved and live')
@@ -351,7 +363,7 @@ export default function KeeperPanel() {
           {published && <button className={styles.btn} disabled={busy} onClick={() => publish(true, true)}><Icon name="notifications_active" /> Send again</button>}
           {published && <button className={`${styles.btn} ${styles.btnDanger}`} disabled={busy} onClick={() => publish(false)}>Withdraw</button>}
           <button className={styles.btn} onClick={() => setFullPreview(true)}><Icon name="open_in_full" /> Preview</button>
-          <DownloadCardButton className={styles.btn} invitation={form} eventDate={loaded.event.date} guest={sampleGuest} barred={previewBarred} filename={form.name || 'elysium'}>
+          <DownloadCardButton className={styles.btn} invitation={form} eventDate={loaded.event.date} guest={sampleGuest} barred={previewBarred} generic={isGeneric} filename={form.name || 'elysium'}>
             <Icon name="download" /> Download image
           </DownloadCardButton>
         </div>
@@ -360,15 +372,16 @@ export default function KeeperPanel() {
         </div>
         <label className={styles.field} style={{ marginBottom: 0 }}><span>Preview and image as</span>
           <select className={styles.input} value={previewGuestId} onChange={e => setPreviewGuestId(e.target.value)}>
-            <option value="">A sample guest</option>
+            <option value="">Generic invitation</option>
+            <option value="sample">A sample guest</option>
             {(loaded.guests || []).map(g => <option key={g.id} value={g.id}>{g.name}{g.clan ? ` (${g.clan})` : ''}</option>)}
           </select>
         </label>
         <HomeBannerPreview name={form.name} date={loaded.event.date} design={form.design} location={form.location} />
-        <InvitationCard invitation={form} eventDate={loaded.event.date} guest={sampleGuest} barred={previewBarred} />
+        <InvitationCard invitation={form} eventDate={loaded.event.date} guest={sampleGuest} barred={previewBarred} generic={isGeneric} />
       </aside>
 
-      <ElysiumInvitationModal open={fullPreview} onClose={() => setFullPreview(false)} invitation={form} eventDate={loaded.event.date} guest={sampleGuest} barred={previewBarred} />
+      <ElysiumInvitationModal open={fullPreview} onClose={() => setFullPreview(false)} invitation={form} eventDate={loaded.event.date} guest={sampleGuest} barred={previewBarred} generic={isGeneric} />
     </div>
   );
 }

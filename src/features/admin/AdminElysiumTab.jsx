@@ -100,9 +100,15 @@ export default function AdminElysiumTab() {
   const versions = detail?.versions || [];
   const vIndex = versions.findIndex(v => v.id === versionId);
   const version = versions[vIndex] || null;
+  const isSample = viewer === 'sample';
   const reader = (detail?.reads || []).find(r => String(r.user_id) === viewer);
-  const guest = reader ? { name: reader.character_name || reader.user_name, clan: reader.clan } : { name: 'Sample Guest', clan: 'Toreador' };
-  const readerBarred = reader?.seen_as === 'barred';
+  const isGeneric = !viewer;
+  const guest = isSample
+    ? { name: 'Sample Guest', clan: 'Toreador' }
+    : reader
+      ? { name: reader.character_name || reader.user_name, clan: reader.clan }
+      : null;
+  const readerBarred = !isGeneric && reader?.seen_as === 'barred';
 
   const viewAs = (userId) => {
     setViewer(userId);
@@ -190,20 +196,21 @@ export default function AdminElysiumTab() {
                       <label className={styles.labeledInput}>
                         <span>View v{vIndex + 1} as</span>
                         <select className={styles.input} value={viewer} onChange={e => viewAs(e.target.value)}>
-                          <option value="">A sample guest</option>
+                          <option value="">Generic invitation</option>
+                          <option value="sample">A sample guest</option>
                           {(detail.reads || []).map(r => (
                             <option key={r.user_id} value={String(r.user_id)}>{r.character_name || r.user_name} (opened v{versions.findIndex(v => v.id === r.first_version_id) + 1 || '?'})</option>
                           ))}
                         </select>
                       </label>
                       <HomeBannerPreview name={version.name} date={detail.event.date} design={version.design} location={readerBarred ? '' : version.location} />
-                      <InvitationCard invitation={version} eventDate={detail.event.date} guest={guest} barred={readerBarred} />
+                      <InvitationCard invitation={version} eventDate={detail.event.date} guest={guest} barred={readerBarred} generic={isGeneric} />
                       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                        <DownloadCardButton className={`${styles.btn} ${styles.btnSecondary}`} invitation={version} eventDate={detail.event.date} guest={guest} barred={readerBarred}
-                          filename={`${version.name || detail.event.title}-v${vIndex + 1}${viewer ? `-${guest.name}` : ''}`}>
+                        <DownloadCardButton className={`${styles.btn} ${styles.btnSecondary}`} invitation={version} eventDate={detail.event.date} guest={guest} barred={readerBarred} generic={isGeneric}
+                          filename={`${version.name || detail.event.title}-v${vIndex + 1}${viewer ? `-${guest?.name || 'guest'}` : '-generic'}`}>
                           <Icon name="download" /> Download v{vIndex + 1}
                         </DownloadCardButton>
-                        <DownloadCardButton action="discord" eventId={detail.event.id} className={`${styles.btn} ${styles.btnPrimary}`} invitation={version} eventDate={detail.event.date} guest={guest} barred={readerBarred}>
+                        <DownloadCardButton action="discord" eventId={detail.event.id} className={`${styles.btn} ${styles.btnPrimary}`} invitation={version} eventDate={detail.event.date} generic={true}>
                           <Icon name="send" /> Push v{vIndex + 1} to Discord
                         </DownloadCardButton>
                       </div>

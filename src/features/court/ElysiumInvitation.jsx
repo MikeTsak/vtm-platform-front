@@ -94,7 +94,7 @@ function Seal({ kind, accent, broken }) {
  * The invitation card. `invitation` holds the Keeper's text + design; `guest`
  * is the reader's character ({name, clan}) for the {name}/{clan} tokens.
  */
-export function InvitationCard({ invitation, eventDate, guest, barred = false }) {
+export function InvitationCard({ invitation, eventDate, guest, barred = false, generic = false }) {
   const inv = invitation || {};
   const design = resolveDesign(inv.design);
   const { card, accentDef: accent, fontDef, ornament, seal } = design;
@@ -103,7 +103,13 @@ export function InvitationCard({ invitation, eventDate, guest, barred = false })
   const lang = design.lang === 'el' ? 'el' : 'en';
   const L = STRINGS[lang];
   const when = formatElysiumDate(eventDate, lang);
-  const salutation = personalize(text('salutation'), guest, lang);
+
+  // When generic is true or when guest is null, personalized salutations (e.g. "To {name}, of Clan {clan}")
+  // are omitted to produce a clean generic invitation without dummy guest tokens like "Sample Guest".
+  const rawSalutation = text('salutation');
+  const isPersonalized = /\{name\}|\{clan\}/i.test(rawSalutation);
+  const salutation = (generic || !guest) && isPersonalized ? null : personalize(rawSalutation, guest, lang);
+
   // A fixed line is set whole in the Greek face when it, or the text beside it, has Greek.
   const g = (...parts) => greekAttrs(parts.filter(Boolean).join(' '));
   const title = text('name');
@@ -139,7 +145,7 @@ export function InvitationCard({ invitation, eventDate, guest, barred = false })
         ) : (
           <>
             <p className={styles.eyebrow} {...g(L.eyebrow)}>{L.eyebrow}</p>
-            <p className={`${styles.salutation} ${script(salutation).className || ''}`} lang={script(salutation).lang}>{salutation}</p>
+            {salutation && <p className={`${styles.salutation} ${script(salutation).className || ''}`} lang={script(salutation).lang}>{salutation}</p>}
             <h2 className={styles.title} lang={hasGreek(title) ? 'el' : undefined} style={hasGreek(title) ? fontDef.greek : undefined}>{title}</h2>
             <Divider kind={ornament} />
             <p className={styles.date} {...g(when.day)}>{when.day}</p>
