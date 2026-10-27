@@ -323,6 +323,433 @@ export const CLANS_LEXICON = [
   }
 ];
 
+export const PARADOX_WIKI_REGISTRY = [
+  // Disciplines
+  {
+    title: 'Animalism',
+    category: 'Disciplines',
+    url: 'https://vtm.paradoxwikis.com/Animalism',
+    summary: 'Mastery over the Beast and beasts: animal communion, famuli, and directing frenzy outward.',
+    keywords: ['animalism', 'beast', 'animals', 'famulus', 'discipline']
+  },
+  {
+    title: 'Auspex',
+    category: 'Disciplines',
+    url: 'https://vtm.paradoxwikis.com/Auspex',
+    summary: 'Supernatural perception: enhanced senses, aura perception, telepathy, and premonition.',
+    keywords: ['auspex', 'senses', 'aura', 'telepathy', 'premonition', 'discipline']
+  },
+  {
+    title: 'Blood Sorcery',
+    category: 'Disciplines',
+    url: 'https://vtm.paradoxwikis.com/Blood_Sorcery',
+    summary: 'Hermetic blood magic: corrupting blood, caustic strikes, wards, and eldritch rituals.',
+    keywords: ['blood sorcery', 'thaumaturgy', 'rituals', 'magic', 'discipline']
+  },
+  {
+    title: 'Celerity',
+    category: 'Disciplines',
+    url: 'https://vtm.paradoxwikis.com/Celerity',
+    summary: 'Preternatural speed: lightning swift movement, rapid dodging, and split second reflexes.',
+    keywords: ['celerity', 'speed', 'swiftness', 'dodge', 'reflexes', 'discipline']
+  },
+  {
+    title: 'Dominate',
+    category: 'Disciplines',
+    url: 'https://vtm.paradoxwikis.com/Dominate',
+    summary: 'Mental subjugation: commanding eyes, erasing memories, mesmerizing victims, and possession.',
+    keywords: ['dominate', 'command', 'mesmerize', 'forget', 'possession', 'mind', 'discipline']
+  },
+  {
+    title: 'Fortitude',
+    category: 'Disciplines',
+    url: 'https://vtm.paradoxwikis.com/Fortitude',
+    summary: 'Unearthly resilience: resisting physical injury, defying fire and sunlight, mental defense.',
+    keywords: ['fortitude', 'resilience', 'armor', 'toughness', 'defy bane', 'discipline']
+  },
+  {
+    title: 'Obfuscate',
+    category: 'Disciplines',
+    url: 'https://vtm.paradoxwikis.com/Obfuscate',
+    summary: 'Supernatural stealth: vanishing from sight, cloaking the mind, and adopting false guises.',
+    keywords: ['obfuscate', 'stealth', 'invisible', 'cloak', 'mask', 'discipline']
+  },
+  {
+    title: 'Oblivion',
+    category: 'Disciplines',
+    url: 'https://vtm.paradoxwikis.com/Oblivion',
+    summary: 'Abyssal and necromantic power: summoning shadow appendages, spirits, and death ceremonies.',
+    keywords: ['oblivion', 'necromancy', 'shadows', 'abyss', 'ceremonies', 'spirits', 'discipline']
+  },
+  {
+    title: 'Potence',
+    category: 'Disciplines',
+    url: 'https://vtm.paradoxwikis.com/Potence',
+    summary: 'Monstrous physical strength: lethal strikes, leaping great heights, and smashing barriers.',
+    keywords: ['potence', 'strength', 'might', 'lethal strike', 'discipline']
+  },
+  {
+    title: 'Presence',
+    category: 'Disciplines',
+    url: 'https://vtm.paradoxwikis.com/Presence',
+    summary: 'Emotional manipulation: awe, dread, supernatural allure, and commanding adoration.',
+    keywords: ['presence', 'awe', 'daunt', 'entrancement', 'majesty', 'discipline']
+  },
+  {
+    title: 'Protean',
+    category: 'Disciplines',
+    url: 'https://vtm.paradoxwikis.com/Protean',
+    summary: 'Physical metamorphosis: shape shifting, feral claws, earth meld, mist form, and serpent eyes.',
+    keywords: ['protean', 'shapeshifting', 'claws', 'earth meld', 'mist', 'discipline']
+  },
+  {
+    title: 'Thin blood Alchemy',
+    category: 'Disciplines',
+    url: 'https://vtm.paradoxwikis.com/Thin-blood_Alchemy',
+    summary: 'Improvised alchemy: brewing counterfeit discipline powers through mortal blood and reagents.',
+    keywords: ['thin blood alchemy', 'alchemy', 'athanor', 'calcinatio', 'fixatio', 'distillation']
+  },
+
+  // Clans
+  {
+    title: 'Banu Haqim',
+    category: 'Clans',
+    url: 'https://vtm.paradoxwikis.com/Banu_Haqim',
+    summary: 'Judges, assassins, and viziers: Blood Sorcery and Celerity masters with a blood addiction bane.',
+    keywords: ['banu haqim', 'assamite', 'judges', 'viziers', 'clan']
+  },
+  {
+    title: 'Brujah',
+    category: 'Clans',
+    url: 'https://vtm.paradoxwikis.com/Brujah',
+    summary: 'Philosopher rebels: fiery passion, Potence, Celerity, Presence, and fierce temper.',
+    keywords: ['brujah', 'rebels', 'punks', 'anarchs', 'clan']
+  },
+  {
+    title: 'Gangrel',
+    category: 'Clans',
+    url: 'https://vtm.paradoxwikis.com/Gangrel',
+    summary: 'Wild feral nomads: animal communion, Protean shapeshifting, taking animal features on frenzy.',
+    keywords: ['gangrel', 'feral', 'nomads', 'beasts', 'clan']
+  },
+  {
+    title: 'Hecata',
+    category: 'Clans',
+    url: 'https://vtm.paradoxwikis.com/Hecata',
+    summary: 'Clan of Death: Family reunion of necromancers, Oblivion, and the excruciating Painful Kiss.',
+    keywords: ['hecata', 'giovanni', 'samedi', 'nagaraja', 'necromancers', 'death', 'clan']
+  },
+  {
+    title: 'Lasombra',
+    category: 'Clans',
+    url: 'https://vtm.paradoxwikis.com/Lasombra',
+    summary: 'Ruthless magisters: Dominate and Oblivion shadow masters bearing distorted reflections.',
+    keywords: ['lasombra', 'magisters', 'shadows', 'abyss', 'clan']
+  },
+  {
+    title: 'Malkavian',
+    category: 'Clans',
+    url: 'https://vtm.paradoxwikis.com/Malkavian',
+    summary: 'Oracles and seers: Auspex, Dominate, Obfuscate, bound together by the Cobweb madness.',
+    keywords: ['malkavian', 'seers', 'oracles', 'madness', 'cobweb', 'derangement', 'clan']
+  },
+  {
+    title: 'The Ministry',
+    category: 'Clans',
+    url: 'https://vtm.paradoxwikis.com/The_Ministry',
+    summary: 'Setite liberators: Protean and Presence, tempting souls, severely sensitive to bright light.',
+    keywords: ['ministry', 'setite', 'followers of set', 'temptation', 'clan']
+  },
+  {
+    title: 'Nosferatu',
+    category: 'Clans',
+    url: 'https://vtm.paradoxwikis.com/Nosferatu',
+    summary: 'Information brokers: monstrous disfigurement, sewer dwellers, Animalism and Obfuscate masters.',
+    keywords: ['nosferatu', 'sewers', 'info', 'secrets', 'disfigured', 'clan']
+  },
+  {
+    title: 'Ravnos',
+    category: 'Clans',
+    url: 'https://vtm.paradoxwikis.com/Ravnos',
+    summary: 'Daredevils and tricksters: Chimerstry illusions, Presence, compelled to never sleep in one place.',
+    keywords: ['ravnos', 'tricksters', 'illusions', 'chimerstry', 'wanderer', 'clan']
+  },
+  {
+    title: 'Salubri',
+    category: 'Clans',
+    url: 'https://vtm.paradoxwikis.com/Salubri',
+    summary: 'Third eyed healers: Obeah restorative powers, hunted and coveted for their exquisite blood.',
+    keywords: ['salubri', 'healers', 'third eye', 'obeah', 'clan']
+  },
+  {
+    title: 'Toreador',
+    category: 'Clans',
+    url: 'https://vtm.paradoxwikis.com/Toreador',
+    summary: 'Artists and divas: masters of beauty, Celerity, Auspex, Presence, entranced by aesthetics.',
+    keywords: ['toreador', 'artists', 'divas', 'beauty', 'sensates', 'clan']
+  },
+  {
+    title: 'Tremere',
+    category: 'Clans',
+    url: 'https://vtm.paradoxwikis.com/Tremere',
+    summary: 'Warlock scholars: Blood Sorcery and Dominate, fractured blood bonds following Vienna destruction.',
+    keywords: ['tremere', 'warlocks', 'pyramid', 'blood sorcery', 'clan']
+  },
+  {
+    title: 'Tzimisce',
+    category: 'Clans',
+    url: 'https://vtm.paradoxwikis.com/Tzimisce',
+    summary: 'Dragon territorial lords: Vicissitude fleshcrafting, Animalism, possessive of domain and soil.',
+    keywords: ['tzimisce', 'dragons', 'fleshcrafting', 'vicissitude', 'voivode', 'clan']
+  },
+  {
+    title: 'Ventrue',
+    category: 'Clans',
+    url: 'https://vtm.paradoxwikis.com/Ventrue',
+    summary: 'Aristocrats and rulers: Dominate, Fortitude, Presence, restricted to rare specific feeding vessels.',
+    keywords: ['ventrue', 'rulers', 'kings', 'blue bloods', 'palate', 'clan']
+  },
+  {
+    title: 'Caitiff',
+    category: 'Clans',
+    url: 'https://vtm.paradoxwikis.com/Caitiff',
+    summary: 'The Clanless: vampires lacking clan lineage, flexible disciplines, social pariahs of kindred society.',
+    keywords: ['caitiff', 'clanless', 'panders', 'clan']
+  },
+  {
+    title: 'Thin blood',
+    category: 'Clans',
+    url: 'https://vtm.paradoxwikis.com/Thin-blood',
+    summary: 'Duskborn of the 14th, 15th, and 16th generations: half mortal capabilities, alchemy, and frail blood.',
+    keywords: ['thin blood', 'duskborn', '14th generation', '15th generation', 'clan']
+  },
+
+  // Backgrounds & Advantages
+  {
+    title: 'Contacts',
+    category: 'Backgrounds',
+    url: 'https://vtm.paradoxwikis.com/Contacts',
+    summary: 'Informants and sources who provide gossip, early warnings, and specialized intelligence.',
+    keywords: ['contacts', 'informants', 'intel', 'background']
+  },
+  {
+    title: 'Allies',
+    category: 'Backgrounds',
+    url: 'https://vtm.paradoxwikis.com/Allies',
+    summary: 'Mortal friends, relatives, or associates who assist and perform favors for the vampire.',
+    keywords: ['allies', 'friends', 'mortals', 'helpers', 'background']
+  },
+  {
+    title: 'Haven',
+    category: 'Backgrounds',
+    url: 'https://vtm.paradoxwikis.com/Haven',
+    summary: 'Secure living space protected from sunlight: security systems, hidden chambers, laboratory, luxury.',
+    keywords: ['haven', 'shelter', 'safehouse', 'base', 'background']
+  },
+  {
+    title: 'Herd',
+    category: 'Backgrounds',
+    url: 'https://vtm.paradoxwikis.com/Herd',
+    summary: 'Reliable group of mortal vessels available for safe feeding without hunting tests.',
+    keywords: ['herd', 'feeding', 'vessels', 'kine', 'background']
+  },
+  {
+    title: 'Influence',
+    category: 'Backgrounds',
+    url: 'https://vtm.paradoxwikis.com/Influence',
+    summary: 'Sway over mortal institutions: police, city hall, media, organized crime, and finance.',
+    keywords: ['influence', 'politics', 'police', 'city hall', 'media', 'background']
+  },
+  {
+    title: 'Mask',
+    category: 'Backgrounds',
+    url: 'https://vtm.paradoxwikis.com/Mask',
+    summary: 'False mortal identity, paper trails, driver license, bank accounts, and fake biographies.',
+    keywords: ['mask', 'identity', 'papers', 'cover', 'background']
+  },
+  {
+    title: 'Mawla',
+    category: 'Backgrounds',
+    url: 'https://vtm.paradoxwikis.com/Mawla',
+    summary: 'Kindred mentor, elder patron, or teacher providing guidance, advice, and political protection.',
+    keywords: ['mawla', 'mentor', 'teacher', 'patron', 'elder', 'background']
+  },
+  {
+    title: 'Resources',
+    category: 'Backgrounds',
+    url: 'https://vtm.paradoxwikis.com/Resources',
+    summary: 'Wealth, income streams, real estate, liquid capital, and high end assets.',
+    keywords: ['resources', 'money', 'wealth', 'cash', 'income', 'background']
+  },
+  {
+    title: 'Retainers',
+    category: 'Backgrounds',
+    url: 'https://vtm.paradoxwikis.com/Retainers',
+    summary: 'Devoted assistants, bodyguards, drivers, and ghouls bound to the vampires service.',
+    keywords: ['retainers', 'ghoul', 'servants', 'assistants', 'bodyguard', 'background']
+  },
+  {
+    title: 'Status',
+    category: 'Backgrounds',
+    url: 'https://vtm.paradoxwikis.com/Status',
+    summary: 'Standing and recognized reputation in Kindred sects (Camarilla, Anarch, or Church of Caine).',
+    keywords: ['status', 'standing', 'reputation', 'prestation', 'background']
+  },
+
+  // Core Rules & Mechanics
+  {
+    title: 'Hunger',
+    category: 'Rules and Systems',
+    url: 'https://vtm.paradoxwikis.com/Hunger',
+    summary: 'The craving for blood rating from 0 to 5, replacing normal dice with Hunger dice on all pools.',
+    keywords: ['hunger', 'blood', 'slaking', 'starvation', 'bestial', 'rules']
+  },
+  {
+    title: 'Blood Potency',
+    category: 'Rules and Systems',
+    url: 'https://vtm.paradoxwikis.com/Blood_Potency',
+    summary: 'The supernatural concentration of vitae: grants blood surge, power bonuses, and increases bane severity.',
+    keywords: ['blood potency', 'generation', 'surge', 'mend', 'bane severity', 'rules']
+  },
+  {
+    title: 'Humanity',
+    category: 'Rules and Systems',
+    url: 'https://vtm.paradoxwikis.com/Humanity',
+    summary: 'Moral tether holding back the Beast: stains, convictions, touchstones, remorse, and torpor.',
+    keywords: ['humanity', 'stains', 'remorse', 'beast', 'touchstones', 'convictions', 'rules']
+  },
+  {
+    title: 'Rouse Check',
+    category: 'Rules and Systems',
+    url: 'https://vtm.paradoxwikis.com/Rouse_Check',
+    summary: 'Test of the Blood: roll one d10, on 1 to 5 Hunger increases by 1 box.',
+    keywords: ['rouse check', 'rouse', 'blood test', 'hunger increase', 'rules']
+  },
+  {
+    title: 'Blood Surge',
+    category: 'Rules and Systems',
+    url: 'https://vtm.paradoxwikis.com/Blood_Surge',
+    summary: 'Calling on the blood to gain bonus dice on a test, costs an immediate Rouse check.',
+    keywords: ['blood surge', 'dice boost', 'rouse', 'burst', 'rules']
+  },
+  {
+    title: 'Frenzy',
+    category: 'Rules and Systems',
+    url: 'https://vtm.paradoxwikis.com/Frenzy',
+    summary: 'Violent loss of control to the Beast: Fury frenzy, Hunger frenzy, and riding the wave.',
+    keywords: ['frenzy', 'fury', 'hunger frenzy', 'beast control', 'rules']
+  },
+  {
+    title: 'Rötschreck',
+    category: 'Rules and Systems',
+    url: 'https://vtm.paradoxwikis.com/R%C3%B6tschreck',
+    summary: 'Terror frenzy triggered by fire, sunlight, or extreme heat causing involuntary panicked flight.',
+    keywords: ['rotschreck', 'terror frenzy', 'fire', 'sunlight', 'panic', 'rules']
+  },
+  {
+    title: 'Compulsions',
+    category: 'Rules and Systems',
+    url: 'https://vtm.paradoxwikis.com/Compulsions',
+    summary: 'Urges triggered by bestial failures or messy criticals: Hunger, Dominance, Harm, Paranoia, Clan compulsions.',
+    keywords: ['compulsions', 'messy critical', 'bestial failure', 'clan compulsions', 'rules']
+  },
+  {
+    title: 'Diablerie',
+    category: 'Rules and Systems',
+    url: 'https://vtm.paradoxwikis.com/Diablerie',
+    summary: 'Consuming kindred soul and blood: steals generation and powers, stains soul with black aura veins.',
+    keywords: ['diablerie', 'amaranthe', 'soul consuming', 'generation steal', 'rules']
+  },
+  {
+    title: 'Torpor',
+    category: 'Rules and Systems',
+    url: 'https://vtm.paradoxwikis.com/Torpor',
+    summary: 'Deathlike hibernation entered upon catastrophic damage or starvation, duration scaled by humanity.',
+    keywords: ['torpor', 'coma', 'sleep', 'awakening', 'damage', 'rules']
+  },
+  {
+    title: 'Blush of Life',
+    category: 'Rules and Systems',
+    url: 'https://vtm.paradoxwikis.com/Blush_of_Life',
+    summary: 'Rousing vitae to mimic mortal biology: warm skin, heartbeat, breath, digestion, and sexual function.',
+    keywords: ['blush of life', 'mortal mimic', 'heartbeat', 'warmth', 'rules']
+  },
+  {
+    title: 'Blood Bond',
+    category: 'Rules and Systems',
+    url: 'https://vtm.paradoxwikis.com/Blood_Bond',
+    summary: 'Drinking directly from another kindred: three sips create a complete emotional enslavement bond.',
+    keywords: ['blood bond', 'vinculum', 'regnant', 'thrall', 'enslavement', 'rules']
+  },
+  {
+    title: 'Ghoul',
+    category: 'Rules and Systems',
+    url: 'https://vtm.paradoxwikis.com/Ghoul',
+    summary: 'Mortal fed vampire blood: stops aging, gains level 1 discipline, bound to their kindred master.',
+    keywords: ['ghoul', 'thrall', 'retainer', 'mortals', 'rules']
+  },
+
+  // Character Options & Systems
+  {
+    title: 'Predator Types',
+    category: 'Character Options',
+    url: 'https://vtm.paradoxwikis.com/Predator_type',
+    summary: 'Kindred hunting styles: alleycat, bagger, blood leech, consensualist, farmer, pursuer, and more.',
+    keywords: ['predator types', 'hunting style', 'feeding', 'bagger', 'alleycat', 'options']
+  },
+  {
+    title: 'Coteries',
+    category: 'Character Options',
+    url: 'https://vtm.paradoxwikis.com/Coterie',
+    summary: 'Kindred alliances and groups: hunting packs, envoys, blood cults, and communal domains.',
+    keywords: ['coteries', 'packs', 'groups', 'alliances', 'options']
+  },
+  {
+    title: 'Domain and Chasse',
+    category: 'Rules and Systems',
+    url: 'https://vtm.paradoxwikis.com/Domain',
+    summary: 'Territory systems: Chasse (hunting richness), Lien (mortals integration), Portillon (security).',
+    keywords: ['domain', 'chasse', 'lien', 'portillon', 'territory', 'rules']
+  },
+
+  // Setting and Sects
+  {
+    title: 'Camarilla',
+    category: 'Setting and Sects',
+    url: 'https://vtm.paradoxwikis.com/Camarilla',
+    summary: 'The Ivory Tower: feudal sect enforcing the Traditions, court offices, Prince, and Masquerade.',
+    keywords: ['camarilla', 'ivory tower', 'prince', 'court', 'traditions', 'sect']
+  },
+  {
+    title: 'Anarch Movement',
+    category: 'Setting and Sects',
+    url: 'https://vtm.paradoxwikis.com/Anarch_Movement',
+    summary: 'Revolutionary faction rejecting Prince feudalism: Baronies, free states, sweeps, and street gangs.',
+    keywords: ['anarch movement', 'barons', 'free states', 'revolution', 'sect']
+  },
+  {
+    title: 'Sabbat',
+    category: 'Setting and Sects',
+    url: 'https://vtm.paradoxwikis.com/Sabbat',
+    summary: 'The Black Hand: death cult waging Gehenna war against the Antediluvians through packs and ritae.',
+    keywords: ['sabbat', 'black hand', 'gehenna war', 'paths', 'vaulderie', 'sect']
+  },
+  {
+    title: 'Second Inquisition',
+    category: 'Setting and Sects',
+    url: 'https://vtm.paradoxwikis.com/Second_Inquisition',
+    summary: 'Clandestine coalition of mortal intelligence agencies hunting blankbodies through data and kill squads.',
+    keywords: ['second inquisition', 'firstlight', 'hunters', 'blankbody', 'inquisition', 'setting']
+  },
+  {
+    title: 'The Traditions',
+    category: 'Setting and Sects',
+    url: 'https://vtm.paradoxwikis.com/Traditions',
+    summary: 'Six foundational kindred laws: Masquerade, Domain, Progeny, Accounting, Hospitality, Destruction.',
+    keywords: ['traditions', 'masquerade', 'domain', 'progeny', 'accounting', 'hospitality', 'destruction']
+  }
+];
+
 export const SOURCEBOOKS_TOC = {
   'Corebook': rawCorebookToc,
 

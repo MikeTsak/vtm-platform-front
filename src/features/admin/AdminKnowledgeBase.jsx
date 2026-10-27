@@ -17,7 +17,8 @@ import {
   SOURCEBOOKS_TOC,
   SOURCEBOOKS_SUBJECT_INDEX,
   DISCIPLINES_LEXICON,
-  CLANS_LEXICON
+  CLANS_LEXICON,
+  PARADOX_WIKI_REGISTRY
 } from '../../data/sourcebooksIndex';
 import { copyToClipboard } from '../../utils/clipboard';
 import ReactMarkdown from 'react-markdown';
@@ -157,12 +158,27 @@ export default function AdminKnowledgeBase() {
   const [searchCategory, setSearchCategory] = useState('all');
   const [pageInputs, setPageInputs] = useState({});
   const [pinnedItems, setPinnedItems] = useState([]);
+  const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false);
+  const [selectedSuggestionIdx, setSelectedSuggestionIdx] = useState(-1);
+  const searchContainerRef = useRef(null);
+  const searchInputRef = useRef(null);
   const [newPinBook, setNewPinBook] = useState('Corebook');
   const [newPinPage, setNewPinPage] = useState('');
   const [newPinTitle, setNewPinTitle] = useState('');
   const [newPinNote, setNewPinNote] = useState('');
   const [showAddPinModal, setShowAddPinModal] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState('');
+
+  // Click outside listener for search autocomplete
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target)) {
+        setIsSuggestionsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
 
   // Multi:Sourcebook Master Index and TOC state
   const [indexViewMode, setIndexViewMode] = useState('index'); // 'index' or 'toc'
@@ -635,6 +651,184 @@ export default function AdminKnowledgeBase() {
     return results;
   }, [globalSearch, searchCategory, searchEngine, allReferenceEntries, wikiSearchResults]);
 
+  // Predetermined Paradox Wiki matches for live search
+  const matchedParadoxArticles = useMemo(() => {
+    const q = globalSearch.trim().toLowerCase();
+    if (!q) return [];
+    return PARADOX_WIKI_REGISTRY.filter((art) => {
+      if (art.title.toLowerCase().includes(q)) return true;
+      if (art.category.toLowerCase().includes(q)) return true;
+      if (art.summary.toLowerCase().includes(q)) return true;
+      if (art.keywords && art.keywords.some((kw) => kw.toLowerCase().includes(q))) return true;
+      return false;
+    });
+  }, [globalSearch]);
+
+  // Autocomplete candidate pool and scored suggestions
+  const { searchSuggestions, topSuggestion } = useMemo(() => {
+    const q = globalSearch.trim().toLowerCase();
+    if (!q || q.length < 1) {
+      return { searchSuggestions: [], topSuggestion: null };
+    }
+
+    const seen = new Set();
+    const scoredList = [];
+
+    // 1. Paradox Wiki entries
+    PARADOX_WIKI_REGISTRY.forEach((item) => {
+      const lowerTitle = item.title.toLowerCase();
+      if (seen.has(lowerTitle)) return;
+      seen.add(lowerTitle);
+
+      let score = 0;
+      if (lowerTitle.startsWith(q)) {
+        score = 100 - (lowerTitle.length - q.length);
+      } else if (lowerTitle.includes(` ${q}`)) {
+        score = 80;
+      } else if (lowerTitle.includes(q)) {
+        score = 60;
+      } else if (item.keywords && item.keywords.some((k) => k.toLowerCase().startsWith(q))) {
+        score = 45;
+      } else if (item.category.toLowerCase().includes(q)) {
+        score = 30;
+      } else if (item.summary.toLowerCase().includes(q)) {
+        score = 20;
+      }
+
+      if (score > 0) {
+        scoredList.push({
+          score,
+          title: item.title,
+          category: `Paradox Wiki: ${item.category}`,
+          type: 'paradox',
+          url: item.url,
+          icon: 'public',
+          summary: item.summary
+        });
+      }
+    });
+
+    // 2. Local codex references
+    allReferenceEntries.forEach((item) => {
+      const lowerTitle = (item.title || '').toLowerCase();
+      if (!lowerTitle || seen.has(lowerTitle)) return;
+      seen.add(lowerTitle);
+
+      let score = 0;
+      if (lowerTitle.startsWith(q)) {
+        score = 95 - (lowerTitle.length - q.length);
+      } else if (lowerTitle.includes(` ${q}`)) {
+        score = 75;
+      } else if (lowerTitle.includes(q)) {
+        score = 55;
+      }
+
+      if (score > 0) {
+        scoredList.push({
+          score,
+          title: item.title,
+          category: item.category || 'Codex',
+          type: 'codex',
+          url: item.wikiUrl || null,
+          icon: 'menu_book',
+          summary: item.content ? item.content.slice(0, 90) : ''
+        });
+      }
+    });
+
+    // 3. Multi Sourcebook subject index
+    SOURCEBOOKS_SUBJECT_INDEX.forEach((item) => {
+      const lowerTopic = (item.topic || '').toLowerCase();
+      if (!lowerTopic || seen.has(lowerTopic)) return;
+      seen.add(lowerTopic);
+
+      let score = 0;
+      if (lowerTopic.startsWith(q)) {
+        score = 90 - (lowerTopic.length - q.length);
+      } else if (lowerTopic.includes(` ${q}`)) {
+        score = 70;
+      } else if (lowerTopic.includes(q)) {
+        score = 50;
+      }
+
+      if (score > 0) {
+        scoredList.push({
+          score,
+          title: item.topic,
+          category: `Sourcebook: ${item.book}`,
+          type: 'sourcebook',
+          url: null,
+          icon: 'auto_stories',
+          summary: item.summary || ''
+        });
+      }
+    });
+
+    // Sort descending by score
+    scoredList.sort((a, b) => b.score - a.score);
+
+    // Top suggestion for ghost text (only if startsWith query)
+    const bestPrefix = scoredList.find((cand) =>
+      cand.title.toLowerCase().startsWith(q)
+    );
+
+    return {
+      searchSuggestions: scoredList.slice(0, 8),
+      topSuggestion: bestPrefix || null
+    };
+  }, [globalSearch, allReferenceEntries]);
+
+  const handleApplySuggestion = (suggestionTitle) => {
+    setGlobalSearch(suggestionTitle);
+    setIsSuggestionsOpen(false);
+    setSelectedSuggestionIdx(-1);
+    setActiveTab('search');
+    if (searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  };
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key === 'Tab') {
+      if (topSuggestion) {
+        e.preventDefault();
+        handleApplySuggestion(topSuggestion.title);
+      }
+    } else if (e.key === 'ArrowRight') {
+      const input = searchInputRef.current;
+      const isAtEnd = input && input.selectionStart === globalSearch.length && input.selectionEnd === globalSearch.length;
+      if (isAtEnd && topSuggestion && topSuggestion.title.toLowerCase().startsWith(globalSearch.trim().toLowerCase())) {
+        e.preventDefault();
+        handleApplySuggestion(topSuggestion.title);
+      }
+    } else if (e.key === 'ArrowDown') {
+      if (searchSuggestions.length > 0) {
+        e.preventDefault();
+        setIsSuggestionsOpen(true);
+        setSelectedSuggestionIdx((prev) => (prev < searchSuggestions.length - 1 ? prev + 1 : 0));
+      }
+    } else if (e.key === 'ArrowUp') {
+      if (searchSuggestions.length > 0) {
+        e.preventDefault();
+        setIsSuggestionsOpen(true);
+        setSelectedSuggestionIdx((prev) => (prev > 0 ? prev - 1 : searchSuggestions.length - 1));
+      }
+    } else if (e.key === 'Enter') {
+      if (isSuggestionsOpen && selectedSuggestionIdx >= 0 && searchSuggestions[selectedSuggestionIdx]) {
+        e.preventDefault();
+        handleApplySuggestion(searchSuggestions[selectedSuggestionIdx].title);
+      } else {
+        setIsSuggestionsOpen(false);
+        if (globalSearch.trim()) {
+          setActiveTab('search');
+        }
+      }
+    } else if (e.key === 'Escape') {
+      setIsSuggestionsOpen(false);
+      setSelectedSuggestionIdx(-1);
+    }
+  };
+
   // Filtered Subject Index for Multi:Sourcebook Tab
   const filteredSubjectIndex = useMemo(() => {
     let list = SOURCEBOOKS_SUBJECT_INDEX;
@@ -914,34 +1108,115 @@ export default function AdminKnowledgeBase() {
         </div>
       </header>
 
-      {/* Global Quick Search Input */}
-      <div className={styles.quickSearchBar}>
-        <span className="material-symbols-outlined text-[22px] text-primary">search</span>
-        <input
-          type="text"
-          className={styles.quickSearchInput}
-          placeholder="Search disciplines, rules, rituals, merits, flaws, or sourcebook citations..."
-          value={globalSearch}
-          onChange={(e) => {
-            setGlobalSearch(e.target.value);
-            if (activeTab === 'library' && e.target.value.trim().length > 1) {
-              setActiveTab('search');
-            }
-          }}
-        />
-        {globalSearch && (
-          <button
-            type="button"
-            onClick={() => setGlobalSearch('')}
-            className="text-on-surface-variant hover:text-on-surface px-2 text-sm"
-          >
-            <span className="material-symbols-outlined text-[18px]">close</span>
-          </button>
+      {/* Universal Search Hero Bar with Google like Autocomplete and Ghost Text */}
+      <div className={styles.searchHeroContainer} ref={searchContainerRef}>
+        <div className={styles.quickSearchBar}>
+          <span className="material-symbols-outlined text-[22px] text-primary select-none">search</span>
+          <div className={styles.inputGhostWrapper}>
+            {/* Ghost completion text overlay */}
+            {topSuggestion && globalSearch.trim() && topSuggestion.title.toLowerCase().startsWith(globalSearch.trim().toLowerCase()) && (
+              <div className={styles.ghostTextOverlay} aria-hidden="true">
+                <span className={styles.ghostPrefix}>{globalSearch}</span>
+                <span className={styles.ghostSuffix}>{topSuggestion.title.slice(globalSearch.length)}</span>
+              </div>
+            )}
+            <input
+              ref={searchInputRef}
+              type="text"
+              className={styles.quickSearchInput}
+              placeholder="Search disciplines, rules, rituals, merits, flaws, or sourcebook citations..."
+              value={globalSearch}
+              onFocus={() => {
+                if (searchSuggestions.length > 0) setIsSuggestionsOpen(true);
+              }}
+              onChange={(e) => {
+                const val = e.target.value;
+                setGlobalSearch(val);
+                setIsSuggestionsOpen(val.trim().length > 0);
+                setSelectedSuggestionIdx(-1);
+                if (activeTab === 'library' && val.trim().length > 1) {
+                  setActiveTab('search');
+                }
+              }}
+              onKeyDown={handleSearchKeyDown}
+              autoComplete="off"
+              spellCheck="false"
+            />
+          </div>
+
+          {topSuggestion && globalSearch.trim() && topSuggestion.title.toLowerCase().startsWith(globalSearch.trim().toLowerCase()) && (
+            <button
+              type="button"
+              className={styles.autocompletePill}
+              onClick={() => handleApplySuggestion(topSuggestion.title)}
+              title={`Press Tab or Right Arrow to autocomplete to ${topSuggestion.title}`}
+            >
+              <span className="material-symbols-outlined text-[13px]">keyboard_tab</span>
+              <span>Tab to fill</span>
+            </button>
+          )}
+
+          {globalSearch && (
+            <button
+              type="button"
+              onClick={() => {
+                setGlobalSearch('');
+                setIsSuggestionsOpen(false);
+                setSelectedSuggestionIdx(-1);
+              }}
+              className="text-on-surface-variant hover:text-on-surface px-2 text-sm flex items-center"
+              title="Clear search"
+            >
+              <span className="material-symbols-outlined text-[18px]">close</span>
+            </button>
+          )}
+        </div>
+
+        {/* Google like Suggestions Dropdown */}
+        {isSuggestionsOpen && searchSuggestions.length > 0 && (
+          <div className={styles.suggestionsDropdown} role="listbox">
+            <div className={styles.suggestionsHeader}>
+              <span>Suggestions and Live Matches</span>
+              <span className="text-[11px] text-on-surface-variant">Use Up Down arrows to navigate, Enter to select</span>
+            </div>
+            {searchSuggestions.map((item, idx) => {
+              const isSelected = idx === selectedSuggestionIdx;
+              return (
+                <div
+                  key={`${item.type}_${item.title}_${idx}`}
+                  className={`${styles.suggestionItem} ${isSelected ? styles.suggestionItemActive : ''}`}
+                  onClick={() => handleApplySuggestion(item.title)}
+                  onMouseEnter={() => setSelectedSuggestionIdx(idx)}
+                  role="option"
+                  aria-selected={isSelected}
+                >
+                  <span className={`material-symbols-outlined text-[18px] ${styles.suggestionIcon}`}>
+                    {item.icon}
+                  </span>
+                  <div className={styles.suggestionContent}>
+                    <div className={styles.suggestionTitleRow}>
+                      <span className={styles.suggestionTitle}>{item.title}</span>
+                      <span className={styles.suggestionBadge}>{item.category}</span>
+                    </div>
+                    {item.summary && (
+                      <span className={styles.suggestionSnippet}>
+                        {item.summary}
+                      </span>
+                    )}
+                  </div>
+                  <span className="material-symbols-outlined text-[14px] text-on-surface-variant/40">
+                    north_west
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
 
-      {/* Rule Master AI Assistant Section */}
-      <div className={styles.ruleMasterSection} id="rule-master-ai">
+      {/* Rule Master AI Assistant Section : Hides when active search query is entered */}
+      {!globalSearch.trim() && (
+        <div className={styles.ruleMasterSection} id="rule-master-ai">
         <div className={styles.ruleMasterHeader}>
           <div className="flex items-center gap-2 flex-wrap">
             <span className="material-symbols-outlined text-[22px] text-primary">psychology</span>
@@ -1412,6 +1687,7 @@ export default function AdminKnowledgeBase() {
           </div>
         )}
       </div>
+      )}
 
       {/* TAB 1: Sourcebooks and PDFs */}
       {activeTab === 'library' && (
@@ -1832,8 +2108,103 @@ export default function AdminKnowledgeBase() {
             </div>
           </div>
 
-          {/* External Paradox Wiki Search banner */}
-          {globalSearch.trim() && (
+          {/* Paradox Wiki Live Matches Section */}
+          {matchedParadoxArticles.length > 0 && (
+            <div className={styles.paradoxLiveSection}>
+              <div className={styles.paradoxLiveHeader}>
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[20px] text-primary">public</span>
+                  <h3 className={styles.paradoxLiveTitle}>
+                    Paradox Wiki: Official Articles ({matchedParadoxArticles.length})
+                  </h3>
+                </div>
+                <a
+                  href={`https://vtm.paradoxwikis.com/index.php?search=${encodeURIComponent(globalSearch.trim())}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.paradoxExploreLink}
+                  title="Search full Paradox Wiki in new tab"
+                >
+                  <span>Search Paradox Wiki for "{globalSearch.trim()}"</span>
+                  <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+                </a>
+              </div>
+
+              <div className={styles.paradoxCardsGrid}>
+                {matchedParadoxArticles.map((art, aIdx) => {
+                  const isPinned = pinnedItems.some((p) => p.title === art.title && p.url === art.url);
+                  return (
+                    <div key={`pdx_${art.title}_${aIdx}`} className={styles.paradoxArticleCard}>
+                      <div className={styles.paradoxCardTop}>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={styles.paradoxCategoryBadge}>{art.category}</span>
+                          <h4 className={styles.paradoxArticleTitle}>{art.title}</h4>
+                        </div>
+                        <div className={styles.resultActions}>
+                          <button
+                            type="button"
+                            className={`${styles.iconBtn} ${isPinned ? styles.iconBtnActive : ''}`}
+                            onClick={() => {
+                              if (isPinned) {
+                                const updated = pinnedItems.filter((p) => !(p.title === art.title && p.url === art.url));
+                                savePins(updated);
+                                notify('Removed from pinned board');
+                              } else {
+                                const newPin = {
+                                  id: `pin_pdx_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+                                  type: 'wiki',
+                                  title: `${art.title} (Paradox Wiki)`,
+                                  content: art.summary,
+                                  url: art.url,
+                                  source: `Paradox Wiki: ${art.category}`,
+                                  createdAt: new Date().toISOString()
+                                };
+                                savePins([newPin, ...pinnedItems]);
+                                notify(`Pinned ${art.title}`);
+                              }
+                            }}
+                            title={isPinned ? 'Remove from Pinned Board' : 'Pin to Board'}
+                          >
+                            <span className="material-symbols-outlined text-[18px]">push_pin</span>
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.iconBtn}
+                            onClick={() => {
+                              copyToClipboard(`${art.title} (${art.category}): ${art.url}\n${art.summary}`);
+                              notify(`Copied ${art.title} citation`);
+                            }}
+                            title="Copy link and summary"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">content_copy</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <p className={styles.paradoxCardSummary}>{art.summary}</p>
+
+                      <div className={styles.paradoxCardFooter}>
+                        <a
+                          href={art.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={styles.paradoxDirectBtn}
+                          title={`Open ${art.title} on official Paradox Wiki`}
+                        >
+                          <span className="material-symbols-outlined text-[15px]">public</span>
+                          <span>Open on Paradox Wiki</span>
+                          <span className="material-symbols-outlined text-[13px]">open_in_new</span>
+                        </a>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* External Paradox Wiki Search banner if no direct registry article matched */}
+          {globalSearch.trim() && matchedParadoxArticles.length === 0 && (
             <div className={styles.wikiSearchBanner}>
               <div className={styles.wikiBannerLeft}>
                 <span className="material-symbols-outlined text-[20px] text-primary">public</span>
@@ -1854,6 +2225,16 @@ export default function AdminKnowledgeBase() {
               </button>
             </div>
           )}
+
+          {/* Local Codex and Sourcebooks Header */}
+          <div className={styles.codexSubHeader}>
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-[18px] text-primary">menu_book</span>
+              <span className="text-sm font-bold uppercase tracking-wider text-on-surface">
+                Local Codex and Sourcebooks ({searchResults.length})
+              </span>
+            </div>
+          </div>
 
           {searchResults.length === 0 ? (
             <div className={styles.emptyState}>
