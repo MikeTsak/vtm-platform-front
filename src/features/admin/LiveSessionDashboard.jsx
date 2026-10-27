@@ -20,122 +20,13 @@ import generateVTMCharacterSheetPDF from '../../utils/pdfGenerator';
 import useRole from '../../core/useRole';
 import LiveSessionRollHistory from '../live-session/LiveSessionRollHistory';
 import WikiReferenceBar from '../live-session/WikiReferenceBar';
+import LiveSessionCodexSidebar from '../live-session/LiveSessionCodexSidebar';
 import { INGRAINED_DISCIPLINE_FLAWS } from '../../data/ingrainedFlaws';
 import sharedStyles from '../../styles/LiveSession.module.css';
 import adminStyles from '../../styles/LiveSessionAdmin.module.css';
 
 const styles = { ...sharedStyles, ...adminStyles };
 const PlayerScreen = lazy(() => import('../live-session/LiveSession'));
-
-const RULES = [
-  {
-    category: 'rules',
-    title: 'Difficulty & Success',
-    content: '1-5: Failure. 6-9: Success. 10: Critical. Pair of 10s: 4 successes total.\nDiff 1: Routine\nDiff 3: Moderate (most actions)\nDiff 5: Hard\nDiff 7+: Nearly impossible'
-  },
-  {
-    category: 'rules',
-    title: 'Hunger Mechanics',
-    content: 'Messy Critical: A 10 on a Hunger die with an overall critical. You succeed but the Beast takes over.\nBestial Failure: A 1 on a Hunger die with an overall failure. The Beast lashes out.'
-  },
-  {
-    category: 'rules',
-    title: 'Blood Surge',
-    content: 'Adds dice to a single roll based on Blood Potency. Requires a Rouse check.'
-  },
-  {
-    category: 'rules',
-    title: 'Humanity & Stains',
-    content: 'Stains are gained by violating Chronicle Tenets or your Predator Type.\nAt the end of the session, roll Remorse: Roll dice equal to (10 - Humanity - Stains). If you get at least 1 success, you feel remorse and clear all Stains. If you fail, you lose 1 Humanity point and clear Stains.'
-  },
-  {
-    category: 'rules',
-    title: 'Frenzy',
-    content: 'Triggered by anger (Fury), hunger (Hunger), or fear (Terror).\nRoll unspent Willpower + (Humanity / 3, rounded down) to resist. Success suppresses the frenzy.\nFailure means the Beast takes over. During Frenzy, immune to health penalties and can only use physical Disciplines.'
-  }
-];
-
-const MERITS = [
-  { category: 'merits', title: 'Beautiful',   cost: 2,     content: '+1 die to Social pools.' },
-  { category: 'merits', title: 'Stunning',    cost: 4,     content: '+2 dice to Social pools.' },
-  { category: 'merits', title: 'Iron Will',   cost: 3,     content: '+2 dice to resist mental manipulation.' },
-  { category: 'merits', title: 'Haven',       cost: '1-3', content: 'Secure resting place. Rating dictates security.' },
-  { category: 'merits', title: 'Linguistics', cost: 1,     content: 'Know one additional language per point.' },
-  { category: 'merits', title: 'Fame',        cost: '1-3', content: 'You are widely known. Can help with influence or feeding.' },
-  { category: 'merits', title: 'Resources',   cost: '1-5', content: 'Wealth and disposable income.' }
-];
-
-const FLAWS = [
-  { category: 'flaws', title: 'Ugly',           cost: 1,     content: '-1 die to Social pools.' },
-  { category: 'flaws', title: 'Repulsive',       cost: 2,     content: '-2 dice to Social pools.' },
-  { category: 'flaws', title: 'Infamy',          cost: '1-3', content: 'You are known for something terrible. Dice penalties to social.' },
-  { category: 'flaws', title: 'Stigmata',        cost: 2,     content: 'Bleed from hands/feet/face when you hit Hunger 4.' },
-  { category: 'flaws', title: 'Dark Secret',     cost: '1-2', content: 'If discovered, you face severe consequences.' },
-  { category: 'flaws', title: 'Folkloric Bane',  cost: 1,     content: 'Take aggravated damage from a traditional bane (e.g. silver, garlic).' },
-  { category: 'flaws', title: 'Folkloric Block', cost: 1,     content: 'Must shrink away from a traditional ward (e.g. crucifix, threshold).' }
-];
-
-const DISC_ENTRIES = Object.entries(DISCIPLINES).flatMap(([disc, { levels = {} }]) =>
-  Object.entries(levels).flatMap(([level, powers]) =>
-    powers.map(p => {
-      const mech = powerMechanics(p.id);
-      return {
-        category: 'disciplines',
-        title: `${p.name} (${disc} ${level})`,
-        content: `Cost: ${p.cost}\nPool: ${p.dice_pool}\n${p.notes || p.duration || ''}${mech ? `\nMechanic: ${mech.note}` : ''}`,
-        source: p.source || null,
-      };
-    })
-  )
-);
-
-const RITUAL_ENTRIES = Object.entries(RITUALS).flatMap(([kind, { meta = {}, levels = {} }]) =>
-  Object.entries(levels).flatMap(([level, list = []]) =>
-    list.map(r => ({
-      category: kind === 'oblivion' ? 'ceremonies' : 'rituals',
-      title: `${r.name} (${kind === 'oblivion' ? 'Oblivion' : 'Blood Sorcery'} ${level})`,
-      content: `Cost: ${r.cost || meta?.defaults?.cost || ''}\n${r.effect || ''}\n${r.notes || ''}`,
-      source: r.source || null,
-    }))
-  )
-);
-
-const INGRAINED_ENTRIES = Object.entries(INGRAINED_DISCIPLINE_FLAWS).map(([disc, info]) => ({
-  category: 'ingrained flaws',
-  title: `${info.name} (${disc})`,
-  content: `Ingrained Discipline Flaw (${disc})\n${info.description}`,
-  source: info.source || 'Tattered Façade, p. 108',
-}));
-
-const ALL_REFERENCE = [...RULES, ...DISC_ENTRIES, ...RITUAL_ENTRIES, ...MERITS, ...FLAWS, ...INGRAINED_ENTRIES];
-
-const wikiSearch = new MiniSearch({
-  fields: ['title', 'content', 'category'],
-  storeFields: ['title', 'content', 'category', 'cost', 'source'],
-  // fuzzy 0.4 intentionally high: VtM terminology is esoteric and players typo constantly
-  searchOptions: { fuzzy: 0.4, prefix: true }
-});
-wikiSearch.addAll(ALL_REFERENCE.map((item, id) => ({ id, ...item })));
-
-// Renders a `source:` string as links into the hosted PDFs (opens a new tab,
-// jumps to the page via #page=). Admin dashboard only.
-function SourceLinks({ source }) {
-  const segs = parseSourceString(source);
-  if (!segs.length) return null;
-  return (
-    <div className={styles.sourceLine}>
-      <span className="material-symbols-outlined">menu_book</span>
-      {segs.map((s, i) => (
-        <React.Fragment key={i}>
-          {i > 0 && <span>·</span>}
-          {s.url
-            ? <a className={styles.sourceLink} href={s.url} target="_blank" rel="noopener noreferrer">{s.raw}</a>
-            : <span title="PDF not uploaded for this book">{s.raw}</span>}
-        </React.Fragment>
-      ))}
-    </div>
-  );
-}
 
 const FRENZY_TYPES = [
   { key: 'fury',   label: 'Fury Frenzy',   color: '#dc2626' },
@@ -235,7 +126,6 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
   const [duration,    setDuration]    = useState(0);
   const [topHeight,   setTopHeight]   = useState('50%');
 
-  const [wikiQuery, setWikiQuery] = useState('');
   const [toolQuery, setToolQuery] = useState('');
 
   const [tempNPCs,    setTempNPCs]    = useState([
@@ -662,11 +552,6 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
     return toolSearch.search(toolQuery.trim()).map(r => r.id);
   }, [toolQuery]);
 
-  const wikiResults = React.useMemo(() => {
-    if (!wikiQuery.trim()) return ALL_REFERENCE;
-    return wikiSearch.search(wikiQuery.trim());
-  }, [wikiQuery]);
-
   const feedItems = React.useMemo(() => {
     return [...broadcasts, ...rolls].sort(
       (a, b) => new Date(b.created_at || b.createdAt) - new Date(a.created_at || a.createdAt)
@@ -783,34 +668,8 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
             <div style={{ fontSize: '0.8rem', color: 'var(--primary)', textAlign: 'center' }}>{actionMsg}</div>
           )}
 
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', border: '1px solid var(--outline-variant)', borderRadius: '8px', overflow: 'hidden' }}>
-            <div style={{ padding: '0.5rem', background: 'var(--surface-container-high)', borderBottom: 'var(--glass-border)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span className="material-symbols-outlined" style={{ fontSize: '1.1rem', color: 'var(--text-muted)' }}>search</span>
-              <input
-                type="text"
-                placeholder="Universal Search (Rules, Disciplines, Merits...)"
-                value={wikiQuery}
-                onChange={e => setWikiQuery(e.target.value)}
-                className={styles.formInput}
-                style={{ width: '100%', padding: '0.4rem 0.5rem', fontSize: '0.75rem' }}
-              />
-            </div>
-            <div style={{ padding: '1rem', overflowY: 'auto', flex: 1, background: 'var(--surface-container-highest)', fontSize: '0.85rem' }}>
-              {wikiResults.length === 0
-                ? <div style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '1rem' }}>No matches found.</div>
-                : wikiResults.map((m, i) => (
-                  <div key={m.id ?? i} className={styles.wikiSection} style={{ marginBottom: '0.75rem' }}>
-                    <h3 style={{ fontSize: '0.85rem', color: 'var(--primary)', margin: '0 0 0.25rem 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span>{m.title}{m.cost ? ` (${m.cost})` : ''}</span>
-                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', border: '1px solid var(--outline-variant)', padding: '0.1rem 0.3rem', borderRadius: '4px' }}>{m.category}</span>
-                    </h3>
-                    <p style={{ fontSize: '0.75rem', margin: 0, whiteSpace: 'pre-wrap' }}>{m.content}</p>
-                    {m.source && <SourceLinks source={m.source} />}
-                  </div>
-                ))
-              }
-            </div>
-          </div>
+          {/* Multi Sourcebook Codex & Rule Master AI Sidebar */}
+          <LiveSessionCodexSidebar />
 
           <div>
             <h3 style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Archives</h3>
