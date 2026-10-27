@@ -1,5 +1,5 @@
 // src/data/corebookIndex.js
-import rawToc from './corebookToc.json';
+import rawToc from './corebookToc.json' with { type: 'json' };
 
 export const COREBOOK_TOC = rawToc;
 
@@ -643,5 +643,133 @@ export const COREBOOK_SUBJECT_INDEX = [
     pdfPage: 128,
     section: 'Rules : Willpower',
     summary: 'Rerolling up to three regular dice, resisting frenzy, superficial vs aggravated willpower damage.'
+  },
+  {
+    topic: 'Advantages and Flaws',
+    category: 'Character Creation',
+    page: 179,
+    pdfPage: 181,
+    section: 'Characters : Advantages',
+    summary: 'Rules for purchasing merits, flaws, and backgrounds during character creation and chronicle progression.'
+  },
+  {
+    topic: 'Backgrounds Overview',
+    category: 'Character Creation',
+    page: 184,
+    pdfPage: 186,
+    section: 'Characters : Backgrounds',
+    summary: 'Foundations and mortal anchors: Allies, Contacts, Fame, Haven, Herd, Influence, Mask, Mawla, Resources, Retainers, and Status.'
+  },
+  {
+    topic: 'Allies Background',
+    category: 'Backgrounds and Merits',
+    page: 184,
+    pdfPage: 186,
+    section: 'Characters : Backgrounds',
+    summary: 'Mortals who support the character. Rated from 1 to 4 dots for Effectiveness and 1 to 3 dots for Reliability. Enemy flaw.'
+  },
+  {
+    topic: 'Contacts Background',
+    category: 'Backgrounds and Merits',
+    page: 185,
+    pdfPage: 187,
+    section: 'Characters : Backgrounds',
+    summary: 'Mortals who provide information, items, or services. Rated 1 to 3 dots based on influence and sphere of competence.'
+  },
+  {
+    topic: 'Fame Background',
+    category: 'Backgrounds and Merits',
+    page: 185,
+    pdfPage: 187,
+    section: 'Characters : Backgrounds',
+    summary: 'Prominence and recognition in mortal or Kindred society rated 1 to 5 dots. Dark Secret and Infamy flaws.'
+  },
+  {
+    topic: 'Influence Background',
+    category: 'Backgrounds and Merits',
+    page: 186,
+    pdfPage: 188,
+    section: 'Characters : Backgrounds',
+    summary: 'Political, social, or economic sway over mortal institutions rated 1 to 5 dots. Disliked and Despised flaws.'
+  },
+  {
+    topic: 'Haven Background',
+    category: 'Backgrounds and Merits',
+    page: 188,
+    pdfPage: 190,
+    section: 'Characters : Backgrounds',
+    summary: 'Safe, private daytime shelter rated 1 to 3 dots with specialized merits including Armory, Cell, Watchmen, Laboratory, Library, Luxury, Surgery, and Warding.'
+  },
+  {
+    topic: 'Herd Background',
+    category: 'Backgrounds and Merits',
+    page: 187,
+    pdfPage: 189,
+    section: 'Characters : Backgrounds',
+    summary: 'Accessible kine vessels for safe feeding without hunting tests, rated 1 to 5 dots. Obvious Predator flaw.'
+  },
+  {
+    topic: 'Mask Background',
+    category: 'Backgrounds and Merits',
+    page: 188,
+    pdfPage: 190,
+    section: 'Characters : Backgrounds',
+    summary: 'False mortal identities, papers, and credentials rated 1 to 2 dots. Zeroed and Cobbler merits. Known Corpse and Blankbody flaws.'
+  },
+  {
+    topic: 'Mawla Background',
+    category: 'Backgrounds and Merits',
+    page: 192,
+    pdfPage: 194,
+    section: 'Characters : Backgrounds',
+    summary: 'A vampire mentor or patron providing guidance, favors, and protection rated 1 to 5 dots. Adversary flaw.'
+  },
+  {
+    topic: 'Resources Background',
+    category: 'Backgrounds and Merits',
+    page: 192,
+    pdfPage: 194,
+    section: 'Characters : Backgrounds',
+    summary: 'Liquid wealth, monthly cashflow, assets, and standard of living rated 1 to 5 dots. Destitute flaw.'
+  },
+  {
+    topic: 'Retainers Background',
+    category: 'Backgrounds and Merits',
+    page: 193,
+    pdfPage: 195,
+    section: 'Characters : Backgrounds',
+    summary: 'Mortal or ghoul servants bound by blood, money, or loyalty rated 1 to 3 dots. Stalkers flaw.'
+  },
+  {
+    topic: 'Status Background',
+    category: 'Backgrounds and Merits',
+    page: 193,
+    pdfPage: 195,
+    section: 'Characters : Backgrounds',
+    summary: 'Formal standing and reputation within vampire society or sect rated 1 to 5 dots. Suspect and Shunned flaws.'
+  },
+  {
+    topic: 'Coterie Domain and Backgrounds',
+    category: 'Coteries',
+    page: 195,
+    pdfPage: 197,
+    section: 'Characters : Coterie Creation',
+    summary: 'Rules for pooled coterie backgrounds, shared haven, hunting territory, Chasse, Lien, and Portillon ratings.'
+  },
+  {
+    topic: 'Blush of Life',
+    category: 'Blood and Hunger',
+    page: 218,
+    pdfPage: 220,
+    section: 'Vampires at Play : The Blood',
+    summary: 'Rousing the blood to mimic mortal vitality: heartbeat, warm skin, dilated pupils, sex, and passing medical inspection.'
+  },
+  {
+    topic: 'Eating Food and Mortal Digestion',
+    category: 'Blood and Hunger',
+    page: 218,
+    pdfPage: 220,
+    section: 'Vampires at Play : Feeding',
+    summary: 'Inability to digest solid food without the Eat Food merit. Difficulty 3 Stamina + Resolve test to keep food down before regurgitating.'
   }
 ];

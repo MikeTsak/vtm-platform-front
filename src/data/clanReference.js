@@ -88,6 +88,135 @@ export const CLAN_REFERENCE = {
   },
 };
 
+export const ALTERNATIVE_CLAN_BANES = {
+  Brujah: {
+    book: 'Players Guide',
+    page: 154,
+    pdfPage: 156,
+    baneName: 'Short Fuse',
+    bane: 'Short Fuse: when provoked or confronted, the difficulty of all tests to resist Frenzy increases by an amount equal to the Bane Severity.',
+    compulsionName: 'Contempt',
+    compulsion: 'Contempt: overcome with open disgust for surrounding weakness or hypocrisy; taking a two dice penalty to all tests involving cooperation.'
+  },
+  Gangrel: {
+    book: 'Players Guide',
+    page: 154,
+    pdfPage: 156,
+    baneName: 'Predatory Urges',
+    bane: 'Predatory Urges: when threatened or startled, the vampire loses a number of dice equal to Bane Severity on any Mental or Social test requiring calm reflection.',
+    compulsionName: 'Territorial Aggression',
+    compulsion: 'Territorial Aggression: compelled to mark and aggressively defend their immediate perimeter; taking a two dice penalty to tests away from the marked zone.'
+  },
+  Malkavian: {
+    book: 'Players Guide',
+    page: 155,
+    pdfPage: 157,
+    baneName: 'Sensory Deluge',
+    bane: 'Sensory Deluge: flashes of sensory insight or chaotic impressions distract the vampire; taking a penalty equal to Bane Severity on Perception and Awareness tests in chaotic environments.',
+    compulsionName: 'Paranoia',
+    compulsion: 'Paranoia: convinced that allies or strangers are concealing a catastrophic revelation; taking a two dice penalty to tests relying on trust.'
+  },
+  Nosferatu: {
+    book: 'Players Guide',
+    page: 155,
+    pdfPage: 157,
+    baneName: 'Pestilence',
+    bane: 'Pestilence: the vampire carries a swarm of vermin, fleas, or sewer grime; taking a penalty equal to Bane Severity on tests to leave no physical traces or forensic evidence behind.',
+    compulsionName: 'Hoarding',
+    compulsion: 'Hoarding: compelled to acquire, stash, or conceal a piece of physical or digital contraband in the scene; taking a two dice penalty to other tasks.'
+  },
+  Toreador: {
+    book: 'Players Guide',
+    page: 155,
+    pdfPage: 157,
+    baneName: 'Disdain of the Ordinary',
+    bane: 'Disdain of the Ordinary: when surrounded by mundane, cheap, or ugly surroundings, the vampire loses dice equal to Bane Severity on all non aggressive tests.',
+    compulsionName: 'Enraptured Critique',
+    compulsion: 'Enraptured Critique: compelled to critique, mock, or correct the artistic flaws or manners of someone in the scene; taking a two dice penalty to unrelated actions.'
+  },
+  Tremere: {
+    book: 'Players Guide',
+    page: 156,
+    pdfPage: 158,
+    baneName: 'Hermetic Pride',
+    bane: 'Hermetic Pride: the vampire cannot bring themselves to accept magical guidance from non Tremere; taking a penalty equal to Bane Severity on collaborative occult tests with outsiders.',
+    compulsionName: 'Dogmatism',
+    compulsion: 'Dogmatism: compelled to follow rigid hierarchy, ritual protocols, or scholarly order; taking a two dice penalty to spontaneous or improvised tests.'
+  },
+  Ventrue: {
+    book: 'Players Guide',
+    page: 156,
+    pdfPage: 158,
+    baneName: 'Exclusive Vintage',
+    bane: 'Exclusive Vintage: the vampire can only feed from mortals with a narrow psychological trait, profession, or lineage; feeding from any other mortal fails completely.',
+    compulsionName: 'Noblesse Oblige',
+    compulsion: 'Noblesse Oblige: compelled to assert aristocratic protection or dominance over their subordinates; taking a two dice penalty to actions where they do not lead.'
+  },
+  'Banu Haqim': {
+    book: 'Players Guide',
+    page: 156,
+    pdfPage: 158,
+    baneName: 'Slaking Thirst',
+    bane: 'Slaking Thirst: the vampire cannot slake Hunger from mortal vessels unless the mortal has committed a crime, broken a law, or violated a personal or chronicle Tenet.',
+    compulsionName: 'Righteous Indignation',
+    compulsion: 'Righteous Indignation: fixates on righting a perceived wrong or injustice in the scene; taking a two dice penalty to all tests not directed at punishing the guilty.'
+  },
+  Hecata: {
+    book: 'Players Guide',
+    page: 156,
+    pdfPage: 158,
+    baneName: 'Corpse Cold',
+    bane: 'Corpse Cold: the vampire feels uncomfortably cold and smells faintly of formaldehyde and wet earth; taking a penalty equal to Bane Severity to all Social pools with mortals.',
+    compulsionName: 'Morbid Fascination',
+    compulsion: 'Morbid Fascination: driven to examine, collect, or catalog traces of mortality, autopsy details, or death relics; taking a two dice penalty to all unrelated tests.'
+  },
+  Lasombra: {
+    book: 'Players Guide',
+    page: 157,
+    pdfPage: 159,
+    baneName: 'Disturbed Shadows',
+    bane: 'Disturbed Shadows: shadows cast by the vampire twist, flicker, and stretch unnaturally; the vampire loses dice equal to Bane Severity on Stealth and subtle Social tests in visible light.',
+    compulsionName: 'Hubris',
+    compulsion: 'Hubris: overcome by extreme pride and dismissal of inferior Kindred or kine; taking a two dice penalty on all rolls where they accept help or advice.'
+  },
+  'The Ministry': {
+    book: 'Players Guide',
+    page: 157,
+    pdfPage: 159,
+    baneName: 'Cold Blooded',
+    bane: 'Cold Blooded: in cold temperatures or darkness without warmth, the vampire becomes lethargic and loses dice equal to Bane Severity on all Physical tests.',
+    compulsionName: 'Sin Eater',
+    compulsion: 'Sin Eater: driven to tempt another into committing an immoral or forbidden act; taking a two dice penalty to all other actions until the sin is committed.'
+  },
+  Ravnos: {
+    book: 'Players Guide',
+    page: 157,
+    pdfPage: 159,
+    baneName: 'Restless Blood',
+    bane: 'Restless Blood: if the vampire rests in the same neighborhood for more than three consecutive nights, they lose dice equal to Bane Severity on all rolls until relocating.',
+    compulsionName: 'Showmanship',
+    compulsion: 'Showmanship: compelled to demonstrate superiority or trick an opponent through flash and spectacle; taking a two dice penalty to direct, simple actions.'
+  },
+  Salubri: {
+    book: 'Players Guide',
+    page: 157,
+    pdfPage: 159,
+    baneName: 'Empathetic Bleed',
+    bane: 'Empathetic Bleed: when a creature in the vampire presence suffers damage or terror, the vampire takes a penalty equal to Bane Severity on concentration tests.',
+    compulsionName: 'Saviour Complex',
+    compulsion: 'Saviour Complex: overwhelmed by the need to protect the weakest individual in the scene; taking a two dice penalty to any roll that puts that person at risk.'
+  },
+  Tzimisce: {
+    book: 'Players Guide',
+    page: 157,
+    pdfPage: 159,
+    baneName: 'Haunted Soil',
+    bane: 'Haunted Soil: the vampire must sleep surrounded by dirt or memorabilia from their birthplace or grave; sleeping without it causes aggravated willpower damage equal to Bane Severity.',
+    compulsionName: 'Territorial Possessiveness',
+    compulsion: 'Territorial Possessiveness: compelled to claim ownership of an item or space in the scene; taking a two dice penalty to rolls that do not enforce ownership.'
+  }
+};
+
 export function clanRef(clan) {
   if (!clan) return null;
   return CLAN_REFERENCE[clan]

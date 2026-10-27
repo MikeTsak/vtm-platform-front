@@ -2,8 +2,8 @@
 // Master multi:sourcebook index and table of contents registry for V5
 // Strictly compliant with typography rules: zero hyphens and zero em dashes in user facing text.
 
-import rawCorebookToc from './corebookToc.json';
-import { COREBOOK_SUBJECT_INDEX } from './corebookIndex';
+import rawCorebookToc from './corebookToc.json' with { type: 'json' };
+import { COREBOOK_SUBJECT_INDEX } from './corebookIndex.js';
 
 export const SOURCEBOOK_KEYS = [
   'Corebook',
@@ -983,5 +983,221 @@ export const SOURCEBOOKS_SUBJECT_INDEX = [
     pdfPage: 82,
     section: 'Apostates of a Cruel Church : Ritae',
     summary: 'Sacred pack rites: The Vaulderie blood chalice shattering individual blood bonds to create the Vinculum.'
+  },
+  {
+    book: 'Players Guide',
+    topic: 'Predator Types Compendium',
+    category: 'Character Options',
+    page: 136,
+    pdfPage: 138,
+    section: 'Character Options : Predator Types',
+    summary: 'Overview of all predator types: hunting pools, feeding disciplines, humanity impact, and bonus advantages.'
+  },
+  {
+    book: 'Players Guide',
+    topic: 'Coterie Types and Domain Systems',
+    category: 'Rules and Systems',
+    page: 182,
+    pdfPage: 184,
+    section: 'Coteries : Building Groups',
+    summary: 'Coterie archetypes, shared advantage pools, collective flaws, Chasse, Lien, and Portillon ratings.'
+  },
+  {
+    book: 'Cults of the Blood Gods',
+    topic: 'Mortuary Services and Feeding',
+    category: 'Rules and Systems',
+    page: 98,
+    pdfPage: 99,
+    section: 'The Business of Death : Feeding',
+    summary: 'Graverobber and Extortionist hunting mechanics: preying on mourners, body disposal, and funeral homes.'
+  },
+  {
+    book: 'Camarilla',
+    topic: 'The Six Traditions of Caine',
+    category: 'Rules and Systems',
+    page: 28,
+    pdfPage: 29,
+    section: 'Laws of the Ivory Tower : Traditions',
+    summary: 'Masquerade, Domain, Progeny, Accounting, Hospitality, and Destruction: enforcement and Prince judgments.'
+  },
+  {
+    book: 'Camarilla',
+    topic: 'The First Tradition: The Masquerade',
+    category: 'Rules and Systems',
+    page: 30,
+    pdfPage: 31,
+    section: 'Laws of the Ivory Tower : The Masquerade',
+    summary: 'Thou shalt not reveal thy true nature to those not of the Blood. Doing so forfeits all claims to protection.'
+  },
+  {
+    book: 'Camarilla',
+    topic: 'The Second Tradition: The Domain',
+    category: 'Rules and Systems',
+    page: 34,
+    pdfPage: 35,
+    section: 'Laws of the Ivory Tower : The Domain',
+    summary: 'Thy domain is thine own concern. All others owe thee respect while in it. None may challenge thy word in thy domain.'
+  },
+  {
+    book: 'Camarilla',
+    topic: 'The Third Tradition: The Progeny',
+    category: 'Rules and Systems',
+    page: 38,
+    pdfPage: 39,
+    section: 'Laws of the Ivory Tower : The Progeny',
+    summary: 'Thou shalt only sire another with permission of thine Elder. If thou createst another without leave, both shall be slain.'
+  },
+  {
+    book: 'Camarilla',
+    topic: 'The Fourth Tradition: The Accounting',
+    category: 'Rules and Systems',
+    page: 42,
+    pdfPage: 43,
+    section: 'Laws of the Ivory Tower : The Accounting',
+    summary: 'Those thou createst are thine own childer. Until released, their sins fall upon thy head and thou shalt answer for them.'
+  },
+  {
+    book: 'Camarilla',
+    topic: 'The Fifth Tradition: Hospitality',
+    category: 'Rules and Systems',
+    page: 46,
+    pdfPage: 47,
+    section: 'Laws of the Ivory Tower : Hospitality',
+    summary: 'Honor one anothers domain. When coming to a foreign city, present thyself unto him who ruleth there.'
+  },
+  {
+    book: 'Camarilla',
+    topic: 'The Sixth Tradition: Destruction',
+    category: 'Rules and Systems',
+    page: 50,
+    pdfPage: 51,
+    section: 'Laws of the Ivory Tower : Destruction',
+    summary: 'Thou art forbidden to destroy another of thy kind. The right of destruction belongeth only unto thine Elder or Prince.'
+  },
+  {
+    book: 'Camarilla',
+    topic: 'Camarilla Court Harpy and Boons',
+    category: 'Setting and Lore',
+    page: 84,
+    pdfPage: 85,
+    section: 'The Court : Harpys Role',
+    summary: 'Harpies track social standing, public mockery, scandals, debts, and the registration of trivial, minor, and major boons.'
+  },
+  {
+    book: 'Camarilla',
+    topic: 'Camarilla Sheriff and Scourge Enforcement',
+    category: 'Setting and Lore',
+    page: 72,
+    pdfPage: 73,
+    section: 'The Court : Enforcers',
+    summary: 'The Sheriff investigates violations and detains kindred. The Scourge patrols borders and destroys unsanctioned thin bloods.'
+  },
+  {
+    book: 'Camarilla',
+    topic: 'Second Inquisition Blankbody Tiers',
+    category: 'Setting and Lore',
+    page: 128,
+    pdfPage: 129,
+    section: 'The Second Inquisition : Threat Assessment',
+    summary: 'Inquisition threat levels for blankbodies, safe communication protocols, burn bags, counter surveillance, and kill squads.'
+  },
+  {
+    book: 'Cults of the Blood Gods',
+    topic: 'Extortionist Predator Type',
+    category: 'Predator Types',
+    page: 98,
+    pdfPage: 99,
+    section: 'The Business of Death : Predator Types',
+    summary: 'Coercing mortals into feeding arrangements through debt, blackmail, protection rackets, or institutional leverage.'
+  },
+  {
+    book: 'Cults of the Blood Gods',
+    topic: 'Graverobber Predator Type',
+    category: 'Predator Types',
+    page: 99,
+    pdfPage: 100,
+    section: 'The Business of Death : Predator Types',
+    summary: 'Feeding on mourners at graveyards, mortuary personnel, autopsy tables, and fresh corpses before full coagulation.'
+  },
+  {
+    book: 'Cults of the Blood Gods',
+    topic: 'Feeding on the Dead and Embalmed Vitae',
+    category: 'Rules and Systems',
+    page: 202,
+    pdfPage: 203,
+    section: 'Disciplines : Necromantic Feeding',
+    summary: 'Drinking blood from recently deceased corpses within minutes of death or treated with Oblivion sacraments to slake hunger.'
+  },
+  {
+    book: 'Cults of the Blood Gods',
+    topic: 'The Shroud and Spirit Manifestations',
+    category: 'Rules and Systems',
+    page: 204,
+    pdfPage: 205,
+    section: 'Disciplines : Oblivion and The Underworld',
+    summary: 'The membrane separating the living world from the Shadowlands, localized density, ghostly anchors, and spiritual hazards.'
+  },
+  {
+    book: 'Anarch',
+    topic: 'Anarch Sweeps and Feeding Patrols',
+    category: 'Rules and Systems',
+    page: 92,
+    pdfPage: 93,
+    section: 'The Spark : Guerrilla Tactics',
+    summary: 'Roadside Killer hunting, highway ambushes, sweeping mortal territory, and evading Camarilla sheriffs.'
+  },
+  {
+    book: 'Anarch',
+    topic: 'Roadside Killer Predator Type',
+    category: 'Predator Types',
+    page: 182,
+    pdfPage: 183,
+    section: 'Character Options : Predator Types',
+    summary: 'Feeding on travelers, hitchhikers, truckers, and lone drivers along desolate highways and rest stops.'
+  },
+  {
+    book: 'Anarch',
+    topic: 'Anarch Cellphone and Digital Hygiene',
+    category: 'Rules and Systems',
+    page: 110,
+    pdfPage: 111,
+    section: 'The Spark : Operational Security',
+    summary: 'Strict communication discipline: burner phones, dead drops, encrypted mesh nets, and preventing Second Inquisition geo tracking.'
+  },
+  {
+    book: 'Anarch',
+    topic: 'Guerrilla Street Warfare and Urban Sabotage',
+    category: 'Rules and Systems',
+    page: 96,
+    pdfPage: 97,
+    section: 'The Spark : Street Tactics',
+    summary: 'Coordinating flash mobs, cutting municipal power grids, molotov ambushes against elders havens, and rapid redeployment.'
+  },
+  {
+    book: 'Players Guide',
+    topic: 'Advanced Modular Combat Systems',
+    category: 'Rules and Systems',
+    page: 170,
+    pdfPage: 172,
+    section: 'Alternative Systems : Combat Options',
+    summary: 'Optional tactical combat rules: flanking, cover, called shots, weapon modifications, and environmental hazards.'
+  },
+  {
+    book: 'Players Guide',
+    topic: 'Convictions and Touchstones Variants',
+    category: 'Rules and Systems',
+    page: 162,
+    pdfPage: 164,
+    section: 'Alternative Systems : Morality',
+    summary: 'Alternative conviction pairings, philosophical touchstones, institutional touchstones, and chronicling remorse.'
+  },
+  {
+    book: 'Corebook',
+    topic: 'Hunting Difficulty and Domain Chasse',
+    category: 'Rules and Systems',
+    page: 221,
+    pdfPage: 223,
+    section: 'Vampires at Play : Hunting in Domain',
+    summary: 'Baseline hunting tests vs Difficulty determined by domain Chasse, mortal population density, and police presence.'
   }
 ];

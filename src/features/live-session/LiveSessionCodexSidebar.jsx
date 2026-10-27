@@ -61,6 +61,9 @@ const CATEGORIES = [
   { key: 'powers', label: 'Powers' },
   { key: 'rituals', label: 'Rituals' },
   { key: 'merits', label: 'Merits, Flaws' },
+  { key: 'backgrounds', label: 'Backgrounds' },
+  { key: 'predator_types', label: 'Predator Types' },
+  { key: 'coteries', label: 'Coteries' },
   { key: 'sourcebooks', label: 'Sourcebooks' },
   { key: 'clans', label: 'Clans' }
 ];
@@ -142,7 +145,7 @@ export default function LiveSessionCodexSidebar() {
         'book', 'pdfPage', 'page', 'wikiSlug', 'wikiUrl', 'discipline',
         'clan', 'isSourcebookIndex'
       ],
-      searchOptions: { fuzzy: 0.35, prefix: true }
+      searchOptions: { fuzzy: 0.35, prefix: true, boost: { title: 4, category: 1.5 } }
     });
     ms.addAll(allReferenceEntries.map((item, idx) => ({ id: item.id || `ref_${idx}`, ...item })));
     return ms;
@@ -169,6 +172,9 @@ export default function LiveSessionCodexSidebar() {
       if (categoryFilter === 'powers') return cat === 'disciplines';
       if (categoryFilter === 'rituals') return cat === 'rituals' || cat === 'ceremonies';
       if (categoryFilter === 'merits') return cat === 'merits' || cat === 'flaws' || cat === 'ingrained flaws';
+      if (categoryFilter === 'backgrounds') return cat.includes('background');
+      if (categoryFilter === 'predator_types') return cat.includes('predator');
+      if (categoryFilter === 'coteries') return cat.includes('coterie');
       if (categoryFilter === 'sourcebooks') return item.isSourcebookIndex || cat.endsWith('index');
       if (categoryFilter === 'clans') return cat === 'clans';
       return true;

@@ -580,7 +580,7 @@ export default function AdminKnowledgeBase() {
     const ms = new MiniSearch({
       fields: ['title', 'content', 'category'],
       storeFields: ['id', 'title', 'content', 'category', 'cost', 'pool', 'source', 'book', 'pdfPage', 'page', 'wikiSlug', 'wikiUrl', 'discipline', 'clan'],
-      searchOptions: { fuzzy: 0.35, prefix: true }
+      searchOptions: { fuzzy: 0.35, prefix: true, boost: { title: 4, category: 1.5 } }
     });
     ms.addAll(allReferenceEntries.map((item, idx) => ({ id: item.id || `ref_${idx}`, ...item })));
     return ms;
@@ -622,6 +622,9 @@ export default function AdminKnowledgeBase() {
         if (searchCategory === 'rituals') return cat.includes('ritual') || cat.includes('ceremon');
         if (searchCategory === 'merits') return cat.includes('merit');
         if (searchCategory === 'flaws') return cat.includes('flaw');
+        if (searchCategory === 'backgrounds') return cat.includes('background');
+        if (searchCategory === 'predator_types') return cat.includes('predator');
+        if (searchCategory === 'coteries') return cat.includes('coterie');
         if (searchCategory === 'clans') return cat.includes('clan');
         if (searchCategory === 'wiki') return cat.includes('wiki');
         if (searchCategory === 'sourcebooks') return cat.includes('index') || cat.includes('corebook') || cat.includes('guide') || cat.includes('cults') || cat.includes('camarilla') || cat.includes('anarch') || cat.includes('sabbat');
@@ -1810,6 +1813,9 @@ export default function AdminKnowledgeBase() {
                 { id: 'rituals', label: 'Rituals' },
                 { id: 'merits', label: 'Merits' },
                 { id: 'flaws', label: 'Flaws' },
+                { id: 'backgrounds', label: 'Backgrounds' },
+                { id: 'predator_types', label: 'Predator Types' },
+                { id: 'coteries', label: 'Coteries' },
                 { id: 'clans', label: 'Clans' },
                 { id: 'wiki', label: 'LARP Wiki' },
                 { id: 'sourcebooks', label: 'Sourcebooks Index' }
