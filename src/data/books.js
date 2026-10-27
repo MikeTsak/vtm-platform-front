@@ -21,7 +21,7 @@ export const BOOK_BASE = 'https://res.attlarp.gr/Books/';
 
 export const BOOKS = [
   { label: 'Corebook',                 file: 'Vampire-the-Masquerade-1.pdf', offset: 2,
-    aliases: ['Core Rulebook', 'V5 Corebook', 'Vampire: The Masquerade Corebook'] },
+    aliases: ['Core Rulebook', 'V5 Corebook', 'Vampire: The Masquerade Corebook', 'Vampire: The Masquerade 5th Edition Corebook', 'Vampire the Masquerade Corebook', 'V5 Core Rulebook'] },
   { label: "Players Guide",            file: 'Vampire-The-Masquerade-V5-Players-Guide.pdf', offset: 2,
     aliases: ["Player's Guide", 'Vampire: The Masquerade Players Guide'] },
   { label: 'Companion',                file: 'Vampire-The-Masquerade-Companion.pdf', offset: 0,

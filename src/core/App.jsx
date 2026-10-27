@@ -60,6 +60,7 @@ const SchreckNet = lazyWithRetry(() => import('../features/comms/schrecknet/Schr
 const SurfaceWeb = lazyWithRetry(() => import('../features/comms/surfaceweb/SurfaceWeb'));
 const AnonymousNotesPage = lazyWithRetry(() => import('../features/comms/notes/AnonymousNotesPage'));
 const Admin = lazyWithRetry(() => import('../features/admin/Admin'));
+const AdminKnowledgeBase = lazyWithRetry(() => import('../features/admin/AdminKnowledgeBase'));
 const NPCs = lazyWithRetry(() => import('../features/npcs/NPCs'));
 const AdminNPCView = lazyWithRetry(() => import('../features/admin/AdminNPCView'));
 const RetainersView = lazyWithRetry(() => import('../features/character/RetainersView'));
@@ -315,6 +316,7 @@ function AppLayout() {
 
             <Route path="/admin" element={<AdminOnly><Admin /></AdminOnly>} />
             <Route path="/admin/live-session" element={<CourtOnly><LiveSessionDashboard /></CourtOnly>} />
+            <Route path="/admin/knowledge-base" element={<AdminOnly><AdminKnowledgeBase /></AdminOnly>} />
             <Route path="/admin/npcs" element={<AdminOnly><NPCs /></AdminOnly>} />
             <Route path="/admin/npcs/:id" element={<AdminOnly><AdminNPCView /></AdminOnly>} />
             <Route path="/admin/character/:id" element={<AdminOnly><CharacterEdit /></AdminOnly>} />

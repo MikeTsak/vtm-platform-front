@@ -1,5 +1,6 @@
 // src/features/admin/AdminHomeTab.jsx
 import React, { useMemo, useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../core/api';
 import styles from '../../styles/AdminHomeTab.module.css';
@@ -65,6 +66,8 @@ export default function AdminHomeTab({
   setTab,
   onOpenEditor,
 }) {
+  const navigate = useNavigate();
+
   // Fetch downtime cycle configuration (opening, deadline, active phase)
   const { data: dtConfig } = useQuery({
     queryKey: ['adminDowntimesConfig'],
@@ -1508,10 +1511,11 @@ export default function AdminHomeTab({
               <button
                 type="button"
                 className={styles.quickActionBtn}
-                onClick={() => setTab('broadcast')}
+                onClick={() => navigate('/admin/knowledge-base')}
+                title="Open Knowledge Base"
               >
-                <span className="material-symbols-outlined">campaign</span>
-                <span>Broadcast Alert</span>
+                <span className="material-symbols-outlined">psychology</span>
+                <span>Knowledge Base</span>
               </button>
 
               <button

@@ -272,6 +272,9 @@ export default function Nav() {
                 <NavLink
   data-cuelume-press
   data-cuelume-hover to="/admin/live-session" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Live Session Dashboard</NavLink>
+                <NavLink
+  data-cuelume-press
+  data-cuelume-hover to="/admin/knowledge-base" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Knowledge Base</NavLink>
               </NavDropdown>
             )}
           </div>
@@ -395,6 +398,9 @@ export default function Nav() {
                     <NavLink
   data-cuelume-press
   data-cuelume-hover to="/admin/live-session" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Live Session Dashboard</NavLink>
+                    <NavLink
+  data-cuelume-press
+  data-cuelume-hover to="/admin/knowledge-base" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Knowledge Base</NavLink>
                   </NavDropdown>
                 </div>
               )}
