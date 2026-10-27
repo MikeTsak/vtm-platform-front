@@ -16,6 +16,8 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import Avatar from '../../components/Avatar';
 import { symlogoWhite } from '../../data/clans';
+import ImagePreviewModal from '../../components/ImagePreviewModal';
+import FaGlyph from '../../ui/FaGlyph';
 
 function useCountdown(targetDate, isEndOfDay = false) {
   const [now, setNow] = useState(new Date().getTime());
@@ -294,10 +296,14 @@ function ExpandableText({
   );
 }
 
-function ActiveTrackItem({ dt, isProject, massReleaseCountdown, deadlinePassed }) {
+function ActiveTrackItem({ dt, isProject, massReleaseCountdown, deadlinePassed, onPreviewImage }) {
   const queryClient = useQueryClient();
   const status = (dt.status || 'submitted').toLowerCase();
   const displayTitle = isProject ? dt.title.replace('[PROJECT] ', '') : dt.title;
+  const hasImages = (Array.isArray(dt.resolution_images) && dt.resolution_images.length > 0) || Boolean(dt.resolution_image_url);
+  const images = Array.isArray(dt.resolution_images) && dt.resolution_images.length > 0
+    ? dt.resolution_images
+    : (dt.resolution_image_url ? [{ url: dt.resolution_image_url, name: dt.resolution_image_name || 'Resolution Attachment' }] : []);
 
   let badgeClass = styles.badgePending;
   if (status === 'approved' || status.startsWith('approved:')) badgeClass = styles.badgeApproved;
@@ -416,7 +422,7 @@ function ActiveTrackItem({ dt, isProject, massReleaseCountdown, deadlinePassed }
               <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>schedule</span>
               Resolution releases in {formatCountdownText(massReleaseCountdown)}
             </div>
-          ) : dt.gm_resolution ? (
+          ) : (dt.gm_resolution || hasImages) ? (
             <div className={styles.resolutionBox} style={{ position: 'relative', zIndex: 1, marginTop: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '4px' }}>
                 <span className={`${styles.resolutionLabel} ${styles.resolutionLabelApproved}`}>GM Resolution:</span>
@@ -424,11 +430,33 @@ function ActiveTrackItem({ dt, isProject, massReleaseCountdown, deadlinePassed }
                   Resolved by: {formatResolverName(dt.resolved_by_name)}
                 </span>
               </div>
-              <ExpandableText
-                text={dt.gm_resolution}
-                clampLines={4}
-                className={styles.resolutionText}
-              />
+              {dt.gm_resolution && (
+                <ExpandableText
+                  text={dt.gm_resolution}
+                  clampLines={4}
+                  className={styles.resolutionText}
+                />
+              )}
+              {hasImages && (
+                <div className={styles.resolutionAttachmentList}>
+                  {images.map((img, idx) => (
+                    <button
+                      key={img.url || idx}
+                      type="button"
+                      className={styles.resolutionAttachmentBtn}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onPreviewImage) onPreviewImage(img);
+                      }}
+                      title="Click to preview image full screen"
+                    >
+                      <FaGlyph name="fa-image" size={14} />
+                      <span className={styles.resolutionAttachmentName}>{img.name || 'Resolution Attachment'}</span>
+                      <FaGlyph name="fa-expand" size={11} />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           ) : awaitingST ? (
             <div className={styles.trackNotice}>
@@ -454,9 +482,13 @@ function ActiveTrackItem({ dt, isProject, massReleaseCountdown, deadlinePassed }
   );
 }
 
-function ArchiveItem({ dt, isProject }) {
+function ArchiveItem({ dt, isProject, onPreviewImage }) {
   const status = (dt.status || 'resolved').toLowerCase();
   const displayTitle = isProject ? dt.title.replace('[PROJECT] ', '') : dt.title;
+  const hasImages = (Array.isArray(dt.resolution_images) && dt.resolution_images.length > 0) || Boolean(dt.resolution_image_url);
+  const images = Array.isArray(dt.resolution_images) && dt.resolution_images.length > 0
+    ? dt.resolution_images
+    : (dt.resolution_image_url ? [{ url: dt.resolution_image_url, name: dt.resolution_image_name || 'Resolution Attachment' }] : []);
   
 
   const dateStr = niceDate(dt.created_at).split(' ').slice(1, 3).join(' '); // "Sep 1999" approx
@@ -505,7 +537,7 @@ function ArchiveItem({ dt, isProject }) {
           </div>
         )}
 
-        {dt.gm_resolution ? (
+        {(dt.gm_resolution || hasImages) ? (
           <div className={styles.resolutionBox}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '4px' }}>
               <span className={`${styles.resolutionLabel} ${status === 'rejected' ? styles.resolutionLabelRejected : styles.resolutionLabelApproved}`}>
@@ -515,11 +547,33 @@ function ArchiveItem({ dt, isProject }) {
                 Resolved by: {formatResolverName(dt.resolved_by_name)}
               </span>
             </div>
-            <ExpandableText
-              text={dt.gm_resolution}
-              clampLines={4}
-              className={styles.resolutionText}
-            />
+            {dt.gm_resolution && (
+              <ExpandableText
+                text={dt.gm_resolution}
+                clampLines={4}
+                className={styles.resolutionText}
+              />
+            )}
+            {hasImages && (
+              <div className={styles.resolutionAttachmentList}>
+                {images.map((img, idx) => (
+                  <button
+                    key={img.url || idx}
+                    type="button"
+                    className={styles.resolutionAttachmentBtn}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onPreviewImage) onPreviewImage(img);
+                    }}
+                    title="Click to preview image full screen"
+                  >
+                    <FaGlyph name="fa-image" size={14} />
+                    <span className={styles.resolutionAttachmentName}>{img.name || 'Resolution Attachment'}</span>
+                    <FaGlyph name="fa-expand" size={11} />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         ) : null}
       </div>
@@ -529,6 +583,7 @@ function ArchiveItem({ dt, isProject }) {
 
 export default function DownTimes() {
   const { user: currentUser } = useContext(AuthCtx);
+  const [previewImage, setPreviewImage] = useState(null);
   
   // React Query Fetching
   const { data: configData, isLoading: isConfigLoading } = useQuery({
@@ -871,6 +926,7 @@ export default function DownTimes() {
                     isProject={viewMode === 'project'}
                     massReleaseCountdown={massReleaseCountdown}
                     deadlinePassed={deadlinePassed}
+                    onPreviewImage={setPreviewImage}
                   />
                 ))
               )}
@@ -900,9 +956,10 @@ export default function DownTimes() {
                   isProject={viewMode === 'project'}
                   massReleaseCountdown={massReleaseCountdown}
                   deadlinePassed={deadlinePassed}
+                  onPreviewImage={setPreviewImage}
                 />
               ) : (
-                <ArchiveItem key={dt.id} dt={dt} isProject={viewMode === 'project'} />
+                <ArchiveItem key={dt.id} dt={dt} isProject={viewMode === 'project'} onPreviewImage={setPreviewImage} />
               ))
             )}
           </div>
@@ -911,7 +968,7 @@ export default function DownTimes() {
               <summary className={styles.oldScenesSummary}>Previous scenes ({oldScenes.length})</summary>
               <div className={styles.archiveGrid} style={{ marginTop: '16px' }}>
                 {oldScenes.map(dt => (
-                  <ArchiveItem key={dt.id} dt={dt} isProject={viewMode === 'project'} />
+                  <ArchiveItem key={dt.id} dt={dt} isProject={viewMode === 'project'} onPreviewImage={setPreviewImage} />
                 ))}
               </div>
             </details>
@@ -978,13 +1035,20 @@ export default function DownTimes() {
               </div>
             ) : (
               archiveList.map(dt => (
-                <ArchiveItem key={dt.id} dt={dt} isProject={viewMode === 'project'} />
+                <ArchiveItem key={dt.id} dt={dt} isProject={viewMode === 'project'} onPreviewImage={setPreviewImage} />
               ))
             )}
           </div>
         </motion.section>
           </motion.div>
         </AnimatePresence>
+
+        <ImagePreviewModal
+          isOpen={Boolean(previewImage)}
+          imageUrl={previewImage?.url}
+          imageName={previewImage?.name}
+          onClose={() => setPreviewImage(null)}
+        />
       </motion.main>
     </Skeleton>
   );

@@ -7,6 +7,7 @@ import { AuthCtx } from '../../core/AuthContext';
 import { formatEuDate } from '../../utils/dateFormatter';
 import styles from '../../styles/Admin.module.css';
 import Avatar from '../../components/Avatar';
+import ImagePreviewModal from '../../components/ImagePreviewModal';
 import generateVTMCharacterSheetPDF from '../../utils/pdfGenerator';
 import { CLAN_HEX as CLAN_COLORS, symlogoWhite } from '../../data/clans';
 
@@ -326,8 +327,13 @@ function SheetPdfButton({ character, style }) {
   );
 }
 
-function SceneActionDetails({ r, showResolution = true }) {
+function SceneActionDetails({ r, showResolution = true, onPreviewImage }) {
   const label = { fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', fontWeight: 800, marginBottom: '6px' };
+  const hasImages = (Array.isArray(r.resolution_images) && r.resolution_images.length > 0) || Boolean(r.resolution_image_url);
+  const images = Array.isArray(r.resolution_images) && r.resolution_images.length > 0
+    ? r.resolution_images
+    : (r.resolution_image_url ? [{ url: r.resolution_image_url, name: r.resolution_image_name || 'Resolution Attachment' }] : []);
+
   return (
     <div style={{ flexBasis: '100%', display: 'grid', gap: '0.85rem', background: 'rgba(0, 0, 0, 0.35)', padding: '1rem', borderRadius: 'var(--radius-sm)', border: '1px dashed rgba(255, 255, 255, 0.1)', fontSize: '0.9rem', color: '#e0e0e5', cursor: 'auto' }}>
       <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Submitted {niceDate(r.created_at)}</div>
@@ -341,10 +347,41 @@ function SceneActionDetails({ r, showResolution = true }) {
           {r.gm_notes}
         </div>
       )}
-      {showResolution && r.gm_resolution && (
+      {showResolution && (r.gm_resolution || hasImages) && (
         <div style={{ whiteSpace: 'pre-wrap' }}>
           <div style={label}>Current Resolution{r.resolved_by_name ? ` (Resolved by: ${r.resolved_by_name})` : ''}:</div>
           {r.gm_resolution}
+          {hasImages && (
+            <div style={{ marginTop: '10px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {images.map((img, idx) => (
+                <button
+                  key={img.url || idx}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onPreviewImage) onPreviewImage(img);
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '4px 10px',
+                    background: 'rgba(255, 255, 255, 0.06)',
+                    border: '1px solid rgba(255, 179, 174, 0.3)',
+                    borderRadius: '4px',
+                    color: 'var(--primary, #ffb3ae)',
+                    fontSize: '0.82rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                  title="Click to preview image full screen"
+                >
+                  <FaGlyph name="fa-image" size={13} />
+                  <span>{img.name || 'Resolution Attachment'}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -617,6 +654,7 @@ export default function AdminDowntimesTab({ characters = [] }) {
   }, [draggedDtId]);
 
   const [buffer, setBuffer] = useState({});
+  const [previewImage, setPreviewImage] = useState(null);
 
   const charById = useMemo(() => new Map(characters.map(c => [c.id, c])), [characters]);
 
@@ -1087,12 +1125,25 @@ export default function AdminDowntimesTab({ characters = [] }) {
   }
 
   function openBuf(r) {
+    let images = [];
+    if (Array.isArray(r.resolution_images)) {
+      images = r.resolution_images;
+    } else if (typeof r.resolution_images === 'string' && r.resolution_images.trim()) {
+      try { images = JSON.parse(r.resolution_images); } catch {}
+    } else if (r.resolution_image_url) {
+      images = [{ url: r.resolution_image_url, name: r.resolution_image_name || 'Resolution Attachment' }];
+    }
+
     setBuffer(prev => prev[r.id] ? prev : ({
       ...prev, [r.id]: {
         status: r.status || 'submitted',
         gm_notes: r.gm_notes || '',
         gm_resolution: r.gm_resolution || '',
         resolved_by: r.resolved_by ?? '',
+        resolution_images: images,
+        resolution_image_url: r.resolution_image_url || '',
+        resolution_image_name: r.resolution_image_name || '',
+        uploadingImage: false,
         saving: false,
         error: '',
         info: ''
@@ -1120,6 +1171,9 @@ export default function AdminDowntimesTab({ characters = [] }) {
     if (patch.resolved_by !== undefined) updBuf(id, 'resolved_by', patch.resolved_by);
     if (patch.scene_id !== undefined) updBuf(id, 'scene_id', patch.scene_id);
     if (patch.scene_title !== undefined) updBuf(id, 'scene_title', patch.scene_title);
+    if (patch.resolution_images !== undefined) updBuf(id, 'resolution_images', patch.resolution_images);
+    if (patch.resolution_image_url !== undefined) updBuf(id, 'resolution_image_url', patch.resolution_image_url);
+    if (patch.resolution_image_name !== undefined) updBuf(id, 'resolution_image_name', patch.resolution_image_name);
 
     updBuf(id, 'saving', true);
     updBuf(id, 'error', ''); updBuf(id, 'info', '');
@@ -1134,6 +1188,9 @@ export default function AdminDowntimesTab({ characters = [] }) {
           : (merged.resolved_by === '' ? null : undefined),
         scene_id: merged.scene_id !== undefined ? merged.scene_id : (patch.scene_id !== undefined ? patch.scene_id : undefined),
         scene_title: merged.scene_title !== undefined ? merged.scene_title : (patch.scene_title !== undefined ? patch.scene_title : undefined),
+        resolution_images: merged.resolution_images,
+        resolution_image_url: merged.resolution_image_url || null,
+        resolution_image_name: merged.resolution_image_name || null
       };
       const { data } = await api.patch(`admin/downtimes/${id}`, payload);
       const updated = data?.downtime ? data.downtime : { ...rows.find(x => x.id === id), ...payload };
@@ -1152,6 +1209,39 @@ export default function AdminDowntimesTab({ characters = [] }) {
 
   function cancelRow(id) {
     setBuffer(prev => { const next = { ...prev }; delete next[id]; return next; });
+  }
+
+  async function handleUploadResolutionImage(dtId, file) {
+    if (!file) return;
+    openBuf(rows.find(x => x.id === dtId));
+    updBuf(dtId, 'uploadingImage', true);
+    updBuf(dtId, 'error', '');
+    try {
+      const fd = new FormData();
+      fd.append('image', file);
+      const { data } = await api.post('admin/downtimes/upload-image', fd);
+      if (data?.url) {
+        const currentImages = buffer[dtId]?.resolution_images || (rows.find(x => x.id === dtId)?.resolution_images || []);
+        const newImages = [...currentImages, { url: data.url, name: data.name || file.name }];
+        updBuf(dtId, 'resolution_images', newImages);
+        updBuf(dtId, 'resolution_image_url', newImages[0]?.url || null);
+        updBuf(dtId, 'resolution_image_name', newImages[0]?.name || null);
+        updBuf(dtId, 'info', 'Image uploaded.');
+      }
+    } catch (e) {
+      console.error('Failed to upload downtime image', e);
+      updBuf(dtId, 'error', formatApiError(e, 'Image upload failed'));
+    } finally {
+      updBuf(dtId, 'uploadingImage', false);
+    }
+  }
+
+  function handleRemoveResolutionImage(dtId, idx) {
+    const currentImages = buffer[dtId]?.resolution_images || (rows.find(x => x.id === dtId)?.resolution_images || []);
+    const newImages = currentImages.filter((_, i) => i !== idx);
+    updBuf(dtId, 'resolution_images', newImages);
+    updBuf(dtId, 'resolution_image_url', newImages[0]?.url || null);
+    updBuf(dtId, 'resolution_image_name', newImages[0]?.name || null);
   }
 
   async function quickAssignResolver(id, adminId) {
@@ -1946,6 +2036,9 @@ export default function AdminDowntimesTab({ characters = [] }) {
                         onCancel={cancelRow}
                         adminsList={adminsList}
                         onQuickAssign={quickAssignResolver}
+                        onUploadImage={handleUploadResolutionImage}
+                        onRemoveImage={handleRemoveResolutionImage}
+                        onPreviewImage={setPreviewImage}
                       />
                     ))}
                   </div>
@@ -2193,7 +2286,7 @@ export default function AdminDowntimesTab({ characters = [] }) {
                       {buffer[dt.id]?.saving && <div style={{ color: '#ffcc00', fontSize: '0.8rem', width: '100%' }}>Saving status...</div>}
                       {buffer[dt.id]?.error && <div style={{ color: '#ff5252', fontSize: '0.8rem', width: '100%' }}>{buffer[dt.id]?.error}</div>}
 
-                      {isExpanded && <SceneActionDetails r={dt} />}
+                      {isExpanded && <SceneActionDetails r={dt} onPreviewImage={setPreviewImage} />}
                     </div>
                   );
                 })}
@@ -2615,7 +2708,7 @@ export default function AdminDowntimesTab({ characters = [] }) {
                             </div>
 
                             {rowErr && <div style={{ color: '#ff5252', fontSize: '0.8rem' }}>{rowErr}</div>}
-                            {isExpanded && <SceneActionDetails r={r} showResolution={false} />}
+                            {isExpanded && <SceneActionDetails r={r} showResolution={false} onPreviewImage={setPreviewImage} />}
                           </div>
                         );
                       })
@@ -2651,11 +2744,30 @@ export default function AdminDowntimesTab({ characters = [] }) {
           </>)}
         </div>
       </section>
+
+      <ImagePreviewModal
+        isOpen={Boolean(previewImage)}
+        imageUrl={previewImage?.url}
+        imageName={previewImage?.name}
+        onClose={() => setPreviewImage(null)}
+      />
     </div>
   );
 }
 
-function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel, adminsList = [], onQuickAssign }) {
+function DowntimeEditorRow({
+  r,
+  editBuffer,
+  onOpen,
+  onUpdate,
+  onSave,
+  onCancel,
+  adminsList = [],
+  onQuickAssign,
+  onUploadImage,
+  onRemoveImage,
+  onPreviewImage
+}) {
   const editing = !!editBuffer;
   const isProj = r.title && r.title.startsWith('[PROJECT]');
   const displayTitle = isProj ? r.title.replace('[PROJECT] ', '') : r.title;
@@ -2706,6 +2818,11 @@ function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel, 
           {(r.resolved_by_name || (r.resolved_by && adminsList.find(a => a.id === r.resolved_by)?.display_name)) ? (
             <span style={{ marginRight: '8px', fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>
               Resolved: {r.resolved_by_name || adminsList.find(a => a.id === r.resolved_by)?.display_name}
+            </span>
+          ) : null}
+          {((Array.isArray(r.resolution_images) && r.resolution_images.length > 0) || r.resolution_image_url) ? (
+            <span style={{ marginRight: '4px', opacity: 0.85, color: 'var(--primary, #ffb3ae)', display: 'inline-flex', alignItems: 'center' }} title="Has resolution image attachment">
+              <FaGlyph name="fa-image" size={14} />
             </span>
           ) : null}
           {r.is_read ? <span style={{ marginRight: '4px', opacity: 0.6 }} title="Read by player"><FaGlyph name="fa-eye" size={48} /></span> : null}
@@ -2760,6 +2877,132 @@ function DowntimeEditorRow({ r, editBuffer, onOpen, onUpdate, onSave, onCancel, 
             <span>GM Feedback to Player</span>
             <textarea className={styles.textarea} style={{ background: 'rgba(157, 124, 25ff, 0.03)', borderLeft: '3px solid var(--accent-purple)' }} value={b.gm_resolution} onChange={(e) => onUpdate(r.id, 'gm_resolution', e.target.value)} placeholder="Notes visible to the player..." />
           </label>
+        </div>
+
+        {/* Resolution Image Attachments */}
+        <div style={{ background: 'var(--glass-bg)', padding: 'clamp(0.9rem, 3vw, 1.25rem)', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <span style={{ fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', fontWeight: 800 }}>
+              Resolution Image Attachments
+            </span>
+            <label
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 14px',
+                background: b.uploadingImage ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 179, 174, 0.15)',
+                border: '1px solid rgba(255, 179, 174, 0.4)',
+                borderRadius: 'var(--radius-sm)',
+                color: b.uploadingImage ? 'var(--text-muted)' : 'var(--primary, #ffb3ae)',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                cursor: b.uploadingImage ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <FaGlyph name="fa-paperclip" size={13} />
+              <span>{b.uploadingImage ? 'Uploading image...' : 'Attach Image'}</span>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                style={{ display: 'none' }}
+                disabled={b.uploadingImage}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file && onUploadImage) {
+                    onUploadImage(r.id, file);
+                  }
+                  e.target.value = '';
+                }}
+              />
+            </label>
+          </div>
+
+          {Array.isArray(b.resolution_images) && b.resolution_images.length > 0 ? (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '0.25rem' }}>
+              {b.resolution_images.map((img, idx) => (
+                <div
+                  key={img.url || idx}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '6px 10px',
+                    background: 'rgba(0, 0, 0, 0.4)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    borderRadius: 'var(--radius-sm)',
+                    maxWidth: '100%'
+                  }}
+                >
+                  <img
+                    src={img.url}
+                    alt={img.name || 'Attachment'}
+                    style={{
+                      width: '36px',
+                      height: '36px',
+                      objectFit: 'cover',
+                      borderRadius: '4px',
+                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                      cursor: 'pointer'
+                    }}
+                    onClick={() => onPreviewImage && onPreviewImage(img)}
+                    title="Click to preview image full screen"
+                  />
+                  <span
+                    style={{
+                      fontSize: '0.82rem',
+                      fontWeight: 600,
+                      color: '#f0f0f5',
+                      maxWidth: '180px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}
+                    title={img.name || 'Resolution Attachment'}
+                  >
+                    {img.name || 'Resolution Attachment'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onPreviewImage && onPreviewImage(img)}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--primary, #ffb3ae)',
+                      cursor: 'pointer',
+                      padding: '4px',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}
+                    title="Preview full screen"
+                  >
+                    <FaGlyph name="fa-expand" size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onRemoveImage && onRemoveImage(r.id, idx)}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: '#ff5252',
+                      cursor: 'pointer',
+                      padding: '4px',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}
+                    title="Remove image attachment"
+                  >
+                    <FaGlyph name="fa-trash" size={13} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+              No images attached yet
+            </div>
+          )}
         </div>
 
         <div className={styles.rGrid2} style={{ background: 'var(--glass-bg)', padding: 'clamp(0.9rem, 3vw, 1.5rem)', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)', boxShadow: '0 4px 15px rgba(0,0,0,0.2)' }}>
