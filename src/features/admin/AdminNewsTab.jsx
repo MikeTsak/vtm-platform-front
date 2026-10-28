@@ -21,35 +21,47 @@ const stat = (label, value) => (
 
 // Logged-in readers of one article (admins are never recorded).
 function Readers({ articleId }) {
-  const [readers, setReaders] = useState(null);
+  const [data, setData] = useState(null);
   const [err, setErr] = useState('');
 
   useEffect(() => {
     api.get(`/admin/news/${articleId}/reads`)
-      .then(res => setReaders(res.data.readers || []))
+      .then(res => setData({
+        readers: res.data.readers || [],
+        views: Number(res.data.views || 0)
+      }))
       .catch(e => setErr(formatApiError(e, 'Failed to load readers')));
   }, [articleId]);
 
   if (err) return <div className={`${styles.alert} ${styles.alertError}`}>{err}</div>;
-  if (!readers) return <div className={styles.subtle}>Loading readers...</div>;
-  if (readers.length === 0) return <div className={styles.subtle}>No logged-in player has opened this article yet.</div>;
+  if (!data) return <div className={styles.subtle}>Loading readers...</div>;
+  const { readers, views } = data;
 
   return (
-    <table className={styles.table}>
-      <thead>
-        <tr><th>Reader</th><th>First read</th><th>Last read</th><th>Opens</th></tr>
-      </thead>
-      <tbody>
-        {readers.map(r => (
-          <tr key={r.user_id}>
-            <td>{r.char_name ? `${r.char_name}${r.clan ? ` (${r.clan})` : ''}` : r.display_name}<span className={styles.subtle}> #{r.user_id}</span></td>
-            <td>{formatAthensDateTime(r.first_read_at)}</td>
-            <td>{formatAthensDateTime(r.last_read_at)}</td>
-            <td>{r.open_count}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <div style={{ padding: '0.5rem 0' }}>
+      <div style={{ marginBottom: '0.75rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+        Total Public Views: <strong style={{ color: 'var(--text-primary)' }}>{views}</strong> (includes guests and Discord visitors) &middot; Registered Players: <strong style={{ color: 'var(--text-primary)' }}>{readers.length}</strong>
+      </div>
+      {readers.length === 0 ? (
+        <div className={styles.subtle}>No logged in player has opened this article yet.</div>
+      ) : (
+        <table className={styles.table}>
+          <thead>
+            <tr><th>Reader</th><th>First read</th><th>Last read</th><th>Opens</th></tr>
+          </thead>
+          <tbody>
+            {readers.map(r => (
+              <tr key={r.user_id}>
+                <td>{r.char_name ? `${r.char_name}${r.clan ? ` (${r.clan})` : ''}` : r.display_name}<span className={styles.subtle}> #{r.user_id}</span></td>
+                <td>{formatAthensDateTime(r.first_read_at)}</td>
+                <td>{formatAthensDateTime(r.last_read_at)}</td>
+                <td>{r.open_count}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
   );
 }
 
@@ -99,6 +111,7 @@ export default function AdminNewsTab({ users = [] }) {
     priv: news.filter(n => n.is_private).length,
     readers: news.reduce((a, n) => a + Number(n.reader_count || 0), 0),
     opens: news.reduce((a, n) => a + Number(n.open_total || 0), 0),
+    views: news.reduce((a, n) => a + Number(n.views || 0), 0),
   }), [news, drafts]);
 
   const shown = useMemo(() => {
@@ -314,6 +327,7 @@ export default function AdminNewsTab({ users = [] }) {
         {stat('Private Articles', totals.priv)}
         {stat('Player Readers', totals.readers)}
         {stat('Total Opens', totals.opens)}
+        {stat('Total Views', totals.views)}
       </div>
 
       <div className={styles.modeSwitcher}>
@@ -385,7 +399,7 @@ export default function AdminNewsTab({ users = [] }) {
           <div className={styles.tableContainer} style={{ maxHeight: '70vh', overflowY: 'auto' }}>
             <table className={styles.table} style={{ minWidth: 720 }}>
               <thead>
-                <tr><th>ID</th><th>Title</th><th>Outlet</th><th>Status</th><th>Readers</th><th>Date</th><th>Actions</th></tr>
+                <tr><th>ID</th><th>Title</th><th>Outlet</th><th>Status</th><th>Readers and Views</th><th>Date</th><th>Actions</th></tr>
               </thead>
               <tbody>
                 {shown.map(n => (
@@ -393,15 +407,15 @@ export default function AdminNewsTab({ users = [] }) {
                     <tr style={{ background: n.is_private ? 'rgba(138, 3, 3, 0.1)' : 'transparent' }}>
                       <td className={styles.idCell}>{n.id}</td>
                       <td>{n.title}</td>
-                      <td>{n.theme || '-'}</td>
+                      <td>{n.theme || 'None'}</td>
                       <td>{n.is_private ? <span style={{ color: '#ff9800', fontWeight: 'bold' }}>Private</span> : <span style={{ color: '#4caf50' }}>Public</span>}</td>
                       <td>
                         <button
                           className={`${styles.btn} ${styles.btnGhost} ${styles.btnSmall}`}
                           onClick={() => setOpenReaders(openReaders === n.id ? null : n.id)}
-                          title="Logged-in players who opened this article"
+                          title="Player readers, player opens, and total public views"
                         >
-                          {Number(n.reader_count || 0)} readers &middot; {Number(n.open_total || 0)} opens
+                          {Number(n.reader_count || 0)} readers &middot; {Number(n.open_total || 0)} opens &middot; {Number(n.views || 0)} views
                         </button>
                       </td>
                       <td>{formatEuDate(n.created_at)}</td>
