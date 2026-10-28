@@ -136,15 +136,21 @@ export default function AdminNewsTab({ users = [] }) {
     setIsPublishing(true);
     try {
       const chosenPrefix = isCustomPublishPrefix ? publishDiscordPrefix : (publishDiscordPrefix || getDefaultDiscordPrefix('news'));
-      const payload = {
-        skip_discord: skipPublishDiscord,
-        discord_prefix: chosenPrefix
-      };
-      await api.patch(`/news/${publishingArticle.id}/publish`, payload);
+      if (publishingArticle.is_private) {
+        const payload = {
+          skip_discord: skipPublishDiscord,
+          discord_prefix: chosenPrefix
+        };
+        await api.patch(`/news/${publishingArticle.id}/publish`, payload);
+      } else {
+        await api.post(`/news/${publishingArticle.id}/broadcast`, {
+          discord_prefix: chosenPrefix
+        });
+      }
       setPublishingArticle(null);
       await fetchData();
     } catch (e) {
-      alert(formatApiError(e, 'Failed to publish news'));
+      alert(formatApiError(e, publishingArticle.is_private ? 'Failed to publish news' : 'Failed to broadcast news'));
     } finally {
       setIsPublishing(false);
     }
@@ -197,9 +203,11 @@ export default function AdminNewsTab({ users = [] }) {
           <div className={styles.modalCard} onClick={e => e.stopPropagation()} style={{ maxWidth: '520px' }}>
             <div className={styles.modalHeader}>
               <div className={styles.modalHeaderContent}>
-                <h3>Publish News Article</h3>
+                <h3>{publishingArticle.is_private ? 'Publish News Article' : 'Broadcast News Article'}</h3>
                 <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                  This article will become public in the news feed.
+                  {publishingArticle.is_private
+                    ? 'This article will become public in the news feed and announce to Discord.'
+                    : 'This article is already public and will be broadcast to Discord.'}
                 </div>
               </div>
               <button
@@ -227,19 +235,21 @@ export default function AdminNewsTab({ users = [] }) {
                 )}
               </div>
 
-              <div className={styles.formGroup} style={{ marginTop: '0.5rem' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginBottom: '0.75rem' }}>
-                  <input
-                    type="checkbox"
-                    checked={skipPublishDiscord}
-                    onChange={e => setSkipPublishDiscord(e.target.checked)}
-                    disabled={isPublishing}
-                  />
-                  <span>Do not send a Discord notification</span>
-                </label>
-              </div>
+              {publishingArticle.is_private && (
+                <div className={styles.formGroup} style={{ marginTop: '0.5rem' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginBottom: '0.75rem' }}>
+                    <input
+                      type="checkbox"
+                      checked={skipPublishDiscord}
+                      onChange={e => setSkipPublishDiscord(e.target.checked)}
+                      disabled={isPublishing}
+                    />
+                    <span>Do not send a Discord notification</span>
+                  </label>
+                </div>
+              )}
 
-              {!skipPublishDiscord && (
+              {(!publishingArticle.is_private || !skipPublishDiscord) && (
                 <div className={styles.formGroup}>
                   <label>Discord Announcement Style</label>
                   <select
@@ -259,7 +269,7 @@ export default function AdminNewsTab({ users = [] }) {
                     {DISCORD_PREFIX_OPTIONS.news.map((opt) => (
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
                     ))}
-                    <option value="custom">✎ Custom Message...</option>
+                    <option value="custom">Custom Message...</option>
                   </select>
                   {isCustomPublishPrefix && (
                     <input
@@ -289,7 +299,9 @@ export default function AdminNewsTab({ users = [] }) {
                 onClick={handleConfirmPublish}
                 disabled={isPublishing}
               >
-                {isPublishing ? 'Publishing...' : 'Publish Article'}
+                {isPublishing
+                  ? (publishingArticle.is_private ? 'Publishing...' : 'Broadcasting...')
+                  : (publishingArticle.is_private ? 'Publish Article' : 'Broadcast to Discord')}
               </button>
             </div>
           </div>
@@ -397,7 +409,9 @@ export default function AdminNewsTab({ users = [] }) {
                         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                           {n.is_private ? (
                             <button className={`${styles.btn} ${styles.btnSuccess} ${styles.btnSmall}`} onClick={() => handleOpenPublishModal(n)}>Publish</button>
-                          ) : null}
+                          ) : (
+                            <button className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSmall}`} onClick={() => handleOpenPublishModal(n)} title="Broadcast to Discord">Broadcast</button>
+                          )}
                           <button className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSmall}`} onClick={() => window.open(`/news/${n.id}`, '_blank')}>View</button>
                           <button className={`${styles.btn} ${styles.btnDanger} ${styles.btnSmall}`} onClick={() => act(() => api.delete(`/news/${n.id}`), 'Permanently delete this news article?', 'Failed to delete news')}>Del</button>
                         </div>

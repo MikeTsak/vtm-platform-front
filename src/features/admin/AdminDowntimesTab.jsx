@@ -437,6 +437,9 @@ export default function AdminDowntimesTab({ characters = [] }) {
   const [masterPhase, setMasterPhase] = useState('standard');
   const [massReleaseMode, setMassReleaseMode] = useState(false);
   const [massReleaseDate, setMassReleaseDate] = useState('');
+  const [showReleaseNowModal, setShowReleaseNowModal] = useState(false);
+  const [releasingNow, setReleasingNow] = useState(false);
+  const [releaseNowErr, setReleaseNowErr] = useState('');
 
   const [viewMode, setViewMode] = useState('standard');
 
@@ -733,6 +736,29 @@ export default function AdminDowntimesTab({ characters = [] }) {
         setCfgErr(formatApiError(e, 'Failed to reload config'));
       })
       .finally(() => setCfgLoading(false));
+  }
+
+  async function handleReleaseNowConfirm() {
+    setReleasingNow(true);
+    setReleaseNowErr('');
+    try {
+      const { data } = await api.post('admin/downtimes/release-now');
+      setShowReleaseNowModal(false);
+      setCfgInfo('All downtimes released successfully: notifications and Discord announcement sent.');
+      setTimeout(() => setCfgInfo(''), 5000);
+      if (data?.downtime_mass_release_date) {
+        setMassReleaseDate(toLocalDateTimeInput(data.downtime_mass_release_date));
+      }
+      if (typeof data?.downtime_mass_release_mode === 'boolean') {
+        setMassReleaseMode(data.downtime_mass_release_mode);
+      }
+      await Promise.all([loadList(), onReloadConfig()]);
+    } catch (e) {
+      console.error('[AdminDowntimesTab] Failed to release downtimes now', e);
+      setReleaseNowErr(formatApiError(e, 'Failed to release downtimes now'));
+    } finally {
+      setReleasingNow(false);
+    }
   }
 
   async function loadList() {
@@ -1312,6 +1338,26 @@ export default function AdminDowntimesTab({ characters = [] }) {
               Schedule & release
               <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>{configOpen ? 'expand_less' : 'expand_more'}</span>
             </button>
+
+            <button
+              type="button"
+              className={styles.btn}
+              onClick={() => { setReleaseNowErr(''); setShowReleaseNowModal(true); }}
+              disabled={releasingNow}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: 'linear-gradient(135deg, #c62828 0%, #b71c1c 100%)',
+                color: '#ffffff',
+                border: '1px solid #ef5350',
+                fontWeight: 700
+              }}
+              title="Release all downtimes right now"
+            >
+              <FaGlyph name="fa-bullhorn" size={14} />
+              Release now
+            </button>
           </div>
         </div>
 
@@ -1430,14 +1476,40 @@ export default function AdminDowntimesTab({ characters = [] }) {
                     <span style={{ position: 'absolute', top: '3px', left: massReleaseMode ? '21px' : '3px', width: '16px', height: '16px', borderRadius: '50%', background: 'var(--text-color)', transition: 'left 0.2s ease' }} />
                   </button>
                 </span>
-                <input
-                  type="datetime-local"
-                  className={styles.input}
-                  value={massReleaseDate}
-                  onChange={(e) => setMassReleaseDate(e.target.value)}
-                  disabled={!massReleaseMode}
-                  title="Resolutions become visible to players at this time"
-                />
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <input
+                    type="datetime-local"
+                    className={styles.input}
+                    value={massReleaseDate}
+                    onChange={(e) => setMassReleaseDate(e.target.value)}
+                    disabled={!massReleaseMode}
+                    title="Resolutions become visible to players at this time"
+                    style={{ flex: 1 }}
+                  />
+                  <button
+                    type="button"
+                    className={styles.btn}
+                    onClick={() => { setReleaseNowErr(''); setShowReleaseNowModal(true); }}
+                    disabled={releasingNow}
+                    title="Release all downtimes right now"
+                    style={{
+                      background: 'linear-gradient(135deg, #c62828 0%, #b71c1c 100%)',
+                      color: '#ffffff',
+                      border: '1px solid #ef5350',
+                      padding: '0.45rem 0.85rem',
+                      fontSize: '0.82rem',
+                      fontWeight: 700,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0
+                    }}
+                  >
+                    <FaGlyph name="fa-bullhorn" size={13} />
+                    Release now
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -2744,6 +2816,69 @@ export default function AdminDowntimesTab({ characters = [] }) {
           </>)}
         </div>
       </section>
+
+      {/* Instant Mass Downtime Release Confirmation Modal */}
+      {showReleaseNowModal && (
+        <div className={styles.modalBackdrop} onClick={() => !releasingNow && setShowReleaseNowModal(false)}>
+          <div className={styles.modalCard} onClick={e => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+            <div className={styles.modalHeader}>
+              <div className={styles.modalHeaderContent}>
+                <h3 style={{ margin: 0, color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <FaGlyph name="fa-bullhorn" style={{ color: '#ef5350' }} />
+                  Release all downtimes now?
+                </h3>
+              </div>
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnSecondary}`}
+                style={{ borderRadius: '50%', width: '36px', height: '36px', padding: 0 }}
+                onClick={() => setShowReleaseNowModal(false)}
+                disabled={releasingNow}
+                aria-label="Close"
+              >
+                <FaGlyph name="fa-xmark" size={14} />
+              </button>
+            </div>
+            <div className={styles.modalBody} style={{ padding: '20px', gap: '12px' }}>
+              <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.5', color: 'var(--text-color)' }}>
+                Are you sure you want to release the downtimes now?
+              </p>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                This will immediately publish all resolutions to players, send push notifications to affected participants, and post the mass downtime announcement to Discord.
+              </p>
+              {releaseNowErr && (
+                <div className={`${styles.alert} ${styles.alertError}`} style={{ margin: 0 }}>
+                  {releaseNowErr}
+                </div>
+              )}
+            </div>
+            <div className={styles.modalFooter} style={{ padding: '16px 20px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnSecondary}`}
+                onClick={() => setShowReleaseNowModal(false)}
+                disabled={releasingNow}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={styles.btn}
+                onClick={handleReleaseNowConfirm}
+                disabled={releasingNow}
+                style={{
+                  background: 'linear-gradient(135deg, #c62828 0%, #b71c1c 100%)',
+                  color: '#ffffff',
+                  border: '1px solid #ef5350',
+                  fontWeight: 700
+                }}
+              >
+                {releasingNow ? 'Releasing...' : 'Release now'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ImagePreviewModal
         isOpen={Boolean(previewImage)}
