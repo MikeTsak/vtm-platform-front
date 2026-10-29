@@ -309,12 +309,23 @@ function ContributeDialog({ coterie, entries, onClose, onConfirm, busy }) {
  * Retainers background: who has a sheet, and where they are managed
  * ------------------------------------------------------------------ */
 
+// Ghoul upkeep state from GET /api/coteries/:id (back/services/ghoulFeeding.js).
+const GHOUL_FEEDING_LABEL = { fed: 'fed', hungry: 'needs feeding', starved: 'starved, powers lost' };
+
 function RetainerSheetsNote({ dots, retainers, isMember }) {
   const free = (Number(dots) || 0) - retainers.reduce((n, r) => n + (Number(r.tier) || 0), 0);
+  const unfed = retainers.filter((r) => r.feeding && r.feeding !== 'fed');
   return (
     <Muted className={styles.tightNote}>
       {retainers.length > 0 && (
-        <>Sheets: {retainers.map((r) => `${r.name} (Tier ${r.tier}${r.domitor_character_id ? ', ghoul' : ''})`).join(', ')}. </>
+        <>Sheets: {retainers.map((r) => `${r.name} (Tier ${r.tier}${r.domitor_character_id ? `, ghoul${r.feeding ? `, ${GHOUL_FEEDING_LABEL[r.feeding]}` : ''}` : ''})`).join(', ')}. </>
+      )}
+      {unfed.length > 0 && (
+        <>
+          <strong>{unfed.map((r) => r.name).join(', ')} need{unfed.length === 1 ? 's' : ''} feeding this cycle.</strong>{' '}
+          Any member can feed a coterie ghoul{isMember ? <> on the <Link to="/feeding">Feeding page</Link></> : ''}; if nobody does,
+          a random member pays the Rouse Check before the event.{' '}
+        </>
       )}
       {free > 0 && `${free} dot${free > 1 ? 's' : ''} without a sheet yet. `}
       {free < 0 && `Sheets use ${-free} more dot(s) than the rating: a Storyteller should review. `}

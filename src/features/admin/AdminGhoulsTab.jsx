@@ -38,6 +38,10 @@ const chip = (color) => ({
   background: `${color}22`, border: `1px solid ${color}`, color,
 });
 
+// Ghoul upkeep this cycle (back/services/ghoulFeeding.js): a starved ghoul has lost its powers.
+const FEEDING_LABEL = { fed: 'Fed', hungry: 'Needs feeding', starved: 'Starved: powers lost' };
+const FEEDING_COLOR = { fed: '#4a9d6b', hungry: '#ffb347', starved: '#ff6b6b' };
+
 export default function AdminGhoulsTab({ retainers }) {
   const navigate = useNavigate();
   const [filter, setFilter] = useState('all');
@@ -152,6 +156,7 @@ export default function AdminGhoulsTab({ retainers }) {
                       <span style={chip(tierColor)}>Tier {r.tier} {'●'.repeat(r.tier || 1)}</span>
                       <span style={chip(ghoul ? '#c21807' : '#6b8aa8')}>{ghoul ? 'Ghoul' : 'Mortal'}</span>
                       <span style={chip(r.coterie_id ? '#9d7cff' : '#4a9d6b')}>{r.coterie_id ? 'Coterie' : 'Personal'}</span>
+                      {r.feeding && <span style={chip(FEEDING_COLOR[r.feeding])}>{FEEDING_LABEL[r.feeding]}</span>}
                     </div>
                   </div>
                 </div>
@@ -200,7 +205,9 @@ export default function AdminGhoulsTab({ retainers }) {
                           fontSize: '0.8rem', fontWeight: 600,
                         }}
                       >
-                        {d.disc}{d.power ? `: ${d.power}` : ''}{d.from ? ` (${d.from}'s blood)` : ''}
+                        <span style={r.feeding === 'starved' ? { textDecoration: 'line-through', opacity: 0.6 } : undefined}>
+                          {d.disc}{d.power ? `: ${d.power}` : ''}{d.from ? ` (${d.from}'s blood)` : ''}
+                        </span>
                       </span>
                     ))}
                   </div>

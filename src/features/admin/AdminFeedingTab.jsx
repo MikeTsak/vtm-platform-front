@@ -50,6 +50,7 @@ const TIER_LABEL = {
   critical:        'Critical',
   messy_critical:  'Messy Critical',
   herd:            'Herd Fed',
+  manual:          'Storyteller',
 };
 const TIER_COLOR = {
   bestial_failure: '#ff6b6b',
@@ -58,6 +59,7 @@ const TIER_COLOR = {
   critical:        'var(--color-success)',
   messy_critical:  '#ffb347',
   herd:            '#7ecfff',
+  manual:          '#b388ff',
 };
 const TIER_ICON = {
   bestial_failure: FEEDING_ICONS.skull,
@@ -685,6 +687,180 @@ export default function AdminFeedingTab() {
           </div>
         )}
       </div>
+
+      <UnfedPanel />
+      <GhoulUpkeepPanel />
+    </div>
+  );
+}
+
+// Active characters with no feeding this cycle (their downtime actions are locked).
+// A Storyteller can record a feeding by hand, e.g. for GM-adjudicated Predator Types:
+// it unlocks actions and sets Hunger, without using a hunt or touching a domain.
+function UnfedPanel() {
+  const [rows, setRows] = useState(null);
+  const [hunger, setHunger] = useState({});
+  const [saving, setSaving] = useState(null);
+
+  const load = useCallback(async () => {
+    try {
+      setRows((await api.get('/admin/feeding/unfed')).data.characters);
+    } catch (e) {
+      setRows({ error: formatApiError(e, 'Failed to load unfed characters') });
+    }
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const record = async (c) => {
+    const after = hunger[c.id] ?? Math.max(1, c.hunger - 1);
+    setSaving(c.id);
+    try {
+      await api.post('/admin/feeding/manual', { character_id: c.id, hunger: after });
+      await load();
+    } catch (e) {
+      window.alert(formatApiError(e, 'Recording the feeding failed'));
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const list = Array.isArray(rows) ? rows : [];
+  return (
+    <div style={card}>
+      <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.75rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <FaGlyph icon={FEEDING_ICONS.triangleExclamation} size={16} style={{ color: '#ffb347' }} />
+        <h4 style={{ margin: 0, fontSize: '1.3rem', color: 'var(--text-color)' }}>Not Fed This Cycle</h4>
+        <span style={{ marginLeft: 'auto', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{list.length} character{list.length !== 1 ? 's' : ''} with locked actions</span>
+      </div>
+      {rows?.error && <p style={{ color: '#ff6b6b' }}>{rows.error}</p>}
+      {list.length === 0 ? (
+        <p style={{ color: 'var(--text-secondary)' }}>Everyone has fed this cycle.</p>
+      ) : (
+        <div className={styles.rTable}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
+            <thead>
+              <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--glass-border)', color: 'var(--text-secondary)', fontSize: '0.78rem' }}>
+                <th style={{ padding: '0.5rem 0.75rem' }}>Character</th>
+                <th style={{ padding: '0.5rem 0.75rem' }}>Predator Type</th>
+                <th style={{ padding: '0.5rem 0.75rem' }}>Hunger</th>
+                <th style={{ padding: '0.5rem 0.75rem' }}>Record a feeding</th>
+              </tr>
+            </thead>
+            <tbody>
+              {list.map(c => (
+                <tr key={c.id} style={{ borderBottom: '1px solid var(--glass-border)' }}>
+                  <td style={{ padding: '0.6rem 0.75rem', fontWeight: 600 }}>{c.name}</td>
+                  <td style={{ padding: '0.6rem 0.75rem', color: c.canAutomate ? 'var(--text-secondary)' : '#ffb347' }}>
+                    {c.predatorType || 'none set'}{!c.canAutomate && ' (needs a Storyteller)'}
+                  </td>
+                  <td style={{ padding: '0.6rem 0.75rem' }}>{c.hunger}</td>
+                  <td style={{ padding: '0.6rem 0.75rem' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                        Hunger after{' '}
+                        <select
+                          value={hunger[c.id] ?? Math.max(1, c.hunger - 1)}
+                          onChange={(e) => setHunger(h => ({ ...h, [c.id]: Number(e.target.value) }))}
+                          style={{ ...btnBase, padding: '0.25rem 0.5rem' }}
+                        >
+                          {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
+                        </select>
+                      </label>
+                      <button style={{ ...btnBase, padding: '0.35rem 0.8rem' }} disabled={saving === c.id} onClick={() => record(c)}>Mark fed</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const GHOUL_STATE_LABEL = { fed: 'Fed', hungry: 'Needs feeding', starved: 'Starved' };
+const GHOUL_STATE_COLOR = { fed: 'var(--color-success)', hungry: '#ffb347', starved: '#ff6b6b' };
+const GHOUL_METHOD_LABEL = {
+  early: 'early', upkeep: 'by owner at upkeep', random: 'by random member',
+  let_starve: 'let go', hunger_5: 'feeder at Hunger 5', no_feeder: 'no members',
+};
+
+// Ghoul upkeep this cycle: who still needs feeding before the Calendar's
+// ghoul feeding time, and a manual run (back/services/ghoulFeeding.js).
+function GhoulUpkeepPanel() {
+  const [data, setData] = useState(null);
+  const [running, setRunning] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      setData((await api.get('/admin/feeding/ghouls')).data);
+    } catch (e) {
+      setData({ error: formatApiError(e, 'Failed to load ghouls') });
+    }
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const runNow = async () => {
+    if (!window.confirm('Feed every unfed ghoul now? Each costs its owner (or a random coterie member) a Rouse Check; ghouls let go, or with no feeder below Hunger 5, starve.')) return;
+    setRunning(true);
+    try {
+      const { data: r } = await api.post('/admin/feeding/ghoul-upkeep');
+      window.alert(`Ghoul upkeep: ${r.fed ?? 0} fed, ${r.starved ?? 0} starved.`);
+      await load();
+    } catch (e) {
+      window.alert(formatApiError(e, 'Ghoul upkeep failed'));
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const ghouls = data?.ghouls || [];
+  const unfed = ghouls.filter(g => g.canFeed).length;
+  return (
+    <div style={card}>
+      <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.75rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <FaGlyph icon={FEEDING_ICONS.skull} size={16} style={{ color: '#ffb347' }} />
+        <h4 style={{ margin: 0, fontSize: '1.3rem', color: 'var(--text-color)' }}>Ghoul Upkeep</h4>
+        <span style={{ marginLeft: 'auto', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+          {unfed} of {ghouls.length} still unfed this cycle
+          {data?.upkeepAt && ` · automatic on ${formatAthensDateTime(data.upkeepAt)} (set in the Calendar)`}
+        </span>
+        <button style={btnBase} disabled={running || unfed === 0} onClick={runNow}>Run upkeep now</button>
+      </div>
+      {data?.error && <p style={{ color: '#ff6b6b' }}>{data.error}</p>}
+      {ghouls.length === 0 ? (
+        <p style={{ color: 'var(--text-secondary)' }}>No ghouls in the chronicle.</p>
+      ) : (
+        <div className={styles.rTable}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
+            <thead>
+              <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--glass-border)', color: 'var(--text-secondary)', fontSize: '0.78rem' }}>
+                <th style={{ padding: '0.5rem 0.75rem' }}>Ghoul</th>
+                <th style={{ padding: '0.5rem 0.75rem' }}>Owner</th>
+                <th style={{ padding: '0.5rem 0.75rem' }}>This cycle</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ghouls.map(g => (
+                <tr key={g.id} style={{ borderBottom: '1px solid var(--glass-border)' }}>
+                  <td style={{ padding: '0.6rem 0.75rem', fontWeight: 600 }}>
+                    {g.name} <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>T{g.tier}</span>
+                  </td>
+                  <td style={{ padding: '0.6rem 0.75rem' }}>
+                    {g.coterie_id ? `${g.coterie_name} (domitor ${g.owner_name || 'unknown'})` : g.owner_name}
+                  </td>
+                  <td style={{ padding: '0.6rem 0.75rem', color: GHOUL_STATE_COLOR[g.state] }}>
+                    {GHOUL_STATE_LABEL[g.state]}
+                    {g.current && ` (${GHOUL_METHOD_LABEL[g.current.method] || g.current.method}${g.current.fed_by_name ? `, ${g.current.fed_by_name}` : ''})`}
+                    {!g.current && g.let_starve && ' (will be let go)'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

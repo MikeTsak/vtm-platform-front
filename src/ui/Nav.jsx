@@ -4,14 +4,15 @@ import { AuthCtx } from '../core/AuthContext';
 import { roleFlags } from '../core/useRole';
 import { useTheme } from '../core/ThemeContext';
 import api from '../core/api';
+import { useQuery } from '@tanstack/react-query';
 import { useCommsUnread } from '../features/comms/useCommsUnread';
 
-function UnreadBadge({ count }) {
+function UnreadBadge({ count, label = 'unread' }) {
   if (!count) return null;
   return (
     <span
       className="ml-2 inline-flex items-center justify-center min-w-4 h-4 px-1 rounded-full bg-primary-container text-white text-[10px] font-bold leading-none align-middle"
-      aria-label={`${count} unread`}
+      aria-label={`${count} ${label}`}
     >
       {count > 99 ? '99+' : count}
     </span>
@@ -102,6 +103,16 @@ export default function Nav() {
   const [isCharActive, setIsCharActive] = useState(false);
   const location = useLocation();
   const unread = useCommsUnread(!!user);
+  // Feeding to-dos: 1 while hunting is open and you haven't fed, plus each ghoul you could still feed.
+  const { data: feeding } = useQuery({
+    queryKey: ['feeding', 'status'],
+    queryFn: async () => (await api.get('/feeding/status')).data,
+    enabled: !!user,
+    staleTime: 60000,
+  });
+  const feedingTodo = feeding?.enabled && !feeding.noCharacter
+    ? (!feeding.fed && feeding.huntingOpen ? 1 : 0) + (feeding.ghoulsUnfed || 0)
+    : 0;
 
   const [openMobileDropdown, setOpenMobileDropdown] = useState(null);
 
@@ -197,13 +208,16 @@ export default function Nav() {
           <div className="hidden lg:flex items-center justify-center gap-2 flex-grow mx-8 h-full">
             {user && (
               <>
-                <NavDropdown title="Personal" icon="person" isMobile={false}>
+                <NavDropdown title="Personal" icon="person" badge={feedingTodo} isMobile={false}>
                   <NavLink 
   data-cuelume-press 
   data-cuelume-hover end to="/character" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Character Sheet</NavLink>
                   <NavLink 
   data-cuelume-press 
-  data-cuelume-hover to="/downtimes" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Actions & Feeding</NavLink>
+  data-cuelume-hover to="/feeding" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Feeding<UnreadBadge count={feedingTodo} label="feeding to-dos" /></NavLink>
+                  <NavLink
+  data-cuelume-press
+  data-cuelume-hover to="/downtimes" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: false })}>Actions</NavLink>
                   {canSeePremonitions && (
                     <NavLink 
   data-cuelume-press 
@@ -323,13 +337,16 @@ export default function Nav() {
         <div className="flex flex-col h-full">
           {user && (
             <div className="space-y-1 flex-grow">
-              <NavDropdown title="Personal" icon="person" isMobile={true} isOpen={openMobileDropdown === 'Personal'} toggleOpen={() => handleMobileDropdownToggle('Personal')}>
+              <NavDropdown title="Personal" icon="person" badge={feedingTodo} isMobile={true} isOpen={openMobileDropdown === 'Personal'} toggleOpen={() => handleMobileDropdownToggle('Personal')}>
                 <NavLink 
   data-cuelume-press 
   data-cuelume-hover end to="/character" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Character Sheet</NavLink>
                 <NavLink 
   data-cuelume-press 
-  data-cuelume-hover to="/downtimes" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Actions & Feeding</NavLink>
+  data-cuelume-hover to="/feeding" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Feeding<UnreadBadge count={feedingTodo} label="feeding to-dos" /></NavLink>
+                  <NavLink
+  data-cuelume-press
+  data-cuelume-hover to="/downtimes" className={({ isActive }) => getNavItemClass({ isActive, isDropdownItem: true, isMobile: true })}>Actions</NavLink>
                 {canSeePremonitions && (
                   <NavLink 
   data-cuelume-press 

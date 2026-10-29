@@ -939,6 +939,18 @@ export default function AdminCalendarTab() {
     return map;
   }, [dtCycles, massReleaseDate]);
 
+  // Ghoul upkeep: unfed ghouls are fed (or starve) at each cycle's time (back/services/ghoulFeeding.js).
+  const ghoulFeedingMap = useMemo(() => {
+    const map = {};
+    for (const cycle of dtCycles) {
+      const day = String(cycle.ghoul_feeding_date || '').slice(0, 10);
+      if (!day) continue;
+      if (!map[day]) map[day] = [];
+      map[day].push({ title: cycle.title, time: String(cycle.ghoul_feeding_date).slice(11, 16) });
+    }
+    return map;
+  }, [dtCycles]);
+
   // DT Open map: computes from configured dtCycles AND downtimeOpening
   const dtOpenMap = useMemo(() => {
     const map = {};
@@ -1126,6 +1138,7 @@ export default function AdminCalendarTab() {
                   const isExplicitDtOpen = downtimeOpening === dateStr;
                   const hasDtOpen = dtOpenItems.length > 0 || isExplicitDtOpen;
                   const releaseItems = releaseMap[dateStr] || [];
+                  const ghoulItems = ghoulFeedingMap[dateStr] || [];
                   const sessionItems = liveSessionMap[dateStr] || [];
                   const isProjectClose = projectDeadline === dateStr;
                   const isBannerEnd = bannerCountdown.slice(0, 10) === dateStr;
@@ -1340,6 +1353,16 @@ export default function AdminCalendarTab() {
                           </div>
                         )}
 
+                        {ghoulItems.length > 0 && (
+                          <div
+                            style={{ fontSize: '0.6rem', fontWeight: 800, background: 'rgba(255, 179, 71, 0.18)', border: '1px solid #ffb347', color: '#ffd59a', borderRadius: '3px', padding: '2px 4px', display: 'flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap', lineHeight: 1.2 }}
+                            title={`Ghoul upkeep ${ghoulItems[0].time ? `at ${ghoulItems[0].time} ` : ''}for: ${ghoulItems.map(r => cleanTitle(r.title)).join(', ')}. Unfed ghouls cost their owner (or a random coterie member) a Rouse Check, or starve.`}
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: '11px', flexShrink: 0 }}>water_drop</span>
+                            <span>GHOULS {ghoulItems[0].time}</span>
+                          </div>
+                        )}
+
                         {sessionItems.length > 0 && (
                           <div
                             style={{ fontSize: '0.6rem', fontWeight: 800, background: 'rgba(38, 198, 218, 0.22)', border: '1px solid #26c6da', color: '#80deea', borderRadius: '3px', padding: '2px 4px', display: 'flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap', lineHeight: 1.2 }}
@@ -1427,6 +1450,10 @@ export default function AdminCalendarTab() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#4da6ff' }}>campaign</span>
             <span>Sky: Mass Release (morning after close unless changed)</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#ffb347' }}>water_drop</span>
+            <span>Amber: Ghoul Upkeep (Friday evening after close unless changed)</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#b388ff' }}>history_edu</span>
@@ -1855,6 +1882,7 @@ export default function AdminCalendarTab() {
                   <th style={{ padding: '8px' }}>Opening Date</th>
                   <th style={{ padding: '8px' }}>Closing Deadline</th>
                   <th style={{ padding: '8px' }}>Mass Release</th>
+                  <th style={{ padding: '8px' }}>Ghoul Upkeep</th>
                   <th style={{ padding: '8px' }}>Active in System</th>
                   <th style={{ padding: '8px', textAlign: 'right' }}>Actions</th>
                 </tr>
@@ -1907,6 +1935,17 @@ export default function AdminCalendarTab() {
                           title={releaseBeforeClose(cycle)
                             ? 'This release is before the deadline ends (23:59 on the closing day): players would get resolutions while still writing actions'
                             : 'When this cycle\'s held resolutions go out'}
+                        />
+                      </td>
+                      <td style={{ padding: '8px' }}>
+                        <input
+                          type="datetime-local"
+                          className={styles.input}
+                          style={{ padding: '2px 6px', fontSize: '0.78rem', width: 'auto', color: '#ffd59a' }}
+                          value={(cycle.ghoul_feeding_date || '').slice(0, 16)}
+                          onChange={(e) => { if (e.target.value) updateCycle(cycle.id, { ghoul_feeding_date: e.target.value }); }}
+                          disabled={savingCycles}
+                          title="When this cycle's unfed ghouls are fed automatically (or starve)"
                         />
                       </td>
                       <td style={{ padding: '8px' }}>

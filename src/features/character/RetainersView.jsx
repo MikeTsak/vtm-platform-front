@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/RetainersView.module.css';
 import Avatar from '../../components/Avatar';
+import { GhoulStateBadge } from '../feeding/GhoulUpkeep';
 import { DISCIPLINES, iconPath } from '../../data/disciplines';
 import { allSelectableAdvantages } from '../../data/merits_flaws_retainers';
 import { generateGreekName } from '../../utils/nameGenerator';
@@ -1599,6 +1600,7 @@ export default function RetainersView() {
                       <div className={styles.rosterInfo}>
                         <h4 className={styles.rosterName}>{r.name}</h4>
                         <SmallDots value={r.tier} max={3} />
+                        {r.feeding && <GhoulStateBadge state={r.feeding} />}
                         {r.name === 'Migrated Retainer' && (
                           <div style={{ marginTop: '4px', background: 'rgba(255, 68, 68, 0.2)', color: '#ffb4a7', fontSize: '10px', padding: '2px 6px', borderRadius: '4px', display: 'inline-block', border: '1px solid rgba(255, 68, 68, 0.5)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                             Attention Needed
@@ -1662,6 +1664,7 @@ export default function RetainersView() {
                             <div className={styles.rosterInfo}>
                               <h4 className={styles.rosterName}>{r.name}</h4>
                               <SmallDots value={r.tier} max={3} />
+                              {r.feeding && <GhoulStateBadge state={r.feeding} />}
                             </div>
                             <span className={`material-symbols-outlined ${styles.chevron}`}>chevron_right</span>
                           </button>
@@ -1791,6 +1794,11 @@ export default function RetainersView() {
                           Tier {selectedRetainer.tier} {currentSheet.isGhoul ? 'Ghoul' : 'Mortal'}
                           {selectedCoterie && ` · ${selectedCoterie.name}`}
                           {selectedCoterie && currentSheet.isGhoul && ` · Domitor: ${selectedDomitor?.character_name || 'unknown'}`}
+                        </p>
+                      )}
+                      {selectedRetainer.feeding === 'starved' && (
+                        <p className={styles.sheetTier} style={{ color: 'var(--error)' }}>
+                          Starved: this ghoul has lost their powers and is unavailable until fed again on the <Link to="/feeding">Feeding page</Link>.
                         </p>
                       )}
 

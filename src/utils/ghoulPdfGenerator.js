@@ -522,7 +522,8 @@ export default async function generateGhoulCharacterSheetPDF(retainer, options =
             Vitae Sustenance
           </div>
           <div style="font-size: 13px; line-height: 1.5; color: #333;">
-            <div style="margin-bottom: 4px;"><strong>Feeding Cycle:</strong> Must ingest vampire vitae at least once every calendar month.</div>
+            <div style="margin-bottom: 4px;"><strong>Feeding Cycle:</strong> Must ingest vampire vitae once every downtime cycle (a Rouse Check for the vampire who feeds them).</div>
+            ${retainer.feeding ? `<div style="margin-bottom: 4px;"><strong>This Cycle:</strong> <span style="color: ${retainer.feeding === 'starved' ? '#c62828' : retainer.feeding === 'fed' ? '#2e7d32' : '#b26a00'}; font-weight: 700;">${{ fed: 'Fed', hungry: 'Not yet fed', starved: 'STARVED: powers lost until fed again' }[retainer.feeding]}</span></div>` : ''}
             <div style="margin-bottom: 4px;"><strong>Aging:</strong> Physical aging is halted while sustained on vitae. Withdrawing causes rapid biological catch:up.</div>
             <div><strong>Blood Surge:</strong> Ghouls cannot Surge their Blood like true vampires, but gain access to 1 dot of their Domitor's disciplines.</div>
           </div>
@@ -541,8 +542,9 @@ export default async function generateGhoulCharacterSheetPDF(retainer, options =
       </div>
 
       <div class="section-title">DISCIPLINES &amp; POWERS</div>
+      ${retainer.feeding === 'starved' ? '<div style="border: 2px solid #c62828; color: #c62828; font-family: Oswald, sans-serif; text-align: center; padding: 6px; margin-bottom: 10px; letter-spacing: 1px;">STARVED: THESE POWERS ARE UNAVAILABLE UNTIL THE GHOUL IS FED AGAIN</div>' : ''}
       ${activeDisciplines.length ? `
-        <div class="two-col">
+        <div class="two-col" style="${retainer.feeding === 'starved' ? 'opacity: 0.45; text-decoration: line-through;' : ''}">
           ${activeDisciplines.map(([d, val]) => renderDisciplineBlock(d, val)).join('')}
         </div>
       ` : '<div class="adv-empty" style="text-align: center; margin-bottom: 15px;">No discipline powers currently awakened</div>'}

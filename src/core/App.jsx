@@ -43,6 +43,7 @@ function ArchivedCharacter() {
 }
 const Domains = lazyWithRetry(() => import('../features/domains/Domains'));
 const DownTimes = lazyWithRetry(() => import('../features/downtimes/DownTimes'));
+const FeedingPage = lazyWithRetry(() => import('../features/feeding/FeedingPage'));
 const Boons = lazyWithRetry(() => import('../features/boons/Boons'));
 const MediaViewer = lazyWithRetry(() => import('../pages/MediaViewer'));
 const Premonitions = lazyWithRetry(() => import('../features/premonitions/Premonitions'));
@@ -296,6 +297,7 @@ function AppLayout() {
             <Route path="/make" element={<Private><CharacterSetup /></Private>} />
             <Route path="/domains" element={<Private><Domains /></Private>} />
             <Route path="/downtimes" element={<Private><DownTimes /></Private>} />
+            <Route path="/feeding" element={<Private><FeedingPage /></Private>} />
             <Route path="/boons" element={<Private><Boons /></Private>} />
             <Route path="/schrecknet" element={<Private><SchreckNet /></Private>} />
             <Route path="/surfaceweb" element={<Private><SurfaceWeb /></Private>} />
