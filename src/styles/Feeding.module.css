@@ -615,6 +615,17 @@ a.btnPrimary, a.btnGhost { text-decoration: none; }
 .ghoulForecast > span { flex: 1; min-width: 12rem; color: var(--text-secondary, rgba(255,255,255,0.75)); }
 .ghoulForecast strong { color: #ffd59a; }
 
+/* Vitals on top of /feeding: TrackerBlock from the character sheet, Hunger drops enlarged. */
+.vitals { display: flex; flex-direction: column; gap: 1.25rem; padding: 1.25rem 1.5rem; }
+.vitalsHunger :global(.material-symbols-outlined) { font-size: clamp(2.1rem, 9vw, 2.8rem); }
+.vitalsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 1.25rem 1.5rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--glass-border);
+}
+
 /* "Go hunt" pop-up on the Actions page */
 .warnBanner {
   background: color-mix(in srgb, #ffb347 8%, var(--glass-bg));

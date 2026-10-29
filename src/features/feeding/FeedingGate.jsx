@@ -24,7 +24,7 @@ function GoHunt({ status, onClose }) {
         </h2>
         <p className={styles.subtitle}>
           Your downtime actions unlock after your first feeding of {status.cycleTitle || 'this cycle'}.
-          Hunt (up to {status.huntsMax} times) or feed on your Herd.
+          Hunt (up to {status.huntsMax} times), feed on your Herd, or spend one action on a safe feeding.
         </p>
         <div className={styles.actions}>
           <Link to="/feeding" className={styles.btnPrimary}>
@@ -52,7 +52,7 @@ function FeedingGateInner({ status, children }) {
         </div>
         <Link to="/feeding" className={styles.btnGhost}>Go hunt</Link>
       </div>
-      {open && createPortal(<GoHunt status={status} onClose={() => setOpen(false)} />, document.body)}
+      {open && status.huntingOpen && createPortal(<GoHunt status={status} onClose={() => setOpen(false)} />, document.body)}
     </>
   );
 }

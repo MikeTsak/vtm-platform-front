@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { Skeleton } from 'boneyard-js/react';
 import styles from '../../styles/Feeding.module.css';
 import GhoulUpkeep from './GhoulUpkeep';
+import TrackerBlock from '../character/TrackerBlock';
 import FaGlyph from '../../ui/FaGlyph';
 import D10Die from '../../ui/D10Die';
 import { FEEDING_ICONS } from '../../data/feedingIcons';
@@ -54,6 +55,7 @@ const TIER_LABEL = {
   messy_critical: 'Messy Critical',
   herd: 'Herd Fed',
   manual: 'Fed (Storyteller)',
+  downtime: 'Safe Feeding',
 };
 const TIER_CLASS = {
   bestial_failure: styles.outcomeBestialFailure,
@@ -63,6 +65,7 @@ const TIER_CLASS = {
   messy_critical: styles.outcomeMessyCritical,
   herd: styles.outcomeSuccess,
   manual: styles.outcomeSuccess,
+  downtime: styles.outcomeSuccess,
 };
 const TIER_ICON = {
   bestial_failure: FEEDING_ICONS.skull,
@@ -72,6 +75,7 @@ const TIER_ICON = {
   messy_critical: FEEDING_ICONS.triangleExclamation,
   herd: FEEDING_ICONS.circleCheck,
   manual: FEEDING_ICONS.circleCheck,
+  downtime: FEEDING_ICONS.circleCheck,
 };
 
 function IconBadge({ icon, size = 15, small = false }) {
@@ -272,7 +276,7 @@ function FeedingLog({ feedings }) {
         {feedings.map((f) => (
           <div key={f.id} className={styles.logRow}>
             <span className={`${styles.logOutcome} ${TIER_CLASS[f.outcome]}`}>{TIER_LABEL[f.outcome] || f.outcome}</span>
-            <span className={styles.logWhere}>{f.outcome === 'herd' ? 'Herd' : f.outcome === 'manual' ? 'Recorded by a Storyteller' : divisionName(f.division)}</span>
+            <span className={styles.logWhere}>{f.outcome === 'herd' ? 'Herd' : f.outcome === 'manual' ? 'Recorded by a Storyteller' : f.outcome === 'downtime' ? 'Downtime action' : divisionName(f.division)}</span>
             <DeltaLine deltas={{ hunger: f.hunger_delta, safety: f.safety_delta }} />
           </div>
         ))}
@@ -547,10 +551,133 @@ function Picker({ status }) {
 }
 
 
+// Safe feeding: spend one downtime action for Hunger -2, no roll, no domain risk. Filed as a
+// resolved downtime on the spot (back/routes/feeding.js, the same way XP training is).
+function SafeFeed({ status }) {
+  const queryClient = useQueryClient();
+  const [ack, setAck] = useState(false);
+  const safe = useMutation({
+    mutationFn: () => api.post('/feeding/downtime-feed'),
+    onSuccess: ({ data }) => {
+      toast.success(`Fed safely. Hunger ${data.hungerBefore} → ${data.hungerAfter}. One downtime action used.`);
+      setAck(false);
+      queryClient.invalidateQueries({ queryKey: ['feeding'] });
+      queryClient.invalidateQueries({ queryKey: ['character', 'me'] });
+      queryClient.invalidateQueries({ queryKey: ['downtimes'] });
+    },
+    onError: (e) => toast.error(formatApiError(e, 'Safe feeding failed')),
+  });
+
+  const lowest = status.hunger <= 1;
+  const block = lowest ? 'Your Hunger is already as low as feeding can bring it.' : status.safeFeedBlock;
+  return (
+    <div className={styles.gate}>
+      <h2 className={styles.title}>
+        <IconBadge icon={FEEDING_ICONS.shieldHalved} />
+        Safe Feeding
+      </h2>
+      <p className={styles.subtitle}>
+        Spend one of your downtime actions to feed carefully: <strong>Hunger −2</strong>, no roll, no risk to any domain.
+        {!status.fed && ' It counts as your feeding for this cycle and unlocks your other actions.'}
+        {' '}It is not one of your {status.huntsMax} hunts.
+      </p>
+      {block ? (
+        <p className={styles.projectedNote}>{block}</p>
+      ) : (
+        <>
+          <label className={styles.checkboxRow}>
+            <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} />
+            I understand this uses a downtime action and can't be undone.
+          </label>
+          <div className={styles.actions}>
+            <button className={styles.btnPrimary} disabled={!ack || safe.isPending} onClick={() => safe.mutate()}>
+              <FaGlyph icon={FEEDING_ICONS.clock} size={14} />
+              Spend a downtime action (Hunger {status.hunger} → {Math.max(1, status.hunger - 2)})
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// Mend (V5): one Rouse Check heals Superficial damage by the Blood Potency amount;
+// three Rouse Checks heal one Aggravated. Server-rolled (back/routes/mechanics.js).
+function MendPanel({ status }) {
+  const queryClient = useQueryClient();
+  const { health, hunger, mendAmount } = status;
+  const mend = useMutation({
+    mutationFn: (type) => api.post(`/characters/${status.characterId}/mend`, { type }),
+    onSuccess: ({ data }) => {
+      const fails = (data.rolls || []).filter((r) => !r.success).length;
+      toast.success(`Healed ${data.healed} ${data.type}. ${fails ? `Hunger +${fails} (now ${data.nextHunger}).` : 'Every Rouse Check held.'}`);
+      queryClient.invalidateQueries({ queryKey: ['feeding'] });
+      queryClient.invalidateQueries({ queryKey: ['character', 'me'] });
+    },
+    onError: (e) => toast.error(formatApiError(e, 'Mending failed')),
+  });
+
+  if (!health.superficial && !health.aggravated) return null;
+  const atFive = hunger >= 5;
+
+  return (
+    <div className={styles.gate}>
+      <h2 className={styles.title}>
+        <IconBadge icon={FEEDING_ICONS.shieldHalved} />
+        Mend Your Wounds
+      </h2>
+      <p className={styles.subtitle}>
+        Healing costs blood. Each Rouse Check that fails raises your Hunger by 1, so mend before you hunt
+        and the hunt can bring it back down.
+      </p>
+      <div className={styles.ghoulActions}>
+        <button
+          className={styles.ghoulFeedBtn}
+          disabled={mend.isPending || atFive || !health.superficial}
+          onClick={() => mend.mutate('superficial')}
+        >
+          <FaGlyph icon={FEEDING_ICONS.droplet} size={13} />
+          Mend {Math.min(mendAmount, health.superficial)} Superficial (1 Rouse Check)
+        </button>
+        <button
+          className={styles.ghoulFeedBtn}
+          disabled={mend.isPending || atFive || !health.aggravated}
+          onClick={() => mend.mutate('aggravated')}
+        >
+          <FaGlyph icon={FEEDING_ICONS.droplet} size={13} />
+          Mend 1 Aggravated (3 Rouse Checks)
+        </button>
+      </div>
+      {atFive && <p className={styles.projectedNote}>At Hunger 5 a failed Rouse Check means Hunger frenzy. Feed first.</p>}
+    </div>
+  );
+}
+
+// Always on top: Hunger out of 5 as blood drops, then Health and Willpower (the sheet's trackers).
+function Vitals({ status }) {
+  const { hunger, health, willpower } = status;
+  return (
+    <section className={`${styles.gate} ${styles.vitals}`} aria-label="Your vitals">
+      <div className={styles.vitalsHunger}>
+        <TrackerBlock label="Hunger" val={hunger} max={5} filled={hunger} />
+      </div>
+      <div className={styles.vitalsGrid}>
+        <TrackerBlock label="Health" val={health.max - health.superficial - health.aggravated} max={health.max} agg={health.aggravated} sup={health.superficial} />
+        <TrackerBlock label="Willpower" val={willpower.max - willpower.superficial - willpower.aggravated} max={willpower.max} agg={willpower.aggravated} sup={willpower.superficial} />
+      </div>
+    </section>
+  );
+}
+
 function FeedingPageInner({ status }) {
   if (!status) return null;
   if (status.enabled === false) {
-    return <div className={styles.gate}><p className={styles.subtitle}>The Feeding system is currently switched off by the Storytellers.</p></div>;
+    return (
+      <>
+        {status.health && <Vitals status={status} />}
+        <div className={styles.gate}><p className={styles.subtitle}>The Feeding system is currently switched off by the Storytellers.</p></div>
+      </>
+    );
   }
   if (status.noCharacter) {
     return <div className={styles.gate}><p className={styles.subtitle}>You need a character before you can feed.</p></div>;
@@ -558,8 +685,8 @@ function FeedingPageInner({ status }) {
 
   return (
     <>
+      <Vitals status={status} />
       <div className={styles.statChipRow}>
-        <StatChip icon={FEEDING_ICONS.droplet}>Hunger {status.hunger}</StatChip>
         <StatChip icon={FEEDING_ICONS.diceD20}>Hunts {status.huntsUsed}/{status.huntsMax}</StatChip>
         {status.herdDots > 0 && <StatChip icon={FEEDING_ICONS.circleCheck}>Herd {status.herdCurrent}/{status.herdDots}</StatChip>}
         <StatChip icon={status.fed ? FEEDING_ICONS.check : FEEDING_ICONS.triangleExclamation} color={status.fed ? 'var(--color-success, #00e676)' : undefined}>
@@ -571,15 +698,19 @@ function FeedingPageInner({ status }) {
       {status.pending ? (
         <PendingResult status={status} />
       ) : status.huntingOpen ? (
-        <Picker status={status} />
+        <>
+          <Picker status={status} />
+          <SafeFeed status={status} />
+        </>
       ) : (
         <div className={styles.gate}>
           <p className={styles.subtitle}>
-            Hunting is closed until the next downtime cycle opens. Unfed ghouls still need their blood before the event.
+            Hunting is closed until the next downtime cycle opens.
           </p>
         </div>
       )}
 
+      <MendPanel status={status} />
       <FeedingLog feedings={status.feedings || []} />
       <GhoulUpkeep />
     </>

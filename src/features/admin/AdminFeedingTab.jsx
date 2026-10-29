@@ -51,6 +51,7 @@ const TIER_LABEL = {
   messy_critical:  'Messy Critical',
   herd:            'Herd Fed',
   manual:          'Storyteller',
+  downtime:        'Safe (Downtime)',
 };
 const TIER_COLOR = {
   bestial_failure: '#ff6b6b',
@@ -60,6 +61,7 @@ const TIER_COLOR = {
   messy_critical:  '#ffb347',
   herd:            '#7ecfff',
   manual:          '#b388ff',
+  downtime:        '#7ecfff',
 };
 const TIER_ICON = {
   bestial_failure: FEEDING_ICONS.skull,
