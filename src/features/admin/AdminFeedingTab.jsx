@@ -1,637 +1,747 @@
 // src/features/admin/AdminFeedingTab.jsx
+//
+// Admin > Feeding. Pick a cycle (the current one or any past one), then:
+//   - countdowns (current cycle) and the cycle's numbers;
+//   - Recent Feedings first: filter, search, click one for its full detail and Undo;
+//   - Players: who fed and how many times, hunts used, ghouls; click one for everything
+//     about them this cycle (feedings with Undo, Undo all, Mark fed, Hunger, their ghouls);
+//   - collapsible Ghouls, Herd and Tools sections.
+// Details open in a drawer (a bottom sheet on phones). Undos call back/routes/feeding.js with
+// ?cycle=N, so a past cycle can be fixed too; they change the sheet and domain as they are now.
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import api, { formatApiError } from '../../core/api';
-import styles from '../../styles/Admin.module.css';
+import styles from '../../styles/AdminFeeding.module.css';
 import FaGlyph from '../../ui/FaGlyph';
 import { FEEDING_ICONS } from '../../data/feedingIcons';
 import { formatAthensDate, formatAthensDateTime } from '../../utils/dateFormatter';
 import { getDivisionName } from '../../constants/divisionNames';
 
+/* ─────────────────────────── shared bits ─────────────────────────── */
+
 function useCountdown(target) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000);
+    const t = setInterval(() => setNow(Date.now()), 30000);
     return () => clearInterval(t);
   }, []);
-  if (!target) return 'calculating...';
+  if (!target) return null;
   const diff = new Date(target).getTime() - now;
   if (diff <= 0) return 'due';
   const days = Math.floor(diff / 86400000);
   const hours = Math.floor((diff % 86400000) / 3600000);
   const mins = Math.floor((diff % 3600000) / 60000);
-  return `${days}d ${hours}h ${mins}m`;
+  return days ? `${days}d ${hours}h` : `${hours}h ${mins}m`;
 }
 
-const card = {
-  background: 'var(--glass-bg)',
-  backdropFilter: 'var(--glass-blur)',
-  borderRadius: 'var(--radius-lg)',
-  border: '1px solid var(--glass-border)',
-  padding: '2rem',
-  boxShadow: 'var(--glass-shadow)',
+const OUTCOME = {
+  bestial_failure: { label: 'Bestial Failure', color: '#ff6b6b', icon: FEEDING_ICONS.skull },
+  failure: { label: 'Failure', color: '#ff8a8a', icon: FEEDING_ICONS.triangleExclamation },
+  success: { label: 'Success', color: 'var(--color-success, #00e676)', icon: FEEDING_ICONS.circleCheck },
+  critical: { label: 'Critical', color: 'var(--color-success, #00e676)', icon: FEEDING_ICONS.circleCheck },
+  messy_critical: { label: 'Messy Critical', color: '#ffb347', icon: FEEDING_ICONS.triangleExclamation },
+  herd: { label: 'Herd', color: '#7ecfff', icon: FEEDING_ICONS.droplet },
+  manual: { label: 'Storyteller', color: '#b388ff', icon: FEEDING_ICONS.check },
+  downtime: { label: 'Safe (Downtime)', color: '#7ecfff', icon: FEEDING_ICONS.shieldHalved },
+};
+const outcomeOf = (f) => (f.status === 'pending'
+  ? { label: 'Pending roll', color: '#ffb347', icon: FEEDING_ICONS.clock }
+  : OUTCOME[f.outcome] || { label: f.outcome, color: 'var(--text-secondary)', icon: FEEDING_ICONS.droplet });
+const NOT_HUNTS = ['herd', 'manual', 'downtime'];
+const FAILED = ['failure', 'bestial_failure', 'messy_critical'];
+
+const GHOUL_STATE = {
+  fed: { label: 'Fed', color: 'var(--color-success, #00e676)' },
+  hungry: { label: 'Needs feeding', color: '#ffb347' },
+  starved: { label: 'Starved', color: '#ff6b6b' },
+  none: { label: 'Nothing recorded', color: 'var(--text-secondary)' },
+};
+const GHOUL_METHOD = {
+  early: 'fed early', upkeep: 'fed by owner at upkeep', random: 'fed by a random member',
+  let_starve: 'let go', hunger_5: 'feeder at Hunger 5', no_feeder: 'no members',
 };
 
-const btnBase = {
-  background: 'var(--glass-inset)',
-  border: '1px solid var(--glass-border)',
-  borderRadius: 'var(--radius-md)',
-  padding: '0.6rem 1rem',
-  color: 'var(--text-color)',
-  cursor: 'pointer',
-  fontWeight: 600,
-  fontSize: '0.85rem',
+const parseDice = (v) => {
+  if (Array.isArray(v)) return v;
+  try { const a = JSON.parse(v || '[]'); return Array.isArray(a) ? a : []; } catch { return []; }
 };
+const hungerAfter = (f) => (f.status === 'resolved' && f.hunger_before != null
+  ? Number(f.hunger_before) + Number(f.hunger_delta || 0) : null);
+const whereOf = (f) => ({ herd: 'Herd', manual: 'Recorded by a Storyteller', downtime: 'Downtime action' }[f.outcome]
+  || getDivisionName(f.division) || `Division ${f.division}`);
 
-const TIER_LABEL = {
-  bestial_failure: 'Bestial Failure',
-  failure:         'Failure',
-  success:         'Success',
-  critical:        'Critical',
-  messy_critical:  'Messy Critical',
-  herd:            'Herd Fed',
-  manual:          'Storyteller',
-  downtime:        'Safe (Downtime)',
-};
-const TIER_COLOR = {
-  bestial_failure: '#ff6b6b',
-  failure:         '#ff8a8a',
-  success:         'var(--color-success)',
-  critical:        'var(--color-success)',
-  messy_critical:  '#ffb347',
-  herd:            '#7ecfff',
-  manual:          '#b388ff',
-  downtime:        '#7ecfff',
-};
-const TIER_ICON = {
-  bestial_failure: FEEDING_ICONS.skull,
-  failure:         FEEDING_ICONS.triangleExclamation,
-  success:         FEEDING_ICONS.circleCheck,
-  critical:        FEEDING_ICONS.circleCheck,
-  messy_critical:  FEEDING_ICONS.triangleExclamation,
-  herd:            FEEDING_ICONS.droplet,
-};
+// What undoing a feeding reverses (shown before confirming).
+function undoWhat(f, isCurrent) {
+  const parts = [];
+  if (f.status === 'resolved' && f.hunger_delta) parts.push(`Hunger ${f.hunger_delta > 0 ? '-' : '+'}${Math.abs(f.hunger_delta)}`);
+  if (f.wp_rerolled) parts.push('1 Willpower back');
+  if (f.status === 'resolved' && f.safety_delta) parts.push(`domain Safety ${f.safety_delta > 0 ? '-' : '+'}${Math.abs(f.safety_delta)}`);
+  if (f.outcome === 'herd') parts.push('1 Herd point back');
+  if (f.outcome === 'downtime') parts.push('the downtime action back');
+  return `Undo: ${parts.join(', ') || 'remove the roll'}.${isCurrent ? ' The player can feed again.' : ' Applied to the sheet and domain as they are now.'}`;
+}
 
-function HerdDots({ current, max }) {
+// Two-step undo: the first click arms it, the second runs it; it disarms itself after 4 s.
+function UndoButton({ onConfirm, label = 'Undo', what }) {
+  const [armed, setArmed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (!armed) return undefined;
+    const t = setTimeout(() => setArmed(false), 4000);
+    return () => clearTimeout(t);
+  }, [armed]);
+  const click = async (e) => {
+    e.stopPropagation();
+    if (!armed) { setArmed(true); return; }
+    setBusy(true);
+    try { await onConfirm(); } finally { setBusy(false); setArmed(false); }
+  };
   return (
-    <span style={{ letterSpacing: 2, fontSize: '1rem' }}>
-      {Array.from({ length: max }, (_, i) => (
-        <span key={i} style={{ color: i < current ? '#7ecfff' : 'var(--glass-border)' }}>{'\u25cf'}</span>
+    <button type="button" onClick={click} disabled={busy} title={what}
+      className={`${styles.btn} ${armed ? styles.btnArmed : styles.btnDanger}`}>
+      <FaGlyph icon={FEEDING_ICONS.arrowsRotate} size={11} />
+      {busy ? 'Undoing...' : armed ? 'Confirm undo' : label}
+    </button>
+  );
+}
+
+function Kpi({ label, value, sub, color, onClick }) {
+  const Tag = onClick ? 'button' : 'div';
+  return (
+    <Tag type={onClick ? 'button' : undefined} onClick={onClick}
+      className={`${styles.kpi} ${onClick ? styles.kpiButton : ''}`} style={color ? { '--kpi': color } : undefined}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+      {sub && <small>{sub}</small>}
+    </Tag>
+  );
+}
+
+function Chips({ options, value, onChange }) {
+  return (
+    <div className={styles.chips} role="group">
+      {options.map(([key, label]) => (
+        <button key={key} type="button" aria-pressed={value === key}
+          className={`${styles.chip} ${value === key ? styles.chipOn : ''}`} onClick={() => onChange(key)}>
+          {label}
+        </button>
       ))}
-      <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', marginLeft: 6 }}>{current}/{max}</span>
+    </div>
+  );
+}
+
+function Drawer({ title, subtitle, onClose, children }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  return createPortal(
+    <div className={styles.backdrop} onClick={onClose}>
+      <aside className={styles.drawer} role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.drawerHead}>
+          <div>
+            <h3>{title}</h3>
+            {subtitle && <p>{subtitle}</p>}
+          </div>
+          <button type="button" className={`${styles.btn} ${styles.close}`} onClick={onClose} aria-label="Close">
+            <FaGlyph icon={FEEDING_ICONS.xmark} size={12} />
+          </button>
+        </div>
+        {children}
+      </aside>
+    </div>,
+    document.body
+  );
+}
+
+// A collapsible section (native <details>).
+function Fold({ title, icon, count, defaultOpen = false, right, children }) {
+  return (
+    <details className={styles.section} open={defaultOpen}>
+      <summary>
+        <div className={styles.sectionHead}>
+          <h3>
+            <span className={styles.chevron}><FaGlyph icon={FEEDING_ICONS.arrowRight} size={11} /></span>
+            <FaGlyph icon={icon} size={15} />
+            {title}
+          </h3>
+          {count != null && <span className={styles.count}>{count}</span>}
+          {right && <div className={styles.headRight} onClick={(e) => e.preventDefault()}>{right}</div>}
+        </div>
+      </summary>
+      {children}
+    </details>
+  );
+}
+
+// Domain Safety around a hunt: before -> after (stored since migration 0070) and the rating now.
+function safetyOf(f) {
+  if (NOT_HUNTS.includes(f.outcome) || f.status !== 'resolved') return null;
+  const delta = Number(f.safety_delta || 0);
+  const before = f.safety_before != null ? Number(f.safety_before) : null;
+  const after = before != null ? Math.max(0, Math.min(10, before + delta)) : null;
+  return { before, after, delta, now: f.current_domain_safety != null ? Number(f.current_domain_safety) : null };
+}
+const safetyColor = (v) => (v == null ? undefined : v >= 7 ? 'var(--color-success, #00e676)' : v >= 4 ? '#ffb347' : '#ff6b6b');
+const signed = (n) => (n > 0 ? `+${n}` : `${n}`);
+
+// Hunger now with instant -/+ (the character's sheet, not the roll).
+function HungerControl({ value, busy, onAdjust, compact = false }) {
+  const stop = (fn) => (e) => { e.stopPropagation(); fn(); };
+  return (
+    <span className={styles.hungerCtl} onClick={(e) => e.stopPropagation()}>
+      {!compact && <span className={styles.hungerLabel}>Hunger now</span>}
+      <button type="button" className={styles.stepBtn} disabled={busy || value <= 0} onClick={stop(() => onAdjust(-1))} aria-label="Hunger -1">−</button>
+      <HungerDrops value={value} />
+      <b className={styles.hungerNum}>{value}</b>
+      <button type="button" className={styles.stepBtn} disabled={busy || value >= 5} onClick={stop(() => onAdjust(1))} aria-label="Hunger +1">+</button>
     </span>
   );
 }
 
-export default function AdminFeedingTab() {
-  const [status,   setStatus]   = useState(null);
-  const [log,      setLog]      = useState([]);
-  const [stats,    setStats]    = useState(null);
-  const [roster,   setRoster]   = useState([]);
-  const [loading,  setLoading]  = useState(true);
-  const [actionLoading, setActionLoading] = useState(false);
-  const [adjusting, setAdjusting] = useState({});
-  const [msg, setMsg] = useState('');
-  const [err, setErr] = useState('');
-  const [cycleFilter, setCycleFilter] = useState('current');
-
-  const availableCycles = useMemo(() => {
-    const set = new Set();
-    if (status?.cycleIndex != null) set.add(Number(status.cycleIndex));
-    log.forEach(f => {
-      if (f.cycle_index != null) set.add(Number(f.cycle_index));
-    });
-    return Array.from(set).sort((a, b) => b - a);
-  }, [log, status]);
-
-  const filteredLog = useMemo(() => {
-    if (cycleFilter === 'all') return log;
-    const targetCycle = cycleFilter === 'current'
-      ? (status?.cycleIndex ?? (availableCycles.length > 0 ? availableCycles[0] : null))
-      : Number(cycleFilter);
-    if (targetCycle == null) return log;
-    return log.filter(f => Number(f.cycle_index) === Number(targetCycle));
-  }, [log, cycleFilter, status, availableCycles]);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setErr('');
-    try {
-      const [statusRes, logRes, statsRes, rosterRes] = await Promise.allSettled([
-        api.get('/feeding/status'),
-        api.get('/admin/feeding/log'),
-        api.get('/admin/feeding/stats'),
-        api.get('/admin/feeding/herd-roster'),
-      ]);
-
-      const errList = [];
-      if (statusRes.status === 'fulfilled') {
-        setStatus(statusRes.value.data);
-      } else {
-        console.error('[AdminFeedingTab] Failed feeding status', statusRes.reason);
-        errList.push(formatApiError(statusRes.reason, 'Failed feeding status'));
-      }
-
-      if (logRes.status === 'fulfilled') {
-        setLog(logRes.value.data?.log || []);
-      } else {
-        console.error('[AdminFeedingTab] Failed feeding log', logRes.reason);
-        errList.push(formatApiError(logRes.reason, 'Failed feeding log'));
-      }
-
-      if (statsRes.status === 'fulfilled') {
-        setStats(statsRes.value.data);
-      } else {
-        console.error('[AdminFeedingTab] Failed feeding stats', statsRes.reason);
-        errList.push(formatApiError(statsRes.reason, 'Failed feeding stats'));
-      }
-
-      if (rosterRes.status === 'fulfilled') {
-        setRoster(rosterRes.value.data?.roster || []);
-      } else {
-        console.error('[AdminFeedingTab] Failed herd roster', rosterRes.reason);
-        errList.push(formatApiError(rosterRes.reason, 'Failed herd roster'));
-      }
-
-      if (errList.length > 0) {
-        setErr(errList.join(', '));
-      }
-    } catch (e) {
-      console.error('[AdminFeedingTab] Load failed', e);
-      setErr(formatApiError(e, 'Failed to load feeding data'));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
-  const countdown = useCountdown(status?.cycleEnd);
-  const isOnline  = status?.enabled === true;
-  const flash = (setter, text) => { setter(text); setTimeout(() => setter(''), 3500); };
-
-  const toggleEnabled = async () => {
-    if (actionLoading) return;
-    setActionLoading(true); setMsg(''); setErr('');
-    try {
-      await api.post('/admin/feeding/status', { enabled: !isOnline });
-      await load();
-      flash(setMsg, `Feeding system is now ${!isOnline ? 'ENABLED' : 'DISABLED'}.`);
-    } catch (e) {
-      console.error('[AdminFeedingTab] toggleEnabled failed', e);
-      flash(setErr, formatApiError(e, 'Failed to update Feeding status'));
-    } finally { setActionLoading(false); }
-  };
-
-  const forceNewCycle = async () => {
-    if (actionLoading) return;
-    if (!window.confirm('End the current Feeding cycle immediately and start a new one?')) return;
-    setActionLoading(true); setMsg(''); setErr('');
-    try {
-      await api.post('/admin/feeding/force-new-cycle');
-      await load();
-      flash(setMsg, 'New Feeding cycle started.');
-    } catch (e) {
-      console.error('[AdminFeedingTab] forceNewCycle failed', e);
-      flash(setErr, formatApiError(e, 'Failed to reset cycle'));
-    } finally { setActionLoading(false); }
-  };
-
-  const runDecay = async () => {
-    if (actionLoading) return;
-    if (!window.confirm(
-      'Run cycle-end decay for the last completed cycle?\n\n'
-      + 'Every division with no failed feeding that cycle loses 1 Safety, and every character with Herd regains 1 point. '
-      + 'This normally runs by itself overnight. A cycle that was already processed is skipped.'
-    )) return;
-    setActionLoading(true); setMsg(''); setErr('');
-    try {
-      const res = await api.post('/admin/feeding/run-decay');
-      flash(setMsg, res.data?.skipped
-        ? `Decay skipped: ${res.data.skipped}`
-        : `Decay: ${res.data?.decayed ?? 0} division(s). Herd regen: ${res.data?.herdRegen ?? 0} character(s).`);
-      await load();
-    } catch (e) {
-      console.error('[AdminFeedingTab] runDecay failed', e);
-      flash(setErr, formatApiError(e, 'Failed to run decay'));
-    } finally { setActionLoading(false); }
-  };
-
-  const adjustHerd = async (character_id, delta) => {
-    setAdjusting(prev => ({ ...prev, [character_id]: true }));
-    try {
-      const res = await api.post('/admin/feeding/herd-adjust', { character_id, delta });
-      const d = res.data;
-      flash(setMsg, `${d.name}: Herd ${d.herdBefore} to ${d.herdAfter} of ${d.herdDots}`);
-      setRoster(prev => prev.map(r =>
-        r.character_id === character_id ? { ...r, herdCurrent: d.herdAfter } : r
-      ));
-    } catch (e) {
-      console.error('[AdminFeedingTab] adjustHerd failed', e);
-      flash(setErr, formatApiError(e, 'Herd adjust failed'));
-    } finally {
-      setAdjusting(prev => ({ ...prev, [character_id]: false }));
-    }
-  };
-
-  const [adjustingHunger, setAdjustingHunger] = useState({});
-
-  const adjustHunger = async (character_id, delta) => {
-    setAdjustingHunger(prev => ({ ...prev, [character_id]: true }));
-    const targetItem = log.find(f => f.character_id === character_id);
-    const prevHunger = targetItem?.current_hunger != null ? Number(targetItem.current_hunger) : 1;
-    const optimisticHunger = Math.max(0, Math.min(5, prevHunger + delta));
-
-    setLog(prev => prev.map(f =>
-      f.character_id === character_id ? { ...f, current_hunger: optimisticHunger } : f
-    ));
-
-    try {
-      const res = await api.post('/admin/feeding/hunger-adjust', { character_id, delta });
-      const d = res.data;
-      flash(setMsg, `${d.name}: Hunger adjusted from ${d.hungerBefore} to ${d.hungerAfter} of 5`);
-      setLog(prev => prev.map(f =>
-        f.character_id === character_id ? { ...f, current_hunger: d.hungerAfter } : f
-      ));
-    } catch (e) {
-      console.error('[AdminFeedingTab] adjustHunger failed', e);
-      flash(setErr, formatApiError(e, 'Hunger adjust failed'));
-      setLog(prev => prev.map(f =>
-        f.character_id === character_id ? { ...f, current_hunger: prevHunger } : f
-      ));
-    } finally {
-      setAdjustingHunger(prev => ({ ...prev, [character_id]: false }));
-    }
-  };
-
-  // Two-click confirm: first click arms the row, second undoes the feeding.
-  const [rerollArmed, setRerollArmed] = useState(null);
-  const [rerollBusy, setRerollBusy] = useState(null);
-
-  const allowReroll = async (f) => {
-    if (rerollArmed !== f.id) { setRerollArmed(f.id); return; }
-    setRerollBusy(f.id);
-    try {
-      await api.post(`/admin/feeding/${f.id}/allow-reroll`);
-      flash(setMsg, `${f.character_name}: feeding undone. They can feed again this cycle.`);
-      await load();
-    } catch (e) {
-      console.error('[AdminFeedingTab] allowReroll failed', e);
-      flash(setErr, formatApiError(e, 'Allow reroll failed'));
-    } finally {
-      setRerollBusy(null);
-      setRerollArmed(null);
-    }
-  };
-
-  if (loading) return <div style={{ padding: '2rem', color: 'var(--text-secondary)' }}>Loading Feeding Control...</div>;
-
-  const themeColor = isOnline ? 'var(--color-success)' : 'var(--color-error)';
-
+function Fact({ label, children, sub, color }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      {msg && <div style={{ padding: '0.75rem 1rem', background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.3)', borderRadius: 'var(--radius-md)', color: 'var(--color-success)' }}>{msg}</div>}
-      {err && <div style={{ padding: '0.75rem 1rem', background: 'rgba(255,77,77,0.1)', border: '1px solid rgba(255,77,77,0.3)', borderRadius: 'var(--radius-md)', color: 'var(--color-error)', wordBreak: 'break-word', fontSize: '0.88rem' }}>{err}</div>}
+    <div className={styles.fact}>
+      <span>{label}</span>
+      <strong style={color ? { color } : undefined}>{children}</strong>
+      {sub && <small>{sub}</small>}
+    </div>
+  );
+}
 
-      {/* KILLSWITCH */}
-      <div style={card}>
-        <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
-          <h4 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <FaGlyph icon={FEEDING_ICONS.droplet} size={20} /> Feeding System
-          </h4>
-          <p style={{ margin: '5px 0 0 0', color: 'var(--text-secondary)' }}>The required hunting roll gating downtime submission, on a fixed 3-week automated cycle.</p>
+function HungerDrops({ value }) {
+  return (
+    <span className={styles.drops} aria-label={`Hunger ${value} of 5`}>
+      {[1, 2, 3, 4, 5].map((n) => <span key={n} className={n <= value ? styles.on : undefined}><FaGlyph icon={FEEDING_ICONS.droplet} size={10} /></span>)}
+    </span>
+  );
+}
+
+/* ─────────────────────────── drawers ─────────────────────────── */
+
+function FeedingDetail({ f, isCurrent, onUndo, onOpenPlayer }) {
+  const o = outcomeOf(f);
+  const normal = parseDice(f.normal_dice);
+  const hunger = parseDice(f.hunger_dice);
+  const after = hungerAfter(f);
+  const isHunt = !NOT_HUNTS.includes(f.outcome);
+  return (
+    <>
+      <div className={styles.block} style={{ borderLeft: `3px solid ${o.color}` }}>
+        <h4>Outcome</h4>
+        <div className={styles.row} style={{ color: o.color, fontWeight: 800, fontSize: '1.05rem' }}>
+          <FaGlyph icon={o.icon} size={15} /> {o.label}
         </div>
-        <div
-          onClick={toggleEnabled}
-          style={{ background: 'var(--glass-inset)', border: `2px solid ${themeColor}`, borderRadius: 'var(--radius-md)', padding: '1.5rem', cursor: actionLoading ? 'wait' : 'pointer', transition: 'all 0.3s ease', display: 'flex', flexDirection: 'column', gap: '1.5rem', opacity: actionLoading ? 0.7 : 1 }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
-              <div style={{ width: 12, height: 12, borderRadius: '50%', background: themeColor, boxShadow: `0 0 15px ${themeColor}`, flexShrink: 0 }} />
-              <h3 style={{ margin: 0, fontSize: 'clamp(1.05rem, 4vw, 1.4rem)', color: 'var(--text-color)' }}>Feeding Gate</h3>
-            </div>
-            <div style={{ position: 'relative', width: 60, height: 32, background: isOnline ? 'var(--color-success)' : 'var(--glass-border)', borderRadius: 32, transition: 'background 0.3s ease' }}>
-              <div style={{ position: 'absolute', top: 4, left: isOnline ? 32 : 4, width: 24, height: 24, background: 'var(--text-color)', borderRadius: '50%', transition: 'left 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }} />
-            </div>
+        {f.failure_reason && <p className={styles.muted} style={{ fontStyle: 'italic', margin: '0.4rem 0 0' }}>{f.failure_reason}</p>}
+      </div>
+      {isHunt && (normal.length > 0 || hunger.length > 0) && (
+        <div className={styles.block}>
+          <h4>Dice · {f.pool_label} · Pool {f.dice_pool}{f.bonus_dice ? ` (+${f.bonus_dice} Chasse)` : ''} · Difficulty {f.difficulty}</h4>
+          <div className={styles.dice}>
+            {normal.map((d, i) => <span key={`n${i}`} className={`${styles.die} ${d >= 6 ? styles.dieHit : ''}`}>{d}</span>)}
+            {hunger.map((d, i) => <span key={`h${i}`} className={`${styles.die} ${styles.dieHunger} ${d >= 6 ? styles.dieHit : ''}`}>{d}</span>)}
           </div>
-          <p style={{ margin: 0, color: 'var(--text-primary)', lineHeight: 1.5 }}>
-            {isOnline
-              ? 'Players must feed before submitting downtime actions each cycle. Click to disable.'
-              : 'The gate is disabled. Downtimes submit as before. Click to enable.'}
-          </p>
+          {f.wp_rerolled ? <p className={styles.muted} style={{ margin: '0.4rem 0 0' }}>Willpower spent on a reroll.</p> : null}
+        </div>
+      )}
+      <div className={styles.block}>
+        <h4>Details</h4>
+        <dl className={styles.facts}>
+          <dt>Character</dt>
+          <dd><button type="button" className={styles.rowLink} onClick={onOpenPlayer}>{f.character_name}</button></dd>
+          {f.predator_type && <><dt>Predator</dt><dd>{f.predator_type}</dd></>}
+          <dt>Where</dt>
+          <dd>{whereOf(f)}{isHunt && f.domain_owner ? ` (claimed by ${f.domain_owner})` : ''}</dd>
+          <dt>Hunger</dt>
+          <dd>{f.hunger_before}{after != null ? ` → ${after}` : ' (not applied yet)'}</dd>
+          {isHunt && (() => {
+            const sf = safetyOf(f);
+            if (!sf) return null;
+            return (
+              <><dt>Safety</dt><dd>
+                {sf.before != null ? `${sf.before} → ${sf.after} (${signed(sf.delta)})` : `change ${signed(sf.delta)}`}
+                {sf.now != null && <> · now <b style={{ color: safetyColor(sf.now) }}>{sf.now}/10</b></>}
+              </dd></>
+            );
+          })()}
+          <dt>Cycle</dt><dd>{f.cycle_index}</dd>
+          <dt>When</dt><dd>{formatAthensDateTime(f.created_at)}</dd>
+        </dl>
+      </div>
+      <div className={styles.row}>
+        <UndoButton label="Undo this feeding" what={undoWhat(f, isCurrent)} onConfirm={onUndo} />
+        <span className={styles.muted}>{undoWhat(f, isCurrent)}</span>
+      </div>
+    </>
+  );
+}
+
+function PlayerDetail({ p, feedings, ghouls, max, isCurrent, cycleIndex, onChanged, onOpenFeeding, notify, onHunger, hungerBusy }) {
+  const [hungerAfterPick, setHungerAfterPick] = useState(Math.max(1, p.hunger - 1));
+  const call = async (fn, failText, okText) => {
+    try {
+      await fn();
+      if (okText) notify(okText);
+      await onChanged();
+    } catch (e) {
+      notify(formatApiError(e, failText), true);
+    }
+  };
+  const q = `?cycle=${cycleIndex}`;
+  return (
+    <>
+      <div className={styles.block}>
+        <h4>Now</h4>
+        <HungerControl value={p.hunger} busy={hungerBusy} onAdjust={(d) => onHunger(p.id, d)} />
+        <div className={styles.muted} style={{ marginTop: '0.4rem' }}>{p.predatorType || 'no Predator Type'}{!p.canAutomate && ' (needs a Storyteller)'}</div>
+        <div className={styles.row} style={{ marginTop: '0.5rem' }}>
+          <Link to={`/admin/character/${p.id}`} target="_blank" rel="noopener noreferrer" className={styles.btn}>Open sheet</Link>
         </div>
       </div>
 
-      {/* CYCLE + STATS */}
-      {isOnline && (
-        <div style={card}>
-          <h4 style={{ margin: '0 0 1rem 0', fontSize: '1.3rem', color: 'var(--text-color)' }}>
-            Current Cycle #{status.cycleIndex}{status.cycleTitle ? ` : ${status.cycleTitle}` : ''}
-          </h4>
-          <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
-            <div><div style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>Ends in</div><div style={{ fontSize: '1.2rem', fontWeight: 700 }}>{countdown}</div></div>
-            <div><div style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>Window</div><div style={{ fontSize: '0.9rem' }}>{formatAthensDate(status.cycleStart)} to {formatAthensDate(status.cycleEnd)}</div></div>
-            {stats && <>
-              <div><div style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>Total Feeds</div><div style={{ fontSize: '1.2rem', fontWeight: 700 }}>{stats.counts.total}</div></div>
-              <div>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>Success Rate</div>
-                <div style={{ fontSize: '1.2rem', fontWeight: 700, color: stats.successPct >= 70 ? 'var(--color-success)' : stats.successPct >= 40 ? '#ffb347' : '#ff6b6b' }}>
-                  {stats.successPct !== null ? `${stats.successPct}%` : 'N/A'}
-                </div>
+      <div className={styles.block}>
+        <h4>Cycle {cycleIndex}: {p.hunts} / {max} hunts · fed {feedings.filter((f) => f.status === 'resolved').length} time(s)</h4>
+        {feedings.length === 0 && <p className={styles.empty} style={{ marginTop: 0 }}>No feedings this cycle.</p>}
+        {feedings.map((f) => {
+          const o = outcomeOf(f);
+          const after = hungerAfter(f);
+          return (
+            <div key={f.id} className={styles.entry} style={{ '--outcome': o.color }}>
+              <div role="button" tabIndex={0} style={{ cursor: 'pointer' }} onClick={() => onOpenFeeding(f)}
+                onKeyDown={(e) => { if (e.key === 'Enter') onOpenFeeding(f); }}>
+                <b>{o.label}</b>
+                {whereOf(f)} · Hunger {f.hunger_before}{after != null ? ` → ${after}` : ''} · {formatAthensDateTime(f.created_at)}
               </div>
-              <div><div style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>Fed OK</div><div style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-success)' }}>{stats.counts.success}</div></div>
-              <div><div style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>Failed</div><div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#ff6b6b' }}>{stats.counts.failure}</div></div>
-              <div><div style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>Herd Used</div><div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#7ecfff' }}>{stats.counts.herd || 0}</div></div>
-            </>}
-          </div>
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <button onClick={forceNewCycle} disabled={actionLoading} style={btnBase}>
-              <FaGlyph icon={FEEDING_ICONS.clock} size={13} style={{ marginRight: '0.4rem', verticalAlign: '-2px' }} />
-              Force New Cycle Now
+              <UndoButton what={undoWhat(f, isCurrent)}
+                onConfirm={() => call(() => api.post(`/admin/feeding/${f.id}/allow-reroll`), 'Undo failed', `${p.name}: feeding undone.`)} />
+            </div>
+          );
+        })}
+        {feedings.length > 1 && (
+          <UndoButton label={`Undo all ${feedings.length}`}
+            what={`Undo every feeding ${p.name} made in cycle ${cycleIndex}, newest first.`}
+            onConfirm={() => call(() => api.post(`/admin/feeding/character/${p.id}/undo-cycle${q}`), 'Undo failed', `${p.name}: all feedings of cycle ${cycleIndex} undone.`)} />
+        )}
+        {isCurrent && !p.fed && (
+          <div className={styles.row} style={{ marginTop: '0.75rem' }}>
+            <label className={styles.muted}>
+              Hunger after{' '}
+              <select className={styles.select} value={hungerAfterPick} onChange={(e) => setHungerAfterPick(Number(e.target.value))}>
+                {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </label>
+            <button type="button" className={styles.btn}
+              onClick={() => call(() => api.post('/admin/feeding/manual', { character_id: p.id, hunger: hungerAfterPick }), 'Recording the feeding failed', `${p.name} marked as fed.`)}>
+              <FaGlyph icon={FEEDING_ICONS.check} size={12} /> Mark fed
             </button>
-            <button onClick={runDecay} disabled={actionLoading} style={btnBase}>
-              <FaGlyph icon={FEEDING_ICONS.shieldHalved} size={13} style={{ marginRight: '0.4rem', verticalAlign: '-2px' }} />
-              Run Decay + Herd Regen Now
-            </button>
           </div>
+        )}
+      </div>
+
+      <div className={styles.block}>
+        <h4>Ghouls ({ghouls.length})</h4>
+        {ghouls.length === 0 && <p className={styles.empty} style={{ marginTop: 0 }}>No ghouls.</p>}
+        {ghouls.map((g) => (
+          <GhoulEntry key={g.id} g={g} isCurrent={isCurrent}
+            onUndo={() => call(() => api.post(`/admin/feeding/ghouls/${g.id}/undo${q}`), 'Undo failed', `${g.name}: ghoul feeding undone.`)} />
+        ))}
+      </div>
+    </>
+  );
+}
+
+function GhoulEntry({ g, isCurrent, onUndo }) {
+  const st = GHOUL_STATE[g.state] || GHOUL_STATE.hungry;
+  return (
+    <div className={styles.entry} style={{ '--outcome': st.color }}>
+      <div>
+        <b>{g.name} · {st.label}</b>
+        T{g.tier} · {g.coterie_id ? `${g.coterie_name} coterie` : 'personal'}
+        {g.current && ` · ${GHOUL_METHOD[g.current.method] || g.current.method}${g.current.fed_by_name ? ` (${g.current.fed_by_name})` : ''}`}
+        {isCurrent && !g.current && g.let_starve && ' · will be let go'}
+      </div>
+      {g.current && (
+        <UndoButton what={g.current.status === 'fed'
+          ? `Undo: ${g.name} needs feeding again${g.current.hunger_after > g.current.hunger_before ? `, ${g.current.fed_by_name || 'the feeder'} gets 1 Hunger back` : ''}.`
+          : `Undo: ${g.name} is no longer starved for that cycle.`}
+          onConfirm={onUndo} />
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────────── the tab ─────────────────────────── */
+
+export default function AdminFeedingTab() {
+  const [cycles, setCycles] = useState([]);
+  const [cycle, setCycle] = useState(null); // null = current
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [notice, setNotice] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [drawer, setDrawer] = useState(null); // { type: 'feeding', id } | { type: 'player', id }
+  const [feedFilter, setFeedFilter] = useState('all');
+  const [feedSearch, setFeedSearch] = useState('');
+  const [showAllFeed, setShowAllFeed] = useState(false);
+  const [playerFilter, setPlayerFilter] = useState('all');
+  const [ghoulFilter, setGhoulFilter] = useState('all');
+  // Instant Hunger edits: character id -> Hunger, shown everywhere until the next load.
+  const [hungerNow, setHungerNow] = useState({});
+  const [hungerBusy, setHungerBusy] = useState({});
+
+  const notify = useCallback((text, isError = false) => {
+    setNotice({ text, isError });
+    setTimeout(() => setNotice(null), 4000);
+  }, []);
+
+  const load = useCallback(async () => {
+    try {
+      const cyc = (await api.get('/admin/feeding/cycles')).data;
+      setCycles(cyc.cycles);
+      const index = cycle ?? cyc.current;
+      const q = `?cycle=${index}`;
+      const [status, stats, log, roster, ghouls, herd] = await Promise.all([
+        api.get('/feeding/status'),
+        api.get(`/admin/feeding/stats${q}`),
+        api.get(`/admin/feeding/log${q}`),
+        api.get(`/admin/feeding/roster${q}`),
+        api.get(`/admin/feeding/ghouls${q}`),
+        api.get('/admin/feeding/herd-roster'),
+      ]);
+      setHungerNow({});
+      setData({
+        index,
+        isCurrent: index === cyc.current,
+        status: status.data,
+        stats: stats.data,
+        log: log.data.log || [],
+        roster: roster.data.characters || [],
+        max: roster.data.huntsPerCycle || 3,
+        ghouls: ghouls.data,
+        herd: herd.data.roster || [],
+      });
+    } catch (e) {
+      notify(formatApiError(e, 'Failed to load feeding data'), true);
+    } finally {
+      setLoading(false);
+    }
+  }, [cycle, notify]);
+  useEffect(() => { load(); }, [load]);
+
+  const adjustHunger = useCallback(async (characterId, delta) => {
+    setHungerBusy((b) => ({ ...b, [characterId]: true }));
+    try {
+      const { data: d } = await api.post('/admin/feeding/hunger-adjust', { character_id: characterId, delta });
+      setHungerNow((h) => ({ ...h, [characterId]: d.hungerAfter }));
+      notify(`${d.name}: Hunger ${d.hungerBefore} → ${d.hungerAfter}`);
+    } catch (e) {
+      notify(formatApiError(e, 'Hunger change failed'), true);
+    } finally {
+      setHungerBusy((b) => ({ ...b, [characterId]: false }));
+    }
+  }, [notify]);
+
+  const huntingIn = useCountdown(data?.stats?.huntingOpen ? data.stats.huntingClosesAt : null);
+  const upkeepIn = useCountdown(data?.stats?.nextUpkeepAt);
+  const openingIn = useCountdown(data?.stats?.nextOpening ? `${data.stats.nextOpening}T00:00:00` : null);
+
+  const ghoulList = useMemo(() => data?.ghouls?.ghouls || [], [data]);
+  const ghoulsByOwner = useMemo(() => {
+    const m = new Map();
+    for (const g of ghoulList) {
+      if (!m.has(g.owner_character_id)) m.set(g.owner_character_id, []);
+      m.get(g.owner_character_id).push(g);
+    }
+    return m;
+  }, [ghoulList]);
+
+  const players = useMemo(() => (data?.roster || []).map((p) => {
+    const mine = ghoulsByOwner.get(p.id) || [];
+    return {
+      ...p,
+      hunger: hungerNow[p.id] ?? p.hunger,
+      timesFed: p.feedings.filter((f) => f.status === 'resolved').length,
+      ghouls: mine,
+      ghoulsUnfed: mine.filter((g) => g.state === 'hungry' || g.state === 'starved').length,
+    };
+  }), [data, ghoulsByOwner, hungerNow]);
+
+  if (loading) return <div className={styles.empty}>Loading Feeding Control...</div>;
+  if (!data) return <div className={`${styles.notice} ${styles.noticeErr}`}>{notice?.text || 'Feeding data unavailable.'}</div>;
+
+  const { stats, status, isCurrent, max, index } = data;
+  const isOnline = status?.enabled !== false;
+
+  // Recent feedings
+  const term = feedSearch.trim().toLowerCase();
+  const feed = data.log
+    .filter((f) => feedFilter === 'all'
+      || (feedFilter === 'hunts' && !NOT_HUNTS.includes(f.outcome))
+      || (feedFilter === 'failed' && FAILED.includes(f.outcome))
+      || (feedFilter === 'pending' && f.status === 'pending')
+      || f.outcome === feedFilter)
+    .filter((f) => !term || (f.character_name || '').toLowerCase().includes(term) || whereOf(f).toLowerCase().includes(term));
+  const shownFeed = showAllFeed ? feed : feed.slice(0, 12);
+
+  // Players
+  const PLAYER_FILTERS = {
+    all: () => true,
+    unfed: (p) => !p.fed,
+    multi: (p) => p.timesFed >= 2,
+    maxed: (p) => p.hunts >= max,
+    ghouls: (p) => p.ghouls.length > 0,
+    ghoulsUnfed: (p) => p.ghoulsUnfed > 0,
+  };
+  const shownPlayers = players.filter(PLAYER_FILTERS[playerFilter])
+    .sort((a, b) => (a.fed - b.fed) || (b.timesFed - a.timesFed) || a.name.localeCompare(b.name));
+  const count = (key) => players.filter(PLAYER_FILTERS[key]).length;
+
+  const shownGhouls = ghoulList.filter((g) => ghoulFilter === 'all' || g.state === ghoulFilter);
+  const ghoulsUnfed = ghoulList.filter((g) => g.state === 'hungry').length;
+
+  const changed = async () => { await load(); };
+  const openPlayer = (id) => setDrawer({ type: 'player', id });
+  const openFeeding = (id) => setDrawer({ type: 'feeding', id });
+  const drawerFeeding = drawer?.type === 'feeding' ? data.log.find((f) => f.id === drawer.id) : null;
+  const drawerPlayer = drawer?.type === 'player' ? players.find((p) => p.id === drawer.id) : null;
+
+  const confirmRun = async (question, fn, okText, failText) => {
+    if (!window.confirm(question)) return;
+    setBusy(true);
+    try {
+      const res = await fn();
+      notify(typeof okText === 'function' ? okText(res.data) : okText);
+      await load();
+    } catch (e) {
+      notify(formatApiError(e, failText), true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const cycleLabel = (c) => `Cycle ${c.cycleIndex}${c.title ? `: ${c.title}` : ''}${c.isCurrent ? ' (current)' : ''}${c.feedings ? ` · ${c.feedings} feedings` : ''}`;
+  const thisCycle = cycles.find((c) => c.cycleIndex === index);
+
+  return (
+    <div className={styles.root}>
+      {/* ── Top bar ── */}
+      <header className={styles.topbar}>
+        <h2 className={styles.topTitle}>
+          <FaGlyph icon={FEEDING_ICONS.droplet} size={20} />
+          <span>
+            Feeding Control
+            <small>Up to {max} hunts a cycle · first feeding unlocks downtimes · cycles follow the Calendar</small>
+          </span>
+        </h2>
+        <div className={styles.topControls}>
+          <select className={styles.select} value={index} aria-label="Cycle"
+            onChange={(e) => { setCycle(Number(e.target.value)); setDrawer(null); setShowAllFeed(false); }}>
+            {cycles.map((c) => <option key={c.cycleIndex} value={c.cycleIndex}>{cycleLabel(c)}</option>)}
+          </select>
+          <button type="button" className={`${styles.switch} ${isOnline ? styles.switchOn : ''}`} disabled={busy}
+            title={isOnline ? 'Players must feed before submitting downtimes. Click to switch off.' : 'Feeding is off: downtimes submit freely. Click to switch on.'}
+            onClick={() => confirmRun(
+              isOnline ? 'Switch the Feeding system OFF? Downtimes will no longer need a feeding.' : 'Switch the Feeding system ON?',
+              () => api.post('/admin/feeding/status', { enabled: !isOnline }),
+              `Feeding is now ${isOnline ? 'OFF' : 'ON'}.`, 'Failed to switch Feeding')}>
+            {isOnline ? 'ON' : 'OFF'} <span className={styles.switchTrack} />
+          </button>
+          <button type="button" className={styles.btn} onClick={load} aria-label="Refresh">
+            <FaGlyph icon={FEEDING_ICONS.arrowsRotate} size={12} /> Refresh
+          </button>
+        </div>
+      </header>
+
+      {notice && <div className={`${styles.notice} ${notice.isError ? styles.noticeErr : styles.noticeOk}`}>{notice.text}</div>}
+      {!isCurrent && (
+        <div className={`${styles.notice} ${styles.noticePast}`}>
+          Viewing past cycle {index}{thisCycle?.closing_date ? ` (closed ${formatAthensDate(thisCycle.closing_date)})` : ''}.
+          Undos still work: they change the character sheet and domain as they are today.{' '}
+          <button type="button" className={styles.rowLink} onClick={() => setCycle(null)}>Back to the current cycle</button>
         </div>
       )}
 
-      {/* RECENT FEEDINGS */}
-      <div style={card}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.75rem' }}>
-          <div>
-            <h4 style={{ margin: 0, fontSize: '1.3rem', color: 'var(--text-color)' }}>Recent Feedings</h4>
-            <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-              Showing {filteredLog.length} of {log.length} rolls
-            </div>
-          </div>
+      {/* ── Countdowns (current cycle) ── */}
+      {isCurrent && (
+        <div className={styles.strip}>
+          <Kpi label="Hunting" value={stats.huntingOpen ? `closes in ${huntingIn}` : 'Closed'}
+            sub={`${formatAthensDate(status.cycleStart || thisCycle?.opening_date)} to ${formatAthensDate(status.cycleEnd || thisCycle?.closing_date)}`}
+            color={stats.huntingOpen ? 'var(--color-success, #00e676)' : '#ff8a8a'} />
+          {stats.nextOpening && <Kpi label="Next cycle opens" value={`in ${openingIn}`} sub={formatAthensDate(stats.nextOpening)} color="#7ecfff" />}
+          {stats.nextUpkeepAt && <Kpi label="Ghoul upkeep" value={`in ${upkeepIn}`} sub={formatAthensDateTime(stats.nextUpkeepAt)} color="#ffb347" />}
+        </div>
+      )}
 
-          {/* Cycle filter pills */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              onClick={() => setCycleFilter('current')}
-              style={{
-                ...btnBase,
-                padding: '0.35rem 0.85rem',
-                fontSize: '0.78rem',
-                borderRadius: '20px',
-                background: cycleFilter === 'current' ? 'var(--color-primary, #e056fd)' : 'var(--glass-inset)',
-                color: cycleFilter === 'current' ? '#ffffff' : 'var(--text-secondary)',
-                borderColor: cycleFilter === 'current' ? 'var(--color-primary, #e056fd)' : 'var(--glass-border)',
-              }}
-              title="View only the feedings from the active cycle"
-            >
-              Current Downtime {status?.cycleIndex != null ? `(Cycle ${status.cycleIndex})` : ''}
-            </button>
+      {/* ── Numbers ── */}
+      <div className={styles.strip}>
+        <Kpi label="Players fed" value={`${stats.players.fed} / ${stats.players.active}`}
+          color={stats.players.fed === stats.players.active ? 'var(--color-success, #00e676)' : '#ffb347'}
+          onClick={() => setPlayerFilter('unfed')} sub="show who hasn't" />
+        <Kpi label="Fed 2+ times" value={count('multi')} onClick={() => setPlayerFilter('multi')} sub="show them" />
+        <Kpi label="Hunts rolled" value={stats.counts.hunts} sub={`${stats.successPct != null ? `${stats.successPct}% success` : 'no rolls'}`}
+          color={stats.successPct >= 70 ? 'var(--color-success, #00e676)' : stats.successPct >= 40 ? '#ffb347' : undefined} />
+        <Kpi label="Herd · Safe · ST" value={`${stats.counts.herd || 0} · ${stats.counts.safe || 0} · ${stats.counts.manual || 0}`} color="#7ecfff" />
+        <Kpi label="Ghouls unfed" value={`${ghoulsUnfed} / ${ghoulList.length}`} color={ghoulsUnfed ? '#ffb347' : undefined}
+          onClick={() => setPlayerFilter('ghoulsUnfed')} sub="show owners" />
+      </div>
 
-            <button
-              type="button"
-              onClick={() => setCycleFilter('all')}
-              style={{
-                ...btnBase,
-                padding: '0.35rem 0.85rem',
-                fontSize: '0.78rem',
-                borderRadius: '20px',
-                background: cycleFilter === 'all' ? 'var(--color-primary, #e056fd)' : 'var(--glass-inset)',
-                color: cycleFilter === 'all' ? '#ffffff' : 'var(--text-secondary)',
-                borderColor: cycleFilter === 'all' ? 'var(--color-primary, #e056fd)' : 'var(--glass-border)',
-              }}
-              title="View all feeding rolls across all cycles"
-            >
-              All Cycles
-            </button>
-
-            {availableCycles.length > 1 && (
-              <select
-                value={cycleFilter}
-                onChange={(e) => setCycleFilter(e.target.value)}
-                style={{
-                  ...btnBase,
-                  padding: '0.32rem 0.75rem',
-                  fontSize: '0.78rem',
-                  borderRadius: '20px',
-                  background: (cycleFilter !== 'current' && cycleFilter !== 'all') ? 'var(--color-primary, #e056fd)' : 'var(--glass-inset)',
-                  color: (cycleFilter !== 'current' && cycleFilter !== 'all') ? '#ffffff' : 'var(--text-secondary)',
-                  borderColor: (cycleFilter !== 'current' && cycleFilter !== 'all') ? 'var(--color-primary, #e056fd)' : 'var(--glass-border)',
-                  outline: 'none',
-                }}
-              >
-                <option value="current" style={{ background: '#1a1a24', color: '#ffffff' }}>Active Cycle</option>
-                <option value="all" style={{ background: '#1a1a24', color: '#ffffff' }}>All Cycles</option>
-                {availableCycles.map(c => (
-                  <option key={c} value={c} style={{ background: '#1a1a24', color: '#ffffff' }}>
-                    Cycle {c} {Number(c) === Number(status?.cycleIndex) ? '(Current)' : ''}
-                  </option>
-                ))}
-              </select>
+      {/* ── Recent feedings ── */}
+      <section className={styles.section}>
+        <div className={styles.sectionHead}>
+          <h3><FaGlyph icon={FEEDING_ICONS.clock} size={15} /> Recent Feedings</h3>
+          <span className={styles.count}>{feed.length}</span>
+        </div>
+        <div className={styles.row}>
+          <Chips value={feedFilter} onChange={(v) => { setFeedFilter(v); setShowAllFeed(false); }} options={[
+            ['all', 'All'], ['hunts', 'Hunts'], ['failed', 'Went wrong'], ['herd', 'Herd'], ['downtime', 'Safe'], ['manual', 'Storyteller'], ['pending', 'Pending'],
+          ]} />
+          <input className={styles.search} type="search" placeholder="Search character or place" value={feedSearch}
+            onChange={(e) => setFeedSearch(e.target.value)} aria-label="Search feedings" />
+        </div>
+        {feed.length === 0 ? <p className={styles.empty}>No feedings match.</p> : (
+          <div className={styles.feed}>
+            {shownFeed.map((f) => {
+              const o = outcomeOf(f);
+              const after = hungerAfter(f);
+              const sf = safetyOf(f);
+              const isHunt = !NOT_HUNTS.includes(f.outcome);
+              const now = hungerNow[f.character_id] ?? (f.current_hunger != null ? Number(f.current_hunger) : 1);
+              return (
+                <article key={f.id} className={styles.feedCard} style={{ '--outcome': o.color }}>
+                  <div className={styles.feedTop}>
+                    <span className={styles.feedIcon}><FaGlyph icon={o.icon} size={16} /></span>
+                    <div className={styles.feedWho}>
+                      <button type="button" className={styles.rowLink} onClick={() => openPlayer(f.character_id)}>{f.character_name}</button>
+                      <small>{f.predator_type || 'no Predator Type'}{isHunt && f.pool_label ? ` · ${f.pool_label}` : ''}</small>
+                    </div>
+                    <span className={styles.outcomePill}>{o.label}</span>
+                  </div>
+                  <div className={styles.facts4}>
+                    <Fact label="Where" sub={isHunt ? (f.domain_owner ? `claimed by ${f.domain_owner}` : 'unclaimed') : null}>
+                      {whereOf(f)}
+                    </Fact>
+                    {sf ? (
+                      <Fact label="Safety" color={safetyColor(sf.after ?? sf.now)}
+                        sub={sf.now != null ? `now ${sf.now}/10` : null}>
+                        {sf.before != null ? `${sf.before} → ${sf.after}` : signed(sf.delta)}
+                        {sf.before != null && <em className={styles.delta}> {signed(sf.delta)}</em>}
+                      </Fact>
+                    ) : (
+                      <Fact label="Safety" sub={isHunt ? 'not applied yet' : 'no domain'}>-</Fact>
+                    )}
+                    <Fact label="Hunger (feeding)" color={after != null && after < f.hunger_before ? 'var(--color-success, #00e676)' : undefined}
+                      sub={isHunt ? `Pool ${f.dice_pool} · Diff ${f.difficulty}${f.wp_rerolled ? ' · WP reroll' : ''}` : null}>
+                      {f.hunger_before}{after != null ? ` → ${after}` : ''}
+                    </Fact>
+                    <Fact label="When" sub={`cycle ${f.cycle_index}`}>{formatAthensDateTime(f.created_at)}</Fact>
+                  </div>
+                  {f.failure_reason && <p className={styles.story}>{f.failure_reason}</p>}
+                  <div className={styles.feedBottom}>
+                    <HungerControl value={now} busy={!!hungerBusy[f.character_id]} onAdjust={(d) => adjustHunger(f.character_id, d)} />
+                    <div className={styles.row}>
+                      <button type="button" className={styles.btn} onClick={() => openFeeding(f.id)}>Details</button>
+                      <UndoButton what={undoWhat(f, isCurrent)} onConfirm={async () => {
+                        try { await api.post(`/admin/feeding/${f.id}/allow-reroll`); notify(`${f.character_name}: feeding undone.`); await changed(); }
+                        catch (e) { notify(formatApiError(e, 'Undo failed'), true); }
+                      }} />
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+            {feed.length > 12 && (
+              <button type="button" className={`${styles.btn} ${styles.more}`} onClick={() => setShowAllFeed((v) => !v)}>
+                {showAllFeed ? 'Show fewer' : `Show all ${feed.length}`}
+              </button>
             )}
           </div>
+        )}
+      </section>
+
+      {/* ── Players ── */}
+      <section className={styles.section}>
+        <div className={styles.sectionHead}>
+          <h3><FaGlyph icon={FEEDING_ICONS.diceD20} size={15} /> Players</h3>
+          <span className={styles.count}>{shownPlayers.length}</span>
         </div>
+        <Chips value={playerFilter} onChange={setPlayerFilter} options={[
+          ['all', `All ${players.length}`], ['unfed', `Not fed ${count('unfed')}`], ['multi', `Fed 2+ ${count('multi')}`],
+          ['maxed', `${max}/${max} hunts ${count('maxed')}`], ['ghouls', `Own ghouls ${count('ghouls')}`], ['ghoulsUnfed', `Ghoul unfed ${count('ghoulsUnfed')}`],
+        ]} />
+        {shownPlayers.length === 0 ? <p className={styles.empty}>Nobody matches.</p> : (
+          <div className={styles.players}>
+            {shownPlayers.map((p) => {
+              const ghoulColor = p.ghouls.some((g) => g.state === 'starved') ? '#ff6b6b' : p.ghoulsUnfed ? '#ffb347' : 'var(--color-success, #00e676)';
+              return (
+                <article key={p.id} className={`${styles.player} ${p.fed ? '' : styles.playerUnfed}`}>
+                  <span className={`${styles.timesBadge} ${p.timesFed ? '' : styles.timesZero}`} title={`Fed ${p.timesFed} time(s) this cycle`}>×{p.timesFed}</span>
+                  <button type="button" className={`${styles.rowLink} ${styles.playerName}`} onClick={() => openPlayer(p.id)}>{p.name}</button>
+                  <span className={styles.playerMeta}>
+                    <span className={styles.dots} title={`${p.hunts} of ${max} hunts`}>
+                      {Array.from({ length: max }, (_, i) => <i key={i} className={i < p.hunts ? styles.on : undefined} />)}
+                    </span>
+                    {p.hunts}/{max} hunts
+                    {p.pending && <span style={{ color: '#ffb347' }}>roll pending</span>}
+                  </span>
+                  <HungerControl compact value={p.hunger} busy={!!hungerBusy[p.id]} onAdjust={(d) => adjustHunger(p.id, d)} />
+                  <span className={styles.playerMeta}>
+                    {[p.herd && `Herd ×${p.herd}`, p.safe && `Safe ×${p.safe}`, p.manual && `ST ×${p.manual}`].filter(Boolean).join(' · ') || (p.fed ? 'Hunts only' : 'Not fed')}
+                    {p.ghouls.length > 0 && (
+                      <span className={styles.ghoulPill} style={{ color: ghoulColor }}>
+                        <FaGlyph icon={FEEDING_ICONS.skull} size={10} /> {p.ghouls.length - p.ghoulsUnfed}/{p.ghouls.length} ghouls fed
+                      </span>
+                    )}
+                  </span>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
-        {filteredLog.length === 0 ? (
-          <p style={{ color: 'var(--text-secondary)' }}>No feeding rolls found for this cycle.</p>
-        ) : (
-          <div className={styles.rTable}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-              <thead>
-                <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--glass-border)', color: 'var(--text-secondary)', fontSize: '0.78rem' }}>
-                  <th style={{ padding: '0.6rem 0.5rem' }}>Character</th>
-                  <th style={{ padding: '0.6rem 0.5rem' }}>Domain</th>
-                  <th style={{ padding: '0.6rem 0.5rem' }}>Hunt and Pool</th>
-                  <th style={{ padding: '0.6rem 0.5rem' }}>Outcome</th>
-                  <th style={{ padding: '0.6rem 0.5rem' }}>Hunger</th>
-                  <th style={{ padding: '0.6rem 0.5rem' }}>Safety</th>
-                  <th style={{ padding: '0.6rem 0.5rem' }}>Status</th>
-                  <th style={{ padding: '0.6rem 0.5rem' }}>When</th>
-                </tr>
-              </thead>
+      {/* ── Ghouls ── */}
+      <Fold title="Ghouls" icon={FEEDING_ICONS.skull} count={`${ghoulsUnfed} unfed / ${ghoulList.length}`} defaultOpen={ghoulsUnfed > 0}
+        right={isCurrent && (
+          <button type="button" className={styles.btn} disabled={busy || ghoulsUnfed === 0}
+            onClick={() => confirmRun(
+              'Feed every unfed ghoul now? Each costs its owner (or a random coterie member) a Rouse Check; ghouls let go, or with no feeder below Hunger 5, starve.',
+              () => api.post('/admin/feeding/ghoul-upkeep'),
+              (r) => `Ghoul upkeep: ${r.fed ?? 0} fed, ${r.starved ?? 0} starved.`, 'Ghoul upkeep failed')}>
+            Run upkeep now
+          </button>
+        )}>
+        <Chips value={ghoulFilter} onChange={setGhoulFilter} options={[
+          ['all', 'All'], ['hungry', 'Needs feeding'], ['fed', 'Fed'], ['starved', 'Starved'], ...(isCurrent ? [] : [['none', 'Nothing recorded']]),
+        ]} />
+        {shownGhouls.length === 0 ? <p className={styles.empty}>No ghouls match.</p> : (
+          <div className={styles.tableWrap} style={{ marginTop: '0.75rem' }}>
+            <table className={styles.table}>
+              <thead><tr><th>Ghoul</th><th>Owner</th><th>This cycle</th><th aria-label="Undo" /></tr></thead>
               <tbody>
-                {filteredLog.map((f) => {
-                  const before = f.hunger_before != null ? Number(f.hunger_before) : null;
-                  const delta = f.hunger_delta != null ? Number(f.hunger_delta) : null;
-                  const after = (before != null && delta != null) ? Math.max(1, Math.min(5, before + delta)) : null;
-                  const domainTitle = getDivisionName(f.division);
-                  const currentHunger = f.current_hunger != null ? Number(f.current_hunger) : 1;
-                  const isUpdatingHunger = !!adjustingHunger[f.character_id];
-
+                {shownGhouls.map((g) => {
+                  const st = GHOUL_STATE[g.state] || GHOUL_STATE.hungry;
                   return (
-                    <tr key={f.id} style={{ borderBottom: '1px solid var(--glass-border)' }}>
-                      <td style={{ padding: '0.6rem 0.5rem' }}>
-                        <Link
-                          to={`/admin/character/${f.character_id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{ color: 'var(--color-primary, #e056fd)', textDecoration: 'none', fontWeight: 600 }}
-                          title={`Open ${f.character_name} character sheet`}
-                        >
-                          {f.character_name}
-                        </Link>
-                        {f.predator_type && (
-                          <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                            {f.predator_type}
-                          </div>
+                    <tr key={g.id}>
+                      <td><b>{g.name}</b> <span className={styles.muted}>T{g.tier}</span></td>
+                      <td>
+                        <button type="button" className={styles.rowLink} onClick={() => openPlayer(g.owner_character_id)}>{g.owner_name || 'unknown'}</button>
+                        {g.coterie_id && <div className={styles.muted}>{g.coterie_name} coterie (domitor)</div>}
+                      </td>
+                      <td style={{ color: st.color }}>
+                        {st.label}
+                        {g.current && <div className={styles.muted}>{GHOUL_METHOD[g.current.method] || g.current.method}{g.current.fed_by_name ? `, ${g.current.fed_by_name}` : ''}</div>}
+                        {isCurrent && !g.current && g.let_starve && <div className={styles.muted}>will be let go</div>}
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        {g.current && (
+                          <UndoButton what={`Undo ${g.name}'s ${g.current.status === 'fed' ? 'feeding' : 'starvation'} in cycle ${index}.`}
+                            onConfirm={async () => {
+                              try { await api.post(`/admin/feeding/ghouls/${g.id}/undo?cycle=${index}`); notify(`${g.name}: undone.`); await changed(); }
+                              catch (e) { notify(formatApiError(e, 'Undo failed'), true); }
+                            }} />
                         )}
-                      </td>
-                      <td style={{ padding: '0.6rem 0.5rem' }}>
-                        <div style={{ fontWeight: 600 }}>{domainTitle || `Division ${f.division}`}</div>
-                        <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                          Division {f.division || 'None'}
-                          {f.domain_owner ? `, Claim: ${f.domain_owner}` : ''}
-                        </div>
-                      </td>
-                      <td style={{ padding: '0.6rem 0.5rem' }}>
-                        <div style={{ fontWeight: 500 }}>{f.pool_label || 'Standard'}</div>
-                        <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                          {f.outcome === 'herd' ? 'Herd Slake' : `${f.dice_pool || 0} dice, Diff ${f.difficulty != null ? f.difficulty : 1}`}
-                        </div>
-                      </td>
-                      <td style={{ padding: '0.6rem 0.5rem' }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: TIER_COLOR[f.outcome] || 'var(--text-secondary)' }}>
-                          <FaGlyph icon={TIER_ICON[f.outcome] || FEEDING_ICONS.circleCheck} size={12} />
-                          {TIER_LABEL[f.outcome] || f.outcome}
-                        </span>
-                        {f.failure_reason && (
-                          <div style={{ fontSize: '0.72rem', fontStyle: 'italic', color: 'var(--text-secondary)', marginTop: '4px', maxWidth: '22rem', lineHeight: 1.35 }}>
-                            {f.failure_reason}
-                          </div>
-                        )}
-                      </td>
-                      <td style={{ padding: '0.6rem 0.5rem' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                            <button
-                              type="button"
-                              style={{
-                                ...btnBase,
-                                padding: 0,
-                                width: '24px',
-                                height: '24px',
-                                fontSize: '1rem',
-                                lineHeight: '22px',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                color: '#ff8a8a',
-                                borderColor: 'rgba(255,138,138,0.35)',
-                                opacity: (isUpdatingHunger || currentHunger <= 0) ? 0.4 : 1,
-                                cursor: (isUpdatingHunger || currentHunger <= 0) ? 'not-allowed' : 'pointer',
-                              }}
-                              disabled={isUpdatingHunger || currentHunger <= 0}
-                              onClick={() => adjustHunger(f.character_id, -1)}
-                              title="Decrease hunger by 1"
-                            >
-                              &#8722;
-                            </button>
-
-                            <div
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                padding: '3px 8px',
-                                background: 'rgba(230, 57, 70, 0.12)',
-                                border: '1px solid rgba(230, 57, 70, 0.35)',
-                                borderRadius: '6px',
-                              }}
-                              title={`Current hunger: ${currentHunger} of 5`}
-                            >
-                              <FaGlyph icon={FEEDING_ICONS.droplet} size={13} style={{ color: '#e63946' }} />
-                              <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#ffffff' }}>
-                                {currentHunger}
-                              </span>
-                              <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
-                                / 5
-                              </span>
-                              <div style={{ display: 'flex', gap: '3px', marginLeft: '2px' }}>
-                                {[1, 2, 3, 4, 5].map((boxNum) => (
-                                  <div
-                                    key={boxNum}
-                                    style={{
-                                      width: '13px',
-                                      height: '13px',
-                                      borderRadius: '3px',
-                                      border: `1px solid ${boxNum <= currentHunger ? '#e63946' : 'var(--glass-border)'}`,
-                                      background: boxNum <= currentHunger ? 'rgba(230, 57, 70, 0.4)' : 'rgba(0,0,0,0.2)',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                    }}
-                                  >
-                                    {boxNum <= currentHunger && (
-                                      <FaGlyph icon={FEEDING_ICONS.droplet} size={7} style={{ color: '#ff6b6b' }} />
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-
-                            <button
-                              type="button"
-                              style={{
-                                ...btnBase,
-                                padding: 0,
-                                width: '24px',
-                                height: '24px',
-                                fontSize: '1rem',
-                                lineHeight: '22px',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                color: '#e63946',
-                                borderColor: 'rgba(230, 57, 70, 0.45)',
-                                opacity: (isUpdatingHunger || currentHunger >= 5) ? 0.4 : 1,
-                                cursor: (isUpdatingHunger || currentHunger >= 5) ? 'not-allowed' : 'pointer',
-                              }}
-                              disabled={isUpdatingHunger || currentHunger >= 5}
-                              onClick={() => adjustHunger(f.character_id, 1)}
-                              title="Increase hunger by 1"
-                            >
-                              +
-                            </button>
-                          </div>
-
-                          {(before != null || delta != null) && (
-                            <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <span>Roll: {before != null ? before : '?'}</span>
-                              <FaGlyph icon={FEEDING_ICONS.arrowRight} size={9} style={{ opacity: 0.6 }} />
-                              <span style={{ fontWeight: 600 }}>{after != null ? after : '?'}</span>
-                              {delta != null && (
-                                <span style={{ fontWeight: 600, color: delta < 0 ? 'var(--color-success)' : delta > 0 ? '#ff6b6b' : 'var(--text-secondary)' }}>
-                                  ({delta > 0 ? `+${delta}` : delta < 0 ? `\u2212${Math.abs(delta)}` : '0'})
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td style={{ padding: '0.6rem 0.5rem', color: f.safety_delta < 0 ? '#ff6b6b' : f.safety_delta > 0 ? 'var(--color-success)' : 'var(--text-secondary)' }}>
-                        <div>{f.safety_delta != null ? (f.safety_delta > 0 ? `+${f.safety_delta}` : f.safety_delta) : '0'}</div>
-                        {f.current_domain_safety != null && (
-                          <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                            Rating: {f.current_domain_safety}/10
-                          </div>
-                        )}
-                      </td>
-                      <td style={{ padding: '0.6rem 0.5rem' }}>
-                        <span style={{ fontSize: '0.75rem', padding: '2px 6px', borderRadius: 4, background: f.status === 'resolved' ? 'rgba(0,230,118,0.15)' : 'rgba(255,180,0,0.15)', color: f.status === 'resolved' ? 'var(--color-success)' : '#ffb347' }}>
-                          {f.status}
-                        </span>
-                        <div style={{ marginTop: '6px' }}>
-                          <button
-                            style={{ ...btnBase, padding: '0.25rem 0.6rem', fontSize: '0.72rem', whiteSpace: 'nowrap', ...(rerollArmed === f.id ? { color: '#ff6b6b', borderColor: '#ff6b6b66' } : {}) }}
-                            disabled={rerollBusy === f.id}
-                            onClick={() => allowReroll(f)}
-                            onBlur={() => setRerollArmed((id) => (id === f.id ? null : id))}
-                            title="Undo this feeding (Hunger, Willpower, domain Safety, incident, Herd) so the player can feed again this cycle"
-                          >
-                            {rerollBusy === f.id ? 'Undoing...' : rerollArmed === f.id ? 'Confirm undo' : 'Allow Reroll'}
-                          </button>
-                        </div>
-                      </td>
-                      <td style={{ padding: '0.6rem 0.5rem', color: 'var(--text-secondary)', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
-                        {formatAthensDateTime(f.created_at)}
                       </td>
                     </tr>
                   );
@@ -640,228 +750,103 @@ export default function AdminFeedingTab() {
             </table>
           </div>
         )}
-      </div>
+      </Fold>
 
-      {/* HERD MANAGEMENT */}
-      <div style={card}>
-        <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.75rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <FaGlyph icon={FEEDING_ICONS.droplet} size={16} style={{ color: '#7ecfff' }} />
-          <h4 style={{ margin: 0, fontSize: '1.3rem', color: 'var(--text-color)' }}>Herd Management</h4>
-          <span style={{ marginLeft: 'auto', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{roster.length} character{roster.length !== 1 ? 's' : ''} with Herd</span>
-        </div>
-        {roster.length === 0 ? (
-          <p style={{ color: 'var(--text-secondary)' }}>No characters have the Herd background.</p>
-        ) : (
-          <div className={styles.rTable}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
-              <thead>
-                <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--glass-border)', color: 'var(--text-secondary)', fontSize: '0.78rem' }}>
-                  <th style={{ padding: '0.5rem 0.75rem' }}>Character</th>
-                  <th style={{ padding: '0.5rem 0.75rem' }}>Herd Pool</th>
-                  <th style={{ padding: '0.5rem 0.75rem' }}>Adjust</th>
-                </tr>
-              </thead>
+      {/* ── Herd ── */}
+      <Fold title="Herd" icon={FEEDING_ICONS.droplet} count={data.herd.length}>
+        {data.herd.length === 0 ? <p className={styles.empty}>No characters have the Herd background.</p> : (
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead><tr><th>Character</th><th>Herd pool</th><th>Adjust</th></tr></thead>
               <tbody>
-                {roster.map(r => (
-                  <tr key={r.character_id} style={{ borderBottom: '1px solid var(--glass-border)' }}>
-                    <td style={{ padding: '0.6rem 0.75rem', fontWeight: 600 }}>{r.name}</td>
-                    <td style={{ padding: '0.6rem 0.75rem' }}>
-                      <HerdDots current={r.herdCurrent} max={r.herdDots} />
-                      {r.herdCurrent < r.herdDots && (
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 4 }}>
-                          <FaGlyph icon={FEEDING_ICONS.clock} size={10} style={{ marginRight: 4, verticalAlign: '-1px' }} />
-                          Heals 1 pt in {countdown}
+                {data.herd.map((r) => {
+                  const adjust = async (delta) => {
+                    try {
+                      const { data: d } = await api.post('/admin/feeding/herd-adjust', { character_id: r.character_id, delta });
+                      notify(`${d.name}: Herd ${d.herdBefore} → ${d.herdAfter} of ${d.herdDots}`);
+                      await load();
+                    } catch (e) { notify(formatApiError(e, 'Herd adjust failed'), true); }
+                  };
+                  return (
+                    <tr key={r.character_id}>
+                      <td><button type="button" className={styles.rowLink} onClick={() => openPlayer(r.character_id)}>{r.name}</button></td>
+                      <td>
+                        <span className={styles.dots}>{Array.from({ length: r.herdDots }, (_, i) => <i key={i} className={i < r.herdCurrent ? styles.on : undefined} />)}</span>
+                        <span className={styles.muted}> {r.herdCurrent}/{r.herdDots}</span>
+                      </td>
+                      <td>
+                        <div className={styles.row}>
+                          <button type="button" className={styles.btn} disabled={r.herdCurrent <= 0} onClick={() => adjust(-1)} aria-label="Herd -1">−</button>
+                          <button type="button" className={styles.btn} disabled={r.herdCurrent >= r.herdDots} onClick={() => adjust(1)} aria-label="Herd +1">+</button>
+                          <button type="button" className={styles.btn} disabled={r.herdCurrent >= r.herdDots} onClick={() => adjust(r.herdDots - r.herdCurrent)}>Full</button>
                         </div>
-                      )}
-                    </td>
-                    <td style={{ padding: '0.6rem 0.75rem' }}>
-                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                        <button style={{ ...btnBase, padding: '0.3rem 0.75rem', fontSize: '1.1rem', lineHeight: 1 }} disabled={adjusting[r.character_id] || r.herdCurrent <= 0} onClick={() => adjustHerd(r.character_id, -1)} title="Damage Herd, reduce by 1">&#8722;</button>
-                        <button style={{ ...btnBase, padding: '0.3rem 0.75rem', fontSize: '1.1rem', lineHeight: 1, color: '#7ecfff', borderColor: '#7ecfff44' }} disabled={adjusting[r.character_id] || r.herdCurrent >= r.herdDots} onClick={() => adjustHerd(r.character_id, 1)} title="Heal Herd, add 1">+</button>
-                        <button style={{ ...btnBase, padding: '0.3rem 0.65rem', fontSize: '0.75rem' }} disabled={adjusting[r.character_id] || r.herdCurrent >= r.herdDots} onClick={() => adjustHerd(r.character_id, r.herdDots - r.herdCurrent)}>Full</button>
-                        <button style={{ ...btnBase, padding: '0.3rem 0.65rem', fontSize: '0.75rem', color: '#ff6b6b', borderColor: '#ff6b6b44' }} disabled={adjusting[r.character_id] || r.herdCurrent <= 0} onClick={() => adjustHerd(r.character_id, -r.herdCurrent)}>Deplete</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
-      </div>
+      </Fold>
 
-      <UnfedPanel />
-      <GhoulUpkeepPanel />
-    </div>
-  );
-}
-
-// Active characters with no feeding this cycle (their downtime actions are locked).
-// A Storyteller can record a feeding by hand, e.g. for GM-adjudicated Predator Types:
-// it unlocks actions and sets Hunger, without using a hunt or touching a domain.
-function UnfedPanel() {
-  const [rows, setRows] = useState(null);
-  const [hunger, setHunger] = useState({});
-  const [saving, setSaving] = useState(null);
-
-  const load = useCallback(async () => {
-    try {
-      setRows((await api.get('/admin/feeding/unfed')).data.characters);
-    } catch (e) {
-      setRows({ error: formatApiError(e, 'Failed to load unfed characters') });
-    }
-  }, []);
-  useEffect(() => { load(); }, [load]);
-
-  const record = async (c) => {
-    const after = hunger[c.id] ?? Math.max(1, c.hunger - 1);
-    setSaving(c.id);
-    try {
-      await api.post('/admin/feeding/manual', { character_id: c.id, hunger: after });
-      await load();
-    } catch (e) {
-      window.alert(formatApiError(e, 'Recording the feeding failed'));
-    } finally {
-      setSaving(null);
-    }
-  };
-
-  const list = Array.isArray(rows) ? rows : [];
-  return (
-    <div style={card}>
-      <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.75rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-        <FaGlyph icon={FEEDING_ICONS.triangleExclamation} size={16} style={{ color: '#ffb347' }} />
-        <h4 style={{ margin: 0, fontSize: '1.3rem', color: 'var(--text-color)' }}>Not Fed This Cycle</h4>
-        <span style={{ marginLeft: 'auto', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{list.length} character{list.length !== 1 ? 's' : ''} with locked actions</span>
-      </div>
-      {rows?.error && <p style={{ color: '#ff6b6b' }}>{rows.error}</p>}
-      {list.length === 0 ? (
-        <p style={{ color: 'var(--text-secondary)' }}>Everyone has fed this cycle.</p>
-      ) : (
-        <div className={styles.rTable}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
-            <thead>
-              <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--glass-border)', color: 'var(--text-secondary)', fontSize: '0.78rem' }}>
-                <th style={{ padding: '0.5rem 0.75rem' }}>Character</th>
-                <th style={{ padding: '0.5rem 0.75rem' }}>Predator Type</th>
-                <th style={{ padding: '0.5rem 0.75rem' }}>Hunger</th>
-                <th style={{ padding: '0.5rem 0.75rem' }}>Record a feeding</th>
-              </tr>
-            </thead>
-            <tbody>
-              {list.map(c => (
-                <tr key={c.id} style={{ borderBottom: '1px solid var(--glass-border)' }}>
-                  <td style={{ padding: '0.6rem 0.75rem', fontWeight: 600 }}>{c.name}</td>
-                  <td style={{ padding: '0.6rem 0.75rem', color: c.canAutomate ? 'var(--text-secondary)' : '#ffb347' }}>
-                    {c.predatorType || 'none set'}{!c.canAutomate && ' (needs a Storyteller)'}
-                  </td>
-                  <td style={{ padding: '0.6rem 0.75rem' }}>{c.hunger}</td>
-                  <td style={{ padding: '0.6rem 0.75rem' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                        Hunger after{' '}
-                        <select
-                          value={hunger[c.id] ?? Math.max(1, c.hunger - 1)}
-                          onChange={(e) => setHunger(h => ({ ...h, [c.id]: Number(e.target.value) }))}
-                          style={{ ...btnBase, padding: '0.25rem 0.5rem' }}
-                        >
-                          {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
-                        </select>
-                      </label>
-                      <button style={{ ...btnBase, padding: '0.35rem 0.8rem' }} disabled={saving === c.id} onClick={() => record(c)}>Mark fed</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* ── Tools ── */}
+      <Fold title="Tools" icon={FEEDING_ICONS.gauge}>
+        <div className={styles.row}>
+          <button type="button" className={styles.btn} disabled={busy}
+            onClick={() => confirmRun(
+              'Run cycle-end decay for the last completed cycle?\n\nEvery division with no failed feeding that cycle loses 1 Safety, and every character with Herd regains 1 point. This normally runs by itself overnight; a cycle already processed is skipped.',
+              () => api.post('/admin/feeding/run-decay'),
+              (r) => (r?.skipped ? `Decay skipped: ${r.skipped}` : `Decay: ${r?.decayed ?? 0} division(s). Herd regen: ${r?.herdRegen ?? 0} character(s).`),
+              'Failed to run decay')}>
+            <FaGlyph icon={FEEDING_ICONS.shieldHalved} size={12} /> Run decay + Herd regen
+          </button>
+          {!status.isDowntimeLinked && (
+            <button type="button" className={styles.btn} disabled={busy}
+              onClick={() => confirmRun('End the current Feeding cycle immediately and start a new one?',
+                () => api.post('/admin/feeding/force-new-cycle'), 'New Feeding cycle started.', 'Failed to reset cycle')}>
+              <FaGlyph icon={FEEDING_ICONS.clock} size={12} /> Force new cycle
+            </button>
+          )}
         </div>
+        <p className={styles.muted} style={{ marginTop: '0.6rem' }}>
+          Cycle dates and the ghoul upkeep time are set in the Calendar.
+        </p>
+      </Fold>
+
+      {/* ── Drawer ── */}
+      {drawerFeeding && (
+        <Drawer title={`${drawerFeeding.character_name}: ${outcomeOf(drawerFeeding).label}`}
+          subtitle={`${whereOf(drawerFeeding)} · cycle ${drawerFeeding.cycle_index}`} onClose={() => setDrawer(null)}>
+          <FeedingDetail f={drawerFeeding} isCurrent={isCurrent}
+            onOpenPlayer={() => openPlayer(drawerFeeding.character_id)}
+            onUndo={async () => {
+              try {
+                await api.post(`/admin/feeding/${drawerFeeding.id}/allow-reroll`);
+                notify(`${drawerFeeding.character_name}: feeding undone.`);
+                setDrawer(null);
+                await changed();
+              } catch (e) { notify(formatApiError(e, 'Undo failed'), true); }
+            }} />
+        </Drawer>
       )}
-    </div>
-  );
-}
-
-const GHOUL_STATE_LABEL = { fed: 'Fed', hungry: 'Needs feeding', starved: 'Starved' };
-const GHOUL_STATE_COLOR = { fed: 'var(--color-success)', hungry: '#ffb347', starved: '#ff6b6b' };
-const GHOUL_METHOD_LABEL = {
-  early: 'early', upkeep: 'by owner at upkeep', random: 'by random member',
-  let_starve: 'let go', hunger_5: 'feeder at Hunger 5', no_feeder: 'no members',
-};
-
-// Ghoul upkeep this cycle: who still needs feeding before the Calendar's
-// ghoul feeding time, and a manual run (back/services/ghoulFeeding.js).
-function GhoulUpkeepPanel() {
-  const [data, setData] = useState(null);
-  const [running, setRunning] = useState(false);
-
-  const load = useCallback(async () => {
-    try {
-      setData((await api.get('/admin/feeding/ghouls')).data);
-    } catch (e) {
-      setData({ error: formatApiError(e, 'Failed to load ghouls') });
-    }
-  }, []);
-  useEffect(() => { load(); }, [load]);
-
-  const runNow = async () => {
-    if (!window.confirm('Feed every unfed ghoul now? Each costs its owner (or a random coterie member) a Rouse Check; ghouls let go, or with no feeder below Hunger 5, starve.')) return;
-    setRunning(true);
-    try {
-      const { data: r } = await api.post('/admin/feeding/ghoul-upkeep');
-      window.alert(`Ghoul upkeep: ${r.fed ?? 0} fed, ${r.starved ?? 0} starved.`);
-      await load();
-    } catch (e) {
-      window.alert(formatApiError(e, 'Ghoul upkeep failed'));
-    } finally {
-      setRunning(false);
-    }
-  };
-
-  const ghouls = data?.ghouls || [];
-  const unfed = ghouls.filter(g => g.canFeed).length;
-  return (
-    <div style={card}>
-      <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '0.75rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-        <FaGlyph icon={FEEDING_ICONS.skull} size={16} style={{ color: '#ffb347' }} />
-        <h4 style={{ margin: 0, fontSize: '1.3rem', color: 'var(--text-color)' }}>Ghoul Upkeep</h4>
-        <span style={{ marginLeft: 'auto', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
-          {unfed} of {ghouls.length} still unfed this cycle
-          {data?.upkeepAt && ` · automatic on ${formatAthensDateTime(data.upkeepAt)} (set in the Calendar)`}
-        </span>
-        <button style={btnBase} disabled={running || unfed === 0} onClick={runNow}>Run upkeep now</button>
-      </div>
-      {data?.error && <p style={{ color: '#ff6b6b' }}>{data.error}</p>}
-      {ghouls.length === 0 ? (
-        <p style={{ color: 'var(--text-secondary)' }}>No ghouls in the chronicle.</p>
-      ) : (
-        <div className={styles.rTable}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
-            <thead>
-              <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--glass-border)', color: 'var(--text-secondary)', fontSize: '0.78rem' }}>
-                <th style={{ padding: '0.5rem 0.75rem' }}>Ghoul</th>
-                <th style={{ padding: '0.5rem 0.75rem' }}>Owner</th>
-                <th style={{ padding: '0.5rem 0.75rem' }}>This cycle</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ghouls.map(g => (
-                <tr key={g.id} style={{ borderBottom: '1px solid var(--glass-border)' }}>
-                  <td style={{ padding: '0.6rem 0.75rem', fontWeight: 600 }}>
-                    {g.name} <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>T{g.tier}</span>
-                  </td>
-                  <td style={{ padding: '0.6rem 0.75rem' }}>
-                    {g.coterie_id ? `${g.coterie_name} (domitor ${g.owner_name || 'unknown'})` : g.owner_name}
-                  </td>
-                  <td style={{ padding: '0.6rem 0.75rem', color: GHOUL_STATE_COLOR[g.state] }}>
-                    {GHOUL_STATE_LABEL[g.state]}
-                    {g.current && ` (${GHOUL_METHOD_LABEL[g.current.method] || g.current.method}${g.current.fed_by_name ? `, ${g.current.fed_by_name}` : ''})`}
-                    {!g.current && g.let_starve && ' (will be let go)'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {drawerPlayer && (
+        <Drawer title={drawerPlayer.name}
+          subtitle={`Fed ${drawerPlayer.timesFed} time(s) in cycle ${index} · ${drawerPlayer.hunts}/${max} hunts`}
+          onClose={() => setDrawer(null)}>
+          <PlayerDetail p={drawerPlayer} max={max} isCurrent={isCurrent} cycleIndex={index}
+            feedings={data.log.filter((f) => f.character_id === drawerPlayer.id).length
+              ? data.log.filter((f) => f.character_id === drawerPlayer.id)
+              : drawerPlayer.feedings}
+            ghouls={drawerPlayer.ghouls} onChanged={changed} notify={notify}
+            onHunger={adjustHunger} hungerBusy={!!hungerBusy[drawerPlayer.id]}
+            onOpenFeeding={(f) => openFeeding(f.id)} />
+        </Drawer>
+      )}
+      {drawer?.type === 'player' && !drawerPlayer && (
+        <Drawer title="Not an active character" onClose={() => setDrawer(null)}>
+          <p className={styles.empty}>This character is retired or has no player, so they aren't in this cycle's roster.</p>
+        </Drawer>
       )}
     </div>
   );

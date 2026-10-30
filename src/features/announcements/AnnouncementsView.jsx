@@ -9,6 +9,7 @@ import Avatar from '../../components/Avatar';
 import { motion } from 'framer-motion';
 import { sanitizeHtml } from '../../utils/sanitizeHtml';
 import AnnouncementReactions from './AnnouncementReactions';
+import EditEntryModal, { EditPencil } from '../news/EditEntryModal';
 import { customClanEmojis, EMOJI_PICKER_CATEGORIES, emojiObjectToToken, crestifyHtml } from '../../components/ReactionGlyph';
 import { DISCORD_PREFIX_OPTIONS, getDefaultDiscordPrefix } from '../../constants/outletConstants';
 
@@ -110,6 +111,7 @@ export default function AnnouncementsView({ canEdit: propCanEdit, canPush = fals
 
   const [items, setItems] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [editingDecree, setEditingDecree] = useState(null); // within its first hour, author or admin
   const [loading, setLoading] = useState(true);
   const [decreePrintMode, setDecreePrintMode] = useState(null);
 
@@ -298,9 +300,13 @@ export default function AnnouncementsView({ canEdit: propCanEdit, canPush = fals
                         <p className={styles.decreeAuthorRole}>{authorRole}</p>
                       </div>
                     </div>
-                    <time className={styles.decreeDate}>
-                      {new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </time>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <time className={styles.decreeDate}>
+                        {new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        {item.edited_at ? ' · edited' : ''}
+                      </time>
+                      <EditPencil item={item} onClick={() => setEditingDecree(item)} />
+                    </div>
                   </header>
                   
                   <h2 className={styles.decreeSubject}>{item.title}</h2>
@@ -345,6 +351,14 @@ export default function AnnouncementsView({ canEdit: propCanEdit, canPush = fals
           {items.length === 0 && <div style={{ textAlign: 'center', color: 'var(--outline)' }}>The Court is silent. No decrees have been issued.</div>}
         </div>
         
+        {editingDecree && (
+          <EditEntryModal
+            item={editingDecree}
+            onClose={() => setEditingDecree(null)}
+            onSaved={(updated) => setItems((list) => list.map((i) => (i.id === updated.id ? { ...i, ...updated } : i)))}
+          />
+        )}
+
         {showModal && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
             <div className={styles.modalInner}>

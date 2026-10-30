@@ -5,6 +5,7 @@ import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import api from '../../core/api';
 import { formatAthensDateTime } from '../../utils/dateFormatter';
 import styles from '../../styles/News.module.css';
+import EditEntryModal, { EditPencil } from './EditEntryModal';
 import themeStyles from '../../styles/NewsThemes.module.css';
 import { NEWS_OUTLETS } from '../../constants/outletConstants';
 import { apiJoin, isVideoUrl } from '../../utils/newsUtils';
@@ -58,6 +59,7 @@ export default function PublicArticleView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [zoomed, setZoomed] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     if (!zoomed) return;
@@ -106,10 +108,25 @@ export default function PublicArticleView() {
   const mediaUrl = article.media_url ? apiJoin(article.media_url) : null;
 
   // Floating back button to return to the game
-  const backBtn = (
+  const backBtnOnly = (
     <button onClick={() => navigate(isRumor ? '/rumors' : (isAnnouncement ? '/court/announcements' : '/news'))} className={`${styles.backBtn} no-print`} style={{ position: 'fixed', bottom: '20px', left: '20px', padding: '10px 20px', background: 'rgba(0,0,0,0.8)', color: '#fff', border: '1px solid #444', borderRadius: '4px', cursor: 'pointer', zIndex: 9999, fontWeight: 'bold', boxShadow: '0 4px 6px rgba(0,0,0,0.5)', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px' }}>
       ← Return to Hub
     </button>
+  );
+
+  // Within the hour after publishing, the author (or an admin) gets an edit button here.
+  const backBtn = (
+    <>
+      {backBtnOnly}
+      {!isRumor && <EditPencil item={article} floating onClick={() => setEditing(true)} />}
+      {editing && (
+        <EditEntryModal
+          item={article}
+          onClose={() => setEditing(false)}
+          onSaved={(updated) => setArticle((a) => ({ ...a, ...updated }))}
+        />
+      )}
+    </>
   );
 
   const renderMedia = (borderRadius = '0px') => {

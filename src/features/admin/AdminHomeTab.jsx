@@ -442,7 +442,7 @@ export default function AdminHomeTab({
       const uid = c.user_id ? Number(c.user_id) : null;
       const user = sanitizedUsers.find(u => Number(u.id) === uid || Number(u.character_id) === cid);
       const feeding = feedingByCharMap.get(cid);
-      const isFed = !!feeding && (feeding.status === 'resolved' || !!feeding.outcome);
+      const isFed = feeding?.status === 'resolved'; // a pending roll doesn't unlock actions yet
       return {
         characterId: cid,
         characterName: c.name || `Kindred #${cid}`,

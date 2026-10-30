@@ -11,6 +11,7 @@ import { formatAthensDate, formatAthensDateTime } from '../../utils/dateFormatte
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import FaGlyph from '../../ui/FaGlyph';
 import CreateNewsModal from './CreateNewsModal';
+import EditEntryModal, { EditPencil } from './EditEntryModal';
 import FullscreenArticleModal from '../../components/FullscreenArticleModal';
 import { Skeleton } from 'boneyard-js/react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -28,6 +29,7 @@ export default function News() {
   const [editingDraft, setEditingDraft] = useState(null);
   const [showDraftsDrawer, setShowDraftsDrawer] = useState(false);
   const [fullscreenArticle, setFullscreenArticle] = useState(null);
+  const [editingEntry, setEditingEntry] = useState(null); // a published article, within its edit hour
   const [fullscreenRumor, setFullscreenRumor] = useState(null);
   const [rumorPrintTarget, setRumorPrintTarget] = useState(null);
 
@@ -347,12 +349,15 @@ export default function News() {
                         </div>
 
                         <div className={styles.newsBody}>
-                          <h2>{item.title}</h2>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
+                            <h2 style={{ flex: 1 }}>{item.title}</h2>
+                            <EditPencil item={item} onClick={() => setEditingEntry(item)} />
+                          </div>
                           {item.subtitle && <h4 style={{ color: theme.color }}>{item.subtitle}</h4>}
 
                           <div className={styles.meta}>
                             <span className={styles.journalist} style={{ color: theme.color }}>By {item.journalist_name || 'Staff'}</span>
-                            <span className={styles.date}>| {formatAthensDate(item.created_at)}</span>
+                            <span className={styles.date}>| {formatAthensDate(item.created_at)}{item.edited_at ? ' · edited' : ''}</span>
                           </div>
 
                           {item.media_url && (
@@ -442,6 +447,17 @@ export default function News() {
 
         </div>
       </div>
+
+      {editingEntry && (
+        <EditEntryModal
+          item={editingEntry}
+          onClose={() => setEditingEntry(null)}
+          onSaved={() => {
+            toast.success('Article updated.');
+            queryClient.invalidateQueries({ queryKey: ['news'] });
+          }}
+        />
+      )}
 
       {modalMode && (
         <CreateNewsModal
