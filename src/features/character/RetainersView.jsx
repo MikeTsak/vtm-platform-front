@@ -5,6 +5,8 @@ import styles from '../../styles/RetainersView.module.css';
 import Avatar from '../../components/Avatar';
 import { GhoulStateBadge } from '../feeding/GhoulUpkeep';
 import { DISCIPLINES, iconPath } from '../../data/disciplines';
+import { retainerAges, formatDate } from '../../utils/ages';
+import TrackerBlock from './TrackerBlock';
 import { allSelectableAdvantages } from '../../data/merits_flaws_retainers';
 import { generateGreekName } from '../../utils/nameGenerator';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -75,7 +77,7 @@ const SmallDots = ({ value, max = 5 }) => (
 const coterieFreeDots = (c) => c.dots - c.retainers.reduce((sum, r) => sum + r.tier, 0);
 const coterieMember = (c, characterId) => c?.members.find(m => m.character_id === characterId);
 // A coterie ghoul holds one Discipline per Tier: the domitor's, plus 1 dot of
-// other members' clan Disciplines, each added by that member (bloodSources).
+// other members' Disciplines, each added by that member (bloodSources).
 const bloodSourcesOf = (sheet) => (sheet && sheet.bloodSources) || {};
 const withoutBlood = (sheet) => {
   if (!sheet) return sheet;
@@ -88,6 +90,44 @@ const withoutBlood = (sheet) => {
   };
 };
 const TIER_TITLES = { 1: 'Pawn', 2: 'Associate', 3: 'Specialist' };
+
+// True when a ghoul holds no Discipline from its domitor (other members' blood doesn't count).
+const needsDiscipline = (r) => {
+  const sheet = r?.sheet || {};
+  if (sheet.isGhoul !== true) return false;
+  const extra = bloodSourcesOf(sheet);
+  return !Object.entries(sheet.disciplines || {}).some(([d, v]) => Number(v) === 1 && !extra[d]);
+};
+
+// A ghoul's own blood gives ONE Discipline and one power: picking a Discipline
+// replaces the previous one (and drops its power); `on` false clears it. Other
+// coterie members' blood (bloodSources) is left alone.
+const pickOneDiscipline = (sheet, disc, on) => {
+  const extra = bloodSourcesOf(sheet);
+  const disciplines = Object.fromEntries(Object.entries(sheet.disciplines || {}).filter(([d]) => extra[d]));
+  if (on) disciplines[disc] = 1;
+  return { ...sheet, disciplines, powers: (sheet.powers || []).filter(p => extra[p.discipline]) };
+};
+
+// V5 Core: a ghoul gains its master's highest-rated Discipline and one level 1
+// power the vampire has (ties all count). Mirrors back/utils/ghoulBlood.js.
+// Returns { Discipline: Set of owned power ids/names, lowercased }.
+const GHOUL_BLOOD_RULE = "A ghoul gains the first dot of their domitor's highest-rated Discipline and one level 1 power the domitor has. Using a power above level 1 (Draught of Elegance, alchemy) costs the ghoul 1 Aggravated Health instead of a Rouse Check.";
+const powerKey = (v) => String(v || '').replace(/\s*\(Errata\)\s*$/i, '').trim().toLowerCase();
+const sheetOf = (c) => {
+  if (!c?.sheet) return {};
+  if (typeof c.sheet !== 'string') return c.sheet;
+  try { return JSON.parse(c.sheet) || {}; } catch { return {}; }
+};
+const bloodGifts = (vampSheet) => {
+  const rated = Object.entries(vampSheet?.disciplines || {}).filter(([d, v]) => d !== 'Thin-blood Alchemy' && Number(v) > 0);
+  const top = Math.max(0, ...rated.map(([, v]) => Number(v)));
+  return Object.fromEntries(rated.filter(([, v]) => Number(v) === top).map(([d]) => [d, new Set(
+    (vampSheet.disciplinePowers?.[d] || [])
+      .flatMap(p => (p && typeof p === 'object' ? [p.id, p.name] : [p]))
+      .filter(Boolean).map(powerKey)
+  )]));
+};
 
 // --- ADVANTAGE PICKER HELPERS ---
 
@@ -297,7 +337,8 @@ function CoterieBloodBox({ sheet, retainer, coterie, character, isAdmin, saving,
   const me = coterieMember(coterie, character.id);
   const isDomitor = retainer.domitor_character_id === character.id;
   const canGive = me && !isDomitor && !Object.values(sources).includes(character.id) && held < retainer.tier;
-  const options = canGive ? (CLAN_DISCIPLINES[me.clan] || []).filter(d => !(sheet.disciplines || {})[d]) : [];
+  const gifts = bloodGifts(sheetOf(character));
+  const options = canGive ? Object.keys(gifts).filter(d => !(sheet.disciplines || {})[d]) : [];
 
   return (
     <div style={{ marginTop: '16px' }}>
@@ -306,7 +347,7 @@ function CoterieBloodBox({ sheet, retainer, coterie, character, isAdmin, saving,
       </h4>
       <p style={{ color: '#e0dedd', opacity: 0.7, fontSize: '12px', margin: '0 0 8px' }}>
         Bound only to {coterieMember(coterie, retainer.domitor_character_id)?.character_name || 'their domitor'}. Each other
-        member may feed them once for 1 dot of their own clan Discipline, one per Tier.
+        member may feed them once for 1 dot of their highest-rated Discipline and a level 1 power they have, one per Tier.
       </p>
       {Object.entries(sources).map(([disc, sourceId]) => {
         const power = (sheet.powers || []).find(p => p.discipline === disc);
@@ -332,15 +373,79 @@ function CoterieBloodBox({ sheet, retainer, coterie, character, isAdmin, saving,
       {canGive && options.length > 0 && (
         <div style={{ marginTop: '8px' }}>
           <select className={styles.inputStitch} value={pick} onChange={e => onPick(e.target.value)} disabled={saving}>
-            <option value="">Give your blood: pick one of your Disciplines...</option>
+            <option value="">Give your blood: your highest-rated Discipline...</option>
             {options.map(d => <option key={d} value={d}>{d}</option>)}
           </select>
           {pick && (
-            <InlinePowerSelection disciplineName={pick} noMargin onSelect={onGive} onCancel={() => onPick('')} />
+            <InlinePowerSelection disciplineName={pick} noMargin owned={gifts[pick]} onSelect={onGive} onCancel={() => onPick('')} />
           )}
         </div>
       )}
     </div>
+  );
+}
+
+// Birth day for every retainer, plus the day of ghouling for a ghoul. Ages are
+// derived from them (utils/ages.js); a ghoul's apparent age freezes on that day.
+// A player sets each date once (server: utils/sheetDates.js); `locked` is the
+// stored sheet whose filled dates can no longer be changed (null for a Storyteller).
+function RetainerDates({ sheet, onChange, locked }) {
+  const isLocked = (k) => !!(locked && locked[k]);
+  const label = { fontSize: '12px', fontWeight: 'bold', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '2px' };
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <label style={label} htmlFor="retainer-birth">Born</label>
+        <input id="retainer-birth" type="date" className={styles.inputStitch} value={sheet.birthDate || ''}
+          disabled={isLocked('birthDate')}
+          max={sheet.isGhoul ? (sheet.ghouledDate || undefined) : undefined}
+          onChange={e => onChange({ birthDate: e.target.value })} />
+      </div>
+      {sheet.isGhoul && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <label style={label} htmlFor="retainer-ghouled">Day of ghouling</label>
+          <input id="retainer-ghouled" type="date" className={styles.inputStitch} value={sheet.ghouledDate || ''}
+            disabled={isLocked('ghouledDate')}
+            min={sheet.birthDate || undefined}
+            onChange={e => onChange({ ghouledDate: e.target.value })} />
+        </div>
+      )}
+      {locked && <p style={{ gridColumn: '1 / -1', margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>
+        Each date can be set once. After that, only a Storyteller can change it.
+      </p>}
+    </div>
+  );
+}
+
+// How the ages are worked out, step by step. `setAt` (when the player entered
+// each date) is passed for Storytellers only.
+function RetainerAgeBreakdown({ retainer, sheet, ages, setAt }) {
+  const row = (label, value) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', padding: '2px 0' }}>
+      <span style={{ opacity: 0.7 }}>{label}</span><span style={{ textAlign: 'right' }}>{value}</span>
+    </div>
+  );
+  const entered = (k) => (setAt && setAt[k] ? ` (entered ${formatDate(setAt[k])})` : '');
+  return (
+    <details style={{ marginTop: '6px', fontSize: '12px', color: '#e0dedd' }}>
+      <summary style={{ cursor: 'pointer', color: 'var(--tint)' }}>How the ages are worked out</summary>
+      <div style={{ marginTop: '6px', padding: '8px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: '6px', maxWidth: '520px' }}>
+        {row('Born', (formatDate(sheet.birthDate) || 'not set') + entered('birthDate'))}
+        {row('True age (today)', ages.real ?? '?')}
+        {sheet.isGhoul ? (
+          <>
+            {row('Ghouled', (formatDate(sheet.ghouledDate) || `not set, using ${formatDate(retainer.created_at) || 'today'}`) + entered('ghouledDate'))}
+            {row('Age frozen at ghouling', ages.ageAtGhouling ?? '?')}
+            {ages.steps.map((st, i) => row(`Went unfed ${formatDate(st.at)}`, `${st.from} → ${st.to}`))}
+            {ages.crone && row("Crone's Curse", '+10 years (looks a decade older)')}
+            {row('Apparent age', ages.apparent ?? '?')}
+            <p style={{ margin: '6px 0 0', opacity: 0.6 }}>
+              The Blood stops a ghoul aging. Each cycle they go unfed, half the years held back (at least one) catch up, never past their true age. Feeding again stops it, but never turns it back.
+            </p>
+          </>
+        ) : row('Apparent age', `${ages.apparent ?? '?'} (a mortal looks their age)`)}
+      </div>
+    </details>
   );
 }
 
@@ -367,12 +472,18 @@ const PowerDetailCard = ({ power, onClear, readOnly, noMargin }) => (
   </div>
 );
 
-const InlinePowerSelection = ({ disciplineName, onSelect, onCancel, noMargin }) => {
+// `owned`: when given, only the level 1 powers the feeding vampire has.
+const InlinePowerSelection = ({ disciplineName, onSelect, onCancel, noMargin, owned }) => {
   const levels = DISCIPLINES[disciplineName]?.levels || {};
-  const powers = levels[1] || [];
+  const powers = (levels[1] || []).filter(p => !owned || owned.has(powerKey(p.id)) || owned.has(powerKey(p.name)));
 
   if (powers.length === 0) {
-    return <div style={{ marginLeft: noMargin ? '0' : '32px', fontSize: '12px', color: '#aaa', textAlign: 'left' }}>No Level 1 powers found for {disciplineName}.</div>;
+    return (
+      <div style={{ marginLeft: noMargin ? '0' : '32px', fontSize: '12px', color: '#aaa', textAlign: 'left' }}>
+        {owned ? `You have no level 1 ${disciplineName} power to pass on.` : `No Level 1 powers found for ${disciplineName}.`}
+        {' '}<button type="button" onClick={(e) => { e.stopPropagation(); onCancel(); }} style={{ background: 'transparent', border: 'none', color: 'var(--tint)', cursor: 'pointer', fontSize: '12px' }}>Back</button>
+      </div>
+    );
   }
 
   return (
@@ -498,7 +609,7 @@ const getValidationErrors = (draftSheet, tier) => {
 
 // --- MULTI-STEP WIZARD COMPONENT ---
 
-const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel, onConfirm, isMigration, isAdminBypass, initialName, initialSheet, minTier = 1, onChangeTier, saving, freeMessage, confirmLabel, extraStep1 }) => {
+const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, ownedPowers, onCancel, onConfirm, isMigration, isAdminBypass, initialName, initialSheet, minTier = 1, onChangeTier, saving, freeMessage, confirmLabel, extraStep1 }) => {
   const [step, setStep] = useState(1);
   const [name, setName] = useState('');
   const [draftSheet, setDraftSheet] = useState({ attributes: {}, skills: {}, disciplines: {}, advantages: [], flaws: [], isGhoul: false, powers: [] });
@@ -558,6 +669,10 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
     let finalLevel = newLevel;
     if (currentLevel === newLevel) {
       finalLevel = type === 'attributes' ? 1 : newLevel - 1;
+    }
+    if (type === 'disciplines') {
+      setDraftSheet(prev => pickOneDiscipline(prev, statName, finalLevel === 1));
+      return;
     }
     setDraftSheet(prev => ({
       ...prev,
@@ -682,6 +797,8 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
                   </div>
                 </div>
               )}
+
+              <RetainerDates sheet={draftSheet} locked={isAdminBypass ? null : (initialSheet || {})} onChange={patch => setDraftSheet(p => ({ ...p, ...patch }))} />
 
               {extraStep1}
 
@@ -842,10 +959,11 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
 
               {draftSheet.isGhoul && (
                 <div style={{ backgroundColor: 'color-mix(in srgb, var(--tint) 5%, transparent)', border: '1px solid color-mix(in srgb, var(--tint) 10%, transparent)', padding: '24px', borderRadius: '16px', marginTop: '32px' }}>
-                  <h3 style={{ color: 'white', fontWeight: 'bold', fontSize: '14px', marginBottom: '16px' }}>Ghoul Disciplines</h3>
+                  <h3 style={{ color: 'white', fontWeight: 'bold', fontSize: '14px', marginBottom: '8px' }}>Ghoul Discipline: pick one</h3>
+                  <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', margin: '0 0 16px' }}>{GHOUL_BLOOD_RULE}</p>
 
                   {clanDisciplines.length === 0 ? (
-                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px' }}>Your clan does not have standard in-clan disciplines listed.</p>
+                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px' }}>No Discipline to pass on: the domitor has no rated Discipline.</p>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                       {clanDisciplines.map(disc => {
@@ -891,6 +1009,7 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
                             {draftSheet.disciplines[disc] === 1 && !selectedPower && activeDisciplinePowerSelection === disc && (
                               <div style={{ marginLeft: '16px', marginTop: '8px' }}>
                                 <InlinePowerSelection
+                                  owned={ownedPowers ? (ownedPowers[disc] || new Set()) : undefined}
                                   disciplineName={disc}
                                   onSelect={(p) => {
                                     setDraftSheet(prev => ({ ...prev, powers: [...(prev.powers || []), { ...p, discipline: disc }] }));
@@ -943,7 +1062,7 @@ const WizardModal = ({ isOpen, tier, cost, domitorXp, clanDisciplines, onCancel,
                 {(() => {
                   const stamina = draftSheet.attributes['Stamina'] || 1;
                   let health = stamina + 3;
-                  if (draftSheet.isGhoul && draftSheet.flaws.some(f => f.name === "Crone's Curse")) {
+                  if (draftSheet.isGhoul && draftSheet.flaws.some(f => /crone's curse/i.test(String(f.name || '')))) {
                     health -= 1;
                   }
                   if (draftSheet.isGhoul && draftSheet.powers && draftSheet.powers.some(p => p.discipline === 'Fortitude' && p.name === 'Resilience')) {
@@ -1139,12 +1258,28 @@ export default function RetainersView() {
     return CLAN_DISCIPLINES[character.clan] || [];
   }, [character]);
 
-  // A coterie ghoul draws its discipline from its domitor's clan.
-  const sheetDisciplines = selectedCoterie ? (CLAN_DISCIPLINES[selectedDomitor?.clan] || []) : clanDisciplines;
+  // A ghoul of mine takes my highest-rated Discipline (Storytellers are free). A
+  // sheet keeps showing what it already holds, so older gifts stay visible.
+  const myGifts = useMemo(() => (isAdminBypass ? null : bloodGifts(sheetOf(character))), [character, isAdminBypass]);
+  const giftDisciplines = (held) => [...new Set([
+    ...Object.keys(myGifts || {}),
+    ...Object.entries(held || {}).filter(([, v]) => v).map(([d]) => d),
+  ])];
+
+  // Someone else's coterie ghoul: its discipline comes from its domitor's clan.
+  const iFeedSelected = myGifts && (!selectedCoterie || selectedRetainer?.domitor_character_id === character?.id);
+  const sheetDisciplines = iFeedSelected
+    ? giftDisciplines(withoutBlood(selectedRetainer?.sheet)?.disciplines)
+    : selectedCoterie ? (CLAN_DISCIPLINES[selectedDomitor?.clan] || []) : clanDisciplines;
   const wizardCoterie = wizardConfig.coterie && coteries.find(c => c.id === wizardConfig.coterie.coterieId);
-  const wizardDisciplines = wizardCoterie
-    ? (CLAN_DISCIPLINES[coterieMember(wizardCoterie, wizardConfig.coterie.domitorId)?.clan] || [])
-    : clanDisciplines;
+  const wizardHeld = wizardCoterie
+    ? withoutBlood(wizardConfig.coterie.retainer?.sheet)?.disciplines
+    : (wizardConfig.isMigration ? selectedRetainer?.sheet?.disciplines : null);
+  const wizardDisciplines = myGifts && (!wizardCoterie || wizardConfig.coterie.domitorId === character?.id)
+    ? giftDisciplines(wizardHeld)
+    : wizardCoterie
+      ? (CLAN_DISCIPLINES[coterieMember(wizardCoterie, wizardConfig.coterie.domitorId)?.clan] || [])
+      : clanDisciplines;
 
   const selectRetainer = (id) => {
     setSelectedRetainerId(id);
@@ -1399,9 +1534,53 @@ export default function RetainersView() {
     }
   };
 
+  // Birth day / day of ghouling only, through the same routes as a sheet save
+  // (no XP: the tier is unchanged). Who may: as for the rest of the sheet.
+  const [datesDraft, setDatesDraft] = useState(null);
+  useEffect(() => { setDatesDraft(null); }, [selectedRetainerId]);
+  // Saves the selected retainer's sheet as it is (same tier, so no XP); the
+  // server keeps its trackers and checks dates and the blood rule.
+  const saveSelectedSheet = async (sheet, failMessage) => {
+    const r = selectedRetainer;
+    try {
+      setSaving(true);
+      if (selectedCoterie) {
+        await api.put(`/coteries/${selectedCoterie.id}/retainers/${r.id}`,
+          { name: r.name, tier: r.tier, sheet: withoutBlood(sheet), domitor_character_id: r.domitor_character_id });
+      } else {
+        await api.put(isAdminBypass ? `/retainers/${r.id}` : `/retainers/${r.id}/upgrade`, { name: r.name, tier: r.tier, sheet, xp: r.xp });
+      }
+      await fetchRetainers();
+      return true;
+    } catch (e) {
+      alert(formatApiError(e, failMessage));
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  };
+  const handleSaveDates = async () => {
+    if (!isAdminBypass && !window.confirm('Dates can only be set once. After saving, only a Storyteller can change them. Save?')) return;
+    if (await saveSelectedSheet({ ...selectedRetainer.sheet, ...datesDraft }, 'Failed to save the dates')) setDatesDraft(null);
+  };
+
+  // A ghoul with no Discipline from its domitor (new, or reset by the
+  // Storyteller): the domitor picks one of their highest-rated Disciplines and
+  // a level 1 power they own.
+  const [disciplinePick, setDisciplinePick] = useState('');
+  useEffect(() => { setDisciplinePick(''); }, [selectedRetainerId]);
+  const handleChooseDiscipline = async (power) => {
+    const disc = disciplinePick;
+    if (!window.confirm(`Give ${selectedRetainer.name} ${disc} with ${power.name}?`)) return;
+    const sheet = pickOneDiscipline(selectedRetainer.sheet, disc, true);
+    sheet.powers = [...sheet.powers, { ...power, discipline: disc }];
+    if (await saveSelectedSheet(sheet, 'Failed to save the Discipline')) setDisciplinePick('');
+  };
+
   const startEditing = () => {
     const initSheet = selectedRetainer.sheet || {};
     setDraftSheet({
+      ...initSheet, // keeps the dates and anything else the editor doesn't show
       attributes: initSheet.attributes || {},
       skills: initSheet.skills || {},
       disciplines: initSheet.disciplines || {},
@@ -1431,20 +1610,11 @@ export default function RetainersView() {
     const fl = (cl === newLevel) ? newLevel - 1 : newLevel;
 
     if (type === 'disciplines') {
-      if (fl === 1) {
-        setActiveDisciplinePowerSelection(statName);
-        setDraftSheet(prev => {
-          const powers = prev.powers ? prev.powers.filter(p => p.discipline !== statName) : [];
-          return { ...prev, disciplines: { ...prev.disciplines, [statName]: 1 }, powers };
-        });
-        return;
-      } else if (fl === 0) {
-        setDraftSheet(prev => {
-          const powers = prev.powers ? prev.powers.filter(p => p.discipline !== statName) : [];
-          return { ...prev, disciplines: { ...prev.disciplines, [statName]: 0 }, powers };
-        });
-        return;
-      }
+      // Only 0 or 1 dot, and only one Discipline: a click selects it, a second one clears it.
+      const on = !cl;
+      setActiveDisciplinePowerSelection(on ? statName : null);
+      setDraftSheet(prev => pickOneDiscipline(prev, statName, on));
+      return;
     }
 
     setDraftSheet(prev => ({ ...prev, [type]: { ...prev[type], [statName]: fl } }));
@@ -1499,6 +1669,7 @@ export default function RetainersView() {
         cost={wizardConfig.tier * 3}
         domitorXp={character.xp || 0}
         clanDisciplines={wizardDisciplines}
+        ownedPowers={myGifts}
         isMigration={wizardConfig.isMigration}
         isAdminBypass={isAdminBypass}
         initialName={wizardConfig.coterie ? (wizardConfig.coterie.retainer?.name || '') : (wizardConfig.isMigration ? selectedRetainer?.name : '')}
@@ -1601,6 +1772,7 @@ export default function RetainersView() {
                         <h4 className={styles.rosterName}>{r.name}</h4>
                         <SmallDots value={r.tier} max={3} />
                         {r.feeding && <GhoulStateBadge state={r.feeding} />}
+                        {needsDiscipline(r) && <span style={{ display: 'inline-block', marginTop: '4px', fontSize: '10px', padding: '2px 6px', borderRadius: '4px', color: '#ffb4a7', border: '1px solid rgba(255, 68, 68, 0.5)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Needs a Discipline</span>}
                         {r.name === 'Migrated Retainer' && (
                           <div style={{ marginTop: '4px', background: 'rgba(255, 68, 68, 0.2)', color: '#ffb4a7', fontSize: '10px', padding: '2px 6px', borderRadius: '4px', display: 'inline-block', border: '1px solid rgba(255, 68, 68, 0.5)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                             Attention Needed
@@ -1665,6 +1837,7 @@ export default function RetainersView() {
                               <h4 className={styles.rosterName}>{r.name}</h4>
                               <SmallDots value={r.tier} max={3} />
                               {r.feeding && <GhoulStateBadge state={r.feeding} />}
+                              {needsDiscipline(r) && <span style={{ display: 'inline-block', marginTop: '4px', fontSize: '10px', padding: '2px 6px', borderRadius: '4px', color: '#ffb4a7', border: '1px solid rgba(255, 68, 68, 0.5)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Needs a Discipline</span>}
                             </div>
                             <span className={`material-symbols-outlined ${styles.chevron}`}>chevron_right</span>
                           </button>
@@ -1801,6 +1974,49 @@ export default function RetainersView() {
                           Starved: this ghoul has lost their powers and is unavailable until fed again on the <Link to="/feeding">Feeding page</Link>.
                         </p>
                       )}
+                      {!isEditing && (() => {
+                        const ages = retainerAges(selectedRetainer);
+                        const canEditDates = !selectedCoterie || !currentSheet.isGhoul || isAdminBypass || selectedRetainer.domitor_character_id === character.id;
+                        return (
+                          <div style={{ marginTop: '6px' }}>
+                            <p className={styles.sheetTier} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px 10px' }}>
+                              <span>Born {formatDate(currentSheet.birthDate) || 'unknown'}</span>
+                              {currentSheet.isGhoul && <span>· Ghouled {formatDate(currentSheet.ghouledDate || selectedRetainer.created_at) || 'unknown'}</span>}
+                              <span>· Apparent age {ages.apparent ?? '?'}</span>
+                              <span>· True age {ages.real ?? '?'}</span>
+                              {canEditDates && !datesDraft && (isAdminBypass || !currentSheet.birthDate || (currentSheet.isGhoul && !currentSheet.ghouledDate)) && (
+                                <button type="button" className={styles.btnIconStitch} title="Edit dates" aria-label="Edit birth and ghouling dates"
+                                  onClick={() => setDatesDraft({ birthDate: currentSheet.birthDate || '', ghouledDate: currentSheet.ghouledDate || '' })}
+                                  style={{ width: '28px', height: '28px', minHeight: 0 }}>
+                                  <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>edit_calendar</span>
+                                </button>
+                              )}
+                            </p>
+                            <RetainerAgeBreakdown retainer={selectedRetainer} sheet={currentSheet} ages={ages} setAt={isAdminBypass ? currentSheet.datesSetAt : null} />
+                            {selectedRetainer.trackers && (
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', marginTop: '8px', maxWidth: '560px' }}>
+                                <TrackerBlock label="Health" val={selectedRetainer.trackers.maxHealth} max={selectedRetainer.trackers.maxHealth} sup={selectedRetainer.trackers.health.superficial} agg={selectedRetainer.trackers.health.aggravated} />
+                                <TrackerBlock label="Willpower" val={selectedRetainer.trackers.maxWillpower} max={selectedRetainer.trackers.maxWillpower} sup={selectedRetainer.trackers.willpower.superficial} agg={selectedRetainer.trackers.willpower.aggravated} />
+                              </div>
+                            )}
+                            {currentSheet.isGhoul && (selectedRetainer.starvedAt || []).length > 0 && (
+                              <p className={styles.sheetTier} style={{ color: '#f59e0b' }}>
+                                Went unfed {selectedRetainer.starvedAt.length} time(s): the years held back by the Blood are catching up.
+                                {ages.pastLifespan && " Past a natural lifespan, this may kill them (Storyteller's call)."}
+                              </p>
+                            )}
+                            {datesDraft && (
+                              <div style={{ marginTop: '12px' }}>
+                                <RetainerDates sheet={{ ...currentSheet, ...datesDraft }} locked={isAdminBypass ? null : currentSheet} onChange={patch => setDatesDraft(d => ({ ...d, ...patch }))} />
+                                <div style={{ display: 'flex', gap: '8px', marginTop: '-12px' }}>
+                                  <button className={styles.btnPrimary} onClick={handleSaveDates} disabled={saving}>{saving ? 'Saving...' : 'Save Dates'}</button>
+                                  <button className={`${styles.btnPrimary} ${styles.btnDanger}`} onClick={() => setDatesDraft(null)} disabled={saving}>Cancel</button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
 
                     </div>
                     <div className={styles.sheetControls}>
@@ -2037,10 +2253,31 @@ export default function RetainersView() {
                 {/* Disciplines */}
                 <div className={`${styles.statsBox} ${styles.disciplinesBox}`}>
                   <h3 className={styles.statsBoxTitle}>Disciplines</h3>
+                  {currentSheet.isGhoul && <p style={{ color: '#e0dedd', opacity: 0.6, fontSize: '12px', margin: '0 0 8px' }}>{GHOUL_BLOOD_RULE}</p>}
+                  {currentSheet.isGhoul && !isEditing && iFeedSelected && needsDiscipline(selectedRetainer) && (
+                    <div className={styles.lightRedGlowStitch} style={{ marginBottom: '12px', flexDirection: 'column', alignItems: 'stretch', gap: '8px' }}>
+                      <strong>Choose {selectedRetainer.name}'s Discipline</strong>
+                      <span style={{ fontSize: '12px' }}>Pick one of your highest-rated Disciplines, then one level 1 power you have.</span>
+                      {Object.keys(myGifts).length === 0 ? (
+                        <span style={{ fontSize: '12px' }}>You have no Discipline to pass on yet.</span>
+                      ) : (
+                        <>
+                          <select className={styles.inputStitch} value={disciplinePick} onChange={e => setDisciplinePick(e.target.value)} disabled={saving}>
+                            <option value="">Pick one Discipline...</option>
+                            {Object.keys(myGifts).map(d => <option key={d} value={d}>{d}</option>)}
+                          </select>
+                          {disciplinePick && (
+                            <InlinePowerSelection disciplineName={disciplinePick} noMargin owned={myGifts[disciplinePick] || new Set()}
+                              onSelect={handleChooseDiscipline} onCancel={() => setDisciplinePick('')} />
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
                   {!currentSheet.isGhoul ? (
                     <p style={{ color: '#e0dedd', opacity: 0.7 }}>Mortals cannot learn disciplines. Enable 'Is Ghoul?' to unlock 1 dot.</p>
                   ) : sheetDisciplines.length === 0 ? (
-                    <p style={{ color: '#e0dedd', opacity: 0.7 }}>No in-clan disciplines available for domitor clan.</p>
+                    <p style={{ color: '#e0dedd', opacity: 0.7 }}>The domitor has no Discipline to pass on.</p>
                   ) : (
                     <>
                       <div className={styles.disciplinesGrid}>
@@ -2085,6 +2322,7 @@ export default function RetainersView() {
                                   <InlinePowerSelection
                                     disciplineName={disc}
                                     noMargin={true}
+                                    owned={iFeedSelected ? (myGifts[disc] || new Set()) : undefined}
                                     onSelect={(p) => {
                                       setDraftSheet(prev => ({ ...prev, powers: [...(prev.powers || []), { ...p, discipline: disc }] }));
                                       setActiveDisciplinePowerSelection(null);

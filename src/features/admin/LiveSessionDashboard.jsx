@@ -24,6 +24,7 @@ import LiveSessionCodexSidebar from '../live-session/LiveSessionCodexSidebar';
 import { INGRAINED_DISCIPLINE_FLAWS } from '../../data/ingrainedFlaws';
 import sharedStyles from '../../styles/LiveSession.module.css';
 import adminStyles from '../../styles/LiveSessionAdmin.module.css';
+import SessionGhoulsTool from './SessionGhoulsTool';
 
 const styles = { ...sharedStyles, ...adminStyles };
 const PlayerScreen = lazy(() => import('../live-session/LiveSession'));
@@ -39,6 +40,7 @@ const TOOLS_INDEX = [
   { id: 'clocks',     title: 'Session Clocks',      content: 'timers time rounds countdown' },
   { id: 'initiative', title: 'Initiative Tracker',  content: 'combat order turn' },
   { id: 'npc',        title: 'Rapid NPC / Monsters', content: 'actor generator random ghoul vampire thug bouncer detective cultist' },
+  { id: 'ghouls',     title: "Players' Ghouls & Retainers", content: 'ghoul retainer servant health willpower damage add bring table player roll' },
   { id: 'request',    title: 'Request a Roll',       content: 'ask player prompt call for roll test attribute skill specialty difficulty foundry' },
   { id: 'dice',       title: 'Dice Roller',          content: 'roll hunger normal difficulty public note action' },
   { id: 'remorse',    title: 'Remorse (End of Session)', content: 'humanity stains degeneration conscience end session wrap' },
@@ -1343,6 +1345,13 @@ export default function LiveSessionDashboard({ initialSessionId, character } = {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {visibleTools.includes('ghouls') && (
+            <div style={{ paddingTop: visibleTools[0] !== 'ghouls' ? '1rem' : '0', borderTop: visibleTools[0] !== 'ghouls' ? '1px solid var(--outline-variant)' : 'none' }}>
+              <h3 style={{ fontSize: '1rem', color: 'var(--on-surface)', marginBottom: '0.75rem' }}>Players' Ghouls &amp; Retainers</h3>
+              <SessionGhoulsTool sessionId={sessionId} metadata={session?.metadata} updateMetadata={updateMetadata} styles={styles} />
             </div>
           )}
 

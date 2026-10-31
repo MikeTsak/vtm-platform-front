@@ -7,6 +7,8 @@ import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styles from '../../styles/Admin.module.css';
 import Avatar from '../../components/Avatar';
+import { retainerAges, formatDate } from '../../utils/ages';
+import GhoulTrackerControls from './GhoulTrackerControls';
 
 const LEVEL_COLORS = { 1: '#b8860b', 2: '#9d7cff', 3: '#c21807' };
 
@@ -185,6 +187,24 @@ export default function AdminGhoulsTab({ retainers }) {
                       </dd>
                     </>
                   )}
+                  {(() => {
+                    const ages = retainerAges(r);
+                    return (
+                      <>
+                        <dt style={{ color: 'var(--text-muted)' }}>Age</dt>
+                        <dd style={{ margin: 0, color: ages.pastLifespan && (r.starvedAt || []).length ? '#ff6b6b' : 'var(--text-primary)' }}>
+                          {ages.real == null ? 'No birth date' : `Looks ${ages.apparent} · truly ${ages.real}`}
+                          {ghoul && ages.ageAtGhouling != null && ` · frozen at ${ages.ageAtGhouling}`}
+                          {ghoul && (r.starvedAt || []).length > 0 && ` · unfed ${r.starvedAt.length}x`}
+                        </dd>
+                        <dt style={{ color: 'var(--text-muted)' }}>Dates</dt>
+                        <dd style={{ margin: 0, color: 'var(--text-secondary)' }}>
+                          Born {formatDate(r.sheet?.birthDate) || 'not set'}
+                          {ghoul && ` · ghouled ${formatDate(r.sheet?.ghouledDate) || `not set (sheet made ${formatDate(r.created_at)})`}`}
+                        </dd>
+                      </>
+                    );
+                  })()}
                   <dt style={{ color: 'var(--text-muted)' }}>Player</dt>
                   <dd style={{ margin: 0, color: 'var(--text-secondary)' }}>
                     {r.coterie_id ? (r.domitor_player || 'shared by the coterie') : (r.owner_player || 'Unknown')}
@@ -211,6 +231,15 @@ export default function AdminGhoulsTab({ retainers }) {
                       </span>
                     ))}
                   </div>
+                )}
+
+                {r.trackers && (
+                  <details>
+                    <summary style={{ cursor: 'pointer', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                      Health &amp; Willpower
+                    </summary>
+                    <GhoulTrackerControls ghoul={r} />
+                  </details>
                 )}
 
                 <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>

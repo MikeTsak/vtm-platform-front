@@ -1,4 +1,5 @@
 import api from '../core/api';
+import { retainerAges, formatDate } from './ages';
 import { listAllItems } from '../data/merits_flaws';
 import { SKILL_DESCRIPTIONS } from '../data/descriptions';
 import { ALL_DISCIPLINE_NAMES, DISCIPLINES } from '../data/disciplines';
@@ -26,6 +27,7 @@ export default async function generateGhoulCharacterSheetPDF(retainer, options =
     alert('Invalid JSON sheet. Cannot generate PDF.');
     return;
   }
+  const ages = retainerAges({ ...retainer, sheet });
 
   const formatExportDate = () => {
     const now = new Date();
@@ -524,7 +526,9 @@ export default async function generateGhoulCharacterSheetPDF(retainer, options =
           <div style="font-size: 13px; line-height: 1.5; color: #333;">
             <div style="margin-bottom: 4px;"><strong>Feeding Cycle:</strong> Must ingest vampire vitae once every downtime cycle (a Rouse Check for the vampire who feeds them).</div>
             ${retainer.feeding ? `<div style="margin-bottom: 4px;"><strong>This Cycle:</strong> <span style="color: ${retainer.feeding === 'starved' ? '#c62828' : retainer.feeding === 'fed' ? '#2e7d32' : '#b26a00'}; font-weight: 700;">${{ fed: 'Fed', hungry: 'Not yet fed', starved: 'STARVED: powers lost until fed again' }[retainer.feeding]}</span></div>` : ''}
-            <div style="margin-bottom: 4px;"><strong>Aging:</strong> Physical aging is halted while sustained on vitae. Withdrawing causes rapid biological catch:up.</div>
+            <div style="margin-bottom: 4px;"><strong>Born:</strong> ${escapeHtml(formatDate(sheet.birthDate) || 'not set')} &nbsp; <strong>Ghouled:</strong> ${escapeHtml(formatDate(sheet.ghouledDate || retainer.created_at) || 'not set')}</div>
+            <div style="margin-bottom: 4px;"><strong>Apparent age:</strong> ${ages.apparent ?? '?'} &nbsp; <strong>True age:</strong> ${ages.real ?? '?'}${ages.steps.length ? ` &nbsp; (unfed ${ages.steps.length}x)` : ''}</div>
+            <div style="margin-bottom: 4px;"><strong>Aging:</strong> Halted while sustained on vitae. Each cycle unfed, half the held-back years (at least one) catch up, never past the true age.</div>
             <div><strong>Blood Surge:</strong> Ghouls cannot Surge their Blood like true vampires, but gain access to 1 dot of their Domitor's disciplines.</div>
           </div>
         </div>
@@ -542,6 +546,7 @@ export default async function generateGhoulCharacterSheetPDF(retainer, options =
       </div>
 
       <div class="section-title">DISCIPLINES &amp; POWERS</div>
+      <div style="font-size: 12px; color: #666; margin-bottom: 8px;">A ghoul gains the first dot of the domitor's highest-rated Discipline and one level 1 power the domitor has. Using a power above level 1 (Draught of Elegance, alchemy, other causes) costs 1 Aggravated Health instead of a Rouse Check.</div>
       ${retainer.feeding === 'starved' ? '<div style="border: 2px solid #c62828; color: #c62828; font-family: Oswald, sans-serif; text-align: center; padding: 6px; margin-bottom: 10px; letter-spacing: 1px;">STARVED: THESE POWERS ARE UNAVAILABLE UNTIL THE GHOUL IS FED AGAIN</div>' : ''}
       ${activeDisciplines.length ? `
         <div class="two-col" style="${retainer.feeding === 'starved' ? 'opacity: 0.45; text-decoration: line-through;' : ''}">

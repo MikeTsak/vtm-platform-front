@@ -41,6 +41,7 @@ import { maxHealth as deriveMaxHealth } from '../../utils/derivedStats';
 import { attachStructured } from './sheetShape';
 import BloodPotencyModal from './BloodPotencyModal';
 import WishlistSection from './WishlistSection';
+import { vampireAges, formatDate } from '../../utils/ages';
 import { getBloodPotencyStats } from '../../utils/liveSessionMechanics';
 const msSearchText = (arr, query) => {
   const ms = new MiniSearch({ fields: ['text'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
@@ -310,9 +311,22 @@ function MysticFixModal({ maxMystic, oblivionDots, onClose, onSave, busy }) {
 /* ===========================
    Profile Edit Modal
    =========================== */
-function IdentityEditModal({ sheet, onClose, onSave, busy }) {
+// Birth and Embrace dates are set once by the player (server: utils/sheetDates.js);
+// after that only a Storyteller changes them, from the admin character editor.
+function IdentityEditModal({ sheet, onClose, onSave, busy, isAdmin }) {
   const [ambition, setAmbition] = useState(sheet.ambition || '');
   const [desire, setDesire] = useState(sheet.desire || '');
+  const [birthDate, setBirthDate] = useState(sheet.birthDate || '');
+  const [deathDate, setDeathDate] = useState(sheet.deathDate || '');
+  const ages = vampireAges({ birthDate, deathDate });
+  const locked = (k) => !isAdmin && !!sheet[k];
+  const fillsDate = (!locked('birthDate') && birthDate) || (!locked('deathDate') && deathDate);
+  const save = () => {
+    if (fillsDate && !isAdmin && !window.confirm('Birth and Embrace dates can only be set once. After saving, only a Storyteller can change them. Save?')) return;
+    onSave({ ambition, desire, birthDate, deathDate });
+  };
+  const labelStyle = { display: 'block', fontWeight: '600', marginBottom: 6, color: 'var(--text-muted)' };
+  const inputStyle = { width: '100%', boxSizing: 'border-box', background: 'var(--surface-lowest)', border: '1px solid var(--border-color)', color: 'var(--text-color)', padding: '10px', borderRadius: '4px' };
 
   return (
     <div className={styles.modalOverlay} role="dialog">
@@ -320,31 +334,33 @@ function IdentityEditModal({ sheet, onClose, onSave, busy }) {
         <div className={styles.modalHeader} style={{ borderBottom: '1px solid var(--border-color)', padding: '16px' }}>
           <h3 className={styles.modalTitle} style={{ margin: 0, fontFamily: 'var(--font-title)', fontSize: '24px' }}>Edit Identity</h3>
         </div>
-        <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '70vh', overflowY: 'auto' }}>
           <div>
-            <label style={{ display: 'block', fontWeight: '600', marginBottom: 6, color: 'var(--text-muted)' }}>Ambition</label>
-            <input
-              className={styles.input}
-              value={ambition}
-              onChange={e => setAmbition(e.target.value)}
-              placeholder="e.g. Become Prince"
-              style={{ width: '100%', boxSizing: 'border-box', background: 'var(--surface-lowest)', border: '1px solid var(--border-color)', color: 'var(--text-color)', padding: '10px', borderRadius: '4px' }}
-            />
+            <label style={labelStyle}>Ambition</label>
+            <input className={styles.input} value={ambition} onChange={e => setAmbition(e.target.value)} placeholder="e.g. Become Prince" style={inputStyle} />
           </div>
           <div>
-            <label style={{ display: 'block', fontWeight: '600', marginBottom: 6, color: 'var(--text-muted)' }}>Desire</label>
-            <input
-              className={styles.input}
-              value={desire}
-              onChange={e => setDesire(e.target.value)}
-              placeholder="e.g. Drink from a celebrity"
-              style={{ width: '100%', boxSizing: 'border-box', background: 'var(--surface-lowest)', border: '1px solid var(--border-color)', color: 'var(--text-color)', padding: '10px', borderRadius: '4px' }}
-            />
+            <label style={labelStyle}>Desire</label>
+            <input className={styles.input} value={desire} onChange={e => setDesire(e.target.value)} placeholder="e.g. Drink from a celebrity" style={inputStyle} />
           </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '12px' }}>
+            <div>
+              <label style={labelStyle} htmlFor="identity-birth">Born</label>
+              <input id="identity-birth" type="date" className={styles.input} value={birthDate} max={deathDate || undefined} disabled={locked('birthDate')} onChange={e => setBirthDate(e.target.value)} style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle} htmlFor="identity-death">Embraced (death day)</label>
+              <input id="identity-death" type="date" className={styles.input} value={deathDate} min={birthDate || undefined} disabled={locked('deathDate')} onChange={e => setDeathDate(e.target.value)} style={inputStyle} />
+            </div>
+          </div>
+          <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+            Apparent age {ages.apparent ?? '?'} · True age {ages.real ?? '?'}. A vampire looks the age they were Embraced at.
+            {' '}{isAdmin ? 'As a Storyteller you can change these at any time.' : 'Each date can be set once; after that, ask a Storyteller to change it.'}
+          </p>
         </div>
         <div className={styles.modalFooter} style={{ padding: '16px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
           <button className={styles.ghostBtn} onPointerDown={(e) => { e.preventDefault(); onClose(); }} onClick={onClose} disabled={busy}>Cancel</button>
-          <button className={styles.cta} onPointerDown={(e) => { e.preventDefault(); onSave({ ambition, desire }); }} onClick={() => onSave({ ambition, desire })} disabled={busy}>{busy ? 'Saving...' : 'Save Changes'}</button>
+          <button className={styles.cta} onPointerDown={(e) => { e.preventDefault(); save(); }} onClick={save} disabled={busy}>{busy ? 'Saving...' : 'Save Changes'}</button>
         </div>
       </div>
     </div>
@@ -953,6 +969,8 @@ export default function CharacterView({
     const nextSheet = JSON.parse(JSON.stringify(sheet));
     if (newData.ambition !== undefined) nextSheet.ambition = newData.ambition;
     if (newData.desire !== undefined) nextSheet.desire = newData.desire;
+    if (newData.birthDate !== undefined) nextSheet.birthDate = newData.birthDate;
+    if (newData.deathDate !== undefined) nextSheet.deathDate = newData.deathDate;
 
     if (newData.touchstones !== undefined || newData.convictions !== undefined) {
       nextSheet.morality = nextSheet.morality || {};
@@ -1428,6 +1446,7 @@ export default function CharacterView({
   const inClanDisciplines = ALL_DISCIPLINE_NAMES.filter(n => disciplineKindFor(ch, n) === 'clan');
   const outOfClanDisciplines = ALL_DISCIPLINE_NAMES.filter(n => disciplineKindFor(ch, n) !== 'clan');
 
+  const ages = vampireAges(sheet);
   const maxHealth = deriveMaxHealth(sheet);
   const maxWillpower = (Number(sheet.attributes?.Composure) || 1) + (Number(sheet.attributes?.Resolve) || 1);
   const currentSearch = currentSearches[activeShopTab] || '';
@@ -1612,6 +1631,18 @@ export default function CharacterView({
                   style={{ color: sysNotifOn ? 'var(--tint)' : 'var(--text-muted)' }}
                 >
                   <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>{sysNotifOn ? 'notifications_active' : 'notifications_off'}</span>
+                </button>
+              )}
+              {!readOnly && (
+                <button
+                  type="button"
+                  onClick={() => setIdentityModalOpen(true)}
+                  title="Edit Identity"
+                  aria-label="Edit Identity: ambition, desire, birth and Embrace dates"
+                  className={styles.mobileHeaderNotifBtn}
+                  style={{ color: 'var(--tint)' }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>settings</span>
                 </button>
               )}
             </div>
@@ -1802,6 +1833,14 @@ export default function CharacterView({
                   <div className={styles.mobileMetaValue}><b>Desire:</b> {sheet?.desire || 'None'}</div>
                 </div>
               </div>
+              <div className={`${styles.mobileMetaCard} ${styles.mobileMetaFull}`}>
+                <span className={styles.mobileMetaLabel}>Mortal Life</span>
+                <div className={styles.mobileMetaSubGrid}>
+                  <div className={styles.mobileMetaValue}><b>Born:</b> {formatDate(sheet?.birthDate) || 'Unknown'}</div>
+                  <div className={styles.mobileMetaValue}><b>Embraced:</b> {formatDate(sheet?.deathDate) || 'Unknown'}</div>
+                  <div className={styles.mobileMetaValue}><b>Apparent age:</b> {ages.apparent ?? '?'} · <b>True age:</b> {ages.real ?? '?'}</div>
+                </div>
+              </div>
             </div>
           </motion.section>
 
@@ -1817,6 +1856,12 @@ export default function CharacterView({
                 <span>Ambition: {sheet?.ambition || 'None'}</span>
                 <span style={{ opacity: 0.5 }}>|</span>
                 <span>Desire: {sheet?.desire || 'None'}</span>
+                <span style={{ opacity: 0.5 }}>|</span>
+                <span>Born: {formatDate(sheet?.birthDate) || 'Unknown'}</span>
+                <span style={{ opacity: 0.5 }}>|</span>
+                <span>Embraced: {formatDate(sheet?.deathDate) || 'Unknown'}</span>
+                <span style={{ opacity: 0.5 }}>|</span>
+                <span>Apparent age: {ages.apparent ?? '?'} · True age: {ages.real ?? '?'}</span>
               </div>
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', whiteSpace: 'nowrap' }}>
@@ -2712,6 +2757,7 @@ export default function CharacterView({
             onClose={() => setIdentityModalOpen(false)}
             onSave={saveProfileData}
             busy={savingProfile}
+            isAdmin={isAdmin && !!(id || adminNPCId)}
           />
         )}
 

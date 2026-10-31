@@ -24,6 +24,7 @@ import { parseDotSpec } from './MeritsFlawsPicker';
 import { calculateRitualCost } from '../../utils/xpCosts';
 import { maxHealth as deriveMaxHealth } from '../../utils/derivedStats';
 import { normalizeTouchstoneArray } from './sheetShape';
+import { vampireAges, formatDate } from '../../utils/ages';
 
 /* ------------------------------------------------------------------ */
 /* Static data / pure helpers (module scope: computed once)          */
@@ -949,6 +950,42 @@ function IdentitySection({ charName, setCharName, charClan, setCharClan, sheet, 
             />
           </div>
         ))}
+      </div>
+      <LifeDates sheet={sheet} setField={setField} />
+    </div>
+  );
+}
+
+// Birth and Embrace: the player sets each once, a Storyteller can change or
+// clear them here (clearing lets the player set it again). Shows the working.
+function LifeDates({ sheet, setField }) {
+  const ages = vampireAges(sheet);
+  const setAt = sheet.datesSetAt || {};
+  const who = (k) => (sheet[k] ? (setAt[k] ? `entered by the player on ${formatDate(setAt[k])}` : 'set by a Storyteller') : 'not set yet');
+  const row = (label, value) => (
+    <div className={styles.row} style={{ justifyContent: 'space-between', padding: '3px 0' }}>
+      <span className={styles.entrySub}>{label}</span><span>{value}</span>
+    </div>
+  );
+  return (
+    <div style={{ marginTop: 20 }}>
+      <div className={styles.groupHeading} style={{ margin: '0 0 8px' }}>Mortal life</div>
+      <div className={styles.formGrid}>
+        <div className={styles.field}>
+          <label>Born</label>
+          <input className={styles.input} type="date" value={sheet.birthDate || ''} onChange={e => setField('birthDate', e.target.value)} />
+          <span className={styles.entrySub}>{who('birthDate')}</span>
+        </div>
+        <div className={styles.field}>
+          <label>Embraced (death day)</label>
+          <input className={styles.input} type="date" value={sheet.deathDate || ''} onChange={e => setField('deathDate', e.target.value)} />
+          <span className={styles.entrySub}>{who('deathDate')}</span>
+        </div>
+      </div>
+      <div style={{ marginTop: 10, maxWidth: 480 }}>
+        {row('Apparent age (age at the Embrace)', ages.apparent ?? '?')}
+        {row('True age (birth to today)', ages.real ?? '?')}
+        {row('Years since the Embrace', ages.sinceEmbrace ?? '?')}
       </div>
     </div>
   );

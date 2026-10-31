@@ -19,6 +19,7 @@ import {
 import { getLiveSession, joinLiveSession, logLiveSessionRoll, getLiveSessionBroadcasts, getLiveSessionRolls, socket, sendLiveSessionSignal } from '../../api/liveSession';
 import LiveSessionPlayerList from './LiveSessionPlayerList';
 import LiveSessionRollHistory from './LiveSessionRollHistory';
+import LiveSessionGhouls from './LiveSessionGhouls';
 import LiveSessionAdminDashboard from '../admin/LiveSessionDashboard';
 import D10Die from '../../ui/D10Die';
 import styles from '../../styles/LiveSession.module.css';
@@ -1780,6 +1781,9 @@ export default function LiveSession({ preview = null }) {
               </div>
             )}
           </section>
+          {!preview && (
+            <LiveSessionGhouls sessionId={sessionId} onRolled={(row) => { showServerRoll(row); setMobileTab('action'); }} />
+          )}
         </aside>
 
         {/* CENTER COLUMN: ROLL ENGINE */}
