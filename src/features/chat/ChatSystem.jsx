@@ -15,7 +15,8 @@ import Avatar from '../../components/Avatar';
 const EmojiPicker = React.lazy(() => import('emoji-picker-react'));
 import MiniSearch from 'minisearch';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
-import { getPushSettings, updatePushSettings, subscribeToWebPush, getPushUnsupportedReason } from '../../utils/push';
+import { getPushSettings } from '../../utils/push';
+import NotificationSettings from '../notification/NotificationSettings';
 import { socket } from '../../api/liveSession';
 import { symlogo as localSymlogo, CLAN_HEX as CLAN_COLORS, CLAN_PALETTES, clanTint } from '../../data/clans';
 import { useCommsEnabled } from '../comms/useCommsEnabled';
@@ -834,7 +835,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
 
   const [notifSupported] = useState(typeof window !== 'undefined' && 'Notification' in window);
   const [notifOn, setNotifOn] = useState(false);
-  const [pushSettingsLoading, setPushSettingsLoading] = useState(true);
+  const [notifPanelOpen, setNotifPanelOpen] = useState(false);
 
   const [isMobile, setIsMobile] = useState(false);
   const containerRef = useRef(null);
@@ -986,38 +987,11 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
     };
   }, []);
 
+  // notifOn = the "SchreckNet messages" category: it lights the footer toggle and
+  // gates the in-tab Notification below. The toggle opens the shared preferences panel.
   useEffect(() => {
-    // Load push settings on mount
-    getPushSettings().then(settings => {
-      setNotifOn(!!settings.chat);
-      setPushSettingsLoading(false);
-    }).catch(() => {
-      setPushSettingsLoading(false);
-    });
+    getPushSettings().then(settings => setNotifOn(!!settings.chat)).catch(() => {});
   }, []);
-
-  const toggleNotifications = async () => {
-    if (pushSettingsLoading) return;
-    if (!notifSupported) { alert(getPushUnsupportedReason()); return; }
-
-    if (!notifOn) {
-      try {
-        await subscribeToWebPush();
-        await updatePushSettings({ chat: true });
-        setNotifOn(true);
-      } catch (err) {
-        console.error('Failed to enable push:', err);
-        alert('Could not enable notifications: ' + err.message);
-      }
-    } else {
-      try {
-        await updatePushSettings({ chat: false });
-        setNotifOn(false);
-      } catch (err) {
-        console.error('Failed to disable push:', err);
-      }
-    }
-  };
 
   const pageVisibleRef = useRef(!document.hidden);
   useEffect(() => {
@@ -3197,10 +3171,11 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
             <span className="material-symbols-outlined text-[16px]">{connected ? 'wifi_tethering' : 'wifi_tethering_off'}</span>
             <span className="text-[11px] font-bold tracking-widest uppercase">{connected ? 'Signal: Strong' : 'Signal: Lost'}</span>
           </div>
-          <div onClick={toggleNotifications} className={`flex items-center gap-3 ${notifOn ? 'text-green-500' : 'text-on-surface-variant'} cursor-pointer p-1 rounded hover:bg-surface-variant/10 transition-colors`}>
+          <button type="button" onClick={() => setNotifPanelOpen(true)} title="Notification settings" className={`flex items-center gap-3 ${notifOn ? 'text-green-500' : 'text-on-surface-variant'} cursor-pointer p-1 rounded hover:bg-surface-variant/10 transition-colors text-left bg-transparent border-0`}>
             <span className="material-symbols-outlined text-[16px]">{notifOn ? 'notifications_active' : 'notifications_off'}</span>
             <span className="text-[11px] font-bold tracking-widest uppercase">Notifs: {notifOn ? 'On' : 'Off'}</span>
-          </div>
+          </button>
+          <NotificationSettings open={notifPanelOpen} onClose={() => setNotifPanelOpen(false)} onChange={(st) => setNotifOn(!!st.chat)} />
           {isAdmin && (
             <div onClick={() => setPendingOpen(true)} className={`flex items-center gap-3 ${pendingQueue.length > 0 ? 'text-amber-400' : 'text-on-surface-variant'} cursor-pointer p-1 rounded hover:bg-surface-variant/10 transition-colors`}>
               <span className="material-symbols-outlined text-[16px]">schedule_send</span>

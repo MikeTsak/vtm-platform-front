@@ -1,0 +1,194 @@
+/* Notification preferences dialog (features/notification/NotificationSettings.jsx) */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+}
+
+.panel {
+  width: min(520px, 100%);
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  padding: 1.25rem 1.5rem 1.5rem;
+  border-radius: 16px;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));
+  background: var(--surface-color, #141417);
+  color: var(--text-primary, #eee);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.title :global(.material-symbols-outlined) {
+  color: var(--tint, #b5121b);
+}
+
+.close {
+  display: inline-flex;
+  padding: 6px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted, #999);
+  cursor: pointer;
+}
+
+.close:hover,
+.close:focus-visible {
+  color: var(--text-primary, #eee);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.device {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 204, 0, 0.35);
+  background: rgba(255, 204, 0, 0.06);
+  font-size: 0.85rem;
+  color: var(--text-secondary, #ccc);
+}
+
+.deviceOk {
+  border-color: rgba(0, 230, 118, 0.35);
+  background: rgba(0, 230, 118, 0.06);
+}
+
+.testBtn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--tint, #b5121b);
+  background: transparent;
+  color: var(--text-primary, #eee);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.testBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.small {
+  margin: 0.6rem 0 0;
+  font-size: 0.78rem;
+  color: var(--text-muted, #999);
+}
+
+.msg {
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 0.85rem;
+}
+
+.group {
+  margin-top: 1.25rem;
+}
+
+.groupTitle {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted, #999);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.label {
+  font-weight: 600;
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #bbb);
+}
+
+/* A native checkbox drawn as a switch: keeps keyboard and screen-reader behaviour. */
+.switch {
+  appearance: none;
+  flex-shrink: 0;
+  position: relative;
+  width: 42px;
+  height: 24px;
+  margin: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.15s;
+}
+
+.switch:checked {
+  background: var(--tint, #b5121b);
+}
+
+.switch:checked::after {
+  transform: translateX(18px);
+}
+
+.switch:focus-visible {
+  outline: 2px solid var(--tint, #b5121b);
+  outline-offset: 2px;
+}
+
+.switch:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

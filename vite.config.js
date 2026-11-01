@@ -79,10 +79,23 @@ export default defineConfig(async ({ mode }) => {
     // same way) and reloads once to pick up the new build.
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom', 'framer-motion', '@tanstack/react-query', 'zod', 'react-hook-form'],
-          'vendor-maps': ['maplibre-gl', '@deck.gl/core', '@deck.gl/react', '@deck.gl/layers', 'leaflet', 'react-leaflet'],
-          'vendor-charts': ['@antv/g6']
+        // A function, not the { chunk: [packages] } object form: the object form also
+        // pulls each package's dependency graph into its chunk, and that is how Vite's
+        // dynamic-import helper ended up inside vendor-maps, so index.html preloaded the
+        // 1.8 MB map bundle on every page (every lazy route imports that helper).
+        // Only the packages themselves are assigned here; everything else is left to Rollup.
+        manualChunks(id) {
+          // Bundler runtime helpers every chunk imports: pin them to the shell chunk, or
+          // Rollup parks them in some other shared chunk (it chose vendor-maps) and the
+          // entry has to load that whole chunk just to get them.
+          if (id.includes('vite/preload-helper') || id.includes('commonjsHelpers')) return 'vendor';
+          if (!id.includes('node_modules')) return undefined;
+          // The app shell's first paint. framer-motion, zod and react-hook-form were pinned
+          // here too, so every page downloaded them; they now travel with the routes using them.
+          if (/node_modules\/(react|react-dom|scheduler|react-router|react-router-dom|@tanstack\/react-query|@tanstack\/query-core)\//.test(id)) return 'vendor';
+          if (/node_modules\/(maplibre-gl|@deck\.gl|@luma\.gl|@loaders\.gl|@math\.gl|@probe\.gl)\//.test(id)) return 'vendor-maps';
+          if (/node_modules\/@antv\//.test(id)) return 'vendor-charts';
+          return undefined;
         }
       }
     }

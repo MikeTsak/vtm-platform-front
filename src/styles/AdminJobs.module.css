@@ -1,0 +1,144 @@
+/* Admin > System > Background Jobs */
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.title {
+  margin: 0 0 4px;
+  color: var(--text-primary);
+  font-size: 1.6rem;
+  font-weight: 800;
+}
+
+.sub {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.serverLine {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  margin: 0 0 1.25rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md, 10px);
+  background: var(--glass-inset);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.serverLine strong {
+  color: var(--text-primary);
+}
+
+.warnText {
+  color: #ffcc00;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.job {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1.4fr) minmax(0, 2fr) auto;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md, 10px);
+  background: var(--glass-inset);
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: 0 0 8px currentColor;
+  background: currentColor;
+}
+
+.ok { color: #00e676; }
+.failing { color: #ff5252; }
+.overdue { color: #ffcc00; }
+.never, .disabled { color: var(--text-muted); }
+
+.name {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.meta {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.note {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.error {
+  grid-column: 2 / -1;
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 82, 82, 0.08);
+  border: 1px solid rgba(255, 82, 82, 0.3);
+  color: #ff8a80;
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+  max-height: 160px;
+  overflow: auto;
+}
+
+.sectionTitle {
+  margin: 2rem 0 0.75rem;
+  color: var(--text-primary);
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.backup {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--glass-border);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.tag {
+  margin-left: 0.5rem;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.tagFull {
+  border-color: rgba(0, 230, 118, 0.4);
+  color: #00e676;
+}
+
+@media (max-width: 760px) {
+  .job {
+    grid-template-columns: 14px minmax(0, 1fr) auto;
+  }
+  .note {
+    grid-column: 2 / -1;
+    grid-row: 2;
+  }
+}

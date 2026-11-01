@@ -5,6 +5,13 @@ import { trackEvent, clearUserTracking } from '../utils/analytics';
 
 export const AuthCtx = createContext(null);
 
+// The service worker keeps a copy of the signed-in player's own sheet for
+// offline use (public/service-worker.js, SHEET_CACHE). It is personal data:
+// dropped whenever the account on this device changes or signs out.
+const clearOfflineSheet = () => {
+  if (typeof caches !== 'undefined') caches.delete('erebus-sheet-v1').catch(() => {});
+};
+
 export default function AuthProvider({ children }) {
   const queryClient = useQueryClient();
   const [user, setUser] = useState(null);
@@ -32,6 +39,7 @@ export default function AuthProvider({ children }) {
         // /login, which is what made refreshing the page intermittently
         // "log out".
         setUser(null);
+        clearOfflineSheet();
         setLoading(false);
         return false;
       }
@@ -68,7 +76,7 @@ export default function AuthProvider({ children }) {
         setUser(prev => (JSON.stringify(prev) === JSON.stringify(data.user) ? prev : data.user));
       } catch (e) {
         const status = e?.response?.status;
-        if (status === 401 || status === 403) setUser(null); // session revoked
+        if (status === 401 || status === 403) { setUser(null); clearOfflineSheet(); } // session revoked
       }
     };
     document.addEventListener('visibilitychange', refresh);
@@ -79,10 +87,40 @@ export default function AuthProvider({ children }) {
     };
   }, [!!user]);
 
+  // A session that dies mid-use (expired after 7 days, revoked by a password
+  // reset or "log out everywhere") used to surface as a scatter of per-page
+  // errors. Any 401 while signed in now triggers one /auth/me check, and if
+  // that confirms it, the app drops to logged-out (routes send you to /login).
+  // The check guards against a stray 401 that isn't about the session.
+  const verifying = useRef(false);
+  useEffect(() => {
+    if (!user) return undefined;
+    const id = api.interceptors.response.use(undefined, async (error) => {
+      const url = error?.config?.url || '';
+      if (error?.response?.status === 401 && !url.startsWith('/auth/') && !verifying.current) {
+        verifying.current = true;
+        try {
+          await api.get('/auth/me');
+        } catch (e) {
+          if (e?.response?.status === 401) {
+            setUser(null);
+            queryClient.clear();
+            clearOfflineSheet();
+          }
+        } finally {
+          verifying.current = false;
+        }
+      }
+      return Promise.reject(error);
+    });
+    return () => api.interceptors.response.eject(id);
+  }, [!!user]);
+
   const login = async (email, password) => {
     await api.post('/auth/login', { email, password }); // server sets the httpOnly cookie
     // wipe any cached queries from a previous account before loading this one
     queryClient.clear();
+    clearOfflineSheet();
     trackEvent('login', { method: 'email' });
     const confirmed = await loadMe();
     if (!confirmed) {
@@ -98,6 +136,7 @@ export default function AuthProvider({ children }) {
   const register = async (email, display_name, password) => {
     await api.post('/auth/register', { email, display_name, password });
     queryClient.clear();
+    clearOfflineSheet();
     trackEvent('sign_up', { method: 'email' });
     const confirmed = await loadMe();
     if (!confirmed) {
@@ -109,6 +148,7 @@ export default function AuthProvider({ children }) {
   const debugLogin = async (email, code) => {
     await api.post('/auth/debug-login', { email, code });
     queryClient.clear();
+    clearOfflineSheet();
     const confirmed = await loadMe();
     if (!confirmed) throw new Error('Code accepted, but could not confirm the session. Please try again.');
     return confirmed;
@@ -122,6 +162,7 @@ export default function AuthProvider({ children }) {
     }
     setUser(null);
     queryClient.clear();
+    clearOfflineSheet();
     clearUserTracking();
     trackEvent('logout');
   };

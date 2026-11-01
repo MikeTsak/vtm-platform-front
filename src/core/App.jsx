@@ -14,6 +14,7 @@ import { syncWebPush } from '../utils/push';
 
 // Pages & Components (Critical Path)
 import GlobalBanner from '../components/GlobalBanner';
+import OfflineBanner from '../features/notification/OfflineBanner';
 import CookieConsent from '../components/CookieConsent';
 import Nav from '../ui/Nav';
 import Footer from '../ui/Footer';
@@ -277,6 +278,7 @@ function AppLayout() {
       <Helmet>
         <link rel="canonical" href={`https://portal.attlarp.gr${location.pathname}`} />
       </Helmet>
+      <OfflineBanner />
       <GlobalBanner />
       <DebugSessionBar />
       <Nav />

@@ -4,7 +4,7 @@ import { useLocation } from 'react-router-dom';
 import api from '../../core/api';
 import { trackEvent } from '../../utils/analytics';
 import D10Die from '../../ui/D10Die';
-import { getBatterySaverMode, setBatterySaverMode } from '../../ui/dice3d/sharedDiceEngine';
+import { getBatterySaverMode, setBatterySaverMode } from '../../ui/dice3d/diceUi';
 import { computeOutcome as computeRollOutcome } from '../../utils/liveSessionMechanics';
 
 /**

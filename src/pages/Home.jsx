@@ -1,7 +1,8 @@
 // src/pages/Home.jsx
 import React, { useEffect, useState, useRef, useContext } from 'react';
 import api from '../core/api';
-import { getPushSettings, updatePushSettings, subscribeToWebPush, getPushUnsupportedReason } from '../utils/push';
+import { getPushSettings } from '../utils/push';
+import NotificationSettings from '../features/notification/NotificationSettings';
 import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { Skeleton } from 'boneyard-js/react';
 import { motion } from 'framer-motion';
@@ -158,6 +159,7 @@ export default function Home() {
   // Push Notifications State
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushLoading, setPushLoading] = useState(true);
+  const [notifPanelOpen, setNotifPanelOpen] = useState(false);
   const notifSupported = 'serviceWorker' in navigator && 'PushManager' in window;
 
   // Theme is owned app-wide by ThemeProvider (src/core/ThemeContext.jsx), it
@@ -269,7 +271,7 @@ export default function Home() {
         if (notifSupported) {
           try {
             const pushData = await getPushSettings();
-            if (live) setPushEnabled(!!pushData?.chat);
+            if (live) setPushEnabled(Object.values(pushData || {}).some(Boolean)); // lit if any category is on
           } catch (e) {
             console.warn('Failed to load push settings', e);
           } finally {
@@ -495,36 +497,11 @@ export default function Home() {
                   </span>
                 </button>
 
-                <button 
-                  title={`Push Notifications ${pushEnabled ? 'ON' : 'OFF'}`}
-                  onClick={async () => {
-                    if (pushLoading) return;
-                    if (!notifSupported) { alert(getPushUnsupportedReason()); return; }
-                    
-                    if (!pushEnabled) {
-                      setPushLoading(true);
-                      try {
-                        await subscribeToWebPush();
-                        await updatePushSettings({ chat: true });
-                        setPushEnabled(true);
-                      } catch (err) {
-                        console.error('Failed to enable push:', err);
-                        alert('Could not enable notifications: ' + err.message);
-                      } finally {
-                        setPushLoading(false);
-                      }
-                    } else {
-                      setPushLoading(true);
-                      try {
-                        await updatePushSettings({ chat: false });
-                        setPushEnabled(false);
-                      } catch (err) {
-                        console.error('Failed to disable push:', err);
-                      } finally {
-                        setPushLoading(false);
-                      }
-                    }
-                  }}
+                <button
+                  type="button"
+                  title="Notification settings"
+                  aria-label="Notification settings"
+                  onClick={() => setNotifPanelOpen(true)}
                   disabled={pushLoading}
                   style={{
                     background: 'rgba(0,0,0,0.4)',
@@ -547,6 +524,11 @@ export default function Home() {
                     {pushLoading ? 'sync' : (pushEnabled ? 'notifications_active' : 'notifications_off')}
                   </span>
                 </button>
+                <NotificationSettings
+                  open={notifPanelOpen}
+                  onClose={() => setNotifPanelOpen(false)}
+                  onChange={(st) => setPushEnabled(Object.values(st).some(Boolean))}
+                />
               </div>
             </div>
 

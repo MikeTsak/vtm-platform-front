@@ -36,7 +36,8 @@ import { Skeleton } from 'boneyard-js/react';
 import MiniSearch from 'minisearch';
 import { ShopRow, ConfirmModal } from '../xp-shop/ShopRow';
 import { buildSuggestions, article } from '../xp-shop/suggestions';
-import { getPushSettings, updatePushSettings, subscribeToWebPush, getPushUnsupportedReason } from '../../utils/push';
+import { getPushSettings } from '../../utils/push';
+import NotificationSettings, { anyOn, CHRONICLE_KEYS } from '../notification/NotificationSettings';
 import { maxHealth as deriveMaxHealth } from '../../utils/derivedStats';
 import { attachStructured } from './sheetShape';
 import BloodPotencyModal from './BloodPotencyModal';
@@ -676,38 +677,16 @@ export default function CharacterView({
   const saveTimeoutRef = useRef(null);
   const isInitialTrackerLoad = useRef(true);
 
-  // System Notifications State
+  // Notification bell: lit when any chronicle notification is on; opens the
+  // shared preferences panel (features/notification/NotificationSettings.jsx).
   const [sysNotifOn, setSysNotifOn] = useState(false);
-  const [pushSettingsLoading, setPushSettingsLoading] = useState(true);
-  const notifSupported = typeof window !== 'undefined' && 'Notification' in window;
+  const [notifPanelOpen, setNotifPanelOpen] = useState(false);
 
   useEffect(() => {
-    getPushSettings().then(settings => {
-      setSysNotifOn(!!settings.system);
-      setPushSettingsLoading(false);
-    }).catch(() => setPushSettingsLoading(false));
+    getPushSettings().then(settings => setSysNotifOn(anyOn(settings, CHRONICLE_KEYS))).catch(() => {});
   }, []);
 
-  const toggleSysNotifications = async () => {
-    if (pushSettingsLoading) return;
-    if (!notifSupported) { alert(getPushUnsupportedReason()); return; }
-    if (!sysNotifOn) {
-      try {
-        await subscribeToWebPush();
-        await updatePushSettings({ system: true });
-        setSysNotifOn(true);
-      } catch (err) {
-        alert('Could not enable system notifications: ' + err.message);
-      }
-    } else {
-      try {
-        await updatePushSettings({ system: false });
-        setSysNotifOn(false);
-      } catch (err) {
-        console.error('Failed to disable system push:', err);
-      }
-    }
-  };
+  const toggleSysNotifications = () => setNotifPanelOpen(true);
 
   useEffect(() => {
     let mounted = true;
@@ -1625,14 +1604,16 @@ export default function CharacterView({
               {(!adminNPCId && String(user?.id) === String(ch?.user_id)) && (
                 <button
                   onClick={toggleSysNotifications}
-                  title={sysNotifOn ? 'Disable Notifications' : 'Enable Notifications'}
-                  aria-label={sysNotifOn ? 'Disable System Notifications' : 'Enable System Notifications'}
+                  title="Notification settings"
+                  aria-label="Notification settings"
                   className={styles.mobileHeaderNotifBtn}
                   style={{ color: sysNotifOn ? 'var(--tint)' : 'var(--text-muted)' }}
                 >
                   <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>{sysNotifOn ? 'notifications_active' : 'notifications_off'}</span>
                 </button>
               )}
+              {/* Portal: one instance serves both the mobile and the desktop bell. */}
+              <NotificationSettings open={notifPanelOpen} onClose={() => setNotifPanelOpen(false)} onChange={(st) => setSysNotifOn(anyOn(st, CHRONICLE_KEYS))} />
               {!readOnly && (
                 <button
                   type="button"
@@ -1728,7 +1709,8 @@ export default function CharacterView({
                   <button
                     className={styles.navActionBtn}
                     onClick={toggleSysNotifications}
-                    title={sysNotifOn ? "Disable System Notifications" : "Enable System Notifications"}
+                    title="Notification settings"
+                    aria-label="Notification settings"
                     style={{ color: sysNotifOn ? 'var(--tint)' : 'inherit' }}
                   >
                     <span className="material-symbols-outlined">{sysNotifOn ? 'notifications_active' : 'notifications_off'}</span>

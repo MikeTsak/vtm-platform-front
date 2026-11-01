@@ -1239,13 +1239,15 @@ export default function Domains() {
   });
 
   const assignMutation = useMutation({
-    mutationFn: async ({ division, character_id, npc_id, color, unassign }) => {
-      const res = await api.post(`/court/domain-claims/${division}/assign`, { character_id, npc_id, color, unassign });
+    mutationFn: async ({ division, character_id, npc_id, color, unassign, is_abaton }) => {
+      const res = await api.post(`/court/domain-claims/${division}/assign`, { character_id, npc_id, color, unassign, is_abaton });
       return res.data;
     },
     onSuccess: async (_data, vars) => {
       if (vars.unassign) {
         toast.success('Domain released back to the city');
+      } else if (vars.is_abaton) {
+        toast.success('Domain designated as Abaton');
       } else {
         toast.success('Domain assigned by Court decree');
       }
@@ -4432,12 +4434,48 @@ export default function Domains() {
                           <div className={styles.guestList} style={{ marginTop: '0.5rem' }}>
                             {guestsData.guests.map(g => (
                               <div key={g.id} className={styles.guestItem}>
-                                <div className={styles.guestItemInfo}>
-                                  <b className={styles.guestItemName}>{g.name}</b>
-                                  {(g.clan || g.isNpc) && (
-                                    <span className={styles.guestItemClan}>{g.clan}{g.clan && g.isNpc ? ' · ' : ''}{g.isNpc ? 'NPC' : ''}</span>
-                                  )}
-                                  {g.note && <span className={styles.guestItemNote}>&ldquo;{g.note}&rdquo;</span>}
+                                <div className={styles.guestItemLeft}>
+                                  <div className={styles.guestAvatarWrap}>
+                                    <Avatar
+                                      userId={g.user_id}
+                                      npcId={g.npc_id}
+                                      hasAvatar={g.has_avatar}
+                                      clan={g.clan}
+                                      size={38}
+                                      style={{ borderRadius: '50%', flexShrink: 0 }}
+                                      fallback={symlogo(g.clan) || '/img/ATT-logo(1).webp'}
+                                    />
+                                    {g.clan && (
+                                      <div
+                                        className={styles.guestClanBadge}
+                                        title={g.clan}
+                                        style={{ '--clan-tint': clanTint(g.clan) }}
+                                      >
+                                        <img
+                                          src={symlogoWhite(g.clan)}
+                                          alt={g.clan}
+                                          style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className={styles.guestItemInfo}>
+                                    <div className={styles.guestItemNameRow}>
+                                      <b className={styles.guestItemName}>{g.name}</b>
+                                      {g.clan && (
+                                        <img
+                                          src={symlogoWhite(g.clan)}
+                                          alt={g.clan}
+                                          title={g.clan}
+                                          className={styles.guestInlineClanIcon}
+                                        />
+                                      )}
+                                    </div>
+                                    {(g.clan || g.isNpc) && (
+                                      <span className={styles.guestItemClan}>{g.clan}{g.clan && g.isNpc ? ' , ' : ''}{g.isNpc ? 'NPC' : ''}</span>
+                                    )}
+                                    {g.note && <span className={styles.guestItemNote}>&ldquo;{g.note}&rdquo;</span>}
+                                  </div>
                                 </div>
                                 {(canManageDivision || g.isSelf) && (
                                   <button
@@ -4481,12 +4519,48 @@ export default function Domains() {
                           <div className={styles.guestList} style={{ marginTop: '0.5rem' }}>
                             {residentsDossierData.residents.map(r => (
                               <div key={r.id} className={styles.guestItem}>
-                                <div className={styles.guestItemInfo}>
-                                  <b className={styles.guestItemName}>{r.name}</b>
-                                  {(r.clan || r.isNpc) && (
-                                    <span className={styles.guestItemClan}>{r.clan}{r.clan && r.isNpc ? ' · ' : ''}{r.isNpc ? 'NPC' : ''}</span>
-                                  )}
-                                  {r.note && <span className={styles.guestItemNote}>&ldquo;{r.note}&rdquo;</span>}
+                                <div className={styles.guestItemLeft}>
+                                  <div className={styles.guestAvatarWrap}>
+                                    <Avatar
+                                      userId={r.user_id}
+                                      npcId={r.npc_id}
+                                      hasAvatar={r.has_avatar}
+                                      clan={r.clan}
+                                      size={38}
+                                      style={{ borderRadius: '50%', flexShrink: 0 }}
+                                      fallback={symlogo(r.clan) || '/img/ATT-logo(1).webp'}
+                                    />
+                                    {r.clan && (
+                                      <div
+                                        className={styles.guestClanBadge}
+                                        title={r.clan}
+                                        style={{ '--clan-tint': clanTint(r.clan) }}
+                                      >
+                                        <img
+                                          src={symlogoWhite(r.clan)}
+                                          alt={r.clan}
+                                          style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className={styles.guestItemInfo}>
+                                    <div className={styles.guestItemNameRow}>
+                                      <b className={styles.guestItemName}>{r.name}</b>
+                                      {r.clan && (
+                                        <img
+                                          src={symlogoWhite(r.clan)}
+                                          alt={r.clan}
+                                          title={r.clan}
+                                          className={styles.guestInlineClanIcon}
+                                        />
+                                      )}
+                                    </div>
+                                    {(r.clan || r.isNpc) && (
+                                      <span className={styles.guestItemClan}>{r.clan}{r.clan && r.isNpc ? ' , ' : ''}{r.isNpc ? 'NPC' : ''}</span>
+                                    )}
+                                    {r.note && <span className={styles.guestItemNote}>&ldquo;{r.note}&rdquo;</span>}
+                                  </div>
                                 </div>
                                 {canManageDomains && (
                                   <button
@@ -4601,6 +4675,23 @@ export default function Domains() {
                         {selectedDivisionInfo.previous_claimed_at && (
                           <span className={styles.statSub}>Held until {relTime(selectedDivisionInfo.previous_claimed_at)}</span>
                         )}
+                      </div>
+                    )}
+
+                    {selectedDivisionInfo.is_abaton && canManageDomains && (
+                      <div className={styles.statBlock} style={{ marginTop: '0.75rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span className={styles.statLabel} style={{ marginBottom: 0 }}>Court Administration</span>
+                          <button
+                            type="button"
+                            className={styles.dossierTabSwitchBtn}
+                            onClick={() => setActiveTab('requests')}
+                            title="Manage Abaton decree in Requests tab"
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: 13, verticalAlign: 'middle' }}>gavel</span>
+                            Manage Decree
+                          </button>
+                        </div>
                       </div>
                     )}
 
@@ -4758,102 +4849,132 @@ export default function Domains() {
                             <span className="material-symbols-outlined" style={{ fontSize: 14, verticalAlign: 'middle', marginRight: 4 }}>gavel</span>
                             Give Domain
                           </button>
-                        </div>
-
-                        {/* Person Target: Character vs NPC */}
-                        <div className={styles.assignTargetToggle}>
                           <button
                             type="button"
-                            className={`${styles.assignToggleBtn} ${residentTarget === 'character' ? styles.assignToggleBtnActive : ''}`}
-                            onClick={() => { setResidentTarget('character'); setResidentId(''); }}
-                          >Character</button>
-                          <button
-                            type="button"
-                            className={`${styles.assignToggleBtn} ${residentTarget === 'npc' ? styles.assignToggleBtnActive : ''}`}
-                            onClick={() => { setResidentTarget('npc'); setResidentId(''); }}
-                          >NPC</button>
+                            className={`${styles.assignToggleBtn} ${residentAction === 'abaton' ? styles.assignToggleBtnActive : ''}`}
+                            style={residentAction === 'abaton' ? { background: 'color-mix(in srgb, #ef4444 18%, transparent)', color: '#fca5a5' } : {}}
+                            onClick={() => { setResidentAction('abaton'); setResidentId(''); }}
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: 14, verticalAlign: 'middle', marginRight: 4 }}>block</span>
+                            Declare Abaton
+                          </button>
                         </div>
 
-                        {/* Select Person */}
-                        <select
-                          className={styles.assignSelect}
-                          value={residentId}
-                          onChange={e => setResidentId(e.target.value)}
-                        >
-                          <option value="">Select {residentTarget === 'character' ? 'a character' : 'an NPC'}</option>
-                          {residentAction === 'resident' ? (
-                            residentTarget === 'character'
-                              ? availableResidentCharacters.map(c => (
-                                <option key={c.id} value={c.id}>{c.name}{c.clan ? ` : ${c.clan}` : ''}</option>
-                              ))
-                              : availableResidentNpcs.map(n => (
-                                <option key={n.id} value={n.id}>{n.name}{n.clan ? ` : ${n.clan}` : ''}</option>
-                              ))
-                          ) : (
-                            residentTarget === 'character'
-                              ? (assignablesData?.characters || []).map(c => (
-                                <option key={c.id} value={c.id}>{c.name}{c.clan ? ` : ${c.clan}` : ''}</option>
-                              ))
-                              : (assignablesData?.npcs || []).map(n => (
-                                <option key={n.id} value={n.id}>{n.name}{n.clan ? ` : ${n.clan}` : ''}</option>
-                              ))
-                          )}
-                        </select>
-
-                        {/* Conditional input: Note for resident, Color for domain assignment */}
-                        {residentAction === 'resident' ? (
-                          <input
-                            type="text"
-                            className={styles.guestNoteInput}
-                            placeholder="Note (optional), e.g. passing through"
-                            value={residentNote}
-                            maxLength={255}
-                            onChange={e => setResidentNote(e.target.value)}
-                          />
+                        {residentAction === 'abaton' ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '0.25rem' }}>
+                            <p className={styles.statSub} style={{ margin: '0 0 4px 0' }}>
+                              Designate this territory as Abaton: sacred ground, off limits to all Kindred.
+                            </p>
+                            <button
+                              type="button"
+                              className={styles.dossierDangerBtn}
+                              disabled={assignMutation.isPending}
+                              onClick={() => {
+                                if (!selectedDivisionInfo) return;
+                                assignMutation.mutate({ division: selectedDivisionInfo.number, is_abaton: true });
+                              }}
+                            >
+                              {assignMutation.isPending ? 'Declaring…' : 'Declare as Abaton'}
+                            </button>
+                          </div>
                         ) : (
-                          residentTarget === 'character' && (
-                            <div className={styles.assignColorRow}>
-                              <label className={styles.assignColorLabel}>Territory colour</label>
-                              <input
-                                type="color"
-                                className={styles.requestColorInput}
-                                value={residentColor}
-                                onChange={e => setResidentColor(e.target.value)}
-                                title="Territory colour"
-                              />
+                          <>
+                            {/* Person Target: Character vs NPC */}
+                            <div className={styles.assignTargetToggle}>
+                              <button
+                                type="button"
+                                className={`${styles.assignToggleBtn} ${residentTarget === 'character' ? styles.assignToggleBtnActive : ''}`}
+                                onClick={() => { setResidentTarget('character'); setResidentId(''); }}
+                              >Character</button>
+                              <button
+                                type="button"
+                                className={`${styles.assignToggleBtn} ${residentTarget === 'npc' ? styles.assignToggleBtnActive : ''}`}
+                                onClick={() => { setResidentTarget('npc'); setResidentId(''); }}
+                              >NPC</button>
                             </div>
-                          )
-                        )}
 
-                        {/* Action Button */}
-                        <button
-                          type="button"
-                          className={styles.assignBtn}
-                          disabled={!residentId || addResidentMutation.isPending || assignMutation.isPending}
-                          onClick={() => {
-                            if (!residentId || !selectedDivisionInfo) return;
-                            if (residentAction === 'resident') {
-                              addResidentMutation.mutate({
-                                division: selectedDivisionInfo.number,
-                                character_id: residentTarget === 'character' ? Number(residentId) : null,
-                                npc_id: residentTarget === 'npc' ? Number(residentId) : null,
-                                note: residentNote,
-                              });
-                            } else {
-                              assignMutation.mutate({
-                                division: selectedDivisionInfo.number,
-                                character_id: residentTarget === 'character' ? Number(residentId) : null,
-                                npc_id: residentTarget === 'npc' ? Number(residentId) : null,
-                                color: residentTarget === 'character' ? residentColor : undefined,
-                              });
-                            }
-                          }}
-                        >
-                          {residentAction === 'resident'
-                            ? (addResidentMutation.isPending ? 'Adding…' : 'Mark as Resident')
-                            : (assignMutation.isPending ? 'Assigning…' : 'Give Domain')
-                          }
-                        </button>
+                            {/* Select Person */}
+                            <select
+                              className={styles.assignSelect}
+                              value={residentId}
+                              onChange={e => setResidentId(e.target.value)}
+                            >
+                              <option value="">Select {residentTarget === 'character' ? 'a character' : 'an NPC'}</option>
+                              {residentAction === 'resident' ? (
+                                residentTarget === 'character'
+                                  ? availableResidentCharacters.map(c => (
+                                    <option key={c.id} value={c.id}>{c.name}{c.clan ? ` : ${c.clan}` : ''}</option>
+                                  ))
+                                  : availableResidentNpcs.map(n => (
+                                    <option key={n.id} value={n.id}>{n.name}{n.clan ? ` : ${n.clan}` : ''}</option>
+                                  ))
+                              ) : (
+                                residentTarget === 'character'
+                                  ? (assignablesData?.characters || []).map(c => (
+                                    <option key={c.id} value={c.id}>{c.name}{c.clan ? ` : ${c.clan}` : ''}</option>
+                                  ))
+                                  : (assignablesData?.npcs || []).map(n => (
+                                    <option key={n.id} value={n.id}>{n.name}{n.clan ? ` : ${n.clan}` : ''}</option>
+                                  ))
+                              )}
+                            </select>
+
+                            {/* Conditional input: Note for resident, Color for domain assignment */}
+                            {residentAction === 'resident' ? (
+                              <input
+                                type="text"
+                                className={styles.guestNoteInput}
+                                placeholder="Note (optional), e.g. passing through"
+                                value={residentNote}
+                                maxLength={255}
+                                onChange={e => setResidentNote(e.target.value)}
+                              />
+                            ) : (
+                              residentTarget === 'character' && (
+                                <div className={styles.assignColorRow}>
+                                  <label className={styles.assignColorLabel}>Territory colour</label>
+                                  <input
+                                    type="color"
+                                    className={styles.requestColorInput}
+                                    value={residentColor}
+                                    onChange={e => setResidentColor(e.target.value)}
+                                    title="Territory colour"
+                                  />
+                                </div>
+                              )
+                            )}
+
+                            {/* Action Button */}
+                            <button
+                              type="button"
+                              className={styles.assignBtn}
+                              disabled={!residentId || addResidentMutation.isPending || assignMutation.isPending}
+                              onClick={() => {
+                                if (!residentId || !selectedDivisionInfo) return;
+                                if (residentAction === 'resident') {
+                                  addResidentMutation.mutate({
+                                    division: selectedDivisionInfo.number,
+                                    character_id: residentTarget === 'character' ? Number(residentId) : null,
+                                    npc_id: residentTarget === 'npc' ? Number(residentId) : null,
+                                    note: residentNote,
+                                  });
+                                } else {
+                                  assignMutation.mutate({
+                                    division: selectedDivisionInfo.number,
+                                    character_id: residentTarget === 'character' ? Number(residentId) : null,
+                                    npc_id: residentTarget === 'npc' ? Number(residentId) : null,
+                                    color: residentTarget === 'character' ? residentColor : undefined,
+                                  });
+                                }
+                              }}
+                            >
+                              {residentAction === 'resident'
+                                ? (addResidentMutation.isPending ? 'Adding…' : 'Mark as Resident')
+                                : (assignMutation.isPending ? 'Assigning…' : 'Give Domain')
+                              }
+                            </button>
+                          </>
+                        )}
                       </div>
                     )}
 
@@ -4927,20 +5048,115 @@ export default function Domains() {
                           {assignMutation.isPending ? 'Assigning…' : 'Reassign Domain'}
                         </button>
 
-                        {/* Unassign: only show when division is currently claimed */}
+                        {/* Unassign or Declare Abaton: only show when division is currently claimed */}
                         {selectedDivisionInfo.owner !== 'Unclaimed' && !selectedDivisionInfo.is_abaton && (
                           <>
                             <hr className={styles.assignSeparator} />
-                            <button
-                              type="button"
-                              className={styles.dossierDangerBtn}
-                              disabled={assignMutation.isPending}
-                              onClick={() => assignMutation.mutate({ division: selectedDivisionInfo.number, unassign: true })}
-                            >
-                              {assignMutation.isPending ? 'Releasing…' : 'Unassign Domain'}
-                            </button>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              <button
+                                type="button"
+                                className={styles.dossierDangerBtn}
+                                disabled={assignMutation.isPending}
+                                onClick={() => assignMutation.mutate({ division: selectedDivisionInfo.number, unassign: true })}
+                              >
+                                {assignMutation.isPending ? 'Releasing…' : 'Unassign Domain'}
+                              </button>
+                              <button
+                                type="button"
+                                className={styles.dossierDangerBtn}
+                                disabled={assignMutation.isPending}
+                                onClick={() => assignMutation.mutate({ division: selectedDivisionInfo.number, is_abaton: true })}
+                              >
+                                {assignMutation.isPending ? 'Declaring…' : 'Declare as Abaton'}
+                              </button>
+                            </div>
                           </>
                         )}
+                      </div>
+                    )}
+
+                    {/* ── Court Decree: Abaton Management (Steward/admin) ── */}
+                    {selectedDivisionInfo.is_abaton && canManageDomains && (
+                      <div className={styles.courtAssignSection}>
+                        <span className={styles.courtAssignHeading}>
+                          <span className="material-symbols-outlined" style={{ fontSize: 15, verticalAlign: 'middle', marginRight: 5 }}>gavel</span>
+                          Court Decree: Abaton Territory
+                        </span>
+                        <p className={styles.statSub} style={{ margin: '0.2rem 0' }}>
+                          This territory is designated as Abaton: sacred ground, off limits.
+                        </p>
+                        <button
+                          type="button"
+                          className={styles.dossierDangerBtn}
+                          disabled={assignMutation.isPending}
+                          onClick={() => assignMutation.mutate({ division: selectedDivisionInfo.number, unassign: true })}
+                        >
+                          {assignMutation.isPending ? 'Releasing…' : 'Revoke Abaton (Release to City)'}
+                        </button>
+
+                        <hr className={styles.assignSeparator} />
+
+                        <span className={styles.courtAssignHeading} style={{ fontSize: '0.7rem' }}>
+                          Or Assign Directly to Kindred
+                        </span>
+                        <div className={styles.assignTargetToggle}>
+                          <button
+                            type="button"
+                            className={`${styles.assignToggleBtn} ${assignTarget === 'character' ? styles.assignToggleBtnActive : ''}`}
+                            onClick={() => { setAssignTarget('character'); setAssignId(''); }}
+                          >Character</button>
+                          <button
+                            type="button"
+                            className={`${styles.assignToggleBtn} ${assignTarget === 'npc' ? styles.assignToggleBtnActive : ''}`}
+                            onClick={() => { setAssignTarget('npc'); setAssignId(''); }}
+                          >NPC</button>
+                        </div>
+
+                        <select
+                          className={styles.assignSelect}
+                          value={assignId}
+                          onChange={e => setAssignId(e.target.value)}
+                        >
+                          <option value="">Select {assignTarget === 'character' ? 'a character' : 'an NPC'}</option>
+                          {assignTarget === 'character'
+                            ? (assignablesData?.characters || []).map(c => (
+                              <option key={c.id} value={c.id}>{c.name} ({c.player_name}){c.clan ? ` : ${c.clan}` : ''}</option>
+                            ))
+                            : (assignablesData?.npcs || []).map(n => (
+                              <option key={n.id} value={n.id}>{n.name}{n.clan ? ` : ${n.clan}` : ''}</option>
+                            ))
+                          }
+                        </select>
+
+                        {assignTarget === 'character' && (
+                          <div className={styles.assignColorRow}>
+                            <label className={styles.assignColorLabel}>Territory colour</label>
+                            <input
+                              type="color"
+                              className={styles.requestColorInput}
+                              value={assignColor}
+                              onChange={e => setAssignColor(e.target.value)}
+                              title="Territory color"
+                            />
+                          </div>
+                        )}
+
+                        <button
+                          type="button"
+                          className={styles.assignBtn}
+                          disabled={!assignId || assignMutation.isPending}
+                          onClick={() => {
+                            if (!assignId || !selectedDivisionInfo) return;
+                            assignMutation.mutate({
+                              division: selectedDivisionInfo.number,
+                              character_id: assignTarget === 'character' ? Number(assignId) : null,
+                              npc_id: assignTarget === 'npc' ? Number(assignId) : null,
+                              color: assignTarget === 'character' ? assignColor : undefined,
+                            });
+                          }}
+                        >
+                          {assignMutation.isPending ? 'Assigning…' : 'Assign Domain'}
+                        </button>
                       </div>
                     )}
 

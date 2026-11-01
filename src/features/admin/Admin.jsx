@@ -10,6 +10,7 @@ import { useMediaQuery, ADMIN_MOBILE_BREAKPOINT as MOBILE_BREAKPOINT } from '../
 
 // Lazy-loaded Core & Modal Components
 const AdminLogs = lazyWithRetry(() => import('./AdminLogs'));
+const AdminJobsTab = lazyWithRetry(() => import('./AdminJobsTab'));
 const ChatStatsTab = lazyWithRetry(() => import('./ChatStatsTab'));
 
 // Lazy-loaded Tab Components (On-demand chunks)
@@ -143,6 +144,7 @@ const NAV_SECTIONS = [
     items: [
       { id: 'master', icon: 'admin_panel_settings', label: 'Master Control', hint: 'Feature switches and game time', keywords: ['toggles', 'schrecknet comms', 'global settings', 'switches', 'features', 'maintenance mode', 'global configurations', 'announcements', 'time', 'calendar', 'date', 'month', 'year', 'game time', 'pause', 'stop', 'prev', 'next', 'danger zone'] },
       { id: 'audit',  icon: 'policy',               label: 'Audit Logs',     hint: 'Security and admin change history', keywords: ['security', 'tracking', 'changes', 'admin actions', 'history', 'edits', 'deletions', 'context', 'copy'] },
+      { id: 'jobs',   icon: 'schedule',             label: 'Background Jobs', hint: 'Scheduled tasks, backups, last runs', keywords: ['jobs', 'cron', 'scheduler', 'backup', 'backups', 'tasks', 'health', 'overdue', 'failed', 'decay', 'upkeep', 'digest', 'run now', 'passenger', 'uptime'] },
       { id: 'logs',   icon: 'receipt_long',         label: 'System Logs',    hint: 'Server errors and traces', keywords: ['errors', 'server', 'debug', 'traces', 'console', 'output', 'crashes', 'context'] },
     ],
   },
@@ -1030,6 +1032,7 @@ async function grantXP(character_id, delta) {
     master:     () => <AdminMasterTab characters={characters} users={users} />,
     masquerade: () => <AdminMasqueradeTab />,
     audit:      () => <AdminAuditTab />,
+    jobs:       () => <AdminJobsTab />,
     logs:       () => <AdminLogs />,
   };
   const renderTab = TAB_VIEWS[tab] || TAB_VIEWS[DEFAULT_TAB];

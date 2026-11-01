@@ -21,6 +21,11 @@ const AdsterraBanner = ({ adKey, width, height, className = '', style = {} }) =>
     >
       <iframe
         src={src}
+        // No allow-same-origin: the ad page is served from our own origin with CSP
+        // stripped (see public/.htaccess), so without the sandbox the third-party ad
+        // script would run as portal.attlarp.gr and could reach the parent app and
+        // the API with the visitor's session cookie. Sandboxed it gets an opaque origin.
+        sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
         title={`Advertisement ${width}x${height}`}
         width={width}
         height={height}

@@ -1,0 +1,22 @@
+/* features/notification/OfflineBanner.jsx */
+.banner {
+  position: sticky;
+  top: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #3a2a00;
+  border-bottom: 1px solid rgba(255, 204, 0, 0.45);
+  color: #ffe08a;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.banner :global(.material-symbols-outlined) {
+  font-size: 1.15rem;
+  flex-shrink: 0;
+}
