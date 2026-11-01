@@ -374,6 +374,88 @@ function GhoulEntry({ g, isCurrent, onUndo }) {
 
 /* ─────────────────────────── the tab ─────────────────────────── */
 
+// Undo a whole cycle's ghoul feedings at once (a glitched or unwanted upkeep
+// run). Automatic upkeep rows start ticked, players' own early feedings
+// unticked. "Give Hunger back" is per row: untick it for a player whose Hunger
+// you already fixed by hand. POST /api/admin/feeding/ghoul-undo.
+function GhoulBulkUndo({ cycleIndex, onDone, notify, onClose }) {
+  const [rows, setRows] = useState(null);
+  const [pick, setPick] = useState({});
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    api.get(`/admin/feeding/ghoul-undo?cycle=${cycleIndex}`).then((res) => {
+      const list = res.data?.rows || [];
+      setRows(list);
+      setPick(Object.fromEntries(list.map((r) => [r.id, { undo: r.automatic, refund: r.raised > 0 }])));
+    }).catch((e) => notify(formatApiError(e, 'Could not load the ghoul feedings'), true));
+  }, [cycleIndex, notify]);
+  if (!rows) return <p className={styles.muted}>Loading...</p>;
+  if (!rows.length) return <p className={styles.empty}>No ghoul feedings recorded in cycle {cycleIndex}.</p>;
+
+  const set = (id, key, val) => setPick((p) => ({ ...p, [id]: { ...p[id], [key]: val } }));
+  const chosen = rows.filter((r) => pick[r.id]?.undo);
+  const refundTotal = chosen.reduce((n, r) => n + (pick[r.id]?.refund ? r.raised : 0), 0);
+  const run = async () => {
+    if (!window.confirm(`Undo ${chosen.length} ghoul feeding(s) in cycle ${cycleIndex} and give back ${refundTotal} Hunger in total? The ghouls owe nothing more for that cycle.`)) return;
+    setBusy(true);
+    try {
+      const { data } = await api.post(`/admin/feeding/ghoul-undo?cycle=${cycleIndex}`, { rows: chosen.map((r) => ({ id: r.id, refund: !!pick[r.id].refund })) });
+      notify(`Cycle ${cycleIndex}: ${data.undone} ghoul feeding(s) undone, Hunger given back to ${data.refunds.length} feeder(s).`);
+      await onDone();
+      onClose();
+    } catch (e) {
+      notify(formatApiError(e, 'Undo failed'), true);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const all = (undo) => setPick((p) => Object.fromEntries(rows.map((r) => [r.id, { ...p[r.id], undo }])));
+
+  return (
+    <div style={{ border: '1px solid var(--outline-variant, rgba(255,255,255,0.15))', borderRadius: 8, padding: '0.75rem', margin: '0.75rem 0' }}>
+      <p className={styles.muted} style={{ marginTop: 0 }}>
+        Pick what to undo in cycle {cycleIndex}. Untick "give Hunger back" for anyone whose Hunger you already lowered by hand. Rouse rolls stay in the dice log.
+      </p>
+      <div className={styles.row} style={{ gap: 8, marginBottom: 8 }}>
+        <button type="button" className={styles.btn} onClick={() => all(true)}>Tick all</button>
+        <button type="button" className={styles.btn} onClick={() => setPick((p) => Object.fromEntries(rows.map((r) => [r.id, { ...p[r.id], undo: r.automatic }])))}>Only automatic</button>
+        <button type="button" className={styles.btn} onClick={() => all(false)}>None</button>
+      </div>
+      <div className={styles.tableWrap}>
+        <table className={styles.table}>
+          <thead><tr><th>Undo</th><th>Ghoul</th><th>What happened</th><th>Give Hunger back</th></tr></thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.id}>
+                <td><input type="checkbox" aria-label={`Undo ${r.ghoul_name}`} checked={!!pick[r.id]?.undo} onChange={(e) => set(r.id, 'undo', e.target.checked)} /></td>
+                <td><b>{r.ghoul_name || `#${r.retainer_id}`}</b><div className={styles.muted}>{formatAthensDateTime(r.created_at)}</div></td>
+                <td>
+                  {r.status === 'starved' ? 'Starved' : 'Fed'} · {GHOUL_METHOD[r.method] || r.method}
+                  {r.feeder_name && <div className={styles.muted}>{r.feeder_name}: Hunger {r.hunger_before} → {r.hunger_after}</div>}
+                </td>
+                <td>
+                  {r.raised > 0 ? (
+                    <label className={styles.muted} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <input type="checkbox" disabled={!pick[r.id]?.undo} checked={!!pick[r.id]?.refund} onChange={(e) => set(r.id, 'refund', e.target.checked)} />
+                      −{r.raised} (now {r.feeder_hunger_now ?? '?'} → {Math.max(0, (r.feeder_hunger_now ?? 0) - r.raised)})
+                    </label>
+                  ) : <span className={styles.muted}>no Hunger was gained</span>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className={styles.row} style={{ gap: 8, marginTop: 10 }}>
+        <button type="button" className={styles.btn} disabled={busy || !chosen.length} onClick={run}>
+          Undo {chosen.length} · give back {refundTotal} Hunger
+        </button>
+        <button type="button" className={styles.btn} disabled={busy} onClick={onClose}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminFeedingTab() {
   const [cycles, setCycles] = useState([]);
   const [cycle, setCycle] = useState(null); // null = current
@@ -387,6 +469,7 @@ export default function AdminFeedingTab() {
   const [showAllFeed, setShowAllFeed] = useState(false);
   const [playerFilter, setPlayerFilter] = useState('all');
   const [ghoulFilter, setGhoulFilter] = useState('all');
+  const [bulkUndo, setBulkUndo] = useState(false);
   // Instant Hunger edits: character id -> Hunger, shown everywhere until the next load.
   const [hungerNow, setHungerNow] = useState({});
   const [hungerBusy, setHungerBusy] = useState({});
@@ -703,7 +786,10 @@ export default function AdminFeedingTab() {
 
       {/* ── Ghouls ── */}
       <Fold title="Ghouls" icon={FEEDING_ICONS.skull} count={`${ghoulsUnfed} unfed / ${ghoulList.length}`} defaultOpen={ghoulsUnfed > 0}
-        right={isCurrent && (
+        right={(
+          <span className={styles.row} style={{ gap: 8 }}>
+          <button type="button" className={styles.btn} onClick={() => setBulkUndo((v) => !v)}>Undo a whole cycle...</button>
+          {isCurrent && (
           <button type="button" className={styles.btn} disabled={busy || ghoulsUnfed === 0}
             onClick={() => confirmRun(
               'Feed every unfed ghoul now? Each costs its owner (or a random coterie member) a Rouse Check; ghouls let go, or with no feeder below Hunger 5, starve.',
@@ -711,7 +797,10 @@ export default function AdminFeedingTab() {
               (r) => `Ghoul upkeep: ${r.fed ?? 0} fed, ${r.starved ?? 0} starved.`, 'Ghoul upkeep failed')}>
             Run upkeep now
           </button>
+          )}
+          </span>
         )}>
+        {bulkUndo && <GhoulBulkUndo cycleIndex={index} onDone={changed} notify={notify} onClose={() => setBulkUndo(false)} />}
         <Chips value={ghoulFilter} onChange={setGhoulFilter} options={[
           ['all', 'All'], ['hungry', 'Needs feeding'], ['fed', 'Fed'], ['starved', 'Starved'], ...(isCurrent ? [] : [['none', 'Nothing recorded']]),
         ]} />

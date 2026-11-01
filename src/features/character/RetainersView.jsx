@@ -112,6 +112,7 @@ const pickOneDiscipline = (sheet, disc, on) => {
 // V5 Core: a ghoul gains its master's highest-rated Discipline and one level 1
 // power the vampire has (ties all count). Mirrors back/utils/ghoulBlood.js.
 // Returns { Discipline: Set of owned power ids/names, lowercased }.
+const GHOUL_CONFIRM = "Ghouling enforces a Blood Bond (loss of free will) and Vitae addiction. Ghoul-specific Flaws will become available, and they will get 1 dot in your highest-rated Discipline. You can make them a plain retainer again later.\n\nMake them a ghoul?";
 const GHOUL_BLOOD_RULE = "A ghoul gains the first dot of their domitor's highest-rated Discipline and one level 1 power the domitor has. Using a power above level 1 (Draught of Elegance, alchemy) costs the ghoul 1 Aggravated Health instead of a Rouse Check.";
 const powerKey = (v) => String(v || '').replace(/\s*\(Errata\)\s*$/i, '').trim().toLowerCase();
 const sheetOf = (c) => {
@@ -1569,6 +1570,21 @@ export default function RetainersView() {
   // a level 1 power they own.
   const [disciplinePick, setDisciplinePick] = useState('');
   useEffect(() => { setDisciplinePick(''); }, [selectedRetainerId]);
+  // Wean a ghoul off the Blood: a mortal retainer again (back/routes/ghouls.js).
+  const handleUnghoul = async () => {
+    const r = selectedRetainer;
+    if (!window.confirm(`Make ${r.name} a retainer again? They stop being a ghoul: they lose their Discipline${selectedCoterie ? "s (other members' blood too)" : ''}, their power${selectedCoterie ? 's' : ''} and any ghoul-only Merits and Flaws, and the years the Blood held back catch up with them (they look their true age). You can make them a ghoul again later.`)) return;
+    try {
+      setSaving(true);
+      await api.post(`/retainers/${r.id}/unghoul`);
+      await fetchRetainers();
+    } catch (e) {
+      alert(formatApiError(e, 'Failed to release the ghoul'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleChooseDiscipline = async (power) => {
     const disc = disciplinePick;
     if (!window.confirm(`Give ${selectedRetainer.name} ${disc} with ${power.name}?`)) return;
@@ -2047,6 +2063,12 @@ export default function RetainersView() {
                               {[2, 3].filter(t => t > selectedRetainer.tier && t - selectedRetainer.tier <= coterieFreeDots(selectedCoterie)).map(t => (
                                 <button key={t} className={styles.btnPrimary} onClick={() => openCoterieWizard(selectedCoterie, t, selectedRetainer)} disabled={saving}>Upgrade to Tier {t}</button>
                               ))}
+                              {!currentSheet.isGhoul && (
+                                <button className={styles.btnPrimary} disabled={saving} onClick={() => {
+                                  if (window.confirm(GHOUL_CONFIRM)) openCoterieWizard(selectedCoterie, selectedRetainer.tier, { ...selectedRetainer, sheet: { ...selectedRetainer.sheet, isGhoul: true } });
+                                }}>Make Ghoul</button>
+                              )}
+                              {currentSheet.isGhoul && <button className={`${styles.btnPrimary} ${styles.btnDanger}`} onClick={handleUnghoul} disabled={saving} title="Wean them off the Blood: a mortal retainer again">Make Retainer (not a ghoul)</button>}
                               <button className={`${styles.btnPrimary} ${styles.btnDanger}`} onClick={() => handleCoterieRelease(selectedCoterie, selectedRetainer)} disabled={saving}>Release</button>
                             </>
                           )}
@@ -2070,20 +2092,21 @@ export default function RetainersView() {
                           {isAdminBypass && (
                             <button className={styles.btnPrimary} onClick={startEditing} disabled={saving}>Edit Sheet</button>
                           )}
-                          {!isAdminBypass && !currentSheet.isGhoul && (
+                          {!currentSheet.isGhoul && (
                             <button 
                               className={styles.btnPrimary} 
                               onClick={() => {
-                                if (window.confirm("Ghouling enforces a Blood Bond (loss of free will) and Vitae addiction. Ghoul-specific Flaws will become available, and they will get 1 dot in a Discipline.\n\nAre you sure you want to make them a Ghoul?")) {
+                                if (window.confirm(GHOUL_CONFIRM)) {
                                   startEditing();
                                   setTimeout(() => setDraftSheet(p => ({ ...p, isGhoul: true })), 0);
                                 }
                               }} 
                               disabled={saving}
                             >
-                              Make Ghoul (Optional)
+                              Make Ghoul
                             </button>
                           )}
+                          {currentSheet.isGhoul && <button className={`${styles.btnPrimary} ${styles.btnDanger}`} onClick={handleUnghoul} disabled={saving} title="Wean them off the Blood: a mortal retainer again">Make Retainer (not a ghoul)</button>}
                           <button className={`${styles.btnPrimary} ${styles.btnDanger}`} onClick={() => handleDelete(selectedRetainer.id)} disabled={saving}>Dismiss</button>
                         </>
                       ) : (
