@@ -401,7 +401,7 @@ export default function CreateNewsModal({
            )}
 
            <div className={styles.formGroup}>
-             <label>{mode === 'rumor' ? 'Gossip Details *' : 'Article Body *'}</label>
+             <label>{mode === 'rumor' ? 'Gossip Details (Markdown supported) *' : 'Article Body *'}</label>
              <div className={styles.editorWrap}>
                <EditorToolbar onCmd={(c,v) => document.execCommand(c,false,v)} />
                <div

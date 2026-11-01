@@ -130,7 +130,7 @@ export default function EditEntryModal({ item, onClose, onSaved }) {
           )}
 
           <div className={styles.field}>
-            <span>{isNews ? 'Article body' : 'Proclamation body'}</span>
+            <span>{isNews ? 'Article body' : (item.type === 'rumor' || item.theme === 'RUMOR' ? 'Rumor body (Markdown supported)' : 'Proclamation body (Markdown supported)')}</span>
             {isNews ? (
               <div className={`${newsStyles.editorWrap} ${styles.editorWrap}`}>
                 <EditorToolbar onCmd={(c, v) => { bodyRef.current?.focus(); document.execCommand(c, false, v); setDirty(true); }} />

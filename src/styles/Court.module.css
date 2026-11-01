@@ -1230,6 +1230,46 @@
   margin-bottom: 1rem;
 }
 
+.decreeBodyText p:last-child {
+  margin-bottom: 0;
+}
+
+.decreeBodyText ul,
+.decreeBodyText ol {
+  margin: 0.75rem 0 1rem 1.5rem;
+  padding-left: 0.5rem;
+}
+
+.decreeBodyText ul {
+  list-style-type: disc;
+}
+
+.decreeBodyText ol {
+  list-style-type: decimal;
+}
+
+.decreeBodyText li {
+  margin-bottom: 0.4rem;
+  line-height: 1.5;
+}
+
+.decreeBodyText strong {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.decreeBodyText em {
+  font-style: italic;
+}
+
+.decreeBodyText blockquote {
+  border-left: 3px solid var(--primary, #ca8a04);
+  padding-left: 1rem;
+  margin: 1rem 0;
+  font-style: italic;
+  opacity: 0.9;
+}
+
 .decreeFooter {
   background: var(--surface-lighter);
   padding: 1rem 2rem;

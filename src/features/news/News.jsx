@@ -13,6 +13,7 @@ import FaGlyph from '../../ui/FaGlyph';
 import CreateNewsModal from './CreateNewsModal';
 import EditEntryModal, { EditPencil } from './EditEntryModal';
 import FullscreenArticleModal from '../../components/FullscreenArticleModal';
+import MarkdownBody from '../../components/MarkdownBody';
 import { Skeleton } from 'boneyard-js/react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -409,7 +410,7 @@ export default function News() {
                             {isVideoUrl(item.media_url) ? <video src={mediaUrl} controls /> : <img src={mediaUrl} alt="Proof" />}
                           </div>
                         )}
-                        <div className={styles.rumorBodyText} dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.body) }} />
+                        <MarkdownBody content={item.body} className={styles.rumorBodyText} whiteCrest={false} />
                         <div className={styles.rumorMeta}>HEARD ON: {formatAthensDate(item.created_at)}</div>
 
                         {(isAdmin || isCourt) && (
@@ -580,9 +581,10 @@ function PostItCard({ item, isSingle }) {
           )}
         </div>
       )}
-      <div
+      <MarkdownBody
+        content={item.body}
         className={styles.postItBodyText}
-        dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.body) }}
+        whiteCrest={false}
       />
       <div className={styles.postItFooter}>
         <div className={styles.postItDateText}>
@@ -671,14 +673,15 @@ function FullscreenRumorModal({ item, onClose }) {
             )}
           </div>
         )}
-        <div
+        <MarkdownBody
+          content={item.body}
           style={{
             fontSize: '1.05rem',
             lineHeight: '1.6',
             color: '#292524',
             wordBreak: 'break-word',
           }}
-          dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.body) }}
+          whiteCrest={false}
         />
         <div
           style={{

@@ -10,6 +10,7 @@ import { motion } from 'framer-motion';
 import { sanitizeHtml } from '../../utils/sanitizeHtml';
 import AnnouncementReactions from './AnnouncementReactions';
 import EditEntryModal, { EditPencil } from '../news/EditEntryModal';
+import MarkdownBody from '../../components/MarkdownBody';
 import { customClanEmojis, EMOJI_PICKER_CATEGORIES, emojiObjectToToken, crestifyHtml } from '../../components/ReactionGlyph';
 import { DISCORD_PREFIX_OPTIONS, getDefaultDiscordPrefix } from '../../constants/outletConstants';
 
@@ -313,7 +314,7 @@ export default function AnnouncementsView({ canEdit: propCanEdit, canPush = fals
                   
                   {item.media_url && <BlobImage url={item.media_url} />}
 
-                  <div className={styles.decreeBodyText} dangerouslySetInnerHTML={{__html: decreeHtml(item.body)}} />
+                  <MarkdownBody content={item.body} className={styles.decreeBodyText} whiteCrest />
                   <AnnouncementReactions announcementId={item.id} />
                 </div>
 
@@ -441,7 +442,7 @@ export default function AnnouncementsView({ canEdit: propCanEdit, canPush = fals
                     <textarea 
                       ref={contentRef} 
                       className={`${styles.decreeInput} ${styles.decreeTextarea}`} 
-                      placeholder="Draft your message here..." 
+                      placeholder="Draft your proclamation here... Markdown supported (**bold**, *italics*, lists, quotes)" 
                       required 
                       disabled={isUploading}
                     />
@@ -597,9 +598,10 @@ function DecreePrintModal({ target, items, onClose }) {
                   </div>
                 )}
 
-                <div
+                <MarkdownBody
+                  content={item.body}
                   style={{ fontSize: '0.95rem', lineHeight: '1.6', color: '#27272a' }}
-                  dangerouslySetInnerHTML={{ __html: decreeHtml(item.body, { white: false }) }}
+                  whiteCrest={false}
                 />
 
                 <div style={{ marginTop: '20px', paddingTop: '10px', borderTop: '1px solid #f4f4f5', display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#a1a1aa' }}>

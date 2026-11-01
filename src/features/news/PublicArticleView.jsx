@@ -16,6 +16,7 @@ import { crestifyHtml } from '../../components/ReactionGlyph';
 import Avatar from '../../components/Avatar';
 import courtStyles from '../../styles/Court.module.css';
 import AnnouncementReactions from '../announcements/AnnouncementReactions';
+import MarkdownBody from '../../components/MarkdownBody';
 
 const TITLES = ["Prince", "Seneschal", "Primogen", "Sheriff", "Scourge", "Keeper", "Harpy", "Assistant Harpy", "Hound", "Shadow", "Whip"];
 
@@ -631,7 +632,7 @@ export default function PublicArticleView() {
               
               {renderMedia('8px')}
 
-              <div className={courtStyles.decreeBodyText} dangerouslySetInnerHTML={{__html: crestifyHtml(sanitizeHtml(String(article.body ?? '').replace(/\n/g, '<br/>')))}} style={{ marginTop: '1.5rem', lineHeight: '1.6' }} />
+              <MarkdownBody content={article.body} className={courtStyles.decreeBodyText} style={{ marginTop: '1.5rem', lineHeight: '1.6' }} whiteCrest />
               <AnnouncementReactions announcementId={article.id} />
               <div style={{ marginTop: '1.5rem' }}>
                 <PrintArticleButton />
@@ -658,7 +659,7 @@ export default function PublicArticleView() {
                 {renderMedia()}
               </div>
             )}
-            <div className={styles.rumorBodyText} dangerouslySetInnerHTML={{ __html: sanitizeHtml(article.body) }} />
+            <MarkdownBody content={article.body} className={styles.rumorBodyText} whiteCrest={false} />
             <div className={styles.rumorMeta} style={{ marginTop: '1.5rem' }}>
               HEARD ON: {articleDate}
             </div>

@@ -462,6 +462,56 @@
   word-break: break-word;
 }
 
+.rumorBodyText p,
+.postItBodyText p {
+  margin-bottom: 0.65rem;
+}
+
+.rumorBodyText p:last-child,
+.postItBodyText p:last-child {
+  margin-bottom: 0;
+}
+
+.rumorBodyText ul,
+.postItBodyText ul {
+  list-style-type: disc;
+  margin: 0.4rem 0 0.6rem 1.25rem;
+  padding-left: 0.25rem;
+}
+
+.rumorBodyText ol,
+.postItBodyText ol {
+  list-style-type: decimal;
+  margin: 0.4rem 0 0.6rem 1.25rem;
+  padding-left: 0.25rem;
+}
+
+.rumorBodyText li,
+.postItBodyText li {
+  margin-bottom: 0.25rem;
+  line-height: 1.45;
+}
+
+.rumorBodyText strong,
+.postItBodyText strong {
+  font-weight: 700;
+  color: #1c1917 !important;
+}
+
+.rumorBodyText em,
+.postItBodyText em {
+  font-style: italic;
+}
+
+.rumorBodyText blockquote,
+.postItBodyText blockquote {
+  border-left: 2px solid #ca8a04;
+  padding-left: 0.65rem;
+  margin: 0.5rem 0;
+  font-style: italic;
+  opacity: 0.9;
+}
+
 .rumorMeta {
   font-size: 0.75rem;
   font-weight: 700;
