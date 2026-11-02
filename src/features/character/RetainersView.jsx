@@ -2036,80 +2036,62 @@ export default function RetainersView() {
 
                     </div>
                     <div className={styles.sheetControls}>
-                      {!isEditing && selectedCoterie ? (
-                        <>
-                          {currentSheet.isGhoul && !isAdminBypass && selectedRetainer.domitor_character_id !== character.id && (
-                            <span style={{ color: '#e0dedd', opacity: 0.7, fontSize: '12px', alignSelf: 'center' }}>
-                              Managed by {selectedDomitor?.character_name || 'their domitor'}
-                            </span>
-                          )}
-                          <button
-                            className={styles.btnPrimary}
-                            onClick={async () => {
-                              const { default: generateGhoulPDF } = await import('../../utils/ghoulPdfGenerator');
-                              generateGhoulPDF(selectedRetainer, {
-                                character,
-                                selectedCoterie,
-                                selectedDomitor,
-                              });
-                            }}
-                            style={{ background: 'linear-gradient(135deg, #8a0303 0%, #5a0202 100%)' }}
-                          >
-                            Export PDF
-                          </button>
-                          {(!currentSheet.isGhoul || isAdminBypass || selectedRetainer.domitor_character_id === character.id) && (
-                            <>
-                              <button className={styles.btnPrimary} onClick={() => openCoterieWizard(selectedCoterie, selectedRetainer.tier, selectedRetainer)} disabled={saving}>Rebuild Sheet</button>
-                              {[2, 3].filter(t => t > selectedRetainer.tier && t - selectedRetainer.tier <= coterieFreeDots(selectedCoterie)).map(t => (
-                                <button key={t} className={styles.btnPrimary} onClick={() => openCoterieWizard(selectedCoterie, t, selectedRetainer)} disabled={saving}>Upgrade to Tier {t}</button>
-                              ))}
-                              {!currentSheet.isGhoul && (
-                                <button className={styles.btnPrimary} disabled={saving} onClick={() => {
-                                  if (window.confirm(GHOUL_CONFIRM)) openCoterieWizard(selectedCoterie, selectedRetainer.tier, { ...selectedRetainer, sheet: { ...selectedRetainer.sheet, isGhoul: true } });
-                                }}>Make Ghoul</button>
-                              )}
-                              {currentSheet.isGhoul && <button className={`${styles.btnPrimary} ${styles.btnDanger}`} onClick={handleUnghoul} disabled={saving} title="Wean them off the Blood: a mortal retainer again">Make Retainer (not a ghoul)</button>}
-                              <button className={`${styles.btnPrimary} ${styles.btnDanger}`} onClick={() => handleCoterieRelease(selectedCoterie, selectedRetainer)} disabled={saving}>Release</button>
-                            </>
-                          )}
-                        </>
-                      ) : !isEditing ? (
-                        <>
-                          <button
-                            className={styles.btnPrimary}
-                            onClick={async () => {
-                              const { default: generateGhoulPDF } = await import('../../utils/ghoulPdfGenerator');
-                              generateGhoulPDF(selectedRetainer, {
-                                character,
-                                selectedCoterie,
-                                selectedDomitor,
-                              });
-                            }}
-                            style={{ background: 'linear-gradient(135deg, #8a0303 0%, #5a0202 100%)' }}
-                          >
-                            Export PDF
-                          </button>
-                          {isAdminBypass && (
-                            <button className={styles.btnPrimary} onClick={startEditing} disabled={saving}>Edit Sheet</button>
-                          )}
-                          {!currentSheet.isGhoul && (
-                            <button 
-                              className={styles.btnPrimary} 
-                              onClick={() => {
-                                if (window.confirm(GHOUL_CONFIRM)) {
-                                  startEditing();
-                                  setTimeout(() => setDraftSheet(p => ({ ...p, isGhoul: true })), 0);
-                                }
-                              }} 
-                              disabled={saving}
-                            >
-                              Make Ghoul
-                            </button>
-                          )}
-                          {currentSheet.isGhoul && <button className={`${styles.btnPrimary} ${styles.btnDanger}`} onClick={handleUnghoul} disabled={saving} title="Wean them off the Blood: a mortal retainer again">Make Retainer (not a ghoul)</button>}
-                          <button className={`${styles.btnPrimary} ${styles.btnDanger}`} onClick={() => handleDelete(selectedRetainer.id)} disabled={saving}>Dismiss</button>
-                        </>
-                      ) : (
+                      {!isEditing ? (() => {
+                        const isGhoul = !!currentSheet.isGhoul;
+                        // A coterie ghoul is run by its domitor alone; mortals and personal retainers by the owner.
+                        const canManage = !selectedCoterie || !isGhoul || isAdminBypass || selectedRetainer.domitor_character_id === character.id;
+                        const exportPdf = async () => {
+                          const { default: generateGhoulPDF } = await import('../../utils/ghoulPdfGenerator');
+                          generateGhoulPDF(selectedRetainer, { character, selectedCoterie, selectedDomitor });
+                        };
+                        const makeGhoul = () => {
+                          if (!window.confirm(GHOUL_CONFIRM)) return;
+                          if (selectedCoterie) {
+                            openCoterieWizard(selectedCoterie, selectedRetainer.tier, { ...selectedRetainer, sheet: { ...selectedRetainer.sheet, isGhoul: true } });
+                          } else {
+                            startEditing();
+                            setTimeout(() => setDraftSheet(p => ({ ...p, isGhoul: true })), 0);
+                          }
+                        };
+                        const icon = name => <span className="material-symbols-outlined" aria-hidden="true">{name}</span>;
+                        return (
+                          <>
+                            <div className={styles.kindToggle} role="group" aria-label="Mortal retainer or ghoul">
+                              <button type="button" aria-pressed={!isGhoul} disabled={saving || !canManage}
+                                onClick={isGhoul ? handleUnghoul : undefined}
+                                title={isGhoul ? 'Wean them off the Blood: a mortal retainer again' : 'A mortal retainer'}>
+                                {icon('person')}Mortal
+                              </button>
+                              <button type="button" className={styles.kindGhoul} aria-pressed={isGhoul} disabled={saving || !canManage}
+                                onClick={isGhoul ? undefined : makeGhoul}
+                                title={isGhoul ? 'Fed on Vitae and Blood Bound' : 'Feed them your Vitae: Blood Bond and one Discipline dot'}>
+                                {icon('bloodtype')}Ghoul
+                              </button>
+                            </div>
+                            {!canManage && (
+                              <span className={styles.controlsNote}>Managed by {selectedDomitor?.character_name || 'their domitor'}</span>
+                            )}
+                            <button type="button" className={styles.actionBtn} onClick={exportPdf}>{icon('picture_as_pdf')}Export PDF</button>
+                            {!selectedCoterie && isAdminBypass && (
+                              <button type="button" className={styles.actionBtn} onClick={startEditing} disabled={saving}>{icon('edit')}Edit Sheet</button>
+                            )}
+                            {selectedCoterie && canManage && (
+                              <>
+                                <button type="button" className={styles.actionBtn} onClick={() => openCoterieWizard(selectedCoterie, selectedRetainer.tier, selectedRetainer)} disabled={saving}>{icon('construction')}Rebuild Sheet</button>
+                                {[2, 3].filter(t => t > selectedRetainer.tier && t - selectedRetainer.tier <= coterieFreeDots(selectedCoterie)).map(t => (
+                                  <button type="button" key={t} className={styles.actionBtn} onClick={() => openCoterieWizard(selectedCoterie, t, selectedRetainer)} disabled={saving}>{icon('upgrade')}Upgrade to Tier {t}</button>
+                                ))}
+                              </>
+                            )}
+                            {canManage && (
+                              <button type="button" className={`${styles.actionBtn} ${styles.actionBtnDanger}`} disabled={saving}
+                                onClick={() => selectedCoterie ? handleCoterieRelease(selectedCoterie, selectedRetainer) : handleDelete(selectedRetainer.id)}>
+                                {icon('person_remove')}{selectedCoterie ? 'Release' : 'Dismiss'}
+                              </button>
+                            )}
+                          </>
+                        );
+                      })() : (
                         <>
                           <button
                             className={styles.btnPrimary}

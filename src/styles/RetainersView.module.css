@@ -355,13 +355,15 @@
 
 .sheetHeaderInfo {
   flex: 1;
+  min-width: 0;
   padding-top: 8px;
 }
 
+/* Identity on top, action bar underneath: side by side the buttons got crushed. */
 .sheetNameRow {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .sheetName {
@@ -381,7 +383,101 @@
 
 .sheetControls {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
+  padding-top: 16px;
+  border-top: 1px solid color-mix(in srgb, var(--border-color) 60%, transparent);
+}
+
+.controlsNote {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Mortal | Ghoul segmented switch: shows the current state, the other side is the action. */
+.kindToggle {
+  display: inline-flex;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.kindToggle button,
+.actionBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  color: var(--text-color);
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.kindToggle button :global(.material-symbols-outlined),
+.actionBtn :global(.material-symbols-outlined) {
+  font-size: 18px;
+}
+
+.kindToggle button {
+  background: transparent;
+  border: none;
+}
+
+.kindToggle button + button {
+  border-left: 1px solid var(--border-color);
+}
+
+.kindToggle button:hover:not(:disabled):not([aria-pressed="true"]) {
+  background: color-mix(in srgb, var(--border-color) 50%, transparent);
+}
+
+.kindToggle button[aria-pressed="true"] {
+  background: var(--tint);
+  color: var(--tint-contrast, var(--text-color));
+  cursor: default;
+}
+
+.kindToggle .kindGhoul[aria-pressed="true"] {
+  background: linear-gradient(135deg, #8a0303 0%, #5a0202 100%);
+  color: #fff;
+}
+
+.kindToggle button:disabled:not([aria-pressed="true"]) {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.actionBtn {
+  background: color-mix(in srgb, var(--border-color) 30%, transparent);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+}
+
+.actionBtn:hover:not(:disabled) {
+  border-color: var(--tint);
+  background: color-mix(in srgb, var(--tint) 15%, transparent);
+}
+
+.actionBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.actionBtnDanger {
+  margin-left: auto;
+  color: var(--error);
+  border-color: color-mix(in srgb, var(--error) 50%, transparent);
+}
+
+.actionBtnDanger:hover:not(:disabled) {
+  border-color: var(--error);
+  background: color-mix(in srgb, var(--error) 15%, transparent);
 }
 
 .xpContainer {
@@ -1108,6 +1204,10 @@
   .sheetControls {
     justify-content: center;
     width: 100%;
+  }
+
+  .actionBtnDanger {
+    margin-left: 0;
   }
   
   /* Wizard Mobile Overrides */
