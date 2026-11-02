@@ -899,20 +899,6 @@ async function grantXP(character_id, delta) {
     }
   }
 
-  async function deleteCharacter(id) {
-    setErr(''); setMsg('');
-    if (window.prompt(`Type DELETE to permanently remove character #${id}. This cannot be undone.`) !== 'DELETE') return;
-    
-    try {
-      await api.delete(`/admin/characters/${id}`);
-      setMsg(`Character #${id} deleted`);
-      load(); // Reload
-    } catch (e) {
-      console.error('[Admin] deleteCharacter failed', e);
-      setErr(formatApiError(e, 'Failed to delete character'));
-    }
-  }
-
   // --- Downtimes ---
   async function saveDowntime(id, patch) {
     setErr(''); setMsg('');
@@ -961,7 +947,6 @@ async function grantXP(character_id, delta) {
     characters:  () => (
       <AdminCharactersTab
         users={users}
-        onDelete={deleteCharacter}
         onOpenEditor={openCharacterEditor}
         onChanged={load}
       />

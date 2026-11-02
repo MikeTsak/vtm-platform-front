@@ -471,6 +471,8 @@ export default function Boons() {
       if (byName) {
         type = byName.type;
         targetId = byName.id;
+        // Retired character: no account, only the portrait saved at retirement.
+        if (byName.type === 'player' && !byName.id) return byName.avatar_url ? { avatarUrl: byName.avatar_url } : null;
       }
     } else {
       const byIdUser = entities.find(e => (e.type === 'user' || e.type === 'player') && String(e.id) === String(id));

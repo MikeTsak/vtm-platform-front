@@ -101,7 +101,7 @@ const TrackerDisplay = ({ label, currentObj, max, onUpdate, isValueTracker = fal
 };
 
 // ---------- MAIN COMPONENT ----------
-export default function AdminCharactersTab({ users, onDelete, onOpenEditor, onChanged }) {
+export default function AdminCharactersTab({ users, onOpenEditor, onChanged }) {
   const baseChars = useMemo(() => users.filter(u => u.character_id).map(u => ({
     id: u.character_id, user_id: u.id, name: u.char_name || '', clan: u.clan || '',
     xp: u.xp || 0, sheet: u.sheet || null, owner: `${u.display_name} <${u.email}>`,
@@ -495,9 +495,7 @@ export default function AdminCharactersTab({ users, onDelete, onOpenEditor, onCh
                   <button className={`${styles.btn} ${data.allow_reset ? styles.btnGhost : styles.btnWarning}`} onClick={() => data.allow_reset ? handleRevokeReset(c) : handleReset(c)}>
                     {data.allow_reset ? 'Revoke Re-Roll' : 'Allow Re-Roll'}
                   </button>
-                  <button className={`${styles.btn} ${styles.btnWarning}`} onClick={() => requestRetire(c)} title="Final Death or leaving play: frees the player to make a new character">Retire</button>
-                  <button className={`${styles.btn} ${styles.btnDanger}`} onClick={() => onDelete(c.id)}>Delete</button>
-                </div>
+                  <button className={`${styles.btn} ${styles.btnWarning}`} onClick={() => requestRetire(c)} title="Final Death or leaving play: frees the player to make a new character">Retire</button>                </div>
               </div>
                 </>
               )}

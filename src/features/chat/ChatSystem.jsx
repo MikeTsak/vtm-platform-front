@@ -257,7 +257,8 @@ const asUserContact = (u) => ({
   is_active: u.is_active,
   is_deceased: u.is_deceased,
   is_left: u.is_left,
-  is_missing: u.is_missing
+  is_missing: u.is_missing,
+  is_archived: !!u.is_archived
 });
 
 const asNpcContact = (n) => ({
@@ -2119,6 +2120,9 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
 
   const usersWithChar = useMemo(() => filteredUsers.filter(u => isUserActiveContact(u)), [filteredUsers]);
   const usersNoChar = useMemo(() => filteredUsers.filter(u => !isUserActiveContact(u) && !u.char_id && u.is_active !== false && u.role === 'admin'), [filteredUsers]);
+  // Retired characters you talked with: their old threads, read-only.
+  const usersPast = useMemo(() => filteredUsers.filter(u => u.is_archived), [filteredUsers]);
+  const [pastOpen, setPastOpen] = useState(false);
 
   const filteredNpcs = useMemo(() => {
     const q = filter.trim();
@@ -2528,7 +2532,10 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                     const label = m.char_name || m.display_name || 'this member';
                     return (
                       <div key={m.id} className="flex items-center justify-between gap-2 bg-surface-container-highest pl-3 pr-2 py-2 rounded border border-outline-variant/30">
-                        <span className="text-sm min-w-0 truncate">{m.char_name || m.display_name}</span>
+                        <span className="text-sm min-w-0 truncate">
+                          {m.char_name || m.display_name}
+                          {m.is_archived && <span className="text-on-surface-variant/60"> · {m.is_deceased ? 'Final Death' : 'gone dark'}</span>}
+                        </span>
                         {m.id !== selectedContact.created_by ? (
                           <button className="text-[11px] bg-error-container/20 text-error border border-error/30 px-3 py-1.5 rounded hover:bg-error/20 transition-colors shrink-0" onClick={() => handleRemoveMemberFromGroup(m.id, label)}>Remove</button>
                         ) : (
@@ -2832,16 +2839,18 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
               <>
                 <div className={sectionLabel}>Members ({headerGroupMembers.length})</div>
                 {headerGroupMembers.map(m => (
-                  <div key={m.id} className="flex items-center gap-3 px-4 min-h-[56px]">
+                  <div key={m.id} className={`flex items-center gap-3 px-4 min-h-[56px] ${m.is_archived ? 'opacity-60' : ''}`}>
                     <div className="relative shrink-0">
-                      <div className="w-10 h-10 rounded-full overflow-hidden border border-outline-variant/50 bg-surface-container-highest">
+                      <div className={`w-10 h-10 rounded-full overflow-hidden border border-outline-variant/50 bg-surface-container-highest ${m.is_archived ? 'grayscale' : ''}`}>
                         <Avatar userId={m.id} size="100%" style={{ width: '100%', height: '100%' }} fallback={localSymlogo(m.clan) || '/img/ATT-logo(1).webp'} />
                       </div>
                       <OnlineDot online={isUserOnline(m.id)} />
                     </div>
                     <div className="min-w-0 flex-1 flex flex-col">
                       <span className="text-[15px] text-on-surface truncate">{m.char_name || m.display_name}</span>
-                      <StatusLine titles={m.titles} status={m.court_status} className="text-[11px] text-on-surface-variant/70" />
+                      {m.is_archived
+                        ? <span className="text-[11px] text-on-surface-variant/70">{m.is_deceased ? 'Met Final Death' : 'Gone from SchreckNet'}</span>
+                        : <StatusLine titles={m.titles} status={m.court_status} className="text-[11px] text-on-surface-variant/70" />}
                     </div>
                     {m.id === c.created_by && <span className="text-[11px] text-on-surface-variant/60 shrink-0">Founder</span>}
                   </div>
@@ -3119,6 +3128,37 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                         <div className="flex items-center gap-2 shrink-0">
                           <DraftBadge count={draftSummary.countFor('user', u.id)} />
                           {u.clan && <span className="text-[9px] bg-surface-dim px-1 rounded border border-outline-variant/30 uppercase max-w-[40px] truncate">{u.clan.slice(0, 3)}</span>}
+                          <UnreadCount count={u.unread_count} />
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {/* Past contacts: retired characters, history only */}
+          {usersPast.length > 0 && (
+            <div className="mb-6">
+              <button type="button" onClick={() => setPastOpen(!pastOpen)} aria-expanded={pastOpen} className="w-full px-4 text-[10px] text-on-surface-variant/50 mb-2 font-bold tracking-widest flex items-center gap-1 hover:text-on-surface transition-colors">
+                <span className="material-symbols-outlined text-[14px] transition-transform" style={{ transform: pastOpen ? 'rotate(180deg)' : 'none' }}>expand_more</span>
+                PAST CONTACTS ({usersPast.length})
+              </button>
+              {pastOpen && (
+                <ul className="flex flex-col">
+                  {usersPast.map(u => {
+                    const isActive = selectedContact?.type === 'user' && selectedContact?.id === u.id;
+                    return (
+                      <li key={`u-${u.id}`} onClick={() => openChat(u)} className={`${isActive ? 'blood-active border-l-4' : 'text-on-surface-variant hover:bg-surface-variant/10 border-l-4 border-transparent'} px-4 py-2 flex items-center justify-between cursor-pointer transition-all opacity-70`}>
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-8 h-8 shrink-0 rounded-full bg-surface-container flex items-center justify-center overflow-hidden border border-outline-variant/30 grayscale">
+                            <Avatar userId={u.id} size="100%" style={{ width: '100%', height: '100%' }} imgClassName="opacity-80" fallback={localSymlogo(u.clan) || '/img/ATT-logo(1).webp'} />
+                          </div>
+                          <span className={`${isActive ? 'text-glow-active font-medium text-white' : ''} truncate`}>{u.char_name || u.display_name}</span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {u.is_deceased && <span className="material-symbols-outlined text-[16px]" title="Final Death" aria-label="Final Death">skull</span>}
                           <UnreadCount count={u.unread_count} />
                         </div>
                       </li>
@@ -3661,7 +3701,16 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
               </button>
             )}
 
-            {/* Bottom Input Area */}
+            {/* Bottom Input Area. A retired character's thread is history only. */}
+            {selectedContact?.is_archived ? (
+              <div className={`${styles.messageInputForm} relative`} style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
+                <p className="max-w-4xl mx-auto w-full flex items-center gap-2 text-xs font-system-code text-on-surface-variant/70">
+                  <span className="material-symbols-outlined text-[18px]" aria-hidden="true">history</span>
+                  {selectedContact.char_name || selectedContact.display_name}
+                  {selectedContact.is_deceased ? ' has passed into Final Death' : ' has gone dark'} and is no longer on SchreckNet. Only their words remain.
+                </p>
+              </div>
+            ) : (
             <div className={`${styles.messageInputForm} relative`} style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))', flexDirection: 'column', alignItems: 'stretch' }}>
               {/* Emoji Picker */}
               {showEmojiPicker && (
@@ -3948,6 +3997,7 @@ export default function ChatSystem({ commsEnabled: propCommsEnabled, nextOpening
                 </div>
               )}
             </div>
+            )}
           </>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-on-surface-variant/50 p-6 text-center z-10">

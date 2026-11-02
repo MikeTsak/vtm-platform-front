@@ -44,6 +44,7 @@ import BloodPotencyModal from './BloodPotencyModal';
 import WishlistSection from './WishlistSection';
 import { vampireAges, formatDate } from '../../utils/ages';
 import { getBloodPotencyStats } from '../../utils/liveSessionMechanics';
+import { isOutOfPlay, outOfPlayReason } from '../../utils/characterStatus';
 const msSearchText = (arr, query) => {
   const ms = new MiniSearch({ fields: ['text'], searchOptions: { fuzzy: 0.2, prefix: true, combineWith: 'AND' } });
   const docs = arr.map((text, id) => ({ id, text }));
@@ -1786,11 +1787,11 @@ export default function CharacterView({
               <Link className={styles.cta} to="/character">Back to my character</Link>
             </div>
           )}
-          {isOwnCharacter && !!ch.is_deceased && (
+          {isOwnCharacter && !readOnly && isOutOfPlay(ch) && (
             <div className={styles.deathNotice} role="status">
-              <h2>Final Death</h2>
+              <h2>{ch.is_deceased ? 'Final Death' : 'Out of play'}</h2>
               <p style={{ margin: '0 0 1rem' }}>
-                {ch.name} has met Final Death. You can create a new character; this sheet stays in your past characters.
+                {ch.name} {outOfPlayReason(ch)}. You can create a new character; this sheet stays in your past characters.
               </p>
               <button className={styles.cta} onClick={() => navigate('/make')}>Create a new character</button>
             </div>

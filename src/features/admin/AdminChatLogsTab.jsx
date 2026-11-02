@@ -291,16 +291,26 @@ export default function AdminChatLogsTab({ messages, charIndex, npcMessages = []
       const msgTimestamp = new Date(msg.created_at).getTime();
 
       if (!groups.has(key)) {
-        const char1 = getCharInfoByUserId(ids[0]);
-        const char2 = getCharInfoByUserId(ids[1]);
-        const user1 = Object.values(charIndex).find(c => c.user_id === ids[0]) || { display_name: `User ${ids[0]}` };
-        const user2 = Object.values(charIndex).find(c => c.user_id === ids[1]) || { display_name: `User ${ids[1]}` };
+        // Names come with the message (the server resolves a retired
+        // character's archive account to that character); the users list,
+        // which leaves archive accounts out, is only the fallback.
+        const party = (id) => {
+          const side = Number(msg.sender_id) === id ? 'sender' : 'recipient';
+          const user = Object.values(charIndex).find(c => c.user_id === id);
+          const ch = getCharInfoByUserId(id);
+          return {
+            name: msg[`${side}_name`] || user?.display_name || `User ${id}`,
+            char: msg[`${side}_char_name`] || ch.name,
+            clan: msg[`${side}_clan`] || ch.clan,
+          };
+        };
+        const p1 = party(ids[0]), p2 = party(ids[1]);
 
         groups.set(key, {
           key, user1Id: ids[0], user2Id: ids[1],
-          user1Name: user1.display_name, user2Name: user2.display_name,
-          user1CharName: char1.name, user2CharName: char2.name,
-          user1Clan: char1.clan, user2Clan: char2.clan,
+          user1Name: p1.name, user2Name: p2.name,
+          user1CharName: p1.char, user2CharName: p2.char,
+          user1Clan: p1.clan, user2Clan: p2.clan,
           messages: [], latestTimestamp: 0, latestSnippet: '', unreadCount: 0,
         });
       }
@@ -348,7 +358,7 @@ export default function AdminChatLogsTab({ messages, charIndex, npcMessages = []
       if (!msg.body) continue;
       const npc = npcs.find(n => n.id === msg.npc_id);
       const charInfo = getCharInfoByUserId(msg.user_id);
-      const userLabel = charInfo.name && charInfo.name !== 'None' ? charInfo.name : `User #${msg.user_id}`;
+      const userLabel = msg.user_name || (charInfo.name && charInfo.name !== 'None' ? charInfo.name : `User #${msg.user_id}`);
       rows.push({
         mode: 'npc', id: `n-${msg.id}`, body: msg.body, created_at: msg.created_at,
         participants: `${npc?.name || 'NPC #' + msg.npc_id} ↔ ${userLabel}`,

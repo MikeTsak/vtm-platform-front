@@ -17,6 +17,7 @@ import SkillsStep from './characterSetupSteps/SkillsStep';
 import AdvantagesStep from './characterSetupSteps/AdvantagesStep';
 import MoralityStep from './characterSetupSteps/MoralityStep';
 import ReviewStep from './characterSetupSteps/ReviewStep';
+import { isOutOfPlay } from '../../utils/characterStatus';
 
 /* ---------- Config ---------- */
 // Attributes / Skills
@@ -195,9 +196,9 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
     api.get('/characters/me').then(r => {
       const char = r.data.character;
       setExisting(char);
-      // Final Death: the player builds a brand-new character (the server
-      // retires the dead one), never a re-roll of it.
-      if (char?.is_deceased) return;
+      // Out of play (Final Death, left, exiled): the player builds a brand-new
+      // character (the server retires the old one), never a re-roll of it.
+      if (isOutOfPlay(char)) return;
 
       // If the character exists but the sheet is empty (Admin Wiped it) OR an admin allowed it, automatically open the wizard!
       if (char && char.sheet && char.sheet.allow_reset === true) {
@@ -464,7 +465,7 @@ export default function CharacterSetup({ onDone, forNPC = false  }) {
 
   /* ---------- Render ---------- */
 
-  if (existing && !existing.is_deceased && !isRebuilding && !isTesting) {
+  if (existing && !isOutOfPlay(existing) && !isRebuilding && !isTesting) {
     return (
       <div className={styles.sheetCard}>
         <h3 className={styles.cardTitle}>Your Character</h3>
