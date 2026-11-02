@@ -952,7 +952,7 @@ async function grantXP(character_id, delta) {
       />
     ),
     ghouls:      () => <AdminGhoulsTab retainers={retainers} />,
-    inventory:   () => <AdminInventoryTab characters={characters} />,
+    inventory:   () => <AdminInventoryTab characters={characters} users={users} />,
     xp:          () => <AdminXPTab users={users} onGrant={grantXP} onBulkGrant={grantBulkXP} adminxp={adminxp} />,
     disciplines: () => <AdminDisciplinesTab />,
     wishlists:   () => <AdminWishlistsTab />,

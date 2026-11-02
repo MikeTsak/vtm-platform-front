@@ -8,6 +8,7 @@ import api, { formatApiError } from '../../core/api';
 import adminStyles from '../../styles/Admin.module.css';
 import styles from '../../styles/AdminInventoryTab.module.css';
 import InventoryItemModal from '../inventory/InventoryItemModal';
+import InventoryReportTab from './InventoryReportTab';
 import GetItem from '../inventory/GetItem';
 import ItemQr, { itemClaimUrl, qrDataUrl, labeledQrDataUrl, qrFileName } from '../inventory/itemQr';
 import { itemIcon } from '../inventory/itemMeta';
@@ -57,7 +58,8 @@ function QrModal({ item, onClose }) {
   );
 }
 
-export default function AdminInventoryTab({ characters = [] }) {
+export default function AdminInventoryTab({ characters = [], users = [] }) {
+  const [tabMode, setTabMode] = useState('items'); // 'items' | 'report'
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
@@ -152,80 +154,105 @@ export default function AdminInventoryTab({ characters = [] }) {
         </div>
       </div>
 
-      <div className={styles.filters}>
-        {FILTERS.map((f) => (
-          <button key={f.key} type="button" aria-pressed={filter === f.key} className={styles.chip} onClick={() => setFilter(f.key)}>
-            {f.label} <span>{counts[f.key]}</span>
-          </button>
-        ))}
+      <div className={styles.tabNav}>
+        <button
+          type="button"
+          className={`${styles.navTabBtn} ${tabMode === 'items' ? styles.navTabBtnActive : ''}`}
+          onClick={() => setTabMode('items')}
+        >
+          <span className="material-symbols-outlined" aria-hidden="true">backpack</span>
+          Items
+        </button>
+        <button
+          type="button"
+          className={`${styles.navTabBtn} ${tabMode === 'report' ? styles.navTabBtnActive : ''}`}
+          onClick={() => setTabMode('report')}
+        >
+          <span className="material-symbols-outlined" aria-hidden="true">summarize</span>
+          Report
+        </button>
       </div>
-      <input type="search" className={styles.search} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search items, types or holders…" />
 
-      {loading ? (
-        <div className={styles.empty}>Loading items…</div>
-      ) : shown.length === 0 ? (
-        <div className={styles.empty}>{items.length ? 'Nothing matches this filter.' : 'No items yet. Make one with New item.'}</div>
+      {tabMode === 'report' ? (
+        <InventoryReportTab items={items} characters={sortedChars} users={users} />
       ) : (
-        <div className={styles.grid}>
-          {shown.map((i) => (
-            <article key={i.id} className={styles.card}>
-              <div className={styles.cardTop}>
-                <div className={styles.thumb}>
-                  {i.image
-                    ? <img src={i.image} alt="" />
-                    : <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>{itemIcon(i.item_type)}</span>}
-                </div>
-                <div className={styles.cardText}>
-                  <div className={styles.name}>{i.name}</div>
-                  <div className={styles.sub}>{i.item_type || 'Mundane'} · Qty {i.quantity || 1}</div>
-                  <div className={styles.tags}>
-                    {i.character_id == null
-                      ? <span className={`${styles.tag} ${styles.tagWorld}`}>In the world{i.claim_copies ? ` · copies (${i.copies_claimed} claimed)` : ''}</span>
-                      : <span className={styles.tag}>{i.character_name || `Character #${i.character_id}`}</span>}
+        <>
+          <div className={styles.filters}>
+            {FILTERS.map((f) => (
+              <button key={f.key} type="button" aria-pressed={filter === f.key} className={styles.chip} onClick={() => setFilter(f.key)}>
+                {f.label} <span>{counts[f.key]}</span>
+              </button>
+            ))}
+          </div>
+          <input type="search" className={styles.search} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search items, types or holders…" />
+
+          {loading ? (
+            <div className={styles.empty}>Loading items…</div>
+          ) : shown.length === 0 ? (
+            <div className={styles.empty}>{items.length ? 'Nothing matches this filter.' : 'No items yet. Make one with New item.'}</div>
+          ) : (
+            <div className={styles.grid}>
+              {shown.map((i) => (
+                <article key={i.id} className={styles.card}>
+                  <div className={styles.cardTop}>
+                    <div className={styles.thumb}>
+                      {i.image
+                        ? <img src={i.image} alt="" />
+                        : <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>{itemIcon(i.item_type)}</span>}
+                    </div>
+                    <div className={styles.cardText}>
+                      <div className={styles.name}>{i.name}</div>
+                      <div className={styles.sub}>{i.item_type || 'Mundane'} · Qty {i.quantity || 1}</div>
+                      <div className={styles.tags}>
+                        {i.character_id == null
+                          ? <span className={`${styles.tag} ${styles.tagWorld}`}>In the world{i.claim_copies ? ` · copies (${i.copies_claimed} claimed)` : ''}</span>
+                          : <span className={styles.tag}>{i.character_name || `Character #${i.character_id}`}</span>}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              {i.description && <p className={styles.desc}>{i.description}</p>}
-              {i.mechanic_notes && <p className={styles.mech}><strong>Does:</strong> {i.mechanic_notes}</p>}
-              {i.st_notes && <p className={styles.mech}><strong>ST notes (private):</strong> {i.st_notes}</p>}
-              {i.player_notes && <p className={styles.desc}><strong>Player notes:</strong> {i.player_notes}</p>}
+                  {i.description && <p className={styles.desc}>{i.description}</p>}
+                  {i.mechanic_notes && <p className={styles.mech}><strong>Does:</strong> {i.mechanic_notes}</p>}
+                  {i.st_notes && <p className={styles.mech}><strong>ST notes (private):</strong> {i.st_notes}</p>}
+                  {i.player_notes && <p className={styles.desc}><strong>Player notes:</strong> {i.player_notes}</p>}
 
-              <label className={styles.switch}>
-                <input type="checkbox" checked={!!i.researched} onChange={() => patch(i, { researched: !i.researched })} />
-                <span>{i.researched ? 'Researched: holder sees what it does' : 'Unresearched: what it does is hidden'}</span>
-              </label>
+                  <label className={styles.switch}>
+                    <input type="checkbox" checked={!!i.researched} onChange={() => patch(i, { researched: !i.researched })} />
+                    <span>{i.researched ? 'Researched: holder sees what it does' : 'Unresearched: what it does is hidden'}</span>
+                  </label>
 
-              <select
-                className={styles.search}
-                value=""
-                onChange={(e) => give(i, e.target.value)}
-                aria-label={`Give ${i.name} to a character`}
-              >
-                <option value="">{i.character_id == null ? 'Give to a character…' : 'Give to someone else…'}</option>
-                {sortedChars.filter((c) => c.id !== i.character_id).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+                  <select
+                    className={styles.search}
+                    value=""
+                    onChange={(e) => give(i, e.target.value)}
+                    aria-label={`Give ${i.name} to a character`}
+                  >
+                    <option value="">{i.character_id == null ? 'Give to a character…' : 'Give to someone else…'}</option>
+                    {sortedChars.filter((c) => c.id !== i.character_id).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
 
-              <div className={styles.row}>
-                <button type="button" className={styles.btnGhost} onClick={() => setEditing(i)}>
-                  <span className="material-symbols-outlined" aria-hidden="true">edit</span> Edit
-                </button>
-                {i.character_id == null ? (
-                  <button type="button" className={styles.btnGhost} onClick={() => setQrItem(i)} disabled={!i.claim_code}>
-                    <span className="material-symbols-outlined" aria-hidden="true">qr_code_2</span> QR
-                  </button>
-                ) : (
-                  <button type="button" className={styles.btnGhost} onClick={() => patch(i, { character_id: null })} title="Take it off the character and put it out in the world">
-                    <span className="material-symbols-outlined" aria-hidden="true">public</span> To world
-                  </button>
-                )}
-                <button type="button" className={styles.btnDanger} onClick={() => remove(i)}>
-                  <span className="material-symbols-outlined" aria-hidden="true">delete</span>
-                </button>
-              </div>
-            </article>
-          ))}
-        </div>
+                  <div className={styles.row}>
+                    <button type="button" className={styles.btnGhost} onClick={() => setEditing(i)}>
+                      <span className="material-symbols-outlined" aria-hidden="true">edit</span> Edit
+                    </button>
+                    {i.character_id == null ? (
+                      <button type="button" className={styles.btnGhost} onClick={() => setQrItem(i)} disabled={!i.claim_code}>
+                        <span className="material-symbols-outlined" aria-hidden="true">qr_code_2</span> QR
+                      </button>
+                    ) : (
+                      <button type="button" className={styles.btnGhost} onClick={() => patch(i, { character_id: null })} title="Take it off the character and put it out in the world">
+                        <span className="material-symbols-outlined" aria-hidden="true">public</span> To world
+                      </button>
+                    )}
+                    <button type="button" className={styles.btnDanger} onClick={() => remove(i)}>
+                      <span className="material-symbols-outlined" aria-hidden="true">delete</span>
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {editing !== undefined && (
