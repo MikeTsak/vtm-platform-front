@@ -7,13 +7,14 @@
 // A ghoul that is let go, or whose feeder sits at Hunger 5, starves: it loses
 // its powers until it is fed in a later cycle. Rules live in
 // back/services/ghoulFeeding.js.
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import api, { formatApiError } from '../../core/api';
 import styles from '../../styles/Feeding.module.css';
 import FaGlyph from '../../ui/FaGlyph';
 import Avatar from '../../components/Avatar';
+import D10Die from '../../ui/D10Die';
 import { FEEDING_ICONS } from '../../data/feedingIcons';
 
 const GHOUL_STATE = {
@@ -63,13 +64,62 @@ function TierDots({ tier }) {
   );
 }
 
-function GhoulCard({ ghoul }) {
+const TUMBLE_MS = 1300;
+
+// Pop-up that tumbles the Rouse dice the server already threw, then reveals them.
+// `roll` = { items: [{ id, name, dice, success, hungerAfter }] } or null.
+function RouseRollModal({ roll, onClose }) {
+  const [rolling, setRolling] = useState(true);
+  useEffect(() => {
+    setRolling(true);
+    const t = setTimeout(() => setRolling(false), TUMBLE_MS);
+    return () => clearTimeout(t);
+  }, [roll]);
+  if (!roll) return null;
+
+  const rose = roll.items.filter((i) => !i.success).length;
+  const last = roll.items[roll.items.length - 1];
+  const summary = rose
+    ? `Hunger rose ${rose} time${rose === 1 ? '' : 's'}, now ${last.hungerAfter}.`
+    : 'Every Rouse Check held.';
+  return (
+    <div className={styles.modalBackdrop} role="dialog" aria-modal="true" aria-labelledby="rouse-title" onClick={rolling ? undefined : onClose}>
+      <div className={`${styles.gate} ${styles.modal}`} onClick={(e) => e.stopPropagation()}>
+        <h2 id="rouse-title" className={styles.title}>
+          <span className={styles.iconBadge}><FaGlyph icon={FEEDING_ICONS.droplet} size={15} /></span>
+          {rolling ? 'Rolling Rouse Check...' : 'Rouse Check'}
+        </h2>
+        <div className={styles.rouseRow} aria-live="polite">
+          {roll.items.map((item) => (
+            <div key={item.id} className={styles.rouseItem}>
+              <span className={styles.rouseName}>{item.name}</span>
+              <div style={{ display: 'flex', gap: '0.4rem' }}>
+                {item.dice.map((v, i) => (
+                  <D10Die key={i} index={i} value={v} isHunger isRolling={rolling} size="md" showNumber poolCount={roll.items.length} />
+                ))}
+              </div>
+              <span className={`${styles.rouseResult} ${item.success ? styles.rouseOk : styles.rouseFail}`}>
+                {rolling ? '' : item.success ? 'Held' : 'Hunger +1'}
+              </span>
+            </div>
+          ))}
+        </div>
+        <p className={styles.rouseStatus}>{rolling ? '' : summary}</p>
+        <div className={styles.actions}>
+          <button className={styles.btnPrimary} onClick={onClose} disabled={rolling}>Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GhoulCard({ ghoul, onRoll }) {
   const refresh = useRefreshFeeding();
 
   const feed = useMutation({
     mutationFn: () => api.post(`/feeding/ghouls/${ghoul.id}/feed`),
     onSuccess: ({ data }) => {
-      toast.success(data.success ? `${ghoul.name} fed. The Rouse Check held.` : `${ghoul.name} fed. Your Hunger rose to ${data.hungerAfter}.`);
+      onRoll([{ id: ghoul.id, name: ghoul.name, dice: data.dice, success: data.success, hungerAfter: data.hungerAfter }]);
       refresh();
     },
     onError: (e) => toast.error(formatApiError(e, 'Feeding failed')),
@@ -127,6 +177,8 @@ function GhoulCard({ ghoul }) {
 
 export default function GhoulUpkeep() {
   const refresh = useRefreshFeeding();
+  const [roll, setRoll] = useState(null);
+  const showRoll = (items) => setRoll({ items });
   const { data } = useQuery({
     queryKey: ['feeding', 'ghouls'],
     queryFn: async () => (await api.get('/feeding/ghouls')).data,
@@ -135,8 +187,7 @@ export default function GhoulUpkeep() {
   const feedAll = useMutation({
     mutationFn: () => api.post('/feeding/ghouls/feed-all'),
     onSuccess: ({ data: r }) => {
-      const rose = r.fed.filter((g) => !g.success).length;
-      if (r.fed.length) toast.success(`Fed ${r.fed.length} ghoul${r.fed.length === 1 ? '' : 's'}. ${rose ? `Hunger rose ${rose} time${rose === 1 ? '' : 's'}.` : 'Every Rouse Check held.'}`);
+      if (r.fed.length) showRoll(r.fed);
       if (r.stopped) toast.error(r.stopped);
       refresh();
     },
@@ -179,8 +230,9 @@ export default function GhoulUpkeep() {
       )}
 
       <div className={styles.ghoulGrid}>
-        {ghouls.map((g) => <GhoulCard key={g.id} ghoul={g} />)}
+        {ghouls.map((g) => <GhoulCard key={g.id} ghoul={g} onRoll={showRoll} />)}
       </div>
+      <RouseRollModal roll={roll} onClose={() => setRoll(null)} />
       <p className={styles.legendNote} style={{ marginTop: '1rem' }}>
         A ghoul let go, or whose feeder is at Hunger 5, starves and loses their powers until fed again.
       </p>

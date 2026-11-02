@@ -644,6 +644,15 @@ a.btnPrimary, a.btnGhost { text-decoration: none; }
 }
 .modal { width: 100%; max-width: 460px; margin: 0; background: var(--surface, var(--glass-bg)); }
 
+/* Rouse Check reveal when feeding ghouls */
+.rouseRow { display: flex; flex-wrap: wrap; justify-content: center; gap: 1.1rem 1.4rem; margin: 1.1rem 0; }
+.rouseItem { display: flex; flex-direction: column; align-items: center; gap: 0.35rem; min-width: 5.5rem; text-align: center; }
+.rouseName { font-size: 0.78rem; font-weight: 600; color: var(--text-secondary, rgba(255,255,255,0.7)); }
+.rouseResult { font-size: 0.78rem; font-weight: 700; min-height: 1.1em; }
+.rouseOk { color: #6fcf97; }
+.rouseFail { color: #ff6b6b; }
+.rouseStatus { text-align: center; font-size: 0.9rem; color: var(--text-secondary, rgba(255,255,255,0.75)); min-height: 1.3em; }
+
 /* ── Mobile ─────────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
   .pageTitle { font-size: 1.4rem; }

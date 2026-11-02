@@ -1405,7 +1405,7 @@ export default function AdminCalendarTab() {
                         {wpResetFor && (
                           <div
                             style={{ fontSize: '0.6rem', fontWeight: 800, background: 'rgba(102, 187, 106, 0.22)', border: '1px solid #66bb6a', color: '#a5d6a7', borderRadius: '3px', padding: '2px 4px', display: 'flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap', lineHeight: 1.2 }}
-                            title={`Willpower resets to full for every character at 00:08 (after the ${formatEuDate(wpResetFor)} event). Move the event to move the reset.`}
+                            title={`Every character restores Superficial Willpower damage equal to Composure or Resolve (higher) at 00:08 (after the ${formatEuDate(wpResetFor)} event). Move the event to move the reset.`}
                           >
                             <span className="material-symbols-outlined" style={{ fontSize: '11px', flexShrink: 0 }}>self_improvement</span>
                             <span>WP RESET</span>
@@ -1492,7 +1492,7 @@ export default function AdminCalendarTab() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#66bb6a' }}>self_improvement</span>
-            <span>Green: Willpower resets to full (day after a Modern Day event; follows the event date)</span>
+            <span>Green: Superficial Willpower restored by Composure or Resolve, higher (day after a Modern Day event; follows the event date)</span>
           </div>
         </div>
 
