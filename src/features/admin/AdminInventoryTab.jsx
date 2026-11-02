@@ -9,7 +9,7 @@ import adminStyles from '../../styles/Admin.module.css';
 import styles from '../../styles/AdminInventoryTab.module.css';
 import InventoryItemModal from '../inventory/InventoryItemModal';
 import GetItem from '../inventory/GetItem';
-import ItemQr, { itemClaimUrl, qrDataUrl } from '../inventory/itemQr';
+import ItemQr, { itemClaimUrl, qrDataUrl, labeledQrDataUrl, qrFileName } from '../inventory/itemQr';
 import { itemIcon } from '../inventory/itemMeta';
 
 const FILTERS = [
@@ -24,7 +24,9 @@ const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&a
 function QrModal({ item, onClose }) {
   const url = itemClaimUrl(item.claim_code);
   const [png, setPng] = useState(null);
+  const [labeledPng, setLabeledPng] = useState(null);
   useEffect(() => { qrDataUrl(url, 1024).then(setPng).catch(() => {}); }, [url]);
+  useEffect(() => { labeledQrDataUrl(url, item.name, 1024).then(setLabeledPng).catch(() => {}); }, [url, item.name]);
 
   const print = () => {
     const w = window.open('', '_blank', 'width=600,height=800');
@@ -45,7 +47,7 @@ function QrModal({ item, onClose }) {
         <ItemQr value={url} size={280} />
         <code className={styles.code}>{item.claim_code}</code>
         <div className={styles.row}>
-          {png && <a className={styles.btn} href={png} download={`${item.name.replace(/[^\w-]+/g, '_')}_qr.png`}>Download PNG</a>}
+          {labeledPng && <a className={styles.btn} href={labeledPng} download={qrFileName(item.name)}>Download PNG</a>}
           <button type="button" className={styles.btn} onClick={print} disabled={!png}>Print</button>
           <button type="button" className={styles.btnGhost} onClick={onClose}>Close</button>
         </div>
